@@ -534,7 +534,7 @@ In this way, we can give a declarative semantics to code that performs I/O.
 New types can be introduced with @samp{:- type} declarations.
 There are several categories of derived types:
 
-@itemize
+@itemize @bullet
 @item
 Discriminated unions: these encompass both enumeration and
 record types in other languages.
@@ -636,7 +636,7 @@ The type declarations
 @end example
 
 @noindent
-declare types @code{t1/0} and @code{t/2} to be abstract types.
+declare types @code{t1/0} and @code{t2/2} to be abstract types.
 Such declarations are only useful in the interface section of a module.
 This means that the type names will be exported,
 but the constructors (functors) for these types will not be exported.
