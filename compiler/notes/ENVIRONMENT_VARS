@@ -1,0 +1,24 @@
+
+The shell scripts use the following environment variables.
+
+	MERCURY_INT_DIR
+		Directory for the Mercury library interface
+		files (*.int *.int2)
+
+	MERCURY_DEP_DIR
+		Directory for the Mercury library source files,
+		for use in creating the depen
+
+	MERCURY_NC_BUILTIN
+		Filename of the Mercury `nc'-compatibility file (nc_builtin.nl)
+
+	MERCURY_LIB_DIR
+		Directory for the NU-Prolog object files (*.no) of the
+		Mercury library
+
+	MERCURY_COMPILER
+		Filename of the Mercury Compiler
+
+	MERCURY_INTERPRETER
+		Filename of the Mercury Interpreter
+
