@@ -2839,7 +2839,7 @@ io__report_stats(Selector) -->
 :- pred io__init_state(io__state, io__state).
 :- mode io__init_state(di, uo) is det.
 
-:- implemenation.
+:- implementation.
 
 % for use by the Mercury runtime
 :- pragma export(io__init_state(di, uo), "ML_io_init_state").
