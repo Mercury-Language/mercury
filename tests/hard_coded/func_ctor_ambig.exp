@@ -1,0 +1,4 @@
+bar = 42
+bar2 = 42
+baz = ambig
+baz2 = ambig

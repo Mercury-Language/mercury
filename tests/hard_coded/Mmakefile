@@ -31,6 +31,7 @@ PROGS=	\
 	float_rounding_bug \
 	free_free_mode \
 	func_and_pred \
+	func_ctor_ambig \
 	func_test \
 	getopt_test \
 	ground_dd \

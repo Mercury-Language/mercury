@@ -169,27 +169,19 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		%
 
 		\+ code_util__compiler_generated(PredInfo),
-		(
-			PredName = unqualified(UnqualPName),
-			predicate_table_search_func_name_arity(PredTable,
-				UnqualPName, Arity, PredIds),
-  
-			% Check if there any of the candidate functions,
-			% have argument/return types which subsume the actual
-			% argument/return types of this function call
-  
-			pred_info_typevarset(PredInfo, TVarSet),
-			map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
-			list__append(ArgTypes0, [TypeOfX], ArgTypes),
-			typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-				TVarSet, ArgTypes, PredId, QualifiedFuncName)
 
-		;
-			PredName = qualified(FuncModule, UnqualName),
-			predicate_table_search_func_m_n_a(PredTable,
-				    FuncModule, UnqualName, Arity, [PredId]),
-			QualifiedFuncName = PredName
-		)
+		predicate_table_search_func_sym_arity(PredTable,
+			PredName, Arity, PredIds),
+
+		% Check if any of the candidate functions have
+		% argument/return types which subsume the actual
+		% argument/return types of this function call
+
+		pred_info_typevarset(PredInfo, TVarSet),
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		list__append(ArgTypes0, [TypeOfX], ArgTypes),
+		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
+			TVarSet, ArgTypes, PredId, QualifiedFuncName)
 	->
 		%
 		% Convert function calls into predicate calls:
