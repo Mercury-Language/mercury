@@ -191,7 +191,7 @@
 	#define TYPE_LAYOUT_FIELDS \
 		TypeLayoutField f1,f2,f3,f4,f5,f6,f7,f8;
 	#define make_typelayout(Tag, Value) \
-		(const Word *) mkword(mktag(Tag), (Value))
+		mkword(mktag(Tag), (Value))
 #else
 	typedef const Word *TypeLayoutField;
 	#define TYPE_LAYOUT_FIELDS \

@@ -179,7 +179,7 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                     }
                 }
                     /* tag this pointer */
-                new_data = mkword(data_tag, new_data);
+                new_data = (Word) mkword(data_tag, new_data);
             } else {
                 new_data = data;
             }
@@ -224,7 +224,7 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                 }
 
                 /* tag this pointer */
-                new_data = mkword(data_tag, new_data);
+                new_data = (Word) mkword(data_tag, new_data);
             } else {
                 new_data = data;
             }

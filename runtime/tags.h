@@ -59,8 +59,7 @@
 ** and casts from pointers to integral types are not valid
 ** constant-expressions in ANSI C.
 */
-/* XXX can't implement the above comment yet due to bootstrapping problems! */
-#define	mkword(t, p)	((Word)((const char *)(p) + (t)))
+#define	mkword(t, p)	((const Word *)((const char *)(p) + (t)))
 
 #define	field(t, p, i)		((Word *) body((p), (t)))[i]
 #define	const_field(t, p, i)	((const Word *) body((p), (t)))[i]
@@ -84,17 +83,18 @@
 #define list_is_empty(list)	(tag(list) == TAG_NIL)
 #define list_head(list)		field(TAG_CONS, (list), 0)
 #define list_tail(list)		field(TAG_CONS, (list), 1)
-#define list_empty()		mkword(TAG_NIL, mkbody(0))
-#define list_cons(head,tail)	mkword(TAG_CONS, create2((head),(tail)))
+#define list_empty()		((Word) mkword(TAG_NIL, mkbody(0)))
+#define list_cons(head,tail)	\
+		((Word) mkword(TAG_CONS, create2((head),(tail))))
 
 #else
 
 #define list_is_empty(list)	(field(mktag(0), (list), 0) == bTAG_NIL)
 #define list_head(list)		field(mktag(0), (list), 1)
 #define list_tail(list)		field(mktag(0), (list), 2)
-#define list_empty()		mkword(mktag(0), create1(bTAG_NIL))
+#define list_empty()		((Word) mkword(mktag(0), create1(bTAG_NIL)))
 #define list_cons(head,tail)	\
-		mkword(mktag(0), create3(bTAG_CONS, (head), (tail)))
+		((Word) mkword(mktag(0), create3(bTAG_CONS, (head), (tail))))
 
 #endif
 
