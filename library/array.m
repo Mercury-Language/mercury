@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -223,7 +223,7 @@
 	% Field update for arrays.
 	% (Array ^ elem(Index) := Value) = array__set(Array, Index, Value).
 :- func 'array__elem :='(int, array(T), T) = array(T).
-:- mode 'array__elem :='(in, array_ui, in) = array_uo is det.
+:- mode 'array__elem :='(in, array_di, in) = array_uo is det.
 
 %-----------------------------------------------------------------------------%
 
