@@ -1113,13 +1113,13 @@ unused :-
 
 #include ""mercury_misc.h""	/* for fatal_error(); */
 
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_int_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_string_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_float_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_character_0;
 
 ").
