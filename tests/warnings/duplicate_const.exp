@@ -1,0 +1,2 @@
+duplicate_const.m:016: Warning: redundant call to predicate `duplicate_const.called/4'.
+duplicate_const.m:015: Here is the previous call to predicate `duplicate_const.called/4'.

@@ -12,6 +12,7 @@ ERRORCHECK_PROGS= \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
+	duplicate_const \
 	inf_recursion_lambda \
 	infinite_recursion \
 	inference_test \

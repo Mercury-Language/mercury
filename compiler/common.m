@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -155,12 +155,25 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 				construction, Info0, OldStruct)
 		->
 			OldStruct = structure(OldVar, _, _, _),
-			UniMode = ((free - Inst) -> (Inst - Inst)),
-			common__generate_assign(Var, OldVar, UniMode,
-				GoalInfo0, Goal - GoalInfo, Info0, Info1),
-			simplify_info_set_requantify(Info1, Info2),
-			pd_cost__goal(Goal0 - GoalInfo0, Cost),
-			simplify_info_incr_cost_delta(Info2, Cost, Info)
+			( ArgVars = [] ->
+				% Constants don't use memory, so there's
+				% no point optimizing away their
+				% construction -- in fact, doing so
+				% could cause more stack usage.
+				common__record_equivalence(Var, OldVar,
+					Info0, Info),
+				Goal = Goal0,
+				GoalInfo = GoalInfo0
+			;
+				UniMode = ((free - Inst) -> (Inst - Inst)),
+				common__generate_assign(Var, OldVar, UniMode,
+					GoalInfo0, Goal - GoalInfo,
+					Info0, Info1),
+				simplify_info_set_requantify(Info1, Info2),
+				pd_cost__goal(Goal0 - GoalInfo0, Cost),
+				simplify_info_incr_cost_delta(Info2,
+					Cost, Info)
+			)
 		;
 			Goal = Goal0,
 			GoalInfo = GoalInfo0,
@@ -356,22 +369,15 @@ common__vars_are_equiv(X, Y, VarEqv) :-
 common__record_cell(Var, ConsId, ArgVars, Info0, Info) :-
 	simplify_info_get_common_info(Info0, CommonInfo0),
 	simplify_info_get_var_types(Info0, VarTypes),
-	( ArgVars = [] ->
-		% Constants do not have memory cells to reuse,
-		% at least in the memory models we are interested in.
-		CommonInfo = CommonInfo0
-	;
-		CommonInfo0 = common(VarEqv, StructMapAll0,
+	CommonInfo0 = common(VarEqv, StructMapAll0,
 			StructMapLastCall0, SeenCalls),
-		map__lookup(VarTypes, Var, VarType),
-		Struct = structure(Var, VarType, ConsId, ArgVars),
-		common__do_record_cell(StructMapAll0, ConsId,
-			Struct, StructMapAll),
-		common__do_record_cell(StructMapLastCall0, ConsId, Struct,
+	map__lookup(VarTypes, Var, VarType),
+	Struct = structure(Var, VarType, ConsId, ArgVars),
+	common__do_record_cell(StructMapAll0, ConsId, Struct, StructMapAll),
+	common__do_record_cell(StructMapLastCall0, ConsId, Struct,
 			StructMapLastCall),
-		CommonInfo = common(VarEqv, StructMapAll,
-			StructMapLastCall, SeenCalls)
-	),
+	CommonInfo = common(VarEqv, StructMapAll,
+			StructMapLastCall, SeenCalls),
 	simplify_info_set_common_info(Info0, CommonInfo, Info).
 
 :- pred common__do_record_cell(struct_map, cons_id, structure, struct_map).
