@@ -637,6 +637,9 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 	; PtagList = [0 - _ | _] ->
 		PtagInitPrefix = [],
 		FirstPtag = 0
+	; PtagList = [] ->
+		PtagInitPrefix = [],
+		FirstPtag = 0
 	;
 		error("gen_du_ptag_ordered_table: bad ptag list")
 	),
