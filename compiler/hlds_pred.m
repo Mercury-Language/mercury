@@ -201,6 +201,8 @@
 :- pred pred_info_name(pred_info, string).
 :- mode pred_info_name(in, out) is det.
 
+	% pred_info_arity returns the arity of the predicate
+	% *not* counting inserted type_info arguments for polymorphic preds.
 :- pred pred_info_arity(pred_info, arity).
 :- mode pred_info_arity(in, out) is det.
 
@@ -313,6 +315,8 @@
 			module_name,	% module in which pred occurs
 			string,		% predicate name
 			arity,		% the arity of the pred
+					% (*not* counting any inserted
+					% type_info arguments)
 			import_status,
 			tvarset,	% names of type vars
 					% in the predicate's type decl
