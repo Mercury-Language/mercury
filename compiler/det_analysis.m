@@ -734,8 +734,12 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 		{ pred_info_arity(PredInfo, 2) },
 		{ pred_info_is_exported(PredInfo) },
 		{
+/*********
+	% XXX this is commented out since the compiler generates incorrect
+	% code for it!!!
 		  determinism_components(InferredDetism, can_fail, _)
 		;
+**********/
 		  MaybeDetism = yes(DeclaredDeterminism),
 		  determinism_components(DeclaredDeterminism, can_fail, _)
 		}
@@ -988,9 +992,10 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 	{ proc_info_variables(ProcInfo, Varset) },
 	io__write_string("  unification of `"),
-	mercury_output_term(LT, Varset),
+	mercury_output_var(LT, Varset),
 	io__write_string("' and `"),
-	mercury_output_term(RT, Varset),
+	{ MiscInfo = misc_info(ModuleInfo, _, _) },
+	hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3),
 	(
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
