@@ -39,20 +39,20 @@
 ** EXPAND_ARGS_FIELD        If defined, gives the name of the field in the
 **                          expand_info structure that contains information
 **                          about all the functor's arguments. This field
-**                          should be of type ML_Expand_Args_Fields. The
+**                          should be of type MR_Expand_Args_Fields. The
 **                          function will fill in this field.
 **
 ** EXPAND_CHOSEN_ARG        If defined, the function will have an extra
 **                          argument, chosen, which specifies the position of
 **                          the one desired argument (with the first argument
 **                          having position 0), and the function will fill in
-**                          the fields of the ML_Expand_Chosen_Arg_Only
+**                          the fields of the MR_Expand_Chosen_Arg_Only
 **                          structure.
 **
 ** EXPAND_NAMED_ARG         If defined, the function will have an extra
 **                          argument, chosen_name, which specifies the name
 **                          of the one desired argument, and the function will
-**                          fill in the fields of the ML_Expand_Chosen_Arg_Only
+**                          fill in the fields of the MR_Expand_Chosen_Arg_Only
 **                          structure.
 **
 ** EXPAND_APPLY_LIMIT       If defined, the function will have an extra
@@ -78,7 +78,7 @@
 ** arity, which will be set to the number of arguments the functor has.
 **
 ** The variants that return all the arguments do so in a field of type
-** ML_Expand_Args_Fields. Its arg_type_infos subfield will contain a pointer
+** MR_Expand_Args_Fields. Its arg_type_infos subfield will contain a pointer
 ** to an array of arity MR_TypeInfos, one for each user-visible field of the
 ** cell. The arg_values field will contain a pointer to a block of
 ** arity + num_extra_args MR_Words, one for each field of the cell,
