@@ -37,6 +37,12 @@
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
+	;	mode_error_implied_mode(var, inst, inst)
+			% a call to a predicate with an overly
+			% instantiated variable would use an implied
+			% mode of the predicate.  XXX This is temporary - 
+			% once we've implemented implied modes we can
+			% get rid of it.
 	;	mode_error_no_matching_mode(list(var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
@@ -99,6 +105,8 @@ report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
+	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_bind_var(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_bind_var(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
@@ -330,6 +338,40 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("  expected instantiatedness was `"),
 	mercury_output_inst(Inst, InstVarSet),
 	io__write_string("'.\n").
+
+:- pred report_mode_error_implied_mode(mode_info, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_implied_mode(in, in, in, in, di, uo) is det.
+
+report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
+		%
+		% This "error" message is really a "sorry, not implemented"
+		% message.  We only print the message if we are actually
+		% going to generating code.
+		%
+	globals__io_lookup_bool_option(generate_code, GenerateCode),
+	globals__io_lookup_bool_option(compile, Compile),
+	globals__io_lookup_bool_option(compile_to_c, CompileToC),
+	( { GenerateCode = yes ; Compile = yes ; CompileToC = yes } ->
+		{ mode_info_get_context(ModeInfo, Context) },
+		{ mode_info_get_varset(ModeInfo, VarSet) },
+		{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+		mode_info_write_context(ModeInfo),
+		prog_out__write_context(Context),
+		io__write_string("  sorry, implied modes not implemented.\n"),
+		prog_out__write_context(Context),
+		io__write_string("  Variable `"),
+		mercury_output_var(Var, VarSet),
+		io__write_string("' has instantiatedness `"),
+		mercury_output_inst(VarInst, InstVarSet),
+		io__write_string("',\n"),
+		prog_out__write_context(Context),
+		io__write_string("  expected instantiatedness was `"),
+		mercury_output_inst(Inst, InstVarSet),
+		io__write_string("'.\n")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
