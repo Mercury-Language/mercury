@@ -254,7 +254,7 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
 		IO = io__state(A, PutBack, C, D, E),
- 		Code = Char
+		char_to_int(Char, Code)
  	;
 		get0(Stream, Code),
 		IO = IO_0
@@ -411,9 +411,9 @@ io__get_line_number(LineNumber) -->
 	{ currentInput(Stream) },
 	io__get_line_number(Stream, LineNumber).
 
-io__get_line_number(Stream, LineNumber, IO, IO) -->
+io__get_line_number(Stream, LineNumber) -->
 	{ lineCount(Stream, LineNumber0) },
-	{ IO = io__state(_, PutBack, _, _, _) },
+	=(io__state(_, PutBack, _, _, _)),
 	{ map__search(PutBack, Stream, Chars) ->
 		io__adjust_line_num(Chars, LineNumber0, LineNumber)
 	;
