@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -44,7 +44,12 @@
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
 
-:- import_module string, list, assoc_list, map, std_util, varset.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -57,16 +62,16 @@ code_aux__contains_simple_recursive_call(Goal - _, CodeInfo, Last) :-
 
 code_aux__contains_simple_recursive_call_expr([Goal|Goals], CodeInfo, Last) :-
 	Goal = GoalExpr - _,
-	(
-		contains_only_builtins_expr(GoalExpr)
-	->
+	( contains_only_builtins_expr(GoalExpr) ->
 		code_aux__contains_simple_recursive_call_expr(Goals, CodeInfo,
 			Last)
 	;
 		code_aux__is_recursive_call(GoalExpr, CodeInfo),
-		( Goals = [] ->
+		(
+			Goals = [],
 			Last = yes
 		;
+			Goals = [_ | _],
 			contains_only_builtins_list(Goals),
 			Last = no
 		)

@@ -48,7 +48,10 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- import_module set, list, bool, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
+:- import_module std_util.
 
 :- pred dnf__transform_module(bool::in, maybe(set(pred_proc_id))::in,
 	module_info::in, module_info::out) is det.
@@ -70,8 +73,16 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__dependency_graph.
 
-:- import_module require, map, list, string, int, bool, std_util, term, varset.
+:- import_module bool.
 :- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 	% Traverse the module structure.
 

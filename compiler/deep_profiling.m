@@ -45,8 +45,18 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds__dependency_graph.
 
-:- import_module bool, int, list, assoc_list, map, require, set.
-:- import_module std_util, string, term, varset, counter.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 apply_deep_profiling_transformation(!ModuleInfo) :-
 	module_info_globals(!.ModuleInfo, Globals),

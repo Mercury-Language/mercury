@@ -53,7 +53,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__make_hlds.
 
-:- import_module bool, io.
+:- import_module bool.
+:- import_module io.
 
 :- pred check_typeclass__check_typeclasses(qual_info::in, qual_info::out,
 	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
@@ -78,9 +79,17 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string.
-:- import_module list, assoc_list, map, set, svset, term, varset.
-:- import_module std_util, require.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module svset.
+:- import_module term.
+:- import_module varset.
 
 check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
@@ -106,12 +115,12 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 		InstanceList, check_tc_info([], !.ModuleInfo, !.QualInfo),
 		check_tc_info(Errors, !:ModuleInfo, !:QualInfo), !IO),
 	(
-		Errors = []
-	->
+		Errors = [],
 		map__from_assoc_list(InstanceList, InstanceTable),
 		module_info_set_instances(InstanceTable, !ModuleInfo),
 		FoundError = no
 	;
+		Errors = [_ | _],
 		list__reverse(Errors, ErrorList),
 		WriteError = (pred(E::in, IO0::di, IO::uo) is det :-
 			E = ErrorContext - ErrorPieces,
@@ -924,9 +933,7 @@ check_for_cyclic_classes(ClassTable, Errors, !IO) :-
 	list(class_path)::in, list(class_path)::out) is det.
 
 find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles) :-
-	(
-		set.member(ClassId, !.Visited)
-	->
+	( set.member(ClassId, !.Visited) ->
 		(
 			find_cycle(ClassId, Path, [ClassId], Cycle)
 		->
@@ -953,9 +960,7 @@ find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles) :-
 
 find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
 	Path = [Head | Path0],
-	(
-		ClassId = Head
-	->
+	( ClassId = Head ->
 		Cycle = Path
 	;
 		find_cycle(ClassId, Tail, Path, Cycle)

@@ -38,7 +38,8 @@
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 
-:- import_module list, io.
+:- import_module io.
+:- import_module list.
 
 	% Translate a HLDS module to LLDS.
 
@@ -110,9 +111,19 @@
 :- import_module mdbcomp__prim_data.
 
 % Standard library modules
-:- import_module bool, char, int, string.
-:- import_module map, assoc_list, set, term, libs__tree, std_util, require.
-:- import_module counter, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module counter.
+:- import_module int.
+:- import_module libs__tree.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -165,15 +176,16 @@ generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId, Predicates, !IO) :-
 		module_info_globals(ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, very_verbose,
 			VeryVerbose),
-		( VeryVerbose = yes ->
+		(
+			VeryVerbose = yes,
 			io__write_string("% Generating code for ", !IO),
 			hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 			io__write_string("\n", !IO),
-			globals__lookup_bool_option(Globals,
-				statistics, Statistics),
+			globals__lookup_bool_option(Globals, statistics,
+				Statistics),
 			maybe_report_stats(Statistics, !IO)
 		;
-			true
+			VeryVerbose = no
 		),
 		generate_pred_code(ModuleInfo, !GlobalData,
 			PredId, PredInfo, ProcIds, Predicates)
@@ -249,11 +261,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 	module_info_globals(ModuleInfo, Globals),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
 		BasicStackLayout, ForceProcId),
-	( BasicStackLayout = yes ->
-		SaveSuccip = yes
-	;
-		SaveSuccip = no
-	),
+	SaveSuccip = BasicStackLayout,
 
 		% Initialise the code_info structure. Generate_category_code
 		% below will use the returned OutsideResumePoint as the
@@ -306,8 +314,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 	list__condense(FragmentList, Instructions0),
 	FrameInfo = frame(TotalSlots, MaybeSuccipSlot, _),
 	(
-		MaybeSuccipSlot = yes(SuccipSlot)
-	->
+		MaybeSuccipSlot = yes(SuccipSlot),
 			% The set of recorded live values at calls (for value
 			% numbering) and returns (for accurate gc and execution
 			% tracing) do not yet record the stack slot holding the
@@ -315,6 +322,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 		code_gen__add_saved_succip(Instructions0,
 			SuccipSlot, Instructions)
 	;
+		MaybeSuccipSlot = no,
 		Instructions = Instructions0
 	),
 
@@ -491,13 +499,16 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
 maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
 		!GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
-	( eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes ->
+	HasTablingPointer =
+		eval_method_has_per_proc_tabling_pointer(EvalMethod),
+	(
+		HasTablingPointer = yes,
 		module_info_name(ModuleInfo, ModuleName),
 		Var = tabling_pointer_var(ModuleName, ProcLabel),
 		global_data_add_new_proc_var(proc(PredId, ProcId), Var,
 			!GlobalData)
 	;
-		true
+		HasTablingPointer = no
 	).
 
 %---------------------------------------------------------------------------%
@@ -566,7 +577,8 @@ generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 		Goal = _ - GoalInfo,
 		goal_info_get_context(GoalInfo, BodyContext),
 		code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
-		( MaybeTraceInfo = yes(TraceInfo) ->
+		(
+			MaybeTraceInfo = yes(TraceInfo),
 			trace__generate_external_event_code(call, TraceInfo,
 				BodyContext, MaybeCallExternalInfo, !CI),
 			(
@@ -580,6 +592,7 @@ generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 			),
 			MaybeTraceCallLabel = yes(TraceCallLabel)
 		;
+			MaybeTraceInfo = no,
 			TraceCallCode = empty,
 			MaybeTraceCallLabel = no
 		),
@@ -588,11 +601,8 @@ generate_category_code(model_det, Goal, ResumePoint, TraceSlotInfo, Code,
 			FrameInfo, EntryCode),
 		code_gen__generate_exit(model_det, FrameInfo, TraceSlotInfo,
 			BodyContext, _, ExitCode, !CI),
-		Code =
-			tree(EntryCode,
-			tree(TraceCallCode,
-			tree(BodyCode,
-			     ExitCode)))
+		Code = tree_list([EntryCode, TraceCallCode, BodyCode,
+			ExitCode])
 	).
 
 generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
@@ -640,15 +650,9 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 			MaybeFailExternalInfo = no,
 			TraceFailCode = empty
 		),
-		Code =
-			tree(EntryCode,
-			tree(TraceCallCode,
-			tree(BodyCode,
-			tree(ExitCode,
-			tree(ResumeCode,
-			tree(TraceFailCode,
-			tree(RestoreDeallocCode,
-			     FailCode)))))))
+		Code = tree_list([EntryCode, TraceCallCode, BodyCode,
+			ExitCode, ResumeCode, TraceFailCode,
+			RestoreDeallocCode, FailCode])
 	;
 		MaybeTraceCallLabel = no,
 		code_gen__generate_goal(model_semi, Goal, BodyCode, !CI),
@@ -657,13 +661,8 @@ generate_category_code(model_semi, Goal, ResumePoint, TraceSlotInfo, Code,
 		code_gen__generate_exit(model_semi, FrameInfo, TraceSlotInfo,
 			BodyContext, RestoreDeallocCode, ExitCode, !CI),
 		code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
-		Code =
-			tree(EntryCode,
-			tree(BodyCode,
-			tree(ExitCode,
-			tree(ResumeCode,
-			tree(RestoreDeallocCode,
-			     FailCode)))))
+		Code = tree_list([EntryCode, BodyCode, ExitCode,
+			ResumeCode, RestoreDeallocCode, FailCode])
 	).
 
 generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
@@ -706,9 +705,9 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			TraceFailCode = empty
 		),
 		( TraceSlotInfo ^ slot_trail = yes(_) ->
-			( TraceSlotInfo ^ slot_from_full =
-				yes(FromFullSlot)
-			->
+			MaybeFromFull = TraceSlotInfo ^ slot_from_full,
+			(
+				MaybeFromFull = yes(FromFullSlot),
 				%
 				% Generate code which discards the ticket
 				% only if it was allocated, i.e. only if
@@ -726,6 +725,7 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 					label(SkipLabel) - ""
 				])
 			;
+				MaybeFromFull = no,
 				DiscardTraceTicketCode = node([
 					discard_ticket - "discard retry ticket"
 				])
@@ -736,15 +736,9 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 		FailCode = node([
 			goto(do_fail) - "fail after fail trace port"
 		]),
-		Code =
-			tree(EntryCode,
-			tree(TraceCallCode,
-			tree(BodyCode,
-			tree(ExitCode,
-			tree(ResumeCode,
-			tree(TraceFailCode,
-			tree(DiscardTraceTicketCode,
-			     FailCode)))))))
+		Code = tree_list([EntryCode, TraceCallCode, BodyCode,
+			ExitCode, ResumeCode, TraceFailCode,
+			DiscardTraceTicketCode, FailCode])
 	;
 		MaybeTraceCallLabel = no,
 		code_gen__generate_goal(model_non, Goal, BodyCode, !CI),
@@ -752,10 +746,7 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			FrameInfo, EntryCode),
 		code_gen__generate_exit(model_non, FrameInfo, TraceSlotInfo,
 			BodyContext, _, ExitCode, !CI),
-		Code =
-			tree(EntryCode,
-			tree(BodyCode,
-			     ExitCode))
+		Code = tree_list([EntryCode, BodyCode, ExitCode])
 	).
 
 %---------------------------------------------------------------------------%
@@ -820,9 +811,11 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		MaybeSuccipSlot = no
 	),
 	code_info__get_maybe_trace_info(CI, MaybeTraceInfo),
-	( MaybeTraceInfo = yes(TraceInfo) ->
+	(
+		MaybeTraceInfo = yes(TraceInfo),
 		trace__generate_slot_fill_code(CI, TraceInfo, TraceFillCode)
 	;
+		MaybeTraceInfo = no,
 		TraceFillCode = empty
 	),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -837,7 +830,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		(
 			Goal = foreign_proc(_, _, _, _, _, PragmaCode) - _,
 			PragmaCode = nondet(Fields, FieldsContext,
-				_,_,_,_,_,_,_)
+				_, _, _, _, _, _, _)
 		->
 			pragma_c_gen__struct_name(ModuleName, PredName,
 				Arity, ProcId, StructName),
@@ -883,13 +876,8 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 	EndComment = node([
 		comment("End of procedure prologue") - ""
 	]),
-	EntryCode =
-		tree(StartComment,
-		tree(LabelCode,
-		tree(AllocCode,
-		tree(SaveSuccipCode,
-		tree(TraceFillCode,
-		     EndComment))))).
+	EntryCode = tree_list([StartComment, LabelCode, AllocCode,
+		SaveSuccipCode, TraceFillCode, EndComment]).
 
 %---------------------------------------------------------------------------%
 
@@ -945,10 +933,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				- ""
 		]),
 		RestoreDeallocCode = empty,	% always empty for nondet code
-		ExitCode =
-			tree(StartComment,
-			tree(UndefCode,
-			     EndComment))
+		ExitCode = tree_list([StartComment, UndefCode, EndComment])
 	;
 		code_info__get_instmap(!.CI, Instmap),
 		ArgModes = code_info__get_arginfo(!.CI),
@@ -961,12 +946,14 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 		;
 			code_info__setup_return(Args, OutLvals, FlushCode, !CI)
 		),
-		( MaybeSuccipSlot = yes(SuccipSlot) ->
+		(
+			MaybeSuccipSlot = yes(SuccipSlot),
 			RestoreSuccipCode = node([
 				assign(succip, lval(stackvar(SuccipSlot))) -
 					"restore the success ip"
 			])
 		;
+			MaybeSuccipSlot = no,
 			RestoreSuccipCode = empty
 		),
 		( ( TotalSlots = 0 ; CodeModel = model_non ) ->
@@ -980,7 +967,9 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			TraceSlotInfo ^ slot_trail = yes(_),
 			CodeModel \= model_non
 		->
-			( TraceSlotInfo ^ slot_from_full = yes(FromFullSlot) ->
+			MaybeFromFull = TraceSlotInfo ^ slot_from_full,
+			(
+				MaybeFromFull = yes(FromFullSlot),
 				%
 				% Generate code which prunes the ticket
 				% only if it was allocated, i.e. only if
@@ -1013,6 +1002,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 					label(SkipLabelCopy) - ""
 				])
 			;
+				MaybeFromFull = no,
 				PruneTraceTicketCode = node([
 					prune_ticket - "prune retry ticket"
 				]),
@@ -1024,14 +1014,10 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			PruneTraceTicketCodeCopy = empty
 		),
 
-		RestoreDeallocCode =
-			tree(RestoreSuccipCode,
-			tree(PruneTraceTicketCode,
-			     DeallocCode)),
-		RestoreDeallocCodeCopy =
-			tree(RestoreSuccipCode,
-			tree(PruneTraceTicketCodeCopy,
-			     DeallocCode)),
+		RestoreDeallocCode = tree_list([RestoreSuccipCode,
+			PruneTraceTicketCode, DeallocCode]),
+		RestoreDeallocCodeCopy = tree_list([RestoreSuccipCode,
+			PruneTraceTicketCodeCopy, DeallocCode]),
 
 		code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
 		(
@@ -1061,8 +1047,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				)
 			),
 			solutions(FindBaseLvals, TypeInfoLvals),
-			set__insert_list(OutLvals, TypeInfoLvals,
-				LiveLvals)
+			set__insert_list(OutLvals, TypeInfoLvals, LiveLvals)
 		;
 			MaybeTraceInfo = no,
 			TraceExitCode = empty,
@@ -1075,10 +1060,8 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				livevals(LiveLvals) - "",
 				goto(succip) - "Return from procedure call"
 			]),
-			AllSuccessCode =
-				tree(TraceExitCode,
-				tree(RestoreDeallocCodeCopy,
-				     SuccessCode))
+			AllSuccessCode = tree_list([TraceExitCode,
+				RestoreDeallocCodeCopy, SuccessCode])
 		;
 			CodeModel = model_semi,
 			set__insert(LiveLvals, reg(r, 1), SuccessLiveRegs),
@@ -1087,16 +1070,16 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				livevals(SuccessLiveRegs) - "",
 				goto(succip) - "Return from procedure call"
 			]),
-			AllSuccessCode =
-				tree(TraceExitCode,
-				tree(RestoreDeallocCodeCopy,
-				     SuccessCode))
+			AllSuccessCode = tree_list([TraceExitCode,
+				RestoreDeallocCodeCopy, SuccessCode])
 		;
 			CodeModel = model_non,
-			( MaybeTraceInfo = yes(TraceInfo2) ->
+			(
+				MaybeTraceInfo = yes(TraceInfo2),
 				trace__maybe_setup_redo_event(TraceInfo2,
 					SetupRedoCode)
 			;
+				MaybeTraceInfo = no,
 				SetupRedoCode = empty
 			),
 			SuccessCode = node([
@@ -1104,16 +1087,11 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				goto(do_succeed(no))
 					- "Return from procedure call"
 			]),
-			AllSuccessCode =
-				tree(SetupRedoCode,
-				tree(TraceExitCode,
-				     SuccessCode))
+			AllSuccessCode = tree_list([SetupRedoCode,
+				TraceExitCode, SuccessCode])
 		),
-		ExitCode =
-			tree(StartComment,
-			tree(FlushCode,
-			tree(AllSuccessCode,
-			     EndComment)))
+		ExitCode = tree_list([StartComment, FlushCode, AllSuccessCode,
+			EndComment])
 	).
 
 %---------------------------------------------------------------------------%
@@ -1318,36 +1296,14 @@ code_gen__generate_goal_2(shorthand(_), _, _, _, !CI) :-
 	code_tree::out, code_info::in, code_info::out) is det.
 
 code_gen__generate_goals([], _, empty, !CI).
-code_gen__generate_goals([Goal | Goals], CodeModel, Instr, !CI) :-
-	code_gen__generate_goal(CodeModel, Goal, Instr1, !CI),
+code_gen__generate_goals([Goal | Goals], CodeModel, Code, !CI) :-
+	code_gen__generate_goal(CodeModel, Goal, Code1, !CI),
 	code_info__get_instmap(!.CI, Instmap),
-	(
-		instmap__is_unreachable(Instmap)
-	->
-		Instr = Instr1
+	( instmap__is_unreachable(Instmap) ->
+		Code = Code1
 	;
-		code_gen__generate_goals(Goals, CodeModel, Instr2, !CI),
-		Instr = tree(Instr1, Instr2)
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__select_args_with_mode(assoc_list(prog_var, arg_info)::in,
-	arg_mode::in, list(prog_var)::out, list(lval)::out) is det.
-
-code_gen__select_args_with_mode([], _, [], []).
-code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-
-	code_gen__select_args_with_mode(Args, DesiredMode, Vs0, Ls0),
-	ArgInfo = arg_info(Loc, Mode),
-	(
-		Mode = DesiredMode
-	->
-		code_util__arg_loc_to_register(Loc, Reg),
-		Vs = [Var | Vs0],
-		Ls = [Reg | Ls0]
-	;
-		Vs = Vs0,
-		Ls = Ls0
+		code_gen__generate_goals(Goals, CodeModel, Code2, !CI),
+		Code = tree(Code1, Code2)
 	).
 
 %---------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,8 @@
 :- module gcc.
 :- interface.
 
-:- import_module io, bool.
+:- import_module bool.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -99,8 +100,8 @@
 :- inst frontend_callback == (pred(out, di, uo) is det).
 
 :- pred gcc__run_backend(string::in, int::out,
-		frontend_callback(T)::in(frontend_callback), T::out,
-		io__state::di, io__state::uo) is det.
+	frontend_callback(T)::in(frontend_callback), T::out,
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -674,7 +675,8 @@
 
 :- implementation.
 
-:- import_module int, string.
+:- import_module int.
+:- import_module string.
 
 :- pragma foreign_decl("C", "
 

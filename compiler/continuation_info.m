@@ -64,7 +64,12 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, std_util, list, assoc_list, set, map.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 	%
 	% Information for any procedure, includes information about the
@@ -355,32 +360,38 @@
 :- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module int, string, require, term, varset.
+:- import_module int.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
 	% Exported predicates.
 
-continuation_info__maybe_process_llds([], _) --> [].
-continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo) -->
-	{ Proc = c_procedure(_, _, PredProcId, Instrs, _, _, _) },
+continuation_info__maybe_process_llds([], _, !GlobalData).
+continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo,
+		!GlobalData) :-
+	Proc = c_procedure(_, _, PredProcId, Instrs, _, _, _),
 	continuation_info__maybe_process_proc_llds(Instrs, PredProcId,
-		ModuleInfo),
-	continuation_info__maybe_process_llds(Procs, ModuleInfo).
+		ModuleInfo, !GlobalData),
+	continuation_info__maybe_process_llds(Procs, ModuleInfo, !GlobalData).
 
 continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
-		ModuleInfo, ContInfo0, ContInfo) :-
+		ModuleInfo, !ContInfo) :-
 	PredProcId = proc(PredId, _),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	module_info_globals(ModuleInfo, Globals),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
 		Layout, _),
-	( Layout = yes ->
+	(
+		Layout = yes,
 		globals__want_return_var_layouts(Globals, WantReturnLayout),
 		continuation_info__process_proc_llds(PredProcId, Instructions,
-			WantReturnLayout, ContInfo0, ContInfo)
+			WantReturnLayout, !ContInfo)
 	;
-		ContInfo = ContInfo0
+		Layout = no
 	).
 
 :- type call_info
@@ -433,7 +444,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
 continuation_info__process_continuation(WantReturnInfo, CallInfo,
-		Internals0, Internals) :-
+		!Internals) :-
 	CallInfo = call_info(ReturnLabel, Target, LiveInfoList,
 		Context, MaybeGoalPath),
 	% We could check not only that the return label is an internal label,
@@ -445,7 +456,7 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		ReturnLabel = entry(_, _),
 		error("continuation_info__process_continuation: bad return")
 	),
-	( map__search(Internals0, ReturnLabelNum, Internal0) ->
+	( map__search(!.Internals, ReturnLabelNum, Internal0) ->
 		Internal0 = internal_layout_info(Port0, Resume0, Return0)
 	;
 		Port0 = no,
@@ -485,7 +496,7 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		Return = Return0
 	),
 	Internal = internal_layout_info(Port0, Resume0, Return),
-	map__set(Internals0, ReturnLabelNum, Internal, Internals).
+	map__set(!.Internals, ReturnLabelNum, Internal, !:Internals).
 
 :- pred continuation_info__convert_return_data(list(liveinfo)::in,
 	set(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.

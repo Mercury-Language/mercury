@@ -22,7 +22,12 @@
 :- import_module aditi_backend__rl_file.
 :- import_module backend_libs__builtin_ops.
 :- import_module mdbcomp__prim_data.
-:- import_module io, char, string, int, std_util.
+
+:- import_module char.
+:- import_module int.
+:- import_module io.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -148,12 +153,13 @@
 
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module backend_libs__name_mangle.
 :- import_module parse_tree__prog_foreign.
 
-:- import_module list, bool.
+:- import_module bool.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 %
@@ -389,52 +395,53 @@ c_util__binary_infix_op(>=, ">=").
 
 %-----------------------------------------------------------------------------%
 
-c_util__output_rl_file(ModuleName, MaybeRLFile) -->
-	globals__io_lookup_bool_option(aditi, Aditi),
-	( { Aditi = no } ->
-		[]
+c_util__output_rl_file(ModuleName, MaybeRLFile, !IO) :-
+	globals__io_lookup_bool_option(aditi, Aditi, !IO),
+	(
+		Aditi = no
 	;
-		io__write_string("\n\n/* Aditi-RL code for this module. */\n"),
-		{ RLDataConstName = make_rl_data_name(ModuleName) },
-		io__write_string("const char "),
-		io__write_string(RLDataConstName),
-		io__write_string("[] = {"),
+		Aditi = yes,
+		io__write_string("\n\n/* Aditi-RL code for this module. */\n",
+			!IO),
+		RLDataConstName = make_rl_data_name(ModuleName),
+		io__write_string("const char ", !IO),
+		io__write_string(RLDataConstName, !IO),
+		io__write_string("[] = {", !IO),
 		(
-			{ MaybeRLFile = yes(RLFile) },
+			MaybeRLFile = yes(RLFile),
 			rl_file__write_binary(c_util__output_rl_byte,
-				RLFile, Length),
-			io__write_string("0};\n")
+				RLFile, Length, !IO),
+			io__write_string("0};\n", !IO)
 		;
-			{ MaybeRLFile = no },
-			io__write_string("};\n"),
-			{ Length = 0 }
+			MaybeRLFile = no,
+			io__write_string("};\n", !IO),
+			Length = 0
 		),
 
 		% Store the length of the data in
 		% mercury__aditi_rl_data__<module>__length.
 
-		{ string__append(RLDataConstName, "__length",
-			RLDataConstLength) },
-		io__write_string("const int "),
-		io__write_string(RLDataConstLength),
-		io__write_string(" = "),
-		io__write_int(Length),
-		io__write_string(";\n\n")
+		string__append(RLDataConstName, "__length", RLDataConstLength),
+		io__write_string("const int ", !IO),
+		io__write_string(RLDataConstLength, !IO),
+		io__write_string(" = ", !IO),
+		io__write_int(Length, !IO),
+		io__write_string(";\n\n", !IO)
 	).
 
 :- pred c_util__output_rl_byte(int::in, io::di, io::uo) is det.
 
-c_util__output_rl_byte(Byte) -->
-	io__write_int(Byte),
-	io__write_string(", ").
+c_util__output_rl_byte(Byte, !IO) :-
+	io__write_int(Byte, !IO),
+	io__write_string(", ", !IO).
 
 %-----------------------------------------------------------------------------%
 
-output_c_file_intro_and_grade(SourceFileName, Version) -->
-	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
-	{ string__int_to_string(NumTagBits, NumTagBitsStr) },
-	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
-	{ UnboxedFloatStr = convert_bool_to_string(UnboxedFloat) },
+output_c_file_intro_and_grade(SourceFileName, Version, !IO) :-
+	globals__io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
+	string__int_to_string(NumTagBits, NumTagBitsStr),
+	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
+	UnboxedFloatStr = convert_bool_to_string(UnboxedFloat),
 
 	io__write_strings([
 		"/*\n",
@@ -452,7 +459,7 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"** END_OF_C_GRADE_INFO\n",
 		"*/\n",
 		"\n"
-	]).
+	], !IO).
 
 :- func convert_bool_to_string(bool) = string.
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,44 +29,53 @@
 :- import_module libs__tree.
 :- import_module ll_backend__code_gen.
 
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
 
-commit_gen__generate_commit(OuterCodeModel, Goal, Code) -->
-	{ Goal = _ - InnerGoalInfo },
-	{ goal_info_get_code_model(InnerGoalInfo, InnerCodeModel) },
+commit_gen__generate_commit(OuterCodeModel, Goal, Code, !Info) :-
+	Goal = _ - InnerGoalInfo,
+	goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
 	(
-		{ OuterCodeModel = model_det },
+		OuterCodeModel = model_det,
 		(
-			{ InnerCodeModel = model_det },
-			code_gen__generate_goal(InnerCodeModel, Goal, Code)
+			InnerCodeModel = model_det,
+			code_gen__generate_goal(InnerCodeModel, Goal, Code,
+				!Info)
 		;
-			{ InnerCodeModel = model_semi },
-			{ error("semidet model in det context") }
+			InnerCodeModel = model_semi,
+			error("semidet model in det context")
 		;
-			{ InnerCodeModel = model_non },
+			InnerCodeModel = model_non,
 			code_info__prepare_for_det_commit(CommitInfo,
-				PreCommit),
-			code_gen__generate_goal(InnerCodeModel, Goal, GoalCode),
-			code_info__generate_det_commit(CommitInfo, Commit),
-			{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
+				PreCommit, !Info),
+			code_gen__generate_goal(InnerCodeModel, Goal, GoalCode,
+				!Info),
+			code_info__generate_det_commit(CommitInfo, Commit,
+				!Info),
+			Code = tree(PreCommit, tree(GoalCode, Commit))
 		)
 	;
-		{ OuterCodeModel = model_semi },
+		OuterCodeModel = model_semi,
 		(
-			{ InnerCodeModel = model_det },
-			code_gen__generate_goal(InnerCodeModel, Goal, Code)
+			InnerCodeModel = model_det,
+			code_gen__generate_goal(InnerCodeModel, Goal, Code,
+				!Info)
 		;
-			{ InnerCodeModel = model_semi },
-			code_gen__generate_goal(InnerCodeModel, Goal, Code)
+			InnerCodeModel = model_semi,
+			code_gen__generate_goal(InnerCodeModel, Goal, Code,
+				!Info)
 		;
-			{ InnerCodeModel = model_non },
+			InnerCodeModel = model_non,
 			code_info__prepare_for_semi_commit(CommitInfo,
-				PreCommit),
-			code_gen__generate_goal(InnerCodeModel, Goal, GoalCode),
-			code_info__generate_semi_commit(CommitInfo, Commit),
-			{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
+				PreCommit,
+					!Info),
+			code_gen__generate_goal(InnerCodeModel, Goal, GoalCode,
+				!Info),
+			code_info__generate_semi_commit(CommitInfo, Commit,
+				!Info),
+			Code = tree(PreCommit, tree(GoalCode, Commit))
 		)
 	;
-		{ OuterCodeModel = model_non },
-		code_gen__generate_goal(InnerCodeModel, Goal, Code)
+		OuterCodeModel = model_non,
+		code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
 	).

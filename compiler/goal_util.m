@@ -21,7 +21,12 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, bool, list, set, map, term.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module term.
 
 	% create_renaming(OutputVars, InstMapDelta, !VarTypes, !VarSet,
 	%	UnifyGoals, NewVars, Renaming):
@@ -287,7 +292,11 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, require, varset, std_util.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -576,7 +585,7 @@ goal_util__rename_unify(
 			Size = dynamic_size(SizeVar)
 		),
 		MaybeSize = yes(Size)
-	).	
+	).
 goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat, CanCGC),
 		Must, Subn,
 		deconstruct(Var, ConsId, Vars, Modes, Cat, CanCGC)) :-
@@ -1285,7 +1294,6 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-
 goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
 		InstmapBeforeEarlierGoal, EarlierGoal, InstmapBeforeLaterGoal,
 		LaterGoal) :-
@@ -1317,8 +1325,7 @@ goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
 	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
 		InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
-
-goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
+goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 		EarlierGoal, LaterGoal) :-
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003 The University of Melbourne.
+% Copyright (C) 2000, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,9 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 
-:- import_module bool, set, std_util.
+:- import_module bool.
+:- import_module set.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -34,14 +36,14 @@
 :- func goal_store__init = goal_store(T).
 
 :- pred goal_store__det_insert(goal_store(T)::in, T::in, goal::in,
-		goal_store(T)::out) is det.
+	goal_store(T)::out) is det.
 
 :- pred goal_store__lookup(goal_store(T)::in, T::in, goal::out) is det.
 
 :- pred goal_store__member(goal_store(T)::in, T::out, goal::out) is nondet.
 
 :- pred goal_store__all_ancestors(goal_store(T)::in, T::in, vartypes::in,
-		module_info::in, bool::in, set(T)::out) is det.
+	module_info::in, bool::in, set(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -50,7 +52,10 @@
 
 :- import_module hlds__goal_util.
 
-:- import_module int, list, map, require.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
 
 :- type goal_store(T) == map__map(T, goal).
 
@@ -74,40 +79,39 @@ goal_store__member(GoalStore, Key, Goal) :-
 goal_store__all_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
 		AncestorIds) :-
 	AncestorIds = ancestors_2(GoalStore, [StartId], set__init,
-			VarTypes, ModuleInfo, FullyStrict).
+		VarTypes, ModuleInfo, FullyStrict).
 
 :- func ancestors_2(goal_store(T), list(T), set(T), vartypes, module_info,
 		bool) = set(T).
 
 ancestors_2(_GoalStore, [], _VisitedIds, _VarTypes, _ModuleInfo, _FullyStrict)
-	= set__init.
+		= set__init.
 ancestors_2(GoalStore, [Id|Ids], VisitedIds, VarTypes, ModuleInfo, FullyStrict)
-	=  AncestorIds :-
-		(
-			set__member(Id, VisitedIds)
-		->
-			AncestorIds = ancestors_2(GoalStore, Ids, VisitedIds,
-					VarTypes, ModuleInfo, FullyStrict)
-		;
-			Ancestors = direct_ancestors(GoalStore, Id, VarTypes,
-					ModuleInfo, FullyStrict),
-			AncestorIds = set__list_to_set(Ancestors) `union`
-				ancestors_2(GoalStore, Ancestors `append` Ids,
-					set__insert(VisitedIds, Id),
-					VarTypes, ModuleInfo, FullyStrict)
-
-		).
+		=  AncestorIds :-
+	(
+		set__member(Id, VisitedIds)
+	->
+		AncestorIds = ancestors_2(GoalStore, Ids, VisitedIds,
+				VarTypes, ModuleInfo, FullyStrict)
+	;
+		Ancestors = direct_ancestors(GoalStore, Id, VarTypes,
+				ModuleInfo, FullyStrict),
+		AncestorIds = set__list_to_set(Ancestors) `union`
+			ancestors_2(GoalStore, Ancestors `append` Ids,
+				set__insert(VisitedIds, Id),
+				VarTypes, ModuleInfo, FullyStrict)
+	).
 
 :- func direct_ancestors(goal_store(T), T, vartypes, module_info, bool)
-		= list(T).
+	= list(T).
 
 direct_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict)
-	= Ancestors :-
-		solutions(direct_ancestor(GoalStore, StartId, VarTypes,
-				ModuleInfo, FullyStrict), Ancestors).
+		= Ancestors :-
+	solutions(direct_ancestor(GoalStore, StartId, VarTypes,
+		ModuleInfo, FullyStrict), Ancestors).
 
 :- pred direct_ancestor(goal_store(T)::in, T::in, vartypes::in,
-		module_info::in, bool::in, T::out) is nondet.
+	module_info::in, bool::in, T::out) is nondet.
 
 direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
 		EarlierId) :-
@@ -115,9 +119,8 @@ direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
 	goal_store__member(GoalStore, EarlierId, EarlierGoal - EarlierInstMap),
 	compare((<), EarlierId, StartId),
 	not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
-			EarlierInstMap, EarlierGoal,
-			LaterInstMap, LaterGoal).
-
+		EarlierInstMap, EarlierGoal,
+		LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,9 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, assoc_list, set.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module set.
 
 	% Annotate every non-aditi procedure in the module with information
 	% about its argument passing interface.
@@ -96,7 +98,11 @@
 
 :- import_module check_hlds__mode_util.
 
-:- import_module std_util, map, int, require.
+:- import_module std_util.
+:- import_module map.
+:- import_module int.
+:- import_module require.
+:- import_module svset.
 
 %-----------------------------------------------------------------------------%
 
@@ -122,8 +128,7 @@ generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
 	module_info::in, module_info::out) is det.
 
 generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
-generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
-		!ModuleInfo) :-
+generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
 	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	( hlds_pred__pred_info_is_aditi_relation(PredInfo0) ->
@@ -186,20 +191,18 @@ make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
 	module_info::in, list(arg_info)::out) is det.
 
 make_arg_infos_list([], [], _, _, _, []).
-make_arg_infos_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
+make_arg_infos_list([Mode | Modes], [Type | Types], !.InReg, !.OutReg,
 		ModuleInfo, [ArgInfo | ArgInfos]) :-
 	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	( ArgMode = top_in ->
-		ArgReg = InReg0,
-		InReg1 = InReg0 + 1,
-		OutReg1 = OutReg0
+		ArgReg = !.InReg,
+		!:InReg = !.InReg + 1
 	;
-		ArgReg = OutReg0,
-		InReg1 = InReg0,
-		OutReg1 = OutReg0 + 1
+		ArgReg = !.OutReg,
+		!:OutReg = !.OutReg + 1
 	),
 	ArgInfo = arg_info(ArgReg, ArgMode),
-	make_arg_infos_list(Modes, Types, InReg1, OutReg1,
+	make_arg_infos_list(Modes, Types, !.InReg, !.OutReg,
 		ModuleInfo, ArgInfos).
 make_arg_infos_list([], [_|_], _, _, _, _) :-
 	error("make_arg_infos_list: length mis-match").
@@ -209,13 +212,12 @@ make_arg_infos_list([_|_], [], _, _, _, _) :-
 %---------------------------------------------------------------------------%
 
 arg_info__compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
-		InVars, OutVars) :-
+		!:InVars, !:OutVars) :-
 	(
 		arg_info__compute_in_and_out_vars_2(ModuleInfo,
-			Vars, Modes, Types, InVars1, OutVars1)
+			Vars, Modes, Types, !:InVars, !:OutVars)
 	->
-		InVars = InVars1,
-		OutVars = OutVars1
+		true
 	;
 		error("arg_info__compute_in_and_out_vars: length mismatch")
 	).
@@ -226,16 +228,14 @@ arg_info__compute_in_and_out_vars(ModuleInfo, Vars, Modes, Types,
 
 arg_info__compute_in_and_out_vars_2(_ModuleInfo, [], [], [], [], []).
 arg_info__compute_in_and_out_vars_2(ModuleInfo, [Var | Vars],
-		[Mode | Modes], [Type | Types], InVars, OutVars) :-
+		[Mode | Modes], [Type | Types], !:InVars, !:OutVars) :-
 	arg_info__compute_in_and_out_vars_2(ModuleInfo, Vars,
-		Modes, Types, InVars1, OutVars1),
+		Modes, Types, !:InVars, !:OutVars),
 	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	( ArgMode = top_in ->
-		InVars = [Var | InVars1],
-		OutVars = OutVars1
+		!:InVars = [Var | !.InVars]
 	;
-		InVars = InVars1,
-		OutVars = [Var | OutVars1]
+		!:OutVars = [Var | !.OutVars]
 	).
 
 %---------------------------------------------------------------------------%
@@ -254,24 +254,18 @@ arg_info__partition_args(Args, Ins, Outs) :-
 	list__append(Outs0, Unuseds, Outs).
 
 arg_info__partition_args([], [], [], []).
-arg_info__partition_args([Var - ArgInfo | Rest], Ins, Outs, Unuseds) :-
-	arg_info__partition_args(Rest, Ins0, Outs0, Unuseds0),
+arg_info__partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
+	arg_info__partition_args(Rest, !:Ins, !:Outs, !:Unuseds),
 	ArgInfo = arg_info(_, ArgMode),
 	(
 		ArgMode = top_in,
-		Ins = [Var - ArgInfo | Ins0],
-		Outs = Outs0,
-		Unuseds = Unuseds0
+		!:Ins = [Var - ArgInfo | !.Ins]
 	;
 		ArgMode = top_out,
-		Ins = Ins0,
-		Outs = [Var - ArgInfo | Outs0],
-		Unuseds = Unuseds0
+		!:Outs = [Var - ArgInfo | !.Outs]
 	;
 		ArgMode = top_unused,
-		Ins = Ins0,
-		Outs = Outs0,
-		Unuseds = [Var - ArgInfo | Unuseds0]
+		!:Unuseds = [Var - ArgInfo | !.Unuseds]
 	).
 
 %---------------------------------------------------------------------------%
@@ -279,12 +273,12 @@ arg_info__partition_args([Var - ArgInfo | Rest], Ins, Outs, Unuseds) :-
 :- pred arg_info__input_args(list(arg_info)::in, list(arg_loc)::out) is det.
 
 arg_info__input_args([], []).
-arg_info__input_args([arg_info(Loc, Mode) | Args], Vs) :-
-	arg_info__input_args(Args, Vs0),
+arg_info__input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
+	arg_info__input_args(Args, !:Locs),
 	( Mode = top_in ->
-		Vs = [Loc | Vs0]
+		!:Locs = [Loc | !.Locs]
 	;
-		Vs = Vs0
+		true
 	).
 
 %---------------------------------------------------------------------------%
@@ -314,15 +308,13 @@ arg_info__partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
 	set(prog_var)::out, set(prog_var)::out) is det.
 
 arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
-		Inputs, Outputs, Unuseds) :-
+		!:Inputs, !:Outputs, !:Unuseds) :-
 	(
 		arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
-			set__init, Inputs1, set__init, Outputs1,
-			set__init, Unuseds1)
+			set__init, !:Inputs, set__init, !:Outputs,
+			set__init, !:Unuseds)
 	->
-		Inputs = Inputs1,
-		Outputs = Outputs1,
-		Unuseds = Unuseds1
+		true
 	;
 		error("arg_info__do_partition_proc_args: list length mismatch")
 	).
@@ -334,26 +326,19 @@ arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
 	set(prog_var)::in, set(prog_var)::out) is semidet.
 
 arg_info__partition_proc_args_2([], [], [], _ModuleInfo,
-		Inputs, Inputs, Outputs, Outputs, Unuseds, Unuseds).
+		!Inputs, !Outputs, !Unuseds).
 arg_info__partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
-		ModuleInfo, Inputs0, Inputs, Outputs0, Outputs,
-		Unuseds0, Unuseds) :-
+		ModuleInfo, !Inputs, !Outputs, !Unuseds) :-
 	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	(
 		ArgMode = top_in,
-		set__insert(Inputs0, Var, Inputs1),
-		Outputs1 = Outputs0,
-		Unuseds1 = Unuseds0
+		svset__insert(Var, !Inputs)
 	;
 		ArgMode = top_out,
-		Inputs1 = Inputs0,
-		set__insert(Outputs0, Var, Outputs1),
-		Unuseds1 = Unuseds0
+		svset__insert(Var, !Outputs)
 	;
 		ArgMode = top_unused,
-		Inputs1 = Inputs0,
-		Outputs1 = Outputs0,
-		set__insert(Unuseds0, Var, Unuseds1)
+		svset__insert(Var, !Unuseds)
 	),
 	arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
-		Inputs1, Inputs, Outputs1, Outputs, Unuseds1, Unuseds).
+		!Inputs, !Outputs, !Unuseds).

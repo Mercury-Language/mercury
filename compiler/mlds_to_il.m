@@ -1005,7 +1005,7 @@ generate_method(ClassName, _, defn(Name, Context, Flags, Entity),
 
 		% Add a store after the alloc instrs (if necessary)
 	AllocInstrs = list__condense(tree__flatten(
-		tree__list([
+		tree_list([
 			context_node(Context),
 			comment_node(string__append("allocation for ",
 				FieldName)),
@@ -1014,7 +1014,7 @@ generate_method(ClassName, _, defn(Name, Context, Flags, Entity),
 
 		% Add a load before the init instrs (if necessary)
 	InitInstrs = list__condense(tree__flatten(
-		tree__list([
+		tree_list([
 			context_node(Context),
 			comment_node(string__append("initializer for ",
 				FieldName)),
@@ -1110,7 +1110,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 			(pred(_::in, Instr::out, Num::in, Num+1::out) is det :-
 				Instr = ldarg(index(Num))
 			), TypeParams, LoadInstrs, 0, _),
-		InstrsTree1 = tree__list([
+		InstrsTree1 = tree_list([
 			comment_node("external -- call handwritten version"),
 			node(LoadInstrs),
 			instr_node(call(get_static_methodref(ClassName,
@@ -1122,7 +1122,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 		% Retrieve the locals, put them in the enclosing
 		% scope.
 	il_info_get_locals_list(!.Info, Locals),
-	InstrsTree2 = tree__list([
+	InstrsTree2 = tree_list([
 		context_node(Context),
 		node(CtorInstrs),
 		context_node(Context),
@@ -1200,7 +1200,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 
 			% A code block to catch any exception at all.
 
-		CatchAnyException = tree__list([
+		CatchAnyException = tree_list([
 			instr_node(start_block(
 				catch(ExceptionClassName),
 				OuterCatchBlockId)),
@@ -1216,7 +1216,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 			]),
 
 			% Code to catch Mercury exceptions.
-		CatchUserException = tree__list([
+		CatchUserException = tree_list([
 			instr_node(start_block(
 				catch(MercuryExceptionClassName),
 				InnerCatchBlockId)),
@@ -1262,7 +1262,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember,
 			%	System.Environment.ExitCode = 1;
 			% }
 
-		InstrsTree = tree__list([
+		InstrsTree = tree_list([
 
 					% outer try block
 				instr_node(start_block(try, OuterTryBlockId)),
@@ -1470,7 +1470,7 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 				AllocInstrs, InitInstrs, !Info),
 			string__append("initializer for ", NameString,
 				Comment),
-			!:Tree = tree__list([
+			!:Tree = tree_list([
 				!.Tree,
 				context_node(Context),
 				comment_node(Comment),
@@ -1632,7 +1632,7 @@ statement_to_il(statement(block(Defns, Statements), Context), Instrs, !Info) :-
 	list__map((pred((K - V)::in, (K - W)::out) is det :-
 		W = mlds_type_to_ilds_type(DataRep, V)), Locals, ILLocals),
 	Scope = scope(ILLocals),
-	Instrs = tree__list([
+	Instrs = tree_list([
 			context_node(Context),
 			instr_node(start_block(Scope, BlockId)),
 			InitInstrsTree,
@@ -1713,7 +1713,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind),
 			LoadMemRefInstrs, ReturnsStoredInstrs, !Info)
 	),
 	list__map_foldl(load, Args, ArgsLoadInstrsTrees, !Info),
-	ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees),
+	ArgsLoadInstrs = tree_list(ArgsLoadInstrsTrees),
 	( Function = const(Const) ->
 		FunctionLoadInstrs = empty,
 		const_rval_to_function(Const, MemberName),
@@ -1728,7 +1728,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind),
 		Instrs0 = [calli(signature(call_conv(no, default),
 			ReturnParam, ParamsList))]
 	),
-	Instrs = tree__list([
+	Instrs = tree_list([
 		context_node(Context),
 		comment_node("call"),
 		LoadMemRefInstrs,
@@ -1746,7 +1746,7 @@ statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
 	il_info_make_next_label(DoneLabel, !Info),
 	statement_to_il(ThenCase, ThenInstrs, !Info),
 	maybe_map_fold(statement_to_il, ElseCase, empty, ElseInstrs, !Info),
-	Instrs = tree__list([
+	Instrs = tree_list([
 		context_node(Context),
 		comment_node("if then else"),
 		ConditionInstrs,
@@ -1774,7 +1774,7 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
 	statement_to_il(Body, BodyInstrs, !Info),
 	(
 		AtLeastOnce = no,
-		Instrs = tree__list([
+		Instrs = tree_list([
 			context_node(Context),
 			comment_node("while"),
 			instr_node(label(StartLabel)),
@@ -1787,7 +1787,7 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
 		AtLeastOnce = yes,
 			% XXX this generates a branch over branch which
 			% is suboptimal.
-		Instrs = tree__list([
+		Instrs = tree_list([
 			context_node(Context),
 			comment_node("while (actually do ... while)"),
 			instr_node(label(StartLabel)),
@@ -1802,7 +1802,7 @@ statement_to_il(statement(return(Rvals), Context), Instrs, !Info) :-
 	(
 		Rvals = [Rval],
 		load(Rval, LoadInstrs, !Info),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			context_node(Context),
 			LoadInstrs,
 			instr_node(ret)])
@@ -1854,7 +1854,7 @@ statement_to_il(statement(do_commit(_Ref), Context), Instrs, !Info) :-
 	%
 
 	NewObjInstr = newobj_constructor(il_commit_class_name, []),
-	Instrs = tree__list([
+	Instrs = tree_list([
 			context_node(Context),
 			comment_node("do_commit/1"),
 			instr_node(NewObjInstr),
@@ -1887,7 +1887,7 @@ statement_to_il(statement(try_commit(_Ref, GoalToTry, CommitHandlerGoal),
 	il_info_make_next_label(DoneLabel, !Info),
 
 	ClassName = il_commit_class_name,
-	Instrs = tree__list([
+	Instrs = tree_list([
 		context_node(Context),
 		comment_node("try_commit/3"),
 
@@ -1909,7 +1909,7 @@ statement_to_il(statement(computed_goto(Rval, MLDSLabels), Context),
 		Instrs, !Info) :-
 	load(Rval, RvalLoadInstrs, !Info),
 	Targets = list__map(func(L) = label_target(L), MLDSLabels),
-	Instrs = tree__list([
+	Instrs = tree_list([
 		context_node(Context),
 		comment_node("computed goto"),
 		RvalLoadInstrs,
@@ -1972,7 +1972,7 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
 			Num::in, Num + 1::out) is det :-
 				Instr = ldarg(index(Num))),
 			TypeParams, LoadArgInstrs, 0, _),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			comment_node(
 				"outline foreign proc -- " ++
 				"call handwritten version"),
@@ -2014,7 +2014,7 @@ atomic_statement_to_il(assign(Lval, Rval), Instrs, !Info) :-
 	load(Rval, LoadRvalInstrs, !Info),
 	get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs,
 		!Info),
-	Instrs = tree__list([
+	Instrs = tree_list([
 		comment_node("assign"),
 		LoadMemRefInstrs,
 		LoadRvalInstrs,
@@ -2034,7 +2034,7 @@ atomic_statement_to_il(delete_object(Target), Instrs, !Info) :-
 		% lval, which hopefully gives the garbage collector a good
 		% solid hint that this storage is no longer required.
 	get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs, !Info),
-	Instrs = tree__list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
+	Instrs = tree_list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
 
 atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 		MaybeCtorName, Args0, ArgTypes0), Instrs, !Info) :-
@@ -2094,11 +2094,11 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 		ILArgTypes = list__map(mlds_type_to_ilds_type(DataRep),
 			ArgTypes),
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees, !Info),
-		ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees),
+		ArgsLoadInstrs = tree_list(ArgsLoadInstrsTrees),
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
 			StoreLvalInstrs, !Info),
 		CallCtor = newobj_constructor(ClassName, ILArgTypes),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			LoadMemRefInstrs,
 			comment_node("new object (call constructor)"),
 			ArgsLoadInstrs,
@@ -2157,12 +2157,12 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 
 			load(NewRval, I2, S1, S),
 			I3 = instr_node(stelem(il_generic_simple_type)),
-			I = tree__list([I0, I1, I2, I3]),
+			I = tree_list([I0, I1, I2, I3]),
 			Arg = (Index + 1) - S
 		),
 		list__map_foldl(LoadInArray, Args0, ArgsLoadInstrsTrees,
 			0 - !.Info, _ - !:Info),
-		ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees),
+		ArgsLoadInstrs = tree_list(ArgsLoadInstrsTrees),
 
 			% Get the instructions to load and store the
 			% target.
@@ -2180,7 +2180,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 		),
 		load(SizeInWordsRval, LoadSizeInstrs, !Info),
 
-		Instrs = tree__list([
+		Instrs = tree_list([
 			LoadMemRefInstrs,
 			comment_node("new object"),
 			LoadSizeInstrs,
@@ -2197,7 +2197,7 @@ inline_code_to_il_asm([T | Ts]) = tree(Instrs, Rest) :-
 	(
 		T = user_target_code(Code, MaybeContext, Attrs),
 		( yes(max_stack_size(N)) = get_max_stack_attribute(Attrs) ->
-			Instrs = tree__list([
+			Instrs = tree_list([
 				( MaybeContext = yes(Context) ->
 					context_node(mlds__make_context(
 						Context))
@@ -2273,7 +2273,7 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
 					DataRep, FieldType),
 				load(FieldRval, LoadArrayRval, !Info),
 				load(OffsetRval, LoadIndexRval, !Info),
-				LoadMemRefInstrs = tree__list([
+				LoadMemRefInstrs = tree_list([
 					LoadArrayRval, LoadIndexRval]),
 				StoreLvalInstrs = node([stelem(FieldILType)])
 			; FieldNum = named_field(_, _),
@@ -2284,7 +2284,7 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
 			get_fieldref(DataRep, FieldNum, FieldType, ClassType,
 				FieldRef, CastClassInstrs),
 			load(FieldRval, LoadMemRefInstrs0, !Info),
-			LoadMemRefInstrs = tree__list([
+			LoadMemRefInstrs = tree_list([
 				LoadMemRefInstrs0,
 				CastClassInstrs]),
 			StoreLvalInstrs = instr_node(stfld(FieldRef))
@@ -2337,7 +2337,7 @@ load(lval(Lval), Instrs, !Info) :-
 			LoadInstruction = ldfld(FieldRef),
 			OffSetLoadInstrs = empty
 		),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			RvalLoadInstrs,
 			CastClassInstrs,
 			OffSetLoadInstrs,
@@ -2346,7 +2346,7 @@ load(lval(Lval), Instrs, !Info) :-
 	; Lval = mem_ref(Rval, MLDS_Type),
 		SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
 		load(Rval, RvalLoadInstrs, !Info),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			RvalLoadInstrs,
 			instr_node(ldind(SimpleType))
 			])
@@ -2396,13 +2396,13 @@ load(const(Const), Instrs, !Info) :-
 load(unop(Unop, Rval), Instrs, !Info) :-
 	load(Rval, RvalLoadInstrs, !Info),
 	unaryop_to_il(Unop, Rval, UnOpInstrs, !Info),
-	Instrs = tree__list([RvalLoadInstrs, UnOpInstrs]).
+	Instrs = tree_list([RvalLoadInstrs, UnOpInstrs]).
 
 load(binop(BinOp, R1, R2), Instrs, !Info) :-
 	load(R1, R1LoadInstrs, !Info),
 	load(R2, R2LoadInstrs, !Info),
 	binaryop_to_il(BinOp, BinaryOpInstrs, !Info),
-	Instrs = tree__list([R1LoadInstrs, R2LoadInstrs, BinaryOpInstrs]).
+	Instrs = tree_list([R1LoadInstrs, R2LoadInstrs, BinaryOpInstrs]).
 
 load(mem_addr(Lval), Instrs, !Info) :-
 	DataRep = !.Info ^ il_data_rep,
@@ -2422,7 +2422,7 @@ load(mem_addr(Lval), Instrs, !Info) :-
 		get_fieldref(DataRep, FieldNum, FieldType, ClassType,
 			FieldRef, CastClassInstrs),
 		load(Rval, RvalLoadInstrs, !Info),
-		Instrs = tree__list([
+		Instrs = tree_list([
 			RvalLoadInstrs,
 			CastClassInstrs,
 			instr_node(ldflda(FieldRef))
@@ -2432,7 +2432,7 @@ load(mem_addr(Lval), Instrs, !Info) :-
 		Instrs = throw_unimplemented("load mem_addr lval mem_ref")
 	).
 
-load(self(_), tree__list([instr_node(ldarg(index(0)))]), !Info).
+load(self(_), tree_list([instr_node(ldarg(index(0)))]), !Info).
 
 :- pred store(mlds__lval::in, instr_tree::out, il_info::in, il_info::out)
 	is det.
@@ -2442,7 +2442,7 @@ store(field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs, !Info) :-
 	get_fieldref(DataRep, FieldNum, FieldType, ClassType,
 		FieldRef, CastClassInstrs),
 	load(Rval, RvalLoadInstrs, !Info),
-	Instrs = tree__list([
+	Instrs = tree_list([
 		CastClassInstrs,
 		RvalLoadInstrs,
 		instr_node(stfld(FieldRef))]).
@@ -2578,7 +2578,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
 		;
 			% convert an unboxed type to a boxed type:
 			% box it first, then cast
-			Instrs = tree__list([
+			Instrs = tree_list([
 				convert_to_object(SrcILType),
 				instr_node(castclass(DestILType))
 			])
@@ -2599,7 +2599,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
 				% generate MLDS so we don't need to do this
 				% XXX This looks wrong for --high-level-data.
 				% -fjh.
-				Instrs = tree__list([
+				Instrs = tree_list([
 					comment_node(
 						"loading out of an MR_Word"),
 					instr_node(ldc(int32, i(0))),
@@ -2612,7 +2612,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
 			;
 				% XXX It would be nicer if the MLDS used an
 				% unbox to do this.
-				Instrs = tree__list([
+				Instrs = tree_list([
 					comment_node(
 					"turning a cast into an unbox"),
 					convert_from_object(DestILType)
@@ -2620,7 +2620,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs, !Info) :-
 			)
 		;
 			DestILType = ilds__type(_, DestSimpleType),
-			Instrs = tree__list([
+			Instrs = tree_list([
 				comment_node("cast between value types"),
 				instr_node(conv(DestSimpleType))
 			])
@@ -2824,18 +2824,18 @@ generate_condition(Rval, Instrs, ElseLabel, !Info) :-
 		load(Operand2, Op2Instr, !Info),
 		OpInstr = instr_node(
 			bne(unsigned, label_target(ElseLabel))),
-		Instrs = tree__list([Op1Instr, Op2Instr, OpInstr])
+		Instrs = tree_list([Op1Instr, Op2Instr, OpInstr])
 	;
 		Rval = binop(ne, Operand1, Operand2)
 	->
 		load(Operand1, Op1Instr, !Info),
 		load(Operand2, Op2Instr, !Info),
 		OpInstr = instr_node(beq(label_target(ElseLabel))),
-		Instrs = tree__list([Op1Instr, Op2Instr, OpInstr])
+		Instrs = tree_list([Op1Instr, Op2Instr, OpInstr])
 	;
 		load(Rval, RvalLoadInstrs, !Info),
 		ExtraInstrs = instr_node(brfalse(label_target(ElseLabel))),
-		Instrs = tree__list([RvalLoadInstrs, ExtraInstrs])
+		Instrs = tree_list([RvalLoadInstrs, ExtraInstrs])
 	).
 
 %-----------------------------------------------------------------------------%

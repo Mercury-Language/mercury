@@ -12,7 +12,10 @@
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util, bool, assoc_list.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 :- type exprn_opts
 	--->	nlg_asm_sgt_ubf(
@@ -102,7 +105,10 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module int, set, require, getopt_io.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module require.
+:- import_module set.
 
 exprn_aux__init_exprn_opts(Options, ExprnOpts) :-
 	getopt_io__lookup_bool_option(Options, gcc_non_local_gotos, NLG),

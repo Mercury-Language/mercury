@@ -46,7 +46,8 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, counter.
+:- import_module counter.
+:- import_module list.
 
 :- pred dupelim_main(proc_label::in, counter::in, counter::out,
 	list(instruction)::in, list(instruction)::out) is det.
@@ -58,7 +59,12 @@
 :- import_module ll_backend__basic_block.
 :- import_module ll_backend__opt_util.
 
-:- import_module bool, std_util, assoc_list, set, map, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 	% A std_map maps a list of standardized instructions to the list
 	% of labels whose basic blocks have that standardized form.

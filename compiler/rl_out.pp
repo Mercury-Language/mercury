@@ -30,7 +30,9 @@
 #else
 #endif
 
-:- import_module list, io, std_util.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% Output schemas for locally defined base and derived relations to
 	% <module>.base_schema and <module>.derived_schema respectively.
@@ -74,20 +76,30 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
+:- import_module libs__tree.
+:- import_module mdbcomp__prim_data.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
-:- import_module mdbcomp__prim_data.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- import_module aditi_backend__rl_exprn.
 #else
 #endif
 
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
 :- import_module getopt_io.
-:- import_module assoc_list, bool, char, int, map, multi_map, require, set.
-:- import_module string, term, libs__tree, varset.
+:- import_module int.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -2166,30 +2178,38 @@ maybe_lookup(Map, K0, K) :-
 		K = K0
 	).
 
-rl_out__resolve_addresses(_, empty, empty).
-rl_out__resolve_addresses(ResolveAddr, node(InstrList0), node(InstrList)) :-
-	list__map(ResolveAddr, InstrList0, InstrList).
-rl_out__resolve_addresses(ResolveAddr, tree(CodeA0, CodeB0), 
-		tree(CodeA, CodeB)) :-
-	rl_out__resolve_addresses(ResolveAddr, CodeA0, CodeA),
-	rl_out__resolve_addresses(ResolveAddr, CodeB0, CodeB).
+rl_out__resolve_addresses(ResolveAddr, !Code) :-
+		% We can't call list.map directly because it has more than one
+		% mode, and so can't take its address.
+        tree.map(rl_out__resolve_addresses_2(ResolveAddr), !Code).
+
+:- pred rl_out__resolve_addresses_2(
+	pred(bytecode, bytecode)::in(pred(in, out) is det),
+	list(bytecode)::in, list(bytecode)::out) is det. 
+
+rl_out__resolve_addresses_2(ResolveAddr, !Code) :-
+        list.map(ResolveAddr, !Code).
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_out__instr_code_size(byte_tree::in, int::out) is det.
 
-rl_out__instr_code_size(empty, 0).
-rl_out__instr_code_size(node(Instrs), Size) :-
-	AddSize = (pred(Instr::in, S0::in, S::out) is det :-
-			bytecode_to_intlist(Instr, IntList),
-			list__length(IntList, S1),
-			S = S0 + S1
-		),
-	list__foldl(AddSize, Instrs, 0, Size).
-rl_out__instr_code_size(tree(CodeA, CodeB), Size) :-
-	rl_out__instr_code_size(CodeA, SizeA),
-	rl_out__instr_code_size(CodeB, SizeB),
-	Size = SizeA + SizeB.
+rl_out__instr_code_size(Code, Size) :-
+	tree.foldl(rl_out__accumulate_instrs_code_size, Code, 0, Size).
+
+:- pred rl_out__accumulate_instrs_code_size(list(bytecode)::in,
+	int::in, int::out) is det.
+
+rl_out__accumulate_instrs_code_size(Instrs, !Size) :-
+	list__foldl(rl_out__accumulate_instr_code_size, Instrs, !Size).
+
+:- pred rl_out__accumulate_instr_code_size(bytecode::in,
+	int::in, int::out) is det.
+
+rl_out__accumulate_instr_code_size(Instr, !Size) :-
+	bytecode_to_intlist(Instr, IntList),
+	list__length(IntList, NewSize),
+	!:Size= !.Size + NewSize.
 
 %-----------------------------------------------------------------------------%
 

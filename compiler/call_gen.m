@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,8 @@
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, assoc_list.
+:- import_module assoc_list.
+:- import_module list.
 
 :- pred call_gen__generate_call(code_model::in, pred_id::in, proc_id::in,
 	list(prog_var)::in, hlds_goal_info::in, code_tree::out,
@@ -72,7 +73,14 @@
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
 
-:- import_module bool, int, string, map, set, std_util, require, varset.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -126,11 +134,7 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code,
 		% handle the failure.
 	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-	Code =
-		tree(SetupCode,
-		tree(TraceCode,
-		tree(CallCode,
-		     FailHandlingCode))).
+	Code = tree_list([SetupCode, TraceCode, CallCode, FailHandlingCode]).
 
 %---------------------------------------------------------------------------%
 
@@ -238,12 +242,8 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
 		% handle the failure.
 	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-	Code =
-		tree(SetupCode,
-		tree(NonVarCode,
-		tree(TraceCode,
-		tree(CallCode,
-		     FailHandlingCode)))).
+	Code = tree_list([SetupCode, NonVarCode, TraceCode, CallCode,
+		FailHandlingCode]).
 
 %---------------------------------------------------------------------------%
 
@@ -354,10 +354,8 @@ call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
 				label(ContLab)
 					- ""
 			]),
-			FailHandlingCode =
-				tree(FailTestCode,
-				tree(FailCode,
-				     ContLabelCode))
+			FailHandlingCode = tree_list([FailTestCode,
+				FailCode, ContLabelCode])
 		)
 	;
 		FailHandlingCode = empty

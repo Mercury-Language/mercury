@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,7 +120,11 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
-:- import_module bool, int, map, std_util, require.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

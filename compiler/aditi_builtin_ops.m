@@ -3,6 +3,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: aditi_builtin_ops.m
 % Main author: stayl
 %
@@ -16,6 +17,7 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 	% Transform Aditi builtin generic_call goals into calls to

@@ -44,7 +44,11 @@
 :- type static_info == map(prog_var, static_cons).
 
 :- import_module hlds__hlds_goal.
-:- import_module int, list, std_util, require.
+
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
 
 mark_static_terms(_ModuleInfo, !Proc) :-
 		% The ModuleInfo argument is there just for passes_aux
@@ -123,7 +127,7 @@ conj_mark_static_terms(Goals0, Goals) -->
 	list__map_foldl(goal_mark_static_terms, Goals0, Goals).
 
 :- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
-		static_info::in) is det.
+	static_info::in) is det.
 
 disj_mark_static_terms([], [], _).
 disj_mark_static_terms([Goal0 | Goals0], [Goal | Goals], SI0) :-
@@ -132,7 +136,7 @@ disj_mark_static_terms([Goal0 | Goals0], [Goal | Goals], SI0) :-
 	disj_mark_static_terms(Goals0, Goals, SI0).
 
 :- pred cases_mark_static_terms(list(case)::in, list(case)::out,
-		static_info::in) is det.
+	static_info::in) is det.
 
 cases_mark_static_terms([], [], _SI0).
 cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
@@ -143,7 +147,7 @@ cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
 	cases_mark_static_terms(Cases0, Cases, SI0).
 
 :- pred unification_mark_static_terms(unification::in, unification::out,
-		static_info::in, static_info::out) is det.
+	static_info::in, static_info::out) is det.
 
 unification_mark_static_terms(Unification0, Unification,
 		StaticVars0, StaticVars) :-

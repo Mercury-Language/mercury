@@ -27,8 +27,8 @@
 
 :- import_module list.
 
-:- pred base_typeclass_info__generate_rtti(module_info, list(rtti_data)).
-:- mode base_typeclass_info__generate_rtti(in, out) is det.
+:- pred base_typeclass_info__generate_rtti(module_info::in,
+	list(rtti_data)::out) is det.
 
 :- implementation.
 
@@ -46,7 +46,14 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, int, string, map, std_util, require, term, assoc_list.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -106,10 +113,9 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc)),
-	list(type), list(class_constraint), module_info, class_id,
-	base_typeclass_info).
-:- mode base_typeclass_info__gen_body(in, in, in, in, in, out) is det.
+:- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc))::in,
+	list(type)::in, list(class_constraint)::in, module_info::in,
+	class_id::in, base_typeclass_info::out) is det.
 
 base_typeclass_info__gen_body(no, _, _, _, _, _) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
@@ -134,9 +140,8 @@ base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 	BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
 		SuperClassCount, ClassArity, NumMethods, ProcLabels).
 
-:- pred base_typeclass_info__construct_proc_labels(list(pred_proc_id),
-	module_info, list(rtti_proc_label)).
-:- mode base_typeclass_info__construct_proc_labels(in, in, out) is det.
+:- pred base_typeclass_info__construct_proc_labels(list(pred_proc_id)::in,
+	module_info::in, list(rtti_proc_label)::out) is det.
 
 base_typeclass_info__construct_proc_labels([], _, []).
 base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
@@ -147,16 +152,15 @@ base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_superclass_count(class_id, module_info,
-	int, int).
-:- mode base_typeclass_info__gen_superclass_count(in, in, out, out) is det.
+:- pred base_typeclass_info__gen_superclass_count(class_id::in, module_info::in,
+	int::out, int::out) is det.
 
 base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
 		NumSuperClasses, ClassArity) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
-			_, _, _, _),
+		_, _, _, _),
 	list__length(SuperClassConstraints, NumSuperClasses),
 	list__length(ClassVars, ClassArity).
 

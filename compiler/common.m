@@ -99,8 +99,16 @@
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__pd_cost.
 
-:- import_module bool, map, svmap, set, eqvclass, sveqvclass.
-:- import_module require, std_util, string, term.
+:- import_module bool.
+:- import_module eqvclass.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module sveqvclass.
+:- import_module svmap.
+:- import_module term.
 
     % The var_eqv field records information about which sets of variables
     % are known to be equivalent, usually because they have been unified.

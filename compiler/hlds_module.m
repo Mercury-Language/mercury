@@ -34,7 +34,12 @@
 :- import_module parse_tree__prog_data.
 :- import_module recompilation.
 
-:- import_module relation, map, std_util, list, set, multi_map.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module relation.
+:- import_module set.
+:- import_module std_util.
 
 :- implementation.
 

@@ -62,7 +62,9 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util, io.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% Perform determinism inference for local predicates with no
 	% determinism declarations, and determinism checking for all other
@@ -137,7 +139,13 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 
-:- import_module string, assoc_list, bool, map, set, require, term.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -148,9 +156,10 @@ determinism_pass(!ModuleInfo, !IO) :-
 		!ModuleInfo),
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(debug_det, Debug, !IO),
-	( UndeclaredProcs = [] ->
-		true
+	(
+		UndeclaredProcs = []
 	;
+		UndeclaredProcs = [_ | _],
 		maybe_write_string(Verbose,
 			"% Doing determinism inference...\n", !IO),
 		global_inference_pass(!ModuleInfo, UndeclaredProcs, Debug,
@@ -206,17 +215,18 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
 		ChangeStr = "new",
 		!:Changed = changed
 	),
-		( Debug = yes ->
+	(
+		Debug = yes,
 		io__write_string("% Inferred " ++ ChangeStr ++ " detism ",
 			!IO),
-			mercury_output_det(Detism, !IO),
-			io__write_string(" for ", !IO),
-			hlds_out__write_pred_proc_id(!.ModuleInfo,
-				PredId, ProcId, !IO),
-			io__write_string("\n", !IO)
-		;
-			true
-		),
+		mercury_output_det(Detism, !IO),
+		io__write_string(" for ", !IO),
+		hlds_out__write_pred_proc_id(!.ModuleInfo,
+			PredId, ProcId, !IO),
+		io__write_string("\n", !IO)
+	;
+		Debug = no
+	),
 	list__append(ProcMsgs, !Msgs),
 	global_inference_single_pass(PredProcs, Debug, !ModuleInfo, !Msgs,
 		!Changed, !IO).

@@ -45,8 +45,8 @@
 	% original inputs and outputs of the procedure, not including
 	% the input closures added in the preprocessing pass.
 :- pred context__process_disjuncts(pred_proc_id::in, list(prog_var)::in,
-		list(prog_var)::in, list(hlds_goal)::in, list(hlds_goal)::out,
-		magic_info::in, magic_info::out) is det.
+	list(prog_var)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+	magic_info::in, magic_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -57,7 +57,14 @@
 :- import_module hlds__instmap.
 :- import_module mdbcomp__prim_data.
 
-:- import_module assoc_list, bool, map, require, set, std_util, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 context__process_disjuncts(OldPredProcId, Inputs, Outputs,
 		Disjuncts0, Disjuncts) -->
@@ -70,9 +77,9 @@ context__process_disjuncts(OldPredProcId, Inputs, Outputs,
 %-----------------------------------------------------------------------------%
 
 :- pred context__categorize_rule(pred_proc_id::in, list(prog_var)::in,
-		list(prog_var)::in, hlds_goal::in,
-		pair(context_rule, hlds_goal_info)::out,
-		magic_info::in, magic_info::out) is det.
+	list(prog_var)::in, hlds_goal::in,
+	pair(context_rule, hlds_goal_info)::out,
+	magic_info::in, magic_info::out) is det.
 
 context__categorize_rule(OldPredProcId, InputArgs, OutputArgs, Goal,
 		ContextRule - GoalInfo) -->
@@ -126,8 +133,8 @@ context__get_db_calls(ModuleInfo, MagicMap, [Goal | Goals],
 :- type db_call_list == assoc_list(list(hlds_goal), db_call).
 
 :- pred context__categorize_call_list(term__context::in, pred_proc_id::in,
-		list(prog_var)::in, list(prog_var)::in, db_call_list::in,
-		list(hlds_goal)::in, context_rule::out) is det.
+	list(prog_var)::in, list(prog_var)::in, db_call_list::in,
+	list(hlds_goal)::in, context_rule::out) is det.
 
 context__categorize_call_list(Context, PredProcId, InputArgs, OutputArgs,
 		Calls, AfterGoals, Result) :-
@@ -157,8 +164,8 @@ context__categorize_call_list(Context, PredProcId, InputArgs, OutputArgs,
 %-----------------------------------------------------------------------------%
 
 :- pred context__check_left_linear_rule(pred_proc_id::in, list(prog_var)::in,
-		list(prog_var)::in, db_call_list::in,
-		list(hlds_goal)::in, context_rule::out) is det.
+	list(prog_var)::in, db_call_list::in,
+	list(hlds_goal)::in, context_rule::out) is det.
 
 context__check_left_linear_rule(PredProcId, InputArgs,
 		_OutputArgs, Calls, AfterGoals, LeftResult) :-
@@ -279,9 +286,9 @@ context__check_multi_calls(PredProcId, InputArgs, [BeforeGoals - Call | Calls],
 %-----------------------------------------------------------------------------%
 
 :- pred context__check_db_call_nonlocals(set(prog_var)::in,
-		pair(list(hlds_goal), db_call)::in,
-		assoc_list(linearity_error, prog_context)::in,
-		assoc_list(linearity_error, prog_context)::out) is det.
+	pair(list(hlds_goal), db_call)::in,
+	assoc_list(linearity_error, prog_context)::in,
+	assoc_list(linearity_error, prog_context)::out) is det.
 
 context__check_db_call_nonlocals(Inputs, BeforeGoals - Call,
 		Errors0, Errors) :-
@@ -292,8 +299,8 @@ context__check_db_call_nonlocals(Inputs, BeforeGoals - Call,
 		Errors1, Errors).
 
 :- pred context__check_goal_nonlocals(set(prog_var)::in, hlds_goal::in,
-		assoc_list(linearity_error, prog_context)::in,
-		assoc_list(linearity_error, prog_context)::out) is det.
+	assoc_list(linearity_error, prog_context)::in,
+	assoc_list(linearity_error, prog_context)::out) is det.
 
 context__check_goal_nonlocals(Inputs, _ - GoalInfo, Errors0, Errors) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -316,9 +323,9 @@ context__check_nonlocals(Context, Inputs, NonLocals, Errors0, Errors) :-
 %-----------------------------------------------------------------------------%
 
 :- pred context__transform_rules(pred_proc_id::in,
-		assoc_list(context_rule, hlds_goal_info)::in,
-		list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::in,
-		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
+	assoc_list(context_rule, hlds_goal_info)::in,
+	list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::in,
+	list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
 
 context__transform_rules(_, [], _, _, RevGoals, Goals) -->
 	{ list__reverse(RevGoals, Goals) }.
@@ -330,9 +337,9 @@ context__transform_rules(OldPredProcId, [Rule | Rules], Inputs, Outputs,
 		Disjuncts1, Disjuncts).
 
 :- pred context__transform_rule(pred_proc_id::in,
-		pair(context_rule, hlds_goal_info)::in,
-		list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::in,
-		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
+	pair(context_rule, hlds_goal_info)::in,
+	list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::in,
+	list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
 
 context__transform_rule(PredProcId, exit(CallList0, AfterGoals0) - GoalInfo,
 		Inputs, Outputs, Disjuncts0, [Disjunct | Disjuncts0]) -->
@@ -452,8 +459,8 @@ context__transform_rule(PredProcId,
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
 
 :- pred context__get_first_recursive_call(pred_proc_id::in, db_call_list::in,
-		db_call_list::in, db_call_list::out, db_call::out,
-		list(hlds_goal)::out) is det.
+	db_call_list::in, db_call_list::out, db_call::out,
+	list(hlds_goal)::out) is det.
 
 context__get_first_recursive_call(_, [], _, _, _, _) :-
 	error("context__get_first_recursive_call: no recursive call").
@@ -480,8 +487,8 @@ context__get_first_recursive_call(PredProcId,
 
 	%
 :- pred context__factor_goal_list(pred_proc_id::in, hlds_goal::in,
-		db_call_list::in, set(prog_var)::in, list(hlds_goal)::out,
-		magic_info::in, magic_info::out) is det.
+	db_call_list::in, set(prog_var)::in, list(hlds_goal)::out,
+	magic_info::in, magic_info::out) is det.
 
 context__factor_goal_list(_, FirstCall, [], _, [FirstCall]) --> [].
 context__factor_goal_list(PredProcId, FirstCall,
@@ -535,8 +542,8 @@ context__factor_goal_list(PredProcId, FirstCall,
 	).
 
 :- pred context__create_magic_call(hlds_goal::out, bool::in,
-		map(prog_var, prog_var)::out, list(prog_var)::out,
-		magic_info::in, magic_info::out) is det.
+	map(prog_var, prog_var)::out, list(prog_var)::out,
+	magic_info::in, magic_info::out) is det.
 
 context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 	magic_util__magic_call_info(MagicPredId, MagicProcId, PredName,
@@ -577,7 +584,7 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 %-----------------------------------------------------------------------------%
 
 :- pred context__rename_vars_in_call_list(db_call_list::in,
-		map(prog_var, prog_var)::in, db_call_list::out) is det.
+	map(prog_var, prog_var)::in, db_call_list::out) is det.
 
 context__rename_vars_in_call_list([], _, []).
 context__rename_vars_in_call_list([Goals0 - Call0 | Calls0],
@@ -589,7 +596,7 @@ context__rename_vars_in_call_list([Goals0 - Call0 | Calls0],
 %-----------------------------------------------------------------------------%
 
 :- pred context__add_linearity_error(pair(linearity_error, prog_context)::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
 context__add_linearity_error(Error - Context) -->
 	magic_info_get_curr_pred_proc_id(PredProcId),

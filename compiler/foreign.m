@@ -25,7 +25,12 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, std_util, string, term.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 :- type foreign_decl_info 		== list(foreign_decl_code).
 					% in reverse order
@@ -192,8 +197,15 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module list, map, assoc_list, std_util, string, varset, int, term.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module list.
+:- import_module map.
 :- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-

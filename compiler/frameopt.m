@@ -94,7 +94,10 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module bool, list, set, counter.
+:- import_module bool.
+:- import_module counter.
+:- import_module list.
+:- import_module set.
 
 	% frameopt_main(ProcLabel, !LabelCounter, !Instrs,
 	%	AnyChange, NewJumps):
@@ -150,7 +153,14 @@
 :- import_module ll_backend__opt_util.
 :- import_module parse_tree__prog_data.
 
-:- import_module int, string, require, std_util, assoc_list, set, map, queue.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module queue.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 frameopt_main(ProcLabel, !C, Instrs0, Instrs, Mod, Jumps) :-
 	opt_util__get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),

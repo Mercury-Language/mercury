@@ -20,7 +20,10 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, map, std_util, counter.
+:- import_module counter.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 :- type block_map	==	map(label, block_info).
 
@@ -53,7 +56,10 @@
 :- implementation.
 
 :- import_module ll_backend__opt_util.
-:- import_module bool, int, require.
+
+:- import_module bool.
+:- import_module int.
+:- import_module require.
 
 create_basic_blocks(Instrs0, Comments, ProcLabel, !C, LabelSeq, BlockMap) :-
 	opt_util__get_prologue(Instrs0, LabelInstr, Comments,

@@ -24,7 +24,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, std_util.
+:- import_module io.
+:- import_module std_util.
 
 	%
 	% assertion__goal
@@ -154,7 +155,14 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module string, bool, list, assoc_list, map, set, require, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 :- type subst == map(prog_var, prog_var).
 

@@ -24,7 +24,9 @@
 :- import_module hlds__hlds_pred.
 :- import_module mdbcomp__prim_data.
 
-:- import_module map, std_util, io.
+:- import_module io.
+:- import_module map.
+:- import_module std_util.
 
 :- type dead_proc_pass
 	--->	warning_pass
@@ -72,7 +74,13 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, list, set, queue, bool, require.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module queue.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

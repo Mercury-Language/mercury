@@ -234,8 +234,8 @@ add_mc_var_for_pred_head(PredId, ProgVarset, HeadVar, !Varset, !VarMap) :-
 		svbimap.det_insert(RepVar, NewMCvar, !VarMap)
 	).
 
-add_mc_vars_for_goal(
-	PredId, ProgVarset, GoalExpr - GoalInfo, !Varset, !VarMap) :-
+add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo,
+        !Varset, !VarMap) :-
 	goal_info_get_nonlocals(GoalInfo, Nonlocals),
 	goal_info_get_goal_path(GoalInfo, GoalPath),
 
@@ -258,36 +258,45 @@ add_mc_vars_for_goal(
 		{!.Varset, !.VarMap}
 	),
 		% Switch on GoalExpr for recursion
-	(	GoalExpr = conj(Goals),
+	(
+        GoalExpr = conj(Goals),
 		list.foldl2(
 			add_mc_vars_for_goal(PredId, ProgVarset),
 			Goals,
 			!Varset,
 			!VarMap
 		)
-	;	GoalExpr = call(_, _, _, _, _, _)
-	;	GoalExpr = generic_call(_, _, _, _)
-	;	GoalExpr = switch(_, _, Cases),
+	;
+        GoalExpr = call(_, _, _, _, _, _)
+	;
+        GoalExpr = generic_call(_, _, _, _)
+	;
+        GoalExpr = switch(_, _, Cases),
 		Goals = list.map(func(case(_, Goal)) = Goal, Cases),
 		list.foldl2(add_mc_vars_for_goal(PredId, ProgVarset), Goals,
 			!Varset, !VarMap)
-	;	GoalExpr = unify(_, _, _, _, _)
-	;	GoalExpr = disj(Goals),
+	;
+        GoalExpr = unify(_, _, _, _, _)
+	;
+        GoalExpr = disj(Goals),
 		list.foldl2(
 			add_mc_vars_for_goal(PredId, ProgVarset),
 			Goals,
 			!Varset,
 			!VarMap
 		)
-	;	GoalExpr = not(Goal),
+	;
+        GoalExpr = not(Goal),
 		add_mc_vars_for_goal(
 			PredId, ProgVarset, Goal, !Varset, !VarMap
 		)
-	;	GoalExpr = some(_, _, Goal),
+	;
+        GoalExpr = some(_, _, Goal),
 		add_mc_vars_for_goal(
 			PredId, ProgVarset, Goal, !Varset, !VarMap
 		)
-	;	GoalExpr = if_then_else(_, Cond, Then, Else),
+	;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
 		Goals = [Cond, Then, Else],
 		list.foldl2(
 			add_mc_vars_for_goal(PredId, ProgVarset),
@@ -295,9 +304,12 @@ add_mc_vars_for_goal(
 			!Varset,
 			!VarMap
 		)
-	;	GoalExpr = foreign_proc(_, _, _, _, _, _)
-	;	GoalExpr = par_conj(_Goals)
-	;	GoalExpr = shorthand(_ShorthandGoalExpr)
+	;
+        GoalExpr = foreign_proc(_, _, _, _, _, _)
+	;
+        GoalExpr = par_conj(_Goals)
+	;
+        GoalExpr = shorthand(_ShorthandGoalExpr)
 	).
 
 rep_var_to_string(ProgVarset, (ProgVar `in` _) `at` GoalPath) = RepString :-
@@ -399,70 +411,57 @@ goal_expr_constraints(ModuleInfo, VarMap, PredId,
 		ArgModeDecls
 	),
 
-	(	ArgModeDecls = [],
+	(
 			% No modes declared, must be in the same SCC as
 			% the calling predicate.
+        ArgModeDecls = [],
 
 			% Get the head variables of the called pred.
 		pred_info_clauses_info(PredInfo, ClausesInfo),
 		clauses_info_headvars(ClausesInfo, HeadVars),
 
-		call_headvar_constraints(
-			VarMap, GoalPath,
-			PredId, Args, CalledPred, HeadVars,
-			Constraints
-		)
-	;	ArgModeDecls = [_| _],
+		call_headvar_constraints( VarMap, GoalPath, PredId, Args, CalledPred,
+            HeadVars, Constraints)
+	;
 			% At least one declared mode
+        ArgModeDecls = [_| _],
 
-/*
-		list.map(
-			add_sufficient_in_modes_for_type_info_args(Args),
-			ArgModeDecls,
-			FullArgModeDecls
-		),	% XXX type_info args should be at the start and
-			% should be 'in' so that is what this predicate
-			% adds however, I am not happy with it.
-*/
-		call_mode_decls_constraints(
-			ModuleInfo,
-			VarMap,
-			PredId,
-			ArgModeDecls,
-			GoalPath,
-			Args,
-			Constraints
-		)
+%		list.map(
+%			add_sufficient_in_modes_for_type_info_args(Args),
+%			ArgModeDecls,
+%			FullArgModeDecls
+%		),	% XXX type_info args should be at the start and
+%			% should be 'in' so that is what this predicate
+%			% adds however, I am not happy with it.
+
+		call_mode_decls_constraints(ModuleInfo, VarMap, PredId, ArgModeDecls,
+			GoalPath, Args, Constraints)
 	).
 
 	% XXX Need to do something here.
 	%
 goal_expr_constraints(_ModuleInfo, _VarMap, _PredId,
-	generic_call(_, _, _, _), _GoalPath, _Nonlocals, _Constraints) :-
+        generic_call(_, _, _, _), _GoalPath, _Nonlocals, _Constraints) :-
 	sorry(this_file, "generic_call NYI.").
 
 	% XXX Need to do something here.
 	%
 goal_expr_constraints(_ModuleInfo, _VarMap, _PredId,
-	switch(_, _, _), _GoalPath, _Nonlocals, _Constraints) :-
+        switch(_, _, _), _GoalPath, _Nonlocals, _Constraints) :-
 	sorry(this_file, "switch NYI.").
 
 	% Unification Goals
 	%
 goal_expr_constraints(_ModuleInfo, VarMap, PredId,
-	unify(LHSvar, RHS, _Mode, _Kind, _Context),
+        unify(LHSvar, RHS, _Mode, _Kind, _Context),
 	GoalPath, _Nonlocals, Constraints) :-
 	(
         RHS = var(RHSvar),
 			% Goal: LHSvar = RHSvar
 		Constraints = [
 			atomic_constraint(at_most_one([
-				prog_var_at_path(
-					VarMap, PredId, GoalPath, LHSvar
-				),
-				prog_var_at_path(
-					VarMap, PredId, GoalPath, RHSvar
-				)
+				prog_var_at_path(VarMap, PredId, GoalPath, LHSvar),
+				prog_var_at_path(VarMap, PredId, GoalPath, RHSvar)
 			]))	% At most one of the left and right hand
 				% sides of a unification is produced
 				% at the unification.
@@ -473,33 +472,24 @@ goal_expr_constraints(_ModuleInfo, VarMap, PredId,
 			VarMap, PredId, GoalPath, LHSvar
 		),
 		ArgsProducedHere =
-			list.map(
-				prog_var_at_path(VarMap, PredId, GoalPath),
-				Args
-			),
+			list.map(prog_var_at_path(VarMap, PredId, GoalPath), Args),
 		(	
             ArgsProducedHere = [OneArgProducedHere, _Two| _],
 				% Goal: LHSvar = functor(Args)
 			Constraints = [
+                    % If one arg is produced here, then they all are.
+				atomic_constraint(equivalent(ArgsProducedHere)),
+                    % At most one side of the unification is produced.
 				atomic_constraint(
-					equivalent(ArgsProducedHere)
-				),		% If one arg is produced here,
-						% then they all are.
-				atomic_constraint(at_most_one([
-					LHSproducedHere,
-					OneArgProducedHere
-				]))		% At most one side of the
-						% unification is produced.
+                    at_most_one([LHSproducedHere, OneArgProducedHere]))
 			]
 		;	
             ArgsProducedHere = [OneArgProducedHere],
 				% Goal: LHSvar = functor(Arg)
 			Constraints = [
-				atomic_constraint(at_most_one([
-					LHSproducedHere,
-					OneArgProducedHere
-				]))		% At most one side of the
-						% unification is produced.
+                    % At most one side of the unification is produced.
+				atomic_constraint(
+                    at_most_one([LHSproducedHere, OneArgProducedHere]))
 			]
 		;	
             ArgsProducedHere = [],
@@ -531,23 +521,19 @@ goal_expr_constraints(ModuleInfo, VarMap, PredId,
 		DisjunctGoalPaths
 	),
 
-	list.map(
-		goal_constraints(ModuleInfo, VarMap, PredId),
-		Goals,
-		DisjunctConstraints
-	),
+	list.map(goal_constraints(ModuleInfo, VarMap, PredId),
+		Goals, DisjunctConstraints),
 
 	Constraints = list.condense([
 		list.map_corresponding(
-			func(X, Ys) = atomic_constraint(equivalent([X|Ys])),
+			func(X, Ys) = atomic_constraint(equivalent([X | Ys])),
 				% A variable bound at any disjunct is
 				% bound for the disjunct as a whole. If
 				% a variable can be bound at one
 				% conjunct it must be able to be bound
 				% at any.
-			NonlocalsHere,
-			NonlocalsAtDisjuncts
-		)|
+			NonlocalsHere, NonlocalsAtDisjuncts
+		) |
 		DisjunctConstraints
 	]).
 
@@ -561,9 +547,8 @@ goal_expr_constraints(ModuleInfo, VarMap, PredId,
 	NonlocalsConstraintVars = set.fold(
 		func(Nonlocal, MCVars) = [
 			prog_var_at_path(VarMap, PredId, GoalPath, Nonlocal),
-			prog_var_at_path(
-				VarMap, PredId, NegatedGoalPath, Nonlocal
-			)|
+			prog_var_at_path(VarMap, PredId, NegatedGoalPath, Nonlocal)
+            |
 			MCVars
 		],
 		Nonlocals,
@@ -705,25 +690,19 @@ goal_expr_constraints(ModuleInfo, VarMap, PredId,
 	module_info_pred_proc_info(ModuleInfo, CalledPred, ProcID, _, ProcInfo),
 	( proc_info_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
         proc_info_argmodes(ProcInfo, Decl),
-/*
-		add_sufficient_in_modes_for_type_info_args(
-			CallArgs,
-			Decl,
-			FullDecl
-		),	% XXX type_info args should be at the start and
-			% should be 'in' so that is what this predicate
-			% adds however, I am not happy with it.
-*/
-		call_mode_decls_constraints(
-			ModuleInfo,
-			VarMap,
-			PredId,
-			[Decl],
-			GoalPath,
-			CallArgs,
-			Constraints
-		)	% This pred should strip the disj(conj()) for the
+
+%		add_sufficient_in_modes_for_type_info_args(
+%			CallArgs,
+%			Decl,
+%			FullDecl
+%		),	% XXX type_info args should be at the start and
+%			% should be 'in' so that is what this predicate
+%			% adds however, I am not happy with it.
+
+            % This pred should strip the disj(conj()) for the
 			% single declaration.
+		call_mode_decls_constraints(ModuleInfo, VarMap, PredId, [Decl],
+			GoalPath, CallArgs, Constraints)
 	;	
 		unexpected(this_file, "no mode declaration for foreign proc")
 	).
@@ -872,12 +851,7 @@ mode_decl_constraints(ModuleInfo, ConstraintVars, ArgModes) =
 	[conj(list.map_corresponding(
 		(func(CVar, Mode) =
 			atomic_constraint(equiv_bool(CVar, IsProduced)) :-
-			mode_util.mode_get_insts(
-				ModuleInfo,
-				Mode,
-				InitialInst,
-				FinalInst
-			),
+			mode_util.mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 			(	
 			    % Already produced.
                 not inst_match.inst_is_free(ModuleInfo, InitialInst)
@@ -904,10 +878,7 @@ add_sufficient_in_modes_for_type_info_args(Args, Decl, FullDecl) :-
 	( Diff = 0 ->
         FullDecl = Decl
 	; Diff > 0 ->
-        FullDecl = list.append(
-			list.duplicate(Diff, prog_mode.in_mode),
-			Decl
-		)
+        FullDecl = list.append(list.duplicate(Diff, prog_mode.in_mode), Decl)
 	;	
         unexpected(this_file, "Too many mode declared args.m")
 	).
@@ -956,8 +927,7 @@ call_headvar_constraints(VarMap, GoalPath,
 :- pred fold_goal_into_var_position_maps(
     mc_var_map::in, pred_id::in, nonlocals::in, hlds_goal::in,
    	multi_map(prog_var, mc_var)::in, multi_map(prog_var, mc_var)::out,
-   	multi_map(prog_var, mc_var)::in, multi_map(prog_var, mc_var)::out
-    ) is det.
+   	multi_map(prog_var, mc_var)::in, multi_map(prog_var, mc_var)::out) is det.
 
 fold_goal_into_var_position_maps(VarMap, PredId, Nonlocals,
 	    _SubGoalExpr - SubGoalInfo, !LocalsMap, !NonlocalsMap) :-
@@ -985,8 +955,7 @@ fold_goal_into_var_position_maps(VarMap, PredId, Nonlocals,
 	%
 :- pred fold_variable_into_var_position_map(
 	mc_var_map::in, pred_id::in, goal_path::in, prog_var::in,
-	multi_map(prog_var, mc_var)::in, multi_map(prog_var, mc_var)::out
-	) is det .
+	multi_map(prog_var, mc_var)::in, multi_map(prog_var, mc_var)::out) is det.
 
 fold_variable_into_var_position_map(VarMap, PredId, GoalPath, ProgVar, !Map) :-
 	MCVar = prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
@@ -1004,10 +973,9 @@ fold_variable_into_var_position_map(VarMap, PredId, GoalPath, ProgVar, !Map) :-
 
 fold_nonlocal_var_into_conj_constraints(VarMap, PredId, NonlocalsMap,
         GoalPath, ProgVar, !Constraints) :-
-	list.append([
-		atomic_constraint(equiv_disj(ProgVarAtGoalPath, Xs)),
+    NewConstraints = [atomic_constraint(equiv_disj(ProgVarAtGoalPath, Xs)),
 		atomic_constraint(at_most_one(Xs))],
-		!Constraints),
+	list.append(NewConstraints, !Constraints),
 	ProgVarAtGoalPath = prog_var_at_path(VarMap, PredId, GoalPath, ProgVar),
 	Xs = multi_map.lookup(NonlocalsMap, ProgVar).
 

@@ -19,7 +19,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- import_module std_util, io.
+:- import_module io.
+:- import_module std_util.
 
 	% read_spec_file(FileName, MaybeNumLinesProcMap, !IO):
 	% Try to read in a complexity proc map from FileName. If successful,
@@ -71,8 +72,16 @@
 :- import_module transform_hlds__term_norm.
 :- import_module mdbcomp__prim_data.
 
-:- import_module bool, int, string, list, set, map, assoc_list.
-:- import_module varset, term, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 read_spec_file(FileName, MaybeNumLinesProcMap, !IO) :-
 	io__open_input(FileName, ResStream, !IO),

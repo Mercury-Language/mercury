@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,7 +18,10 @@
 
 :- interface.
 
-:- import_module io, int, list, string.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module string.
 
 	% XXX this assumes strings contain 8-bit characters
 :- pred output_string(string::in, io::di, io::uo) is det.
@@ -26,40 +29,32 @@
 
 :- pred output_byte(int::in, io::di, io::uo) is det.
 
-/*
-** Spit out an `int' in a portable `highest common denominator' format.
-** This format is: big-endian, 64-bit, 2's-complement int.
-**
-** NOTE: We -assume- the machine architecture uses 2's-complement.
-*/
-
+	% Spit out an `int' in a portable `highest common denominator' format.
+	% This format is: big-endian, 64-bit, 2's-complement int.
+	%
+	% NOTE: We -assume- the machine architecture uses 2's-complement.
+	%
 :- pred output_int(int::in, io::di, io::uo) is det.
 :- pred int_to_byte_list(int::in, list(int)::out) is det.
 
-/*
-** Same as output_int and int_to_byte_list, except only use 32 bits.
-*/
-
+	% Same as output_int and int_to_byte_list, except only use 32 bits.
+	%
 :- pred output_int32(int::in, io::di, io::uo) is det.
 :- pred int32_to_byte_list(int::in, list(int)::out) is det.
 
-/*
-** Spit out a `short' in a portable format.
-** This format is: big-endian, 16-bit, 2's-complement.
-**
-** NOTE: We -assume- the machine architecture uses 2's-complement.
-*/
-
+	% Spit out a `short' in a portable format.
+	% This format is: big-endian, 16-bit, 2's-complement.
+	%
+	% NOTE: We -assume- the machine architecture uses 2's-complement.
+	%
 :- pred output_short(int::in, io::di, io::uo) is det.
 :- pred short_to_byte_list(int::in, list(int)::out) is det.
 
-/*
-** Spit out a `float' in a portable `highest common denominator format.
-** This format is: big-endian, 64-bit, IEEE-754 floating point value.
-**
-** NOTE: We -assume- the machine architecture uses IEEE-754.
-*/
-
+	% Spit out a `float' in a portable `highest common denominator format.
+	% This format is: big-endian, 64-bit, IEEE-754 floating point value.
+	%
+	% NOTE: We -assume- the machine architecture uses IEEE-754.
+	%
 :- pred output_float(float::in, io::di, io::uo) is det.
 :- pred float_to_byte_list(float::in, list(int)::out) is det.
 
@@ -69,7 +64,8 @@
 
 :- import_module parse_tree__error_util.
 
-:- import_module char, require.
+:- import_module char.
+:- import_module require.
 
 output_string(Val, !IO) :-
 	% XXX this assumes strings contain 8-bit characters

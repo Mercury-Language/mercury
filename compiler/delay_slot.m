@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,8 @@
 
 :- implementation.
 
-:- import_module string, std_util.
+:- import_module std_util.
+:- import_module string.
 
 fill_branch_delay_slot([], []).
 fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-

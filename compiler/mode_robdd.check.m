@@ -171,7 +171,8 @@ check_robdd(T)::di_check_robdd)
 :- import_module sparse_bitset.
 
 % Uncomment these for debugging.
-% :- import_module io, pprint.
+% :- import_module io
+% :- import_module pprint.
 % :- import_module unsafe.
 
 % The two fields of this type represent the two mode_robdd implementations

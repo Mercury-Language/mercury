@@ -146,6 +146,7 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred accumulator__process_proc(pred_id::in, proc_id::in,
@@ -175,8 +176,18 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__goal_store.
 
-:- import_module assoc_list, bool, int, list, map, multi_map.
-:- import_module require, set, std_util, string, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

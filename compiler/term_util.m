@@ -163,7 +163,9 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, require, string.
+:- import_module assoc_list.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

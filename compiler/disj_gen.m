@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,11 +38,17 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
+:- import_module libs__tree.
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, set, libs__tree, map, std_util, term, require.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
 
 disj_gen__generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI) :-
 	(

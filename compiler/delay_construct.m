@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,6 +29,7 @@
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred delay_construct_proc(pred_id::in, proc_id::in, module_info::in,
@@ -46,7 +47,11 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, set, std_util, require.
+:- import_module bool.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

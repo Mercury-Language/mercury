@@ -23,7 +23,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module recompilation.
 
-:- import_module bool, list, std_util, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% module_qualify_items(Items0, Items, ModuleName, ReportUndefErrors,
 	%	MQ_Info, NumErrors, UndefTypes, UndefModes):
@@ -114,8 +117,14 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 
-:- import_module int, map, require, set, string, term, varset.
 :- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 module_qual.module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 		Info, NumErrors, UndefTypes, UndefModes, !IO) :-

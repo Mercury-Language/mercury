@@ -38,7 +38,15 @@
 :- import_module parse_tree__prog_type.
 :- import_module recompilation.
 
-:- import_module bool, list, set, map, require, std_util, string, term, varset.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 replace_in_hlds(!ModuleInfo) :-
 	module_info_types(!.ModuleInfo, Types0),

@@ -149,11 +149,16 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
-:- import_module term.
 :- import_module transform_hlds__term_util.
-:- import_module varset.
 
-:- import_module bool, int, string, map, bag, require.
+:- import_module bag.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 indirect_error(horder_call).
 indirect_error(pragma_foreign_code).

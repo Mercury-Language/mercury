@@ -20,7 +20,8 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data. % for module_name
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- type global_data.
 
@@ -59,7 +60,9 @@
 :- pred global_data_set_static_cell_info(static_cell_info::in,
 	global_data::in, global_data::out) is det.
 
-:- import_module bool, list, assoc_list.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
 
 :- type static_cell_info.
 
@@ -90,7 +93,12 @@
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds_out.
 
-:- import_module int, counter, set, map, std_util, require.
+:- import_module counter.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 :- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
 :- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).

@@ -30,12 +30,8 @@
 %-----------------------------------------------------------------------------%
 
 :- type mc_type.
-
 :- type mc_var == var(mc_type).		% Constraint variable.
-
-:- type mc_varset == varset(mc_type).	% Source of constraint variables
-					% And their names.
-:- type vars(T) == list(var(T)).
+:- type mc_varset == varset(mc_type).	% Source of constraint variables.
 
 %-----------------------------------------------------------------------------%
 %
@@ -64,11 +60,9 @@
 			% other constraints.  The intended form is:
 			% disj([conj(...), ..., conj(...)]) Note
 			% disj([]) represents false.
-	;	conj(constraint_formulae)
+	;	conj(constraint_formulae).
 			% See disj.
 			% Note that conj([]) is the empty constraint, or true.
-.
-
 
 % var_constraint represents a constraint between variables
 :- type var_constraint == var_constraint(mc_type).
@@ -76,21 +70,21 @@
 	--->	equiv_bool(var(T), bool)
 			% equiv_bool(X, yes) gives the constraint (X)
 			% equiv_bool(X, no) gives the constraint not(X)
-	;	equivalent(vars(T))
+	;	equivalent(list(var(T)))
 			% equivalent(Xs) gives (all Xi, Xj in Xs).(Xi<->Xj)
 	;	implies(var(T), var(T))
 			% implies(X, Y) gives X->Y
-	;	equiv_disj(var(T), vars(T))
+	;	equiv_disj(var(T), list(var(T)))
 			% equiv_disj(X, [Y1,...,Yn]) gives X<->OR(Y1,...,Yn)
 			% XXX Thinking of making a constraint that is
 			% the conjunction of equiv_disj and at_most_one
 			% because they occur together so often.
-	;	at_most_one(vars(T))
+	;	at_most_one(list(var(T)))
 			% at_most_one(Xs) gives
 			% (all Xi, Xj in Xs).(i = j or not(Xi and Xj))
-	;	at_least_one(vars(T))
+	;	at_least_one(list(var(T)))
 			% at_least_one(Xs) gives OR(Xs)
-	;	exactly_one(vars(T)).
+	;	exactly_one(list(var(T))).
 			% exactly_one(Xs) gives
 			% at_least_one(Xs) and at_most_one(Xs)
 
@@ -142,11 +136,14 @@
 :- type mode_constraints_info --->
 	mode_constraints_info(
 		constraint_map	:: map(constraint_id, constraint),
-			% Constraining the variables in the var_map.
+				% Constraining the variables in the var_map.
+
 		var_map		:: map(mc_var, var_state),
-			% The variables this constraint system constrains
+				% The variables this constraint system
+				% constrains.
+
 		id_counter	:: counter
-			% Supplies unique IDs for the constraint map.
+				% Supplies unique IDs for the constraint map.
 	).
 
 :- type constraint_id == int.
@@ -154,59 +151,72 @@
 :- type constraint --->
 	constraint(
 		id		:: constraint_id,
+
 		current		:: constraint_formula_and_vars,
-			% Formula modified as variables are bound.
+				% Formula modified as variables are bound.
+
 		original	:: constraint_formula_and_vars
+
 %		dead		:: bool
-%			% for if the current constraint is empty... don't
-%			% know if this will be used
+%				% For if the current constraint is empty...
+%				% don't know if this will be used.
 	).
 
 :- type constraint_formula_and_vars --->
 	constraint_formula_and_vars(
 		constraint_formula	:: constraint_formula,
-		participating_vars	:: vars(mc_type)
+		participating_vars	:: list(mc_var)
 	).
 
 :- type var_state --->
 	var_state(
 		is_bound	:: maybe(var_binding),
-			% If it is bound, some certain information
-			% should be recorded. See var_binding type.
+				% If it is bound, some certain information
+				% should be recorded. See var_binding type.
+
 		is_constrained	:: list(constrainment_info)
-			% A list of the constraints that this variable
-			% participates in. May include propagation tree
-			% information in the form of branches for bound
-			% true/false, however this may have a
-			% significant cost in space.
+				% A list of the constraints that this variable
+				% participates in. May include propagation tree
+				% information in the form of branches for bound
+				% true/false, however this may have a
+				% significant cost in space.
 	).
 
 :- type var_binding --->
 	var_binding(
 		bool			:: bool,
-			% What the variable has been bound to
+					% What the variable has been bound to.
+
 		binding_constraint	:: constraint_id,
-			% The constraint that finally bound it
+					% The constraint that finally bound it.
+
 		history			:: list(mc_var)
-			% The variables in the constraint that bound
-			% this variable that had already been bound at
-			% that point - their binding_constraint and
-			% history can be looked at recursively to build
-			% the full history. I strongly prefer this to
-			% listing the full history each time a variable
-			% is bound, for space considerations.
+					% The variables in the constraint
+					% that bound this variable that
+					% had already been bound at that
+					% point - their binding_constraint
+					% and history can be looked at
+					% recursively to build the full
+					% history. I strongly prefer this
+					% to listing the full history
+					% each time a variable is bound,
+					% for space considerations.
 	).
 
 :- type constrainment_info --->
 	constrainment_info(
 %		variable		:: mc_var,
-%			% To make it clear what variable the propagation
-%			% information is for.
+%					% To make it clear what variable
+%					% the propagation information is for.
+%
 %		propagate_if_true	:: list(var_binding),
-%			% The history field should be empty. In the end it
-%			% gets the participating variables of this constraint
-%			% that have been bound.
+%					% The history field should be empty.
+%					% In the end it gets the participating
+%					% variables of this constraint that
+%					% have been bound.
+%
 %		propagate_if_false	:: list(var_binding),
+
 		constraint		:: constraint_id
 	).
 
@@ -241,11 +251,9 @@
 	% Initiates all the parts of a mode_constraints_info type.
 	%
 abstract_mode_constraints.init(ModeConstraintsInfo) :-
-	ModeConstraintsInfo = mode_constraints_info(
-		map.init,
-		map.init,
-		counter.init(0)		% Start allocating ids from 0
-	).
+		% Start allocating ids from 0
+	ModeConstraintsInfo = mode_constraints_info(map.init, map.init,
+		counter.init(0)).
 
 	% See the predicate version.
 	%
@@ -256,19 +264,19 @@ abstract_mode_constraints.init = ModeConstraintsInfo :-
 	%
 abstract_mode_constraints.add_constraint(ConstraintFormula,
 		!ModeConstraintsInfo) :-
-	formula_to_formula_and_vars(ConstraintFormula, 
-		Vars, FormulaAndVars),
+	formula_to_formula_and_vars(ConstraintFormula, Vars, FormulaAndVars),
 	counter.allocate(NewID, !.ModeConstraintsInfo ^ id_counter,
 		NewCounter),
 	!:ModeConstraintsInfo =
 		!.ModeConstraintsInfo ^ id_counter := NewCounter,
 	update_vars_map_with_constrainment_info(constrainment_info(NewID),
 		Vars, !ModeConstraintsInfo),
+	Constraint = constraint(NewID, FormulaAndVars, FormulaAndVars),
+	ConstraintMap0 = !.ModeConstraintsInfo ^ constraint_map,
+	map.det_insert(ConstraintMap0, NewID, Constraint, ConstraintMap),
 	!:ModeConstraintsInfo = !.ModeConstraintsInfo ^ constraint_map :=
-		map.det_insert(!.ModeConstraintsInfo ^ constraint_map,
-			NewID, 
-			constraint(NewID, FormulaAndVars, FormulaAndVars)).
-	
+		ConstraintMap.
+
 	% Functional version of add_constraint/3.
 	%
 abstract_mode_constraints.add_constraint(CF, MCI0) = MCI :-
@@ -278,40 +286,40 @@ abstract_mode_constraints.add_constraint(CF, MCI0) = MCI :-
 % constrainment_info to the list of constraints associated with each of
 % the variables supplied in the mode_constraints_info structure.
 
-:- pred update_vars_map_with_constrainment_info(
-	constrainment_info::in, vars(mc_type)::in,
-	mode_constraints_info::in, mode_constraints_info::out
-	) is det.
+:- pred update_vars_map_with_constrainment_info(constrainment_info::in,
+	list(mc_var)::in,
+	mode_constraints_info::in, mode_constraints_info::out) is det.
 
 update_vars_map_with_constrainment_info(_ConstrainmentInfo, [], !MCI).
-update_vars_map_with_constrainment_info(ConstrainmentInfo, [Var|Vars], !MCI) :-
-	(	map.search(!.MCI ^ var_map, Var, VarState1)
-	->	CInfoList = [ConstrainmentInfo| VarState1 ^ is_constrained],
-		VarState = VarState1 ^ is_constrained := CInfoList,
+update_vars_map_with_constrainment_info(ConstrainmentInfo, [Var | Vars],
+		!MCI) :-
+	( map.search(!.MCI ^ var_map, Var, OldVarState) ->
+		CInfoList = [ConstrainmentInfo | OldVarState ^ is_constrained],
+		VarState = OldVarState ^ is_constrained := CInfoList,
 		!:MCI = !.MCI ^ var_map :=
 			map.det_update(!.MCI ^ var_map, Var, VarState)
-	;	VarState = var_state(no, [ConstrainmentInfo]),
+	;
+		VarState = var_state(no, [ConstrainmentInfo]),
 		!:MCI = !.MCI ^ var_map :=
 			map.det_insert(!.MCI ^ var_map, Var, VarState)
 	),
 	update_vars_map_with_constrainment_info(ConstrainmentInfo, Vars, !MCI).
 
-% formula_to_formula_and_vars makes the list Vars of variables that
-% appear in Formula and packages Formula and Vars together in
-% FormulaAndVars.
-:- pred formula_to_formula_and_vars(
-	constraint_formula::in,
-	vars(mc_type)::out,
-	constraint_formula_and_vars::out
-	) is det.
+	% formula_to_formula_and_vars makes the list Vars of variables that
+	% appear in Formula and packages Formula and Vars together in
+	% FormulaAndVars.
+	%
+:- pred formula_to_formula_and_vars(constraint_formula::in, list(mc_var)::out,
+	constraint_formula_and_vars::out) is det.
 
 formula_to_formula_and_vars(Formula, Vars, FormulaAndVars) :-
 	formula_to_vars(Formula, Vars),
 	FormulaAndVars = constraint_formula_and_vars(Formula, Vars).
 
-% Sub section of the formula_to_formula_and_vars predicate, Vars is the
-% variables that appear in Formula
-:- pred formula_to_vars(constraint_formula::in, vars(mc_type)::out) is det.
+	% Sub section of the formula_to_formula_and_vars predicate, Vars is the
+	% variables that appear in Formula.
+	%
+:- pred formula_to_vars(constraint_formula::in, list(mc_var)::out) is det.
 
 formula_to_vars(Formula, Vars) :-
 	Formula = atomic_constraint(VarConstraint),
@@ -323,30 +331,27 @@ formula_to_vars(Formula, Vars) :-
 			formula_to_vars(Formula1, Vars2),
 			append(Vars2, Vars1, VarsNew)
 		),
-		Formulae,
-		[],
-		Vars
-	).
+		Formulae, [], Vars).
 formula_to_vars(Formula, Vars) :-
 	Formula = conj(Formulae),
-	list.foldr(
-		(pred(Formula1::in, Vars1::in, VarsNew::out) is det :-
-			formula_to_vars(Formula1, Vars2),
-			append(Vars2, Vars1, VarsNew)
-		),
-		Formulae,
-		[],
-		Vars
-	).
+	list.foldr(formula_to_vars_accumulate, Formulae, [], Vars).
 
-% var_constraint_to_vars takes a constraint between variables as input
-% and gives a list of those variables as output.
-:- pred var_constraint_to_vars(var_constraint::in, vars(mc_type)::out) is det.
+:- pred formula_to_vars_accumulate(constraint_formula::in,
+	list(mc_var)::in, list(mc_var)::out) is det.
+
+formula_to_vars_accumulate(Formula, !Vars) :-
+	formula_to_vars(Formula, NewVars),
+	append(NewVars, !Vars).
+
+	% var_constraint_to_vars takes a constraint between variables as input
+	% and gives a list of those variables as output.
+	%
+:- pred var_constraint_to_vars(var_constraint::in, list(mc_var)::out) is det.
 
 var_constraint_to_vars(equiv_bool(Var, _B), [Var]).
 var_constraint_to_vars(equivalent(Vars), Vars).
 var_constraint_to_vars(implies(V1, V2), [V1, V2]).
-var_constraint_to_vars(equiv_disj(Var, Vars), [Var|Vars]).
+var_constraint_to_vars(equiv_disj(Var, Vars), [Var | Vars]).
 var_constraint_to_vars(at_most_one(Vars), Vars).
 var_constraint_to_vars(at_least_one(Vars), Vars).
 var_constraint_to_vars(exactly_one(Vars), Vars).
@@ -369,12 +374,8 @@ var_constraint_to_vars(exactly_one(Vars), Vars).
 %
 
 pretty_print_constraints(Varset, Constraints, !IO) :-
-	pretty_print_constraints(
-		Varset,
-		Constraints,
-		"",		% Extra argument for indent.
-		!IO
-	).
+	Indent = "",
+	pretty_print_constraints(Varset, Constraints, Indent, !IO).
 
 	% Same as before, but with an indent argument used to indent
 	% conjunctions and disjunctions of constraints.
@@ -383,7 +384,7 @@ pretty_print_constraints(Varset, Constraints, !IO) :-
 	string::in, io::di, io::uo) is det.
 
 pretty_print_constraints(_Varset, [], _Indent, !IO).
-pretty_print_constraints(Varset, [Constr|Constrs], Indent, !IO) :-
+pretty_print_constraints(Varset, [Constr | Constrs], Indent, !IO) :-
 	pretty_print_constraint(Varset, Constr, Indent, !IO),
 	pretty_print_constraints(Varset, Constrs, Indent, !IO).
 
@@ -396,8 +397,7 @@ pretty_print_constraints(Varset, [Constr|Constrs], Indent, !IO) :-
 pretty_print_constraint(Varset, disj(Constraints), Indent, !IO) :-
 	io.print(Indent, !IO),
 	io.print("disj(\n", !IO),
-	pretty_print_constraints(
-		Varset, Constraints, "\t" ++ Indent, !IO),
+	pretty_print_constraints(Varset, Constraints, "\t" ++ Indent, !IO),
 	io.print(Indent, !IO),
 	io.print(") end disj", !IO),
 	io.nl(!IO).
@@ -405,14 +405,12 @@ pretty_print_constraint(Varset, disj(Constraints), Indent, !IO) :-
 pretty_print_constraint(Varset, conj(Constraints), Indent, !IO) :-
 	io.print(Indent, !IO),
 	io.print("conj(\n", !IO),
-	pretty_print_constraints(
-		Varset, Constraints, "\t" ++ Indent, !IO),
+	pretty_print_constraints(Varset, Constraints, "\t" ++ Indent, !IO),
 	io.print(Indent, !IO),
 	io.print(") end conj", !IO),
 	io.nl(!IO).
 
-pretty_print_constraint(
-	Varset, atomic_constraint(Constraint), Indent, !IO) :-
+pretty_print_constraint(Varset, atomic_constraint(Constraint), Indent, !IO) :-
 	io.print(Indent, !IO),
 	pretty_print_var_constraint(Varset, Constraint, !IO),
 	io.nl(!IO).
@@ -475,7 +473,7 @@ pretty_print_mc_var(Varset, Var, !IO) :-
 	io::di, io::uo) is det.
 
 pretty_print_mc_vars(_Varset, [], !IO).
-pretty_print_mc_vars(Varset, [Var| Tail], !IO) :-
+pretty_print_mc_vars(Varset, [Var | Tail], !IO) :-
 	pretty_print_mc_var(Varset, Var, !IO),
 	pretty_print_mc_vars_tail(Varset, Tail, !IO).
 
@@ -488,9 +486,9 @@ pretty_print_mc_vars(Varset, [Var| Tail], !IO) :-
 	io::di, io::uo) is det.
 
 pretty_print_mc_vars_tail(_Varset, [], !IO).
-pretty_print_mc_vars_tail(Varset, [Var| Vars], !IO) :-
+pretty_print_mc_vars_tail(Varset, [Var | Vars], !IO) :-
 	io.print(", ", !IO),
-	pretty_print_mc_vars(Varset, [Var| Vars], !IO).
+	pretty_print_mc_vars(Varset, [Var | Vars], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module abstract_mode_constraints.

@@ -11,7 +11,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 	% In the hlds, we initially record the clauses for a predicate
 	% in the clauses_info data structure which is part of the
@@ -58,7 +59,13 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 
-:- import_module assoc_list, bool, int, set, map, varset, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module varset.
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-

@@ -24,7 +24,9 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, set, list.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
 
 :- type maybe_changed	--->	changed ; unchanged.
 
@@ -90,7 +92,10 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module map, term, require, std_util.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module term.
 
 update_instmap(_Goal0 - GoalInfo0, !InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),

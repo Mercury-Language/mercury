@@ -165,11 +165,13 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
 	check_option_values(OptionTable0, OptionTable, Target, GC_Method,
 		TagsMethod, TermNorm, TraceLevel, TraceSuppress,
 		MaybeThreadSafe, [], CheckErrors),
-	( CheckErrors = [] ->
+	(
+		CheckErrors = [],
 		postprocess_options_2(OptionTable, Target, GC_Method,
 			TagsMethod, TermNorm, TraceLevel, TraceSuppress,
 			MaybeThreadSafe, [], Errors, !IO)
 	;
+		CheckErrors = [_ | _],
 		Errors = CheckErrors
 	).
 

@@ -20,109 +20,106 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module char, list, std_util, io.
+:- import_module char.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- type byte_tree	==	tree(list(byte_code)).
 
-:- type byte_code	--->	enter_pred(byte_pred_id, int,
-					byte_is_func, int)
-			;	endof_pred
-			;	enter_proc(byte_proc_id, determinism,
-					int, int, int, list(byte_var_info))
-			;	endof_proc
-			;	label(byte_label_id)
-			;	enter_disjunction(byte_label_id)
-			;	endof_disjunction
-			;	enter_disjunct(byte_label_id)
-			;	endof_disjunct(byte_label_id)
-			;	enter_switch(byte_var, byte_label_id)
-			;	endof_switch
-			;	enter_switch_arm(byte_cons_id, byte_label_id)
-			;	endof_switch_arm(byte_label_id)
-			;	enter_if(byte_label_id, byte_label_id,
-					byte_temp)
-			;	enter_then(byte_temp)
-			;	endof_then(byte_label_id)
-			;	enter_else(byte_temp)
-			;	endof_if
-			;	enter_negation(byte_temp, byte_label_id)
-			;	endof_negation_goal(byte_temp)
-			;	endof_negation
-			;	enter_commit(byte_temp)
-			;	endof_commit(byte_temp)
-			;	assign(byte_var, byte_var)
-			;	test(byte_var, byte_var, byte_test_id)
-			;	construct(byte_var, byte_cons_id,
-					list(byte_var))
-			;	deconstruct(byte_var, byte_cons_id,
-					list(byte_var))
-			;	complex_construct(byte_var, byte_cons_id,
-					list(pair(byte_var, byte_dir)))
-			;	complex_deconstruct(byte_var, byte_cons_id,
-					list(pair(byte_var, byte_dir)))
-			;	place_arg(byte_reg_type, int, byte_var)
-			;	pickup_arg(byte_reg_type, int, byte_var)
-			;	call(byte_module_id, byte_pred_id,
-					arity, byte_is_func, byte_proc_id)
-			;	higher_order_call(byte_var, arity, arity,
-					determinism)
-			;	builtin_binop(binary_op, byte_arg, byte_arg,
-					byte_var)
-			;	builtin_unop(unary_op, byte_arg, byte_var)
-			;	builtin_bintest(binary_op, byte_arg, byte_arg)
-			;	builtin_untest(unary_op, byte_arg)
-			;	semidet_succeed
-			;	semidet_success_check
-			;	fail
-			;	context(int)
-			;	not_supported
-			.
+:- type byte_code
+	--->	enter_pred(byte_pred_id, int, byte_is_func, int)
+	;	endof_pred
+	;	enter_proc(byte_proc_id, determinism, int, int, int,
+			list(byte_var_info))
+	;	endof_proc
+	;	label(byte_label_id)
+	;	enter_disjunction(byte_label_id)
+	;	endof_disjunction
+	;	enter_disjunct(byte_label_id)
+	;	endof_disjunct(byte_label_id)
+	;	enter_switch(byte_var, byte_label_id)
+	;	endof_switch
+	;	enter_switch_arm(byte_cons_id, byte_label_id)
+	;	endof_switch_arm(byte_label_id)
+	;	enter_if(byte_label_id, byte_label_id, byte_temp)
+	;	enter_then(byte_temp)
+	;	endof_then(byte_label_id)
+	;	enter_else(byte_temp)
+	;	endof_if
+	;	enter_negation(byte_temp, byte_label_id)
+	;	endof_negation_goal(byte_temp)
+	;	endof_negation
+	;	enter_commit(byte_temp)
+	;	endof_commit(byte_temp)
+	;	assign(byte_var, byte_var)
+	;	test(byte_var, byte_var, byte_test_id)
+	;	construct(byte_var, byte_cons_id, list(byte_var))
+	;	deconstruct(byte_var, byte_cons_id, list(byte_var))
+	;	complex_construct(byte_var, byte_cons_id,
+			list(pair(byte_var, byte_dir)))
+	;	complex_deconstruct(byte_var, byte_cons_id,
+			list(pair(byte_var, byte_dir)))
+	;	place_arg(byte_reg_type, int, byte_var)
+	;	pickup_arg(byte_reg_type, int, byte_var)
+	;	call(byte_module_id, byte_pred_id, arity, byte_is_func,
+			byte_proc_id)
+	;	higher_order_call(byte_var, arity, arity, determinism)
+	;	builtin_binop(binary_op, byte_arg, byte_arg, byte_var)
+	;	builtin_unop(unary_op, byte_arg, byte_var)
+	;	builtin_bintest(binary_op, byte_arg, byte_arg)
+	;	builtin_untest(unary_op, byte_arg)
+	;	semidet_succeed
+	;	semidet_success_check
+	;	fail
+	;	context(int)
+	;	not_supported.
 
 	% Currently we only support integer registers.
 	% This might one day be extended to support separate
 	% floating-point registers.
-:- type byte_reg_type	--->	r.	% general-purpose (integer) register.
+:- type byte_reg_type
+	--->	r.	% general-purpose (integer) register.
 
-:- type byte_cons_id	--->	cons(byte_module_id, string,
-					arity, byte_cons_tag)
-			;	int_const(int)
-			;	string_const(string)
-			;	float_const(float)
-			;	pred_const(byte_module_id, byte_pred_id,
-					arity, byte_is_func, byte_proc_id)
-			;	type_ctor_info_const(byte_module_id, string,
-					int)
-			;	base_typeclass_info_const(byte_module_id,
-					class_id, string)
-			;	type_info_cell_constructor
-			;	typeclass_info_cell_constructor
-			;	char_const(char)
-			.
+:- type byte_cons_id
+	--->	cons(byte_module_id, string, arity, byte_cons_tag)
+	;	int_const(int)
+	;	string_const(string)
+	;	float_const(float)
+	;	pred_const(byte_module_id, byte_pred_id, arity, byte_is_func,
+			byte_proc_id)
+	;	type_ctor_info_const(byte_module_id, string, int)
+	;	base_typeclass_info_const(byte_module_id, class_id, string)
+	;	type_info_cell_constructor
+	;	typeclass_info_cell_constructor
+	;	char_const(char).
 
-:- type byte_var_info	--->	var_info(string, type).
+:- type byte_var_info
+	--->	var_info(string, type).
 
-:- type byte_cons_tag	--->	no_tag
-			;	unshared_tag(tag_bits)
-			;	shared_remote_tag(tag_bits, int)
-			;	shared_local_tag(tag_bits, int)
-			;	enum_tag(int)
-			.
+:- type byte_cons_tag
+	--->	no_tag
+	;	unshared_tag(tag_bits)
+	;	shared_remote_tag(tag_bits, int)
+	;	shared_local_tag(tag_bits, int)
+	;	enum_tag(int).
 
-:- type byte_arg	--->	var(byte_var)
-			;	int_const(int)
-			;	float_const(float)
-			.
+:- type byte_arg
+	--->	var(byte_var)
+	;	int_const(int)
+	;	float_const(float).
 
-:- type byte_dir	--->	to_arg
-			;	to_var
-			;	to_none
-			.
+:- type byte_dir
+	--->	to_arg
+	;	to_var
+	;	to_none.
 
-:- type byte_test_id	--->	int_test
-			;	char_test
-			;	string_test
-			;	float_test
-			;	enum_test.
+:- type byte_test_id
+	--->	int_test
+	;	char_test
+	;	string_test
+	;	float_test
+	;	enum_test.
 
 :- type byte_module_id	==	module_name.
 :- type byte_pred_id	==	string.
@@ -147,7 +144,11 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_out.
 
-:- import_module library, assoc_list, int, string, require.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module library.
+:- import_module require.
+:- import_module string.
 
 :- pred bytecode__version(int::out) is det.
 
@@ -224,7 +225,8 @@ output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount)) -->
 	output_is_func(IsFunc),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars))
+		-->
 	output_proc_id(ProcId),
 	output_determinism(Detism),
 	output_length(LabelCount),
@@ -677,7 +679,6 @@ debug_test_id(char_test)	--> debug_string("char").
 debug_test_id(string_test)	--> debug_string("string").
 debug_test_id(float_test) 	--> debug_string("float").
 debug_test_id(enum_test) 	--> debug_string("enum").
-
 
 %---------------------------------------------------------------------------%
 

@@ -25,7 +25,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, assoc_list, std_util.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -105,7 +107,14 @@
 :- import_module libs__options.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, char, int, string, set, term, varset, require.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

@@ -22,7 +22,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__prim_data. % for module_name
 
-:- import_module bool, getopt_io, list, map, io, std_util.
+:- import_module bool.
+:- import_module getopt_io.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 :- type globals.
 
@@ -245,7 +250,10 @@
 
 :- implementation.
 
-:- import_module map, std_util, require, string.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 convert_target(String, Target) :-
 	convert_target_2(string__to_lower(String), Target).

@@ -135,32 +135,42 @@
 :- import_module aditi_backend__rl_out.
 :- import_module backend_libs.
 :- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module parse_tree__error_util.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
-:- import_module hlds__goal_util.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 :- import_module hlds__special_pred.
-:- import_module libs__tree.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module libs__tree.
 :- import_module mdbcomp__prim_data.
+:- import_module mdbcomp__prim_data.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__inlining.
-:- import_module backend_libs__name_mangle.
-:- import_module mdbcomp__prim_data.
 
-:- import_module assoc_list, bool, char, counter, int, map.
-:- import_module require, set, std_util, string, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module counter.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 	% A compare expression tests each attribute in a list of attributes
 	% in turn.
@@ -2708,33 +2718,26 @@ rl_exprn__resolve_addresses(ByteTree0, ByteTree) :-
 	rl_out__resolve_addresses(ResolveAddr, ByteTree1, ByteTree).
 
 :- pred rl_exprn__get_exprn_labels(int::in, int::out, map(label_id, int)::in,
-		map(label_id, int)::out, byte_tree::in, byte_tree::out) is det.
+	map(label_id, int)::out, byte_tree::in, byte_tree::out) is det.
 
-rl_exprn__get_exprn_labels(PC0, PC0, Labels, Labels, empty, empty).
-rl_exprn__get_exprn_labels(PC0, PC, Labels0, Labels,
-		tree(CodeA0, CodeB0), tree(CodeA, CodeB)) :-
-	rl_exprn__get_exprn_labels(PC0, PC1, Labels0, Labels1, CodeA0, CodeA),
-	rl_exprn__get_exprn_labels(PC1, PC, Labels1, Labels, CodeB0, CodeB).
-rl_exprn__get_exprn_labels(PC0, PC, Labels0, Labels,
-		node(Instrs0), node(Instrs)) :-
-	rl_exprn__get_exprn_labels_list(PC0, PC,
-		Labels0, Labels, Instrs0, Instrs).
+rl_exprn__get_exprn_labels(!PC, !Labels, !Code) :-
+	tree.map_foldl2(rl_exprn__get_exprn_labels_list, !Code, !PC, !Labels).
 
-:- pred rl_exprn__get_exprn_labels_list(int::in, int::out,
-		map(label_id, int)::in, map(label_id, int)::out,
-		list(bytecode)::in, list(bytecode)::out) is det.
+:- pred rl_exprn__get_exprn_labels_list(
+	list(bytecode)::in, list(bytecode)::out, int::in, int::out,
+	map(label_id, int)::in, map(label_id, int)::out) is det.
 
-rl_exprn__get_exprn_labels_list(PC, PC, Labels, Labels, [], []).
-rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
-		[Instr | Instrs0], Instrs) :-
+rl_exprn__get_exprn_labels_list([], [], PC, PC, Labels, Labels).
+rl_exprn__get_exprn_labels_list([Instr | Instrs0], Instrs,
+		PC0, PC, Labels0, Labels) :-
 	( Instr = rl_PROC_label(_) ->
 		PC1 = PC0
 	;
 		functor(Instr, _, Arity),
 		PC1 = PC0 + Arity + 1		% +1 for the opcode
 	),
-	rl_exprn__get_exprn_labels_list(PC1, PC, Labels0, Labels1,
-		Instrs0, Instrs1),
+	rl_exprn__get_exprn_labels_list(Instrs0, Instrs1,
+		PC1, PC, Labels0, Labels1),
 	( Instr = rl_PROC_label(Label) ->
 		% Register the label and remove the instruction.
 		map__det_insert(Labels1, Label, PC0, Labels),

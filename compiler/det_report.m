@@ -20,7 +20,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- type det_msg	--->
 			% warnings
@@ -152,8 +153,17 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, bool, int, map, set, std_util, require, string.
-:- import_module getopt_io, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

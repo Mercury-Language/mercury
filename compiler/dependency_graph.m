@@ -24,7 +24,9 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- import_module bool, list, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 	% Ensure that the module_info contains a version of the
 	% dependency_info which only contains arcs between procedures
@@ -111,10 +113,20 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
 
-:- import_module term, varset.
-:- import_module int, bool, term, require, string.
-:- import_module map, multi_map, set, std_util.
-:- import_module varset, relation, eqvclass.
+:- import_module bool.
+:- import_module eqvclass.
+:- import_module int.
+:- import_module map.
+:- import_module multi_map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term.
+:- import_module varset.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

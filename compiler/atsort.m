@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 2004 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,9 @@
 :- module libs__atsort.
 
 :- interface.
-:- import_module map, list.
+
+:- import_module list.
+:- import_module map.
 
 :- type relmap(T) == map(T, list(T)).
 
@@ -42,6 +44,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module require.
 
 % :- pred main1(list(list(int))).
@@ -82,16 +85,15 @@ atsort(Succmap, Predmap, MustSuccmap, MustPredmap, PrefOrder, Sortlist) :-
 :- pred atsort__main(list(T)::in, relmap(T)::in, relmap(T)::in,
 	relmap(T)::in, relmap(T)::in, list(T)::in, list(list(T))::out) is det.
 
-atsort__main(Nodes0, Succmap0, Predmap0, MustSuccmap, MustPredmap, PrefOrder,
+atsort__main(Nodes0, !.Succmap, !.Predmap, MustSuccmap, MustPredmap, PrefOrder,
 		Sorted) :-
-	atsort__repeat_source_sink(Nodes0,
-		Succmap0, Succmap1, Predmap0, Predmap1,
+	atsort__repeat_source_sink(Nodes0, !Succmap, !Predmap,
 		[], Source1, Mid1, [], Sink1),
 	( Mid1 = [] ->
 		list__reverse(Source1, Source1rev),
 		list__append(Source1rev, Sink1, Sorted)
 	;
-		atsort__choose(Mid1, Succmap1, Succmap2, Predmap1, Predmap2,
+		atsort__choose(Mid1, !Succmap, !Predmap,
 			MustSuccmap, MustPredmap, PrefOrder, Chosen, Mid2),
 		% write('Chosen: '),
 		% write(Chosen),
@@ -99,8 +101,8 @@ atsort__main(Nodes0, Succmap0, Predmap0, MustSuccmap, MustPredmap, PrefOrder,
 		% write('Not chosen: '),
 		% write(Mid2),
 		% nl,
-		atsort__main(Mid2, Succmap2, Predmap2, MustSuccmap, MustPredmap,
-			PrefOrder, MidSorted),
+		atsort__main(Mid2, !.Succmap, !.Predmap,
+			MustSuccmap, MustPredmap, PrefOrder, MidSorted),
 		list__reverse(Source1, Source1rev),
 		list__condense([Source1rev, [[Chosen]], MidSorted, Sink1],
 			Sorted)
@@ -113,17 +115,17 @@ atsort__main(Nodes0, Succmap0, Predmap0, MustSuccmap, MustPredmap, PrefOrder,
 	relmap(T)::in, relmap(T)::in, list(T)::in, T::out, list(T)::out)
 	is det.
 
-atsort__choose(Nodes, Succmap0, Succmap, Predmap0, Predmap,
-		_MustSuccmap, MustPredmap, PrefOrder, Chosen, NotChosen) :-
+atsort__choose(Nodes, !Succmap, !Predmap, _MustSuccmap, MustPredmap, PrefOrder,
+		Chosen, NotChosen) :-
 	atsort__can_choose(Nodes, Nodes, MustPredmap, [], CanChoose),
 	atsort__choose_pref(PrefOrder, CanChoose, Chosen),
 	list__delete_all(Nodes, Chosen, NotChosen),
-	atsort__map_delete_all_source_links([Chosen],
-		Succmap0, Predmap0, Predmap1),
-	atsort__map_delete_all_sink_links([Chosen],
-		Predmap0, Succmap0, Succmap1),
-	atsort__map_delete_all_nodes([Chosen], Succmap1, Succmap),
-	atsort__map_delete_all_nodes([Chosen], Predmap1, Predmap).
+	Succmap0 = !.Succmap,
+	Predmap0 = !.Predmap,
+	atsort__map_delete_all_source_links([Chosen], Succmap0, !Predmap),
+	atsort__map_delete_all_sink_links([Chosen], Predmap0, !Succmap),
+	atsort__map_delete_all_nodes([Chosen], !Succmap),
+	atsort__map_delete_all_nodes([Chosen], !Predmap).
 
 	% See whether this node can be chosen ahead of the given list of nodes.
 	% Do not give preference to nodes that occur in MustPredmap.
@@ -131,18 +133,18 @@ atsort__choose(Nodes, Succmap0, Succmap, Predmap0, Predmap,
 :- pred atsort__can_choose(list(T)::in, list(T)::in, relmap(T)::in,
 	list(T)::in, list(T)::out) is det.
 
-atsort__can_choose([], _All, _MustPredmap, CanChoose, CanChoose).
-atsort__can_choose([Node | Nodes], All, MustPredmap, CanChoose0, CanChoose) :-
+atsort__can_choose([], _All, _MustPredmap, !CanChoose).
+atsort__can_choose([Node | Nodes], All, MustPredmap, !CanChoose) :-
 	( map__search(MustPredmap, Node, MustPrednodes) ->
 		( atsort__must_avoid(All, MustPrednodes) ->
-			CanChoose1 = [Node | CanChoose0]
+			!:CanChoose = [Node | !.CanChoose]
 		;
-			CanChoose1 = CanChoose0
+			true
 		)
 	;
-		CanChoose1 = [Node | CanChoose0]
+		!:CanChoose = [Node | !.CanChoose]
 	),
-	atsort__can_choose(Nodes, All, MustPredmap, CanChoose1, CanChoose).
+	atsort__can_choose(Nodes, All, MustPredmap, !CanChoose).
 
 	% None of the members of the first list occur in the second.
 
@@ -171,39 +173,42 @@ atsort__choose_pref([Pref | Prefs], CanChoose, Chosen) :-
 	list(list(T))::in, list(list(T))::out, list(T)::out,
 	list(list(T))::in, list(list(T))::out) is det.
 
-atsort__repeat_source_sink(Nodes0, Succmap0, Succmap, Predmap0, Predmap,
-		Source0, Source, Mid, Sink0, Sink) :-
-	atsort__source_sink(Nodes0, Succmap0, Predmap0,
+atsort__repeat_source_sink(Nodes0, !Succmap, !Predmap, Source0, Source, Mid,
+		Sink0, Sink) :-
+	atsort__source_sink(Nodes0, !.Succmap, !.Predmap,
 		[], Source1, [], Mid1, [], Sink1),
 	( Source1 = [], Sink1 = [] ->
-		Succmap = Succmap0,
-		Predmap = Predmap0,
 		Source = Source0,
 		Sink = Sink0,
 		Mid = Mid1
 	;
 		list__delete_elems(Nodes0, Source1, Nodes1),
 		list__delete_elems(Nodes1, Sink1, Nodes2),
+		Succmap0 = !.Succmap,
+		Predmap0 = !.Predmap,
 		atsort__map_delete_all_source_links(Source1,
-			Succmap0, Predmap0, Predmap1),
+			Succmap0, !Predmap),
 		atsort__map_delete_all_sink_links(Sink1,
-			Predmap0, Succmap0, Succmap1),
-		atsort__map_delete_all_nodes(Source1, Succmap1, Succmap1_5),
-		atsort__map_delete_all_nodes(Source1, Predmap1, Predmap1_5),
-		atsort__map_delete_all_nodes(Sink1, Succmap1_5, Succmap2),
-		atsort__map_delete_all_nodes(Sink1, Predmap1_5, Predmap2),
-		( Source1 = [] ->
+			Predmap0, !Succmap),
+		atsort__map_delete_all_nodes(Source1, !Succmap),
+		atsort__map_delete_all_nodes(Source1, !Predmap),
+		atsort__map_delete_all_nodes(Sink1, !Succmap),
+		atsort__map_delete_all_nodes(Sink1, !Predmap),
+		(
+			Source1 = [],
 			Source2 = Source0
 		;
+			Source1 = [_ | _],
 			Source2 = [Source1 | Source0]
 		),
-		( Sink1 = [] ->
+		(
+			Sink1 = [],
 			Sink2 = Sink0
 		;
+			Sink1 = [_ | _],
 			Sink2 = [Sink1 | Sink0]
 		),
-		atsort__repeat_source_sink(Nodes2,
-			Succmap2, Succmap, Predmap2, Predmap,
+		atsort__repeat_source_sink(Nodes2, !Succmap, !Predmap,
 			Source2, Source, Mid, Sink2, Sink)
 	).
 

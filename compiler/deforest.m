@@ -76,8 +76,18 @@
 :- import_module transform_hlds__pd_term.
 :- import_module transform_hlds__pd_util.
 
-:- import_module assoc_list, bool, getopt_io, int, list, map, require.
-:- import_module set, std_util, string, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 deforestation(!ModuleInfo, !IO) :-
 	proc_arg_info_init(ProcArgInfo0),

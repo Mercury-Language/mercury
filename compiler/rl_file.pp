@@ -21,12 +21,14 @@
 	% Given a predicate to write a byte, write an RL file
 	% to the current binary output stream, returning the number
 	% of bytes written.
-:- pred rl_file__write_binary(byte_writer::byte_writer, rl_file::in, 
-		int::out, io__state::di, io__state::uo) is det. 
+:- pred rl_file__write_binary(byte_writer::byte_writer, rl_file::in,
+	int::out, io__state::di, io__state::uo) is det.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- import_module aditi_backend__rl_code.
-:- import_module assoc_list, list.
+
+:- import_module assoc_list.
+:- import_module list.
 
 	% Write a text representation of an RL file to the current
 	% text stream output.
@@ -96,7 +98,7 @@
 				% in a tuple)
 		int,		% stack size
 		int,		% number of parameters
-		exprn_mode,	
+		exprn_mode,
 		int,		% code length
 		list(bytecode)	% codes
 	).
@@ -118,23 +120,27 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module char, int, require, string, std_util.
+:- import_module char.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 :- type rl_state == pair(int, io__state).
 
 :- type writer == (pred(int, rl_state, rl_state)).
 :- mode writer == (pred(in, di, uo) is det).
 
-	% 
+	%
 	% Write the binary representation of the file to <module>.rlo.
 	%
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
 	Writer = (pred(Byte::in, Pair0::di, Pair::uo) is det :-
 		Pair0 = Len0 - IOState0,
-		Len = Len0 + 1,			
+		Len = Len0 + 1,
 		call(ByteWriter, Byte, IOState0, IOState),
-	    	Pair = unsafe_promise_unique(Len) - IOState
+		Pair = unsafe_promise_unique(Len) - IOState
 	),
 	State0 = 0 - IO0,
 	rl_file__write_binary_2(Writer, RLFile, State0, State),
@@ -150,11 +156,11 @@ rl_file__write_binary(_ByteWriter, _RLFile, Length, IO0, IO) :-
 #endif
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
-:- pred rl_file__write_binary_2(writer::writer, rl_file::in, 
-		rl_state::di, rl_state::uo) is det. 
+:- pred rl_file__write_binary_2(writer::writer, rl_file::in,
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__write_binary_2(Writer, RLFile) -->
-       { RLFile = rl_file(
+	{ RLFile = rl_file(
 		MinorVersion,
 		MajorVersion,
 		ConstTableSize,
@@ -192,7 +198,7 @@ rl_file__write_binary_2(Writer, RLFile) -->
 	% Write out the variable schema information.
 	{ int16_to_bytecode(NumVars, NumVarsCode) },
 	list__foldl(Writer, NumVarsCode),
-	list__foldl(rl_file__write_variable(Writer), RelVars),	
+	list__foldl(rl_file__write_variable(Writer), RelVars),
 
 	% Write out the procedure.
 	{ int16_to_bytecode(NumProcs, NumProcsCode) },
@@ -215,7 +221,7 @@ rl_file__write_binary_2(Writer, RLFile) -->
 	list__foldl(Writer, IntCode).
 
 :- pred rl_file__write_char(writer::writer, char::in,
-		rl_state::di, rl_state::uo) is det.
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__write_char(Writer, Char) -->
 	% XXX what about Unicode characters?
@@ -226,18 +232,18 @@ rl_file__write_char(Writer, Char) -->
 %-----------------------------------------------------------------------------%
 
 :- pred rl_file__write_relation(writer::writer, relation::in,
-		rl_state::di, rl_state::uo) is det.
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__write_relation(Writer, relation(User, Module, Predicate, Schema)) -->
 	{ list__map(int16_to_bytecode, [User, Module, Predicate, Schema],
-		Codes) },	
+		Codes) },
 	{ list__condense(Codes, CodeList) },
 	list__foldl(Writer, CodeList).
 
 %-----------------------------------------------------------------------------%
 
 :- pred rl_file__write_variable(writer::writer, variable::in,
-		rl_state::di, rl_state::uo) is det.
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__write_variable(Writer, variable(Name, Schema)) -->
 	{ int16_to_bytecode(Name, NameCode) },
@@ -246,10 +252,10 @@ rl_file__write_variable(Writer, variable(Name, Schema)) -->
 	list__foldl(Writer, SchemaCode).
 
 :- pred rl_file__generate_const_table_entry(writer::writer,
-		pair(int, rl_const)::in, rl_state::di, rl_state::uo) is det.
+	pair(int, rl_const)::in, rl_state::di, rl_state::uo) is det.
 
 rl_file__generate_const_table_entry(Writer, _Addr - Const) -->
-	( 
+	(
 		{ Const = int(Int) },
 		rl_file__write_char(Writer, 'I'),
 		{ aInt_to_bytecode(Int, Int64) },
@@ -269,12 +275,12 @@ rl_file__generate_const_table_entry(Writer, _Addr - Const) -->
 %-----------------------------------------------------------------------------%
 
 :- pred rl_file__write_proc_bytecode(writer::writer, procedure::in,
-		rl_state::di, rl_state::uo) is det.
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__write_proc_bytecode(Writer, Proc) -->
-	{ Proc = procedure(User, Module, Name, Schema, NArgs, 
-			Args, NExprns, Exprns, CodeLength, Code) },
-		
+	{ Proc = procedure(User, Module, Name, Schema, NArgs,
+		Args, NExprns, Exprns, CodeLength, Code) },
+
 	{ int16_to_bytecode(User, UserCode) },
 	{ int16_to_bytecode(Module, ModuleCode) },
 	{ int16_to_bytecode(Name, NameCode) },
@@ -303,12 +309,12 @@ rl_file__write_proc_bytecode(Writer, Proc) -->
 	{ int16_to_bytecode(0, LineNumCode) },
 	list__foldl(Writer, LineNumCode).
 
-:- pred rl_file__write_exprn_bytecode(writer::writer, expression::in, 
+:- pred rl_file__write_exprn_bytecode(writer::writer, expression::in,
 		rl_state::di, rl_state::uo) is det.
 
 rl_file__write_exprn_bytecode(Writer, Exprn) -->
 	{ Exprn = expression(OutputSchema, OutputSchema2, VarSchema,
-			Stack, NumParams, ExprnMode, CodeLength, Code) },
+		Stack, NumParams, ExprnMode, CodeLength, Code) },
 	{ int16_to_bytecode(OutputSchema, OutputSchemaCode) },
 	{ int16_to_bytecode(OutputSchema2, OutputSchema2Code) },
 	{ int16_to_bytecode(VarSchema, VarSchemaCode) },
@@ -351,8 +357,8 @@ rl_file__exprn_mode_to_int(ExprnMode, Mode) :-
 		Mode = 4
 	).
 
-:- pred rl_file__output_bytecodes(writer::writer, list(bytecode)::in, 
-		rl_state::di, rl_state::uo) is det.
+:- pred rl_file__output_bytecodes(writer::writer, list(bytecode)::in,
+	rl_state::di, rl_state::uo) is det.
 
 rl_file__output_bytecodes(Writer, Code) -->
 	{ OutputByteCode = (pred(Instr::in, IO0::di, IO::uo) is det :-
@@ -365,7 +371,7 @@ rl_file__output_bytecodes(Writer, Code) -->
 %-----------------------------------------------------------------------------%
 
 rl_file__write_text(RLFile) -->
-       { RLFile = rl_file(
+	{ RLFile = rl_file(
 		MinorVersion,
 		MajorVersion,
 		ConstTableSize,
@@ -381,41 +387,41 @@ rl_file__write_text(RLFile) -->
 		SourceIndex,
 		IntIndex
 	) },
-	
+
 	%
 	% Write a text representation of the file to <module>.rla.
 	% This should be readably formatted, but still parsable by io__read.
 	%
 
 	io__write_string("rl_file(\n"),
-	io__write_int(MinorVersion),	
+	io__write_int(MinorVersion),
 	io__write_string(",\t% minor version\n"),
-	io__write_int(MajorVersion),	
+	io__write_int(MajorVersion),
 	io__write_string(",\t% major version\n"),
 
 	io__write_string("%==============const table====================================================%\n"),
-	io__write_int(ConstTableSize),	
+	io__write_int(ConstTableSize),
 	io__write_string(",\t% const table size\n"),
 	io__write_string("\t[\n\t"),
 	io__write_list(ConstsLA, ",\n\t", io__write),
 	io__write_string("\n\t],\n"),
 
 	io__write_string("%==============permanent relations============================================%\n"),
-	io__write_int(NumPermRels),	
+	io__write_int(NumPermRels),
 	io__write_string(",\t% number of permanent relations\n"),
 	io__write_string("\t[\n\t"),
 	io__write_list(PermRels, ",\n\t", io__write),
 	io__write_string("\n\t],\n"),
-	
+
 	io__write_string("%==============var table======================================================%\n"),
-	io__write_int(NumVars),	
+	io__write_int(NumVars),
 	io__write_string(",\t% number of variables\n"),
 	io__write_string("\t[\n\t"),
 	io__write_list(RelVars, ",\n\t", io__write),
 	io__write_string("\n\t],\n"),
 
 	io__write_string("%==============proc table=====================================================%\n"),
-	io__write_int(NumProcs),	
+	io__write_int(NumProcs),
 	io__write_string(",\t% number of procedures\n"),
 	io__write_string("\t[\n\t"),
 	io__write_list(RLProcs, ",\n\t", rl_file__write_proc(ConstsLA)),
@@ -430,15 +436,15 @@ rl_file__write_text(RLFile) -->
 	io__write_string(", "),
 	io__write_int(IntIndex),
 	io__write_string(").\n").
-	
+
 %-----------------------------------------------------------------------------%
 
-:- pred rl_file__write_proc(constant_pool::in, procedure::in, 
-		io__state::di, io__state::uo) is det.
+:- pred rl_file__write_proc(constant_pool::in, procedure::in,
+	io::di, io::uo) is det.
 
 rl_file__write_proc(Consts, Proc) -->
-	{ Proc = procedure(User, Module, Name, Schema, NArgs, 
-			Args, NExprns, Exprns, CodeLength, Code) },
+	{ Proc = procedure(User, Module, Name, Schema, NArgs,
+		Args, NExprns, Exprns, CodeLength, Code) },
 	{ list__index1_det(Consts, Name, _ - NameConst) },
 	{ NameConst = string(ProcName0) ->
 		ProcName = ProcName0
@@ -475,7 +481,7 @@ rl_file__write_proc(Consts, Proc) -->
 	io__write_string("\n\t]\n)").
 
 :- pred rl_file__write_instruction(bytecode::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 rl_file__write_instruction(Bytecode) -->
 	(
@@ -509,7 +515,7 @@ rl_file__write_instruction(Bytecode) -->
 %-----------------------------------------------------------------------------%
 
 :- pred rl_file__write_exprn(expression::in, int::in, int::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 rl_file__write_exprn(Exprn, ExprnNum0, ExprnNum) -->
 	{ ExprnNum = ExprnNum0 + 1 },
@@ -517,11 +523,11 @@ rl_file__write_exprn(Exprn, ExprnNum0, ExprnNum) -->
 	rl_file__write_exprn_2(Exprn, ExprnNum0).
 
 :- pred rl_file__write_exprn_2(expression::in, int::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 rl_file__write_exprn_2(Exprn, ExprnNum) -->
 	{ Exprn = expression(OutputSchema, OutputSchema2, VarSchema,
-			Stack, NumParams, Mode, CodeLength, Code) },
+		Stack, NumParams, Mode, CodeLength, Code) },
 
 	io__write_string("% expression "),
 	io__write_int(ExprnNum),

@@ -53,7 +53,8 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 	% compile the fact table into a separate .c file.
 	% fact_table_compile_facts(PredName, Arity, FileName, PredInfo0,
@@ -112,12 +113,25 @@
 :- import_module libs__options.
 
 % Standard library modules
-:- import_module int, map, std_util, assoc_list, char, require, library, bool.
-:- import_module float, math, getopt_io, string.
-:- import_module parser, term, term_io.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module library.
+:- import_module map.
+:- import_module math.
+:- import_module parser.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
 
 :- type fact_result
-	--->	ok ; error.
+	--->	ok
+	;	error.
 
 	% proc_stream contains information about an open sort file for
 	% a particular procedure.

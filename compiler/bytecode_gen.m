@@ -18,7 +18,8 @@
 :- import_module bytecode_backend__bytecode.
 :- import_module hlds__hlds_module.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- pred bytecode_gen__module(module_info::in, list(byte_code)::out,
 	io::di, io::uo) is det.
@@ -57,8 +58,19 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
-:- import_module bool, int, string, list, assoc_list, set, map, varset.
-:- import_module std_util, require, term, counter.
+
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -76,9 +88,11 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	ProcIds = pred_info_non_imported_procids(PredInfo),
-	( ProcIds = [] ->
+	(
+		ProcIds = [],
 		PredCode = empty
 	;
+		ProcIds = [_ | _],
 		bytecode_gen__pred(PredId, ProcIds, PredInfo, ModuleInfo,
 			ProcsCode, !IO),
 		predicate_name(ModuleInfo, PredId, PredName),
