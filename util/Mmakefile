@@ -24,8 +24,6 @@ PROGS=mkinit mdemangle info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
-# GETOPT_FLAGS suppresses warnings about the prototype of getopt
-GETOPT_FLAGS=-D__GNU_LIBRARY__ 
 GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
 
 # mkinit.c needs `struct stat'
@@ -36,7 +34,7 @@ MGNUCFLAGS-mkinit = --no-ansi
 all:	$(PROGS)
 
 .c:
-	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(GETOPT_FLAGS) -o $@ $< $(GETOPT_SRC)
+	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
 
 tags:
 	ctags $(SRC)
