@@ -67,13 +67,14 @@ int main(int argc, char **argv)
 ** human-readable form and then print it to stdout
 **
 ** Sorry, the following code is awful.
-** It ought to be rewritten (preferably in a language
-** with better string-handling facilities than C!)
+** It ought to be rewritten in a language with
+** better string-handling facilities than C!
 */
 
 static void demangle(char *name) {
 	static const char entry[]   = "entry_";
 	static const char mercury[] = "mercury__";
+	static const char func_prefix[] = "fn__"; /* added for functions */
 	static const char unify[]   = "__Unify___";
 	static const char compare[] = "__Compare___";
 	static const char mindex[]  = "__Index___";
@@ -90,8 +91,9 @@ static void demangle(char *name) {
 	int mode_num;
 	int mode_num2;
 	int arity;
-	bool unused_args = FALSE; /* does this pred have any unused arguments */
-	bool higher_order = FALSE; /* has this pred been specialized */
+	char *pred_or_func;	/* either "predicate" or "function" */
+	bool unused_args = FALSE; /* does this proc have any unused arguments */
+	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
 
@@ -114,6 +116,16 @@ static void demangle(char *name) {
 		start += sizeof(mercury) - 1;
 	} else {
 		goto wrong_format;
+	}
+
+	/*
+	** strip off the `fn__' prefix, if any
+	*/
+	if (strncmp(start, func_prefix, sizeof(func_prefix) - 1) == 0) {
+		start += sizeof(func_prefix) - 1;
+		pred_or_func = "function";
+	} else {
+		pred_or_func = "predicate";
 	}
 
 	/*
@@ -158,7 +170,7 @@ static void demangle(char *name) {
 	/*
 	** Process the mangling introduced by unused_args.m.
 	** This involves stripping off the `__ua<m>' added to the
-	** end of the predicate name, where m is the mode number.
+	** end of the predicate/function name, where m is the mode number.
 	*/ 
 
 	position = end;	/* save end of name */		
@@ -310,7 +322,8 @@ static void demangle(char *name) {
 			start, arity);
 		break;
 	default:
-		printf("predicate '%s'/%d mode %d", start, arity, mode_num);
+		printf("%s '%s'/%d mode %d",
+			pred_or_func, start, arity, mode_num);
 	}
 	if (higher_order) {
 		printf(" (specialized)");
