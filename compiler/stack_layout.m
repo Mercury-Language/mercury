@@ -341,11 +341,11 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	% Add the given label layout to the module-wide label tables.
 
 :- pred stack_layout__update_label_table(
-	pair(pair(label, label_vars), internal_layout_info)::in,
+	{label, label_vars, internal_layout_info}::in,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
-stack_layout__update_label_table((Label - LabelVars) - InternalInfo,
-		LabelTables0, LabelTables) :-
+stack_layout__update_label_table({Label, LabelVars, InternalInfo},
+		!LabelTables) :-
 	InternalInfo = internal_layout_info(Port, _, Return),
 	(
 		Return = yes(return_layout_info(TargetsContexts, _)),
@@ -358,15 +358,15 @@ stack_layout__update_label_table((Label - LabelVars) - InternalInfo,
 			IsReturn = unknown_callee
 		),
 		stack_layout__update_label_table_2(Label, LabelVars,
-			Context, IsReturn, LabelTables0, LabelTables)
+			Context, IsReturn, !LabelTables)
 	;
 		Port = yes(trace_port_layout_info(Context, _, _, _, _)),
 		stack_layout__context_is_valid(Context)
 	->
 		stack_layout__update_label_table_2(Label, LabelVars,
-			Context, not_a_return, LabelTables0, LabelTables)
+			Context, not_a_return, !LabelTables)
 	;
-		LabelTables = LabelTables0
+		true
 	).
 
 :- pred stack_layout__update_label_table_2(label::in, label_vars::in,
@@ -374,42 +374,43 @@ stack_layout__update_label_table((Label - LabelVars) - InternalInfo,
 	map(string, label_table)::in, map(string, label_table)::out) is det.
 
 stack_layout__update_label_table_2(Label, LabelVars, Context, IsReturn,
-		LabelTables0, LabelTables) :-
+		!LabelTables) :-
 	term__context_file(Context, File),
 	term__context_line(Context, Line),
-	( map__search(LabelTables0, File, LabelTable0) ->
+	( map__search(!.LabelTables, File, LabelTable0) ->
 		LabelLayout = label_layout(Label, LabelVars),
 		( map__search(LabelTable0, Line, LineInfo0) ->
 			LineInfo = [LabelLayout - IsReturn | LineInfo0],
 			map__det_update(LabelTable0, Line, LineInfo,
 				LabelTable),
-			map__det_update(LabelTables0, File, LabelTable,
-				LabelTables)
+			map__det_update(!.LabelTables, File, LabelTable,
+				!:LabelTables)
 		;
 			LineInfo = [LabelLayout - IsReturn],
 			map__det_insert(LabelTable0, Line, LineInfo,
 				LabelTable),
-			map__det_update(LabelTables0, File, LabelTable,
-				LabelTables)
+			map__det_update(!.LabelTables, File, LabelTable,
+				!:LabelTables)
 		)
 	; stack_layout__context_is_valid(Context) ->
 		map__init(LabelTable0),
 		LabelLayout = label_layout(Label, LabelVars),
 		LineInfo = [LabelLayout - IsReturn],
 		map__det_insert(LabelTable0, Line, LineInfo, LabelTable),
-		map__det_insert(LabelTables0, File, LabelTable, LabelTables)
+		map__det_insert(!.LabelTables, File, LabelTable, !:LabelTables)
 	;
 			% We don't have a valid context for this label,
 			% so we don't enter it into any tables.
-		LabelTables = LabelTables0
+		true
 	).
 
 :- pred stack_layout__find_valid_return_context(
 	assoc_list(code_addr, pair(prog_context, goal_path))::in,
 	code_addr::out, prog_context::out, goal_path::out) is semidet.
 
-stack_layout__find_valid_return_context([Target - (Context - GoalPath)
-		| TargetContexts], ValidTarget, ValidContext, ValidGoalPath) :-
+stack_layout__find_valid_return_context([TargetContext | TargetContexts],
+		ValidTarget, ValidContext, ValidGoalPath) :-
+	TargetContext = Target - (Context - GoalPath),
 	( stack_layout__context_is_valid(Context) ->
 		ValidTarget = Target,
 		ValidContext = Context,
@@ -558,11 +559,11 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		CallLabel = CallLabelPrime
 	;
 		MaybeCallLabel = no,
-		error("stack_layout__construct_trace_layout: call label not present")
+		error("stack_layout__construct_trace_layout: " ++
+			"call label not present")
 	),
-	TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
-		MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
-		MaybeCallTableSlot),
+	TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
+		MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot),
 		% The label associated with an event must have variable info.
 	CallLabelLayout = label_layout(CallLabel, label_has_var_info),
 	(
@@ -589,42 +590,41 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, NeedsAllNames,
-		Count, Offsets) -->
+		Count, Offsets, !Info) :-
 	(
-		{ NeedsAllNames = yes },
-		{ varset__var_name_list(VarSet, VarNameList) },
-		{ list__map(stack_layout__convert_var_name_to_int,
-			VarNameList, VarNames) }
+		NeedsAllNames = yes,
+		varset__var_name_list(VarSet, VarNameList),
+		list__map(stack_layout__convert_var_name_to_int,
+			VarNameList, VarNames)
 	;
-		{ NeedsAllNames = no },
-		{ map__to_assoc_list(UsedVarNameMap, VarNames) }
+		NeedsAllNames = no,
+		map__to_assoc_list(UsedVarNameMap, VarNames)
 	),
-	( { VarNames = [FirstVar - _ | _] } ->
+	( VarNames = [FirstVar - _ | _] ->
 		stack_layout__construct_var_name_rvals(VarNames, 1,
-			FirstVar, Count, Offsets)
+			FirstVar, Count, Offsets, !Info)
 	;
-		{ Count = 0 },
-		{ Offsets = [] }
+		Count = 0,
+		Offsets = []
 	).
 
 :- pred stack_layout__construct_var_name_rvals(assoc_list(int, string)::in,
 	int::in, int::in, int::out, list(int)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_var_name_rvals([], _CurNum, MaxNum, MaxNum, []) --> [].
-stack_layout__construct_var_name_rvals([Var - Name | VarNames1], CurNum,
-		MaxNum0, MaxNum, [Offset | Offsets1]) -->
-	( { Var = CurNum } ->
-		stack_layout__lookup_string_in_table(Name, Offset),
-		{ MaxNum1 = Var },
-		{ VarNames = VarNames1 }
+stack_layout__construct_var_name_rvals([], _CurNum, MaxNum, MaxNum, [], !Info).
+stack_layout__construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
+		!MaxNum, [Offset | OffsetsTail], !Info) :-
+	( Var = CurNum ->
+		stack_layout__lookup_string_in_table(Name, Offset, !Info),
+		!:MaxNum = Var,
+		VarNames = VarNamesTail
 	;
-		{ Offset = 0 },
-		{ MaxNum1 = MaxNum0 },
-		{ VarNames = [Var - Name | VarNames1] }
+		Offset = 0,
+		VarNames = [Var - Name | VarNamesTail]
 	),
 	stack_layout__construct_var_name_rvals(VarNames, CurNum + 1,
-		MaxNum1, MaxNum, Offsets1).
+		!MaxNum, OffsetsTail, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -633,24 +633,23 @@ stack_layout__construct_var_name_rvals([Var - Name | VarNames1], CurNum,
 
 :- pred stack_layout__construct_internal_layout(layout_name::in,
 	pair(label, internal_layout_info)::in,
-	assoc_list(pair(label, label_vars), internal_layout_info)::in,
-	assoc_list(pair(label, label_vars), internal_layout_info)::out,
+	list({label, label_vars, internal_layout_info})::in,
+	list({label, label_vars, internal_layout_info})::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
-		LabelLayouts, [(Label - LabelVars) - Internal | LabelLayouts])
-		-->
-	{ Internal = internal_layout_info(Trace, Resume, Return) },
+		!LabelLayouts, !Info) :-
+	Internal = internal_layout_info(Trace, Resume, Return),
 	(
-		{ Trace = no },
-		{ set__init(TraceLiveVarSet) },
-		{ map__init(TraceTypeVarMap) }
+		Trace = no,
+		set__init(TraceLiveVarSet),
+		map__init(TraceTypeVarMap)
 	;
-		{ Trace = yes(trace_port_layout_info(_,_,_,_, TraceLayout)) },
-		{ TraceLayout = layout_label_info(TraceLiveVarSet,
-			TraceTypeVarMap) }
+		Trace = yes(trace_port_layout_info(_,_,_,_, TraceLayout)),
+		TraceLayout = layout_label_info(TraceLiveVarSet,
+			TraceTypeVarMap)
 	),
-	{
+	(
 		Resume = no,
 		set__init(ResumeLiveVarSet),
 		map__init(ResumeTypeVarMap)
@@ -658,37 +657,38 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 		Resume = yes(ResumeLayout),
 		ResumeLayout = layout_label_info(ResumeLiveVarSet,
 			ResumeTypeVarMap)
-	},
+	),
 	(
-		{ Trace = yes(trace_port_layout_info(_, Port, IsHidden,
-			GoalPath, _)) },
-		{ Return = no },
-		{ MaybePort = yes(Port) },
-		{ MaybeIsHidden = yes(IsHidden) },
-		{ goal_path_to_string(GoalPath, GoalPathStr) },
-		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum),
-		{ MaybeGoalPath = yes(GoalPathNum) }
+		Trace = yes(trace_port_layout_info(_, Port, IsHidden,
+			GoalPath, _)),
+		Return = no,
+		MaybePort = yes(Port),
+		MaybeIsHidden = yes(IsHidden),
+		goal_path_to_string(GoalPath, GoalPathStr),
+		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum,
+			!Info),
+		MaybeGoalPath = yes(GoalPathNum)
 	;
-		{ Trace = no },
-		{ Return = yes(ReturnInfo) },
+		Trace = no,
+		Return = yes(ReturnInfo),
 			% We only ever use the port fields of these layout
 			% structures when we process exception events.
 			% (Since exception events are interface events,
 			% the goal path field is not meaningful then.)
-		{ MaybePort = yes(exception) },
-		{ MaybeIsHidden = yes(no) },
+		MaybePort = yes(exception),
+		MaybeIsHidden = yes(no),
 			% We only ever use the goal path fields of these
 			% layout structures when we process "fail" commands
 			% in the debugger.
-		{ ReturnInfo = return_layout_info(TargetsContexts, _) },
+		ReturnInfo = return_layout_info(TargetsContexts, _),
 		(
-			{ stack_layout__find_valid_return_context(
-				TargetsContexts, _, _, GoalPath) }
+			stack_layout__find_valid_return_context(
+				TargetsContexts, _, _, GoalPath)
 		->
-			{ goal_path_to_string(GoalPath, GoalPathStr) },
+			goal_path_to_string(GoalPath, GoalPathStr),
 			stack_layout__lookup_string_in_table(GoalPathStr,
-				GoalPathNum),
-			{ MaybeGoalPath = yes(GoalPathNum) }
+				GoalPathNum, !Info),
+			MaybeGoalPath = yes(GoalPathNum)
 		;
 				% If tracing is enabled, then exactly one of
 				% the calls for which this label is a return
@@ -696,21 +696,21 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 				% do, then tracing is not enabled, and
 				% therefore the goal path of this label will
 				% not be accessed.
-			{ MaybeGoalPath = no }
+			MaybeGoalPath = no
 		)
 	;
-		{ Trace = no },
-		{ Return = no },
-		{ MaybePort = no },
-		{ MaybeIsHidden = no },
-		{ MaybeGoalPath = no }
+		Trace = no,
+		Return = no,
+		MaybePort = no,
+		MaybeIsHidden = no,
+		MaybeGoalPath = no
 	;
-		{ Trace = yes(_) },
-		{ Return = yes(_) },
-		{ error("label has both trace and return layout info") }
+		Trace = yes(_),
+		Return = yes(_),
+		error("label has both trace and return layout info")
 	),
-	stack_layout__get_agc_stack_layout(AgcStackLayout),
-	{
+	stack_layout__get_agc_stack_layout(AgcStackLayout, !Info),
+	(
 		Return = no,
 		set__init(ReturnLiveVarSet),
 		map__init(ReturnTypeVarMap)
@@ -736,35 +736,38 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 				ReturnLiveVarList, ReturnTypeVarMap),
 			set__list_to_set(ReturnLiveVarList, ReturnLiveVarSet)
 		)
-	},
+	),
 	(
-		{ Trace = no },
-		{ Resume = no },
-		{ Return = no }
+		Trace = no,
+		Resume = no,
+		Return = no
 	->
-		{ MaybeVarInfo = no },
-		{ LabelVars = label_has_no_var_info }
+		MaybeVarInfo = no,
+		LabelVars = label_has_no_var_info
 	;
 			% XXX ignore differences in insts inside var_infos
-		{ set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0) },
-		{ set__union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet) },
-		{ map__union(set__intersect, TraceTypeVarMap, ResumeTypeVarMap,
-			TypeVarMap0) },
-		{ map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap,
-			TypeVarMap) },
+		set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0),
+		set__union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet),
+		map__union(set__intersect, TraceTypeVarMap, ResumeTypeVarMap,
+			TypeVarMap0),
+		map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap,
+			TypeVarMap),
 		stack_layout__construct_livelval_rvals(LiveVarSet, TypeVarMap,
-			EncodedLength, LiveValRval, NamesRval, TypeParamRval),
-		{ VarInfo = label_var_info(EncodedLength, 
-			LiveValRval, NamesRval, TypeParamRval) },
-		{ MaybeVarInfo = yes(VarInfo) },
-		{ LabelVars = label_has_var_info }
+			EncodedLength, LiveValRval, NamesRval, TypeParamRval,
+			!Info),
+		VarInfo = label_var_info(EncodedLength, LiveValRval, NamesRval,
+			TypeParamRval),
+		MaybeVarInfo = yes(VarInfo),
+		LabelVars = label_has_var_info
 	),
 
-	{ LayoutData = label_layout_data(Label, ProcLayoutName,
-		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo) },
-	{ CData = layout_data(LayoutData) },
-	{ LayoutName = label_layout(Label, LabelVars) },
-	stack_layout__add_internal_layout_data(CData, Label, LayoutName).
+	LayoutData = label_layout_data(Label, ProcLayoutName,
+		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo),
+	CData = layout_data(LayoutData),
+	LayoutName = label_layout(Label, LabelVars),
+	stack_layout__add_internal_layout_data(CData, Label, LayoutName,
+		!Info),
+	!:LabelLayouts = [{Label, LabelVars, Internal} | !.LabelLayouts].
 
 %---------------------------------------------------------------------------%
 
@@ -937,58 +940,58 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
-		TypeLocnVector, NumVector) -->
-	{ int__pow(2, stack_layout__short_count_bits, BytesLimit) },
+		TypeLocnVector, NumVector, !Info) :-
+	int__pow(2, stack_layout__short_count_bits, BytesLimit),
 	stack_layout__construct_liveval_array_infos(VarInfos,
-		0, BytesLimit, IntArrayInfo, ByteArrayInfo),
+		0, BytesLimit, IntArrayInfo, ByteArrayInfo, !Info),
 
-	{ list__length(IntArrayInfo, IntArrayLength) },
-	{ list__length(ByteArrayInfo, ByteArrayLength) },
-	{ list__append(IntArrayInfo, ByteArrayInfo, AllArrayInfo) },
+	list__length(IntArrayInfo, IntArrayLength),
+	list__length(ByteArrayInfo, ByteArrayLength),
+	list__append(IntArrayInfo, ByteArrayInfo, AllArrayInfo),
 
-	{ EncodedLength = IntArrayLength << stack_layout__short_count_bits
-		+ ByteArrayLength },
+	EncodedLength = IntArrayLength << stack_layout__short_count_bits
+		+ ByteArrayLength,
 
-	{ SelectLocns = (pred(ArrayInfo::in, LocnRval::out) is det :-
+	SelectLocns = (pred(ArrayInfo::in, LocnRval::out) is det :-
 		ArrayInfo = live_array_info(LocnRval, _, _, _)
-	) },
-	{ SelectTypes = (pred(ArrayInfo::in, TypeRval - TypeType::out) is det :-
+	),
+	SelectTypes = (pred(ArrayInfo::in, TypeRval - TypeType::out) is det :-
 		ArrayInfo = live_array_info(_, TypeRval, TypeType, _)
-	) },
-	{ AddRevNums = (pred(ArrayInfo::in, NumRvals0::in, NumRvals::out)
+	),
+	AddRevNums = (pred(ArrayInfo::in, NumRvals0::in, NumRvals::out)
 			is det :-
 		ArrayInfo = live_array_info(_, _, _, NumRval),
 		NumRvals = [NumRval | NumRvals0]
-	) },
+	),
 
-	{ list__map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes) },
-	{ list__map(SelectLocns, IntArrayInfo, IntLocns) },
-	{ list__map(associate_type(uint_least32), IntLocns, IntLocnsTypes) },
-	{ list__map(SelectLocns, ByteArrayInfo, ByteLocns) },
-	{ list__map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes) },
-	{ list__append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes) },
-	{ list__append(AllTypeRvalsTypes, AllLocnsTypes,
-		TypeLocnVectorRvalsTypes) },
-	stack_layout__get_static_cell_info(StaticCellInfo0),
-	{ add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
-		StaticCellInfo0, StaticCellInfo1) },
-	{ TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr, no)) },
-	stack_layout__set_static_cell_info(StaticCellInfo1),
+	list__map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes),
+	list__map(SelectLocns, IntArrayInfo, IntLocns),
+	list__map(associate_type(uint_least32), IntLocns, IntLocnsTypes),
+	list__map(SelectLocns, ByteArrayInfo, ByteLocns),
+	list__map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
+	list__append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
+	list__append(AllTypeRvalsTypes, AllLocnsTypes,
+		TypeLocnVectorRvalsTypes),
+	stack_layout__get_static_cell_info(StaticCellInfo0, !Info),
+	add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
+		StaticCellInfo0, StaticCellInfo1),
+	TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr, no)),
+	stack_layout__set_static_cell_info(StaticCellInfo1, !Info),
 
-	stack_layout__get_trace_stack_layout(TraceStackLayout),
-	( { TraceStackLayout = yes } ->
-		{ list__foldl(AddRevNums, AllArrayInfo,
-			[], RevVarNumRvals) },
-		{ list__reverse(RevVarNumRvals, VarNumRvals) },
-		{ list__map(associate_type(uint_least16), VarNumRvals,
-			VarNumRvalsTypes) },
-		stack_layout__get_static_cell_info(StaticCellInfo2),
-		{ add_static_cell(VarNumRvalsTypes, NumVectorAddr,
-			StaticCellInfo2, StaticCellInfo) },
-		stack_layout__set_static_cell_info(StaticCellInfo),
-		{ NumVector = const(data_addr_const(NumVectorAddr, no)) }
+	stack_layout__get_trace_stack_layout(TraceStackLayout, !Info),
+	( TraceStackLayout = yes ->
+		list__foldl(AddRevNums, AllArrayInfo,
+			[], RevVarNumRvals),
+		list__reverse(RevVarNumRvals, VarNumRvals),
+		list__map(associate_type(uint_least16), VarNumRvals,
+			VarNumRvalsTypes),
+		stack_layout__get_static_cell_info(StaticCellInfo2, !Info),
+		add_static_cell(VarNumRvalsTypes, NumVectorAddr,
+			StaticCellInfo2, StaticCellInfo),
+		stack_layout__set_static_cell_info(StaticCellInfo, !Info),
+		NumVector = const(data_addr_const(NumVectorAddr, no))
 	;
-		{ NumVector = const(int_const(0)) }
+		NumVector = const(int_const(0))
 	).
 
 :- pred associate_type(llds_type::in, rval::in, pair(rval, llds_type)::out)
@@ -1001,51 +1004,50 @@ associate_type(LldsType, Rval, Rval - LldsType).
 	list(liveval_array_info)::out, list(liveval_array_info)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_array_infos([], _, _, [], []) --> [].
+stack_layout__construct_liveval_array_infos([], _, _, [], [], !Info).
 stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
-		BytesSoFar, BytesLimit, IntVars, ByteVars) -->
-	{ VarInfo = var_info(Locn, LiveValueType) },
+		BytesSoFar, BytesLimit, IntVars, ByteVars, !Info) :-
+	VarInfo = var_info(Locn, LiveValueType),
 	stack_layout__represent_live_value_type(LiveValueType, TypeRval,
-		TypeRvalType),
-	stack_layout__construct_liveval_num_rval(VarInfo, VarNumRval),
+		TypeRvalType, !Info),
+	stack_layout__construct_liveval_num_rval(VarInfo, VarNumRval, !Info),
 	(
-		{ BytesSoFar < BytesLimit },
-		{ stack_layout__represent_locn_as_byte(Locn, LocnByteRval) }
+		BytesSoFar < BytesLimit,
+		stack_layout__represent_locn_as_byte(Locn, LocnByteRval)
 	->
-		{ Var = live_array_info(LocnByteRval, TypeRval, TypeRvalType,
-			VarNumRval) },
+		Var = live_array_info(LocnByteRval, TypeRval, TypeRvalType,
+			VarNumRval),
 		stack_layout__construct_liveval_array_infos(VarInfos,
-			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0),
-		{ ByteVars = [Var | ByteVars0] }
+			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0, !Info),
+		ByteVars = [Var | ByteVars0]
 	;
-		{ stack_layout__represent_locn_as_int_rval(Locn, LocnRval) },
-		{ Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
-			VarNumRval) },
+		stack_layout__represent_locn_as_int_rval(Locn, LocnRval),
+		Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
+			VarNumRval),
 		stack_layout__construct_liveval_array_infos(VarInfos,
-			BytesSoFar, BytesLimit, IntVars0, ByteVars),
-		{ IntVars = [Var | IntVars0] }
+			BytesSoFar, BytesLimit, IntVars0, ByteVars, !Info),
+		IntVars = [Var | IntVars0]
 	).
 
 :- pred stack_layout__construct_liveval_num_rval(var_info::in, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_liveval_num_rval(var_info(_, LiveValueType),
-		VarNumRval, SLI0, SLI) :-
+		VarNumRval, !Info) :-
 	( LiveValueType = var(Var, Name, _, _) ->
 		stack_layout__convert_var_to_int(Var, VarNum),
 		VarNumRval = const(int_const(VarNum)),
-		stack_layout__get_cur_proc_named_vars(NamedVars0, SLI0, SLI1),
+		stack_layout__get_cur_proc_named_vars(NamedVars0, !Info),
 		( map__insert(NamedVars0, VarNum, Name, NamedVars) ->
 			stack_layout__set_cur_proc_named_vars(NamedVars,
-				SLI1, SLI)
+				!Info)
 		;
 			% The variable has been put into the map already at
 			% another label.
-			SLI = SLI1
+			true
 		)
 	;
-		VarNumRval = const(int_const(0)),
-		SLI = SLI0
+		VarNumRval = const(int_const(0))
 	).
 
 :- pred stack_layout__convert_var_name_to_int(pair(prog_var, string)::in,
@@ -1591,13 +1593,6 @@ stack_layout__get_label_tables(LI ^ label_tables, LI, LI).
 stack_layout__get_cur_proc_named_vars(LI ^ cur_proc_named_vars, LI, LI).
 stack_layout__get_static_cell_info(LI ^ static_cell_info, LI, LI).
 
-:- pred stack_layout__get_module_name(module_name::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__get_module_name(ModuleName) -->
-	stack_layout__get_module_info(ModuleInfo),
-	{ module_info_name(ModuleInfo, ModuleName) }.
-
 :- pred stack_layout__add_table_data(layout_data::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1670,16 +1665,14 @@ stack_layout__set_static_cell_info(SCI, LI0,
 :- pred stack_layout__lookup_string_in_table(string::in, int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__lookup_string_in_table(String, Offset) -->
-	stack_layout__get_string_table(StringTable0),
-	{ StringTable0 = string_table(TableMap0, TableList0, TableOffset0) },
-	(
-		{ map__search(TableMap0, String, OldOffset) }
-	->
-		{ Offset = OldOffset }
+stack_layout__lookup_string_in_table(String, Offset, !Info) :-
+	StringTable0 = !.Info ^ string_table,
+	StringTable0 = string_table(TableMap0, TableList0, TableOffset0),
+	( map__search(TableMap0, String, OldOffset) ->
+		Offset = OldOffset
 	;
-		{ string__length(String, Length) },
-		{ TableOffset = TableOffset0 + Length + 1 },
+		string__length(String, Length),
+		TableOffset = TableOffset0 + Length + 1,
 		% We use a 32 bit unsigned integer to represent the offset.
 		% Computing that limit exactly without getting an overflow
 		% or using unportable code isn't trivial. The code below
@@ -1690,16 +1683,15 @@ stack_layout__lookup_string_in_table(String, Offset) -->
 		% next several years anyway. (Compiling a module that has
 		% a 1 Gb string table will require several tens of Gb
 		% of other compiler structures.)
-		{ TableOffset < (1 << ((4 * stack_layout__byte_bits) - 2)) }
+		TableOffset < (1 << ((4 * stack_layout__byte_bits) - 2))
 	->
-		{ Offset = TableOffset0 },
-		{ map__det_insert(TableMap0, String, TableOffset0,
-			TableMap) },
-		{ TableList = [String | TableList0] },
-		{ StringTable = string_table(TableMap, TableList,
-			TableOffset) },
-		stack_layout__set_string_table(StringTable)
+		Offset = TableOffset0,
+		map__det_insert(TableMap0, String, TableOffset0,
+			TableMap),
+		TableList = [String | TableList0],
+		StringTable = string_table(TableMap, TableList, TableOffset),
+		stack_layout__set_string_table(StringTable, !Info)
 	;
 		% Says that the name of the variable is "TOO_MANY_VARIABLES".
-		{ Offset = 1 }
+		Offset = 1
 	).
