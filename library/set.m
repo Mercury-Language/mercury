@@ -128,10 +128,19 @@ set__list_to_set(List, Set) :-
 
 :- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
 
+set__insert_list(Set0, List, Set) :-
+	% XXX are sets allowed to contain duplicates??
+	append(List, Set0, Set).
+
+/****
 set__insert_list(Set, [], Set).
 set__insert_list(Set0, [X | Xs], Set) :-
 	set__insert(Set0, X, Set1),
 	set__insert_list(Set1, Xs, Set).
+****/
+
+	% XXX are sets allowed to contain duplicates??
+set__insert(S0, E, [E|S0]).
 
 set__init([]).
 
@@ -149,9 +158,6 @@ set__superset(S0, S1) :-
 
 set__member(E, S) :-
 	member(E, S).
-
-set__insert(S0, E, [E|S0]).
-	% XXX are sets allowed to contain duplicates??
 
 :- set__delete_list(_, Xs, _) when Xs.
 
@@ -179,6 +185,10 @@ set__remove([E|Es], X, S) :-
 	),
 	set__remove(Es, X, S1).
 
+set__union(Set0, Set1, Set) :-
+	append(Set1, Set0, Set).
+
+/****
 set__union([], S, S).
 set__union([E|S0], S1, S) :-
 	(
@@ -189,6 +199,7 @@ set__union([E|S0], S1, S) :-
 		S2 = [E|S1]
 	),
 	set__union(S0, S2, S).
+****/
 
 set__intersect(S0, S1, S) :-
 	set__intersect_2(S0, S1, [], S).

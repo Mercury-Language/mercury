@@ -959,6 +959,29 @@ implicitly_quantify_goal_2(unify(A, B, X, Y, Z), OutsideVars,
 				 list(hlds__goal), set(var)).
 :- mode implicitly_quantify_conj(in, in, out, out).
 
+implicitly_quantify_conj(Goals0, OutsideVars, Goals, NonLocalVars) :-
+	get_vars(Goals0, FollowingVarsList),
+	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars,
+				Goals, NonLocalVars).
+
+:- pred implicitly_quantify_conj_2(list(hlds__goal), list(set(var)), set(var),
+			list(hlds__goal), set(var)).
+:- mode implicitly_quantify_conj_2(in, in, in, out, out).
+
+implicitly_quantify_conj_2([], _, _, [], NonLocalVars) :-
+	set__init(NonLocalVars).
+implicitly_quantify_conj_2([Goal0 | Goals0],
+			[FollowingVars | FollowingVarsList],
+			OutsideVars,
+			[Goal | Goals], NonLocalVars) :-
+	set__union(OutsideVars, FollowingVars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocalVars1),
+	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
+	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars2,
+				Goals, NonLocalVars2),
+	set__union(NonLocalVars1, NonLocalVars2, NonLocalVars).
+
+/********** OLD
 implicitly_quantify_conj([], _, [], NonLocalVars) :-
 	set__init(NonLocalVars).
 implicitly_quantify_conj([Goal0 | Goals0], OutsideVars,
@@ -969,6 +992,8 @@ implicitly_quantify_conj([Goal0 | Goals0], OutsideVars,
 	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
 	implicitly_quantify_conj(Goals0, OutsideVars2, Goals, NonLocalVars2),
 	set__union(NonLocalVars1, NonLocalVars2, NonLocalVars).
+
+****************/
 
 :- pred implicitly_quantify_disj(list(hlds__goal), set(var),
 				 list(hlds__goal), set(var)).
@@ -983,6 +1008,28 @@ implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
 	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
 
 %-----------------------------------------------------------------------------%
+
+	% Given a list of goals, produce a corresponding list of sets
+	% of following variables, where is the set of following variables
+	% for each goal is those variables which occur in any of the
+	% following goals in the list.
+
+:- pred get_vars(list(hlds__goal), list(set(var))).
+:- mode get_vars(in, out) is det.
+
+:- get_vars([], _) when ever.
+:- get_vars([_], _) when ever.
+:- get_vars([_,_|_], _) when ever.
+
+get_vars([], []).
+get_vars([_Goal], [Set]) :-
+	set__init(Set).
+get_vars([_Goal1, Goal2 | Goals], SetList) :-
+	get_vars([Goal2 | Goals], SetList0),
+	SetList0 = [Set0 | _],
+	goal_vars(Goal2, Set1),
+	set__union(Set0, Set1, Set),
+	SetList = [Set | SetList0].
 
 	% `goal_list_vars(Goal, Vars)' is true iff 
 	% `Vars' is the set of unquantified variables in Goal.
