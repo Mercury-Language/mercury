@@ -17,16 +17,17 @@ MERCURY_VERSION	= mercury-0.5-beta.$(FULLARCH)
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		../NEWS ../README ../RELEASE_NOTES
 
-binary_distribution: configure
+binary_distribution: configure bindist
 	# Make a quick check that there is a mercury installation in
 	# $(INSTALL_DIR) by looking for mc and mercury_compile.
 	test -x $(INSTALL_BINDIR)/mc
 	test -x $(INSTALL_MERC_BIN_DIR)/mercury_compile
 	# create a temporary directory in which to assemble the distribution
 	test -d $(MERCURY_VERSION) || mkdir $(MERCURY_VERSION)
-	(cd $(INSTALL_LIB_DIR)/mercury; tar -cf - $(LIB_FILES)) | \
+	(cd $(INSTALL_LIB_DIR)/mercury && tar -cf - $(LIB_FILES)) | \
 		gzip > $(MERCURY_VERSION)/lib.tar.gz
-	(cd $(INSTALL_INFO_DIR)/..; tar -cf - info) | gzip > $(MERCURY_VERSION)/info.tar.gz
+	(cd $(INSTALL_INFO_DIR)/.. && tar -cf - info) | \
+		gzip > $(MERCURY_VERSION)/info.tar.gz
 	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
 	cp ../scripts/*.in ../scripts/Mmake.rules $(MERCURY_VERSION)/scripts
 	cp ../scripts/vpath_find $(MERCURY_VERSION)/scripts
@@ -36,5 +37,8 @@ binary_distribution: configure
 	tar -cf - $(MERCURY_VERSION) | gzip > $(MERCURY_VERSION).tar.gz
 	# rm -rf $(MERCURY_VERSION)
 
-configure : configure.in
+configure: configure.in
 	autoconf
+
+bindist: bindist.in
+	CONFIG_FILES=bindist CONFIG_HEADERS= $(MERCURY_DIR)/config.status
