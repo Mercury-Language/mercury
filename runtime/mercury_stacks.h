@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -108,16 +108,15 @@
 #define mkframe_save_prednm(prednm) /* nothing */
 #endif
 
-
-#define	mkframe(prednm, numslots, redoip)				\
+#define	mkframe(prednm, numslots, redoip)			\
 			do {					\
 				reg	Word	*prevfr;	\
 				reg	Word	*succfr;	\
 								\
-				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
+				prevfr = MR_maxfr;		\
+				succfr = MR_curfr;		\
 				MR_maxfr += (NONDET_FIXED_SIZE + numslots);\
-				MR_curfr = MR_maxfr;			\
+				MR_curfr = MR_maxfr;		\
 				curredoip = redoip;		\
 				curprevfr = prevfr;		\
 				cursuccip = MR_succip;		\
@@ -127,14 +126,32 @@
 				nondstack_overflow_check();	\
 			} while (0)
 
-
+/* just like mkframe, but also reserves space for a struct     */
+/* with the given tag at the bottom of the nondet stack frame  */
+#define	mkpragmaframe(prednm, numslots, structname, redoip)	\
+			do {					\
+				reg	Word	*prevfr;	\
+				reg	Word	*succfr;	\
+								\
+				prevfr = MR_maxfr;		\
+				succfr = MR_curfr;		\
+				MR_maxfr += (NONDET_FIXED_SIZE + numslots \
+					+ sizeof(struct structname));	\
+				MR_curfr = MR_maxfr;		\
+				curredoip = redoip;		\
+				curprevfr = prevfr;		\
+				cursuccip = MR_succip;		\
+				cursuccfr = succfr;		\
+				mkframe_save_prednm(prednm);	\
+				debugmkframe();			\
+				nondstack_overflow_check();	\
+			} while (0)
 
 #define	modframe(redoip)					\
 			do {					\
 				curredoip = redoip;		\
 				debugmodframe();		\
 			} while (0)
-
 
 #define	succeed()	do {					\
 				reg	Word	*childfr;	\
@@ -156,7 +173,6 @@
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
-
 #define	fail()		do {					\
 				debugfail();			\
 				MR_maxfr = curprevfr;		\
@@ -164,7 +180,6 @@
 				nondstack_underflow_check();	\
 				GOTO(curredoip);		\
 			} while (0)
-
 
 #define	redo()		do {					\
 				debugredo();			\
