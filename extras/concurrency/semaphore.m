@@ -89,9 +89,38 @@
 #ifdef MR_THREAD_SAFE
 	pthread_mutex_init(&(sem->lock), MR_MUTEX_ATTR);
 #endif
+
+	/*
+	** The condvar and the mutex will need to be destroyed
+	** when the semaphore is garbage collected.
+	*/
+#ifdef CONSERVATIVE_GC
+	GC_REGISTER_FINALIZER(sem, finalize_semaphore, NULL, NULL, NULL);
+#endif
+
 	Semaphore = (MR_Word) sem;
 	IO = IO0;
 }").
+
+:- pragma c_code("
+#ifdef CONSERVATIVE_GC
+  void finalize_semaphore(GC_PTR obj, GC_PTR cd)
+  {
+	ME_Semaphore    *sem;
+
+	sem = (ME_Semaphore *) obj;
+
+  #ifdef MR_HIGHLEVEL_CODE
+	pthread_cond_destroy(&(sem->cond));
+  #endif
+  #ifdef MR_THREAD_SAFE
+	pthread_mutex_destroy(&(sem->lock));
+  #endif
+
+	return;
+  }
+#endif
+").
 
 		% because semaphore__signal has a local label, we may get
 		% C compilation errors if inlining leads to multiple copies
