@@ -59,9 +59,13 @@ detect_switches_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 :- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
 detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
-	write_pred_progress_message("% Detecting switches in ", PredId,
-		ModuleInfo0),
 	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
+	( { ProcIds \= [] } ->
+		write_pred_progress_message("% Detecting switches in ", PredId,
+			ModuleInfo0)
+	;
+		[]
+	),
 	{ detect_switches_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo) }.
 
 :- pred detect_switches_in_procs(list(proc_id), pred_id,
