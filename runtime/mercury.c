@@ -172,7 +172,7 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 	** Tuple and higher-order types do not have a fixed arity,
 	** so they need to be special cased here.
 	*/
-	type_ctor_rep = type_ctor_info->type_ctor_rep;
+	type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
 	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
 		return mercury__builtin____Unify____tuple_0_0(ti,
 			(MR_Tuple) x, (MR_Tuple) y);
@@ -230,7 +230,7 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 	** Tuple and higher-order types do not have a fixed arity,
 	** so they need to be special cased here.
 	*/
-	type_ctor_rep = type_ctor_info->type_ctor_rep;
+	type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
 	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
 		mercury__builtin____Compare____tuple_0_0(ti,
 			res, (MR_Tuple) x, (MR_Tuple) y);
