@@ -22,7 +22,7 @@ INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/ml scripts/mmake scripts/mprof \
 			scripts/mdb scripts/mkfifo_using_mknod
 
-EMACS_SCRIPTS		= scripts/gud.el
+INSTALL_EMACS_SCRIPTS	= scripts/gud.el
 
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
