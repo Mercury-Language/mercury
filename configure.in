@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -1692,8 +1692,8 @@ AC_SUBST(LIBGRADES)
 AC_ARG_ENABLE(decl-debug,
 [  --disable-decl-debug    disable the declarative debugger],
 mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
-if test "$mercury_cv_enable_decl_debug" = "yes"; then
-	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
+if test "$mercury_cv_enable_decl_debug" = "no"; then
+	AC_DEFINE(MR_DISABLE_DECLARATIVE_DEBUGGER)
 fi
 #-----------------------------------------------------------------------------#
 

@@ -323,6 +323,15 @@
   #define MR_MAY_NEED_INITIALIZATION
 #endif
 
+/*
+** MR_USE_DECLARATIVE_DEBUGGER -- include support for declarative
+**				  debugging in the internal debugger.
+*/
+
+#if defined(CONSERVATIVE_GC) && !defined(MR_DISABLE_DECLARATIVE_DEBUGGER)
+  #define MR_USE_DECLARATIVE_DEBUGGER
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /*

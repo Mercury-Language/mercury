@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -320,10 +320,13 @@
 #undef  MR_USE_EXTERNAL_DEBUGGER
 
 /*
-** MR_USE_DECLARATIVE_DEBUGGER:
-**	Include declarative debugging support in the internal debugger.
+** MR_DISABLE_DECLARATIVE_DEBUGGER:
+**	Remove declarative debugging support from the internal
+**	debugger, even if it is compatible with the current grade.
+**	Whether the declarative debugger can be used or not is
+**	determined in runtime/mercury_conf_param.h.
 */
-#undef	MR_USE_DECLARATIVE_DEBUGGER
+#undef	MR_DISABLE_DECLARATIVE_DEBUGGER
 
 /*
 ** MR_NO_USE_READLINE
