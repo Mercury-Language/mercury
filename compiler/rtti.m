@@ -220,9 +220,10 @@
 						% contains variables (assuming
 						% that arguments are numbered
 						% from zero)
-			rtti_name,		% a vector of length arity
+			maybe(rtti_name),	% a vector of length arity
 						% containing the pseudo
-						% typeinfos of the arguments
+						% typeinfos of the arguments,
+						% if any
 						% (a field_types rtti_name)
 			maybe(rtti_name),	% possibly a vector of length
 						% arity containing the names

@@ -174,11 +174,17 @@ output_rtti_data_defn(notag_functor_desc(RttiTypeId, FunctorName, ArgType),
 	output_addr_of_rtti_data(ArgType),
 	io__write_string("\n};\n").
 output_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
-		Locn, Ordinal, Arity, ContainsVarBitVector, ArgTypes,
+		Locn, Ordinal, Arity, ContainsVarBitVector, MaybeArgTypes,
 		MaybeNames, MaybeExist),
 		DeclSet0, DeclSet) -->
-	output_rtti_addr_decls(RttiTypeId, ArgTypes, "", "", 0, _,
-		DeclSet0, DeclSet1),
+	(
+		{ MaybeArgTypes = yes(ArgTypes) },
+		output_rtti_addr_decls(RttiTypeId, ArgTypes, "", "", 0, _,
+			DeclSet0, DeclSet1)
+	;
+		{ MaybeArgTypes = no },
+		{ DeclSet1 = DeclSet0 }
+	),
 	(
 		{ MaybeNames = yes(NamesInfo1) },
 		output_rtti_addr_decls(RttiTypeId, NamesInfo1, "", "",
@@ -214,7 +220,13 @@ output_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 	io__write_int(Ordinal),
 	io__write_string(",\n\t"),
 	io__write_string("(MR_PseudoTypeInfo *) "), % cast away const
-	output_addr_of_rtti_addr(RttiTypeId, ArgTypes),
+	(
+		{ MaybeArgTypes = yes(ArgTypes2) },
+		output_addr_of_rtti_addr(RttiTypeId, ArgTypes2)
+	;
+		{ MaybeArgTypes = no },
+		io__write_string("NULL")
+	),
 	io__write_string(",\n\t"),
 	(
 		{ MaybeNames = yes(NamesInfo2) },

@@ -566,21 +566,29 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 
 :- pred type_ctor_info__generate_arg_info_tables(module_info::in,
 	rtti_type_id::in, int::in, list(constructor_arg)::in, existq_tvars::in,
-	maybe(rtti_name)::out, rtti_name::out, list(rtti_data)::out, int::out)
-	is det.
+	maybe(rtti_name)::out, maybe(rtti_name)::out, list(rtti_data)::out,
+	int::out) is det.
 
 type_ctor_info__generate_arg_info_tables(
 		ModuleInfo, RttiTypeId, Ordinal, Args, ExistTvars,
-		MaybeFieldNamesRttiName, FieldTypesRttiName, Tables,
+		MaybeFieldNamesRttiName, MaybeFieldTypesRttiName, Tables,
 		ContainsVarBitVector) :-
 	RttiTypeId = rtti_type_id(_TypeModule, _TypeName, TypeArity),
 	type_ctor_info__generate_arg_infos(Args, TypeArity, ExistTvars,
 		ModuleInfo, MaybeArgNames, PseudoTypeInfos,
 		0, 0, ContainsVarBitVector, [], Tables0),
-	FieldTypesRttiName = field_types(Ordinal),
-	FieldTypesTable = field_types(RttiTypeId, Ordinal,
+	(
+		PseudoTypeInfos = [],
+		MaybeFieldTypesRttiName = no,
+		Tables1 = Tables0
+	;
+		PseudoTypeInfos = [_|_],
+		FieldTypesTable = field_types(RttiTypeId, Ordinal,
 			PseudoTypeInfos),
-	Tables1 = [FieldTypesTable | Tables0],
+		FieldTypesRttiName = field_types(Ordinal),
+		MaybeFieldTypesRttiName = yes(FieldTypesRttiName),
+		Tables1 = [FieldTypesTable | Tables0]
+	),
 	list__filter((lambda([MaybeName::in] is semidet, MaybeName = yes(_))),
 		MaybeArgNames, FieldNames),
 	(

@@ -156,7 +156,7 @@ gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType),
 			ModuleName, ArgType)
 	]).
 gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
-		Locn, Ordinal, Arity, ContainsVarBitVector, ArgTypes,
+		Locn, Ordinal, Arity, ContainsVarBitVector, MaybeArgTypes,
 		MaybeNames, MaybeExist), ModuleName, _, Init, []) :-
 	Init = init_struct([
 		gen_init_string(FunctorName),
@@ -166,7 +166,9 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		gen_init_int(Ptag),
 		gen_init_int(Stag),
 		gen_init_int(Ordinal),
-		gen_init_rtti_name(ModuleName, RttiTypeId, ArgTypes),
+		gen_init_maybe(mlds__rtti_type(field_types(0)),
+			gen_init_rtti_name(ModuleName, RttiTypeId),
+			MaybeArgTypes),
 		gen_init_maybe(mlds__rtti_type(field_names(0)),
 			gen_init_rtti_name(ModuleName, RttiTypeId),
 			MaybeNames),
