@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1831,31 +1831,32 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 	;
 		{
 		pred_info_clauses_info(PredInfo1, Clauses0),
-		pred_info_procedures(PredInfo1, Procs),
 		pred_info_typevarset(PredInfo1, TVarSet0),
+		maybe_add_default_mode(PredInfo1, PredInfo2),
+		pred_info_procedures(PredInfo2, Procs),
 		map__keys(Procs, ModeIds)
 		},
 		clauses_info_add_clause(Clauses0, PredId, ModeIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context, Goal,
 			VarSet, TVarSet, Clauses, Warnings, Info0, Info),
 		{
-		pred_info_set_clauses_info(PredInfo1, Clauses, PredInfo2),
-		pred_info_set_goal_type(PredInfo2, clauses, PredInfo3),
-		pred_info_set_typevarset(PredInfo3, TVarSet, PredInfo4),
-		pred_info_arg_types(PredInfo4, _ArgTVarSet, ArgTypes),
-		pred_info_set_arg_types(PredInfo4, TVarSet,
-					ArgTypes, PredInfo5),
+		pred_info_set_clauses_info(PredInfo2, Clauses, PredInfo3),
+		pred_info_set_goal_type(PredInfo3, clauses, PredInfo4),
+		pred_info_set_typevarset(PredInfo4, TVarSet, PredInfo5),
+		pred_info_arg_types(PredInfo5, _ArgTVarSet, ArgTypes),
+		pred_info_set_arg_types(PredInfo5, TVarSet,
+					ArgTypes, PredInfo6),
 
 		%
-		% check if there are no modes for the predicate,
+		% check if there are still no modes for the predicate,
 		% and if so, set the `infer_modes' flag for that predicate
 		%
 		( ModeIds = [] ->
-			pred_info_get_markers(PredInfo5, Markers0),
+			pred_info_get_markers(PredInfo6, Markers0),
 			add_marker(Markers0, infer_modes, Markers),
-			pred_info_set_markers(PredInfo5, Markers, PredInfo)
+			pred_info_set_markers(PredInfo6, Markers, PredInfo)
 		;
-			PredInfo = PredInfo5
+			PredInfo = PredInfo6
 		),
 		map__det_update(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
