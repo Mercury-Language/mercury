@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004 The University of Melbourne.
+% Copyright (C) 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -814,7 +814,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
 	; type_to_ctor_and_args(Type, TypeCtor, ArgTypes0) ->
 		canonicalize_type_args(TypeCtor, ArgTypes0, ArgTypes),
 		( ArgTypes = [] ->
-			make_type_ctor_info(TypeCtor, TypeCtorVar,
+			make_type_ctor_info(TypeCtor, [], TypeCtorVar,
 				TypeCtorGoals, !Info),
 			TypeInfoVar = TypeCtorVar,
 			TypeInfoGoals = TypeCtorGoals
@@ -877,7 +877,8 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
 	list__map2_foldl(make_type_info(Context), ArgTypes,
 		ArgTypeInfoVars, ArgTypeInfoGoalLists, !Info),
 	ArgTypeInfoGoals = list__condense(ArgTypeInfoGoalLists),
-	make_type_ctor_info(TypeCtor, TypeCtorVar, TypeCtorGoals, !Info),
+	make_type_ctor_info(TypeCtor, ArgTypes, TypeCtorVar, TypeCtorGoals,
+		!Info),
 	(
 		CtorIsVarArity = yes,
 		list__length(ArgTypes, Arity),
@@ -916,15 +917,23 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
 % Return the variable holding the type_ctor_info in TypeCtorVar,
 % and the goals needed to create it in TypeCtorGoals.
 
-:- pred make_type_ctor_info(type_ctor::in, prog_var::out, list(hlds_goal)::out,
-	info::in, info::out) is det.
+:- pred make_type_ctor_info(type_ctor::in, list(type)::in, prog_var::out,
+	list(hlds_goal)::out, info::in, info::out) is det.
 
-make_type_ctor_info(TypeCtor, TypeCtorVar, TypeCtorGoals, !Info) :-
+make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
 	( map__search(!.Info ^ type_ctor_map, TypeCtor, TypeCtorVarPrime) ->
 		TypeCtorVar = TypeCtorVarPrime,
 		TypeCtorGoals = []
 	;
-		construct_type(TypeCtor, [], Type),
+		( 
+			type_ctor_is_higher_order(TypeCtor, Purity,
+				PredOrFunc, EvalMethod)
+		->
+			construct_higher_order_type(Purity, PredOrFunc,	
+				EvalMethod, TypeArgs, Type)
+		;
+			construct_type(TypeCtor, [], Type)
+		),
 		VarSet0 = !.Info ^ varset,
 		VarTypes0 = !.Info ^ vartypes,
 		polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,

@@ -164,6 +164,7 @@ OTHER_PROGS= \
 	shape_type \
 	simplify_bug \
 	simplify_bug2 \
+	size_prof_ho_bug \
 	soln_context \
 	solv \
 	solver_type_bug \
