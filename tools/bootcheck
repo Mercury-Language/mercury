@@ -335,13 +335,11 @@ then
 		exit 1
 	fi
 
-	# the stage 1 compiler is copied to allow it to be worked on (slightly)
-	# in parallel with the bootcheck itself.
+	# this is only for a transition period,
+	# until all stage1 dirs have been removed
+	/bin/rm -fr stage1
 
-	[ -d stage1 ] || mkdir stage1
-
-	cp compiler/mercury_compile stage1
-	MERCURY_COMPILER=$root/stage1/mercury_compile
+	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
 	MERCURY_INT_DIR=$root/stage2/library
 	export MERCURY_INT_DIR
