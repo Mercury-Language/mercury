@@ -27,7 +27,7 @@
 %
 % We also do elimination of double-negation in this pass.
 % It needs to be done somewhere after quantification analysis and
-% before mode analysis, and this is convenient place to do it.
+% before mode analysis, and this is a convenient place to do it.
 %
 % This pass also converts calls to `private_builtin.unsafe_type_cast'
 % into `generic_call(unsafe_cast, ...)' goals.
@@ -215,6 +215,9 @@ puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
 	check_preds_purity(FoundTypeError, PostTypecheckError, !HLDS, !IO),
 	maybe_report_stats(Statistics, !IO).
 
+less_pure(P1, P2) :-
+	\+ ( worst_purity(P1, P2) = P2).
+
 % worst_purity/3 could be written more compactly, but this definition
 % guarantees us a determinism error if we add to type `purity'.  We also
 % define less_pure/2 in terms of worst_purity/3 rather than the other way
@@ -230,8 +233,20 @@ worst_purity((impure), pure) = (impure).
 worst_purity((impure), (semipure)) = (impure).
 worst_purity((impure), (impure)) = (impure).
 
-less_pure(P1, P2) :-
-	\+ ( worst_purity(P1, P2) = P2).
+	% Sort of a "minimum" for impurity. The reason why this is written is
+	% as a switch is the same as for worst_purity.
+	%
+:- func best_purity(purity, purity) = purity.
+
+best_purity(pure, pure) = pure.
+best_purity(pure, (semipure)) = pure.
+best_purity(pure, (impure)) = pure.
+best_purity((semipure), pure) = pure.
+best_purity((semipure), (semipure)) = (semipure).
+best_purity((semipure), (impure)) = (semipure).
+best_purity((impure), pure) = pure.
+best_purity((impure), (semipure)) = (semipure).
+best_purity((impure), (impure)) = (impure).
 
 %-----------------------------------------------------------------------------%
 
@@ -652,9 +667,29 @@ compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity, !Info) :-
 		compute_goal_purity(NotGoal0, NotGoal1, Purity, !Info),
 		NotGoal1 = NotGoal - _
 	).
-compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
+compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
 		_, Purity, !Info) :-
-	compute_goal_purity(Goal0, Goal, Purity, !Info).
+	compute_goal_purity(Goal0, Goal, Purity0, !Info),
+	(
+		Reason = exist_quant(_),
+		Purity = Purity0
+	;
+			% XXX Use Implicit when checking Goal0
+		Reason = promise_purity(_Implicit, PromisedPurity),
+		Purity = best_purity(Purity0, PromisedPurity)
+	;
+		Reason = promise_equivalent_solutions(_),
+		Purity = Purity0
+	;
+		Reason = commit(_),
+		Purity = Purity0
+	;
+		Reason = barrier(_),
+		Purity = Purity0
+	;
+		Reason = from_ground_term(_),
+		Purity = Purity0
+	).
 compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
 		if_then_else(Vars, Cond, Then, Else), _, Purity, !Info) :-
 	compute_goal_purity(Cond0, Cond, Purity1, !Info),
@@ -1080,7 +1115,8 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
 	;	aditi_builtin_error(aditi_builtin_error).
 
 :- type post_typecheck_warning
-	--->	unnecessary_body_impurity_decl(prog_context, pred_id, purity).
+	--->	unnecessary_body_impurity_decl(prog_context, pred_id, purity)
+	;	redundant_promise_purity(prog_context, purity, purity).
 
 :- pred report_post_typecheck_message(module_info::in,
 	post_typecheck_message::in, io::di, io::uo) is det.
@@ -1104,18 +1140,19 @@ report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
 		report_aditi_builtin_error(AditiError, !IO)
 	).
 
-report_post_typecheck_message(ModuleInfo, Warning, !IO) :-
-	Warning = warning(unnecessary_body_impurity_decl(Context,
-		PredId, DeclaredPurity)),
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+report_post_typecheck_message(ModuleInfo, warning(Warning), !IO) :-
+	record_warning(!IO),
 	(
-		HaltAtWarn = yes,
-		io__set_exit_status(1, !IO)
+		Warning = unnecessary_body_impurity_decl(Context,
+			PredId, DeclaredPurity),
+		warn_unnecessary_body_impurity_decl(ModuleInfo, PredId,
+			Context, DeclaredPurity, !IO)
 	;
-		HaltAtWarn = no
-	),
-	warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-		DeclaredPurity, !IO).
+		Warning = redundant_promise_purity(Context, PromisedPurity,
+			InsidePurity),
+		warn_redundant_promise_purity(Context, PromisedPurity,
+			InsidePurity, !IO)
+	).
 
 :- pred error_missing_body_impurity_decl(module_info::in, pred_id::in,
 	prog_context::in, io::di, io::uo) is det.
@@ -1167,6 +1204,18 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
 			words("is sufficient.")]
 	),
 	write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO).
+
+:- pred warn_redundant_promise_purity(prog_context::in, purity::in, purity::in,
+	io::di, io::uo) is det.
+
+warn_redundant_promise_purity(Context, PromisedPurity, InsidePurity, !IO) :-
+	purity_name(PromisedPurity, PromisedPurityName),
+	DeclName = "promise_" ++ PromisedPurityName,
+	purity_name(InsidePurity, InsidePurityName),
+	Pieces = [words("Warning: unnecessary"),
+		fixed("`" ++ DeclName ++ "'"), words("goal."), nl,
+		words("The purity inside is"), words(InsidePurityName), nl],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
 	purity_info::in, purity_info::out) is det.

@@ -149,8 +149,8 @@ transform_aditi_builtins_in_goal_expr(switch(Var, CanFail, Cases0), _,
 		), Cases0, Cases).
 transform_aditi_builtins_in_goal_expr(not(Goal0), _, not(Goal)) -->
 	transform_aditi_builtins_in_goal(Goal0, Goal).
-transform_aditi_builtins_in_goal_expr(some(A, B, Goal0), _,
-		some(A, B, Goal)) -->
+transform_aditi_builtins_in_goal_expr(scope(Reason, Goal0), _,
+		scope(Reason, Goal)) -->
 	transform_aditi_builtins_in_goal(Goal0, Goal).
 transform_aditi_builtins_in_goal_expr(Goal, _, Goal) -->
 	{ Goal = foreign_proc(_, _, _, _, _, _) }.

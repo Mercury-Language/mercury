@@ -241,7 +241,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
 			tree(SomeCode,
 			     EndofCode))
 	;
-		GoalExpr = some(_, _, Goal),
+		GoalExpr = scope(_, Goal),
 		bytecode_gen__goal(Goal, !ByteInfo, SomeCode),
 		bytecode_gen__get_next_temp(Temp, !ByteInfo),
 		EnterCode = node([enter_commit(Temp)]),

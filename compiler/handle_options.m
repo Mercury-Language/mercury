@@ -709,6 +709,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	option_implies(very_verbose, verbose, bool(yes)),
 	option_implies(verbose, verbose_commands, bool(yes)),
 
+	option_implies(debug_modes_minimal, debug_modes, bool(yes)),
+	option_implies(debug_modes_verbose, debug_modes, bool(yes)),
+	option_implies(debug_modes_statistics, debug_modes, bool(yes)),
+
 	globals__io_lookup_int_option(debug_liveness, DebugLiveness),
 	(
 		{ DebugLiveness >= 0 },

@@ -239,7 +239,6 @@ parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 	list__map(term__coerce_var, Vars0, Vars),
 
 	parse_goal(A0, A @ (GoalExprA - ContextA), !V),
-
 	(
 		Vars = [],    StateVars = [],
 		GoalExpr = GoalExprA
@@ -253,6 +252,24 @@ parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 		Vars = [_|_], StateVars = [_|_],
 		GoalExpr = some(Vars, some_state_vars(StateVars, A) - ContextA)
 	).
+
+parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	parse_vars(OVars, Vars0),
+	list__map(term__coerce_var, Vars0, Vars),
+	GoalExpr = promise_equivalent_solutions(Vars, A).
+
+parse_goal_2("promise_pure", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(dont_make_implicit_promises, pure, A).
+
+parse_goal_2("promise_semipure", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(dont_make_implicit_promises, semipure, A).
+
+parse_goal_2("promise_impure", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(dont_make_implicit_promises, impure, A).
 
 	% The following is a temporary hack to handle `is' in
 	% the parser - we ought to handle it in the code generation -

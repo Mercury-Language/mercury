@@ -546,7 +546,7 @@ traverse_goal(Info, not(Goal - _), !VarDep) :-
 	traverse_goal(Info, Goal, !VarDep).
 
 % handle quantification
-traverse_goal(Info, some(_, _, Goal - _), !VarDep) :-
+traverse_goal(Info, scope(_, Goal - _), !VarDep) :-
 	traverse_goal(Info, Goal, !VarDep).
 
 % we assume that higher-order predicate calls use all variables involved
@@ -1317,8 +1317,8 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 	bool__or_list([Changed1, Changed2, Changed3], Changed).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		some(Vars, CanRemove, SubGoal0) - GoalInfo,
-		some(Vars, CanRemove, SubGoal) - GoalInfo) :-
+		scope(Reason, SubGoal0) - GoalInfo,
+		scope(Reason, SubGoal) - GoalInfo) :-
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 		SubGoal0, SubGoal).
 

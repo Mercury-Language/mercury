@@ -336,8 +336,8 @@ deforest__goal(Goal, Goal, !PDInfo, !IO) :-
 deforest__goal(not(Goal0) - Info, not(Goal) - Info, !PDInfo, !IO) :-
 	deforest__goal(Goal0, Goal, !PDInfo, !IO).
 
-deforest__goal(some(Vs, CanRemove, Goal0) - Info,
-		some(Vs, CanRemove, Goal) - Info, !PDInfo, !IO) :-
+deforest__goal(scope(Reason, Goal0) - Info,
+		scope(Reason, Goal) - Info, !PDInfo, !IO) :-
 	deforest__goal(Goal0, Goal, !PDInfo, !IO).
 
 deforest__goal(Goal0, Goal, !PDInfo, !IO) :-

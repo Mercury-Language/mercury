@@ -9,6 +9,7 @@ PURITY_PROGS= \
 	impure_func_t5_fixed2 \
 	impure_func_t6 \
 	impure_pred_t1_fixed3 \
+	promise_pure_test \
 	purity \
 	purity_opt
 

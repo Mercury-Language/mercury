@@ -274,8 +274,8 @@ build_interval_info_in_goal(if_then_else(_, Cond, Then, Else) - GoalInfo,
 	leave_branch_start(ite, StartAnchor, BeforeId, MaybeResumeVars,
 		CondOpenIntervals, !IntervalInfo).
 
-build_interval_info_in_goal(some(_Vars, _CanRemove, Goal) - _GoalInfo,
-                !IntervalInfo, !Acc) :-
+build_interval_info_in_goal(scope(_Reason, Goal) - _GoalInfo, !IntervalInfo,
+		!Acc) :-
 	build_interval_info_in_goal(Goal, !IntervalInfo, !Acc).
 
 build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
@@ -936,12 +936,33 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 	insert_goals_after(Goal1, Goal, !VarInfo, !:VarRename, EndInserts,
                 MaybeFeature).
 
-record_decisions_in_goal(some(Vars0, CanRemove, Goal0) - GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo, !VarInfo, !VarRename,
-		InsertMap, MaybeFeature) :-
-	rename_var_list(Vars0, no, !.VarRename, Vars),
-	record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename,
-		InsertMap, MaybeFeature).
+record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
+		MaybeFeature) :-
+	Goal0 = scope(Reason0, SubGoal0) - GoalInfo,
+	(
+		Reason0 = exist_quant(Vars0),
+		rename_var_list(Vars0, no, !.VarRename, Vars),
+		Reason = exist_quant(Vars)
+	;
+		Reason0 = promise_purity(_, _),
+		Reason = Reason0
+	;
+		Reason0 = promise_equivalent_solutions(_),
+		Reason = Reason0
+	;
+		Reason0 = commit(_),
+		Reason = Reason0
+	;
+		Reason0 = barrier(_),
+		Reason = Reason0
+	;
+		Reason0 = from_ground_term(Var0),
+		rename_var(Var0, no, !.VarRename, Var),
+		Reason = from_ground_term(Var)
+	),
+	record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
+		InsertMap, MaybeFeature),
+	Goal = scope(Reason, SubGoal) - GoalInfo.
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
                 MaybeFeature) :-

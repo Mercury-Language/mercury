@@ -432,6 +432,15 @@ prog_util__rename_in_goal_expr(OldVar, NewVar, all_state_vars(Vars0, Goal0),
 		all_state_vars(Vars, Goal)) :-
 	prog_util__rename_in_vars(OldVar, NewVar, Vars0, Vars),
 	prog_util__rename_in_goal(OldVar, NewVar, Goal0, Goal).
+prog_util__rename_in_goal_expr(OldVar, NewVar,
+		promise_purity(Implicit, Purity, Goal0),
+		promise_purity(Implicit, Purity, Goal)) :-
+	prog_util__rename_in_goal(OldVar, NewVar, Goal0, Goal).
+prog_util__rename_in_goal_expr(OldVar, NewVar,
+		promise_equivalent_solutions(Vars0, Goal0),
+		promise_equivalent_solutions(Vars, Goal)) :-
+	prog_util__rename_in_vars(OldVar, NewVar, Vars0, Vars),
+	prog_util__rename_in_goal(OldVar, NewVar, Goal0, Goal).
 prog_util__rename_in_goal_expr(OldVar, NewVar, implies(GoalA0, GoalB0),
 		implies(GoalA, GoalB)) :-
 	prog_util__rename_in_goal(OldVar, NewVar, GoalA0, GoalA),

@@ -75,6 +75,10 @@
 :- pred parse_quantifier_vars(term(T)::in, list(var(T))::out,
 	list(var(T))::out) is semidet.
 
+	% Parse a list of quantified variables.
+	%
+:- pred parse_vars(term(T)::in, list(var(T))::out) is semidet.
+
 :- pred parse_name_and_arity(module_name::in, term(_T)::in,
 	sym_name::out, arity::out) is semidet.
 
@@ -568,16 +572,21 @@ combine_list_results(ok(X), ok(Xs), ok([X | Xs])).
 %-----------------------------------------------------------------------------%
 
 parse_quantifier_vars(functor(atom("[]"),  [],     _), [],  []).
-parse_quantifier_vars(functor(atom("[|]"), [H, T], _), SVs, Vs) :-
+parse_quantifier_vars(functor(atom("[|]"), [H, T], _), !:SVs, !:Vs) :-
+	parse_quantifier_vars(T, !:SVs, !:Vs),
 	(
-		H   = functor(atom("!"), [variable(SV)], _),
-		SVs = [SV | SVs0],
-		parse_quantifier_vars(T, SVs0, Vs)
+		H = functor(atom("!"), [variable(SV)], _),
+		!:SVs = [SV | !.SVs]
 	;
-		H   = variable(V),
-		Vs = [V | Vs0],
-		parse_quantifier_vars(T, SVs, Vs0)
+		H = variable(V),
+		!:Vs = [V | !.Vs]
 	).
+
+parse_vars(functor(atom("[]"),  [],     _), []).
+parse_vars(functor(atom("[|]"), [H, T], _), !:Vs) :-
+	parse_vars(T, !:Vs),
+	H = variable(V),
+	!:Vs = [V | !.Vs].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

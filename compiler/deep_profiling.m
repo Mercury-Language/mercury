@@ -194,13 +194,12 @@ find_list_of_output_args_2([Var | Vars], [Mode | Modes], [Type | Types],
 	apply_tail_recursion_info::in, hlds_goal::out, bool::in, bool::out,
 	maybe(list(prog_var))::out) is det.
 
-apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-		FoundTailCall0, FoundTailCall, Continue) :-
+apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
+		Continue) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	(
 		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		Continue = no
 	;
 		GoalExpr0 = call(PredId, ProcId, Args,
@@ -225,21 +224,18 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
 				Builtin, UnifyContext, SymName),
 			goal_info_add_feature(GoalInfo0, tailcall, GoalInfo),
 			Goal = GoalExpr - GoalInfo,
-			FoundTailCall = yes
+			!:FoundTailCall = yes
 		;
-			Goal = Goal0,
-			FoundTailCall = FoundTailCall0
+			Goal = Goal0
 		),
 		Continue = no
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		Continue = no
 	;
 		GoalExpr0 = unify(_, _, _, Unify0, _),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		(
 			Unify0 = assign(ToVar, FromVar)
 		->
@@ -251,47 +247,44 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
 		)
 	;
 		GoalExpr0 = conj(Goals0),
-		apply_tail_recursion_to_conj(Goals0, ApplyInfo,
-			Goals, FoundTailCall0, FoundTailCall, Continue),
+		apply_tail_recursion_to_conj(Goals0, ApplyInfo, Goals,
+			!FoundTailCall, Continue),
 		GoalExpr = conj(Goals),
 		Goal = GoalExpr - GoalInfo0
 	;
 		GoalExpr0 = disj(Goals0),
-		apply_tail_recursion_to_disj(Goals0, ApplyInfo,
-			Goals, FoundTailCall0, FoundTailCall),
+		apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals,
+			!FoundTailCall),
 		GoalExpr = disj(Goals),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
-		apply_tail_recursion_to_cases(Cases0, ApplyInfo,
-			Cases, FoundTailCall0, FoundTailCall),
+		apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases,
+			!FoundTailCall),
 		GoalExpr = switch(Var, CanFail, Cases),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
 		GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
-		apply_tail_recursion_to_goal(Then0, ApplyInfo,
-			Then, FoundTailCall0, FoundTailCall1, _),
-		apply_tail_recursion_to_goal(Else0, ApplyInfo,
-			Else, FoundTailCall1, FoundTailCall, _),
+		apply_tail_recursion_to_goal(Then0, ApplyInfo, Then,
+			!FoundTailCall, _),
+		apply_tail_recursion_to_goal(Else0, ApplyInfo, Else,
+			!FoundTailCall, _),
 		GoalExpr = if_then_else(Vars, Cond, Then, Else),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
 		GoalExpr0 = par_conj(_),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		Continue = no
 	;
-		GoalExpr0 = some(_, _, _),
+		GoalExpr0 = scope(_, _),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		Continue = no
 	;
 		GoalExpr0 = not(_),
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall0,
 		Continue = no
 	;
 		GoalExpr0 = shorthand(_),
@@ -316,20 +309,19 @@ apply_tail_recursion_process_assign([Output0 | Outputs0], ToVar, FromVar,
 	bool::in, bool::out, maybe(list(prog_var))::out) is det.
 
 apply_tail_recursion_to_conj([], ApplyInfo, [],
-		FoundTailCall, FoundTailCall, yes(ApplyInfo ^ outputs)).
+		!FoundTailCall, yes(ApplyInfo ^ outputs)).
 apply_tail_recursion_to_conj([Goal0 | Goals0], ApplyInfo0, [Goal | Goals],
-		FoundTailCall0, FoundTailCall, Continue) :-
+		!FoundTailCall, Continue) :-
 	apply_tail_recursion_to_conj(Goals0, ApplyInfo0, Goals,
-		FoundTailCall0, FoundTailCall1, Continue1),
+		!FoundTailCall, Continue1),
 	(
 		Continue1 = yes(Outputs),
 		apply_tail_recursion_to_goal(Goal0,
 			ApplyInfo0 ^ outputs := Outputs, Goal,
-			FoundTailCall1, FoundTailCall, Continue)
+			!FoundTailCall, Continue)
 	;
 		Continue1 = no,
 		Goal = Goal0,
-		FoundTailCall = FoundTailCall1,
 		Continue = no
 	).
 
@@ -337,29 +329,27 @@ apply_tail_recursion_to_conj([Goal0 | Goals0], ApplyInfo0, [Goal | Goals],
 	apply_tail_recursion_info::in, list(hlds_goal)::out,
 	bool::in, bool::out) is det.
 
-apply_tail_recursion_to_disj([], _, [], FoundTailCall, FoundTailCall).
+apply_tail_recursion_to_disj([], _, [], !FoundTailCall).
 apply_tail_recursion_to_disj([Goal0], ApplyInfo, [Goal],
-		FoundTailCall0, FoundTailCall) :-
+		!FoundTailCall) :-
 	apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-		FoundTailCall0, FoundTailCall, _).
+		!FoundTailCall, _).
 apply_tail_recursion_to_disj([Goal0 | Goals0], ApplyInfo, [Goal0 | Goals],
-		FoundTailCall0, FoundTailCall) :-
+		!FoundTailCall) :-
 	Goals0 = [_ | _],
-	apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals,
-		FoundTailCall0, FoundTailCall).
+	apply_tail_recursion_to_disj(Goals0, ApplyInfo, Goals, !FoundTailCall).
 
 :- pred apply_tail_recursion_to_cases(list(case)::in,
 	apply_tail_recursion_info::in, list(case)::out,
 	bool::in, bool::out) is det.
 
-apply_tail_recursion_to_cases([], _,
-		[], FoundTailCall, FoundTailCall).
+apply_tail_recursion_to_cases([], _, [], !FoundTailCall).
 apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
-		[case(ConsId, Goal) | Cases], FoundTailCall0, FoundTailCall) :-
+		[case(ConsId, Goal) | Cases], !FoundTailCall) :-
 	apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
-		FoundTailCall0, FoundTailCall1, _),
+		!FoundTailCall, _),
 	apply_tail_recursion_to_cases(Cases0, ApplyInfo, Cases,
-		FoundTailCall1, FoundTailCall).
+		!FoundTailCall).
 
 %-----------------------------------------------------------------------------%
 
@@ -415,7 +405,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
 		figure_out_rec_call_numbers_in_goal_list(Goals,
 			!N, !TailCallSites)
 	;
-		GoalExpr = some(_, _, Goal1),
+		GoalExpr = scope(_, Goal1),
 		figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
 	;
 		GoalExpr = not(Goal1),
@@ -963,28 +953,44 @@ transform_goal(Path, not(Goal0) - GoalInfo0, not(Goal) - GoalInfo,
 	transform_goal([neg | Path], Goal0, Goal, AddedImpurity, !DeepInfo),
 	add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
 
-transform_goal(Path, some(QVars, CanRemove, Goal0) - GoalInfo0,
-		some(QVars, CanRemove, Goal) - GoalInfo, AddedImpurity,
-		!DeepInfo) :-
-	Goal0 = _ - InnerInfo,
+transform_goal(Path, scope(Reason0, SubGoal0) - GoalInfo0, Goal,
+		AddedImpurity, !DeepInfo) :-
+	SubGoal0 = _ - InnerInfo,
 	goal_info_get_determinism(GoalInfo0, OuterDetism),
 	goal_info_get_determinism(InnerInfo, InnerDetism),
 	( InnerDetism = OuterDetism ->
-		GoalInfo1 = GoalInfo0,
-		MaybeCut = no_cut
+		MaybeCut = no_cut,
+		Reason = Reason0,
+		AddForceCommit = no
 	;
-		% Given a subgoal containing both nondet code and impure code,
-		% determinism analysis will remove the `some' wrapped around
-		% that subgoal if it is allowed to. If we get here, then the
-		% subgoal inside the `some' contains nondet code, and the deep
-		% profiling transformation will make it impure as well.
+		% Given a subgoal containing both at_most_many code and
+		% impure code, determinism analysis will remove the `scope'
+		% wrapped around that subgoal if it is allowed to. If we get
+		% here, then the subgoal inside the `scope' contains
+		% at_most_many code (which means that removing the scope
+		% will change its determinism) and the deep profiling
+		% transformation will make it impure as well.
 
-		goal_info_add_feature(GoalInfo0, keep_this_commit, GoalInfo1),
-		MaybeCut = cut
+		MaybeCut = cut,
+		( Reason0 = commit(_) ->
+			Reason = commit(force_pruning),
+			AddForceCommit = no
+		;
+			Reason = Reason0,
+			AddForceCommit = yes
+		)
 	),
-	transform_goal([exist(MaybeCut) | Path], Goal0, Goal, AddedImpurity,
-		!DeepInfo),
-	add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo).
+	transform_goal([scope(MaybeCut) | Path], SubGoal0, SubGoal,
+		AddedImpurity, !DeepInfo),
+	add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo),
+	(
+		AddForceCommit = no,
+		Goal = scope(Reason, SubGoal) - GoalInfo
+	;
+		AddForceCommit = yes,
+		InnerGoal = scope(Reason, SubGoal) - GoalInfo,
+		Goal = scope(commit(force_pruning), InnerGoal) - GoalInfo
+	).
 
 transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0) - GoalInfo0,
 		if_then_else(IVars, Cond, Then, Else) - GoalInfo,

@@ -618,7 +618,15 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 				!ModuleInfo),
 			module_info_remove_predid(PredId, !ModuleInfo)
 		),
-		!:NumErrors = !.NumErrors + ErrsInThisPred
+		!:NumErrors = !.NumErrors + ErrsInThisPred,
+		globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+		globals__io_lookup_bool_option(statistics, Statistics, !IO),
+		(
+			VeryVerbose = yes,
+			maybe_report_stats(Statistics, !IO)
+		;
+			VeryVerbose = no
+		)
 	).
 
 :- pred write_modes_progress_message(pred_id::in, pred_info::in,
@@ -627,18 +635,22 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck, !IO) :-
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, infer_modes) ->
-		(	WhatToCheck = check_modes,
+		(
+			WhatToCheck = check_modes,
 			write_pred_progress_message("% Mode-analysing ",
 				PredId, ModuleInfo, !IO)
-		;	WhatToCheck = check_unique_modes,
+		;
+			WhatToCheck = check_unique_modes,
 			write_pred_progress_message("% Unique-mode-analysing ",
 				PredId, ModuleInfo, !IO)
 		)
 	;
-		(	WhatToCheck = check_modes,
+		(
+			WhatToCheck = check_modes,
 			write_pred_progress_message("% Mode-checking ",
 				PredId, ModuleInfo, !IO)
-		;	WhatToCheck = check_unique_modes,
+		;
+			WhatToCheck = check_unique_modes,
 			write_pred_progress_message("% Unique-mode-checking ",
 				PredId, ModuleInfo, !IO)
 		)
@@ -1208,11 +1220,56 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
 	mode_info_set_instmap(InstMap0, !ModeInfo),
 	mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
-modecheck_goal_expr(some(Vs, CanRemove, SubGoal0), _,
-		some(Vs, CanRemove, SubGoal), !ModeInfo, !IO) :-
-	mode_checkpoint(enter, "some", !ModeInfo, !IO),
-	modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-	mode_checkpoint(exit, "some", !ModeInfo, !IO).
+modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
+		!ModeInfo, !IO) :-
+	( Reason = from_ground_term(TermVar) ->
+		% The original goal does no quantification, so deleting
+		% the `scope' is OK, and it is necessary for avoiding
+		% bad performance in later compiler phases, such as
+		% simplification. This deletion undoes the insertion
+		% done in the base case of unravel_unification in make_hlds.m.
+		(
+			mode_info_get_instmap(!.ModeInfo, InstMap0),
+			instmap__lookup_var(InstMap0, TermVar, InstOfVar),
+			InstOfVar = free,
+			SubGoal0 = conj([UnifyTermGoal | UnifyArgGoals])
+				- SubGoalInfo,
+			% If TermVar created by an impure unification, which is
+			% possible for solver types, it is possible for
+			% UnifyTermGoal to contain a unification other than
+			% one involving TermVar.
+			UnifyTermGoal = unify(TermVar, _, _, _, _) - _
+		->
+			% UnifyTerm unifies TermVar with the arguments created
+			% by UnifyArgs. Since TermVar is now free and the
+			% argument variables haven't been encountered yet,
+			% UnifyTerm cannot succeed until *after* the argument
+			% variables become ground.
+			%
+			% Putting UnifyTerm after UnifyArgs here is much more
+			% efficient than letting the usual more ordering
+			% algorithm delay it repeatedly.
+
+			list__reverse([UnifyTermGoal | UnifyArgGoals],
+				RevConj),
+			RevSubGoal0 = conj(RevConj) - SubGoalInfo,
+			mode_checkpoint(enter, "ground scope", !ModeInfo, !IO),
+			modecheck_goal(RevSubGoal0, SubGoal, !ModeInfo, !IO),
+			mode_checkpoint(exit, "ground scope", !ModeInfo, !IO),
+
+			SubGoal = GoalExpr - _
+		;
+			mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+			modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+			mode_checkpoint(exit, "scope", !ModeInfo, !IO),
+			SubGoal = GoalExpr - _
+		)
+	;
+		mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+		modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+		mode_checkpoint(exit, "scope", !ModeInfo, !IO),
+		GoalExpr = scope(Reason, SubGoal)
+	).
 
 modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 		GoalInfo0, Goal, !ModeInfo, !IO) :-
@@ -1793,7 +1850,8 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 		delay_info__delay_goal(DelayInfo0, FirstErrorInfo,
 			Goal0, DelayInfo1),
 		%  delaying an impure goal is an impurity error
-		( Impure = yes ->
+		(
+			Impure = yes,
 			FirstErrorInfo = mode_error_info(Vars, _, _, _),
 			ImpureError = mode_error_conj(
 				[delayed_goal(Vars, FirstErrorInfo, Goal0)],
@@ -1804,7 +1862,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 				Context, ModeContext),
 			!:ImpurityErrors = [ImpureErrorInfo | !.ImpurityErrors]
 		;
-			true
+			Impure = no
 		)
 	;
 		Errors = [],
@@ -1815,11 +1873,13 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 		% and then continue scheduling the rest of the goal.
 	delay_info__wakeup_goals(WokenGoals, DelayInfo1, DelayInfo),
 	list__append(WokenGoals, Goals0, Goals1),
-	( WokenGoals = [] ->
-		true
-	; WokenGoals = [_] ->
+	(
+		WokenGoals = []
+	;
+		WokenGoals = [_],
 		mode_checkpoint(wakeup, "goal", !ModeInfo, !IO)
 	;
+		WokenGoals = [_, _ | _],
 		mode_checkpoint(wakeup, "goals", !ModeInfo, !IO)
 	),
 	mode_info_set_delay_info(DelayInfo, !ModeInfo),
@@ -1835,14 +1895,21 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 		modecheck_conj_list_2(Goals1, Goals2, !ImpurityErrors,
 			!ModeInfo, !IO)
 	),
-
-	( Errors = [] ->
-		% we successfully scheduled this goal, so insert
-		% it in the list of successfully scheduled goals
-		Goals = ScheduledSolverGoals ++ [Goal | Goals2]
-	;
-		% we delayed this goal -- it will be stored in the delay_info
+	(
+		Errors = [_ | _],
+		% We delayed this goal -- it will be stored in the delay_info.
 		Goals = ScheduledSolverGoals ++ Goals2
+	;
+		Errors = [],
+		% We successfully scheduled this goal, so insert it
+		% in the list of successfully scheduled goals.
+		% We flatten out conjunctions if we can. They can arise
+		% when Goal0 was a scope(from_ground_term, _) goal.
+		( Goal = conj(SubGoals) - _ ->
+			Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
+		;
+			Goals = ScheduledSolverGoals ++ [Goal | Goals2]
+		)
 	).
 
 	% We may still have some unscheduled goals.  This may be because some
@@ -1864,15 +1931,12 @@ modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
 		%
 	modecheck_conj_list_3(DelayedGoals0, DelayedGoals1, Goals0,
 		!ImpurityErrors, !ModeInfo, !IO),
-
 		% Try to handle any unscheduled goals by inserting solver
 		% initialisation calls, aiming for *any* workable schedule.
 		%
 	modecheck_conj_list_4(DelayedGoals1, DelayedGoals, Goals1,
 		!ImpurityErrors, !ModeInfo, !IO),
-
 	Goals = Goals0 ++ Goals1.
-
 
 	% We may still have some unscheduled goals.  This may be because some
 	% initialisation calls are needed to turn some solver type vars
@@ -2118,7 +2182,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
 candidate_init_vars_3(ModeInfo, Goal0, !NonFree, !CandidateVars) :-
 		% An existentially quantified goal.
 		%
-	Goal0 = some(_, _, Goal) - _GoalInfo,
+	Goal0 = scope(_, Goal) - _GoalInfo,
 	candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
@@ -2312,7 +2376,6 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
 		!:ImpurityErrors = [ImpurityError | !.ImpurityErrors]
 	).
 
-
 :- pred filter_headvar_unification_goals(list(prog_var)::in,
 	list(delayed_goal)::in, list(delayed_goal)::out,
 	list(delayed_goal)::out) is det.
@@ -2321,7 +2384,6 @@ filter_headvar_unification_goals(HeadVars, DelayedGoals,
 		HeadVarUnificationGoals, NonHeadVarUnificationGoals) :-
 	list__filter(is_headvar_unification_goal(HeadVars), DelayedGoals,
 		HeadVarUnificationGoals, NonHeadVarUnificationGoals).
-
 
 :- pred is_headvar_unification_goal(list(prog_var)::in, delayed_goal::in)
 	is semidet.
@@ -2351,7 +2413,6 @@ get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 	set__union(Vars0, Vars1, Vars2),
 	get_all_waiting_vars_2(Rest, Vars2, Vars).
-
 
 :- pred redelay_goals(list(delayed_goal)::in, delay_info::in, delay_info::out)
 	is det.

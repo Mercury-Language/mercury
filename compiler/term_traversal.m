@@ -196,7 +196,7 @@ traverse_goal_2(not(Goal), _, Params, !Info) :-
 		% but it shouldn't hurt either.
 	traverse_goal(Goal, Params, !Info).
 
-traverse_goal_2(some(_Vars, _, Goal), _GoalInfo, Params, !Info) :-
+traverse_goal_2(scope(_, Goal), _GoalInfo, Params, !Info) :-
 	traverse_goal(Goal, Params, !Info).
 
 traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, !Info) :-

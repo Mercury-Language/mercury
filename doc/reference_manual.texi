@@ -626,6 +626,42 @@ A universal quantification.
 @var{Goal} must be a valid goal.
 This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
 
+@item @code{promise_pure @var{Goal}}
+A purity cast.
+@var{Goal} must be a valid goal.
+This goal promises that @var{Goal} implements a pure interface,
+even though it may include impure and semipure components.
+
+@item @code{promise_semipure @var{Goal}}
+A purity cast.
+@var{Goal} must be a valid goal.
+This goal promises that @var{Goal} implements a semipure interface,
+even though it may include impure components.
+
+@c @item @code{promise_impure @var{Goal}}
+@c A purity cast.
+@c @var{Goal} must be a valid goal.
+@c This goal promises that @var{Goal} implements an impure interface.
+
+@item @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
+A determinism cast.
+@var{Vars} must be a list of variables.
+@var{Goal} must be a valid goal.
+This goal promises that @var{Vars}
+is the set of variables bound by @var{Goal},
+and that while @var{Goal} may have more than one solution,
+all of these solutions are equivalent
+with respect to the equality theories of the variables in @var{Vars}.
+It is an error for @var{Vars} to include a variable not bound by @var{Goal}
+or for @var{Goal} to bind a non-local variable
+that is not listed in @var{Vars}.
+If @var{Goal} has determinism @samp{multi} or @samp{cc_multi} then
+@code{promise_equivalent_solutions @var{Vars} @var{Goal}}
+has determinism @samp{det}.
+If @var{Goal} has determinism @samp{nondet} or @samp{cc_nondet} then
+@code{promise_equivalent_solutions @var{Vars} @var{Goal}}
+has determinism @samp{semidet}.
+
 @item @code{@var{Goal1}, @var{Goal2}}
 A conjunction.
 @var{Goal1} and @var{Goal2} must be valid goals.

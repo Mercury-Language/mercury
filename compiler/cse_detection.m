@@ -99,16 +99,18 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
 
 detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 	detect_cse_in_proc_2(ProcId, PredId, Redo, !ModuleInfo),
-	( Redo = no ->
-		true
-		;
+	(
+		Redo = no
+	;
+		Redo = yes,
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-		( VeryVerbose = yes ->
+		(
+			VeryVerbose = yes,
 			io__write_string("% Repeating mode check for ", !IO),
 			hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
 			io__write_string("\n", !IO)
 		;
-			true
+			VeryVerbose = no
 		),
 		modecheck_proc(ProcId, PredId, !ModuleInfo, Errs, _Changed,
 			!IO),
@@ -117,22 +119,24 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 		;
 			true
 		),
-		( VeryVerbose = yes ->
+		(
+			VeryVerbose = yes,
 			io__write_string("% Repeating switch detection for ",
 				!IO),
 			hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
 			io__write_string("\n", !IO)
 		;
-			true
+			VeryVerbose = no
 		),
 		detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
-		( VeryVerbose = yes ->
+		(
+			VeryVerbose = yes,
 			io__write_string("% Repeating common " ++
 				"deconstruction detection for ", !IO),
 			hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
 			io__write_string("\n", !IO)
 		;
-			true
+			VeryVerbose = no
 		),
 		detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO)
 	).
@@ -220,8 +224,7 @@ detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo, Goal) :-
 
 detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, !CseInfo, Redo,
 		Goal - GoalInfo, InstMap) :-
-	detect_cse_in_goal_2(Goal0, GoalInfo, InstMap0, !CseInfo,
-		Redo, Goal),
+	detect_cse_in_goal_2(Goal0, GoalInfo, InstMap0, !CseInfo, Redo, Goal),
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
@@ -255,8 +258,8 @@ detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
 detect_cse_in_goal_2(not(Goal0), _GoalInfo, InstMap, !CseInfo, Redo,
 		not(Goal)) :-
 	detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
-detect_cse_in_goal_2(some(Vars, CanRemove, Goal0), _GoalInfo, InstMap,
-		!CseInfo, Redo, some(Vars, CanRemove, Goal)) :-
+detect_cse_in_goal_2(scope(Reason, Goal0), _GoalInfo, InstMap,
+		!CseInfo, Redo, scope(Reason, Goal)) :-
 	detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
 detect_cse_in_goal_2(conj(Goals0), _GoalInfo, InstMap, !CseInfo, Redo,
 		conj(Goals)) :-

@@ -58,40 +58,38 @@ mark_static_terms(_ModuleInfo, !Proc) :-
 	proc_info_set_goal(Goal, !Proc).
 
 :- pred goal_mark_static_terms(hlds_goal::in, hlds_goal::out,
-		static_info::in, static_info::out) is det.
+	static_info::in, static_info::out) is det.
 
-goal_mark_static_terms(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo) -->
-	goal_expr_mark_static_terms(GoalExpr0, GoalExpr).
+goal_mark_static_terms(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !SI) :-
+	goal_expr_mark_static_terms(GoalExpr0, GoalExpr, !SI).
 
 :- pred goal_expr_mark_static_terms(hlds_goal_expr::in, hlds_goal_expr::out,
-		static_info::in, static_info::out) is det.
+	static_info::in, static_info::out) is det.
 
-goal_expr_mark_static_terms(conj(Goals0), conj(Goals), SI0, SI) :-
-	conj_mark_static_terms(Goals0, Goals, SI0, SI).
+goal_expr_mark_static_terms(conj(Goals0), conj(Goals), !SI) :-
+	conj_mark_static_terms(Goals0, Goals, !SI).
 
-goal_expr_mark_static_terms(par_conj(Goals0), par_conj(Goals),
-		SI0, SI) :-
+goal_expr_mark_static_terms(par_conj(Goals0), par_conj(Goals), !SI) :-
 	% it's OK to treat parallel conjunctions as if they were
 	% sequential here, since if we mark any variables as
 	% static, the computation of those variables will be
 	% done at compile time.
-	conj_mark_static_terms(Goals0, Goals, SI0, SI).
+	conj_mark_static_terms(Goals0, Goals, !SI).
 
-goal_expr_mark_static_terms(disj(Goals0), disj(Goals), SI0, SI0) :-
+goal_expr_mark_static_terms(disj(Goals0), disj(Goals), !SI) :-
 	% we revert to the original static_info at the end of branched goals
-	disj_mark_static_terms(Goals0, Goals, SI0).
+	disj_mark_static_terms(Goals0, Goals, !.SI).
 
-goal_expr_mark_static_terms(switch(A, B, Cases0), switch(A, B, Cases),
-		SI0, SI0) :-
+goal_expr_mark_static_terms(switch(A, B, Cases0), switch(A, B, Cases), !SI) :-
 	% we revert to the original static_info at the end of branched goals
-	cases_mark_static_terms(Cases0, Cases, SI0).
+	cases_mark_static_terms(Cases0, Cases, !.SI).
 
-goal_expr_mark_static_terms(not(Goal0), not(Goal), SI0, SI0) :-
+goal_expr_mark_static_terms(not(Goal0), not(Goal), !SI) :-
 	% we revert to the original static_info at the end of the negation
-	goal_mark_static_terms(Goal0, Goal, SI0, _SI).
+	goal_mark_static_terms(Goal0, Goal, !.SI, _SI).
 
-goal_expr_mark_static_terms(some(A, B, Goal0), some(A, B, Goal), SI0, SI) :-
-	goal_mark_static_terms(Goal0, Goal, SI0, SI).
+goal_expr_mark_static_terms(scope(A, Goal0), scope(A, Goal), !SI) :-
+	goal_mark_static_terms(Goal0, Goal, !SI).
 
 goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
 		if_then_else(A, Cond, Then, Else), SI0, SI0) :-
@@ -104,27 +102,25 @@ goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
 	goal_mark_static_terms(Then0, Then, SI_Cond, _SI_Then),
 	goal_mark_static_terms(Else0, Else, SI0, _SI_Else).
 
-goal_expr_mark_static_terms(Goal @ call(_, _, _, _, _, _), Goal, SI, SI).
+goal_expr_mark_static_terms(Goal @ call(_, _, _, _, _, _), Goal, !SI).
 
-goal_expr_mark_static_terms(Goal @ generic_call(_, _, _, _), Goal, SI, SI).
+goal_expr_mark_static_terms(Goal @ generic_call(_, _, _, _), Goal, !SI).
 
 goal_expr_mark_static_terms(unify(LHS, RHS, Mode, Unification0, Context),
-		unify(LHS, RHS, Mode, Unification, Context), SI0, SI) :-
-	unification_mark_static_terms(Unification0, Unification,
-		SI0, SI).
+		unify(LHS, RHS, Mode, Unification, Context), !SI) :-
+	unification_mark_static_terms(Unification0, Unification, !SI).
 
-goal_expr_mark_static_terms(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
-		SI, SI).
+goal_expr_mark_static_terms(Goal @ foreign_proc(_, _, _, _, _, _), Goal, !SI).
 
-goal_expr_mark_static_terms(shorthand(_), _, _, _) :-
+goal_expr_mark_static_terms(shorthand(_), _, !SI) :-
 	% these should have been expanded out by now
 	error("fill_expr_slots: unexpected shorthand").
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
-		static_info::in, static_info::out) is det.
+	static_info::in, static_info::out) is det.
 
-conj_mark_static_terms(Goals0, Goals) -->
-	list__map_foldl(goal_mark_static_terms, Goals0, Goals).
+conj_mark_static_terms(Goals0, Goals, !SI) :-
+	list__map_foldl(goal_mark_static_terms, Goals0, Goals, !SI).
 
 :- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
 	static_info::in) is det.

@@ -376,12 +376,12 @@ invariant_goal_candidates_2(PPId,
     invariant_goal_candidates_keeping_path_candidates(PPId, NegatedGoal, IGCs).
 
 invariant_goal_candidates_2(PPId,
-        some(_, _, QuantifiedGoal)                   - _GoalInfo, IGCs) =
+        scope(_, QuantifiedGoal)                     - _GoalInfo, IGCs) =
     invariant_goal_candidates_2(PPId, QuantifiedGoal, IGCs).
 
 invariant_goal_candidates_2(PPId,
-        if_then_else(_XVs, Cond, Then, Else)         - GoalInfo,  IGCs0) = IGCs
- :-
+        if_then_else(_XVs, Cond, Then, Else)         - GoalInfo,  IGCs0)
+        = IGCs :-
     CondThenGoal = conj([Cond, Then]) - GoalInfo,
     IGCs1        = invariant_goal_candidates_keeping_path_candidates(PPId,
                         CondThenGoal, IGCs0),
@@ -872,8 +872,8 @@ gen_aux_proc_2(Info, switch(Var, CanFail, Cases) - GoalInfo) =
 gen_aux_proc_2(Info, not(NegatedGoal) - GoalInfo) =
     not(gen_aux_proc_2(Info, NegatedGoal)) - GoalInfo.
 
-gen_aux_proc_2(Info, some(XVars, CanRemove, QuantifiedGoal) - GoalInfo) =
-    some(XVars, CanRemove, gen_aux_proc_2(Info, QuantifiedGoal)) - GoalInfo.
+gen_aux_proc_2(Info, scope(Reason, QuantifiedGoal) - GoalInfo) =
+    scope(Reason, gen_aux_proc_2(Info, QuantifiedGoal)) - GoalInfo.
 
 gen_aux_proc_2(Info, if_then_else(XVars, Cond, Then, Else) - GoalInfo) =
     if_then_else(XVars,
@@ -1000,9 +1000,8 @@ gen_out_proc_2(PPId, CallAux,
     not(gen_out_proc_2(PPId, CallAux, NegatedGoal)) - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
-        some(XVars, CanRemove, QuantifiedGoal)         - GoalInfo) =
-    some(XVars, CanRemove, gen_out_proc_2(PPId, CallAux, QuantifiedGoal)) -
-            GoalInfo.
+        scope(Reason, QuantifiedGoal)         - GoalInfo) =
+    scope(Reason, gen_out_proc_2(PPId, CallAux, QuantifiedGoal)) - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
         if_then_else(XVars, Cond, Then, Else)          - GoalInfo) =
@@ -1111,7 +1110,7 @@ uniquely_used_vars_2(MI, switch(_, _, Cases) - _) =
 uniquely_used_vars_2(MI, not(NegatedGoal) - _) =
     uniquely_used_vars_2(MI, NegatedGoal).
 
-uniquely_used_vars_2(MI, some(_, _, QuantifiedGoal) - _) =
+uniquely_used_vars_2(MI, scope(_, QuantifiedGoal) - _) =
     uniquely_used_vars_2(MI, QuantifiedGoal).
 
 uniquely_used_vars_2(MI, if_then_else(_, Cond, Then, Else) - _) =
@@ -1201,7 +1200,7 @@ goal_inputs(_MI, disj(_) - _) = _ :-
 goal_inputs(_MI, not(_) - _) = _ :-
     unexpected(this_file, "goal_inputs/2: not/1 in hlds_goal").
 
-goal_inputs(_MI, some(_, _, _) - _) = _ :-
+goal_inputs(_MI, scope(_, _) - _) = _ :-
     unexpected(this_file, "goal_inputs/2: some/3 in hlds_goal").
 
 goal_inputs(_MI, if_then_else(_, _, _, _) - _) = _ :-
@@ -1284,7 +1283,7 @@ goal_outputs(_MI, disj(_) - _) = _ :-
 goal_outputs(_MI, not(_) - _) = _ :-
     unexpected(this_file, "goal_outputs/2: not/1 in hlds_goal").
 
-goal_outputs(_MI, some(_, _, _) - _) = _ :-
+goal_outputs(_MI, scope(_, _) - _) = _ :-
     unexpected(this_file, "goal_outputs/2: some/3 in hlds_goal").
 
 goal_outputs(_MI, if_then_else(_, _, _, _) - _) = _ :-

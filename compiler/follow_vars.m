@@ -196,9 +196,9 @@ find_follow_vars_in_goal_expr(
 
 	goal_info_set_store_map(GoalInfo0, FollowVarsMap0, GoalInfo).
 
-find_follow_vars_in_goal_expr(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), GoalInfo, GoalInfo,
-		VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
+find_follow_vars_in_goal_expr(scope(Reason, Goal0), scope(Reason, Goal),
+		GoalInfo, GoalInfo, VarTypes, ModuleInfo,
+		!FollowVarsMap, !NextNonReserved) :-
 	find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
 		!FollowVarsMap, !NextNonReserved).
 

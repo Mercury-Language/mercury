@@ -1602,18 +1602,66 @@ hlds_out__write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet,
 	io__write_string(")", !IO),
 	io__write_string(Follow, !IO).
 
-hlds_out__write_goal_2(some(Vars, CanRemove, Goal), ModuleInfo, VarSet,
+hlds_out__write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet,
 		AppendVarNums, Indent, Follow, TypeQual, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
-	io__write_string("some [", !IO),
-	mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
-	io__write_string("] (", !IO),
-	( CanRemove = cannot_remove ->
-		io__write_string(" % (cannot remove)", !IO)
+	(
+		Reason = exist_quant(Vars),
+		io__write_string("some [", !IO),
+		mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
+		io__write_string("] (\n", !IO)
 	;
-		true
+		Reason = promise_purity(Implicit, Purity),
+		(
+			Purity = pure,
+			io__write_string("promise_pure (", !IO)
+		;
+			Purity = (semipure),
+			io__write_string("promise_semipure (", !IO)
+		;
+			Purity = (impure),
+			io__write_string("promise_impure (", !IO)
+		),
+		(
+			Implicit = make_implicit_promises,
+			io__write_string("implicit\n", !IO)
+		;
+			Implicit = dont_make_implicit_promises,
+			io__write_string("\n", !IO)
+		)
+	;
+		Reason = promise_equivalent_solutions(Vars),
+		io__write_string("promise_equivalent_solutions [", !IO),
+		mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),
+		io__write_string("] (\n", !IO)
+	;
+		Reason = barrier(removable),
+		io__write_string("(\n", !IO),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% barrier(removable)\n", !IO)
+	;
+		Reason = barrier(not_removable),
+		io__write_string("(\n", !IO),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% barrier(not_removable)\n", !IO)
+	;
+		Reason = commit(force_pruning),
+		io__write_string("(\n", !IO),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% commit(force_pruning)\n", !IO)
+	;
+		Reason = commit(dont_force_pruning),
+		io__write_string("(\n", !IO),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% commit(dont_force_pruning)\n", !IO)
+	;
+		Reason = from_ground_term(Var),
+		io__write_string("(\n", !IO),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% from_ground_term [", !IO),
+		mercury_output_var(Var, VarSet, AppendVarNums, !IO),
+		io__write_string("]\n", !IO)
 	),
-	io__nl(!IO),
 	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums,
 		Indent + 1, "\n", TypeQual, !IO),
 	hlds_out__write_indent(Indent, !IO),

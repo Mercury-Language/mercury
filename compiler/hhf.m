@@ -212,7 +212,7 @@ hhf__goal_expr(_, _, foreign_proc(A,B,C,D,E,F), foreign_proc(A,B,C,D,E,F),
 		!HI).
 hhf__goal_expr(_, _, shorthand(_), _, !HI) :-
 	error("hhf_goal_expr: found shorthand").
-hhf__goal_expr(NonLocals, _, some(A, B, Goal0), some(A, B, Goal), !HI) :-
+hhf__goal_expr(NonLocals, _, scope(Reason, Goal0), scope(Reason, Goal), !HI) :-
 	hhf__goal(NonLocals, Goal0, Goal, !HI).
 hhf__goal_expr(_, _, disj(Goals0), disj(Goals), !HI) :-
 	list__map_foldl(hhf__goal_use_own_nonlocals, Goals0, Goals, !HI).

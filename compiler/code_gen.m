@@ -1255,8 +1255,7 @@ code_gen__generate_goal_2(switch(Var, CanFail, CaseList),
 		GoalInfo, CodeModel, Code, !CI) :-
 	switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
 		GoalInfo, Code, !CI).
-code_gen__generate_goal_2(some(_Vars, _, Goal), _GoalInfo, CodeModel, Code,
-		!CI) :-
+code_gen__generate_goal_2(scope(_, Goal), _GoalInfo, CodeModel, Code, !CI) :-
 	commit_gen__generate_commit(CodeModel, Goal, Code, !CI).
 code_gen__generate_goal_2(generic_call(GenericCall, Args, Modes, Det),
 		GoalInfo, CodeModel, Code, !CI) :-

@@ -116,8 +116,8 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	move_follow_code_in_goal(Cond0, Cond, Flags, !R),
 	move_follow_code_in_goal(Then0, Then, Flags, !R),
 	move_follow_code_in_goal(Else0, Else, Flags, !R).
-move_follow_code_in_goal_2(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), Flags, !R) :-
+move_follow_code_in_goal_2(scope(Remove, Goal0),
+		scope(Remove, Goal), Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R).
 move_follow_code_in_goal_2(Goal @ generic_call(_, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal, _, !R).

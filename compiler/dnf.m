@@ -215,11 +215,11 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, !ModuleInfo,
 		GoalExpr0 = par_conj(_Goals0),
 		error("sorry, dnf of parallel conjunction not implemented")
 	;
-		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
+		GoalExpr0 = scope(Reason, SomeGoal0),
 		dnf__make_goal_literal(SomeGoal0, InstMap0, MaybeNonAtomic,
 			!ModuleInfo, no, yes, counter__init(0), _, DnfInfo,
 			SomeGoal, !NewPredIds),
-		Goal = some(Vars, CanRemove, SomeGoal) - GoalInfo
+		Goal = scope(Reason, SomeGoal) - GoalInfo
 	;
 		GoalExpr0 = not(NegGoal0),
 		dnf__make_goal_literal(NegGoal0, InstMap0, MaybeNonAtomic,
@@ -464,11 +464,13 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, not(NegGoalExpr - _),
 		IsAtomic = no
 	).
 dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
-		some(_, _, GoalExpr - _), IsAtomic) :-
-	( InSome = no ->
+		scope(_, GoalExpr - _), IsAtomic) :-
+	(
+		InSome = no,
 		dnf__is_atomic_expr(MaybeNonAtomic, InNeg, yes,
 			GoalExpr, IsAtomic)
 	;
+		InSome = yes,
 		IsAtomic = no
 	).
 dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _), no).
@@ -476,14 +478,12 @@ dnf__is_atomic_expr(_, _, _, foreign_proc(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, shorthand(ShorthandGoal),
 		IsAtomic) :-
 	dnf__is_atomic_expr_shorthand(MaybeNonAtomic, InNeg, InSome,
-			ShorthandGoal, IsAtomic).
-
+		ShorthandGoal, IsAtomic).
 
 :- pred dnf__is_atomic_expr_shorthand(maybe(set(pred_proc_id))::in, bool::in,
-		bool::in, shorthand_goal_expr::in, bool::out) is det.
+	bool::in, shorthand_goal_expr::in, bool::out) is det.
 
 dnf__is_atomic_expr_shorthand(_, _, _, bi_implication(_,_), no).
-
 
 :- pred dnf__free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.
@@ -511,7 +511,7 @@ dnf__free_of_nonatomic(disj(Goals) - GoalInfo, NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
 dnf__free_of_nonatomic(not(Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
-dnf__free_of_nonatomic(some(_, _, Goal) - _, NonAtomic) :-
+dnf__free_of_nonatomic(scope(_, Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
 dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else) - GoalInfo,
 		NonAtomic) :-
@@ -522,8 +522,7 @@ dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else) - GoalInfo,
 	dnf__free_of_nonatomic(Cond, NonAtomic),
 	dnf__free_of_nonatomic(Then, NonAtomic),
 	dnf__free_of_nonatomic(Else, NonAtomic).
-dnf__free_of_nonatomic(foreign_proc(_, _, _, _, _, _) - _,
-		_NonAtomic).
+dnf__free_of_nonatomic(foreign_proc(_, _, _, _, _, _) - _, _NonAtomic).
 
 :- pred dnf__goals_free_of_nonatomic(list(hlds_goal)::in,
 	set(pred_proc_id)::in) is semidet.

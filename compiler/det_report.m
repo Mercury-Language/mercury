@@ -22,6 +22,7 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module set.
 
 :- type det_msg	--->
 			% warnings
@@ -62,10 +63,14 @@
 				hlds_goal_info, list(hlds_goal))
 		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
 		;	has_io_state_but_not_det(pred_id, proc_id)
-		;	will_not_throw_with_erroneous(pred_id, proc_id)	
-		;	export_model_non_proc(pred_id, proc_id, determinism).
+		;	will_not_throw_with_erroneous(pred_id, proc_id)
+		;	export_model_non_proc(pred_id, proc_id, determinism)
 				% Procedure with multi or nondet detism
 				% exported via :- pragma export ...
+		;	promise_equivalent_solutions_missing_vars(prog_context,
+				prog_varset, set(prog_var))
+		;	promise_equivalent_solutions_extra_vars(prog_context,
+				prog_varset, set(prog_var)).
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -109,7 +114,7 @@
 	;	any_mode.	% the warning should be reported
 				% if it occurs in any mode of the predicate
 
-	% Return `yes' if the warning should be reported if it occurs in
+	% Decide if the warning should be reported if it occurs in
 	% any mode of the predicate, not only if it occurs in all modes.
 :- pred det_msg_is_any_mode_msg(det_msg::in, msg_modes::out) is det.
 
@@ -159,7 +164,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -665,7 +669,7 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed, !IO) :-
 		Diagnosed = no
 	).
 
-det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
+det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual,
 		SwitchContext, DetInfo, Diagnosed, !IO) :-
 	Goal = _ - GoalInfo,
 	goal_info_get_determinism(GoalInfo, Internal),
@@ -1076,6 +1080,8 @@ det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
 det_msg_get_type(has_io_state_but_not_det(_, _), error).
 det_msg_get_type(will_not_throw_with_erroneous(_, _), error).
 det_msg_get_type(export_model_non_proc(_, _, _), error).
+det_msg_get_type(promise_equivalent_solutions_missing_vars(_, _, _), error).
+det_msg_get_type(promise_equivalent_solutions_extra_vars(_, _, _), error).
 
 det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
 det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
@@ -1101,6 +1107,10 @@ det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
 det_msg_is_any_mode_msg(will_not_throw_with_erroneous(_, _), any_mode).
 det_msg_is_any_mode_msg(export_model_non_proc(_, _, _), any_mode).
+det_msg_is_any_mode_msg(promise_equivalent_solutions_missing_vars(_, _, _),
+	any_mode).
+det_msg_is_any_mode_msg(promise_equivalent_solutions_extra_vars(_, _, _),
+	any_mode).
 
 :- pred det_report_msg(det_msg::in, module_info::in, io::di, io::uo) is det.
 
@@ -1417,7 +1427,7 @@ det_report_msg(export_model_non_proc(PredId, ProcId, Detism), ModuleInfo,
 			Context)
 	->
 		Pieces = [words("Error: "),
-			  fixed(":- pragam export' declaration"),
+			  fixed(":- pragma export' declaration"),
 			  words("for a procedure that has"),
 			  words("a determinism of"),
 			  fixed(hlds_out.determinism_to_string(Detism)
@@ -1428,7 +1438,47 @@ det_report_msg(export_model_non_proc(PredId, ProcId, Detism), ModuleInfo,
 		unexpected(this_file, "Cannot find proc in table of "
 			++ "pragma exported procs")
 	).
+det_report_msg(promise_equivalent_solutions_missing_vars(Context, VarSet, Vars),
+		_, !IO) :-
+	VarNames = list.map(lookup_var_name_in_varset(VarSet),
+		set.to_sorted_list(Vars)),
+	(
+		VarNames = [],
+		error("det_report_msg: " ++
+			"promise_equivalent_solutions_missing_vars empty")
+	;
+		VarNames = [_],
+		ListStr = "a variable that is not listed:"
+	;
+		VarNames = [_, _ | _],
+		ListStr = "some variables that are not listed:"
+	),
+	Pieces = [words("Error: the promise_equivalent_solutions goal binds "),
+		  words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
+	error_util.write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(promise_equivalent_solutions_extra_vars(Context, VarSet, Vars),
+		_, !IO) :-
+	VarNames = list.map(lookup_var_name_in_varset(VarSet),
+		set.to_sorted_list(Vars)),
+	(
+		VarNames = [],
+		error("det_report_msg: " ++
+			"promise_equivalent_solutions_extra_vars empty")
+	;
+		VarNames = [_],
+		ListStr = "an extra variable:"
+	;
+		VarNames = [_, _ | _],
+		ListStr = "some extra variables:"
+	),
+	Pieces = [words("Error: the promise_equivalent_solutions goal lists "),
+		  words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
+	error_util.write_error_pieces(Context, 0, Pieces, !IO).
 
+:- func lookup_var_name_in_varset(prog_varset, prog_var) = string.
+
+lookup_var_name_in_varset(VarSet, Var) =
+	mercury_var_to_string(Var, VarSet, no).
 
 :- pred get_exported_proc_context(list(pragma_exported_proc)::in,
 	pred_id::in, proc_id::in, prog_context::out) is semidet.

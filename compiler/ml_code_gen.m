@@ -2072,8 +2072,8 @@ ml_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, Context,
 	ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context,
 		Decls, Statements, !Info).
 
-ml_gen_goal_expr(some(_Vars, _CanRemove, Goal), CodeModel, Context,
-		Decls, Statements, !Info) :-
+ml_gen_goal_expr(scope(_, Goal), CodeModel, Context, Decls, Statements,
+		!Info) :-
 	ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info).
 
 ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else),

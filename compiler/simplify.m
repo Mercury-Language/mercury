@@ -461,9 +461,8 @@ simplify__goal(Goal0, Goal - GoalInfo, !Info) :-
 	% Remove unnecessary explicit quantifications before working
 	% out whether the goal can cause a stack flush.
 	%
-	( Goal1 = some(SomeVars, CanRemove, SomeGoal1) - GoalInfo1 ->
-		simplify__nested_somes(CanRemove, SomeVars, SomeGoal1,
-			GoalInfo1, Goal2)
+	( Goal1 = scope(Reason, SomeGoal1) - GoalInfo1 ->
+		simplify__nested_scopes(Reason, SomeGoal1, GoalInfo1, Goal2)
 	;
 		Goal2 = Goal1
 	),
@@ -526,7 +525,7 @@ simplify__goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
 		%
 		% Conjunctions that cannot produce solutions may nevertheless
 		% contain nondet and multi goals. If this happens, the
-		% conjunction is put inside a `some' to appease the code
+		% conjunction is put inside a `scope' to appease the code
 		% generator.
 		%
 		goal_info_get_determinism(GoalInfo0, Detism),
@@ -540,7 +539,7 @@ simplify__goal_2(conj(Goals0), Goal, GoalInfo0, GoalInfo, !Info) :-
 			goal_info_set_determinism(GoalInfo0,
 				InnerDetism, InnerInfo),
 			InnerGoal = conj(Goals) - InnerInfo,
-			Goal = some([], can_remove, InnerGoal)
+			Goal = scope(commit(dont_force_pruning), InnerGoal)
 		;
 			Goal = conj(Goals)
 		),
@@ -1015,7 +1014,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
 					IfThenElseCanFail, at_most_many),
 				goal_info_set_determinism(GoalInfo1,
 					InnerDetism, InnerInfo),
-				Goal = some([], can_remove,
+				Goal = scope(commit(dont_force_pruning),
 					IfThenElse - InnerInfo)
 			;
 				Goal = IfThenElse
@@ -1068,13 +1067,13 @@ simplify__goal_2(not(Goal0), Goal, GoalInfo0, GoalInfo, !Info) :-
 		GoalInfo = GoalInfo0
 	).
 
-simplify__goal_2(some(Vars1, CanRemove0, Goal1), GoalExpr, SomeInfo, GoalInfo,
+simplify__goal_2(scope(Reason0, Goal1), GoalExpr, SomeInfo, GoalInfo,
 		!Info) :-
 	simplify_info_get_common_info(!.Info, Common),
 	simplify__goal(Goal1, Goal2, !Info),
-	simplify__nested_somes(CanRemove0, Vars1, Goal2, SomeInfo, Goal),
+	simplify__nested_scopes(Reason0, Goal2, SomeInfo, Goal),
 	Goal = GoalExpr - GoalInfo,
-	( Goal = some(_, _, _) - _ ->
+	( Goal = scope(_, _) - _ ->
 		% Replacing calls, constructions or deconstructions
 		% outside a commit with references to variables created
 		% inside the commit would increase the set of output
@@ -1609,60 +1608,77 @@ simplify__input_args_are_equiv([Arg | Args], [HeadVar | HeadVars],
 %-----------------------------------------------------------------------------%
 
 	% replace nested `some's with a single `some',
-:- pred simplify__nested_somes(can_remove::in, list(prog_var)::in,
-	hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
+:- pred simplify__nested_scopes(scope_reason::in, hlds_goal::in,
+	hlds_goal_info::in, hlds_goal::out) is det.
 
-simplify__nested_somes(CanRemove0, Vars1, Goal0, OrigGoalInfo, Goal) :-
-	simplify__nested_somes_2(CanRemove0, no, Vars1, Goal0,
-		CanRemove, KeepThisCommit, Vars, Goal1),
-	Goal1 = GoalExpr1 - GoalInfo1,
+simplify__nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
+	simplify__nested_scopes_2(Reason0, Reason, InnerGoal0, InnerGoal),
+	InnerGoal = _ - GoalInfo,
 	(
-		goal_info_get_determinism(GoalInfo1, Detism),
-		goal_info_get_determinism(OrigGoalInfo, Detism),
-		CanRemove = can_remove
+		Reason = exist_quant(_),
+		goal_info_get_determinism(GoalInfo, Detism),
+		goal_info_get_determinism(OuterGoalInfo, Detism)
 	->
-		% If the inner and outer detisms match the `some'
+		% If the inner and outer detisms match the `scope'
 		% is unnecessary.
-		Goal = GoalExpr1 - GoalInfo1
+		Goal = InnerGoal
 	;
-		% The `some' needs to be kept.
-		% However, we may still have merged multiple nested somes
-		% into a single `some'.  This is OK, but we need to be careful
-		% to ensure that we don't lose the `keep_this_commit' flag
-		% (if any) on the nested somes.
-		( KeepThisCommit = yes ->
-			goal_info_add_feature(OrigGoalInfo, keep_this_commit,
-				GoalInfo)
-		;
-			GoalInfo = OrigGoalInfo
-		),
-		Goal = some(Vars, CanRemove, Goal1) - GoalInfo
+		Goal = scope(Reason, InnerGoal) - OuterGoalInfo
 	).
 
-:- pred simplify__nested_somes_2(can_remove::in, bool::in, list(prog_var)::in,
-	hlds_goal::in, can_remove::out, bool::out, list(prog_var)::out,
-	hlds_goal::out) is det.
+:- pred simplify__nested_scopes_2(scope_reason::in, scope_reason::out,
+	hlds_goal::in, hlds_goal::out) is det.
 
-simplify__nested_somes_2(CanRemove0, KeepThisCommit0, Vars0, Goal0,
-		CanRemove, KeepThisCommit, Vars, Goal) :-
-	( Goal0 = some(Vars1, CanRemove1, Goal1) - GoalInfo0 ->
-		( goal_info_has_feature(GoalInfo0, keep_this_commit) ->
-			KeepThisCommit2 = yes
+simplify__nested_scopes_2(Reason0, Reason, Goal0, Goal) :-
+	(
+		Goal0 = scope(Reason1, Goal1) - _GoalInfo0,
+		(
+			Reason0 = exist_quant(Vars0),
+			Reason1 = exist_quant(Vars1)
+		->
+			list__append(Vars0, Vars1, Vars2),
+			Reason2 = exist_quant(Vars2)
 		;
-			KeepThisCommit2 = KeepThisCommit0
-		),
-		( CanRemove1 = cannot_remove ->
-			CanRemove2 = cannot_remove
+			Reason0 = from_ground_term(_)
+		->
+			Reason2 = Reason1
 		;
-			CanRemove2 = CanRemove0
-		),
-		list__append(Vars0, Vars1, Vars2),
-		simplify__nested_somes_2(CanRemove2, KeepThisCommit2, Vars2,
-			Goal1, CanRemove, KeepThisCommit, Vars, Goal)
+			Reason1 = from_ground_term(_)
+		->
+			Reason2 = Reason0
+		;
+			Reason0 = barrier(Removable0),
+			Reason1 = barrier(Removable1)
+		->
+			(
+				Removable0 = removable,
+				Removable1 = removable
+			->
+				Removable2 = removable
+			;
+				Removable2 = not_removable
+			),
+			Reason2 = barrier(Removable2)
+		;
+			Reason0 = commit(ForcePruning0),
+			Reason1 = commit(ForcePruning1)
+		->
+			(
+				ForcePruning0 = dont_force_pruning,
+				ForcePruning1 = dont_force_pruning
+			->
+				ForcePruning2 = dont_force_pruning
+			;
+				ForcePruning2 = force_pruning
+			),
+			Reason2 = commit(ForcePruning2)
+		;
+			fail
+		)
+	->
+		simplify__nested_scopes_2(Reason2, Reason, Goal1, Goal)
 	;
-		CanRemove = CanRemove0,
-		KeepThisCommit = KeepThisCommit0,
-		Vars = Vars0,
+		Reason = Reason0,
 		Goal = Goal0
 	).
 
@@ -1673,7 +1689,7 @@ simplify__nested_somes_2(CanRemove0, KeepThisCommit0, Vars0, Goal0,
 	% need to rerun determinism analysis on the
 	% procedure. I think this is a similar situation
 	% to inlining of erroneous goals. The safe thing
-	% to do is to wrap a `some' around the inner goal if
+	% to do is to wrap a `scope' around the inner goal if
 	% the inner and outer determinisms are not the same.
 	% It probably won't happen that often.
 :- pred simplify__maybe_wrap_goal(hlds_goal_info::in, hlds_goal_info::in,
@@ -1689,7 +1705,8 @@ simplify__maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo,
 		Goal = Goal1,
 		GoalInfo = InnerGoalInfo
 	;
-		Goal = some([], can_remove, Goal1 - InnerGoalInfo),
+		Goal = scope(commit(dont_force_pruning),
+			Goal1 - InnerGoalInfo),
 		GoalInfo = OuterGoalInfo,
 		simplify_info_set_rerun_det(!Info)
 	).

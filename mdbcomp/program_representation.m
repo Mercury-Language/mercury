@@ -70,7 +70,7 @@
 	;	negation_rep(
 			goal_rep		% The negated goal.
 		)
-	;	some_rep(
+	;	scope_rep(
 			goal_rep,		% The quantified goal.
 			maybe_cut
 		)
@@ -182,12 +182,12 @@
                         ;       ite_then
                         ;       ite_else
                         ;       neg
-                        ;       exist(maybe_cut)
+                        ;       scope(maybe_cut)
                         ;       first
                         ;       later.
 
-	% Does `some G' have a different determinism from plain `G'?
-:- type maybe_cut       --->    cut ; no_cut.
+	% Does the scope goal have a different determinism inside than outside?
+:- type maybe_cut	--->    cut ; no_cut.
 
 :- pred path_from_string_det(string, goal_path).
 :- mode path_from_string_det(in, out) is det.
@@ -283,7 +283,7 @@ goal_generates_internal_event(disj_rep(_)) = yes.
 goal_generates_internal_event(switch_rep(_)) = yes.
 goal_generates_internal_event(ite_rep(_, _, _)) = yes.
 goal_generates_internal_event(negation_rep(_)) = yes.
-goal_generates_internal_event(some_rep(_, _)) = no.
+goal_generates_internal_event(scope_rep(_, _)) = no.
 % Atomic goals may generate interface events, not internal events.
 goal_generates_internal_event(atomic_goal_rep(_, _, _, _, _)) = no.
 
@@ -325,8 +325,8 @@ path_step_from_string(String, Step) :-
 	string__first_char(String, First, Rest),
 	path_step_from_string_2(First, Rest, Step).
 
-:- pred path_step_from_string_2(char, string, goal_path_step).
-:- mode path_step_from_string_2(in, in, out) is semidet.
+:- pred path_step_from_string_2(char::in, string::in, goal_path_step::out)
+	is semidet.
 
 path_step_from_string_2('c', NStr, conj(N)) :-
 	string__to_int(NStr, N).
@@ -338,8 +338,8 @@ path_step_from_string_2('?', "", ite_cond).
 path_step_from_string_2('t', "", ite_then).
 path_step_from_string_2('e', "", ite_else).
 path_step_from_string_2('~', "", neg).
-path_step_from_string_2('q', "!", exist(cut)).
-path_step_from_string_2('q', "", exist(no_cut)).
+path_step_from_string_2('q', "!", scope(cut)).
+path_step_from_string_2('q', "", scope(no_cut)).
 path_step_from_string_2('f', "", first).
 path_step_from_string_2('l', "", later).
 
@@ -358,8 +358,8 @@ string_from_path_step(ite_cond, "?").
 string_from_path_step(ite_then, "t").
 string_from_path_step(ite_else, "e").
 string_from_path_step(neg, "~").
-string_from_path_step(exist(cut), "q!").
-string_from_path_step(exist(no_cut), "q").
+string_from_path_step(scope(cut), "q!").
+string_from_path_step(scope(no_cut), "q").
 string_from_path_step(first, "f").
 string_from_path_step(later, "l").
 

@@ -684,11 +684,11 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
 		GoalExpr = not(NegGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
+		GoalExpr0 = scope(Reason, SomeGoal0),
 		process_goal(SomeGoal0, SomeGoal, InitInstMap, FinalInstMap,
 			VarTypes, ModuleInfo, Options,
 			!WhereNeededMap, !RefinedGoals, !Changed),
-		GoalExpr = some(Vars, CanRemove, SomeGoal),
+		GoalExpr = scope(Reason, SomeGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
 		GoalExpr0 = shorthand(_),
@@ -966,9 +966,9 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
 		GoalExpr = not(NegGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = some(Vars, CanFail, SomeGoal0),
+		GoalExpr0 = scope(Reason, SomeGoal0),
 		refine_goal(SomeGoal0, SomeGoal, !RefinedGoals),
-		GoalExpr = some(Vars, CanFail, SomeGoal),
+		GoalExpr = scope(Reason, SomeGoal),
 		Goal = GoalExpr - GoalInfo0
 	;
 		GoalExpr0 = shorthand(_),

@@ -400,8 +400,7 @@ dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else),
 dependency_graph__add_arcs_in_goal_2(not(Goal), Caller, !DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(some(_Vars, _, Goal), Caller,
-		!DepGraph) :-
+dependency_graph__add_arcs_in_goal_2(scope(_, Goal), Caller, !DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, !DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(generic_call(_, _, _, _), _, !DepGraph).
@@ -812,7 +811,7 @@ process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else) - _,
 	process_aditi_goal(yes, Cond, !Map, !Info),
 	process_aditi_goal(IsNeg, Then, !Map, !Info),
 	process_aditi_goal(IsNeg, Else, !Map, !Info).
-process_aditi_goal(IsNeg, some(_, _, Goal) - _, !Map, !Info) :-
+process_aditi_goal(IsNeg, scope(_, Goal) - _, !Map, !Info) :-
 	process_aditi_goal(IsNeg, Goal, !Map, !Info).
 process_aditi_goal(_IsNeg, not(Goal) - _, !Map, !Info) :-
 	process_aditi_goal(yes, Goal, !Map, !Info).

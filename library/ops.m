@@ -330,6 +330,11 @@ ops__op_table("rem", after, xfx, 400).		% Standard ISO Prolog
 ops__op_table("rule", before, fx, 1199).	% NU-Prolog extension
 ops__op_table("semipure", before, fy, 800).	% Mercury extension
 ops__op_table("solver", before, fy, 1181).	% Mercury extension
+ops__op_table("promise_pure", before, fx, 950).	% Mercury extension
+ops__op_table("promise_impure", before, fx, 950).	% Mercury extension
+ops__op_table("promise_semipure", before, fx, 950).	% Mercury extension
+ops__op_table("promise_equivalent_solutions", before, fxy, 950).
+						% Mercury extension
 ops__op_table("some", before, fxy, 950).	% Mercury/NU-Prolog extension
 ops__op_table("then", after, xfx, 1150).	% Mercury/NU-Prolog extension
 ops__op_table("type", before, fx, 1180).	% Mercury extension

@@ -129,9 +129,9 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
 		saved_vars_in_goal(Else0, Else, !SlotInfo),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
-		GoalExpr0 = some(Var, CanRemove, SubGoal0),
+		GoalExpr0 = scope(Reason, SubGoal0),
 		saved_vars_in_goal(SubGoal0, SubGoal, !SlotInfo),
-		Goal = some(Var, CanRemove, SubGoal) - GoalInfo0
+		Goal = scope(Reason, SubGoal) - GoalInfo0
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0
@@ -202,7 +202,6 @@ ok_to_duplicate(not_impure_for_determinism) = no.
 ok_to_duplicate(stack_opt) = no.
 ok_to_duplicate(tuple_opt) = no.
 ok_to_duplicate(call_table_gen) = no.
-ok_to_duplicate(keep_this_commit) = no.
 ok_to_duplicate(preserve_backtrack_into) = no.
 ok_to_duplicate(hide_debug_event) = no.
 ok_to_duplicate(tailcall) = no.
@@ -244,7 +243,7 @@ can_push(Var, First) :-
 		(
 			FirstExpr = conj(_)
 		;
-			FirstExpr = some(_, _, _)
+			FirstExpr = scope(_, _)
 		;
 			FirstExpr = not(_)
 		;
@@ -336,7 +335,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, Goals,
 				IsNonLocal, Goals1, !SlotInfo),
 			Goals = [Goal0|Goals1]
 		;
-			Goal0Expr = some(SomeVars, CanRemove, SomeGoal0),
+			Goal0Expr = scope(Reason, SomeGoal0),
 			rename_var(Var, NewVar, Subst, !SlotInfo),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),
@@ -344,8 +343,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, Goals,
 				SomeGoal1),
 			push_into_goal(SomeGoal1, NewConstruct, NewVar,
 				SomeGoal, !SlotInfo),
-			Goal1 = some(SomeVars, CanRemove, SomeGoal)
-				- Goal0Info,
+			Goal1 = scope(Reason, SomeGoal) - Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, Goals1, !SlotInfo),
 			Goals = [Goal1 | Goals1]

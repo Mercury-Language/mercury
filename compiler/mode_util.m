@@ -989,9 +989,8 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, Cond0, Then0, Else0),
 		VarTypes, InstMapDeltaElse, InstMapDeltaCondThen),
 		InstMapDelta, !RI).
 
-recompute_instmap_delta_2(Atomic, some(Vars, CanRemove, Goal0), _,
-		some(Vars, CanRemove, Goal), VarTypes, InstMap, InstMapDelta,
-		!RI) :-
+recompute_instmap_delta_2(Atomic, scope(Reason, Goal0), _,
+		scope(Reason, Goal), VarTypes, InstMap, InstMapDelta, !RI) :-
 	recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap,
 		InstMapDelta, !RI).
 

@@ -271,7 +271,7 @@ build_live_sets_in_goal_2(not(Goal0), not(Goal), GoalInfo, GoalInfo,
 	build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
 		!StackAlloc, !Liveness, !NondetLiveness).
 
-build_live_sets_in_goal_2(some(Vars, CR, Goal0), some(Vars, CR, Goal),
+build_live_sets_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
 		GoalInfo, GoalInfo, ResumeVars0, AllocData,
 		!StackAlloc, !Liveness, !NondetLiveness) :-
 	NondetLiveness0 = !.NondetLiveness,

@@ -703,10 +703,10 @@ replace_in_goal_expr(EqvMap, Goal0 @ not(NegGoal0), Goal, Changed, !Info) :-
 	( Changed = yes, Goal = not(NegGoal)
 	; Changed = no, Goal = Goal0
 	).
-replace_in_goal_expr(EqvMap, Goal0 @ some(A, B, SomeGoal0), Goal,
+replace_in_goal_expr(EqvMap, Goal0 @ scope(Reason, SomeGoal0), Goal,
 		Changed, !Info) :-
 	replace_in_goal(EqvMap, SomeGoal0, SomeGoal, Changed, !Info),
-	( Changed = yes, Goal = some(A, B, SomeGoal)
+	( Changed = yes, Goal = scope(Reason, SomeGoal)
 	; Changed = no, Goal = Goal0
 	).
 replace_in_goal_expr(EqvMap, Goal0 @ if_then_else(Vars, Cond0, Then0, Else0),
@@ -768,7 +768,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = eqv_type(_),
 		type_to_ctor_and_args(VarType, _TypeInfoCtor,
-				[TypeInfoArgType])
+			[TypeInfoArgType])
 	->
 		Changed = yes,
 		pred_info_set_typevarset(!.Info ^ tvarset,

@@ -279,8 +279,8 @@ lambda__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo, !Info) :-
 lambda__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo,
 		switch(Var, CanFail, Cases) - GoalInfo, !Info) :-
 	lambda__process_cases(Cases0, Cases, !Info).
-lambda__process_goal_2(some(Vars, CanRemove, Goal0), GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo, !Info) :-
+lambda__process_goal_2(scope(Reason, Goal0), GoalInfo,
+		scope(Reason, Goal) - GoalInfo, !Info) :-
 	lambda__process_goal(Goal0, Goal, !Info).
 lambda__process_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo,
 		if_then_else(Vars, Cond, Then, Else) - GoalInfo, !Info) :-

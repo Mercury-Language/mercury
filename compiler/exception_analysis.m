@@ -333,8 +333,7 @@ check_goal_for_exceptions_2(_, _, _, generic_call(_,_,_,_), !Result) :-
 	!:Result = !.Result ^ status := may_throw(user_exception).
 check_goal_for_exceptions_2(SCC, Module, VarTypes, not(Goal), !Result) :-
 	check_goal_for_exceptions(SCC, Module, VarTypes, Goal, !Result).
-check_goal_for_exceptions_2(SCC, Module, VarTypes, some(_, _, Goal),
-		!Result) :-
+check_goal_for_exceptions_2(SCC, Module, VarTypes, scope(_, Goal), !Result) :-
 	check_goal_for_exceptions(SCC, Module, VarTypes, Goal, !Result).
 check_goal_for_exceptions_2(_, _, _,
 		foreign_proc(Attributes, _, _, _, _, _), !Result) :-

@@ -174,8 +174,8 @@ goal_expr_add_heap_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 	NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
 	goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
 
-goal_expr_add_heap_ops(some(A, B, Goal0), GoalInfo,
-		some(A, B, Goal) - GoalInfo, !Info) :-
+goal_expr_add_heap_ops(scope(Reason, Goal0), GoalInfo,
+		scope(Reason, Goal) - GoalInfo, !Info) :-
 	goal_add_heap_ops(Goal0, Goal, !Info).
 
 goal_expr_add_heap_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,

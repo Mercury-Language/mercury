@@ -1,0 +1,8 @@
+promise_equivalent_solutions_test.m:018: Error: the
+promise_equivalent_solutions_test.m:018:   promise_equivalent_solutions goal
+promise_equivalent_solutions_test.m:018:   binds a variable that is not listed:
+promise_equivalent_solutions_test.m:018:   A.
+promise_equivalent_solutions_test.m:033: Error: the
+promise_equivalent_solutions_test.m:033:   promise_equivalent_solutions goal
+promise_equivalent_solutions_test.m:033:   lists an extra variable: ASorted.
+For more information, try recompiling with `-E'.

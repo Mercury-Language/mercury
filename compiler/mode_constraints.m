@@ -325,7 +325,7 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
 	number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring,
 		Goal0, Goal, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
-		some(V, CR, Goal0), some(V, CR, Goal), !RInfo) :-
+		scope(Reason, Goal0), scope(Reason, Goal), !RInfo) :-
 	number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring,
 		Goal0, Goal, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
@@ -1260,8 +1260,8 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
 	% Make sure the negation doesn't bind any nonlocal variables.
 	negation_constraints(GoalPath, NonLocals, !Constraint, !GCInfo).
 
-goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed, some(A, B, Goal0),
-		some(A, B, Goal), !Constraint, !GCInfo) :-
+goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed, scope(Reason, Goal0),
+		scope(Reason, Goal), !Constraint, !GCInfo) :-
 	goal_constraints(NonLocals, CanSucceed, Goal0, Goal, !Constraint,
 		!GCInfo),
 

@@ -176,7 +176,7 @@ goal_cannot_loop_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
 		).
 goal_cannot_loop_expr(MaybeModuleInfo, not(Goal)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, some(_Vars, _, Goal)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, scope(_, Goal)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo,
 		if_then_else(_Vars, Cond, Then, Else)) :-
@@ -226,7 +226,7 @@ goal_cannot_throw_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
 		goal_cannot_throw_aux(MaybeModuleInfo, Goal).
 goal_cannot_throw_expr(MaybeModuleInfo, not(Goal)) :-
 	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, some(_Vars, _, Goal)) :-
+goal_cannot_throw_expr(MaybeModuleInfo, scope(_, Goal)) :-
 	goal_cannot_throw_aux(MaybeModuleInfo, Goal).
 goal_cannot_throw_expr(MaybeModuleInfo, if_then_else(_, Cond, Then, Else)) :-
 	goal_cannot_throw_aux(MaybeModuleInfo, Cond),
@@ -262,7 +262,7 @@ contains_only_builtins_expr(switch(_Var, _Category, Cases)) :-
 	contains_only_builtins_cases(Cases).
 contains_only_builtins_expr(not(Goal)) :-
 	contains_only_builtins(Goal).
-contains_only_builtins_expr(some(_Vars, _, Goal)) :-
+contains_only_builtins_expr(scope(_, Goal)) :-
 	contains_only_builtins(Goal).
 contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else)) :-
 	contains_only_builtins(Cond),
@@ -305,7 +305,7 @@ goal_is_flat_expr(conj(Goals)) :-
 	goal_is_flat_list(Goals).
 goal_is_flat_expr(not(Goal)) :-
 	goal_is_flat(Goal).
-goal_is_flat_expr(some(_Vars, _, Goal)) :-
+goal_is_flat_expr(scope(_, Goal)) :-
 	goal_is_flat(Goal).
 goal_is_flat_expr(generic_call(_, _, _, _)).
 goal_is_flat_expr(call(_, _, _, _, _, _)).
@@ -353,7 +353,7 @@ goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
 	% XXX although you could make it an attribute of the foreign code and
 	% trust the programmer
 goal_may_allocate_heap_2(foreign_proc(_, _, _, _, _, _), yes).
-goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
+goal_may_allocate_heap_2(scope(_, Goal), May) :-
 	goal_may_allocate_heap(Goal, May).
 goal_may_allocate_heap_2(not(Goal), May) :-
 	goal_may_allocate_heap(Goal, May).
@@ -507,7 +507,7 @@ count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
 
 count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
 	count_recursive_calls(Goal, PredId, ProcId, Min, Max).
-count_recursive_calls_2(some(_, _, Goal), PredId, ProcId, Min, Max) :-
+count_recursive_calls_2(scope(_, Goal), PredId, ProcId, Min, Max) :-
 	count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 count_recursive_calls_2(generic_call(_, _, _, _), _, _, 0, 0).

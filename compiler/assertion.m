@@ -224,8 +224,8 @@ assertion__is_associativity_assertion(AssertId, Module, CallVars,
 		% There may or may not be a some [] depending on whether
 		% the user explicity qualified the call or not.
 	(
-		P = some(_, _, conj(PCalls0) - _) - _PGoalInfo,
-		Q = some(_, _, conj(QCalls0) - _) - _QGoalInfo
+		P = scope(_, conj(PCalls0) - _) - _PGoalInfo,
+		Q = scope(_, conj(QCalls0) - _) - _QGoalInfo
 	->
 		PCalls = PCalls0,
 		QCalls = QCalls0
@@ -350,8 +350,8 @@ assertion__is_update_assertion(AssertId, Module, _PredId, CallVars,
 		% There may or may not be an explicit some [Vars] there,
 		% as quantification now works correctly.
 	(
-		P = some(_, _, conj(PCalls0) - _) - _PGoalInfo,
-		Q = some(_, _, conj(QCalls0) - _) - _QGoalInfo
+		P = scope(_, conj(PCalls0) - _) - _PGoalInfo,
+		Q = scope(_, conj(QCalls0) - _) - _QGoalInfo
 	->
 		PCalls = PCalls0,
 		QCalls = QCalls0
@@ -551,9 +551,8 @@ equal_goals(disj(GoalAs) - _, disj(GoalBs) - _, !Subst) :-
 	equal_goals_list(GoalAs, GoalBs, !Subst).
 equal_goals(not(GoalA) - _, not(GoalB) - _, !Subst) :-
 	equal_goals(GoalA, GoalB, !Subst).
-equal_goals(some(VarsA, _, GoalA) - _, some(VarsB, _, GoalB) - _,
-		!Subst) :-
-	equal_vars(VarsA, VarsB, !Subst),
+equal_goals(scope(ReasonA, GoalA) - _, scope(ReasonB, GoalB) - _, !Subst) :-
+	equal_reason(ReasonA, ReasonB, !Subst),
 	equal_goals(GoalA, GoalB, !Subst).
 equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
 		if_then_else(VarsB, IfB, ThenB, ElseB) - _, !Subst) :-
@@ -578,6 +577,16 @@ equal_goals(shorthand(ShorthandGoalA) - GoalInfoA,
 	equal_goals_shorthand(ShorthandGoalA - GoalInfoA,
 		ShorthandGoalB - GoalInfoB, !Subst).
 
+:- pred equal_reason(scope_reason::in, scope_reason::in, subst::in, subst::out)
+	is semidet.
+
+equal_reason(exist_quant(VarsA), exist_quant(VarsB), !Subst) :-
+	equal_vars(VarsA, VarsB, !Subst).
+equal_reason(barrier(Removable), barrier(Removable), !Subst).
+equal_reason(commit(ForcePruning), commit(ForcePruning), !Subst).
+equal_reason(from_ground_term(VarA), from_ground_term(VarB), !Subst) :-
+	equal_var(VarA, VarB, !Subst).
+
 :- pred equal_goals_shorthand(pair(shorthand_goal_expr, hlds_goal_info)::in,
 	pair(shorthand_goal_expr, hlds_goal_info)::in, subst::in, subst::out)
 	is semidet.
@@ -587,18 +596,23 @@ equal_goals_shorthand(bi_implication(LeftGoalA, RightGoalA) - GoalInfo,
 	equal_goals(LeftGoalA, LeftGoalB, !Subst),
 	equal_goals(RightGoalA, RightGoalB, !Subst).
 
+:- pred equal_var(prog_var::in, prog_var::in, subst::in, subst::out)
+	is semidet.
+
+equal_var(VA, VB, !Subst) :-
+	( map__search(!.Subst, VA, SubstVA) ->
+		SubstVA = VB
+	;
+		map__insert(!.Subst, VA, VB, !:Subst)
+	).
+
 :- pred equal_vars(prog_vars::in, prog_vars::in, subst::in, subst::out)
 	is semidet.
 
 equal_vars([], [], !Subst).
 equal_vars([VA | VAs], [VB | VBs], !Subst) :-
-	( map__search(!.Subst, VA, SubstVA) ->
-		SubstVA = VB,
-		equal_vars(VAs, VBs, !Subst)
-	;
-		map__insert(!.Subst, VA, VB, !:Subst),
-		equal_vars(VAs, VBs, !Subst)
-	).
+	equal_var(VA, VB, !Subst),
+	equal_vars(VAs, VBs, !Subst).
 
 :- pred equal_unification(unify_rhs::in, unify_rhs::in, subst::in, subst::out)
 	is semidet.
@@ -679,7 +693,8 @@ assertion__normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
 	assertion__normalise_goals(Goal0s, Goals).
 assertion__normalise_goal(not(Goal0) - GI, not(Goal) - GI) :-
 	assertion__normalise_goal(Goal0, Goal).
-assertion__normalise_goal(some(A,B,Goal0) - GI, some(A,B,Goal) - GI) :-
+assertion__normalise_goal(scope(Reason, Goal0) - GI,
+		scope(Reason, Goal) - GI) :-
 	assertion__normalise_goal(Goal0, Goal).
 assertion__normalise_goal(if_then_else(A, If0, Then0, Else0) - GI,
 		if_then_else(A, If, Then, Else) - GI) :-
@@ -779,7 +794,7 @@ assertion__in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
 	assertion__in_interface_check_list(Goals, PredInfo, !Module, !IO).
 assertion__in_interface_check(not(Goal) - _, PredInfo, !Module, !IO) :-
 	assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
-assertion__in_interface_check(some(_, _, Goal) - _, PredInfo, !Module, !IO) :-
+assertion__in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
 	assertion__in_interface_check(Goal, PredInfo, !Module, !IO).
 assertion__in_interface_check(if_then_else(_, If, Then, Else) - _,
 		PredInfo, !Module, !IO) :-

@@ -1102,7 +1102,7 @@ count_load_stores_in_goal(Goal - _GoalInfo, CountInfo, !CountState) :-
 			"count_load_stores_in_goal: complicated_unify")
 	).
 
-count_load_stores_in_goal(some(_Vars, _CanRemove, Goal) - _GoalInfo, CountInfo,
+count_load_stores_in_goal(scope(_Reason, Goal) - _GoalInfo, CountInfo,
 		!CountState) :-
 	count_load_stores_in_goal(Goal, CountInfo, !CountState).
 
@@ -1746,8 +1746,8 @@ fix_calls_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo,
 		!VarSet, !VarTypes, TransformMap) :-
 	fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
 
-fix_calls_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo,
+fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
+		scope(Reason, Goal) - GoalInfo,
 		!VarSet, !VarTypes, TransformMap) :-
 	fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
 
@@ -2001,10 +2001,10 @@ goal_path_step_to_mdbcomp_goal_path_step(
 goal_path_step_to_mdbcomp_goal_path_step(
 	neg, mdbcomp.program_representation.neg).
 goal_path_step_to_mdbcomp_goal_path_step(
-	exist(cut), mdbcomp.program_representation.exist(
+	scope(cut), mdbcomp.program_representation.scope(
 			mdbcomp.program_representation.cut)).
 goal_path_step_to_mdbcomp_goal_path_step(
-	exist(no_cut), mdbcomp.program_representation.exist(
+	scope(no_cut), mdbcomp.program_representation.scope(
 			mdbcomp.program_representation.no_cut)).
 goal_path_step_to_mdbcomp_goal_path_step(
 	first, mdbcomp.program_representation.first).

@@ -546,8 +546,8 @@ traverse_goal_2(Goal0, Goal, !Info) :-
 traverse_goal_2(not(NegGoal0) - GoalInfo, not(NegGoal) - GoalInfo, !Info) :-
 	traverse_goal_2(NegGoal0, NegGoal, !Info).
 
-traverse_goal_2(some(Vars, CanRemove, Goal0) - GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo, !Info) :-
+traverse_goal_2(scope(Reason, Goal0) - GoalInfo,
+		scope(Reason, Goal) - GoalInfo, !Info) :-
 	traverse_goal_2(Goal0, Goal, !Info).
 
 traverse_goal_2(Goal, Goal, !Info) :-

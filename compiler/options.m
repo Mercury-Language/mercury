@@ -112,6 +112,8 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
+		;	debug_modes_statistics
+		;	debug_modes_minimal
 		;	debug_modes_verbose
 		;	debug_modes_pred_id
 		;	debug_det
@@ -802,6 +804,8 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
+	debug_modes_statistics	- 	bool(no),
+	debug_modes_minimal	- 	bool(no),
 	debug_modes_verbose	- 	bool(no),
 	debug_modes_pred_id	- 	int(-1),
 	debug_det		- 	bool(no),
@@ -1451,6 +1455,8 @@ long_option("output-compile-error-lines", output_compile_error_lines).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("debug-modes-statistics",	debug_modes_statistics).
+long_option("debug-modes-minimal",	debug_modes_minimal).
 long_option("debug-modes-verbose",	debug_modes_verbose).
 long_option("debug-modes-pred-id",	debug_modes_pred_id).
 long_option("debug-determinism",	debug_det).
@@ -2726,6 +2732,10 @@ options_help_verbosity -->
 		"\tOutput detailed debugging traces of the type checking.",
 		"-N, --debug-modes",
 		"\tOutput debugging traces of the mode checking.",
+		"--debug-modes-statistics",
+		"\tOutput statistics after each step of mode checking.",
+		"--debug-modes-minimal",
+		"\tOutput only minimal debugging traces of the mode checking.",
 		"--debug-modes-verbose",
 		"\tOutput detailed debugging traces of the mode checking.",
 		"--debug-modes-pred-id <n>",

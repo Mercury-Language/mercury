@@ -84,7 +84,7 @@ pd_cost__goal(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
 pd_cost__goal(not(Goal) - _, Cost) :-
 	pd_cost__goal(Goal, Cost).
 
-pd_cost__goal(some(_, _, Goal) - _, Cost) :-
+pd_cost__goal(scope(_, Goal) - _, Cost) :-
 	pd_cost__goal(Goal, Cost).
 
 pd_cost__goal(generic_call(_, Args, _, _) - _, Cost) :-

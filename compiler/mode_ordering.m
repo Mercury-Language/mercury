@@ -296,8 +296,8 @@ mode_ordering__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !MOI) :-
 	goal_info_copy_mode_var_sets(SubGoal ^ snd, GoalInfo0, GoalInfo).
 
 mode_ordering__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !MOI) :-
-	Goal0 = some(Vars, CanRemove, SubGoal0),
-	Goal = some(Vars, CanRemove, SubGoal),
+	Goal0 = scope(Reason, SubGoal0),
+	Goal = scope(Reason, SubGoal),
 	mode_ordering__goal(SubGoal0, SubGoal, !MOI),
 	goal_info_copy_mode_var_sets(SubGoal ^ snd, GoalInfo0, GoalInfo).
 
@@ -312,10 +312,10 @@ mode_ordering__goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !MOI) :-
 	union_mode_vars_sets([Cond, Then], GoalInfo0, GoalInfo1),
 	ConsVars = GoalInfo1 ^ consuming_vars,
 	GoalInfo2 = GoalInfo1 ^ consuming_vars :=
-			ConsVars `difference` GoalInfo1 ^ producing_vars,
+		ConsVars `difference` GoalInfo1 ^ producing_vars,
 	NeedVars = GoalInfo2 ^ need_visible_vars,
 	GoalInfo3 = GoalInfo2 ^ need_visible_vars :=
-			NeedVars `difference` GoalInfo2 ^ make_visible_vars,
+		NeedVars `difference` GoalInfo2 ^ make_visible_vars,
 
 	combine_mode_vars_sets(Else ^ snd, GoalInfo3, GoalInfo).
 

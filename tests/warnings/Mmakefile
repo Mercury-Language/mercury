@@ -18,9 +18,9 @@ ERRORCHECK_PROGS= \
 	double_underscore \
 	duplicate_call \
 	duplicate_const \
-	inf_recursion_lambda \
-	infinite_recursion \
 	inference_test \
+	infinite_recursion \
+	inf_recursion_lambda \
 	missing_if \
 	pragma_source_file \
 	purity_warnings \

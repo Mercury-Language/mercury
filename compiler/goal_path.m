@@ -106,7 +106,7 @@ fill_goal_slots(Expr0 - Info0, Path0, SlotInfo, Expr - Info) :-
 mode_equiv_step(Step) :-
 	( Step = disj(_)
 	; Step = neg
-	; Step = exist(_)
+	; Step = scope(_)
 	; Step = ite_else
 	).
 
@@ -136,8 +136,8 @@ fill_expr_slots(switch(Var, B, Cases0), _, Path0, SlotInfo,
 	fill_switch_slots(Cases0, Path0, 0, NumCases, SlotInfo, Cases).
 fill_expr_slots(not(Goal0), _, Path0, SlotInfo, not(Goal)) :-
 	fill_goal_slots(Goal0, [neg | Path0], SlotInfo, Goal).
-fill_expr_slots(some(A, B, Goal0), OuterInfo, Path0, SlotInfo,
-		some(A, B, Goal)) :-
+fill_expr_slots(scope(Reason, Goal0), OuterInfo, Path0, SlotInfo,
+		scope(Reason, Goal)) :-
 	Goal0 = _ - InnerInfo,
 	goal_info_get_determinism(OuterInfo, OuterDetism),
 	goal_info_get_determinism(InnerInfo, InnerDetism),
@@ -146,7 +146,7 @@ fill_expr_slots(some(A, B, Goal0), OuterInfo, Path0, SlotInfo,
 	;
 		MaybeCut = cut
 	),
-	fill_goal_slots(Goal0, [exist(MaybeCut) | Path0], SlotInfo, Goal).
+	fill_goal_slots(Goal0, [scope(MaybeCut) | Path0], SlotInfo, Goal).
 fill_expr_slots(if_then_else(A, Cond0, Then0, Else0), _, Path0, SlotInfo,
 		if_then_else(A, Cond, Then, Else)) :-
 	fill_goal_slots(Cond0, [ite_cond | Path0], SlotInfo, Cond),

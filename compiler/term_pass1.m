@@ -353,7 +353,7 @@ check_goal_expr_non_term_calls(Module, PPId, VarTypes, disj(Goals), _,
 		!Errors).
 check_goal_expr_non_term_calls(Module, PPId, VarTypes, not(Goal), _, !Errors) :-
 	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
-check_goal_expr_non_term_calls(Module, PPId, VarTypes, some(_, _, Goal), _,
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, scope(_, Goal), _,
 		!Errors) :-
 	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
 check_goal_expr_non_term_calls(Module, PPId, VarTypes,

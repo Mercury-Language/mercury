@@ -132,19 +132,14 @@
 		% A negation
 	;	not(hlds_goal)
 
-		% An explicit quantification.
-		% Quantification information is stored in the `non_locals'
-		% field of the goal_info, so these get ignored
-		% (except to recompute the goal_info quantification).
-		% `all Vs' gets converted to `not some Vs not'.
-		% The second argument is `can_remove' if the quantification
-		% is allowed to be removed; see the docs for the can_remove
-		% type.
-	;	{ some(
-			some_exist_vars	:: list(prog_var),
-			some_can_remove	:: can_remove,
+		% A scope which may be the scope of a quantification,
+		% or may be introduced by a compiler transformation.
+		% See the documentation of scope_reason for what the
+		% compiler may do with the scope.
+	;	scope(
+			scope_reason	:: scope_reason,
 			some_goal	:: hlds_goal
-		) }
+		)
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.
@@ -203,7 +198,98 @@
 		% do that for bi-implications, because if expansion
 		% of bi-implications is done before implicit quantification,
 		% then the quantification would be wrong
+
 	--->	bi_implication(hlds_goal, hlds_goal).
+
+:- type scope_reason
+		% The goal inside the scope construct has the listed variables
+		% existentially quantified. The compiler may do whatever
+		% preserves this fact.
+
+	--->	exist_quant(list(prog_var))
+
+		% Even though the code inside the scope may have multiple
+		% solutions, the creater of the scope (which may be the user
+		% or a compiler pass) promises that all these solutions are
+		% equivalent relative to the relevant equality theory.
+		% (This need not be an equality theory known to the compiler.)
+		% The scope goal will therefore act as a single solution
+		% context, and the determinism of the scope() goal itself
+		% will indicate that it cannot succeed more than once.
+		%
+		% This acts like the builtin.promise_only_solution predicate,
+		% but without requiring the construction of a closure, a
+		% higher order call, and the squeezing of all outputs into
+		% a single variable.
+		%
+		% The promise is valid only if the list of outputs of the goal
+		% inside the scope is a subset of the variables listed here.
+		% If it is not valid, the compiler must emit an error message.
+
+	;	promise_equivalent_solutions(list(prog_var))
+
+		% The goal inside the scope implements an interface of the
+		% specified purity, even if its implementation uses less pure
+		% components.
+		%
+		% Works the same way as a promise_pure or promise_semipure
+		% pragma, except that it applies to arbitrary goals and not
+		% just whole procedure bodies. The implicit_purity_promise
+		% says whether or not the compiler requires explicit purity
+		% annotations on the goals inside the scope.
+
+	;	promise_purity(implicit_purity_promise, purity)
+
+		% This scope exists to delimit a piece of code
+		% with at_most_many components but with no outputs,
+		% whose overall determinism is thus at_most_one,
+		% or a piece of code that cannot succeed but some of whose
+		% components are at_most_many (regardless of the number of
+		% outputs).
+		%
+		% If the argument is force_pruning, then the outer goal will
+		% succeed at most once even if the inner goal is impure.
+
+	;	commit(force_pruning)
+
+		% The scope exists to prevent other compiler passes from
+		% arbitrarily moving computations in or out of the scope.
+		% This kind of scope can only be introduced by program
+		% transformations.
+		%
+		% The argument says whether other compiler passes are allowed
+		% to delete the scope.
+		%
+		% A non-removable explicit quantification may be introduced
+		% to keep related goals together where optimizations that
+		% separate the goals can only result in worse behaviour.
+		% An example is the closures for the builtin Aditi update
+		% predicates - they should be kept close to the update call
+		% where possible to make it easier to use indexes for the
+		% update.
+		%
+		% A barrier says nothing about the determinism of either
+		% the inner or the outer goal, or about pruning.
+
+	;	barrier(removable)
+
+		% The goal inside the scope, which should be a conjunction,
+		% results from the conversion of one ground term to
+		% superhomogeneous form. The variable specifies what the
+		% compiler calls that ground term.
+		%
+		% This kind of scope is not intended to be meaningful after
+		% mode analysis, and should be removed after mode analysis.
+
+	;	from_ground_term(prog_var).
+
+:- type removable
+	--->	removable
+	;	not_removable.
+
+:- type force_pruning
+	--->	force_pruning
+	;	dont_force_pruning.
 
 %-----------------------------------------------------------------------------%
 %
@@ -627,28 +713,6 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Information for quantifications
-%
-
-	% The second argument of explicit quantification goals
-	% is `can_remove' if the quantification is allowed to
-	% be removed.  A non-removable explicit
-	% quantification may be introduced to keep related goals
-	% together where optimizations that separate the goals
-	% can only result in worse behaviour. An example is the
-	% closures for the builtin aditi update predicates -
-	% they should be kept close to the update call where
-	% possible to make it easier to use indexes for the update.
-	%
-	% See also the closely related `keep_this_commit' goal_feature.
-	% XXX Why do we have both cannot_remove and keep_this_commit?
-	%     Do we really need both?
-:- type can_remove
-	--->	can_remove
-	;	cannot_remove.
-
-%-----------------------------------------------------------------------------%
-%
 % Information for all kinds of goals
 %
 
@@ -805,16 +869,6 @@
 				% the value of this variable in its stack slot
 				% as soon as it is generated; this marker
 				% tells the code generator when this happens.
-	;	keep_this_commit
-				% This feature should be attached only to goals
-				% that represent commits (i.e. some() goals in
-				% which the inner and outer determinisms
-				% differ). It tells determinism analysis that
-				% some other part of the compiler wants the
-				% commit to stay, even if the usual rules of
-				% determinism analysis say that the
-				% nondeterminism inside the some() should be
-				% exposed to the environment outside.
 	;	preserve_backtrack_into
 				% Determinism analysis should preserve
 				% backtracking into goals marked with this
@@ -863,7 +917,7 @@
 				% unification after it, unifying the variables
 				% representing !.S and !:S. If code B doesn't
 				% refer to S, then quantification will restrict
-				% the scope of the variable representing !:S 
+				% the scope of the variable representing !:S
 				% to each disjunct, and the unification
 				% inserted after code A will refer to a
 				% singleton variable.
@@ -901,7 +955,7 @@
 			;	ite_then
 			;	ite_else
 			;	neg
-			;	exist(maybe_cut)
+			;	scope(maybe_cut)
 			;	first
 			;	later.
 
@@ -1658,8 +1712,8 @@ goal_path_step_to_string(ite_cond, "?;").
 goal_path_step_to_string(ite_then, "t;").
 goal_path_step_to_string(ite_else, "e;").
 goal_path_step_to_string(neg, "~;").
-goal_path_step_to_string(exist(cut), "q!;").
-goal_path_step_to_string(exist(no_cut), "q;").
+goal_path_step_to_string(scope(cut), "q!;").
+goal_path_step_to_string(scope(no_cut), "q;").
 goal_path_step_to_string(first, "f;").
 goal_path_step_to_string(later, "l;").
 
@@ -1813,7 +1867,7 @@ goal_has_foreign(Goal) = HasForeign :-
 		GoalExpr = not(Goal2),
 		HasForeign = goal_has_foreign(Goal2)
 	;
-		GoalExpr = some(_, _, Goal2),
+		GoalExpr = scope(_, Goal2),
 		HasForeign = goal_has_foreign(Goal2)
 	;
 		GoalExpr = if_then_else(_, Cond, Then, Else),
@@ -1947,8 +2001,7 @@ set_goal_contexts_2(Context, switch(Var, CanFail, Cases0),
 				is det :-
 			set_goal_contexts(Context, Goal0, Goal)
 		), Cases0, Cases).
-set_goal_contexts_2(Context, some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal)) :-
+set_goal_contexts_2(Context, scope(Reason, Goal0), scope(Reason, Goal)) :-
 	set_goal_contexts(Context, Goal0, Goal).
 set_goal_contexts_2(Context, not(Goal0), not(Goal)) :-
 	set_goal_contexts(Context, Goal0, Goal).

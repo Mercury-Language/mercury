@@ -1441,8 +1441,8 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap, HOMap) -->
 	;
 		{ Goals = [Goal0] }
 	).
-magic__preprocess_goal_2(some(Vars, CanRemove, Goal0) - Info,
-		[some(Vars, CanRemove, Goal) - Info], HOMap0, HOMap) -->
+magic__preprocess_goal_2(scope(Reason, Goal0) - Info,
+		[scope(Reason, Goal) - Info], HOMap0, HOMap) -->
 	{ Goal0 = _ - SomeGoalInfo },
 	magic__preprocess_goal(Goal0, SomeGoals, HOMap0, HOMap),
 	{ conj_list_to_goal(SomeGoals, SomeGoalInfo, Goal) }.
@@ -1576,7 +1576,7 @@ magic__check_goal_nonlocals(Goal) -->
 		{
 			Goal = not(_) - _
 		;
-			Goal = some(_, _, _) - _
+			Goal = scope(_, _) - _
 		;
 			Goal = conj(_) - _
 		;

@@ -61,17 +61,18 @@
 mode_checkpoint(Port, Msg, !ModeInfo, !IO) :-
 	mode_info_get_debug_modes(!.ModeInfo, DebugModes),
 	(
-		DebugModes = yes(Verbose - Statistics),
-		mode_checkpoint_write(Verbose, Statistics, Port, Msg,
+		DebugModes = yes(debug_flags(Verbose, Minimal, Statistics)),
+		mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg,
 			!ModeInfo, !IO)
 	;
 		DebugModes = no
 	).
 
-:- pred mode_checkpoint_write(bool::in, bool::in, port::in, string::in,
-	mode_info::in, mode_info::out, io::di, io::uo) is det.
+:- pred mode_checkpoint_write(bool::in, bool::in, bool::in, port::in,
+	string::in, mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-mode_checkpoint_write(Verbose, Statistics, Port, Msg, !ModeInfo, !IO) :-
+mode_checkpoint_write(Verbose, Minimal, Statistics, Port, Msg, !ModeInfo,
+		!IO) :-
 	mode_info_get_errors(!.ModeInfo, Errors),
 	( Port = enter ->
 		io__write_string("Enter ", !IO),
@@ -100,7 +101,7 @@ mode_checkpoint_write(Verbose, Statistics, Port, Msg, !ModeInfo, !IO) :-
 			mode_info_get_varset(!.ModeInfo, VarSet),
 			mode_info_get_instvarset(!.ModeInfo, InstVarSet),
 			write_var_insts(NewInsts, OldInstMap, VarSet,
-				InstVarSet, Verbose, !IO)
+				InstVarSet, Verbose, Minimal, !IO)
 		;
 			io__write_string("\tUnreachable\n", !IO)
 		),
@@ -112,14 +113,19 @@ mode_checkpoint_write(Verbose, Statistics, Port, Msg, !ModeInfo, !IO) :-
 	io__flush_output(!IO).
 
 :- pred write_var_insts(assoc_list(prog_var, inst)::in, instmap::in,
-	prog_varset::in, inst_varset::in, bool::in, io::di, io::uo) is det.
+	prog_varset::in, inst_varset::in, bool::in, bool::in,
+	io::di, io::uo) is det.
 
-write_var_insts([], _, _, _, _, !IO).
+write_var_insts([], _, _, _, _, _, !IO).
 write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
-		Verbose, !IO) :-
+		Verbose, Minimal, !IO) :-
+	instmap__lookup_var(OldInstMap, Var, OldInst),
 	(
-		instmap__lookup_var(OldInstMap, Var, OldInst),
-		Inst = OldInst
+		(
+			identical_insts(Inst, OldInst)
+		;
+			Inst = OldInst
+		)
 	->
 		(
 			Verbose = yes,
@@ -134,11 +140,43 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
 		io__write_string("\t", !IO),
 		mercury_output_var(Var, VarSet, no, !IO),
 		io__write_string(" ::", !IO),
-		io__write_string("\n", !IO),
-		mercury_output_structured_inst(Inst, 2, InstVarSet, !IO)
+		(
+			Minimal = yes,
+			io__write_string(" changed\n", !IO)
+		;
+			Minimal = no,
+			io__write_string("\n", !IO),
+			mercury_output_structured_inst(Inst, 2, InstVarSet,
+				!IO)
+		)
 	),
 	write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet, Verbose,
-		!IO).
+		Minimal, !IO).
+
+	% In the usual case of a C backend, this predicate allows us to
+	% conclude that two insts are identical without traversing them.
+	% Since the terms can be very large, this is a big gain; it can
+	% turn the complexity of printing a checking from quadratic in the
+	% number of variables live at the checkpoint (when the variables
+	% are e.g. all part of a single long list) to linear. The minor
+	% increase in the constant factor in cases where identical_insts fails
+	% is much easier to live with.
+
+:- pred identical_insts((inst)::in, (inst)::in) is semidet.
+
+identical_insts(_, _) :-
+	semidet_fail.
+
+:- pragma foreign_proc("C",
+	identical_insts(InstA::in, InstB::in),
+	[will_not_call_mercury, promise_pure],
+"
+	if (InstA == InstB) {
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

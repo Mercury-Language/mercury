@@ -1104,8 +1104,8 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 			OldGoal = not(OldSubGoal) - _,
 			NewGoal = not(NewSubGoal) - _
 		;
-			OldGoal = some(_, _, OldSubGoal) - _,
-			NewGoal = some(_, _, NewSubGoal) - _
+			OldGoal = scope(_, OldSubGoal) - _,
+			NewGoal = scope(_, NewSubGoal) - _
 		)
 	->
 		goal_to_conj_list(OldSubGoal, OldSubGoalList),

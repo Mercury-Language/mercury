@@ -262,8 +262,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
 		!Info),
 	(
 		% If there are any variables that are local to the goal
-		% which we have come across before, then we rename them
-		% apart.
+		% which we have come across before, then we rename them apart.
 		quantification__goal_vars_bitset(NonLocalsToRecompute,
 			Goal0 - GoalInfo0, GoalVars0),
 		difference(GoalVars0, NonLocalVars, LocalVars),
@@ -298,30 +297,76 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
 	% analysis doesn't try to reorder through quantifiers.
 	% (Actually it would make sense to allow mode analysis
 	% to do that, but the reference manual says it doesn't,
-	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
-	% an empty quantifier `some([], Goal)'.
+	% so we don't.)  Thus we replace `scope(exist_quant(Vars), Goal0)'
+	% with an empty quantifier `scope(exist_quant([]), Goal)'.
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
-	Expr0 = some(Vars0, CanRemove, Goal0),
-	Expr = some([], CanRemove, Goal),
+	Expr0 = scope(Reason0, Goal0),
+	(
+		Reason0 = exist_quant(Vars0),
+		Reason1 = exist_quant([])
+	;
+		Reason0 = promise_purity(_, _),
+		Reason1 = Reason0,
+		Vars0 = []
+	;
+		Reason0 = promise_equivalent_solutions(_),
+		Reason1 = Reason0,
+		Vars0 = []
+	;
+		Reason0 = commit(_),
+		Reason1 = Reason0,
+		Vars0 = []
+	;
+		Reason0 = barrier(_),
+		Reason1 = Reason0,
+		Vars0 = []
+	;
+		Reason0 = from_ground_term(_),
+		Reason1 = Reason0,
+		Vars0 = []
+	),
 	quantification__get_outside(OutsideVars, !Info),
 	quantification__get_lambda_outside(LambdaOutsideVars, !Info),
 	quantification__get_quant_vars(QuantVars, !Info),
-		% Rename apart all the quantified
-		% variables that occur outside this goal.
+		% Rename apart all the quantified variables that
+		% occur outside this goal.
 	list_to_set(Vars0, QVars),
 	intersect(OutsideVars, QVars, RenameVars1),
 	intersect(LambdaOutsideVars, QVars, RenameVars2),
 	union(RenameVars1, RenameVars2, RenameVars),
 	( empty(RenameVars) ->
 		Goal1 = Goal0,
-		Vars = Vars0
+		Vars = Vars0,
+		Reason = Reason1
 	;
 		quantification__warn_overlapping_scope(RenameVars, Context,
 			!Info),
 		quantification__rename_apart(RenameVars, RenameMap,
 			Goal0, Goal1, !Info),
-		goal_util__rename_var_list(Vars0, no, RenameMap, Vars)
+		goal_util__rename_var_list(Vars0, no, RenameMap, Vars),
+		(
+			Reason1 = exist_quant(_),
+			% We have already handled this case.
+			Reason = Reason1
+		;
+			Reason1 = promise_purity(_, _),
+			Reason = Reason1
+		;
+			Reason1 = promise_equivalent_solutions(PromiseVars0),
+			goal_util__rename_var_list(PromiseVars0, no, RenameMap,
+				PromiseVars),
+			Reason = promise_equivalent_solutions(PromiseVars)
+		;
+			Reason1 = commit(_),
+			Reason = Reason1
+		;
+			Reason1 = barrier(_),
+			Reason = Reason1
+		;
+			Reason1 = from_ground_term(_),
+			Reason = Reason1
+		)
 	),
 	quantification__update_seen_vars(QVars, !Info),
 	insert_list(QuantVars, Vars, QuantVars1),
@@ -330,37 +375,37 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	quantification__get_nonlocals(NonLocals0, !Info),
 	delete_list(NonLocals0, Vars, NonLocals),
 	quantification__set_quant_vars(QuantVars, !Info),
-	quantification__set_nonlocals(NonLocals, !Info).
+	quantification__set_nonlocals(NonLocals, !Info),
+	Expr = scope(Reason, Goal).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	Expr0 = conj(Goals0),
-	Expr = conj(Goals),
-	implicitly_quantify_conj(Goals0, Goals, !Info).
+	implicitly_quantify_conj(Goals0, Goals, !Info),
+	Expr = conj(Goals).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	Expr0 = par_conj(Goals0),
-	Expr = par_conj(Goals),
-	implicitly_quantify_conj(Goals0, Goals, !Info).
+	implicitly_quantify_conj(Goals0, Goals, !Info),
+	Expr = par_conj(Goals).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	Expr0 = disj(Goals0),
-	Expr = disj(Goals),
-	implicitly_quantify_disj(Goals0, Goals, !Info).
+	implicitly_quantify_disj(Goals0, Goals, !Info),
+	Expr = disj(Goals).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	Expr0 = switch(Var, Det, Cases0),
-	Expr = switch(Var, Det, Cases),
 	implicitly_quantify_cases(Cases0, Cases, !Info),
 		% The switch variable is guaranteed to be non-local to the
 		% switch, since it has to be bound elsewhere, so we put it
 		% in the nonlocals here.
 	quantification__get_nonlocals(NonLocals0, !Info),
 	insert(NonLocals0, Var, NonLocals),
-	quantification__set_nonlocals(NonLocals, !Info).
+	quantification__set_nonlocals(NonLocals, !Info),
+	Expr = switch(Var, Det, Cases).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	Expr0 = not(Goal0),
-	Expr = not(Goal),
 		% quantified variables cannot be pushed inside a negation,
 		% so we insert the quantified vars into the outside vars set,
 		% and initialize the new quantified vars set to be empty
@@ -372,6 +417,7 @@ implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	quantification__set_quant_vars(QuantVars1, !Info),
 	quantification__set_outside(OutsideVars1, !Info),
 	implicitly_quantify_goal(Goal0, Goal, !Info),
+	Expr = not(Goal),
 	quantification__set_outside(OutsideVars, !Info),
 	quantification__set_quant_vars(QuantVars, !Info).
 
@@ -382,7 +428,6 @@ implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
 	% `if_then_else([], ...)'.
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
-	Expr = if_then_else([], Cond, Then, Else),
 	quantification__get_quant_vars(QuantVars, !Info),
 	quantification__get_outside(OutsideVars, !Info),
 	quantification__get_lambda_outside(LambdaOutsideVars, !Info),
@@ -427,6 +472,8 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	quantification__set_outside(OutsideVars, !Info),
 	quantification__set_quant_vars(QuantVars, !Info),
 	implicitly_quantify_goal(Else0, Else, !Info),
+	Expr = if_then_else([], Cond, Then, Else),
+
 	quantification__get_nonlocals(NonLocalsElse, !Info),
 	union(NonLocalsCond, NonLocalsThen, NonLocalsIfThen),
 	union(NonLocalsIfThen, NonLocalsElse, NonLocalsIfThenElse),
@@ -447,7 +494,6 @@ implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	Expr0 = unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
-	Expr = unify(Var, UnifyRHS, Mode, Unification, UnifyContext),
 	quantification__get_outside(OutsideVars, !Info),
 	quantification__get_lambda_outside(LambdaOutsideVars, !Info),
 	TypeInfoVars = quantification__get_unify_typeinfos(Unification0),
@@ -471,6 +517,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	),
 	implicitly_quantify_unify_rhs(MaybeSetArgs, Context,
 		UnifyRHS0, UnifyRHS, Unification0, Unification, !Info),
+	Expr = unify(Var, UnifyRHS, Mode, Unification, UnifyContext),
 	quantification__get_nonlocals(VarsUnifyRHS, !Info),
 	insert(VarsUnifyRHS, Var, GoalVars0),
 	insert_list(GoalVars0, TypeInfoVars, GoalVars1),
@@ -966,14 +1013,28 @@ quantification__goal_vars_2(NonLocalsToRecompute, switch(Var, _Det, Cases),
 	insert(!.Set, Var, !:Set),
 	case_list_vars_2(NonLocalsToRecompute, Cases, !Set, !LambdaSet).
 
-quantification__goal_vars_2(NonLocalsToRecompute, some(Vars, _, Goal),
-		Set0, Set, LambdaSet0, LambdaSet) :-
+quantification__goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal),
+		Set0, !:Set, LambdaSet0, !:LambdaSet) :-
 	quantification__goal_vars(NonLocalsToRecompute,
-		Goal, Set1, LambdaSet1),
-	delete_list(Set1, Vars, Set2),
-	delete_list(LambdaSet1, Vars, LambdaSet2),
-	union(Set0, Set2, Set),
-	union(LambdaSet0, LambdaSet2, LambdaSet).
+		Goal, !:Set, !:LambdaSet),
+	(
+		Reason = exist_quant(Vars),
+		delete_list(!.Set, Vars, !:Set),
+		delete_list(!.LambdaSet, Vars, !:LambdaSet)
+	;
+		Reason = promise_purity(_, _)
+	;
+		Reason = promise_equivalent_solutions(Vars),
+		insert_list(!.Set, Vars, !:Set)
+	;
+		Reason = commit(_)
+	;
+		Reason = barrier(_)
+	;
+		Reason = from_ground_term(_)
+	),
+	union(Set0, !Set),
+	union(LambdaSet0, !LambdaSet).
 
 quantification__goal_vars_2(NonLocalsToRecompute, not(Goal - _GoalInfo),
 		!Set, !LambdaSet) :-

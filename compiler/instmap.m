@@ -298,6 +298,9 @@
 	pred(prog_var, inst, inst, T, T)::in(pred(in, in, out, in, out) is det),
 	instmap_delta::in, instmap_delta::out, T::in, T::out) is det.
 
+:- pred var_is_ground_in_instmap(module_info::in, instmap::in, prog_var::in)
+	is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1115,7 +1118,6 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
 	instmap_delta_apply_sub_2(AL, Must, Sub, IM1, IM).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 instmap__to_assoc_list(unreachable, []).
 instmap__to_assoc_list(reachable(InstMapping), AL) :-
@@ -1126,4 +1128,9 @@ instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
 	map__to_assoc_list(InstMapping, AL).
 
 %-----------------------------------------------------------------------------%
+
+var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
+	instmap__lookup_var(InstMap, Var, Inst),
+	inst_is_ground(ModuleInfo, Inst).
+
 %-----------------------------------------------------------------------------%

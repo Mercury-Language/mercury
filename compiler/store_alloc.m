@@ -216,9 +216,8 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		LastLocns0, LastLocnsElse, ResumeVars0, StoreAllocInfo),
 	merge_last_locations([LastLocnsThen, LastLocnsElse], LastLocns).
 
-store_alloc_in_goal_2(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), !Liveness, !LastLocns,
-		ResumeVars0, _, StoreAllocInfo) :-
+store_alloc_in_goal_2(scope(Remove, Goal0), scope(Remove, Goal),
+		!Liveness, !LastLocns, ResumeVars0, _, StoreAllocInfo) :-
 	store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,
 		ResumeVars0, StoreAllocInfo).
 

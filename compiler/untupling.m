@@ -575,8 +575,8 @@ fix_calls_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo,
 	fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
 		ModuleInfo).
 
-fix_calls_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
-		some(Vars, CanRemove, Goal) - GoalInfo,
+fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
+		scope(Reason, Goal) - GoalInfo,
 		!VarSet, !VarTypes, TransformMap, ModuleInfo) :-
 	fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
 		ModuleInfo).

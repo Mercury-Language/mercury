@@ -377,16 +377,26 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		SolnContext = SolnContext0
 	),
 
-	% Some other part of the compiler has determined that we need to keep
-	% the cut represented by this quantification. This can happen e.g.
-	% when deep profiling adds impure code to the goal inside the some;
-	% it doesn't want to change the behavior of the some, even though
-	% the addition of impurity would make the if-then-else treat it
-	% differently.
 
 	(
-		Goal0 = some(_, _, _),
-		goal_info_has_feature(GoalInfo0, keep_this_commit)
+		Goal0 = scope(ScopeReason, _),
+		(
+			% Some other part of the compiler has determined
+			% that we need to keep the cut represented by this
+			% quantification. This can happen e.g. when deep
+			% profiling adds impure code to the goal inside the
+			% scope; it doesn't want to change the behavior of
+			% the scope, even though the addition of impurity
+			% would make the if-then-else treat it differently.
+
+			ScopeReason = commit(force_pruning)
+		;
+			% If all solutions are promised to be equivalent
+			% according to the relevant equality theory, we want
+			% to prune away all but one of those solutions.
+
+			ScopeReason = promise_equivalent_solutions(_)
+		)
 	->
 		Prune = yes
 	;
@@ -493,17 +503,17 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		Goal1 \= disj(_),
 
 		% do we already have a commit?
-		Goal1 \= some(_, _, _)
+		Goal1 \= scope(_, _)
 	->
-		% a commit needed - we must introduce an explicit `some'
+		% a commit needed - we must introduce an explicit `commit'
 		% so that the code generator knows to insert the appropriate
 		% code for pruning
 		goal_info_set_determinism(GoalInfo0,
 			FinalInternalDetism, InnerInfo),
-		Goal = some([], can_remove, Goal1 - InnerInfo),
+		Goal = scope(commit(dont_force_pruning), Goal1 - InnerInfo),
 		Msgs = Msgs1
 	;
-		% either no commit needed, or a `some' already present
+		% either no commit needed, or a `scope' already present
 		Goal = Goal1,
 		Msgs = Msgs1
 	).
@@ -760,10 +770,48 @@ det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, DetInfo, _, _,
 	% but we cannot rely on explicit quantification to detect this.
 	% Therefore cuts are handled in det_infer_goal.
 
-det_infer_goal_2(some(Vars, CanRemove, Goal0), _, InstMap0, SolnContext,
-		DetInfo, _, _, some(Vars, CanRemove, Goal), Det, Msgs) :-
+det_infer_goal_2(scope(Reason, Goal0), GoalInfo0, InstMap0, SolnContext0,
+		DetInfo, _, _, scope(Reason, Goal), Det, Msgs) :-
+	( Reason = promise_equivalent_solutions(Vars) ->
+		SolnContext = first_soln,
+		goal_info_get_instmap_delta(GoalInfo0, InstmapDelta),
+		instmap_delta_changed_vars(InstmapDelta, ChangedVars),
+		det_info_get_module_info(DetInfo, ModuleInfo),
+		set__divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
+			ChangedVars, _GroundAtStartVars, BoundVars),
+
+		goal_info_get_context(GoalInfo0, Context),
+		det_get_proc_info(DetInfo, ProcInfo),
+		proc_info_varset(ProcInfo, VarSet),
+
+		% Which vars were bound inside the scope but not listed
+		% in the promise_equivalent_solutions?
+		set__difference(BoundVars, set__list_to_set(Vars), BugVars),
+		( set__empty(BugVars) ->
+			ScopeMsgs1 = []
+		;
+			ScopeMsg1 = promise_equivalent_solutions_missing_vars(
+				Context, VarSet, BugVars),
+			ScopeMsgs1 = [ScopeMsg1]
+		),
+		% Which vars were listed in the promise_equivalent_solutions
+		% but not bound inside the scope?
+		set__difference(set__list_to_set(Vars), BoundVars, ExtraVars),
+		( set__empty(ExtraVars) ->
+			ScopeMsgs2 = []
+		;
+			ScopeMsg2 = promise_equivalent_solutions_extra_vars(
+				Context, VarSet, ExtraVars),
+			ScopeMsgs2 = [ScopeMsg2]
+		),
+		ScopeMsgs = ScopeMsgs1 ++ ScopeMsgs2
+	;
+		SolnContext = SolnContext0,
+		ScopeMsgs = []
+	),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
-		Goal, Det, Msgs).
+		Goal, Det, SubMsgs),
+	list__append(SubMsgs, ScopeMsgs, Msgs).
 
 	% pragma foregin_codes are handled in the same way as predicate calls
 det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
@@ -778,7 +826,8 @@ det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 	( MaybeDetism = yes(Detism0) ->
 		determinism_components(Detism0, CanFail, NumSolns0),
 		( 
-			may_throw_exception(Attributes) = will_not_throw_exception,
+			may_throw_exception(Attributes) =
+				will_not_throw_exception,
 			Detism0 = erroneous
 		->
 			Msgs0 = [will_not_throw_with_erroneous(PredId, ProcId)]

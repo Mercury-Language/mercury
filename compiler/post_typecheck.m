@@ -1467,9 +1467,11 @@ post_typecheck__translate_set_function(ModuleInfo, !PredInfo,
 
 	% If the cons_id is existentially quantified, add a `new' prefix
 	% so that polymorphism.m adds the appropriate type_infos.
-	( ExistQVars = [] ->
+	(
+		ExistQVars = [],
 		ConsId = ConsId0
 	;
+		ExistQVars = [_ | _],
 		( ConsId0 = cons(ConsName0, ConsArity) ->
 			remove_new_prefix(ConsName, ConsName0),
 			ConsId = cons(ConsName, ConsArity)
@@ -1488,7 +1490,7 @@ post_typecheck__translate_set_function(ModuleInfo, !PredInfo,
 
 	% Make mode analysis treat the translated access function
 	% as an atomic goal.
-	Goal = some([], can_remove, Conj).
+	Goal = scope(barrier(removable), Conj).
 
 :- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in, cons_id::in,
 	(type)::in, list(type)::out, list(tvar)::out,

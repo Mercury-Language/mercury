@@ -186,7 +186,7 @@ first_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
 		Error, !ModuleInfo, !IO),
 	first_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
 		Error, !ModuleInfo, !IO).
-first_order_check_goal(some(_Vars, _, Goal - GoalInfo), _GoalInfo, Negated,
+first_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
 		WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
 	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
 		ThisPredProcId, Error, !ModuleInfo, !IO).
@@ -332,7 +332,7 @@ higher_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
 		HighOrderLoops, Error, !ModuleInfo, !IO),
 	higher_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(some(_Vars, _, Goal - GoalInfo), _GoalInfo, Negated,
+higher_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
 		WholeScc, ThisPredProcId, HighOrderLoops,
 		Error, !ModuleInfo, !IO) :-
 	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
@@ -758,7 +758,7 @@ check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo),
 	check_goal1(Cond, !Calls, !HasAT, !CallsHO),
 	check_goal1(Then, !Calls, !HasAT, !CallsHO),
 	check_goal1(Else, !Calls, !HasAT, !CallsHO).
-check_goal1(some(_Vars, _, Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
+check_goal1(scope(_, Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
 	check_goal1(Goal, !Calls, !HasAT, !CallsHO).
 check_goal1(not(Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
 	check_goal1(Goal, !Calls, !HasAT, !CallsHO).
@@ -840,7 +840,7 @@ get_called_procs(if_then_else(_Vars, Cond - _, Then - _, Else - _), !Calls) :-
 	get_called_procs(Cond, !Calls),
 	get_called_procs(Then, !Calls),
 	get_called_procs(Else, !Calls).
-get_called_procs(some(_Vars, _, Goal - _GoalInfo), !Calls) :-
+get_called_procs(scope(_, Goal - _GoalInfo), !Calls) :-
 	get_called_procs(Goal, !Calls).
 get_called_procs(not(Goal - _GoalInfo), !Calls) :-
 	get_called_procs(Goal, !Calls).

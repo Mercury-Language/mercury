@@ -445,8 +445,8 @@ unique_modes__check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal),
 	mode_info_set_instmap(InstMap0, !ModeInfo),
 	mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
-unique_modes__check_goal_2(some(Vars, CanRemove, SubGoal0), _,
-		some(Vars, CanRemove, SubGoal), !ModeInfo, !IO) :-
+unique_modes__check_goal_2(scope(Reason, SubGoal0), _,
+		scope(Reason, SubGoal), !ModeInfo, !IO) :-
 	mode_checkpoint(enter, "some", !ModeInfo, !IO),
 	unique_modes__check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
 	mode_checkpoint(exit, "some", !ModeInfo, !IO).

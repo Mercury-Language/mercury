@@ -465,9 +465,9 @@ process_goal(Goal0, Goal, !Info) :-
 		!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 		GoalExpr = not(NegGoal)
 	;
-		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
+		GoalExpr0 = scope(Reason, SomeGoal0),
 		process_goal(SomeGoal0, SomeGoal, !Info),
-		GoalExpr = some(Vars, CanRemove, SomeGoal)
+		GoalExpr = scope(Reason, SomeGoal)
 	;
 		GoalExpr0 = shorthand(_),
 		error("size_prof__process_goal: shorthand")

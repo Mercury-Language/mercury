@@ -459,9 +459,30 @@ goal_util__rename_vars_in_goal_expr(if_then_else(Vars0, Cond0, Then0, Else0),
 goal_util__rename_vars_in_goal_expr(not(Goal0), Must, Subn, not(Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
-goal_util__rename_vars_in_goal_expr(some(Vars0, CanRemove, Goal0), Must, Subn,
-		some(Vars, CanRemove, Goal)) :-
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
+goal_util__rename_vars_in_goal_expr(scope(Reason0, Goal0), Must, Subn,
+		scope(Reason, Goal)) :-
+	(
+		Reason0 = exist_quant(Vars0),
+		goal_util__rename_var_list(Vars0, Must, Subn, Vars),
+		Reason = exist_quant(Vars)
+	;
+		Reason0 = promise_purity(_, _),
+		Reason = Reason0
+	;
+		Reason0 = promise_equivalent_solutions(Vars0),
+		goal_util__rename_var_list(Vars0, Must, Subn, Vars),
+		Reason = promise_equivalent_solutions(Vars)
+	;
+		Reason0 = barrier(_),
+		Reason = Reason0
+	;
+		Reason0 = commit(_),
+		Reason = Reason0
+	;
+		Reason0 = from_ground_term(Var0),
+		goal_util__rename_var(Var0, Must, Subn, Var),
+		Reason = from_ground_term(Var)
+	),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
 goal_util__rename_vars_in_goal_expr(
@@ -718,8 +739,23 @@ goal_util__goal_vars_2(switch(Var, _Det, Cases), !Set) :-
 	set__insert(!.Set, Var, !:Set),
 	goal_util__cases_goal_vars(Cases, !Set).
 
-goal_util__goal_vars_2(some(Vars, _, Goal - _), !Set) :-
-	set__insert_list(!.Set, Vars, !:Set),
+goal_util__goal_vars_2(scope(Reason, Goal - _), !Set) :-
+	(
+		Reason = exist_quant(Vars),
+		set__insert_list(!.Set, Vars, !:Set)
+	;
+		Reason = promise_purity(_, _)
+	;
+		Reason = promise_equivalent_solutions(Vars),
+		set__insert_list(!.Set, Vars, !:Set)
+	;
+		Reason = barrier(_)
+	;
+		Reason = commit(_)
+	;
+		Reason = from_ground_term(Var),
+		set__insert(!.Set, Var, !:Set)
+	),
 	goal_util__goal_vars_2(Goal, !Set).
 
 goal_util__goal_vars_2(not(Goal - _GoalInfo), !Set) :-
@@ -827,9 +863,9 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
 		attach_features_to_all_goals(Features, Goal0, Goal),
 		GoalExpr = not(Goal)
 	;
-		GoalExpr0 = some(Vars, CanRemove, Goal0),
+		GoalExpr0 = scope(Reason, Goal0),
 		attach_features_to_all_goals(Features, Goal0, Goal),
-		GoalExpr = some(Vars, CanRemove, Goal)
+		GoalExpr = scope(Reason, Goal)
 	;
 		GoalExpr0 = call(_, _, _, _, _, _),
 		GoalExpr = GoalExpr0
@@ -946,7 +982,7 @@ goal_expr_size(if_then_else(_, Cond, Then, Else), Size) :-
 goal_expr_size(not(Goal), Size) :-
 	goal_size(Goal, Size1),
 	Size = Size1 + 1.
-goal_expr_size(some(_, _, Goal), Size) :-
+goal_expr_size(scope(_, Goal), Size) :-
 	goal_size(Goal, Size1),
 	Size = Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _), 1).
@@ -1019,7 +1055,7 @@ goal_expr_calls(if_then_else(_, Cond, Then, Else), PredProcId) :-
 	).
 goal_expr_calls(not(Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
-goal_expr_calls(some(_, _, Goal), PredProcId) :-
+goal_expr_calls(scope(_, Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
 goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
@@ -1079,7 +1115,7 @@ goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else), PredId) :-
 	).
 goal_expr_calls_pred_id(not(Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
-goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
+goal_expr_calls_pred_id(scope(_, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
@@ -1106,7 +1142,7 @@ goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
 	goals_contain_reconstruction([Cond, Then, Else]).
 goal_expr_contains_reconstruction(not(Goal)) :-
 	goal_contains_reconstruction(Goal).
-goal_expr_contains_reconstruction(some(_, _, Goal)) :-
+goal_expr_contains_reconstruction(scope(_, Goal)) :-
 	goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
 	Unify = construct(_, _, _, _, HowToConstruct, _, _),
@@ -1132,7 +1168,7 @@ goal_contains_goal(Goal - _, SubGoal) :-
 	% direct_subgoal(Goal, SubGoal) is true iff SubGoal is
 	% a direct sub-goal of Goal.
 	%
-direct_subgoal(some(_, _, Goal), Goal).
+direct_subgoal(scope(_, Goal), Goal).
 direct_subgoal(not(Goal), Goal).
 direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
 	( Goal = If
@@ -1232,7 +1268,7 @@ goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
 		CondMaxSoln = at_most_one,
 		determinism_components(CondDetism, CondCanFail0, CondMaxSoln),
 		goal_info_set_determinism(CondInfo0, CondDetism, CondInfo),
-		Cond = some([], can_remove, Cond0) - CondInfo
+		Cond = scope(commit(dont_force_pruning), Cond0) - CondInfo
 	;
 		CondDetism = CondDetism0,
 		CondInfo = CondInfo0,
@@ -1243,7 +1279,8 @@ goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
 	( MaybeNegCondDet = yes(NegCondDet1) ->
 		NegCondDet = NegCondDet1
 	;
-		error("goal_util__if_then_else_to_disjunction: inappropriate determinism in a negation.")
+		error("goal_util__if_then_else_to_disjunction: " ++
+			"inappropriate determinism in a negation.")
 	),
 	determinism_components(NegCondDet, _, NegCondMaxSoln),
 	( NegCondMaxSoln = at_most_zero ->

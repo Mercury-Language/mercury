@@ -427,7 +427,7 @@ dead_proc_elim__examine_expr(par_conj(Goals), CurrProc, !Queue, !Needed) :-
 	dead_proc_elim__examine_goals(Goals, CurrProc, !Queue, !Needed).
 dead_proc_elim__examine_expr(not(Goal), CurrProc, !Queue, !Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed).
-dead_proc_elim__examine_expr(some(_, _, Goal), CurrProc, !Queue, !Needed) :-
+dead_proc_elim__examine_expr(scope(_, Goal), CurrProc, !Queue, !Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, !Queue, !Needed).
 dead_proc_elim__examine_expr(switch(_, _, Cases), CurrProc, !Queue, !Needed) :-
 	dead_proc_elim__examine_cases(Cases, CurrProc, !Queue, !Needed).
@@ -896,7 +896,7 @@ pre_modecheck_examine_goal(switch(_, _, Cases) - _, !DeadInfo) :-
 pre_modecheck_examine_goal(generic_call(_,_,_,_) - _, !DeadInfo).
 pre_modecheck_examine_goal(not(Goal) - _, !DeadInfo) :-
 	pre_modecheck_examine_goal(Goal, !DeadInfo).
-pre_modecheck_examine_goal(some(_, _, Goal) - _, !DeadInfo) :-
+pre_modecheck_examine_goal(scope(_, Goal) - _, !DeadInfo) :-
 	pre_modecheck_examine_goal(Goal, !DeadInfo).
 pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _, !DeadInfo) :-
 	dead_pred_info_add_pred_name(PredName, !DeadInfo).

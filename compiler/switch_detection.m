@@ -32,13 +32,13 @@
 	module_info::in, module_info::out) is det.
 
 	% find_bind_var(Var, ProcessUnify, Goal0, Goals, Subst0, Subst,
-	%		Result0, Result, FoundDeconstruct):
-	% 	Used by both switch_detection and cse_detection.
-	%	Searches through `Goal0' looking for the first deconstruction
-	%	unification with `Var' or an alias of `Var'.
-	%	If a deconstruction unification of the variable is found,
-	%	`ProcessUnify' is called to handle it and searching is stopped.
-	%	If not, `Result' is set to `Result0'.
+	%	!Result, FoundDeconstruct):
+	% Used by both switch_detection and cse_detection. Searches through
+	% `Goal0' looking for the first deconstruction unification with `Var'
+	% or an alias of `Var'. If a deconstruction unification of the
+	% variable is found, `ProcessUnify' is called to handle it and
+	% searching is stopped. If not, `Result' is set to `Result0'.
+	%
 :- pred find_bind_var(prog_var::in,
 	process_unify(Result, Info)::in(process_unify),
 	hlds_goal::in, hlds_goal::out, Result::in, Result::out,
@@ -96,11 +96,12 @@ detect_switches_in_preds([PredId | PredIds], !ModuleInfo, !IO) :-
 
 detect_switches_in_pred(PredId, PredInfo0, !ModuleInfo, !IO) :-
 	ProcIds = pred_info_non_imported_procids(PredInfo0),
-	( ProcIds \= [] ->
+	(
+		ProcIds = [_ | _],
 		write_pred_progress_message("% Detecting switches in ", PredId,
 			!.ModuleInfo, !IO)
 	;
-		true
+		ProcIds = []
 	),
 	detect_switches_in_procs(ProcIds, PredId, !ModuleInfo).
 
@@ -152,11 +153,11 @@ detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0, !Goal) :-
 :- pred detect_switches_in_goal_1(module_info::in, vartypes::in,
 	instmap::in, instmap::out, hlds_goal::in, hlds_goal::out) is det.
 
-detect_switches_in_goal_1(ModuleInfo, VarTypes, InstMap0, InstMap,
+detect_switches_in_goal_1(ModuleInfo, VarTypes, !InstMap,
 		Goal0 - GoalInfo, Goal - GoalInfo) :-
-	detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
+	detect_switches_in_goal_2(ModuleInfo, VarTypes, !.InstMap, GoalInfo,
 		Goal0, Goal),
-	update_instmap(Goal0 - GoalInfo, InstMap0, InstMap).
+	update_instmap(Goal0 - GoalInfo, !InstMap).
 
 	% Here we process each of the different sorts of goals.
 
@@ -165,9 +166,11 @@ detect_switches_in_goal_1(ModuleInfo, VarTypes, InstMap0, InstMap,
 
 detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
 		disj(Goals0), Goal) :-
-	( Goals0 = [] ->
+	(
+		Goals0 = [],
 		Goal = disj([])
 	;
+		Goals0 = [_ | _],
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo,
@@ -197,7 +200,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, _GoalInfo,
 	detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0, Else0, Else).
 
 detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, _GoalInfo,
-		some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal)) :-
+		scope(Reason, Goal0), scope(Reason, Goal)) :-
 	detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0, Goal0, Goal).
 
 detect_switches_in_goal_2(_, _, _, _, Goal @ generic_call(_, _, _, _), Goal).
@@ -278,8 +281,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap,
 		->
 			( CasesList = [_, _ | _] ->
 				cases_to_switch(CasesList, Var, VarTypes,
-					GoalInfo, InstMap, ModuleInfo,
-					Goal)
+					GoalInfo, InstMap, ModuleInfo, Goal)
 			;
 				detect_sub_switches_in_disj(ModuleInfo,
 					VarTypes, InstMap, Goals0, Goals),
@@ -454,7 +456,7 @@ find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 
 find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
 	map__init(Subst),
-	find_bind_var(Var, ProcessUnify, !Goal, Subst, _, !Result, !Info,
+	find_bind_var_2(Var, ProcessUnify, !Goal, Subst, _, !Result, !Info,
 		DeconstructSearch),
 	(
 		DeconstructSearch = before_deconstruct,
@@ -472,59 +474,58 @@ find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
 	;	found_deconstruct
 	;	given_up_search.
 
-:- pred find_bind_var(prog_var::in,
+:- pred find_bind_var_2(prog_var::in,
 	process_unify(Result, Info)::in(process_unify),
 	hlds_goal::in, hlds_goal::out,
 	prog_substitution::in, prog_substitution::out, Result::in, Result::out,
 	Info::in, Info::out, deconstruct_search::out) is det.
 
-find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
-		Subst0, Subst, Result0, Result, Info0, Info,
-		FoundDeconstruct) :-
-	( Goal0 = some(Vars, CanRemove, SubGoal0) ->
-		find_bind_var(Var, ProcessUnify, SubGoal0, SubGoal,
-			Subst0, Subst, Result0, Result,
-			Info0, Info, FoundDeconstruct),
-		Goal = some(Vars, CanRemove, SubGoal) - GoalInfo
+find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
+		!Info, FoundDeconstruct) :-
+	( Goal0 = scope(Reason, SubGoal0) ->
+		find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
+			!Result, !Info, FoundDeconstruct),
+		Goal = scope(Reason, SubGoal) - GoalInfo
 	; Goal0 = conj(SubGoals0) ->
-		conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
-			Subst0, Subst, Result0, Result,
-			Info0, Info, FoundDeconstruct),
-		Goal = conj(SubGoals) - GoalInfo
-	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
+		(
+			SubGoals0 = [],
+			Goal = Goal0 - GoalInfo,
+			FoundDeconstruct = before_deconstruct
+		;
+			SubGoals0 = [_ | _],
+			conj_find_bind_var(Var, ProcessUnify,
+				SubGoals0, SubGoals, !Subst, !Result, !Info,
+				FoundDeconstruct),
+			Goal = conj(SubGoals) - GoalInfo
+		)
+	; Goal0 = unify(LHS, RHS, _, UnifyInfo0, _) ->
 		(
 			% check whether the unification is a deconstruction
 			% unification on Var or a variable aliased to Var
 			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
 			term__apply_rec_substitution(term__variable(Var),
-				Subst0, term__variable(Var1)),
+				!.Subst, term__variable(Var1)),
 			term__apply_rec_substitution(term__variable(UnifyVar),
-				Subst0, term__variable(UnifyVar1)),
+				!.Subst, term__variable(UnifyVar1)),
 			Var1 = UnifyVar1
 		->
 			call(ProcessUnify, Var, Goal0 - GoalInfo, Goals,
-				Result0, Result, Info0, Info),
+				!Result, !Info),
 			conj_list_to_goal(Goals, GoalInfo, Goal),
-			FoundDeconstruct = found_deconstruct,
-			Subst = Subst0
+			FoundDeconstruct = found_deconstruct
 		;
 			Goal = Goal0 - GoalInfo,
 			FoundDeconstruct = before_deconstruct,
 			% otherwise abstractly interpret the unification
-			Result = Result0,
-			Info = Info0,
-			( interpret_unify(A, B, Subst0, Subst1) ->
-				Subst = Subst1
+			( interpret_unify(LHS, RHS, !.Subst, NewSubst) ->
+				!:Subst = NewSubst
 			;
 				% the unification must fail - just ignore it
-				Subst = Subst0
+				true
 			)
 		)
 	;
 		Goal = Goal0 - GoalInfo,
-		Subst = Subst0,
-		Result = Result0,
-		Info = Info0,
 		( goal_info_has_feature(GoalInfo, from_head) ->
 			FoundDeconstruct = before_deconstruct
 		;
@@ -542,7 +543,7 @@ conj_find_bind_var(_Var, _, [], [], !Subst, !Result, !Info,
 		before_deconstruct).
 conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 		!Subst, !Result, !Info, FoundDeconstruct) :-
-	find_bind_var(Var, ProcessUnify, Goal0, Goal, !Subst,
+	find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
 		!Result, !Info, FoundDeconstruct1),
 	( FoundDeconstruct1 = before_deconstruct ->
 		conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,

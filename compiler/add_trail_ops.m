@@ -162,7 +162,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 	NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
 	goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
 
-goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
+goal_expr_add_trail_ops(scope(Reason, Goal0), OuterGoalInfo,
 		Goal - OuterGoalInfo, !Info) :-
 	Goal0 = _ - InnerGoalInfo,
 	goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
@@ -208,7 +208,7 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 		fail_goal(Context, FailGoal),
 
 		% put it all together
-		Goal2 = some(A, B, Goal1) - OuterGoalInfo,
+		Goal2 = scope(Reason, Goal1) - OuterGoalInfo,
 		SuccCode = conj([Goal2, ResetTicketCommitGoal,
 			PruneTicketsToGoal]) - OuterGoalInfo,
 		( OuterCodeModel = model_semi ->
@@ -222,7 +222,7 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 		Goal = conj([MarkTicketStackGoal, StoreTicketGoal, Goal3])
 	;
 		goal_add_trail_ops(Goal0, Goal1, !Info),
-		Goal = some(A, B, Goal1)
+		Goal = scope(Reason, Goal1)
 	).
 
 goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,

@@ -519,8 +519,8 @@ intermod__traverse_goal(unify(LVar, RHS0, C, D, E) - Info,
 	intermod__module_qualify_unify_rhs(LVar, RHS0, RHS, DoWrite, !Info).
 intermod__traverse_goal(not(Goal0) - Info, not(Goal) - Info, DoWrite, !Info) :-
 	intermod__traverse_goal(Goal0, Goal, DoWrite, !Info).
-intermod__traverse_goal(some(Vars, CanRemove, Goal0) - Info,
-		some(Vars, CanRemove, Goal) - Info, DoWrite, !Info) :-
+intermod__traverse_goal(scope(Reason, Goal0) - Info,
+		scope(Reason, Goal) - Info, DoWrite, !Info) :-
 	intermod__traverse_goal(Goal0, Goal, DoWrite, !Info).
 intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0) - Info,
 		if_then_else(Vars, Cond, Then, Else) - Info, DoWrite, !Info) :-

@@ -151,9 +151,9 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 		delay_construct_in_goal(Else0, InstMap0, DelayInfo, Else),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
-		GoalExpr0 = some(Var, CanRemove, SubGoal0),
+		GoalExpr0 = scope(Reason, SubGoal0),
 		delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),
-		Goal = some(Var, CanRemove, SubGoal) - GoalInfo0
+		Goal = scope(Reason, SubGoal) - GoalInfo0
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0

@@ -406,8 +406,8 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	add_liveness_after_goal(Then1, ResidueThen, Then),
 	add_liveness_after_goal(Else1, ResidueElse, Else).
 
-detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), !Liveness, _, LiveInfo) :-
+detect_liveness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
+		!Liveness, _, LiveInfo) :-
 	detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
 
 detect_liveness_in_goal_2(generic_call(_, _, _, _), _, _, _, _, _) :-
@@ -643,8 +643,7 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 			CompletedNonLocalDeadness, yes, Else1, Else)
 	).
 
-detect_deadness_in_goal_2(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), _,
+detect_deadness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal), _,
 		!Deadness, Liveness0, LiveInfo) :-
 	detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
 
@@ -902,7 +901,7 @@ update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
 	).
 update_liveness_expr(not(Goal), _, LiveInfo, !Liveness) :-
 	update_liveness_goal(Goal, LiveInfo, !Liveness).
-update_liveness_expr(some(_, _, Goal), _, LiveInfo, !Liveness) :-
+update_liveness_expr(scope(_, Goal), _, LiveInfo, !Liveness) :-
 	update_liveness_goal(Goal, LiveInfo, !Liveness).
 update_liveness_expr(shorthand(_), _, _, _, _) :-
 	error("update_liveness_expr: shorthand").
@@ -1088,10 +1087,10 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
 			Else1 - DelayedDeadElse),
 		!:GoalExpr = if_then_else(QuantVars, Cond, Then, Else)
 	;
-		!.GoalExpr = some(QuantVars, CanRemove, Goal0),
+		!.GoalExpr = scope(Reason, Goal0),
 		delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead,
 			VarSet),
-		!:GoalExpr = some(QuantVars, CanRemove, Goal)
+		!:GoalExpr = scope(Reason, Goal)
 	;
 		!.GoalExpr = shorthand(_),
 		error("delay_death_goal_expr: shorthand")
@@ -1302,9 +1301,8 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 
 	require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
 
-detect_resume_points_in_goal_2(some(Vars, CanRemove, Goal0),
-		some(Vars, CanRemove, Goal), !Liveness, _,
-		LiveInfo, ResumeVars0) :-
+detect_resume_points_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
+		!Liveness, _, LiveInfo, ResumeVars0) :-
 	detect_resume_points_in_goal(Goal0, Goal, !Liveness,
 		LiveInfo, ResumeVars0).
 

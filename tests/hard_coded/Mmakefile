@@ -132,6 +132,7 @@ ORDINARY_PROGS=	\
 	pragma_import \
 	pragma_inline \
 	pretty_printing \
+	promise_equivalent_solutions_test \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \

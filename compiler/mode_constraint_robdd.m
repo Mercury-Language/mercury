@@ -363,7 +363,7 @@ dump_goal_path_step(ite_else) -->
 	io__write_char('e').
 dump_goal_path_step(neg) -->
 	io__write_char('n').
-dump_goal_path_step(exist(_)) -->
+dump_goal_path_step(scope(_)) -->
 	io__write_char('q').
 dump_goal_path_step(first) -->
 	io__write_char('f').

@@ -205,8 +205,7 @@ prog_rep__represent_goal_expr(switch(_, _, Cases), _,
 		InstMap0, Info, Rep) :-
 	prog_rep__represent_cases(Cases, InstMap0, Info, CaseReps),
 	Rep = switch_rep(CaseReps).
-prog_rep__represent_goal_expr(some(_, _, Goal), GoalInfo, InstMap0, Info, Rep)
-		:-
+prog_rep__represent_goal_expr(scope(_, Goal), GoalInfo, InstMap0, Info, Rep) :-
 	prog_rep__represent_goal(Goal, InstMap0, Info, InnerRep),
 	Goal = _ - InnerGoalInfo,
 	goal_info_get_determinism(GoalInfo, OuterDetism),
@@ -216,7 +215,7 @@ prog_rep__represent_goal_expr(some(_, _, Goal), GoalInfo, InstMap0, Info, Rep)
 	;
 		MaybeCut = cut
 	),
-	Rep = some_rep(InnerRep, MaybeCut).
+	Rep = scope_rep(InnerRep, MaybeCut).
 prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	list__map(term__var_to_int, Args, ArgsRep),

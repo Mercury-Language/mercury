@@ -1068,6 +1068,10 @@
 				% state variables extracted from
 				% some/2 and all/2 quantifiers.
 
+	% other scopes
+	;	promise_purity(implicit_purity_promise, purity, goal)
+	;	promise_equivalent_solutions(prog_vars, goal)
+
 	% implications
 	;	implies(goal, goal)	% A => B
 	;	equivalent(goal, goal)	% A <=> B
@@ -1083,6 +1087,11 @@
 	% atomic goals
 	;	call(sym_name, list(prog_term), purity)
 	;	unify(prog_term, prog_term, purity).
+
+
+:- type implicit_purity_promise
+	--->	make_implicit_promises
+	;	dont_make_implicit_promises.
 
 :- type goals		==	list(goal).
 

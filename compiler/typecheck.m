@@ -366,14 +366,13 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		globals__lookup_bool_option(Globals, allow_stubs, yes),
 		\+ check_marker(Markers0, class_method)
 	->
+		globals__lookup_bool_option(Globals, warn_stubs, WarnStubs),
 		(
-			globals__lookup_bool_option(Globals,
-				warn_stubs, yes)
-		->
+			WarnStubs = yes,
 			report_no_clauses("Warning", PredId,
 				!.PredInfo, !.ModuleInfo, !IO)
 		;
-			true
+			WarnStubs = no
 		),
 		PredPieces = describe_one_pred_name(!.ModuleInfo,
 			should_module_qualify, PredId),
@@ -969,17 +968,22 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
 		%
 		list__foldl2(find_headvar_names_in_clause(VarSet0, HeadVars0),
 			Clauses0, map__init, HeadVarNames, yes, _),
-		VarSet = map__foldl(
-			(func(HeadVar, MaybeHeadVarName, VarSet1) =
-				( MaybeHeadVarName = yes(HeadVarName) ->
-					varset__name_var(VarSet1, HeadVar,
-						HeadVarName)
-				;
-					VarSet1
-				)
-			), HeadVarNames, VarSet0),
+		map__foldl(maybe_update_headvar_name, HeadVarNames,
+			VarSet0, VarSet),
 		clauses_info_set_varset(VarSet, ClausesInfo0, ClausesInfo),
 		pred_info_set_clauses_info(ClausesInfo, !PredInfo)
+	).
+
+:- pred maybe_update_headvar_name(prog_var::in, maybe(string)::in,
+	prog_varset::in, prog_varset::out) is det.
+
+maybe_update_headvar_name(HeadVar, MaybeHeadVarName, VarSet0, VarSet) :-
+	(
+		MaybeHeadVarName = yes(HeadVarName),
+		varset__name_var(VarSet0, HeadVar, HeadVarName, VarSet)
+	;
+		MaybeHeadVarName = no,
+		VarSet = VarSet0
 	).
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in, list(prog_var)::in,
@@ -1077,9 +1081,11 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause,
 	ClauseHeadVarMap = list__foldl(
 		find_headvar_names_in_goal(VarSet, HeadVars),
 		Conj, map__init),
-	( IsFirstClause = yes ->
+	(
+		IsFirstClause = yes,
 		HeadVarMap = ClauseHeadVarMap
 	;
+		IsFirstClause = no,
 		% Check that the variables in this clause match
 		% the names in previous clauses.
 		HeadVarMap1 = map__foldl(
@@ -1238,7 +1244,6 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info, !IO) :-
 		error("internal error in typechecker: no type-assignment")
 	;
 		TypeAssignSet = [_SingleTypeAssign]
-
 	;
 		TypeAssignSet = [TypeAssign1, TypeAssign2 | _],
 		%
@@ -1346,10 +1351,25 @@ typecheck_goal_2(not(SubGoal0), not(SubGoal), !Info, !IO) :-
 	checkpoint("not", !Info, !IO),
 	typecheck_goal(SubGoal0, SubGoal, !Info, !IO).
 
-typecheck_goal_2(some(Vars, B, SubGoal0), some(Vars,B, SubGoal), !Info, !IO) :-
-	checkpoint("some", !Info, !IO),
+typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), !Info,
+		!IO) :-
+	checkpoint("scope", !Info, !IO),
 	typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
-	ensure_vars_have_a_type(Vars, !Info, !IO).
+	(
+		Reason = exist_quant(Vars),
+		ensure_vars_have_a_type(Vars, !Info, !IO)
+	;
+		Reason = promise_purity(_, _)
+	;
+		Reason = promise_equivalent_solutions(Vars),
+		ensure_vars_have_a_type(Vars, !Info, !IO)
+	;
+		Reason = commit(_)
+	;
+		Reason = barrier(_)
+	;
+		Reason = from_ground_term(_)
+	).
 
 typecheck_goal_2(call(_, B, Args, D, E, Name),
 		call(PredId, B, Args, D, E, Name), !Info, !IO) :-
@@ -1617,6 +1637,10 @@ aditi_builtin_first_state_arg(aditi_tuple_update(_, _),
 aditi_builtin_first_state_arg(aditi_bulk_update(_, _, _), _) = 2 .
 
 %-----------------------------------------------------------------------------%
+
+:- pred assign(T::in, T::out) is det.
+
+assign(X, X).
 
 :- pred typecheck_call_pred(simple_call_id::in, list(prog_var)::in,
 	pred_id::out, typecheck_info::in, typecheck_info::out,
@@ -2075,7 +2099,8 @@ typecheck_var_has_arg_type_2([ArgsTypeAssign | ArgsTypeAssignSets], Var,
 arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
 		!ArgTypeAssignSet) :-
 	type_assign_get_var_types(TypeAssign0, VarTypes0),
-	( ArgTypes0 = [Type | ArgTypes] ->
+	(
+		ArgTypes0 = [Type | ArgTypes],
 		( map__search(VarTypes0, Var, VarType) ->
 			(
 				type_assign_unify_type(TypeAssign0, VarType,
@@ -2098,6 +2123,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
 				!.ArgTypeAssignSet]
 		)
 	;
+		ArgTypes0 = [],
 		error("arg_type_assign_var_has_type")
 	).
 
@@ -2318,10 +2344,11 @@ checkpoint(Msg, !Info, !IO) :-
 	typecheck_info_get_module_info(!.Info, ModuleInfo),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, debug_types, DoCheckPoint),
-	( DoCheckPoint = yes ->
+	(
+		DoCheckPoint = yes,
 		checkpoint_2(Msg, !.Info, !IO)
 	;
-		true
+		DoCheckPoint = no
 	).
 
 :- pred checkpoint_2(string::in, typecheck_info::in, io::di, io::uo) is det.
@@ -2411,11 +2438,13 @@ typecheck_unify_var_functor(Var, Functor, Args, !Info, !IO) :-
 	list__length(Args, Arity),
 	typecheck_info_get_ctor_list(!.Info, Functor, Arity,
 		ConsDefnList, InvalidConsDefnList),
-	( ConsDefnList = [] ->
+	(
+		ConsDefnList = [],
 		report_error_undef_cons(!.Info, InvalidConsDefnList,
 			Functor, Arity, !IO),
 		typecheck_info_set_found_error(yes, !Info)
 	;
+		ConsDefnList = [_ | _],
 		%
 		% produce the ConsTypeAssignSet, which is essentially the
 		% cross-product of the TypeAssignSet0 and the ConsDefnList
@@ -3195,7 +3224,8 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 		% 	Pair = Pair0 ^ snd := 2.
 		%
 		term__vars(FieldType, TVarsInField),
-		( TVarsInField = [] ->
+		(
+			TVarsInField = [],
 			TVarSet = TVarSet0,
 			RetType = FunctorType,
 			ArgTypes = [FunctorType, FieldType],
@@ -3211,6 +3241,7 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 			ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
 				RetType, ArgTypes, ClassConstraints))
 		;
+			TVarsInField = [_ | _],
 			%
 			% XXX This demonstrates a problem - if a
 			% type variable occurs in the types of multiple
@@ -3314,11 +3345,12 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 	% implement handling of those, they will need to be renamed
 	% here as well.
 	%
-	( UnivConstraints0 = [] ->
-		true
+	(
+		UnivConstraints0 = []
 	;
-		error(
-		"project_rename_flip_class_constraints: universal constraints")
+		UnivConstraints0 = [_ | _],
+		error("project_rename_flip_class_constraints: " ++
+			"universal constraints")
 	),
 
 	%
@@ -3540,22 +3572,23 @@ typecheck_info_get_pred_markers(Info, PredMarkers) :-
 %-----------------------------------------------------------------------------%
 
 % typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
-%		OldExplicitVarTypes, NewTypeVarSet, New* ..., TypeRenaming,
-%		ExistTypeRenaming):
-%	extracts the final inferred types from Info.
+%	OldExplicitVarTypes, NewTypeVarSet, New* ..., TypeRenaming,
+%	ExistTypeRenaming):
 %
-%	OldHeadTypeParams should be the type variables from the head of the
-%	predicate.
-%	OldExistQVars should be the declared existentially quantified
-%	type variables (if any).
-%	OldExplicitVarTypes is the vartypes map containing the explicit
-%	type qualifications.
-%	New* is the newly inferred types, in NewTypeVarSet.
-%	TypeRenaming is a map to rename things from the old TypeVarSet
-%	to the NewTypeVarSet.
-%	ExistTypeRenaming is a map (which should be applied *before*
-%	applying TypeRenaming) to rename existential type variables
-%	in OldExistQVars.
+% Extracts the final inferred types from Info.
+%
+% OldHeadTypeParams should be the type variables from the head of the
+% predicate.
+% OldExistQVars should be the declared existentially quantified
+% type variables (if any).
+% OldExplicitVarTypes is the vartypes map containing the explicit
+% type qualifications.
+% New* is the newly inferred types, in NewTypeVarSet.
+% TypeRenaming is a map to rename things from the old TypeVarSet
+% to the NewTypeVarSet.
+% ExistTypeRenaming is a map (which should be applied *before*
+% applying TypeRenaming) to rename existential type variables
+% in OldExistQVars.
 
 :- pred typecheck_info_get_final_info(typecheck_info::in, list(tvar)::in,
 	existq_tvars::in, vartypes::in, tvarset::out, existq_tvars::out,
@@ -3568,7 +3601,8 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 		NewVarTypes, NewTypeConstraints, NewConstraintProofs, TSubst,
 		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(Info, TypeAssignSet),
-	( TypeAssignSet = [TypeAssign | _] ->
+	(
+		TypeAssignSet = [TypeAssign | _],
 		type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
 		type_assign_get_typevarset(TypeAssign, OldTypeVarSet),
 		type_assign_get_var_types(TypeAssign, VarTypes0),
@@ -3657,6 +3691,7 @@ typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
 				NewProofValuesList, NewConstraintProofs)
 		)
 	;
+		TypeAssignSet = [],
 		error("internal error in typecheck_info_get_vartypes")
 	).
 
@@ -3831,7 +3866,6 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 		Arity = 0,
 		builtin_atomic_type(Functor, BuiltInTypeName)
 	->
-		% ZZZ
 		construct_type(unqualified(BuiltInTypeName) - 0, [], ConsType),
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
@@ -3855,7 +3889,6 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, ConsInfoList,
 			TupleArgTVars, TupleConsTypeVarSet),
 		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
 
-		% ZZZ
 		construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
 			TupleConsType),
 
@@ -3971,42 +4004,43 @@ write_constraints(Context, TypeAssign, !IO) :-
 %-----------------------------------------------------------------------------%
 
 % perform_context_reduction(OrigTypeAssignSet, Info0, Info)
-%	is true iff either
-% 	Info is the typecheck_info that results from performing
-% 	context reduction on the type_assigns in Info0,
-%	or, if there is no valid context reduction, then
-%	Info is Info0 with the type assign set replaced by
-%	OrigTypeAssignSet (see below).
+% is true iff either
+% is the typecheck_info that results from performing
+% context reduction on the type_assigns in Info0,
+% or, if there is no valid context reduction, then
+% Info is Info0 with the type assign set replaced by
+% OrigTypeAssignSet (see below).
 %
-% 	Context reduction is the process of eliminating redundant constraints
-% 	from the constraints in the type_assign and adding the proof of the
-% 	constraint's redundancy to the proofs in the same type_assign. There
-% 	are three ways in which a constraint may be redundant:
-%		- if a constraint occurs in the pred/func declaration for this
-%		  predicate or function, then it is redundant
-%		  (in this case, the proof is trivial, so there is no need
-%		  to record it in the proof map)
-% 		- if a constraint is present in the set of constraints and all
-% 		  of the "superclass" constraints for the constraints are all
-% 		  present, then all the superclass constraints are eliminated
-% 		- if there is an instance declaration that may be applied, the
-% 		  constraint is replaced by the constraints from that instance
-% 		  declaration
+% Context reduction is the process of eliminating redundant constraints
+% from the constraints in the type_assign and adding the proof of the
+% constraint's redundancy to the proofs in the same type_assign. There
+% are three ways in which a constraint may be redundant:
 %
-% 	In addition, context reduction removes repeated constraints.
+% - if a constraint occurs in the pred/func declaration for this
+%   predicate or function, then it is redundant
+%   (in this case, the proof is trivial, so there is no need
+%   to record it in the proof map)
+% - if a constraint is present in the set of constraints and all
+%   of the "superclass" constraints for the constraints are all
+%   present, then all the superclass constraints are eliminated
+% - if there is an instance declaration that may be applied, the
+%   constraint is replaced by the constraints from that instance
+%   declaration
 %
-% 	If context reduction fails on a type_assign, that type_assign is
-% 	removed from the type_assign_set. Context reduction fails if there is
-%	a constraint where the type of (at least) one of the arguments to
-%	the constraint has its top level functor bound, but there is no
-%	instance declaration for that type.
+% In addition, context reduction removes repeated constraints.
 %
-%	If all type_assigns from the typecheck_info are rejected, than an
-%	appropriate error message is given, the type_assign_set is
-%	restored to the original one given by OrigTypeAssignSet,
-%	but without any typeclass constraints.
-%	The reason for this is to avoid reporting the same error at
-%	subsequent calls to perform_context_reduction.
+% If context reduction fails on a type_assign, that type_assign is
+% removed from the type_assign_set. Context reduction fails if there is
+% a constraint where the type of (at least) one of the arguments to
+% the constraint has its top level functor bound, but there is no
+% instance declaration for that type.
+%
+% If all type_assigns from the typecheck_info are rejected, than an
+% appropriate error message is given, the type_assign_set is
+% restored to the original one given by OrigTypeAssignSet,
+% but without any typeclass constraints.
+% The reason for this is to avoid reporting the same error at
+% subsequent calls to perform_context_reduction.
 
 :- pred perform_context_reduction(type_assign_set::in,
 	typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
@@ -4274,8 +4308,8 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst, ConstVars,
 		% constraint fails then that constraint is eliminated because it
 		% cannot contribute to proving the constraint we are trying to
 		% prove.
-	list__filter_map(subclass_details_to_constraint(TVarSet,
-			SuperClassTypes),
+	list__filter_map(
+		subclass_details_to_constraint(TVarSet, SuperClassTypes),
 		SubClasses, SubClassConstraints),
 
 	(
@@ -6232,12 +6266,6 @@ strip_builtin_qualifiers_from_type(Type0, Type) :-
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
 	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
-
-%-----------------------------------------------------------------------------%
-
-:- pred assign(T::in, T::out) is det.
-
-assign(X, X).
 
 %-----------------------------------------------------------------------------%
 

@@ -366,7 +366,7 @@ inlining__is_flat_simple_goal(conj(Goals) - _) :-
 	inlining__is_flat_simple_goal_list(Goals).
 inlining__is_flat_simple_goal(not(Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
-inlining__is_flat_simple_goal(some(_, _, Goal) - _) :-
+inlining__is_flat_simple_goal(scope(_, Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
 inlining__is_flat_simple_goal(call(_, _, _, BuiltinState, _, _) - _) :-
 	BuiltinState = inline_builtin.
@@ -566,9 +566,9 @@ inlining__inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
 		Goal = not(SubGoal),
 		GoalInfo = GoalInfo0
 	;
-		Goal0 = some(Vars, CanRemove, SubGoal0),
+		Goal0 = scope(Reason, SubGoal0),
 		inlining__inlining_in_goal(SubGoal0, SubGoal, !Info),
-		Goal = some(Vars, CanRemove, SubGoal),
+		Goal = scope(Reason, SubGoal),
 		GoalInfo = GoalInfo0
 	;
 		Goal0 = generic_call(_, _, _, _),

@@ -1103,8 +1103,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
 			Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, 
 			AllTraced, Primitives0)
 	;
-		Goal = some_rep(InnerGoal, MaybeCut),
-		InnerPath = list.append(Path, [exist(MaybeCut)]),
+		Goal = scope_rep(InnerGoal, MaybeCut),
+		InnerPath = list.append(Path, [scope(MaybeCut)]),
 		InnerAndPath = goal_and_path(InnerGoal, InnerPath),
 		MaybePrims = make_primitive_list(Store, 
 			[InnerAndPath | GoalPaths],

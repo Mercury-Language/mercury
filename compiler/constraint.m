@@ -163,9 +163,8 @@ propagate_conj_sub_goal_2(par_conj(Goals0) - GoalInfo,
 	propagate_disj(Goals0, [], Goals, !Info),
 	flatten_constraints(Constraints0, Constraints).
 
-propagate_conj_sub_goal_2(some(Vars, CanRemove, Goal0) - GoalInfo,
-		Constraints, [some(Vars, CanRemove, Goal) - GoalInfo], !Info)
-		:-
+propagate_conj_sub_goal_2(scope(Reason, Goal0) - GoalInfo, Constraints,
+		[scope(Reason, Goal) - GoalInfo], !Info) :-
 	propagate_goal(Goal0, Constraints, Goal, !Info).
 
 propagate_conj_sub_goal_2(not(NegGoal0) - GoalInfo, Constraints0,
@@ -726,7 +725,7 @@ goal_is_simple(Goal) :-
 	(
 		goal_is_atomic(GoalExpr)
 	;
-		( GoalExpr = some(_, _, SubGoal)
+		( GoalExpr = scope(_, SubGoal)
 		; GoalExpr = not(SubGoal)
 		),
 		goal_is_simple(SubGoal)
@@ -815,8 +814,8 @@ strip_constraint_markers_expr(switch(Var, CanFail, Cases0)) =
 		    ), Cases0).
 strip_constraint_markers_expr(not(Goal)) =
 		not(strip_constraint_markers(Goal)).
-strip_constraint_markers_expr(some(Vars, Remove, Goal)) =
-		some(Vars, Remove, strip_constraint_markers(Goal)).
+strip_constraint_markers_expr(scope(Reason, Goal)) =
+		scope(Reason, strip_constraint_markers(Goal)).
 strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else)) =
 		if_then_else(Vars, strip_constraint_markers(If),
 			strip_constraint_markers(Then),

@@ -290,8 +290,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo,
 		add_mc_vars_for_goal(
 			PredId, ProgVarset, Goal, !Varset, !VarMap
 		)
-	;
-        GoalExpr = some(_, _, Goal),
+	;	GoalExpr = scope(_, Goal),
 		add_mc_vars_for_goal(
 			PredId, ProgVarset, Goal, !Varset, !VarMap
 		)
@@ -573,7 +572,7 @@ goal_expr_constraints(ModuleInfo, VarMap, PredId,
 	% some Xs Goal
 	%
 goal_expr_constraints(ModuleInfo, VarMap, PredId,
-	some(_ExistVars, _CanRemove, Goal),
+	scope(_Reason, Goal),
 	GoalPath, Nonlocals, Constraints) :-
 	Goal = _ - SomeGoalInfo,
 	goal_info_get_goal_path(SomeGoalInfo, SomeGoalPath),

@@ -1076,9 +1076,9 @@ polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
 	polymorphism__process_case_list(Cases0, Cases, !Info),
 	Goal = switch(Var, CanFail, Cases) - GoalInfo.
 polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-	GoalExpr = some(Vars, CanRemove, SubGoal0),
+	GoalExpr = scope(Reason, SubGoal0),
 	polymorphism__process_goal(SubGoal0, SubGoal, !Info),
-	Goal = some(Vars, CanRemove, SubGoal) - GoalInfo.
+	Goal = scope(Reason, SubGoal) - GoalInfo.
 polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
 	GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
 	polymorphism__process_goal(Cond0, Cond, !Info),

@@ -2514,9 +2514,11 @@ mercury_output_goal_2(equivalent(G1,G2), VarSet, Indent) -->
 	io__write_string(")").
 
 mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
+	(
+		{ Vars = [] },
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
+		{ Vars = [_ | _] },
 		io__write_string("some ["),
 		mercury_output_vars(Vars, VarSet, no),
 		io__write_string("] ("),
@@ -2528,9 +2530,11 @@ mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	).
 
 mercury_output_goal_2(some_state_vars(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
+	(
+		{ Vars = [] },
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
+		{ Vars = [_ | _] },
 		io__write_string("some ["),
 		mercury_output_state_vars(Vars, VarSet, no),
 		io__write_string("] ("),
@@ -2542,9 +2546,11 @@ mercury_output_goal_2(some_state_vars(Vars, Goal), VarSet, Indent) -->
 	).
 
 mercury_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
+	(
+		{ Vars = [] },
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
+		{ Vars = [_ | _] },
 		io__write_string("all ["),
 		mercury_output_vars(Vars, VarSet, no),
 		io__write_string("] ("),
@@ -2556,9 +2562,11 @@ mercury_output_goal_2(all(Vars, Goal), VarSet, Indent) -->
 	).
 
 mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent) -->
-	( { Vars = [] } ->
+	(
+		{ Vars = [] },
 		mercury_output_goal(Goal, VarSet, Indent)
 	;
+		{ Vars = [_ | _] },
 		io__write_string("all ["),
 		mercury_output_state_vars(Vars, VarSet, no),
 		io__write_string("] ("),
@@ -2568,6 +2576,43 @@ mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent) -->
 		mercury_output_newline(Indent),
 		io__write_string(")")
 	).
+
+mercury_output_goal_2(promise_equivalent_solutions(Vars, Goal), VarSet,
+		Indent) -->
+	(
+		{ Vars = [] },
+		% This should have been caught be prog_io_goal when reading in
+		% the term, but there is no point in aborting here.
+		mercury_output_goal(Goal, VarSet, Indent)
+	;
+		{ Vars = [_ | _] },
+		io__write_string("promise_equivalent_solutions ["),
+		mercury_output_vars(Vars, VarSet, no),
+		io__write_string("] ("),
+		{ Indent1 = Indent + 1 },
+		mercury_output_newline(Indent1),
+		mercury_output_goal(Goal, VarSet, Indent1),
+		mercury_output_newline(Indent),
+		io__write_string(")")
+	).
+
+mercury_output_goal_2(promise_purity(_Implicit, Purity, Goal), VarSet,
+		Indent) -->
+	(
+		{ Purity = pure },
+		io__write_string("promise_pure (")
+	;
+		{ Purity = (semipure) },
+		io__write_string("promise_semipure (")
+	;
+		{ Purity = (impure) },
+		io__write_string("promise_impure (")
+	),
+	{ Indent1 = Indent + 1 },
+	mercury_output_newline(Indent1),
+	mercury_output_goal(Goal, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
 mercury_output_goal_2(if_then_else(Vars, StateVars, A, B, C), VarSet,
 		Indent) -->

@@ -86,6 +86,16 @@
 
 :- type mode_info.
 
+:- type debug_flags
+	--->	debug_flags(
+			verbose		:: bool,
+					% The value --debug-modes-verbose
+			minimal		:: bool,
+					% The value --debug-modes-minimal
+			statistics	:: bool
+					% The value --debug-modes-statistics
+		).
+
 :- pred mode_info_init(module_info::in, pred_id::in,
 	proc_id::in, prog_context::in, set(prog_var)::in, instmap::in,
 	how_to_check_goal::in, may_change_called_proc::in,
@@ -99,7 +109,7 @@
 :- pred mode_info_get_insts(mode_info::in, inst_table::out) is det.
 :- pred mode_info_get_predid(mode_info::in, pred_id::out) is det.
 :- pred mode_info_get_procid(mode_info::in, proc_id::out) is det.
-:- pred mode_info_get_debug_modes(mode_info::in, maybe(pair(bool))::out)
+:- pred mode_info_get_debug_modes(mode_info::in, maybe(debug_flags)::out)
 	is det.
 :- pred mode_info_get_context(mode_info::in, prog_context::out) is det.
 :- pred mode_info_get_mode_context(mode_info::in, mode_context::out) is det.
@@ -292,9 +302,10 @@
 		var_types	:: vartypes,
 				% The types of the variables.
 
-		debug		:: maybe(pair(bool)),
+		debug		:: maybe(debug_flags),
 				% Is mode debugging of this procedure enabled?
 				% If yes, is verbose mode debugging enabled,
+				% is minimal mode debugging enabled,
 				% and is statistics printing enabled?
 
 		context		:: prog_context,
@@ -390,9 +401,12 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 	->
 		globals__lookup_bool_option(Globals, debug_modes_verbose,
 			DebugVerbose),
-		globals__lookup_bool_option(Globals, statistics,
+		globals__lookup_bool_option(Globals, debug_modes_minimal,
+			DebugMinimal),
+		globals__lookup_bool_option(Globals, debug_modes_statistics,
 			Statistics),
-		Debug = yes(DebugVerbose - Statistics)
+		Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
+		Debug = yes(Flags)
 	;
 		Debug = no
 	),

@@ -212,7 +212,7 @@ magic_util__goal_is_aditi_call(ModuleInfo, PredMap,
 	% and multiple nested quantifications are not considered
 	% atomic by dnf.m.
 	%
-	( Goal0 = some(_, _, Goal1) - _ ->
+	( Goal0 = scope(_, Goal1) - _ ->
 		Goal2 = Goal1
 	;
 		Goal2 = Goal0

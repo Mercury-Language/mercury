@@ -78,8 +78,7 @@ lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0), ModuleInfo,
 		if_then_else(Vars, Cond, Then, Else)) :-
 	lco_in_goal(Then0, ModuleInfo, Then),
 	lco_in_goal(Else0, ModuleInfo, Else).
-lco_in_goal_2(some(Vars, CanRemove, Goal0), ModuleInfo,
-		some(Vars, CanRemove, Goal)) :-
+lco_in_goal_2(scope(Reason, Goal0), ModuleInfo, scope(Reason, Goal)) :-
 	lco_in_goal(Goal0, ModuleInfo, Goal).
 lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
 lco_in_goal_2(Goal @ generic_call(_, _, _, _), _ModuleInfo, Goal).
