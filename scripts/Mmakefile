@@ -39,9 +39,10 @@ all: Mmake.vars
 
 #-----------------------------------------------------------------------------#
 
-ml mgnuc canonical_grade: init_grade_options.sh-subr
-ml mgnuc canonical_grade: parse_grade_options.sh-subr 
-ml mgnuc canonical_grade: final_grade_options.sh-subr 
+parse_ml_options.sh-subr mgnuc canonical_grade: init_grade_options.sh-subr
+parse_ml_options.sh-subr mgnuc canonical_grade: parse_grade_options.sh-subr 
+parse_ml_options.sh-subr mgnuc canonical_grade: final_grade_options.sh-subr 
+ml c2init: parse_ml_options.sh-subr
 ml canonical_grade: canonical_grade.sh-subr 
 
 #-----------------------------------------------------------------------------#

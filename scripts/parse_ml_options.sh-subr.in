@@ -1,0 +1,384 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# parse_ml_options.sh-subr:
+#       An `sh' subroutine for parsing the options for the `ml' and `c2init'
+#	scripts. `ml' and `c2init' share the same set of options so that
+#	users can mostly ignore the existence of `c2init'.
+#
+# The invoking script must set the shell variable `Usage' to a string
+# containing the name and description of the script and the general
+# format of the command line.
+#
+# The invoking script must also define FULLARCH and DEFAULT_GRADE.
+#---------------------------------------------------------------------------#
+
+# initialize ml options
+verbose=false
+allow_undef=false
+trace=false
+readline=true
+case $FULLARCH in
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
+		# `gcc -s' is broken in gnu-win32
+		strip=false
+		;;
+	*-darwin*)
+		# `gcc -s' doesn't seem to do the right thing on Mac OS X
+		strip=false
+		;;
+	*)
+		strip=true
+		;;
+esac
+mercury_libs=default
+all_libs=default
+demangle=true
+make_shared_lib=false
+leave_shlib_dirs_relative=false
+user_shlib_dirs=""
+use_thread_libs=false
+print_grade=false
+print_gc_grade=false
+
+# initialize c2init options
+maxcalls=40	# maximum number of calls to put in a single function
+defentry_opt=""
+init_opt=""
+trace_opt=""
+library_opt=""
+extra_inits_opt=""
+aditi_opt=""
+extra_init_dirs=""
+init_c_file="-"
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
+Help="\
+$Usage
+Options:
+	-h, --help
+		Print this help message.
+
+Diagnostics options:
+	-v, --verbose
+		Echo the gcc command line before executing it.
+	--no-demangle
+		Don't pipe the output of the linker through the Mercury
+		demangler.
+	--allow-undef
+	--allow-undefined
+		Don't report an error if there are unresolved symbols.
+		This option is only used if you are building a shared
+		library (with \`--make-shared-lib); when building
+		executables, unresolved symbols are always errors.
+		This option is useful when building shared libraries
+		that are not intended to be self-contained.
+	--print-grade
+		Compute the grade of the Mercury libraries to link with based
+		on the command line options, print it to the standard output,
+		and then exit (don't actually link anything).
+	--print-gc-grade
+		Compute the base name of the garbage collection library to
+		link with based on the command line options, print it to the
+		standard output, and then exit (don't actually link anything).
+
+Dynamic/static linking options:
+	--mercury-libs {shared, static, none}
+		Specify which version of the standard Mercury libraries to
+		link with:
+			--mercury-libs shared
+				Link with the shared libraries (*.so),
+				if possible, otherwise with the static ones.
+			--mercury-libs static
+				Link with the static libraries (*.@LIB_SUFFIX@).
+			--mercury-libs none
+				Don't link in the Mercury standard libraries.
+	-shared, --shared
+		Similar to \`--mercury-libs shared', but applies to all
+		libraries, not just the standard Mercury libraries.
+	-static, --static
+		Similar to \`--mercury-libs static', but applies to all
+		libraries, not just the standard Mercury libraries.
+	--make-shared-lib
+		Produce a shared library, rather than an executable.
+
+Directory options:
+	-L <directory>, --lib-dir <directory>
+		Include <directory> in the list of directories that the
+		linker will use to search for libraries.
+	-R <directory>, --shared-lib-dir <directory>
+		Include <directory> in the list of directories that the
+		dynamic linker will use to search for shared libraries.
+	--leave-shared-lib-dirs-relative
+		Don't convert relative shared library directory names
+		into absolute paths.
+	--no-leave-shared-lib-dirs-relative
+		Convert relative shared library directory names into
+		absolute paths.  This is the default.
+
+Debugging options:
+	-t, --trace
+		Link in the Mercury debugging libraries.
+		This option is needed if any of the modules being linked
+		were compiled with tracing enabled.  However, \`--debug'
+		implies \`--trace', so if you're using \`--debug',
+		then you don't need to explicitly specify \`--trace'.
+		Note that \`--trace' is incompatible with \`--static'
+		on some platforms (e.g. sparc-sun-solaris2.6).
+		Implies \`--include-initialization-code'.
+	-r-, --no-readline
+		Don't link in the GPL'd GNU Readline Library.
+	-g, --c-debug, --no-strip
+		Do not strip C debugging information.
+
+Initialization options:
+	-a, --aditi
+		Generate a function to upload Aditi-RL data to a database.
+	-c <n>, --max-calls <n>
+		Break up the initialization into groups of at most <n> function
+		calls.  (Default value of <n> is 40.)
+	-i, --include-initialization-code
+		Always include code that calls the initialization functions
+		of the various modules. With this option, the debugger can use
+		information from any modules that were compiled with execution
+		tracing to print (partial) stack traces, and to print the
+		values of variables in ancestors of the current call, even
+		in grades in which this not normally possible.
+	--no-main, --library
+		Don't generate a \`main()' function.
+		Instead, generate a function
+			mercury_main(int argc, char **argv);
+		(declared in \"mercury_init.h\") that can be called
+		from C code.
+		(A more fine-grained interface is also available;
+		see \"mercury_init.h\" for details.)
+	-I <directory>, --init-file-directory <directory>
+		Include <directory> in the list of directories searched to
+		locate \`.init' files.
+	--init-c-file <filename>
+		Output the generated C initialization program to the
+		specified file, rather than sending it to the standard
+		output.
+	-w <label>, --entry-point <label>
+		Set entry point to <label>.
+		(Default value corresponds to main/2.)
+	-x, --extra-inits
+		Search \`.c' files for extra initialization functions.
+		(This may be necessary if the C files contain
+		hand-coded C code with \`INIT' comments, rather than
+		containing only C code that was automatically generated
+		by the Mercury compiler.)
+
+	Environment variables:
+		MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
+		MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS,
+		MERCURY_MKINIT.
+
+Threads options:
+	--use-thread-libs
+		Link with the POSIX thread libraries. This option is useful
+		if a C library being linked with uses threads, but the
+		Mercury code being linked doesn't.
+
+$grade_usage"
+
+while : ; do
+    case "$1" in
+	-h|--help|"-?")
+		echo "$Help"
+		exit 0
+		;;
+	-v|--verbose)
+		verbose=true
+		;;
+
+	#
+	# ml options.
+	#
+	--demangle)
+		demangle=true
+		;;
+	--no-demangle)
+		demangle=false
+		;;
+	--allow-undef|--allow-undefined)
+		allow_undef=true
+		;;
+	--no-allow-undef|--no-allow-undefined)
+		allow_undef=false
+		;;
+	-t|--trace)
+		trace=true
+		trace_opt="-t"
+		;;
+	-t-|--no-trace)
+		trace=false
+		trace_opt=""
+		;;
+	-r|--readline)
+		readline=true
+		;;
+	-r-|--no-readline)
+		readline=false
+		;;
+	-g-|--no-c-debug|--strip)
+		strip=true
+		;;
+	-g|--c-debug|--no-strip)
+		strip=false
+		;;
+	--make-shared-lib)
+		make_shared_lib=true
+		# on some targets, stripping shared libraries will
+		# make them unusable, I think, so don't strip
+		strip=false
+		;;
+	--no-libs)
+		progname=`basename $0`
+		cat 1>&2 << EOF
+$progname: Warning: option \`--no-libs' is deprecated --
+$progname:   please use the new option \`--mercury-libs none' instead.
+$progname:   Support for \`--no-libs' may be removed in a future release.
+EOF
+		mercury_libs=none
+		;;
+	--mercury-libs)
+		case "$2" in
+			shared|static|none|default)
+				mercury_libs="$2"
+				shift ;;
+			*)
+				progname=`basename $0`
+				cat 1>&2 << EOF
+$progname: Error: parameter to \`--mercury-libs' option should be either
+$progname:   \`shared', \`static', \`none', or \`default', not \`$2'.
+$progname: Try \`$0 --help' for help.
+EOF
+				exit 1
+				;;
+		esac
+		;;
+	-shared|--shared)
+		all_libs=shared
+		case $mercury_libs in static|default)
+			mercury_libs=shared ;;
+		esac
+		;;
+	-static|--static)
+		all_libs=static
+		case $mercury_libs in shared|default)
+			mercury_libs=static ;;
+		esac
+		;;
+	-L|--lib-dir)
+		dir="$2"
+		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
+		shift
+		;;
+	-L*)
+		user_libdir_opts="$user_libdir_opts $1"
+		;;
+	--leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=true
+		;;
+	--no-leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=false
+		;;
+	-R|--shared-lib-dir)
+		dir="$2"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
+		user_shlib_dirs="$user_shlib_dirs $dir"
+		shift
+		;;
+	-R*)
+		dir="` expr $1 : '-R\(.*\)' `"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
+		user_shlib_dirs="$user_shlib_dirs $dir"
+		;;
+
+	--use-thread-libs)
+		use_thread_libs=true
+		;;
+	--no-use-thread-libs)
+		use_thread_libs=false
+		;;
+
+	--print-grade)
+		print_grade=true
+		;;
+	--no-print-grade)
+		print_grade=false
+		;;
+	--print-gc-grade)
+		print_gc_grade=true
+		;;
+	--no-print-gc-grade)
+		print_gc_grade=false
+		;;
+
+	#
+	# c2init options.
+	#
+	-a|--aditi)
+		aditi_opt="-a";;	
+	-a-|--no-aditi)
+		aditi_opt="";;	
+	-c|--max-calls)
+		maxcalls="$2"; shift;;
+
+	-i|--include-initialization-code)
+		init_opt="-i";;
+
+	--no-main|--library)
+		library_opt="-l";;
+
+	--main|--no-library)
+		library_opt="";;
+
+	-I|--init-file-directory)
+		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
+	
+	--init-c-file)
+		init_c_file="$2"; shift;;
+
+	-w|--entry-point)
+		defentry_opt="-w$2"; shift;;
+
+	-x|--extra-inits)
+		extra_inits_opt="-x";;
+
+	-x-|--no-extra-inits)
+		extra_inits_opt="";;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
+	--)
+		shift
+		break ;;
+	*)
+		break ;;
+    esac
+    shift
+done
+
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
+
