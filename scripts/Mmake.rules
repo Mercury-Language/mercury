@@ -186,14 +186,15 @@ ifneq ($(RM_C),:)
 $(os_subdir)%.o : %.m
 	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c \
+		$(OBJFILE_OPT)$@
 	$(RM_C) $(cs_subdir)$*.c
 
 $(os_subdir)%.pic_o : %.m
 	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $(cs_subdir)$*.c -o $@
+		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
 
 endif # RM_C != :
 
@@ -225,11 +226,11 @@ $(dirs_subdir)%.dir/*.o: %.m
 #
 
 .c.o:
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
 .c.pic_o:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $< -o $@
+		-c $< $(OBJFILE_OPT)$@
 
 .c.s:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -S $< -o $@

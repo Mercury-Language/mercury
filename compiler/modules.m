@@ -1112,7 +1112,7 @@ update_interface(OutputFileName) -->
 		{ Command = "mercury_update_interface " }
 	),
 	{ string__append(Command, OutputFileName, ShellCommand) },
-	invoke_system_command(ShellCommand, Succeeded),
+	invoke_shell_command(ShellCommand, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem updating interface files.")
 	;

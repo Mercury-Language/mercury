@@ -18,7 +18,10 @@
 
 #include <sys/types.h>	/* for fd_set and FD_ZERO() */
 #include <sys/time.h>	/* for FD_ZERO() */
-#include <unistd.h>	/* for FD_ZERO() */
+
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>	/* for FD_ZERO() */
+#endif
 
 void
 MR_fd_zero(fd_set *fdset)

@@ -18,6 +18,8 @@
   #include <sys/time.h>			/* for FD_ZERO() */
 #endif
 
+#include <stdlib.h>			/* for size_t */
+
 /*
 ** We use our own version of memcpy because gcc recognises calls to the
 ** standard memcpy (even in things that do not mention memcpy by name, e.g.

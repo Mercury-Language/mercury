@@ -23,8 +23,12 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-#include	<unistd.h>
 #include	<sys/stat.h>
+
+#ifdef HAVE_UNISTD_H
+  #include	<unistd.h>
+#endif
+
 #include	"getopt.h"
 #include	"mercury_conf.h"
 #include	"mercury_std.h"

@@ -195,7 +195,9 @@ lib_std: $(STD_LIB_NAME).init
 
 lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a : $(library.os)
 	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a $(library.os)
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a \
+		$(library.os)
 	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).a
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)

@@ -2699,7 +2699,7 @@ mercury_compile__link_module_list(Modules) -->
 	    join_module_list(Modules, ".c", ["> ", InitCFileName], MkInitCmd0),
 	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
 	    	MkInitCmd) },
-	    invoke_system_command(MkInitCmd, MkInitOK),
+	    invoke_shell_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->
 		report_error("creation of init file failed.")
@@ -2746,7 +2746,7 @@ mercury_compile__link_module_list(Modules) -->
 			LinkObjects, " ",
 			LinkLibraryDirectories, " ", LinkLibraries],
 			LinkCmd) },
-		    invoke_system_command(LinkCmd, LinkCmdOK),
+		    invoke_shell_command(LinkCmd, LinkCmdOK),
 		    maybe_report_stats(Stats),
 		    ( { LinkCmdOK = no } ->
 			report_error("link failed.")

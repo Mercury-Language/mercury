@@ -179,10 +179,11 @@ ALL_MSPFLAGS	= $(MSPFLAGS) $(EXTRA_MSPFLAGS) $(TARGET_MSPFLAGS)
 MSPFLAGS	=
 EXTRA_MSPFLAGS	=
 
-AR		= ar
+AR		= @AR@
 ALL_ARFLAGS	= $(ARFLAGS) $(EXTRA_ARFLAGS) $(TARGET_ARFLAGS)
-ARFLAGS		= cr
+ARFLAGS		= @ARFLAGS@
 EXTRA_ARFLAGS	=
+AR_LIBFILE_OPT	= @AR_LIBFILE_OPT@
 
 RANLIB		= @RANLIB@
 ALL_RANLIBFLAGS	= $(RANLIBFLAGS) $(EXTRA_RANLIBFLAGS) $(TARGET_RANLIBFLAGS)
@@ -472,5 +473,13 @@ FINAL_INSTALL_MERC_LIB_DIR = \
 
 # Specify the additional compilation models to install by default
 LIBGRADES		= @LIBGRADES@
+
+#-----------------------------------------------------------------------------#
+
+OBJFILE_OPT=@OBJFILE_OPT@
+BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
+
+O=@OBJ_SUFFIX@
+A=@LIB_SUFFIX@
 
 #-----------------------------------------------------------------------------#

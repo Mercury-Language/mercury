@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,7 +15,10 @@
 
 #include "mercury_imp.h"
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -259,8 +262,10 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 void
 setup_signals(void)
 {
+#ifdef SIGBUS
 	MR_setup_signal(SIGBUS, (Code *) bus_handler, TRUE,
 		"Mercury runtime: cannot set SIGBUS handler");
+#endif
 	MR_setup_signal(SIGSEGV, (Code *) segv_handler, TRUE,
 		"Mercury runtime: cannot set SIGSEGV handler");
 }
@@ -357,11 +362,13 @@ explain_context(void *the_context)
 			}
 			break;
 
+#ifdef SIGBUS
 		case SIGBUS:
 			fflush(stdout);
 			fprintf(stderr, "\n*** Mercury runtime: "
 					"caught bus error ***\n");
 			break;
+#endif
 
 		default:
 			fflush(stdout);
@@ -518,9 +525,11 @@ simple_sighandler(int sig)
 
 	switch (sig)
 	{
+#ifdef SIGBUS
 	case SIGBUS:
 		fprintf(stderr, "caught bus error ***\n");
 		break;
+#endif
 
 	case SIGSEGV:
 		fprintf(stderr, "caught segmentation violation ***\n");

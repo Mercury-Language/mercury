@@ -131,7 +131,9 @@ library: $(BROWSER_LIB_NAME).init
 
 lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a : $(mdb.os)
 	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a $(mdb.os)
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a \
+		$(mdb.os)
 	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
 
 RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)

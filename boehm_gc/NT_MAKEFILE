@@ -1,32 +1,66 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
 # Makefile for Windows NT.  Assumes Microsoft compiler, and a single thread.
 # DLLs are included in the root set under NT, but not under win32S.
 # Use "nmake nodebug=1 all" for optimized versions of library, gctest and editor.
+# ddw Tue Dec 01 13:58:12 1998 
+# Modified to include stuff fjh had put in Unix Makefile
+#-------------------------------------------------------
+MERCURY_DIR=..
+include ../Mmake.common
 
+CC=../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
+cc=$(CC)
+cdebug=
+LINK=link
+link=$(LINK)
 CPU= i386
-!include <ntwin32.mak>
+#!include <ntwin32.mak>
 
 OBJS= alloc.obj reclaim.obj allchblk.obj misc.obj mach_dep.obj os_dep.obj mark_rts.obj headers.obj mark.obj obj_map.obj blacklst.obj finalize.obj new_hblk.obj dbg_mlc.obj malloc.obj stubborn.obj dyn_load.obj typd_mlc.obj ptr_chck.obj gc_cpp.obj mallocx.obj
 
 all: gctest.exe cord\de.exe test_cpp.exe
 
-.c.obj:
-	$(cc) $(cdebug) $(cflags) $(cvars) -DSMALL_CONFIG -DSILENT -DALL_INTERIOR_POINTERS -D__STDC__ $*.c /Fo$*.obj
+dll: libgcd$(PROF)$(DLL_DEF_LIB).dll
+libgc$(PROF)$(DLL_DEF_LIB).dll: libgcd.dll
+# had -DSMALL_CONFIG
+%.obj:%.c
+	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DLARGE_CONFIG -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
 
-.cpp.obj:
-	$(cc) $(cdebug) $(cflags) $(cvars) -DSMALL_CONFIG -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /Fo$*.obj
+%.obj:%.cpp
+	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSMALL_CONFIG -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
 
 $(OBJS) test.obj: gc_priv.h gc_hdrs.h gc.h
 
 gc.lib: $(OBJS)
 	lib /MACHINE:i386 /out:gc.lib $(OBJS)
+# a .def defining exports should be made....
+libgcd$(PROF)$(DLL_DEF_LIB).dll: $(OBJS)
+#	$(link) /MACHINE:i386 /DLL /out:libgcd.dll $(OBJS)
+
 # The original NT SDK used lib32 instead of lib
 
-gctest.exe: test.obj gc.lib
+
+libgc$(PROF)$(DLL_DEF_LIB).lib: gc.lib
+	rm -f libgc$(PROF)$(DLL_DEF_LIB).lib
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.lib libgc$(PROF)$(DLL_DEF_LIB).lib
+
+libgc$(PROF)$(DLL_DEF_LIB).a: gc.lib
+	rm -f libgc$(PROF)$(DLL_DEF_LIB).a
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.lib libgc$(PROF)$(DLL_DEF_LIB).a
+
+gctest.exe: test.obj libgc.lib
 #	The following works for win32 debugging.  For win32s debugging use debugtype:coff
 #	and add mapsympe line.
 #  This produces a "GUI" applications that opens no windows and writes to the log file
 #  "gc.log".  This is done to make the result runnable under win32s.
-	$(link) -debug:full -debugtype:cv $(guiflags) -stack:131072 -out:$*.exe test.obj $(guilibs) gc.lib
+	$(link) -debug:full -debugtype:cv $(guiflags) -stack:131072 -out:gctest.exe test.obj $(guilibs) libgc.lib
 #	mapsympe -n -o gctest.sym gctest.exe
 
 cord\de_win.rbj: cord\de_win.res
@@ -38,22 +72,37 @@ cord\de_win.res: cord\de_win.rc cord\de_win.h cord\de_cmds.h
 	$(rc) $(rcvars) -r -fo cord\de_win.res $(cvars) cord\de_win.rc
 
 # Cord/de is a real win32 gui application.
-cord\de.exe: cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj gc.lib
-	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:cord\de.exe  cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj gc.lib $(guilibs)
+cord\de.exe: cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj libgc.lib
+	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:cord\de.exe  cord\cordbscs.obj cord\cordxtra.obj cord\de.obj cord\de_win.obj cord\de_win.rbj libgc.lib $(guilibs)
 
 gc_cpp.obj: gc_cpp.h gc.h
 
 gc_cpp.cpp: gc_cpp.cc
-	copy gc_cpp.cc gc_cpp.cpp
+	cp gc_cpp.cc gc_cpp.cpp
 
 test_cpp.cpp: test_cpp.cc
-	copy test_cpp.cc test_cpp.cpp
+	cp test_cpp.cc test_cpp.cpp
 
 # This generates the C++ test executable.  The executable expects
 # a single numeric argument, which is the number of iterations.
 # The output appears in the file "gc.log".
-test_cpp.exe: test_cpp.obj gc_cpp.h gc.h gc.lib
-	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:test_cpp.exe test_cpp.obj gc.lib $(guilibs)
+test_cpp.exe: test_cpp.obj gc_cpp.h gc.h libgc.lib
+	$(link) -debug:full -debugtype:cv $(guiflags) -stack:16384 -out:test_cpp.exe test_cpp.obj libgc.lib $(guilibs)
 
+.PHONY: clean
+clean:
+	-rm -f *.lib *.dll *.obj 
 
+# The Mmakefile invokes `make $(EXT_FOR_SHARED_LIB)',
+# so we need targets `a', `so', and `dll'.
 
+.PHONY: a
+a: libgc$(PROF).a
+
+.PHONY: so
+so:
+	echo "Unable to build DLL yet!"
+
+.PHONY: dll
+dll:
+	echo "Unable to build DLL yet!"

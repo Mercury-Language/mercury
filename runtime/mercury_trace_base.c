@@ -25,8 +25,11 @@ ENDINIT
 #include "mercury_signal.h"	/* for MR_setup_signal() */
 #include <signal.h>		/* for SIGINT */
 #include <stdio.h>
-#include <unistd.h>		/* for the write system call */
 #include <errno.h>
+
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>		/* for the write system call */
+#endif
 
 /*
 ** Do we want to use the debugger within this process, or do want to use

@@ -1544,7 +1544,9 @@ io__check_err(Stream, Res) -->
 %	otherwise Size is -1.
 
 :- pragma c_header_code("
+#ifdef HAVE_UNISTD_H
 	#include <unistd.h>
+#endif
 #ifdef HAVE_SYS_STAT_H
 	#include <sys/stat.h>
 #endif
@@ -3389,7 +3391,9 @@ io__make_temp(Dir, Prefix, Name) -->
 %#include <stdio.h>
 
 :- pragma c_header_code("
+#ifdef HAVE_UNISTD_H
 	#include <unistd.h>
+#endif
 	#include <sys/types.h>
 	#include <sys/stat.h>
 	#include <fcntl.h>
@@ -3533,6 +3537,10 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 		RetVal::out, RetStr::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe],
 "{
+#ifdef _MSC_VER
+		/* VC++ runtime fix */
+	_unlink(NewFileName);
+#endif
 	RetVal = rename(OldFileName, NewFileName);
 	ML_maybe_make_err_msg(RetVal != 0, ""rename failed: "",
 		MR_PROC_LABEL, RetStr);

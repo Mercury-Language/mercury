@@ -231,8 +231,71 @@ LIBS="-L/usr/local/lib $LIBS"
 
 AC_PROG_CPP
 AC_C_CROSS
-AC_PROG_RANLIB
 AC_RETSIGTYPE
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for use of a Microsoft compiler)
+AC_EGREP_CPP(yes,
+[
+#ifdef _MSC_VER
+	yes
+#endif
+],
+[ac_microsoft=yes
+] AC_MSG_RESULT(yes), [ac_microsoft=no
+] AC_MSG_RESULT(no))
+
+if test "$ac_microsoft" = "yes" ; then
+	EXE_SUFFIX=".exe"
+	OBJ_SUFFIX="obj"
+	LIB_SUFFIX="lib"
+	LIB_PREFIX="lib"
+	LIB_LIBPATH="/LIBPATH:"
+	LINK_LIB=""
+	LINK_OPT_SEP="/link"
+
+	OBJFILE_OPT="/Fo"
+	AR="lib"
+	ARFLAGS=""
+	AR_LIBFILE_OPT="/OUT:"
+	BOEHMGC_MAKEFILE="-f NT_MAKEFILE"
+
+	AC_DEFINE(MR_WIN32)
+
+		# MS doesn't use a ranlib.
+	RANLIB="echo"
+	AC_SUBST(RANLIB)
+else
+	EXE_SUFFIX=""
+	OBJ_SUFFIX="o"
+	LIB_SUFFIX="a"
+	LIB_PREFIX=""
+	LIB_LIBPATH="-L"
+	LINK_LIB="-l"
+	LINK_OPT_SEP=""
+
+	OBJFILE_OPT="-o"
+	AR="ar"
+	ARFLAGS="cr"
+	AR_LIBFILE_OPT=""
+	BOEHMGC_MAKEFILE=""
+
+	AC_PROG_RANLIB
+fi
+
+AC_SUBST(OBJFILE_OPT)
+AC_SUBST(AR)
+AC_SUBST(ARFLAGS)
+AC_SUBST(AR_LIBFILE_OPT)
+AC_SUBST(BOEHMGC_MAKEFILE)
+AC_SUBST(EXE_SUFFIX)
+AC_SUBST(OBJ_SUFFIX)
+AC_SUBST(LIB_SUFFIX)
+AC_SUBST(LIB_PREFIX)
+AC_SUBST(LIB_LIBPATH)
+AC_SUBST(LINK_LIB)
+AC_SUBST(LINK_OPT_SEP)
+
+#-----------------------------------------------------------------------------#
 # Don't try to use mprotect() on gnu-win32, since it is broken
 # (at least for version b18, anyway) and trying it can crash Win95.
 case "$host" in
@@ -241,6 +304,11 @@ case "$host" in
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
 AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
+if test "$HAVE_UNISTD_H" = 1; then
+	AC_DEFINE(HAVE_UNISTD_H)
+fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
 if test "$HAVE_SYS_WAIT_H" = 1; then
@@ -1234,8 +1302,8 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
 )
 AC_MSG_RESULT($mercury_cv_normal_system_retval)
 if test "$mercury_cv_normal_system_retval" = no; then
-	AC_MSG_ERROR(Unable to interpret return values from system)
-	exit 1
+		# Warn since VC++6 compiler fails this test
+	AC_MSG_WARN(Unable to interpret return values from system)
 fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for tempnam)

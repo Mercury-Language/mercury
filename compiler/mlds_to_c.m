@@ -32,8 +32,9 @@
 
 :- import_module llds.		% XXX needed for C interface types
 :- import_module llds_out.	% XXX needed for llds_out__name_mangle,
-				% llds_out__sym_name_mangle, and
-				% llds_out__make_base_typeclass_info_name.
+				% llds_out__sym_name_mangle,
+				% llds_out__make_base_typeclass_info_name,
+				% output_c_file_intro_and_grade.
 :- import_module rtti.		% for rtti__addr_to_string.
 :- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module hlds_pred.	% for pred_proc_id.
@@ -44,7 +45,8 @@
 :- import_module builtin_ops, c_util, modules.
 :- import_module prog_data, prog_out, type_util.
 
-:- import_module bool, int, string, list, assoc_list, term, std_util, require.
+:- import_module bool, int, string, library, list.
+:- import_module assoc_list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -198,6 +200,9 @@ mlds_output_src_import(_Indent, Import) -->
 
 mlds_output_src_file(Indent, MLDS) -->
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
+	{ library__version(Version) },
+	module_name_to_file_name(ModuleName, ".m", no, OrigFileName),
+	output_c_file_intro_and_grade(OrigFileName, Version),
 	mlds_output_src_start(Indent, ModuleName), io__nl,
 	mlds_output_src_imports(Indent, Imports), io__nl,
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
@@ -753,12 +758,20 @@ mlds_output_maybe(MaybeValue, OutputAction) -->
 :- mode mlds_output_initializer(in, in, di, uo) is det.
 
 mlds_output_initializer(_Type, Initializer) -->
-	( { Initializer = no_initializer } ->
-		[]
-	;
+	( { mlds_needs_initialization(Initializer) = yes } ->
 		io__write_string(" = "),
 		mlds_output_initializer_body(Initializer)
+	;
+		[]
 	).
+
+:- func mlds_needs_initialization(mlds__initializer) = bool.
+
+mlds_needs_initialization(no_initializer) = no.
+mlds_needs_initialization(init_obj(_)) = yes.
+mlds_needs_initialization(init_struct([])) = no.
+mlds_needs_initialization(init_struct([_|_])) = yes.
+mlds_needs_initialization(init_array(_)) = yes.
 
 :- pred mlds_output_initializer_body(mlds__initializer, io__state, io__state).
 :- mode mlds_output_initializer_body(in, di, uo) is det.
@@ -772,7 +785,16 @@ mlds_output_initializer_body(init_struct(FieldInits)) -->
 	io__write_string("}").
 mlds_output_initializer_body(init_array(ElementInits)) -->
 	io__write_string("{\n\t\t"),
-	io__write_list(ElementInits, ",\n\t\t", mlds_output_initializer_body),
+	(
+		{ ElementInits = [] }
+	->
+			% The MS VC++ compiler only generates a symbol, if
+			% the array has a known size.
+		io__write_string("NULL")
+	;
+		io__write_list(ElementInits,
+				",\n\t\t", mlds_output_initializer_body)
+	),
 	io__write_string("}").
 
 %-----------------------------------------------------------------------------%

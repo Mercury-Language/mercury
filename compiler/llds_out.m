@@ -31,6 +31,9 @@
 		io__state, io__state).
 :- mode output_llds(in, in, in, di, uo) is det.
 
+:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
+:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
+
 	% output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 	% DeclSet0, DeclSet) outputs the declarations of any static constants,
 	% etc. that need to be declared before output_rval(Rval) is called.
@@ -415,9 +418,6 @@ output_c_file_mercury_headers -->
 	;
 		io__write_string("#include ""mercury_imp.h""\n")
 	).
-
-:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
-:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
 
 output_c_file_intro_and_grade(SourceFileName, Version) -->
 	globals__io_lookup_int_option(num_tag_bits, NumTagBits),

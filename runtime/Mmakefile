@@ -203,7 +203,8 @@ runtime: $(LIB_DLL_H) $(LIB_GLOBALS_H)
 
 lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
 	rm -f lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
-	ar cr lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
+	$(AR) $(ALL_ARFLAGS) \
+		$(AR_LIBFILE_OPT)lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
 	$(RANLIB) lib$(RT_LIB_NAME)$(DLL_DEF_LIB).a
 
 lib$(RT_LIB_NAME).so: $(PIC_OBJS)

@@ -98,6 +98,7 @@
 **	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
 **	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
 **	HAVE_SYS_TIME		we have <sys/time.h>
+**	HAVE_UNISTD_H		we have <unistd.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SYS_WAIT		we have <sys/wait.h>
 **	HAVE_SYS_STAT_H		we have <sys/stat.h>
@@ -110,6 +111,7 @@
 #undef	HAVE_SYS_UCONTEXT
 #undef	HAVE_ASM_SIGCONTEXT
 #undef	HAVE_SYS_TIME
+#undef	HAVE_UNISTD_H
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SYS_WAIT
 #undef	HAVE_SYS_STAT_H
@@ -343,6 +345,12 @@
 #undef  MR_NO_USE_READLINE
 #undef  HAVE_READLINE_READLINE
 #undef  HAVE_READLINE_HISTORY
+
+/*
+** MR_WIN32
+**	Set this if you are using Microsoft Visual C++ as your C compiler.
+*/	
+#undef	MR_WIN32
 
 /*---------------------------------------------------------------------------*/
 
