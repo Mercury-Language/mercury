@@ -1251,6 +1251,9 @@ hlds_out__write_procs_2([ProcId | ProcIds], ModuleInfo, Indent, PredId,
 :- mode hlds_out__write_proc(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_typevarset(PredInfo, TVarSet) },
+	{ proc_info_vartypes(Proc, VarTypes) },
 	{ proc_info_declared_determinism(Proc, DeclaredDeterminism) },
 	{ proc_info_inferred_determinism(Proc, InferredDeterminism) },
 	{ proc_info_variables(Proc, VarSet) },
@@ -1268,6 +1271,8 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 	io__write_string(" ("),
 	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
+
+	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
