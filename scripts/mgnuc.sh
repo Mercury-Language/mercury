@@ -23,12 +23,13 @@
 # -Wnested-externs	causes unsuppressable warnings about callentry()
 # -Wid-clash-31 	causes warnings about entry_mercury__xxx ...
 # -Wenum-clash 		is for C++ only
+# -Wunused		causes various spurious warnings
 
 C_INCL_DIR=${MERCURY_C_INCL_DIR:-@LIBDIR@/inc}
 
 CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
-      -Wstrict-prototypes -Wmissing-prototypes"
+      -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
 DEBUG_OPTS="-g"
 
@@ -94,7 +95,8 @@ case "$grade" in
 		GRADE_OPTS="$OPT_OPTS"
 		;;
 	init)
-		GRADE_OPTS="$OPT_OPTS"
+		echo "$0: the `-s init' option is no longer supported" 1>&2
+		exit 1
 		;;
 	debug)
 		GRADE_OPTS="$DEBUG_OPTS"
@@ -121,7 +123,7 @@ if [ "`uname -r -s`" = "SunOS 4.1.2" ]; then
 	CHECK_OPTS=
 fi
 if $verbose; then
-	echo $GCC-I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS \
+	echo $GCC -I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS \
 		"$@"
 fi
 exec $GCC -I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS "$@"
