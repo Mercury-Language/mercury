@@ -47,4 +47,7 @@ case "`hostname`" in
 		GCC=${GCC:-gcc}
 esac
 
+if $verbose; then
+	echo $GCC "$@" $LIBDIR_OPTS
+fi
 exec $GCC "$@" $LIBDIR_OPTS
