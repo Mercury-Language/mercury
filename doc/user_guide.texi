@@ -5734,8 +5734,10 @@ and possibly a set of default aliases.
 @item MERCURY_OPTIONS
 @vindex MERCURY_OPTIONS
 A list of options for the Mercury runtime that gets
-linked into every Mercury program.
-Their meanings are as follows.
+linked into every Mercury program.  Options may also
+be set at compile time by passing @samp{--runtime-flags}
+options to @samp{ml} and @samp{c2init}.
+The Mercury runtime accepts the following options.
 
 @sp 1
 @table @code
