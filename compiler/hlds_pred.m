@@ -19,7 +19,7 @@
 :- implementation.
 
 :- import_module make_hlds, prog_util, mode_util.
-:- import_module set.
+:- import_module set, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -760,6 +760,12 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(in, in, out, out) is det.
 
+	% given the list of predicate arguments for a predicate that
+	% is really a function, split that list into the function arguments
+	% and the function return type.
+:- pred pred_args_to_func_args(list(T), list(T), T).
+:- mode pred_args_to_func_args(in, out, out) is det.
+
 :- implementation.
 
 make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
@@ -780,6 +786,16 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 		varset__name_var(VarSet1, Var, VarName, VarSet2),
 		Vars = [Var | Vars1],
 		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
+	).
+
+pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
+	list__length(PredArgs, NumPredArgs),
+	NumFuncArgs is NumPredArgs - 1,
+	( list__split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) ->
+		FuncArgs = FuncArgs0,
+		FuncReturn = FuncReturn0
+	;
+		error("pred_args_to_func_args: function missing return value?")
 	).
 
 %-----------------------------------------------------------------------------%

@@ -626,6 +626,27 @@ higher_order_pred_type(Arity, TypeVarSet, PredType, ArgTypes) :-
 	term__context_init(Context),
 	PredType = term__functor(term__atom("pred"), ArgTypes, Context).
 
+:- pred higher_order_func_type(int, tvarset, type, list(type), type).
+:- mode higher_order_func_type(in, out, out, out, out) is det.
+
+	% higher_order_func_type(N, TypeVarSet, FuncType, ArgTypes, RetType):
+	% Given an arity N, let TypeVarSet = {T0, T1, T2, ..., TN},
+	% FuncType = `func(T1, T2, ..., TN) = T0',
+	% ArgTypes = [T1, T2, ..., TN], and
+	% RetType = T0.
+
+higher_order_func_type(Arity, TypeVarSet, FuncType, ArgTypes, RetType) :-
+	varset__init(TypeVarSet0),
+	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
+	varset__new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
+	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
+	RetType = term__variable(RetTypeVar),
+	term__context_init(Context),
+	FuncType = term__functor(term__atom("="),
+			[term__functor(term__atom("func"), ArgTypes, Context),
+			 RetType],
+			Context).
+
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_call_pred(sym_name, list(var), pred_id, type_info,
@@ -1206,9 +1227,9 @@ typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As).
-typecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
-			 lambda_goal(Vars, Modes, Det, Goal)) -->
- 	typecheck_lambda_var_has_type(X, Vars),
+typecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
+			 lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)) -->
+ 	typecheck_lambda_var_has_type(PredOrFunc, X, Vars),
 	typecheck_goal(Goal0, Goal).
 
 :- pred typecheck_unify_var_var(var, var, type_info, type_info).
@@ -1551,22 +1572,23 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	% checks that `Var' has type `pred(T1, T2, ...)' where
 	% T1, T2, ... are the types of the `ArgVars'.
 
-:- pred typecheck_lambda_var_has_type(var, list(var), type_info, type_info).
-:- mode typecheck_lambda_var_has_type(in, in, type_info_di, type_info_uo)
+:- pred typecheck_lambda_var_has_type(pred_or_func, var, list(var),
+					type_info, type_info).
+:- mode typecheck_lambda_var_has_type(in, in, in, type_info_di, type_info_uo)
 	is det.
 
-typecheck_lambda_var_has_type(Var, ArgVars, TypeInfo0, TypeInfo) :-
+typecheck_lambda_var_has_type(PredOrFunc, Var, ArgVars, TypeInfo0, TypeInfo) :-
 	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
 	type_info_get_head_type_params(TypeInfo0, HeadTypeParams),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0, HeadTypeParams,
-			Var, ArgVars, [], TypeAssignSet),
+			PredOrFunc, Var, ArgVars, [], TypeAssignSet),
 	(
 		TypeAssignSet = [],
 		TypeAssignSet0 \= []
 	->
 		type_info_get_io_state(TypeInfo0, IOState0),
-		report_error_lambda_var(TypeInfo0, Var, ArgVars, TypeAssignSet0,
-					IOState0, IOState),
+		report_error_lambda_var(TypeInfo0, PredOrFunc, Var, ArgVars,
+				TypeAssignSet0, IOState0, IOState),
 		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
@@ -1575,21 +1597,31 @@ typecheck_lambda_var_has_type(Var, ArgVars, TypeInfo0, TypeInfo) :-
 	).
 
 :- pred typecheck_lambda_var_has_type_2(type_assign_set, headtypes,
-				var, list(var),
+				pred_or_func, var, list(var),
 				type_assign_set, type_assign_set).
-:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, out) is det.
+:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, in, out) is det.
 
-typecheck_lambda_var_has_type_2([], _, _, _) --> [].
+typecheck_lambda_var_has_type_2([], _, _, _, _) --> [].
 typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0],
-				HeadTypeParams, Var, ArgVars) -->
+				HeadTypeParams, PredOrFunc, Var, ArgVars) -->
 	{ type_assign_get_types_of_vars(ArgVars, TypeAssign0, ArgVarTypes,
 					TypeAssign1) },
 	{ term__context_init(Context) },
-	{ LambdaType = term__functor(term__atom("pred"), ArgVarTypes,
-					Context) },
+	{
+		PredOrFunc = predicate, 
+		LambdaType = term__functor(term__atom("pred"), ArgVarTypes,
+					Context)
+	;	
+		PredOrFunc = function,
+		pred_args_to_func_args(ArgVarTypes, FuncArgTypes, RetType),
+		LambdaType = term__functor(term__atom("="),
+				[term__functor(term__atom("func"),
+					FuncArgTypes, Context),
+				RetType], Context)
+	},
 	type_assign_var_has_type(TypeAssign1, HeadTypeParams, Var, LambdaType),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0, HeadTypeParams,
-					Var, ArgVars).
+					PredOrFunc, Var, ArgVars).
 
 :- pred type_assign_get_types_of_vars(list(var), type_assign, list(type),
 					type_assign).
@@ -1661,8 +1693,7 @@ builtin_atomic_type(term__atom(String), "character") :-
 
 
 :- pred builtin_pred_type(type_info, const, int, list(cons_type_info)).
-:- mode builtin_pred_type(type_info_ui, in, in, out)
-	is semidet.
+:- mode builtin_pred_type(type_info_ui, in, in, out) is semidet.
 
 builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
 	Functor = term__atom(Name),
@@ -1747,6 +1778,24 @@ make_pred_cons_info(PredId, PredTable, FuncArity, _ModuleInfo, L0, L) :-
 	;
 		L = L0
 	).
+
+
+	% builtin_apply_type(TypeInfo, Functor, Arity, ConsTypeInfos):
+	% Succeed if Functor is the builtin apply/N (N>=2), which is used
+	% to invoke higher-order functions.
+	% If so, bind ConsTypeInfos to a singleton list containing
+	% the appropriate type for apply/N of the specified Arity.
+
+:- pred builtin_apply_type(type_info, const, int, list(cons_type_info)).
+:- mode builtin_apply_type(type_info_ui, in, in, out) is semidet.
+
+builtin_apply_type(_TypeInfo, Functor, Arity, ConsTypeInfos) :-
+	Functor = term__atom("apply"),
+	Arity >= 2,
+	Arity1 is Arity - 1,
+	higher_order_func_type(Arity1, TypeVarSet, FuncType, ArgTypes, RetType),
+	ConsTypeInfos = [cons_type_info(TypeVarSet, RetType,
+					[FuncType | ArgTypes])].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2084,6 +2133,19 @@ type_info_set_warned_about_overloading( type_info(A,B,C,D,E,F,G,H,I,J,K,_),
 :- mode type_info_get_ctor_list(type_info_ui, in, in, out) is det.
 
 type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
+	(
+		builtin_apply_type(TypeInfo, Functor, Arity, ApplyConsInfoList)
+	->
+		ConsInfoList = ApplyConsInfoList
+	;
+		type_info_get_ctor_list_2(TypeInfo, Functor, Arity,
+			ConsInfoList)
+	).
+
+:- pred type_info_get_ctor_list_2(type_info, const, int, list(cons_type_info)).
+:- mode type_info_get_ctor_list_2(type_info_ui, in, in, out) is det.
+
+type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
 	% Check if `Functor/Arity' has been defined as a constructor
 	% in some discriminated union type(s).  This gives
 	% us a list of possible cons_type_infos.
@@ -2380,11 +2442,11 @@ report_error_functor_type(TypeInfo, Var, ConsDefnList, Functor, Arity,
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
-:- pred report_error_lambda_var(type_info, var, list(var), type_assign_set,
-					io__state, io__state).
-:- mode report_error_lambda_var(type_info_no_io, in, in, in, di, uo) is det.
+:- pred report_error_lambda_var(type_info, pred_or_func, var, list(var),
+				type_assign_set, io__state, io__state).
+:- mode report_error_lambda_var(type_info_no_io, in, in, in, in, di, uo) is det.
 
-report_error_lambda_var(TypeInfo, Var, ArgVars, TypeAssignSet) -->
+report_error_lambda_var(TypeInfo, PredOrFunc, Var, ArgVars, TypeAssignSet) -->
 
 	{ type_info_get_context(TypeInfo, Context) },
 	{ type_info_get_varset(TypeInfo, VarSet) },
@@ -2398,9 +2460,20 @@ report_error_lambda_var(TypeInfo, Var, ArgVars, TypeAssignSet) -->
 	write_argument_name(VarSet, Var),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  and `lambda ["),
-	mercury_output_vars(ArgVars, VarSet),
-	io__write_string("] ...':\n"),
+	(
+		{ PredOrFunc = predicate },
+		io__write_string("  and `pred("),
+		mercury_output_vars(ArgVars, VarSet),
+		io__write_string(") :- ...':\n")
+	;
+		{ PredOrFunc = function },
+		{ pred_args_to_func_args(ArgVars, FuncArgs, RetVar) },
+		io__write_string("  and `func("),
+		mercury_output_vars(FuncArgs, VarSet),
+		io__write_string(") = "),
+		mercury_output_var(RetVar, VarSet),
+		io__write_string(" :- ...':\n")
+	),
 
 	prog_out__write_context(Context),
 	io__write_string("  "),
@@ -2409,17 +2482,34 @@ report_error_lambda_var(TypeInfo, Var, ArgVars, TypeAssignSet) -->
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
-	io__write_string("  lambda expression has type `pred"),
-	( { ArgVars = [] } ->
-		[]
-	; { ArgVars = [_] } ->
-		io__write_string("(_)")
-	; { ArgVars = [_, _] } ->
-		io__write_string("(_, _)")
-	; { ArgVars = [_, _, _] } ->
-		io__write_string("(_, _, _)")
+	io__write_string("  lambda expression has type `"),
+	(	{ PredOrFunc = predicate },
+		io__write_string("pred"),
+		( { ArgVars = [] } ->
+			[]
+		;
+			io__write_string("(_"),
+			{ list__length(ArgVars, NumArgVars) },
+			{ NumArgVars1 is NumArgVars - 1 },
+			{ list__duplicate(NumArgVars1, ", _", Strings) },
+			io__write_strings(Strings),
+			io__write_string(")")
+		)
 	;
-		io__write_string("(...)")
+		{ PredOrFunc = function },
+		io__write_string("func"),
+		{ pred_args_to_func_args(ArgVars, FuncArgs2, _) },
+		( { FuncArgs2 = [] } ->
+			[]
+		;
+			io__write_string("(_"),
+			{ list__length(FuncArgs2, NumArgVars) },
+			{ NumArgVars1 is NumArgVars - 1 },
+			{ list__duplicate(NumArgVars1, ", _", Strings) },
+			io__write_strings(Strings),
+			io__write_string(")")
+		),
+		io__write_string(" = _")
 	),
 	io__write_string("'.\n"),
 

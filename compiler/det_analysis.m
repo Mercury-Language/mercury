@@ -403,7 +403,10 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det, Follow),
 	% (see det_infer_unify).
 det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
-	( RT0 = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal0) ->
+	(
+		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
+				Goal0)
+	->
 		(
 			determinism_components(LambdaDeclaredDet, _,
 				at_most_many_cc)
@@ -417,7 +420,8 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs),
-		RT = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal)
+		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
+				Goal)
 	;
 		RT = RT0,
 		Msgs = []

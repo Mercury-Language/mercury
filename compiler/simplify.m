@@ -139,9 +139,13 @@ simplify__goal_2(call(A, B, C, D, E, F, G), _, _, _,
 
 simplify__goal_2(unify(LT, RT0, M, U, C), _, InstMap0, DetInfo,
 		 unify(LT, RT, M, U, C), Msgs) :-
-	( RT0 = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal0) ->
+	(
+		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
+			Goal0)
+	->
 		simplify__goal(Goal0, InstMap0, DetInfo, Goal, Msgs),
-		RT = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal)
+		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
+			Goal)
 	;
 		RT = RT0,
 		Msgs = []

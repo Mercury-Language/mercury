@@ -39,10 +39,10 @@
 	--->	mode_error_disj(merge_context, merge_errors)
 			% different arms of a disjunction result in
 			% different insts for some non-local variables
-	;	mode_error_higher_order_pred_var(var, inst, arity)
+	;	mode_error_higher_order_pred_var(pred_or_func, var, inst, arity)
 			% the predicate variable in a higher-order predicate
-			% call didn't have a higher-order predicate inst
-			% of the appropriate arity
+			% or function call didn't have a higher-order
+			% predicate or function inst of the appropriate arity
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
@@ -127,15 +127,17 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_out.
 :- import_module mode_info, prog_out, mercury_to_mercury.
 :- import_module options, globals.
-:- import_module bool, list, map, io, term, term_io, varset, std_util, require.
+:- import_module bool, int, list, map, io, term, term_io, varset.
+:- import_module std_util, require.
 
 	% just dispatch on the diffferent sorts of mode errors
 
 report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
-report_mode_error(mode_error_higher_order_pred_var(Var, Inst, Arity),
-		ModeInfo) -->
-	report_mode_error_higher_order_pred_var(ModeInfo, Var, Inst, Arity).
+report_mode_error(mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
+		Arity), ModeInfo) -->
+	report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var,
+		Inst, Arity).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
@@ -362,12 +364,14 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	),
 	io__write_string("'.\n").
 
-:- pred report_mode_error_higher_order_pred_var(mode_info, var, inst, arity,
+:- pred report_mode_error_higher_order_pred_var(mode_info, pred_or_func, var,
+					inst, arity,
 					io__state, io__state).
-:- mode report_mode_error_higher_order_pred_var(mode_info_ui, in, in, in,
+:- mode report_mode_error_higher_order_pred_var(mode_info_ui, in, in, in, in,
 					di, uo) is det.
 
-report_mode_error_higher_order_pred_var(ModeInfo, Var, VarInst, Arity) -->
+report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
+		Arity) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
@@ -379,8 +383,14 @@ report_mode_error_higher_order_pred_var(ModeInfo, Var, VarInst, Arity) -->
 	mercury_output_inst(VarInst, InstVarSet),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
-	io__write_string("  expecting higher-order pred inst (of arity "),
-	io__write_int(Arity),
+	(	{ PredOrFunc = predicate },
+		io__write_string("  expecting higher-order pred inst (of arity "),
+		io__write_int(Arity)
+	;	{ PredOrFunc = function },
+		io__write_string("  expecting higher-order func inst (of arity "),
+		{ Arity1 is Arity - 1 },
+		io__write_int(Arity1)
+	),
 	io__write_string(").\n").
 
 :- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,

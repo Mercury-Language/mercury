@@ -1047,7 +1047,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		error("list__split failed")
 	),
 	(
-		LVarType = term__functor(term__atom("pred"), LVarArgTypes, _)
+		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes)
 	->
 		(
 			type_list_subsumes(LVarArgTypes, UnCurriedArgTypes,
@@ -1062,7 +1062,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 			Substitution1 = Substitution0
 		)
 	;
-		error("specialized argument not of pred type")
+		error("specialized argument not of higher-order type")
 	),
 	map__det_insert_from_corresponding_lists(VarTypes0, NewHeadVars0,
 					CurriedArgTypes, VarTypes1),
@@ -1090,7 +1090,9 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	Unify = construct(LVar, pred_const(PredId, ProcId),
 					NewHeadVars0, UniModes),
 	proc_info_inferred_determinism(ProcInfo3, Detism),
-	Inst = ground(shared, yes(pred_inst_info(UnCurriedArgModes, Detism))),
+	pred_info_get_is_pred_or_func(PredInfo2, PredOrFunc),
+	PredInstInfo = pred_inst_info(PredOrFunc, UnCurriedArgModes, Detism),
+	Inst = ground(shared, yes(PredInstInfo)),
 	Unimode = (free -> Inst) - (Inst -> Inst),
 	Goal = unify(LVar, Rhs, Unimode, Unify, Context),
 

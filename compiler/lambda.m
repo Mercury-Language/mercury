@@ -41,11 +41,11 @@
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(list(var), list(mode), determinism,
-		set(var), hlds__goal, unification,
+:- pred lambda__transform_lambda(pred_or_func, list(var), list(mode),
+		determinism, set(var), hlds__goal, unification,
 		varset, map(var, type), tvarset, module_info,
 		unify_rhs, unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in,
+:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
 		out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -138,12 +138,12 @@ lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
-	( { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
+	( { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must convert the lambda expression
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		lambda__process_lambda(Vars, Modes, Det, NonLocals0,
+		lambda__process_lambda(PredOrFunc, Vars, Modes, Det, NonLocals0,
 				LambdaGoal0, Unification, Y1, Unification1),
 		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
 	;
@@ -200,23 +200,23 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
-:- pred lambda__process_lambda(list(var), list(mode), determinism,
+:- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
 		set(var), hlds__goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
-:- mode lambda__process_lambda(in, in, in, in, in, in, out, out,
+:- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-lambda__process_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo0),
-	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
-		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
-		Functor, Unification, ModuleInfo),
+	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0,
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+		ModuleInfo0, Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo).
 
-lambda__transform_lambda(Vars, Modes, Detism, OrigNonLocals0, LambdaGoal,
-		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
-		Functor, Unification, ModuleInfo) :-
+lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+		ModuleInfo0, Functor, Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
 	->
@@ -334,7 +334,7 @@ lambda__transform_lambda(Vars, Modes, Detism, OrigNonLocals0, LambdaGoal,
 			PermutedArgModes, Detism, LambdaGoal, LambdaContext,
 			ProcInfo),
 		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
-			true, LambdaContext, local, [], predicate, ProcInfo,
+			true, LambdaContext, local, [], PredOrFunc, ProcInfo,
 			ProcId, PredInfo),
 
 		% save the new predicate in the predicate table

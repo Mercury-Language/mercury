@@ -55,7 +55,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data, globals, options.
+:- import_module prog_data, hlds_data, hlds_pred, globals, options.
 :- import_module string, int, list, varset, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -111,6 +111,17 @@
 :- pred parse_pred_expression(term, list(term), list(mode), determinism).
 :- mode parse_pred_expression(in, out, out, out) is semidet.
 
+	% parse_func_expression/3 converts the first argument to a :-/2
+	% higher-order func expression into a list of variables, a list
+	% of their corresponding modes, and a determinism.  The syntax
+	% of a higher-order func expression is
+	% 	`(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
+	%		:- Goal)'.
+	%
+:- pred parse_func_expression(term, list(term), list(mode), determinism).
+:- mode parse_func_expression(in, out, out, out) is semidet.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % The following /3, /4 and /5 predicates are to be used for reporting
@@ -702,12 +713,44 @@ parse_lambda_arg(Term, VarTerm, Mode) :-
 %-----------------------------------------------------------------------------%
 
 parse_pred_expression(PredTerm, Vars, Modes, Det) :-
-	PredTerm = term__functor(term__atom("is"),
-				[PredArgsTerm, DetTerm], _),
+	PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
 	PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
 	parse_pred_expr_args(PredArgsList, Vars, Modes).
+
+parse_func_expression(FuncTerm, Vars, Modes, Det) :-
+	%
+	% parse a func expression with specified modes and determinism
+	%
+	FuncTerm = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
+	EqTerm = term__functor(term__atom("="), [FuncArgsTerm, RetTerm], _),
+	DetTerm = term__functor(term__atom(DetString), [], _),
+	standard_det(DetString, Det),
+	FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
+	parse_pred_expr_args(FuncArgsList, Vars0, Modes0),
+	parse_lambda_arg(RetTerm, RetVar, RetMode),
+	list__append(Vars0, [RetVar], Vars),
+	list__append(Modes0, [RetMode], Modes).
+parse_func_expression(FuncTerm, Vars, Modes, Det) :-
+	%
+	% parse a func expression with unspecified modes and determinism
+	%
+	FuncTerm = term__functor(term__atom("="), [FuncArgsTerm, RetVar], _),
+	FuncArgsTerm = term__functor(term__atom("func"), Vars0, _),
+	%
+	% the argument modes default to `in',
+	% the return mode defaults to `out',
+	% and the determinism defaults to `det'.
+	%
+	InMode = user_defined_mode(unqualified("in"), []),
+	OutMode = user_defined_mode(unqualified("out"), []),
+	list__length(Vars0, NumVars),
+	list__duplicate(NumVars, InMode, Modes0),
+	RetMode = OutMode,
+	Det = det,
+	list__append(Modes0, [RetMode], Modes),
+	list__append(Vars0, [RetVar], Vars).
 
 :- pred parse_pred_expr_args(list(term), list(term), list(mode)).
 :- mode parse_pred_expr_args(in, out, out) is semidet.
@@ -823,9 +866,6 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 				goal, varset, int, var).
 :- mode parse_dcg_goal_2(in, in, in, in, in, in, out, out, out, out)
 				is semidet.
-
-% XXX if you uncomment the following line, even the stage 1 compiler bombs
-% :- pragma(inline, parse_dcg_goal_2/10).
 
 	% The following is a temporary and gross hack to strip out
 	% calls to `io__gc_call', since the mode checker can't handle
@@ -2168,9 +2208,7 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	;
 		% The syntax for a higher-order pred inst is
 		%
-		%	pred_initial(<Mode1>, <Mode2>, ...) is <Detism>
-		% or
-		%	pred_final(<Mode1>, <Mode2>, ...) is <Detism>
+		%	pred(<Mode1>, <Mode2>, ...) is <Detism>
 		%
 		% where <Mode1>, <Mode2>, ... are a list of modes,
 		% and <Detism> is a determinism.
@@ -2181,8 +2219,29 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerm, ArgModes),
-		PredInst = pred_inst_info(ArgModes, Detism),
+		PredInst = pred_inst_info(predicate, ArgModes, Detism),
 		Result = ground(shared, yes(PredInst))
+	;
+
+		% The syntax for a higher-order func inst is
+		%
+		%	func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
+		%
+		% where <Mode1>, <Mode2>, ... are a list of modes,
+		% <RetMode> is a mode, and <Detism> is a determinism.
+
+		Name = term__atom("is"), Args0 = [EqTerm, DetTerm],
+		EqTerm = term__functor(term__atom("="),
+					[FuncTerm, RetModeTerm], _),
+		FuncTerm = term__functor(term__atom("func"), ArgModesTerm, _)
+	->
+		DetTerm = term__functor(term__atom(DetString), [], _),
+		standard_det(DetString, Detism),
+		convert_mode_list(ArgModesTerm, ArgModes0),
+		convert_mode(RetModeTerm, RetMode),
+		list__append(ArgModes0, [RetMode], ArgModes),
+		FuncInst = pred_inst_info(function, ArgModes, Detism),
+		Result = ground(shared, yes(FuncInst))
 
 	% `not_reached' inst
 	; Name = term__atom("not_reached"), Args0 = [] ->
@@ -2354,10 +2413,10 @@ convert_mode(Term, Mode) :-
 	;
 		% Handle higher-order predicate modes:
 		% a mode of the form
-		%	pred(<Mode1>, <Mode2>, ...) is det
+		%	pred(<Mode1>, <Mode2>, ...) is <Det>
 		% is an abbreviation for the inst mapping
-		% 	(  pred(<Mode1>, <Mode2>, ...) is det'
-		%	-> pred(<Mode1>, <Mode2>, ...) is det'
+		% 	(  pred(<Mode1>, <Mode2>, ...) is <Det>
+		%	-> pred(<Mode1>, <Mode2>, ...) is <Det>
 		%	)
 
 		Term = term__functor(term__atom("is"), [PredTerm, DetTerm], _),
@@ -2366,8 +2425,30 @@ convert_mode(Term, Mode) :-
 		DetTerm = term__functor(term__atom(DetString), [], _),
 		standard_det(DetString, Detism),
 		convert_mode_list(ArgModesTerms, ArgModes),
-		PredInstInfo = pred_inst_info(ArgModes, Detism),
+		PredInstInfo = pred_inst_info(predicate, ArgModes, Detism),
 		Inst = ground(shared, yes(PredInstInfo)),
+		Mode = (Inst -> Inst)
+	;
+		% Handle higher-order function modes:
+		% a mode of the form
+		%	func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+		% is an abbreviation for the inst mapping
+		% 	(  func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+		%	-> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+		%	)
+
+		Term = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
+		EqTerm = term__functor(term__atom("="),
+					[FuncTerm, RetModeTerm], _),
+		FuncTerm = term__functor(term__atom("func"), ArgModesTerms, _)
+	->
+		DetTerm = term__functor(term__atom(DetString), [], _),
+		standard_det(DetString, Detism),
+		convert_mode_list(ArgModesTerms, ArgModes0),
+		convert_mode(RetModeTerm, RetMode),
+		list__append(ArgModes0, [RetMode], ArgModes),
+		FuncInstInfo = pred_inst_info(function, ArgModes, Detism),
+		Inst = ground(shared, yes(FuncInstInfo)),
 		Mode = (Inst -> Inst)
 	;
 		parse_qualified_term(Term, "mode definition", R),

@@ -179,7 +179,8 @@
 :- type unify_rhs
 	--->	var(var)
 	;	functor(const, list(var))
-	;	lambda_goal(list(var), list(mode), determinism, hlds__goal).
+	;	lambda_goal(pred_or_func, list(var), list(mode), determinism,
+				hlds__goal).
 
 :- type unification
 		% A construction unification is a unification with a functor

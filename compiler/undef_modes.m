@@ -199,7 +199,7 @@ find_undef_inst(any(_), _, _, _) --> [].
 find_undef_inst(free, _, _, _) --> [].
 find_undef_inst(ground(_, MaybePredInfo), ErrorContext, ModeDefns, InstDefns)
 		-->
-	( { MaybePredInfo = yes(pred_inst_info(Modes, _Det)) } ->
+	( { MaybePredInfo = yes(pred_inst_info(_PredOrFunc, Modes, _Det)) } ->
 		find_undef_mode_list(Modes, ErrorContext, ModeDefns, InstDefns)
 	;
 		[]

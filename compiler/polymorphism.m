@@ -380,7 +380,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		;
 			{ error("polymorphism: type_to_type_id failed") }
 		)
-	; { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
+	; { Y = lambda_goal(PredOrFunc, Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
@@ -388,8 +388,9 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
-		polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals,
-				LambdaGoal, Unification, Y1, Unification1),
+		polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det,
+				OrigNonLocals, LambdaGoal, Unification,
+				Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
 	;
@@ -563,18 +564,19 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
 
-:- pred polymorphism__process_lambda(list(var), list(mode), determinism,
-		set(var), hlds__goal, unification, unify_rhs, unification,
-		poly_info, poly_info).
-:- mode polymorphism__process_lambda(in, in, in, in, in, in, out, out,
+:- pred polymorphism__process_lambda(pred_or_func, list(var), list(mode),
+		determinism, set(var), hlds__goal, unification,
+		unify_rhs, unification, poly_info, poly_info).
+:- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
-		Unification0, Functor, Unification, PolyInfo0, PolyInfo) :-
+polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
+		LambdaGoal, Unification0, Functor, Unification,
+		PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
-	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
-		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
-		Functor, Unification, ModuleInfo),
+	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
+		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet,
+		ModuleInfo0, Functor, Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).
 
 %---------------------------------------------------------------------------%

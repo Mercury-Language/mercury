@@ -610,24 +610,9 @@ modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName, Follow),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
-modecheck_goal_2(higher_order_call(PredVar, Args0, _, _, _, Follow),
+modecheck_goal_2(higher_order_call(PredVar, Args0, _, _, _, _),
 		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order call"),
-	{ list__length(Args0, Arity) },
-	{ Arity1 is Arity + 1 },
-	mode_info_set_call_context(call(unqualified("call")/Arity1)),
-	=(ModeInfo0),
-
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
-		ExtraGoals),
-
-	=(ModeInfo),
-	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det, Follow) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
-				InstMap0, ModeInfo, Goal) },
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order call").
+	modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal).
 
 modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
@@ -674,6 +659,53 @@ modecheck_goal_2(pragma_c_code(C_Code, PredId, _ProcId0, Args0, ArgNameMap),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
+:- pred modecheck_higher_order_pred_call(var, list(var), hlds__goal_info,
+		hlds__goal_expr, mode_info, mode_info).
+:- mode modecheck_higher_order_pred_call(in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order predicate call"),
+	{ list__length(Args0, Arity) },
+	{ Arity1 is Arity + 1 },
+	mode_info_set_call_context(call(unqualified("call")/Arity1)),
+	=(ModeInfo0),
+
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+	modecheck_higher_order_call(predicate, PredVar, Args0,
+			Types, Modes, Det, Args, ExtraGoals),
+
+	=(ModeInfo),
+	{ map__init(Follow) },
+	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det, Follow) },
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
+				InstMap0, ModeInfo, Goal) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "higher-order predicate call").
+
+:- pred modecheck_higher_order_func_call(var, list(var), var, hlds__goal_info,
+		hlds__goal_expr, mode_info, mode_info).
+:- mode modecheck_higher_order_func_call(in, in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order function call"),
+	{ list__length(Args0, Arity) },
+	mode_info_set_call_context(call(unqualified("apply")/Arity)),
+	=(ModeInfo0),
+
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+	{ list__append(Args0, [RetVar], Args1) },
+	modecheck_higher_order_call(function, FuncVar, Args1,
+			Types, Modes, Det, Args, ExtraGoals),
+
+	=(ModeInfo),
+	{ map__init(Follow) },
+	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det, Follow) },
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args1, Args,
+				InstMap0, ModeInfo, Goal) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "higher-order function call").
 
 :- pred map_delete_list(list(K), map(K, V), map(K, V)).
 :- mode map_delete_list(in, in, out) is det.
@@ -688,7 +720,8 @@ map_delete_list([Key|Keys], Map0, Map) :-
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
+unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
+			_Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, LambdaVars, NonLocals),
 	set__to_sorted_list(NonLocals, Vars).
@@ -1093,13 +1126,13 @@ instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_higher_order_call(var, list(var),
+:- pred modecheck_higher_order_call(pred_or_func, var, list(var),
 				list(type), list(mode), determinism, list(var),
 				pair(list(hlds__goal)), mode_info, mode_info).
-:- mode modecheck_higher_order_call(in, in, out, out, out, out, out,
+:- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
+modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals, ModeInfo0, ModeInfo) :-
 
 	mode_info_get_types_of_vars(ModeInfo0, Args0, Types),
@@ -1115,7 +1148,7 @@ modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
 	list__length(Args0, Arity),
 	(
 		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
-		PredInstInfo = pred_inst_info(Modes0, Det0),
+		PredInstInfo = pred_inst_info(PredOrFunc, Modes0, Det0),
 		list__length(Modes0, Arity)
 	->
 		Modes = Modes0,
@@ -1144,7 +1177,7 @@ modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
 	;
 		set__singleton_set(WaitingVars, PredVar),
 		mode_info_error(WaitingVars, mode_error_higher_order_pred_var(
-				PredVar, PredVarInst, Arity),
+				PredOrFunc, PredVar, PredVarInst, Arity),
 				ModeInfo0, ModeInfo),
 		Modes = [],
 		Det = erroneous,
@@ -1697,6 +1730,29 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	mode_info_get_predid(ModeInfo0, ThisPredId),
 	(
 		%
+		% is the function symbol apply/N,
+		% representing a higher-order function call?
+		%
+		% (As an optimization, if HowToCheck = check_unique_modes,
+		% then don't bother checking, since they will have already
+		% been expanded.)
+		%
+		HowToCheckGoal \= check_unique_modes,
+		Name = term__atom("apply"),
+		Arity >= 2,
+		ArgVars0 = [FuncVar | FuncArgVars]
+	->
+		%
+		% Convert the higher-order function call (apply/N)
+		% into a higher-order predicate call
+		% (i.e., replace `X = apply(F, A, B, C)'
+		% with `call(F, A, B, C, X)')
+		% and then mode-check it.
+		%
+		modecheck_higher_order_func_call(FuncVar, FuncArgVars, X0,
+			GoalInfo0, Goal, ModeInfo0, ModeInfo)
+	;
+		%
 		% is the function symbol a user-defined function, rather
 		% than a functor which represents a data constructor?
 		%
@@ -1836,8 +1892,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% construct the lambda expression, and then go ahead
 		% and modecheck this unification in its new form
 		%
-		Functor0 = lambda_goal(LambdaVars, LambdaModes, LambdaDet,
-					LambdaGoal),
+		Functor0 = lambda_goal(PredOrFunc, LambdaVars, LambdaModes,
+					LambdaDet, LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
 				GoalInfo0, HowToCheckGoal, Goal,
 				ModeInfo2, ModeInfo)
@@ -1887,7 +1943,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		)
 	).
 
-modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
+modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
 			Unification0, UnifyContext, _GoalInfo, HowToCheckGoal,
 			unify(X, RHS, Mode, Unification, UnifyContext),
 			ModeInfo0, ModeInfo) :-
@@ -1961,23 +2017,24 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	%
 
 	set__to_sorted_list(NonLocals, ArgVars),
-	modecheck_unify_lambda(X, ArgVars, Modes, Det, Unification0,
+	modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det, Unification0,
 				Mode, Unification,
 				ModeInfo10, ModeInfo),
-	RHS = lambda_goal(Vars, Modes, Det, Goal).
+	RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal).
 
-:- pred modecheck_unify_lambda(var, list(var),
+:- pred modecheck_unify_lambda(var, pred_or_func, list(var),
 			list(mode), determinism, unification,
 			pair(mode), unification, mode_info, mode_info).
-:- mode modecheck_unify_lambda(in, in, in, in, in,
+:- mode modecheck_unify_lambda(in, in, in, in, in, in,
 			out, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
-		Mode, Unification, ModeInfo0, ModeInfo) :-
+modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
+		Unification0, Mode, Unification, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstOfX),
-	InstOfY = ground(unique, yes(pred_inst_info(LambdaModes, LambdaDet))),
+	InstOfY = ground(unique, yes(LambdaPredInfo)),
+	LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
 	(
 		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
 			ModuleInfo0, UnifyInst, _Det, ModuleInfo1)
@@ -1989,7 +2046,8 @@ modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
 		Mode = ModeOfX - ModeOfY,
 		instmap_lookup_arg_list(ArgVars, InstMap0, ArgInsts),
 		mode_list_from_inst_list(ArgInsts, ArgModes),
-		categorize_unify_var_lambda(ModeOfX, ArgModes, X, ArgVars,
+		categorize_unify_var_lambda(ModeOfX, ArgModes,
+				X, ArgVars, PredOrFunc,
 				Unification0, ModeInfo1,
 				Unification, ModeInfo2),
 		modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo)
@@ -2576,12 +2634,13 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 % unification or a deconstruction.  It also works out whether it will
 % be deterministic or semideterministic.
 
-:- pred categorize_unify_var_lambda(mode, list(mode), var, list(var),
+:- pred categorize_unify_var_lambda(mode, list(mode),
+			var, list(var), pred_or_func,
 			unification, mode_info, unification, mode_info).
-:- mode categorize_unify_var_lambda(in, in, in, in,
+:- mode categorize_unify_var_lambda(in, in, in, in, in,
 			in, mode_info_di, out, mode_info_uo) is det.
 
-categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
+categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	( Unification0 = construct(_, ConsId0, _, _) ->
@@ -2610,7 +2669,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 		mode_info_error(WaitingVars,
 				mode_error_unify_pred(X,
 					error_at_lambda(ArgVars, ArgModes0),
-					Type, predicate),
+					Type, PredOrFunc),
 				ModeInfo0, ModeInfo),
 		% return any old garbage
 		Unification = Unification0

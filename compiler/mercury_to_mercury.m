@@ -86,7 +86,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, set, prog_out, prog_util, term_io, std_util.
+:- import_module int, set, term_io, std_util.
+:- import_module prog_out, prog_util, hlds_pred.
 :- import_module globals, options, require.
 
 %-----------------------------------------------------------------------------%
@@ -291,7 +292,7 @@ mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
 	io__write_string(")").
 mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 	(	
-		{ MaybePredInfo = yes(pred_inst_info(Modes, Det)) }
+		{ MaybePredInfo = yes(pred_inst_info(PredOrFunc, Modes, Det)) }
 	->
 		( { Uniq = shared } ->
 			[]
@@ -300,13 +301,26 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 			mercury_output_uniqueness(Uniq, "ground"),
 			io__write_string(" */")
 		),
-		( { Modes = [] } ->
-			io__write_string("(pred) is "),
-			mercury_output_det(Det)
+		(
+			{ PredOrFunc = predicate },
+			( { Modes = [] } ->
+				io__write_string("(pred) is "),
+				mercury_output_det(Det)
+			;
+				io__write_string("(pred("),
+				mercury_output_mode_list(Modes, VarSet),
+				io__write_string(") is "),
+				mercury_output_det(Det),
+				io__write_string(")")
+			)
 		;
-			io__write_string("(pred("),
-			mercury_output_mode_list(Modes, VarSet),
-			io__write_string(") is "),
+			{ PredOrFunc = function },
+			{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+			io__write_string("(func("),
+			mercury_output_mode_list(ArgModes, VarSet),
+			io__write_string(") = "),
+			mercury_output_mode(RetMode, VarSet),
+			io__write_string(" is "),
 			mercury_output_det(Det),
 			io__write_string(")")
 		)
@@ -488,20 +502,14 @@ mercury_output_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
 mercury_output_mode((InstA -> InstB), VarSet) -->
 	( 
 	    %
-	    % check for higher-order pred modes, and output them in a nice
-	    % format
+	    % check for higher-order pred or func modes, and output them
+	    % in a nice format
 	    %
-	    { InstA = ground(shared, yes(pred_inst_info(Modes, Det))) },
-	    { InstB = ground(shared, yes(pred_inst_info(Modes, Det))) }
+	    { InstA = ground(_Uniq,
+			yes(pred_inst_info(_PredOrFunc, _Modes, _Det))) },
+	    { InstB = InstA }
 	->
-	    ( { Modes = [] } ->
-		io__write_string("(pred) is ")
-	    ;
-		io__write_string("pred("),
-		mercury_output_mode_list(Modes, VarSet),
-		io__write_string(") is ")
-	    ),
-	    mercury_output_det(Det)
+	    mercury_output_inst(InstA, VarSet)
 	;
 	    io__write_string("("),
 	    mercury_output_inst(InstA, VarSet),

@@ -210,10 +210,18 @@
 
 :- type pred_inst_info
 	---> pred_inst_info(
+			pred_or_func,		% is this a higher-order func
+						% mode or a higher-order pred
+						% mode?
 			list(mode),		% the modes of the additional
 						% (i.e. not-yet-supplied)
-						% arguments of the pred
-			determinism 		% the determinism of the pred
+						% arguments of the pred;
+						% for a function, this includes
+						% the mode of the return value
+						% as the last element of the
+						% list.
+			determinism 		% the determinism of the
+						% predicate or function
 	).
 
 :- type bound_inst	--->	functor(cons_id, list(inst)).

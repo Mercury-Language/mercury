@@ -7,12 +7,13 @@
 :- module dependency_graph.
 % Main author: bromage, conway.
 
-% The dependency_graph contains the intra-module dependency information
-% of a module.  It is defined as a relation (see hlds.m) R where xRy
+% The dependency_graph records which procedures depend on which other
+% procedures.  It is defined as a relation (see hlds.m) R where xRy
 % means that the definition of x depends on the definition of y.
 %
 % The other important structure is the dependency_ordering which is
-% a list of the cliques of this relation, in topological order.
+% a list of the cliques (strongly-connected components) of this relation,
+% in topological order.  This is very handy for doing fixpoint iterations.
 
 %-----------------------------------------------------------------------------%
 
@@ -67,11 +68,13 @@ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0,
 				DepGraph0, DepGraph),
 	hlds__dependency_info_init(DepInfo0),
-	hlds__dependency_info_set_dependency_graph(DepInfo0, DepGraph, DepInfo1),
+	hlds__dependency_info_set_dependency_graph(DepInfo0, DepGraph,
+				DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__list_set_to_list_list(ModuleInfo0, DepOrd0,
 				[], DepOrd),
-	hlds__dependency_info_set_dependency_ordering(DepInfo1, DepOrd, DepInfo),
+	hlds__dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
+				DepInfo),
 	module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo).
 
 :- pred dependency_graph__list_set_to_list_list(module_info,

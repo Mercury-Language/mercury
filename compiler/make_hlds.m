@@ -1524,7 +1524,8 @@ warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
+warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
+				LambdaGoal),
 				GoalInfo, QuantVars, VarSet, CallPredId) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
@@ -2206,9 +2207,41 @@ unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
 		parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2),
 		map__init(Substitution),
 		transform_goal(ParsedGoal, VarSet2, Substitution,
-				HLDS_Goal, VarSet),
+				HLDS_Goal0, VarSet3),
+		insert_arg_unifications(Vars, Vars1, Context, head,
+			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet),
 		create_atomic_unification(X,
-				lambda_goal(Vars, Modes, Det, HLDS_Goal),
+				lambda_goal(predicate, Vars, Modes, Det,
+					HLDS_Goal),
+				Context, MainContext, SubContext, Goal)
+	;
+	    (
+		% handle higher-order func expressions -
+		% like higher-order pred expressions, but for functions
+		F = term__atom(":-"),
+		Args = [FuncTerm, GoalTerm0],
+		parse_func_expression(FuncTerm, Vars0, Modes0, Det0)
+	    ->
+		Vars1 = Vars0, Modes1 = Modes0, Det1 = Det0,
+		GoalTerm = GoalTerm0
+	    ;
+		parse_func_expression(term__functor(F, Args, FunctorContext),
+			Vars1, Modes1, Det1),
+		GoalTerm = term__functor(term__atom("true"), [], Context)
+	    )
+	->
+		Modes = Modes1,
+		Det = Det1,
+		make_fresh_arg_vars(Vars1, VarSet0, Vars, VarSet1),
+		parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2),
+		map__init(Substitution),
+		transform_goal(ParsedGoal, VarSet2, Substitution,
+				HLDS_Goal0, VarSet3),
+		insert_arg_unifications(Vars, Vars1, Context, head,
+			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet),
+		create_atomic_unification(X,
+				lambda_goal(function, Vars, Modes, Det,
+					HLDS_Goal),
 				Context, MainContext, SubContext, Goal)
 	;
 	        % handle if-then-else expressions
