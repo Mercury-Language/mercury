@@ -779,8 +779,9 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, Proc) -->
-	globals__io_lookup_bool_option(follow_code, FollowCode),
-	globals__io_lookup_bool_option(prev_code, PrevCode),
+	globals__io_get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
+	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
 		{ move_follow_code_in_proc(ProcInfo0, ProcInfo1,
 			ModuleInfo0, ModuleInfo1) }
@@ -788,15 +789,17 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ProcInfo1 = ProcInfo0 },
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
-	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
-	globals__io_lookup_bool_option(common_struct, Common),
-	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
-	globals__io_lookup_bool_option(constant_propagation, Prop),
+	{ globals__lookup_bool_option(Globals, excess_assign, ExcessAssign) },
+	{ globals__lookup_bool_option(Globals, common_struct, Common) },
+	{ globals__lookup_bool_option(Globals, optimize_duplicate_calls,
+		Calls) },
+	{ globals__lookup_bool_option(Globals, constant_propagation, Prop) },
 	simplify__proc(
 		simplify(no, no, yes, yes, Common, ExcessAssign, Calls, Prop),
 		PredId, ProcId, ModuleInfo1, ModuleInfo2,
 		ProcInfo1, ProcInfo2, _, _),
-	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
+	{ globals__lookup_bool_option(Globals, optimize_saved_vars,
+		SavedVars) },
 	( { SavedVars = yes } ->
 		saved_vars_proc(PredId, ProcId, ProcInfo2, ProcInfo3,
 			ModuleInfo2, ModuleInfo3)
@@ -819,12 +822,12 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
-	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3,
-		ContInfo0, CellCount0, ContInfo, CellCount, Proc0),
+	{ generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3, Globals,
+		ContInfo0, CellCount0, ContInfo, CellCount, Proc0) },
 	{ module_info_set_continuation_info(ModuleInfo3, ContInfo, 
 		ModuleInfo4) },
 	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) },
-	globals__io_lookup_bool_option(optimize, Optimize),
+	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
 	;
