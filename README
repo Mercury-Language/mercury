@@ -31,7 +31,7 @@ in the file Mmake.common - by default these locations are
 and /usr/local/mercury-0.6alpha/lib/mercury/doc respectively.
 
 For more information about Mercury, see the Mercury WWW home page at
-http://www.cs.mu.oz.au/~zs/mercury.html, or send mail to mercury@cs.mu.oz.au.
+http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
 
 Please send bug reports, enhancement requests, suggestions for improvements,
 and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
