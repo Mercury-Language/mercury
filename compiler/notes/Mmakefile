@@ -34,6 +34,9 @@ DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: all
+all: $(DOCS_ALL)
+
 # This install is for installing the Mercury webpage, which goes to
 # a different directory (supplied by the environment variable
 # INSTALL_WEBDIR).
