@@ -202,10 +202,27 @@ vn_util__mem_ref_to_vn(MemRef, Vn, VnTables0, VnTables) :-
 vn_util__vnrval_to_vn(Vnrval, Vn, VnTables0, VnTables) :-
 	vn_util__simplify_vnrval(Vnrval, Vnrval1, VnTables0, VnTables1),
 	( vn_table__search_assigned_vn(Vnrval1, Vn_prime, VnTables1) ->
-		Vn = Vn_prime,
-		VnTables = VnTables1
+		( vn_util__vnrval_may_share_vn(Vnrval1) ->
+			Vn = Vn_prime,
+			VnTables = VnTables1
+		;
+			vn_table__record_new_vnrval(Vnrval1, Vn,
+				VnTables1, VnTables)
+		)
 	;
 		vn_table__record_first_vnrval(Vnrval1, Vn, VnTables1, VnTables)
+	).
+
+:- pred vn_util__vnrval_may_share_vn(vnrval).
+:- mode vn_util__vnrval_may_share_vn(in) is semidet.
+
+vn_util__vnrval_may_share_vn(Vnrval) :-
+	(
+		Vnrval = vn_unop(cast_to_unsigned, _)
+	->
+		fail
+	;
+		true
 	).
 
 	% Simplify the vnrval by partially evaluating expressions involving

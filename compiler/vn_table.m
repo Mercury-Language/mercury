@@ -19,7 +19,7 @@
 
 :- type vn_tables.
 
-% The definitions of the types are exported only for debugging.
+% The definitions of the following types are exported only for debugging.
 
 :- type lval_to_vn_table == map(vnlval, vn).
 :- type rval_to_vn_table == map(vnrval, vn).
@@ -106,6 +106,10 @@
 :- pred vn_table__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
 % :- mode vn_table__record_first_vnrval(in, out, di, uo) is det.
 :- mode vn_table__record_first_vnrval(in, out, in, out) is det.
+
+:- pred vn_table__record_new_vnrval(vnrval, vn, vn_tables, vn_tables).
+% :- mode vn_table__record_first_vnrval(in, out, di, uo) is det.
+:- mode vn_table__record_new_vnrval(in, out, in, out) is det.
 
 :- pred vn_table__record_first_vnlval(vnlval, vn, vn_tables, vn_tables).
 % :- mode vn_table__record_first_vnlval(in, out, di, uo) is det.
@@ -365,6 +369,26 @@ vn_table__record_first_vnrval(Vnrval, Vn, VnTables0, VnTables) :-
 	Vn = NextVn0,
 	NextVn1 is NextVn0 + 1,
 	map__det_insert(Rval_to_vn_table0, Vnrval, Vn, Rval_to_vn_table1),
+	map__det_insert(Vn_to_rval_table0, Vn, Vnrval, Vn_to_rval_table1),
+	map__det_insert(Vn_to_uses_table0, Vn, [], Vn_to_uses_table1),
+	map__det_insert(Vn_to_locs_table0, Vn, [], Vn_to_locs_table1),
+	VnTables = vn_tables(NextVn1,
+		Lval_to_vn_table0, Rval_to_vn_table1,
+		Vn_to_rval_table1, Vn_to_uses_table1,
+		Vn_to_locs_table1, Loc_to_vn_table0).
+
+vn_table__record_new_vnrval(Vnrval, Vn, VnTables0, VnTables) :-
+	VnTables0 = vn_tables(NextVn0,
+		Lval_to_vn_table0, Rval_to_vn_table0,
+		Vn_to_rval_table0, Vn_to_uses_table0,
+		Vn_to_locs_table0, Loc_to_vn_table0),
+	Vn = NextVn0,
+	NextVn1 is NextVn0 + 1,
+	( map__insert(Rval_to_vn_table0, Vnrval, Vn, NewRval_to_vn_table) ->
+		Rval_to_vn_table1 = NewRval_to_vn_table
+	;
+		Rval_to_vn_table1 = Rval_to_vn_table0
+	),
 	map__det_insert(Vn_to_rval_table0, Vn, Vnrval, Vn_to_rval_table1),
 	map__det_insert(Vn_to_uses_table0, Vn, [], Vn_to_uses_table1),
 	map__det_insert(Vn_to_locs_table0, Vn, [], Vn_to_locs_table1),
