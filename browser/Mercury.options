@@ -8,3 +8,5 @@
 
 MCFLAGS-mer_browser = --no-warn-nothing-exported
 MCFLAGS-mer_mdbcomp = --no-warn-nothing-exported
+
+EXTRA_LIBRARIES-libmer_browser.so = mer_mdbcomp
