@@ -2,14 +2,14 @@
 # RPM (Red Hat Package Manager) spec file
 # for the Mercury implementation.
 # 
-# Copyright (c) 1999 The University of Melbourne
+# Copyright (c) 1999, 2001, 2002 The University of Melbourne
 #
 # Please send bugfixes or comments to <mercury-bugs@cs.mu.oz.au>.
 #
 
 Summary:      The logic/functional programming language Mercury
 Name:         mercury-compiler
-Version:      @VERSION@
+Version:      @VERSION_WITH_UNDERSCORES@
 Release:      1
 Packager:     The Mercury Group <mercury@cs.mu.oz.au>
 Vendor:	      The Mercury Group <mercury@cs.mu.oz.au>
@@ -17,7 +17,7 @@ Copyright:    GPL and LGPL
 Group: 	      Development/Languages
 Provides:     mercury 
 Requires:     gcc make
-Source:       ftp.mercury.cs.mu.oz.au:/pub/mercury/mercury-compiler-@VERSION@.tar.gz
+Source:       ftp.mercury.cs.mu.oz.au:/pub/mercury/@MAYBE_BETA@mercury-compiler-@VERSION@.tar.gz
 URL:	      http://www.cs.mu.oz.au/mercury/
 
 %description
@@ -35,6 +35,10 @@ It does NOT include the "extras" distribution; that is available
 from <http://www.cs.mu.oz.au/mercury/download/release.html>.
 
 %changelog
+* Thu Oct 16 2002 Fergus Henderson <fjh@cs.mu.oz.au>
+- Modify the way the spec file is generated to support building
+  RPMS for ROTD releases.
+
 * Wed Apr 04 2001 Fergus Henderson <fjh@cs.mu.oz.au>
 - Delete the "Red Hat Contrib Net" stuff, since RHCN seems to have disappeared
   from the face of the earth.

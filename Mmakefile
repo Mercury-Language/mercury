@@ -244,8 +244,14 @@ INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
 
 mercury-compiler.spec: .mercury-compiler.spec.in VERSION
-	sed 's/@VERSION@/$(VERSION)/g' .mercury-compiler.spec.in \
-		> mercury-compiler.spec
+	version_with_underscores=`echo $(VERSION) | sed 's/-/_/g'`; \
+	maybe_beta=`case $(VERSION) in rotd*|*beta*) \
+			echo "beta-releases/" ;; \
+		    esac`; \
+	sed -e "s/@VERSION@/$(VERSION)/g" \
+	    -e "s/@VERSION_WITH_UNDERSCORES@/$$version_with_underscores/g" \
+	    -e "s^@MAYBE_BETA@^$$maybe_beta^g" \
+	    .mercury-compiler.spec.in > mercury-compiler.spec
 
 #-----------------------------------------------------------------------------#
 
