@@ -72,11 +72,11 @@
 simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		Proc0, Proc, WarnCnt, ErrCnt, State0, State) :-
 	globals__io_get_globals(Globals, State0, State1),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo),
+	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
 	proc_info_variables(Proc0, VarSet0),
 	proc_info_vartypes(Proc0, VarTypes0),
-	simplify_info_init(DetInfo, Simplify, InstMap0,
+	simplify_info_init(DetInfo0, Simplify, InstMap0,
 		VarSet0, VarTypes0, Info0),
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0,
 		State1, State2),
@@ -87,15 +87,16 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		simplify_info_set_simplify(Info0,
 			simplify(Warn, WarnCalls, no, Switch, yes, no, Calls),
 			Info1),
-		simplify__proc_2(Proc0, Proc1, ModuleInfo0, ModuleInfo1,
-			Info1, Info2, State2, State3),
+		simplify__proc_2(Proc0, Proc1, Info1, Info2, State2, State3),
 		simplify_info_get_msgs(Info2, Msgs1),
+		simplify_info_get_det_info(Info2, DetInfo1),
 		proc_info_variables(Proc1, VarSet1),
 		proc_info_vartypes(Proc1, VarTypes1),
-		simplify_info_init(DetInfo,
+		simplify_info_init(DetInfo1,
 			simplify(no, no, Once, no, no, Excess, no),
 			InstMap0, VarSet1, VarTypes1, Info3),
 		simplify_info_set_msgs(Info3, Msgs1, Info4),
+		%simplify_info_get_module_info(Info4, ModuleInfo1),
 		%proc_info_goal(Proc1, OutGoal),
 		%hlds_out__write_goal(OutGoal, ModuleInfo1, VarSet1, yes,
 		%	2, ".", State3, State4)
@@ -103,14 +104,13 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	;
 		Info4 = Info0,
 		Proc1 = Proc0,
-		ModuleInfo1 = ModuleInfo0,
 		State4 = State2
 	),
 		% On the second pass do excess assignment elimination and
 		% some cleaning up after the common structure and branch 
 		% merging pass.
-	simplify__proc_2(Proc1, Proc, ModuleInfo1, ModuleInfo,
-			Info4, Info, State4, State5),
+	simplify__proc_2(Proc1, Proc, Info4, Info, State4, State5),
+	simplify_info_get_module_info(Info, ModuleInfo),
 	simplify_info_get_msgs(Info, Msgs2),
 	set__to_sorted_list(Msgs2, Msgs),
 	( (Warn = yes ; WarnCalls = yes) ->
@@ -122,36 +122,37 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		State = State5
 	).
 
-:- pred simplify__proc_2(proc_info::in, proc_info::out, module_info::in,
-		module_info::out, simplify_info::in, simplify_info::out,
+:- pred simplify__proc_2(proc_info::in, proc_info::out,
+		simplify_info::in, simplify_info::out,
 		io__state::di, io__state::uo) is det.
 
-simplify__proc_2(Proc0, Proc, ModuleInfo0, ModuleInfo,
-		Info0, Info, State0, State) :-
+simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 	proc_info_goal(Proc0, Goal0),
-	simplify__goal(Goal0, Goal, Info0, Info),
-	simplify_info_get_varset(Info, VarSet),
-	simplify_info_get_var_types(Info, VarTypes),
+	simplify__goal(Goal0, Goal, Info0, Info1),
+	simplify_info_get_varset(Info1, VarSet),
+	simplify_info_get_var_types(Info1, VarTypes),
 	proc_info_set_goal(Proc0, Goal, Proc1),
 	proc_info_set_variables(Proc1, VarSet, Proc2),
 	proc_info_set_vartypes(Proc2, VarTypes, Proc3),
-	( simplify_info_requantify(Info) ->
+	( simplify_info_requantify(Info1) ->
 		requantify_proc(Proc3, Proc4),
-		( simplify_info_recompute_atomic(Info) ->
+		( simplify_info_recompute_atomic(Info1) ->
 			RecomputeAtomic = yes
 		;
 			RecomputeAtomic = no
 		),
 		proc_info_goal(Proc4, Goal2),
-		proc_info_get_initial_instmap(Proc4, ModuleInfo0, InstMap0),
+		simplify_info_get_module_info(Info1, ModuleInfo1),
+		proc_info_get_initial_instmap(Proc4, ModuleInfo1, InstMap0),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			InstMap0, ModuleInfo0, ModuleInfo),
+			InstMap0, ModuleInfo1, ModuleInfo),
+		simplify_info_set_module_info(Info1, ModuleInfo, Info),
 		proc_info_set_goal(Proc4, Goal3, Proc),
 		State = State0
 	;
 		Proc = Proc3,
-		ModuleInfo = ModuleInfo0,
-		State = State0
+		State = State0,
+		Info = Info1
 	).
 
 %-----------------------------------------------------------------------------%
