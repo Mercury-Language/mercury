@@ -1033,7 +1033,8 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 				% nevertheless contain nondet or multidet
 				% conditions. If this happens, the if-then-else
 				% must be put inside a `some' to appease the
-				% code generator.
+				% code generator.  (Both the MLDS and LLDS
+				% back-ends rely on this.)
 				%
 				simplify_do_once(Info),
 				CondSolns = at_most_many,
