@@ -2,7 +2,7 @@
 
 # MGNUC - Mercury GNU C
 #
-# Usage: mgnuc [-v|--verbose] [-s<grade>] [<gcc options>] files...
+# Usage: mgnuc [-v|--verbose] [-s<grade>] -- [<gcc options>] files...
 #
 # -v, --verbose
 #	Echo gcc command before executing it.
