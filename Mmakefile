@@ -344,31 +344,16 @@ install_grades: scripts
 	#
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
-	        case "$$grade" in \
-	            *.prof*) \
-		        prof=_prof \
-		        ;; \
-		    *) \
-		        prof= \
-		        ;; \
-	        esac; \
-	        case "$$grade" in \
-	            *.debug*) \
-		        c_debug=-g \
-		        ;; \
-		    *) \
-		        c_debug= \
-		        ;; \
-	        esac; \
+	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
 	        ( cd boehm_gc && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
 		  	install_lib ) && \
 		( cd runtime && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd library && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug depend && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_hdrs && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade EXTRA_MGNUCFLAGS=$$c_debug install_library ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_hdrs && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd browser && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
