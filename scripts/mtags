@@ -186,7 +186,7 @@ sub output_single_name() {
 	    } elsif ($ext) {
 		# In ``ext'' mode, print the extra attributes used by
 		# vim 5.0+ and elvis 2.1+.
-		if ($context =~ /implementation/) {
+		if ($context =~ /\bimplementation\b/) {
 			$static = "\tfile:";
 			$sfile = $file;
 		} else {
@@ -294,7 +294,7 @@ while ($#ARGV >= 0)
 
 	# Is this an "interface" or "implementation" declaration?
 	# If so, change context.
-	if ($decl =~ "interface" || $decl =~ "implementation") {
+	if ($decl =~ /\binterface\b/ || $decl =~ /\bimplementation\b/) {
 		$context = $decl;
 	}
 
