@@ -812,8 +812,8 @@ dead_pred_elim(!ModuleInfo) :-
 
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
 	module_info_get_partial_qualifier_info(!.ModuleInfo, PartialQualInfo),
-	predicate_table_restrict(PartialQualInfo, PredTable0,
-		set__to_sorted_list(NeededPreds), PredTable),
+	predicate_table_restrict(PartialQualInfo,
+		set__to_sorted_list(NeededPreds), PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,

@@ -3,9 +3,9 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File      : purity.m
-% Authors   : scachte (Peter Schachte) 
+% Authors   : scachte (Peter Schachte)
 % 		(main author and designer of purity system)
 %	      trd (modifications for impure functions)
 % Purpose   : handle `impure' and `promise_pure' declarations;
@@ -78,32 +78,32 @@
 %  See the language reference manual for more information on syntax and
 %  semantics.
 %
-%  The current implementation now handles impure functions. 
+%  The current implementation now handles impure functions.
 %  They are limited to being used as part of an explicit unification
 %  with a purity indicator before the goal.
 %
 %  	impure X = some_impure_func(Arg1, Arg2, ...)
-%  
+%
 %  This eliminates any need to define some order of evaluation of nested
 %  impure functions.
 %
 %  Of course it also eliminates the benefits of using functions to
 %  cut down on the number of variables introduced.  The main use of
 %  impure functions is to interface nicely with foreign language
-%  functions.  
+%  functions.
 %
 %  Any non-variable arguments to the function are flattened into
-%  unification goals (see make_hlds__unravel_unifications) which are 
+%  unification goals (see make_hlds__unravel_unifications) which are
 %  placed as pure goals before the function call itself.
 %
 %  Wishlist:
 %  	It would be nice to use impure functions in DCG goals as well as
-%  	normal unifications.  
+%  	normal unifications.
 %
 %  	It might be nice to allow
 %  		X = impure some_impure_fuc(Arg1, Arg2, ...)
 %	syntax as well.  But there are advantages to having the
-%	impure/semipure annotation in a regular position (on the left 
+%	impure/semipure annotation in a regular position (on the left
 %	hand side of a goal) too.  If this is implemented it should
 %	probably be handled in prog_io, and turned into an impure
 %	unify item.
@@ -135,35 +135,34 @@
 %  The third argument specifies whether post_typecheck.m detected
 %  any errors that would cause problems for later passes
 %  (if so, we stop compilation after this pass).
-:- pred puritycheck(bool, module_info, bool, module_info, io__state, io__state).
-:- mode puritycheck(in, in, out, out, di, uo) is det.
+
+:- pred puritycheck(bool::in, bool::out, module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
 % Rerun purity checking on a procedure after an optimization pass has
 % performed transformations which might affect the procedure's purity.
 % repuritycheck_proc makes sure that the goal_infos contain the correct
 % purity, and that the pred_info contains the promised_pure or
 % promised_semipure markers which might be needed if a promised pure
-% procedure was inlined into the procedure being checked. 
-:- pred repuritycheck_proc(module_info, pred_proc_id, pred_info, pred_info).
-:- mode repuritycheck_proc(in, in, in, out) is det.
+% procedure was inlined into the procedure being checked.
+
+:- pred repuritycheck_proc(module_info::in, pred_proc_id::in, pred_info::in,
+	pred_info::out) is det.
 
 %  Sort of a "maximum" for impurity.
-:- pred worst_purity(purity, purity, purity).
-:- mode worst_purity(in, in, out) is det.
+:- func worst_purity(purity, purity) = purity.
 
 %  Compare two purities.
-:- pred less_pure(purity, purity).
-:- mode less_pure(in, in) is semidet.
+:- pred less_pure(purity::in, purity::in) is semidet.
 
 %  Print out a purity name.
-:- pred write_purity(purity, io__state, io__state).
-:- mode write_purity(in, di, uo) is det.
+:- pred write_purity(purity::in, io__state::di, io__state::uo) is det.
 
 %  Print out a purity prefix.
 %  This works under the assumptions that all purity names but `pure' are prefix
 %  Operators, and that we never need `pure' indicators/declarations.
-:- pred write_purity_prefix(purity, io__state, io__state).
-:- mode write_purity_prefix(in, di, uo) is det.
+
+:- pred write_purity_prefix(purity::in, io__state::di, io__state::uo) is det.
 
 :- func purity_prefix_to_string(purity) = string.
 
@@ -172,11 +171,10 @@
 :- mode purity_name(in, out) is det.
 :- mode purity_name(out, in) is semidet.
 
-% Give an error message for unifications marked impure/semipure that are  
+% Give an error message for unifications marked impure/semipure that are
 % not function calls (e.g. impure X = 4)
-:- pred impure_unification_expr_error(prog_context, purity,
-	io__state, io__state).
-:- mode impure_unification_expr_error(in, in, di, uo) is det.
+:- pred impure_unification_expr_error(prog_context::in, purity::in,
+	io__state::di, io__state::uo) is det.
 
 :- implementation.
 
@@ -206,43 +204,41 @@
 %-----------------------------------------------------------------------------%
 %				Public Predicates
 
+puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
+	globals__io_lookup_bool_option(statistics, Statistics, !IO),
+	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 
-puritycheck(FoundTypeError, HLDS0, PostTypecheckError, HLDS) -->
-	globals__io_lookup_bool_option(statistics, Statistics),
-	globals__io_lookup_bool_option(verbose, Verbose),
-
-	maybe_write_string(Verbose, "% Purity-checking clauses...\n"),
-	check_preds_purity(FoundTypeError, HLDS0, PostTypecheckError, HLDS),
-	maybe_report_stats(Statistics).
-
+	maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO),
+	check_preds_purity(FoundTypeError, PostTypecheckError, !HLDS, !IO),
+	maybe_report_stats(Statistics, !IO).
 
 %  worst_purity/3 could be written more compactly, but this definition
 %  guarantees us a determinism error if we add to type `purity'.  We also
 %  define less_pure/2 in terms of worst_purity/3 rather than the other way
 %  around for the same reason.
 
-worst_purity(pure, pure, pure).
-worst_purity(pure, (semipure), (semipure)).
-worst_purity(pure, (impure), (impure)).
-worst_purity((semipure), pure, (semipure)).
-worst_purity((semipure), (semipure), (semipure)).
-worst_purity((semipure), (impure), (impure)).
-worst_purity((impure), pure, (impure)).
-worst_purity((impure), (semipure), (impure)).
-worst_purity((impure), (impure), (impure)).
+worst_purity(pure, pure) = pure.
+worst_purity(pure, (semipure)) = (semipure).
+worst_purity(pure, (impure)) = (impure).
+worst_purity((semipure), pure) = (semipure).
+worst_purity((semipure), (semipure)) = (semipure).
+worst_purity((semipure), (impure)) = (impure).
+worst_purity((impure), pure) = (impure).
+worst_purity((impure), (semipure)) = (impure).
+worst_purity((impure), (impure)) = (impure).
 
 less_pure(P1, P2) :-
-	\+ worst_purity(P1, P2, P2).
+	\+ ( worst_purity(P1, P2) = P2).
 
 % this works under the assumptions that all purity names but `pure' are prefix
 % operators, and that we never need `pure' indicators/declarations.
 
-write_purity_prefix(Purity) -->
-	( { Purity = pure } ->
-		[]
+write_purity_prefix(Purity, !IO) :-
+	( Purity = pure ->
+		true
 	;
-		write_purity(Purity),
-		io__write_string(" ")
+		write_purity(Purity, !IO),
+		io__write_string(" ", !IO)
 	).
 
 purity_prefix_to_string(Purity) = String :-
@@ -253,75 +249,67 @@ purity_prefix_to_string(Purity) = String :-
 		String = string__append(PurityName, " ")
 	).
 
-write_purity(Purity) -->
-	{ purity_name(Purity, String) },
-	io__write_string(String).
+write_purity(Purity, !IO) :-
+	purity_name(Purity, String),
+	io__write_string(String, !IO).
 
 purity_name(pure, "pure").
 purity_name((semipure), "semipure").
 purity_name((impure), "impure").
 
-
-
 %-----------------------------------------------------------------------------%
 %	 Purity-check the code for all the predicates in a module
 
-:- pred check_preds_purity(bool, module_info, bool, module_info,
-			io__state, io__state).
-:- mode check_preds_purity(in, in, out, out, di, uo) is det.
+:- pred check_preds_purity(bool::in, bool::out,
+	module_info::in, module_info::out, io__state::di, io__state::uo)
+	is det.
 
-check_preds_purity(FoundTypeError, ModuleInfo0,
-		PostTypecheckError, ModuleInfo) -->
-	{ module_info_predids(ModuleInfo0, PredIds) },
+check_preds_purity(FoundTypeError, PostTypecheckError, !ModuleInfo, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
 
 	% Only report error messages for unbound type variables
 	% if we didn't get any type errors already; this avoids
 	% a lot of spurious diagnostics.
-	{ ReportTypeErrors = bool__not(FoundTypeError) },
+	ReportTypeErrors = bool__not(FoundTypeError),
 	post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors1,
-		PostTypecheckError, ModuleInfo0, ModuleInfo1),
+		PostTypecheckError, !ModuleInfo, !IO),
 
-	check_preds_purity_2(PredIds, ModuleInfo1, ModuleInfo2,
-		NumErrors1, NumErrors),
-	{ module_info_num_errors(ModuleInfo2, Errs0) },
-	{ Errs = Errs0 + NumErrors },
-	{ module_info_set_num_errors(Errs, ModuleInfo2, ModuleInfo) }.
+	check_preds_purity_2(PredIds, !ModuleInfo, NumErrors1, NumErrors, !IO),
+	module_info_num_errors(!.ModuleInfo, Errs0),
+	Errs = Errs0 + NumErrors,
+	module_info_set_num_errors(Errs, !ModuleInfo).
 
-:- pred check_preds_purity_2(list(pred_id), module_info, module_info,
-			int, int, io__state, io__state).
-:- mode check_preds_purity_2(in, in, out, in, out, di, uo) is det.
+:- pred check_preds_purity_2(list(pred_id)::in,
+	module_info::in, module_info::out, int::in, int::out,
+	io__state::di, io__state::uo) is det.
 
-check_preds_purity_2([], ModuleInfo, ModuleInfo, NumErrors, NumErrors) --> [].
-check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
-		NumErrors0, NumErrors) -->
-	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
-	(	
-		{ pred_info_is_imported(PredInfo0)
-		; pred_info_is_pseudo_imported(PredInfo0) }
+check_preds_purity_2([], !ModuleInfo, !NumErrors, !IO).
+check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+	(
+		( pred_info_is_imported(PredInfo0)
+		; pred_info_is_pseudo_imported(PredInfo0)
+		)
 	->
-		{ ModuleInfo1 = ModuleInfo0 },
-		{ PredInfo = PredInfo0 },
-		{ NumErrors1 = NumErrors0 }
+		PredInfo = PredInfo0
 	;
 		write_pred_progress_message("% Purity-checking ", PredId,
-					    ModuleInfo0),
-		puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo0,
-				PurityErrsInThisPred),
-		{ NumErrors1 = NumErrors0 + PurityErrsInThisPred },
-		{ module_info_set_pred_info(PredId, PredInfo,
-			ModuleInfo0, ModuleInfo1) }
+			!.ModuleInfo, !IO),
+		puritycheck_pred(PredId, PredInfo0, PredInfo, !.ModuleInfo,
+			PurityErrsInThisPred, !IO),
+		!:NumErrors = !.NumErrors + PurityErrsInThisPred,
+		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
 	),
 
 		% finish processing of promise declarations
-	{ pred_info_get_goal_type(PredInfo, GoalType) },
-	( { GoalType = promise(PromiseType) } ->
-		post_typecheck__finish_promise(PromiseType, ModuleInfo1,
-				PredId, ModuleInfo2)
+	pred_info_get_goal_type(PredInfo, GoalType),
+	( GoalType = promise(PromiseType) ->
+		post_typecheck__finish_promise(PromiseType, PredId,
+			!ModuleInfo, !IO)
 	;
-		{ ModuleInfo2 = ModuleInfo1 }
+		true
 	),
-	check_preds_purity_2(PredIds, ModuleInfo2, ModuleInfo,
-			  NumErrors1, NumErrors).
+	check_preds_purity_2(PredIds, !ModuleInfo, !NumErrors, !IO).
 
 	% Purity-check the code for single predicate, reporting any errors.
 
@@ -472,22 +460,22 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 
 % Infer the purity of a single (non-pragma c_code) predicate
 
-:- pred compute_purity(goal_type, list(clause), list(clause), list(proc_id),
-	purity, purity, purity_info, purity_info).
-:- mode compute_purity(in, in, out, in, in, out, in, out) is det.
+:- pred compute_purity(goal_type::in, list(clause)::in, list(clause)::out,
+	list(proc_id)::in, purity::in, purity::out,
+	purity_info::in, purity_info::out) is det.
 
-compute_purity(_, [], [], _, Purity, Purity) --> [].
-compute_purity(GoalType, [Clause0|Clauses0], [Clause|Clauses], ProcIds,
-		Purity0, Purity) -->
-	{ Clause0 = clause(Ids, Body0 - Info0, Lang, Context) },
-	compute_expr_purity(Body0, Body, Info0, Bodypurity0),
+compute_purity(_, [], [], _, Purity, Purity, !Info).
+compute_purity(GoalType, [Clause0 | Clauses0], [Clause | Clauses], ProcIds,
+		Purity0, Purity, !Info) :-
+	Clause0 = clause(Ids, Body0 - Info0, Lang, Context),
+	compute_expr_purity(Body0, Body, Info0, Bodypurity0, !Info),
 	% If this clause doesn't apply to all modes of this procedure,
 	% i.e. the procedure has different clauses for different modes,
 	% then we must treat it as impure.
 	% the default impurity of foreign_proc procedures is handled when
 	% processing the foreign_proc goal -- they are not counted as impure
 	% here simply because they have different clauses for different modes
-	{
+	(
 		( applies_to_all_modes(Clause0, ProcIds)
 		; GoalType = pragmas
 		)
@@ -495,12 +483,13 @@ compute_purity(GoalType, [Clause0|Clauses0], [Clause|Clauses], ProcIds,
 		Clausepurity = (pure)
 	;
 		Clausepurity = (impure)
-	},
-	{ worst_purity(Bodypurity0, Clausepurity, Bodypurity) },
-	{ add_goal_info_purity_feature(Info0, Bodypurity, Info) },
-	{ worst_purity(Purity0, Bodypurity, Purity1) },
-	{ Clause = clause(Ids, Body - Info, Lang, Context) },
-	compute_purity(GoalType, Clauses0, Clauses, ProcIds, Purity1, Purity).
+	),
+	worst_purity(Bodypurity0, Clausepurity) = Bodypurity,
+	add_goal_info_purity_feature(Info0, Bodypurity, Info),
+	worst_purity(Purity0, Bodypurity) = Purity1,
+	Clause = clause(Ids, Body - Info, Lang, Context),
+	compute_purity(GoalType, Clauses0, Clauses, ProcIds, Purity1, Purity,
+		!Info).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
@@ -517,25 +506,23 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 		SortedIds = ProcIds
 	).
 
-:- pred compute_expr_purity(hlds_goal_expr, hlds_goal_expr,
-	hlds_goal_info, purity, purity_info, purity_info).
-:- mode compute_expr_purity(in, out, in, out, in, out) is det.
+:- pred compute_expr_purity(hlds_goal_expr::in, hlds_goal_expr::out,
+	hlds_goal_info::in, purity::out, purity_info::in, purity_info::out)
+	is det.
 
-compute_expr_purity(conj(Goals0), conj(Goals), _, Purity) -->
-	compute_goals_purity(Goals0, Goals, pure, Purity).
-compute_expr_purity(par_conj(Goals0), par_conj(Goals), _,
-		Purity) -->
-	compute_goals_purity(Goals0, Goals, pure, Purity).
-compute_expr_purity(
-		Goal0 @ call(PredId0, ProcId, Vars, BIState, UContext, Name0),
-		Goal, GoalInfo, ActualPurity) -->
-	RunPostTypecheck =^ run_post_typecheck,
-	PredInfo =^ pred_info,
-	ModuleInfo =^ module_info,
-	{
+compute_expr_purity(conj(Goals0), conj(Goals), _, Purity, !Info) :-
+	compute_goals_purity(Goals0, Goals, pure, Purity, !Info).
+compute_expr_purity(par_conj(Goals0), par_conj(Goals), _, Purity, !Info) :-
+	compute_goals_purity(Goals0, Goals, pure, Purity, !Info).
+compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
+	Goal0 = call(PredId0, ProcId, Vars, BIState, UContext, Name0),
+	RunPostTypecheck = !.Info ^ run_post_typecheck,
+	PredInfo = !.Info ^ pred_info,
+	ModuleInfo = !.Info ^ module_info,
+	(
 		RunPostTypecheck = yes,
-		post_typecheck__resolve_pred_overloading(PredId0,
-			Vars, PredInfo, ModuleInfo, Name0, Name, PredId),
+		post_typecheck__resolve_pred_overloading(Vars, PredInfo,
+			ModuleInfo, Name0, Name, PredId0, PredId),
 		(
 			% Convert any calls to private_builtin.unsafe_type_cast
 			% into unsafe_cast goals.
@@ -551,75 +538,73 @@ compute_expr_purity(
 			Goal = call(PredId, ProcId, Vars,
 					BIState, UContext, Name)
 		)
-	;	
+	;
 		RunPostTypecheck = no,
 		PredId = PredId0,
 		Goal = Goal0
-	},
-	{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
-	{ goal_info_get_context(GoalInfo, CallContext) },
-
+	),
+	infer_goal_info_purity(GoalInfo, DeclaredPurity),
+	goal_info_get_context(GoalInfo, CallContext),
 	perform_goal_purity_checks(CallContext, PredId,
-		DeclaredPurity, ActualPurity).
-
+		DeclaredPurity, ActualPurity, !Info).
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
-		GoalExpr, GoalInfo, Purity) -->
+		GoalExpr, GoalInfo, Purity, !Info) :-
 	(
-		{ GenericCall0 = higher_order(_, Purity, _, _) },
-		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
+		GenericCall0 = higher_order(_, Purity, _, _),
+		GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
 	;
-		{ GenericCall0 = class_method(_, _, _, _) },
-		{ Purity = pure }, % XXX this is wrong!
-		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
+		GenericCall0 = class_method(_, _, _, _),
+		Purity = pure, % XXX this is wrong!
+		GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
 	;
-		{ GenericCall0 = unsafe_cast },
-		{ Purity = pure },
-		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
+		GenericCall0 = unsafe_cast,
+		Purity = pure,
+		GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
 	;
-		{ GenericCall0 = aditi_builtin(Builtin0, CallId0) },
-		{ Purity = pure },
-		{ goal_info_get_context(GoalInfo, Context) },
-		RunPostTypecheck =^ run_post_typecheck,
+		GenericCall0 = aditi_builtin(Builtin0, CallId0),
+		Purity = pure,
+		goal_info_get_context(GoalInfo, Context),
+		RunPostTypecheck = !.Info ^ run_post_typecheck,
 		(
-			{ RunPostTypecheck = yes },
-			ModuleInfo =^ module_info,
-			PredInfo =^ pred_info,
-			{ post_typecheck__finish_aditi_builtin(ModuleInfo,
+			RunPostTypecheck = yes,
+			ModuleInfo = !.Info ^ module_info,
+			PredInfo = !.Info ^ pred_info,
+			post_typecheck__finish_aditi_builtin(ModuleInfo,
 				PredInfo, Args, Context, Builtin0, Builtin,
-				CallId0, CallId, Modes, MaybeMessage) },
+				CallId0, CallId, Modes, MaybeMessage),
 			(
-				{ MaybeMessage = yes(Message) },
+				MaybeMessage = yes(Message),
 				purity_info_add_message(
-					error(aditi_builtin_error(Message)))
+					error(aditi_builtin_error(Message)),
+					!Info)
 			;
-				{ MaybeMessage = no }
+				MaybeMessage = no
 			),
-			{ GenericCall = aditi_builtin(Builtin, CallId) }
+			GenericCall = aditi_builtin(Builtin, CallId)
 		;
-			{ RunPostTypecheck = no },
-			{ GenericCall = GenericCall0 },
-			{ Modes = Modes0 }
+			RunPostTypecheck = no,
+			GenericCall = GenericCall0,
+			Modes = Modes0
 		),
-
-		{ GoalExpr = generic_call(GenericCall, Args, Modes, Det) }
+		GoalExpr = generic_call(GenericCall, Args, Modes, Det)
 	).
 compute_expr_purity(switch(Var, Canfail, Cases0),
-		switch(Var, Canfail, Cases), _, Purity) -->
-	compute_cases_purity(Cases0, Cases, pure, Purity).
-compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity) -->
-	{ Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext) },
+		switch(Var, Canfail, Cases), _, Purity, !Info) :-
+	compute_cases_purity(Cases0, Cases, pure, Purity, !Info).
+compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
+	Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
 	(
-		{ RHS0 = lambda_goal(LambdaPurity, F, EvalMethod,
-			FixModes, H, Vars, Modes0, K, Goal0 - Info0) }
+		RHS0 = lambda_goal(LambdaPurity, F, EvalMethod,
+			FixModes, H, Vars, Modes0, K, Goal0 - Info0)
 	->
-		{ RHS = lambda_goal(LambdaPurity, F, EvalMethod,
-			modes_are_ok, H, Vars, Modes, K, Goal - Info0) },
-		compute_expr_purity(Goal0, Goal, Info0, GoalPurity),
-		check_closure_purity(GoalInfo, LambdaPurity, GoalPurity),
+		RHS = lambda_goal(LambdaPurity, F, EvalMethod,
+			modes_are_ok, H, Vars, Modes, K, Goal - Info0),
+		compute_expr_purity(Goal0, Goal, Info0, GoalPurity, !Info),
+		check_closure_purity(GoalInfo, LambdaPurity, GoalPurity,
+			!Info),
 
-		VarTypes =^ vartypes,
-
-		{
+		VarTypes = !.Info ^ vartypes,
+		(
 			FixModes = modes_are_ok,
 			Modes = Modes0
 		;
@@ -638,155 +623,152 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity) -->
 			SeenState = no,
 			fix_aditi_state_modes(SeenState, StateMode,
 				LambdaVarTypes, Modes0, Modes)
-		},
-		{ GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext) },
+		),
+		GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
 		% the unification itself is always pure,
 		% even if the lambda expression body is impure
-		{ ActualPurity = (pure) }
+		ActualPurity = (pure)
 	;
-		{ RHS0 = functor(ConsId, _, Args) } 
+		RHS0 = functor(ConsId, _, Args)
 	->
-		RunPostTypecheck =^ run_post_typecheck,
+		RunPostTypecheck = !.Info ^ run_post_typecheck,
 		(
-			{ RunPostTypecheck = yes },
-			ModuleInfo =^ module_info,
-			PredInfo0 =^ pred_info,
-			VarTypes0 =^ vartypes,
-			VarSet0 =^ varset,
-			{ post_typecheck__resolve_unify_functor(Var, ConsId,
+			RunPostTypecheck = yes,
+			ModuleInfo = !.Info ^ module_info,
+			PredInfo0 = !.Info ^ pred_info,
+			VarTypes0 = !.Info ^ vartypes,
+			VarSet0 = !.Info ^ varset,
+			post_typecheck__resolve_unify_functor(Var, ConsId,
 				Args, Mode, Unification, UnifyContext,
 				GoalInfo, ModuleInfo, PredInfo0, PredInfo,
-				VarTypes0, VarTypes, VarSet0, VarSet, Goal1) },
-			^ vartypes := VarTypes,
-			^ varset := VarSet,
-			^ pred_info := PredInfo
+				VarTypes0, VarTypes, VarSet0, VarSet, Goal1),
+			!:Info = !.Info ^ vartypes := VarTypes,
+			!:Info = !.Info ^ varset := VarSet,
+			!:Info = !.Info ^ pred_info := PredInfo
 		;
-			{ RunPostTypecheck = no },
-			{ Goal1 = Unif0 - GoalInfo }
+			RunPostTypecheck = no,
+			Goal1 = Unif0 - GoalInfo
 		),
-		( 
-			{ Goal1 = unify(_, _, _, _, _) - _ }
+		(
+			Goal1 = unify(_, _, _, _, _) - _
 		->
 			check_higher_order_purity(GoalInfo, ConsId,
-				Var, Args, ActualPurity),
-			{ Goal = Goal1 }
+				Var, Args, ActualPurity, !Info),
+			Goal = Goal1
 		;
-			compute_goal_purity(Goal1, Goal, ActualPurity)
+			compute_goal_purity(Goal1, Goal, ActualPurity, !Info)
 		),
-		{ Goal = GoalExpr - _ }
+		Goal = GoalExpr - _
 	;
-		{ GoalExpr = Unif0 },
-		{ ActualPurity = pure }
+		GoalExpr = Unif0,
+		ActualPurity = pure
 	).
-compute_expr_purity(disj(Goals0), disj(Goals), _, Purity) -->
-	compute_goals_purity(Goals0, Goals, pure, Purity).
-compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity) -->
+compute_expr_purity(disj(Goals0), disj(Goals), _, Purity, !Info) :-
+	compute_goals_purity(Goals0, Goals, pure, Purity, !Info).
+compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity, !Info) :-
 	%
 	% eliminate double negation
 	%
-	{ negate_goal(Goal0, GoalInfo0, NotGoal0) },
-	( { NotGoal0 = not(Goal1) - _GoalInfo1 } ->
-		compute_goal_purity(Goal1, Goal, Purity),
-		{ NotGoal = not(Goal) }
+	negate_goal(Goal0, GoalInfo0, NotGoal0),
+	( NotGoal0 = not(Goal1) - _GoalInfo1 ->
+		compute_goal_purity(Goal1, Goal, Purity, !Info),
+		NotGoal = not(Goal)
 	;
-		compute_goal_purity(NotGoal0, NotGoal1, Purity),
-		{ NotGoal1 = NotGoal - _ }
+		compute_goal_purity(NotGoal0, NotGoal1, Purity, !Info),
+		NotGoal1 = NotGoal - _
 	).
 compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
-		_, Purity) -->
-	compute_goal_purity(Goal0, Goal, Purity).
+		_, Purity, !Info) :-
+	compute_goal_purity(Goal0, Goal, Purity, !Info).
 compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
-		if_then_else(Vars, Cond, Then, Else), _, Purity) -->
-	compute_goal_purity(Cond0, Cond, Purity1),
-	compute_goal_purity(Then0, Then, Purity2),
-	compute_goal_purity(Else0, Else, Purity3),
-	{ worst_purity(Purity1, Purity2, Purity12) },
-	{ worst_purity(Purity12, Purity3, Purity) }.
-compute_expr_purity(ForeignProc0, ForeignProc, _, Purity) -->
-	{ ForeignProc0 = foreign_proc(_, _, _, _, _, _, _) },
-	{ Attributes = ForeignProc0 ^ foreign_attr },
-	{ PredId = ForeignProc0 ^ foreign_pred_id },
-	ModuleInfo =^ module_info,
-	{ 
-		legacy_purity_behaviour(Attributes, yes)
-	->
-			% get the purity from the declaration, and set it 
+		if_then_else(Vars, Cond, Then, Else), _, Purity, !Info) :-
+	compute_goal_purity(Cond0, Cond, Purity1, !Info),
+	compute_goal_purity(Then0, Then, Purity2, !Info),
+	compute_goal_purity(Else0, Else, Purity3, !Info),
+	worst_purity(Purity1, Purity2) = Purity12,
+	worst_purity(Purity12, Purity3) = Purity.
+compute_expr_purity(ForeignProc0, ForeignProc, _, Purity, !Info) :-
+	ForeignProc0 = foreign_proc(_, _, _, _, _, _, _),
+	Attributes = ForeignProc0 ^ foreign_attr,
+	PredId = ForeignProc0 ^ foreign_pred_id,
+	ModuleInfo = !.Info ^ module_info,
+	( legacy_purity_behaviour(Attributes) = yes ->
+			% get the purity from the declaration, and set it
 			% here so that it is correct for later use
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_get_purity(PredInfo, Purity),
-		set_purity(Attributes, Purity, NewAttributes),
+		set_purity(Purity, Attributes, NewAttributes),
 		ForeignProc = ForeignProc0 ^ foreign_attr := NewAttributes
 	;
 		ForeignProc = ForeignProc0,
-		purity(Attributes, AttributesPurity),
-		Purity = AttributesPurity
-	}.
+		Purity = purity(Attributes)
+	).
 
-compute_expr_purity(shorthand(_), _, _, _) -->
+compute_expr_purity(shorthand(_), _, _, _, !Info) :-
 	% these should have been expanded out by now
-	{ error("compute_expr_purity: unexpected shorthand") }.
+	error("compute_expr_purity: unexpected shorthand").
 
+:- pred check_higher_order_purity(hlds_goal_info::in, cons_id::in,
+	prog_var::in, list(prog_var)::in, purity::out,
+	purity_info::in, purity_info::out) is det.
 
-:- pred check_higher_order_purity(hlds_goal_info, cons_id, prog_var,
-	list(prog_var), purity, purity_info, purity_info).
-:- mode check_higher_order_purity(in, in, in, in, out, in, out) is det.
-check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
+check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
 	%
 	% Check that the purity of the ConsId matches the purity of the
 	% variable's type.
 	%
-	VarTypes =^ vartypes,
-	{ map__lookup(VarTypes, Var, TypeOfVar) },
-	( 
-		{ ConsId = cons(PName, _) },
-		{ type_is_higher_order(TypeOfVar, TypePurity, PredOrFunc,
-			_EvalMethod, VarArgTypes) }
+	VarTypes = !.Info ^ vartypes,
+	map__lookup(VarTypes, Var, TypeOfVar),
+	(
+		ConsId = cons(PName, _),
+		type_is_higher_order(TypeOfVar, TypePurity, PredOrFunc,
+			_EvalMethod, VarArgTypes)
 	->
-		PredInfo =^ pred_info,
-		{ pred_info_typevarset(PredInfo, TVarSet) },
-		{ map__apply_to_list(Args, VarTypes, ArgTypes0) },
-		{ list__append(ArgTypes0, VarArgTypes, PredArgTypes) },
-		ModuleInfo =^ module_info,
-		CallerPredInfo =^ pred_info,
-		{ pred_info_get_markers(CallerPredInfo, CallerMarkers) },
-		( 
-			{ get_pred_id(calls_are_fully_qualified(CallerMarkers),
+		PredInfo = !.Info ^ pred_info,
+		pred_info_typevarset(PredInfo, TVarSet),
+		map__apply_to_list(Args, VarTypes, ArgTypes0),
+		list__append(ArgTypes0, VarArgTypes, PredArgTypes),
+		ModuleInfo = !.Info ^ module_info,
+		CallerPredInfo = !.Info ^ pred_info,
+		pred_info_get_markers(CallerPredInfo, CallerMarkers),
+		(
+			get_pred_id(calls_are_fully_qualified(CallerMarkers),
 				PName, PredOrFunc, TVarSet, PredArgTypes,
-				ModuleInfo, CalleePredId) }
+				ModuleInfo, CalleePredId)
 		->
-			{ module_info_pred_info(ModuleInfo,
-				CalleePredId, CalleePredInfo) },
-			{ pred_info_get_purity(CalleePredInfo, CalleePurity) },
+			module_info_pred_info(ModuleInfo,
+				CalleePredId, CalleePredInfo),
+			pred_info_get_purity(CalleePredInfo, CalleePurity),
 			check_closure_purity(GoalInfo, TypePurity,
-				CalleePurity)
+				CalleePurity, !Info)
 		;
-			% If we can't find the type of the function, 
+			% If we can't find the type of the function,
 			% it's because typecheck couldn't give it one.
 			% Typechecking gives an error in this case, we
 			% just keep silent.
-			[]
+			true
 		)
 	;
-		[]
+		true
 	),
 
 	% The unification itself is always pure,
 	% even if it is a unification with an impure higher-order term.
-	{ ActualPurity = pure },
+	ActualPurity = pure,
 
 	% Check for a bogus purity annotation on the unification
-	{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
-	( { DeclaredPurity \= pure } ->
-		{ goal_info_get_context(GoalInfo, Context) },
-		{ Message = impure_unification_expr_error(Context,
-				DeclaredPurity) },
-		purity_info_add_message(error(Message))
+	infer_goal_info_purity(GoalInfo, DeclaredPurity),
+	( DeclaredPurity \= pure ->
+		goal_info_get_context(GoalInfo, Context),
+		Message = impure_unification_expr_error(Context,
+			DeclaredPurity),
+		purity_info_add_message(error(Message), !Info)
 	;
-		[]
+		true
 	).
 
 	% the possible results of a purity check
-:- type purity_check_result 
+:- type purity_check_result
 		--->	no_worries		% all is well
 		;	insufficient_decl	% purity decl is less than
 						% required.
@@ -794,7 +776,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
 						% but decl is impure
 		;	unnecessary_promise_pure % purity promise is given
 						% but not required
-		;	unnecessary_decl.	% purity decl is more than is 
+		;	unnecessary_decl.	% purity decl is more than is
 						% required.
 
 	% Peform purity checking of the actual and declared purity,
@@ -806,9 +788,10 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
 	% Promised: Did we promise this pred as pure?
 :- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
 	purity::in, purity_check_result::out) is det.
+
 perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 		PromisedPurity, PurityCheckResult) :-
-	( 
+	(
 		% The declared purity must match any promises.
 		% (A promise of impure means no promise was made).
 		PromisedPurity \= (impure), DeclaredPurity \= PromisedPurity
@@ -826,10 +809,10 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 		ActualPurity = DeclaredPurity
 	->
 		PurityCheckResult = no_worries
-	; 
+	;
 		less_pure(ActualPurity, DeclaredPurity)
 	->
-		( 
+		(
 			PromisedPurity = (impure)
 		->
 			PurityCheckResult = insufficient_decl
@@ -853,16 +836,16 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 			%
 		pred_info_get_markers(PredInfo, Markers),
 		pred_info_get_goal_type(PredInfo, GoalType),
-		( 
+		(
 			GoalType = pragmas
 		;
 			GoalType = clauses_and_pragmas
 		;
-			check_marker(Markers, class_method) 
+			check_marker(Markers, class_method)
 		;
-			check_marker(Markers, class_instance_method) 
+			check_marker(Markers, class_instance_method)
 		;
-			check_marker(Markers, stub) 
+			check_marker(Markers, stub)
 		)
 	->
 		PurityCheckResult = no_worries
@@ -878,88 +861,84 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 :- pred perform_goal_purity_checks(prog_context::in, pred_id::in, purity::in,
 	purity::out, purity_info::in, purity_info::out) is det.
 
-perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity) -->
-	ModuleInfo =^ module_info,
-	PredInfo =^ pred_info,
-	{ module_info_pred_info(ModuleInfo, PredId, CalleePredInfo) },
-	{ pred_info_get_purity(CalleePredInfo, ActualPurity) },
-	( 
+perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
+		!Info) :-
+	ModuleInfo = !.Info ^ module_info,
+	PredInfo = !.Info ^ pred_info,
+	module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
+	pred_info_get_purity(CalleePredInfo, ActualPurity),
+	(
 		% The purity of the callee should match the
 		% purity declared at the call
-		{ ActualPurity = DeclaredPurity }
+		ActualPurity = DeclaredPurity
 	->
-		[]
-	; 
+		true
+	;
 		% Don't require purity annotations on calls in
 		% compiler-generated code.
-		{ is_unify_or_compare_pred(PredInfo) }
+		is_unify_or_compare_pred(PredInfo)
 	->
-		[]
-	; 
-		{ less_pure(ActualPurity, DeclaredPurity) }
+		true
+	;
+		less_pure(ActualPurity, DeclaredPurity)
 	->
 		purity_info_add_message(
-			error(missing_body_impurity_error(Context, PredId)))
+			error(missing_body_impurity_error(Context, PredId)),
+			!Info)
 	;
 			% We don't warn about exaggerated impurity decls in
 			% class methods or instance methods --- it just
 			% means that the predicate provided as an
 			% implementation was more pure than necessary.
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ 
-			check_marker(Markers, class_method) 
+		pred_info_get_markers(PredInfo, Markers),
+		(
+			check_marker(Markers, class_method)
 		;
-			check_marker(Markers, class_instance_method) 
-		}
+			check_marker(Markers, class_instance_method)
+		)
 	->
-		[]
+		true
 	;
 		purity_info_add_message(
 			warning(unnecessary_body_impurity_decl(Context,
-				PredId, DeclaredPurity)))
+				PredId, DeclaredPurity)),
+			!Info)
 	).
 
-:- pred compute_goal_purity(hlds_goal, hlds_goal,
-		purity, purity_info, purity_info).
-:- mode compute_goal_purity(in, out, out, in, out) is det.
+:- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
+	purity_info::in, purity_info::out) is det.
 
-compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity) -->
-	compute_expr_purity(Goal0, Goal, GoalInfo0, Purity),
-	{ add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo) }.
-
+compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, !Info) :-
+	compute_expr_purity(Goal0, Goal, GoalInfo0, Purity, !Info),
+	add_goal_info_purity_feature(GoalInfo0, Purity, GoalInfo).
 
 %  Compute the purity of a list of hlds_goals.  Since the purity of a
 %  disjunction is computed the same way as the purity of a conjunction, we use
 %  the same code for both
 
-:- pred compute_goals_purity(list(hlds_goal), list(hlds_goal),
-	purity, purity, purity_info, purity_info).
-:- mode compute_goals_purity(in, out, in, out, in, out) is det.
+:- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
+	purity::in, purity::out, purity_info::in, purity_info::out) is det.
 
-compute_goals_purity([], [], Purity, Purity) --> [].
-compute_goals_purity([Goal0|Goals0], [Goal|Goals], Purity0, Purity) -->
-	compute_goal_purity(Goal0, Goal, Purity1),
-	{ worst_purity(Purity0, Purity1, Purity2) },
-	compute_goals_purity(Goals0, Goals, Purity2, Purity).
+compute_goals_purity([], [], !Purity, !Info).
+compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !Info) :-
+	compute_goal_purity(Goal0, Goal, GoalPurity, !Info),
+	worst_purity(GoalPurity, !.Purity) = !:Purity,
+	compute_goals_purity(Goals0, Goals, !Purity, !Info).
 
+:- pred compute_cases_purity(list(case)::in, list(case)::out,
+	purity::in, purity::out, purity_info::in, purity_info::out) is det.
 
-
-:- pred compute_cases_purity(list(case), list(case),
-	purity, purity, purity_info, purity_info).
-:- mode compute_cases_purity(in, out, in, out, in, out) is det.
-
-compute_cases_purity([], [], Purity, Purity) --> [].
-compute_cases_purity([case(Ctor,Goal0)|Goals0], [case(Ctor,Goal)|Goals],
-		Purity0, Purity) -->
-	compute_goal_purity(Goal0, Goal, Purity1),
-	{ worst_purity(Purity0, Purity1, Purity2) },
-	compute_cases_purity(Goals0, Goals, Purity2, Purity).
+compute_cases_purity([], [], !Purity, !Info).
+compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
+		!Purity, !Info) :-
+	compute_goal_purity(Goal0, Goal, GoalPurity, !Info),
+	worst_purity(GoalPurity, !.Purity) = !:Purity,
+	compute_cases_purity(Cases0, Cases, !Purity, !Info).
 
 	% Make sure lambda expressions introduced by the compiler
 	% have the correct mode for their `aditi__state' arguments.
-:- pred fix_aditi_state_modes(bool, (mode), list(type),
-		list(mode), list(mode)).
-:- mode fix_aditi_state_modes(in, in, in, in, out) is det.
+:- pred fix_aditi_state_modes(bool::in, (mode)::in, list(type)::in,
+	list(mode)::in, list(mode)::out) is det.
 
 fix_aditi_state_modes(_, _, [], [], []).
 fix_aditi_state_modes(_, _, [_|_], [], []) :-
@@ -990,9 +969,8 @@ fix_aditi_state_modes(SeenState0, AditiStateMode, [Type | Types],
 
 %-----------------------------------------------------------------------------%
 
-:- pred error_inconsistent_promise(module_info, pred_info, pred_id, purity,
-				  io__state, io__state).
-:- mode error_inconsistent_promise(in, in, in, in, di, uo) is det.
+:- pred error_inconsistent_promise(module_info::in, pred_info::in,
+	pred_id::in, purity::in, io__state::di, io__state::uo) is det.
 
 error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 	{ pred_info_context(PredInfo, Context) },
@@ -1016,10 +994,9 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 		[]
 	).
 
-
-:- pred warn_exaggerated_impurity_decl(module_info, pred_info, pred_id,
-				       purity, purity, io__state, io__state).
-:- mode warn_exaggerated_impurity_decl(in, in, in, in, in, di, uo) is det.
+:- pred warn_exaggerated_impurity_decl(module_info::in, pred_info::in,
+	pred_id::in, purity::in, purity::in,
+	io__state::di, io__state::uo) is det.
 
 warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 		DeclPurity, AcutalPurity) -->
@@ -1032,9 +1009,8 @@ warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 	write_purity(AcutalPurity),
 	io__write_string(".\n").
 
-:- pred warn_unnecessary_promise_pure(module_info, pred_info, pred_id, purity,
-				  io__state, io__state).
-:- mode warn_unnecessary_promise_pure(in, in, in, in, di, uo) is det.
+:- pred warn_unnecessary_promise_pure(module_info::in, pred_info::in,
+	pred_id::in, purity::in, io__state::di, io__state::uo) is det.
 
 warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 	{ pred_info_context(PredInfo, Context) },
@@ -1063,7 +1039,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 		io__write_string("  This "),
 		hlds_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" does not invoke any "),
-		io__write_string(CodeStr),  
+		io__write_string(CodeStr),
 		io__write_string(" code,\n"),
 		prog_out__write_context(Context),
 		io__write_string("  so there is no need for a `"),
@@ -1073,10 +1049,8 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 		[]
 	).
 
-
-:- pred error_inferred_impure(module_info, pred_info, pred_id, purity,
-	io__state, io__state).
-:- mode error_inferred_impure(in, in, in, in, di, uo) is det.
+:- pred error_inferred_impure(module_info::in, pred_info::in, pred_id::in,
+	purity::in, io__state::di, io__state::uo) is det.
 
 error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	{ pred_info_context(PredInfo, Context) },
@@ -1108,7 +1082,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	.
 
 :- type post_typecheck_messages == list(post_typecheck_message).
-	
+
 :- type post_typecheck_error
 	--->	missing_body_impurity_error(prog_context, pred_id)
 	;	closure_purity_error(prog_context, purity, purity)
@@ -1120,9 +1094,8 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 :- type post_typecheck_warning
 	--->	unnecessary_body_impurity_decl(prog_context, pred_id, purity).
 
-:- pred report_post_typecheck_message(module_info, post_typecheck_message, 
-		io__state, io__state).
-:- mode report_post_typecheck_message(in, in, di, uo) is det.
+:- pred report_post_typecheck_message(module_info::in,
+	post_typecheck_message::in, io__state::di, io__state::uo) is det.
 
 report_post_typecheck_message(ModuleInfo, error(Message)) -->
 	io__set_exit_status(1),
@@ -1153,11 +1126,10 @@ report_post_typecheck_message(ModuleInfo,
 		{ HaltAtWarn = no }
 	),
 	warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
-		DeclaredPurity). 
+		DeclaredPurity).
 
-:- pred error_missing_body_impurity_decl(module_info, pred_id,
-				  prog_context, io__state, io__state).
-:- mode error_missing_body_impurity_decl(in, in, in, di, uo) is det.
+:- pred error_missing_body_impurity_decl(module_info::in, pred_id::in,
+	prog_context::in, io__state::di, io__state::uo) is det.
 
 error_missing_body_impurity_decl(ModuleInfo, PredId, Context) -->
 	prog_out__write_context(Context),
@@ -1175,18 +1147,16 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context) -->
 		write_purity(Purity),
 		io__write_string("' indicator.\n")
 	;
-		io__write_string("  purity error: call must be in an explicit unification\n"),
+		io__write_string("  purity error: call must be " ++
+			"in an explicit unification\n"),
 		prog_out__write_context(Context),
 		io__write_string("  which is preceded by `"),
 		write_purity(Purity),
 		io__write_string("' indicator.\n")
-
 	).
 
-:- pred warn_unnecessary_body_impurity_decl(module_info, pred_id,
-	prog_context, purity, io__state, io__state).
-:- mode warn_unnecessary_body_impurity_decl(in, in, in, in, di, uo)
-	is det.
+:- pred warn_unnecessary_body_impurity_decl(module_info::in, pred_id::in,
+	prog_context::in, purity::in, io__state::di, io__state::uo) is det.
 
 warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
 		DeclaredPurity) -->
@@ -1208,10 +1178,9 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
 		write_purity(ActualPurity),
 		io__write_string("' is sufficient.\n")
 	).
-	
-:- pred check_closure_purity(hlds_goal_info, purity, purity,
-		purity_info, purity_info).	
-:- mode check_closure_purity(in, in, in, in, out) is det.
+
+:- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
+	purity_info::in, purity_info::out) is det.
 
 check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity) -->
 	( { ActualPurity `less_pure` DeclaredPurity } ->
@@ -1225,9 +1194,8 @@ check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity) -->
 		[]
 	).
 
-:- pred report_error_closure_purity(prog_context, purity, purity,
-		io__state, io__state).
-:- mode report_error_closure_purity(in, in, in, di, uo) is det.
+:- pred report_error_closure_purity(prog_context::in, purity::in, purity::in,
+	io__state::di, io__state::uo) is det.
 
 report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) -->
 	prog_out__write_context(Context),
@@ -1239,9 +1207,8 @@ report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) -->
 	write_purity(ActualPurity),
 	io__write_string(".'\n").
 
-:- pred write_context_and_pred_id(module_info, pred_info, pred_id,
-				  io__state, io__state).
-:- mode write_context_and_pred_id(in, in, in, di, uo) is det.
+:- pred write_context_and_pred_id(module_info::in, pred_info::in, pred_id::in,
+	io__state::di, io__state::uo) is det.
 
 write_context_and_pred_id(ModuleInfo, PredInfo, PredId) -->
 	{ pred_info_context(PredInfo, Context) },
@@ -1252,7 +1219,8 @@ write_context_and_pred_id(ModuleInfo, PredInfo, PredId) -->
 
 impure_unification_expr_error(Context, Purity) -->
 	prog_out__write_context(Context),
-	io__write_string("Purity error: unification with expression was declared\n"),
+	io__write_string(
+		"Purity error: unification with expression was declared\n"),
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_purity(Purity),
@@ -1273,9 +1241,8 @@ impure_unification_expr_error(Context, Purity) -->
 			messages :: post_typecheck_messages
 	).
 
-:- pred purity_info_add_message(post_typecheck_message,
-		purity_info, purity_info).
-:- mode purity_info_add_message(in, in, out) is det.
+:- pred purity_info_add_message(post_typecheck_message::in,
+	purity_info::in, purity_info::out) is det.
 
 purity_info_add_message(Message, Info,
 		Info ^ messages := [Message | Info ^ messages]).

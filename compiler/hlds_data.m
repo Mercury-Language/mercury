@@ -122,8 +122,7 @@
 	%
 :- type field_access_type
 	--->	get
-	;	set
-	.
+	;	set.
 
 %-----------------------------------------------------------------------------%
 
@@ -132,33 +131,29 @@
 	% Given a cons_id and a list of argument terms, convert it into a
 	% term. Fails if the cons_id is a pred_const, or type_ctor_info_const.
 
-:- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
-:- mode cons_id_and_args_to_term(in, in, out) is semidet.
+:- pred cons_id_and_args_to_term(cons_id::in, list(term(T))::in, term(T)::out)
+	is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const and
 	% type_ctor_info_const.
 
-:- pred cons_id_arity(cons_id, arity).
-:- mode cons_id_arity(in, out) is det.
+:- func cons_id_arity(cons_id) = arity.
 
 	% Get the arity of a cons_id. Return a `no' on those cons_ids
 	% where cons_id_arity/2 would normally abort.
 
-:- pred cons_id_maybe_arity(cons_id, maybe(arity)).
-:- mode cons_id_maybe_arity(in, out) is det.
+:- func cons_id_maybe_arity(cons_id) = maybe(arity).
 
 	% The reverse conversion - make a cons_id for a functor.
 	% Given a const and an arity for the functor, create a cons_id.
 
-:- pred make_functor_cons_id(const, arity, cons_id).
-:- mode make_functor_cons_id(in, in, out) is det.
+:- func make_functor_cons_id(const, arity) = cons_id.
 
 	% Another way of making a cons_id from a functor.
 	% Given the name, argument types, and type_ctor of a functor,
 	% create a cons_id for that functor.
 
-:- pred make_cons_id(sym_name, list(constructor_arg), type_ctor, cons_id).
-:- mode make_cons_id(in, in, in, out) is det.
+:- func make_cons_id(sym_name, list(constructor_arg), type_ctor) = cons_id.
 
 	% Another way of making a cons_id from a functor.
 	% Given the name, argument types, and type_ctor of a functor,
@@ -169,8 +164,7 @@
 	% need the module qualification of the type, (b) it can compute the
 	% arity from any list of the right length.
 
-:- pred make_cons_id_from_qualified_sym_name(sym_name, list(_), cons_id).
-:- mode make_cons_id_from_qualified_sym_name(in, in, out) is det.
+:- func make_cons_id_from_qualified_sym_name(sym_name, list(_)) = cons_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -178,7 +172,7 @@
 
 :- import_module parse_tree__prog_util.
 
-:- import_module require, varset.
+:- import_module string, require, varset.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
 	term__context_init(Context),
@@ -192,47 +186,50 @@ cons_id_and_args_to_term(string_const(String), [], Term) :-
 cons_id_and_args_to_term(cons(SymName, _Arity), Args, Term) :-
 	construct_qualified_term(SymName, Args, Term).
 
-cons_id_arity(cons(_, Arity), Arity).
-cons_id_arity(int_const(_), 0).
-cons_id_arity(string_const(_), 0).
-cons_id_arity(float_const(_), 0).
-cons_id_arity(pred_const(_, _, _), _) :-
-	error("cons_id_arity: can't get arity of pred_const").
-cons_id_arity(type_ctor_info_const(_, _, _), _) :-
-	error("cons_id_arity: can't get arity of type_ctor_info_const").
-cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
-	error("cons_id_arity: can't get arity of base_typeclass_info_const").
-cons_id_arity(type_info_cell_constructor(_), _) :-
-	error("cons_id_arity: can't get arity of type_info_cell_constructor").
-cons_id_arity(typeclass_info_cell_constructor, _) :-
-	error("cons_id_arity: can't get arity of typeclass_info_cell_constructor").
-cons_id_arity(tabling_pointer_const(_, _), _) :-
-	error("cons_id_arity: can't get arity of tabling_pointer_const").
-cons_id_arity(deep_profiling_proc_static(_), _) :-
-	error("cons_id_arity: can't get arity of deep_profiling_proc_static").
-cons_id_arity(table_io_decl(_), _) :-
-	error("cons_id_arity: can't get arity of table_io_decl").
+cons_id_arity(cons(_, Arity)) = Arity.
+cons_id_arity(int_const(_)) = 0.
+cons_id_arity(string_const(_)) = 0.
+cons_id_arity(float_const(_)) = 0.
+cons_id_arity(pred_const(_, _, _)) =
+	func_error("cons_id_arity: can't get arity of pred_const").
+cons_id_arity(type_ctor_info_const(_, _, _)) =
+	func_error("cons_id_arity: can't get arity of type_ctor_info_const").
+cons_id_arity(base_typeclass_info_const(_, _, _, _)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of base_typeclass_info_const").
+cons_id_arity(type_info_cell_constructor(_)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of type_info_cell_constructor").
+cons_id_arity(typeclass_info_cell_constructor) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of typeclass_info_cell_constructor").
+cons_id_arity(tabling_pointer_const(_, _)) =
+	func_error("cons_id_arity: can't get arity of tabling_pointer_const").
+cons_id_arity(deep_profiling_proc_static(_)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of deep_profiling_proc_static").
+cons_id_arity(table_io_decl(_)) =
+	func_error("cons_id_arity: can't get arity of table_io_decl").
 
-cons_id_maybe_arity(cons(_, Arity), yes(Arity)).
-cons_id_maybe_arity(int_const(_), yes(0)).
-cons_id_maybe_arity(string_const(_), yes(0)).
-cons_id_maybe_arity(float_const(_), yes(0)).
-cons_id_maybe_arity(pred_const(_, _, _), no) .
-cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
-cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
-cons_id_maybe_arity(type_info_cell_constructor(_), no) .
-cons_id_maybe_arity(typeclass_info_cell_constructor, no) .
-cons_id_maybe_arity(tabling_pointer_const(_, _), no).
-cons_id_maybe_arity(deep_profiling_proc_static(_), no).
-cons_id_maybe_arity(table_io_decl(_), no).
+cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
+cons_id_maybe_arity(int_const(_)) = yes(0).
+cons_id_maybe_arity(string_const(_)) = yes(0).
+cons_id_maybe_arity(float_const(_)) = yes(0).
+cons_id_maybe_arity(pred_const(_, _, _)) = no.
+cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
+cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
+cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
+cons_id_maybe_arity(typeclass_info_cell_constructor) = no.
+cons_id_maybe_arity(tabling_pointer_const(_, _)) = no.
+cons_id_maybe_arity(deep_profiling_proc_static(_)) = no.
+cons_id_maybe_arity(table_io_decl(_)) = no.
 
-make_functor_cons_id(term__atom(Name), Arity,
-		cons(unqualified(Name), Arity)).
-make_functor_cons_id(term__integer(Int), _, int_const(Int)).
-make_functor_cons_id(term__string(String), _, string_const(String)).
-make_functor_cons_id(term__float(Float), _, float_const(Float)).
+make_functor_cons_id(term__atom(Name), Arity) = cons(unqualified(Name), Arity).
+make_functor_cons_id(term__integer(Int), _) = int_const(Int).
+make_functor_cons_id(term__string(String), _) = string_const(String).
+make_functor_cons_id(term__float(Float), _) = float_const(Float).
 
-make_cons_id(SymName0, Args, TypeCtor, cons(SymName, Arity)) :-
+make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
 	% Use the module qualifier on the SymName, if there is one,
 	% otherwise use the module qualifier on the Type, if there is one,
 	% otherwise leave it unqualified.
@@ -252,7 +249,7 @@ make_cons_id(SymName0, Args, TypeCtor, cons(SymName, Arity)) :-
 	),
 	list__length(Args, Arity).
 
-make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
+make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
 	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
@@ -273,40 +270,25 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type hlds_type_defn.
 
-:- pred hlds_data__set_type_defn(tvarset, list(type_param), hlds_type_body,
-	import_status, need_qualifier, prog_context, hlds_type_defn).
-:- mode hlds_data__set_type_defn(in, in, in, in, in, in, out) is det.
+:- pred hlds_data__set_type_defn(tvarset::in, list(type_param)::in,
+	hlds_type_body::in, import_status::in, need_qualifier::in,
+	prog_context::in, hlds_type_defn::out) is det.
 
-:- pred hlds_data__get_type_defn_tvarset(hlds_type_defn, tvarset).
-:- mode hlds_data__get_type_defn_tvarset(in, out) is det.
+:- pred get_type_defn_tvarset(hlds_type_defn::in, tvarset::out) is det.
+:- pred get_type_defn_tparams(hlds_type_defn::in, list(type_param)::out)
+	is det.
+:- pred get_type_defn_body(hlds_type_defn::in, hlds_type_body::out) is det.
+:- pred get_type_defn_status(hlds_type_defn::in, import_status::out) is det.
+:- pred get_type_defn_need_qualifier(hlds_type_defn::in, need_qualifier::out)
+	is det.
+:- pred get_type_defn_context(hlds_type_defn::in, prog_context::out) is det.
 
-:- pred hlds_data__get_type_defn_tparams(hlds_type_defn, list(type_param)).
-:- mode hlds_data__get_type_defn_tparams(in, out) is det.
-
-:- pred hlds_data__get_type_defn_body(hlds_type_defn, hlds_type_body).
-:- mode hlds_data__get_type_defn_body(in, out) is det.
-
-:- pred hlds_data__get_type_defn_status(hlds_type_defn, import_status).
-:- mode hlds_data__get_type_defn_status(in, out) is det.
-
-:- pred hlds_data__get_type_defn_need_qualifier(hlds_type_defn,
-		need_qualifier).
-:- mode hlds_data__get_type_defn_need_qualifier(in, out) is det.
-
-:- pred hlds_data__get_type_defn_context(hlds_type_defn, prog_context).
-:- mode hlds_data__get_type_defn_context(in, out) is det.
-
-:- pred hlds_data__set_type_defn_status(hlds_type_defn, import_status,
-			hlds_type_defn).
-:- mode hlds_data__set_type_defn_status(in, in, out) is det.
-
-:- pred hlds_data__set_type_defn_body(hlds_type_defn, hlds_type_body,
-			hlds_type_defn).
-:- mode hlds_data__set_type_defn_body(in, in, out) is det.
-
-:- pred hlds_data__set_type_defn_tvarset(hlds_type_defn, tvarset,
-			hlds_type_defn).
-:- mode hlds_data__set_type_defn_tvarset(in, in, out) is det.
+:- pred set_type_defn_status(import_status::in,
+	hlds_type_defn::in, hlds_type_defn::out) is det.
+:- pred set_type_defn_body(hlds_type_body::in,
+	hlds_type_defn::in, hlds_type_defn::out) is det.
+:- pred set_type_defn_tvarset(tvarset::in,
+	hlds_type_defn::in, hlds_type_defn::out) is det.
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
@@ -345,11 +327,11 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	;	abstract_type(is_solver_type).
 
 :- type foreign_type_body
-	---> foreign_type_body(
+	--->	foreign_type_body(
 			il	:: foreign_type_lang_body(il_foreign_type),
 			c	:: foreign_type_lang_body(c_foreign_type),
 			java	:: foreign_type_lang_body(java_foreign_type)
-	).
+		).
 
 :- type foreign_type_lang_body(T) == maybe(pair(T, maybe(unify_compare))).
 
@@ -595,10 +577,10 @@ hlds_data__get_type_defn_status(Defn, Defn ^ type_defn_import_status).
 hlds_data__get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
 hlds_data__get_type_defn_context(Defn, Defn ^ type_defn_context).
 
-hlds_data__set_type_defn_body(Defn, Body, Defn ^ type_defn_body := Body).
-hlds_data__set_type_defn_tvarset(Defn, TVarSet,
+hlds_data__set_type_defn_body(Body, Defn, Defn ^ type_defn_body := Body).
+hlds_data__set_type_defn_tvarset(TVarSet, Defn,
 		Defn ^ type_defn_tvarset := TVarSet).
-hlds_data__set_type_defn_status(Defn, Status,
+hlds_data__set_type_defn_status(Status, Defn,
 		Defn ^ type_defn_import_status := Status).
 
 %-----------------------------------------------------------------------------%
@@ -675,66 +657,48 @@ hlds_data__set_type_defn_status(Defn, Status,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_table_init(inst_table).
-:- mode inst_table_init(out) is det.
+:- pred inst_table_init(inst_table::out) is det.
 
-:- pred inst_table_get_user_insts(inst_table, user_inst_table).
-:- mode inst_table_get_user_insts(in, out) is det.
+:- pred inst_table_get_user_insts(inst_table::in, user_inst_table::out) is det.
+:- pred inst_table_get_unify_insts(inst_table::in, unify_inst_table::out)
+	is det.
+:- pred inst_table_get_merge_insts(inst_table::in, merge_inst_table::out)
+	is det.
+:- pred inst_table_get_ground_insts(inst_table::in, ground_inst_table::out)
+	is det.
+:- pred inst_table_get_any_insts(inst_table::in, any_inst_table::out) is det.
+:- pred inst_table_get_shared_insts(inst_table::in, shared_inst_table::out)
+	is det.
+:- pred inst_table_get_mostly_uniq_insts(inst_table::in,
+	mostly_uniq_inst_table::out) is det.
 
-:- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
-:- mode inst_table_get_unify_insts(in, out) is det.
+:- pred inst_table_set_user_insts(user_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_unify_insts(unify_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_merge_insts(merge_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_ground_insts(ground_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_any_insts(any_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_shared_insts(shared_inst_table::in,
+	inst_table::in, inst_table::out) is det.
+:- pred inst_table_set_mostly_uniq_insts(mostly_uniq_inst_table::in,
+	inst_table::in, inst_table::out) is det.
 
-:- pred inst_table_get_merge_insts(inst_table, merge_inst_table).
-:- mode inst_table_get_merge_insts(in, out) is det.
+:- pred user_inst_table_get_inst_defns(user_inst_table::in,
+	user_inst_defns::out) is det.
+:- pred user_inst_table_get_inst_ids(user_inst_table::in,
+	list(inst_id)::out) is det.
 
-:- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
-:- mode inst_table_get_ground_insts(in, out) is det.
-
-:- pred inst_table_get_any_insts(inst_table, any_inst_table).
-:- mode inst_table_get_any_insts(in, out) is det.
-
-:- pred inst_table_get_shared_insts(inst_table, shared_inst_table).
-:- mode inst_table_get_shared_insts(in, out) is det.
-
-:- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
-:- mode inst_table_get_mostly_uniq_insts(in, out) is det.
-
-:- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
-:- mode inst_table_set_user_insts(in, in, out) is det.
-
-:- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
-:- mode inst_table_set_unify_insts(in, in, out) is det.
-
-:- pred inst_table_set_merge_insts(inst_table, merge_inst_table, inst_table).
-:- mode inst_table_set_merge_insts(in, in, out) is det.
-
-:- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
-:- mode inst_table_set_ground_insts(in, in, out) is det.
-
-:- pred inst_table_set_any_insts(inst_table, any_inst_table, inst_table).
-:- mode inst_table_set_any_insts(in, in, out) is det.
-
-:- pred inst_table_set_shared_insts(inst_table, shared_inst_table, inst_table).
-:- mode inst_table_set_shared_insts(in, in, out) is det.
-
-:- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
-					inst_table).
-:- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
-
-:- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
-:- mode user_inst_table_get_inst_defns(in, out) is det.
-
-:- pred user_inst_table_get_inst_ids(user_inst_table, list(inst_id)).
-:- mode user_inst_table_get_inst_ids(in, out) is det.
-
-:- pred user_inst_table_insert(user_inst_table, inst_id, hlds_inst_defn,
-					user_inst_table).
-:- mode user_inst_table_insert(in, in, in, out) is semidet.
+:- pred user_inst_table_insert(inst_id::in, hlds_inst_defn::in,
+	user_inst_table::in, user_inst_table::out) is semidet.
 
 	% Optimize the user_inst_table for lookups. This just sorts
 	% the cached list of inst_ids.
-:- pred user_inst_table_optimize(user_inst_table, user_inst_table).
-:- mode user_inst_table_optimize(in, out) is det.
+:- pred user_inst_table_optimize(user_inst_table::in, user_inst_table::out)
+	is det.
 
 :- implementation.
 
@@ -753,8 +717,9 @@ hlds_data__set_type_defn_status(Defn, Status,
 
 :- type user_inst_table
 	--->	user_inst_table(
-			user_inst_defns,
-			list(inst_id)	% Cached for efficiency when module
+			uinst_table_defns	:: user_inst_defns,
+			uinst_table_ids		:: list(inst_id)
+				% Cached for efficiency when module
 				% qualifying the modes of lambda expressions.
 		).
 
@@ -778,34 +743,39 @@ inst_table_get_shared_insts(InstTable, InstTable ^ inst_table_shared).
 inst_table_get_mostly_uniq_insts(InstTable,
 	InstTable ^ inst_table_mostly_uniq).
 
-inst_table_set_user_insts(InstTable, UserInsts,
+inst_table_set_user_insts(UserInsts, InstTable,
 	InstTable ^ inst_table_user := UserInsts).
-inst_table_set_unify_insts(InstTable, UnifyInsts,
+inst_table_set_unify_insts(UnifyInsts, InstTable,
 	InstTable ^ inst_table_unify := UnifyInsts).
-inst_table_set_merge_insts(InstTable, MergeInsts,
+inst_table_set_merge_insts(MergeInsts, InstTable,
 	InstTable ^ inst_table_merge := MergeInsts).
-inst_table_set_ground_insts(InstTable, GroundInsts,
+inst_table_set_ground_insts(GroundInsts, InstTable,
 	InstTable ^ inst_table_ground := GroundInsts).
-inst_table_set_any_insts(InstTable, AnyInsts,
+inst_table_set_any_insts(AnyInsts, InstTable,
 	InstTable ^ inst_table_any := AnyInsts).
-inst_table_set_shared_insts(InstTable, SharedInsts,
+inst_table_set_shared_insts(SharedInsts, InstTable,
 	InstTable ^ inst_table_shared := SharedInsts).
-inst_table_set_mostly_uniq_insts(InstTable, MostlyUniqInsts,
+inst_table_set_mostly_uniq_insts(MostlyUniqInsts, InstTable,
 	InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts).
 
-user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
+user_inst_table_get_inst_defns(UserInstTable,
+	UserInstTable ^ uinst_table_defns).
+user_inst_table_get_inst_ids(UserInstTable,
+	UserInstTable ^ uinst_table_ids).
 
-user_inst_table_get_inst_ids(user_inst_table(_, InstIds), InstIds).
-
-user_inst_table_insert(user_inst_table(InstDefns0, InstIds0), InstId,
-			InstDefn, user_inst_table(InstDefns, InstIds)) :-
+user_inst_table_insert(InstId, InstDefn, UserInstTable0, UserInstTable) :-
+	UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
+	InstDefns0 = UserInstTable0 ^ uinst_table_defns,
 	map__insert(InstDefns0, InstId, InstDefn, InstDefns),
-	InstIds = [InstId | InstIds0].
+	InstIds = [InstId | InstIds0],
+	UserInstTable = user_inst_table(InstDefns, InstIds).
 
-user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
-			user_inst_table(InstDefns, InstIds)) :-
+user_inst_table_optimize(UserInstTable0, UserInstTable) :-
+	UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
 	map__optimize(InstDefns0, InstDefns),
-	list__sort(InstIds0, InstIds).
+	list__sort(InstIds0, InstIds),
+	UserInstTable = user_inst_table(InstDefns, InstIds).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -859,55 +829,55 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 					% other mode.
 
 	% Given a mode table get the mode_id - hlds_mode_defn map.
-:- pred mode_table_get_mode_defns(mode_table, mode_defns).
-:- mode mode_table_get_mode_defns(in, out) is det.
+:- pred mode_table_get_mode_defns(mode_table::in, mode_defns::out) is det.
 
 	% Get the list of defined mode_ids from the mode_table.
-:- pred mode_table_get_mode_ids(mode_table, list(mode_id)).
-:- mode mode_table_get_mode_ids(in, out) is det.
+:- pred mode_table_get_mode_ids(mode_table::in, list(mode_id)::out) is det.
 
 	% Insert a mode_id and corresponding hlds_mode_defn into the
 	% mode_table. Fail if the mode_id is already present in the table.
-:- pred mode_table_insert(mode_table, mode_id, hlds_mode_defn, mode_table).
-:- mode mode_table_insert(in, in, in, out) is semidet.
+:- pred mode_table_insert(mode_id::in, hlds_mode_defn::in,
+	mode_table::in, mode_table::out) is semidet.
 
-:- pred mode_table_init(mode_table).
-:- mode mode_table_init(out) is det.
+:- pred mode_table_init(mode_table::out) is det.
 
 	% Optimize the mode table for lookups.
-:- pred mode_table_optimize(mode_table, mode_table).
-:- mode mode_table_optimize(in, out) is det.
+:- pred mode_table_optimize(mode_table::in, mode_table::out) is det.
 
 
 :- implementation.
 
 :- type mode_table
 	--->	mode_table(
-			mode_defns,
-			list(mode_id)	% Cached for efficiency
+			mode_table_defns	:: mode_defns,
+			mode_table_ids		:: list(mode_id)
+						% Cached for efficiency
 		).
 
-mode_table_get_mode_defns(mode_table(ModeDefns, _), ModeDefns).
+mode_table_get_mode_defns(ModeTable, ModeTable ^ mode_table_defns).
+mode_table_get_mode_ids(ModeTable, ModeTable ^ mode_table_ids).
 
-mode_table_get_mode_ids(mode_table(_, ModeIds), ModeIds).
-
-mode_table_insert(mode_table(ModeDefns0, ModeIds0), ModeId, ModeDefn,
-			mode_table(ModeDefns, ModeIds)) :-
+mode_table_insert(ModeId, ModeDefn, ModeTable0, ModeTable) :-
+	ModeTable0 = mode_table(ModeDefns0, ModeIds0),
 	map__insert(ModeDefns0, ModeId, ModeDefn, ModeDefns),
-	ModeIds = [ModeId | ModeIds0].
+	ModeIds = [ModeId | ModeIds0],
+	ModeTable = mode_table(ModeDefns, ModeIds).
 
 mode_table_init(mode_table(ModeDefns, [])) :-
 	map__init(ModeDefns).
 
-mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
-			mode_table(ModeDefns, ModeIds)) :-
+mode_table_optimize(ModeTable0, ModeTable) :-
+	ModeTable0 = mode_table(ModeDefns0, ModeIds0),
 	map__optimize(ModeDefns0, ModeDefns), 	% NOP
-	list__sort(ModeIds0, ModeIds).		% Sort the list of mode_ids
-			% for quick conversion to a set by module_qual
-			% when qualifying the modes of lambda expressions.
+		% Sort the list of mode_ids
+		% for quick conversion to a set by module_qual
+		% when qualifying the modes of lambda expressions.
+	list__sort(ModeIds0, ModeIds),
+	ModeTable = mode_table(ModeDefns, ModeIds).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- interface.
 
 %
@@ -1082,14 +1052,14 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 :- pred assertion_table_init(assertion_table::out) is det.
 
-:- pred assertion_table_add_assertion(pred_id::in, assertion_table::in,
-		assert_id::out, assertion_table::out) is det.
+:- pred assertion_table_add_assertion(pred_id::in, assert_id::out,
+	assertion_table::in, assertion_table::out) is det.
 
 :- pred assertion_table_lookup(assertion_table::in, assert_id::in,
-		pred_id::out) is det.
+	pred_id::out) is det.
 
 :- pred assertion_table_pred_ids(assertion_table::in,
-		list(pred_id)::out) is det.
+	list(pred_id)::out) is det.
 
 :- implementation.
 
@@ -1102,7 +1072,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 assertion_table_init(assertion_table(0, AssertionMap)) :-
 	map__init(AssertionMap).
 
-assertion_table_add_assertion(Assertion, AssertionTable0, Id, AssertionTable) :-
+assertion_table_add_assertion(Assertion, Id, AssertionTable0, AssertionTable) :-
 	AssertionTable0 = assertion_table(Id, AssertionMap0),
 	map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
 	AssertionTable = assertion_table(Id + 1, AssertionMap).
@@ -1145,28 +1115,26 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 :- type exclusive_table.
 
 	% initialise the exclusive_table
-:- pred exclusive_table_init(exclusive_table).
-:- mode exclusive_table_init(out) is det.
+:- pred exclusive_table_init(exclusive_table::out) is det.
 
 	% search the exclusive table and return the list of exclusivity
 	% declarations that use the predicate given by pred_id
-:- pred exclusive_table_search(exclusive_table, pred_id, exclusive_ids).
-:- mode exclusive_table_search(in, in, out) is semidet.
+:- pred exclusive_table_search(exclusive_table::in, pred_id::in,
+	exclusive_ids::out) is semidet.
 
 	% as for search, but aborts if no exclusivity declarations are
 	% found
-:- pred exclusive_table_lookup(exclusive_table, pred_id, exclusive_ids).
-:- mode exclusive_table_lookup(in, in, out) is det.
+:- pred exclusive_table_lookup(exclusive_table::in, pred_id::in,
+	exclusive_ids::out) is det.
 
 	% optimises the exclusive_table
-:- pred exclusive_table_optimize(exclusive_table, exclusive_table).
-:- mode exclusive_table_optimize(in, out) is det.
+:- pred exclusive_table_optimize(exclusive_table::in, exclusive_table::out)
+	is det.
 
 	% add to the exclusive table that pred_id is used in the
 	% exclusivity declaration exclusive_id
-:- pred exclusive_table_add(pred_id, exclusive_id, exclusive_table,
-		exclusive_table).
-:- mode exclusive_table_add(in, in, in, out) is det.
+:- pred exclusive_table_add(pred_id::in, exclusive_id::in,
+	exclusive_table::in, exclusive_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 

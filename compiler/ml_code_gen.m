@@ -2238,7 +2238,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 		LaterCode, LaterContext, SharedCode, SharedContext,
 		MLDS_Decls, MLDS_Statements) -->
 
-	{ foreign_language(Attributes, Lang) },
+	{ Lang = foreign_language(Attributes) },
 	( { Lang = csharp } ->
 		{ sorry(this_file, "nondet pragma foreign_proc for C#") }
 	;
@@ -2286,7 +2286,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	%
 	% Generate code fragments to obtain and release the global lock
 	%
-	{ thread_safe(Attributes, ThreadSafe) },
+	{ ThreadSafe = thread_safe(Attributes) },
 	ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ObtainLock, ReleaseLock),
 
@@ -2389,7 +2389,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		Foreign_Code, Context, MLDS_Decls, MLDS_Statements) -->
-	{ foreign_language(Attributes, Lang) },
+	{ Lang = foreign_language(Attributes) },
 	( { Lang = c },
 		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
@@ -2426,7 +2426,7 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes,
 		_PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		JavaCode, Context, MLDS_Decls, MLDS_Statements) -->
 
-	{ foreign_language(Attributes, Lang) },
+	{ Lang = foreign_language(Attributes) },
 	%
 	% Combine all the information about the each arg
 	%
@@ -2487,7 +2487,7 @@ ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
 	{ ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList) },
 	ml_gen_outline_args(ArgList, OutlineArgs),
 
-	{ foreign_language(Attributes, ForeignLang) },
+	{ ForeignLang = foreign_language(Attributes) },
 	{ MLDSContext = mlds__make_context(Context) },
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_value_output_vars(MLDSGenInfo, OutputVars) },
@@ -2782,7 +2782,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
 
-	{ foreign_language(Attributes, Lang) },
+	{ Lang = foreign_language(Attributes) },
 
 	%
 	% Combine all the information about the each arg
@@ -2809,7 +2809,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 	%
 	% Generate code fragments to obtain and release the global lock
 	%
-	{ thread_safe(Attributes, ThreadSafe) },
+	{ ThreadSafe = thread_safe(Attributes) },
 	ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ObtainLock, ReleaseLock),
 

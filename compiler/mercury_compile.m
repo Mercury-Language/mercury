@@ -2554,7 +2554,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 mercury_compile__puritycheck(FoundTypeError, HLDS0, Verbose, Stats,
 		HLDS, FoundPostTypecheckError) -->
 	{ module_info_num_errors(HLDS0, NumErrors0) },
-	puritycheck(FoundTypeError, HLDS0, FoundPostTypecheckError, HLDS),
+	puritycheck(FoundTypeError, FoundPostTypecheckError, HLDS0, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors \= NumErrors0 } ->
 		maybe_write_string(Verbose,

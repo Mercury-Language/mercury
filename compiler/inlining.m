@@ -924,9 +924,9 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	globals__get_target(Globals, Target),
 	(
 		(
-		CalledGoal = foreign_proc(ForeignAttributes,
-			_,_,_,_,_,_) - _,
-		foreign_language(ForeignAttributes, ForeignLanguage)
+			CalledGoal = foreign_proc(ForeignAttributes,
+				_,_,_,_,_,_) - _,
+			ForeignLanguage = foreign_language(ForeignAttributes)
 		)
 	=>
 		ok_to_inline_language(ForeignLanguage, Target)

@@ -352,9 +352,9 @@ unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet,
 	map__lookup(Preds0, PredId, PredInfo0),
 	list__length(ArgModes, Arity),
 	DeclaredArgModes = no,
-	add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, DeclaredArgModes,
-		ArgLives, MaybeDet, Context, address_is_not_taken,
-		PredInfo1, ProcId),
+	add_new_proc(InstVarSet, Arity, ArgModes, DeclaredArgModes, ArgLives,
+		MaybeDet, Context, address_is_not_taken, PredInfo0, PredInfo1,
+		ProcId),
 
 	%
 	% copy the clauses for the procedure from the pred_info to the

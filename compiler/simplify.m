@@ -635,7 +635,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0),
 	; Cases = [case(ConsId, SingleGoal)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
-		cons_id_arity(ConsId, Arity),
+		Arity = cons_id_arity(ConsId),
 		(
 		    SwitchCanFail = can_fail,
 		    MaybeConsIds \= yes([ConsId])

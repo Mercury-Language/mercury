@@ -346,7 +346,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 		% won't clobber the registers.
 
 		CodeModel \= model_non,
-		may_call_mercury(Attributes, will_not_call_mercury)
+		may_call_mercury(Attributes) = will_not_call_mercury
 	->
 		GoalInfo = GoalInfo0
 	;

@@ -571,8 +571,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% save the new predicate in the predicate table
 
 		module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
-		predicate_table_insert(PredicateTable0, PredInfo,
-			PredId, PredicateTable),
+		predicate_table_insert(PredInfo, PredId,
+			PredicateTable0, PredicateTable),
 		module_info_set_predicate_table(PredicateTable,
 			ModuleInfo1, ModuleInfo)
 	),

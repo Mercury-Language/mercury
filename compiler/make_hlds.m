@@ -41,14 +41,14 @@
 %	Returns InvalidModes = yes if undefined or cyclic insts or modes found.
 %	QualInfo is an abstract type that is then passed back to
 %	produce_instance_method_clauses (see below).
-:- pred parse_tree_to_hlds(compilation_unit, mq_info, eqv_map, module_info,
-			qual_info, bool, bool, io__state, io__state).
-:- mode parse_tree_to_hlds(in, in, in, out, out, out, out, di, uo) is det.
+:- pred parse_tree_to_hlds(compilation_unit::in, mq_info::in, eqv_map::in,
+	module_info::out, qual_info::out, bool::out, bool::out, io::di, io::uo)
+	is det.
 
-:- pred add_new_proc(pred_info, inst_varset, arity, list(mode),
-		maybe(list(mode)), maybe(list(is_live)), maybe(determinism),
-		prog_context, is_address_taken, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, in, in, in, in, out, out) is det.
+:- pred add_new_proc(inst_varset::in, arity::in, list(mode)::in,
+	maybe(list(mode))::in, maybe(list(is_live))::in,
+	maybe(determinism)::in, prog_context::in, is_address_taken::in,
+	pred_info::in, pred_info::out, proc_id::out) is det.
 
 	% add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 	% 	TypeBody, TypeContext, TypeStatus, !ModuleInfo).
@@ -87,7 +87,7 @@
 	% Move the recompilation_info from the qual_info to the module_info
 	% after make_hlds is finished with it and the qual_info is dead.
 :- pred set_module_recompilation_info(qual_info::in,
-		module_info::in, module_info::out) is det.
+	module_info::in, module_info::out) is det.
 
 :- pred next_mode_id(proc_table, maybe(determinism), proc_id).
 :- mode next_mode_id(in, in, out) is det.
@@ -211,24 +211,29 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	Module = !.Module
     ).
 
-:- pred check_for_errors(pred(module_info, module_info, io__state, io__state),
-		bool, module_info, module_info, io__state, io__state).
-:- mode check_for_errors((pred(in, out, di, uo) is det),
-		out, in, out, di, uo) is det.
+:- pred check_for_errors(pred(module_info, module_info, io__state, io__state)
+	::pred(in, out, di, uo) is det, bool::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_for_errors(P, FoundError, Module0, Module) -->
-	io__get_exit_status(BeforeStatus),
-	io__set_exit_status(0),
-	{ module_info_num_errors(Module0, BeforeNumErrors) },
-	P(Module0, Module),
-	{ module_info_num_errors(Module, AfterNumErrors) },
-	io__get_exit_status(AfterStatus),
-	{ FoundError =
-	    (AfterStatus = 0, BeforeNumErrors = AfterNumErrors -> no ; yes) },
-	( { BeforeStatus \= 0 } ->
-		io__set_exit_status(BeforeStatus)
+check_for_errors(P, FoundError, !Module, !IO) :-
+	io__get_exit_status(BeforeStatus, !IO),
+	io__set_exit_status(0, !IO),
+	module_info_num_errors(!.Module, BeforeNumErrors),
+	P(!Module, !IO),
+	module_info_num_errors(!.Module, AfterNumErrors),
+	io__get_exit_status(AfterStatus, !IO),
+	(
+		AfterStatus = 0,
+		BeforeNumErrors = AfterNumErrors
+	->
+		FoundError = no
 	;
-		[]
+		FoundError = yes
+	),
+	( BeforeStatus \= 0 ->
+		io__set_exit_status(BeforeStatus, !IO)
+	;
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -247,19 +252,18 @@ check_for_errors(P, FoundError, Module0, Module) -->
 	% The `InvalidModes' bool records whether we detected
 	% any cyclic insts or modes.
 
-:- pred add_item_list_decls_pass_1(item_list, item_status,
-		module_info, module_info, bool, bool, io__state, io__state).
-:- mode add_item_list_decls_pass_1(in, in, in, out, in, out, di, uo) is det.
+:- pred add_item_list_decls_pass_1(item_list::in, item_status::in,
+	module_info::in, module_info::out, bool::in, bool::out,
+	io::di, io::uo) is det.
 
-add_item_list_decls_pass_1([], _, Module, Module, InvalidModes, InvalidModes)
-	--> [].
-add_item_list_decls_pass_1([Item - Context | Items], Status0, Module0, Module,
-		InvalidModes0, InvalidModes) -->
-	add_item_decl_pass_1(Item, Context, Status0, Status1, Module0,
-		Module1, InvalidModes1),
-	{ InvalidModes2 = bool__or(InvalidModes0, InvalidModes1) },
-	add_item_list_decls_pass_1(Items, Status1, Module1, Module,
-		InvalidModes2, InvalidModes).
+add_item_list_decls_pass_1([], _, !Module, !InvalidModes, !IO).
+add_item_list_decls_pass_1([Item - Context | Items], Status0, !Module,
+		!InvalidModes, !IO) :-
+	add_item_decl_pass_1(Item, Context, Status0, Status1, !Module,
+		NewInvalidModes, !IO),
+	!:InvalidModes = bool__or(!.InvalidModes, NewInvalidModes),
+	add_item_list_decls_pass_1(Items, Status1, !Module, !InvalidModes,
+		!IO).
 
 	% pass 2:
 	% Add the type definitions and pragmas one by one to the module,
@@ -459,7 +463,6 @@ add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
 	;
 		true
 	),
-
 	%
 	% switch on the pragma type
 	%
@@ -633,8 +636,8 @@ add_item_decl_pass_2(pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
 		->
 			predicate_table_get_preds(PredTable0, Preds0),
 			maybe_add_default_func_modes(PredIds, Preds0, Preds),
-			predicate_table_set_preds(PredTable0, Preds,
-				PredTable),
+			predicate_table_set_preds(Preds,
+				PredTable0, PredTable),
 			module_info_set_predicate_table(PredTable, !Module)
 		;
 			error("make_hlds.m: can't find func declaration")
@@ -664,8 +667,8 @@ add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet,
 	% If a module_defn updates the import_status, return the new
 	% status and whether uses of the following items must be module
 	% qualified, otherwise fail.
-:- pred module_defn_update_import_status(module_defn::in,
-		item_status::out) is semidet.
+:- pred module_defn_update_import_status(module_defn::in, item_status::out)
+	is semidet.
 
 module_defn_update_import_status(interface,
 		item_status(exported, may_be_unqualified)).
@@ -719,8 +722,8 @@ maybe_enable_aditi_compilation(_Status, Context, !Module, !IO) :-
 add_item_clause(clause(VarSet, PredOrFunc, PredName, Args, Body),
 		!Status, Context, !Module, !Info, !IO) :-
 	check_not_exported(!.Status, Context, "clause", !IO),
-	GoalType = none, 	% at this stage we only need know that it's not
-				% a promise declaration
+	GoalType = none,
+	% at this stage we only need know that it's not % a promise declaration
 	module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, !.Status,
 		Context, GoalType, !Module, !Info, !IO).
 add_item_clause(type_defn(_, _, _, _, _), !Status, _, !Module, !Info, !IO).
@@ -918,54 +921,54 @@ check_not_exported(Status, Context, Message, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_export(sym_name, pred_or_func, list(mode), string,
-	prog_context, module_info, module_info, io__state, io__state).
-:- mode add_pragma_export(in, in, in, in, in, in, out, di, uo) is det.
+:- pred add_pragma_export(sym_name::in, pred_or_func::in, list(mode)::in,
+	string::in, prog_context::in, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
-add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
-		Module0, Module) -->
-	{ module_info_get_predicate_table(Module0, PredTable) },
-	{ list__length(Modes, Arity) },
+add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context, !Module,
+		!IO) :-
+	module_info_get_predicate_table(!.Module, PredTable),
+	list__length(Modes, Arity),
 	(
-		{ predicate_table_search_pf_sym_arity(PredTable,
+		predicate_table_search_pf_sym_arity(PredTable,
 			may_be_partially_qualified, PredOrFunc, Name,
-			Arity, [PredId]) }
+			Arity, [PredId])
 	->
-		{ predicate_table_get_preds(PredTable, Preds) },
-		{ map__lookup(Preds, PredId, PredInfo) },
-		{ pred_info_procedures(PredInfo, Procs) },
-		{ map__to_assoc_list(Procs, ExistingProcs) },
+		predicate_table_get_preds(PredTable, Preds),
+		map__lookup(Preds, PredId, PredInfo),
+		pred_info_procedures(PredInfo, Procs),
+		map__to_assoc_list(Procs, ExistingProcs),
 		(
-			{ get_procedure_matching_declmodes(
-				ExistingProcs, Modes, Module0, ProcId)}
+			get_procedure_matching_declmodes(ExistingProcs, Modes,
+				!.Module, ProcId)
 		->
-			{ module_info_get_pragma_exported_procs(Module0,
-				PragmaExportedProcs0) },
-			{ NewExportedProc = pragma_exported_proc(PredId,
-				ProcId, C_Function, Context) },
-			{ PragmaExportedProcs =
-				[NewExportedProc|PragmaExportedProcs0]},
-			{ module_info_set_pragma_exported_procs(
-				PragmaExportedProcs, Module0, Module) }
+			module_info_get_pragma_exported_procs(!.Module,
+				PragmaExportedProcs0),
+			NewExportedProc = pragma_exported_proc(PredId,
+				ProcId, C_Function, Context),
+			PragmaExportedProcs =
+				[NewExportedProc | PragmaExportedProcs0],
+			module_info_set_pragma_exported_procs(
+				PragmaExportedProcs, !Module)
 		;
 			undefined_mode_error(Name, Arity, Context,
-				"`:- pragma export' declaration"),
-			{ module_info_incr_errors(Module0, Module) }
+				"`:- pragma export' declaration", !IO),
+			module_info_incr_errors(!Module)
 		)
 	;
 		undefined_pred_or_func_error(Name, Arity, Context,
-			"`:- pragma export' declaration"),
-		{ module_info_incr_errors(Module0, Module) }
+			"`:- pragma export' declaration", !IO),
+		module_info_incr_errors(!Module)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_reserve_tag(sym_name, arity, import_status, prog_context,
-	module_info, module_info, io__state, io__state).
-:- mode add_pragma_reserve_tag(in, in, in, in, in, out, di, uo) is det.
+:- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
+	prog_context::in, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
-add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context,
-		!Module, !IO) :-
+add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !Module,
+		!IO) :-
 	TypeCtor = TypeName - TypeArity,
 	module_info_types(!.Module, Types0),
 	TypeStr = error_util__describe_sym_name_and_arity(
@@ -1037,8 +1040,8 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context,
 			TypeBody = du_type(Body, CtorTags, IsEnum,
 				EqualityPred, ReservedTag, IsSolverType,
 				IsForeign),
-			hlds_data__set_type_defn_body(TypeDefn0, TypeBody,
-				TypeDefn),
+			hlds_data__set_type_defn_body(TypeBody,
+				TypeDefn0, TypeDefn),
 			map__set(Types0, TypeCtor, TypeDefn, Types),
 			module_info_set_types(Types, !Module)
 		;
@@ -1226,8 +1229,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 				NewPredInfo0, NewPredInfo),
 			module_info_get_predicate_table(ModuleInfo2,
 				PredTable0),
-			predicate_table_insert(PredTable0, NewPredInfo,
-				NewPredId, PredTable),
+			predicate_table_insert(NewPredInfo, NewPredId,
+				PredTable0, PredTable),
 			module_info_set_predicate_table(PredTable,
 				ModuleInfo2, ModuleInfo3),
 
@@ -1416,8 +1419,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
 		)
 	).
 
-:- pred find_duplicate_list_elements(list(T), list(T)).
-:- mode find_duplicate_list_elements(in, out) is det.
+:- pred find_duplicate_list_elements(list(T)::in, list(T)::out) is det.
 
 find_duplicate_list_elements([], []).
 find_duplicate_list_elements([H | T], Vars) :-
@@ -1428,9 +1430,8 @@ find_duplicate_list_elements([H | T], Vars) :-
 		Vars = Vars0
 	).
 
-:- pred report_subst_existq_tvars(pred_info, prog_context,
-		list(tvar), io__state, io__state).
-:- mode report_subst_existq_tvars(in, in, in, di, uo) is det.
+:- pred report_subst_existq_tvars(pred_info::in, prog_context::in,
+	list(tvar)::in, io::di, io::uo) is det.
 
 report_subst_existq_tvars(PredInfo0, Context, SubExistQVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
@@ -1443,9 +1444,8 @@ report_subst_existq_tvars(PredInfo0, Context, SubExistQVars) -->
 	report_variables(SubExistQVars, TVarSet),
 	io__write_string(".\n").
 
-:- pred report_recursive_subst(pred_info, prog_context, tvarset,
-		list(tvar), io__state, io__state).
-:- mode report_recursive_subst(in, in, in, in, di, uo) is det.
+:- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
+	list(tvar)::in, io::di, io::uo) is det.
 
 report_recursive_subst(PredInfo0, Context, TVarSet, RecursiveVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
@@ -1460,9 +1460,8 @@ report_recursive_subst(PredInfo0, Context, TVarSet, RecursiveVars) -->
 	prog_out__write_context(Context),
 	io__write_string("  on both sides of the substitution.\n").
 
-:- pred report_multiple_subst_vars(pred_info, prog_context, tvarset,
-		list(tvar), io__state, io__state).
-:- mode report_multiple_subst_vars(in, in, in, in, di, uo) is det.
+:- pred report_multiple_subst_vars(pred_info::in, prog_context::in, tvarset::in,
+	list(tvar)::in, io::di, io::uo) is det.
 
 report_multiple_subst_vars(PredInfo0, Context, TVarSet, MultiSubstVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
@@ -1476,9 +1475,8 @@ report_multiple_subst_vars(PredInfo0, Context, TVarSet, MultiSubstVars) -->
 	),
 	io__write_string("multiple replacement types.\n").
 
-:- pred report_unknown_vars_to_subst(pred_info, prog_context, tvarset,
-		list(tvar), io__state, io__state).
-:- mode report_unknown_vars_to_subst(in, in, in, in, di, uo) is det.
+:- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
+	tvarset::in, list(tvar)::in, io::di, io::uo) is det.
 
 report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
@@ -1502,9 +1500,8 @@ report_unknown_vars_to_subst(PredInfo0, Context, TVarSet, UnknownVars) -->
 	io__write_string(Decl),
 	io__write_string(" declaration.\n").
 
-:- pred report_pragma_type_spec(pred_info, term__context,
-		io__state, io__state).
-:- mode report_pragma_type_spec(in, in, di, uo) is det.
+:- pred report_pragma_type_spec(pred_info::in, term__context::in,
+	io::di, io::uo) is det.
 
 report_pragma_type_spec(PredInfo0, Context) -->
 	{ Module = pred_info_module(PredInfo0) },
@@ -1517,8 +1514,7 @@ report_pragma_type_spec(PredInfo0, Context) -->
 		qualified(Module, Name)/Arity),
 	io__write_string(":\n").
 
-:- pred report_variables(list(tvar), tvarset, io__state, io__state).
-:- mode report_variables(in, in, di, uo) is det.
+:- pred report_variables(list(tvar)::in, tvarset::in, io::di, io::uo) is det.
 
 report_variables(SubExistQVars, VarSet) -->
 	( { SubExistQVars = [_] } ->
@@ -1531,40 +1527,33 @@ report_variables(SubExistQVars, VarSet) -->
 
 	% Check that the mode list for a `:- pragma type_spec' declaration
 	% specifies a known procedure.
-:- pred handle_pragma_type_spec_modes(sym_name, arity,
-		prog_context, maybe(list(mode)), list(proc_id),
-		proc_table, proc_table, bool, module_info, module_info,
-		io__state, io__state).
-:- mode handle_pragma_type_spec_modes(in, in, in, in, out, in, out,
-		out, in, out, di, uo) is det.
+:- pred handle_pragma_type_spec_modes(sym_name::in, arity::in,
+	prog_context::in, maybe(list(mode))::in, list(proc_id)::out,
+	proc_table::in, proc_table::out, bool::out,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
-		Procs0, Procs, ModesOk, ModuleInfo0, ModuleInfo) -->
-	( { MaybeModes = yes(Modes) } ->
-		{ map__to_assoc_list(Procs0, ExistingProcs) },
+		!Procs, ModesOk, !ModuleInfo, !IO) :-
+	( MaybeModes = yes(Modes) ->
+		map__to_assoc_list(!.Procs, ExistingProcs),
 		(
-			{ get_procedure_matching_argmodes(ExistingProcs,
-				Modes, ModuleInfo0, ProcId) }
+			get_procedure_matching_argmodes(ExistingProcs,
+				Modes, !.ModuleInfo, ProcId)
 		->
-			{ map__lookup(Procs0, ProcId, ProcInfo) },
-			{ map__init(Procs1) },
-			{ map__det_insert(Procs1, ProcId, ProcInfo, Procs) },
-			{ ProcIds = [ProcId] },
-			{ ModesOk = yes },
-			{ ModuleInfo = ModuleInfo0 }
+			map__lookup(!.Procs, ProcId, ProcInfo),
+			map__det_insert(map__init, ProcId, ProcInfo, !:Procs),
+			ProcIds = [ProcId],
+			ModesOk = yes
 		;
-			{ ProcIds = [] },
-			{ Procs = Procs0 },
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+			ProcIds = [],
+			module_info_incr_errors(!ModuleInfo),
 			undefined_mode_error(SymName, Arity, Context,
-				"`:- pragma type_spec' declaration"),
-			{ ModesOk = no }
+				"`:- pragma type_spec' declaration", !IO),
+			ModesOk = no
 		)
 	;
-		{ Procs = Procs0 },
-		{ map__keys(Procs, ProcIds) },
-		{ ModesOk = yes },
-		{ ModuleInfo = ModuleInfo0 }
+		map__keys(!.Procs, ProcIds),
+		ModesOk = yes
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1649,9 +1638,9 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_stratified_pred(string, sym_name, arity,
-	term__context, module_info, module_info, io__state, io__state).
-:- mode add_stratified_pred(in, in, in, in, in, out, di, uo) is det.
+:- pred add_stratified_pred(string::in, sym_name::in, arity::in,
+	term__context::in, module_info::in, module_info::out, io::di, io::uo)
+	is det.
 
 add_stratified_pred(PragmaName, Name, Arity, Context, !Module, !IO) :-
 	module_info_get_predicate_table(!.Module, PredTable0),
@@ -1834,8 +1823,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
 			true
 		),
 
-		predicate_table_set_preds(PredTable0, Preds,
-			PredTable),
+		predicate_table_set_preds(Preds, PredTable0, PredTable),
 		module_info_set_predicate_table(PredTable, !Module)
 	;
 		PredIds = [],
@@ -1847,8 +1835,8 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
 		module_info_incr_errors(!Module)
 	).
 
-:- pred get_matching_pred_ids(module_info, sym_name, arity, list(pred_id)).
-:- mode get_matching_pred_ids(in, in, in, out) is semidet.
+:- pred get_matching_pred_ids(module_info::in, sym_name::in, arity::in,
+	list(pred_id)::out) is semidet.
 
 get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
 	module_info_get_predicate_table(Module0, PredTable0),
@@ -1864,27 +1852,26 @@ get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_mark_as_external(sym_name, int, prog_context,
-			module_info, module_info, io__state, io__state).
-:- mode module_mark_as_external(in, in, in, in, out, di, uo) is det.
+:- pred module_mark_as_external(sym_name::in, int::in, prog_context::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
+module_mark_as_external(PredName, Arity, Context, !Module, !IO) :-
 	% `external' declarations can only apply to things defined
 	% in this module, since everything else is already external.
-	{ module_info_get_predicate_table(Module0, PredicateTable0) },
+	module_info_get_predicate_table(!.Module, PredicateTable0),
 	(
-		{ predicate_table_search_sym_arity(PredicateTable0,
-			is_fully_qualified, PredName, Arity, PredIdList) }
+		predicate_table_search_sym_arity(PredicateTable0,
+			is_fully_qualified, PredName, Arity, PredIdList)
 	->
-		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
+		module_mark_preds_as_external(PredIdList, !Module)
 	;
 		undefined_pred_or_func_error(PredName, Arity,
-			Context, "`:- external' declaration"),
-		{ module_info_incr_errors(Module0, Module) }
+			Context, "`:- external' declaration", !IO),
+		module_info_incr_errors(!Module)
 	).
 
-:- pred module_mark_preds_as_external(list(pred_id), module_info, module_info).
-:- mode module_mark_preds_as_external(in, in, out) is det.
+:- pred module_mark_preds_as_external(list(pred_id)::in,
+	module_info::in, module_info::out) is det.
 
 module_mark_preds_as_external([], !Module).
 module_mark_preds_as_external([PredId | PredIds], !Module) :-
@@ -1897,11 +1884,9 @@ module_mark_preds_as_external([PredId | PredIds], !Module) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_inst_defn(inst_varset, sym_name, list(inst_var),
-		inst_defn, condition, prog_context, item_status,
-		module_info, module_info, bool, io__state, io__state).
-:- mode module_add_inst_defn(in, in, in, in, in, in, in,
-		in, out, out, di, uo) is det.
+:- pred module_add_inst_defn(inst_varset::in, sym_name::in, list(inst_var)::in,
+	inst_defn::in, condition::in, prog_context::in, item_status::in,
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
 		item_status(Status, _NeedQual), !Module, InvalidMode, !IO) :-
@@ -1910,9 +1895,9 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
 	%
 	module_info_insts(!.Module, InstTable0),
 	inst_table_get_user_insts(InstTable0, Insts0),
-	insts_add(Insts0, VarSet, Name, Args, InstDefn, Cond,
-		Context, Status, Insts, !IO),
-	inst_table_set_user_insts(InstTable0, Insts, InstTable),
+	insts_add(VarSet, Name, Args, InstDefn, Cond, Context, Status,
+		Insts0, Insts, !IO),
+	inst_table_set_user_insts(Insts, InstTable0, InstTable),
 	module_info_set_insts(InstTable, !Module),
 	%
 	% check if the inst is infinitely recursive (at the top level)
@@ -1923,151 +1908,147 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
 	check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
 		InvalidMode, !IO).
 
-:- pred insts_add(user_inst_table, inst_varset, sym_name, list(inst_var),
-		inst_defn, condition, prog_context, import_status,
-		user_inst_table, io__state, io__state).
-:- mode insts_add(in, in, in, in, in, in, in, in, out, di, uo) is det.
+:- pred insts_add(inst_varset::in, sym_name::in,
+	list(inst_var)::in, inst_defn::in, condition::in, prog_context::in,
+	import_status::in, user_inst_table::in, user_inst_table::out,
+	io::di, io::uo) is det.
 
 	% XXX handle abstract insts
-insts_add(_, _, _, _, abstract_inst, _, _, _, _) -->
-	{ error("sorry, abstract insts not implemented") }.
-insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
-			_Cond, Context, Status, Insts) -->
-	{ list__length(Args, Arity) },
+insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !IO) :-
+	error("sorry, abstract insts not implemented").
+insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
+		!IO) :-
+	list__length(Args, Arity),
 	(
-		{ I = hlds_inst_defn(VarSet, Args, eqv_inst(Body),
-			Context, Status) },
-		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
+		I = hlds_inst_defn(VarSet, Args, eqv_inst(Body),
+			Context, Status),
+		user_inst_table_insert(Name - Arity, I, !Insts)
 	->
-		{ Insts = Insts1 }
+		true
 	;
-		{ Insts = Insts0 },
 		% If abstract insts are implemented, this will need to change
 		% to update the hlds_inst_defn to the non-abstract inst.
 
 		% XXX we should record each error using
 		%	 module_info_incr_errors
-		{ user_inst_table_get_inst_defns(Insts, InstDefns) },
-		{ map__lookup(InstDefns, Name - Arity, OrigI) },
-		{ OrigI = hlds_inst_defn(_, _, _, OrigContext, _) },
+		user_inst_table_get_inst_defns(!.Insts, InstDefns),
+		map__lookup(InstDefns, Name - Arity, OrigI),
+		OrigI = hlds_inst_defn(_, _, _, OrigContext, _),
 		multiple_def_error(Status, Name, Arity, "inst",
-			Context, OrigContext, _)
+			Context, OrigContext, _, !IO)
 	).
 
 	%
 	% check if the inst is infinitely recursive (at the top level)
 	%
-:- pred check_for_cyclic_inst(user_inst_table, inst_id, inst_id, list(inst),
-		list(inst_id), prog_context, bool, io__state, io__state).
-:- mode check_for_cyclic_inst(in, in, in, in, in, in, out, di, uo) is det.
+:- pred check_for_cyclic_inst(user_inst_table::in, inst_id::in, inst_id::in,
+	list(inst)::in, list(inst_id)::in, prog_context::in, bool::out,
+	io::di, io::uo) is det.
 
 check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
-		Context, InvalidMode) -->
-	( { list__member(InstId0, Expansions0) } ->
+		Context, InvalidMode, !IO) :-
+	( list__member(InstId0, Expansions0) ->
 		report_circular_equiv_error("inst", OrigInstId, InstId0,
-			Expansions0, Context),
-		{ InvalidMode = yes }
+			Expansions0, Context, !IO),
+		InvalidMode = yes
 	;
-		{ user_inst_table_get_inst_defns(UserInstTable, InstDefns) },
+		user_inst_table_get_inst_defns(UserInstTable, InstDefns),
 		(
-			{ map__search(InstDefns, InstId0, InstDefn) },
-			{ InstDefn = hlds_inst_defn(_, Params, Body, _, _) },
-			{ Body = eqv_inst(EqvInst0) },
-			{ inst_substitute_arg_list(EqvInst0, Params, Args0,
-				EqvInst) },
-			{ EqvInst = defined_inst(user_inst(Name, Args)) }
+			map__search(InstDefns, InstId0, InstDefn),
+			InstDefn = hlds_inst_defn(_, Params, Body, _, _),
+			Body = eqv_inst(EqvInst0),
+			inst_substitute_arg_list(EqvInst0, Params, Args0,
+				EqvInst),
+			EqvInst = defined_inst(user_inst(Name, Args))
 		->
-			{ Arity = list__length(Args) },
-			{ InstId = Name - Arity },
-			{ Expansions = [InstId0 | Expansions0] },
+			Arity = list__length(Args),
+			InstId = Name - Arity,
+			Expansions = [InstId0 | Expansions0],
 			check_for_cyclic_inst(UserInstTable, OrigInstId,
-				InstId, Args, Expansions, Context, InvalidMode)
+				InstId, Args, Expansions, Context, InvalidMode,
+				!IO)
 		;
-			{ InvalidMode = no }
+			InvalidMode = no
 		)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_mode_defn(inst_varset, sym_name, list(inst_var), mode_defn,
-		condition, prog_context, item_status, module_info, module_info,
-		bool, io__state, io__state).
-:- mode module_add_mode_defn(in, in, in, in, in, in,
-		in, in, out, out, di, uo) is det.
+:- pred module_add_mode_defn(inst_varset::in, sym_name::in, list(inst_var)::in,
+	mode_defn::in, condition::in, prog_context::in, item_status::in,
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 module_add_mode_defn(VarSet, Name, Params, ModeDefn, Cond,
 		Context, item_status(Status, _NeedQual),
 		!Module, InvalidMode, !IO) :-
 	module_info_modes(!.Module, Modes0),
-	modes_add(Modes0, VarSet, Name, Params, ModeDefn,
-		Cond, Context, Status, Modes, InvalidMode, !IO),
+	modes_add(VarSet, Name, Params, ModeDefn,
+		Cond, Context, Status, Modes0, Modes, InvalidMode, !IO),
 	module_info_set_modes(Modes, !Module).
 
-:- pred modes_add(mode_table, inst_varset, sym_name, list(inst_var),
-		mode_defn, condition, prog_context, import_status,
-		mode_table, bool, io__state, io__state).
-:- mode modes_add(in, in, in, in, in, in, in, in, out, out, di, uo) is det.
+:- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
+	mode_defn::in, condition::in, prog_context::in, import_status::in,
+	mode_table::in, mode_table::out, bool::out, io::di, io::uo) is det.
 
-modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
-			_Cond, Context, Status, Modes, InvalidMode) -->
-	{ list__length(Args, Arity) },
-	{ ModeId = Name - Arity },
+modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
+		!Modes, InvalidMode, !IO) :-
+	list__length(Args, Arity),
+	ModeId = Name - Arity,
 	(
-		{ I = hlds_mode_defn(VarSet, Args, eqv_mode(Body),
-			Context, Status) },
-		{ mode_table_insert(Modes0, ModeId, I, Modes1) }
+		I = hlds_mode_defn(VarSet, Args, eqv_mode(Body),
+			Context, Status),
+		mode_table_insert(ModeId, I, !Modes)
 	->
-		{ Modes = Modes1 }
+		true
 	;
-		{ Modes = Modes0 },
-		{ mode_table_get_mode_defns(Modes, ModeDefns) },
-		{ map__lookup(ModeDefns, ModeId, OrigI) },
-		{ OrigI = hlds_mode_defn(_, _, _, OrigContext, _) },
+		mode_table_get_mode_defns(!.Modes, ModeDefns),
+		map__lookup(ModeDefns, ModeId, OrigI),
+		OrigI = hlds_mode_defn(_, _, _, OrigContext, _),
 		% XXX we should record each error using
 		% 	module_info_incr_errors
 		multiple_def_error(Status, Name, Arity, "mode",
-			Context, OrigContext, _)
+			Context, OrigContext, _, !IO)
 	),
-	check_for_cyclic_mode(Modes, ModeId, ModeId, [], Context,
-		InvalidMode).
+	check_for_cyclic_mode(!.Modes, ModeId, ModeId, [], Context,
+		InvalidMode, !IO).
 
 	%
 	% check if the mode is infinitely recursive at the top level
 	%
-:- pred check_for_cyclic_mode(mode_table, mode_id, mode_id, list(mode_id),
-		prog_context, bool, io__state, io__state).
-:- mode check_for_cyclic_mode(in, in, in, in, in, out, di, uo) is det.
+:- pred check_for_cyclic_mode(mode_table::in, mode_id::in, mode_id::in,
+	list(mode_id)::in, prog_context::in, bool::out, io::di, io::uo) is det.
 
 check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
-		InvalidMode) -->
-	( { list__member(ModeId0, Expansions0) } ->
+		InvalidMode, !IO) :-
+	( list__member(ModeId0, Expansions0) ->
 		report_circular_equiv_error("mode", OrigModeId, ModeId0,
-			Expansions0, Context),
-		{ InvalidMode = yes }
+			Expansions0, Context, !IO),
+		InvalidMode = yes
 	;
-		{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
+		mode_table_get_mode_defns(ModeTable, ModeDefns),
 		(
-			{ map__search(ModeDefns, ModeId0, ModeDefn) },
-			{ ModeDefn = hlds_mode_defn(_, _, Body, _, _) },
-			{ Body = eqv_mode(EqvMode) },
-			{ EqvMode = user_defined_mode(Name, Args) }
+			map__search(ModeDefns, ModeId0, ModeDefn),
+			ModeDefn = hlds_mode_defn(_, _, Body, _, _),
+			Body = eqv_mode(EqvMode),
+			EqvMode = user_defined_mode(Name, Args)
 		->
-			{ Arity = list__length(Args) },
-			{ ModeId = Name - Arity },
-			{ Expansions = [ModeId0 | Expansions0] },
+			Arity = list__length(Args),
+			ModeId = Name - Arity,
+			Expansions = [ModeId0 | Expansions0],
 			check_for_cyclic_mode(ModeTable, OrigModeId, ModeId,
-				Expansions, Context, InvalidMode)
+				Expansions, Context, InvalidMode, !IO)
 		;
-			{ InvalidMode = no }
+			InvalidMode = no
 		)
 	).
 
 :- type id == pair(sym_name, arity).
-:- pred report_circular_equiv_error(string::in, id::in, id::in, list(id)::in,
-		prog_context::in, io__state::di, io__state::uo) is det.
 
-report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context) -->
-	( { Id = OrigId } ->
+:- pred report_circular_equiv_error(string::in, id::in, id::in, list(id)::in,
+	prog_context::in, io__state::di, io__state::uo) is det.
+
+report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
+	( Id = OrigId ->
 		%
 		% Report an error message of the form
 		%	Error: circular equivalence <kind> foo/0.
@@ -2078,24 +2059,24 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context) -->
 		%	and baz/2.
 		% where <kind> is either "inst" or "mode".
 		%
-		{ Kinds = (if Expansions = [_] then Kind else Kind ++ "s") },
-		{ Pieces0 = list__map(
+		Kinds = (if Expansions = [_] then Kind else Kind ++ "s"),
+		Pieces0 = list__map(
 			(func(SymName - Arity) =
 				error_util__describe_sym_name_and_arity(
 					SymName / Arity)),
-			Expansions) },
-		{ error_util__list_to_pieces(Pieces0, Pieces1) },
-		{ Pieces = append_punctuation(
+			Expansions),
+		error_util__list_to_pieces(Pieces0, Pieces1),
+		Pieces = append_punctuation(
 			[words("Error: circular equivalence"),
-				fixed(Kinds) | Pieces1], '.') },
-		error_util__write_error_pieces(Context, 0, Pieces),
-		io__set_exit_status(1)
+				fixed(Kinds) | Pieces1], '.'),
+		error_util__write_error_pieces(Context, 0, Pieces, !IO),
+		io__set_exit_status(1, !IO)
 	;
 		% We have an inst `OrigId' which is not itself circular,
 		% but which is defined in terms of `Id' which is circular.
 		% Don't bother reporting it now -- it have already been
 		% reported when we processed the definition of Id.
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2105,11 +2086,9 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context) -->
 	% e.g. `:- type t.', which is parsed as an type definition for
 	% t which defines t as an abstract_type.
 
-:- pred module_add_type_defn(tvarset, sym_name, list(type_param),
-		type_defn, condition, prog_context, item_status,
-		module_info, module_info, io__state, io__state).
-:- mode module_add_type_defn(in, in, in, in, in,
-		in, in, in, out, di, uo) is det.
+:- pred module_add_type_defn(tvarset::in, sym_name::in, list(type_param)::in,
+	type_defn::in, condition::in, prog_context::in, item_status::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		item_status(Status0, NeedQual), !Module, !IO) :-
@@ -2158,8 +2137,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 				!IO),
 			MaybeOldDefn = no
 		;
-			hlds_data__set_type_defn_body(OldDefn0, OldBody,
-				OldDefn),
+			hlds_data__set_type_defn_body(OldBody,
+				OldDefn0, OldDefn),
 			MaybeOldDefn = yes(OldDefn)
 		)
 	;
@@ -2317,7 +2296,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 	% If another declaration for the type has a `solver' annotation then
 	% we must update the foreign_type body to reflect this.
 :- pred combine_is_solver_type(hlds_type_body::in, hlds_type_body::out,
-		hlds_type_body::in, hlds_type_body::out) is det.
+	hlds_type_body::in, hlds_type_body::out) is det.
 
 combine_is_solver_type(OldBody0, OldBody, Body0, Body) :-
 	(
@@ -2340,7 +2319,7 @@ combine_is_solver_type(OldBody0, OldBody, Body0, Body) :-
 	% Succeed iff the two type bodies have inconsistent is_solver_type
 	% annotations.
 :- pred is_solver_type_is_inconsistent(hlds_type_body::in, hlds_type_body::in)
-		is semidet.
+	is semidet.
 
 is_solver_type_is_inconsistent(OldBody, Body) :-
 	maybe_get_body_is_solver_type(OldBody, OldIsSolverType),
@@ -2348,7 +2327,7 @@ is_solver_type_is_inconsistent(OldBody, Body) :-
 	OldIsSolverType \= IsSolverType.
 
 :- pred maybe_get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
-		is semidet.
+	is semidet.
 
 maybe_get_body_is_solver_type(Body, Body ^ du_type_is_solver_type).
 maybe_get_body_is_solver_type(abstract_type(IsSolverType), IsSolverType).
@@ -2359,7 +2338,7 @@ maybe_get_body_is_solver_type(foreign_type(_, IsSolverType), IsSolverType).
 	% Check that the visibility of the new definition for
 	% a foreign type matches that of previous definitions.
 :- pred check_foreign_type_visibility(import_status::in,
-		import_status::in) is semidet.
+	import_status::in) is semidet.
 
 check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
 	( OldStatus = abstract_exported  ->
@@ -2390,6 +2369,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !Module, !IO) :-
 		ReservedTag = Body ^ du_type_reserved_tag,
 		module_info_ctors(!.Module, Ctors0),
 		module_info_get_partial_qualifier_info(!.Module, PQInfo),
+		% ZZZ
 		check_for_errors(
 			(pred(M0::in, M::out, IO0::di, IO::uo) is det :-
 				module_info_ctor_field_table(M0, CtorFields0),
@@ -2450,8 +2430,8 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !Module, !IO) :-
 	prog_context::in, bool::out, module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
-check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError,
-		!Module, !IO) :-
+check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !Module,
+		!IO) :-
 	TypeCtor = Name - Arity,
 	module_info_globals(!.Module, Globals),
 	generating_code(GeneratingCode, !IO),
@@ -2509,14 +2489,14 @@ generating_code(bool__not(NotGeneratingCode)) -->
 	io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	io_lookup_bool_option(output_grade_string, OutputGradeString),
 	{ bool__or_list([MakeShortInterface, MakeInterface,
-			MakePrivateInterface, MakeTransOptInterface,
-			GenSrcFileMapping, GenDepends, ConvertToMercury,
-			TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
-			NotGeneratingCode) }.
+		MakePrivateInterface, MakeTransOptInterface,
+		GenSrcFileMapping, GenDepends, ConvertToMercury,
+		TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
+		NotGeneratingCode) }.
 
-:- pred merge_foreign_type_bodies(compilation_target::in,
-		bool::in, hlds_type_body::in,
-		hlds_type_body::in, hlds_type_body::out) is semidet.
+:- pred merge_foreign_type_bodies(compilation_target::in, bool::in,
+	hlds_type_body::in, hlds_type_body::in, hlds_type_body::out)
+	is semidet.
 
 	% Ignore Mercury definitions if we've got a foreign type
 	% declaration suitable for this back-end and we aren't making the
@@ -2526,12 +2506,14 @@ generating_code(bool__not(NotGeneratingCode)) -->
 merge_foreign_type_bodies(Target, MakeOptInterface,
 		foreign_type(ForeignTypeBody0, IsSolverType), Body1, Body) :-
 	MaybeForeignTypeBody1 = Body1 ^ du_type_is_foreign_type,
-	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
-	; MaybeForeignTypeBody1 = no,
+	(
+		MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
+	;
+		MaybeForeignTypeBody1 = no,
 		ForeignTypeBody1 = foreign_type_body(no, no, no)
 	),
-	merge_foreign_type_bodies_2(ForeignTypeBody0,
-		ForeignTypeBody1, ForeignTypeBody),
+	merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
+		ForeignTypeBody),
 	(
 		have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
 		MakeOptInterface = no
@@ -2550,7 +2532,7 @@ merge_foreign_type_bodies(_, _, foreign_type(Body0, _IsSolverType0),
 	merge_foreign_type_bodies_2(Body0, Body1, Body).
 
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
-		foreign_type_body::in, foreign_type_body::out) is semidet.
+	foreign_type_body::in, foreign_type_body::out) is semidet.
 
 merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA),
 		foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB),
@@ -2560,12 +2542,12 @@ merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA),
 	merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
+
 merge_maybe(no, no, no).
 merge_maybe(yes(T), no, yes(T)).
 merge_maybe(no, yes(T), yes(T)).
 
-:- pred make_status_abstract(import_status, import_status).
-:- mode make_status_abstract(in, out) is det.
+:- pred make_status_abstract(import_status::in, import_status::out) is det.
 
 make_status_abstract(Status, AbstractStatus) :-
 	( Status = exported ->
@@ -2576,8 +2558,8 @@ make_status_abstract(Status, AbstractStatus) :-
 		AbstractStatus = Status
 	).
 
-:- pred combine_status(import_status, import_status, import_status).
-:- mode combine_status(in, in, out) is det.
+:- pred combine_status(import_status::in, import_status::in,
+	import_status::out) is det.
 
 combine_status(StatusA, StatusB, Status) :-
 	( combine_status_2(StatusA, StatusB, CombinedStatus) ->
@@ -2586,8 +2568,8 @@ combine_status(StatusA, StatusB, Status) :-
 		error("unexpected status for type definition")
 	).
 
-:- pred combine_status_2(import_status, import_status, import_status).
-:- mode combine_status_2(in, in, out) is semidet.
+:- pred combine_status_2(import_status::in, import_status::in,
+	import_status::out) is semidet.
 
 combine_status_2(imported(_), Status2, Status) :-
 	combine_status_imported(Status2, Status).
@@ -2607,8 +2589,8 @@ combine_status_2(abstract_imported, Status2, Status) :-
 combine_status_2(abstract_exported, Status2, Status) :-
 	combine_status_abstract_exported(Status2, Status).
 
-:- pred combine_status_imported(import_status, import_status).
-:- mode combine_status_imported(in, out) is semidet.
+:- pred combine_status_imported(import_status::in, import_status::out)
+	is semidet.
 
 combine_status_imported(imported(Section),	imported(Section)).
 combine_status_imported(local,			imported(implementation)).
@@ -2619,8 +2601,7 @@ combine_status_imported(opt_imported,		opt_imported).
 combine_status_imported(abstract_imported,	imported(interface)).
 combine_status_imported(abstract_exported,	abstract_exported).
 
-:- pred combine_status_local(import_status, import_status).
-:- mode combine_status_local(in, out) is semidet.
+:- pred combine_status_local(import_status::in, import_status::out) is semidet.
 
 combine_status_local(imported(_),	local).
 combine_status_local(local,		local).
@@ -2629,8 +2610,8 @@ combine_status_local(opt_imported,	local).
 combine_status_local(abstract_imported, local).
 combine_status_local(abstract_exported, abstract_exported).
 
-:- pred combine_status_abstract_exported(import_status, import_status).
-:- mode combine_status_abstract_exported(in, out) is det.
+:- pred combine_status_abstract_exported(import_status::in, import_status::out)
+	is det.
 
 combine_status_abstract_exported(Status2, Status) :-
 	( Status2 = exported ->
@@ -2639,8 +2620,8 @@ combine_status_abstract_exported(Status2, Status) :-
 		Status = abstract_exported
 	).
 
-:- pred combine_status_abstract_imported(import_status, import_status).
-:- mode combine_status_abstract_imported(in, out) is det.
+:- pred combine_status_abstract_imported(import_status::in, import_status::out)
+	is det.
 
 combine_status_abstract_imported(Status2, Status) :-
 	( Status2 = imported(Section) ->
@@ -2649,8 +2630,8 @@ combine_status_abstract_imported(Status2, Status) :-
 		Status = abstract_imported
 	).
 
-:- pred convert_type_defn(type_defn, type_ctor, globals, hlds_type_body).
-:- mode convert_type_defn(in, in, in, out) is det.
+:- pred convert_type_defn(type_defn::in, type_ctor::in, globals::in,
+	hlds_type_body::out) is det.
 
 convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
 		du_type(Body, CtorTags, IsEnum, EqualityPred,
@@ -2681,130 +2662,117 @@ convert_type_defn(foreign_type(ForeignType, UserEqComp), _, _,
 				yes(JavaForeignType - UserEqComp))
 	).
 
-:- pred ctors_add(list(constructor), type_ctor, tvarset, need_qualifier,
-		partial_qualifier_info, prog_context, import_status,
-		ctor_field_table, ctor_field_table,
-		cons_table, cons_table, io__state, io__state).
-:- mode ctors_add(in, in, in, in, in, in, in, in, out, in, out, di, uo) is det.
+:- pred ctors_add(list(constructor)::in, type_ctor::in, tvarset::in,
+	need_qualifier::in, partial_qualifier_info::in, prog_context::in,
+	import_status::in, ctor_field_table::in, ctor_field_table::out,
+	cons_table::in, cons_table::out, io::di, io::uo) is det.
 
-ctors_add([], _, _, _, _, _, _, FieldNameTable, FieldNameTable,
-		Ctors, Ctors) --> [].
+ctors_add([], _, _, _, _, _, _, !FieldNameTable, !Ctors, !IO).
 ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
-		ImportStatus, FieldNameTable0, FieldNameTable,
-		Ctors0, Ctors) -->
-	{ Ctor = ctor(ExistQVars, Constraints, Name, Args) },
-	{ make_cons_id(Name, Args, TypeCtor, QualifiedConsId) },
-	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
-				Context) },
+		ImportStatus, !FieldNameTable, !Ctors, !IO) :-
+	Ctor = ctor(ExistQVars, Constraints, Name, Args),
+	QualifiedConsId = make_cons_id(Name, Args, TypeCtor),
+	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, TypeCtor,
+		Context),
 	%
 	% Insert the fully-qualified version of this cons_id into the
 	% cons_table.
 	% Also check that there is at most one definition of a given
 	% cons_id in each type.
 	%
-	(
-		{ map__search(Ctors0, QualifiedConsId, QualifiedConsDefns0) }
-	->
-		{ QualifiedConsDefns1 = QualifiedConsDefns0 }
+	( map__search(!.Ctors, QualifiedConsId, QualifiedConsDefns0) ->
+		QualifiedConsDefns1 = QualifiedConsDefns0
 	;
-		{ QualifiedConsDefns1 = [] }
+		QualifiedConsDefns1 = []
 	),
 	(
-		{ list__member(OtherConsDefn, QualifiedConsDefns1) },
-		{ OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _) }
+		list__member(OtherConsDefn, QualifiedConsDefns1),
+		OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
 	->
 		% XXX we should record each error using module_info_incr_errors
-		prog_out__write_context(Context),
-		io__write_string("Error: constructor `"),
-		hlds_out__write_cons_id(QualifiedConsId),
-		io__write_string("' for type `"),
-		hlds_out__write_type_ctor(TypeCtor),
-		io__write_string("' multiply defined.\n"),
-		io__set_exit_status(1),
-		{ QualifiedConsDefns = QualifiedConsDefns1 }
+		prog_out__write_context(Context, !IO),
+		io__write_string("Error: constructor `", !IO),
+		hlds_out__write_cons_id(QualifiedConsId, !IO),
+		io__write_string("' for type `", !IO),
+		hlds_out__write_type_ctor(TypeCtor, !IO),
+		io__write_string("' multiply defined.\n", !IO),
+		io__set_exit_status(1, !IO),
+		QualifiedConsDefns = QualifiedConsDefns1
 	;
-		{ QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1] }
+		QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
 	),
-	{ map__set(Ctors0, QualifiedConsId, QualifiedConsDefns, Ctors1) },
+	map__set(!.Ctors, QualifiedConsId, QualifiedConsDefns, !:Ctors),
 
-	( { QualifiedConsId = cons(qualified(Module, ConsName), Arity) } ->
+	( QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
 		% Add unqualified version of the cons_id to the
 		% cons_table, if appropriate.
-		{
+		(
 			NeedQual = may_be_unqualified
 		->
 			UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-			multi_map__set(Ctors1, UnqualifiedConsId, ConsDefn,
-				Ctors2)
+			multi_map__set(!.Ctors, UnqualifiedConsId, ConsDefn,
+				!:Ctors)
 		;
-			Ctors2 = Ctors1
-		},
+			true
+		),
 
 		% Add partially qualified versions of the cons_id
-		{ get_partial_qualifiers(Module, PQInfo, PartialQuals) },
-		{ list__map_foldl(add_ctor(ConsName, Arity, ConsDefn),
-			PartialQuals, _PartiallyQualifiedConsIds,
-			Ctors2, Ctors3) },
+		get_partial_qualifiers(Module, PQInfo, PartialQuals),
+		list__map_foldl(add_ctor(ConsName, Arity, ConsDefn),
+			PartialQuals, _PartiallyQualifiedConsIds, !Ctors),
 
-		{ assoc_list__keys(Args, FieldNames) },
-		{ FirstField = 1 },
+		assoc_list__keys(Args, FieldNames),
+		FirstField = 1,
 
 		add_ctor_field_names(FieldNames, NeedQual, PartialQuals,
 			TypeCtor, QualifiedConsId, Context, ImportStatus,
-			FirstField, FieldNameTable0, FieldNameTable1)
+			FirstField, !FieldNameTable, !IO)
 	;
-		{ error("ctors_add: cons_id not qualified") }
+		error("ctors_add: cons_id not qualified")
 	),
-
 	ctors_add(Rest, TypeCtor, TVarSet, NeedQual, PQInfo, Context,
-		ImportStatus, FieldNameTable1, FieldNameTable, Ctors3, Ctors).
+		ImportStatus, !FieldNameTable, !Ctors, !IO).
 
-:- pred add_ctor(string, int, hlds_cons_defn, module_name,
-		cons_id, cons_table, cons_table).
-:- mode add_ctor(in, in, in, in, out, in, out) is det.
+:- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
+	cons_id::out, cons_table::in, cons_table::out) is det.
 
 add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
 	ConsId = cons(qualified(ModuleQual, ConsName), Arity),
 	multi_map__set(CtorsIn, ConsId, ConsDefn, CtorsOut).
 
-:- pred add_ctor_field_names(list(maybe(ctor_field_name)),
-		need_qualifier, list(module_name), type_ctor, cons_id,
-		prog_context, import_status, int, ctor_field_table,
-		ctor_field_table, io__state, io__state).
-:- mode add_ctor_field_names(in, in, in, in, in, in, in, in,
-		in, out, di, uo) is det.
+:- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
+	need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
+	prog_context::in, import_status::in, int::in,
+	ctor_field_table::in, ctor_field_table::out, io::di, io::uo) is det.
 
-add_ctor_field_names([], _, _, _, _, _, _, _,
-		FieldNameTable, FieldNameTable) --> [].
+add_ctor_field_names([], _, _, _, _, _, _, _, !FieldNameTable, !IO).
 add_ctor_field_names([MaybeFieldName | FieldNames], NeedQual,
 		PartialQuals, TypeCtor, ConsId, Context, ImportStatus,
-		FieldNumber, FieldNameTable0, FieldNameTable) -->
+		FieldNumber, !FieldNameTable, !IO) :-
 	(
-		{ MaybeFieldName = yes(FieldName) },
-		{ FieldDefn = hlds_ctor_field_defn(Context, ImportStatus,
-			TypeCtor, ConsId, FieldNumber) },
+		MaybeFieldName = yes(FieldName),
+		FieldDefn = hlds_ctor_field_defn(Context, ImportStatus,
+			TypeCtor, ConsId, FieldNumber),
 		add_ctor_field_name(FieldName, FieldDefn, NeedQual,
-			PartialQuals, FieldNameTable0, FieldNameTable2)
+			PartialQuals, !FieldNameTable, !IO)
 	;
-		{ MaybeFieldName = no },
-		{ FieldNameTable2 = FieldNameTable0 }
+		MaybeFieldName = no
 	),
 	add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
 		ConsId, Context, ImportStatus, FieldNumber + 1,
-		FieldNameTable2, FieldNameTable).
+		!FieldNameTable, !IO).
 
-:- pred add_ctor_field_name(ctor_field_name, hlds_ctor_field_defn,
-		need_qualifier, list(module_name), ctor_field_table,
-		ctor_field_table, io__state, io__state).
-:- mode add_ctor_field_name(in, in, in, in, in, out, di, uo) is det.
+:- pred add_ctor_field_name(ctor_field_name::in, hlds_ctor_field_defn::in,
+	need_qualifier::in, list(module_name)::in,
+	ctor_field_table::in, ctor_field_table::out, io::di, io::uo) is det.
 
 add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
-		FieldNameTable0, FieldNameTable) -->
-	{ FieldName = qualified(FieldModule0, _) ->
+		!FieldNameTable, !IO) :-
+	( FieldName = qualified(FieldModule0, _) ->
 		FieldModule = FieldModule0
 	;
 		error("add_ctor_field_name: unqualified field name")
-	},
+	),
 	(
 		%
 		% Field names must be unique within a module, not
@@ -2812,67 +2780,60 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 		% user-defined override functions for the builtin field
 		% access functions must be unique within a module.
 		%
-		{ map__search(FieldNameTable0, FieldName, ConflictingDefns) }
+		map__search(!.FieldNameTable, FieldName, ConflictingDefns)
 	->
-		{ ConflictingDefns = [ConflictingDefn] ->
+		( ConflictingDefns = [ConflictingDefn] ->
 			ConflictingDefn =
 				hlds_ctor_field_defn(OrigContext, _, _, _, _)
 		;
 			error(
 			"add_ctor_field_name: multiple conflicting fields")
-		},
+		),
 
 		% XXX we should record each error
 		% using module_info_incr_errors
-		{ FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _) },
-		{ prog_out__sym_name_to_string(FieldName, FieldString) },
-		{ ErrorPieces = [
+		FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
+		prog_out__sym_name_to_string(FieldName, FieldString),
+		ErrorPieces = [
 			words("Error: field"),
 			fixed(string__append_list(["`", FieldString, "'"])),
 			words("multiply defined.")
-		] },
-		error_util__write_error_pieces(Context, 0, ErrorPieces),
+		],
+		error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
 
 		% This type of error doesn't fit well with
 		% how error_util does things -- error_util.m
 		% wants to write everything with a single context.
-		prog_out__write_context(OrigContext),
+		prog_out__write_context(OrigContext, !IO),
 		io__write_string(
-			"  Here is the previous definition of field `"),
-		io__write_string(FieldString),
-		io__write_string("'.\n"),
-		io__set_exit_status(1),
-		{ FieldNameTable = FieldNameTable0 }
+			"  Here is the previous definition of field `", !IO),
+		io__write_string(FieldString, !IO),
+		io__write_string("'.\n", !IO),
+		io__set_exit_status(1, !IO)
 	;
-		{ unqualify_name(FieldName, UnqualFieldName) },
+		unqualify_name(FieldName, UnqualFieldName),
 
 		% Add an unqualified version of the field name to the
 		% table, if appropriate.
-		{
-			NeedQual = may_be_unqualified
-		->
-			multi_map__set(FieldNameTable0,
-				unqualified(UnqualFieldName),
-				FieldDefn, FieldNameTable1)
+		( NeedQual = may_be_unqualified ->
+			multi_map__set(!.FieldNameTable,
+				unqualified(UnqualFieldName), FieldDefn,
+				!:FieldNameTable)
 		;
-			FieldNameTable1 = FieldNameTable0
-		},
+			true
+		),
 
 		% Add partially qualified versions of the cons_id
-		{ list__foldl(
-			do_add_ctor_field(UnqualFieldName, FieldDefn),
-			[FieldModule | PartialQuals],
-			FieldNameTable1, FieldNameTable) }
+		list__foldl(do_add_ctor_field(UnqualFieldName, FieldDefn),
+			[FieldModule | PartialQuals], !FieldNameTable)
 	).
 
-:- pred do_add_ctor_field(string, hlds_ctor_field_defn, module_name,
-		ctor_field_table, ctor_field_table).
-:- mode do_add_ctor_field(in, in, in, in, out) is det.
+:- pred do_add_ctor_field(string::in, hlds_ctor_field_defn::in,
+	module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
-do_add_ctor_field(FieldName, FieldNameDefn, ModuleName,
-		FieldNameTable0, FieldNameTable) :-
-	multi_map__set(FieldNameTable0, qualified(ModuleName, FieldName),
-		FieldNameDefn, FieldNameTable).
+do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
+	multi_map__set(!.FieldNameTable, qualified(ModuleName, FieldName),
+		FieldNameDefn, !:FieldNameTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -2941,8 +2902,8 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 	item_status::in, module_info::in, module_info::out,
 	io__state::di, io__state::uo) is det.
 
-module_add_class_defn(Constraints, Name, Vars, Interface, VarSet,
-		Context, Status, !Module, !IO) :-
+module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
+		Status, !Module, !IO) :-
 	module_info_classes(!.Module, Classes0),
 	module_info_superclasses(!.Module, SuperClasses0),
 	list__length(Vars, ClassArity),
@@ -3062,10 +3023,9 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet,
 		true
 	).
 
-:- pred superclass_constraints_are_identical(list(tvar), tvarset,
-	list(class_constraint), list(tvar), tvarset, list(class_constraint)).
-:- mode superclass_constraints_are_identical(in, in,
-	in, in, in, in) is semidet.
+:- pred superclass_constraints_are_identical(list(tvar)::in, tvarset::in,
+	list(class_constraint)::in, list(tvar)::in, tvarset::in,
+	list(class_constraint)::in) is semidet.
 
 superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
 		Vars, VarSet, Constraints) :-
@@ -3241,30 +3201,29 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
 			"instance declaration", !IO)
 	).
 
-:- pred check_for_overlapping_instances(hlds_instance_defn,
-		list(hlds_instance_defn), class_id, io__state, io__state).
-:- mode check_for_overlapping_instances(in, in, in, di, uo) is det.
+:- pred check_for_overlapping_instances(hlds_instance_defn::in,
+	list(hlds_instance_defn)::in, class_id::in, io::di, io::uo) is det.
 
-check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
-	{ IsOverlapping = (pred((Context - OtherContext)::out) is nondet :-
+check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
+		!IO) :-
+	IsOverlapping = (pred((Context - OtherContext)::out) is nondet :-
 		NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
-				_, Types, Body, _, VarSet, _),
+			_, Types, Body, _, VarSet, _),
 		Body \= abstract, % XXX
 		list__member(OtherInstanceDefn, InstanceDefns),
 		OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
-				OtherContext, _, OtherTypes, OtherBody,
-				_, OtherVarSet, _),
+			OtherContext, _, OtherTypes, OtherBody,
+			_, OtherVarSet, _),
 		OtherBody \= abstract, % XXX
 		varset__merge(VarSet, OtherVarSet, OtherTypes,
 				_NewVarSet, NewOtherTypes),
 		type_list_subsumes(Types, NewOtherTypes, _)
-	) },
+	),
 	aggregate(IsOverlapping,
-		report_overlapping_instance_declaration(ClassId)).
+		report_overlapping_instance_declaration(ClassId), !IO).
 
-:- pred report_overlapping_instance_declaration(class_id, pair(prog_context),
-		io__state, io__state).
-:- mode report_overlapping_instance_declaration(in, in, di, uo) is det.
+:- pred report_overlapping_instance_declaration(class_id::in,
+	pair(prog_context)::in, io::di, io::uo) is det.
 
 report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 		Context - OtherContext) -->
@@ -3293,9 +3252,9 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 % lambda expressions into separate predicates, so any changes may need
 % to be reflected there too.
 
-add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity,
-		ClassContext, Markers0, Context, ItemStatus, NeedQual,
-		PredOrFunc, !Module, !IO) :-
+add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity, ClassContext,
+		Markers0, Context, ItemStatus, NeedQual, PredOrFunc,
+		!Module, !IO) :-
 	% Only preds with opt_imported clauses are tagged as opt_imported, so
 	% that the compiler doesn't look for clauses for other preds read in
 	% from optimization interfaces.
@@ -3304,10 +3263,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 	;
 		Status = ItemStatus
 	),
-
 	check_tvars_in_constraints(ClassContext, Types, TVarSet,
 		PredOrFunc, PredName, Context, !Module, !IO),
-
 	module_info_name(!.Module, ModuleName),
 	list__length(Types, Arity),
 	(
@@ -3351,8 +3308,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 		;
 			module_info_get_partial_qualifier_info(!.Module,
 				PQInfo),
-			predicate_table_insert(PredicateTable0, PredInfo0,
-				NeedQual, PQInfo, PredId, PredicateTable1),
+			predicate_table_insert(PredInfo0, NeedQual, PQInfo,
+				PredId, PredicateTable0, PredicateTable1),
 			( pred_info_is_builtin(PredInfo0) ->
 				add_builtin(PredId, Types,
 					PredInfo0, PredInfo),
@@ -3360,8 +3317,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 					Preds1),
 				map__det_update(Preds1, PredId, PredInfo,
 					Preds),
-				predicate_table_set_preds(PredicateTable1,
-					Preds, PredicateTable)
+				predicate_table_set_preds(Preds,
+					PredicateTable1, PredicateTable)
 			;
 				PredicateTable = PredicateTable1
 			),
@@ -3376,26 +3333,24 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 	% check for type variables which occur in the the class constraints,
 	% but which don't occur in the predicate argument types
 	%
-:- pred check_tvars_in_constraints(class_constraints, list(type), tvarset,
-		pred_or_func, sym_name, prog_context,
-		module_info, module_info, io__state, io__state).
-:- mode check_tvars_in_constraints(in, in, in, in, in, in,
-		in, out, di, uo) is det.
+:- pred check_tvars_in_constraints(class_constraints::in, list(type)::in,
+	tvarset::in, pred_or_func::in, sym_name::in, prog_context::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_tvars_in_constraints(ClassContext, ArgTypes, TVarSet,
-		PredOrFunc, PredName, Context, Module0, Module) -->
-	{ solutions(constrained_tvar_not_in_arg_types(ClassContext, ArgTypes),
-		UnboundTVars) },
-	( { UnboundTVars = [] } ->
-		{ Module = Module0 }
+		PredOrFunc, PredName, Context, !Module, !IO) :-
+	solutions(constrained_tvar_not_in_arg_types(ClassContext, ArgTypes),
+		UnboundTVars),
+	( UnboundTVars = [] ->
+		true
 	;
-		{ module_info_incr_errors(Module0, Module) },
+		module_info_incr_errors(!Module),
 		report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes,
-			TVarSet, PredOrFunc, PredName, Context)
+			TVarSet, PredOrFunc, PredName, Context, !IO)
 	).
 
-:- pred constrained_tvar_not_in_arg_types(class_constraints, list(type), tvar).
-:- mode constrained_tvar_not_in_arg_types(in, in, out) is nondet.
+:- pred constrained_tvar_not_in_arg_types(class_constraints::in,
+	list(type)::in, tvar::out) is nondet.
 
 constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
 	ClassContext = constraints(UnivCs, ExistCs),
@@ -3404,11 +3359,9 @@ constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
 	list__member(TVar, TVars),
 	\+ term__contains_var_list(ArgTypes, TVar).
 
-:- pred report_unbound_tvars_in_class_context(list(tvar), list(type), tvarset,
-		pred_or_func, sym_name, prog_context,
-		io__state, io__state).
-:- mode report_unbound_tvars_in_class_context(in, in, in, in, in, in,
-		di, uo) is det.
+:- pred report_unbound_tvars_in_class_context(list(tvar)::in, list(type)::in,
+	tvarset::in, pred_or_func::in, sym_name::in, prog_context::in,
+	io::di, io::uo) is det.
 
 /*
 The error message is intended to look like this:
@@ -3465,31 +3418,28 @@ report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes, TVarSet,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_check_field_access_function(sym_name, arity, import_status,
-		prog_context, module_info, io__state, io__state).
-:- mode maybe_check_field_access_function(in, in, in, in, in, di, uo) is det.
+:- pred maybe_check_field_access_function(sym_name::in, arity::in,
+	import_status::in, prog_context::in, module_info::in,
+	io::di, io::uo) is det.
 
-maybe_check_field_access_function(FuncName, FuncArity,
-		Status, Context, Module) -->
+maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
+		Module, !IO) :-
 	(
-		{ is_field_access_function_name(Module, FuncName, FuncArity,
-			AccessType, FieldName) }
+		is_field_access_function_name(Module, FuncName, FuncArity,
+			AccessType, FieldName)
 	->
 		check_field_access_function(AccessType, FieldName, FuncName,
-			FuncArity, Status, Context, Module)
+			FuncArity, Status, Context, Module, !IO)
 	;
-		[]
+		true
 	).
 
-:- pred check_field_access_function(field_access_type,
-		ctor_field_name, sym_name,
-		arity, import_status, prog_context, module_info,
-		io__state, io__state).
-:- mode check_field_access_function(in, in, in, in, in, in, in,
-		di, uo) is det.
+:- pred check_field_access_function(field_access_type::in, ctor_field_name::in,
+	sym_name::in, arity::in, import_status::in, prog_context::in,
+	module_info::in, io::di, io::uo) is det.
 
 check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
-		FuncStatus, Context, Module, IO0, IO) :-
+		FuncStatus, Context, Module, !IO) :-
 	adjust_func_arity(function, FuncArity, PredArity),
 	FuncCallId = function - FuncName/PredArity,
 
@@ -3506,32 +3456,30 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
 		FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
 		DefnStatus = exported, FuncStatus \= exported
 	->
-		report_field_status_mismatch(Context,
-			FuncCallId, IO0, IO)
+		report_field_status_mismatch(Context, FuncCallId, !IO)
 	;
-		IO = IO0
+		true
 	).
 
-:- pred report_field_status_mismatch(prog_context, simple_call_id,
-		io__state, io__state).
-:- mode report_field_status_mismatch(in, in, di, uo) is det.
+:- pred report_field_status_mismatch(prog_context::in, simple_call_id::in,
+	io::di, io::uo) is det.
 
-report_field_status_mismatch(Context, CallId) -->
-	{ hlds_out__simple_call_id_to_string(CallId, CallIdString) },
-	{ ErrorPieces = [
+report_field_status_mismatch(Context, CallId, !IO) :-
+	hlds_out__simple_call_id_to_string(CallId, CallIdString),
+	ErrorPieces = [
 		words("In declaration of"),
 		fixed(string__append(CallIdString, ":")),
 		nl,
 		words("error: a field access function for an"),
 		words("exported field must also be exported.")
-	]},
-	error_util__write_error_pieces(Context, 0, ErrorPieces),
-	io__set_exit_status(1).
+	],
+	error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+	io__set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_builtin(pred_id, list(type), pred_info, pred_info).
-:- mode add_builtin(in, in, in, out) is det.
+:- pred add_builtin(pred_id::in, list(type)::in, pred_info::in, pred_info::out)
+	is det.
 
 	% For a builtin predicate, say foo/2, we add a clause
 	%
@@ -3561,7 +3509,7 @@ add_builtin(PredId, Types, !PredInfo) :-
 	ModeId = invalid_proc_id,	% mode checking will figure it out
 	MaybeUnifyContext = no,
 	Call = call(PredId, ModeId, HeadVars, inline_builtin, MaybeUnifyContext,
-			SymName),
+		SymName),
 
 		%
 		% construct a clause containing that pseudo-recursive call
@@ -3583,8 +3531,8 @@ add_builtin(PredId, Types, !PredInfo) :-
 	map__init(TCI_VarMap),
 	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-				HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
-				HasForeignClauses),
+		HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
+		HasForeignClauses),
 	pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
 		%
@@ -3749,7 +3697,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
 add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
 		TypeBody, Context, Status0, !Module) :-
 	Type = adjust_types_with_special_preds_in_private_builtin(Type0),
-	adjust_special_pred_status(Status0, SpecialPredId, Status),
+	adjust_special_pred_status(SpecialPredId, Status0, Status),
 	module_info_get_special_pred_map(!.Module, SpecialPredMap0),
 	( map__contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
 		true
@@ -3805,7 +3753,8 @@ adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
 	( type_to_ctor_and_args(Type, TypeCtor, []) ->
 		( is_builtin_types_special_preds_defined_in_mercury(TypeCtor,
 				Name) ->
-			construct_type(unqualified(Name) - 0, [], NormalizedType)
+			construct_type(unqualified(Name) - 0, [],
+				NormalizedType)
 		;
 			NormalizedType = Type
 		)
@@ -3853,7 +3802,7 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 	special_pred_name_arity(SpecialPredId, _, Arity),
 	Cond `with_type` condition = true,
 	clauses_info_init(Arity, ClausesInfo0),
-	adjust_special_pred_status(Status0, SpecialPredId, Status),
+	adjust_special_pred_status(SpecialPredId, Status0, Status),
 	map__init(Proofs),
 	init_markers(Markers),
 		% XXX If/when we have "comparable" or "unifiable" typeclasses,
@@ -3871,13 +3820,13 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 	varset__init(InstVarSet),
 		% Should not be any inst vars here so it's ok to use a
 		% fresh inst_varset.
-	add_new_proc(PredInfo1, InstVarSet, Arity, ArgModes, yes(ArgModes),
-		ArgLives, yes(Det), Context, address_is_not_taken, PredInfo,
+	add_new_proc(InstVarSet, Arity, ArgModes, yes(ArgModes), ArgLives,
+		yes(Det), Context, address_is_not_taken, PredInfo1, PredInfo,
 		_),
 
 	module_info_get_predicate_table(!.Module, PredicateTable0),
-	predicate_table_insert(PredicateTable0, PredInfo,
-		PredId, PredicateTable),
+	predicate_table_insert(PredInfo, PredId,
+		PredicateTable0, PredicateTable),
 	module_info_set_predicate_table(PredicateTable, !Module),
 	module_info_get_special_pred_map(!.Module, SpecialPredMap0),
 	map__set(SpecialPredMap0, SpecialPredId - TypeCtor, PredId,
@@ -3903,35 +3852,34 @@ add_special_pred_unify_status(TypeBody, Status0, Status) :-
 		Status = pseudo_imported
 	).
 
-:- pred adjust_special_pred_status(import_status, special_pred_id,
-				import_status).
-:- mode adjust_special_pred_status(in, in, out) is det.
+:- pred adjust_special_pred_status(special_pred_id::in,
+	import_status::in, import_status::out) is det.
 
-adjust_special_pred_status(Status0, SpecialPredId, Status) :-
-	( ( Status0 = opt_imported ; Status0 = abstract_imported ) ->
-		Status1 = imported(interface)
-	; Status0 = abstract_exported ->
-		Status1 = exported
+adjust_special_pred_status(SpecialPredId, !Status) :-
+	( ( !.Status = opt_imported ; !.Status = abstract_imported ) ->
+		!:Status = imported(interface)
+	; !.Status = abstract_exported ->
+		!:Status = exported
 	;
-		Status1 = Status0
+		true
 	),
 
 	% unification predicates are special - they are
 	% "pseudo"-imported/exported (only mode 0 is imported/exported).
 	( SpecialPredId = unify ->
-		( Status1 = imported(_) ->
-			Status = pseudo_imported
-		; Status1 = exported ->
-			Status = pseudo_exported
+		( !.Status = imported(_) ->
+			!:Status = pseudo_imported
+		; !.Status = exported ->
+			!:Status = pseudo_exported
 		;
-			Status = Status1
+			true
 		)
 	;
-		Status = Status1
+		true
 	).
 
-add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-		MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo,
+add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
+		MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,
 		ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_arg_types(PredInfo0, ArgTypes),
@@ -3985,54 +3933,55 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, _Cond, Status, MContext,
 	predicate_table_get_preds(PredicateTable1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 
-	module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
-		IsClassMethod, MContext, PredInfo, ProcId, !IO),
+	module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet,
+		IsClassMethod, MContext, PredInfo0, PredInfo, ProcId, !IO),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
-	predicate_table_set_preds(PredicateTable1, Preds, PredicateTable),
+	predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
 	module_info_set_predicate_table(PredicateTable, !ModuleInfo),
 	PredProcId = PredId - ProcId.
 
-:- pred module_do_add_mode(pred_info::in, inst_varset::in, arity::in,
-	list(mode)::in, maybe(determinism)::in, bool::in, prog_context::in,
-	pred_info::out, proc_id::out, io__state::di, io__state::uo) is det.
+:- pred module_do_add_mode(inst_varset::in, arity::in, list(mode)::in,
+	maybe(determinism)::in, bool::in, prog_context::in,
+	pred_info::in, pred_info::out, proc_id::out,
+	io__state::di, io__state::uo) is det.
 
-module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
-		IsClassMethod, MContext, PredInfo, ProcId) -->
+module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
+		!PredInfo, ProcId, !IO) :-
 		% check that the determinism was specified
 	(
-		{ MaybeDet = no }
+		MaybeDet = no
 	->
-		{ pred_info_import_status(PredInfo0, ImportStatus) },
-		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo0) },
-		{ PredModule = pred_info_module(PredInfo0) },
-		{ PredName = pred_info_name(PredInfo0) },
-		{ PredSymName = qualified(PredModule, PredName) },
-		( { IsClassMethod = yes } ->
+		pred_info_import_status(!.PredInfo, ImportStatus),
+		PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
+		PredModule = pred_info_module(!.PredInfo),
+		PredName = pred_info_name(!.PredInfo),
+		PredSymName = qualified(PredModule, PredName),
+		( IsClassMethod = yes ->
 			unspecified_det_for_method(PredSymName, Arity,
-				PredOrFunc, MContext)
-		; { status_is_exported(ImportStatus, yes) } ->
+				PredOrFunc, MContext, !IO)
+		; status_is_exported(ImportStatus, yes) ->
 			unspecified_det_for_exported(PredSymName, Arity,
-				PredOrFunc, MContext)
+				PredOrFunc, MContext, !IO)
 		;
-			globals__io_lookup_bool_option(infer_det, InferDet),
+			globals__io_lookup_bool_option(infer_det, InferDet,
+				!IO),
 			(
-				{ InferDet = no }
+				InferDet = no
 			->
 				unspecified_det_for_local(PredSymName, Arity,
-					PredOrFunc, MContext)
+					PredOrFunc, MContext, !IO)
 			;
-				[]
+				true
 			)
 		)
 	;
-		[]
+		true
 	),
 
 		% add the mode declaration to the pred_info for this procedure.
-	{ ArgLives = no },
-	{ add_new_proc(PredInfo0, InstVarSet, Arity, Modes, yes(Modes),
-		ArgLives, MaybeDet, MContext, address_is_not_taken, PredInfo,
-		ProcId) }.
+	ArgLives = no,
+	add_new_proc(InstVarSet, Arity, Modes, yes(Modes), ArgLives, MaybeDet,
+		MContext, address_is_not_taken, !PredInfo, ProcId).
 
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration
@@ -4058,47 +4007,38 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
 		true
 	),
 	module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-	preds_add_implicit(!.ModuleInfo, PredicateTable0, ModuleName, PredName,
-		Arity, Status, Context, PredOrFunc, PredId, PredicateTable),
+	preds_add_implicit(!.ModuleInfo, ModuleName, PredName, Arity, Status,
+		Context, PredOrFunc, PredId, PredicateTable0, PredicateTable),
 	module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 
-:- pred preds_add_implicit(module_info, predicate_table, module_name,
-		sym_name, arity, import_status, prog_context,
-		pred_or_func, pred_id, predicate_table).
-:- mode preds_add_implicit(in, in, in, in, in, in, in, in, out, out) is det.
+:- pred preds_add_implicit(module_info::in, module_name::in, sym_name::in,
+	arity::in, import_status::in, prog_context::in, pred_or_func::in,
+	pred_id::out, predicate_table::in, predicate_table::out) is det.
 
-preds_add_implicit(ModuleInfo, PredicateTable0, ModuleName, PredName, Arity,
-		Status, Context, PredOrFunc, PredId, PredicateTable) :-
+preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
+		PredOrFunc, PredId, !PredicateTable) :-
 	clauses_info_init(Arity, ClausesInfo),
-	preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0,
-			ModuleName, PredName, Arity, Status, Context,
-			PredOrFunc, PredId, PredicateTable).
+	preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
+		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable).
 
-:- pred preds_add_implicit_for_assertion(prog_vars, module_info,
-		predicate_table, module_name, sym_name, arity,
-		import_status, prog_context, pred_or_func,
-		pred_id, predicate_table).
-:- mode preds_add_implicit_for_assertion(in, in, in,
-		in, in, in, in, in, in, out, out) is det.
+:- pred preds_add_implicit_for_assertion(prog_vars::in, module_info::in,
+	module_name::in, sym_name::in, arity::in, import_status::in,
+	prog_context::in, pred_or_func::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
-preds_add_implicit_for_assertion(HeadVars,
-		ModuleInfo, PredicateTable0, ModuleName,
-		PredName, Arity, Status, Context,
-		PredOrFunc, PredId, PredicateTable) :-
+preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
+		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable) :-
 	clauses_info_init_for_assertion(HeadVars, ClausesInfo),
-	preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0,
-			ModuleName, PredName, Arity, Status, Context,
-			PredOrFunc, PredId, PredicateTable).
+	preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
+		Arity, Status, Context, PredOrFunc, PredId, !PredicateTable).
 
-:- pred preds_add_implicit_2(clauses_info, module_info, predicate_table,
-		module_name, sym_name, arity, import_status, prog_context,
-		pred_or_func, pred_id, predicate_table).
-:- mode preds_add_implicit_2(in, in, in,
-		in, in, in, in, in, in, out, out) is det.
+:- pred preds_add_implicit_2(clauses_info::in, module_info::in,
+	module_name::in, sym_name::in, arity::in, import_status::in,
+	prog_context::in, pred_or_func::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
-preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0, ModuleName,
-		PredName, Arity, Status, Context,
-		PredOrFunc, PredId, PredicateTable) :-
+preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
+		Status, Context, PredOrFunc, PredId, !PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
 	term__var_list_to_term_list(TypeVars, Types),
@@ -4119,13 +4059,13 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, PredicateTable0, ModuleName,
 	add_marker(infer_type, Markers0, Markers),
 	pred_info_set_markers(Markers, PredInfo0, PredInfo),
 	(
-		\+ predicate_table_search_pf_sym_arity(PredicateTable0,
+		\+ predicate_table_search_pf_sym_arity(!.PredicateTable,
 			is_fully_qualified, PredOrFunc, PredName, Arity, _)
 	->
 		module_info_get_partial_qualifier_info(ModuleInfo,
 			MQInfo),
-		predicate_table_insert(PredicateTable0, PredInfo,
-			may_be_unqualified, MQInfo, PredId, PredicateTable)
+		predicate_table_insert(PredInfo,
+			may_be_unqualified, MQInfo, PredId, !PredicateTable)
 	;
 		error("preds_add_implicit")
 	).
@@ -4202,9 +4142,9 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 		->
 			term__term_list_to_var_list(Args, HeadVars),
 			preds_add_implicit_for_assertion(HeadVars,
-				!.ModuleInfo, PredicateTable0, ModuleName,
-				PredName, Arity, Status, Context, PredOrFunc,
-				PredId, PredicateTable1),
+				!.ModuleInfo, ModuleName, PredName, Arity,
+				Status, Context, PredOrFunc, PredId,
+				PredicateTable0, PredicateTable1),
 			module_info_set_predicate_table(PredicateTable1,
 				!ModuleInfo)
 		;
@@ -4330,8 +4270,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 			PredInfo = PredInfo6
 		),
 		map__det_update(Preds0, PredId, PredInfo, Preds),
-		predicate_table_set_preds(PredicateTable2, Preds,
-			PredicateTable),
+		predicate_table_set_preds(Preds,
+			PredicateTable2, PredicateTable),
 		module_info_set_predicate_table(PredicateTable, !ModuleInfo),
 		( Status \= opt_imported ->
 			% warn about singleton variables
@@ -4447,35 +4387,34 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
 
 	% Extract the mode annotations (if any) from a list of arguments.
 :- pred get_mode_annotations(list(prog_term)::in, list(prog_term)::out,
-		mode_annotations::in, mode_annotations::out) is det.
+	mode_annotations::in, mode_annotations::out) is det.
 
-get_mode_annotations([], [], Annotations, Annotations).
-get_mode_annotations([Arg0 | Args0], [Arg | Args],
-		Annotations0, Annotations) :-
+get_mode_annotations([], [], !Annotations).
+get_mode_annotations([Arg0 | Args0], [Arg | Args], !Annotations) :-
 	get_mode_annotation(Arg0, Arg, MaybeAnnotation),
-	add_annotation(Annotations0, MaybeAnnotation, Annotations1),
-	get_mode_annotations(Args0, Args, Annotations1, Annotations).
+	add_annotation(MaybeAnnotation, !Annotations),
+	get_mode_annotations(Args0, Args, !Annotations).
 
-:- pred add_annotation(mode_annotations::in, maybe(mode)::in,
-		mode_annotations::out) is det.
+:- pred add_annotation(maybe(mode)::in,
+	mode_annotations::in, mode_annotations::out) is det.
 
-add_annotation(empty, no, none).
-add_annotation(empty, yes(Mode), modes([Mode])).
-add_annotation(modes(_ `with_type` list(mode)), no, mixed).
-add_annotation(modes(Modes), yes(Mode), modes(Modes ++ [Mode])).
-add_annotation(none, no, none).
-add_annotation(none, yes(_), mixed).
-add_annotation(mixed, _, mixed).
+add_annotation(no,        empty, none).
+add_annotation(yes(Mode), empty, modes([Mode])).
+add_annotation(no,        modes(_ `with_type` list(mode)), mixed).
+add_annotation(yes(Mode), modes(Modes), modes(Modes ++ [Mode])).
+add_annotation(no,        none, none).
+add_annotation(yes(_),    none, mixed).
+add_annotation(_,         mixed, mixed).
 
 	% Extract the mode annotations (if any) from a single argument.
 :- pred get_mode_annotation(prog_term::in, prog_term::out, maybe(mode)::out)
-		is det.
+	is det.
 
 get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
 	(
 		Arg0 = term__functor(term__atom("::"), [Arg1, ModeTerm], _),
-		convert_mode(allow_constrained_inst_var, term__coerce(ModeTerm),
-			Mode)
+		convert_mode(allow_constrained_inst_var,
+			term__coerce(ModeTerm), Mode)
 	->
 		Arg = Arg1,
 		MaybeAnnotation = yes(Mode)
@@ -4502,13 +4441,9 @@ produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 	set__list_to_set(HeadVars, NonLocals),
 	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
-	(
-		check_marker(Markers, (impure))
-	->
+	( check_marker(Markers, (impure)) ->
 		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
-	;
-		check_marker(Markers, (semipure))
-	->
+	; check_marker(Markers, (semipure)) ->
 		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
 	;
 		GoalInfo = GoalInfo2
@@ -4607,8 +4542,8 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
 	prog_context::in, module_info::in, module_info::out,
 	qual_info::in, qual_info::out, io__state::di, io__state::uo) is det.
 
-module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
-		C_Function, Status, Context, !ModuleInfo, !Info, !IO) :-
+module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
+		Status, Context, !ModuleInfo, !Info, !IO) :-
 	module_info_name(!.ModuleInfo, ModuleName),
 	list__length(Modes, Arity),
 
@@ -4658,18 +4593,14 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 	;
 		PredInfo1 = PredInfo0
 	),
-	(
-		pred_info_is_imported(PredInfo1)
-	->
+	( pred_info_is_imported(PredInfo1) ->
 		module_info_incr_errors(!ModuleInfo),
 		prog_out__write_context(Context, !IO),
 		io__write_string("Error: `:- pragma import' ", !IO),
 		io__write_string("declaration for imported ", !IO),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
 		io__write_string(".\n", !IO)
-	;
-		pred_info_clause_goal_type(PredInfo1)
-	->
+	; pred_info_clause_goal_type(PredInfo1) ->
 		module_info_incr_errors(!ModuleInfo),
 		prog_out__write_context(Context, !IO),
 		io__write_string("Error: `:- pragma import' declaration ", !IO),
@@ -4689,12 +4620,12 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 			get_procedure_matching_argmodes(ExistingProcs, Modes,
 				!.ModuleInfo, ProcId)
 		->
-			pred_add_pragma_import(PredInfo2, PredId, ProcId,
-				Attributes, C_Function, Context,
-				PredInfo, !ModuleInfo, !Info, !IO),
+			pred_add_pragma_import(PredId, ProcId, Attributes,
+				C_Function, Context, PredInfo2, PredInfo,
+				!ModuleInfo, !Info, !IO),
 			map__det_update(Preds0, PredId, PredInfo, Preds),
-			predicate_table_set_preds(PredicateTable2, Preds,
-				PredicateTable),
+			predicate_table_set_preds(Preds,
+				PredicateTable2, PredicateTable),
 			module_info_set_predicate_table(PredicateTable,
 				!ModuleInfo)
 		;
@@ -4714,40 +4645,39 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 %	This is a subroutine of module_add_pragma_import which adds
 %	the c_code for a `pragma import' declaration to a pred_info.
 
-:- pred pred_add_pragma_import(pred_info, pred_id, proc_id,
-		pragma_foreign_proc_attributes, string, prog_context, pred_info,
-		module_info, module_info, qual_info, qual_info,
-		io__state, io__state).
-:- mode pred_add_pragma_import(in, in, in, in, in, in, out, in, out, in, out,
-		di, uo) is det.
-pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
-		Context, PredInfo, ModuleInfo0, ModuleInfo, Info0, Info) -->
-	{ pred_info_procedures(PredInfo0, Procs) },
-	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ foreign__make_pragma_import(PredInfo0, ProcInfo, C_Function, Context,
-		ModuleInfo0, PragmaImpl, VarSet, PragmaVars, ArgTypes,
-		Arity, PredOrFunc) },
+:- pred pred_add_pragma_import(pred_id::in, proc_id::in,
+	pragma_foreign_proc_attributes::in, string::in, prog_context::in,
+	pred_info::in, pred_info::out, module_info::in, module_info::out,
+	qual_info::in, qual_info::out, io::di, io::uo) is det.
+
+pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
+		!PredInfo, !ModuleInfo, !Info, !IO) :-
+	pred_info_procedures(!.PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo),
+	foreign__make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
+		!.ModuleInfo, PragmaImpl, VarSet, PragmaVars, ArgTypes,
+		Arity, PredOrFunc),
 
 	%
 	% lookup some information we need from the pred_info and proc_info
 	%
-	{ PredName = pred_info_name(PredInfo0) },
-	{ PredModule = pred_info_module(PredInfo0) },
-	{ pred_info_clauses_info(PredInfo0, Clauses0) },
-	{ pred_info_get_purity(PredInfo0, Purity) },
+	PredName = pred_info_name(!.PredInfo),
+	PredModule = pred_info_module(!.PredInfo),
+	pred_info_clauses_info(!.PredInfo, Clauses0),
+	pred_info_get_purity(!.PredInfo, Purity),
 
 	%
 	% Add the code for this `pragma import' to the clauses_info
 	%
-	clauses_info_add_pragma_foreign_proc(Clauses0, Purity, Attributes,
+	clauses_info_add_pragma_foreign_proc(Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
 		Context, PredOrFunc, qualified(PredModule, PredName),
-		Arity, Clauses, ModuleInfo0, ModuleInfo, Info0, Info),
+		Arity, Clauses0, Clauses, !ModuleInfo, !IO),
 
 	%
 	% Store the clauses_info etc. back into the pred_info
 	%
-	{ pred_info_set_clauses_info(Clauses, PredInfo0, PredInfo) }.
+	pred_info_set_clauses_info(Clauses, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -4760,7 +4690,7 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 		PragmaImpl, Status, Context, !ModuleInfo, !Info, !IO) :-
 	module_info_name(!.ModuleInfo, ModuleName),
-	foreign_language(Attributes, PragmaForeignLanguage),
+	PragmaForeignLanguage = foreign_language(Attributes),
 	list__length(PVars, Arity),
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -4860,18 +4790,18 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc, PVars, VarSet,
 
 			pred_info_arg_types(PredInfo1, ArgTypes),
 			pred_info_get_purity(PredInfo1, Purity),
-			clauses_info_add_pragma_foreign_proc(Clauses0, Purity,
+			clauses_info_add_pragma_foreign_proc(Purity,
 				Attributes, PredId, ProcId, VarSet, PVars,
 				ArgTypes, PragmaImpl, Context, PredOrFunc,
-				PredName, Arity, Clauses, !ModuleInfo, !Info,
-				!IO),
+				PredName, Arity, Clauses0, Clauses,
+				!ModuleInfo, !IO),
 			pred_info_set_clauses_info(Clauses,
 				PredInfo1, PredInfo2),
 			pred_info_update_goal_type(pragmas,
 				PredInfo2, PredInfo),
 			map__det_update(Preds0, PredId, PredInfo, Preds),
-			predicate_table_set_preds(PredicateTable1, Preds,
-				PredicateTable),
+			predicate_table_set_preds(Preds,
+				PredicateTable1, PredicateTable),
 			module_info_set_predicate_table(PredicateTable,
 				!ModuleInfo),
 			pragma_get_var_infos(PVars, ArgInfo),
@@ -5060,21 +4990,19 @@ module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 		)
 	).
 
-:- pred set_eval_method_list(assoc_list(proc_id, proc_info), eval_method,
-	proc_table, proc_table).
-:- mode set_eval_method_list(in, in, in, out) is det.
+:- pred set_eval_method_list(assoc_list(proc_id, proc_info)::in,
+	eval_method::in, proc_table::in, proc_table::out) is det.
 
-set_eval_method_list([], _, Procs, Procs).
-set_eval_method_list([ProcId - ProcInfo0|Rest], EvalMethod, Procs0, Procs) :-
+set_eval_method_list([], _, !Procs).
+set_eval_method_list([ProcId - ProcInfo0|Rest], EvalMethod, !Procs) :-
 	proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
-	set_eval_method_list(Rest, EvalMethod, Procs1, Procs).
+	map__det_update(!.Procs, ProcId, ProcInfo, !:Procs),
+	set_eval_method_list(Rest, EvalMethod, !Procs).
 
 %-----------------------------------------------------------------------------%
 
 	% from the list of pragma_vars extract the modes.
-:- pred pragma_get_modes(list(pragma_var), list(mode)).
-:- mode pragma_get_modes(in, out) is det.
+:- pred pragma_get_modes(list(pragma_var)::in, list(mode)::out) is det.
 
 pragma_get_modes([], []).
 pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
@@ -5084,8 +5012,7 @@ pragma_get_modes([PragmaVar | Vars], [Mode | Modes]) :-
 %-----------------------------------------------------------------------------%
 
 	% from the list of pragma_vars , extract the vars.
-:- pred pragma_get_vars(list(pragma_var), list(prog_var)).
-:- mode pragma_get_vars(in, out) is det.
+:- pred pragma_get_vars(list(pragma_var)::in, list(prog_var)::out) is det.
 
 pragma_get_vars([], []).
 pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
@@ -5096,8 +5023,8 @@ pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
 
 	% from the list of pragma_vars, extract the names.
 
-:- pred pragma_get_var_infos(list(pragma_var), list(maybe(pair(string, mode)))).
-:- mode pragma_get_var_infos(in, out) is det.
+:- pred pragma_get_var_infos(list(pragma_var)::in,
+	list(maybe(pair(string, mode)))::out) is det.
 
 pragma_get_var_infos([], []).
 pragma_get_var_infos([PragmaVar | PragmaVars], [yes(Name - Mode) | Info]) :-
@@ -5112,8 +5039,8 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [yes(Name - Mode) | Info]) :-
 	% The bool indicates whether there was a conflicting marker
 	% present.
 
-:- pred pragma_check_markers(pred_table, list(pred_id), list(marker), bool).
-:- mode pragma_check_markers(in, in, in, out) is det.
+:- pred pragma_check_markers(pred_table::in, list(pred_id)::in,
+	list(marker)::in, bool::out) is det.
 
 pragma_check_markers(_, [], _, no).
 pragma_check_markers(PredTable, [PredId | PredIds], ConflictList,
@@ -5156,8 +5083,8 @@ pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
 		MustBeExported, !PredTable, WrongStatus1),
 	bool__or(WrongStatus0, WrongStatus1, WrongStatus).
 
-:- pred add_marker_pred_info(marker, pred_info, pred_info).
-:- mode add_marker_pred_info(in, in, out) is det.
+:- pred add_marker_pred_info(marker::in, pred_info::in, pred_info::out)
+	is det.
 
 add_marker_pred_info(Marker, !PredInfo) :-
 	pred_info_get_markers(!.PredInfo, Markers0),
@@ -5166,8 +5093,7 @@ add_marker_pred_info(Marker, !PredInfo) :-
 
 	% Succeed if a marker for an exported procedure must also
 	% be exported.
-:- pred marker_must_be_exported(marker).
-:- mode marker_must_be_exported(in) is semidet.
+:- pred marker_must_be_exported(marker::in) is semidet.
 
 marker_must_be_exported(aditi).
 marker_must_be_exported(base_relation).
@@ -5176,17 +5102,15 @@ marker_must_be_exported(base_relation).
 
 	% Find the procedure with argmodes which match the ones we want.
 
-:- pred get_procedure_matching_argmodes(assoc_list(proc_id, proc_info),
-		list(mode), module_info, proc_id).
-:- mode get_procedure_matching_argmodes(in, in, in, out) is semidet.
+:- pred get_procedure_matching_argmodes(assoc_list(proc_id, proc_info)::in,
+	list(mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
 	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
 	get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
-:- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info),
-		list(mode), module_info, proc_id).
-:- mode get_procedure_matching_argmodes_2(in, in, in, out) is semidet.
+:- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info)::in,
+	list(mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_argmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
@@ -5201,17 +5125,15 @@ get_procedure_matching_argmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	% Find the procedure with declared argmodes which match the ones
 	% we want.  If there was no mode declaration, then use the inferred
 	% argmodes.
-:- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info),
-		list(mode), module_info, proc_id).
-:- mode get_procedure_matching_declmodes(in, in, in, out) is semidet.
+:- pred get_procedure_matching_declmodes(assoc_list(proc_id, proc_info)::in,
+	list(mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
 	list__map(constrain_inst_vars_in_mode, Modes0, Modes),
 	get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
-:- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info),
-		list(mode), module_info, proc_id).
-:- mode get_procedure_matching_declmodes_2(in, in, in, out) is semidet.
+:- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info)::in,
+	list(mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_declmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 	P = ProcId - ProcInfo,
@@ -5223,8 +5145,8 @@ get_procedure_matching_declmodes_2([P|Procs], Modes, ModuleInfo, OurProcId) :-
 			OurProcId)
 	).
 
-:- pred mode_list_matches(list(mode), list(mode), module_info).
-:- mode mode_list_matches(in, in, in) is semidet.
+:- pred mode_list_matches(list(mode)::in, list(mode)::in, module_info::in)
+	is semidet.
 
 mode_list_matches([], [], _).
 mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
@@ -5240,22 +5162,20 @@ mode_list_matches([Mode1 | Modes1], [Mode2 | Modes2], ModuleInfo) :-
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-:- pred maybe_warn_overlap(list(quant_warning), prog_varset,
-				simple_call_id, io__state, io__state).
-:- mode maybe_warn_overlap(in, in, in, di, uo) is det.
+:- pred maybe_warn_overlap(list(quant_warning)::in, prog_varset::in,
+	simple_call_id::in, io::di, io::uo) is det.
 
 maybe_warn_overlap(Warnings, VarSet, PredCallId) -->
 	globals__io_lookup_bool_option(warn_overlapping_scopes,
-			WarnOverlappingScopes),
+		WarnOverlappingScopes),
 	( { WarnOverlappingScopes = yes } ->
 		warn_overlap(Warnings, VarSet, PredCallId)
 	;
 		[]
 	).
 
-:- pred warn_overlap(list(quant_warning), prog_varset, simple_call_id,
-		io__state, io__state).
-:- mode warn_overlap(in, in, in, di, uo) is det.
+:- pred warn_overlap(list(quant_warning)::in, prog_varset::in,
+	simple_call_id::in, io::di, io::uo) is det.
 
 warn_overlap([], _, _) --> [].
 warn_overlap([Warn|Warns], VarSet, PredCallId) -->
@@ -5285,9 +5205,8 @@ warn_overlap([Warn|Warns], VarSet, PredCallId) -->
 	% but occur more than once, or about variables that do not occur in
 	% C code strings when they should.
 	%
-:- pred maybe_warn_singletons(prog_varset, simple_call_id, module_info,
-		hlds_goal, io__state, io__state).
-:- mode maybe_warn_singletons(in, in, in, in, di, uo) is det.
+:- pred maybe_warn_singletons(prog_varset::in, simple_call_id::in,
+	module_info::in, hlds_goal::in, io::di, io::uo) is det.
 
 maybe_warn_singletons(VarSet, PredCallId, ModuleInfo, Body) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
@@ -5299,18 +5218,17 @@ maybe_warn_singletons(VarSet, PredCallId, ModuleInfo, Body) -->
 		[]
 	).
 
-:- pred warn_singletons_in_goal(hlds_goal, set(prog_var), prog_varset,
-	simple_call_id, module_info, io__state, io__state).
-:- mode warn_singletons_in_goal(in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_goal(hlds_goal::in, set(prog_var)::in,
+	prog_varset::in, simple_call_id::in, module_info::in,
+	io::di, io::uo) is det.
 
 warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-:- pred warn_singletons_in_goal_2(hlds_goal_expr, hlds_goal_info, set(prog_var),
-		prog_varset, simple_call_id, module_info,
-		io__state, io__state).
-:- mode warn_singletons_in_goal_2(in, in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+	set(prog_var)::in, prog_varset::in, simple_call_id::in,
+	module_info::in, io::di, io::uo) is det.
 
 warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
@@ -5350,7 +5268,7 @@ warn_singletons_in_goal_2(some(Vars, _, SubGoal), GoalInfo, QuantVars, VarSet,
 	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
-				QuantVars, VarSet, PredCallId, MI) -->
+		QuantVars, VarSet, PredCallId, MI) -->
 	%
 	% warn if any quantified variables do not occur in the condition
 	% or the "then" part of the if-then-else
@@ -5373,7 +5291,7 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
 	warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId, MI).
 
 warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId, _) -->
+		GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
@@ -5389,14 +5307,14 @@ warn_singletons_in_goal_2(generic_call(GenericCall, Args0, _, _),
 		PredCallId).
 
 warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
+		GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-warn_singletons_in_goal_2(foreign_proc(Attrs, _, _, _, ArgInfo, _,
-		PragmaImpl), GoalInfo, _QuantVars, _VarSet, PredCallId, MI) -->
+warn_singletons_in_goal_2(foreign_proc(Attrs, _, _, _, ArgInfo, _, PragmaImpl),
+		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	{ foreign_language(Attrs, Lang) },
+	{ Lang = foreign_language(Attrs) },
 	warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
 		ArgInfo, Context, PredCallId, MI).
 
@@ -5405,21 +5323,18 @@ warn_singletons_in_goal_2(shorthand(ShorthandGoal), GoalInfo, QuantVars,
 	warn_singletons_in_goal_2_shorthand(ShorthandGoal, GoalInfo,
 		QuantVars, VarSet, PredCallId, MI).
 
-:- pred warn_singletons_in_goal_2_shorthand(shorthand_goal_expr,
-		hlds_goal_info, set(prog_var), prog_varset, simple_call_id,
-		module_info, io__state, io__state).
-:- mode warn_singletons_in_goal_2_shorthand(in, in, in, in, in, in, di, uo)
-		is det.
+:- pred warn_singletons_in_goal_2_shorthand(shorthand_goal_expr::in,
+	hlds_goal_info::in, set(prog_var)::in, prog_varset::in,
+	simple_call_id::in, module_info::in, io::di, io::uo) is det.
 
 warn_singletons_in_goal_2_shorthand(bi_implication(LHS, RHS), _GoalInfo,
 		QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_goal_list([LHS, RHS], QuantVars, VarSet,
 		PredCallId, MI).
 
-:- pred warn_singletons_in_goal_list(list(hlds_goal), set(prog_var),
-		prog_varset, simple_call_id, module_info,
-		io__state, io__state).
-:- mode warn_singletons_in_goal_list(in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_goal_list(list(hlds_goal)::in, set(prog_var)::in,
+	prog_varset::in, simple_call_id::in, module_info::in,
+	io::di, io::uo) is det.
 
 warn_singletons_in_goal_list([], _, _, _, _) --> [].
 warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId, MI)
@@ -5427,9 +5342,9 @@ warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId, MI)
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId, MI).
 
-:- pred warn_singletons_in_cases(list(case), set(prog_var), prog_varset,
-	simple_call_id, module_info, io__state, io__state).
-:- mode warn_singletons_in_cases(in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_cases(list(case)::in, set(prog_var)::in,
+	prog_varset::in, simple_call_id::in, module_info::in,
+	io::di, io::uo) is det.
 
 warn_singletons_in_cases([], _, _, _, _) --> [].
 warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId, MI) -->
@@ -5437,28 +5352,27 @@ warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId, MI) -->
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId, MI),
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId, MI).
 
-:- pred warn_singletons_in_unify(prog_var, unify_rhs, hlds_goal_info,
-		set(prog_var), prog_varset, simple_call_id, module_info,
-		io__state, io__state).
-:- mode warn_singletons_in_unify(in, in, in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons_in_unify(prog_var::in, unify_rhs::in,
+	hlds_goal_info::in, set(prog_var)::in, prog_varset::in,
+	simple_call_id::in, module_info::in, io::di, io::uo) is det.
 
 warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId, _)
 		-->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
-			Context, CallPredId).
+		Context, CallPredId).
 
 warn_singletons_in_unify(X, functor(_ConsId, _, Vars), GoalInfo,
-			QuantVars, VarSet, CallPredId, _) -->
+		QuantVars, VarSet, CallPredId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
-			Context, CallPredId).
+		Context, CallPredId).
 
 warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
-			_NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
-			GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
+		_NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
+		GoalInfo, QuantVars, VarSet, CallPredId, MI) -->
 	%
 	% warn if any lambda-quantified variables occur only in the quantifier
 	%
@@ -5466,7 +5380,7 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
 	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons(LambdaVars, LambdaNonLocals, QuantVars, VarSet,
-			Context, CallPredId),
+		Context, CallPredId),
 
 	%
 	% warn if X (the variable we're unifying the lambda expression with)
@@ -5482,18 +5396,20 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_warn_pragma_singletons(pragma_foreign_code_impl,
-	foreign_language, list(maybe(pair(string, mode))), prog_context,
-	simple_call_id, module_info, io__state, io__state).
-:- mode maybe_warn_pragma_singletons(in, in, in, in, in, in, di, uo) is det.
+:- pred maybe_warn_pragma_singletons(pragma_foreign_code_impl::in,
+	foreign_language::in, list(maybe(pair(string, mode)))::in,
+	prog_context::in, simple_call_id::in, module_info::in,
+	io::di, io::uo) is det.
 
-maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI) -->
-	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
-	( { WarnSingletonVars = yes } ->
+maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI,
+		!IO) :-
+	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars,
+		!IO),
+	( WarnSingletonVars = yes ->
 		warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
-			ArgInfo, Context, CallId, MI)
+			ArgInfo, Context, CallId, MI, !IO)
 	;
-		[]
+		true
 	).
 
 	% warn_singletons_in_pragma_foreign_proc checks to see if each
@@ -5504,107 +5420,111 @@ maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI) -->
 	% appropriate to do this check, or you may need to add a
 	% transformation to map Mercury variable names into identifiers
 	% for that foreign language).
-:- pred warn_singletons_in_pragma_foreign_proc(pragma_foreign_code_impl,
-	foreign_language, list(maybe(pair(string, mode))), prog_context,
-	simple_call_id, module_info, io__state, io__state).
-:- mode warn_singletons_in_pragma_foreign_proc(in, in, in, in, in, in,
-	di, uo) is det.
+:- pred warn_singletons_in_pragma_foreign_proc(pragma_foreign_code_impl::in,
+	foreign_language::in, list(maybe(pair(string, mode)))::in,
+	prog_context::in, simple_call_id::in, module_info::in,
+	io::di, io::uo) is det.
 
-warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
-		Context, PredOrFuncCallId, ModuleInfo) -->
-	{ LangStr = foreign_language_string(Lang) },
+warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
+		PredOrFuncCallId, ModuleInfo, !IO) :-
+	LangStr = foreign_language_string(Lang),
 	(
-		{ PragmaImpl = ordinary(C_Code, _) },
-		{ c_code_to_name_list(C_Code, C_CodeList) },
-		{ solutions((pred(Name::out) is nondet :-
+		PragmaImpl = ordinary(C_Code, _),
+		c_code_to_name_list(C_Code, C_CodeList),
+		solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - _), ArgInfo),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, C_CodeList)
-			), UnmentionedVars) },
-		( { UnmentionedVars = [] } ->
-			[]
+			), UnmentionedVars),
+		( UnmentionedVars = [] ->
+			true
 		;
-			prog_out__write_context(Context),
-			io__write_string("In the " ++ LangStr ++ " code for "),
-			hlds_out__write_simple_call_id(PredOrFuncCallId),
-			io__write_string(":\n"),
-			prog_out__write_context(Context),
-			write_variable_warning_start(UnmentionedVars),
+			prog_out__write_context(Context, !IO),
+			io__write_string("In the " ++ LangStr ++ " code for ",
+			!IO),
+			hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+			io__write_string(":\n", !IO),
+			prog_out__write_context(Context, !IO),
+			write_variable_warning_start(UnmentionedVars, !IO),
 			io__write_string("not occur in the " ++
-				LangStr ++ " code.\n")
+				LangStr ++ " code.\n", !IO)
 		)
 	;
-		{ PragmaImpl = nondet(_, _, FirstCode, _,
-			LaterCode, _, _, SharedCode, _) },
-		{ c_code_to_name_list(FirstCode, FirstCodeList) },
-		{ c_code_to_name_list(LaterCode, LaterCodeList) },
-		{ c_code_to_name_list(SharedCode, SharedCodeList) },
-		{ solutions((pred(Name::out) is nondet :-
+		PragmaImpl = nondet(_, _, FirstCode, _,
+			LaterCode, _, _, SharedCode, _),
+		c_code_to_name_list(FirstCode, FirstCodeList),
+		c_code_to_name_list(LaterCode, LaterCodeList),
+		c_code_to_name_list(SharedCode, SharedCodeList),
+		solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_input(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList)
-			), UnmentionedInputVars) },
-		( { UnmentionedInputVars = [] } ->
-			[]
+			), UnmentionedInputVars),
+		( UnmentionedInputVars = [] ->
+			true
 		;
-			prog_out__write_context(Context),
-			io__write_string("In the " ++ LangStr ++ " code for "),
-			hlds_out__write_simple_call_id(PredOrFuncCallId),
-			io__write_string(":\n"),
-			prog_out__write_context(Context),
-			write_variable_warning_start(UnmentionedInputVars),
+			prog_out__write_context(Context, !IO),
+			io__write_string("In the " ++ LangStr ++ " code for ",
+				!IO),
+			hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+			io__write_string(":\n", !IO),
+			prog_out__write_context(Context, !IO),
+			write_variable_warning_start(UnmentionedInputVars, !IO),
 			io__write_string("not occur in the first " ++
-				LangStr ++ " code.\n ")
+				LangStr ++ " code.\n ", !IO)
 		),
-		{ solutions((pred(Name::out) is nondet :-
+		solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList),
 				\+ list__member(Name, SharedCodeList)
-			), UnmentionedFirstOutputVars) },
-		( { UnmentionedFirstOutputVars = [] } ->
-			[]
+			), UnmentionedFirstOutputVars),
+		( UnmentionedFirstOutputVars = [] ->
+			true
 		;
-			prog_out__write_context(Context),
-			io__write_string("In the " ++ LangStr ++ " code for "),
-			hlds_out__write_simple_call_id(PredOrFuncCallId),
-			io__write_string(":\n"),
-			prog_out__write_context(Context),
+			prog_out__write_context(Context, !IO),
+			io__write_string("In the " ++ LangStr ++ " code for ",
+				!IO),
+			hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+			io__write_string(":\n", !IO),
+			prog_out__write_context(Context, !IO),
 			write_variable_warning_start(
-				UnmentionedFirstOutputVars),
+				UnmentionedFirstOutputVars, !IO),
 			io__write_string("not occur in the first " ++
 				LangStr ++ " code or the shared " ++ LangStr ++
-				" code.\n ")
+				" code.\n ", !IO)
 		),
-		{ solutions((pred(Name::out) is nondet :-
+		solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, LaterCodeList),
 				\+ list__member(Name, SharedCodeList)
-			), UnmentionedLaterOutputVars) },
-		( { UnmentionedLaterOutputVars = [] } ->
-			[]
+			), UnmentionedLaterOutputVars),
+		( UnmentionedLaterOutputVars = [] ->
+			true
 		;
-			prog_out__write_context(Context),
-			io__write_string("In the " ++ LangStr ++ " code for "),
-			hlds_out__write_simple_call_id(PredOrFuncCallId),
-			io__write_string(":\n"),
-			prog_out__write_context(Context),
+			prog_out__write_context(Context, !IO),
+			io__write_string("In the " ++ LangStr ++ " code for ",
+				!IO),
+			hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+			io__write_string(":\n", !IO),
+			prog_out__write_context(Context, !IO),
 			write_variable_warning_start(
-				UnmentionedLaterOutputVars),
+				UnmentionedLaterOutputVars, !IO),
 			io__write_string("not occur in the retry " ++
 				LangStr ++ " code or the shared " ++ LangStr ++
-				" code.\n ")
+				" code.\n ", !IO)
 		)
 	;
-		{ PragmaImpl = import(_, _, _, _) }
+		PragmaImpl = import(_, _, _, _)
 	).
 
-:- pred write_variable_warning_start(list(string)::in, io__state::di,
-		io__state::uo) is det.
+:- pred write_variable_warning_start(list(string)::in,
+	io__state::di, io__state::uo) is det.
+
 write_variable_warning_start(UnmentionedVars) -->
 	( { UnmentionedVars = [_] } ->
 		io__write_string("  warning: variable `"),
@@ -5620,21 +5540,17 @@ write_variable_warning_start(UnmentionedVars) -->
 
 	% c_code_to_name_list(Code, List) is true iff List is a list of the
 	% identifiers used in the C code in Code.
-:- pred c_code_to_name_list(string, list(string)).
-:- mode c_code_to_name_list(in, out) is det.
+:- pred c_code_to_name_list(string::in, list(string)::out) is det.
 
 c_code_to_name_list(Code, List) :-
 	string__to_char_list(Code, CharList),
 	c_code_to_name_list_2(CharList, List).
 
-:- pred c_code_to_name_list_2(list(char), list(string)).
-:- mode c_code_to_name_list_2(in, out) is det.
+:- pred c_code_to_name_list_2(list(char)::in, list(string)::out) is det.
 
 c_code_to_name_list_2(C_Code, List) :-
 	get_first_c_name(C_Code, NameCharList, TheRest),
-	(
-		NameCharList = []
-	->
+	( NameCharList = [] ->
 		% no names left
 		List = []
 	;
@@ -5643,30 +5559,26 @@ c_code_to_name_list_2(C_Code, List) :-
 		List = [Name|Names]
 	).
 
-:- pred get_first_c_name(list(char), list(char), list(char)).
-:- mode get_first_c_name(in, out, out) is det.
+:- pred get_first_c_name(list(char)::in, list(char)::out, list(char)::out)
+	is det.
 
 get_first_c_name([], [], []).
-get_first_c_name([C|CodeChars], NameCharList, TheRest) :-
-	(
-		char__is_alnum_or_underscore(C)
-	->
+get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
+	( char__is_alnum_or_underscore(C) ->
 		get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
-		NameCharList = [C|NameCharList0]
+		NameCharList = [C | NameCharList0]
 	;
 			% strip off any characters in the C code which
 			% don't form part of an identifier.
 		get_first_c_name(CodeChars, NameCharList, TheRest)
 	).
 
-:- pred get_first_c_name_in_word(list(char), list(char), list(char)).
-:- mode get_first_c_name_in_word(in, out, out) is det.
+:- pred get_first_c_name_in_word(list(char)::in, list(char)::out,
+	list(char)::out) is det.
 
 get_first_c_name_in_word([], [], []).
-get_first_c_name_in_word([C|CodeChars], NameCharList, TheRest) :-
-	(
-		char__is_alnum_or_underscore(C)
-	->
+get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
+	( char__is_alnum_or_underscore(C) ->
 			% There are more characters in the word
 		get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
 		NameCharList = [C|NameCharList0]
@@ -5678,19 +5590,16 @@ get_first_c_name_in_word([C|CodeChars], NameCharList, TheRest) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_string_list(list(string), io__state, io__state).
-:- mode write_string_list(in, di, uo) is det.
+:- pred write_string_list(list(string)::in, io::di, io::uo) is det.
 
-write_string_list([]) --> [].
-write_string_list([X|Xs]) -->
-	io__write_string(X),
-	(
-		{ Xs = [] }
-	->
-		[]
+write_string_list([], !IO).
+write_string_list([X | Xs], !IO) :-
+	io__write_string(X, !IO),
+	( Xs = [] ->
+		true
 	;
-		io__write_string(", "),
-		write_string_list(Xs)
+		io__write_string(", ", !IO),
+		write_string_list(Xs, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -5701,10 +5610,9 @@ write_string_list([X|Xs]) -->
 	%	in QuantVars, or if any of the underscore variables
 	%	in Vars do occur in NonLocals.
 
-:- pred warn_singletons(list(prog_var), set(prog_var), set(prog_var),
-		prog_varset, prog_context, simple_call_id,
-		io__state, io__state).
-:- mode warn_singletons(in, in, in, in, in, in, di, uo) is det.
+:- pred warn_singletons(list(prog_var)::in, set(prog_var)::in,
+	set(prog_var)::in, prog_varset::in, prog_context::in,
+	simple_call_id::in, io::di, io::uo) is det.
 
 warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 		PredOrFuncCallId) -->
@@ -5770,7 +5678,8 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 		( { MultiVars = [_] } ->
 			io__write_string("  warning: variable `"),
 			mercury_output_vars(MultiVars, VarSet, no),
-			report_warning("' occurs more than once in this scope.\n")
+			report_warning("' occurs more than once " ++
+				"in this scope.\n")
 		;
 			io__write_string("  warning: variables `"),
 			mercury_output_vars(MultiVars, VarSet, no),
@@ -5780,8 +5689,8 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 
 %-----------------------------------------------------------------------------
 
-:- pred clauses_info_init_for_assertion(prog_vars::in,
-		clauses_info::out) is det.
+:- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
+	is det.
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
 	map__init(VarTypes),
@@ -5803,9 +5712,8 @@ clauses_info_init(Arity, ClausesInfo) :-
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
 	HasForeignClauses = no,
-	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
-		VarTypes, HeadVars, [], TI_VarMap, TCI_VarMap,
-		HasForeignClauses).
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+		HeadVars, [], TI_VarMap, TCI_VarMap, HasForeignClauses).
 
 :- pred clauses_info_add_clause(list(proc_id)::in,
 	prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
@@ -5899,30 +5807,29 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
 % pragma foreign_proc declaration and the head vars of the pred. Also
 % return the hlds_goal.
 
-:- pred clauses_info_add_pragma_foreign_proc(
-	clauses_info::in, purity::in, pragma_foreign_proc_attributes::in,
-	pred_id::in, proc_id::in, prog_varset::in, list(pragma_var)::in,
-	list(type)::in, pragma_foreign_code_impl::in, prog_context::in,
-	pred_or_func::in, sym_name::in, arity::in, clauses_info::out,
-	module_info::in, module_info::out, qual_info::in,
-	qual_info::out, io__state::di, io__state::uo) is det.
+:- pred clauses_info_add_pragma_foreign_proc(purity::in,
+	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+	prog_varset::in, list(pragma_var)::in, list(type)::in,
+	pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
+	sym_name::in, arity::in, clauses_info::in, clauses_info::out,
+	module_info::in, module_info::out, io__state::di, io__state::uo)
+	is det.
 
-clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
-		ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context,
-		PredOrFunc, PredName, Arity, ClausesInfo, ModuleInfo0,
-		ModuleInfo, Info, Info) -->
+clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
+		PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, PredOrFunc,
+		PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
 
-	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes, TVarNameMap,
+	!.ClausesInfo = clauses_info(VarSet0, VarTypes, TVarNameMap,
 		VarTypes1, HeadVars, ClauseList, TI_VarMap, TCI_VarMap,
-		_HasForeignClauses) },
+		_HasForeignClauses),
 
 		% Find all the existing clauses for this mode, and
 		% extract their implementation language and clause number
 		% (that is, their index in the list).
-	{ foreign_language(Attributes0, NewLang) },
+	NewLang = foreign_language(Attributes0),
 
-	globals__io_get_globals(Globals),
-	globals__io_get_target(Target),
+	globals__io_get_globals(Globals, !IO),
+	globals__io_get_target(Target, !IO),
 
 		% We traverse the clauses, and decide which action to perform.
 		%
@@ -5939,7 +5846,7 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		%	- remove the matching proc_id from its proc_id list,
 		%	  and add this clause as a new clause for this mode.
 
-	{ list__foldl2(
+	list__foldl2(
 		(pred(C::in, Action0::in, Action::out, N0::in, N::out) is det :-
 			C = clause(ProcIds, B, ClauseLang, D),
 			(
@@ -5976,9 +5883,9 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 				Action = Action0
 			),
 			N = N0 + 1
-		), ClauseList, add, FinalAction, 1, _) },
+		), ClauseList, add, FinalAction, 1, _),
 
-	{ UpdateClauses = (pred(NewCl::in, Cs::out) is det :-
+	UpdateClauses = (pred(NewCl::in, Cs::out) is det :-
 		( FinalAction = ignore,
 			Cs = ClauseList
 		; FinalAction = add,
@@ -5989,10 +5896,10 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 			list__replace_nth_det(ClauseList, X, Clause, Cs1),
 			Cs = [NewCl | Cs1]
 		)
-	) },
+	),
 
-	globals__io_get_backend_foreign_languages(BackendForeignLanguages),
-	{
+	globals__io_get_backend_foreign_languages(BackendForeignLanguages,
+		!IO),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_infos(PVars, ArgInfo),
 
@@ -6002,9 +5909,8 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 	% backend language.
 	%
 	foreign__extrude_pragma_implementation(BackendForeignLanguages,
-		PVars, PredName, PredOrFunc, Context,
-		ModuleInfo0, Attributes0, PragmaImpl0,
-		ModuleInfo1, Attributes, PragmaImpl),
+		PVars, PredName, PredOrFunc, Context, !ModuleInfo,
+		Attributes0, Attributes, PragmaImpl0, PragmaImpl),
 
 	%
 	% Check for arguments occurring multiple times.
@@ -6017,38 +5923,33 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 			Arg = _ - Occurrences,
 			Occurrences > 1
 		), ArgBagAL0, ArgBagAL),
-	assoc_list__keys(ArgBagAL, MultipleArgs)
-	},
+	assoc_list__keys(ArgBagAL, MultipleArgs),
 
-	( { MultipleArgs = [_ | _] } ->
-		{ ClausesInfo = ClausesInfo0 },
-		{ ModuleInfo = ModuleInfo1 },
-		prog_out__write_context(Context),
+	( MultipleArgs = [_ | _] ->
+		prog_out__write_context(Context, !IO),
 		io__write_string(
-			"In `:- pragma foreign_proc' declaration for "),
-		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+			"In `:- pragma foreign_proc' declaration for ", !IO),
+		adjust_func_arity(PredOrFunc, OrigArity, Arity),
 		hlds_out__write_simple_call_id(
-			PredOrFunc - PredName/OrigArity),
-		io__write_string(":\n"),
-		prog_out__write_context(Context),
-		io__write_string("  error: "),
+			PredOrFunc - PredName/OrigArity, !IO),
+		io__write_string(":\n", !IO),
+		prog_out__write_context(Context, !IO),
+		io__write_string("  error: ", !IO),
 		(
-			{ MultipleArgs = [MultipleArg] },
-			io__write_string("variable `"),
-			mercury_output_var(MultipleArg, PVarSet, no),
-			io__write_string("' occurs multiple times\n")
+			MultipleArgs = [MultipleArg],
+			io__write_string("variable `", !IO),
+			mercury_output_var(MultipleArg, PVarSet, no, !IO),
+			io__write_string("' occurs multiple times\n", !IO)
 		;
-			{ MultipleArgs = [_, _ | _] },
-			io__write_string("variables `"),
-			mercury_output_vars(MultipleArgs, PVarSet, no),
-			io__write_string(
-				"' occur multiple times\n")
+			MultipleArgs = [_, _ | _],
+			io__write_string("variables `", !IO),
+			mercury_output_vars(MultipleArgs, PVarSet, no, !IO),
+			io__write_string("' occur multiple times\n", !IO)
 		),
-		prog_out__write_context(Context),
-		io__write_string("  in the argument list.\n"),
-		io__set_exit_status(1)
+		prog_out__write_context(Context, !IO),
+		io__write_string("  in the argument list.\n", !IO),
+		io__set_exit_status(1, !IO)
 	;
-		{
 			% build the pragma_c_code
 		goal_info_init(GoalInfo0),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
@@ -6058,30 +5959,27 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		HldsGoal0 = foreign_proc(Attributes, PredId,
 			ProcId, HeadVars, ArgInfo, OrigArgTypes, PragmaImpl)
 			- GoalInfo,
-		ModuleInfo = ModuleInfo1,
 		map__init(EmptyVarTypes),
-		implicitly_quantify_clause_body(HeadVars, _Warnings,
-			HldsGoal0, HldsGoal, VarSet0, VarSet,
-			EmptyVarTypes, _),
+		implicitly_quantify_clause_body(HeadVars, _Warnings, HldsGoal0,
+			HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),
 		NewClause = clause([ProcId], HldsGoal,
 			foreign_language(NewLang), Context),
 		UpdateClauses(NewClause, NewClauseList),
 		HasForeignClauses = yes,
-		ClausesInfo =  clauses_info(VarSet, VarTypes, TVarNameMap,
+		!:ClausesInfo =  clauses_info(VarSet, VarTypes, TVarNameMap,
 			VarTypes1, HeadVars, NewClauseList,
 			TI_VarMap, TCI_VarMap, HasForeignClauses)
-		}
 	).
 
-:- pred allocate_vars_for_saved_vars(list(string), list(pair(prog_var, string)),
-	prog_varset, prog_varset).
-:- mode allocate_vars_for_saved_vars(in, out, in, out) is det.
+:- pred allocate_vars_for_saved_vars(list(string)::in,
+	list(pair(prog_var, string))::out,
+	prog_varset::in, prog_varset::out) is det.
 
-allocate_vars_for_saved_vars([], [], VarSet, VarSet).
+allocate_vars_for_saved_vars([], [], !VarSet).
 allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
-		VarSet0, VarSet) :-
-	varset__new_var(VarSet0, Var, VarSet1),
-	allocate_vars_for_saved_vars(Names, VarNames, VarSet1, VarSet).
+		!VarSet) :-
+	varset__new_var(!.VarSet, Var, !:VarSet),
+	allocate_vars_for_saved_vars(Names, VarNames, !VarSet).
 
 %-----------------------------------------------------------------------------
 
@@ -6102,8 +6000,8 @@ transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
 		Goal, !VarSet, Warnings, !Info, !IO) :-
 	prepare_for_head(SInfo0),
 	term__apply_substitution_to_list(Args0, Subst, Args1),
-	substitute_state_var_mappings(Args1, Args, !VarSet,
-		SInfo0, SInfo1, !IO),
+	substitute_state_var_mappings(Args1, Args, !VarSet, SInfo0, SInfo1,
+		!IO),
 	hlds_goal__true_goal(Head0),
 	( GoalType = promise(_) ->
 		Head    = Head0,
@@ -6114,12 +6012,11 @@ transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity, GoalType,
 			Head0, Head, !VarSet, !Info, SInfo1, SInfo2, !IO)
 	),
 	prepare_for_body(FinalSVarMap, !VarSet, SInfo2, SInfo3),
-	transform_goal(Body0, Subst, Body, !VarSet, !Info,
-		SInfo3, SInfo, !IO),
+	transform_goal(Body0, Subst, Body, !VarSet, !Info, SInfo3, SInfo, !IO),
 	finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal0, SInfo),
 	VarTypes0 = !.Info ^ qual_info ^ vartypes,
-	implicitly_quantify_clause_body(HeadVars, Warnings,
-		Goal0, Goal, !VarSet, VarTypes0, VarTypes),
+	implicitly_quantify_clause_body(HeadVars, Warnings, Goal0, Goal,
+		!VarSet, VarTypes0, VarTypes),
 	!:Info = !.Info ^ qual_info ^ vartypes := VarTypes.
 
 %-----------------------------------------------------------------------------%
@@ -7106,12 +7003,10 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 		output_expected_aditi_update_syntax(Context, Update, !IO)
 	).
 
-:- pred aditi_bulk_update_goal_info(aditi_bulk_update,
-		pred_or_func, sym_name, arity, list(prog_var), pred_or_func,
-		lambda_eval_method, list(mode), determinism,
-		hlds_goal, hlds_goal).
-:- mode aditi_bulk_update_goal_info(in, in, in, in, in, out,
-		out, out, out, in, out) is det.
+:- pred aditi_bulk_update_goal_info(aditi_bulk_update::in, pred_or_func::in,
+	sym_name::in, arity::in, list(prog_var)::in, pred_or_func::out,
+	lambda_eval_method::out, list(mode)::out, determinism::out,
+	hlds_goal::in, hlds_goal::out) is det.
 
 aditi_bulk_update_goal_info(bulk_insert, PredOrFunc, _SymName,
 		PredArity, _Args, LambdaPredOrFunc, EvalMethod,
@@ -7329,10 +7224,11 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 	).
 
 :- pred insert_arg_unifications_with_supplied_contexts(list(prog_var)::in,
-	list(prog_term)::in, assoc_list(int, arg_context)::in, prog_context::in,
-	hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io__state::di, io__state::uo) is det.
+	list(prog_term)::in, assoc_list(int, arg_context)::in,
+	prog_context::in, hlds_goal::in, hlds_goal::out,
+	prog_varset::in, prog_varset::out,
+	transform_info::in, transform_info::out,
+	svar_info::in, svar_info::out, io__state::di, io__state::uo) is det.
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
 		Context, !Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -7352,8 +7248,7 @@ insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
 
 :- pred insert_arg_unifications_with_supplied_contexts_2(list(prog_var)::in,
 	list(prog_term)::in, assoc_list(int, arg_context)::in,
-	prog_context::in,
-	list(hlds_goal)::in, list(hlds_goal)::out,
+	prog_context::in, list(hlds_goal)::in, list(hlds_goal)::out,
 	prog_varset::in, prog_varset::out,
 	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
 	io__state::di, io__state::uo) is det.
@@ -7774,7 +7669,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 			% 	- any errors will be caught by typechecking
 			MaybeFunctor = error(_, _),
 			list__length(Args, Arity),
-			make_functor_cons_id(F, Arity, ConsId),
+			ConsId = make_functor_cons_id(F, Arity),
 			FunctorArgs = Args
 		),
 		( FunctorArgs = [] ->
@@ -7848,8 +7743,7 @@ unravel_unification_2(term__functor(LeftF, LeftAs, LeftC),
 	list__append(ConjList0, ConjList1, ConjList),
 	conj_list_to_goal(ConjList, GoalInfo, Goal).
 
-:- pred parse_purity_annotation(term(T), purity, term(T)).
-:- mode parse_purity_annotation(in, out, out) is det.
+:- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
 parse_purity_annotation(Term0, Purity, Term) :-
 	(
@@ -7899,8 +7793,8 @@ check_expr_purity(Purity, Context, !Info, !IO) :-
 
 	% Parse a term of the form `Head :- Body', treating
 	% a term not in that form as `Head :- true'.
-:- pred parse_rule_term(term__context, term(T), term(T), term(T)).
-:- mode parse_rule_term(in, in, out, out) is det.
+:- pred parse_rule_term(term__context::in, term(T)::in, term(T)::out,
+	term(T)::out) is det.
 
 parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
 	(
@@ -8048,9 +7942,9 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo, Goal,
 	adjust_func_arity(PredOrFunc, OrigArity, Arity),
 	record_called_pred_or_func(PredOrFunc, SymName, OrigArity, !Info).
 
-:- pred do_construct_pred_or_func_call(pred_id, pred_or_func, sym_name,
-		list(prog_var), hlds_goal_info, hlds_goal).
-:- mode do_construct_pred_or_func_call(in, in, in, in, in, out) is det.
+:- pred do_construct_pred_or_func_call(pred_id::in, pred_or_func::in,
+	sym_name::in, list(prog_var)::in, hlds_goal_info::in, hlds_goal::out)
+	is det.
 
 do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
 		GoalInfo, Goal) :-
@@ -8070,10 +7964,9 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
 		Goal = GoalExpr - GoalInfo
 	).
 
-:- pred make_atomic_unification(prog_var, unify_rhs, prog_context,
-		unify_main_context, unify_sub_contexts, hlds_goal,
-		transform_info, transform_info).
-:- mode make_atomic_unification(in, in, in, in, in, out, in, out) is det.
+:- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
+	unify_main_context::in, unify_sub_contexts::in, hlds_goal::out,
+	transform_info::in, transform_info::out) is det.
 
 make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
 		Goal, Info0, Info) :-
@@ -8093,25 +7986,23 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
 %-----------------------------------------------------------------------------%
 
 	% Process an explicit type qualification.
-:- pred process_type_qualification(prog_var, type, tvarset, prog_context,
-		transform_info, transform_info, io__state, io__state).
-:- mode process_type_qualification(in, in, in, in, in, out, di, uo) is det.
+:- pred process_type_qualification(prog_var::in, (type)::in, tvarset::in,
+	prog_context::in, transform_info::in, transform_info::out,
+	io::di, io::uo) is det.
 
-process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
-	{ Info0 ^ qual_info = qual_info(EqvMap, TVarSet0, TVarRenaming0,
-			TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError) },
-
-	( { Status = opt_imported } ->
+process_type_qualification(Var, Type0, VarSet, Context, !Info, !IO) :-
+	!.Info ^ qual_info = qual_info(EqvMap, TVarSet0, TVarRenaming0,
+		TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError),
+	( Status = opt_imported ->
 		% Types in `.opt' files should already be
 		% fully module qualified.
-		{ Type1 = Type0 },
-		{ MQInfo = MQInfo0 }
+		Type1 = Type0,
+		MQInfo = MQInfo0
 	;
 		module_qual__qualify_type_qualification(Type0, Type1,
-			Context, MQInfo0, MQInfo)
+			Context, MQInfo0, MQInfo, !IO)
 	),
 
-	{
 	% Find any new type variables introduced by this type, and
 	% add them to the var-name index and the variable renaming.
 	term__vars(Type1, TVars),
@@ -8128,69 +8019,62 @@ process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
 	% clause item.
 	RecordExpanded = no,
 	equiv_type__replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
-		RecordExpanded, _)
-	},
-	update_var_types(VarTypes0, Var, Type, Context, VarTypes),
-	{ Info = Info0 ^ qual_info := qual_info(EqvMap, TVarSet, TVarRenaming,
-			TVarNameMap, VarTypes, MQInfo, Status, FoundError) }.
+		RecordExpanded, _),
+	update_var_types(Var, Type, Context, VarTypes0, VarTypes, !IO),
+	!:Info = !.Info ^ qual_info := qual_info(EqvMap, TVarSet, TVarRenaming,
+		TVarNameMap, VarTypes, MQInfo, Status, FoundError).
 
-:- pred update_var_types(map(prog_var, type), prog_var, type, prog_context,
-			map(prog_var, type), io__state, io__state).
-:- mode update_var_types(in, in, in, in, out, di, uo) is det.
+:- pred update_var_types(prog_var::in, (type)::in, prog_context::in,
+	map(prog_var, type)::in, map(prog_var, type)::out, io::di, io::uo)
+	is det.
 
-update_var_types(VarTypes0, Var, Type, Context, VarTypes) -->
-	( { map__search(VarTypes0, Var, Type0) } ->
-		( { Type = Type0 } ->
-			{ VarTypes = VarTypes0 }
+update_var_types(Var, Type, Context, !VarTypes, !IO) :-
+	( map__search(!.VarTypes, Var, Type0) ->
+		( Type = Type0 ->
+			true
 		;
-			prog_out__write_context(Context),
-			io__write_string("Error: explicit type qualification does\n"),
-			prog_out__write_context(Context),
-			io__write_string("  not match prior qualification.\n"),
-			io__set_exit_status(1),
-			{ VarTypes = VarTypes0 }
+			prog_out__write_context(Context, !IO),
+			io__write_string("Error: explicit type " ++
+				"qualification does\n", !IO),
+			prog_out__write_context(Context, !IO),
+			io__write_string("  not match prior qualification.\n",
+				!IO),
+			io__set_exit_status(1, !IO)
 		)
 	;
-		{ map__det_insert(VarTypes0, Var, Type, VarTypes) }
+		map__det_insert(!.VarTypes, Var, Type, !:VarTypes)
 	).
 
 	% Add new type variables for those introduced by a type qualification.
-:- pred get_new_tvars(list(tvar), tvarset, tvarset, tvarset,
-	tvar_name_map, tvar_name_map, map(tvar, tvar), map(tvar, tvar)).
-:- mode get_new_tvars(in, in, in, out, in, out, in, out) is det.
+:- pred get_new_tvars(list(tvar)::in, tvarset::in, tvarset::in, tvarset::out,
+	tvar_name_map::in, tvar_name_map::out,
+	map(tvar, tvar)::in, map(tvar, tvar)::out) is det.
 
-get_new_tvars([], _, T, T, M, M, R, R).
-get_new_tvars([TVar | TVars], VarSet, TVarSet0, TVarSet,
-		TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming) :-
-	( map__contains(TVarRenaming0, TVar) ->
-		TVarRenaming1 = TVarRenaming0,
-		TVarSet2 = TVarSet0,
-		TVarNameMap1 = TVarNameMap0
+get_new_tvars([], _,  !TVarSet, !TVarNameMap, !TVarRenaming).
+get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
+	( map__contains(!.TVarRenaming, TVar) ->
+		true
 	;
 		( varset__search_name(VarSet, TVar, TVarName) ->
-			( map__search(TVarNameMap0, TVarName, TVarSetVar) ->
-				map__det_insert(TVarRenaming0, TVar,
-						TVarSetVar, TVarRenaming1),
-				TVarSet2 = TVarSet0,
-				TVarNameMap1 = TVarNameMap0
+			( map__search(!.TVarNameMap, TVarName, TVarSetVar) ->
+				map__det_insert(!.TVarRenaming,
+					TVar, TVarSetVar, !:TVarRenaming)
 			;
-				varset__new_var(TVarSet0, NewTVar, TVarSet1),
-				varset__name_var(TVarSet1, NewTVar,
-						TVarName, TVarSet2),
-				map__det_insert(TVarNameMap0, TVarName,
-						NewTVar, TVarNameMap1),
-				map__det_insert(TVarRenaming0, TVar, NewTVar,
-						TVarRenaming1)
+				varset__new_var(!.TVarSet, NewTVar, !:TVarSet),
+				varset__name_var(!.TVarSet, NewTVar, TVarName,
+					!:TVarSet),
+				map__det_insert(!.TVarNameMap,
+					TVarName, NewTVar, !:TVarNameMap),
+				map__det_insert(!.TVarRenaming, TVar, NewTVar,
+					!:TVarRenaming)
 			)
 		;
-			TVarNameMap1 = TVarNameMap0,
-			varset__new_var(TVarSet0, NewTVar, TVarSet2),
-			map__det_insert(TVarRenaming0, TVar, NewTVar,
-					TVarRenaming1)
+			varset__new_var(!.TVarSet, NewTVar, !:TVarSet),
+			map__det_insert(!.TVarRenaming, TVar, NewTVar,
+				!:TVarRenaming)
 		)
 	),
-	get_new_tvars(TVars, VarSet, TVarSet2, TVarSet,
-		 TVarNameMap1, TVarNameMap, TVarRenaming1, TVarRenaming).
+	get_new_tvars(TVars, VarSet, !TVarSet, !TVarNameMap, !TVarRenaming).
 
 %-----------------------------------------------------------------------------%
 
@@ -8198,8 +8082,8 @@ get_new_tvars([TVar | TVars], VarSet, TVarSet0, TVarSet,
 %	apply substitiution `Subst' (which must only rename vars) to `Vars0',
 %	and return the result in `Vars'.
 
-:- pred substitute_vars(list(var(T)), substitution(T), list(var(T))).
-:- mode substitute_vars(in, in, out) is det.
+:- pred substitute_vars(list(var(T))::in, substitution(T)::in,
+	list(var(T))::out) is det.
 
 substitute_vars(Vars0, Subst, Vars) :-
 	Vars = list__map(substitute_var(Subst), Vars0).
@@ -8305,8 +8189,7 @@ get_disj(Goal, Subst, Disj0, Disj, !VarSet, !Info, SInfo, !IO) :-
 				% in an Aditi update.
 	).
 
-:- pred init_qual_info(mq_info, eqv_map, qual_info).
-:- mode init_qual_info(in, in, out) is det.
+:- pred init_qual_info(mq_info::in, eqv_map::in, qual_info::out) is det.
 
 init_qual_info(MQInfo0, EqvMap, QualInfo) :-
 	mq_info_set_need_qual_flag(MQInfo0, may_be_unqualified, MQInfo),
@@ -8315,8 +8198,8 @@ init_qual_info(MQInfo0, EqvMap, QualInfo) :-
 	map__init(Index),
 	map__init(VarTypes),
 	FoundSyntaxError = no,
-	QualInfo = qual_info(EqvMap, TVarSet, Renaming,
-			Index, VarTypes, MQInfo, local, FoundSyntaxError).
+	QualInfo = qual_info(EqvMap, TVarSet, Renaming, Index, VarTypes,
+		MQInfo, local, FoundSyntaxError).
 
 	% Update the qual_info when processing a new clause.
 :- pred update_qual_info(tvar_name_map::in, tvarset::in,
@@ -8359,18 +8242,17 @@ qual_info_set_found_syntax_error(FoundError, Info,
 	pred(recompilation_info, recompilation_info)::in(pred(in, out) is det),
 	transform_info::in, transform_info::out) is det.
 
-apply_to_recompilation_info(Pred, Info0, Info) :-
-	MQInfo0 = Info0 ^ qual_info ^ mq_info,
+apply_to_recompilation_info(Pred, !Info) :-
+	MQInfo0 = !.Info ^ qual_info ^ mq_info,
 	mq_info_get_recompilation_info(MQInfo0, MaybeRecompInfo0),
 	(
 		MaybeRecompInfo0 = yes(RecompInfo0),
 		Pred(RecompInfo0, RecompInfo),
 		mq_info_set_recompilation_info(MQInfo0,
 			yes(RecompInfo), MQInfo),
-		Info = Info0 ^ qual_info ^ mq_info := MQInfo
+		!:Info = !.Info ^ qual_info ^ mq_info := MQInfo
 	;
-		MaybeRecompInfo0 = no,
-		Info = Info0
+		MaybeRecompInfo0 = no
 	).
 
 set_module_recompilation_info(QualInfo, !ModuleInfo) :-
@@ -8386,26 +8268,25 @@ record_called_pred_or_func(PredOrFunc, SymName, Arity) -->
 		recompilation__record_used_item(
 			pred_or_func_to_item_type(PredOrFunc), Id, Id)).
 
-:- pred record_used_functor(cons_id, transform_info, transform_info).
-:- mode record_used_functor(in, in, out) is det.
+:- pred record_used_functor(cons_id::in,
+	transform_info::in, transform_info::out) is det.
 
-record_used_functor(ConsId) -->
-	(
-		{ ConsId = cons(SymName, Arity) }
-	->
-		{ Id = SymName - Arity },
+record_used_functor(ConsId, !Info) :-
+	( ConsId = cons(SymName, Arity) ->
+		Id = SymName - Arity,
 		apply_to_recompilation_info(
-			recompilation__record_used_item(functor, Id, Id))
+			recompilation__record_used_item(functor, Id, Id),
+			!Info)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Predicates to write out the different warning and error messages.
 
-:- pred report_unexpected_decl(string, prog_context, io__state, io__state).
-:- mode report_unexpected_decl(in, in, di, uo) is det.
+:- pred report_unexpected_decl(string::in, prog_context::in,
+	io::di, io::uo) is det.
 
 report_unexpected_decl(Descr, Context) -->
 	io__set_exit_status(1),
@@ -8414,12 +8295,12 @@ report_unexpected_decl(Descr, Context) -->
 	io__write_string(Descr),
 	io__write_string("' declaration.\n").
 
-:- pred multiple_def_error(import_status, sym_name, int, string, prog_context,
-		prog_context, bool, io__state, io__state).
-:- mode multiple_def_error(in, in, in, in, in, in, out, di, uo) is det.
+:- pred multiple_def_error(import_status::in, sym_name::in, int::in,
+	string::in, prog_context::in, prog_context::in, bool::out,
+	io::di, io::uo) is det.
 
-multiple_def_error(Status, Name, Arity, DefType, Context,
-		OrigContext, FoundError) -->
+multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
+		FoundError) -->
 	( { Status \= opt_imported } ->
 		io__set_exit_status(1),
 		prog_out__write_context(Context),
@@ -8448,9 +8329,8 @@ multiple_def_error(Status, Name, Arity, DefType, Context,
 		{ FoundError = no }
 	).
 
-:- pred undefined_pred_or_func_error(sym_name, int, prog_context, string,
-				io__state, io__state).
-:- mode undefined_pred_or_func_error(in, in, in, in, di, uo) is det.
+:- pred undefined_pred_or_func_error(sym_name::in, int::in, prog_context::in,
+	string::in, io::di, io::uo) is det.
 
 undefined_pred_or_func_error(Name, Arity, Context, Description) -->
 	io__set_exit_status(1),
@@ -8463,10 +8343,10 @@ undefined_pred_or_func_error(Name, Arity, Context, Description) -->
 	prog_out__write_context(Context),
 	% This used to say `preceding' instead of `corresponding.'
 	% Which is more correct?
-	io__write_string("  without corresponding `pred' or `func' declaration.\n").
+	io__write_string("  without corresponding `pred' or `func' " ++
+		"declaration.\n").
 
-:- pred pred_method_with_no_modes_error(pred_info, io__state, io__state).
-:- mode pred_method_with_no_modes_error(in, di, uo) is det.
+:- pred pred_method_with_no_modes_error(pred_info::in, io::di, io::uo) is det.
 
 pred_method_with_no_modes_error(PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
@@ -8484,9 +8364,8 @@ pred_method_with_no_modes_error(PredInfo) -->
 	% Similar to undeclared_mode_error, but gives less information.
 	% XXX perhaps we should get rid of this, and change the callers to
 	% instead call undeclared_mode_error.
-:- pred undefined_mode_error(sym_name, int, prog_context, string,
-				io__state, io__state).
-:- mode undefined_mode_error(in, in, in, in, di, uo) is det.
+:- pred undefined_mode_error(sym_name::in, int::in, prog_context::in,
+	string::in, io::di, io::uo) is det.
 
 undefined_mode_error(Name, Arity, Context, Description) -->
 	io__set_exit_status(1),
@@ -8547,9 +8426,9 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
 		true
 	).
 
-:- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, import_status,
-		bool, prog_context, string, io__state, io__state).
-:- mode maybe_undefined_pred_error(in, in, in, in, in, in, in, di, uo) is det.
+:- pred maybe_undefined_pred_error(sym_name::in, int::in, pred_or_func::in,
+	import_status::in, bool::in, prog_context::in, string::in,
+	io::di, io::uo) is det.
 
 % This is not considered an unconditional error anymore:
 % if there is no `:- pred' or `:- func' declaration,
@@ -8599,9 +8478,8 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
 		io__write_string("' declaration.\n")
 	).
 
-:- pred undefined_type_class_error(sym_name, int, prog_context, string,
-				io__state, io__state).
-:- mode undefined_type_class_error(in, in, in, in, di, uo) is det.
+:- pred undefined_type_class_error(sym_name::in, int::in, prog_context::in,
+	string::in, io::di, io::uo) is det.
 
 undefined_type_class_error(ClassName, Arity, Context, Description) -->
 	io__set_exit_status(1),
@@ -8614,9 +8492,8 @@ undefined_type_class_error(ClassName, Arity, Context, Description) -->
 	prog_out__write_sym_name_and_arity(ClassName/Arity),
 	io__write_string("' without preceding typeclass declaration.\n").
 
-:- pred unspecified_det_for_local(sym_name, arity, pred_or_func, prog_context,
-				io__state, io__state).
-:- mode unspecified_det_for_local(in, in, in, in, di, uo) is det.
+:- pred unspecified_det_for_local(sym_name::in, arity::in, pred_or_func::in,
+	prog_context::in, io::di, io::uo) is det.
 
 unspecified_det_for_local(Name, Arity, PredOrFunc, Context) -->
 	prog_out__write_context(Context),
@@ -8639,9 +8516,8 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context) -->
 		[]
 	).
 
-:- pred unspecified_det_for_method(sym_name, arity, pred_or_func,
-			prog_context, io__state, io__state).
-:- mode unspecified_det_for_method(in, in, in, in, di, uo) is det.
+:- pred unspecified_det_for_method(sym_name::in, arity::in, pred_or_func::in,
+	prog_context::in, io::di, io::uo) is det.
 
 unspecified_det_for_method(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
@@ -8653,9 +8529,8 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context) -->
 	hlds_out__write_simple_call_id(PredOrFunc, Name/Arity),
 	io__write_string(".\n").
 
-:- pred unspecified_det_for_exported(sym_name, arity, pred_or_func,
-			prog_context, io__state, io__state).
-:- mode unspecified_det_for_exported(in, in, in, in, di, uo) is det.
+:- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
+	prog_context::in, io::di, io::uo) is det.
 
 unspecified_det_for_exported(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
@@ -8666,9 +8541,8 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context) -->
 	hlds_out__write_simple_call_id(PredOrFunc, Name/Arity),
 	io__write_string(".\n").
 
-:- pred clause_for_imported_pred_error(sym_name, arity, pred_or_func,
-				prog_context, io__state, io__state).
-:- mode clause_for_imported_pred_error(in, in, in, in, di, uo) is det.
+:- pred clause_for_imported_pred_error(sym_name::in, arity::in,
+	pred_or_func::in, prog_context::in, io::di, io::uo) is det.
 
 clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
@@ -8677,9 +8551,8 @@ clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context) -->
 	hlds_out__write_simple_call_id(PredOrFunc, Name/Arity),
 	io__write_string(".\n").
 
-:- pred unqualified_pred_error(sym_name, int, prog_context,
-				io__state, io__state).
-:- mode unqualified_pred_error(in, in, in, di, uo) is det.
+:- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
+	io::di, io::uo) is det.
 
 unqualified_pred_error(PredName, Arity, Context) -->
 	io__set_exit_status(1),
@@ -8692,9 +8565,8 @@ unqualified_pred_error(PredName, Arity, Context) -->
 	prog_out__write_context(Context),
 	io__write_string("  should have been qualified by prog_io.m.\n").
 
-:- pred pragma_status_error(sym_name, int, prog_context, string,
-				io__state, io__state).
-:- mode pragma_status_error(in, in, in, in, di, uo) is det.
+:- pred pragma_status_error(sym_name::in, int::in, prog_context::in,
+	string::in, io::di, io::uo) is det.
 
 pragma_status_error(Name, Arity, Context, PragmaName) -->
 	io__set_exit_status(1),
@@ -8707,9 +8579,8 @@ pragma_status_error(Name, Arity, Context, PragmaName) -->
 	prog_out__write_sym_name_and_arity(Name/Arity),
 	io__write_string(" must also be exported.\n").
 
-:- pred pragma_conflict_error(sym_name, int, prog_context, string,
-				io__state, io__state).
-:- mode pragma_conflict_error(in, in, in, in, di, uo) is det.
+:- pred pragma_conflict_error(sym_name::in, int::in, prog_context::in,
+	string::in, io::di, io::uo) is det.
 
 pragma_conflict_error(Name, Arity, Context, PragmaName) -->
 	io__set_exit_status(1),
@@ -8798,23 +8669,22 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 	% `pragma fact_table's are represented in the HLDS by a
 	% `pragma c_code' for each mode of the predicate.
 
-:- pred module_add_fact_table_procedures(list(proc_id), proc_id, proc_table,
-		sym_name, pred_or_func, arity, list(type), import_status,
-		prog_context, module_info, module_info, qual_info, qual_info,
-		io__state, io__state).
-:- mode module_add_fact_table_procedures(in, in, in, in, in, in, in, in,
-		in, in, out, in, out, di, uo) is det.
+:- pred module_add_fact_table_procedures(list(proc_id)::in, proc_id::in,
+	proc_table::in, sym_name::in, pred_or_func::in, arity::in,
+	list(type)::in, import_status::in, prog_context::in,
+	module_info::in, module_info::out, qual_info::in, qual_info::out,
+	io::di, io::uo) is det.
 
-module_add_fact_table_procedures([],_,_,_,_,_,_,_,_,Mod,Mod,Inf,Inf) --> [].
+module_add_fact_table_procedures([],_,_,_,_,_,_,_,_, !Module, !Info, !IO).
 module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable,
 		SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
-		Module0, Module, Info0, Info) -->
+		!Module, !Info, !IO) :-
 	module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
-			PredOrFunc, Arity, ArgTypes, Status, Context,
-			Module0, Module1, Info0, Info1),
+		PredOrFunc, Arity, ArgTypes, Status, Context,
+		!Module, !Info, !IO),
 	module_add_fact_table_procedures(ProcIDs, PrimaryProcID, ProcTable,
 		SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
-		Module1, Module, Info1, Info).
+		!Module, !Info, !IO).
 
 :- pred module_add_fact_table_proc(proc_id::in, proc_id::in, proc_table::in,
 	sym_name::in, pred_or_func::in, arity::in, list(type)::in,
@@ -8833,11 +8703,11 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 		ProcInfo, ArgTypes, !.Module, C_ProcCode, C_ExtraCode, !IO),
 
 	% XXX this should be modified to use nondet pragma c_code.
-	default_attributes(c, Attrs0),
-	set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs1),
-	set_thread_safe(Attrs1, thread_safe, Attrs2),
+	Attrs0 = default_attributes(c),
+	set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
+	set_thread_safe(thread_safe, Attrs1, Attrs2),
 		% fact tables procedures should be considered pure
-	set_purity(Attrs2, pure, Attrs),
+	set_purity(pure, Attrs2, Attrs),
 	module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc,
 		PragmaVars, VarSet, ordinary(C_ProcCode, no),
 		Status, Context, !Module, !Info, !IO),
@@ -8860,9 +8730,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	% This is required by module_add_pragma_c_code to add the C code for
 	% the procedure to the HLDS.
 
-:- pred fact_table_pragma_vars(list(prog_var), list(mode), prog_varset,
-		list(pragma_var)).
-:- mode fact_table_pragma_vars(in, in, in, out) is det.
+:- pred fact_table_pragma_vars(list(prog_var)::in, list(mode)::in,
+	prog_varset::in, list(pragma_var)::out) is det.
 
 fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
 	(
@@ -8892,42 +8761,48 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
 % 	  disjunction has at most one call, and otherwise has only unifications
 
 	% perform above checks on a promise ex declaration
-:- pred check_promise_ex_decl(prog_vars, promise_type, goal, prog_context,
-		io__state, io__state).
-:- mode check_promise_ex_decl(in, in, in, in, di, uo) is det.
-check_promise_ex_decl(UnivVars, PromiseType, Goal, Context) -->
+:- pred check_promise_ex_decl(prog_vars::in, promise_type::in, goal::in,
+	prog_context::in, io::di, io::uo) is det.
+
+check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !IO) :-
 		% are universally quantified variables present?
 	(
-		{ UnivVars = [] },
-		promise_ex_error(PromiseType, Context, "declaration has no universally quantified variables")
+		UnivVars = [],
+		promise_ex_error(PromiseType, Context,
+			"declaration has no universally quantified variables",
+			!IO)
 	;
-		{ UnivVars = [_ | _] }
+		UnivVars = [_ | _]
 	),
-	check_promise_ex_goal(PromiseType, Goal).
+	check_promise_ex_goal(PromiseType, Goal, !IO).
 
 	% check for misplaced universal quantification, otherwise find the
 	% disjunction, flatten it out into list form and perform further
 	% checks
-:- pred check_promise_ex_goal(promise_type, goal, io__state, io__state).
-:- mode check_promise_ex_goal(in, in, di, uo) is det.
-check_promise_ex_goal(PromiseType, GoalExpr - Context) -->
-	( { GoalExpr = some(_, Goal) } ->
-		check_promise_ex_goal(PromiseType, Goal)
-	; { GoalExpr =  ( _ ; _ ) } ->
-		{ flatten_to_disj_list(GoalExpr - Context, DisjList) },
-		{ list__map(flatten_to_conj_list, DisjList, DisjConjList) },
-		check_disjunction(PromiseType, DisjConjList)
-	; { GoalExpr = all(_UnivVars, Goal) } ->
-		promise_ex_error(PromiseType, Context, "universal quantification should come before the declaration name"),
-		check_promise_ex_goal(PromiseType, Goal)
+:- pred check_promise_ex_goal(promise_type::in, goal::in, io::di, io::uo)
+	is det.
+
+check_promise_ex_goal(PromiseType, GoalExpr - Context, !IO) :-
+	( GoalExpr = some(_, Goal) ->
+		check_promise_ex_goal(PromiseType, Goal, !IO)
+	; GoalExpr =  ( _ ; _ ) ->
+		flatten_to_disj_list(GoalExpr - Context, DisjList),
+		list__map(flatten_to_conj_list, DisjList, DisjConjList),
+		check_disjunction(PromiseType, DisjConjList, !IO)
+	; GoalExpr = all(_UnivVars, Goal) ->
+		promise_ex_error(PromiseType, Context,
+			"universal quantification should come before " ++
+			"the declaration name", !IO),
+		check_promise_ex_goal(PromiseType, Goal, !IO)
 	;
-		promise_ex_error(PromiseType, Context, "goal in declaration is not a disjunction")
+		promise_ex_error(PromiseType, Context,
+			"goal in declaration is not a disjunction", !IO)
 	).
 
 	% turns the goal of a promise ex declaration into a list of goals,
 	% where each goal is an arm of the disjunction
-:- pred flatten_to_disj_list(goal, goals).
-:- mode flatten_to_disj_list(in, out) is det.
+:- pred flatten_to_disj_list(goal::in, goals::out) is det.
+
 flatten_to_disj_list(GoalExpr - Context, GoalList) :-
 	( GoalExpr = ( GoalA ; GoalB ) ->
 		flatten_to_disj_list(GoalA, GoalListA),
@@ -8939,8 +8814,8 @@ flatten_to_disj_list(GoalExpr - Context, GoalList) :-
 
 	% takes a goal representing an arm of a disjunction and turn it into
 	% a list of conjunct goals
-:- pred flatten_to_conj_list(goal, goals).
-:- mode flatten_to_conj_list(in, out) is det.
+:- pred flatten_to_conj_list(goal::in, goals::out) is det.
+
 flatten_to_conj_list(GoalExpr - Context, GoalList) :-
 	( GoalExpr = ( GoalA , GoalB ) ->
 		flatten_to_conj_list(GoalA, GoalListA),
@@ -8952,60 +8827,67 @@ flatten_to_conj_list(GoalExpr - Context, GoalList) :-
 
 	% taking a list of arms of the disjunction, check each arm
 	% individually
-:- pred check_disjunction(promise_type, list(goals), io__state, io__state).
-:- mode check_disjunction(in, in, di, uo) is det.
-check_disjunction(PromiseType, DisjConjList) -->
+:- pred check_disjunction(promise_type::in, list(goals)::in, io::di, io::uo)
+	is det.
+
+check_disjunction(PromiseType, DisjConjList, !IO) :-
 	(
-		{ DisjConjList = [] }
+		DisjConjList = []
 	;
-		{ DisjConjList = [ConjList | Rest] },
-		check_disj_arm(PromiseType, ConjList, no),
-		check_disjunction(PromiseType, Rest)
+		DisjConjList = [ConjList | Rest],
+		check_disj_arm(PromiseType, ConjList, no, !IO),
+		check_disjunction(PromiseType, Rest, !IO)
 	).
 
 	% only one goal in an arm is allowed to be a call, the rest must be
 	% unifications
-:- pred check_disj_arm(promise_type, goals, bool, io__state, io__state).
-:- mode check_disj_arm(in, in, in, di, uo) is det.
-check_disj_arm(PromiseType, Goals, CallUsed) -->
+:- pred check_disj_arm(promise_type::in, goals::in, bool::in,
+	io::di, io::uo) is det.
+
+check_disj_arm(PromiseType, Goals, CallUsed, !IO) :-
 	(
-		{ Goals = [] }
+		Goals = []
 	;
-		{ Goals = [GoalExpr - Context | Rest] },
-		( { GoalExpr = unify(_, _, _) } ->
-			check_disj_arm(PromiseType, Rest, CallUsed)
-		; { GoalExpr = some(_, Goal) } ->
-			check_disj_arm(PromiseType, [Goal | Rest], CallUsed)
-		; { GoalExpr = call(_, _, _) } ->
+		Goals = [GoalExpr - Context | Rest],
+		( GoalExpr = unify(_, _, _) ->
+			check_disj_arm(PromiseType, Rest, CallUsed, !IO)
+		; GoalExpr = some(_, Goal) ->
+			check_disj_arm(PromiseType, [Goal | Rest], CallUsed,
+				!IO)
+		; GoalExpr = call(_, _, _) ->
 			(
-				{ CallUsed = no }
+				CallUsed = no
 			;
-				{ CallUsed = yes },
-				promise_ex_error(PromiseType, Context, "disjunct contains more than one call")
+				CallUsed = yes,
+				promise_ex_error(PromiseType, Context,
+					"disjunct contains more than one call",
+					!IO)
 			),
-			check_disj_arm(PromiseType, Rest, yes)
+			check_disj_arm(PromiseType, Rest, yes, !IO)
 		;
-			promise_ex_error(PromiseType, Context, "disjunct is not a call or unification"),
-			check_disj_arm(PromiseType, Rest, CallUsed)
+			promise_ex_error(PromiseType, Context,
+				"disjunct is not a call or unification", !IO),
+			check_disj_arm(PromiseType, Rest, CallUsed, !IO)
 		)
 	).
 
 	% called for any error in the above checks
-:- pred promise_ex_error(promise_type, prog_context, string,
-		io__state, io__state).
-:- mode promise_ex_error(in, in, in, di, uo) is det.
-promise_ex_error(PromiseType, Context, Message) -->
-	{ ErrorPieces = [
+:- pred promise_ex_error(promise_type::in, prog_context::in, string::in,
+	io::di, io::uo) is det.
+
+promise_ex_error(PromiseType, Context, Message, !IO) :-
+	ErrorPieces = [
 		words("In"),
 		fixed("`" ++ prog_out__promise_to_string(PromiseType) ++ "'"),
 		words("declaration:"),
 		nl,
 		words("error:"),
 		words(Message)
-		] },
-	error_util__write_error_pieces(Context, 0, ErrorPieces).
+	],
+	error_util__write_error_pieces(Context, 0, ErrorPieces, !IO).
 
 :- func this_file = string.
+
 this_file = "make_hlds.m".
 
 %------------------------------------------------------------------------------%
@@ -9086,48 +8968,30 @@ new_svar_info = svar_info(in_head, 0, map__init, map__init, map__init).
 	% Note that if !.X does not appear in the head then !:X must
 	% appear before !.X can be referenced.
 	%
-:- pred dot(prog_context, svar, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info, io, io).
-:- mode dot(in, in, out, in, out, in, out, di, uo) is det.
+:- pred dot(prog_context::in, svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+	io::di, io::uo) is det.
 
-dot(Context, StateVar, Var, VarSet0, VarSet, SInfo0, SInfo, IO0, IO) :-
-
-	( if SInfo0 ^ ctxt = in_head then
-
-		( if SInfo0 ^ dot ^ elem(StateVar) = Var0 then
-			Var    = Var0,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			IO     = IO0
-		  else
-		  	new_dot_state_var(StateVar, Var,
-				VarSet0, VarSet, SInfo0, SInfo),
-			IO     = IO0
+dot(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
+	( !.SInfo ^ ctxt = in_head ->
+		( !.SInfo ^ dot ^ elem(StateVar) = Var0 ->
+			Var = Var0
+		;
+		  	new_dot_state_var(StateVar, Var, !VarSet, !SInfo)
 		)
-
-	  else
-
-		( if SInfo0 ^ dot ^ elem(StateVar) = Var0 then
-			Var    = Var0,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			IO     = IO0
-		  else if SInfo0 ^ external_dot ^ elem(StateVar) = Var0 then
-			Var    = Var0,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			IO     = IO0
-		  else if SInfo0 `has_svar_colon_mapping_for` StateVar then
-		  	new_dot_state_var(StateVar, Var,
-				VarSet0, VarSet, SInfo0, SInfo),
-			report_unitialized_state_var(Context, VarSet, StateVar,
-				IO0, IO)
-		  else
-		  	Var    = StateVar,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			report_non_visible_state_var(".", Context,
-				VarSet, StateVar, IO0, IO)
+	;
+		( !.SInfo ^ dot ^ elem(StateVar) = Var0 ->
+			Var = Var0
+		; !.SInfo ^ external_dot ^ elem(StateVar) = Var0 ->
+			Var = Var0
+		; !.SInfo `has_svar_colon_mapping_for` StateVar ->
+		  	new_dot_state_var(StateVar, Var, !VarSet, !SInfo),
+			report_unitialized_state_var(Context, !.VarSet,
+				StateVar, !IO)
+		;
+		  	Var = StateVar,
+			report_non_visible_state_var(".", Context, !.VarSet,
+				StateVar, !IO)
 		)
 	).
 
@@ -9155,105 +9019,93 @@ SInfo `has_svar_colon_mapping_for` StateVar :-
 	% We also keep track of which state variables have been updated
 	% in an atomic context.
 	%
-:- pred colon(prog_context, svar, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info, io, io).
-:- mode colon(in, in, out, in, out, in, out, di, uo) is det.
+:- pred colon(prog_context::in, svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+	io::di, io::uo) is det.
 
-colon(Context, StateVar, Var, VarSet0, VarSet, SInfo0, SInfo, IO0, IO) :-
-
-	( if SInfo0 ^ ctxt = in_head then
-
-		( if SInfo0 ^ colon ^ elem(StateVar) = Var0 then
-			Var    = Var0,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			IO     = IO0
-		  else
-		  	new_final_state_var(StateVar, Var,
-				VarSet0, VarSet, SInfo0, SInfo),
-			IO     = IO0
+colon(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
+	( !.SInfo ^ ctxt = in_head ->
+		( !.SInfo ^ colon ^ elem(StateVar) = Var0 ->
+			Var = Var0
+		;
+		  	new_final_state_var(StateVar, Var, !VarSet, !SInfo)
 		)
-
-	  else
-
-		( if SInfo0 ^ colon ^ elem(StateVar) = Var0 then
-			Var    = Var0,
-			VarSet = VarSet0,
-			SInfo  = SInfo0 `with_updated_svar` StateVar,
-			IO     = IO0
-		  else
-		  	Var    = StateVar,
-			VarSet = VarSet0,
-			SInfo  = SInfo0,
-			PError = ( if SInfo0 ^ external_dot `contains` StateVar
-				   then report_illegal_state_var_update
-				   else report_non_visible_state_var(":")
-				 ),
-			PError(Context, VarSet, StateVar, IO0, IO)
+	;
+		( !.SInfo ^ colon ^ elem(StateVar) = Var0 ->
+			Var = Var0,
+			!:SInfo = !.SInfo `with_updated_svar` StateVar
+		;
+		  	Var = StateVar,
+			( !.SInfo ^ external_dot `contains` StateVar ->
+				PError = report_illegal_state_var_update
+			;
+				PError = report_non_visible_state_var(":")
+			),
+			PError(Context, !.VarSet, StateVar, !IO)
 		)
 	).
 
 :- func svar_info `with_updated_svar` svar = svar_info.
 
 SInfo `with_updated_svar` StateVar =
-	( if   SInfo ^ ctxt =  in_atom(UpdatedStateVars, ParentSInfo)
-	  then SInfo ^ ctxt := in_atom(set__insert(UpdatedStateVars, StateVar),
-	                               ParentSInfo)
-	  else SInfo
+	( SInfo ^ ctxt =  in_atom(UpdatedStateVars, ParentSInfo) ->
+		SInfo ^ ctxt := in_atom(set__insert(UpdatedStateVars, StateVar),
+			ParentSInfo)
+	;
+		SInfo
 	).
 
 %------------------------------------------------------------------------------%
 
 	% Construct the initial and final mappings for a state variable.
 	%
-:- pred new_local_state_var(svar, prog_var, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info).
-:- mode new_local_state_var(in, out, out, in, out, in, out) is det.
+:- pred new_local_state_var(svar::in, prog_var::out, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-new_local_state_var(StateVar, VarD, VarC, VarSet0, VarSet, SInfo0, SInfo) :-
-	new_dot_state_var(StateVar, VarD, VarSet0, VarSet1, SInfo0, SInfo1),
-	new_final_state_var(StateVar, VarC, VarSet1, VarSet, SInfo1, SInfo).
+new_local_state_var(StateVar, VarD, VarC, !VarSet, !SInfo) :-
+	new_dot_state_var(StateVar, VarD, !VarSet, !SInfo),
+	new_final_state_var(StateVar, VarC, !VarSet, !SInfo).
 
 	% Construct the initial and final mappings for a state variable.
 	%
-:- pred new_dot_state_var(svar, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info).
-:- mode new_dot_state_var(in, out, in, out, in, out) is det.
+:- pred new_dot_state_var(svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-new_dot_state_var(StateVar, VarD, VarSet0, VarSet, SInfo0, SInfo) :-
-	N     = SInfo0 ^ num,
-	Name  = varset__lookup_name(VarSet0, StateVar),
+new_dot_state_var(StateVar, VarD, !VarSet, !SInfo) :-
+	N     = !.SInfo ^ num,
+	Name  = varset__lookup_name(!.VarSet, StateVar),
 	NameD = string__format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
-	varset__new_named_var(VarSet0, NameD, VarD, VarSet),
-	SInfo = ( SInfo0 ^ dot ^ elem(StateVar) := VarD ).
+	varset__new_named_var(!.VarSet, NameD, VarD, !:VarSet),
+	!:SInfo = ( !.SInfo ^ dot ^ elem(StateVar) := VarD ).
 
-:- pred new_colon_state_var(svar, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info).
-:- mode new_colon_state_var(in, out, in, out, in, out) is det.
+:- pred new_colon_state_var(svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-new_colon_state_var(StateVar, VarC, VarSet0, VarSet, SInfo0, SInfo) :-
-	N     = SInfo0 ^ num,
-	Name  = varset__lookup_name(VarSet0, StateVar),
+new_colon_state_var(StateVar, VarC, !VarSet, !SInfo) :-
+	N     = !.SInfo ^ num,
+	Name  = varset__lookup_name(!.VarSet, StateVar),
 	NameC = string__format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
-	varset__new_named_var(VarSet0, NameC, VarC, VarSet),
-	SInfo = ( SInfo0 ^ colon ^ elem(StateVar) := VarC ).
+	varset__new_named_var(!.VarSet, NameC, VarC, !:VarSet),
+	!:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := VarC ).
 
-:- pred new_final_state_var(svar, prog_var,
-		prog_varset, prog_varset, svar_info, svar_info).
-:- mode new_final_state_var(in, out, in, out, in, out) is det.
+:- pred new_final_state_var(svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-new_final_state_var(StateVar, VarC, VarSet0, VarSet, SInfo0, SInfo) :-
-	Name  = varset__lookup_name(VarSet0, StateVar),
+new_final_state_var(StateVar, VarC, !VarSet, !SInfo) :-
+	Name  = varset__lookup_name(!.VarSet, StateVar),
 	NameC = string__format("STATE_VARIABLE_%s",    [s(Name)]),
-	varset__new_named_var(VarSet0, NameC, VarC, VarSet),
-	SInfo = ( SInfo0 ^ colon ^ elem(StateVar) := VarC ).
+	varset__new_named_var(!.VarSet, NameC, VarC, !:VarSet),
+	!:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := VarC ).
 
 %------------------------------------------------------------------------------%
 
 	% Prepare for the head of a new clause.
 	%
-:- pred prepare_for_head(svar_info).
-:- mode prepare_for_head(out) is det.
+:- pred prepare_for_head(svar_info::out) is det.
 
 prepare_for_head(new_svar_info).
 
@@ -9266,11 +9118,10 @@ prepare_for_head(new_svar_info).
 	% implicitly scoped over the body and have !. and !: mappings
 	% set up.
 	%
-:- pred prepare_for_lambda(svar_info, svar_info).
-:- mode prepare_for_lambda(in, out) is det.
+:- pred prepare_for_lambda(svar_info::in, svar_info::out) is det.
 
-prepare_for_lambda(SInfo0, SInfo) :-
-	SInfo = ( new_svar_info ^ external_dot := SInfo0 ^ dot ).
+prepare_for_lambda(!SInfo) :-
+	!:SInfo = ( new_svar_info ^ external_dot := !.SInfo ^ dot ).
 
 %------------------------------------------------------------------------------%
 
@@ -9278,17 +9129,16 @@ prepare_for_lambda(SInfo0, SInfo) :-
 	% (source-level) atomic conjunct.  We return the final !:
 	% mappings identified while processing the head.
 	%
-:- pred prepare_for_body(svar_map, prog_varset, prog_varset,
-		svar_info, svar_info).
-:- mode prepare_for_body(out, in, out, in, out) is det.
+:- pred prepare_for_body(svar_map::out, prog_varset::in, prog_varset::out,
+	svar_info::in, svar_info::out) is det.
 
-prepare_for_body(FinalMap, VarSet0, VarSet, SInfo0, SInfo) :-
-	FinalMap  = SInfo0 ^ colon,
-	N         = SInfo0 ^ num + 1,
-	StateVars = list__merge_and_remove_dups(map__keys(SInfo0 ^ colon),
-						map__keys(SInfo0 ^ dot)),
-	next_svar_mappings(N, StateVars, VarSet0, VarSet, Colon),
-	SInfo     = ((( SInfo0 ^ ctxt  := in_body )
+prepare_for_body(FinalMap, !VarSet, !SInfo) :-
+	FinalMap  = !.SInfo ^ colon,
+	N         = !.SInfo ^ num + 1,
+	StateVars = list__merge_and_remove_dups(map__keys(!.SInfo ^ colon),
+						map__keys(!.SInfo ^ dot)),
+	next_svar_mappings(N, StateVars, !VarSet, Colon),
+	!:SInfo   = ((( !.SInfo ^ ctxt  := in_body )
 			       ^ num   := N       )
 			       ^ colon := Colon   ).
 
@@ -9297,9 +9147,8 @@ prepare_for_body(FinalMap, VarSet0, VarSet, SInfo0, SInfo) :-
 	% We have to conjoin the head and body and add unifiers to tie up all
 	% the final values of the state variables to the head variables.
 	%
-:- pred finish_head_and_body(prog_context, svar_map,
-		hlds_goal, hlds_goal, hlds_goal, svar_info).
-:- mode finish_head_and_body(in, in, in, in, out, in) is det.
+:- pred finish_head_and_body(prog_context::in, svar_map::in,
+	hlds_goal::in, hlds_goal::in, hlds_goal::out, svar_info::in) is det.
 
 finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal, SInfo) :-
 	goal_info_init(Context, GoalInfo),
@@ -9326,54 +9175,53 @@ svar_unifiers(Context, LHSMap, RHSMap) =
 
 svar_unification(Context, SVar, Var) = Unification :-
 	hlds_goal__create_atomic_unification(SVar, var(Var), Context,
-			implicit("state variable"), [], Unification).
+		implicit("state variable"), [], Unification).
 
 %------------------------------------------------------------------------------%
 
 	% Add some local state variables.
 	%
-:- pred prepare_for_local_state_vars(svars, prog_varset, prog_varset,
-		svar_info, svar_info).
-:- mode prepare_for_local_state_vars(in, in, out, in, out) is det.
+:- pred prepare_for_local_state_vars(svars::in,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-prepare_for_local_state_vars(StateVars, VarSet0, VarSet, SInfo0, SInfo) :-
+prepare_for_local_state_vars(StateVars, !VarSet, !SInfo) :-
 	list__foldl2(add_new_local_state_var, StateVars,
-		VarSet0, VarSet, SInfo0, SInfo).
+		!VarSet, !SInfo).
 
-:- pred add_new_local_state_var(svar, prog_varset, prog_varset,
-		svar_info, svar_info).
-:- mode add_new_local_state_var(in, in, out, in, out) is det.
+:- pred add_new_local_state_var(svar::in,
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
+	is det.
 
-add_new_local_state_var(StateVar, VarSet0, VarSet, SInfo0, SInfo) :-
-	new_colon_state_var(StateVar, _, VarSet0, VarSet, SInfo0, SInfo).
+add_new_local_state_var(StateVar, !VarSet, !SInfo) :-
+	new_colon_state_var(StateVar, _, !VarSet, !SInfo).
 
 %------------------------------------------------------------------------------%
 
 	% Remove some local state variables.
 	%
-:- pred finish_local_state_vars(svars, prog_vars,
-		svar_info, svar_info, svar_info).
-:- mode finish_local_state_vars(in, out, in, in, out) is det.
+:- pred finish_local_state_vars(svars::in, prog_vars::out,
+	svar_info::in, svar_info::in, svar_info::out) is det.
 
-finish_local_state_vars(StateVars, Vars, SInfoBefore, SInfo0, SInfo) :-
-	Dots   = svar_mappings(SInfo0 ^ dot  , StateVars),
-	Colons = svar_mappings(SInfo0 ^ colon, StateVars),
-	Vars   = list__sort_and_remove_dups(Dots ++ Colons),
-	SInfo  = (( SInfo0 ^ dot   := del_locals(StateVars,
+finish_local_state_vars(StateVars, Vars, SInfoBefore, !SInfo) :-
+	Dots    = svar_mappings(!.SInfo ^ dot  , StateVars),
+	Colons  = svar_mappings(!.SInfo ^ colon, StateVars),
+	Vars    = list__sort_and_remove_dups(Dots ++ Colons),
+	!:SInfo = (( !.SInfo ^ dot   := del_locals(StateVars,
 							SInfoBefore ^ dot,
-							SInfo0 ^ dot) )
+							!.SInfo ^ dot) )
 	                   ^ colon := del_locals(StateVars,
 							SInfoBefore ^ colon,
-							SInfo0 ^ colon) ).
+							!.SInfo ^ colon) ).
 
 :- func svar_mappings(svar_map, svars) = svars.
 
-svar_mappings(_,   []                    ) = [].
-
+svar_mappings(_, []) = [].
 svar_mappings(Map, [StateVar | StateVars]) =
-	( if   Map ^ elem(StateVar) = Var
-	  then [Var | svar_mappings(Map, StateVars)]
-	  else svar_mappings(Map, StateVars)
+	( Map ^ elem(StateVar) = Var ->
+		[Var | svar_mappings(Map, StateVars)]
+	;
+		svar_mappings(Map, StateVars)
 	).
 
 :- func del_locals(svars, svar_map, svar_map) = svar_map.
@@ -9400,15 +9248,13 @@ del_locals(StateVars, MapBefore, Map) =
 	% We construct new mappings for the state variables and then
 	% add unifiers.
 	%
-:- pred finish_if_then_else(prog_context, hlds_goal, hlds_goal, hlds_goal,
-		hlds_goal, svar_info, svar_info, svar_info, svar_info,
-		svar_info, prog_varset, prog_varset).
-:- mode finish_if_then_else(in, in, out, in, out, in, in, in, in, out,
-		in, out) is det.
+:- pred finish_if_then_else(prog_context::in, hlds_goal::in, hlds_goal::out,
+	hlds_goal::in, hlds_goal::out, svar_info::in,
+	svar_info::in, svar_info::in, svar_info::in, svar_info::out,
+	prog_varset::in, prog_varset::out) is det.
 
 finish_if_then_else(Context, Then0, Then, Else0, Else,
-		SInfo0, SInfoC, SInfoT0, SInfoE, SInfo,
-		VarSet0, VarSet) :-
+		SInfo0, SInfoC, SInfoT0, SInfoE, SInfo, !VarSet) :-
 
 		% Add unifiers to the Then arm for state variables that
 		% acquired new mappings in the condition, but not in the
@@ -9421,14 +9267,14 @@ finish_if_then_else(Context, Then0, Then, Else0, Else,
 	goal_to_conj_list(Then0, Thens0),
 	add_then_arm_specific_unifiers(Context, StateVars,
 		SInfo0, SInfoC, SInfoT0, SInfoT,
-		Thens0, Thens, VarSet0, VarSet),
+		Thens0, Thens, !VarSet),
 	conj_list_to_goal(Thens, GoalInfo, Then1),
 
 		% Calculate the svar_info with the highest numbered
 		% mappings from each arm.
 		%
 	DisjSInfos = [{Then1, SInfoT}, {Else0, SInfoE}],
-	SInfo      = reconciled_disj_svar_info(VarSet, DisjSInfos),
+	SInfo      = reconciled_disj_svar_info(!.VarSet, DisjSInfos),
 
 		% Add unifiers to each arm to ensure they both construct
 		% the same final state variable mappings.
@@ -9444,29 +9290,27 @@ finish_if_then_else(Context, Then0, Then, Else0, Else,
 	% to the then-goal because the new mapping was created in a
 	% negated context.
 	%
-:- pred add_then_arm_specific_unifiers(prog_context, svars,
-		svar_info, svar_info, svar_info, svar_info,
-		hlds_goals, hlds_goals, prog_varset, prog_varset).
-:- mode add_then_arm_specific_unifiers(in, in, in, in, in, out,
-		in, out, in, out) is det.
+:- pred add_then_arm_specific_unifiers(prog_context::in, svars::in,
+	svar_info::in, svar_info::in, svar_info::in, svar_info::out,
+	hlds_goals::in, hlds_goals::out, prog_varset::in, prog_varset::out)
+	is det.
 
-add_then_arm_specific_unifiers(_, [],
-		_, _, SInfoT, SInfoT,
+add_then_arm_specific_unifiers(_, [], _, _, SInfoT, SInfoT,
 		Thens, Thens, VarSet, VarSet).
 
 add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
 		SInfo0, SInfoC, !SInfoT, !Thens, !VarSet) :-
-	( if % the condition refers to !:X, but the then-goal doesn't
-	     SInfoC  ^ dot ^ elem(StateVar) \= SInfo0 ^ dot ^ elem(StateVar),
-	     !.SInfoT ^ dot ^ elem(StateVar)  = SInfoC ^ dot ^ elem(StateVar)
-	  then
+	(	% the condition refers to !:X, but the then-goal doesn't
+		SInfoC ^ dot ^ elem(StateVar) \= SInfo0 ^ dot ^ elem(StateVar),
+		!.SInfoT ^ dot ^ elem(StateVar) = SInfoC ^ dot ^ elem(StateVar)
+	->
 	  	% add a new unifier !:X = !.X
-	  	Dot0    = !.SInfoT ^ dot ^ det_elem(StateVar),
+	  	Dot0 = !.SInfoT ^ dot ^ det_elem(StateVar),
 		new_colon_state_var(StateVar, Dot, !VarSet, !SInfoT),
 		!:Thens = [svar_unification(Context, Dot, Dot0) | !.Thens],
 		prepare_for_next_conjunct(set__make_singleton_set(StateVar),
 			!VarSet, !SInfoT)
-	  else
+	;
 	  	true
 	),
 	add_then_arm_specific_unifiers(Context, StateVars,
@@ -9474,21 +9318,19 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
 
 %------------------------------------------------------------------------------%
 
-:- pred next_svar_mappings(int, svars, prog_varset, prog_varset, svar_map).
-:- mode next_svar_mappings(in, in, in, out, out) is det.
+:- pred next_svar_mappings(int::in, svars::in,
+	prog_varset::in, prog_varset::out, svar_map::out) is det.
 
 next_svar_mappings(N, StateVars, VarSet0, VarSet, Map) :-
 	next_svar_mappings_2(N, StateVars, VarSet0, VarSet, map__init, Map).
 
-:- pred next_svar_mappings_2(int, svars, prog_varset, prog_varset,
-		svar_map, svar_map).
-:- mode next_svar_mappings_2(in, in, in, out, in, out) is det.
+:- pred next_svar_mappings_2(int::in, svars::in,
+	prog_varset::in, prog_varset::out, svar_map::in, svar_map::out) is det.
 
-next_svar_mappings_2(_, [], VarSet, VarSet, Map, Map).
-
-next_svar_mappings_2(N, [StateVar | StateVars], VarSet0, VarSet, Map0, Map) :-
-	next_svar_mapping(N, StateVar, _, VarSet0, VarSet1, Map0, Map1),
-	next_svar_mappings_2(N, StateVars, VarSet1, VarSet, Map1, Map).
+next_svar_mappings_2(_, [], !VarSet, !Map).
+next_svar_mappings_2(N, [StateVar | StateVars], !VarSet, !Map) :-
+	next_svar_mapping(N, StateVar, _, !VarSet, !Map),
+	next_svar_mappings_2(N, StateVars, !VarSet, !Map).
 
 %------------------------------------------------------------------------------%
 
@@ -9496,8 +9338,7 @@ next_svar_mappings_2(N, [StateVar | StateVars], VarSet0, VarSet, Map0, Map) :-
 	% so we construct new mappings for the state variables and then
 	% add unifiers from their pre-negated goal mappings.
 	%
-:- pred finish_negation(svar_info, svar_info, svar_info).
-:- mode finish_negation(in, in, out) is det.
+:- pred finish_negation(svar_info::in, svar_info::in, svar_info::out) is det.
 
 finish_negation(SInfoBefore, SInfoNeg, SInfo) :-
 	SInfo = (( SInfoBefore ^ num   := SInfoNeg ^ num   )
@@ -9508,9 +9349,8 @@ finish_negation(SInfoBefore, SInfoNeg, SInfo) :-
 	% We have to make sure that all arms of a disjunction produce the
 	% same state variable bindings by adding unifiers as necessary.
 	%
-:- pred finish_disjunction(prog_context, prog_varset, hlds_goal_svar_infos,
-		hlds_goals, svar_info).
-:- mode finish_disjunction(in, in, in, out, out) is det.
+:- pred finish_disjunction(prog_context::in, prog_varset::in,
+	hlds_goal_svar_infos::in, hlds_goals::out, svar_info::out) is det.
 
 finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
 	SInfo      = reconciled_disj_svar_info(VarSet, DisjSInfos),
@@ -9526,7 +9366,7 @@ finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
 	% the form `STATE_VARIABLE_X_n' for some number `n'.)
 	%
 :- func reconciled_disj_svar_info(prog_varset, hlds_goal_svar_infos) =
-		svar_info.
+	svar_info.
 
 reconciled_disj_svar_info(_, []) = _ :-
 	error("make_hlds__reconciled_disj_svar_info: empty disjunct list").
@@ -9574,7 +9414,7 @@ union_colon_svars(Colons, [{_, SInfo} | DisjSInfos]) =
 	).
 
 :- func reconciled_svar_infos(prog_varset, svar_set, svar_set,
-		hlds_goal_svar_info, svar_info) = svar_info.
+	hlds_goal_svar_info, svar_info) = svar_info.
 
 reconciled_svar_infos(VarSet, Dots, Colons,
 		{_, SInfoX}, SInfo0) = SInfo :-
@@ -9590,14 +9430,14 @@ reconciled_svar_infos(VarSet, Dots, Colons,
 		 ),
 	SInfo  = ( SInfo2 ^ num := max(SInfo0 ^ num, SInfoX ^ num) ).
 
-:- func reconciled_svar_infos_dots(prog_varset, svar_info, svar, svar_info) =
-		svar_info.
+:- func reconciled_svar_infos_dots(prog_varset, svar_info, svar, svar_info)
+	= svar_info.
 
 reconciled_svar_infos_dots(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
-	( if
+	(
 		DotX = SInfoX ^ dot ^ elem(StateVar),
 		Dot0 = SInfo0 ^ dot ^ elem(StateVar)
-	  then
+	->
 	  	NameX = varset__lookup_name(VarSet, DotX) `with_type` string,
 	  	Name0 = varset__lookup_name(VarSet, Dot0) `with_type` string,
 		compare_svar_names(RDot, NameX, Name0),
@@ -9611,18 +9451,18 @@ reconciled_svar_infos_dots(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
 			RDot  = (>),
 			SInfo = ( SInfo0 ^ dot ^ elem(StateVar) := DotX )
 		)
-	  else
+	;
 	  	SInfo = SInfo0
 	).
 
-:- func reconciled_svar_infos_colons(prog_varset, svar_info, svar, svar_info) =
-		svar_info.
+:- func reconciled_svar_infos_colons(prog_varset, svar_info, svar, svar_info)
+	= svar_info.
 
 reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
-	( if
+	(
 		ColonX = SInfoX ^ colon ^ elem(StateVar),
 		Colon0 = SInfo0 ^ colon ^ elem(StateVar)
-	  then
+	->
 	  	NameX = varset__lookup_name(VarSet, ColonX) `with_type` string,
 	  	Name0 = varset__lookup_name(VarSet, Colon0) `with_type` string,
 		compare_svar_names(RColon, NameX, Name0),
@@ -9636,32 +9476,31 @@ reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
 			RColon = (>),
 			SInfo  = ( SInfo0 ^ colon ^ elem(StateVar) := ColonX )
 		)
-	  else
+	;
 	  	SInfo = SInfo0
 	).
 
-:- func add_disj_unifiers(prog_context, svar_info, svars,
-		hlds_goal_svar_info) = hlds_goal.
+:- func add_disj_unifiers(prog_context, svar_info, svars, hlds_goal_svar_info)
+	= hlds_goal.
 
-add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) =
-		Goal :-
+add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) = Goal :-
 	Unifiers = list__foldl(add_disj_unifier(Context, SInfo, SInfoX),
-			StateVars, []),
+		StateVars, []),
 	GoalX = _ - GoalInfo,
 	goal_to_conj_list(GoalX, GoalsX),
 	conj_list_to_goal(GoalsX ++ Unifiers, GoalInfo, Goal).
 
-:- func add_disj_unifier(prog_context, svar_info, svar_info, svar,
-		hlds_goals) = hlds_goals.
+:- func add_disj_unifier(prog_context, svar_info, svar_info, svar, hlds_goals)
+	= hlds_goals.
 
 add_disj_unifier(Context, SInfo, SInfoX, StateVar, Unifiers) =
-	( if
+	(
 		Dot  = SInfo  ^ dot ^ elem(StateVar),
 		DotX = SInfoX ^ dot ^ elem(StateVar),
 		Dot \= DotX
-	  then
+	->
 	  	[svar_unification(Context, Dot, DotX) | Unifiers]
-	  else
+	;
 	  	Unifiers
 	).
 
@@ -9676,8 +9515,8 @@ add_disj_unifier(Context, SInfo, SInfoX, StateVar, Unifiers) =
 	% state variable and N is a decimal number with no leading
 	% zeroes.
 	%
-:- pred compare_svar_names(comparison_result, string, string).
-:- mode compare_svar_names(out, in, in) is det.
+:- pred compare_svar_names(comparison_result::out, string::in, string::in)
+	is det.
 
 compare_svar_names(R, A, B) :-
 	compare(R, int_suffix_of(A), int_suffix_of(B)).
@@ -9693,13 +9532,13 @@ int_suffix_of(S) = int_suffix_2(S, length(S) - 1, 1, 0).
 :- func int_suffix_2(string, int, int, int) = int.
 
 int_suffix_2(S, I, R, N) =
-	( if
+	(
 		0 =< I,
 		digit_to_int(S `unsafe_index` I, D),
-		D  < 10
-	  then
+		D < 10
+	->
 		int_suffix_2(S, I - 1, 10 * R, (R * D) + N)
-	  else
+	;
 	  	N
 	).
 
@@ -9708,8 +9547,8 @@ int_suffix_2(S, I, R, N) =
 	% We treat equivalence goals as if they were negations (they are
 	% in a negated context after all.)
 	%
-:- pred finish_equivalence(svar_info, svar_info, svar_info).
-:- mode finish_equivalence(in, in, out) is det.
+:- pred finish_equivalence(svar_info::in, svar_info::in, svar_info::out)
+	is det.
 
 finish_equivalence(SInfoBefore, SInfoEqv, SInfo) :-
 	finish_negation(SInfoBefore, SInfoEqv, SInfo).
@@ -9720,14 +9559,14 @@ finish_equivalence(SInfoBefore, SInfoEqv, SInfo) :-
 	% already in an atom then we inherit the parent's set of "updated"
 	% state variables.
 	%
-:- pred prepare_for_call(svar_info, svar_info).
-:- mode prepare_for_call(in, out) is det.
+:- pred prepare_for_call(svar_info::in, svar_info::out) is det.
 
 prepare_for_call(ParentSInfo, SInfo) :-
 	UpdatedStateVars =
-		( if   ParentSInfo ^ ctxt = in_atom(UpdatedStateVars0, _)
-		  then UpdatedStateVars0
-		  else set__init
+		( ParentSInfo ^ ctxt = in_atom(UpdatedStateVars0, _) ->
+			UpdatedStateVars0
+		;
+			set__init
 		),
 	SInfo = ( ParentSInfo ^ ctxt := in_atom(UpdatedStateVars,ParentSInfo) ).
 
@@ -9870,17 +9709,17 @@ prepare_for_next_conjunct(UpdatedStateVars, !VarSet, !SInfo) :-
 	% may be none if, for example, the head only references !:X
 	% and there have been no prior references to !:X in the body.)
 	%
-:- pred next_dot_mapping(svar_set, svar_map, svar_map, svar, prog_var,
-		svar_map, svar_map).
-:- mode next_dot_mapping(in, in, in, in, in, in, out) is det.
+:- pred next_dot_mapping(svar_set::in, svar_map::in, svar_map::in, svar::in,
+	prog_var::in, svar_map::in, svar_map::out) is det.
 
 next_dot_mapping(UpdatedStateVars, OldDot, OldColon, StateVar, _, Dot0, Dot) :-
-	( if      UpdatedStateVars `contains` StateVar
-	  then    Var = OldColon ^ det_elem(StateVar),
-	  	  Dot = ( Dot0 ^ elem(StateVar) := Var )
-	  else if Var = OldDot ^ elem(StateVar)
-	  then    Dot = ( Dot0 ^ elem(StateVar) := Var )
-	  else    Dot = Dot0
+	( UpdatedStateVars `contains` StateVar ->
+		Var = OldColon ^ det_elem(StateVar),
+	  	Dot = ( Dot0 ^ elem(StateVar) := Var )
+	; Var = OldDot ^ elem(StateVar) ->
+		Dot = ( Dot0 ^ elem(StateVar) := Var )
+	;
+		Dot = Dot0
 	).
 
 	% If the state variable has been updated (i.e. there was a !:X
@@ -9888,30 +9727,27 @@ next_dot_mapping(UpdatedStateVars, OldDot, OldColon, StateVar, _, Dot0, Dot) :-
 	% Otherwise, the next !:X mapping is the same as the current
 	% !:X mapping.
 	%
-:- pred next_colon_mapping(svar_set, svar_map, int, svar, prog_var,
-		prog_varset, prog_varset, svar_map, svar_map).
-:- mode next_colon_mapping(in, in, in, in, in, in, out, in, out) is det.
+:- pred next_colon_mapping(svar_set::in, svar_map::in, int::in, svar::in,
+	prog_var::in, prog_varset::in, prog_varset::out,
+	svar_map::in, svar_map::out) is det.
 
 next_colon_mapping(UpdatedStateVars, OldColon, N, StateVar, _,
-		VarSet0, VarSet, Colon0, Colon) :-
-	( if UpdatedStateVars `contains` StateVar then
-		next_svar_mapping(N, StateVar, _Var, VarSet0, VarSet,
-			Colon0, Colon)
-	  else
-	  	VarSet = VarSet0,
-		Colon  = ( Colon0 ^ elem(StateVar) :=
+		!VarSet, !Colon) :-
+	( UpdatedStateVars `contains` StateVar ->
+		next_svar_mapping(N, StateVar, _Var, !VarSet, !Colon)
+	;
+		!:Colon = ( !.Colon ^ elem(StateVar) :=
 					OldColon ^ det_elem(StateVar) )
 	).
 
-:- pred next_svar_mapping(int, svar, prog_var, prog_varset, prog_varset,
-		svar_map, svar_map).
-:- mode next_svar_mapping(in, in, out, in, out, in, out) is det.
+:- pred next_svar_mapping(int::in, svar::in, prog_var::out,
+	prog_varset::in, prog_varset::out, svar_map::in, svar_map::out) is det.
 
-next_svar_mapping(N, StateVar, Var, VarSet0, VarSet, Map0, Map) :-
+next_svar_mapping(N, StateVar, Var, !VarSet, !Map) :-
 	Name = string__format("STATE_VARIABLE_%s_%d",
-		[s(varset__lookup_name(VarSet0, StateVar)), i(N)]),
-	varset__new_named_var(VarSet0, Name, Var, VarSet),
-	Map  = ( Map0 ^ elem(StateVar) := Var ).
+		[s(varset__lookup_name(!.VarSet, StateVar)), i(N)]),
+	varset__new_named_var(!.VarSet, Name, Var, !:VarSet),
+	!:Map  = ( !.Map ^ elem(StateVar) := Var ).
 
 %------------------------------------------------------------------------------%
 
@@ -9955,9 +9791,10 @@ expand_method_bsvs(IM0) = IM :-
 	Cs  = list__map(expand_item_bsvs, Cs0),
 		% Note that the condition should always succeed...
 		%
-	( if   Cs = [clause(_, _, _, Args, _) | _]
-	  then adjust_func_arity(PredOrFunc, Arity, list__length(Args))
-	  else Arity = Arity0
+	( Cs = [clause(_, _, _, Args, _) | _] ->
+		adjust_func_arity(PredOrFunc, Arity, list__length(Args))
+	;
+		Arity = Arity0
 	),
 	IM  = instance_method(PredOrFunc, Method, clauses(Cs), Arity, Ctxt).
 
@@ -9966,10 +9803,11 @@ expand_method_bsvs(IM0) = IM :-
 :- func expand_item_bsvs(item) = item.
 
 expand_item_bsvs(Item) =
-	( if   Item = clause(VarSet, PredOrFunc, SymName, Args, Body)
-	  then clause(VarSet, PredOrFunc, SymName,
+	( Item = clause(VarSet, PredOrFunc, SymName, Args, Body) ->
+		clause(VarSet, PredOrFunc, SymName,
 			expand_bang_state_var_args(Args), Body)
-	  else Item
+	;
+		Item
 	).
 
 %------------------------------------------------------------------------------%
@@ -9979,19 +9817,17 @@ expand_item_bsvs(Item) =
 	% already have been expanded into !.X, !:X via a call to
 	% expand_bang_state_var_args/1.
 	%
-:- pred substitute_state_var_mappings(list(prog_term), list(prog_term),
-		prog_varset, prog_varset, svar_info, svar_info, io, io).
-:- mode substitute_state_var_mappings(in, out, in, out, in, out, di, uo) is det.
+:- pred substitute_state_var_mappings(list(prog_term)::in,
+	list(prog_term)::out, prog_varset::in, prog_varset::out,
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-substitute_state_var_mappings([],    [],
-		VarSet,  VarSet, SInfo,  SInfo) --> [].
-
+substitute_state_var_mappings([], [], !VarSet, !SInfo, !IO).
 substitute_state_var_mappings([Arg0 | Args0], [Arg | Args],
-		VarSet0, VarSet, SInfo0, SInfo) -->
+		!VarSet, !SInfo, !IO) :-
 	substitute_state_var_mapping(Arg0, Arg,
-		VarSet0, VarSet1, SInfo0, SInfo1),
+		!VarSet, !SInfo, !IO),
 	substitute_state_var_mappings(Args0, Args,
-		VarSet1, VarSet,  SInfo1, SInfo ).
+		!VarSet, !SInfo, !IO).
 
 :- pred substitute_state_var_mapping(prog_term::in, prog_term::out,
 	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
@@ -10010,8 +9846,8 @@ substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred illegal_state_var_func_result(pred_or_func, list(prog_term), svar).
-:- mode illegal_state_var_func_result(in, in, out) is semidet.
+:- pred illegal_state_var_func_result(pred_or_func::in, list(prog_term)::in,
+	svar::out) is semidet.
 
 illegal_state_var_func_result(function, Args, StateVar) :-
 	list__last(Args, functor(atom("!"), [variable(StateVar)], _Ctxt)).
@@ -10022,82 +9858,82 @@ illegal_state_var_func_result(function, Args, StateVar) :-
 	% We might extend the syntax still further to accommodate
 	% this as an option, e.g. !IO::(di, uo).
 	%
-:- pred lambda_args_contain_bang_state_var(list(prog_term), prog_var).
-:- mode lambda_args_contain_bang_state_var(in, out) is semidet.
+:- pred lambda_args_contain_bang_state_var(list(prog_term)::in, prog_var::out)
+	is semidet.
 
 lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
-	( if   Arg      = functor(atom("!"), [variable(StateVar0)], _)
-	  then StateVar = StateVar0
-	  else lambda_args_contain_bang_state_var(Args, StateVar)
+	( Arg      = functor(atom("!"), [variable(StateVar0)], _) ->
+		StateVar = StateVar0
+	;
+		lambda_args_contain_bang_state_var(Args, StateVar)
 	).
 
 %------------------------------------------------------------------------------%
 
-:- pred report_illegal_state_var_update(prog_context, prog_varset, svar,
-		io, io).
-:- mode report_illegal_state_var_update(in, in, in, di, uo) is det.
+:- pred report_illegal_state_var_update(prog_context::in, prog_varset::in,
+	svar::in, io::di, io::uo) is det.
 
-report_illegal_state_var_update(Context, VarSet, StateVar) -->
-	{ Name = varset__lookup_name(VarSet, StateVar) },
-	prog_out__write_context(Context),
+report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
+	Name = varset__lookup_name(VarSet, StateVar),
+	prog_out__write_context(Context, !IO),
 	report_error(string__format("\
-cannot use !:%s in this context;", [s(Name)])),
-	prog_out__write_context(Context),
+cannot use !:%s in this context;", [s(Name)]), !IO),
+	prog_out__write_context(Context, !IO),
 	io__format("\
-  however !.%s may be used here.\n", [s(Name)]).
+  however !.%s may be used here.\n", [s(Name)], !IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred report_non_visible_state_var(string, prog_context, prog_varset, svar,
-		io, io).
-:- mode report_non_visible_state_var(in, in, in, in, di, uo) is det.
+:- pred report_non_visible_state_var(string::in, prog_context::in,
+	prog_varset::in, svar::in, io::di, io::uo) is det.
 
-report_non_visible_state_var(DorC, Context, VarSet, StateVar) -->
-	{ Name = varset__lookup_name(VarSet, StateVar) },
-	prog_out__write_context(Context),
+report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
+	Name = varset__lookup_name(VarSet, StateVar),
+	prog_out__write_context(Context, !IO),
 	report_error(string__format("\
-state variable !%s%s is not visible in this context.", [s(DorC), s(Name)])).
+state variable !%s%s is not visible in this context.",
+		[s(DorC), s(Name)]), !IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred report_unitialized_state_var(prog_context, prog_varset, svar, io, io).
-:- mode report_unitialized_state_var(in, in, in, di, uo) is det.
+:- pred report_unitialized_state_var(prog_context::in, prog_varset::in,
+	svar::in, io::di, io::uo) is det.
 
-report_unitialized_state_var(Context, VarSet, StateVar) -->
-	{ Name = varset__lookup_name(VarSet, StateVar) },
-	prog_out__write_context(Context),
+report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
+	Name = varset__lookup_name(VarSet, StateVar),
+	prog_out__write_context(Context, !IO),
 	report_warning(string__format("\
-Warning: reference to unitialized state variable !.%s.\n", [s(Name)])).
+Warning: reference to unitialized state variable !.%s.\n",
+		[s(Name)]), !IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred report_illegal_func_svar_result(prog_context, prog_varset, svar,
-		io, io).
-:- mode report_illegal_func_svar_result(in, in, in, di, uo) is det.
+:- pred report_illegal_func_svar_result(prog_context::in, prog_varset::in,
+	svar::in, io::di, io::uo) is det.
 
-report_illegal_func_svar_result(Context, VarSet, StateVar) -->
-	{ Name = varset__lookup_name(VarSet, StateVar) },
-	prog_out__write_context(Context),
+report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
+	Name = varset__lookup_name(VarSet, StateVar),
+	prog_out__write_context(Context, !IO),
 	report_error(string__format("\
-!%s cannot be a function result.", [s(Name)])),
-	prog_out__write_context(Context),
+!%s cannot be a function result.", [s(Name)]), !IO),
+	prog_out__write_context(Context, !IO),
 	io__format("\
-  You probably meant !.%s or !:%s.\n", [s(Name), s(Name)]).
+  You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
+  		!IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred report_illegal_bang_svar_lambda_arg(prog_context, prog_varset, svar,
-		io, io).
-:- mode report_illegal_bang_svar_lambda_arg(in, in, in, di, uo) is det.
+:- pred report_illegal_bang_svar_lambda_arg(prog_context::in, prog_varset::in,
+	svar::in, io::di, io::uo) is det.
 
-report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar) -->
-	{ Name = varset__lookup_name(VarSet, StateVar) },
-	prog_out__write_context(Context),
+report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
+	Name = varset__lookup_name(VarSet, StateVar),
+	prog_out__write_context(Context, !IO),
 	report_error(string__format("\
-!%s cannot be a lambda argument.", [s(Name)])),
-	prog_out__write_context(Context),
+!%s cannot be a lambda argument.", [s(Name)]), !IO),
+	prog_out__write_context(Context, !IO),
 	io__format("\
-  Perhaps you meant !.%s or !:%s.\n", [s(Name), s(Name)]).
+  Perhaps you meant !.%s or !:%s.\n", [s(Name), s(Name)], !IO).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

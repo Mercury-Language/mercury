@@ -1162,12 +1162,13 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _,_),
 code_gen__generate_goal_2(foreign_proc(Attributes, PredId, ProcId,
 		Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Code, !CI) :-
-	( foreign_language(Attributes, c) ->
+	( c = foreign_language(Attributes) ->
 		pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, Args, ArgNames, OrigArgTypes,
 			GoalInfo, PragmaCode, Code, !CI)
 	;
-		error("code_gen__generate_goal_2: foreign code other than C unexpected")
+		error("code_gen__generate_goal_2: " ++
+			"foreign code other than C unexpected")
 	).
 code_gen__generate_goal_2(shorthand(_), _, _, _, !CI) :-
 	% these should have been expanded out by now

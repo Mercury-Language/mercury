@@ -37,7 +37,7 @@
 				% the error/warning message, and the
 				% term to which it relates
 
-:- type compilation_unit		
+:- type compilation_unit
 	--->	module(
 			module_name,
 			item_list
@@ -47,7 +47,7 @@
 
 :- type item_and_context ==	pair(item, prog_context).
 
-:- type item		
+:- type item
 	--->	clause(
 			cl_varset		:: prog_varset,
 			cl_pred_or_func		:: pred_or_func,
@@ -163,8 +163,8 @@
 		% used for items that should be ignored (e.g.
 		% NU-Prolog `when' declarations, which are silently
 		% ignored for backwards compatibility).
-	
-	% indicates the type of information the compiler should get from the 
+
+	% indicates the type of information the compiler should get from the
 	% declaration's clause
 :- type promise_type
 		% promise ex declarations
@@ -175,7 +175,7 @@
 		% assertions
 	; 	true.			% promise goal is true
 
-:- type type_and_mode	
+:- type type_and_mode
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
 
@@ -193,7 +193,7 @@
 	% The `determinism' type specifies how many solutions a given
 	% procedure may have.  Procedures for manipulating this type
 	% are defined in det_analysis.m and hlds_data.m.
-:- type determinism	
+:- type determinism
 	--->	det
 	;	semidet
 	;	nondet
@@ -227,7 +227,7 @@
 % Pragmas
 %
 
-:- type pragma_type 
+:- type pragma_type
 	%
 	% Foreign language interfacing pragmas
 	%
@@ -253,7 +253,7 @@
 			%	what language this code is in
 			%	whether or not the code may call Mercury,
 			%	whether or not the code is thread-safe
-			% PredName, Predicate or Function, Vars/Mode, 
+			% PredName, Predicate or Function, Vars/Mode,
 			% VarNames, Foreign Code Implementation Info
 		)
 
@@ -353,7 +353,7 @@
 			tabled_method	:: eval_method,
 			tabled_name	:: sym_name,
 			tabled_arity	:: int,
-			tabled_p_or_f	:: maybe(pred_or_func), 
+			tabled_p_or_f	:: maybe(pred_or_func),
 			tabled_mode	:: maybe(list(mode))
 			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
 		)
@@ -385,9 +385,9 @@
 			baserel_arity	:: arity
 			% Predname, Arity
 			%
-			% Eventually, these should only occur in 
-			% automatically generated database interface 
-			% files, but for now there's no such thing, 
+			% Eventually, these should only occur in
+			% automatically generated database interface
+			% files, but for now there's no such thing,
 			% so they can occur in user programs.
 		)
 
@@ -448,7 +448,7 @@
 	%
 	% Purity pragmas
 	%
-	
+
 	;	promise_pure(
 			pure_name	:: sym_name,
 			pure_arity	:: arity
@@ -505,13 +505,12 @@
 % Stuff for the foreign interfacing pragmas.
 %
 
-	% 
+	%
 	% A foreign_language_type represents a type that is defined in a
-	% foreign language and accessed in Mercury (most likely through 
+	% foreign language and accessed in Mercury (most likely through
 	% pragma foreign_type).
 	% Currently we only support foreign_language_types for IL.
 	%
-
 
 	%
 	% It is important to distinguish between IL value types and
@@ -555,16 +554,16 @@
 	% The evaluation method that should be used for a procedure.
 	% Ignored for Aditi procedures.
 :- type eval_method
-	--->	eval_normal		% normal mercury 
+	--->	eval_normal		% normal mercury
 					% evaluation
 	;	eval_loop_check		% loop check only
-	;	eval_memo		% memoing + loop check 
+	;	eval_memo		% memoing + loop check
 	;	eval_table_io(		% memoing I/O actions for debugging
 			table_io_is_decl,
 			table_io_is_unitize
 		)
-	;	eval_minimal.		% minimal model 
-					% evaluation 
+	;	eval_minimal.		% minimal model
+					% evaluation
 
 :- type table_io_is_decl
 	--->	table_io_decl		% The procedure is tabled for
@@ -619,14 +618,13 @@
 				% possible inputs.
 	;	can_loop.	% This procedure might not terminate.
 
-
 %
 % Stuff for the `unused_args' pragma.
 %
 
 	% This `mode_num' type is only used for mode numbers written out in
 	% automatically-generateed `pragma unused_args' pragmas in `.opt'
-	% files. 
+	% files.
 	% The mode_num gets converted to an HLDS proc_id by make_hlds.m.
 	% We don't want to use the `proc_id' type here since the parse tree
 	% (prog_data.m) should not depend on the HLDS.
@@ -683,11 +681,11 @@
 			string,
 			maybe(prog_context),
 					% Gives the code to be executed when
-					% the procedure is called for the first 
+					% the procedure is called for the first
 					% time. This code may access the input
 					% variables.
 
-			string,	
+			string,
 			maybe(prog_context),
 					% Gives the code to be executed when
 					% control backtracks into the procedure.
@@ -697,7 +695,7 @@
 			pragma_shared_code_treatment,
 					% How should the shared code be
 					% treated during code generation.
-			string,	
+			string,
 			maybe(prog_context)
 					% Shared code that is executed after
 					% both the previous code fragments.
@@ -787,15 +785,15 @@
 		%	we've expanded the inst.
 	.
 
-:- type instance_method	
+:- type instance_method
 	--->	instance_method(pred_or_func, sym_name, instance_proc_def,
 			arity, prog_context).
-				% PredOrFunc, Method, Instance, Arity, 
+				% PredOrFunc, Method, Instance, Arity,
 				% Line number of declaration
 
 :- type instance_proc_def
 		% defined using the `pred(...) is <Name>' syntax
-	--->	name(sym_name)	
+	--->	name(sym_name)
 
 		% defined using clauses
 	;	clauses(
@@ -819,58 +817,43 @@
 		% `pragma_c_code_attribute's.
 :- type pragma_foreign_proc_attributes.
 
-:- pred default_attributes(foreign_language, pragma_foreign_proc_attributes).
-:- mode default_attributes(in, out) is det.
-
-:- pred may_call_mercury(pragma_foreign_proc_attributes, may_call_mercury).
-:- mode may_call_mercury(in, out) is det.
-
-:- pred set_may_call_mercury(pragma_foreign_proc_attributes, may_call_mercury,
-		pragma_foreign_proc_attributes).
-:- mode set_may_call_mercury(in, in, out) is det.
-
-:- pred thread_safe(pragma_foreign_proc_attributes, thread_safe).
-:- mode thread_safe(in, out) is det.
-
-:- pred purity(pragma_foreign_proc_attributes, purity).
-:- mode purity(in, out) is det.
-
-:- pred legacy_purity_behaviour(pragma_foreign_proc_attributes, bool).
-:- mode legacy_purity_behaviour(in, out) is det.
-
-:- pred set_thread_safe(pragma_foreign_proc_attributes, thread_safe,
-		pragma_foreign_proc_attributes).
-:- mode set_thread_safe(in, in, out) is det.
-
-:- pred foreign_language(pragma_foreign_proc_attributes, foreign_language).
-:- mode foreign_language(in, out) is det.
-
-:- pred set_foreign_language(pragma_foreign_proc_attributes, foreign_language,
-		pragma_foreign_proc_attributes).
-:- mode set_foreign_language(in, in, out) is det.
-
-:- pred tabled_for_io(pragma_foreign_proc_attributes, tabled_for_io).
-:- mode tabled_for_io(in, out) is det.
-
-:- pred set_tabled_for_io(pragma_foreign_proc_attributes, tabled_for_io,
-		pragma_foreign_proc_attributes).
-:- mode set_tabled_for_io(in, in, out) is det.
-
-:- pred set_purity(pragma_foreign_proc_attributes, purity,
-		pragma_foreign_proc_attributes).
-:- mode set_purity(in, in, out) is det.
-
-:- pred set_legacy_purity_behaviour(pragma_foreign_proc_attributes, bool,
-		pragma_foreign_proc_attributes).
-:- mode set_legacy_purity_behaviour(in, in, out) is det.
-
-:- pred add_extra_attribute(pragma_foreign_proc_attributes, 
-		pragma_foreign_proc_extra_attribute,
-		pragma_foreign_proc_attributes).
-:- mode add_extra_attribute(in, in, out) is det.
-
+:- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
+:- func may_call_mercury(pragma_foreign_proc_attributes) = may_call_mercury.
+:- func thread_safe(pragma_foreign_proc_attributes) = thread_safe.
+:- func purity(pragma_foreign_proc_attributes) = purity.
+:- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
+:- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
+:- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
 :- func extra_attributes(pragma_foreign_proc_attributes)
 	= pragma_foreign_proc_extra_attributes.
+
+:- pred set_may_call_mercury(may_call_mercury::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_thread_safe(thread_safe::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_foreign_language(foreign_language::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_tabled_for_io(tabled_for_io::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_purity(purity::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_legacy_purity_behaviour(bool::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
@@ -893,7 +876,7 @@
 	;	tabled_for_io_unitize
 	;	tabled_for_descendant_io.
 
-:- type pragma_var    
+:- type pragma_var
 	--->	pragma_var(prog_var, string, mode).
 	  	% variable, name, mode
 		% we explicitly store the name because we need the real
@@ -902,7 +885,7 @@
 :- type pragma_foreign_proc_extra_attribute
 	--->	max_stack_size(int).
 
-:- type pragma_foreign_proc_extra_attributes == 
+:- type pragma_foreign_proc_extra_attributes ==
 	list(pragma_foreign_proc_extra_attribute).
 
 	% Convert the foreign code attributes to their source code
@@ -910,8 +893,7 @@
 	% the pragma (not all attributes have one).
 	% In particular, the foreign language attribute needs to be
 	% handled separately as it belongs at the start of the pragma.
-:- pred attributes_to_strings(pragma_foreign_proc_attributes::in,
-		list(string)::out) is det.
+:- func attributes_to_strings(pragma_foreign_proc_attributes) = list(string).
 
 %-----------------------------------------------------------------------------%
 %
@@ -927,7 +909,7 @@
 
 :- type goal		==	pair(goal_expr, prog_context).
 
-:- type goal_expr	
+:- type goal_expr
 	% conjunctions
 	--->	(goal , goal)	% (non-empty) conjunction
 	;	true		% empty conjunction
@@ -993,8 +975,7 @@
 	% produce a set of tuples to be inserted or deleted.
 :- type lambda_eval_method
 	--->	normal
-	;	(aditi_bottom_up)
-	.
+	;	(aditi_bottom_up).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1008,14 +989,14 @@
 
 % type_defn/3 is defined above as a constructor for item/0
 
-:- type type_defn	
+:- type type_defn
 	--->	du_type(list(constructor), is_solver_type, maybe(unify_compare))
 	;	eqv_type(type)
 	;	abstract_type(is_solver_type)
 	;	foreign_type(foreign_language_type, maybe(unify_compare))
 	.
 
-:- type constructor	
+:- type constructor
 	--->	ctor(
 			existq_tvars,
 			list(class_constraint),	% existential constraints
@@ -1060,7 +1041,7 @@
 	% Module qualified types are represented as ':'/2 terms.
 	% Use type_util:type_to_ctor_and_args to convert a type to a qualified
 	% type_ctor and a list of arguments.
-	% type_util:construct_type to construct a type from a type_ctor 
+	% type_util:construct_type to construct a type from a type_ctor
 	% and a list of arguments.
 	%
 	% The `term__context's of the type terms must be empty (as
@@ -1094,7 +1075,7 @@
 	% The compiler will ignore these assertions - they are intended
 	% to be used by other tools, such as the debugger.
 
-:- type condition	
+:- type condition
 	--->	true
 	;	where(term).
 
@@ -1104,9 +1085,9 @@
 %
 
 	% This is how instantiatednesses and modes are represented.
-	% Note that while we use the normal term data structure to represent 
-	% type terms (see above), we need a separate data structure for inst 
-	% terms. 
+	% Note that while we use the normal term data structure to represent
+	% type terms (see above), we need a separate data structure for inst
+	% terms.
 
 	% The `inst' data type itself is defined in the module `inst.m'.
 
@@ -1117,7 +1098,7 @@
 
 % inst_defn/3 defined above
 
-:- type inst_defn	
+:- type inst_defn
 	--->	eqv_inst(inst)
 	;	abstract_inst.
 
@@ -1139,8 +1120,8 @@
 	% Note that `typed_ground' is a special case of `typed_inst',
 	% and `ground_inst' and `any_inst' are special cases of `unify_inst'.
 	% The reason for having the special cases is efficiency.
-	
-:- type inst_name	
+
+:- type inst_name
 	--->	user_inst(sym_name, list(inst))
 	;	merge_inst(inst, inst)
 	;	unify_inst(is_live, inst, inst, unify_is_real)
@@ -1179,10 +1160,10 @@
 
 % mode_defn/3 defined above
 
-:- type mode_defn	
+:- type mode_defn
 	--->	eqv_mode(mode).
 
-:- type (mode)		
+:- type (mode)
 	--->	((inst) -> (inst))
 	;	user_defined_mode(sym_name, list(inst)).
 
@@ -1196,7 +1177,7 @@
 	% This is how module-system declarations (such as imports
 	% and exports) are represented.
 
-:- type module_defn	
+:- type module_defn
 	--->	module(module_name)
 	;	end_module(module_name)
 
@@ -1214,7 +1195,7 @@
 	;	imported(import_locn)
 		% This is used internally by the compiler,
 		% to identify declarations which originally
-		% came from some other module imported with 
+		% came from some other module imported with
 		% a `:- import_module' declaration, and which
 		% section the module was imported.
 	;	used(import_locn)
@@ -1248,7 +1229,7 @@
 		% and the other pseudo-declarations `:- imported(interface)',
 		% etc., a `:- transitively_imported' declaration
 		% applies to all of the following items in the list,
-		% not just up to the next pseudo-declaration. 
+		% not just up to the next pseudo-declaration.
 
 	;	external(sym_name_specifier)
 
@@ -1281,10 +1262,9 @@
 	;	ancestor
 
 		% The item is from the private interface of an ancestor module.
-	;	ancestor_private_interface
-	.
+	;	ancestor_private_interface.
 
-:- type sym_list	
+:- type sym_list
 	--->	sym(list(sym_specifier))
 	;	pred(list(pred_specifier))
 	;	func(list(func_specifier))
@@ -1294,7 +1274,7 @@
 	;	type(list(type_specifier))
 	;	module(list(module_specifier)).
 
-:- type sym_specifier	
+:- type sym_specifier
 	--->	sym(sym_name_specifier)
 	;	typed_sym(typed_cons_specifier)
 	;	pred(pred_specifier)
@@ -1304,33 +1284,33 @@
 	;	adt(adt_specifier)
 	;	type(type_specifier)
 	;	module(module_specifier).
-:- type pred_specifier	
+:- type pred_specifier
 	--->	sym(sym_name_specifier)
 	;	name_args(sym_name, list(type)).
 :- type func_specifier	==	cons_specifier.
-:- type cons_specifier	
+:- type cons_specifier
 	--->	sym(sym_name_specifier)
 	;	typed(typed_cons_specifier).
-:- type typed_cons_specifier 
+:- type typed_cons_specifier
 	--->	name_args(sym_name, list(type))
 	;	name_res(sym_name_specifier, type)
 	;	name_args_res(sym_name, list(type), type).
 :- type adt_specifier	==	sym_name_specifier.
 :- type type_specifier	==	sym_name_specifier.
-:- type op_specifier	
+:- type op_specifier
 	--->	sym(sym_name_specifier)
 	% operator fixity specifiers not yet implemented
 	;	fixity(sym_name_specifier, fixity).
-:- type fixity		
-	--->	infix 
-	; 	prefix 
-	; 	postfix 
-	; 	binary_prefix 
+:- type fixity
+	--->	infix
+	; 	prefix
+	; 	postfix
+	; 	binary_prefix
 	; 	binary_postfix.
-:- type sym_name_specifier 
+:- type sym_name_specifier
 	--->	name(sym_name)
 	;	name_arity(sym_name, arity).
-:- type sym_name 	
+:- type sym_name
 	--->	unqualified(string)
 	;	qualified(module_specifier, string).
 :- type sym_name_and_arity
@@ -1340,7 +1320,7 @@
 :- type module_name 	== 	sym_name.
 :- type arity		==	int.
 
-	% Describes whether an item can be used without an 
+	% Describes whether an item can be used without an
 	% explicit module qualifier.
 :- type need_qualifier
 	--->	must_be_qualified
@@ -1362,50 +1342,32 @@
 			thread_safe		:: thread_safe,
 			tabled_for_io		:: tabled_for_io,
 			purity			:: purity,
-				% there is some special case behaviour for 
+				% there is some special case behaviour for
 				% pragma c_code and pragma import purity
 				% if legacy_purity_behaviour is `yes'
 			legacy_purity_behaviour	:: bool,
-			extra_attributes	:: 
+			extra_attributes	::
 				list(pragma_foreign_proc_extra_attribute)
 		).
 
+default_attributes(Language) =
+	attributes(Language, may_call_mercury, not_thread_safe,
+		not_tabled_for_io, impure, no, []).
 
-default_attributes(Language, 
-	attributes(Language, may_call_mercury, not_thread_safe, 
-		not_tabled_for_io, impure, no, [])).
-
-may_call_mercury(Attrs, Attrs ^ may_call_mercury).
-
-thread_safe(Attrs, Attrs ^ thread_safe).
-
-foreign_language(Attrs, Attrs ^ foreign_language).
-
-tabled_for_io(Attrs, Attrs ^ tabled_for_io).
-
-purity(Attrs, Attrs ^ purity).
-
-legacy_purity_behaviour(Attrs, Attrs ^ legacy_purity_behaviour).
-
-set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
+set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
-
-set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
+set_thread_safe(ThreadSafe, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ thread_safe := ThreadSafe.
-
-set_foreign_language(Attrs0, ForeignLanguage, Attrs) :-
+set_foreign_language(ForeignLanguage, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ foreign_language := ForeignLanguage.
-
-set_tabled_for_io(Attrs0, TabledForIo, Attrs) :-
+set_tabled_for_io(TabledForIo, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
-
-set_purity(Attrs0, Purity, Attrs) :-
+set_purity(Purity, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ purity := Purity.
-
-set_legacy_purity_behaviour(Attrs0, Legacy, Attrs) :-
+set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
 
-attributes_to_strings(Attrs, StringList) :-
+attributes_to_strings(Attrs) = StringList :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
@@ -1452,12 +1414,13 @@ attributes_to_strings(Attrs, StringList) :-
 			PurityStrList] ++
 		list__map(extra_attribute_to_string, ExtraAttributes).
 
-add_extra_attribute(Attributes0, NewAttribute,
-	Attributes0 ^ extra_attributes := 
+add_extra_attribute(NewAttribute, Attributes0,
+	Attributes0 ^ extra_attributes :=
 		[NewAttribute | Attributes0 ^ extra_attributes]).
 
-:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute) 
+:- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
 	= string.
+
 extra_attribute_to_string(max_stack_size(Size)) =
 	"max_stack_size(" ++ string__int_to_string(Size) ++ ")".
 

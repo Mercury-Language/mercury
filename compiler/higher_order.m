@@ -2517,7 +2517,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
-	predicate_table_insert(PredTable0, NewPredInfo1, NewPredId, PredTable),
+	predicate_table_insert(NewPredInfo1, NewPredId, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo1),
 
 	!:Info = !.Info ^ module_info := ModuleInfo1,

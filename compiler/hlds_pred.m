@@ -1488,8 +1488,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		Owner, Assertions, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
-	predicate_table_insert(PredTable0, PredInfo, PredId,
-		PredTable),
+	predicate_table_insert(PredInfo, PredId, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
 
 	GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),

@@ -95,7 +95,7 @@ pd_cost__goal(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
 
 pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _, _) - _,
 		Cost) :-
-	( may_call_mercury(Attributes, will_not_call_mercury) ->
+	( may_call_mercury(Attributes) = will_not_call_mercury ->
 		Cost1 = 0
 	;
 		pd_cost__stack_flush(Cost1)

@@ -535,7 +535,7 @@ convert_bound_inst(AllowConstrainedInstVar, InstTerm, functor(ConsId, Args)) :-
 	;
 		Args1 = Args0,
 		list__length(Args1, Arity),
-		make_functor_cons_id(Functor, Arity, ConsId)
+		ConsId = make_functor_cons_id(Functor, Arity)
 	),
 	convert_inst_list(AllowConstrainedInstVar, Args1, Args).
 

@@ -479,13 +479,11 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 :- type modes_and_detism
 	--->	modes_and_detism(list(mode), inst_varset, maybe(determinism)).
 
-:- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
-	hlds_instance_defn, hlds_instance_defn, 
-	instance_methods, instance_methods,
-	instance_method_info, instance_method_info,
-	io__state, io__state).
-:- mode check_instance_pred_procs(in, in, in, in, in, out,
-	in, out, in, out, di, uo) is det.
+:- pred check_instance_pred_procs(class_id::in, list(tvar)::in, sym_name::in,
+	pred_markers::in, hlds_instance_defn::in, hlds_instance_defn::out, 
+	instance_methods::in, instance_methods::out,
+	instance_method_info::in, instance_method_info::out,
+	io::di, io::uo) is det.
 
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
@@ -648,15 +646,16 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
 	).
 	
 :- pred pred_or_func_to_string(pred_or_func::in, string::out) is det.
+
 pred_or_func_to_string(predicate, "predicate").
 pred_or_func_to_string(function, "function").
 
-:- pred produce_auxiliary_procs(class_id, list(tvar), pred_markers, list(type),
-	list(class_constraint), tvarset, module_name, instance_proc_def,
-	prog_context, pred_id, list(proc_id), instance_method_info,
-	instance_method_info, io__state, io__state).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, in, in, out, out, 
-	in, out, di, uo) is det.
+:- pred produce_auxiliary_procs(class_id::in, list(tvar)::in, pred_markers::in,
+	list(type)::in, list(class_constraint)::in, tvarset::in,
+	module_name::in, instance_proc_def::in, prog_context::in,
+	pred_id::out, list(proc_id)::out,
+	instance_method_info::in, instance_method_info::out,
+	io::di, io::uo) is det.
 
 produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
@@ -753,9 +752,9 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	AddProc = (pred(ModeAndDet::in, NewProcId::out,
 			OldPredInfo::in, NewPredInfo::out) is det :-
 		ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
-		add_new_proc(OldPredInfo, InstVarSet, PredArity, Modes,
-			yes(Modes), no, MaybeDet, Context, address_is_taken,
-			NewPredInfo, NewProcId)
+		add_new_proc(InstVarSet, PredArity, Modes, yes(Modes), no,
+			MaybeDet, Context, address_is_taken,
+			OldPredInfo, NewPredInfo, NewProcId)
 	),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
 		PredInfo2, PredInfo),
@@ -764,8 +763,8 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
 	% XXX why do we need to pass may_be_unqualified here,
 	%     rather than passing must_be_qualified or calling the /4 version?
-	predicate_table_insert(PredicateTable1, PredInfo,
-		may_be_unqualified, PQInfo, PredId, PredicateTable),
+	predicate_table_insert(PredInfo, may_be_unqualified, PQInfo,
+		PredId, PredicateTable1, PredicateTable),
 	module_info_set_predicate_table(PredicateTable,
 		ModuleInfo1, ModuleInfo),
 

@@ -949,8 +949,8 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
 
 			% add the new proc to the pred table
 		module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-		predicate_table_insert(PredTable0,
-			NewPredInfo, NewPredId, PredTable),
+		predicate_table_insert(NewPredInfo, NewPredId,
+			PredTable0, PredTable),
 		module_info_set_predicate_table(PredTable, !ModuleInfo),
 
 			% add the new proc to the proc_call_info map
@@ -1000,7 +1000,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 	map__set(ExtraProcs0, ProcId, ExtraProc, ExtraProcs),
 	pred_info_set_procedures(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-	predicate_table_insert(PredTable0, ExtraPredInfo, _, PredTable),
+	predicate_table_insert(ExtraPredInfo, _, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred make_new_pred_info(module_info::in, list(int)::in, import_status::in,
@@ -1133,7 +1133,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs,
 
 		% Add the new proc to the pred table.
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-	predicate_table_insert(PredTable0, NewPredInfo, NewPredId, PredTable1),
+	predicate_table_insert(NewPredInfo, NewPredId, PredTable0, PredTable1),
 	module_info_set_predicate_table(PredTable1, !ModuleInfo),
 	PredModule = pred_info_module(NewPredInfo),
 	PredName = pred_info_name(NewPredInfo),

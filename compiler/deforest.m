@@ -1680,7 +1680,7 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	{ det_conjunction_detism(Detism0, Detism1, Detism) },
 	{ goal_list_purity([EarlierGoal | BetweenGoals], Purity0) },
 	{ infer_goal_info_purity(LaterInfo, Purity1) },
-	{ worst_purity(Purity0, Purity1, Purity) }, 
+	{ worst_purity(Purity0, Purity1) = Purity }, 
 	{ goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo) },
 	{ Goal2 = GoalExpr - GoalInfo },
 

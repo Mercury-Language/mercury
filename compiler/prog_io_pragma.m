@@ -604,8 +604,8 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 			Pragma = "c_code"
 		->
 			% may_call_mercury is a conservative default.
-			default_attributes(ForeignLanguage, Attributes0),
-			set_legacy_purity_behaviour(Attributes0, yes,
+			Attributes0 = default_attributes(ForeignLanguage),
+			set_legacy_purity_behaviour(yes, Attributes0,
 				Attributes),
 			(
 			    CodeTerm = term__functor(term__string(Code), [],
@@ -691,9 +691,9 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 	        )
 	    ;
 		PragmaTerms = [PredAndModesTerm, FunctionTerm],
-		default_attributes(ForeignLanguage, Flags0),
+		Flags0 = default_attributes(ForeignLanguage),
 			% pragma import uses legacy purity behaviour
-		set_legacy_purity_behaviour(Flags0, yes, Flags),
+		set_legacy_purity_behaviour(yes, Flags0, Flags),
 		FlagsResult = ok(Flags)
 	    )	
  	-> 
@@ -720,9 +720,8 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			Result = error(Msg, Term)
 		)
 	    ;
-		Result = error(
-	"expected pragma import(PredName(ModeList), Function)",
-		     PredAndModesTerm)
+		Result = error("expected pragma import(PredName(ModeList), "
+		    ++ "Function)", PredAndModesTerm)
 	    )
 	;
 	    Result = 
@@ -1222,10 +1221,10 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 
 parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		MaybeAttributes) :-
-	default_attributes(ForeignLanguage, Attributes0),
+	Attributes0 = default_attributes(ForeignLanguage),
 	( ( Pragma = "c_code" ; Pragma = "import" ) ->
-		set_legacy_purity_behaviour(Attributes0, yes, Attributes1),
-		set_purity(Attributes1, pure, Attributes2)
+		set_legacy_purity_behaviour(yes, Attributes0, Attributes1),
+		set_purity(pure, Attributes1, Attributes2)
 	;
 		Attributes2 = Attributes0
 	),
@@ -1278,16 +1277,16 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		pragma_foreign_proc_attributes::in,
 		pragma_foreign_proc_attributes::out) is det.
 
-process_attribute(may_call_mercury(MayCallMercury), Attrs0, Attrs) :-
-	set_may_call_mercury(Attrs0, MayCallMercury, Attrs).
-process_attribute(thread_safe(ThreadSafe), Attrs0, Attrs) :-
-	set_thread_safe(Attrs0, ThreadSafe, Attrs).
-process_attribute(tabled_for_io(TabledForIO), Attrs0, Attrs) :-
-	set_tabled_for_io(Attrs0, TabledForIO, Attrs).
-process_attribute(purity(Pure), Attrs0, Attrs) :-
-	set_purity(Attrs0, Pure, Attrs).
-process_attribute(max_stack_size(Size), Attrs0, Attrs) :-
-	add_extra_attribute(Attrs0, max_stack_size(Size), Attrs).
+process_attribute(may_call_mercury(MayCallMercury), !Attrs) :-
+	set_may_call_mercury(MayCallMercury, !Attrs).
+process_attribute(thread_safe(ThreadSafe), !Attrs) :-
+	set_thread_safe(ThreadSafe, !Attrs).
+process_attribute(tabled_for_io(TabledForIO), !Attrs) :-
+	set_tabled_for_io(TabledForIO, !Attrs).
+process_attribute(purity(Pure), !Attrs) :-
+	set_purity(Pure, !Attrs).
+process_attribute(max_stack_size(Size), !Attrs) :-
+	add_extra_attribute(max_stack_size(Size), !Attrs).
 
 	% Aliasing is currently ignored in the main branch compiler.
 process_attribute(aliasing, Attrs, Attrs).

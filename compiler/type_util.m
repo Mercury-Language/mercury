@@ -32,25 +32,21 @@
 	% Succeed iff type is an "atomic" type - one which can be
 	% unified using a simple_test rather than a complicated_unify.
 
-:- pred type_is_atomic(type, module_info).
-:- mode type_is_atomic(in, in) is semidet.
+:- pred type_is_atomic((type)::in, module_info::in) is semidet.
 
-:- pred type_ctor_is_atomic(type_ctor, module_info).
-:- mode type_ctor_is_atomic(in, in) is semidet.
+:- pred type_ctor_is_atomic(type_ctor::in, module_info::in) is semidet.
 
 	% type_is_higher_order(Type, Purity, PredOrFunc, ArgTypes, EvalMeth):
 	% succeeds iff Type is a higher-order predicate or function type with
 	% the specified argument types (for functions, the return type is
 	% appended to the end of the argument types), purity, and
 	% evaluation method.
-:- pred type_is_higher_order(type, purity, pred_or_func,
-		lambda_eval_method, list(type)).
-:- mode type_is_higher_order(in, out, out, out, out) is semidet.
+:- pred type_is_higher_order((type)::in, purity::out, pred_or_func::out,
+	lambda_eval_method::out, list(type)::out) is semidet.
 
 	% Succeed if the given type is a tuple type, returning
 	% the argument types.
-:- pred type_is_tuple(type, list(type)).
-:- mode type_is_tuple(in, out) is semidet.
+:- pred type_is_tuple((type)::in, list(type)::out) is semidet.
 
 	% type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
 	% Check if the principal type constructor of Type is of variable arity.
@@ -61,13 +57,11 @@
 
 	% type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
 	% TypeCtor is a higher-order predicate or function type.
-:- pred type_ctor_is_higher_order(type_ctor, purity, pred_or_func,
-		lambda_eval_method).
-:- mode type_ctor_is_higher_order(in, out, out, out) is semidet.
+:- pred type_ctor_is_higher_order(type_ctor::in, purity::out, pred_or_func::out,
+	lambda_eval_method::out) is semidet.
 
 	% type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
-:- pred type_ctor_is_tuple(type_ctor).
-:- mode type_ctor_is_tuple(in) is semidet.
+:- pred type_ctor_is_tuple(type_ctor::in) is semidet.
 
 	% The list of type_ctors which are builtins which do not have a
 	% hlds_type_defn.
@@ -83,19 +77,17 @@
 	%
 	% If the type is a type variable and thus has no principal type
 	% constructor, fail.
-:- pred type_has_user_defined_equality_pred(module_info, (type),
-	unify_compare).
-:- mode type_has_user_defined_equality_pred(in, in, out) is semidet.
+:- pred type_has_user_defined_equality_pred(module_info::in, (type)::in,
+	unify_compare::out) is semidet.
 
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
-		hlds_type_body::in, unify_compare::out) is semidet.
+	hlds_type_body::in, unify_compare::out) is semidet.
 
 	% Succeed if the inst `any' can be considered `bound' for this type.
-:- pred type_util__is_solver_type(module_info, (type)).
-:- mode type_util__is_solver_type(in, in) is semidet.
+:- pred type_util__is_solver_type(module_info::in, (type)::in) is semidet.
 
-:- pred type_body_is_solver_type(module_info, hlds_type_body).
-:- mode type_body_is_solver_type(in, in) is semidet.
+:- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
+	is semidet.
 
 
 	% Certain types, e.g. io__state and store__store(S),
@@ -103,32 +95,28 @@
 	% there is no need to actually pass them, and so when
 	% importing or exporting procedures to/from C, we don't
 	% include arguments with these types.
-:- pred type_util__is_dummy_argument_type(type).
-:- mode type_util__is_dummy_argument_type(in) is semidet.
+:- pred type_util__is_dummy_argument_type((type)::in) is semidet.
 
-:- pred type_util__constructors_are_dummy_argument_type(list(constructor)).
-:- mode type_util__constructors_are_dummy_argument_type(in) is semidet.
+:- pred type_util__constructors_are_dummy_argument_type(list(constructor)::in)
+	is semidet.
 
-:- pred type_is_io_state(type).
-:- mode type_is_io_state(in) is semidet.
+:- pred type_is_io_state((type)::in) is semidet.
 
-:- pred type_is_aditi_state(type).
-:- mode type_is_aditi_state(in) is semidet.
+:- pred type_is_aditi_state((type)::in) is semidet.
 
-:- pred type_ctor_is_array(type_ctor).
-:- mode type_ctor_is_array(in) is semidet.
+:- pred type_ctor_is_array(type_ctor::in) is semidet.
 
 	% Remove an `aditi:state' from the given list if one is present.
-:- pred type_util__remove_aditi_state(list(type), list(T), list(T)).
-:- mode type_util__remove_aditi_state(in, in, out) is det.
+:- pred type_util__remove_aditi_state(list(type)::in, list(T)::in,
+	list(T)::out) is det.
 
 	% A test for types that are defined in Mercury, but whose definitions
 	% are `lies', i.e. they are not sufficiently accurate for RTTI
 	% structures describing the types. Since the RTTI will be hand defined,
 	% the compiler shouldn't generate RTTI for these types.
 
-:- pred type_ctor_has_hand_defined_rtti(type_ctor, hlds_type_body).
-:- mode type_ctor_has_hand_defined_rtti(in, in) is semidet.
+:- pred type_ctor_has_hand_defined_rtti(type_ctor::in, hlds_type_body::in)
+	is semidet.
 
 	% A test for type_info-related types that are introduced by
 	% polymorphism.m.  These need to be handled specially in certain
@@ -136,11 +124,9 @@
 	% for these types, since it would not be useful, and since we
 	% want to minimize the number of different modes that we infer.
 
-:- pred is_introduced_type_info_type(type).
-:- mode is_introduced_type_info_type(in) is semidet.
+:- pred is_introduced_type_info_type((type)::in) is semidet.
 
-:- pred is_introduced_type_info_type_ctor(type_ctor).
-:- mode is_introduced_type_info_type_ctor(in) is semidet.
+:- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
 
 :- func is_introduced_type_info_type_category(type_category) = bool.
 
@@ -186,11 +172,11 @@
 
 	% Given a non-variable type, return its type-id and argument types.
 
-:- pred type_to_ctor_and_args(type, type_ctor, list(type)).
-:- mode type_to_ctor_and_args(in, out, out) is semidet.
+:- pred type_to_ctor_and_args((type)::in, type_ctor::out, list(type)::out)
+	is semidet.
 
 	% Given a variable type, return its type variable.
-	
+
 :- pred type_util__var(type, tvar).
 :- mode type_util__var(in, out) is semidet.
 :- mode type_util__var(out, in) is det.
@@ -198,23 +184,19 @@
 :- pred canonicalize_type_args(type_ctor::in, list(type)::in, list(type)::out)
 	is det.
 
-	% Given a type_ctor and a list of argument types, 
+	% Given a type_ctor and a list of argument types,
 	% construct a type.
 
-:- pred construct_type(type_ctor, list(type), (type)).
-:- mode construct_type(in, in, out) is det.
+:- pred construct_type(type_ctor::in, list(type)::in, (type)::out) is det.
 
-:- pred construct_higher_order_type(purity, pred_or_func, lambda_eval_method,
-		list(type), (type)).
-:- mode construct_higher_order_type(in, in, in, in, out) is det.
+:- pred construct_higher_order_type(purity::in, pred_or_func::in,
+	lambda_eval_method::in, list(type)::in, (type)::out) is det.
 
-:- pred construct_higher_order_pred_type(purity, lambda_eval_method,
-		list(type), (type)).
-:- mode construct_higher_order_pred_type(in, in, in, out) is det.
+:- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
+	list(type)::in, (type)::out) is det.
 
-:- pred construct_higher_order_func_type(purity, lambda_eval_method,
-		list(type), (type), (type)).
-:- mode construct_higher_order_func_type(in, in, in, in, out) is det.
+:- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
+	list(type)::in, (type)::in, (type)::out) is det.
 
 	% Construct builtin types.
 :- func int_type = (type).
@@ -236,24 +218,23 @@
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
 
-:- pred make_type_ctor(const, int, type_ctor).
-:- mode make_type_ctor(in, in, out) is semidet.
+:- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 
 	% Given a type_ctor, look up its module/name/arity
 
-:- pred type_util__type_ctor_module(module_info, type_ctor, module_name).
-:- mode type_util__type_ctor_module(in, in, out) is det.
+:- pred type_util__type_ctor_module(module_info::in, type_ctor::in,
+	module_name::out) is det.
 
-:- pred type_util__type_ctor_name(module_info, type_ctor, string).
-:- mode type_util__type_ctor_name(in, in, out) is det.
+:- pred type_util__type_ctor_name(module_info::in, type_ctor::in, string::out)
+	is det.
 
-:- pred type_util__type_ctor_arity(module_info, type_ctor, arity).
-:- mode type_util__type_ctor_arity(in, in, out) is det.
+:- pred type_util__type_ctor_arity(module_info::in, type_ctor::in, arity::out)
+	is det.
 
 	% If the type is a du type or a tuple type,
 	% return the list of its constructors.
-:- pred type_constructors(type, module_info, list(constructor)).
-:- mode type_constructors(in, in, out) is semidet.
+:- pred type_constructors((type)::in, module_info::in, list(constructor)::out)
+	is semidet.
 
 	% Given a type on which it is possible to have a complete switch,
 	% return the number of alternatives. (It is possible to have a complete
@@ -272,19 +253,19 @@
 	% any type variables in the functor's argument types,
 	% to match their bindings in the functor's type.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
-		cons_id::in, list(type)::out) is det.
+	cons_id::in, list(type)::out) is det.
 
 	% The same as type_util__get_cons_id_arg_types except that it
 	% fails rather than aborting if the functor is existentially
 	% typed.
 :- pred type_util__get_cons_id_non_existential_arg_types(module_info::in,
-		(type)::in, cons_id::in, list(type)::out) is semidet.
+	(type)::in, cons_id::in, list(type)::out) is semidet.
 
 	% The same as type_util__get_cons_id_arg_types except that the
 	% cons_id is output non-deterministically.
 	% The cons_id is not module-qualified.
 :- pred type_util__cons_id_arg_types(module_info::in, (type)::in,
-		cons_id::out, list(type)::out) is nondet.
+	cons_id::out, list(type)::out) is nondet.
 
 	% Given a type and a cons_id, look up the definitions of that
 	% type and constructor. Aborts if the cons_id is not user-defined.
@@ -292,14 +273,13 @@
 	% functor's argument types; they will be left unbound,
 	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
-:- pred type_util__get_type_and_cons_defn(module_info, (type), cons_id,
-		hlds_type_defn, hlds_cons_defn).
-:- mode type_util__get_type_and_cons_defn(in, in, in, out, out) is det.
+:- pred type_util__get_type_and_cons_defn(module_info::in, (type)::in,
+	cons_id::in, hlds_type_defn::out, hlds_cons_defn::out) is det.
 
 	% Like type_util__get_type_and_cons_defn (above), except that it
 	% only returns the definition of the constructor, not the type.
 :- pred type_util__get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
-		hlds_cons_defn::out) is semidet.
+	hlds_cons_defn::out) is semidet.
 
 	% Module-qualify the cons_id using module information from the type.
 	% The second output value is the cons_id required for use in insts which
@@ -309,7 +289,7 @@
 	% used for obtaining the arity for typeclass_info and type_info
 	% cons_ids.
 :- pred qualify_cons_id((type)::in, list(prog_var)::in, cons_id::in,
-		cons_id::out, cons_id::out) is det.
+	cons_id::out, cons_id::out) is det.
 
 	% Given a type and a cons_id, look up the definition of that
 	% constructor; if it is existentially typed, return its definition,
@@ -318,11 +298,11 @@
 	% functor's argument types; they will be left unbound,
 	% so the caller can find out the original types from the constructor
 	% definition.  The caller must do that sustitution itself if required.
-:- pred type_util__get_existq_cons_defn(module_info::in,
-		(type)::in, cons_id::in, ctor_defn::out) is semidet.
+:- pred type_util__get_existq_cons_defn(module_info::in, (type)::in,
+	cons_id::in, ctor_defn::out) is semidet.
 
-:- pred type_util__is_existq_cons(module_info::in,
-		(type)::in, cons_id::in) is semidet.
+:- pred type_util__is_existq_cons(module_info::in, (type)::in, cons_id::in)
+	is semidet.
 
 	% This type is used to return information about a constructor
 	% definition, extracted from the hlds_type_defn and hlds_cons_defn
@@ -341,8 +321,8 @@
 	% whose one constructor has only one argument),
 	% and if so, return its constructor symbol and argument type.
 
-:- pred type_is_no_tag_type(module_info, type, sym_name, type).
-:- mode type_is_no_tag_type(in, in, out, out) is semidet.
+:- pred type_is_no_tag_type(module_info::in, (type)::in, sym_name::out,
+	(type)::out) is semidet.
 
 	% Check whether some constructors are a no_tag type
 	% (i.e. one with only one constructor, and
@@ -355,23 +335,20 @@
 	% you should use type_is_no_tag_type/4, or if you really know
 	% what you are doing, perform the checks yourself.
 
-:- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type,
-	maybe(string)).
-:- mode type_constructors_are_no_tag_type(in, out, out, out) is semidet.
+:- pred type_constructors_are_no_tag_type(list(constructor)::in, sym_name::out,
+	(type)::out, maybe(string)::out) is semidet.
 
 	% Given a list of constructors for a type, check whether that
 	% type is a private_builtin:type_info/n or similar type.
-:- pred type_constructors_are_type_info(list(constructor)).
-:- mode type_constructors_are_type_info(in) is semidet.
+:- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
 	% type_constructors_should_be_no_tag(Ctors, ReservedTag, Globals,
 	%	FunctorName, FunctorArgType, MaybeFunctorArgName):
 	% Check whether some constructors are a no_tag type, and that this
 	% is compatible with the ReservedTag setting for this type and
 	% the grade options set in the globals.
-:- pred type_constructors_should_be_no_tag(list(constructor), bool, globals,
-	sym_name, type, maybe(string)).
-:- mode type_constructors_should_be_no_tag(in, in, in, out, out, out)
+:- pred type_constructors_should_be_no_tag(list(constructor)::in, bool::in,
+	globals::in, sym_name::out, (type)::out, maybe(string)::out)
 	is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
@@ -379,62 +356,57 @@
 	% The third argument is a list of type variables which cannot
 	% be bound (i.e. head type variables).
 
-:- pred type_unify(type, type, list(tvar), tsubst, tsubst).
-:- mode type_unify(in, in, in, in, out) is semidet.
+:- pred type_unify((type)::in, (type)::in, list(tvar)::in, tsubst::in,
+	tsubst::out) is semidet.
 
-:- pred type_unify_list(list(type), list(type), list(tvar), tsubst, tsubst).
-:- mode type_unify_list(in, in, in, in, out) is semidet.
+:- pred type_unify_list(list(type)::in, list(type)::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
 
 	% Return a list of the type variables of a type.
 
-:- pred type_util__vars(type, list(tvar)).
-:- mode type_util__vars(in, out) is det.
+:- pred type_util__vars((type)::in, list(tvar)::out) is det.
 
 	% Return a list of the type variables of a type,
 	% ignoring any type variables if the variable in
 	% question is a type-info
 
-:- pred type_util__real_vars(type, list(tvar)).
-:- mode type_util__real_vars(in, out) is det.
+:- pred type_util__real_vars((type)::in, list(tvar)::out) is det.
 
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
 
-:- pred type_list_subsumes(list(type), list(type), tsubst).
-:- mode type_list_subsumes(in, in, out) is semidet.
+:- pred type_list_subsumes(list(type)::in, list(type)::in, tsubst::out)
+	is semidet.
 
 	% This does the same as type_list_subsumes, but aborts instead of
 	% failing.
-:- pred type_list_subsumes_det(list(type), list(type), tsubst).
-:- mode type_list_subsumes_det(in, in, out) is det.
+:- pred type_list_subsumes_det(list(type)::in, list(type)::in, tsubst::out)
+	is det.
 
 	% arg_type_list_subsumes(TVarSet, ArgTypes,
-	%       CalleeTVarSet, CalleeExistQVars, CalleeArgTypes).
+	%	CalleeTVarSet, CalleeExistQVars, CalleeArgTypes).
 	%
 	% Check that the argument types of the called predicate,
 	% function or constructor subsume the types of the
 	% arguments of the call. This checks that none
 	% of the existentially quantified type variables of
 	% the callee are bound.
-:- pred arg_type_list_subsumes(tvarset, list(type),
-		tvarset, existq_tvars, list(type)).
-:- mode arg_type_list_subsumes(in, in, in, in, in) is semidet.
+:- pred arg_type_list_subsumes(tvarset::in, list(type)::in,
+	tvarset::in, existq_tvars::in, list(type)::in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 
-:- pred apply_substitution_to_type_map(map(prog_var, type), tsubst,
-		map(prog_var, type)).
-:- mode apply_substitution_to_type_map(in, in, out) is det.
+:- pred apply_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
+	map(prog_var, type)::out) is det.
 
-        % same thing as above, except for a recursive substitution
-        % (i.e. we keep applying the substitution recursively until
-        % there are no more changes).
+	% same thing as above, except for a recursive substitution
+	% (i.e. we keep applying the substitution recursively until
+	% there are no more changes).
 
-:- pred apply_rec_substitution_to_type_map(map(prog_var, type), tsubst,
-						 map(prog_var, type)).
-:- mode apply_rec_substitution_to_type_map(in, in, out) is det.
+:- pred apply_rec_substitution_to_type_map(map(prog_var, type)::in, tsubst::in,
+	map(prog_var, type)::out) is det.
 
 	% Update a map from tvar to type_info_locn, using the type renaming
 	% and substitution to rename tvars and a variable substitution to
@@ -444,9 +416,9 @@
 	% If tvar maps to a another type variable, we keep the new
 	% variable, if it maps to a type, we remove it from the map.
 
-:- pred apply_substitutions_to_var_map(map(tvar, type_info_locn), tsubst,
-	map(tvar, type), map(prog_var, prog_var), map(tvar, type_info_locn)).
-:- mode apply_substitutions_to_var_map(in, in, in, in, out) is det.
+:- pred apply_substitutions_to_var_map(map(tvar, type_info_locn)::in,
+	tsubst::in, map(tvar, type)::in, map(prog_var, prog_var)::in,
+	map(tvar, type_info_locn)::out) is det.
 
 	% Update a map from class_constraint to var, using the type renaming
 	% and substitution to rename tvars and a variable substition to
@@ -454,64 +426,52 @@
 	% substitution.
 
 :- pred apply_substitutions_to_typeclass_var_map(
-		map(class_constraint, prog_var), tsubst, map(tvar, type),
-		map(prog_var, prog_var), map(class_constraint, prog_var)).
-:- mode apply_substitutions_to_typeclass_var_map(in, in, in, in, out) is det.
+	map(class_constraint, prog_var)::in, tsubst::in, map(tvar, type)::in,
+	map(prog_var, prog_var)::in, map(class_constraint, prog_var)::out)
+	is det.
 
-:- pred apply_rec_subst_to_constraints(tsubst, class_constraints,
-	class_constraints).
-:- mode apply_rec_subst_to_constraints(in, in, out) is det.
+:- pred apply_rec_subst_to_constraints(tsubst::in, class_constraints::in,
+	class_constraints::out) is det.
 
-:- pred apply_rec_subst_to_constraint_list(tsubst,
-		list(class_constraint), list(class_constraint)).
-:- mode apply_rec_subst_to_constraint_list(in, in, out) is det.
+:- pred apply_rec_subst_to_constraint_list(tsubst::in,
+	list(class_constraint)::in, list(class_constraint)::out) is det.
 
-:- pred apply_rec_subst_to_constraint(tsubst, class_constraint,
-	class_constraint).
-:- mode apply_rec_subst_to_constraint(in, in, out) is det.
+:- pred apply_rec_subst_to_constraint(tsubst::in, class_constraint::in,
+	class_constraint::out) is det.
 
-:- pred apply_subst_to_constraints(tsubst, class_constraints,
-	class_constraints).
-:- mode apply_subst_to_constraints(in, in, out) is det.
+:- pred apply_subst_to_constraints(tsubst::in, class_constraints::in,
+	class_constraints::out) is det.
 
-:- pred apply_subst_to_constraint_list(tsubst, list(class_constraint),
-	list(class_constraint)).
-:- mode apply_subst_to_constraint_list(in, in, out) is det.
+:- pred apply_subst_to_constraint_list(tsubst::in, list(class_constraint)::in,
+	list(class_constraint)::out) is det.
 
-:- pred apply_subst_to_constraint(tsubst, class_constraint,
-	class_constraint).
-:- mode apply_subst_to_constraint(in, in, out) is det.
+:- pred apply_subst_to_constraint(tsubst::in, class_constraint::in,
+	class_constraint::out) is det.
 
-:- pred apply_subst_to_constraint_proofs(tsubst, 
-		map(class_constraint, constraint_proof),
-		map(class_constraint, constraint_proof)).
-:- mode apply_subst_to_constraint_proofs(in, in, out) is det.
+:- pred apply_subst_to_constraint_proofs(tsubst::in,
+	map(class_constraint, constraint_proof)::in,
+	map(class_constraint, constraint_proof)::out) is det.
 
-:- pred apply_rec_subst_to_constraint_proofs(tsubst, 
-	map(class_constraint, constraint_proof),
-	map(class_constraint, constraint_proof)).
-:- mode apply_rec_subst_to_constraint_proofs(in, in, out) is det.
+:- pred apply_rec_subst_to_constraint_proofs(tsubst::in,
+	map(class_constraint, constraint_proof)::in,
+	map(class_constraint, constraint_proof)::out) is det.
 
-:- pred apply_variable_renaming_to_type_map(map(tvar, tvar),
-		vartypes, vartypes).
-:- mode apply_variable_renaming_to_type_map(in, in, out) is det.
+:- pred apply_variable_renaming_to_type_map(map(tvar, tvar)::in,
+	vartypes::in, vartypes::out) is det.
 
-:- pred apply_variable_renaming_to_constraints(map(tvar, tvar), 
-	class_constraints, class_constraints).
-:- mode apply_variable_renaming_to_constraints(in, in, out) is det.
+:- pred apply_variable_renaming_to_constraints(map(tvar, tvar)::in,
+	class_constraints::in, class_constraints::out) is det.
 
-:- pred apply_variable_renaming_to_constraint_list(map(tvar, tvar), 
-	list(class_constraint), list(class_constraint)).
-:- mode apply_variable_renaming_to_constraint_list(in, in, out) is det.
+:- pred apply_variable_renaming_to_constraint_list(map(tvar, tvar)::in,
+	list(class_constraint)::in, list(class_constraint)::out) is det.
 
-:- pred apply_variable_renaming_to_constraint(map(tvar, tvar), 
-	class_constraint, class_constraint).
-:- mode apply_variable_renaming_to_constraint(in, in, out) is det.
+:- pred apply_variable_renaming_to_constraint(map(tvar, tvar)::in,
+	class_constraint::in, class_constraint::out) is det.
 
 % Apply a renaming (partial map) to a list.
 % Useful for applying a variable renaming to a list of variables.
-:- pred apply_partial_map_to_list(list(T), map(T, T), list(T)).
-:- mode apply_partial_map_to_list(in, in, out) is det.
+:- pred apply_partial_map_to_list(list(T)::in, map(T, T)::in, list(T)::out)
+	is det.
 
 	% cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
 	%	Returns the number of arguments of specified constructor id,
@@ -525,16 +485,15 @@
 	%	return the list of type variables contained in a
 	%	list of constraints
 	%
-:- pred constraint_list_get_tvars(list(class_constraint), list(tvar)).
-:- mode constraint_list_get_tvars(in, out) is det.
+:- pred constraint_list_get_tvars(list(class_constraint)::in, list(tvar)::out)
+	is det.
 
 	% constraint_list_get_tvars(Constraint, TVars):
 	%	return the list of type variables contained in a constraint.
-:- pred constraint_get_tvars(class_constraint, list(tvar)).
-:- mode constraint_get_tvars(in, out) is det.
+:- pred constraint_get_tvars(class_constraint::in, list(tvar)::out) is det.
 
-:- pred get_unconstrained_tvars(list(tvar), list(class_constraint), list(tvar)).
-:- mode get_unconstrained_tvars(in, in, out) is det.
+:- pred get_unconstrained_tvars(list(tvar)::in, list(class_constraint)::in,
+	list(tvar)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -543,12 +502,11 @@
 	% from the cons_id because the arity in the cons_id will not
 	% include any extra type_info arguments for existentially
 	% quantified types.
-:- pred maybe_get_cons_id_arg_types(module_info, maybe(type), cons_id,
-		arity, list(maybe(type))).
-:- mode maybe_get_cons_id_arg_types(in, in, in, in, out) is det.
+:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(type)::in,
+	cons_id::in, arity::in, list(maybe(type))::out) is det.
 
-:- pred maybe_get_higher_order_arg_types(maybe(type), arity, list(maybe(type))).
-:- mode maybe_get_higher_order_arg_types(in, in, out) is det.
+:- pred maybe_get_higher_order_arg_types(maybe(type)::in, arity::in,
+	list(maybe(type))::out) is det.
 
 :- type polymorphism_cell
 	--->	type_info_cell(type_ctor)
@@ -723,9 +681,9 @@ type_is_higher_order(Type, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
 	).
 
 % This parses a higher-order type without any purity indicator.
-:- pred type_is_higher_order_2(type, pred_or_func,
-		lambda_eval_method, list(type)).
-:- mode type_is_higher_order_2(in, out, out, out) is semidet.
+:- pred type_is_higher_order_2((type)::in, pred_or_func::out,
+	lambda_eval_method::out, list(type)::out) is semidet.
+
 type_is_higher_order_2(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 	(
 		Type = term__functor(term__atom("="),
@@ -743,16 +701,15 @@ type_is_higher_order_2(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 
 	% From the type of a lambda expression, work out how it should
 	% be evaluated and extract the argument types.
-:- pred get_lambda_eval_method_and_args(string, (type),
-		lambda_eval_method, list(type)) is det.
-:- mode get_lambda_eval_method_and_args(in, in, out, out) is semidet.
+:- pred get_lambda_eval_method_and_args(string::in, (type)::in,
+	lambda_eval_method::out, list(type)::out) is semidet.
 
 get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
 	Type0 = term__functor(term__atom(Functor), Args, _),
 	( Functor = PorFStr ->
 		EvalMethod = normal,
 		ArgTypes = Args
-	;	
+	;
 		Args = [Type1],
 		Type1 = term__functor(term__atom(PorFStr), ArgTypes, _),
 		Functor = "aditi_bottom_up",
@@ -788,8 +745,8 @@ type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
 	).
 
 :- pred get_purity_and_eval_method(sym_name::in, purity::out,
-		lambda_eval_method::out,
-		string::out) is semidet.
+	lambda_eval_method::out, string::out) is semidet.
+
 get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
 	(
 		SymName = qualified(unqualified(Qualifier), PorFStr),
@@ -827,24 +784,27 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 		UserEqComp).
 
 type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
-    module_info_globals(ModuleInfo, Globals),
-    globals__get_target(Globals, Target),
-    (
-	TypeBody = du_type(_, _, _, _, _, _, _),
-        (
-	    TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
-            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
-	->
-            UserEqComp = foreign_type_body_has_user_defined_equality_pred(
-                                ModuleInfo, ForeignTypeBody)
-        ;
-            TypeBody ^ du_type_usereq = yes(UserEqComp)
-        )
-    ;
-        TypeBody = foreign_type(ForeignTypeBody, _),
-        UserEqComp = foreign_type_body_has_user_defined_equality_pred(
-                        ModuleInfo, ForeignTypeBody)
-    ).
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+	(
+		TypeBody = du_type(_, _, _, _, _, _, _),
+		(
+			TypeBody ^ du_type_is_foreign_type =
+				yes(ForeignTypeBody),
+			have_foreign_type_for_backend(Target, ForeignTypeBody,
+				yes)
+		->
+			UserEqComp =
+				foreign_type_body_has_user_defined_eq_comp_pred(
+					ModuleInfo, ForeignTypeBody)
+		;
+			TypeBody ^ du_type_usereq = yes(UserEqComp)
+		)
+	;
+		TypeBody = foreign_type(ForeignTypeBody, _),
+		UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
+			ModuleInfo, ForeignTypeBody)
+	).
 
 type_util__is_solver_type(ModuleInfo, Type) :-
 	module_info_types(ModuleInfo, TypeTable),
@@ -868,7 +828,7 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
 	;
 		TypeBody = eqv_type(Type),
 		type_util__is_solver_type(ModuleInfo, Type)
-	; 
+	;
 		TypeBody = foreign_type(_, solver_type)
 	;
 		TypeBody = abstract_type(solver_type)
@@ -893,8 +853,9 @@ type_util__is_dummy_argument_type(Type) :-
 
 :- pred type_util__is_dummy_argument_type_2(string::in, string::in, arity::in)
 	is semidet.
+
 % XXX should we include aditi:state/0 in this list?
-type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
+type_util__is_dummy_argument_type_2("io", "state", 0).    % io:state/0
 type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
 
 type_util__constructors_are_dummy_argument_type([Ctor]) :-
@@ -903,11 +864,11 @@ type_util__constructors_are_dummy_argument_type([Ctor]) :-
 	Ctor = ctor([], [], qualified(unqualified("store"), "store"), [_]).
 
 type_is_io_state(Type) :-
-        type_to_ctor_and_args(Type, TypeCtor, []),
+	type_to_ctor_and_args(Type, TypeCtor, []),
 	TypeCtor = qualified(unqualified("io"), "state") - 0.
 
 type_is_aditi_state(Type) :-
-        type_to_ctor_and_args(Type, TypeCtor, []),
+	type_to_ctor_and_args(Type, TypeCtor, []),
 	TypeCtor = qualified(unqualified("aditi"), "state") - 0.
 
 type_util__remove_aditi_state([], [], []).
@@ -923,8 +884,7 @@ type_util__remove_aditi_state([Type | Types], [Arg | Args0], Args) :-
 		Args = [Arg | Args1]
 	).
 
-:- pred type_ctor_is_enumeration(type_ctor, module_info).
-:- mode type_ctor_is_enumeration(in, in) is semidet.
+:- pred type_ctor_is_enumeration(type_ctor::in, module_info::in) is semidet.
 
 type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeDefnTable),
@@ -940,7 +900,7 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 	% arguments of the term.
 	(
 		type_is_higher_order(Type, Purity, PredOrFunc,
-			EvalMethod, PredArgTypes) 
+			EvalMethod, PredArgTypes)
 	->
 		Args = PredArgTypes,
 		list__length(Args, Arity0),
@@ -984,7 +944,7 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 			SymName = qualified(ModuleName, UnqualName),
 			UnqualName = "constraint",
 			mercury_private_builtin_module(PrivateBuiltin),
-			ModuleName = PrivateBuiltin	
+			ModuleName = PrivateBuiltin
 		),
 		list__length(Args, Arity)
 	).
@@ -1057,12 +1017,12 @@ add_purity_annotation(Purity, Type0) = Type :-
 				term__context_init)
 	).
 
-:- pred qualify_higher_order_type(lambda_eval_method, (type), (type)).
-:- mode qualify_higher_order_type(in, in, out) is det.
+:- pred qualify_higher_order_type(lambda_eval_method::in, (type)::in,
+	(type)::out) is det.
 
 qualify_higher_order_type(normal, Type, Type).
 qualify_higher_order_type((aditi_bottom_up), Type0,
-	    term__functor(term__atom("aditi_bottom_up"), [Type0], Context)) :-
+	term__functor(term__atom("aditi_bottom_up"), [Type0], Context)) :-
 	term__context_init(Context).
 
 int_type = Type :-
@@ -1134,7 +1094,7 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
 	( type_ctor_is_tuple(TypeCtor) ->
 		% Tuples are never existentially typed.
-		ExistQVars = [],	
+		ExistQVars = [],
 		ClassConstraints = [],
 		CtorArgs = list__map((func(ArgType) = no - ArgType), TypeArgs),
 		Constructors = [ctor(ExistQVars, ClassConstraints,
@@ -1186,53 +1146,58 @@ type_util__get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
 :- pred type_util__get_cons_id_arg_types_2(exist_qvar_action,
 	module_info, (type), cons_id, list(type)).
 :- mode type_util__get_cons_id_arg_types_2(in(bound(fail_on_exist_qvar)),
-		in, in, in, out) is semidet.
+	in, in, in, out) is semidet.
 :- mode type_util__get_cons_id_arg_types_2(in(bound(abort_on_exist_qvar)),
-		in, in, in, out) is det.
+	in, in, in, out) is det.
 
 type_util__get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId,
 		ArgTypes) :-
-    (
-	type_to_ctor_and_args(VarType, TypeCtor, TypeArgs)
-    ->
 	(
-		% The argument types of a tuple cons_id are the
-		% arguments of the tuple type.
-		type_ctor_is_tuple(TypeCtor)
+		type_to_ctor_and_args(VarType, TypeCtor, TypeArgs)
 	->
-		ArgTypes = TypeArgs
-	;
-		type_util__do_get_type_and_cons_defn(ModuleInfo, TypeCtor,
-			ConsId, TypeDefn, ConsDefn),
-		ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0,
+		(
+			% The argument types of a tuple cons_id are the
+			% arguments of the tuple type.
+			type_ctor_is_tuple(TypeCtor)
+		->
+			ArgTypes = TypeArgs
+		;
+			type_util__do_get_type_and_cons_defn(ModuleInfo,
+				TypeCtor, ConsId, TypeDefn, ConsDefn),
+			ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0,
 				Args, _, _),
-		Args \= []
-	->
-		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
-		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+			Args \= []
+		->
+			hlds_data__get_type_defn_tparams(TypeDefn,
+				TypeDefnParams),
+			term__term_list_to_var_list(TypeDefnParams,
+				TypeDefnVars),
 
-		% XXX handle ExistQVars
-		( ExistQVars0 = [] ->
-			true
-		; 
-			(
-				EQVarAction = abort_on_exist_qvar,
-				error("type_util__get_cons_id_arg_types: existentially typed cons_id")
+			% XXX handle ExistQVars
+			( ExistQVars0 = [] ->
+				true
 			;
-				EQVarAction = fail_on_exist_qvar,
-				fail
-			)
-		),
+				(
+					EQVarAction = abort_on_exist_qvar,
+					error("get_cons_id_arg_types: " ++
+						"existentially typed cons_id")
+				;
+					EQVarAction = fail_on_exist_qvar,
+					fail
+				)
+			),
 
-		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
-		assoc_list__values(Args, ArgTypes0),
-		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
+			map__from_corresponding_lists(TypeDefnVars, TypeArgs,
+				TSubst),
+			assoc_list__values(Args, ArgTypes0),
+			term__apply_substitution_to_list(ArgTypes0, TSubst,
+				ArgTypes)
+		;
+			ArgTypes = []
+		)
 	;
 		ArgTypes = []
-	)
-    ;
-    	ArgTypes = []
-    ).
+	).
 
 type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	type_to_ctor_and_args(VarType, TypeCtor, TypeArgs),
@@ -1240,11 +1205,11 @@ type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	map__search(Types, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
 	map__member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
-	
+
 	module_info_ctors(ModuleInfo, Ctors),
 	map__lookup(Ctors, ConsId, ConsDefns),
 	list__member(ConsDefn, ConsDefns),
-	
+
 	ConsDefn = hlds_cons_defn(ExistQVars0, _, Args, TypeCtor, _),
 
 	% XXX handle ExistQVars
@@ -1258,8 +1223,8 @@ type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes).
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
-	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _). 
-	
+	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _).
+
 :- pred type_util__is_existq_cons(module_info::in,
 		(type)::in, cons_id::in, hlds_cons_defn::out) is semidet.
 
@@ -1346,7 +1311,7 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
 		ConsId = ConsId0,
 		InstConsId = ConsId
 	).
-	
+
 %-----------------------------------------------------------------------------%
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
@@ -1403,13 +1368,13 @@ unqualify_private_builtin(unqualified(Name), Name).
 unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
 	mercury_private_builtin_module(ModuleName).
 
-:- pred type_is_single_ctor_single_arg(list(constructor), sym_name, 
+:- pred type_is_single_ctor_single_arg(list(constructor), sym_name,
 	maybe(ctor_field_name), type).
 :- mode type_is_single_ctor_single_arg(in, out, out, out) is semidet.
 
 type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	Ctors = [SingleCtor],
-	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, 
+	SingleCtor = ctor(ExistQVars, _Constraints, Ctor,
 		[MaybeArgName - ArgType]),
 	ExistQVars = [].
 
@@ -1418,9 +1383,9 @@ type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	% assign single functor of arity one a `no_tag' tag
 	% (unless it is type_info/1 or we are reserving a tag,
 	% or if it is one of the dummy types)
-type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals, 
+type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals,
 			SingleFunc, SingleArg, MaybeArgName) :-
-	type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg, 
+	type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg,
 		MaybeArgName),
 	(
 		ReserveTagPragma = no,
@@ -1428,7 +1393,7 @@ type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals,
 		globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes)
 	;
 			% Dummy types always need to be treated as no-tag types
-			% as the low-level C back end just passes around 
+			% as the low-level C back end just passes around
 			% rubbish for them. When eg. using the debugger, it is
 			% crucial that these values are treated as unboxed
 			% c_pointers, not as tagged pointers to c_pointers
@@ -1539,11 +1504,11 @@ arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
 		term__apply_rec_substitution_to_list(CalleeExistQTypes0,
 			TypeSubst, CalleeExistQTypes),
 		all [T] (list__member(T, CalleeExistQTypes) =>
-				type_util__var(T, _))	
+				type_util__var(T, _))
 
 		% it might make sense to also check that
 		% the type substitution did not bind any
-		% existentially typed variables to universally 
+		% existentially typed variables to universally
 		% quantified type variables in the caller's
 		% argument types
 	).
@@ -1600,7 +1565,7 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams,
 			% bind one to the other
 			( X = Y ->
 				Bindings = Bindings0
-			; 
+			;
 				map__det_insert(Bindings0, X,
 					term__variable(Y), Bindings)
 			)
@@ -1609,7 +1574,7 @@ type_unify(term__variable(X), term__variable(Y), HeadTypeParams,
 
 type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
 		Bindings0, Bindings) :-
-	( 
+	(
 		map__search(Bindings0, X, BindingOfX)
 	->
 		type_unify(BindingOfX, term__functor(F, As, C),
@@ -1623,7 +1588,7 @@ type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams,
 
 type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams,
 		Bindings0, Bindings) :-
-	( 
+	(
 		map__search(Bindings0, X, BindingOfX)
 	->
 		type_unify(term__functor(F, As, C), BindingOfX,
@@ -1792,7 +1757,7 @@ apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
 
 :- pred apply_substitutions_to_var_map_2(list(tvar)::in, map(tvar,
 		type_info_locn)::in, tsubst::in, map(tvar, type)::in,
-		map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in, 
+		map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in,
 		map(tvar, type_info_locn)::out) is det.
 
 apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, NewVarMap, NewVarMap).
@@ -1800,7 +1765,7 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
 		TSubst, VarSubst, NewVarMap0, NewVarMap) :-
 	map__lookup(VarMap0, TVar, Locn),
 	type_info_locn_var(Locn, Var),
-	
+
 		% find the new var, if there is one
 	( map__search(VarSubst, Var, NewVar0) ->
 		NewVar = NewVar0
@@ -1822,7 +1787,7 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
 			error(
 			"apply_substitution_to_var_map_2: weird type renaming")
 		)
-	; 
+	;
 		% The variable wasn't renamed.
 		NewTVar2 = TVar
 	),
@@ -1856,7 +1821,7 @@ apply_substitutions_to_typeclass_var_map(VarMap0,
 		pair(class_constraint, prog_var)).
 :- mode apply_substitutions_to_typeclass_var_map_2(in, in,
 		in, in, out) is det.
-	
+
 apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
 		Constraint0 - Var0, Constraint - Var) :-
 	apply_subst_to_constraint(TRenaming, Constraint0, Constraint1),
@@ -1903,7 +1868,7 @@ apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 	map__init(Empty),
 	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
 			is det :-
-		apply_subst_to_constraint(Subst, Constraint0, Constraint), 
+		apply_subst_to_constraint(Subst, Constraint0, Constraint),
 		(
 			Proof0 = apply_instance(_),
 			Proof = Proof0
@@ -1920,7 +1885,7 @@ apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 	map__init(Empty),
 	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
 			is det :-
-		apply_rec_subst_to_constraint(Subst, Constraint0, Constraint), 
+		apply_rec_subst_to_constraint(Subst, Constraint0, Constraint),
 		(
 			Proof0 = apply_instance(_),
 			Proof = Proof0
@@ -1945,7 +1910,7 @@ apply_variable_renaming_to_constraints(Renaming,
 			UniversalCs0, UniversalCs),
 	apply_variable_renaming_to_constraint_list(Renaming,
 			ExistentialCs0, ExistentialCs).
-	
+
 apply_variable_renaming_to_constraint_list(Renaming, Constraints0,
 		Constraints) :-
 	list__map(apply_variable_renaming_to_constraint(Renaming),
@@ -1974,7 +1939,7 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
 		% figure out the arity of this constructor,
 		% _including_ any type-infos or typeclass-infos
 		% inserted for existential data types.
-	cons_id_arity(ConsId, ConsArity),
+	ConsArity = cons_id_arity(ConsId),
 	(
 		type_util__get_existq_cons_defn(ModuleInfo, Type, ConsId,
 			ConsDefn)

@@ -1760,7 +1760,7 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 
 hlds_out__write_goal_2(foreign_proc(Attributes, _, _, ArgVars,
 		ArgNames, _, PragmaCode), _, _, _, Indent, Follow, _) -->
-	{ foreign_language(Attributes, ForeignLang) },
+	{ ForeignLang = foreign_language(Attributes) },
 	hlds_out__write_indent(Indent),
 	io__write_string("$pragma_foreign_proc( /* "),
 	io__write_string(foreign_language_string(ForeignLang)),
@@ -3089,19 +3089,18 @@ hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs], TagValues) -->
 		hlds_out__write_constructors_2(Indent, Tvarset, Cs, TagValues)
 	).
 
-:- pred hlds_out__write_ctor(constructor, tvarset,
-		cons_tag_values, io__state, io__state).
-:- mode hlds_out__write_ctor(in, in, in, di, uo) is det.
+:- pred hlds_out__write_ctor(constructor::in, tvarset::in,
+	cons_tag_values::in, io::di, io::uo) is det.
 
-hlds_out__write_ctor(C, Tvarset, TagValues) -->
-	mercury_output_ctor(C, Tvarset),
-	{ C = ctor(_, _, Name, Args) },
-	{ make_cons_id_from_qualified_sym_name(Name, Args, ConsId) },
-	( { map__search(TagValues, ConsId, TagValue) } ->
-		io__write_string("\t% tag: "),
-		io__print(TagValue)
+hlds_out__write_ctor(C, Tvarset, TagValues, !IO) :-
+	mercury_output_ctor(C, Tvarset, !IO),
+	C = ctor(_, _, Name, Args),
+	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
+	( map__search(TagValues, ConsId, TagValue) ->
+		io__write_string("\t% tag: ", !IO),
+		io__print(TagValue, !IO)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%

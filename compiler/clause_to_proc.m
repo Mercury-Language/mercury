@@ -70,7 +70,7 @@ maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-	( 
+	(
 		%
 		% Is this a function with no modes?
 		%
@@ -78,7 +78,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		map__is_empty(Procs0)
 	->
 		%
-		% If so, add a default mode of 
+		% If so, add a default mode of
 		%
 		%	:- mode foo(in, in, ..., in) = out is det.
 		%
@@ -97,9 +97,10 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		MaybePredArgLives = no,
 		varset__init(InstVarSet),
 			% No inst_vars in default func mode.
-		add_new_proc(PredInfo0, InstVarSet, PredArity, PredArgModes, 
+		add_new_proc(InstVarSet, PredArity, PredArgModes,
 			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
-			Context, address_is_not_taken, PredInfo, ProcId),
+			Context, address_is_not_taken, PredInfo0, PredInfo,
+			ProcId),
 		MaybeProcId = yes(ProcId)
 	;
 		PredInfo = PredInfo0,
@@ -218,7 +219,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 			\+ goal_info_is_pure(SubGoalInfo)
 		->
 			list__map(get_purity, GoalList, PurityList),
-			list__foldl(worst_purity, PurityList, (pure), Purity),
+			Purity = list__foldl(worst_purity, PurityList, (pure)),
 			add_goal_info_purity_feature(GoalInfo2, Purity,
 				GoalInfo)
 		;

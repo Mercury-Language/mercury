@@ -1026,74 +1026,76 @@ intermod__gather_types -->
 	{ module_info_types(ModuleInfo, Types) },
 	map__foldl(intermod__gather_types_2, Types).
 
-:- pred intermod__gather_types_2(type_ctor::in,
-	hlds_type_defn::in, intermod_info::in, intermod_info::out) is det.
+:- pred intermod__gather_types_2(type_ctor::in, hlds_type_defn::in,
+	intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
-	intermod_info_get_module_info(ModuleInfo, Info0, Info1),
+intermod__gather_types_2(TypeCtor, TypeDefn0, !Info) :-
+	intermod_info_get_module_info(ModuleInfo, !Info),
 	module_info_name(ModuleInfo, ModuleName),
 	(
-	    intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0)
+		intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0)
 	->
-	    hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
-	    (
-		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
-			ReservedTag, IsSolverType, MaybeForeign0)
-	    ->
-		module_info_globals(ModuleInfo, Globals),
-		globals__get_target(Globals, Target),
-
-		%
-		% Note that we don't resolve overloading for the definitions
-		% which won't be used on this back-end, because their
-		% unification and comparison predicates have not been
-		% typechecked. They are only written to the `.opt' it
-		% can be handy when building against a workspace for
-		% the other definitions to be present (e.g. when testing
-		% compiling a module to IL when the workspace was compiled
-		% to C).
-		%
+		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
 		(
-			MaybeForeign0 = yes(ForeignTypeBody0),
-			have_foreign_type_for_backend(Target,
-				ForeignTypeBody0, yes)
+			TypeBody0 = du_type(Ctors, Tags, Enum,
+				MaybeUserEqComp0, ReservedTag, IsSolverType,
+				MaybeForeign0)
+		->
+			module_info_globals(ModuleInfo, Globals),
+			globals__get_target(Globals, Target),
+
+			%
+			% Note that we don't resolve overloading for the
+			% definitions which won't be used on this back-end,
+			% because their unification and comparison predicates
+			% have not been typechecked. They are only written to
+			% the `.opt' it can be handy when building against a
+			% workspace for the other definitions to be present
+			% (e.g. when testing compiling a module to IL when
+			% the workspace was compiled to C).
+			%
+			(
+				MaybeForeign0 = yes(ForeignTypeBody0),
+				have_foreign_type_for_backend(Target,
+					ForeignTypeBody0, yes)
+			->
+				intermod__resolve_foreign_type_body_overloading(
+					ModuleInfo, TypeCtor, ForeignTypeBody0,
+					ForeignTypeBody, !Info),
+				MaybeForeign = yes(ForeignTypeBody),
+				MaybeUserEqComp = MaybeUserEqComp0	
+			;
+				intermod__resolve_unify_compare_overloading(
+					ModuleInfo, TypeCtor, MaybeUserEqComp0,
+					MaybeUserEqComp, !Info),
+				MaybeForeign = MaybeForeign0
+			),
+			TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
+				ReservedTag, IsSolverType, MaybeForeign),
+			hlds_data__set_type_defn_body(TypeBody,
+				TypeDefn0, TypeDefn)
+		;	
+			TypeBody0 = foreign_type(ForeignTypeBody0,
+				IsSolverType)
 		->
 			intermod__resolve_foreign_type_body_overloading(
-				ModuleInfo, TypeCtor, ForeignTypeBody0,
-				ForeignTypeBody, Info1, Info3),
-			MaybeForeign = yes(ForeignTypeBody),
-			MaybeUserEqComp = MaybeUserEqComp0	
+				ModuleInfo, TypeCtor,
+				ForeignTypeBody0, ForeignTypeBody, !Info),
+			TypeBody = foreign_type(ForeignTypeBody, IsSolverType),
+			hlds_data__set_type_defn_body(TypeBody,
+				TypeDefn0, TypeDefn)
 		;
-			intermod__resolve_unify_compare_overloading(ModuleInfo,
-				TypeCtor, MaybeUserEqComp0, MaybeUserEqComp,
-				Info1, Info3),
-			MaybeForeign = MaybeForeign0
+			TypeDefn = TypeDefn0
 		),
-		TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
-				ReservedTag, IsSolverType, MaybeForeign),
-		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
-	    ;	
-		TypeBody0 = foreign_type(ForeignTypeBody0, IsSolverType)
-	    ->
-		intermod__resolve_foreign_type_body_overloading(ModuleInfo,
-			TypeCtor, ForeignTypeBody0, ForeignTypeBody,
-			Info1, Info3),
-		TypeBody = foreign_type(ForeignTypeBody, IsSolverType),
-		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
-	    ;
-		Info3 = Info1,
-		TypeDefn = TypeDefn0
-	    ),
-	    intermod_info_get_types(Types0, Info3, Info4),
-	    intermod_info_set_types([TypeCtor - TypeDefn | Types0],
-	        Info4, Info)
+		intermod_info_get_types(Types0, !Info),
+		intermod_info_set_types([TypeCtor - TypeDefn | Types0], !Info)
 	;
-	    Info = Info1
+		true
 	).
 
 :- pred intermod__resolve_foreign_type_body_overloading(module_info::in,
-		type_ctor::in, foreign_type_body::in, foreign_type_body::out,
-		intermod_info::in, intermod_info::out) is det.
+	type_ctor::in, foreign_type_body::in, foreign_type_body::out,
+	intermod_info::in, intermod_info::out) is det.
 
 intermod__resolve_foreign_type_body_overloading(ModuleInfo,
 		TypeCtor, foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0),
@@ -1190,7 +1192,7 @@ intermod__should_write_type(ModuleName, TypeCtor, TypeDefn) :-
 	% Output module imports, types, modes, insts and predicates
 
 :- pred intermod__write_intermod_info(intermod_info::in,
-				io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 intermod__write_intermod_info(IntermodInfo0) -->
 	{ intermod_info_get_module_info(ModuleInfo,
@@ -1227,8 +1229,8 @@ intermod__write_intermod_info(IntermodInfo0) -->
 		intermod__write_intermod_info_2(IntermodInfo)	
 	).
 
-:- pred intermod__write_intermod_info_2(intermod_info::in, io__state::di,
-		io__state::uo) is det.
+:- pred intermod__write_intermod_info_2(intermod_info::in,
+	io__state::di, io__state::uo) is det.
 
 intermod__write_intermod_info_2(IntermodInfo) -->
 	{ IntermodInfo = info(_, Preds0, PredDecls0, Instances, Types, _,
@@ -2059,22 +2061,20 @@ adjust_type_status(!ModuleInfo) :-
 	module_info_set_types(Types, !ModuleInfo).
 
 :- pred adjust_type_status_2(pair(type_ctor, hlds_type_defn)::in,
-		pair(type_ctor, hlds_type_defn)::out,
-		module_info::in, module_info::out) is det.
+	pair(type_ctor, hlds_type_defn)::out,
+	module_info::in, module_info::out) is det.
 
-adjust_type_status_2(TypeCtor - TypeDefn0, TypeCtor - TypeDefn,
-		ModuleInfo0, ModuleInfo) :-
-	module_info_name(ModuleInfo0, ModuleName),
+adjust_type_status_2(TypeCtor - TypeDefn0, TypeCtor - TypeDefn, !ModuleInfo) :-
+	module_info_name(!.ModuleInfo, ModuleName),
 	( intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
-		hlds_data__set_type_defn_status(TypeDefn0, exported, TypeDefn),
-		fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo)
+		hlds_data__set_type_defn_status(exported, TypeDefn0, TypeDefn),
+		fixup_special_preds(TypeCtor, !ModuleInfo)
 	;
-		ModuleInfo = ModuleInfo0,
 		TypeDefn = TypeDefn0
 	).
 
 :- pred fixup_special_preds((type_ctor)::in,
-		module_info::in, module_info::out) is det.
+	module_info::in, module_info::out) is det.
 
 fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
 	special_pred_list(SpecialPredList),
@@ -2094,8 +2094,8 @@ adjust_class_status(!ModuleInfo) :-
 	module_info_set_classes(Classes, !ModuleInfo).
 
 :- pred adjust_class_status_2(pair(class_id, hlds_class_defn)::in,
-		pair(class_id, hlds_class_defn)::out,
-		module_info::in, module_info::out) is det.
+	pair(class_id, hlds_class_defn)::out,
+	module_info::in, module_info::out) is det.
 
 adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
 			ModuleInfo0, ModuleInfo) :-
@@ -2115,8 +2115,8 @@ adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
 		ModuleInfo = ModuleInfo0
 	).
 
-:- pred class_procs_to_pred_ids(list(hlds_class_proc)::in,
-		list(pred_id)::out) is det.
+:- pred class_procs_to_pred_ids(list(hlds_class_proc)::in, list(pred_id)::out)
+	is det.
 
 class_procs_to_pred_ids(ClassProcs, PredIds) :-
 	list__map(
@@ -2137,8 +2137,8 @@ adjust_instance_status(!ModuleInfo) :-
 	module_info_set_instances(Instances, !ModuleInfo).
 
 :- pred adjust_instance_status_2(pair(class_id, list(hlds_instance_defn))::in,
-		pair(class_id, list(hlds_instance_defn))::out,
-		module_info::in, module_info::out) is det.
+	pair(class_id, list(hlds_instance_defn))::out,
+	module_info::in, module_info::out) is det.
 
 adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
 		ModuleInfo0, ModuleInfo) :-
@@ -2180,12 +2180,12 @@ set_list_of_preds_exported(PredIds, !ModuleInfo) :-
 	set_list_of_preds_exported_2(PredIds, Preds0, Preds),
 	module_info_set_preds(Preds, !ModuleInfo).
 
-:- pred set_list_of_preds_exported_2(list(pred_id)::in, pred_table::in,
-					pred_table::out) is det.
+:- pred set_list_of_preds_exported_2(list(pred_id)::in,
+	pred_table::in, pred_table::out) is det.
 
-set_list_of_preds_exported_2([], Preds, Preds).
-set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
-	map__lookup(Preds0, PredId, PredInfo0),
+set_list_of_preds_exported_2([], !Preds).
+set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
+	map__lookup(!.Preds, PredId, PredInfo0),
 	(
 		pred_info_import_status(PredInfo0, Status),
 		import_status_to_write(Status)
@@ -2204,11 +2204,11 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 			NewStatus = opt_exported
 		),
 		pred_info_set_import_status(NewStatus, PredInfo0, PredInfo),
-		map__det_update(Preds0, PredId, PredInfo, Preds1)
+		map__det_update(!.Preds, PredId, PredInfo, !:Preds)
 	;
-		Preds1 = Preds0
+		true
 	),
-	set_list_of_preds_exported_2(PredIds, Preds1, Preds).
+	set_list_of_preds_exported_2(PredIds, !Preds).
 
 	% Should a declaration with the given status be written
 	% to the `.opt' file.

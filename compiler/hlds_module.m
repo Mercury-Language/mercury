@@ -763,17 +763,17 @@ module_info_reverse_predids(MI0, MI) :-
 
 module_info_remove_predid(PredId, MI0, MI) :-
 	module_info_get_predicate_table(MI0, PredTable0),
-	predicate_table_remove_predid(PredTable0, PredId, PredTable),
+	predicate_table_remove_predid(PredId, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, MI0, MI).
 
 module_info_remove_predicate(PredId, MI0, MI) :-
 	module_info_get_predicate_table(MI0, PredTable0),
-	predicate_table_remove_predicate(PredTable0, PredId, PredTable),
+	predicate_table_remove_predicate(PredId, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, MI0, MI).
 
 module_info_set_preds(Preds, MI0, MI) :-
 	module_info_get_predicate_table(MI0, PredTable0),
-	predicate_table_set_preds(PredTable0, Preds, PredTable),
+	predicate_table_set_preds(Preds, PredTable0, PredTable),
 	module_info_set_predicate_table(PredTable, MI0, MI).
 
 module_info_set_pred_info(PredId, PredInfo, MI0, MI) :-
@@ -864,7 +864,7 @@ module_info_optimize(!ModuleInfo) :-
 	module_info_insts(!.ModuleInfo, InstTable0),
 	inst_table_get_user_insts(InstTable0, Insts0),
 	user_inst_table_optimize(Insts0, Insts),
-	inst_table_set_user_insts(InstTable0, Insts, InstTable),
+	inst_table_set_user_insts(Insts, InstTable0, InstTable),
 	module_info_set_insts(InstTable, !ModuleInfo),
 
 	module_info_modes(!.ModuleInfo, Modes0),
@@ -1015,18 +1015,16 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 
 	% Initialize the predicate table
 
-:- pred predicate_table_init(predicate_table).
-:- mode predicate_table_init(out) is det.
+:- pred predicate_table_init(predicate_table::out) is det.
 
 	% Balance all the binary trees in the predicate table
 
-:- pred predicate_table_optimize(predicate_table, predicate_table).
-:- mode predicate_table_optimize(in, out) is det.
+:- pred predicate_table_optimize(predicate_table::in, predicate_table::out)
+	is det.
 
 	% Get the pred_id->pred_info map.
 
-:- pred predicate_table_get_preds(predicate_table, pred_table).
-:- mode predicate_table_get_preds(in, out) is det.
+:- pred predicate_table_get_preds(predicate_table::in, pred_table::out) is det.
 
 	% Restrict the predicate table to the list of predicates.
 	% This predicate should only be used when the set of predicates
@@ -1035,78 +1033,69 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% the table it builds a new table from scratch.
 
 :- pred predicate_table_restrict(partial_qualifier_info::in,
-		predicate_table::in, list(pred_id)::in,
-		predicate_table::out) is det.
+	list(pred_id)::in, predicate_table::in, predicate_table::out) is det.
 
 	% Set the pred_id->pred_info map.
 	% NB You shouldn't modify the keys in this table, only
 	% use predicate_table_insert, predicate_table_remove_predid and
 	% predicate_table_remove_predicate.
 
-:- pred predicate_table_set_preds(predicate_table, pred_table, predicate_table).
-:- mode predicate_table_set_preds(in, in, out) is det.
+:- pred predicate_table_set_preds(pred_table::in,
+	predicate_table::in, predicate_table::out) is det.
 
 	% Get a list of all the valid predids in the predicate_table.
 
-:- pred predicate_table_get_predids(predicate_table, list(pred_id)).
-:- mode predicate_table_get_predids(in, out) is det.
+:- pred predicate_table_get_predids(predicate_table::in, list(pred_id)::out)
+	is det.
 
 	% Remove a pred_id from the valid list.
 
-:- pred predicate_table_remove_predid(predicate_table, pred_id,
-					predicate_table).
-:- mode predicate_table_remove_predid(in, in, out) is det.
-
-:- pred predicate_table_remove_predicate(predicate_table, pred_id,
-					predicate_table).
-:- mode predicate_table_remove_predicate(in, in, out) is det.
+:- pred predicate_table_remove_predid(pred_id::in,
+	predicate_table::in, predicate_table::out) is det.
+:- pred predicate_table_remove_predicate(pred_id::in,
+	predicate_table::in, predicate_table::out) is det.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
 	% matching this (possibly module-qualified) sym_name.
 
-:- pred predicate_table_search_sym(predicate_table, is_fully_qualified,
-		sym_name, list(pred_id)).
-:- mode predicate_table_search_sym(in, in, in, out) is semidet.
+:- pred predicate_table_search_sym(predicate_table::in, is_fully_qualified::in,
+	sym_name::in, list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_pred_sym(predicate_table,
-		is_fully_qualified, sym_name, list(pred_id)).
-:- mode predicate_table_search_pred_sym(in, in, in, out) is semidet.
+:- pred predicate_table_search_pred_sym(predicate_table::in,
+	is_fully_qualified::in, sym_name::in, list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_func_sym(predicate_table,
-		is_fully_qualified, sym_name, list(pred_id)).
-:- mode predicate_table_search_func_sym(in, in, in, out) is semidet.
+:- pred predicate_table_search_func_sym(predicate_table::in,
+	is_fully_qualified::in, sym_name::in, list(pred_id)::out) is semidet.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only matching this
 	% (possibly module-qualified) sym_name & arity.
 
-:- pred predicate_table_search_sym_arity(predicate_table, is_fully_qualified,
-		sym_name, arity, list(pred_id)).
-:- mode predicate_table_search_sym_arity(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_sym_arity(predicate_table::in,
+	is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
+	is semidet.
 
-:- pred predicate_table_search_pred_sym_arity(predicate_table,
-		is_fully_qualified, sym_name, arity, list(pred_id)).
-:- mode predicate_table_search_pred_sym_arity(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pred_sym_arity(predicate_table::in,
+	is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
+	is semidet.
 
-:- pred predicate_table_search_func_sym_arity(predicate_table,
-		is_fully_qualified, sym_name, arity, list(pred_id)).
-:- mode predicate_table_search_func_sym_arity(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_func_sym_arity(predicate_table::in,
+	is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
+	is semidet.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
 	% matching this name.
 
-:- pred predicate_table_search_name(predicate_table, string, list(pred_id)).
-:- mode predicate_table_search_name(in, in, out) is semidet.
+:- pred predicate_table_search_name(predicate_table::in, string::in,
+	list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_pred_name(predicate_table, string,
-					list(pred_id)).
-:- mode predicate_table_search_pred_name(in, in, out) is semidet.
+:- pred predicate_table_search_pred_name(predicate_table::in, string::in,
+	list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_func_name(predicate_table, string,
-					list(pred_id)).
-:- mode predicate_table_search_func_name(in, in, out) is semidet.
+:- pred predicate_table_search_func_name(predicate_table::in, string::in,
+	list(pred_id)::out) is semidet.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
@@ -1115,17 +1104,14 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% is the arity of the function, not the arity N+1 predicate
 	% that it gets converted to.
 
-:- pred predicate_table_search_name_arity(predicate_table, string, arity,
-						list(pred_id)).
-:- mode predicate_table_search_name_arity(in, in, in, out) is semidet.
+:- pred predicate_table_search_name_arity(predicate_table::in, string::in,
+	arity::in, list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_pred_name_arity(predicate_table, string, arity,
-						list(pred_id)).
-:- mode predicate_table_search_pred_name_arity(in, in, in, out) is semidet.
+:- pred predicate_table_search_pred_name_arity(predicate_table::in, string::in,
+	arity::in, list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_func_name_arity(predicate_table, string, arity,
-						list(pred_id)).
-:- mode predicate_table_search_func_name_arity(in, in, in, out) is semidet.
+:- pred predicate_table_search_func_name_arity(predicate_table::in, string::in,
+	arity::in, list(pred_id)::out) is semidet.
 
 	% Search the table for (a) predicates or functions
 	% (b) predicates only or (c) functions only
@@ -1150,20 +1136,19 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% `pred baz.foo.bar/2'.
 :- type is_fully_qualified
 	--->	is_fully_qualified
-	;	may_be_partially_qualified
-	.
+	;	may_be_partially_qualified.
 
-:- pred predicate_table_search_m_n_a(predicate_table, is_fully_qualified,
-		module_name, string, arity, list(pred_id)).
-:- mode predicate_table_search_m_n_a(in, in, in, in, in, out) is semidet.
+:- pred predicate_table_search_m_n_a(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in, arity::in,
+	list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_pred_m_n_a(predicate_table, is_fully_qualified,
-		module_name, string, arity, list(pred_id)).
-:- mode predicate_table_search_pred_m_n_a(in, in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pred_m_n_a(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in, arity::in,
+	list(pred_id)::out) is semidet.
 
-:- pred predicate_table_search_func_m_n_a(predicate_table, is_fully_qualified,
-		module_name, string, arity, list(pred_id)).
-:- mode predicate_table_search_func_m_n_a(in, in, in, in, in, out) is semidet.
+:- pred predicate_table_search_func_m_n_a(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in, arity::in,
+	list(pred_id)::out) is semidet.
 
 	% Search the table for predicates or functions matching
 	% this pred_or_func category, module, name, and arity.
@@ -1173,9 +1158,9 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
 
-:- pred predicate_table_search_pf_m_n_a(predicate_table, is_fully_qualified,
-		pred_or_func, module_name, string, arity, list(pred_id)).
-:- mode predicate_table_search_pf_m_n_a(in, in, in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pf_m_n_a(predicate_table::in,
+	is_fully_qualified::in, pred_or_func::in, module_name::in, string::in,
+	arity::in, list(pred_id)::out) is semidet.
 
 	% Search the table for predicates or functions matching
 	% this pred_or_func category, name, and arity.
@@ -1185,9 +1170,9 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
 
-:- pred predicate_table_search_pf_name_arity(predicate_table, pred_or_func,
-					string, arity, list(pred_id)).
-:- mode predicate_table_search_pf_name_arity(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pf_name_arity(predicate_table::in,
+	pred_or_func::in, string::in, arity::in, list(pred_id)::out)
+	is semidet.
 
 	% Search the table for predicates or functions matching
 	% this pred_or_func category, sym_name, and arity.
@@ -1197,18 +1182,16 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% NB.  This is opposite to what happens with the search
 	% predicates declared above!!
 
-:- pred predicate_table_search_pf_sym_arity(predicate_table,
-		is_fully_qualified, pred_or_func,
-		sym_name, arity, list(pred_id)) is semidet.
-:- mode predicate_table_search_pf_sym_arity(in,
-		in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pf_sym_arity(predicate_table::in,
+	is_fully_qualified::in, pred_or_func::in, sym_name::in, arity::in,
+	list(pred_id)::out) is semidet.
 
 	% Search the table for predicates or functions matching
 	% this pred_or_func category and sym_name.
 
-:- pred predicate_table_search_pf_sym(predicate_table, is_fully_qualified,
-		pred_or_func, sym_name, list(pred_id)) is semidet.
-:- mode predicate_table_search_pf_sym(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pf_sym(predicate_table::in,
+	is_fully_qualified::in, pred_or_func::in, sym_name::in,
+	list(pred_id)::out) is semidet.
 
 	% predicate_table_insert(PredTable0, PredInfo,
 	%		NeedQual, PartialQualInfo, PredId, PredTable).
@@ -1216,56 +1199,49 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% Insert PredInfo into PredTable0 and assign it a new pred_id.
 	% You should check beforehand that the pred doesn't already 
 	% occur in the table. 
-:- pred predicate_table_insert(predicate_table, pred_info, need_qualifier,
-		partial_qualifier_info, pred_id, predicate_table).
-:- mode predicate_table_insert(in, in, in, in, out, out) is det.
+:- pred predicate_table_insert(pred_info::in, need_qualifier::in,
+	partial_qualifier_info::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
 	% Equivalent to predicate_table_insert/6, except that only the
 	% fully-qualified version of the predicate will be inserted into
 	% the predicate symbol table.  This is useful for creating
 	% compiler-generated predicates which will only ever be accessed
 	% via fully-qualified names.
-:- pred predicate_table_insert(predicate_table, pred_info, pred_id,
-				predicate_table).
-:- mode predicate_table_insert(in, in, out, out) is det.
+:- pred predicate_table_insert(pred_info::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
-:- pred predicate_id(module_info, pred_id, module_name, string, arity).
-:- mode predicate_id(in, in, out, out, out) is det.
+:- pred predicate_id(module_info::in, pred_id::in, module_name::out,
+	string::out, arity::out) is det.
 
-:- pred predicate_module(module_info, pred_id, module_name).
-:- mode predicate_module(in, in, out) is det.
-
-:- pred predicate_name(module_info, pred_id, string).
-:- mode predicate_name(in, in, out) is det.
-
-:- pred predicate_arity(module_info, pred_id, arity).
-:- mode predicate_arity(in, in, out) is det.
+:- pred predicate_module(module_info::in, pred_id::in, module_name::out)
+	is det.
+:- pred predicate_name(module_info::in, pred_id::in, string::out) is det.
+:- pred predicate_arity(module_info::in, pred_id::in, arity::out) is det.
 
 	% Get the pred_id and proc_id matching a higher-order term with
 	% the given argument types, aborting with an error if none is
 	% found.
-:- pred get_pred_id_and_proc_id(is_fully_qualified, sym_name, pred_or_func,
-		tvarset, list(type), module_info, pred_id, proc_id).
-:- mode get_pred_id_and_proc_id(in, in, in, in, in, in, out, out) is det.
+:- pred get_pred_id_and_proc_id(is_fully_qualified::in, sym_name::in,
+	pred_or_func::in, tvarset::in, list(type)::in, module_info::in,
+	pred_id::out, proc_id::out) is det.
 
 	% Get the pred_id matching a higher-order term with
 	% the given argument types, failing if none is found.
-:- pred get_pred_id(is_fully_qualified, sym_name, pred_or_func,
-		tvarset, list(type), module_info, pred_id).
-:- mode get_pred_id(in, in, in, in, in, in, out) is semidet.
+:- pred get_pred_id(is_fully_qualified::in, sym_name::in, pred_or_func::in,
+	tvarset::in, list(type)::in, module_info::in, pred_id::out) is semidet.
 
 	% Given a pred_id, return the single proc_id, aborting
 	% if there are no modes or more than one mode.
-:- pred get_proc_id(module_info, pred_id, proc_id).
-:- mode get_proc_id(in, in, out) is det.
+:- pred get_proc_id(module_info::in, pred_id::in, proc_id::out) is det.
 
 :- type mode_no
 	--->    only_mode		% The pred must have exactly one mode.
 	;       mode_no(int).		% The Nth mode, counting from 0.
 
-:- pred lookup_builtin_pred_proc_id(module_info, module_name,
-		string, pred_or_func, arity, mode_no, pred_id, proc_id).
-:- mode lookup_builtin_pred_proc_id(in, in, in, in, in, in, out, out) is det.
+:- pred lookup_builtin_pred_proc_id(module_info::in, module_name::in,
+	string::in, pred_or_func::in, arity::in, mode_no::in,
+	pred_id::out, proc_id::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1363,16 +1339,16 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
 
 predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 
-predicate_table_set_preds(PredicateTable, Preds,
-		PredicateTable ^ preds := Preds).
+predicate_table_set_preds(Preds, PredicateTable,
+	PredicateTable ^ preds := Preds).
 
 predicate_table_get_predids(PredicateTable, PredicateTable ^ pred_ids).
 
-predicate_table_remove_predid(PredicateTable0, PredId, PredicateTable) :-
+predicate_table_remove_predid(PredId, PredicateTable0, PredicateTable) :-
 	list__delete_all(PredicateTable0 ^ pred_ids, PredId, PredIds),
 	PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
 
-predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
+predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 	PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0, 
 		AccessibilityTable0,
 		PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
@@ -1401,23 +1377,21 @@ predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
 			PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
 	).
 
-:- pred predicate_table_remove_from_index(module_name, string, int, pred_id, 
-		name_index, name_index, name_arity_index, name_arity_index, 
-		module_name_arity_index, module_name_arity_index).
-:- mode predicate_table_remove_from_index(in, in, in, in, in, out, 
-		in, out, in, out) is det.
+:- pred predicate_table_remove_from_index(module_name::in, string::in, int::in,
+	pred_id::in, name_index::in, name_index::out,
+	name_arity_index::in, name_arity_index::out, 
+	module_name_arity_index::in, module_name_arity_index::out) is det.
 
 predicate_table_remove_from_index(Module, Name, Arity, PredId,
 		N0, N, NA0, NA, MNA0, MNA) :-
-	do_remove_from_index(N0, Name, PredId, N),
-	do_remove_from_index(NA0, Name / Arity, PredId, NA),
-	do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA).
+	do_remove_from_index(Name, PredId, N0, N),
+	do_remove_from_index(Name / Arity, PredId, NA0, NA),
+	do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA).
 
-:- pred do_remove_from_index(map(T, list(pred_id)), T, pred_id, 
-			map(T, list(pred_id))).
-:- mode do_remove_from_index(in, in, in, out) is det.
+:- pred do_remove_from_index(T::in, pred_id::in,
+	map(T, list(pred_id))::in, map(T, list(pred_id))::out) is det.
 
-do_remove_from_index(Index0, T, PredId, Index) :-
+do_remove_from_index(T, PredId, Index0, Index) :-
 	( map__search(Index0, T, NamePredIds0) ->
 		list__delete_all(NamePredIds0, PredId, NamePredIds),
 		( NamePredIds = [] ->
@@ -1429,11 +1403,11 @@ do_remove_from_index(Index0, T, PredId, Index) :-
 		Index = Index0
 	).
 
-:- pred	do_remove_from_m_n_a_index(module_name_arity_index, 
-		module_name, string, int, pred_id, module_name_arity_index).
-:- mode do_remove_from_m_n_a_index(in, in, in, in, in, out) is det.
+:- pred	do_remove_from_m_n_a_index(module_name::in, string::in, int::in,
+	pred_id::in, module_name_arity_index::in, module_name_arity_index::out)
+	is det.
 
-do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA) :-
+do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
 	map__lookup(MNA0, Module - Name, Arities0),
 	map__lookup(Arities0, Arity, PredIds0),
 	list__delete_all(PredIds0, PredId, PredIds),
@@ -1451,8 +1425,8 @@ do_remove_from_m_n_a_index(MNA0, Module, Name, Arity, PredId, MNA) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred predicate_table_reverse_predids(predicate_table, predicate_table).
-:- mode predicate_table_reverse_predids(in, out) is det.
+:- pred predicate_table_reverse_predids(predicate_table::in,
+	predicate_table::out) is det.
 
 predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
 	list__reverse(PredicateTable0 ^ pred_ids, PredIds),
@@ -1551,9 +1525,9 @@ predicate_table_search_func_name(PredicateTable, FuncName, PredIds) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred predicate_table_search_module_name(predicate_table, is_fully_qualified,
-		module_name, string, list(pred_id)).
-:- mode predicate_table_search_module_name(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_module_name(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in,
+	list(pred_id)::out) is semidet.
 
 predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 		Module, Name, PredIds) :-
@@ -1576,9 +1550,9 @@ predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 	list__append(FuncPredIds, PredPredIds, PredIds),
 	PredIds \= [].
 
-:- pred predicate_table_search_pred_module_name(predicate_table,
-		is_fully_qualified, module_name, string, list(pred_id)).
-:- mode predicate_table_search_pred_module_name(in, in, in, in, out) is semidet.
+:- pred predicate_table_search_pred_module_name(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in,
+	list(pred_id)::out) is semidet.
 
 predicate_table_search_pred_module_name(PredicateTable, IsFullyQualified,
 		Module, PredName, PredIds) :-
@@ -1589,10 +1563,9 @@ predicate_table_search_pred_module_name(PredicateTable, IsFullyQualified,
 	maybe_filter_pred_ids_matching_module(IsFullyQualified,
 		Module, PredicateTable, PredIds0, PredIds).
 
-:- pred predicate_table_search_func_module_name(predicate_table,
-		is_fully_qualified, module_name, string, list(pred_id)).
-:- mode predicate_table_search_func_module_name(in,
-		in, in, in, out) is semidet.
+:- pred predicate_table_search_func_module_name(predicate_table::in,
+	is_fully_qualified::in, module_name::in, string::in,
+	list(pred_id)::out) is semidet.
 
 predicate_table_search_func_module_name(PredicateTable, IsFullyQualified,
 		Module, FuncName, PredIds) :-
@@ -1674,9 +1647,9 @@ predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
 	maybe_filter_pred_ids_matching_module(IsFullyQualified,
 		Module, PredicateTable, PredIds0, PredIds).
 
-:- pred maybe_filter_pred_ids_matching_module(is_fully_qualified,
-		module_name, predicate_table, list(pred_id), list(pred_id)).
-:- mode maybe_filter_pred_ids_matching_module(in, in, in, in, out) is det.
+:- pred maybe_filter_pred_ids_matching_module(is_fully_qualified::in,
+	module_name::in, predicate_table::in, list(pred_id)::in,
+	list(pred_id)::out) is det.
 
 maybe_filter_pred_ids_matching_module(may_be_partially_qualified, _, _,
 		PredIds, PredIds).
@@ -1732,8 +1705,8 @@ predicate_table_search_pf_sym(PredicateTable, IsFullyQualified,
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_restrict(PartialQualInfo,
-		OrigPredicateTable, PredIds, PredicateTable) :-
+predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
+		PredicateTable) :-
 	predicate_table_reset(OrigPredicateTable, PredicateTable0),
 	predicate_table_get_preds(OrigPredicateTable, Preds),
 	AccessibilityTable = OrigPredicateTable ^ accessibility_table,
@@ -1749,68 +1722,68 @@ predicate_table_restrict(PartialQualInfo,
 			PredInfo = map__lookup(Preds, PredId),
 			Access = map__lookup(AccessibilityTable, PredId),
 			Access = access(Unqualified, PartiallyQualified),
-			( Unqualified = yes,
+			(
+				Unqualified = yes,
 				NeedQual = may_be_unqualified
-			; Unqualified = no,
+			;
+				Unqualified = no,
 				NeedQual = must_be_qualified
 			),
-			( PartiallyQualified = yes,
+			(
+				PartiallyQualified = yes,
 				MaybeQualInfo = yes(PartialQualInfo)
-			; PartiallyQualified = no,
+			;
+				PartiallyQualified = no,
 				MaybeQualInfo = no
 			),
-			predicate_table_insert_2(Table0,
-					yes(PredId), PredInfo,
-					NeedQual, MaybeQualInfo,
-					_, Table)
+			predicate_table_insert_2(yes(PredId), PredInfo,
+				NeedQual, MaybeQualInfo, _, Table0, Table)
 			
 		), PredIds, PredicateTable0).
 
-:- pred predicate_table_reset(predicate_table::in, predicate_table::out) is det.
+:- pred predicate_table_reset(predicate_table::in, predicate_table::out)
+	is det.
 
 predicate_table_reset(PredicateTable0, PredicateTable) :-
 	NextPredId = PredicateTable0 ^ next_pred_id,
 	PredicateTable = predicate_table(map__init, NextPredId, [], map__init,
-			map__init, map__init, map__init,
-			map__init, map__init, map__init).
+		map__init, map__init, map__init,
+		map__init, map__init, map__init).
 
 %-----------------------------------------------------------------------------%
 
-predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
-	predicate_table_insert_2(PredicateTable0, no, PredInfo,
-			must_be_qualified, no, PredId, PredicateTable).
+predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable) :-
+	predicate_table_insert_2(no, PredInfo, must_be_qualified, no, PredId,
+		PredicateTable0, PredicateTable).
 
-predicate_table_insert(PredicateTable0, PredInfo, NeedQual, QualInfo,
-		PredId, PredicateTable) :-
-	predicate_table_insert_2(PredicateTable0, no, PredInfo,
-			NeedQual, yes(QualInfo),
-			PredId, PredicateTable).
+predicate_table_insert(PredInfo, NeedQual, QualInfo, PredId,
+		PredicateTable0, PredicateTable) :-
+	predicate_table_insert_2(no, PredInfo, NeedQual, yes(QualInfo), PredId,
+		PredicateTable0, PredicateTable).
 
-:- pred predicate_table_insert_2(predicate_table, maybe(pred_id),
-		pred_info, need_qualifier,
-		maybe(partial_qualifier_info), pred_id, predicate_table).
-:- mode predicate_table_insert_2(in, in, in, in, in, out, out) is det.
+:- pred predicate_table_insert_2(maybe(pred_id)::in, pred_info::in,
+	need_qualifier::in, maybe(partial_qualifier_info)::in, pred_id::out,
+	predicate_table::in, predicate_table::out) is det.
 
-predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo,
-		NeedQual, MaybeQualInfo, PredId, PredicateTable) :-
+predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
+		PredId, PredicateTable0, PredicateTable) :-
 
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
-				AccessibilityTable0,
-				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
-				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
+		AccessibilityTable0,
+		Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
+		Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
 	Module = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
 	Arity = pred_info_arity(PredInfo),
-
-	( MaybePredId = yes(PredId),
+	(
+		MaybePredId = yes(PredId),
 		NextPredId = NextPredId0
-
+	;
 		% allocate a new pred_id
-	; MaybePredId = no,
+		MaybePredId = no,
 		PredId = NextPredId0,
 		hlds_pred__next_pred_id(PredId, NextPredId)
 	),
-
 		% insert the pred_id into either the function or predicate
 		% indices, as appropriate
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1848,17 +1821,16 @@ predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo,
 	map__det_insert(Preds0, PredId, PredInfo, Preds),
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
-				AccessibilityTable,
-				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
-				Func_N_Index, Func_NA_Index, Func_MNA_Index).
+		AccessibilityTable,
+		Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
+		Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
-:- pred predicate_table_do_insert(module_name, string, arity,
-	need_qualifier, maybe(partial_qualifier_info),
-	pred_id, accessibility_table, accessibility_table,
-	name_index, name_index, name_arity_index,
-	name_arity_index, module_name_arity_index, module_name_arity_index).
-:- mode predicate_table_do_insert(in, in, in, in, in, in,
-	in, out, in, out, in, out, in, out) is det.
+:- pred predicate_table_do_insert(module_name::in, string::in, arity::in,
+	need_qualifier::in, maybe(partial_qualifier_info)::in, pred_id::in,
+	accessibility_table::in, accessibility_table::out,
+	name_index::in, name_index::out,
+	name_arity_index::in, name_arity_index::out,
+	module_name_arity_index::in, module_name_arity_index::out) is det.
 
 predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		PredId, AccessibilityTable0, AccessibilityTable,
@@ -1879,7 +1851,6 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		NA_Index = NA_Index0,
 		AccessibleByUnqualifiedName = no
 	),
-
 	( MaybeQualInfo = yes(QualInfo) ->
 
 			% insert partially module-qualified versions
@@ -1896,20 +1867,18 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		MNA_Index1 = MNA_Index0,
 		AccessibleByPartiallyQualifiedNames = no
 	),
-
 		% insert the fully-qualified name into the
 		% module:name/arity index
 	insert_into_mna_index(Module, Name, Arity, PredId,
-			MNA_Index1, MNA_Index),
-
+		MNA_Index1, MNA_Index),
 	Access = access(AccessibleByUnqualifiedName,
-			AccessibleByPartiallyQualifiedNames),
-	map__set(AccessibilityTable0, PredId, Access,
-			AccessibilityTable).
+		AccessibleByPartiallyQualifiedNames),
+	map__set(AccessibilityTable0, PredId, Access, AccessibilityTable).
 
-:- pred insert_into_mna_index(module_name, string, arity, pred_id,
-			module_name_arity_index, module_name_arity_index).
-:- mode insert_into_mna_index(in, in, in, in, in, out) is det.
+:- pred insert_into_mna_index(module_name::in, string::in, arity::in,
+	pred_id::in, module_name_arity_index::in,
+	module_name_arity_index::out) is det.
+
 insert_into_mna_index(Module, Name, Arity, PredId, MNA_Index0, MNA_Index) :-
 	( map__search(MNA_Index0, Module - Name, MN_Arities0) ->
 		multi_map__set(MN_Arities0, Arity, PredId, MN_Arities),

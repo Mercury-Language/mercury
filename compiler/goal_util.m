@@ -952,7 +952,7 @@ goal_util__switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap,
 
 goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct,
 		!VarSet, !VarTypes, !ModuleInfo) :-
-	cons_id_arity(ConsId, ConsArity),
+	ConsArity = cons_id_arity(ConsId),
 	varset__new_vars(!.VarSet, ConsArity, ArgVars, !:VarSet),
 	map__lookup(!.VarTypes, Var, VarType),
 	type_util__get_cons_id_arg_types(!.ModuleInfo,

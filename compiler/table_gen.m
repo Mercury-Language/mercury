@@ -465,7 +465,7 @@ subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
 	some [SubGoal,Attrs] (
 		goal_contains_goal(Goal, SubGoal),
 		SubGoal = foreign_proc(Attrs, _,_,_,_,_,_) - _,
-		may_call_mercury(Attrs, MayCallMercuryAttr)
+		MayCallMercuryAttr = may_call_mercury(Attrs)
 	).
 
 :- pred tabled_for_io_attributes(hlds_goal::in, list(tabled_for_io)::out)
@@ -481,7 +481,7 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
 	some [SubGoal,Attrs] (
 		goal_contains_goal(Goal, SubGoal),
 		SubGoal = foreign_proc(Attrs, _,_,_,_,_,_) - _,
-		tabled_for_io(Attrs, TabledForIoAttr),
+		TabledForIoAttr = tabled_for_io(Attrs),
 		\+ TabledForIoAttr = not_tabled_for_io
 	).
 

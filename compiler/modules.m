@@ -5244,10 +5244,20 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 	LangSet = ( Aditi = yes -> set__insert(LangSet1, c) ; LangSet1 ).
 
 :- pred get_item_foreign_code(globals::in, item_and_context::in,
-		module_foreign_info::in, module_foreign_info::out) is det.
+	module_foreign_info::in, module_foreign_info::out) is det.
 
-get_item_foreign_code(Globals, Item, Info0, Info) :-
-    ( Item = pragma(Pragma) - Context ->
+get_item_foreign_code(Globals, Item, !Info) :-
+	( Item = pragma(Pragma) - Context ->
+		do_get_item_foreign_code(Globals, Pragma, Context, !Info)
+	;
+		true
+	).
+
+:- pred do_get_item_foreign_code(globals::in, pragma_type::in,
+	prog_context::in, module_foreign_info::in, module_foreign_info::out)
+	is det.
+
+do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
 	globals__get_backend_foreign_languages(Globals, BackendLangs),
 	globals__get_target(Globals, Target),
 
@@ -5260,7 +5270,7 @@ get_item_foreign_code(Globals, Item, Info0, Info) :-
 	% Counting foreign_decls here causes problems with
 	% intermodule optimization.
 	(	
-	Pragma = foreign_code(Lang, _),
+		Pragma = foreign_code(Lang, _),
 		list__member(Lang, BackendLangs)
 	->
 		Info = Info0 ^ used_foreign_languages :=
@@ -5268,7 +5278,7 @@ get_item_foreign_code(Globals, Item, Info0, Info) :-
 	;	
 		Pragma = foreign_proc(Attrs, Name, _, _, _, _)
 	->
-		foreign_language(Attrs, NewLang),
+		NewLang = foreign_language(Attrs),
 		( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
 			% is it better than an existing one? 
 			( 
@@ -5327,10 +5337,7 @@ get_item_foreign_code(Globals, Item, Info0, Info) :-
 				set__insert(Info0 ^ used_foreign_languages, c)
 	;
 		Info = Info0
-	)
-    ;
-	Info = Info0
-    ).
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -134,8 +134,8 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 				ReserveTag, Globals,
 				SingleFunc, SingleArg, _)
 		->
-			make_cons_id_from_qualified_sym_name(SingleFunc,
-				[SingleArg], SingleConsId),
+			SingleConsId = make_cons_id_from_qualified_sym_name(
+				SingleFunc, [SingleArg]),
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		;
 			NumTagBits = 0
@@ -192,7 +192,7 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 assign_enum_constants([], _, CtorTags, CtorTags).
 assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	Val1 = Val + 1,
@@ -213,7 +213,7 @@ assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
 		CtorTags = CtorTags0
 	;
 		Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-		make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+		ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 		( Address = 0 ->
 			Tag = reserved_address(null_pointer)
 		;
@@ -241,7 +241,7 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
 		Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 		Arity = list__length(Args),
 		Tag = reserved_address(reserved_object(TypeCtor, Name, Arity)),
-		make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+		ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 		map__set(CtorTags0, ConsId, Tag, CtorTags1),
 		assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
 			TypeCtor, CtorTags1, CtorTags, Num + 1, Max)
@@ -279,7 +279,7 @@ assign_unshared_tags([], _, _, _, CtorTags, CtorTags).
 assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
 		CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 	% If there's only one functor,
 	% give it the "single_functor" (untagged)
 	% representation, rather than giving it unshared_tag(0).
@@ -309,7 +309,7 @@ assign_shared_remote_tags([], _, _, _, CtorTags, CtorTags).
 assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 		ReservedAddresses, CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 	Tag = maybe_add_reserved_addresses(ReservedAddresses,
 		shared_remote_tag(PrimaryVal, SecondaryVal)),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
@@ -325,7 +325,7 @@ assign_shared_local_tags([], _, _, CtorTags, CtorTags).
 assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 			CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
+	ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
 	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
 	SecondaryVal1 = SecondaryVal + 1,

@@ -79,10 +79,9 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap) :-
 	hlds_type_defn::in, hlds_type_defn::out,
 	maybe(recompilation_info)::in, maybe(recompilation_info)::out) is det.
 
-replace_in_type_defn(ModuleName, EqvMap, TypeCtor,
-		Defn0, Defn, !MaybeRecompInfo) :-
-	hlds_data__get_type_defn_tvarset(Defn0, TVarSet0),
-	hlds_data__get_type_defn_body(Defn0, Body0),
+replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
+	hlds_data__get_type_defn_tvarset(!.Defn, TVarSet0),
+	hlds_data__get_type_defn_body(!.Defn, Body0),
 	equiv_type__maybe_record_expanded_items(ModuleName, fst(TypeCtor),
 		!.MaybeRecompInfo, EquivTypeInfo0),
 	(
@@ -109,12 +108,12 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor,
 	equiv_type__finish_recording_expanded_items(
 		item_id(type_body, TypeCtor), EquivTypeInfo,
 		!MaybeRecompInfo),
-	hlds_data__set_type_defn_body(Defn0, Body, Defn1),
-	hlds_data__set_type_defn_tvarset(Defn1, TVarSet, Defn).
+	hlds_data__set_type_defn_body(Body, !Defn),
+	hlds_data__set_type_defn_tvarset(TVarSet, !Defn).
 
 :- pred replace_in_inst_table(eqv_map::in,
-		inst_table::in, inst_table::out,
-		inst_cache::in, inst_cache::out) is det.
+	inst_table::in, inst_table::out,
+	inst_cache::in, inst_cache::out) is det.
 
 replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 	/*
@@ -157,13 +156,12 @@ replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 		EqvMap, SharedInsts0, SharedInsts, !Cache),
 	replace_in_inst_table(replace_in_maybe_inst(EqvMap),
 		EqvMap, MostlyUniqInsts0, MostlyUniqInsts, !.Cache, _),
-	inst_table_set_unify_insts(!.InstTable, UnifyInsts, !:InstTable),
-	inst_table_set_merge_insts(!.InstTable, MergeInsts, !:InstTable),
-	inst_table_set_ground_insts(!.InstTable, GroundInsts, !:InstTable),
-	inst_table_set_any_insts(!.InstTable, AnyInsts, !:InstTable),
-	inst_table_set_shared_insts(!.InstTable, SharedInsts, !:InstTable),
-	inst_table_set_mostly_uniq_insts(!.InstTable,
-		MostlyUniqInsts, !:InstTable).
+	inst_table_set_unify_insts(UnifyInsts, !InstTable),
+	inst_table_set_merge_insts(MergeInsts, !InstTable),
+	inst_table_set_ground_insts(GroundInsts, !InstTable),
+	inst_table_set_any_insts(AnyInsts, !InstTable),
+	inst_table_set_shared_insts(SharedInsts, !InstTable),
+	inst_table_set_mostly_uniq_insts(MostlyUniqInsts, !InstTable).
 
 :- pred replace_in_inst_table(
 	pred(T, T, inst_cache, inst_cache)::(pred(in, out, in, out) is det),

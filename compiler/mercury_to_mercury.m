@@ -2970,7 +2970,7 @@ mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
 mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
 		VarSet, PragmaCode) -->
 	add_string(":- pragma foreign_proc("),
-	{ foreign_language(Attributes, Lang) },
+	{ Lang = foreign_language(Attributes) },
 	mercury_format_foreign_language_string(Lang),
 	add_string(", "),
 	mercury_format_sym_name(PredName),
@@ -3305,9 +3305,8 @@ mercury_format_tabs(Indent) -->
 mercury_format_pragma_foreign_attributes(Attributes) -->
 	% This is one case where it is a bad idea to use field
 	% accessors.  
-	{ attributes_to_strings(Attributes, AttrStrings) },
 	add_string("["),
-	add_list(AttrStrings, ", ", add_string),
+	add_list(attributes_to_strings(Attributes), ", ", add_string),
 	add_string("]").
 
 %-----------------------------------------------------------------------------%

@@ -664,8 +664,8 @@ magic__separate_proc(PredId, ProcId) -->
 
 	magic_info_get_module_info(ModuleInfo1),
 	{ module_info_get_predicate_table(ModuleInfo1, PredTable0) },
-	{ predicate_table_insert(PredTable0, NewPredInfo, NewPredId, 
-		PredTable) },
+	{ predicate_table_insert(NewPredInfo, NewPredId,
+		PredTable0, PredTable) },
 	{ module_info_set_predicate_table(PredTable,
 		ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo),
@@ -1161,7 +1161,7 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 		JoinProcInfo, JoinProcId, JoinPredInfo),
 
 	module_info_get_predicate_table(!.ModuleInfo, Preds0),
-	predicate_table_insert(Preds0, JoinPredInfo, JoinPredId, Preds),
+	predicate_table_insert(JoinPredInfo, JoinPredId, Preds0, Preds),
 	JoinPredProcId = proc(JoinPredId, JoinProcId),
 	module_info_set_predicate_table(Preds, !ModuleInfo).
 
@@ -1298,8 +1298,8 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		MagicPredInfo) },
 
 	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
-	{ predicate_table_insert(PredTable0, 
-		MagicPredInfo, MagicPredId, PredTable) },
+	{ predicate_table_insert(MagicPredInfo, MagicPredId,
+		PredTable0, PredTable) },
 	{ module_info_set_predicate_table(PredTable,
 		ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo),

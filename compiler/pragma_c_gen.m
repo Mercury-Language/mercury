@@ -367,8 +367,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Extract the attributes
 	%
-	may_call_mercury(Attributes, MayCallMercury),
-	thread_safe(Attributes, ThreadSafe),
+	MayCallMercury = may_call_mercury(Attributes),
+	ThreadSafe = thread_safe(Attributes),
 
 	%
 	% First we need to get a list of input and output arguments
@@ -660,7 +660,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% Extract the may_call_mercury attribute
 	%
-	may_call_mercury(Attributes, MayCallMercury),
+	MayCallMercury = may_call_mercury(Attributes),
 
 	%
 	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */

@@ -1688,7 +1688,7 @@ goal_list_purity(Goals, Purity) :-
 	Purity = list__foldl(
 			(func(_ - GoalInfo, Purity0) = Purity1 :-
 				infer_goal_info_purity(GoalInfo, GoalPurity),
-		    		worst_purity(GoalPurity, Purity0, Purity1)
+		    		worst_purity(GoalPurity, Purity0) = Purity1
 			), Goals, pure).
 
 %-----------------------------------------------------------------------------%
