@@ -396,7 +396,7 @@ read_items_loop_2(ModuleName, syntax_error(ErrorMsg, LineNumber), Msgs0,
 	},
 	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
 
-read_items_loop_2(ModuleName, error(M,T), Msgs0, Items0, _Error0, Msgs, Items, 
+read_items_loop_2(ModuleName, error(M, T), Msgs0, Items0, _Error0, Msgs, Items, 
 			Error) -->
 	% if the next item was a semantic error, then insert it in
 	% the list of messages and continue looping
@@ -450,7 +450,7 @@ process_read_term(ModuleName, term(VarSet, Term),
 :- mode convert_item(in, out) is det.
 
 convert_item(ok(Item, Context), ok(Item, Context)).
-convert_item(error(M,T), error(M,T)).
+convert_item(error(M, T), error(M, T)).
 
 :- pred parse_item(string, varset, term, maybe_item_and_context). 
 :- mode parse_item(in, in, in, out) is det.
@@ -472,7 +472,7 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 	;
 		% It's either a fact or a rule
 		( %%% some [H, B, TermContext]
-			Term = term__functor(term__atom(":-"), [H,B],
+			Term = term__functor(term__atom(":-"), [H, B],
 						TermContext)
 		->
 			% it's a rule
@@ -592,21 +592,21 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 :- mode parse_goal_2(in, in, in, out, out) is semidet.
 parse_goal_2("true", [], V, true, V).
 parse_goal_2("fail", [], V, fail, V).
-parse_goal_2("=", [A,B], V, unify(A,B), V).
+parse_goal_2("=", [A, B], V, unify(A, B), V).
 /******
 	Since (A -> B) has different semantics in standard Prolog
 	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
 	for the moment we'll just disallow it.
-parse_goal_2("->", [A0,B0], V0, if_then(Vars,A,B), V) :-
+parse_goal_2("->", [A0, B0], V0, if_then(Vars, A, B), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V).
 ******/
-parse_goal_2(",", [A0,B0], V0, (A,B), V) :-
+parse_goal_2(",", [A0, B0], V0, (A, B), V) :-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
-parse_goal_2(";", [A0,B0], V0, R, V) :-
+parse_goal_2(";", [A0, B0], V0, R, V) :-
 	(
-		A0 = term__functor(term__atom("->"), [X0,Y0], _Context)
+		A0 = term__functor(term__atom("->"), [X0, Y0], _Context)
 	->
 		parse_some_vars_goal(X0, V0, Vars, X, V1),
 		parse_goal(Y0, V1, Y, V2),
@@ -620,18 +620,18 @@ parse_goal_2(";", [A0,B0], V0, R, V) :-
 /****
 	For consistency we also disallow if-then
 parse_goal_2("if",
-		[term__functor(term__atom("then"),[A0,B0],_)], V0,
-		if_then(Vars,A,B), V) :-
+		[term__functor(term__atom("then"), [A0, B0], _)], V0,
+		if_then(Vars, A, B), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V).
 ****/
-parse_goal_2("else",[
-		    term__functor(term__atom("if"),[
-			term__functor(term__atom("then"),[A0,B0],_)
-		    ],_),
+parse_goal_2("else", [
+		    term__functor(term__atom("if"), [
+			term__functor(term__atom("then"), [A0, B0], _)
+		    ], _),
 		    C0
 		], V0,
-		if_then_else(Vars,A,B,C), V) :-
+		if_then_else(Vars, A, B, C), V) :-
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V2),
 	parse_goal(C0, V2, C, V).
@@ -639,25 +639,25 @@ parse_goal_2("not", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
 parse_goal_2("\\+", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
-parse_goal_2("all", [Vars0,A0], V0, all(Vars,A), V):-
+parse_goal_2("all", [Vars0, A0], V0, all(Vars, A), V):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
 	% handle implication
-parse_goal_2("<=", [A0,B0], V0, implies(B,A), V):-
+parse_goal_2("<=", [A0, B0], V0, implies(B, A), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
-parse_goal_2("=>", [A0,B0], V0, implies(A,B), V):-
+parse_goal_2("=>", [A0, B0], V0, implies(A, B), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
 	% handle equivalence
-parse_goal_2("<=>", [A0,B0], V0, equivalent(A,B), V):-
+parse_goal_2("<=>", [A0, B0], V0, equivalent(A, B), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
-parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V):-
+parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
@@ -665,11 +665,11 @@ parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V):-
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [A,B], V, unify(A,B), V).
+parse_goal_2("is", [A, B], V, unify(A, B), V).
 
 parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 	( 
-		A0 = term__functor(term__atom("some"), [Vars0,A1], _Context)
+		A0 = term__functor(term__atom("some"), [Vars0, A1], _Context)
 	->
 		term__vars(Vars0, Vars),
 		parse_goal(A1, VarSet0, A, VarSet)
@@ -890,10 +890,10 @@ parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
 	% Non-empty list of terminals.  Append the DCG output arg
 	% as the new tail of the list, and unify the result with
 	% the DCG input arg.
-parse_dcg_goal_2(".", [X,Xs], Context, VarSet0, N0, Var0,
+parse_dcg_goal_2(".", [X, Xs], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	new_dcg_var(VarSet0, N0, VarSet, N, Var),
-	term_list_append_term(term__functor(term__atom("."), [X,Xs], Context),
+	term_list_append_term(term__functor(term__atom("."), [X, Xs], Context),
 			term__variable(Var), Term), 
 	Goal = unify(term__variable(Var0), Term) - Context.
 
@@ -909,112 +909,81 @@ parse_dcg_goal_2("=", [A], Context, VarSet, N, Var,
 	Since (A -> B) has different semantics in standard Prolog
 	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
 	for the moment we'll just disallow it.
-parse_dcg_goal_2("->", [A0,B0], Context, VarSet0, N0, Var0,
+parse_dcg_goal_2("->", [Cond0, Then0], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
-	parse_dcg_if_then(A0, B0, Context, VarSet0, N0, Var0,
-		SomeVars, A, B, VarSet, N, Var),
+	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
+		SomeVars, Cond, Then, VarSet, N, Var),
 	( Var = Var0 ->
-		Goal = if_then(SomeVars, A, B) - Context
+		Goal = if_then(SomeVars, Cond, Then) - Context
 	;
-		Goal = if_then_else(SomeVars, A, B, unify(term__variable(Var),
-				term__variable(Var0)) - Context) - Context
+		Unify = unify(term__variable(Var), term__variable(Var0)),
+		Goal = if_then_else(SomeVars, Cond, Then, Unify - Context)
+			- Context
 	).
 ******/
 
 	% If-then (NU-Prolog syntax).
 parse_dcg_goal_2("if", [
-			term__functor(term__atom("then"),[A0,B0],_)
+			term__functor(term__atom("then"), [Cond0, Then0], _)
 		], Context, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_dcg_if_then(A0, B0, Context, VarSet0, N0, Var0,
-		SomeVars, A, B, VarSet, N, Var),
+	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
+		SomeVars, Cond, Then, VarSet, N, Var),
 	( Var = Var0 ->
-		Goal = if_then(SomeVars, A, B) - Context
+		Goal = if_then(SomeVars, Cond, Then) - Context
 	;
-		Goal = if_then_else(SomeVars, A, B, unify(term__variable(Var),
-				term__variable(Var0)) - Context) - Context
+		Unify = unify(term__variable(Var), term__variable(Var0)),
+		Goal = if_then_else(SomeVars, Cond, Then, Unify - Context)
+			- Context
 	).
 
 	% Conjunction.
-parse_dcg_goal_2(",", [A0,B0], Context, VarSet0, N0, Var0,
-		(A,B) - Context, VarSet, N, Var) :-
+parse_dcg_goal_2(",", [A0, B0], Context, VarSet0, N0, Var0,
+		(A, B) - Context, VarSet, N, Var) :-
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, Var1),
 	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var).
 
 	% Disjunction or if-then-else (Prolog syntax).
-parse_dcg_goal_2(";", [A0,B0], Cx, VarSet0, N0, Var0,
+parse_dcg_goal_2(";", [A0, B0], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	(
-		A0 = term__functor(term__atom("->"), [X0,Y0], _Context)
+		A0 = term__functor(term__atom("->"), [Cond0, Then0], _Context)
 	->
-		parse_dcg_if_then(X0, Y0, Cx, VarSet0, N0, Var0,
-			SomeVars, X, Y, VarSet1, N1, VarA),
-		parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, VarB),
-		( VarA = Var0, VarB = Var0 ->
-			Var = Var0,
-			Goal = if_then_else(SomeVars, X, Y, B) - Cx
-		; VarA = Var0 ->
-			Var = VarB,
-			Goal = if_then_else(SomeVars, X,
-					(Y, unify( term__variable(Var),
-						   term__variable(VarA) ) - Cx)
-					- Cx,
-					B
-				) - Cx
-		;
-			Var = VarA,
-			Goal = if_then_else(SomeVars, X, Y,
-				(B, unify(term__variable(Var),
-					term__variable(VarB)) - Cx) - Cx) - Cx
-		)
+		parse_dcg_if_then_else(Cond0, Then0, B0, Context,
+			VarSet0, N0, Var0, Goal, VarSet, N, Var)
 	;
 		parse_dcg_goal(A0, VarSet0, N0, Var0, A1, VarSet1, N1, VarA),
 		parse_dcg_goal(B0, VarSet1, N1, Var0, B1, VarSet, N, VarB),
 		( VarA = Var0, VarB = Var0 ->
 			Var = Var0,
-			Goal = (A1 ; B1) - Cx
+			Goal = (A1 ; B1) - Context
 		; VarA = Var0 ->
 			Var = VarB,
-			append_to_disjunct(A1, unify(term__variable(Var),
-					term__variable(VarA)), Cx, A2),
-			Goal = (A2 ; B1) - Cx
+			Unify = unify(term__variable(Var),
+				term__variable(VarA)),
+			append_to_disjunct(A1, Unify, Context, A2),
+			Goal = (A2 ; B1) - Context
 		; VarB = Var0 ->
 			Var = VarA,
-			append_to_disjunct(B1, unify(term__variable(Var),
-					term__variable(VarB)), Cx, B2),
-			Goal = (A1 ; B2) - Cx
+			Unify = unify(term__variable(Var),
+				term__variable(VarB)),
+			append_to_disjunct(B1, Unify, Context, B2),
+			Goal = (A1 ; B2) - Context
 		;
 			Var = VarB,
 			prog_util__rename_in_goal(A1, VarA, VarB, A2),
-			Goal = (A2 ; B1) - Cx
+			Goal = (A2 ; B1) - Context
 		)
 	).
 
 	% If-then-else (NU-Prolog syntax).
 parse_dcg_goal_2( "else", [
-		    term__functor(term__atom("if"),[
-			term__functor(term__atom("then"),[A0,B0],_)
+		    term__functor(term__atom("if"), [
+			term__functor(term__atom("then"), [Cond0, Then0], _)
 		    ], Context),
-		    C0
+		    Else0
 		], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_dcg_if_then(A0, B0, Context, VarSet0, N0, Var0,
-		SomeVars, A, B, VarSet1, N1, VarAB),
-	parse_dcg_goal(C0, VarSet1, N1, Var0, C, VarSet, N, VarC),
-	( VarAB = Var0, VarC = Var0 ->
-		Var = Var0,
-		Goal = if_then_else(SomeVars, A, B, C) - Context
-	; VarAB = Var0 ->
-		Var = VarC,
-		Goal = if_then_else(SomeVars, A,
-			(B, unify(term__variable(Var),
-				  term__variable(VarAB)) - Context) - Context,
-			C) - Context
-	;
-		Var = VarAB,
-		Goal = if_then_else(SomeVars, A, B,
-			(C, unify(term__variable(Var),
-				  term__variable(VarC)) - Context) - Context)
-				  - Context
-	).
+	parse_dcg_if_then_else(Cond0, Then0, Else0, Context,
+		VarSet0, N0, Var0, Goal, VarSet, N, Var).
 
 	% Negation (NU-Prolog syntax).
 parse_dcg_goal_2( "not", [A0], Context, VarSet0, N0, Var0,
@@ -1029,14 +998,14 @@ parse_dcg_goal_2( "\\+", [A0], Context, VarSet0, N0, Var0,
 	Var = Var0.
 
 	% Universal quantification.
-parse_dcg_goal_2("all", [Vars0,A0], Context,
-		VarSet0, N0, Var0, all(Vars,A) - Context, VarSet, N, Var) :-
+parse_dcg_goal_2("all", [Vars0, A0], Context,
+		VarSet0, N0, Var0, all(Vars, A) - Context, VarSet, N, Var) :-
 	term__vars(Vars0, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
 
 	% Existential quantification.
-parse_dcg_goal_2("some", [Vars0,A0], Context,
-		VarSet0, N0, Var0, some(Vars,A) - Context, VarSet, N, Var) :-
+parse_dcg_goal_2("some", [Vars0, A0], Context,
+		VarSet0, N0, Var0, some(Vars, A) - Context, VarSet, N, Var) :-
 	term__vars(Vars0, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
 
@@ -1057,15 +1026,14 @@ append_to_disjunct(Disjunct0, Goal, Context, Disjunct) :-
 :- mode parse_some_vars_dcg_goal(in, out, in, in, in, out, out, out, out)
 	is det.
 parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
-	(
-		A0 = term__functor(term__atom("some"), [SomeVars0,A1], _Context)
-	->
+	( A0 = term__functor(term__atom("some"), [SomeVars0, A1], _Context) ->
 		term__vars(SomeVars0, SomeVars),
-		parse_dcg_goal(A1, VarSet0, N0, Var0, A, VarSet, N, Var)
+		A2 = A1
 	;
 		SomeVars = [],
-		parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var)
-	).
+		A2 = A0
+	),
+	parse_dcg_goal(A2, VarSet0, N0, Var0, A, VarSet, N, Var).
 
 	% Parse the "if" and the "then" part of an if-then or an
 	% if-then-else.
@@ -1092,21 +1060,61 @@ parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
 :- mode parse_dcg_if_then(in, in, in, in, in, in, out, out, out, out, out, out)
 	is det.
 
-parse_dcg_if_then(A0, B0, Context, VarSet0, N0, Var0,
-		SomeVars, A, B, VarSet, N, Var) :-
-	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
-				A, VarSet1, N1, Var1),
-	parse_dcg_goal(B0, VarSet1, N1, Var1, B1, VarSet2, N2, Var2),
+parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
+		SomeVars, Cond, Then, VarSet, N, Var) :-
+	parse_some_vars_dcg_goal(Cond0, SomeVars, VarSet0, N0, Var0,
+				Cond, VarSet1, N1, Var1),
+	parse_dcg_goal(Then0, VarSet1, N1, Var1, Then1, VarSet2, N2, Var2),
 	( Var0 \= Var1, Var1 = Var2 ->
 		new_dcg_var(VarSet2, N2, VarSet, N, Var),
-		B = (B1, unify( term__variable(Var),
-				term__variable(Var2) ) - Context) - Context
+		Unify = unify(term__variable(Var), term__variable(Var2)),
+		Then = (Then1, Unify - Context) - Context
 	;
-		B = B1,
+		Then = Then1,
 		N = N2,
 		Var = Var2,
 		VarSet = VarSet2
 	).
+
+:- pred parse_dcg_if_then_else(term, term, term, term__context,
+	varset, int, var, goal, varset, int, var).
+:- mode parse_dcg_if_then_else(in, in, in, in, in, in, in,
+	out, out, out, out) is det.
+
+parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
+		Goal, VarSet, N, Var) :-
+	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
+		SomeVars, Cond, Then1, VarSet1, N1, VarThen),
+	parse_dcg_goal(Else0, VarSet1, N1, Var0, Else1, VarSet, N, VarElse),
+	( VarThen = Var0, VarElse = Var0 ->
+		Var = Var0,
+		Then = Then1,
+		Else = Else1
+	; VarThen = Var0 ->
+		Var = VarElse,
+		Unify = unify(term__variable(Var), term__variable(VarThen)),
+		Then = (Then1, Unify - Context) - Context,
+		Else = Else1
+	; VarElse = Var0 ->
+		Var = VarThen,
+		Then = Then1,
+		Unify = unify(term__variable(Var), term__variable(VarElse)),
+		Else = (Else1, Unify - Context) - Context
+	;
+		% We prefer to substitute the then part since it is likely
+		% to be smaller than the else part, since the else part may
+		% have a deeply nested chain of if-then-elses.
+
+		% parse_dcg_if_then guarantees that if VarThen \= Var0,
+		% then the then part introduces a new DCG variable (i.e.
+		% VarThen does not appear in the condition). We therefore
+		% don't need to do the substitution in the condition.
+
+		Var = VarElse,
+		prog_util__rename_in_goal(Then1, VarThen, VarElse, Then),
+		Else = Else1
+	),
+	Goal = if_then_else(SomeVars, Cond, Then, Else) - Context.
 
 	% term_list_append_term(ListTerm, Term, Result):
 	% 	if ListTerm is a term representing a proper list, 
@@ -1362,15 +1370,15 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 
 :- parse_type_decl_type([A|B], _, _, _) when A and B.
 
-parse_type_decl_type("--->", [H,B], Condition, R) :-
+parse_type_decl_type("--->", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_du_type(H, Body, R).
 
-parse_type_decl_type("=", [H,B], Condition, R) :-
+parse_type_decl_type("=", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_uu_type(H, Body, R).
 
-parse_type_decl_type("==", [H,B], Condition, R) :-
+parse_type_decl_type("==", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(H, Body, R).
 
@@ -1726,7 +1734,7 @@ process_uu_type(Head, Body, Result) :-
 :- pred process_uu_type_2(maybe_functor, term, maybe1(type_defn)).
 :- mode process_uu_type_2(in, in, out) is det.
 process_uu_type_2(error(Error, Term), _, error(Error, Term)).
-process_uu_type_2(ok(Name, Args), Body, ok(uu_type(Name,Args,List))) :-
+process_uu_type_2(ok(Name, Args), Body, ok(uu_type(Name, Args, List))) :-
 		sum_to_list(Body, List).
 
 %-----------------------------------------------------------------------------%
@@ -1741,7 +1749,7 @@ process_eqv_type(Head, Body, Result) :-
 :- pred process_eqv_type_2(maybe_functor, term, maybe1(type_defn)).
 :- mode process_eqv_type_2(in, in, out) is det.
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
-process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name,Args,Body))).
+process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name, Args, Body))).
 
 %-----------------------------------------------------------------------------%
 
@@ -1759,7 +1767,7 @@ process_du_type(Head, Body, Result) :-
 :- pred process_du_type_2(maybe_functor, term, maybe1(type_defn)).
 :- mode process_du_type_2(in, in, out) is det.
 process_du_type_2(error(Error, Term), _, error(Error, Term)).
-process_du_type_2(ok(Functor,Args), Body, Result) :-
+process_du_type_2(ok(Functor, Args), Body, Result) :-
 	% check that body is a disjunction of constructors
 	( %%% some [Constrs] 
 		convert_constructors(Body, Constrs)
@@ -2062,7 +2070,7 @@ process_func_mode(error(M, T), _, _, _, _, _, error(M, T)).
 :- mode parse_inst_decl(in, in, out) is det.
 parse_inst_decl(VarSet, InstDefn, Result) :-
 	(
-		InstDefn = term__functor(term__atom(Op), [H,B], _Context),
+		InstDefn = term__functor(term__atom(Op), [H, B], _Context),
 		( Op = "=" ; Op = "==" )
 	->
 		get_condition(B, Body, Condition),
@@ -2080,7 +2088,7 @@ parse_inst_decl(VarSet, InstDefn, Result) :-
 		convert_abstract_inst_defn(Head, R),
 		process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
 	;
-		InstDefn = term__functor(term__atom("--->"), [H,B], Context)
+		InstDefn = term__functor(term__atom("--->"), [H, B], Context)
 	->
 		get_condition(B, Body, Condition),
 		Body1 = term__functor(term__atom("bound"), [Body], Context),
@@ -2102,7 +2110,7 @@ convert_inst_defn(Head, Body, Result) :-
 :- pred convert_inst_defn_2(maybe_functor, term, term, maybe1(inst_defn)).
 :- mode convert_inst_defn_2(in, in, in, out) is det.
 
-convert_inst_defn_2(error(M,T), _, _, error(M,T)).
+convert_inst_defn_2(error(M, T), _, _, error(M, T)).
 convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
@@ -2152,7 +2160,7 @@ convert_abstract_inst_defn(Head, Result) :-
 
 :- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
 :- mode convert_abstract_inst_defn_2(in, in, out) is det.
-convert_abstract_inst_defn_2(error(M,T), _, error(M,T)).
+convert_abstract_inst_defn_2(error(M, T), _, error(M, T)).
 convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
@@ -2307,7 +2315,7 @@ make_inst_defn(VarSet, Cond, InstDefn, inst_defn(VarSet, InstDefn, Cond)).
 :- pred parse_mode_decl(string, varset, term, maybe1(item)).
 :- mode parse_mode_decl(in, in, in, out) is det.
 parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
-	( %%% some [H,B]
+	( %%% some [H, B]
 		mode_op(ModeDefn, H, B)
 	->
 		get_condition(B, Body, Condition),
@@ -2319,7 +2327,7 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
-mode_op(term__functor(term__atom(Op),[H,B],_), H, B) :-
+mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
 		% People never seem to remember what the right
 		% operator to use in a `:- mode' declaration is,
 		% so the syntax is forgiving.
@@ -2338,7 +2346,7 @@ convert_mode_defn(Head, Body, Result) :-
 
 :- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn_2(in, in, in, out) is det.
-convert_mode_defn_2(error(M,T), _, _, error(M,T)).
+convert_mode_defn_2(error(M, T), _, _, error(M, T)).
 convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	( %%% some [Arg]

@@ -962,6 +962,7 @@ hlds_out__write_disj(GoalList, ModuleInfo, VarSet, Indent) -->
 :- mode hlds_out__write_case(in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet, Indent) -->
+	io__write_string("% "),
 	mercury_output_var(Var, VarSet),
 	io__write_string(" has functor "),
 	hlds_out__write_cons_id(ConsId),

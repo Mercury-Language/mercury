@@ -1099,11 +1099,12 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		% and then save the pred_info.
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
-	( { pred_info_is_imported(PredInfo0) } ->
-		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
-		clause_for_imported_pred_error(PredName, Arity, PredOrFunc, 
-			Context)
-	;
+%	( { pred_info_is_imported(PredInfo0) } ->
+%		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+%		clause_for_imported_pred_error(PredName, Arity, PredOrFunc, 
+%			Context)
+%	;
+	(
 		{ pred_info_get_goal_type(PredInfo0, pragmas) }
 	->
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
@@ -2552,7 +2553,7 @@ unspecified_det_error(Name, Arity, PredOrFunc, Context) -->
 :- mode clause_for_imported_pred_error(in, in, in, in, di, uo) is det.
 
 clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context) -->
-	io__set_exit_status(1),
+	% io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: clause for imported "),
 	hlds_out__write_call_id(PredOrFunc, Name/Arity),

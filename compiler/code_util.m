@@ -69,12 +69,18 @@
 
 	% Given a module name, a predicate name, a proc_id and a list of
 	% variables as the arguments, find out if that procedure of that
-	% predicate is a builtin. If yes, return the variable being
-	% constructed (if any) and an rval giving its value.
+	% predicate is a builtin. If yes, the last two arguments
+	% return two things:
 	%
-	% This rval is guaranteed to be either a unop or a binop, applied
-	% to arguments that are either variables (from the argument list)
-	% or constants.
+	% - an rval to execute as a test if the builtin is semidet; and
+	%
+	% - an rval to assign to a variable if the builtin calls for this.
+	%
+	% At least one of these will be present.
+	%
+	% Each rval returned is guaranteed to be either a unop or a binop,
+	% applied to arguments that are either variables (from the argument
+	% list) or constants.
 
 :- pred code_util__translate_builtin(string, string, proc_id, list(var),
 	maybe(rval), maybe(pair(var, rval))).
