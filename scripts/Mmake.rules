@@ -271,7 +271,7 @@ $(os_subdir)%.dll : %.cpp
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
 		-I`$(FIX_PATH_FOR_CL) $(MERC_C_INCL_DIR)` \
 		-AI`$(FIX_PATH_FOR_CL) $(MERC_DLL_DIR)` $< \
-		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
+		/LD $(MS_CL_LIBS) -out:$@
 	rm -f $*.obj
 
 $(os_subdir)%.dll : %.cs
