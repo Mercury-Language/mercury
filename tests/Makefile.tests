@@ -1,0 +1,45 @@
+#-----------------------------------------------------------------------------#
+
+MLIB=/usr/contrib/lib/mercury
+#GRADE=fast
+#MCFLAGS=--optimize --gcc-global-registers --gcc-non-local-gotos
+GRADE=debug
+MCFLAGS=--debug
+
+VPATH=$(MLIB)/nuprolog/$(shell fullarch):$(MLIB)/ints:$(MLIB)/modules
+
+#-----------------------------------------------------------------------------#
+
+.PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
+
+# MOD2INIT=mod2init -w "`extract $* '' Entry`" $^ printlist.mod \
+	engine.mod io.mod wrapper.mod > $@
+
+%.mod: printlist.int
+
+%_init.c: %.mod printlist.mod engine.mod wrapper.mod io.mod Entry
+
+%_init.nl: NP_Entry
+	echo "main(_) :- `extract $* '' NP_Entry`." > $@
+
+%: %.o %_init.o printlist.o
+	$(ML) -s$(GRADE) $(MLFLAGS) -o $@ $^
+
+%.out: %
+	./$< > $@ 2>&1
+
+%.exp: %.nu
+	./$< > $@ 2>&1
+
+%.res: %.exp %.out
+	diff -u $*.exp $*.out > $@
+
+%.nu : %.no %_init.no printlist.no
+	mnl -o $@ $^
+
+clean:
+	rm -f *.mod *.c *_init.c *_init.nl *.out *.exp *.res
+
+-include *.d
+
+#-----------------------------------------------------------------------------#
