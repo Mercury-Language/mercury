@@ -149,7 +149,7 @@ MR_trace_event_report(const MR_Stack_Layout_Label *layout, MR_trace_port port,
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
-		fatal_abort("trying to report an event to external debugger");
+		fatal_error("trying to report an event to external debugger");
 	} else {
 		MR_trace_event_internal_report(layout,
 			port, seqno, depth, path);
