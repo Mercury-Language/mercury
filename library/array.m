@@ -653,7 +653,6 @@ array__init(Size, Item, Array) :-
 	Min = 0;
 ").
 
-:- pragma promise_pure(array__max/2).
 :- pragma foreign_proc("C",
 	array__max(Array::array_ui, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
