@@ -240,6 +240,17 @@ java_symlinks:
 	[ -d mercury ] || ln -s . mercury
 	[ -d runtime ] || ln -s $(MERCURY_DIR)/java/runtime .
 
+# Once all of the library classes have been compiled, we put them in a single
+# jar file.  At this point we also add the runtime classes to a jar file.
+# Note that this stage makes use of the symbolic links created earlier to
+# ensure that the path names are correct within the jar files.
+JARS = $(STD_LIB_NAME).jar $(STD_LIB_NAME).runtime.jar
+
+.PHONY:	jars
+jars:	classes
+	jar cf $(STD_LIB_NAME).jar mercury/*.class
+	jar cf $(STD_LIB_NAME).runtime.jar mercury/runtime/*.class
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib_std
@@ -306,8 +317,7 @@ $(CSHARP_DLLS) : $(RUNTIME_DLLS)
 endif
 #-----------------------------------------------------------------------------#
 ifeq ("$(findstring java,$(GRADE))","java")
-# XXX Mmake should add this dependency automatically
-lib_std: classes
+lib_std: jars
 endif
 #-----------------------------------------------------------------------------#
 #
@@ -474,10 +484,21 @@ install_strong_name: library_strong_name.sn
 	
 else
 
+ifneq (,$(findstring java,$(GRADE)))
+
+.PHONY: install_library
+install_library: jars
+	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
+	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
+
+else
+
 .PHONY: install_library
 install_library: lib$(STD_LIB_NAME).install_library
 
-endif	# non IL grades
+endif  #ifneq (,$(findstring java,$(GRADE)))
+
+endif  #ifneq (,$(findstring il,$(GRADE)))
 
 # $(STD_LIB_NAME).split.$A is a version of lib$(STD_LIB_NAME).$A
 # that has been compiled with `--split-c-files'.

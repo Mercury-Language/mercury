@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2003 The University of Melbourne.
+# Copyright (C) 1996-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -701,6 +701,7 @@ FINAL_INSTALL_PREFIX	= @prefix@
 INSTALL_BINDIR		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR		= $(INSTALL_PREFIX)/lib/mercury
 FINAL_INSTALL_LIBDIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury
+INSTALL_JAVA_LIBRARY_DIR= $(INSTALL_PREFIX)/lib/mercury/lib/java
 INSTALL_INFO_DIR	= $(INSTALL_PREFIX)/info
 INSTALL_DVI_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_TEXT_DIR	= $(INSTALL_PREFIX)/lib/mercury/doc
