@@ -1528,16 +1528,15 @@ case "$host" in
 			#include <signal.h> 
 			#include <linux/version.h>
 			#if (LINUX_VERSION_CODE >= 0x20100)
-				typedef void (* REAL_SIG_PF)(int, 
-						struct sigcontext);
+				typedef struct sigcontext xxx;
 			#else
-				typedef void (* REAL_SIG_PF)(int, 
-						struct sigcontext_struct);
+				typedef struct sigcontext_struct xxx;
 			#endif
+			typedef void (* REAL_SIG_PF)(int, xxx);
 
 			int main() {
 				REAL_SIG_PF handler;
-				struct sigcontext foo;
+				xxx foo;
 				if (0) {
 					handler(0, foo);
 				}
