@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -119,14 +119,31 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	Word				univ, value;
 	MR_Live_Type			live_type;
 	Word				type_info;
+	Word				*base_sp;
+	Word				*base_curfr;
+	Word				*type_params;
 
 	var_count = layout->MR_sll_var_count;
 	vars = &layout->MR_sll_var_info;
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
 
 	/* build up the live variable list, starting from the end */
 	restore_transient_registers();
 	univ_list = list_empty();
 	save_transient_registers();
+
+	/* 
+	** If no information on live variables is available, return the 
+	** empty list 
+	*/
+	if (layout->MR_sll_var_count <= 0) {
+		return univ_list;
+	} 
+		
+	type_params = MR_materialize_typeinfos_base(vars,
+	       	saved_regs, base_sp, base_curfr);
+    
 	for (i = var_count - 1; i >= 0; i--) {
 		/*
 		** Look up the name, the type and value
@@ -146,7 +163,7 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 		*/
 
 		if (! MR_get_type_and_value_filtered(var, saved_regs,
-			name, &type_info, &value))
+			name, type_params, &type_info, &value))
 		{
 			continue;
 		}
@@ -362,36 +379,31 @@ MR_get_type_base(const MR_Stack_Layout_Var *var,
 
 /*
 ** get_type_and_value() and get_type() will succeed to retrieve "variables"
-** that we do not want to send to the user; "variables" beginning with
-** `ModuleInfo', or `HLDS' may occur when debugging the compiler and are too
-** big to be displayed.  "Variables" beginning with `TypeInfo' denote the
-** additional parameters introduced by compiler/polymorphism.m that we don't
-** want to show neither.
-** That's why we define filtered version of get_type_and_value() and get_type()
+** beginning with `TypeInfo' and `TypeClassInfo'. As we can not print those
+** variables because of the fake arity of the type private_builtin:typeinfo/1,
+** we define filtered version of get_type_and_value() and get_type()
 ** that will fail to retrieve such variables.
 */
 
 bool
 MR_get_type_and_value_filtered(const MR_Stack_Layout_Var *var, 
-	Word *saved_regs, const char *name, Word *type_info, Word *value)
+	Word *saved_regs, const char *name, Word *type_params, 
+	Word *type_info, Word *value)
 {
 	return ((strncmp(name, "TypeInfo", 8) != 0)
-	       && (strncmp(name, "ModuleInfo", 10) != 0)
-	       && (strncmp(name, "HLDS", 4) != 0)
-	       && MR_get_type_and_value(var, saved_regs, NULL,
+	       && (strncmp(name, "TypeClassInfo", 13) != 0)
+	       && MR_get_type_and_value(var, saved_regs, type_params,
 			type_info, value));
 }
 
 
 bool
 MR_get_type_filtered(const MR_Stack_Layout_Var *var, Word *saved_regs,
-	const char *name, Word *type_info)
+	const char *name, Word *type_params, Word *type_info)
 {
 	return ((strncmp(name, "TypeInfo", 8) != 0)
 	       && (strncmp(name, "TypeClassInfo", 13) != 0)
-	       && (strncmp(name, "ModuleInfo", 10) != 0)
-	       && (strncmp(name, "HLDS", 4) != 0)
-	       && MR_get_type(var, saved_regs, NULL, type_info));
+	       && MR_get_type(var, saved_regs, type_params, type_info));
 }
 
 void

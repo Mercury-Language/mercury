@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -126,9 +126,11 @@ extern	bool	MR_get_type_base(const MR_Stack_Layout_Var *var,
 			Word *type_params, Word *type_info);
 extern	bool	MR_get_type_and_value_filtered(
 			const MR_Stack_Layout_Var *var, Word *saved_regs,
-			const char *name, Word *type_info, Word *value);
+			const char *name, Word *type_params, Word *type_info, 
+			Word *value);
 extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Var *var, 
-			Word *saved_regs, const char *name, Word *type_info);
+			Word *saved_regs, const char *name, Word *type_params, 
+			Word *type_info);
 
 /*
 ** MR_write_variable:
