@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -60,7 +60,7 @@ control_flow_graph_Op(Program) :-
 	display_graph(Graph, DotFile, PsFile).
 
  
-% :- type graph ---> list(edge(procedure, procedure)).
+% :- type graph ---> list(arc(procedure, procedure)).
 %
 %:- pred generate_control_flow_graph(graph).
 %:- mode generate_control_flow_graph(out) is det.
@@ -70,7 +70,7 @@ generate_control_flow_graph(G) :-
 	append_strings(MorphineDir, "/source/collect__control_flow_graph", 
 		CollectFile),
 	collect(CollectFile, Result),
-	Result = collected_type(_,G).
+	Result = collected_type(G).
 
 % This is the pure Morphine version of generate_control_flow_graph that
 % I originally wrote and which is about 20 times as slow as the collect 
@@ -80,7 +80,7 @@ generate_control_flow_graph(G) :-
 % 	( fget_np(port = [call, exit,redo,fail]) ->
 % 		current(proc_name = Name and arity = N),
 % 		CurrentProc = Name/N,
-% 		G1 = [edge(Proc, CurrentProc)|G0],
+% 		G1 = [arc(Proc, CurrentProc)|G0],
 % 		generate_control_flow_graph(G1, CurrentProc, G),
 % 		!
 % 	;
@@ -121,7 +121,7 @@ generate_dynamic_call_graph(G) :-
 	append_strings(MorphineDir, "/source/collect__dynamic_call_graph", 
 		CollectFile),
 	collect(CollectFile, Result),
-	Result = collected_type(_,G).
+	Result = collected_type(G).
 
 % This is the pure Morphine version:
 %
@@ -130,7 +130,7 @@ generate_dynamic_call_graph(G) :-
 % 		current(proc_name = Name and arity = N),
 % 		ancestor(Anc),
 % 		CurrentProc = Name/N,
-% 		G1 = [edge(Anc, CurrentProc)|G0],
+% 		G1 = [arc(Anc, CurrentProc)|G0],
 % 		generate_dynamic_call_graph(G1, G),
 % 		!
 % 	;
@@ -186,8 +186,11 @@ dump_proc2([X|Xs]) :-
 	dump_proc2(Xs).
 
 dump_graph([]) :- nl(dotfile).
-dump_graph([edge(X,Y)|CG]) :-
+dump_graph([arc(X,Y)|CG]) :-
 	printf(dotfile, "\t\"%w\" -> \"%w\";\n", [X,Y]),
+	dump_graph(CG).
+dump_graph([arc(X, Label, Y)|CG]) :-
+	printf(dotfile, "\t\"%w\" -> \"%w\"[label=%w];\n", [X,Y,Label]),
 	dump_graph(CG).
 
 %------------------------------------------------------------------------------%
@@ -237,7 +240,8 @@ extract_proc_list_from_graph(Graph, ProcList) :-
 	reverse(ProcList1, ProcList).
 
 extract_proc_list_from_graph2([], []).
-extract_proc_list_from_graph2([edge(Proc,_)|Graph], [Proc|ProcList]) :-
+extract_proc_list_from_graph2([Arc|Graph], [Proc|ProcList]) :-
+	( Arc = arc(Proc,_), ! ; Arc = arc(Proc,_,_)),
 	extract_proc_list_from_graph2(Graph, ProcList).
 
 
@@ -251,3 +255,5 @@ remove_dupl(L0, L) :-
 	 ;
 		L = [X|L2]
 	).   
+
+

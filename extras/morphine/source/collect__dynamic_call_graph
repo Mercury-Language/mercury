@@ -1,69 +1,62 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999-2001 INRIA/INSA/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
 % Author : Erwan Jahier <jahier@irisa.fr>
 %
-% define a monitor which is used in control_flow.op
+% Computes a dynamic call graph, namely, the sub-graph of the (static) call 
+% graph that has been exercized during an execution.
 
-:- import_module list.
+:- import_module set, stack.
 
-:- type my_proc ---> proc_name/arity.
-:- type edge ---> edge(my_proc, my_proc).
-:- type graph == list(edge).
-:- type stack == list(my_proc).
+:- type predicate ---> proc_name/arity.
+:- type arc ---> arc(predicate, int, predicate).
+:- type graph == set(arc).
 
-:- type collected_type --->  
-	collected_type(stack, graph).
+:- type accumulator_type ---> ct(stack(predicate), graph).
+:- type collected_type ---> collected_type(graph).
 
-initialize(collected_type(["main"/2], [])).
+initialize(ct(Stack, set__init)) :-
+	stack__push(stack__init, "user"/0, Stack).
 
-filter(Event, AccIn, AccOut, continue) :-
+filter(Event, Acc0, Acc, continue) :-
 	Port = port(Event),
-	AccIn = collected_type(Stack, Graph),
+	Acc0 = ct(Stack0, Graph0),
 	( 
 		Port = call
 	->
-		Proc = ancestor(Stack),
-		Proc2 = proc_name(Event) / proc_arity(Event),
-		Edge = edge(Proc, Proc2),
-		( member(Edge, Graph) ->
-			AccOut = collected_type([Proc2|Stack], Graph)
-		;
-			AccOut = collected_type([Proc2|Stack], [Edge|Graph])
-		)
+		PreviousPred = stack__top_det(Stack0),
+		CurrentPred = proc_name(Event) / proc_arity(Event),
+		Graph = promise_only_solution(
+		     update_graph(PreviousPred, CurrentPred, Graph0)),
+		Acc = ct(push(Stack0, CurrentPred), Graph)
 	;
 		Port = redo
 	->
-		Proc2 = proc_name(Event) / proc_arity(Event),
-		AccOut = collected_type([Proc2|Stack], Graph)
+		CurrentPred = proc_name(Event) / proc_arity(Event),
+		Acc = ct(push(Stack0, CurrentPred), Graph0)
 	;
-		Port = fail
+		( Port = fail ; Port = exit)
 	->
-		AccOut = collected_type(pop(Stack), Graph)
+		stack__pop_det(Stack0, _, Stack),
+		Acc = ct(Stack, Graph0)
 	;
-		Port = exit
-	->
-		AccOut = collected_type(pop(Stack), Graph)
-	;
-		AccOut = AccIn
+		% Other events 
+		Acc = Acc0
 	).
 
-:- func ancestor(stack::in) = (my_proc::out) is det.
-ancestor(Stack) = Anc :-
+:- pred update_graph(predicate, predicate, set(arc), set(arc)).
+:- mode update_graph(in, in, in, out) is cc_multi.
+update_graph(Pred0, Pred, Graph0, Graph) :-
 	(
-		Stack = [],
-		Anc = "error"/0
+	    member(arc(Pred0, N, Pred), Graph0)
+	->
+	    delete(Graph0, arc(Pred0, N, Pred), Graph1),
+	    insert(Graph1, arc(Pred0, N+1, Pred), Graph)
 	;
-		Stack = [Anc|_]
+	    insert(Graph0, arc(Pred0, 1, Pred), Graph)
 	).
 
-:- func pop(stack::in) = (stack::out) is det.
-pop(Stack0) = Stack :-
-	(
-		Stack0 = [],
-		Stack = []
-	;
-		Stack0 = [_|Stack]
-	).
+
+post_process(ct(_, Graph), collected_type(Graph)).

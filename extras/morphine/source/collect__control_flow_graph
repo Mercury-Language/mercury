@@ -1,37 +1,35 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999-2001 INRIA/INSA/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
 % Author : Erwan Jahier <jahier@irisa.fr>
 %
-% define a monitor which is used in control_flow.op
+% Computes the control flow graph of an execution. 
 
-:- import_module list.
+:- import_module set.
 
-:- type my_proc ---> proc_name/arity.
-:- type edge ---> edge(my_proc, my_proc).
-:- type graph == list(edge).
+:- type predicate ---> proc_name/arity.
+:- type arc ---> arc(predicate, predicate).
+:- type graph == set(arc).
 
-:- type collected_type --->  
-	collected_type(my_proc, graph).
+:- type accumulator_type ---> ct(predicate, graph).
+:- type collected_type ---> collected_type(graph).
 
-initialize(collected_type("main"/2, [])).
+initialize(ct("user"/0, set__init)).
 
-filter(Event, AccIn, AccOut, continue) :-
+filter(Event, Acc0, Acc, continue) :-
 	Port = port(Event),
-	AccIn = collected_type(Proc, Graph),
 	( 
-		not (Port = call ; Port = exit ; Port = redo ; Port = fail)
+		(Port = call ; Port = exit ; Port = fail ; Port = redo)
 	->
-		AccOut = AccIn
+		Acc0 = ct(PreviousPred, Graph0),
+		CurrentPred = proc_name(Event) / proc_arity(Event),
+		Arc = arc(PreviousPred, CurrentPred),
+		set__insert(Graph0, Arc, Graph),
+		Acc = ct(CurrentPred, Graph)
 	;
-		Proc2 = proc_name(Event) / proc_arity(Event),
-		Edge = edge(Proc, Proc2),
-		( member(Edge, Graph) ->
-			AccOut = AccIn
-		;
-			AccOut = collected_type(Proc2, [Edge|Graph])
-		)
+		Acc = Acc0
 	).
 
+post_process(ct(_, Graph), collected_type(Graph)).
