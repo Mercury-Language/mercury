@@ -279,7 +279,7 @@
 		io__state::di, io__state::uo) is det.
 
 :- type write_var(T) == pred(var(T), io__state, io__state).
-:- inst write_var = (pred(in, di, uo) is det).
+:- inst write_var == (pred(in, di, uo) is det).
 
 	% Apply the variable substitution to the ROBDD.
 :- func rename_vars(func(var(T)) = var(T), robdd(T)) = robdd(T).
