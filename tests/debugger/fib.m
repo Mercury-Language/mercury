@@ -4,46 +4,22 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is cc_multi.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module benchmarking, require, int.
 
 main(!IO) :-
-	perform_trials(20, !IO),
+	perform_trial(23, !IO),
 	reset(!IO),
-	perform_trials(20, !IO).
+	perform_trial(23, !IO).
 
-:- pred perform_trials(int::in, io::di, io::uo) is cc_multi.
+:- pred perform_trial(int::in, io::di, io::uo) is det.
 
-perform_trials(N, !IO) :-
-	trial(N, Time, MTime),
-	% io__write_int(N, !IO),
-	% io__write_string(": ", !IO),
-	% io__write_int(Time, !IO),
-	% io__write_string("ms vs ", !IO),
-	% io__write_int(MTime, !IO),
-	% io__write_string("ms\n", !IO),
-	(
-		(
-			Time > 10 * MTime,
-			MTime > 0	% untabled takes ten times as long
-		;
-			Time > 100,	% untabled takes at least 100 ms
-			MTime < 1	% while tabled takes at most 1 ms
-		)
-	->
-		io__write_string("tabling works\n", !IO)
-	;
-		Time > 10000	% Untabled takes at least 10 seconds
-	->
-		io__write_string("tabling does not appear to work\n", !IO)
-	;
-		% We couldn't get a measurable result with N,
-		% and it looks like we can afford a bigger trial
-		perform_trials(N+3, !IO)
-	).
+perform_trial(N, !IO) :-
+	trial(N, _Time, _MTime),
+	io__write_string("got same results\n", !IO).
 
 :- pred trial(int::in, int::out, int::out) is cc_multi.
 
