@@ -6,7 +6,7 @@
 
 :- module llds.		
 
-:- import_module io, list, string, int. % and float, eventually.
+:- import_module io, list, string, int, require. % and float, eventually.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,6 +30,9 @@
 			;	call(code_addr, label)  % pred, continuation
 			;	tailcall(code_addr)
 			;	proceed
+			;	succeed
+			;	fail
+			;	redo
 			;	label(label)
 			;	goto(label)
 			;	if_tag(reg, tag, label)
@@ -277,7 +280,11 @@ output_label(label(Module, Pred, Arity, Mode, Num)) -->
 :- mode output_reg(i, di, uo).
 
 output_reg(r(N)) -->
-	{ require((N >= 1, N =< 32), "Reg number out of range") },
+	{ (N < 1, N > 32) ->
+		error("Reg number out of range")
+	;
+		true
+	},
 	io__write_string("r"),
 	io__write_int(N).
 output_reg(succip) -->
@@ -287,7 +294,11 @@ output_reg(sp) -->
 output_reg(hp) -->
 	io__write_string("LVALUE_CAST(Word,hp)").
 output_reg(stackvar(N)) -->
-	{ require(N >= 0, "stack var out of range") },
+	{ (N < 0) ->
+		error("stack var out of range")
+	;
+		true
+	},
 	io__write_string("stackvar("),
 	io__write_int(N),
 	io__write_string(")").
