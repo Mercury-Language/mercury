@@ -115,7 +115,7 @@ then
 	RMSTAGECMD="/bin/rm -fr"
 fi
 
-if $sicstus
+if $test_sicstus
 then
 	echo "Building SICStus stage 1..." 1>&2
 	if 
