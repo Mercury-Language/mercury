@@ -944,75 +944,11 @@ parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
-	% The following is a temporary and gross hack to handle `is' in
+	% The following is a temporary hack to handle `is' in
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [Destination, Expression], VarSet0, Goal, VarSet) :-
-	parse_expression(Expression, Destination, VarSet0, Goal, VarSet).
-
-:- pred parse_expression(term, term, varset, goal_expr, varset).
-:- mode parse_expression(in, in, in, out, out) is semidet.
-
-parse_expression(Expression, Destination, VarSet0, Goal, VarSet) :-
-	( 
-		Expression = term__functor(term__atom(Operator), Args0,
-						Context),
-		list__length(Args0, Arity),
-		parse_arith_expression(Operator, Arity, BuiltinPredName)
-	->
-		parse_expression_list(Args0, VarSet0, Context,
-					Args1, ArgGoal, VarSet),
-		list__append(Args1, [Destination], Args),
-		ExprGoal = call(unqualified(BuiltinPredName), Args) - Context,
-			%%% XXX or qualified("builtin",  )??
-		Goal = (ArgGoal, ExprGoal)
-	;
-		VarSet = VarSet0,
-		(
-			Destination = term__variable(Var),
-			Expression = term__variable(Var)
-		->
-			Goal = true
-		;
-			Goal = unify(Destination, Expression)
-		)
-	).
-
-:- pred parse_expression_list(list(term), varset, term__context,
-				list(term), goal, varset).
-:- mode parse_expression_list(in, in, in, out, out, out) is semidet.
-
-parse_expression_list([], VarSet, Context, [], true - Context, VarSet).
-parse_expression_list([Expr0 | Exprs0], VarSet0, Context,
-			[Expr | Exprs], Goal - Context, VarSet) :-
-	( Expr0 = term__variable(_) ->
-		Expr = Expr0,
-		VarSet1 = VarSet0
-	;
-		varset__new_var(VarSet0, Var, VarSet1),
-		Expr = term__variable(Var)
-	),
-	parse_expression(Expr0, Expr, VarSet1, ThisGoal, VarSet2),
-	Goal = (ThisGoal - Context, Goals),
-	parse_expression_list(Exprs0, VarSet2, Context, Exprs, Goals, VarSet).
-
-:- pred parse_arith_expression(string, int, string).
-:- mode parse_arith_expression(in, in, out) is semidet.
-
-parse_arith_expression("+", 2, "builtin_plus").
-parse_arith_expression("+", 1, "builtin_unary_plus").
-parse_arith_expression("-", 2, "builtin_minus").
-parse_arith_expression("-", 1, "builtin_unary_minus").
-parse_arith_expression("*", 2, "builtin_times").
-parse_arith_expression("//", 2, "builtin_div").
-parse_arith_expression("mod", 2, "builtin_mod").
-parse_arith_expression("<<", 2, "builtin_left_shift").
-parse_arith_expression(">>", 2, "builtin_right_shift").
-parse_arith_expression("\\/", 2, "builtin_bit_or").
-parse_arith_expression("/\\", 2, "builtin_bit_and").
-parse_arith_expression("^", 2, "builtin_bit_xor").
-parse_arith_expression("\\", 1, "builtin_bit_neg").
+parse_goal_2("is", [A,B], V, unify(A,B), V).
 
 :- pred parse_some_vars_goal(term, varset, vars, goal, varset).
 :- mode parse_some_vars_goal(in, in, out, out, out) is det.
