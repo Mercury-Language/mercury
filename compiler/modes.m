@@ -130,8 +130,15 @@ a variable live if its value will be used later on in the computation.
 :- import_module hlds_module, hlds_pred, instmap.
 :- import_module bool, io.
 
-:- pred modecheck(module_info, module_info, io__state, io__state).
-:- mode modecheck(in, out, di, uo) is det.
+	% modecheck(HLDS0, HLDS, UnsafeToContinue):
+	% Perform mode inference and checking for a whole module.
+	% UnsafeToContinue = yes means that mode inference
+	% was halted prematurely, due to an error, and that
+	% we should therefore not perform type-checking, because we
+	% might get internal errors.
+
+:- pred modecheck(module_info, module_info, bool, io__state, io__state).
+:- mode modecheck(in, out, out, di, uo) is det.
 
 	% Mode-check the code for single predicate.
 
@@ -258,14 +265,14 @@ a variable live if its value will be used later on in the computation.
 
 %-----------------------------------------------------------------------------%
 
-modecheck(Module0, Module) -->
+modecheck(Module0, Module, UnsafeToContinue) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
-	check_pred_modes(Module0, Module),
+	check_pred_modes(Module0, Module, UnsafeToContinue),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -274,35 +281,38 @@ modecheck(Module0, Module) -->
 	
 	% Mode-check the code for all the predicates in a module.
 
-:- pred check_pred_modes(module_info, module_info, io__state, io__state).
-:- mode check_pred_modes(in, out, di, uo) is det.
+:- pred check_pred_modes(module_info, module_info, bool, io__state, io__state).
+:- mode check_pred_modes(in, out, out, di, uo) is det.
 
-check_pred_modes(ModuleInfo0, ModuleInfo) -->
+check_pred_modes(ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	{ MaxIterations = 30 }, % XXX FIXME should be command-line option
 	modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
-							ModuleInfo1),
+					ModuleInfo1, UnsafeToContinue),
 	write_mode_inference_messages(PredIds, ModuleInfo1),
 	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
 
 	% Iterate over the list of pred_ids in a module.
 
 :- pred modecheck_to_fixpoint(list(pred_id), int, module_info, 
-			module_info, io__state, io__state).
-:- mode modecheck_to_fixpoint(in, in, in, out, di, uo) is det.
+			module_info, bool, io__state, io__state).
+:- mode modecheck_to_fixpoint(in, in, in, out, out, di, uo) is det.
 
-modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0, ModuleInfo) -->
+modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0,
+		ModuleInfo, UnsafeToContinue) -->
 	{ copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo1) },
 	modecheck_pred_modes_2(PredIds, ModuleInfo1, ModuleInfo2, no, Changed,
 				0, NumErrors),
 	% stop if we have reached a fixpoint or found any errors
 	( { Changed = no ; NumErrors > 0 } ->
-		{ ModuleInfo = ModuleInfo2 }
+		{ ModuleInfo = ModuleInfo2 },
+		{ UnsafeToContinue = Changed }
 	;
 		% stop if we exceed the iteration limit
 		( { MaxIterations =< 1 } ->
 			report_max_iterations_exceeded,
-			{ ModuleInfo = ModuleInfo2 }
+			{ ModuleInfo = ModuleInfo2 },
+			{ UnsafeToContinue = yes }
 		;
 			globals__io_lookup_bool_option(debug_modes, DebugModes),
 			( { DebugModes = yes } ->
@@ -313,7 +323,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, ModuleInfo0, ModuleInfo) -->
 			),
 			{ MaxIterations1 is MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
-					ModuleInfo2, ModuleInfo)
+				ModuleInfo2, ModuleInfo, UnsafeToContinue)
 		)
 	).
 

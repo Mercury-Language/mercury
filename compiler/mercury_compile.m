@@ -458,45 +458,51 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
-		FoundModeError),
+		FoundModeError, UnsafeToContinue),
 	mercury_compile__maybe_dump_hlds(HLDS5, "5", "modecheck"),
 
-	mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
-	mercury_compile__maybe_dump_hlds(HLDS6, "6", "switch_detect"),
-
-	mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7),
-	mercury_compile__maybe_dump_hlds(HLDS7, "7", "cse"),
-
-	mercury_compile__check_determinism(HLDS7, Verbose, Stats, HLDS8,
-		FoundDetError),
-	mercury_compile__maybe_dump_hlds(HLDS8, "8", "determinism"),
-
-	mercury_compile__check_unique_modes(HLDS8, Verbose, Stats, HLDS9,
-		FoundUniqError),
-	mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"),
-
-	mercury_compile__simplify(HLDS9, Verbose, Stats, HLDS10),
-	mercury_compile__maybe_dump_hlds(HLDS10, "10", "simplify"),
-
-	%
-	% work out whether we encountered any errors
-	%
-	(
-		{ FoundModeError = no },
-		{ FoundDetError = no },
-		{ FoundUniqError = no }
-	->
-		{ FoundError = no },
-		globals__io_lookup_bool_option(intermodule_optimization,
-							Intermod),
-		{ Intermod = yes ->
-			intermod__adjust_pred_import_status(HLDS10, HLDS11)
-		;
-			HLDS11 = HLDS10
-		}
-	;
+	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS11 = HLDS10 }
+		{ HLDS11 = HLDS5 }
+	;
+		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
+		mercury_compile__maybe_dump_hlds(HLDS6, "6", "switch_detect"),
+
+		mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7),
+		mercury_compile__maybe_dump_hlds(HLDS7, "7", "cse"),
+
+		mercury_compile__check_determinism(HLDS7, Verbose, Stats, HLDS8,
+			FoundDetError),
+		mercury_compile__maybe_dump_hlds(HLDS8, "8", "determinism"),
+
+		mercury_compile__check_unique_modes(HLDS8, Verbose, Stats,
+			HLDS9, FoundUniqError),
+		mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"),
+
+		mercury_compile__simplify(HLDS9, Verbose, Stats, HLDS10),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "simplify"),
+
+		%
+		% work out whether we encountered any errors
+		%
+		(
+			{ FoundModeError = no },
+			{ FoundDetError = no },
+			{ FoundUniqError = no }
+		->
+			{ FoundError = no },
+			globals__io_lookup_bool_option(intermodule_optimization,
+								Intermod),
+			{ Intermod = yes ->
+				intermod__adjust_pred_import_status(HLDS10,
+					HLDS11)
+			;
+				HLDS11 = HLDS10
+			}
+		;
+			{ FoundError = yes },
+			{ HLDS11 = HLDS10 }
+		)
 	),
 
 	{ HLDS20 = HLDS11 },
@@ -727,13 +733,14 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__modecheck(module_info, bool, bool, module_info, bool,
-	io__state, io__state).
-:- mode mercury_compile__modecheck(in, in, in, out, out, di, uo) is det.
+:- pred mercury_compile__modecheck(module_info, bool, bool,
+				module_info, bool, bool, io__state, io__state).
+:- mode mercury_compile__modecheck(in, in, in, out, out, out, di, uo) is det.
 
-mercury_compile__modecheck(HLDS0, Verbose, Stats, HLDS, FoundModeError) -->
+mercury_compile__modecheck(HLDS0, Verbose, Stats, HLDS, FoundModeError,
+		UnsafeToContinue) -->
 	{ module_info_num_errors(HLDS0, NumErrors0) },
-	modecheck(HLDS0, HLDS),
+	modecheck(HLDS0, HLDS, UnsafeToContinue),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors \= NumErrors0 } ->
 		{ FoundModeError = yes },
