@@ -16,12 +16,12 @@
 % disable some of the checking by compiling with `--intermodule-optimization'
 % and with the C macro symbol `ML_OMIT_ARRAY_BOUNDS_CHECKS'
 % defined, e.g. by using `MCFLAGS=--intermodule-optimization' and
-% `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
+% `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
 % or by compiling with the command
 % `mmc --intermodule-optimization --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS'.
 %
 % For maximum performance, all bounds checking can be disabled by
-% recompiling this module using `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
+% recompiling this module using `CFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
 % or `mmc --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS' as above. You can
 % either recompile the entire library, or just copy `array.m' to your
 % application's source directory and link with it directly instead of as
