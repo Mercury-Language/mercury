@@ -97,23 +97,54 @@
 :- mode try_store(pred(out, di, uo) is cc_multi,
 	out(cannot_fail), di, uo) is cc_multi.
 
+	% try_all(Goal, MaybeException, Solutions):
+	%
+	% Operational semantics:
+	%	Try to find all solutions to Goal(S), using backtracking.
+	%	Collect the solutions found in Solutions, until the goal
+	%	either throws an exception or fails.  If it throws an
+	%	exception E then MaybeException = yes(E), otherwise
+	%	MaybeException = no.
+	%
+	% Declaratively it is equivalent to:
+	%	all [S] (list__member(S, Solutions) => Goal(S)),
+	%	(
+	%		MaybeException = yes(_)
+	%	;
+	%		MaybeException = no,
+	%		all [S] (Goal(S) => list__member(S, Solutions))
+	%	).
+
+:- pred try_all(pred(T), maybe(univ), list(T)).
+:- mode try_all(pred(out) is det,     out, out(nil_or_singleton_list))
+	is cc_multi.
+:- mode try_all(pred(out) is semidet, out, out(nil_or_singleton_list))
+	is cc_multi.
+:- mode try_all(pred(out) is multi,   out, out) is cc_multi.
+:- mode try_all(pred(out) is nondet,  out, out) is cc_multi.
+
+:- inst [] ---> [].
+:- inst nil_or_singleton_list ---> [] ; [ground].
+
 	% try_all(Goal, ResultList):
+	%
+	% NOTE: This predicate has been superseded by try_all/3 and is now
+	% obsolete.  It may be removed in a future release.
 	%
 	% Operational semantics:
 	%	Try to find all solutions to Goal(R), using backtracking.
 	%	Collect the solutions found in the ResultList, until
 	%	the goal either throws an exception or fails.
-	%	If it throws an exception, put that exception at the end of
-	%	the ResultList.
+	%	If it throws an exception, put that exception at the start
+	%	of the ResultList.
 	%
 	% Declaratively:
 	%       try_all(Goal, ResultList) <=>
 	%		(if
-	%			list__reverse(ResultList,
-	%				[Last | AllButLast]),
-	%			Last = exception(_)
+	%			ResultList = [First | AllButFirst],
+	%			First = exception(_)
 	%		then
-	%			all [M] (list__member(M, AllButLast) =>
+	%			all [M] (list__member(M, AllButFirst) =>
 	%				(M = succeeded(R), Goal(R))),
 	%		else
 	%			all [M] (list__member(M, ResultList) =>
@@ -123,13 +154,14 @@
 	%					ResultList)),
 	%		).
 
+:- pragma obsolete(exception.try_all/2).
+
 :- pred try_all(pred(T), list(exception_result(T))).
 :- mode try_all(pred(out) is det,     out(try_all_det))     is cc_multi.
 :- mode try_all(pred(out) is semidet, out(try_all_semidet)) is cc_multi.
 :- mode try_all(pred(out) is multi,   out(try_all_multi))   is cc_multi.
 :- mode try_all(pred(out) is nondet,  out(try_all_nondet))  is cc_multi.
 
-:- inst [] ---> [].
 :- inst try_all_det ---> [cannot_fail].
 :- inst try_all_semidet ---> [] ; [cannot_fail].
 :- inst try_all_multi ---> [cannot_fail | try_all_nondet].
@@ -137,12 +169,23 @@
 
 	% incremental_try_all(Goal, AccumulatorPred, Acc0, Acc):
 	%
-	% Same as
-	%	try_all(Goal, Results),
-	%	std_util__unsorted_aggregate(Results, AccumulatorPred,
-	%		Acc0, Acc)
-	% except that operationally, the execution of try_all
-	% and std_util__unsorted_aggregate is interleaved.
+	% Declaratively it is equivalent to:
+	%	try_all(Goal, MaybeException, Solutions),
+	%	list__map(wrap_success, Solutions, Results),
+	%	list__foldl(AccumulatorPred, Results, Acc0, Acc1),
+	%	(
+	%		MaybeException = no,
+	%		Acc = Acc1
+	%	;
+	%		MaybeException = yes(Exception),
+	%		AccumulatorPred(exception(Exception), Acc1, Acc)
+	%	)
+	%
+	% where (wrap_success(S, R) <=> R = succeeded(S)).
+	%
+	% Operationally, however, incremental_try_all/5 will call
+	% AccumulatorPred for each solution as it is obtained, rather than
+	% first building a list of the solutions.
 
 :- pred incremental_try_all(pred(T), pred(exception_result(T), A, A), A, A).
 :- mode incremental_try_all(pred(out) is nondet,
@@ -219,15 +262,15 @@
 :- mode try_store(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
 				    out(cannot_fail), di, uo) is cc_multi.
 
-:- pred try_all(determinism,        pred(T), list(exception_result(T))).
+:- pred try_all(determinism,        pred(T), maybe(univ), list(T)).
 :- mode try_all(in(bound(det)),	    pred(out) is det,
-				    	     out(try_all_det)) is cc_multi.
+				    out, out(nil_or_singleton_list))
+				    is cc_multi.
 :- mode try_all(in(bound(semidet)), pred(out) is semidet,
-				    	     out(try_all_semidet)) is cc_multi.
-:- mode try_all(in(bound(multi)),   pred(out) is multi,
-				    	     out(try_all_multi)) is cc_multi.
-:- mode try_all(in(bound(nondet)),  pred(out) is nondet,
-				    	     out(try_all_nondet)) is cc_multi.
+				    out, out(nil_or_singleton_list))
+				    is cc_multi.
+:- mode try_all(in(bound(multi)),   pred(out) is multi, out, out) is cc_multi.
+:- mode try_all(in(bound(nondet)),  pred(out) is nondet, out, out) is cc_multi.
 
 :- type determinism
 	--->	det
@@ -447,42 +490,78 @@ try(cc_nondet, Goal, Result) :-
 				wrap_success_or_failure(Goal, R)),
 		wrap_exception, Result).
 
-/**********
-% This doesn't work, due to
-% 	bash$ mmc exception.m
-% 	Software error: sorry, not implemented: taking address of pred
-% 	`wrap_success_or_failure/2' with multiple modes.
-% Instead, we need to switch on the Detism argument.
+% We switch on the Detism argument for a similar reason to above.
 
-try_all(Goal, ResultList) :-
-	unsorted_solutions(builtin_catch(wrap_success(Goal), wrap_exception),
-		ResultList).
-**********/
-
-try_all(Goal, ResultList) :-
+try_all(Goal, MaybeException, Solutions) :-
 	get_determinism(Goal, Detism),
-	try_all(Detism, Goal, ResultList).
+	try_all(Detism, Goal, MaybeException, Solutions).
 
-try_all(det, Goal, [Result]) :-
-	try(det, Goal, Result).
-try_all(semidet, Goal, ResultList) :-
-	try(semidet, Goal, Result),
-	( Result = failed, ResultList = []
-	; Result = succeeded(_), ResultList = [Result]
-	; Result = exception(_), ResultList = [Result]
+try_all(det, Goal, MaybeException, Solutions) :-
+	try(det, Goal, Result),
+	(
+		Result = succeeded(Solution),
+		Solutions = [Solution],
+		MaybeException = no
+	;
+		Result = exception(Exception),
+		Solutions = [],
+		MaybeException = yes(Exception)
 	).
-try_all(multi, Goal, ResultList) :-
+try_all(semidet, Goal, MaybeException, Solutions) :-
+	try(semidet, Goal, Result),
+	(
+		Result = failed,
+		Solutions = [],
+		MaybeException = no
+	;
+		Result = succeeded(Solution),
+		Solutions = [Solution],
+		MaybeException = no
+	;
+		Result = exception(Exception),
+		Solutions = [],
+		MaybeException = yes(Exception)
+	).
+try_all(multi, Goal, MaybeException, Solutions) :-
 	unsorted_solutions((pred(Result::out) is multi :-
 		catch_impl((pred(R::out) is multi :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
-		ResultList).
-try_all(nondet, Goal, ResultList) :-
+		ResultList),
+	list__foldl2(process_one_exception_result, ResultList,
+		no, MaybeException, [], Solutions).
+try_all(nondet, Goal, MaybeException, Solutions) :-
 	unsorted_solutions((pred(Result::out) is nondet :-
 		catch_impl((pred(R::out) is nondet :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
-		ResultList).
+		ResultList),
+	list__foldl2(process_one_exception_result, ResultList,
+		no, MaybeException, [], Solutions).
+
+:- pred process_one_exception_result(exception_result(T)::in,
+	maybe(univ)::in, maybe(univ)::out, list(T)::in, list(T)::out) is det.
+
+process_one_exception_result(exception(E), !MaybeException, !Solutions) :-
+	% Ignore all but the last exception that is in the list.  This is
+	% okay since there should never be more than one.
+	!.MaybeException = _,
+	!:MaybeException = yes(E).
+process_one_exception_result(succeeded(S), !MaybeException, !Solutions) :-
+	!:Solutions = [S | !.Solutions].
+process_one_exception_result(failed, !MaybeException, !Solutions) :-
+	error("exception.process_one_exception_result: unexpected failure").
+
+try_all(Goal, Results) :-
+	try_all(Goal, MaybeException, Solutions),
+	Results0 = list.map((func(S) = succeeded(S)), Solutions),
+	(
+		MaybeException = no,
+		Results = Results0
+	;
+		MaybeException = yes(Exception),
+		Results = [exception(Exception) | Results0]
+	).
 
 incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 	unsorted_aggregate((pred(Result::out) is nondet :-

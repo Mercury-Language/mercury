@@ -1,12 +1,36 @@
-det_throw: [exception(univ_cons("det_throw"))]
-det_succeed: [succeeded("det_succeed")]
-semidet_throw: [exception(univ_cons("semidet_throw"))]
-semidet_succeed: [succeeded("semidet_succeed")]
-semidet_fail: []
-multi_throw: [exception(univ_cons("multi_throw"))]
-multi_succeed: [succeeded("multi_succeed 2"), succeeded("multi_succeed 1")]
-multi_succeed_then_throw: [exception(univ_cons("multi_succeed_then_throw 3")), succeeded("multi_succeed_then_throw 2"), succeeded("multi_succeed_then_throw 1")]
-nondet_throw: [exception(univ_cons("nondet_throw"))]
-nondet_succeed: [succeeded("nondet_succeed 2"), succeeded("nondet_succeed 1")]
-nondet_fail: []
-nondet_succeed_then_throw: [exception(univ_cons("nondet_succeed_then_throw 3")), succeeded("nondet_succeed_then_throw 2"), succeeded("nondet_succeed_then_throw 1")]
+det_throw:
+	yes(univ_cons("det_throw"))
+	[]
+det_succeed:
+	no
+	["det_succeed"]
+semidet_throw:
+	yes(univ_cons("semidet_throw"))
+	[]
+semidet_succeed:
+	no
+	["semidet_succeed"]
+semidet_fail:
+	no
+	[]
+multi_throw:
+	yes(univ_cons("multi_throw"))
+	[]
+multi_succeed:
+	no
+	["multi_succeed 1", "multi_succeed 2"]
+multi_succeed_then_throw:
+	yes(univ_cons("multi_succeed_then_throw 3"))
+	["multi_succeed_then_throw 1", "multi_succeed_then_throw 2"]
+nondet_throw:
+	yes(univ_cons("nondet_throw"))
+	[]
+nondet_succeed:
+	no
+	["nondet_succeed 1", "nondet_succeed 2"]
+nondet_fail:
+	no
+	[]
+nondet_succeed_then_throw:
+	yes(univ_cons("nondet_succeed_then_throw 3"))
+	["nondet_succeed_then_throw 1", "nondet_succeed_then_throw 2"]

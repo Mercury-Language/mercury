@@ -205,6 +205,9 @@ Changes to the Mercury standard library:
 * exception.m now contains a predicate throw_if_near_stack_limits which
   can be used to prevent an application running out of stack space.
 
+* We've changed the interface of exception.try_all/2 to separate
+  exceptional results from normal results.
+
 * We've added predicates multi_map.to_flat_assoc_list/2 and
   multi_map.from_flat_assoc_list/2. 
 

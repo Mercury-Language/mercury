@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,38 +14,50 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util, exception, list, int.
+:- import_module std_util, exception, list, int, string.
 
 main --> 
-	{ try_all(det_throw, DetThrowResult) },
-	print("det_throw: "), print(DetThrowResult), nl,
-	{ try_all(det_succeed, DetSucceedResult) },
-	print("det_succeed: "), print(DetSucceedResult), nl,
+	{ try_all(det_throw, DetThrowExcp, DetThrowSols) },
+	print_result("det_throw", DetThrowExcp, DetThrowSols),
+	{ try_all(det_succeed, DetSucceedExcp, DetSucceedSols) },
+	print_result("det_succeed", DetSucceedExcp, DetSucceedSols),
 
-	{ try_all(semidet_throw, SemidetThrowResult) },
-	print("semidet_throw: "), print(SemidetThrowResult), nl,
-	{ try_all(semidet_succeed, SemidetSucceedResult) },
-	print("semidet_succeed: "), print(SemidetSucceedResult), nl,
-	{ try_all(semidet_fail, SemidetFailResult) },
-	print("semidet_fail: "), print(SemidetFailResult), nl,
+	{ try_all(semidet_throw, SemidetThrowExcp, SemidetThrowSols) },
+	print_result("semidet_throw", SemidetThrowExcp, SemidetThrowSols),
+	{ try_all(semidet_succeed, SemidetSucceedExcp, SemidetSucceedSols) },
+	print_result("semidet_succeed", SemidetSucceedExcp, SemidetSucceedSols),
+	{ try_all(semidet_fail, SemidetFailExcp, SemidetFailSols) },
+	print_result("semidet_fail", SemidetFailExcp, SemidetFailSols),
 
-	{ try_all(multi_throw, MultiThrowResult) },
-	print("multi_throw: "), print(MultiThrowResult), nl,
-	{ try_all(multi_succeed, MultiSucceedResult) },
-	print("multi_succeed: "), print(MultiSucceedResult), nl,
-	{ try_all(multi_succeed_then_throw, MultiSucceedThenThrowResult) },
-	print("multi_succeed_then_throw: "),
-	print(MultiSucceedThenThrowResult), nl,
+	{ try_all(multi_throw, MultiThrowExcp, MultiThrowSols) },
+	print_result("multi_throw", MultiThrowExcp, MultiThrowSols),
+	{ try_all(multi_succeed, MultiSucceedExcp, MultiSucceedSols) },
+	print_result("multi_succeed", MultiSucceedExcp, MultiSucceedSols),
+	{ try_all(multi_succeed_then_throw, MultiSucceedThenThrowExcp,
+		MultiSucceedThenThrowSols) },
+	print_result("multi_succeed_then_throw", MultiSucceedThenThrowExcp,
+		MultiSucceedThenThrowSols),
 
-	{ try_all(nondet_throw, NondetThrowResult) },
-	print("nondet_throw: "), print(NondetThrowResult), nl,
-	{ try_all(nondet_succeed, NondetSucceedResult) },
-	print("nondet_succeed: "), print(NondetSucceedResult), nl,
-	{ try_all(nondet_fail, NondetFailResult) },
-	print("nondet_fail: "), print(NondetFailResult), nl,
-	{ try_all(nondet_succeed_then_throw, NondetSucceedThenThrowResult) },
-	print("nondet_succeed_then_throw: "),
-	print(NondetSucceedThenThrowResult), nl.
+	{ try_all(nondet_throw, NondetThrowExcp, NondetThrowSols) },
+	print_result("nondet_throw", NondetThrowExcp, NondetThrowSols),
+	{ try_all(nondet_succeed, NondetSucceedExcp, NondetSucceedSols) },
+	print_result("nondet_succeed", NondetSucceedExcp, NondetSucceedSols),
+	{ try_all(nondet_fail, NondetFailExcp, NondetFailSols) },
+	print_result("nondet_fail", NondetFailExcp, NondetFailSols),
+	{ try_all(nondet_succeed_then_throw, NondetSucceedThenThrowExcp,
+		NondetSucceedThenThrowSols) },
+	print_result("nondet_succeed_then_throw", NondetSucceedThenThrowExcp,
+		NondetSucceedThenThrowSols).
+
+:- pred print_result(string::in, maybe(univ)::in, list(string)::in,
+	io::di, io::uo) is det.
+
+print_result(Name, Excp, Sols) -->
+	print(Name ++ ":\n\t"),
+	print(Excp),
+	print("\n\t"),
+	print(Sols),
+	nl.
 
 :- pred det_throw(string::out) is det.
 det_throw(_) :- throw("det_throw").
