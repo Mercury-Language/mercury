@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -925,12 +925,13 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
-modecheck_goal_expr(conj(List0), _GoalInfo0, conj(List)) -->
+modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "conj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ List = [] }
+		{ Goal = conj([]) }
 	;
-		modecheck_conj_list(List0, List)
+		modecheck_conj_list(List0, List),
+		{ conj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo) }
 	),
 	mode_checkpoint(exit, "conj").
 
@@ -961,16 +962,17 @@ modecheck_goal_expr(par_conj(List0, SM), GoalInfo0, par_conj(List, SM)) -->
 	instmap__unify(NonLocals, InstMapNonlocalList),
 	mode_checkpoint(exit, "par_conj").
 
-modecheck_goal_expr(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
+modecheck_goal_expr(disj(List0, SM), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ List = [] },
+		{ Goal = disj(List0, SM) },
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		modecheck_disj_list(List0, List, InstMapList),
-		instmap__merge(NonLocals, InstMapList, disj)
+		instmap__merge(NonLocals, InstMapList, disj),
+		{ disj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo) }
 	),
 	mode_checkpoint(exit, "disj").
 
@@ -1450,12 +1452,19 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 :- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_disj_list([], [], []) --> [].
-modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
+modecheck_disj_list([Goal0 | Goals0], Goals, [InstMap | InstMaps]) -->
 	mode_info_dcg_get_instmap(InstMap0),
 	modecheck_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),
-	modecheck_disj_list(Goals0, Goals, InstMaps).
+	modecheck_disj_list(Goals0, Goals1, InstMaps),
+	%
+	% If Goal is a nested disjunction,
+	% then merge it with the outer disjunction.
+	% If Goal is `fail', this will delete it.
+	%
+	{ goal_to_disj_list(Goal, DisjList) },
+	{ list__append(DisjList, Goals1, Goals) }.
 
 :- pred modecheck_case_list(list(case), prog_var, list(case), list(instmap),
 				mode_info, mode_info).

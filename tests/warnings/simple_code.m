@@ -57,6 +57,8 @@ fail_pred :- fail.
 obsolete.
 
 % This should give a warning about the second disjunct never succeeding.
+% XXX Currently it doesn't, because mode analysis simplifies away the
+% whole disjunction.
 :- pred r(int, int).
 :- mode r(in(bound(1)), out(bound(42))) is det.
 
