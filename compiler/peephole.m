@@ -161,7 +161,7 @@ peephole__match(if_val(Rval, label(Target)), Comment, _, _, Instrs0, Instrs) :-
 			Instrs = Instrs0
 		)
 	;
-		opt_util__skip_comments_livevals(Instrs0, Instrs1),
+		opt_util__skip_comments(Instrs0, Instrs1),
 		( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
 			opt_util__is_this_label_next(Target, Instrs2, _),
 			code_util__neg_rval(Rval, NotRval),
