@@ -125,6 +125,7 @@
 		#	compiler/handle_options.m
 		#	scripts/ml.in
 
+	    gc_method=none
 	    grade_pieces=`echo $grade | tr '.' ' '`
 	    for grade_piece in $grade_pieces
 	    do
