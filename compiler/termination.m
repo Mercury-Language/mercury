@@ -90,9 +90,7 @@
 %-----------------------------------------------------------------------------%
 
 termination__pass(Module0, Module) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_get_termination_norm(TermNorm),
-	maybe_write_string(Verbose, "% Checking termination...\n"),
 	{ module_info_ensure_dependency_info(Module0, Module1) },
 	{ module_info_predids(Module1, PredIds) },
 
@@ -112,10 +110,7 @@ termination__pass(Module0, Module) -->
 		termination__make_opt_int(PredIds, Module)
 	;
 		[]
-	),
-
-	maybe_write_string(Verbose, "% Termination checking done.\n").
-
+	).
 
 % This predicate sets the functor info depending on the value of the
 % termination_norm option. The functor info field stores the weight which
@@ -526,7 +521,7 @@ change_procs_const([ProcId | ProcIds], MaybeFind, Replace, ProcTable0,
 :- mode termination__make_opt_int(in, in, di, uo) is det.
 termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
-	{ string__append(ModuleName, ".opt", OptFileName) },
+	{ string__append(ModuleName, ".opt.tmp", OptFileName) },
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) } ->
 		io__set_output_stream(OptFile, OldStream),

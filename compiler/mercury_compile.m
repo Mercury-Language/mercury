@@ -978,6 +978,7 @@ mercury_compile__maybe_termination(HLDS0, Verbose, Stats, HLDS) -->
 	->
 		maybe_write_string(Verbose, "% Detecting termination...\n"),
 		termination__pass(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% Termination checking done.\n"),
 		maybe_report_stats(Stats)
 	;
 		{ HLDS = HLDS0 }
