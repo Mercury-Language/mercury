@@ -19,6 +19,12 @@ SUBDIRS=
 TESTS_DIR=../..
 include $(TESTS_DIR)/Mmake.common
 
+# These tests all get spurious failures with intermodule optimization,
+# because the errors get detected when creating the `.opt' file rather
+# than when compiling the main module.  So we disable intermodule optimization
+# for these tests.
+EXTRA_MCFLAGS += --no-intermodule-optimization
+
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
