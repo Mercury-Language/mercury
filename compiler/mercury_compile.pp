@@ -1386,10 +1386,9 @@ mercury_compile__detect_cse(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(common_goal, CommonGoal),
 	( { CommonGoal = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose, "% Detecting common deconstructions..."),
-		maybe_flush_output(Verbose),
+		maybe_write_string(Verbose, "% Detecting common deconstructions...\n"),
 		detect_cse(HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n")
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ HLDS = HLDS0 }
 	).
