@@ -1,4 +1,4 @@
-#include "mercury_lib.h"	/* must come first */
+#include "mercury_lib.mh"	/* must come first */
 #include "mercury_init.h"
 
 #include <stdio.h>
