@@ -67,7 +67,7 @@ main(int argc, char **argv)
 		*/
 		for (;;) {
 			char buf[1000];
-			int len = 0;
+			size_t len = 0;
 			int c = getchar();
 			while (c != EOF && (isalnum(c) || c == '_')) {
 				if (len >= sizeof(buf) - 1)
@@ -335,7 +335,7 @@ demangle(char *name)
 			goto wrong_format;
 		}
 		lambda_line = 0;
-		while (start < end && isdigit(*start)) {
+		while (start < end && MR_isdigit(*start)) {
 			lambda_line = lambda_line * 10 + (*start - '0');
 			start++;
 		}
@@ -343,7 +343,7 @@ demangle(char *name)
 			goto wrong_format;
 		}
 		lambda_seq_number = 0;
-		while (start < end && isdigit(*start)) {
+		while (start < end && MR_isdigit(*start)) {
 			lambda_seq_number = lambda_seq_number * 10 +
 				(*start - '0');
 			start++;

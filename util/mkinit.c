@@ -455,8 +455,9 @@ process_init_file(const char *filename)
 		if (strncmp(line, init_str, init_strlen) == 0) {
 			int	j;
 
-			for (j = init_strlen; isalnum(line[j]) ||
-						line[j] == '_'; j++)
+			for (j = init_strlen;
+			     MR_isalnum(line[j]) || line[j] == '_';
+			     j++)
 			{
 				/* VOID */
 			}
