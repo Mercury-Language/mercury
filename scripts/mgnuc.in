@@ -44,11 +44,29 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
 AS=as
 
-ANSI_OPTS="-ansi"
-CHECK_OPTS="
-      -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
-      -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
-OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
+case "$CC" in
+    *gcc*)
+	ANSI_OPTS="-ansi"
+	CHECK_OPTS="
+	      -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional
+	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
+	OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
+	COMPILER=gcc
+	;;
+    *lcc*)
+	ANSI_OPTS=
+	CHECK_OPTS=
+	OPT_OPTS="-DSPEED"
+	COMPILER=lcc
+	;;
+    *)
+	ANSI_OPTS=
+	CHECK_OPTS=
+	OPT_OPTS="-O -DSPEED"
+	COMPILER=unknown
+	;;
+esac
+
 DEBUG_OPTS="-g"
 AS_OPTS=""
 
@@ -147,6 +165,17 @@ case "$grade" in
 		exit 1
 esac
 
+# check that special grades are only used with gcc
+case $COMPILER in
+	gcc) ;;
+	*)	case $GRADE in
+			debug|none)
+		echo "$0: For compilers other than GNU C, the only" 1>&2
+		echo "$0: grades allowed are `debug' and `none'" 1>&2
+			;;
+		esac
+esac
+
 #
 # Special case hacks for particular architectures
 # Any code here needs to be duplicated in ../configure.in.
@@ -183,14 +212,12 @@ esac
 # gcc 2.6.3 gets an internal error compiling library/int.c.
 # As a work-around, we compile that file with -O1.
 #
-case "$FULLARCH" in
-	mips*)
-		case "$*" in
-			*" int.c "*)
-				ARCH_OPTS="$ARCH_OPTS -O1"
-				;;
-		esac
-		;;
+case $COMPILER in gcc)
+	case "$FULLARCH" in mips*)
+		case "$*" in *" int.c "*)
+			ARCH_OPTS="$ARCH_OPTS -O1" ;;
+		esac ;;
+	esac ;;
 esac
 
 case $assemble in true)
@@ -201,12 +228,12 @@ case $assemble in true)
 esac
 
 case $verbose in true)
-	echo $CC -I $C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@" ;;
 esac
 case $# in
-	0) exec $CC -I $C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS ;;
-	*) exec $CC -I $C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@" ;;
 esac
