@@ -10,7 +10,8 @@
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
-MERCURY_VERSION	= mercury-0.6.$(FULLARCH)
+VERSION=0.6
+MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
@@ -67,7 +68,9 @@ binary_distribution: bindist.configure bindist.build_vars
 	cd ../samples/c_interface/mercury_calls_c; mmake realclean
 	cp -r ../samples $(MERCURY_VERSION)/samples
 	for file in $(MISC_FILES); do \
-		cp bindist.$$file $(MERCURY_VERSION)/$$file || exit 1; \
+		sed	-e 's/<VERSION>/$(VERSION)/g' \
+			-e 's/<FULLARCH>/$(FULLARCH)/g' \
+			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
 	done
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
