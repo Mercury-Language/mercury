@@ -6,10 +6,10 @@ TODO LIST:
 Required to bootstrap:
 ----------------------
 
-- complicated unifications
+- generate code for complicated unifications
+- get determinism analysis right for complicated unifications
 - polymorphic unifications
 - compare/3
-- string__to_int_list/3, length/2 (straightforward) 
 - term_io__read_term etc.
 
 code generation:
