@@ -60,8 +60,10 @@
 
 :- import_module ml_backend__ml_util.
 :- import_module ml_backend__java_util. 
-:- import_module backend_libs__c_util.	% XXX needed for c_util__output_quoted_string
-				% c_util_output_quoted_multi_string
+:- import_module backend_libs__c_util.
+	% XXX needed for c_util__output_quoted_string,
+	%     c_util__output_quoted_multi_string, and
+	%     c_util__make_float_literal.
 :- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
@@ -2932,7 +2934,7 @@ output_rval_const(int_const(N)) -->
 	io__write_int(N).
 
 output_rval_const(float_const(FloatVal)) -->
-	io__write_float(FloatVal).
+	c_util__output_float_literal(FloatVal).
 
 output_rval_const(string_const(String)) -->
 	io__write_string(""""),

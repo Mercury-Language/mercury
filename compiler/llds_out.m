@@ -2268,8 +2268,8 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 			;
 				{ decl_set_insert(DeclSet0, FloatLabel,
 					DeclSet) },
-				{ string__float_to_string(FloatVal,
-					FloatString) },
+				{ FloatString = c_util__make_float_literal(
+					FloatVal) },
 				output_indent(FirstIndent, LaterIndent, N0),
 				{ N = N0 + 1 },
 				io__write_strings([
@@ -2433,7 +2433,7 @@ llds_out__float_literal_name(Float, FloatName) :-
 	% value of the float const, with "pt" instead
 	% of ".", "plus" instead of "+", and "neg" instead of "-".
 	%
-	string__float_to_string(Float, FloatName0),
+	FloatName0 = c_util__make_float_literal(Float),
 	string__replace_all(FloatName0, ".", "pt", FloatName1),
 	string__replace_all(FloatName1, "+", "plus", FloatName2),
 	string__replace_all(FloatName2, "-", "neg", FloatName).
@@ -4047,7 +4047,7 @@ output_rval_const(float_const(FloatVal)) -->
 	% do arithmetic in `float' rather than `double'
 	% if `Float' is `float' not `double'.
 	output_llds_type_cast(float),
-	io__write_float(FloatVal).
+	c_util__output_float_literal(FloatVal).
 output_rval_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
@@ -4123,7 +4123,7 @@ output_static_rval(mem_addr(_)) -->
 output_rval_static_const(int_const(N)) -->
 	io__write_int(N).
 output_rval_static_const(float_const(FloatVal)) -->
-	io__write_float(FloatVal).
+	c_util__output_float_literal(FloatVal).
 output_rval_static_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
@@ -4437,6 +4437,9 @@ llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 	(
 		string__first_char(String, Char, Rest)
 	->
+		% XXX This will cause ABI incompatibilities between
+		%     compilers which are built in grades that have
+		%     different character representations.
 		char__to_int(Char, Code),
 		string__int_to_string(Code, CodeString),
 		string__append("_", CodeString, ThisCharString),

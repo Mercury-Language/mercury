@@ -274,6 +274,7 @@
 :- import_module char, string, pprint, getopt.
 :- import_module require, int, term_io, varset, bool.
 :- import_module libs__globals, libs__options, hlds__error_util.
+:- import_module backend_libs__c_util. % for output_float_literal
 
 
 	% Some versions of the IL assembler enforce a rule that if you output 
@@ -1144,10 +1145,10 @@ output_instr(ldc(Type, Const), I, I) -->
 		io__write_int(IntConst)
 	; { Type = float32, Const = f(FloatConst) } ->
 		io__write_string("ldc.r4\t"),
-		io__write_float(FloatConst)
+		c_util__output_float_literal(FloatConst)
 	; { Type = float64, Const = f(FloatConst) } ->
 		io__write_string("ldc.r8\t"),
-		io__write_float(FloatConst)
+		c_util__output_float_literal(FloatConst)
 	;
 	 	{ error("Inconsistent arguments in ldc instruction") }
 	).
