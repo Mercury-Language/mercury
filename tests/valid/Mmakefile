@@ -57,6 +57,7 @@ SOURCES= \
 	loop_in_disj.m \
 	middle_rec_labels.m \
 	modes_bug.m \
+	mother.m \
 	multidet_prune1.m \
 	multidet_test.m \
 	nasty_func_test.m \
