@@ -87,6 +87,7 @@ OTHER_PROGS= \
 	ho_func_call \
 	ho_inst \
 	ho_unify \
+	id_type_bug \
 	implied_mode \
 	indexing \
 	inhibit_warn_test \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2671,7 +2671,11 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeAssignSet0, TypeAssignSet) :-
 				TypeAssign1),
 			Type = term__variable(TypeVar),
 			map__det_insert(VarTypes0, X, Type, VarTypes1),
-			map__det_insert(VarTypes1, Y, Type, VarTypes),
+			( X \= Y ->
+				map__det_insert(VarTypes1, Y, Type, VarTypes)
+			;
+				VarTypes = VarTypes1
+			),
 			type_assign_set_var_types(TypeAssign1, VarTypes,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
