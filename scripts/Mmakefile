@@ -19,8 +19,6 @@ SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  mkfifo_using_mknod
 DEBUGGER_SCRIPTS = mdbrc
 EMACS_SCRIPTS = gud.el
-NUPROLOG_SCRIPTS = mnc mnl mnp
-SICSTUS_SCRIPTS = msc msl msp
 
 #-----------------------------------------------------------------------------#
 
@@ -35,7 +33,7 @@ SICSTUS_SCRIPTS = msc msl msp
 
 .PHONY: all
 all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
-all: $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
+all: Mmake.vars
 
 #-----------------------------------------------------------------------------#
 
@@ -47,7 +45,6 @@ ml mgnuc: final_grade_options.sh-subr
 
 .PHONY: install
 install: install_mmake install_scripts install_debugger_scripts
-install: $(INSTALL_NUPROLOG) $(INSTALL_SICSTUS)
 
 .PHONY: install_dirs
 install_dirs:
@@ -79,27 +76,12 @@ install_emacs_scripts: $(EMACS_SCRIPTS) install_libdir install_dirs
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
-.PHONY: install_nuprolog
-install_nuprolog: $(NUPROLOG_SCRIPTS) install_dirs
-	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR) 
-	for file in $(NUPROLOG_SCRIPTS); do \
-		chmod u+w $(INSTALL_BINDIR)/$$file ;\
-	done
-
-.PHONY: install_sicstus
-install_sicstus: $(SICSTUS_SCRIPTS) install_dirs
-	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR) 
-	for file in $(SICSTUS_SCRIPTS); do \
-		chmod u+w $(INSTALL_BINDIR)/$$file ;\
-	done
-
 #-----------------------------------------------------------------------------#
 
 .PHONY: uninstall
 uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
-	-cd $(INSTALL_BINDIR) && \
-		rm $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
+	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS) 
 	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
