@@ -108,7 +108,7 @@ prog_rep__represent_goal_expr(unify(_, _, _, Uni, _), GoalInfo, InstMap0,
 		list__map(term__var_to_int, Args, ArgsRep),
 		AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep, ArgsRep)
 	;
-		Uni = deconstruct(Var, ConsId, Args, _, _),
+		Uni = deconstruct(Var, ConsId, Args, _, _, _),
 		term__var_to_int(Var, VarRep),
 		prog_rep__represent_cons_id(ConsId, ConsIdRep),
 		list__map(term__var_to_int, Args, ArgsRep),

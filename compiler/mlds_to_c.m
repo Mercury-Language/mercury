@@ -2189,6 +2189,9 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _) -->
 	%
 	% heap management
 	%
+mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _) -->
+	{ error("mlds_to_c.m: sorry, delete_object not implemented") }.
+
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
 		MaybeCtorName, Args, ArgTypes) },

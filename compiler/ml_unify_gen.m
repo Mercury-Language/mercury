@@ -132,28 +132,40 @@ ml_gen_unification(construct(Var, ConsId, Args, ArgModes,
 	;
 		true
 	},
-	{ HowToConstruct = reuse_cell(_) ->
-		sorry("cell reuse")
-	;
-		true
-	},
 	ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements).
-ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail),
+
+ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
 		{ CanFail = can_fail },
 		{ require(unify(CodeModel, model_semi),
 			"ml_code_gen: can_fail deconstruct not semidet") },
 		ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
-			MLDS_Decls, MLDS_Statements)
+			MLDS_Decls, MLDS_Unif_Statements)
 	;
 		{ CanFail = cannot_fail },
 		{ require(unify(CodeModel, model_det),
 			"ml_code_gen: cannot_fail deconstruct not det") },
 		ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
-			MLDS_Decls, MLDS_Statements)
-	).
+			MLDS_Decls, MLDS_Unif_Statements)
+	),
+	(
+			% Note that we can deallocate a cell even if the 
+			% unification fails, it is the responsibility of
+			% the structure reuse phase to ensure that this
+			% is safe.
+		{ CanCGC = yes },
+		ml_gen_var(Var, VarLval),
+		{ MLDS_Stmt = atomic(delete_object(VarLval)) },
+		{ MLDS_CGC_Statements = [mlds__statement(MLDS_Stmt,
+				mlds__make_context(Context)) ] }
+	;
+		{ CanCGC = no },
+		{ MLDS_CGC_Statements = [] }
+	),
+	{ MLDS_Statements = MLDS_Unif_Statements `list__append`
+			MLDS_CGC_Statements }.
 
 ml_gen_unification(complicated_unify(_, _, _), _, _, [], []) -->
 	% simplify.m should convert these into procedure calls
@@ -453,7 +465,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% generate a `new_object' statement (or static constant)
 	% for the closure
 	%
-	ml_gen_new_object(Tag, CtorName, Var, ExtraArgRvals, ExtraArgTypes,
+	ml_gen_new_object(no, Tag, CtorName, Var, ExtraArgRvals, ExtraArgTypes,
 			ArgVars, ArgModes, HowToConstruct, Context,
 			MLDS_Decls, MLDS_Statements).
 
@@ -861,9 +873,9 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 		ExtraRvals = [],
 		ExtraArgTypes = []
 	},
-	ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraArgTypes,
-			ArgVars, ArgModes, HowToConstruct, Context,
-			MLDS_Decls, MLDS_Statements).
+	ml_gen_new_object(yes(ConsId), Tag, CtorName, Var,
+			ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
+			HowToConstruct, Context, MLDS_Decls, MLDS_Statements).
 
 	%
 	% ml_gen_new_object:
@@ -873,14 +885,15 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	%	additional constants to insert at the start of the
 	%	argument list.
 	%
-:- pred ml_gen_new_object(mlds__tag, ctor_name, prog_var, list(mlds__rval),
-		list(mlds__type), prog_vars, list(uni_mode), how_to_construct,
+:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, ctor_name, prog_var,
+		list(mlds__rval), list(mlds__type), prog_vars,
+		list(uni_mode), how_to_construct,
 		prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, out, out, in, out)
-		is det.
+:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, in, out, out,
+		in, out) is det.
 
-ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
+ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		ArgVars, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
@@ -984,9 +997,53 @@ ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		{ MLDS_Decls = list__append(BoxConstDefns, [ConstDefn]) },
 		{ MLDS_Statements = [AssignStatement] }
 	;
-		{ HowToConstruct = reuse_cell(_) },
-		{ sorry("cell reuse") }
+		{ HowToConstruct = reuse_cell(CellToReuse) },
+		{ CellToReuse = cell_to_reuse(ReuseVar, ReuseConsId, _) },
+
+		{ MaybeConsId = yes(ConsId0) ->
+			ConsId = ConsId0
+		;
+			error("ml_gen_new_object: unknown cons id")
+		},
+
+		ml_variable_type(ReuseVar, ReuseType),
+		ml_cons_id_to_tag(ReuseConsId, ReuseType, ReuseConsIdTag),
+		{ ml_tag_offset_and_argnum(ReuseConsIdTag,
+				ReusePrimaryTag, _ReuseOffSet, _ReuseArgNum) },
+
+		ml_cons_id_to_tag(ConsId, Type, ConsIdTag),
+		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(ConsIdTag,
+				PrimaryTag, OffSet, ArgNum) },
+
+		ml_gen_var(Var, Var1Lval),
+		ml_gen_var(ReuseVar, Var2Lval),
+		{ ReusePrimaryTag = PrimaryTag ->
+			Var2Rval = lval(Var2Lval)
+		;
+			Var2Rval = mkword(PrimaryTag,
+					binop(body, lval(Var2Lval),
+					ml_gen_mktag(ReusePrimaryTag)))
+		},
+
+		{ MLDS_Statement = ml_gen_assign(Var1Lval, Var2Rval, Context) },
+
+		%
+		% For each field in the construction unification we need
+		% to generate an rval.
+		% XXX we do more work then we need to here, as some of
+		% the cells may already contain the correct values.
+		%
+		ml_gen_unify_args(ConsId, ArgVars, ArgModes, ArgTypes,
+				Fields, Type, VarLval, OffSet,
+				ArgNum, PrimaryTag, Context, MLDS_Statements0),
+
+		{ MLDS_Decls = [] },
+		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
 	).
+
+:- func ml_gen_mktag(int) = mlds__rval.
+ml_gen_mktag(Tag) = unop(std_unop(mktag), const(int_const(Tag))).
 
 :- pred ml_gen_box_const_rval_list(list(mlds__type), list(mlds__rval),
 		prog_context, mlds__defns, list(mlds__rval),
@@ -1230,19 +1287,75 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-			VarLval, 0, 1, UnsharedTag, Context, MLDS_Statements)
+				VarLval, OffSet, ArgNum,
+				UnsharedTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-			VarLval, 1, 1, PrimaryTag, Context, MLDS_Statements)
+				VarLval, OffSet, ArgNum,
+				PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
 	).
+
+	% Calculate the integer offset used to reference the first field
+	% of a structure for lowlevel data or the first argument number
+	% to access the field using the highlevel data representation.
+	% Abort if the tag indicates that the data doesn't have any
+	% fields.
+:- pred ml_tag_offset_and_argnum(cons_tag::in, tag_bits::out,
+		int::out, int::out) is det.
+
+ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
+	(
+		Tag = unshared_tag(UnsharedTag),
+		TagBits = UnsharedTag,
+		OffSet = 0,
+		ArgNum = 1
+	;
+		Tag = shared_remote_tag(PrimaryTag, _SecondaryTag),
+		TagBits = PrimaryTag,
+		OffSet = 1,
+		ArgNum = 1
+	;
+		Tag = string_constant(_String),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = int_constant(_Int),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = float_constant(_Float),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = pred_closure_tag(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = code_addr_constant(_, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = type_ctor_info_constant(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = base_typeclass_info_constant(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = tabling_pointer_constant(_, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = no_tag,
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = shared_local_tag(_Bits1, _Num1),
+		error("ml_tag_offset_and_argnum")
+	).
+
 
 	% Given a type and a cons_id, and also the types of the actual
 	% arguments of that cons_id in some particular use of it,

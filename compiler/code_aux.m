@@ -98,7 +98,7 @@ code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
 	;
 		Uni = construct(_, _, _, _, _, _, _)
 	;
-		Uni = deconstruct(_, _, _, _, _)
+		Uni = deconstruct(_, _, _, _, _, _)
 	).
 		% Complicated unifies are _non_builtin_
 
@@ -178,7 +178,7 @@ code_aux__goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
 	;
 		Uni = construct(_, _, _, _, _, _, _)
 	;
-		Uni = deconstruct(_, _, _, _, _)
+		Uni = deconstruct(_, _, _, _, _, _)
 	).
 		% Complicated unifies are _non_builtin_
 	

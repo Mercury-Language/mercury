@@ -162,7 +162,8 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 			common__record_cell(Var, ConsId, ArgVars, Info0, Info)
 		)
 	;
-		Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, _),
+		Unification0 = deconstruct(Var, ConsId,
+				ArgVars, UniModes, _, _),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		(
 				% Don't optimise partially instantiated

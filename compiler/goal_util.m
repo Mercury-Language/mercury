@@ -447,8 +447,9 @@ goal_util__rename_unify(
 		How0 = construct_statically(_),
 		How = How0
 	).
-goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat),
-		Must, Subn, deconstruct(Var, ConsId, Vars, Modes, Cat)) :-
+goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat, CanCGC),
+		Must, Subn,
+		deconstruct(Var, ConsId, Vars, Modes, Cat, CanCGC)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 goal_util__rename_unify(assign(L0, R0), Must, Subn, assign(L, R)) :-
@@ -984,7 +985,8 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0,
 	list__map(InstToUniMode, ArgInsts, UniModes),
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
 	UnifyContext = unify_context(explicit, []),
-	Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail),
+	Unification = deconstruct(Var, ConsId, ArgVars, UniModes,
+			can_fail, no),
 	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
 		UniMode, Unification, UnifyContext),
 	set__singleton_set(NonLocals, Var),

@@ -70,7 +70,8 @@ unify_gen__generate_unification(CodeModel, Uni, Code) -->
 			{ Code = empty }
 		)
 	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail) },
+		{ Uni = deconstruct(Var, ConsId, Args, Modes,
+				_CanFail, _CanCGC) },
 		( { CodeModel = model_det } ->
 			unify_gen__generate_det_deconstruction(Var, ConsId,
 				Args, Modes, Code)

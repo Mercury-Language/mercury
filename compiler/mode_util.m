@@ -1426,7 +1426,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
 	% that can require updating of the instmap_delta after simplify.m
 	% has been run.
 	(
-		Uni = deconstruct(Var, _ConsId, Vars, UniModes, _)
+		Uni = deconstruct(Var, _ConsId, Vars, UniModes, _, _CanCGC)
 	->
 		% Get the final inst of the deconstructed var, which
 		% will be the same as in the old instmap.

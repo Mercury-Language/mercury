@@ -370,7 +370,6 @@ vn_cost__assign_cost_unop(mktag).
 vn_cost__assign_cost_unop(tag).
 vn_cost__assign_cost_unop(unmktag).
 vn_cost__assign_cost_unop(mkbody).
-vn_cost__assign_cost_unop(body).
 vn_cost__assign_cost_unop(unmkbody).
 vn_cost__assign_cost_unop(bitwise_complement).
 
@@ -391,6 +390,7 @@ vn_cost__assign_cost_binop(&).
 vn_cost__assign_cost_binop('|').
 vn_cost__assign_cost_binop(and).
 vn_cost__assign_cost_binop(or).
+vn_cost__assign_cost_binop(body).
 
 % These unary operations cost zero instructions.
 

@@ -1010,6 +1010,7 @@ binop_code(float_lt,		31).
 binop_code(float_gt,		32).
 binop_code(float_le,		33).
 binop_code(float_ge,		34).
+binop_code(body,		35).
 
 :- pred binop_debug(binary_op, string).
 :- mode binop_debug(in, out) is det.
@@ -1049,6 +1050,7 @@ binop_debug(float_lt,		"float_lt").
 binop_debug(float_gt,		"float_gt").
 binop_debug(float_le,		"float_le").
 binop_debug(float_ge,		"float_ge").
+binop_debug(body,		"body").
 
 :- pred unop_code(unary_op, int).
 :- mode unop_code(in, out) is det.
@@ -1057,12 +1059,11 @@ unop_code(mktag,		 0).
 unop_code(tag,			 1).
 unop_code(unmktag,		 2).
 unop_code(mkbody,		 3).
-unop_code(body,			 4).
-unop_code(unmkbody,		 5).
-unop_code(cast_to_unsigned,	 6).
-unop_code(hash_string,		 7).
-unop_code(bitwise_complement,	 8).
-unop_code((not),		 9).
+unop_code(unmkbody,		 4).
+unop_code(cast_to_unsigned,	 5).
+unop_code(hash_string,		 6).
+unop_code(bitwise_complement,	 7).
+unop_code((not),		 8).
 
 :- pred unop_debug(unary_op, string).
 :- mode unop_debug(in, out) is det.
@@ -1071,7 +1072,6 @@ unop_debug(mktag,		"mktag").
 unop_debug(tag,			"tag").
 unop_debug(unmktag,		"unmktag").
 unop_debug(mkbody,		"mkbody").
-unop_debug(body,		"body").
 unop_debug(unmkbody,		"unmkbody").
 unop_debug(cast_to_unsigned,	"cast_to_unsigned").
 unop_debug(hash_string,		"has_string").

@@ -133,7 +133,8 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% fields created by polymorphism.m
 		Unification0 \= construct(_, code_addr_const(_, _),
 			_, _, _, _, _),
-		Unification0 \= deconstruct(_, code_addr_const(_, _), _, _, _)
+		Unification0 \= deconstruct(_,
+				code_addr_const(_, _), _, _, _, _)
 	->
 		%
 		% convert the pred term to a lambda expression
@@ -623,7 +624,7 @@ split_complicated_subunifies(Unification0, ArgVars0,
 				Unification, ArgVars, ExtraGoals) -->
 	(
 		{ Unification0 = deconstruct(X, ConsId, ArgVars0, ArgModes0,
-			Det) }
+			Det, CanCGC) }
 	->
 		(
 			split_complicated_subunifies_2(ArgVars0, ArgModes0,
@@ -632,7 +633,7 @@ split_complicated_subunifies(Unification0, ArgVars0,
 			{ ExtraGoals = ExtraGoals1 },
 			{ ArgVars = ArgVars1 },
 			{ Unification = deconstruct(X, ConsId, ArgVars,
-							ArgModes0, Det) }
+					ArgModes0, Det, CanCGC) }
 		;
 			{ error("split_complicated_subunifies_2 failed") }
 		)
@@ -985,7 +986,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 	( Unification0 = construct(_, ConsId0, _, _, _, _, AditiInfo0) ->
 		AditiInfo = AditiInfo0,
 		ConsId = ConsId0
-	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
+	; Unification0 = deconstruct(_, ConsId1, _, _, _, _) ->
 		AditiInfo = no,
 		ConsId = ConsId1
 	;
@@ -1082,7 +1083,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	( Unification0 = construct(_, ConsId0, _, _, _, _, _) ->
 		ConsId = ConsId0
-	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
+	; Unification0 = deconstruct(_, ConsId1, _, _, _, _) ->
 		ConsId = ConsId1
 	;
 		ConsId = NewConsId
@@ -1148,7 +1149,8 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 				ModeInfo = ModeInfo0
 			)
 		),
-		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
+		Unification = deconstruct(X, ConsId, ArgVars,
+				ArgModes, CanFail, no)
 	).
 
 	% Check that any type_info or type_class_info variables

@@ -793,7 +793,7 @@ rl_key__extract_key_range_unify(assign(Var1, Var2)) -->
 rl_key__extract_key_range_unify(construct(Var, ConsId, Args, _, _, _, _)) -->
 	rl_key__unify_functor(Var, ConsId, Args).
 rl_key__extract_key_range_unify(
-		deconstruct(Var, ConsId, Args, _, _)) -->
+		deconstruct(Var, ConsId, Args, _, _, _)) -->
 	rl_key__unify_functor(Var, ConsId, Args).
 rl_key__extract_key_range_unify(complicated_unify(_, _, _)) -->
 	{ error("rl_key__extract_key_range_unify") }.

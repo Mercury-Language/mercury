@@ -900,7 +900,7 @@ det_type_has_user_defined_equality_pred(DetInfo, Type) :-
 :- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
 det_infer_unify_examines_rep(assign(_, _), no).
 det_infer_unify_examines_rep(construct(_, _, _, _, _, _, _), no).
-det_infer_unify_examines_rep(deconstruct(_, _, _, _, _), yes).
+det_infer_unify_examines_rep(deconstruct(_, _, _, _, _, _), yes).
 det_infer_unify_examines_rep(simple_test(_, _), yes).
 det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% Some complicated modes of complicated unifications _do_
@@ -922,7 +922,7 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 :- pred det_infer_unify_canfail(unification, can_fail).
 :- mode det_infer_unify_canfail(in, out) is det.
 
-det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail), CanFail).
+det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail, _), CanFail).
 det_infer_unify_canfail(assign(_, _), cannot_fail).
 det_infer_unify_canfail(construct(_, _, _, _, _, _, _), cannot_fail).
 det_infer_unify_canfail(simple_test(_, _), can_fail).

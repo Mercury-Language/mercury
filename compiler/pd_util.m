@@ -934,9 +934,9 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 				NewArgs = [NewVar | NewArgs1]
 			;
 				OldUnification = deconstruct(OldVar, ConsId,
-							OldArgs1, _, _),
+							OldArgs1, _, _, _),
 				NewUnification = deconstruct(NewVar, ConsId,
-							NewArgs1, _, _),
+							NewArgs1, _, _, _),
 				OldArgs = [OldVar | OldArgs1],
 				NewArgs = [NewVar | NewArgs1]
 			)	

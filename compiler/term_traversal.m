@@ -130,7 +130,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 			Info = Info0
 		)
 	;
-		Unification = deconstruct(InVar, ConsId, Args, Modes, _),
+		Unification = deconstruct(InVar, ConsId, Args, Modes, _, _),
 		(
 			unify_change(InVar, ConsId, Args, Modes, Params,
 				Gamma0, InVars0, OutVars)

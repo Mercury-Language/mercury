@@ -167,7 +167,7 @@ unification_mark_static_terms(Unification0, Unification,
 		)
 	;
 		Unification0 = deconstruct(_Var, _ConsId, _ArgVars, _UniModes,
-			_CanFail),
+			_CanFail, _CanCGC),
 		Unification = Unification0,
 		StaticVars = StaticVars0
 /*****************

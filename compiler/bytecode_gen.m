@@ -472,8 +472,8 @@ bytecode_gen__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 				Pairs)])
 		)
 	).
-bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _), _, _, ByteInfo,
-		Code) :-
+bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
+		ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),

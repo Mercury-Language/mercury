@@ -647,7 +647,7 @@ check_unify(assign(Var1, Var2)) -->
 	maybe_add_alias(Var1, Var2).
 
 	% deconstructing a higher order term is not allowed
-check_unify(deconstruct(_, _, _, _, _)) --> [].
+check_unify(deconstruct(_, _, _, _, _, _)) --> [].
 
 check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :-
 	Info0 = info(PredVars0, Requests, NewPreds, PredProcId,
@@ -2056,7 +2056,7 @@ unwrap_no_tag_arg(WrappedType, Constructor, Arg, UnwrappedArg,
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
 	Goal = unify(Arg, functor(ConsId, [UnwrappedArg]), In - Out,
 		deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
-			cannot_fail),
+			cannot_fail, no),
 		unify_context(explicit, [])) - GoalInfo.
 
 %-------------------------------------------------------------------------------

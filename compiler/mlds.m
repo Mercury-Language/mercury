@@ -830,6 +830,10 @@ XXX Full exception handling support is not yet implemented.
 	% heap management
 	%
 
+	;	delete_object(mlds__lval)
+			% Compile time garbage collect (ie explicitly
+			% deallocate) the memory used by the lval.
+
 		% XXX the following is still quite tentative
 			% new_object(Target, Tag, Type,
 			%	Size, CtorName, Args, ArgTypes):

@@ -455,7 +455,8 @@ traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 	).
 
 traverse_goal(ModuleInfo,
-		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
+		unify(Var1, _, _,
+			deconstruct(_, _, Args, Modes, CanFail, _), _),
 		UseInf0, UseInf) :-
 	partition_deconstruct_args(ModuleInfo, Args,
 		Modes, InputVars, OutputVars),
@@ -1353,7 +1354,7 @@ fixup_unify(_, UnusedVars, no, Unify, Unify) :-
 	\+ list__member(LVar, UnusedVars).
 	
 fixup_unify(ModuleInfo, UnusedVars, Changed, Unify, Unify) :-
-	Unify =	deconstruct(LVar, _, ArgVars, ArgModes, CanFail),
+	Unify =	deconstruct(LVar, _, ArgVars, ArgModes, CanFail, _CanCGC),
 	\+ list__member(LVar, UnusedVars),
 	(
 			% are any of the args unused, if so we need to 	

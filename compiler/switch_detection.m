@@ -436,14 +436,14 @@ find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 		_Result0, Result, _, unit) :-
 	(
 		Goal0 = unify(A, B, C, UnifyInfo0, E) - GoalInfo,
-		UnifyInfo0 = deconstruct(A, Functor, F, G, _)
+		UnifyInfo0 = deconstruct(A, Functor, F, G, _, I)
 	->
 		Result = yes(Functor),
 			% The deconstruction unification now becomes
 			% deterministic, since the test will get
 			% carried out in the switch.
 		UnifyInfo = deconstruct(A, Functor, F, G,
-			cannot_fail),
+			cannot_fail, I),
 		Goals = [unify(A, B, C, UnifyInfo, E) - GoalInfo]
 	;
 		error("find_bind_var_for_switch_in_deconstruct")
@@ -479,7 +479,7 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 		(
 			% check whether the unification is a deconstruction
 			% unification on Var or a variable aliased to Var
-			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
+			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
 			term__apply_rec_substitution(
 				term__variable(Var),
 				Substitution0, term__variable(Var1)),
