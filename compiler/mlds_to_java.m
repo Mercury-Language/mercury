@@ -1901,9 +1901,15 @@ output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
 output_stmt(_Indent, _FuncInfo, label(_LabelName), _Context) --> 
 	{ unexpected(this_file, 
 		"output_stmt: labels not supported in Java.") }.
-output_stmt(_Indent, _FuncInfo, goto(_LabelName), _Context) --> 
+output_stmt(_Indent, _FuncInfo, goto(label(_LabelName)), _Context) --> 
 	{ unexpected(this_file,
 		"output_stmt: gotos not supported in Java.") }.
+output_stmt(Indent, _FuncInfo, goto(break), _Context) --> 
+	indent_line(Indent),
+	io__write_string("break;\n").
+output_stmt(Indent, _FuncInfo, goto(continue), _Context) --> 
+	indent_line(Indent),
+	io__write_string("continue;\n").
 output_stmt(_Indent, _FuncInfo, computed_goto(_Expr, _Labels), _Context) --> 
 	{ unexpected(this_file, 
 		"output_stmt: computed gotos not supported in Java.") }.

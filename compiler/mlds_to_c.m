@@ -2124,11 +2124,17 @@ mlds_output_stmt(Indent, _FuncInfo, label(LabelName), _) -->
 	mlds_indent(Indent - 1),
 	mlds_output_label_name(LabelName),
 	io__write_string(":;\n").
-mlds_output_stmt(Indent, _FuncInfo, goto(LabelName), _) -->
+mlds_output_stmt(Indent, _FuncInfo, goto(label(LabelName)), _) -->
 	mlds_indent(Indent),
 	io__write_string("goto "),
 	mlds_output_label_name(LabelName),
 	io__write_string(";\n").
+mlds_output_stmt(Indent, _FuncInfo, goto(break), _) -->
+	mlds_indent(Indent),
+	io__write_string("break;\n").
+mlds_output_stmt(Indent, _FuncInfo, goto(continue), _) -->
+	mlds_indent(Indent),
+	io__write_string("continue;\n").
 mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 	% XXX for GNU C, we could output potentially more efficient code
 	% by using an array of labels; this would tell the compiler that

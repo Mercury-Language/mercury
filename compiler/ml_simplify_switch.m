@@ -340,7 +340,7 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
 		atomic(comment("branch to end of dense switch")),
 		MLDS_Context) },
 	{ JumpCode = mlds__statement(
-		goto(EndLabel),
+		goto(label(EndLabel)),
 		MLDS_Context) },
 	{ MLDS_Decls = [] },
 	{ MLDS_Statements = [LabelComment, LabelCode, CaseStatement,

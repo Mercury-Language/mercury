@@ -2453,10 +2453,17 @@ gen_stmt(DefnInfo, label(LabelName), _) -->
 	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_label(GCC_Label).
-gen_stmt(DefnInfo, goto(LabelName), _) -->
+gen_stmt(DefnInfo, goto(label(LabelName)), _) -->
 	{ LabelTable = DefnInfo ^ label_table },
 	{ GCC_Label = map__lookup(LabelTable, LabelName) },
 	gcc__gen_goto(GCC_Label).
+gen_stmt(_DefnInfo, goto(break), _) -->
+	gcc__gen_break.
+gen_stmt(_DefnInfo, goto(continue), _) -->
+	% XXX not yet implemented
+	% but we set target_supports_break_and_continue to no
+	% for this target, so we shouldn't get any
+	{ unexpected(this_file, "continue") }.
 gen_stmt(_DefnInfo, computed_goto(_Expr, _Labels), _) -->
 	% XXX not yet implemented
 	% but we set target_supports_computed_goto to no

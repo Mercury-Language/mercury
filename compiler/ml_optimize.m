@@ -55,11 +55,6 @@
 		context 	:: mlds__context
 	).
 
-	% The label name we use for the top of the loop introduced by
-	% tailcall optimization.
-:- func tailcall_loop_label_name = string.
-tailcall_loop_label_name = "loop_top".
-
 optimize(MLDS0, MLDS) -->
 	globals__io_get_globals(Globals),
 	{ MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0) },
@@ -215,7 +210,8 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 		CommentStatement = statement(
 			atomic(comment("direct tailcall eliminated")),
 			OptInfo ^ context),
-		GotoStatement = statement(goto(tailcall_loop_label_name),
+		GotoStatement = statement(
+			goto(tailcall_loop_top(OptInfo ^ globals)),
 			OptInfo ^ context),
 		OptInfo ^ func_params = mlds__func_params(FuncArgs, _RetTypes),
 		generate_assign_args(OptInfo, FuncArgs, CallArgs,
@@ -232,6 +228,29 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	;
 		Stmt = Stmt0
 	).
+
+	% This specifies how we should branch to the top of the loop
+	% introduced by tailcall opptimization.
+:- func tailcall_loop_top(globals) = mlds__goto_target.
+tailcall_loop_top(Globals) =
+	( target_supports_break_and_continue(Globals) ->
+		% the function body has been wrapped inside
+		% `while (true) { ... break; }', and so to
+		% branch to the top of the function, we just do
+		% a `continue' which will continue the next iteration
+		% of the loop
+		continue
+	;
+		% a label has been inserted at the start of the function,
+		% and so to branch to the top of the function, we just
+		% branch to that label
+		label(tailcall_loop_label_name)
+	).
+
+	% The label name we use for the top of the loop introduced by
+	% tailcall optimization, when we're doing it with labels & gotos.
+:- func tailcall_loop_label_name = string.
+tailcall_loop_label_name = "loop_top".
 
 %----------------------------------------------------------------------------
 
@@ -330,13 +349,58 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 			CallStmt)
 	->
 		Comment = atomic(comment("tailcall optimized into a loop")),
-		Label = label(tailcall_loop_label_name),
-		Stmt = block([], [statement(Comment, Context),
-			statement(Label, Context),
-			statement(Stmt0, Context)])
+		CommentStmt = statement(Comment, Context),
+		% The loop can be defined either using while, break, and
+		% continue, or using a label and goto.  We prefer to
+		% use the former, if possible, since it is a higher-level
+		% construct that may help the back-end compiler's optimizer.
+		( target_supports_break_and_continue(OptInfo ^ globals) ->
+			% Wrap a while loop around the function body:
+			%	while (true) {
+			%		/* tailcall optimized into a loop */
+			%		<function body goes here>
+			%		break;
+			%	}
+			% Any tail calls in the function body will have
+			% been replaced with `continue' statements.
+			Stmt = while(const(true),
+				statement(block([],
+					[CommentStmt,
+					statement(Stmt0, Context),
+					statement(goto(break), Context)]),
+				Context), no)
+		;
+			% Add a loop_top label at the start of the function
+			% body:
+			%	{
+			%	loop_top:
+			%		/* tailcall optimized into a loop */
+			%		<function body goes here>
+			%	}
+			% Any tail calls in the function body will have
+			% been replaced with `goto loop_top' statements.
+			Label = label(tailcall_loop_label_name),
+			Stmt = block([], [CommentStmt,
+				statement(Label, Context),
+				statement(Stmt0, Context)])
+		)
 	;
 		Stmt = Stmt0
 	).
+
+:- pred target_supports_break_and_continue(globals::in) is semidet.
+
+target_supports_break_and_continue(Globals) :-
+	globals__get_target(Globals, Target),
+	target_supports_break_and_continue_2(Target) = yes.
+
+:- func target_supports_break_and_continue_2(compilation_target) = bool.
+
+target_supports_break_and_continue_2(c) = yes.
+target_supports_break_and_continue_2(asm) = no. % asm means via gnu back-end
+target_supports_break_and_continue_2(il) = no.
+target_supports_break_and_continue_2(java) = yes.
+% target_supports_break_and_continue_2(c_sharp) = yes.
 
 %-----------------------------------------------------------------------------%
 

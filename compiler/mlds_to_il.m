@@ -1645,7 +1645,6 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
 
 	}.
 
-
 statement_to_il(statement(return(Rvals), Context), Instrs) -->
 	( { Rvals = [Rval] } ->
 		load(Rval, LoadInstrs),
@@ -1668,15 +1667,19 @@ statement_to_il(statement(label(Label), Context), Instrs) -->
 			label(Label)
 		]) }.
 
-
-
-statement_to_il(statement(goto(Label), Context), Instrs) -->
+statement_to_il(statement(goto(label(Label)), Context), Instrs) -->
 	{ string__format("goto %s", [s(Label)], Comment) },
 	{ Instrs = node([
 			comment(Comment),
 			context_instr(Context),
 			br(label_target(Label))
 		]) }.
+
+statement_to_il(statement(goto(break), _Context), _Instrs) -->
+	{ sorry(this_file, "break") }.
+
+statement_to_il(statement(goto(continue), _Context), _Instrs) -->
+	{ sorry(this_file, "continue") }.
 
 statement_to_il(statement(do_commit(_Ref), Context), Instrs) -->
 

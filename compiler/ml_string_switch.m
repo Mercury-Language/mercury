@@ -79,7 +79,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	%
 	ml_gen_new_label(EndLabel),
 	{ GotoEndStatement = mlds__statement(
-		goto(EndLabel),
+		goto(label(EndLabel)),
 		MLDS_Context) },
 
 	{

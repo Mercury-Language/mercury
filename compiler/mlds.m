@@ -888,7 +888,7 @@
 			% Defines a label that can be used as the
 			% target of calls, gotos, etc.
 
-	;	goto(mlds__label)
+	;	goto(mlds__goto_target)
 			% goto(Target)
 			% Branch to the specified address.
 
@@ -1051,6 +1051,18 @@ XXX Full exception handling support is not yet implemented.
 %
 
 :- type mlds__label == string.
+
+:- type mlds__goto_target
+	--->	label(mlds__label) % Branch to the specified label.
+	;	break		% Branch to just after the end of the
+				% immediately enclosing loop or switch,
+				% just like a C/C++/Java `break' statement.
+				% Not supported by all target languages.
+	;	continue.	% Branch to the end of the loop body for
+				% the immediately enclosing loop,
+				% just like a C/C++/Java/C# `continue'
+				% statement.
+				% Not supported by all target languages.
 
 %-----------------------------------------------------------------------------%
 %
