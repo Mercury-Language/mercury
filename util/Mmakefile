@@ -15,7 +15,6 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-MGNUC   = $(SCRIPTS_DIR)/mgnuc
 CFLAGS	= -I$(RUNTIME_DIR) -O0
 # we need -I ../runtime for "mercury_std.h", etc.
 # the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
