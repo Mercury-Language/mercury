@@ -19,7 +19,7 @@
 %-----------------------------------------------------------------------------%
 :- module exception.
 :- interface.
-:- import_module std_util, list, io.
+:- import_module std_util, list, io, store.
 
 %
 % throw(Exception):
@@ -81,6 +81,17 @@
 :- mode try_io(pred(out, di, uo) is det,     
 		out(cannot_fail), di, uo) is cc_multi.
 :- mode try_io(pred(out, di, uo) is cc_multi,
+		out(cannot_fail), di, uo) is cc_multi.
+
+%
+% try_store(Goal, Result, Store_0, Store):
+%    Just like try_io, but for stores rather than io__states.
+%
+:- pred try_store(pred(T, store(S), store(S)),
+		exception_result(T), store(S), store(S)).
+:- mode try_store(pred(out, di, uo) is det,     
+		out(cannot_fail), di, uo) is cc_multi.
+:- mode try_store(pred(out, di, uo) is cc_multi,
 		out(cannot_fail), di, uo) is cc_multi.
 
 %
@@ -165,6 +176,13 @@
 :- mode try_io(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
 				    out(cannot_fail), di, uo) is cc_multi.
 
+:- pred try_store(determinism, 	    pred(T, store(S), store(S)),
+				    exception_result(T), store(S), store(S)).
+:- mode try_store(in(bound(det)),   pred(out, di, uo) is det,
+				    out(cannot_fail), di, uo) is cc_multi.
+:- mode try_store(in(bound(cc_multi)), pred(out, di, uo) is cc_multi,
+				    out(cannot_fail), di, uo) is cc_multi.
+
 :- pred try_all(determinism,        pred(T), list(exception_result(T))).
 :- mode try_all(in(bound(det)),	    pred(out) is det, 
 				    	     out(try_all_det)) is cc_multi.
@@ -198,7 +216,7 @@
 :- mode get_determinism(pred(out) is cc_nondet, out(bound(cc_nondet)))
 								  is cc_multi.
 
-:- pred get_determinism_2(pred(T, io__state, io__state), determinism).
+:- pred get_determinism_2(pred(T, S, S),                 determinism).
 :- mode get_determinism_2(pred(out, di, uo) is det,      out(bound(det)))
 	is cc_multi.
 :- mode get_determinism_2(pred(out, di, uo) is cc_multi, out(bound(cc_multi)))
@@ -476,6 +494,54 @@ incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 				wrap_success(Goal, R)),
 			wrap_exception, Result)),
 		AccPred, Acc0, Acc).
+
+% We need to switch on the Detism argument
+% for the same reason as above.
+
+try_store(StoreGoal, Result) -->
+	{ get_determinism_2(StoreGoal, Detism) },
+	try_store(Detism, StoreGoal, Result).
+
+	% Store0 is not really unique in the calls to unsafe_promise_unique
+	% below, since it is also used in the calls to handle_store_result.
+	% But it is safe to treat it as if it were unique, because the
+	% other reference is only used in the case when an exception is
+	% thrown, and in that case the declarative semantics of this
+	% predicate say that the final store returned is unspecified.
+try_store(det, StoreGoal, Result, Store0, Store) :-
+	Goal = (pred({R, S}::out) is det :-
+		unsafe_promise_unique(Store0, S0),
+		StoreGoal(R, S0, S)),
+	try(det, Goal, Result0),
+	handle_store_result(Result0, Result, Store0, Store).
+try_store(cc_multi, StoreGoal, Result, Store0, Store) :-
+	Goal = (pred({R, S}::out) is cc_multi :-
+		unsafe_promise_unique(Store0, S0),
+		StoreGoal(R, S0, S)),
+	try(cc_multi, Goal, Result0),
+	handle_store_result(Result0, Result, Store0, Store).
+
+:- pred handle_store_result(exception_result({T, store(S)})::in(cannot_fail),
+		exception_result(T)::out(cannot_fail),
+		store(S)::in, store(S)::uo) is det.
+handle_store_result(Result0, Result, Store0, Store) :-
+	(
+		Result0 = succeeded({Res, S1}),
+		Result = succeeded(Res),
+		% S1 is now unique because the only other reference to the
+		% store was from Store0, which we're throwing away here
+		unsafe_promise_unique(S1, Store)
+	;
+		Result0 = exception(E0),
+		% We need to make a copy of the exception object, in case
+		% it contains a value returned from store__extract_ref_value.
+		% See tests/hard_coded/exceptions/tricky_try_store.m.
+		copy(E0, E),
+		Result = exception(E),
+		% Store0 is now unique because the only other reference to
+		% the store was from the goal which just threw an exception.
+		unsafe_promise_unique(Store0, Store)
+	).
 
 try_io(IO_Goal, Result) -->
 	{ get_determinism_2(IO_Goal, Detism) },

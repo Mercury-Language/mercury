@@ -1,3 +1,15 @@
+NEWS since Mercury release 0.10
+-------------------------------
+Note that Mercury 0.10 has not actually been officially announced;
+this section documents changes in the development version of
+Mercury since we established a feature freeze for Mercury 0.10
+and split development of that version off onto a separate branch
+of our CVS repository (the `version-0_10_y' branch).
+
+Changes to the Mercury standard library:
+* The exception module has a new predicate `try_store', which is
+  like `try_io', but which works with stores rather than io__states.
+
 NEWS for Mercury release 0.10:
 ------------------------------
 
