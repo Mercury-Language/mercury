@@ -173,92 +173,40 @@ process_all_args(Args, ModulesToLink) -->
 	% So if we're generating code using the GCC back-end,
 	% we need to call run_gcc_backend here at the top level.
 	globals__io_get_globals(Globals),
-	(
-		{ compiling_to_asm(Globals) },
-		{ Args = [FirstArg | _] }
-	->
-		% The name of the assembler file that we generate
-		% is based on name of the first module named
-		% on the command line.  (Mmake requires this.)
-		%
-		% There's two cases:
-		% (1) If the argument ends in ".m", we assume
-		% that the argument is a file name.
-		% To find the corresponding module name,
-		% we would need to read in the file
-		% (at least up to the first item);
-		% this is needed to handle the case where
-		% the module name does not match the file
-		% name, e.g. file "browse.m" containing
-		% ":- module mdb__browse." as its first item.
-		% Rather than reading in the source file here,
-		% we just pick a name
-		% for the asm file based on the file name argument,
-		% (e.g. "browse.s") and if necessary rename it later
-		% (e.g. to "mdb.browse.s").
-		%
-		% (2) If the argument doesn't end in `.m',
-		% then we assume it is a module name.
-		% (Is it worth checking that the name doesn't
-		% contain directory seperators, and issuing
-		% a warning or error in that case?)
-		%
-		{ string__remove_suffix(FirstArg, ".m", ArgBase) ->
-			file_name_to_module_name(ArgBase,
-				FirstModuleName)
+	( { compiling_to_asm(Globals) } ->
+	    ( { Args = [FirstArg | OtherArgs] }  ->
+		globals__io_lookup_bool_option(smart_recompilation, Smart),
+		( { Smart = yes } ->
+		    ( { OtherArgs = [] } ->
+			% With smart recompilation we need to delay
+			% starting the gcc backend to avoid overwriting
+			% the output assembler file even if recompilation 
+			% is found to be unnecessary.
+		    	process_args(Args, ModulesToLink)
+		    ;
+			io__write_string(
+"Sorry, not implemented: `--target asm' with `--smart-recompilation'\n"),
+			io__write_string(
+"with more than one module to compile.\n"),
+			io__set_exit_status(1),
+			{ ModulesToLink = [] }
+		    )
 		;
-			file_name_to_module_name(FirstArg,
-				FirstModuleName)
-		},
-
-		% Invoke run_gcc_backend.  It will call us back,
-		% and then we'll continue with the normal work of
-		% the compilation, which will be done by the callback
-		% function (`process_args').
-		maybe_mlds_to_gcc__run_gcc_backend(FirstModuleName,
-			process_args(Args), ModulesToLink),
-
-		% Now we know what the real module name was, so we
-		% can rename the assembler file if needed (see above).
-		( { ModulesToLink = [Module | _] } ->
-			{ file_name_to_module_name(Module, ModuleName) },
-			globals__io_lookup_bool_option(pic, Pic),
-			{ AsmExt = (Pic = yes -> ".pic_s" ; ".s") },
-			module_name_to_file_name(ModuleName, AsmExt, no,
-				AsmFile),
-			(
-				{ ModuleName \= FirstModuleName }
-			->
-				module_name_to_file_name(FirstModuleName,
-					AsmExt, no, FirstAsmFile),
-				do_rename_file(FirstAsmFile, AsmFile, Result)
-			;
-				{ Result = ok }
-			),
-
-			% Invoke the assembler to produce an object file,
-			% if needed.
-			globals__io_lookup_bool_option(target_code_only, 
-					TargetCodeOnly),
-			( { Result = ok, TargetCodeOnly = no } ->
-				object_extension(Obj),
-				module_name_to_file_name(ModuleName, Obj,
-					yes, O_File),
-				mercury_compile__asm_to_obj(
-					AsmFile, O_File, _AssembleOK)
-			;
-				[]
-			)
-		;
-			% This can happen if smart recompilation decided
-			% that nothing needed to be compiled.
-			[]
-		)
+		    compile_using_gcc_backend(
+		    	string_to_file_or_module(FirstArg),
+			process_args(Args), ModulesToLink)
+	        )
+	    ;
+		io__write_string(
+"Sorry, not implemented: `--target asm' with `--filenames-from-stdin\n"),
+		io__set_exit_status(1),
+		{ ModulesToLink = [] }
+	    )
 	;
 		% If we're NOT using the GCC back-end,
 		% then we can just call process_args directly,
 		% rather than via GCC.
-		process_args(Args, ModulesToLink)
+	    process_args(Args, ModulesToLink)
 	).
 
 :- pred compiling_to_asm(globals::in) is semidet.
@@ -276,6 +224,90 @@ compiling_to_asm(Globals) :-
 		globals__lookup_bool_option(Globals, Opt, Bool)),
 		OptionList),
 	bool__or_list(BoolList) = no.
+
+:- pred compile_using_gcc_backend(file_or_module,
+		frontend_callback(list(string)),
+		list(string), io__state, io__state).
+:- mode compile_using_gcc_backend(in, in(frontend_callback),
+		out, di, uo) is det.
+
+compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
+	% The name of the assembler file that we generate
+	% is based on name of the first module named
+	% on the command line.  (Mmake requires this.)
+	%
+	% There's two cases:
+	% (1) If the argument ends in ".m", we assume
+	% that the argument is a file name.
+	% To find the corresponding module name,
+	% we would need to read in the file
+	% (at least up to the first item);
+	% this is needed to handle the case where
+	% the module name does not match the file
+	% name, e.g. file "browse.m" containing
+	% ":- module mdb__browse." as its first item.
+	% Rather than reading in the source file here,
+	% we just pick a name
+	% for the asm file based on the file name argument,
+	% (e.g. "browse.s") and if necessary rename it later
+	% (e.g. to "mdb.browse.s").
+	%
+	% (2) If the argument doesn't end in `.m',
+	% then we assume it is a module name.
+	% (Is it worth checking that the name doesn't
+	% contain directory seperators, and issuing
+	% a warning or error in that case?)
+	%
+	{
+		FirstFileOrModule = file(FirstFileName),
+		file_name_to_module_name(FirstFileName, FirstModuleName)
+	;
+		FirstFileOrModule = module(FirstModuleName)
+	},
+
+	% Invoke run_gcc_backend.  It will call us back,
+	% and then we'll continue with the normal work of
+	% the compilation, which will be done by the callback
+	% function (`process_args').
+	maybe_mlds_to_gcc__run_gcc_backend(FirstModuleName,
+		CallBack, ModulesToLink),
+
+	% Now we know what the real module name was, so we
+	% can rename the assembler file if needed (see above).
+	( { ModulesToLink = [Module | _] } ->
+		{ file_name_to_module_name(Module, ModuleName) },
+		globals__io_lookup_bool_option(pic, Pic),
+		{ AsmExt = (Pic = yes -> ".pic_s" ; ".s") },
+		module_name_to_file_name(ModuleName, AsmExt, no,
+			AsmFile),
+		(
+			{ ModuleName \= FirstModuleName }
+		->
+			module_name_to_file_name(FirstModuleName,
+				AsmExt, no, FirstAsmFile),
+			do_rename_file(FirstAsmFile, AsmFile, Result)
+		;
+			{ Result = ok }
+		),
+
+		% Invoke the assembler to produce an object file,
+		% if needed.
+		globals__io_lookup_bool_option(target_code_only, 
+				TargetCodeOnly),
+		( { Result = ok, TargetCodeOnly = no } ->
+			object_extension(Obj),
+			module_name_to_file_name(ModuleName, Obj,
+				yes, O_File),
+			mercury_compile__asm_to_obj(
+				AsmFile, O_File, _AssembleOK)
+		;
+			[]
+		)
+	;
+		% This can happen if smart recompilation decided
+		% that nothing needed to be compiled.
+		[]
+	).
 
 :- pred do_rename_file(string::in, string::in, io__res::out,
 		io__state::di, io__state::uo) is det.
@@ -412,38 +444,41 @@ process_arg(Arg, ModulesToLink) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, _),
 
-	% If the argument name ends in `.m', then we assume it is
-	% a file name.
-	( { string__remove_suffix(Arg, ".m", FileName) } ->
-		globals__io_lookup_bool_option(generate_dependencies,
-			GenerateDeps),
-		( { GenerateDeps = yes } ->
-			generate_file_dependencies(FileName),
-			{ ModulesToLink = [] }
+	{ FileOrModule = string_to_file_or_module(Arg) },
+	globals__io_lookup_bool_option(generate_dependencies, GenerateDeps),
+	( { GenerateDeps = yes } ->
+		{ ModulesToLink = [] },
+		(
+			{ FileOrModule = file(FileName) },
+			generate_file_dependencies(FileName)
 		;
-			process_module(file(FileName), ModulesToLink)
+			{ FileOrModule = module(ModuleName) },
+			generate_module_dependencies(ModuleName)
 		)
 	;
-		% If it doesn't end in `.m', then we assume it is
-		% a module name.  (Is it worth checking that the
-		% name doesn't contain directory seperators, and issuing
-		% a warning or error in that case?)
-		{ file_name_to_module_name(Arg, ModuleName) },
-
-		globals__io_lookup_bool_option(generate_dependencies,
-			GenerateDeps),
-		( { GenerateDeps = yes } ->
-			generate_module_dependencies(ModuleName),
-			{ ModulesToLink = [] }
-		;
-			process_module(module(ModuleName), ModulesToLink)
-		)
+		process_module(FileOrModule, ModulesToLink)
 	).
 
 :- type file_or_module
 	--->	file(file_name)
 	;	module(module_name)
 	.
+
+:- func string_to_file_or_module(string) = file_or_module.
+
+string_to_file_or_module(String) = FileOrModule :-
+	( string__remove_suffix(String, ".m", FileName) ->
+		% If the argument name ends in `.m', then we assume it is
+		% a file name.
+		FileOrModule = file(FileName)
+	;
+		% If it doesn't end in `.m', then we assume it is
+		% a module name.  (Is it worth checking that the
+		% name doesn't contain directory seperators, and issuing
+		% a warning or error in that case?)
+		file_name_to_module_name(String, ModuleName),
+		FileOrModule = module(ModuleName) 			
+	).
 
 :- pred read_module(file_or_module, bool, module_name, file_name,
 		maybe(timestamp), item_list, module_error,
@@ -602,6 +637,7 @@ process_module(FileOrModule, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	;
 		globals__io_lookup_bool_option(smart_recompilation, Smart),
+		globals__io_get_target(Target),
 		( { Smart = yes } ->
 			{
 				FileOrModule = module(ModuleName)
@@ -627,8 +663,8 @@ process_module(FileOrModule, ModulesToLink) -->
 				FindTargetFiles, FindTimestampFiles,
 				ModulesToRecompile0, ReadModules),
 			{
-				ModulesToRecompile0 = some([_ | _]),
-				globals__get_target(Globals, asm)
+				Target = asm,
+				ModulesToRecompile0 = some([_ | _])
 			->
 				% 
 				% With `--target asm', if one module
@@ -652,8 +688,16 @@ process_module(FileOrModule, ModulesToLink) -->
 			% and up-to-date.
 			{ ModulesToLink = [] }
 		;
-			process_module_2(FileOrModule, ModulesToRecompile,
-				ReadModules, ModulesToLink)
+			( { Target = asm, Smart = yes } ->
+			    % See the comment in process_all_args.
+			    compile_using_gcc_backend(FileOrModule,
+				process_module_2(FileOrModule,
+					ModulesToRecompile, ReadModules),
+				ModulesToLink)
+			;
+			    process_module_2(FileOrModule, ModulesToRecompile,
+			    	ReadModules, ModulesToLink)
+			)
 		)
 	).
 
