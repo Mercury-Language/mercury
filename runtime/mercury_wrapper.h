@@ -76,8 +76,8 @@ extern	void		(*MR_library_finalizer)(void);
 extern	void		(*MR_io_stderr_stream)(MR_Word *);
 extern	void		(*MR_io_stdout_stream)(MR_Word *);
 extern	void		(*MR_io_stdin_stream)(MR_Word *);
-extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
-extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
+extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Box);
+extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Box);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
