@@ -43,7 +43,7 @@ ENDINIT
   #include <sys/wait.h>     /* for the wait system call */
 #endif
 
-void        (*MR_trace_shutdown)(void) = NULL;
+void            (*MR_trace_shutdown)(void) = NULL;
 
 MR_bool         MR_debug_ever_enabled = MR_FALSE;
 MR_bool         MR_debug_enabled = MR_FALSE;
@@ -236,7 +236,7 @@ static  void    MR_trace_write_label_exec_counts(FILE *fp);
 void
 MR_trace_write_label_exec_counts_to_file(void *dummy)
 {
-    FILE	*fp;
+    FILE    *fp;
     int     len;
     char    *name;
     char    *s;
@@ -264,11 +264,11 @@ MR_trace_write_label_exec_counts_to_file(void *dummy)
     }
 }
 
-/*      
+/*
 ** For every label reachable from the module table, write the id of the label
 ** and the number of times it has been executed to the specified file, with the
 ** exception of labels that haven't been executed.
-*/ 
+*/
 
 static void
 MR_trace_write_label_exec_counts(FILE *fp)
@@ -404,7 +404,7 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 break;
             default:
                 /* This assumes isalnum is the same as char__isalnum.
-                ** The line noise is the equivalent of 
+                ** The line noise is the equivalent of
                 ** is_mercury_punctuation_char in library/term_io.m
                 ** and compiler/mercury_to_mercury.m; any changes here
                 ** may require similar changes there.
@@ -419,6 +419,7 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 break;
         }
     }
+
     fputc('\'', fp);
 }
 
@@ -552,8 +553,8 @@ static MR_Hash_Table MR_standard_call_num_table = {
 static MR_bool  MR_init_event_num_hash = MR_FALSE;
 static MR_bool  MR_init_call_num_hash = MR_FALSE;
 
-static int MR_next_std_event_num = 1;
-static int MR_next_std_call_num = 1;
+static int      MR_next_std_event_num = 1;
+static int      MR_next_std_call_num = 1;
 
 static MR_Unsigned
 MR_standardize_num(MR_Unsigned num, MR_Hash_Table *table_ptr,
@@ -812,6 +813,119 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 }
 
 #endif  /* MR_TRACE_HISTOGRAM */
+
+/*
+** We record information about procedure representations in a hash table
+** that is indexed by the proc layout address.
+**
+** This table is used by the declarative debugger. Since the declarative
+** debugger can be required in any grade, we always include this table, but
+** it is initialized (and the bulk of its memory allocated) only if the
+** declarative debugger is in fact invoked.
+*/
+
+#define PROC_REP_TABLE_SIZE (1 << 16)   /* 64k */
+
+typedef struct {
+    const MR_Proc_Layout    *plr_layout;
+    MR_Word                 plr_rep;
+} MR_Proc_Layout_Rep;
+
+static  void                MR_do_init_proc_rep_table(void);
+static  const void          *proc_layout_rep_key(const void *proc_layout);
+static  int                 hash_proc_layout_addr(const void *addr);
+static  MR_bool             equal_proc_layouts(const void *addr1,
+                                const void *addr2);
+
+static  MR_Hash_Table       proc_rep_table = {PROC_REP_TABLE_SIZE, NULL,
+                                proc_layout_rep_key, hash_proc_layout_addr,
+                                equal_proc_layouts};
+
+static void
+MR_do_init_proc_rep_table(void)
+{
+    static  MR_bool done = MR_FALSE;
+
+    if (!done) {
+        MR_init_hash_table(proc_rep_table);
+        done = MR_TRUE;
+    }
+}
+
+void
+MR_insert_proc_rep(const MR_Proc_Layout *proc_layout, MR_Word proc_rep)
+{
+    MR_Proc_Layout_Rep  *layout_rep;
+
+    MR_do_init_proc_rep_table();
+
+    layout_rep = MR_GC_NEW(MR_Proc_Layout_Rep);
+    layout_rep->plr_layout = proc_layout;
+    layout_rep->plr_rep = proc_rep;
+
+    (void) MR_insert_hash_table(proc_rep_table, layout_rep);
+
+#ifdef  MR_DEBUG_PROC_REP
+    if (MR_progdebug) {
+        printf("insert: layout %p, rep %x, pair %p\n",
+            proc_layout, proc_rep, layout_rep);
+    }
+#endif
+}
+
+MR_Word
+MR_lookup_proc_rep(const MR_Proc_Layout *proc_layout)
+{
+    const MR_Proc_Layout_Rep  *layout_rep;
+
+    MR_do_init_proc_rep_table();
+
+    layout_rep = MR_lookup_hash_table(proc_rep_table, proc_layout);
+    if (layout_rep == NULL) {
+#ifdef  MR_DEBUG_PROC_REP
+        if (MR_progdebug) {
+            printf("search for layout %p: not found\n", proc_layout);
+        }
+#endif
+
+        return 0;
+    }
+
+#ifdef  MR_DEBUG_PROC_REP
+    if (MR_progdebug) {
+        printf("search for layout %p: found pair %p, rep %x\n",
+            proc_layout, layout_rep, layout_rep->plr_rep);
+    }
+#endif
+
+    return layout_rep->plr_rep;
+}
+
+static const void *
+proc_layout_rep_key(const void *pair)
+{
+    MR_Proc_Layout_Rep  *proc_layout_rep;
+
+    proc_layout_rep = (MR_Proc_Layout_Rep *) pair;
+    if (proc_layout_rep == NULL) {
+        return NULL;
+    } else {
+        return (const void *) proc_layout_rep->plr_layout;
+    }
+}
+
+static int
+hash_proc_layout_addr(const void *addr)
+{
+    return (((MR_Unsigned) addr) >> 5) % PROC_REP_TABLE_SIZE;
+}
+
+static MR_bool
+equal_proc_layouts(const void *addr1, const void *addr2)
+{
+    return ((const MR_Proc_Layout *) addr1) ==
+        ((const MR_Proc_Layout *) addr2);
+}
 
 #ifndef MR_HIGHLEVEL_CODE
 

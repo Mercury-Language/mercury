@@ -134,7 +134,7 @@
 
 :- type cons_id_rep ==	string.
 
-:- type detism_rep	
+:- type detism_rep
 	--->	det_rep
 	;	semidet_rep
 	;	nondet_rep
@@ -151,7 +151,7 @@
 :- func atomic_goal_generates_event(atomic_goal_rep) = maybe(list(var_rep)).
 
 	% If the given goal generates internal events directly then this
-	% function will return yes and no otherwise. 
+	% function will return yes and no otherwise.
 	%
 :- func goal_generates_internal_event(goal_rep) = bool.
 
@@ -161,12 +161,12 @@
 :- pred call_is_primitive(string::in, string::in) is semidet.
 
 	% The atomic goals module, name and arity
-:- type atomic_goal_id 
+:- type atomic_goal_id
 	---> atomic_goal_id(string, string, int).
 
 	% Can we find out the atomic goals name, module and arity from
 	% its atomic_goal_rep?  If so return them, otherwise return no.
-:- func atomic_goal_identifiable(atomic_goal_rep) = 
+:- func atomic_goal_identifiable(atomic_goal_rep) =
 	maybe(atomic_goal_id).
 
 %-----------------------------------------------------------------------------%
@@ -209,12 +209,12 @@
 	% Both user-visible and compiler-generated head variables can be
 	% referred to via their position in the full list of head variables;
 	% the first head variable is at position 1.
-	
+
 :- type arg_pos
 	--->	user_head_var(int)	% Nth in the list of arguments after
 					% filtering out non-user-visible vars.
 	;	any_head_var(int)	% Nth in the list of all arguments.
-			
+
 			% (M-N+1)th argument in the list of all arguments,
 			% where N is the value of the int in the constructor
 			% and M is the total number of arguments.
@@ -232,6 +232,44 @@
 
 	% Returns type_of(_ `with_type` goal_rep), for use in C code.
 :- func goal_rep_type = type_desc.
+
+	% Construct a representation of the interface determinism of a
+	% procedure. The code we have chosen is not sequential; instead
+	% it encodes the various properties of each determinism.
+	% This must match the encoding of MR_Determinism in
+	% mercury_stack_layout.h.
+	%
+	% The 8 bit is set iff the context is first_solution.
+	% The 4 bit is set iff the min number of solutions is more than zero.
+	% The 2 bit is set iff the max number of solutions is more than zero.
+	% The 1 bit is set iff the max number of solutions is more than one.
+:- func detism_rep(detism_rep) = int.
+
+:- pred determinism_representation(detism_rep, int).
+:- mode determinism_representation(in, out) is det.
+:- mode determinism_representation(out, in) is semidet.
+
+:- type bytecode_goal_type
+	--->	goal_conj
+	;	goal_disj
+	;	goal_switch
+	;	goal_ite
+	;	goal_neg
+	;	goal_scope
+	;	goal_construct
+	;	goal_deconstruct
+	;	goal_assign
+	;	goal_unsafe_cast
+	;	goal_simple_test
+	;	goal_foreign
+	;	goal_ho_call
+	;	goal_method_call
+	;	goal_plain_call
+	;	goal_builtin_call.
+
+:- func goal_type_to_byte(bytecode_goal_type) = int.
+
+:- func byte_to_goal_type(int) = bytecode_goal_type is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -268,7 +306,7 @@ call_is_primitive(ModuleName, PredName) :-
 	;
 	%
 	% The following are also treated as primitive since
-	% compiler generated predicate events are not 
+	% compiler generated predicate events are not
 	% included in the annotated trace at the moment.
 	%
 		PredName = "__Unify__"
@@ -295,9 +333,9 @@ atomic_goal_identifiable(unsafe_cast_rep(_, _)) = no.
 atomic_goal_identifiable(pragma_foreign_code_rep(_)) = no.
 atomic_goal_identifiable(higher_order_call_rep(_, _)) = no.
 atomic_goal_identifiable(method_call_rep(_, _, _)) = no.
-atomic_goal_identifiable(builtin_call_rep(Module, Name, Args)) = 
+atomic_goal_identifiable(builtin_call_rep(Module, Name, Args)) =
 	yes(atomic_goal_id(Module, Name, length(Args))).
-atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) = 
+atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) =
 	yes(atomic_goal_id(Module, Name, length(Args))).
 
 :- pragma export(proc_rep_type = out, "ML_proc_rep_type").
@@ -364,4 +402,50 @@ string_from_path_step(first, "f").
 string_from_path_step(later, "l").
 
 %-----------------------------------------------------------------------------%
+
+detism_rep(Detism) = Rep :-
+	determinism_representation(Detism, Rep).
+
+% This encoding must match the encoding of MR_Determinism in
+% runtime/mercury_stack_layout.h. The rationale for this encoding
+% is documented there.
+
+determinism_representation(det_rep, 6).
+determinism_representation(semidet_rep, 2).
+determinism_representation(nondet_rep, 3).
+determinism_representation(multidet_rep, 7).
+determinism_representation(erroneous_rep, 4).
+determinism_representation(failure_rep, 0).
+determinism_representation(cc_nondet_rep, 10).
+determinism_representation(cc_multidet_rep, 14).
+
+%-----------------------------------------------------------------------------%
+
+goal_type_to_byte(Type) = TypeInt :-
+	goal_type_byte(TypeInt, Type).
+
+byte_to_goal_type(TypeInt) = Type :-
+	goal_type_byte(TypeInt, Type).
+
+:- pred goal_type_byte(int, bytecode_goal_type).
+:- mode goal_type_byte(in, out) is semidet.
+:- mode goal_type_byte(out, in) is det.
+
+goal_type_byte(1, goal_conj).
+goal_type_byte(2, goal_disj).
+goal_type_byte(3, goal_switch).
+goal_type_byte(4, goal_ite).
+goal_type_byte(5, goal_neg).
+goal_type_byte(6, goal_scope).
+goal_type_byte(7, goal_construct).
+goal_type_byte(8, goal_deconstruct).
+goal_type_byte(9, goal_assign).
+goal_type_byte(10, goal_unsafe_cast).
+goal_type_byte(11, goal_simple_test).
+goal_type_byte(12, goal_foreign).
+goal_type_byte(13, goal_ho_call).
+goal_type_byte(14, goal_method_call).
+goal_type_byte(15, goal_plain_call).
+goal_type_byte(16, goal_builtin_call).
+
 %-----------------------------------------------------------------------------%

@@ -713,7 +713,25 @@
 				% This option is used to test that the compiler
 				% is sufficiently recent when no other test
 				% can easily be constructed in configure.in.
-		.
+		;	experiment.
+				% This option is provided for use by
+				% implementors who want to compare a new way
+				% of doing something with the old way.
+				% The idea is that the code that switches
+				% between the two ways should consult this
+				% option and make its decision accordingly.
+				%
+				% The intention is that all use of this
+				% option is within developer workspaces;
+				% no code using this option should be
+				% committed.
+				%
+				% Of course, a developer could always create
+				% a purpose-specific option to control their
+				% code, but adding an option requires
+				% recompiling most of the modules in the
+				% compiler. Having this option permanently here
+				% should reduce the need for that.
 
 :- implementation.
 
@@ -1374,7 +1392,8 @@ option_defaults_2(miscellaneous_option, [
 	version			-	bool(no),
 	fullarch		-	string(""),
 	compiler_sufficiently_recent
-				-	bool(no)
+				-	bool(no),
+	experiment 		-	string("")
 ]).
 
 	% please keep this in alphabetic order
@@ -2070,6 +2089,7 @@ long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
 long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
 long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
+long_option("experiment",		experiment).
 
 %-----------------------------------------------------------------------------%
 

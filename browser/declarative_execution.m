@@ -23,7 +23,10 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
-:- import_module list, std_util, io, bool.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
@@ -48,8 +51,6 @@
 						% Trace event number.
 			call_at_max_depth	:: bool,
 						% At the maximum depth?
-			call_proc_rep		:: maybe(proc_rep),
-						% Body of the called procedure.
 			call_return_label	:: maybe(label_layout),
 						% The return label, if there
 						% is one.
@@ -233,6 +234,9 @@
 :- pred get_context_from_label_layout(label_layout::in, string::out, int::out)
 	is semidet.
 
+:- pred call_node_maybe_proc_rep(trace_node(R)::in(trace_node_call),
+	maybe(proc_rep)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% If the following type is modified, some of the macros in
@@ -299,7 +303,7 @@
 	<= annotated_trace(S, R).
 
 :- inst trace_node_call ---> call(ground, ground, ground, ground, ground,
-	ground, ground, ground, ground, ground).
+	ground, ground, ground, ground).
 
 :- pred call_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_call)) 
 	is det <= annotated_trace(S, R).
@@ -397,9 +401,13 @@
 :- implementation.
 
 :- import_module mdb.declarative_debugger.
-:- import_module int, map, exception, store.
-:- import_module require.
 :- import_module mdb.declarative_edt.
+
+:- import_module exception.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module store.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -497,7 +505,7 @@ get_proc_name(special_proc(_, _, _, ProcName , _, _)) = ProcName.
 :- pragma foreign_proc("C",
 	get_all_modes_for_layout(Layout::in) = (Layouts::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"
+"
 	const MR_Module_Layout	*module;
 	const MR_Proc_Layout	*proc;
 	int			i;
@@ -609,15 +617,15 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 	% stub only
 :- pragma foreign_type("Java", label_layout, "java.lang.Object", []). 
 
-:- pragma foreign_proc("C", get_proc_layout_from_label_layout(Label::in)
-	= (ProcLayout::out),
+:- pragma foreign_proc("C",
+	get_proc_layout_from_label_layout(Label::in) = (ProcLayout::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	ProcLayout = Label->MR_sll_entry;
 ").
 
-:- pragma foreign_proc("C", get_goal_path_from_label_layout(Label::in)
-	= (GoalPath::out),
+:- pragma foreign_proc("C",
+	get_goal_path_from_label_layout(Label::in) = (GoalPath::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	GoalPath = (MR_String)MR_label_goal_path(Label);
@@ -627,8 +635,8 @@ get_goal_path_from_maybe_label(yes(Label))
 	= get_goal_path_from_label_layout(Label).
 get_goal_path_from_maybe_label(no) = "".
 
-:- pragma foreign_proc("C", get_context_from_label_layout(Label::in, 
-	FileName::out, LineNo::out), 
+:- pragma foreign_proc("C",
+	get_context_from_label_layout(Label::in, FileName::out, LineNo::out), 
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	const char	*filename;
@@ -639,13 +647,113 @@ get_goal_path_from_maybe_label(no) = "".
 	);
 ").
 
+:- pragma promise_pure(call_node_maybe_proc_rep/2).
+
+call_node_maybe_proc_rep(CallNode, MaybeProcRep) :-
+	( call_node_bytecode_layout(CallNode ^ call_label, ProcLayout) ->
+		( semipure have_cached_proc_rep(ProcLayout, ProcRep) ->
+			MaybeProcRep = yes(ProcRep)
+		;
+			lookup_proc_bytecode(ProcLayout, ByteCode),
+			read_proc_rep(ByteCode, ProcRep),
+			impure cache_proc_rep(ProcLayout, ProcRep),
+			MaybeProcRep = yes(ProcRep)
+		)
+	;
+		MaybeProcRep = no
+	).
+
+:- pred call_node_bytecode_layout(label_layout::in, proc_layout::out)
+	is semidet.
+
+	% Default version for non-C backends.
+call_node_bytecode_layout(_, _) :-
+	semidet_fail.
+
+:- pragma foreign_proc("C",
+	call_node_bytecode_layout(CallLabelLayout::in, ProcLayout::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	ProcLayout = CallLabelLayout->MR_sll_entry;
+	if (ProcLayout->MR_sle_body_bytes != NULL) {
+#ifdef MR_DEBUG_PROC_REP
+		printf(""call_node_bytecode_layout: %p success\\n"",
+			CallLabelLayout);
+#endif
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+#ifdef MR_DEBUG_PROC_REP
+		printf(""call_node_bytecode_layout: %p failure\\n"",
+			CallLabelLayout);
+#endif
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
+
+:- pred lookup_proc_bytecode(proc_layout::in, bytecode::out) is det.
+
+	% Default version for non-C backends.
+lookup_proc_bytecode(_, dummy_bytecode).
+
+:- pragma foreign_proc("C",
+	lookup_proc_bytecode(ProcLayout::in, ByteCode::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	ByteCode = ProcLayout->MR_sle_body_bytes;
+#ifdef MR_DEBUG_PROC_REP
+	printf(""lookup_proc_bytecode: %p %p\\n"", ProcLayout, ByteCode);
+#endif
+").
+
+:- semipure pred have_cached_proc_rep(proc_layout::in, proc_rep::out)
+	is semidet.
+
+	% Default version for non-C backends.
+have_cached_proc_rep(_, _) :-
+	semidet_fail.
+
+:- pragma foreign_proc("C",
+	have_cached_proc_rep(ProcLayout::in, ProcRep::out),
+	[will_not_call_mercury, thread_safe, promise_semipure],
+"
+	ProcRep = MR_lookup_proc_rep(ProcLayout);
+	if (ProcRep != 0) {
+#ifdef MR_DEBUG_PROC_REP
+		printf(""have_cached_proc_rep: %p success\\n"",
+			ProcLayout);
+#endif
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+#ifdef MR_DEBUG_PROC_REP
+		printf(""have_cached_proc_rep: %p failure\\n"",
+			ProcLayout);
+#endif
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
+
+:- impure pred cache_proc_rep(proc_layout::in, proc_rep::in) is det.
+
+	% Default version for non-C backends.
+cache_proc_rep(_, _).
+
+:- pragma foreign_proc("C",
+	cache_proc_rep(ProcLayout::in, ProcRep::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_DEBUG_PROC_REP
+	printf(""cache_proc_rep: %p %x\\n"", ProcLayout, ProcRep);
+#endif
+	MR_insert_proc_rep(ProcLayout, ProcRep);
+").
+
 %-----------------------------------------------------------------------------%
 
 get_trace_exit_atom(exit(_, _, _, AtomArgs, _, Label, _)) = Atom :-
 	ProcLayout = get_proc_layout_from_label_layout(Label),
 	Atom = atom(ProcLayout, AtomArgs).
 
-get_trace_call_atom(call(_, _, AtomArgs, _, _, _, _, _, Label, _)) = Atom :-
+get_trace_call_atom(call(_, _, AtomArgs, _, _, _, _, Label, _)) = Atom :-
 	ProcLayout = get_proc_layout_from_label_layout(Label),
 	Atom = atom(ProcLayout, AtomArgs).
 
@@ -679,7 +787,7 @@ step_left_in_contour(Store, neg_succ(_, Neg, _)) = Prec :-
 	% The following cases are possibly at the left end of a contour,
 	% where we cannot step any further.
 	%
-step_left_in_contour(_, call(_, _, _, _, _, _, _, _, _, _)) = _ :-
+step_left_in_contour(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
 	throw(internal_error("step_left_in_contour", "unexpected CALL node")).
 step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
 	(
@@ -733,7 +841,7 @@ find_prev_contour(Store, neg_fail(_, Neg, _), OnContour) :-
 	% The following cases are at the left end of a contour,
 	% so there are no previous contours in the same stratum.
 	%
-find_prev_contour(_, call(_, _, _, _, _, _, _, _, _, _), _) :-
+find_prev_contour(_, call(_, _, _, _, _, _, _, _, _), _) :-
 	throw(internal_error("find_prev_contour", "reached CALL node")).
 find_prev_contour(_, cond(_, _, _), _) :-
 	throw(internal_error("find_prev_contour", "reached COND node")).
@@ -771,7 +879,7 @@ step_in_stratum(Store, neg_fail(_, Neg, _)) = Next :-
 	% The following cases mark the boundary of the stratum,
 	% so we cannot step any further.
 	%
-step_in_stratum(_, call(_, _, _, _, _, _, _, _, _, _)) = _ :-
+step_in_stratum(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
 	throw(internal_error("step_in_stratum", "unexpected CALL node")).
 step_in_stratum(_, neg(_, _, _)) = _ :-
 	throw(internal_error("step_in_stratum", "unexpected NEGE node")).
@@ -800,7 +908,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 call_node_from_id(Store, NodeId, Node) :-
 	(
 		trace_node_from_id(Store, NodeId, Node0),
-		Node0 = call(_, _, _, _, _, _, _, _, _, _)
+		Node0 = call(_, _, _, _, _, _, _, _, _)
 	->
 		Node = Node0
 	;
@@ -918,7 +1026,7 @@ search_trace_node_store(_, _, _) :-
 
 call_node_get_last_interface(Call) = Last :-
 	(
-		Call = call(_, Last0, _, _, _, _, _, _, _, _)
+		Call = call(_, Last0, _, _, _, _, _, _, _)
 	->
 		Last = Last0
 	;
@@ -934,7 +1042,7 @@ call_node_get_last_interface(Call) = Last :-
 
 call_node_set_last_interface(Call0, Last) = Call :-
 	(
-		Call0 = call(_, _, _, _, _, _, _, _, _, _)
+		Call0 = call(_, _, _, _, _, _, _, _, _)
 	->
 		Call1 = Call0
 	;
@@ -998,7 +1106,7 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 :- pragma export(trace_node_port(in) = out,
 		"MR_DD_trace_node_port").
 
-trace_node_port(call(_, _, _, _, _, _, _, _, _, _))	= call.
+trace_node_port(call(_, _, _, _, _, _, _, _, _))	= call.
 trace_node_port(exit(_, _, _, _, _, _, _))		= exit.
 trace_node_port(redo(_, _, _, _))			= redo.
 trace_node_port(fail(_, _, _, _, _))			= fail.
@@ -1022,7 +1130,7 @@ trace_node_path(Node) = Path :-
 
 :- func get_trace_node_label(trace_node(R)) = label_layout.
 
-get_trace_node_label(call(_, _, _, _, _, _, _, _, Label, _)) = Label.
+get_trace_node_label(call(_, _, _, _, _, _, _, Label, _)) = Label.
 get_trace_node_label(exit(_, _, _, _, _, Label, _)) = Label.
 get_trace_node_label(redo(_, _, _, Label)) = Label.
 get_trace_node_label(fail(_, _, _, _, Label)) = Label.
@@ -1135,19 +1243,7 @@ print_trace_node(OutStr, Node, !IO) :-
 construct_call_node(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth, 
 		MaybeReturnLabel, Label, IoSeqNum) = Call :-
 	Call = call(Preceding, Answer, AtomArgs, SeqNo, EventNo, MaxDepth,
-		no, MaybeReturnLabel, Label, IoSeqNum),
-	null_trace_node_id(Answer).
-
-:- func construct_call_node_with_goal(trace_node_id, list(trace_atom_arg),
-	sequence_number, event_number, bool, proc_rep, maybe(label_layout), 
-	label_layout, int) = trace_node(trace_node_id).
-:- pragma export(construct_call_node_with_goal(in, in, in, in, in, in, in, in,
-	in) = out, "MR_DD_construct_call_node_with_goal").
-
-construct_call_node_with_goal(Preceding, AtomArgs, SeqNo, EventNo, MaxDepth,
-		ProcRep, MaybeReturnLabel, Label, IoSeqNum) = Call :-
-	Call = call(Preceding, Answer, AtomArgs, SeqNo, EventNo, MaxDepth,
-		yes(ProcRep), MaybeReturnLabel, Label, IoSeqNum),
+		MaybeReturnLabel, Label, IoSeqNum),
 	null_trace_node_id(Answer).
 
 :- func make_yes_maybe_label(label_layout) = maybe(label_layout).
@@ -1275,8 +1371,9 @@ construct_neg_fail_node(Preceding, Neg, Label)
 :- pragma foreign_proc("C",
 	null_trace_node_id(Id::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
-"Id = (MR_Word) NULL;"
-).
+"
+	Id = (MR_Word) NULL;
+").
 
 null_trace_node_id(_) :-
 	private_builtin.sorry("null_trace_node_id").
@@ -1406,9 +1503,12 @@ node_map(Store, NodeId, map(Map0), Map) :-
 
 :- pred node_id_to_key(trace_node_id::in, trace_node_key::out) is det.
 
-:- pragma foreign_proc("C", node_id_to_key(Id::in, Key::out),
+:- pragma foreign_proc("C",
+	node_id_to_key(Id::in, Key::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
-"Key = (MR_Integer) Id;").
+"
+	Key = (MR_Integer) Id;
+").
 
 node_id_to_key(_, _) :-
 	private_builtin.sorry("node_id_to_key").
@@ -1416,9 +1516,12 @@ node_id_to_key(_, _) :-
 :- pred convert_node(trace_node(trace_node_id)::in, 
 	trace_node(trace_node_key)::out) is det.
 
-:- pragma foreign_proc("C", convert_node(N1::in, N2::out),
+:- pragma foreign_proc("C",
+	convert_node(N1::in, N2::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
-"N2 = N1;").
+"
+	N2 = N1;
+").
 
 convert_node(_, _) :-
 	private_builtin.sorry("convert_node").
@@ -1429,7 +1532,7 @@ convert_node(_, _) :-
 	%
 :- func preceding_node(trace_node(T)) = T.
 
-preceding_node(call(P, _, _, _, _, _, _, _, _, _)) = P.
+preceding_node(call(P, _, _, _, _, _, _, _, _)) = P.
 preceding_node(exit(P, _, _, _, _, _, _))	= P.
 preceding_node(redo(P, _, _, _))		= P.
 preceding_node(fail(P, _, _, _, _))		= P.
@@ -1501,3 +1604,282 @@ head_var_num_to_arg_num([Arg | Args], SearchUserHeadVarNum, CurArgNum,
 				CurArgNum + 1, ArgNum)
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- type bytecode --->	dummy_bytecode.
+
+:- pragma foreign_type("C", bytecode, "const MR_uint_least8_t *",
+	[can_pass_as_mercury_type, stable]).
+:- pragma foreign_type("Java", bytecode, "java.lang.Object", []). %stub only
+
+:- pred read_proc_rep(bytecode::in, proc_rep::out) is det.
+:- pragma export(read_proc_rep(in, out), "MR_DD_trace_read_rep").
+
+read_proc_rep(Bytecode, ProcRep) :-
+	some [!Pos] (
+		!:Pos = 0,
+		read_int32(Bytecode, !Pos, Limit),
+		read_string(Bytecode, !Pos, FileName),
+		Info = read_proc_rep_info(Limit, FileName),
+		read_vars(Bytecode, !Pos, HeadVars),
+		read_goal(Bytecode, !Pos, Info, Goal),
+		ProcRep = proc_rep(HeadVars, Goal),
+		require(unify(!.Pos, Limit), "read_proc_rep: limit mismatch")
+	).
+
+:- type read_proc_rep_info
+	--->	read_proc_rep_info(
+			limit		:: int,
+			filename	:: string
+		).
+
+:- pred read_goal(bytecode::in, int::in, int::out, read_proc_rep_info::in,
+	goal_rep::out) is det.
+
+read_goal(Bytecode, !Pos, Info, Goal) :-
+	read_byte(Bytecode, !Pos, GoalTypeByte),
+	( byte_to_goal_type(GoalTypeByte) = GoalType ->
+		(
+			GoalType = goal_conj,
+			read_goals(Bytecode, !Pos, Info, Goals),
+			Goal = conj_rep(Goals)
+		;
+			GoalType = goal_disj,
+			read_goals(Bytecode, !Pos, Info, Goals),
+			Goal = disj_rep(Goals)
+		;
+			GoalType = goal_neg,
+			read_goal(Bytecode, !Pos, Info, SubGoal),
+			Goal = negation_rep(SubGoal)
+		;
+			GoalType = goal_ite,
+			read_goal(Bytecode, !Pos, Info, Cond),
+			read_goal(Bytecode, !Pos, Info, Then),
+			read_goal(Bytecode, !Pos, Info, Else),
+			Goal = ite_rep(Cond, Then, Else)
+		;
+			GoalType = goal_switch,
+			read_goals(Bytecode, !Pos, Info, Goals),
+			Goal = switch_rep(Goals)
+		;
+			GoalType = goal_assign,
+			read_var(Bytecode, !Pos, Target),
+			read_var(Bytecode, !Pos, Source),
+			AtomicGoal = unify_assign_rep(Target, Source),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_construct,
+			read_var(Bytecode, !Pos, Var),
+			read_cons_id(Bytecode, !Pos, ConsId),
+			read_vars(Bytecode, !Pos, ArgVars),
+			AtomicGoal = unify_construct_rep(Var, ConsId, ArgVars),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_deconstruct,
+			read_var(Bytecode, !Pos, Var),
+			read_cons_id(Bytecode, !Pos, ConsId),
+			read_vars(Bytecode, !Pos, ArgVars),
+			AtomicGoal = unify_deconstruct_rep(Var, ConsId,
+				ArgVars),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_simple_test,
+			read_var(Bytecode, !Pos, Var1),
+			read_var(Bytecode, !Pos, Var2),
+			AtomicGoal = unify_simple_test_rep(Var1, Var2),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_scope,
+			read_byte(Bytecode, !Pos, MaybeCutByte),
+			( MaybeCutByte = 0 ->
+				MaybeCut = no_cut
+			; MaybeCutByte = 1 ->
+				MaybeCut = cut
+			;
+				error("read_goal: bad maybe_cut")
+			),
+			read_goal(Bytecode, !Pos, Info, SubGoal),
+			Goal = scope_rep(SubGoal, MaybeCut)
+		;
+			GoalType = goal_ho_call,
+			read_var(Bytecode, !Pos, Var),
+			read_vars(Bytecode, !Pos, Args),
+			AtomicGoal = higher_order_call_rep(Var, Args),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_method_call,
+			read_var(Bytecode, !Pos, Var),
+			read_method_num(Bytecode, !Pos, MethodNum),
+			read_vars(Bytecode, !Pos, Args),
+			AtomicGoal = method_call_rep(Var, MethodNum, Args),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_unsafe_cast,
+			read_var(Bytecode, !Pos, OutputVar),
+			read_var(Bytecode, !Pos, InputVar),
+			AtomicGoal = unsafe_cast_rep(OutputVar, InputVar),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_plain_call,
+			read_string(Bytecode, !Pos, ModuleName),
+			read_string(Bytecode, !Pos, PredName),
+			read_vars(Bytecode, !Pos, Args),
+			AtomicGoal = plain_call_rep(ModuleName, PredName,
+				Args),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_builtin_call,
+			read_string(Bytecode, !Pos, ModuleName),
+			read_string(Bytecode, !Pos, PredName),
+			read_vars(Bytecode, !Pos, Args),
+			AtomicGoal = builtin_call_rep(ModuleName, PredName,
+				Args),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		;
+			GoalType = goal_foreign,
+			read_vars(Bytecode, !Pos, Args),
+			AtomicGoal = pragma_foreign_code_rep(Args),
+			read_atomic_info(Bytecode, !Pos, Info, AtomicGoal,
+				Goal)
+		)
+	;
+		error("read_goal: invalid goal type")
+	).
+
+:- pred read_atomic_info(bytecode::in, int::in, int::out,
+	read_proc_rep_info::in, atomic_goal_rep::in, goal_rep::out) is det.
+
+read_atomic_info(Bytecode, !Pos, Info, AtomicGoal, Goal) :-
+	read_byte(Bytecode, !Pos, DetismByte),
+	( determinism_representation(DetismPrime, DetismByte) ->
+		Detism = DetismPrime
+	;
+		error("read_atomic_info: bad detism")
+	),
+	read_string(Bytecode, !Pos, FileName0),
+	( FileName0 = "" ->
+		FileName = Info ^ filename
+	;
+		FileName = FileName0
+	),
+	read_lineno(Bytecode, !Pos, LineNo),
+	read_vars(Bytecode, !Pos, BoundVars),
+	Goal = atomic_goal_rep(Detism, FileName, LineNo, BoundVars,
+		AtomicGoal).
+
+:- pred read_goals(bytecode::in, int::in, int::out, read_proc_rep_info::in,
+	list(goal_rep)::out) is det.
+
+read_goals(Bytecode, !Pos, Info, Goals) :-
+	read_length(Bytecode, !Pos, Len),
+	read_goals_2(Bytecode, !Pos, Info, Len, Goals).
+
+:- pred read_goals_2(bytecode::in, int::in, int::out,
+	read_proc_rep_info::in, int::in, list(goal_rep)::out) is det.
+
+read_goals_2(Bytecode, !Pos, Info, N, Goals) :-
+	( N > 0 ->
+		read_goal(Bytecode, !Pos, Info, Head),
+		read_goals_2(Bytecode, !Pos, Info, N - 1, Tail),
+		Goals = [Head | Tail]
+	;
+		Goals = []
+	).
+
+:- pred read_vars(bytecode::in, int::in, int::out, list(var_rep)::out) is det.
+
+read_vars(Bytecode, !Pos, Vars) :-
+	read_length(Bytecode, !Pos, Len),
+	read_vars_2(Bytecode, Len, !Pos, Vars).
+
+:- pred read_vars_2(bytecode::in, int::in, int::in, int::out,
+	list(var_rep)::out) is det.
+
+read_vars_2(Bytecode, N, !Pos, Vars) :-
+	( N > 0 ->
+		read_var(Bytecode, !Pos, Head),
+		read_vars_2(Bytecode, N - 1, !Pos, Tail),
+		Vars = [Head | Tail]
+	;
+		Vars = []
+	).
+
+:- pred read_var(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_var(Bytecode, !Pos, Var) :-
+	read_short(Bytecode, !Pos, Var).
+
+:- pred read_length(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_length(Bytecode, !Pos, Len) :-
+	read_short(Bytecode, !Pos, Len).
+
+:- pred read_lineno(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_lineno(Bytecode, !Pos, LineNo) :-
+	read_short(Bytecode, !Pos, LineNo).
+
+:- pred read_method_num(bytecode::in, int::in, int::out, var_rep::out) is det.
+
+read_method_num(Bytecode, !Pos, MethodNum) :-
+	read_short(Bytecode, !Pos, MethodNum).
+
+:- pred read_cons_id(bytecode::in, int::in, int::out, cons_id_rep::out) is det.
+
+read_cons_id(Bytecode, !Pos, ConsId) :-
+	read_string(Bytecode, !Pos, ConsId).
+
+%-----------------------------------------------------------------------------%
+
+:- pred read_byte(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+	read_byte(Bytecode::in, Pos0::in, Pos::out, Value::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	Value = Bytecode[Pos0];
+	Pos = Pos0 + 1;
+").
+
+:- pred read_short(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+	read_short(Bytecode::in, Pos0::in, Pos::out, Value::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	Value = (Bytecode[Pos0] << 8) + Bytecode[Pos0+1];
+	Pos = Pos0 + 2;
+").
+
+:- pred read_int32(bytecode::in, int::in, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+	read_int32(Bytecode::in, Pos0::in, Pos::out, Value::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	Value = (Bytecode[Pos0] << 24) + (Bytecode[Pos0+1] << 16) +
+		(Bytecode[Pos0+2] << 8) + Bytecode[Pos0+3];
+	Pos = Pos0 + 4;
+").
+
+:- pred read_string(bytecode::in, int::in, int::out, string::out) is det.
+
+:- pragma foreign_proc("C",
+	read_string(Bytecode::in, Pos0::in, Pos::out, Value::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	MR_make_aligned_string(Value, (char *) &Bytecode[Pos0]);
+	Pos = Pos0 + strlen(Value) + 1;
+").
+
+%-----------------------------------------------------------------------------%

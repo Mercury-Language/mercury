@@ -233,6 +233,10 @@ output_layout_name(proc_layout_var_names(RttiProcLabel), !IO) :-
 	io__write_string(mercury_data_prefix, !IO),
 	io__write_string("_var_names__", !IO),
 	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO).
+output_layout_name(proc_layout_body_bytecode(RttiProcLabel), !IO) :-
+	io__write_string(mercury_data_prefix, !IO),
+	io__write_string("_body_bytecode__", !IO),
+	output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO).
 output_layout_name(closure_proc_id(CallerProcLabel, SeqNo, _), !IO) :-
 	io__write_string(mercury_data_prefix, !IO),
 	io__write_string("_closure_layout__", !IO),
@@ -361,6 +365,12 @@ output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
 	io__write_string("MR_uint_least32_t ", !IO),
 	output_layout_name(proc_layout_var_names(ProcLabel), !IO),
 	io__write_string("[]", !IO).
+output_layout_name_storage_type_name(proc_layout_body_bytecode(ProcLabel),
+		_BeingDefined, !IO) :-
+	io__write_string("static const ", !IO),
+	io__write_string("MR_uint_least8_t ", !IO),
+	output_layout_name(proc_layout_body_bytecode(ProcLabel), !IO),
+	io__write_string("[]", !IO).
 output_layout_name_storage_type_name(closure_proc_id(CallerProcLabel, SeqNo,
 		ClosureProcLabel), _BeingDefined, !IO) :-
 	io__write_string("static const ", !IO),
@@ -449,6 +459,7 @@ layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
 layout_name_would_include_code_addr(proc_layout_head_var_nums(_)) = no.
 layout_name_would_include_code_addr(proc_layout_var_names(_)) = no.
+layout_name_would_include_code_addr(proc_layout_body_bytecode(_)) = no.
 layout_name_would_include_code_addr(closure_proc_id(_, _, _)) = no.
 layout_name_would_include_code_addr(file_layout(_, _)) = no.
 layout_name_would_include_code_addr(file_layout_line_number_vector(_, _)) = no.
@@ -821,7 +832,7 @@ output_layout_no_proc_id_group(!IO) :-
 	io::di, io::uo) is det.
 
 output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
-	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
+	ExecTrace = proc_layout_exec_trace(CallLabelLayout, _ProcBodyBytes,
 		MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
 		_MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
 		_MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
@@ -831,16 +842,49 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	output_layout_decl(CallLabelLayout, !DeclSet, !IO),
 	output_layout_decl(module_layout(ModuleName), !DeclSet, !IO),
 	(
-		MaybeProcBody = yes(ProcBody),
-		output_rval_decls(ProcBody, !DeclSet, !IO)
-	;
-		MaybeProcBody = no
-	),
-	(
 		MaybeTableInfo = yes(TableInfo),
 		output_layout_decl(TableInfo, !DeclSet, !IO)
 	;
 		MaybeTableInfo = no
+	).
+
+	% The job of this predicate is to minimize stack space consumption in
+	% grades that do not allow output_bytecodes to be tail recursive.
+	%
+:- pred output_bytecodes_driver(list(int)::in, io::di, io::uo)
+	is det.
+
+output_bytecodes_driver(Bytes, !IO) :-
+	(
+		Bytes = []
+	;
+		Bytes = [_ | _],
+		output_bytecodes(Bytes, BytesLeft, 0, 256, !IO),
+		output_bytecodes_driver(BytesLeft, !IO)
+	).
+
+:- pred output_bytecodes(list(int)::in, list(int)::out, int::in, int::in,
+	io::di, io::uo) is det.
+
+output_bytecodes(Bytes, BytesLeft, !.Seq, MaxSeq, !IO) :-
+	(
+		Bytes = [],
+		BytesLeft = []
+	;
+		Bytes = [Head | Tail],
+		( !.Seq < MaxSeq ->
+			io__write_int(Head, !IO),
+			io__write_char(',', !IO),
+			!:Seq = !.Seq + 1,
+			( unchecked_rem(!.Seq, 16) = 0 ->
+				io__write_char('\n', !IO)
+			;
+				true
+			),
+			output_bytecodes(Tail, BytesLeft, !.Seq, MaxSeq, !IO)
+		;
+			BytesLeft = Bytes
+		)
 	).
 
 :- pred output_layout_exec_trace(rtti_proc_label::in,
@@ -848,11 +892,22 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	io::di, io::uo) is det.
 
 output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
-	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
+	ExecTrace = proc_layout_exec_trace(CallLabelLayout, ProcBodyBytes,
 		MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
 		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, EffTraceLevel,
 		Flags),
+	(
+		ProcBodyBytes = []
+	;
+		ProcBodyBytes = [_ | _],
+		io__write_string("\n", !IO),
+		output_layout_name_storage_type_name(
+			proc_layout_body_bytecode(RttiProcLabel), yes, !IO),
+		io__write_string(" = {\n", !IO),
+		output_bytecodes_driver(ProcBodyBytes, !IO),
+		io__write_string("};\n", !IO)
+	),
 	io__write_string("\n", !IO),
 	output_layout_name_storage_type_name(
 		proc_layout_exec_trace(RttiProcLabel), yes, !IO),
@@ -868,11 +923,12 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
 	output_layout_name(module_layout(ModuleName), !IO),
 	io__write_string(",\n", !IO),
 	(
-		MaybeProcBody = yes(ProcBody),
-		output_rval(ProcBody, !IO)
+		ProcBodyBytes = [],
+		io__write_string("NULL", !IO)
 	;
-		MaybeProcBody = no,
-		io__write_int(0, !IO)
+		ProcBodyBytes = [_ | _],
+		output_layout_name(proc_layout_body_bytecode(RttiProcLabel),
+			!IO)
 	),
 	io__write_string(",\n", !IO),
 	(
@@ -1280,11 +1336,11 @@ output_module_string_table(ModuleName, StringTableSize, StringTable,
 	io__write_string("};\n", !IO),
 	decl_set_insert(data_addr(layout_addr(TableName)), !DeclSet).
 
-% The jobs of this predicate is to minimize stack space consumption in
-% grades that do not allow output_module_string_table_chars to be tail
-% recursive. The maximum observed size of the module string so far has
-% been just short of 64 kilobytes; writing that out in 256 batches of 256
-% characters minimizes maximum total stack requirements.
+	% The job of this predicate is to minimize stack space consumption in
+	% grades that do not allow output_module_string_table_chars to be tail
+	% recursive. The maximum observed size of the module string so far has
+	% been just short of 64 kilobytes; writing that out in 256 batches of
+	% 256 characters minimizes maximum total stack requirements.
 
 :- pred output_module_string_table_chars_driver(int::in, int::in,
 	string_with_0s::in, io::di, io::uo) is det.

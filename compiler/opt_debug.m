@@ -513,6 +513,10 @@ dump_layout_name(proc_layout_var_names(RttiProcLabel), Str) :-
 	dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout_var_names(", ProcLabelStr, ")"],
 		Str).
+dump_layout_name(proc_layout_body_bytecode(RttiProcLabel), Str) :-
+	dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
+	string__append_list(["proc_layout_body_bytecode(", ProcLabelStr, ")"],
+		Str).
 dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _), Str) :-
 	dump_proclabel(ProcLabel, ProcLabelStr),
 	string__int_to_string(SeqNo, SeqNoStr),

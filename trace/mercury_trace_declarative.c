@@ -638,7 +638,6 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	const MR_Label_Layout		*event_label_layout;
 	const MR_Proc_Layout		*event_proc_layout;
 	const MR_Label_Layout		*return_label_layout;
-	MR_Word				proc_rep;
 	MR_Stack_Walk_Step_Result	result;
 	MR_ConstString			problem;
 	MR_String			goal_path;
@@ -654,7 +653,6 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 
 	event_label_layout = event_info->MR_event_sll;
 	event_proc_layout = event_label_layout->MR_sll_entry;
-	proc_rep = (MR_Word) event_proc_layout->MR_sle_proc_rep;
 	atom_args = MR_decl_make_atom_args(event_label_layout, 
 		event_info->MR_saved_regs, MR_PORT_CALL);
 	base_sp = MR_saved_sp(event_info->MR_saved_regs);
@@ -679,25 +677,13 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	}
 
 	MR_TRACE_CALL_MERCURY(
-		if (proc_rep) {
-			node = (MR_Trace_Node)
-				MR_DD_construct_call_node_with_goal(
-					(MR_Word) prev, atom_args,
-					(MR_Word) event_info->MR_call_seqno,
-					(MR_Word) event_info->MR_event_number,
-					(MR_Word) at_depth_limit, proc_rep,
-					maybe_return_label, event_label_layout, 
-					MR_io_tabling_counter);
-		} else {
-			node = (MR_Trace_Node)
-				MR_DD_construct_call_node((MR_Word) prev, 
-					atom_args,
-					(MR_Word) event_info->MR_call_seqno,
-					(MR_Word) event_info->MR_event_number,
-					(MR_Word) at_depth_limit, 
-					maybe_return_label, event_label_layout,
-					MR_io_tabling_counter);
-		}
+		node = (MR_Trace_Node)
+			MR_DD_construct_call_node((MR_Word) prev, atom_args,
+				(MR_Word) event_info->MR_call_seqno,
+				(MR_Word) event_info->MR_event_number,
+				(MR_Word) at_depth_limit, 
+				maybe_return_label, event_label_layout,
+				MR_io_tabling_counter);
 	);
 
 	return node;

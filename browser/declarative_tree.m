@@ -259,7 +259,7 @@ trace_topmost_node(wrap(Store), dynamic(Ref)) :-
 		Node = excp(_, CallId, _, _, _, _)
 	),
 	% The node is topmost of the call sequence number is 1.
-	call_node_from_id(Store, CallId, call(_, _, _, 1, _, _, _, _, _, _)).
+	call_node_from_id(Store, CallId, call(_, _, _, 1, _, _, _, _, _)).
 
 :- pred trace_children(wrap(S)::in, edt_node(R)::in, list(edt_node(R))::out)
 	is semidet <= annotated_trace(S, R).
@@ -454,7 +454,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
 		( 
-			Node = call(_, _, _, _, _, _, _, _, _, _)
+			Node = call(_, _, _, _, _, _, _, _, _)
 		; 
 			%
 			% A non-failed NEGE could be encountered when gathering
@@ -587,7 +587,7 @@ stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
 stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -863,7 +863,7 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
 	TotalArgs = length(ExitAtom ^ atom_args),
 	StartId = ExitNode ^ exit_preceding,
 	StartPath = no,
-	StartRep = CallNode ^ call_proc_rep,
+	call_node_maybe_proc_rep(CallNode, StartRep),
 	ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, StartId,
 		StartPath, StartRep).
 
@@ -876,7 +876,7 @@ parent_proc_rep(Store, CallId, ProcRep) :-
 	(
 		step_left_to_call(Store, CallPrecId, ParentCallNode)
 	->
-		ProcRep = ParentCallNode ^ call_proc_rep
+		call_node_maybe_proc_rep(ParentCallNode, ProcRep)
 	;
 		ProcRep = no
 	).
@@ -891,7 +891,7 @@ parent_proc_rep(Store, CallId, ProcRep) :-
 
 step_left_to_call(Store, NodeId, ParentCallNode) :-
 	trace_node_from_id(Store, NodeId, Node),
-	( Node = call(_, _, _, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		ParentCallNode = Node
 	;
 		%
@@ -919,7 +919,7 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
 	is det <= annotated_trace(S, R).
 
 materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
-	( Node = call(_, _, _, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		
 		Nodes = Nodes0
 	;
@@ -1065,7 +1065,7 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
 :- pred contour_at_end_path(assoc_list(R, trace_node(R))::in, 
 	maybe(goal_path)::in) is semidet.
 
-contour_at_end_path([_ - call(_, _, _, _, _, _, _, MaybeReturnLabel, _, _)], 
+contour_at_end_path([_ - call(_, _, _, _, _, _, MaybeReturnLabel, _, _)], 
 		yes(EndPath)) :-
 	CallPathStr = get_goal_path_from_maybe_label(MaybeReturnLabel),
 	path_from_string_det(CallPathStr, CallPath),
@@ -1280,7 +1280,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 		MaybeEnd = yes(EndPath)
 	->
 		(
-			ContourHeadNode = call(_, _, _, _, _, _, _, 
+			ContourHeadNode = call(_, _, _, _, _, _, 
 				MaybeReturnLabel, _, _),
 			Atom = get_trace_call_atom(ContourHeadNode),
 			CallPathStr = get_goal_path_from_maybe_label(

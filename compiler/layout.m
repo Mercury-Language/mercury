@@ -150,7 +150,11 @@
 :- type proc_layout_exec_trace			% defines MR_Exec_Trace
 	--->	proc_layout_exec_trace(
 			call_label_layout	:: layout_name,
-			proc_body		:: maybe(rval),
+			proc_body_bytes		:: list(int),
+						% The procedure body
+						% represented as a list of
+						% bytecodes.
+
 			maybe_table_info	:: maybe(layout_name),
 			head_var_nums		:: list(int),
 						% The variable numbers of the
@@ -159,10 +163,12 @@
 						% in order. The length of the
 						% list must be the same as the
 						% procedure's arity.
+
 			var_names		:: list(int),
 						% Each variable name is an
 						% offset into the module's
 						% string table.
+
 			max_var_num		:: int,
 			max_r_num		:: int,
 			maybe_from_full_slot	:: maybe(int),
@@ -196,6 +202,7 @@
 	;	proc_layout_var_names(rtti_proc_label)
 		% A vector of variable names (represented as offsets into
 		% the string table) for a procedure layout structure.
+	;	proc_layout_body_bytecode(rtti_proc_label)
 	;	table_io_decl(rtti_proc_label)
 	;	table_gen_info(rtti_proc_label)
 	;	table_gen_enum_params(rtti_proc_label)

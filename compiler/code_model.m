@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,6 +54,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.program_representation.
 :- import_module int.
 
 determinism_to_code_model(det,         model_det).
@@ -73,27 +74,13 @@ goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
 
-represent_determinism(det) = max_more_than_zero \/ min_more_than_zero.
-represent_determinism(semidet) = max_more_than_zero.
-represent_determinism(nondet) = max_more_than_one.
-represent_determinism(multidet) = max_more_than_one \/ min_more_than_zero.
-represent_determinism(erroneous) = min_more_than_zero.
-represent_determinism(failure) = 0.
-represent_determinism(cc_nondet) =
-		represent_determinism(nondet) \/ first_solution.
-represent_determinism(cc_multidet) =
-		represent_determinism(multidet) \/ first_solution.
-
-:- func first_solution = int.
-first_solution = 8.
-
-:- func min_more_than_zero = int.
-min_more_than_zero = 4.
-
-:- func max_more_than_zero = int.
-max_more_than_zero = 2.
-
-:- func max_more_than_one = int.
-max_more_than_one = 3.
+represent_determinism(det) = detism_rep(det_rep).
+represent_determinism(semidet) = detism_rep(semidet_rep).
+represent_determinism(nondet) = detism_rep(nondet_rep).
+represent_determinism(multidet) = detism_rep(multidet_rep).
+represent_determinism(erroneous) = detism_rep(erroneous_rep).
+represent_determinism(failure) = detism_rep(failure_rep).
+represent_determinism(cc_nondet) = detism_rep(cc_nondet_rep).
+represent_determinism(cc_multidet) = detism_rep(cc_multidet_rep).
 
 %-----------------------------------------------------------------------------%

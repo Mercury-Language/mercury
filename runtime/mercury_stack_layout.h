@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2004 The University of Melbourne.
+** Copyright (C) 1998-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -51,7 +51,7 @@
 ** that we do not set the 1 bit unless we also set the 2 bit.
 **
 ** NOTE: this must match the encoding specified by represent_determinism/1
-** in compiler/code_model.m.
+** in mdbcomp/program_representation.m.
 */
 
 typedef	MR_int_least16_t	MR_Determinism;
@@ -697,12 +697,10 @@ typedef struct MR_Stack_Traversal_Struct {
 ** containing the procedure. This allows the debugger access to the string table
 ** stored there, as well the table associating source-file contexts with labels.
 **
-** The proc_rep field contains a representation of the body of the procedure
-** as a Mercury term of type proc_rep, defined in program_representation.m.
-** Note that the type of this field is `MR_Word *', not `MR_Word',
-** for the same reasons that MR_mkword() has type `MR_Word *' rather
-** than `MR_Word' (see the comment in runtime/mercury_tags.h).
-** It will be a null pointer if no such representation is available.
+** The body_bytes field contains a pointer to an array of bytecodes that
+** represents the body of the procedure. It will be a null pointer if no
+** representation is available. If it is not null pointer, then it should
+** be interpreted by read_proc_rep in browser/declarative_execution.m.
 **
 ** The used_var_names field points to an array that contains offsets
 ** into the string table, with the offset at index i-1 giving the name of
@@ -796,7 +794,7 @@ typedef	MR_int_least8_t		MR_TraceLevelInt;
 typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
 	const MR_Module_Layout	*MR_exec_module_layout;
-	MR_Word			*MR_exec_proc_rep;
+	const MR_uint_least8_t	*MR_exec_body_bytes;
 	MR_TrieNode		MR_exec_tabling_pointer;
 	MR_Table_Info		MR_exec_table_info;
 	const MR_uint_least16_t	*MR_exec_head_var_nums;
@@ -812,7 +810,6 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_call_table;
 	MR_TraceLevelInt	MR_exec_trace_level_CAST_ME;
 	MR_uint_least8_t	MR_exec_flags;
-	const MR_Label_Layout	**MR_exec_label_layout;
 } MR_Exec_Trace;
 
 #define MR_compute_max_mr_num(max_mr_num, layout)			\
@@ -918,7 +915,7 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 
 #define	MR_sle_call_label	MR_sle_exec_trace->MR_exec_call_label
 #define	MR_sle_module_layout	MR_sle_exec_trace->MR_exec_module_layout
-#define	MR_sle_proc_rep		MR_sle_exec_trace->MR_exec_proc_rep
+#define	MR_sle_body_bytes       MR_sle_exec_trace->MR_exec_body_bytes
 #define	MR_sle_tabling_pointer	MR_sle_exec_trace->MR_exec_tabling_pointer
 #define	MR_sle_table_info	MR_sle_exec_trace->MR_exec_table_info
 #define	MR_sle_head_var_nums	MR_sle_exec_trace->MR_exec_head_var_nums

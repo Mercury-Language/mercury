@@ -472,6 +472,25 @@ extern	void	MR_trace_print_histogram(FILE *fp, const char *which,
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
+/*
+** These two functions work on a table that maps proc layout structures
+** to the Mercury terms representing the bodies of those procedures.
+** The Mercury term representation of the procedure body is constructed
+** on demand from the bytecode in the procedure layout structure, but since
+** this construction process allocates a significant amount of memory and
+** takes a nontrivial amount of time, we cache the results in this table.
+**
+** MR_insert_proc_rep adds the result of a conversion to the cache.
+**
+** MR_lookup_proc_rep checks whether a previous call to MR_lookup_proc_rep
+** has already cached the procedure body representation of a given procedure;
+** a zero return value means that the answer is "no".
+*/
+
+extern	void	MR_insert_proc_rep(const MR_Proc_Layout *proc_layout,
+		MR_Word proc_rep);
+extern	MR_Word MR_lookup_proc_rep(const MR_Proc_Layout *proc_layout);
+
 #ifndef	MR_HIGHLEVEL_CODE
 
 MR_declare_entry(MR_do_trace_redo_fail_shallow);

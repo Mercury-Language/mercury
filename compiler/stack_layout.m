@@ -76,7 +76,6 @@
 :- import_module ll_backend__ll_pseudo_type_info.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__prog_rep.
-:- import_module ll_backend__static_term.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -576,17 +575,11 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 	ModuleInfo = !.Info ^ module_info,
 	(
 		MaybeGoal = no,
-		MaybeProcRepRval = no
+		ProcBytes = []
 	;
 		MaybeGoal = yes(Goal),
-		ProcRep = prog_rep__represent_proc(HeadVars, Goal, InstMap,
-			VarTypes, VarNumMap, ModuleInfo),
-		type_to_univ(ProcRep, ProcRepUniv),
-		StaticCellInfo0 = !.Info ^ static_cell_info,
-		static_term__term_to_rval(ProcRepUniv, ProcRepRval,
-			StaticCellInfo0, StaticCellInfo),
-		MaybeProcRepRval = yes(ProcRepRval),
-		!:Info = !.Info ^ static_cell_info := StaticCellInfo
+		ProcBytes = prog_rep__represent_proc(HeadVars,
+			Goal, InstMap, VarTypes, VarNumMap, ModuleInfo)
 	),
 	(
 		MaybeCallLabel = yes(CallLabelPrime),
@@ -622,7 +615,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 	),
 	encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
 		0, Flags),
-	ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
+	ExecTrace = proc_layout_exec_trace(CallLabelLayout, ProcBytes,
 		MaybeTableName, HeadVarNumVector, VarNameVector,
 		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
@@ -633,8 +626,8 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 
 encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !Flags) :-
 	(
-		proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
-			VarTypes, _, _)
+		proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
+			ArgModes, VarTypes, _, _)
 	->
 		!:Flags = !.Flags + 1
 	;
