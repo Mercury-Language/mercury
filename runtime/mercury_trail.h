@@ -192,22 +192,22 @@ typedef struct {
 */
 
 #if MR_USE_TAGGED_TRAIL
-  #define MR_func_trail_tag mktag(MR_func_entry)
-  #define MR_value_trail_tag mktag(MR_val_entry)
+  #define MR_func_trail_tag	MR_mktag(MR_func_entry)
+  #define MR_value_trail_tag	MR_mktag(MR_val_entry)
 
   /*
   ** MR_trail_entry_kind MR_get_trail_entry_kind(const MR_trail_entry *);
   */
   #define MR_get_trail_entry_kind(entry)				\
 	((MR_trail_entry_kind)						\
-	  (tag((Word) (entry)->MR_union.MR_val.MR_address)))
+	  (MR_tag((Word) (entry)->MR_union.MR_val.MR_address)))
 
   /*
   ** Word * MR_get_trail_entry_address(const MR_trail_entry *);
   */
   #define MR_get_trail_entry_address(entry) \
 	((Word *)							\
-	  body((entry)->MR_union.MR_val.MR_address, MR_value_trail_tag))
+	  MR_body((entry)->MR_union.MR_val.MR_address, MR_value_trail_tag))
 
   /*
   ** MR_untrail_func_type *
@@ -215,7 +215,7 @@ typedef struct {
   */
   #define MR_get_trail_entry_untrail_func(entry)			\
 	((MR_untrail_func_type *)					\
-	    body((Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
+	    MR_body((Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
 		     MR_func_trail_tag))
 
   /*
@@ -226,7 +226,7 @@ typedef struct {
 	  do {								\
 		(entry)->MR_union.MR_val.MR_address =			\
 			(Word *) (Word)					\
-			  mkword(MR_value_trail_tag, (address));	\
+			  MR_mkword(MR_value_trail_tag, (address));	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
 
@@ -238,7 +238,7 @@ typedef struct {
 	  do {								\
 		(entry)->MR_union.MR_func.MR_untrail_func =		\
 			(MR_untrail_func_type *) (Word)			\
-			  mkword(MR_func_trail_tag, (func));		\
+			  MR_mkword(MR_func_trail_tag, (func));		\
 		(entry)->MR_union.MR_func.MR_datum = (datum);		\
 	  } while (0)
 #else /* !MR_USE_TAGGED_TRAIL */
