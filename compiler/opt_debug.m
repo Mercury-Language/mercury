@@ -294,7 +294,7 @@ opt_debug__dump_ctrl_list([N - VnInstr | Ctrllist], Str) :-
 
 opt_debug__dump_vninstr(vn_livevals(_), Str) :-
 	string__append_list(["livevals(...)"], Str).
-opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
+opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
@@ -767,7 +767,9 @@ opt_debug__dump_code_addr(do_succeed(Last), Str) :-
 	).
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
-opt_debug__dump_code_addr(do_trace_redo_fail, "do_trace_redo_fail").
+opt_debug__dump_code_addr(do_trace_redo_fail_shallow,
+	"do_trace_redo_fail_shallow").
+opt_debug__dump_code_addr(do_trace_redo_fail_deep, "do_trace_redo_fail_deep").
 opt_debug__dump_code_addr(do_call_closure, "do_nondet_closure").
 opt_debug__dump_code_addr(do_call_class_method, "do_nondet_class_method").
 opt_debug__dump_code_addr(do_det_aditi_call, "do_det_aditi_call").
@@ -855,7 +857,7 @@ opt_debug__dump_instr(assign(Lval, Rval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["assign(", L_str, ", ", R_str, ")"], Str).
-opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
+opt_debug__dump_instr(call(Proc, Ret, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
@@ -954,7 +956,7 @@ opt_debug__dump_instr(join_and_continue(Lval, Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["join(", LvalStr, ", ", LabelStr, ")"], Str).
 % XXX  should probably give more info than this
-opt_debug__dump_instr(pragma_c(_, Comps, _, _, _), Str) :-
+opt_debug__dump_instr(pragma_c(_, Comps, _, _, _, _), Str) :-
 	opt_debug__dump_components(Comps, C_str),
 	string__append_list(["pragma_c(", C_str, ")"], Str).
 
@@ -974,6 +976,10 @@ opt_debug__dump_component(pragma_c_inputs(_), "").
 opt_debug__dump_component(pragma_c_outputs(_), "").
 opt_debug__dump_component(pragma_c_user_code(_, Code), Code).
 opt_debug__dump_component(pragma_c_raw_code(Code), Code).
+opt_debug__dump_component(pragma_c_fail_to(Label), Code) :-
+	opt_debug__dump_label(Label, LabelStr),
+	string__append_list(["fail to ", LabelStr], Code).
+opt_debug__dump_component(pragma_c_noop, "").
 
 opt_debug__dump_fullinstr(Uinstr - Comment, Str) :-
 	opt_debug__dump_instr(Uinstr, U_str),

@@ -144,6 +144,12 @@
 	code_info, code_info).
 :- mode code_info__get_non_common_static_data(out, in, out) is det.
 
+:- pred code_info__get_max_reg_in_use_at_trace(int, code_info, code_info).
+:- mode code_info__get_max_reg_in_use_at_trace(out, in, out) is det.
+
+:- pred code_info__set_max_reg_in_use_at_trace(int, code_info, code_info).
+:- mode code_info__set_max_reg_in_use_at_trace(in, in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -244,7 +250,7 @@
 		maybe(trace_info),
 				% Information about which stack slots
 				% the call sequence number and depth
-				% are stored, provided tracing is
+				% are stored in, provided tracing is
 				% switched on.
 
 		% LOCATION DEPENDENT fields
@@ -288,10 +294,19 @@
 				% which would make it impossible to describe
 				% to gc what the slot contains after the end
 				% of the branched control structure.
-		list(comp_gen_c_data)
+		list(comp_gen_c_data),
 				% Static data structures created for this
 				% procedure which do not need to be scanned
 				% by llds_common.
+		int		% At each call to MR_trace, we compute the
+				% highest rN register number that contains
+				% a useful value. This slot contains the
+				% maximum of these highest values. Therefore
+				% at all calls to MR_trace in the procedure,
+				% we need only save the registers whose numbers
+				% are equal to or smaller than this field.
+				% This slot contains -1 if tracing is not
+				% enabled.
 	).
 
 %---------------------------------------------------------------------------%
@@ -351,7 +366,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
 		LayoutMap,
 		0,
 		TempContentMap,
-		[]
+		[],
+		-1
 	),
 	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 		MaybeFailVars, TraceSlotInfo, CodeInfo0, CodeInfo1),
@@ -372,180 +388,190 @@ code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 		{ MaybeFailVars = yes(FailVars) }
 	;
 		{ MaybeFailVars = no },
-		{ TraceSlotInfo = trace_slot_info(no, no) }
+		{ TraceSlotInfo = trace_slot_info(no, no, no) }
 	).
 
 %---------------------------------------------------------------------------%
 
 code_info__get_globals(SA, CI, CI) :-
 	CI  = code_info(SA, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_module_info(SB, CI, CI) :-
 	CI  = code_info(_, SB, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_pred_id(SC, CI, CI) :-
 	CI  = code_info(_, _, SC, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_proc_id(SD, CI, CI) :-
 	CI  = code_info(_, _, _, SD, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_proc_info(SE, CI, CI) :-
 	CI  = code_info(_, _, _, _, SE, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_varset(SF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, SF, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_var_slot_count(SG, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, SG, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_maybe_trace_info(SH, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, SH,
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_forward_live_vars(LA, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		LA, _, _, _, _, _, _, _, _, _, _, _, _).
+		LA, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_instmap(LB, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, LB, _, _, _, _, _, _, _, _, _, _, _).
+		_, LB, _, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_zombies(LC, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, LC, _, _, _, _, _, _, _, _, _, _).
+		_, _, LC, _, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_exprn_info(LD, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, LD, _, _, _, _, _, _, _, _, _).
+		_, _, _, LD, _, _, _, _, _, _, _, _, _, _).
 
 code_info__get_temps_in_use(LE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, LE, _, _, _, _, _, _, _, _).
+		_, _, _, _, LE, _, _, _, _, _, _, _, _, _).
 
 code_info__get_fail_info(LF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, LF, _, _, _, _, _, _, _).
+		_, _, _, _, _, LF, _, _, _, _, _, _, _, _).
 
 code_info__get_label_count(PA, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, PA, _, _, _, _, _, _).
+		_, _, _, _, _, _, PA, _, _, _, _, _, _, _).
 
 code_info__get_cell_count(PB, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, PB, _, _, _, _, _).
+		_, _, _, _, _, _, _, PB, _, _, _, _, _, _).
 
 code_info__get_succip_used(PC, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, PC, _, _, _, _).
+		_, _, _, _, _, _, _, _, PC, _, _, _, _, _).
 
 code_info__get_layout_info(PD, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, PD, _, _, _).
+		_, _, _, _, _, _, _, _, _, PD, _, _, _, _).
 
 code_info__get_max_temp_slot_count(PE, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, PE, _, _).
+		_, _, _, _, _, _, _, _, _, _, PE, _, _, _).
 
 code_info__get_temp_content_map(PF, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, PF, _).
+		_, _, _, _, _, _, _, _, _, _, _, PF, _, _).
 
 code_info__get_non_common_static_data(PG, CI, CI) :-
 	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, PG).
+		_, _, _, _, _, _, _, _, _, _, _, _, PG, _).
+
+code_info__get_max_reg_in_use_at_trace(PH, CI, CI) :-
+	CI  = code_info(_, _, _, _, _, _, _, _,
+		_, _, _, _, _, _, _, _, _, _, _, _, _, PH).
 
 %---------------------------------------------------------------------------%
 
 code_info__set_maybe_trace_info(SH, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, _,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_forward_live_vars(LA, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
+		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_instmap(LB, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
+		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_zombies(LC, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF, PG),
+		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_exprn_info(LD, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF, PG),
+		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_temps_in_use(LE, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF, PG),
+		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_fail_info(LF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF, PG),
+		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_label_count(PA, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF, PG),
+		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_cell_count(PB, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF, PG),
+		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_succip_used(PC, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF, PG),
+		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_layout_info(PD, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF, PG),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_max_temp_slot_count(PE, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF, PG),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF, PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_temp_content_map(PF, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ , PG),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ , PG, PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 code_info__set_non_common_static_data(PG, CI0, CI) :-
 	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, _ ),
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, _ , PH),
 	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+
+code_info__set_max_reg_in_use_at_trace(PH, CI0, CI) :-
+	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, _ ),
+	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -660,13 +686,10 @@ code_info__set_non_common_static_data(PG, CI0, CI) :-
 :- pred code_info__succip_is_used(code_info, code_info).
 :- mode code_info__succip_is_used(in, out) is det.
 
-:- pred code_info__add_trace_layout_for_label(label, layout_label_info,
-	code_info, code_info).
-:- mode code_info__add_trace_layout_for_label(in, in, in, out) is det.
-
-:- pred code_info__add_gc_layout_for_label(label, layout_label_info,
-	code_info, code_info).
-:- mode code_info__add_gc_layout_for_label(in, in, in, out) is det.
+:- pred code_info__add_trace_layout_for_label(label, term__context,
+	trace_port, goal_path, layout_label_info, code_info, code_info).
+:- mode code_info__add_trace_layout_for_label(in, in, in,in,  in, in, out)
+	is det.
 
 :- pred code_info__add_non_common_static_data(comp_gen_c_data,
 	code_info, code_info).
@@ -684,6 +707,10 @@ code_info__get_inst_table(InstTable, CI, CI) :-
 	proc_info_inst_table(ProcInfo, InstTable).
 
 %-----------------------------------------------------------------------------%
+
+:- pred code_info__add_resume_layout_for_label(label, layout_label_info,
+	code_info, code_info).
+:- mode code_info__add_resume_layout_for_label(in, in, in, out) is det.
 
 code_info__get_stack_slots(StackSlots, CI, CI) :-
 	code_info__get_exprn_info(ExprnInfo, CI, _),
@@ -850,36 +877,38 @@ code_info__get_next_cell_number(N) -->
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
 
-code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
+code_info__add_trace_layout_for_label(Label, Context, Port, Path, Layout) -->
 	code_info__get_layout_info(Internals0),
+	{ Exec = yes(trace_port_layout_info(Context, Port, Path, Layout)) },
 	{ map__search(Internals0, Label, Internal0) ->
-		Internal0 = internal_layout_info(Exec0, Agc),
+		Internal0 = internal_layout_info(Exec0, Resume, Return),
 		( Exec0 = no ->
 			true
 		;
 			error("adding trace layout for already known label")
 		),
-		Internal = internal_layout_info(yes(LayoutInfo), Agc),
+		Internal = internal_layout_info(Exec, Resume, Return),
 		map__set(Internals0, Label, Internal, Internals)
 	;
-		Internal = internal_layout_info(yes(LayoutInfo), no),
+		Internal = internal_layout_info(Exec, no, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
 
-code_info__add_gc_layout_for_label(Label, LayoutInfo) -->
+code_info__add_resume_layout_for_label(Label, LayoutInfo) -->
 	code_info__get_layout_info(Internals0),
+	{ Resume = yes(LayoutInfo) },
 	{ map__search(Internals0, Label, Internal0) ->
-		Internal0 = internal_layout_info(Exec, Agc0),
-		( Agc0 = no ->
+		Internal0 = internal_layout_info(Exec, Resume0, Return),
+		( Resume0 = no ->
 			true
 		;
 			error("adding gc layout for already known label")
 		),
-		Internal = internal_layout_info(Exec, yes(LayoutInfo)),
+		Internal = internal_layout_info(Exec, Resume, Return),
 		map__set(Internals0, Label, Internal, Internals)
 	;
-		Internal = internal_layout_info(no, yes(LayoutInfo)),
+		Internal = internal_layout_info(no, Resume, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
 	},
 	code_info__set_layout_info(Internals).
@@ -917,6 +946,9 @@ code_info__add_non_common_static_data(NonCommonData) -->
 :- pred code_info__reset_to_position(position_info, code_info, code_info).
 :- mode code_info__reset_to_position(in, in, out) is det.
 
+:- pred code_info__reset_resume_known(position_info, code_info, code_info).
+:- mode code_info__reset_resume_known(in, in, out) is det.
+
 :- pred code_info__generate_branch_end(store_map, branch_end, branch_end,
 	code_tree, code_info, code_info).
 :- mode code_info__generate_branch_end(in, in, out, out, in, out) is det.
@@ -947,11 +979,22 @@ code_info__remember_position(position_info(C), C, C).
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 		% The static fields in PosCI and CurCI should be identical.
 	PosCI  = code_info(_,  _,  _,  _,  _,  _,  _,  _, 
-		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _ ),
+		LA, LB, LC, LD, LE, LF, _,  _,  _,  _,  _,  _,  _,  _ ),
 	CurCI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG),
+		_,  _,  _,  _,  _,  _,  PA, PB, PC, PD, PE, PF, PG, PH),
 	NextCI = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG).
+		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+
+code_info__reset_resume_known(BranchStart) -->
+	{ BranchStart = position_info(BranchStartCI) },
+	{ code_info__get_fail_info(BranchStartFailInfo, BranchStartCI, _) },
+	{ BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _) },
+	code_info__get_fail_info(CurFailInfo),
+	{ CurFailInfo = fail_info(CurFailStack, _,
+		CurCurfMaxfr, CurCondEnv, CurHijack) },
+	{ NewFailInfo = fail_info(CurFailStack, BSResumeKnown,
+		CurCurfMaxfr, CurCondEnv, CurHijack) },
+	code_info__set_fail_info(NewFailInfo).
 
 code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 	code_info__get_exprn_info(Exprn0),
@@ -974,10 +1017,12 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1,
 			CondEnv1, Hijack1),
 		(
-			ResumeKnown0 = resume_point_known,
-			ResumeKnown1 = resume_point_known
+			ResumeKnown0 = resume_point_known(Redoip0),
+			ResumeKnown1 = resume_point_known(Redoip1)
 		->
-			ResumeKnown = resume_point_known
+			ResumeKnown = resume_point_known(Redoip0),
+			require(unify(Redoip0, Redoip1),
+				"redoip mismatch in generate_branch_end")
 		;
 			ResumeKnown = resume_point_unknown
 		),
@@ -1202,12 +1247,12 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 :- pred code_info__failure_is_direct_branch(code_addr::out,
 	code_info::in, code_info::out) is semidet.
 
-	% Checks whether the current failure environment would allow
-	% a model_non call at this point to be turned into a tail call,
-	% provided of course that the return from the call is followed
-	% immediately by succeed().
+	% Checks under what circumstances the current failure environment
+	% would allow a model_non call at this point to be turned into a
+	% tail call, provided of course that the return from the call is
+	% followed immediately by succeed().
 
-:- pred code_info__may_use_nondet_tailcall(bool::out,
+:- pred code_info__may_use_nondet_tailcall(nondet_tail_call::out,
 	code_info::in, code_info::out) is det.
 
 	% Materialize the given variables into registers or stack slots.
@@ -1291,7 +1336,10 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 
 :- type resume_map		==	map(prog_var, set(val_or_ref)).
 
-:- type resume_point_known	--->	resume_point_known
+:- type redoip_update		--->	has_been_done
+				;	wont_be_done.
+
+:- type resume_point_known	--->	resume_point_known(redoip_update)
 				;	resume_point_unknown.
 
 :- type curfr_vs_maxfr		--->	must_be_equal
@@ -1339,7 +1387,7 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 			"prepare for disjunction", Code)
 	;
 		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known }
+		{ ResumeKnown = resume_point_known(has_been_done) }
 	->
 		{ HijackInfo = disj_quarter_hijack },
 		{ Code = node([
@@ -1349,7 +1397,8 @@ code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
 	;
 		{ CurfrMaxfr = must_be_equal }
 	->
-		% Here ResumeKnown must be resume_point_unknown.
+		% Here ResumeKnown must be resume_point_unknown
+		% or resume_point_known(wont_be_done).
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
 			RedoipSlot),
 		{ HijackInfo = disj_half_hijack(RedoipSlot) },
@@ -1389,8 +1438,6 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 		]) }
 	;
 		{ HijackInfo = disj_quarter_hijack },
-		{ require(unify(ResumeKnown, resume_point_known),
-			"resume point not known in disj_quarter_hijack") },
 		{ require(unify(CurfrMaxfr, must_be_equal),
 			"maxfr may differ from curfr in disj_quarter_hijack") },
 		{ stack__top_det(ResumePoints, ResumePoint) },
@@ -1489,7 +1536,7 @@ code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 		{ Code = tree(TempFrameCode, MaxfrCode) }
 	;
 		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known }
+		{ ResumeKnown = resume_point_known(_) }
 	->
 		{ HijackType = ite_quarter_hijack },
 		{ Code = node([
@@ -1540,7 +1587,7 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
 		_, Allow) },
 	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
-	{ HijackInfo = ite_info(ResumeKnown1, OldCondEnv, HijackType) },
+	{ HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType) },
 	{
 		HijackType = ite_no_hijack,
 		ThenCode = empty,
@@ -1598,13 +1645,10 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 				- "restore redofr for full ite hijack"
 		])
 	},
-	{
-		ResumeKnown0 = resume_point_known,
-		ResumeKnown1 = resume_point_known
-	->
-		ResumeKnown = resume_point_known
-	;
+	{ ResumeKnown0 = resume_point_unknown ->
 		ResumeKnown = resume_point_unknown
+	;
+		ResumeKnown = HijackResumeKnown
 	},
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
 		OldCondEnv, Allow) },
@@ -1736,8 +1780,8 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 	{ stack__top_det(ResumePoints0, TopResumePoint) },
 	code_info__clone_resume_point(TopResumePoint, NewResumePoint),
 	{ stack__push(ResumePoints0, NewResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
+		CurfrMaxfr, CondEnv, Allow) },
 	code_info__set_fail_info(FailInfo),
 
 	{ code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel) },
@@ -1778,7 +1822,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			],
 			MarkCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no) - ""
+					no, no, no) - ""
 			])
 		;
 			UseMinimalModel = no,
@@ -1786,7 +1830,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 		},
 		{ HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode)) }
 	;
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(has_been_done) },
 		{ CurfrMaxfr = must_be_equal }
 	->
 		{ HijackInfo = commit_quarter_hijack },
@@ -1797,7 +1841,8 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 	;
 		{ CurfrMaxfr = must_be_equal }
 	->
-		% Here ResumeKnown must be resume_point_unknown.
+		% Here ResumeKnown must be resume_point_unknown or
+		% resume_point_known(wont_be_done).
 
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
 			RedoipSlot),
@@ -1854,8 +1899,8 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 				pragma_c_raw_code("\tMR_commit_cut();\n")
 			],
 			CutCode = node([
-				pragma_c([], Components,
-					will_not_call_mercury, no, no)
+				pragma_c([], Components, will_not_call_mercury,
+					no, no, no)
 					- "commit for temp frame hijack"
 			])
 		;
@@ -1997,9 +2042,6 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 	},
 
 	{ stack__push(ResumePoints0, ResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, CurfrMaxfr,
-		CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo),
 	( { CodeModel = model_non } ->
 		{ code_info__pick_stack_resume_point(ResumePoint,
 			_, StackLabel) },
@@ -2007,10 +2049,15 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 		{ Code = node([
 			assign(redoip(lval(maxfr)), LabelConst)
 				- "hijack redoip to effect resume point"
-		]) }
+		]) },
+		{ RedoipUpdate = has_been_done }
 	;
-		{ Code = empty }
-	).
+		{ Code = empty },
+		{ RedoipUpdate = wont_be_done }
+	),
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(RedoipUpdate),
+		CurfrMaxfr, CondEnv, Allow) },
+	code_info__set_fail_info(FailInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -2039,7 +2086,7 @@ code_info__generate_failure(Code) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(_) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		(
 			code_info__pick_matching_resume_addr(TopResumePoint,
@@ -2066,7 +2113,7 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
 	(
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(_) },
 		{ stack__top_det(ResumePoints, TopResumePoint) },
 		(
 			code_info__pick_matching_resume_addr(TopResumePoint,
@@ -2118,22 +2165,28 @@ code_info__fail_if_rval_is_false(Rval0, Code) -->
 
 code_info__failure_is_direct_branch(CodeAddr) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known, _, _, _) },
+	{ FailInfo = fail_info(ResumePoints, resume_point_known(_), _, _, _) },
 	{ stack__top(ResumePoints, TopResumePoint) },
 	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
 
-code_info__may_use_nondet_tailcall(MayTailCall) -->
+code_info__may_use_nondet_tailcall(TailCallStatus) -->
 	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
-	(
-		{ ResumeKnown = resume_point_known },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
-		{ TopResumePoint = stack_only(_, do_fail) }
+	{ FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _) },
+	{
+		stack__pop(ResumePoints0, ResumePoint1, ResumePoints1),
+		stack__is_empty(ResumePoints1),
+		ResumePoint1 = stack_only(_, do_fail)
 	->
-		{ MayTailCall = yes }
+		(
+			ResumeKnown = resume_point_known(_),
+			TailCallStatus = unchecked_tail_call
+		;
+			ResumeKnown = resume_point_unknown,
+			TailCallStatus = checked_tail_call
+		)
 	;
-		{ MayTailCall = no }
-	).
+		TailCallStatus = no_tail_call
+	}.
 
 %---------------------------------------------------------------------------%
 
@@ -2274,7 +2327,7 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 			% will be part of the procedure epilog.
 		code_info__get_next_label(ResumeLabel),
 		{ ResumeAddress = label(ResumeLabel) },
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(wont_be_done) },
 		{ CurfrMaxfr = may_be_different }
 	;
 		{ CodeModel = model_non },
@@ -2284,7 +2337,7 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
 		;
 			{ ResumeAddress = do_fail }
 		),
-		{ ResumeKnown = resume_point_known },
+		{ ResumeKnown = resume_point_known(has_been_done) },
 		{ CurfrMaxfr = must_be_equal }
 	),
 	( { MaybeFailVars = yes(FailVars) } ->
@@ -3395,9 +3448,9 @@ code_info__generate_resume_layout(Label, ResumeMap) -->
 		code_info__get_proc_info(ProcInfo),
 		code_info__get_module_info(ModuleInfo),
 		{ continuation_info__generate_resume_layout(ResumeMap,
-			Temps, InstMap, InstTable, ProcInfo, ModuleInfo,
-			Layout) },
-		code_info__add_gc_layout_for_label(Label, Layout)
+			Temps, InstMap, InstTable, ProcInfo,
+			ModuleInfo, Layout) },
+		code_info__add_resume_layout_for_label(Label, Layout)
 	;
 		[]
 	).

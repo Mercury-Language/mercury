@@ -169,7 +169,7 @@
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl.
 :- import_module globals, options, hlds_out, prog_out, goal_util, type_util.
-:- import_module polymorphism, quantification.
+:- import_module polymorphism, quantification, saved_vars.
 
 :- import_module int, list, map, require, set, std_util, string, term, varset.
 :- import_module assoc_list, bool, simplify.
@@ -1170,9 +1170,8 @@ magic__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 		PredInfo0, PredInfo, ProcInfo0, ProcInfo) -->
 	magic_info_get_module_info(ModuleInfo0),
 	{ create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0) },
-	{ ExistQVars = [] },
 	{ term__context_init(Context) },
-	{ polymorphism__make_type_info_vars(Types, ExistQVars, Context,
+	{ polymorphism__make_type_info_vars(Types, Context,
 		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo) },
 	{ poly_info_extract(PolyInfo, PredInfo0, PredInfo,
 		ProcInfo0, ProcInfo, ModuleInfo) },
@@ -1393,9 +1392,12 @@ magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 		{ proc_info_inst_table(ProcInfo0, InstTable) },
 		{ proc_info_get_initial_instmap(ProcInfo0, 
 			ModuleInfo0, InstMap) },
+		% XXX check for existentially typed constructors first -
+		% they will cause an abort.
 		{ goal_util__switch_to_disjunction(Var, Cases,
 			InstMap, InstTable, Disjuncts, VarSet0, VarSet1, 
-			VarTypes0, VarTypes1, ModuleInfo0) },
+			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1) },
+		magic_info_set_module_info(ModuleInfo1),
 		{ proc_info_set_varset(ProcInfo0, VarSet1, ProcInfo1) },
 		{ proc_info_set_vartypes(ProcInfo1, VarTypes1, ProcInfo2) },
 		{ map__init(SM) },
@@ -1418,18 +1420,27 @@ magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 	{ simplify__proc_2(Simplifications, PredId, ProcId, 
 		ModuleInfo2, ModuleInfo3, ProcInfo3, ProcInfo4, _) },
 
-	{ proc_info_goal(ProcInfo4, Goal2) },
+	%
+	% Run saved_vars so that constructions of constants are close
+	% to their uses, and constant attributes aren't unnecessarily
+	% added to relations. We should be more aggressive about this -
+	% constructions of constant compound terms should also be pushed.
+	%
+	{ saved_vars_proc_no_io(PredId, ProcId, ProcInfo4, ProcInfo5,
+		ModuleInfo3, ModuleInfo4) },
+
+	{ proc_info_goal(ProcInfo5, Goal2) },
 	magic_info_set_curr_pred_proc_id(PredProcId),
 	magic_info_set_pred_info(PredInfo),
-	magic_info_set_proc_info(ProcInfo4),
-	magic_info_set_module_info(ModuleInfo3),
+	magic_info_set_proc_info(ProcInfo5),
+	magic_info_set_module_info(ModuleInfo4),
 	{ Goal2 = _ - GoalInfo2 },
 	{ goal_to_disj_list(Goal2, GoalList2) },
 	list__map_foldl(magic__preprocess_disjunct, 
 			GoalList2, GoalList),
 	{ disj_list_to_goal(GoalList, GoalInfo2, Goal) },
-	magic_info_get_proc_info(ProcInfo5),
-	{ proc_info_set_goal(ProcInfo5, Goal, ProcInfo) }.
+	magic_info_get_proc_info(ProcInfo6),
+	{ proc_info_set_goal(ProcInfo6, Goal, ProcInfo) }.
 
 	% Undo common structure elimination of higher-order terms in an
 	% attempt to avoid creating procedures with higher-order arguments
@@ -1570,6 +1581,10 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 		{ Goals = [Goal0] },
 		{ HOMap = HOMap0 }
 	).
+
+magic__preprocess_goal_2(bi_implication(_, _) - _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("magic__preprocess_goal_2: unexpected bi_implication") }.
 
 	% Introduce new variables and assignments to them for any
 	% duplicates in the list. This ensures that the call is in

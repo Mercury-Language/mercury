@@ -275,6 +275,11 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _), _,
 	DepGraph, DepGraph).
 
+dependency_graph__add_arcs_in_goal_2(bi_implication(LHS, RHS), Caller, 
+		DepGraph0, DepGraph) :-
+	dependency_graph__add_arcs_in_list([LHS, RHS], Caller,
+			DepGraph0, DepGraph).
+
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_arcs_in_list(list(hlds_goal), relation_key,
@@ -688,6 +693,9 @@ process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _,
 		Map, Map) --> [].
 process_aditi_goal(_IsNeg, pragma_c_code(_, _, _, _, _, _, _) - _,
 		Map, Map) --> [].
+process_aditi_goal(_, bi_implication(_, _) - _, _, _) -->
+	% these should have been expanded out by now
+	{ error("process_aditi_goal: unexpected bi_implication") }.
 
 %-----------------------------------------------------------------------------%
 

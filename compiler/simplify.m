@@ -442,10 +442,21 @@ really ought to warn.
 		Goal1 = Goal0,
 		Info3 = Info0
 	),
+	%
+	% Remove unnecessary explicit quantifications before working
+	% out whether the goal can cause a stack flush.
+	%
+	( Goal1 = some(SomeVars, CanRemove, SomeGoal1) - GoalInfo1 ->
+		simplify__nested_somes(CanRemove, SomeVars, SomeGoal1,
+			GoalInfo1, Goal2)
+	;
+		Goal2 = Goal1	
+	),
+
 	simplify_info_maybe_clear_structs(before, Goal1, Info3, Info4),
-	Goal1 = GoalExpr1 - GoalInfo1,
-	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info4, Info5),
-	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info5, Info6),
+	Goal2 = GoalExpr2 - GoalInfo2,
+	simplify__goal_2(GoalExpr2, GoalInfo2, Goal, GoalInfo3, Info4, Info5),
+	simplify__enforce_invariant(GoalInfo3, GoalInfo, Info5, Info6),
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 	simplify_info_set_instmap(Info6, InstMap, Info7),
@@ -623,9 +634,29 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		% a possibly can_fail unification with the functor on the front.
 		cons_id_arity(ConsId, Arity),
 		(
-			SwitchCanFail = can_fail,
-			MaybeConsIds \= yes([ConsId])
+		    SwitchCanFail = can_fail,
+		    MaybeConsIds \= yes([ConsId])
 		->
+			%
+			% Don't optimize in the case of an existentially
+			% typed constructor because currently 
+			% simplify__create_test_unification does not
+			% handle the existential type variables
+			% in the types of the constructor arguments
+			% or their type-infos.
+			%
+		    simplify_info_get_var_types(Info1, VarTypes1),
+		    map__lookup(VarTypes1, Var, Type),
+		    simplify_info_get_module_info(Info1, ModuleInfo1),
+		    ( 
+			type_util__is_existq_cons(ModuleInfo1,
+					Type, ConsId)
+		    ->
+		    	Goal = switch(Var, SwitchCanFail, Cases, SM),
+			simplify_info_set_recompute_instmap_delta(Info1,
+				Info3),
+		    	GoalInfo = GoalInfo0
+		    ;
 			simplify__create_test_unification(Var, ConsId, Arity,
 				UnifyGoal, Info1, Info2),
 
@@ -650,11 +681,12 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 				Info3),
 			Goal = conj(GoalList),
 			GoalInfo = CombinedGoalInfo
+		    )
 		;
-			% The var can only be bound to this cons_id, so
-			% a test is unnecessary.
-			SingleGoal = Goal - GoalInfo,
-			Info3 = Info1
+		    % The var can only be bound to this cons_id, so
+		    % a test is unnecessary.
+		    SingleGoal = Goal - GoalInfo,
+		    Info3 = Info1
 		),
 		pd_cost__eliminate_switch(CostDelta),
 		simplify_info_incr_cost_delta(Info3, CostDelta, Info)
@@ -757,7 +789,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
 			PredInfo1, ProcInfo1),
 		proc_info_headvars(ProcInfo1, HeadVars),
-		proc_info_argmodes(ProcInfo1, argument_modes(ArgInstTable, ArgModes)),
+		proc_info_argmodes(ProcInfo1,
+				argument_modes(ArgInstTable, ArgModes)),
 		proc_info_get_initial_instmap(ProcInfo1, ModuleInfo1,
 				ProcInstMap),
 		simplify_info_get_common_info(Info1, CommonInfo1),
@@ -1062,23 +1095,25 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	).
 
 simplify__goal_2(some(Vars1, CanRemove0, Goal1), SomeInfo,
-		Goal, GoalInfo, Info0, Info) :-
-	simplify__goal(Goal1, Goal2, Info0, Info),
-	simplify__nested_somes(CanRemove0, Vars1, Goal2,
-		CanRemove, Vars, Goal3),
-	Goal3 = GoalExpr3 - GoalInfo3,
-	(
-		goal_info_get_determinism(GoalInfo3, Detism),
-		goal_info_get_determinism(SomeInfo, Detism),
-		CanRemove = can_remove
-	->
-		% If the inner and outer detisms match the `some'
-		% is unnecessary.
-		Goal = GoalExpr3,
-		GoalInfo = GoalInfo3
+		GoalExpr, GoalInfo, Info0, Info) :-
+	simplify_info_get_common_info(Info0, Common),
+	simplify__goal(Goal1, Goal2, Info0, Info1),
+	simplify__nested_somes(CanRemove0, Vars1, Goal2, SomeInfo, Goal),
+	Goal = GoalExpr - GoalInfo,
+	( Goal = some(_, _, _) - _ ->
+		% Replacing calls, constructions or deconstructions
+		% outside a commit with references to variables created
+		% inside the commit would increase the set of output
+		% variables of the goal inside the commit. This is not
+		% allowed because it could change the determinism.
+		%
+		% Thus we need to reset the common_info to what it
+		% was before processing the goal inside the commit,
+		% to ensure that we don't make any such replacements
+		% when processing the rest of the goal.
+		simplify_info_set_common_info(Info1, Common, Info)
 	;
-		Goal = some(Vars, CanRemove, Goal3),
-		GoalInfo = SomeInfo
+		Info = Info1
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
@@ -1094,6 +1129,10 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Goal = Goal0
 	).
 
+simplify__goal_2(bi_implication(_, _), _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("simplify__goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred simplify__process_compl_unify(prog_var, prog_var,
@@ -1102,7 +1141,7 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 :- mode simplify__process_compl_unify(in, in, in, in, in, in, in, out,
 		in, out) is det.
 
-simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
+simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		Context, GoalInfo0, Goal) -->
 	=(Info0),
 	{ simplify_info_get_module_info(Info0, ModuleInfo) },
@@ -1121,11 +1160,6 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
 		%
 		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
 		{ ArgVars = [TypeInfoVar, XVar, YVar] },
-
-		% sanity check: the TypeInfoVars we computed here should
-		% match with what was stored in the complicated_unify struct
-		{ require(unify(OldTypeInfoVars, [TypeInfoVar]),
-		  "simplify__process_compl_unify: mismatched type_info vars") },
 
 		{ module_info_get_predicate_table(ModuleInfo,
 			PredicateTable) },
@@ -1249,9 +1283,8 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 	% Call polymorphism.m to create the type_infos
 	%
 	create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-	ExistQVars = [],
 	term__context_init(Context),
-	polymorphism__make_type_info_vars(Types, ExistQVars, Context,
+	polymorphism__make_type_info_vars(Types, Context,
 		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
 	poly_info_extract(PolyInfo, PredInfo0, PredInfo,
 		ProcInfo0, ProcInfo, ModuleInfo1),
@@ -1305,12 +1338,10 @@ simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	simplify_info_get_module_info(Info0, ModuleInfo),
 	simplify_info_get_varset(Info0, VarSet0),
 	simplify_info_get_var_types(Info0, VarTypes0),
-	simplify_info_get_typeinfo_map(Info0, TypeInfoLocns0),
 
 	polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		ModuleInfo, Goals, TypeInfoVar,
-		VarSet0, VarTypes0, TypeInfoLocns0,
-		VarSet, VarTypes, _TypeInfoLocns),
+		VarSet0, VarTypes0, VarSet, VarTypes),
 
 	simplify_info_set_var_types(Info0, VarTypes, Info1),
 	simplify_info_set_varset(Info1, VarSet, Info).
@@ -1344,10 +1375,29 @@ simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
 
 	% replace nested `some's with a single `some',
 :- pred simplify__nested_somes(can_remove::in, list(prog_var)::in,
+		hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
+
+simplify__nested_somes(CanRemove0, Vars1, Goal0, OrigGoalInfo, Goal) :-
+	simplify__nested_somes_2(CanRemove0, Vars1, Goal0,
+		CanRemove, Vars, Goal1),
+	Goal1 = GoalExpr1 - GoalInfo1,
+	(
+		goal_info_get_determinism(GoalInfo1, Detism),
+		goal_info_get_determinism(OrigGoalInfo, Detism),
+		CanRemove = can_remove
+	->
+		% If the inner and outer detisms match the `some'
+		% is unnecessary.
+		Goal = GoalExpr1 - GoalInfo1
+	;
+		Goal = some(Vars, CanRemove, Goal1) - OrigGoalInfo
+	).
+
+:- pred simplify__nested_somes_2(can_remove::in, list(prog_var)::in,
 		hlds_goal::in, can_remove::out, list(prog_var)::out,
 		hlds_goal::out) is det.
 
-simplify__nested_somes(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
+simplify__nested_somes_2(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
 	( Goal0 = some(Vars1, CanRemove1, Goal1) - _ ->
 		(
 			( CanRemove0 = cannot_remove
@@ -1359,7 +1409,7 @@ simplify__nested_somes(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
 			CanRemove2 = can_remove
 		),
 		list__append(Vars0, Vars1, Vars2),
-		simplify__nested_somes(CanRemove2, Vars2, Goal1,
+		simplify__nested_somes_2(CanRemove2, Vars2, Goal1,
 			CanRemove, Vars, Goal)
 	;
 		CanRemove = CanRemove0,
@@ -1599,6 +1649,7 @@ simplify__switch(Var, [Case0 | Cases0], RevCases0, Cases, InstMaps0, InstMaps,
 
 	% Create a semidet unification at the start of a singleton case
 	% in a can_fail switch.
+	% This will abort if the cons_id is existentially typed.
 :- pred simplify__create_test_unification(prog_var::in, cons_id::in, int::in,
 		hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 
@@ -2180,35 +2231,5 @@ simplify_info_undo_goal_updates(Info1, Info2, Info) :-
 	simplify_info_set_common_info(Info2, CommonInfo0, Info3),
 	simplify_info_get_instmap(Info1, InstMap),
 	simplify_info_set_instmap(Info3, InstMap, Info).
-
-%-----------------------------------------------------------------------------%
-
-:- pred goal_contains_goal(hlds_goal, hlds_goal).
-:- mode goal_contains_goal(in, out) is multi.
-
-goal_contains_goal(Goal, Goal).
-goal_contains_goal(Goal - _, SubGoal) :-
-	direct_subgoal(Goal, DirectSubGoal),
-	goal_contains_goal(DirectSubGoal, SubGoal).
-
-:- pred direct_subgoal(hlds_goal_expr, hlds_goal).
-:- mode direct_subgoal(in, out) is nondet.
-
-direct_subgoal(some(_, _, Goal), Goal).
-direct_subgoal(not(Goal), Goal).
-direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
-	( Goal = If
-	; Goal = Then
-	; Goal = Else
-	).
-direct_subgoal(conj(ConjList), Goal) :-
-	list__member(Goal, ConjList).
-direct_subgoal(par_conj(ConjList, _), Goal) :-
-	list__member(Goal, ConjList).
-direct_subgoal(disj(DisjList, _), Goal) :-
-	list__member(Goal, DisjList).
-direct_subgoal(switch(_, _, CaseList, _), Goal) :-
-	list__member(Case, CaseList),
-	Case = case(_, _, Goal).
 
 %-----------------------------------------------------------------------------%

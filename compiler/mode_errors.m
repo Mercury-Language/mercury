@@ -1004,7 +1004,20 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes0)) },
+	{ pred_info_arity(PredInfo, PredArity) },
+	{ proc_info_argmodes(ProcInfo, argument_modes(InstTable, ArgModes0)) },
+
+	% We need to strip off the extra type_info arguments inserted at the
+	% front by polymorphism.m - we only want the last `PredArity' of them.
+	%
+	{ list__length(ArgModes0, NumArgModes) },
+	{ NumToDrop is NumArgModes - PredArity },
+	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
+		{ ArgModes2 = ArgModes1 }
+	;
+		{ error("report_pred_proc_id: list__drop failed") }
+	),
+
 	{ varset__init(VarSet) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	( { OutputDetism = yes } ->
@@ -1014,13 +1027,13 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism) -->
 		{ MaybeDet = no }
 	),
 	prog_out__write_context(Context),
-	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
+	{ strip_builtin_qualifiers_from_mode_list(ArgModes2, ArgModes3) },
 	io__write_string("Inferred "),
 	(	{ PredOrFunc = predicate },
-		mercury_output_pred_mode_decl(VarSet, Name, Modes,
+		mercury_output_pred_mode_decl(VarSet, Name, ArgModes3,
 				MaybeDet, Context, InstTable)
 	;	{ PredOrFunc = function },
-		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+		{ pred_args_to_func_args(ArgModes3, ArgModes, RetMode) },
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
 				MaybeDet, Context, InstTable)
 	).

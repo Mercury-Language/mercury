@@ -684,6 +684,10 @@ det_infer_goal_2(pragma_c_code(IsRecursive, PredId, ProcId, Args,
 		Detism = erroneous
 	).
 
+det_infer_goal_2(bi_implication(_, _), _, _, _, _, _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("det_infer_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred det_infer_conj(list(hlds_goal), instmap, soln_context, det_info,
@@ -868,8 +872,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 		det_get_proc_info(DetInfo, ProcInfo),
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__lookup(VarTypes, Var, Type),
-		det_type_has_user_defined_equality_pred(DetInfo, Type,
-			_TypeContext)
+		det_type_has_user_defined_equality_pred(DetInfo, Type)
 	->
 		( CanFail = can_fail ->
 			proc_info_varset(ProcInfo, VarSet),
@@ -894,16 +897,11 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 
 % return true iff there was a `where equality is <predname>' declaration
 % for the specified type.
-:- pred det_type_has_user_defined_equality_pred(det_info::in, (type)::in,
-		prog_context::out) is semidet.
-det_type_has_user_defined_equality_pred(DetInfo, Type, TypeContext) :-
+:- pred det_type_has_user_defined_equality_pred(det_info::in,
+		(type)::in) is semidet.
+det_type_has_user_defined_equality_pred(DetInfo, Type) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	module_info_types(ModuleInfo, TypeTable),
-	type_to_type_id(Type, TypeId, _TypeArgs),
-	map__search(TypeTable, TypeId, TypeDefn),
-	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = du_type(_, _, _, yes(_)),
-	hlds_data__get_type_defn_context(TypeDefn, TypeContext).
+	type_has_user_defined_equality_pred(ModuleInfo, Type, _).
 
 % return yes iff the results of the specified unification might depend on
 % the concrete representation of the abstract values involved.

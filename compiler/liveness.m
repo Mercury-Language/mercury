@@ -364,6 +364,9 @@ detect_liveness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _, _) :-
 detect_liveness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _, _) :-
 	error("pragma_c_code in detect_liveness_in_goal_2").
 
+detect_liveness_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
+	error("bi_implication in detect_liveness_in_goal_2").
+
 %-----------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_conj(list(hlds_goal), set(prog_var), set(prog_var),
@@ -588,6 +591,9 @@ detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
 detect_deadness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _) :-
 	error("pragma_c_code in detect_deadness_in_goal_2").
 
+detect_deadness_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
+	error("bi_implication in detect_deadness_in_goal_2").
+
 %-----------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_conj(list(hlds_goal), set(prog_var), live_info,
@@ -808,6 +814,10 @@ detect_resume_points_in_goal_2(unify(A,B,C,D,E), _, Liveness, _, _,
 detect_resume_points_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, Liveness,
 		_, _,
 		pragma_c_code(A,B,C,D,E,F,G), Liveness).
+
+detect_resume_points_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("detect_resume_points_in_goal_2: unexpected bi_implication").
 
 :- pred detect_resume_points_in_conj(list(hlds_goal), set(prog_var), live_info,
 	set(prog_var), list(hlds_goal), set(prog_var)).

@@ -127,29 +127,9 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 :- mode parse_superclass_constraints(in, in, out) is det.
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
-	parse_class_constraints(ModuleName, Constraints, ParsedConstraints),
-	(
-		ParsedConstraints = ok(ConstraintList),
-		(
-			NonVarArg = lambda([C::in, NonVar::out] is semidet, (
-				C = constraint(_, Types),
-				list__filter(
-					lambda([A::in] is semidet, 
-						\+ type_util__var(A, _)),
-					Types, [NonVar | _])
-			)),
-			list__filter_map(NonVarArg, ConstraintList, [E0|_Es])
-		->
-			term__coerce(E0, E),
-			Result = error("constraints on class declaration may only constrain type variables, not compound types", E)
-		;
-			Result = ParsedConstraints
-		)
-	;
-		ParsedConstraints = error(_, _),
-		Result = ParsedConstraints
-	).
-
+	parse_simple_class_constraints(ModuleName, Constraints, 
+		"constraints on class declaration may only constrain type variables, not compound types",
+		Result).
 
 :- pred parse_unconstrained_class(module_name, term, tvarset, maybe1(item)).
 :- mode parse_unconstrained_class(in, in, in, out) is det.
@@ -264,7 +244,48 @@ find_errors([X|Xs], Result) :-
 
 %-----------------------------------------------------------------------------%
 
-parse_class_constraints(ModuleName, Constraints, ParsedConstraints) :-
+% Parse constraints on a pred or func declaration,
+% or on an existentially quantified type definition.
+
+parse_class_constraints(ModuleName, Constraints, Result) :-
+	parse_simple_class_constraints(ModuleName, Constraints, 
+		"sorry, not implemented: constraints may only constrain type variables, not compound types",
+		Result).
+
+% Parse constraints which can only constrain type variables
+
+:- pred parse_simple_class_constraints(module_name, term, string,
+		maybe1(list(class_constraint))).
+:- mode parse_simple_class_constraints(in, in, in, out) is det.
+
+parse_simple_class_constraints(ModuleName, Constraints, ErrorMessage,
+		Result) :-
+	parse_arbitrary_class_constraints(ModuleName, Constraints,
+		ParsedConstraints),
+	(
+		ParsedConstraints = ok(ConstraintList),
+		(
+			list__member(Constraint, ConstraintList),
+			Constraint = constraint(_, Types),
+			list__member(Type, Types),
+			\+ type_util__var(Type, _)
+		->
+			Result = error(ErrorMessage, Constraints)
+		;
+			Result = ParsedConstraints
+		)
+	;
+		ParsedConstraints = error(_, _),
+		Result = ParsedConstraints
+	).
+
+% Parse constraints which can constrain arbitrary types
+
+:- pred parse_arbitrary_class_constraints(module_name, term,
+		maybe1(list(class_constraint))).
+:- mode parse_arbitrary_class_constraints(in, in, out) is det.
+
+parse_arbitrary_class_constraints(ModuleName, Constraints, ParsedConstraints) :-
 	conjunction_to_list(Constraints, ConstraintList),
 	parse_class_constraint_list(ModuleName, ConstraintList, 
 		ParsedConstraints).
@@ -375,28 +396,9 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 :- mode parse_instance_constraints(in, in, out) is det.
 
 parse_instance_constraints(ModuleName, Constraints, Result) :-
-	parse_class_constraints(ModuleName, Constraints, ParsedConstraints),
-	(
-		ParsedConstraints = ok(ConstraintList),
-		(
-			NonVarArg = lambda([C::in, NonVar::out] is semidet, (
-				C = constraint(_, Types),
-				list__filter(
-					lambda([A::in] is semidet, 
-						\+ type_util__var(A, _)),
-					Types, [NonVar | _])
-			)),
-			list__filter_map(NonVarArg, ConstraintList, [E0|_Es])
-		->
-			term__coerce(E0, E),
-			Result = error("constraints on instance declaration may only constrain type variables, not compound types", E)
-		;
-			Result = ParsedConstraints
-		)
-	;
-		ParsedConstraints = error(_, _),
-		Result = ParsedConstraints
-	).
+	parse_simple_class_constraints(ModuleName, Constraints,
+		"constraints on instance declaration may only constrain type variables, not compound types",
+		Result).
 
 :- pred parse_underived_instance(module_name, term, tvarset, maybe1(item)).
 :- mode parse_underived_instance(in, in, in, out) is det.

@@ -150,26 +150,6 @@
 						% arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
-		)
-	;	trace_call_info(
-			% This structure contains all the information
-			% we pass to a particular call to MR_trace_struct.
-
-			label,			% The label corresponding
-						% to this point in the code,
-						% whose layout structure
-						% describes the current
-						% contents of registers and
-						% stack slots.
-			string,			% A representation of the
-						% goal_path of the current
-						% position in the procedure.
-			int,			% The number of the highest
-						% numbered r register that is
-						% in use at the time of the
-						% call.
-			trace_port		% The type of port we are
-						% tracing.
 		).
 
 :- type comp_gen_c_module
@@ -195,10 +175,37 @@
 :- type instruction	==	pair(instr, string).
 			%	instruction, comment
 
+:- type nondet_tail_call
+	--->	no_tail_call
+				% At the point of the call, the procedure has
+				% more alternatives.
+				%
+				% Under these conditions, the call cannot be
+				% transformed into a tail call.
+	;	checked_tail_call
+				% At the point of the call, the procedure has
+				% no more alternatives, and curfr and maxfr
+				% are not guaranteed to be identical.
+				%
+				% Under these conditions, the call can be
+				% transformed into a tail call whenever its
+				% return address leads to the procedure
+				% epilogue AND curfr and maxfr are found
+				% to be identical at runtime.
+	;	unchecked_tail_call.
+				% At the point of the call the procedure has no
+				% more alternatives, and curfr and maxfr are
+				% guaranteed to be identical.
+				%
+				% Under these conditions, the call can be
+				% transformed into a tail call whenever its
+				% return address leads to the procedure
+				% epilogue.
+
 :- type call_model
 	--->	det
 	;	semidet
-	;	nondet(bool).
+	;	nondet(nondet_tail_call).
 
 	% `instr' defines the various LLDS virtual machine instructions.
 	% Each instruction gets compiled to a simple piece of C code
@@ -221,11 +228,13 @@
 			% Assign the value specified by rval to the location
 			% specified by lval.
 
-	;	call(code_addr, code_addr, list(liveinfo), call_model)
-			% call(Target, Continuation, _, _) is the same as
+	;	call(code_addr, code_addr, list(liveinfo), term__context,
+				call_model)
+			% call(Target, Continuation, _, _, _) is the same as
 			% succip = Continuation; goto(Target).
 			% The third argument is the live value info for the
-			% values live on return. The last gives the model
+			% values live on return. The fourth argument gives
+			% the context of the call. The last gives the model
 			% of the called procedure, and if it is nondet,
 			% says whether tail recursion elimination is
 			% potentially applicable to the call.
@@ -291,14 +300,16 @@
 			% The rval must specify a ticket allocated with
 			% `store_ticket' and not yet invalidated or
 			% deallocated.
-			% If undo_reason is `undo' or `exception', restore
-			% any mutable global state to the state it was in when
-			% the ticket was obtained with store_ticket();
-			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit' or `solve', leave the state
-			% unchanged, just check that it is safe to commit
-			% to this solution (i.e. that there are no outstanding
-			% delayed goals -- this is the "floundering" check).
+			% If reset_trail_reason is `undo', `exception', or
+			% `retry', restore any mutable global state to the
+			% state it was in when the ticket was obtained with
+			% store_ticket(); invalidates any tickets allocated
+			% after this one.
+			% If reset_trail_reason is `commit' or `solve', leave
+			% the state unchanged, just check that it is safe to
+			% commit to this solution (i.e. that there are no
+			% outstanding delayed goals -- this is the
+			% "floundering" check).
 			% Note that we do not discard trail entries after
 			% commits, because that would in general be unsafe.
 			%
@@ -331,7 +342,8 @@
 			% Decrement the det stack pointer.
 
 	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
-				may_call_mercury, maybe(label), bool)
+				may_call_mercury, maybe(label), maybe(label),
+				bool)
 			% The first argument says what local variable
 			% declarations are required for the following
 			% components, which in turn can specify how
@@ -353,9 +365,16 @@
 			% refer to a Mercury label. If they do, we must
 			% prevent the label from being optimized away.
 			% To make it known to labelopt, we mention it in
-			% the fourth arg.
+			% the fourth or the fifth arg. The fourth argument
+			% may give the name of a label whose name is fixed
+			% (e.g. because it embedded in raw C code or because it
+			% has associated an label layout structure), while
+			% the fifth may give the name of a label that can
+			% be changed (because it is not mentioned in C code
+			% and has no associated layout structure, being
+			% mentioned only in pragma_c_fail_to components).
 			%
-			% The fifth argument says whether the contents
+			% The sixth argument says whether the contents
 			% of the pragma C code can refer to stack slots.
 			% User-written shouldn't refer to stack slots,
 			% the question is whether the compiler-generated
@@ -466,7 +485,9 @@
 	--->	pragma_c_inputs(list(pragma_c_input))
 	;	pragma_c_outputs(list(pragma_c_output))
 	;	pragma_c_user_code(maybe(prog_context), string)
-	;	pragma_c_raw_code(string).
+	;	pragma_c_raw_code(string)
+	;	pragma_c_fail_to(label)
+	;	pragma_c_noop.
 
 	% A pragma_c_input represents the code that initializes one
 	% of the input variables for a pragma_c instruction.
@@ -487,21 +508,25 @@
 	;	commit
 	;	solve
 	;	exception
+	;	retry
 	;	gc
 	.
 
-	% The kinds of ports for which the code we generate will
-	% call MR_trace. The redo port is not on this list, because for that
-	% port the code that calls MR_trace is not in compiler-generated code,
-	% but in the runtime system.  Likewise for the exception port.
-	% (The same comment applies to the type `external_trace_port'
-	% in trace.m.)
+	% The kinds of events with which MR_trace may be called, either
+	% by compiler-generated code, or by code in the standard library
+	% referring to compiler-generated data structures.
 :- type trace_port
 	--->	call
 	;	exit
 	;	fail
+	;	redo
+	;	exception
+	;	ite_cond
 	;	ite_then
 	;	ite_else
+	;	neg_enter
+	;	neg_success
+	;	neg_failure
 	;	switch
 	;	disj
 	;	nondet_pragma_first
@@ -548,6 +573,8 @@
 	;	redoip				% A stored redoip.
 	;	redofr				% A stored redofr.
 	;	hp				% A stored heap pointer.
+	;	trail_ptr			% A stored trail pointer.
+	;	ticket				% A stored ticket.
 	;	var(prog_var, string, type, llds_inst)
 						% A variable (the var number
 						% and name are for execution
@@ -852,10 +879,15 @@
 					% rather than a succeed().
 	;	do_redo
 	;	do_fail
-	;	do_trace_redo_fail
-					% A label in the runtime, the code
+
+	;	do_trace_redo_fail_shallow
+	;	do_trace_redo_fail_deep
+					% Labels in the runtime, the code
 					% at which calls MR_trace with a
-					% REDO event and then fails.
+					% REDO event and then fails. The
+					% shallow variety only does this
+					% if the from_full flag was set
+					% on entry to the given procedure.
 	;	do_call_closure
 	;	do_call_class_method
 	;	do_det_aditi_call
@@ -875,14 +907,23 @@
 	% from `.opt' files, the defining module's name is added as a
 	% qualifier to the label.
 :- type proc_label
-	--->	proc(module_name, pred_or_func, module_name, string,
-								int, proc_id)
-			% defining module, predicate/function,
-			% declaring module, name, arity, mode #
-	;	special_proc(module_name, string, module_name, string, int,
-								proc_id).
-			% defining module, pred name, type module,
-			% type name, type arity, mode #
+	--->	proc(
+			module_name,	% defining module
+			pred_or_func,
+			module_name,	% declaring module
+			string,		% name
+			int,		% arity
+			proc_id		% mode number
+		)
+			
+	;	special_proc(
+			module_name,	% defining module
+			string,		% pred name
+			module_name,	% type module
+			string,		% type name
+			int,		% type arity
+			proc_id		% mode number
+		).
 
 	% A tag (used in mkword, create and field expressions
 	% and in incr_hp instructions) is a small integer.

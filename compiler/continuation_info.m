@@ -51,7 +51,7 @@
 
 :- interface.
 
-:- import_module llds, hlds_module, hlds_pred, prog_data.
+:- import_module llds, hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module (inst), instmap, inst_table, trace, globals.
 :- import_module std_util, bool, list, assoc_list, set, map.
 
@@ -70,6 +70,10 @@
 					% with the call event, whose stack
 					% layout says which variables were
 					% live and where on entry.
+			int,		% The number of the highest numbered
+					% rN register that can contain useful
+					% information during a call to MR_trace
+					% from within this procedure.
 			trace_slot_info,% Info about the stack slots used
 					% for tracing.
 			bool,		% Do we require the procedure id
@@ -89,11 +93,13 @@
 	%
 	% Information for an internal label.
 	%
-	% There are two ways for the compiler to generate labels for
+	% There are three ways for the compiler to generate labels for
 	% which layouts may be required:
 	%
-	% (a) as the label associated with a trace port, and
-	% (b) as the return label of some kind of call (plain, method or h-o).
+	% (a) as the label associated with a trace port,
+	% (b) as the label associated with resume point that gets stored
+	%     as a redoip in a nondet stack frame, and
+	% (c) as the return label of some kind of call (plain, method or h-o).
 	%
 	% Label optimizations may redirect a call return away from the
 	% originally generated label to another label, possibly one
@@ -109,12 +115,13 @@
 	%   Even for these, we need only the pointer to the procedure layout
 	%   info; we do not need any information about variables.
 	%
-	% - For accurate gc, we are interested only in call return labels.
-	%   We need to know about all the variables that can be accessed
-	%   after the label; this is the intersection of all the variables
-	%   denoted as live in the call instructions. (Variables which
-	%   are not in the intersection are not guaranteed to have a
-	%   meaningful value on all execution paths that lead to the label.)
+	% - For accurate gc, we are interested only in resume point labels
+	%   and call return labels. We need to know about all the variables
+	%   that can be accessed after the label; this is the intersection of
+	%   all the variables denoted as live in the respective labels.
+	%   (Variables which are not in the intersection are not guaranteed
+	%   to have a meaningful value on all execution paths that lead to the
+	%   label.)
 	%
 	% - For execution tracing, our primary interest is in trace port
 	%   labels. At these labels we only want info about named variables,
@@ -133,20 +140,51 @@
 	% For labels which correspond to a trace port (part (a) above),
 	% we record information in the first field. Since trace.m generates
 	% a unique label for each trace port, this field is never updated
-	% once it is set in pass 2. For labels which correspond to a call
-	% return, we record information in the second field during pass 4.
-	% Since a label can serve as the return label for more than once call,
-	% this field can be updated (by taking the intersection of the live
-	% variables) after it is set. Since a call may return to the label
-	% of an internal port, it is possible for both fields to be set.
-	% In this case, stack_layout.m will take the union of the relevant
-	% info. If neither field is set, then the label's layout is required
-	% only for stack tracing.
+	% once it is set in pass 2.
+	%
+	% For labels which correspond to redoips (part (b) above), we record
+	% information in the second field. Since code_info.m generates
+	% unique labels for each resumption point, this field is never updated
+	% once it is set in pass 2.
+	% 
+	% For labels which correspond to a call return (part (c) above),
+	% we record information in the third field during pass 4. If execution
+	% tracing is turned on, then jumpopt.m will not redirect call return
+	% addresses, and thus each label will correspond to at most one call
+	% return. If execution tracing is turned off, jumpopt.m may redirect
+	% call return addresses, which means that a label can serve as the
+	% return label for more than one call. In that case, this field can be
+	% updated after it is set. This updating requires taking the
+	% intersection of the sets of live variables, and gathering up all the
+	% contexts into a list. Later, stack_layout.m will pick one (valid)
+	% context essentially at random, which is OK because the picked
+	% context will not be used for anything, except possibly for debugging
+	% native gc.
+	%
+	% Since a call may return to the label of an internal port, it is
+	% possible for both fields to be set. In this case, stack_layout.m
+	% will take the union of the relevant info. If neither field is set,
+	% then the label's layout is required only for stack tracing.
 	%
 :- type internal_layout_info
 	--->	internal_layout_info(
+			maybe(trace_port_layout_info),
 			maybe(layout_label_info),
-			maybe(layout_label_info)
+			maybe(return_layout_info)
+		).
+
+:- type trace_port_layout_info
+	--->	trace_port_layout_info(
+			prog_context,
+			trace_port,
+			goal_path,
+			layout_label_info
+		).
+
+:- type return_layout_info
+	--->	return_layout_info(
+			list(pair(code_addr, prog_context)),
+			layout_label_info
 		).
 
 	%
@@ -281,6 +319,14 @@ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 		ContInfo = ContInfo0
 	).
 
+:- type call_info
+	--->	call_info(
+			label,		% the return label
+			code_addr,	% the target of the call
+			list(liveinfo),	% what is live on return
+			term__context	% the position of the call in source
+		).
+
 	%
 	% Process the list of instructions for this proc, adding
 	% all internal label information to global_data.
@@ -294,18 +340,19 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 
 		% Get all the continuation info from the call instructions.
 	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
-	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, Internals0),
-	GetCallLivevals = lambda([Instr::in, Pair::out] is semidet, (
-		Instr = call(_, label(Label), LiveInfo, _) - _Comment,
-		Pair = Label - LiveInfo
+	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, H, Internals0),
+	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
+		Instr = call(Target, label(ReturnLabel), LiveInfo, Context, _)
+			- _Comment,
+		Call = call_info(ReturnLabel, Target, LiveInfo, Context)
 	)),
-	list__filter_map(GetCallLivevals, Instructions, Calls),
+	list__filter_map(GetCallInfo, Instructions, Calls),
 
 		% Process the continuation label info.
 	list__foldl(continuation_info__process_continuation(WantReturnInfo),
 		Calls, Internals0, Internals),
 
-	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, Internals),
+	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, H, Internals),
 	global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo,
 		GlobalData).
 
@@ -315,16 +362,17 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	% Collect the liveness information from a single return label
 	% and add it to the internals.
 	%
-:- pred continuation_info__process_continuation(bool::in,
-	pair(label, list(liveinfo))::in,
+:- pred continuation_info__process_continuation(bool::in, call_info::in,
 	proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
-continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
+continuation_info__process_continuation(WantReturnInfo, CallInfo,
 		Internals0, Internals) :-
-	( map__search(Internals0, Label, Internal0) ->
-		Internal0 = internal_layout_info(Port0, Return0)
+	CallInfo = call_info(ReturnLabel, Target, LiveInfoList, Context),
+	( map__search(Internals0, ReturnLabel, Internal0) ->
+		Internal0 = internal_layout_info(Port0, Resume0, Return0)
 	;
 		Port0 = no,
+		Resume0 = no,
 		Return0 = no
 	),
 	( WantReturnInfo = yes ->
@@ -332,24 +380,33 @@ continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 			VarInfoSet, TypeInfoMap),
 		(
 			Return0 = no,
-			Return = yes(layout_label_info(VarInfoSet,
-				TypeInfoMap))
+			Layout = layout_label_info(VarInfoSet, TypeInfoMap),
+			ReturnInfo = return_layout_info([Target - Context],
+				Layout),
+			Return = yes(ReturnInfo)
 		;
 				% If a var is known to be dead
 				% on return from one call, it
 				% cannot be accessed on returning
 				% from the other calls that reach
 				% the same return address either.
-			Return0 = yes(layout_label_info(LV0, TV0)),
+			Return0 = yes(ReturnInfo0),
+			ReturnInfo0 = return_layout_info(TargetsContexts0,
+				Layout0),
+			Layout0 = layout_label_info(LV0, TV0),
 			set__intersect(LV0, VarInfoSet, LV),
 			map__intersect(set__intersect, TV0, TypeInfoMap, TV),
-			Return = yes(layout_label_info(LV, TV))
+			Layout = layout_label_info(LV, TV),
+			TargetContexts = [Target - Context | TargetsContexts0],
+			ReturnInfo = return_layout_info(TargetContexts,
+				Layout),
+			Return = yes(ReturnInfo)
 		)
 	;
 		Return = Return0
 	),
-	Internal = internal_layout_info(Port0, Return),
-	map__set(Internals0, Label, Internal, Internals).
+	Internal = internal_layout_info(Port0, Resume0, Return),
+	map__set(Internals0, ReturnLabel, Internal, Internals).
 
 :- pred continuation_info__convert_return_data(list(liveinfo)::in,
 	set(var_info)::out, map(tvar, set(layout_locn))::out) is det.
@@ -659,8 +716,8 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 			varset__lookup_name(VarSet, TypeInfoVar,
 				VarString),
 			string__format("%s: %s %s",
-				[s("code_info__find_typeinfos_for_tvars"),
-				s("can't find lval for type_info var"),
+			    [s("continuation_info__find_typeinfos_for_tvars"),
+				s("can't find rval for type_info var"),
 				s(VarString)], ErrStr),
 			error(ErrStr)
 		)

@@ -16,7 +16,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module instmap, (inst), inst_table.
-:- import_module bool, list, map, assoc_list.
+:- import_module bool, list, assoc_list, std_util.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -139,7 +139,7 @@
 :- mode recompute_instmap_delta_proc(in, out, in, out) is det.
 
 :- pred recompute_instmap_delta(list(prog_var), list(is_live),
-		map(prog_var, type), hlds_goal, hlds_goal, instmap, inst_table,
+		vartypes, hlds_goal, hlds_goal, instmap, inst_table,
 		inst_table, bool, module_info, module_info).
 :- mode recompute_instmap_delta(in, in, in, in, out, in, in, out, out, in, out)
 		is det.
@@ -225,12 +225,35 @@
 
 %-----------------------------------------------------------------------------%
 
+	%
+	% Fix up the cons_id arity for type(class)_info constructions.
+	% The cons_id for type(class)_info constructions always has
+	% arity 1, to match the arity in the declaration in
+	% library/private_builtin.m,
+	% but for the inst we need the arity of the cons_id
+	% to match the number of arguments.
+	%
+:- pred fix_type_info_cons_id_arity(cons_id, list(T), cons_id).
+:- mode fix_type_info_cons_id_arity(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% Construct a mode corresponding to the standard `in',
 	% `out', `uo' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
 :- pred unused_mode((mode)::out) is det.
+
+:- func in_mode = (mode).
+:- func out_mode = (mode).
+:- func uo_mode = (mode).
+:- func unused_mode = (mode).
+
+:- func in_inst_pair = pair(inst).
+:- func out_inst_pair = pair(inst).
+:- func uo_inst_pair = pair(inst).
+:- func unused_inst_pair = pair(inst).
 
 	% Construct the modes used for `aditi__state' arguments.
 	% XXX These should be unique, but are not yet because that
@@ -1298,7 +1321,7 @@ mode_id_to_int(_ - X, X).
 
 :- type recompute_info --->
 		recompute_info(
-			map(prog_var, type),
+			vartypes,
 			module_info,
 			inst_table,
 			bag(prog_var),
@@ -1310,7 +1333,7 @@ mode_id_to_int(_ - X, X).
 
 slap_recompute_info(RI, _, RI).
 
-:- pred recompute_info_get_vartypes(recompute_info, map(prog_var, type)).
+:- pred recompute_info_get_vartypes(recompute_info, vartypes).
 :- mode recompute_info_get_vartypes(in, out) is det.
 
 recompute_info_get_vartypes(recompute_info(VarTypes, _, _, _, _), VarTypes).
@@ -1643,6 +1666,10 @@ recompute_instmap_delta_3(pragma_c_code(A, PredId, ProcId, Args, E, F, G),
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
+recompute_instmap_delta_3(bi_implication(_, _), _, _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("recompute_instmap_delta_3: unexpected bi_implication") }.
+	
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_conj(list(hlds_goal), list(hlds_goal),
@@ -1752,7 +1779,9 @@ recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 	=(RI0),
 	{ recompute_info_get_module_info(RI0, M0) },
 	{ recompute_info_get_inst_table(RI0, InstTable0) },
-	{ instmap__bind_var_to_functor(Var, Functor, InstMap0, InstMap1,
+	{ recompute_info_get_vartypes(RI0, VarTypes0) },
+	{ map__lookup(VarTypes0, Var, Type) },
+	{ instmap__bind_var_to_functor(Var, Type, Functor, InstMap0, InstMap1,
 		InstTable0, InstTable1, M0, M1) },
 	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
 	recompute_info_set_module_info(M1),
@@ -1878,9 +1907,10 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 	list__length(Vars, Arity),
 	recompute_info_var_is_live(RI0, Var, VarLive),
 	list__map(instmap__lookup_var(InstMap1), Vars, ArgInsts),
+	fix_type_info_cons_id_arity(ConsId, Vars, InstConsId),
 	(
 		abstractly_unify_inst_functor(VarLive, InitialInst,
-			ConsId, ArgInsts, ArgLives, real_unify,
+			InstConsId, ArgInsts, ArgLives, real_unify,
 			InstTable1, ModuleInfo0, InstMap1,
 			UnifyInst0, Det0, InstTable2, ModuleInfo2, InstMap2)
 	->
@@ -1894,13 +1924,13 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 	),
 	instmap__set(InstMap3, Var, UnifyInst, InstMap),
 	ModeOfX = (InitialInst - UnifyInst),
-	ModeOfY = (bound(unique, [functor(ConsId, ArgInsts)]) - UnifyInst),
+	ModeOfY = (bound(unique, [functor(InstConsId, ArgInsts)]) - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
 	UnifyRhs = functor(ConsId, Vars),
 	(
 		inst_expand(InstMap1, InstTable, ModuleInfo, InitialInst,
 			InstOfX2),
-		get_arg_insts(InstOfX2, ConsId, Arity, InstOfXArgs),
+		get_arg_insts(InstOfX2, InstConsId, Arity, InstOfXArgs),
 		get_mode_of_args(UnifyInst, InstOfXArgs, ModeOfXArgs0)
 	->
 		ModeOfXArgs = ModeOfXArgs0
@@ -2398,24 +2428,42 @@ normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-in_mode(Mode) :- make_std_mode("in", [], Mode).
+in_mode(in_mode).
+out_mode(out_mode).
+uo_mode(uo_mode).
+unused_mode(unused_mode).
 
-out_mode(Mode) :- make_std_mode("out", [], Mode).
+in_mode = make_std_mode("in", []).
+out_mode = make_std_mode("out", []).
+uo_mode = make_std_mode("uo", []).
+unused_mode = make_std_mode("unused", []).
 
-uo_mode(Mode) :- make_std_mode("uo", [], Mode).
+in_inst_pair = ground_inst - ground_inst.
+out_inst_pair = free_inst - ground_inst.
+uo_inst_pair = free_inst - unique_inst.
+unused_inst_pair = free_inst - free_inst.
 
-unused_mode(Mode) :- make_std_mode("unused", [], Mode).
+:- func ground_inst = (inst).
+ground_inst = ground(shared, no).
 
-aditi_ui_mode = Mode :- in_mode(Mode). 
+:- func unique_inst = (inst).
+unique_inst = ground(unique, no).
 
-aditi_di_mode = Mode :- in_mode(Mode).
+:- func free_inst = (inst).
+free_inst = free(unique).
 
-aditi_uo_mode = Mode :- out_mode(Mode).
+aditi_ui_mode = in_mode.
+aditi_di_mode = in_mode.
+aditi_uo_mode = out_mode.
 
-:- pred make_std_mode(string, list(inst), mode).
+:- pred make_std_mode(string, list(inst), (mode)).
 :- mode make_std_mode(in, in, out) is det.
 
-make_std_mode(Name, Args, Mode) :-
+make_std_mode(Name, Args, make_std_mode(Name, Args)).
+
+:- func make_std_mode(string, list(inst)) = (mode).
+
+make_std_mode(Name, Args) = Mode :-
 	mercury_public_builtin_module(MercuryBuiltin),
 	QualifiedName = qualified(MercuryBuiltin, Name),
 	Mode = user_defined_mode(QualifiedName, Args).
@@ -2553,6 +2601,23 @@ partition_args(InstMap, InstTable, ModuleInfo, [ArgMode | ArgModes],
 	;
 		InputArgs = InputArgs1,
 		OutputArgs = [Arg | OutputArgs1]
+	).
+
+%-----------------------------------------------------------------------------%
+
+fix_type_info_cons_id_arity(ConsId, Args, InstConsId) :-
+	(
+		ConsId = cons(SymName, _),
+		SymName = qualified(Module, UnqualName),
+		mercury_private_builtin_module(Module),
+		( UnqualName = "typeclass_info"
+		; UnqualName = "type_info"
+		)
+	->
+		list__length(Args, InstArity),
+		InstConsId = cons(SymName, InstArity)
+	;
+		InstConsId = ConsId
 	).
 
 %-----------------------------------------------------------------------------%

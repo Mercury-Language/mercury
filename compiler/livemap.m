@@ -154,7 +154,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = call(_, _, _, _),
+		Uinstr0 = call(_, _, _, _, _),
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals, "call", yes, _),
 		Livemap = Livemap0,
@@ -356,7 +356,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		DontValueNumber = yes
 	;
 		% XXX we shouldn't just give up here
-		Uinstr0 = pragma_c(_, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,
 		Instrs = Instrs0,
@@ -393,7 +393,8 @@ livemap__special_code_addr(imported(_), no).
 livemap__special_code_addr(succip, yes(succip)).
 livemap__special_code_addr(do_succeed(_), yes(succip(lval(curfr)))).
 livemap__special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
-livemap__special_code_addr(do_trace_redo_fail, no).
+livemap__special_code_addr(do_trace_redo_fail_shallow, no).
+livemap__special_code_addr(do_trace_redo_fail_deep, no).
 livemap__special_code_addr(do_fail, no).
 livemap__special_code_addr(do_call_closure, no).
 livemap__special_code_addr(do_call_class_method, no).

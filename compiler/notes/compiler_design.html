@@ -206,6 +206,9 @@ stored in the io__state, using the type globals defined in globals.m.
 
 	make_hlds.m transforms the code into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
+	It expands away universal quantification
+	(using `all [Vs] G' ===> `not (some [Vs] (not G))')
+	and implication (using `A => B' ===> `not(A, not B)').
 	It converts `pragma import', `pragma c_code' and `pragma fact_table'
 	declarations into clauses with HLDS `pragma_c_code'
 	instructions for bodies.
@@ -258,7 +261,10 @@ so that the compiler does the right thing for options such as
 	<dd>
 	quantification.m handles implicit quantification and computes
 	the set of non-local variables for each sub-goal.
-    This is done in transform in make_hlds.m
+	It also expands away bi-implication (unlike the expansion
+	of implication and universal quantification, this expansion
+	cannot be done until after quantification).
+	This pass is called from the `transform' predicate in make_hlds.m.
 
 <dt> checking typeclass instances (check_typeclass.m)
 	<dd>
@@ -290,8 +296,7 @@ so that the compiler does the right thing for options such as
 	  pred_info.  However, typecheck.m doesn't figure out the pred_id
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
-	  later on (in post_typecheck.m, for preds, and in
-	  polymorphism.m, for function calls).
+	  later on (in post_typecheck.m, for both preds and function calls)
 	  Typeclass constraints are checked here, and
 	  any redundant constraints that are eliminated are recorded (as
 	  constraint_proofs) in the pred_info for future reference. When it has
@@ -325,6 +330,8 @@ so that the compiler does the right thing for options such as
 	complete the handling of predicate
 	overloading for cases which typecheck.m is unable to handle,
 	and to check for unbound type variables.
+	Elimination of double negation is also done here; that needs to
+	be done after quantification analysis and before mode analysis.
 
 <dt> polymorphism transformation
 
@@ -339,7 +346,7 @@ so that the compiler does the right thing for options such as
 	wrong thing for goals whose only output is the type_info for 
 	an existentially quantified type parameter.)
 	<p>
-	This phase also converts function calls into predicate calls,
+	This phase also 
 	converts higher-order predicate terms into lambda expressions,
 	and copies the clauses to the proc_infos in preparation for
 	mode analysis.
@@ -502,6 +509,10 @@ and prints the messages appropriate for each.
 <li>
 term_util.m defines the main types used in termination analysis
 and contains utility predicates.
+<li>
+lp.m is used by term_pass1.m. It implements the Linear Programming
+algorithm for optimizing a set of linear constraints with respect to
+a linear cost function.
 </ul>
 
 <p>
@@ -631,7 +642,7 @@ for high-level optimizations (but which is not yet used).
 			information so that we can generate correct code
 			by putting variables in the same spot at the end
 			of each branch.
-		<dt> computing goal paths
+		<dt> computing goal paths (goal_path.m)
 			<dd>
 			The goal path of a goal defines its position in
 			the procedure body. This transformation attaches
@@ -650,6 +661,7 @@ for high-level optimizations (but which is not yet used).
 		<li> call_gen.m (predicate calls and also calls to
 			out-of-line unification procedures)
 		<li> disj_gen.m (disjunctions)
+		<li> par_conj.m (parallel conjunctions)
 		<li> unify_gen.m (unifications)
 		<li> switch_gen.m (switches), which has sub-modules
 			<ul>
@@ -867,12 +879,13 @@ intermediate representation.
 
 <h4> 4b. MLDS code generation </h4>
 <ul>
-<li> ml_code_gen.m (not yet committed) converts HLDS code to MLDS.
+<li> ml_code_gen.m converts HLDS code to MLDS.
 </ul>
 
 <h4> 5b. MLDS transformations </h4>
-None yet.  Eventually there will be one or more modules here for
-performing transformations such as hoisting out nested functions.
+<ul>
+<li> ml_elim_nested.m transforms the MLDS to eliminate nested functions.
+</ul>
 
 <h4> 6b. MLDS output </h4>
 mlds_to_c.m converts MLDS to C/C++ code.
@@ -1064,19 +1077,12 @@ Some of them are obsolete; other are work-in-progress.
 		various Mercury constructs such as lambda expressions,
 		higher-order predicates, and functor overloading.
 
-	<dt> mercury_to_c.m:
-		<dd>
-		The very incomplete beginnings of an alternate
-		code generator.  It was intended to convert HLDS
-		to high-level C code without going via LLDS.
-		The new MLDS back-end will make this module obsolete.
-
 	</dl>
 
 <p>
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-11-03 00:04:14 $ by $Author: dmo $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-12-22 02:39:51 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -242,6 +242,10 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
+	;
+		GoalExpr0 = bi_implication(_, _),
+		% these should have been expanded out by now
+		error("dnf__transform_goal: unexpected bi_implication")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -470,6 +474,7 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
 	).
 dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _, _), no).
 dnf__is_atomic_expr(_, _, _, pragma_c_code(_, _, _, _, _, _, _), yes).
+dnf__is_atomic_expr(_, _, _, bi_implication(_, _), no).
 
 :- pred dnf__free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.

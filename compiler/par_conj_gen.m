@@ -68,7 +68,13 @@
 % conjunction, determinism analysis works by inferring the determinism of
 % each conjunct and reporting an error if it is not a model_det determinism.
 %
-% XXX Unique modes
+% We conservatively require that any variable that is nonlocal to more
+% than one parallel conjunct become shared at the start of the parallel
+% conjunction. This avoids problems where one conjunct has a use in a
+% di mode and another in a ui mode. This would introduce an implicit
+% dependency between the two conjuncts, which at present is illegal,
+% since parallel conjunction is currently *independent* parallel
+% conjunction only.
 %
 % The code generated for a parallel conjunction consists of a piece of
 % initialization code which creates a term on the heap to be used for

@@ -246,7 +246,12 @@ evaluate_builtin_tri("int", "\\/", 0, X, Y, Z, Z, int_const(ZVal)) :-
 evaluate_builtin_tri("int", "^", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
-	ZVal is XVal ^ YVal.
+	ZVal = XVal `xor` YVal.
+
+evaluate_builtin_tri("int", "xor", 0, X, Y, Z, Z, int_const(ZVal)) :-
+	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	ZVal = XVal `xor` YVal.
 
 	%
 	% float arithmetic

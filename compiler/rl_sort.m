@@ -527,10 +527,11 @@ rl_sort__assign_sortedness_and_indexing(BlockId,
 		sort_info::in, sort_info::out) is det.
 
 rl_sort__assign_sortedness_and_indexing(SpecFilter, BlockId,
-		Relation1, Relation2) -->
+		TargetRelation, SourceRelation) -->
 	=(sort_info(sortedness(RelMap0, _), _, RLInfo)),
-	{ rl_opt_info_get_relation_info(Relation2, RelInfo, RLInfo, _) },
-	( { RelInfo = relation_info(permanent(_), _, Indexes, _) } ->
+	{ rl_opt_info_get_relation_info(SourceRelation,
+		SourceRelInfo, RLInfo, _) },
+	( { SourceRelInfo = relation_info(permanent(_), _, Indexes, _) } ->
 		{ map__init(Specs0) },
 		{ set__singleton_set(BlockIds, BlockId) },
 		{ list__foldl(
@@ -542,12 +543,12 @@ rl_sort__assign_sortedness_and_indexing(SpecFilter, BlockId,
 		{ map__to_assoc_list(Specs1, SpecAL1) },
 		{ list__filter(SpecFilter, SpecAL1, SpecAL) },
 		{ map__from_assoc_list(SpecAL, Specs) },
-		rl_sort__add_relation_sortedness_map(Specs, Relation1)
-	; { map__search(RelMap0, Relation2, Specs0) } ->
+		rl_sort__add_relation_sortedness_map(Specs, TargetRelation)
+	; { map__search(RelMap0, SourceRelation, Specs0) } ->
 		{ map__to_assoc_list(Specs0, SpecAL0) },
 		{ list__filter(SpecFilter, SpecAL0, SpecAL) },
 		{ map__from_assoc_list(SpecAL, Specs) },
-		rl_sort__add_relation_sortedness_map(Specs, Relation1)
+		rl_sort__add_relation_sortedness_map(Specs, TargetRelation)
 	;
 		[]
 	).
@@ -699,7 +700,7 @@ rl_sort__instr_needed(_BlockId, call(_, _Inputs, _Outputs, _) - _) --> [].
 rl_sort__instr_needed(BlockId, aggregate(_Output, Input, _, _) - _) -->
 	% An aggregate's input is sorted on both attributes.
 	rl_sort__add_relation_sortedness(BlockId,
-		sort(attributes([0 - ascending, 1 - ascending])), Input).
+		sort(attributes([1 - ascending, 2 - ascending])), Input).
 rl_sort__instr_needed(_BlockId, add_index(_Output) - _) --> [].
 rl_sort__instr_needed(_, clear(_) - _) --> [].
 rl_sort__instr_needed(_, unset(Relation) - _) -->
@@ -835,7 +836,7 @@ rl_sort__instr_avail(BlockId, aggregate(Output, _Input, _, _) - _) -->
 	% An aggregate's output is sorted on both attributes.
 	{ Output = output_rel(OutputRel, _) },
 	rl_sort__add_relation_sortedness(BlockId,
-		sort(attributes([0 - ascending, 1 - ascending])), OutputRel),
+		sort(attributes([1 - ascending, 2 - ascending])), OutputRel),
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(BlockId, add_index(Output) - _) -->
 	rl_sort__handle_output_indexing(BlockId, Output).
@@ -883,7 +884,7 @@ rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 		list__map(
 			lambda([AttrDir::in, VarDir::out] is det, (
 				AttrDir = Attr - Dir,
-				list__index0_det(InputArgs, Attr, Var),
+				list__index1_det(InputArgs, Attr, Var),
 				VarDir = Var - Dir
 			)), SortAttrs0, VarAttrs0),
 
@@ -903,7 +904,7 @@ rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 			lambda([VarDir::in, AttrDirs::out] is det, (
 				VarDir = Var - Dir,
 				rl_sort__all_positions(OutputArgs,
-					0, Var, Attrs),
+					1, Var, Attrs),
 				list__map(lambda([X::in, Y::out] is det, (
 					Y = X - Dir
 				)), Attrs, AttrDirs)
@@ -964,9 +965,9 @@ rl_sort__specialize_instr(BlockId, Instr0, Instrs0, Instrs) -->
 		rl_sort__specialize_project(Instr0, Output, Input, Exprn,
 			OtherOutputs, Type, Comment, Instrs0, Instrs)
 	;
-		rl_sort__instr_avail(BlockId, Instr0),
 		{ Instrs = [Instr0 | Instrs0] }
-	).
+	),
+	rl_sort__instr_avail(BlockId, Instr0).
 
 %-----------------------------------------------------------------------------%
 

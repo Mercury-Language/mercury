@@ -39,7 +39,7 @@
 				% module name, type name, type arity
 			;	base_typeclass_info_const(module_name,
 					class_id, int, string)
-				% module name of instace declaration
+				% module name of instance declaration
 				% (not filled in so that link errors result
 				% from overlapping instances),
 				% class name and arity,
@@ -598,8 +598,15 @@ determinism_to_code_model(failure,     model_semi).
 	% Information about a single `typeclass' declaration
 :- type hlds_class_defn 
 	--->	hlds_class_defn(
+			import_status,
 			list(class_constraint), % SuperClasses
 			list(tvar),		% ClassVars 
+			class_interface,	% The interface from the
+						% original declaration,
+						% used by intermod.m to
+						% write out the interface
+						% for a local typeclass to
+						% the `.opt' file.
 			hlds_class_interface, 	% Methods
 			tvarset,		% VarNames
 			prog_context		% Location of declaration
@@ -685,7 +692,7 @@ determinism_to_code_model(failure,     model_semi).
 	% An assertion is a goal that will always evaluate to true,
 	% subject to the constraints imposed by the quantifiers.
 	%
-	% ie :- assertion all [A] some [B] (B > A)
+	% ie :- promise all [A] some [B] (B > A)
 	% 
 	% The above assertion states that for all possible values of A,
 	% there will exist at least one value, B, such that B is greater
@@ -701,6 +708,9 @@ determinism_to_code_model(failure,     model_semi).
 
 :- pred assertion_table_lookup(assertion_table::in, assert_id::in,
 		pred_id::out) is det.
+
+:- pred assertion_table_pred_ids(assertion_table::in,
+		list(pred_id)::out) is det.
 
 :- implementation.
 
@@ -721,6 +731,9 @@ assertion_table_add_assertion(Assertion, AssertionTable0, Id, AssertionTable) :-
 assertion_table_lookup(AssertionTable, Id, Assertion) :-
 	AssertionTable = assertion_table(_MaxId, AssertionMap),
 	map__lookup(AssertionMap, Id, Assertion).
+
+assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
+	map__values(AssertionMap, PredIds).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -104,7 +104,7 @@
 	% only conj, some, not and atomic goals, since deforest.m
 	% only attempts to optimize those types of conjunctions.
 :- pred pd_util__goals_match(module_info::in, hlds_goal::in, list(prog_var)::in,
-		list(type)::in, hlds_goal::in, map(prog_var, type)::in,
+		list(type)::in, hlds_goal::in, vartypes::in,
 		map(prog_var, prog_var)::out, tsubst::out) is semidet.
 
 	% pd_util__can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
@@ -319,12 +319,13 @@ pd_util__get_branch_vars_proc(PredProcId, ProcInfo,
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_inst_table(ProcInfo, InstTable),
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo0, InstMap0),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	map__init(Vars0),
 	set__init(LeftVars0),
 	goal_to_conj_list(Goal, GoalList),
 	(
 		pd_util__get_branch_vars_goal_2(InstMap0, InstTable,
-			ModuleInfo0, GoalList, no, InstMap0,
+			ModuleInfo0, GoalList, no, VarTypes, InstMap0,
 			LeftVars0, LeftVars, Vars0, Vars)
 	->
 		proc_info_headvars(ProcInfo, HeadVars),
@@ -341,7 +342,8 @@ pd_util__get_branch_vars_proc(PredProcId, ProcInfo,
 			% Look for opportunities for deforestation in 
 			% the sub-branches of the top-level goal.
 		pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, Info1,
-			GoalList, InstMap0, Vars, AllVars, ModuleInfo),
+			GoalList, VarTypes, InstMap0,
+			Vars, AllVars, ModuleInfo),
 		pd_util__get_extra_info_headvars(HeadVars, 1, LeftVars0,
 			AllVars, ThisProcArgMap0, ThisProcArgMap, 
 			ThisProcLeftArgs0, _),
@@ -418,15 +420,16 @@ pd_util__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 	pd_info_get_proc_arg_info(ProcArgInfo),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_inst_table(ProcInfo, InstTable) },
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ set__init(LeftVars0) },
 	{ map__init(Vars0) },
 	(
 		{ pd_util__get_branch_vars_goal_2(InstMap0, InstTable,
-			ModuleInfo0, [Goal], no, InstMap0, LeftVars0, LeftVars,
-			Vars0, Vars1) }
+			ModuleInfo0, [Goal], no, VarTypes, InstMap0,
+			LeftVars0, LeftVars, Vars0, Vars1) }
 	->
 		{ pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0,
-			ProcArgInfo, [Goal], InstMap0, Vars1, Vars,
+			ProcArgInfo, [Goal], VarTypes, InstMap0, Vars1, Vars,
 			ModuleInfo) },
 		pd_info_set_module_info(ModuleInfo),
 
@@ -440,14 +443,15 @@ pd_util__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 	).
 
 :- pred pd_util__get_branch_vars_goal_2(instmap::in, inst_table::in,
-	module_info::in, list(hlds_goal)::in, bool::in, instmap::in,
-	set(prog_var)::in, set(prog_var)::out, pd_var_info::in,
+	module_info::in, list(hlds_goal)::in, bool::in, vartypes::in,
+	instmap::in, set(prog_var)::in, set(prog_var)::out, pd_var_info::in,
 	pd_var_info::out) is semidet.
 
-pd_util__get_branch_vars_goal_2(_, _, _, [], yes, _, LeftVars, LeftVars,
+pd_util__get_branch_vars_goal_2(_, _, _, [], yes, _, _, LeftVars, LeftVars,
 		Vars, Vars).
 pd_util__get_branch_vars_goal_2(InstMap0, InstTable, ModuleInfo, [Goal | Goals],
-		FoundBranch0, InstMap0, LeftVars0, LeftVars, Vars0, Vars) :-
+		FoundBranch0, VarTypes, InstMap0, LeftVars0, LeftVars,
+		Vars0, Vars) :-
 	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -468,7 +472,8 @@ pd_util__get_branch_vars_goal_2(InstMap0, InstTable, ModuleInfo, [Goal | Goals],
 		LeftVars1 = LeftVars0
 	),
 	pd_util__get_branch_vars_goal_2(InstMap0, InstTable, ModuleInfo, Goals,
-		FoundBranch, InstMap, LeftVars1, LeftVars, Vars1, Vars).
+		FoundBranch, VarTypes, InstMap, LeftVars1, LeftVars,
+		Vars1, Vars).
 
 :- pred pd_util__get_branch_instmap_deltas(hlds_goal::in, 
 		list(instmap_delta)::out) is semidet.
@@ -564,13 +569,14 @@ pd_util__get_branch_vars(InstMapBefore, InstTable, ModuleInfo, Goal,
 
 	% Look at the goals in the branches for extra information.
 :- pred pd_util__get_sub_branch_vars_goal(inst_table::in, module_info::in,
-		pd_arg_info::in, list(hlds_goal)::in, instmap::in,
-		branch_info_map(prog_var)::in, branch_info_map(prog_var)::out,
-		module_info::out) is det.
+		pd_arg_info::in, list(hlds_goal)::in, vartypes::in,
+		instmap::in, branch_info_map(prog_var)::in,
+		branch_info_map(prog_var)::out, module_info::out) is det.
 
-pd_util__get_sub_branch_vars_goal(_, Module, _, [], _, Vars, Vars, Module).
+pd_util__get_sub_branch_vars_goal(_, Module, _, [], _, _, Vars, Vars, Module).
 pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, ProcArgInfo,
-		[Goal | GoalList], InstMap0, Vars0, SubVars, ModuleInfo) :-
+		[Goal | GoalList], VarTypes, InstMap0, Vars0,
+		SubVars, ModuleInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	( GoalExpr = if_then_else(_, Cond, Then, Else, _) ->
 		Cond = _ - CondInfo,
@@ -578,18 +584,20 @@ pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, ProcArgInfo,
 		instmap__apply_instmap_delta(InstMap0, CondDelta, InstMap1),
 		goal_to_conj_list(Then, ThenList),
 		pd_util__examine_branch(InstTable, ModuleInfo0, ProcArgInfo,
-			1, ThenList, InstMap1, Vars0, Vars1),
+			1, ThenList, VarTypes, InstMap1, Vars0, Vars1),
 		goal_to_conj_list(Else, ElseList),
 		pd_util__examine_branch(InstTable, ModuleInfo0, ProcArgInfo,
-			2, ElseList, InstMap0, Vars1, Vars2),
+			2, ElseList, VarTypes, InstMap0, Vars1, Vars2),
 		ModuleInfo1 = ModuleInfo0
 	; GoalExpr = disj(Goals, _) ->
 		pd_util__examine_branch_list(InstTable, ModuleInfo0,
-			ProcArgInfo, 1, Goals, InstMap0, Vars0, Vars2),
+			ProcArgInfo, 1, Goals, VarTypes,
+			InstMap0, Vars0, Vars2),
 		ModuleInfo1 = ModuleInfo0
 	; GoalExpr = switch(Var, _, Cases, _) ->
 		pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo,
-			1, Var, Cases, InstMap0, Vars0, Vars2, ModuleInfo1)
+			1, Var, Cases, VarTypes, InstMap0,
+			Vars0, Vars2, ModuleInfo1)
 	;
 		ModuleInfo1 = ModuleInfo0,
 		Vars2 = Vars0
@@ -597,48 +605,50 @@ pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, ProcArgInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 	pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo1, ProcArgInfo,
-		GoalList, InstMap, Vars2, SubVars, ModuleInfo).
+		GoalList, VarTypes, InstMap, Vars2, SubVars, ModuleInfo).
 
 :- pred pd_util__examine_branch_list(inst_table::in, module_info::in,
-	pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
-	branch_info_map(prog_var)::in, branch_info_map(prog_var)::out) is det.
+	pd_arg_info::in, int::in, list(hlds_goal)::in, vartypes::in,
+	instmap::in, branch_info_map(prog_var)::in,
+	branch_info_map(prog_var)::out) is det.
 
-pd_util__examine_branch_list(_, _, _, _, [], _, Vars, Vars).
+pd_util__examine_branch_list(_, _, _, _, [], _, _, Vars, Vars).
 pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
-		[Goal | Goals], InstMap, Vars0, Vars) :-
+		[Goal | Goals], VarTypes, InstMap, Vars0, Vars) :-
 	goal_to_conj_list(Goal, GoalList),
 	pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
-		GoalList, InstMap, Vars0, Vars1),
+		GoalList, VarTypes, InstMap, Vars0, Vars1),
 	NextBranch is BranchNo + 1,
 	pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo,
-		NextBranch, Goals, InstMap, Vars1, Vars).
+		NextBranch, Goals, VarTypes, InstMap, Vars1, Vars).
 
 :- pred pd_util__examine_case_list(inst_table::in, module_info::in,
-	pd_arg_info::in, int::in, prog_var::in, list(case)::in, instmap::in,
-	branch_info_map(prog_var)::in, branch_info_map(prog_var)::out,
-	module_info::out) is det.
+	pd_arg_info::in, int::in, prog_var::in, list(case)::in, vartypes::in,
+	instmap::in, branch_info_map(prog_var)::in,
+	branch_info_map(prog_var)::out, module_info::out) is det.
 
-pd_util__examine_case_list(_, Module, _, _, _, [], _, Vars, Vars, Module).
+pd_util__examine_case_list(_, Module, _, _, _, [], _, _, Vars, Vars, Module).
 pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo, BranchNo, Var,
-		[case(_ConsId, CaseIMD, Goal) | Goals], InstMap, 
+		[case(_ConsId, CaseIMD, Goal) | Goals], VarTypes, InstMap, 
 		Vars0, Vars, ModuleInfo) :-
 	ModuleInfo1 = ModuleInfo0,
 	instmap__apply_instmap_delta(InstMap, CaseIMD, InstMap1),
 	goal_to_conj_list(Goal, GoalList),
 	pd_util__examine_branch(InstTable, ModuleInfo1, ProcArgInfo, BranchNo,
-		GoalList, InstMap1, Vars0, Vars1),
+		GoalList, VarTypes, InstMap1, Vars0, Vars1),
 	NextBranch is BranchNo + 1,
 	pd_util__examine_case_list(InstTable, ModuleInfo1, ProcArgInfo,
-		NextBranch, Var, Goals, InstMap, Vars1, Vars, ModuleInfo).
+		NextBranch, Var, Goals, VarTypes,
+		InstMap, Vars1, Vars, ModuleInfo).
 
 :- pred pd_util__examine_branch(inst_table::in, module_info::in,
-		pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
-		branch_info_map(prog_var)::in, branch_info_map(prog_var)::out)
-		is det.
+		pd_arg_info::in, int::in, list(hlds_goal)::in, vartypes::in,
+		instmap::in, branch_info_map(prog_var)::in,
+		branch_info_map(prog_var)::out) is det.
 
-pd_util__examine_branch(_, _, _, _, [], _, Vars, Vars).
+pd_util__examine_branch(_, _, _, _, [], _, _, Vars, Vars).
 pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo, 
-		[Goal | Goals], InstMap, Vars0, Vars) :-
+		[Goal | Goals], VarTypes, InstMap, Vars0, Vars) :-
 	( Goal = call(PredId, ProcId, Args, _, _, _) - _ ->
 		( 
 			map__search(ProcArgInfo, proc(PredId, ProcId), 
@@ -656,7 +666,8 @@ pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 		set__init(LeftVars0),
 		map__init(Vars1),
 		pd_util__get_branch_vars_goal_2(InstMap, InstTable, ModuleInfo,
-			[Goal], no, InstMap, LeftVars0, _, Vars1, Vars2)
+			[Goal], no, VarTypes, InstMap, LeftVars0,
+			_, Vars1, Vars2)
 	->
 		map__keys(Vars2, ExtraVars2),
 		combine_vars(Vars0, BranchNo, ExtraVars2, Vars3)
@@ -667,7 +678,7 @@ pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
 	pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
-		Goals, InstMap1, Vars3, Vars).
+		Goals, VarTypes, InstMap1, Vars3, Vars).
 
 :- pred combine_vars(branch_info_map(prog_var)::in, int::in, list(prog_var)::in,
 		branch_info_map(prog_var)::out) is det.

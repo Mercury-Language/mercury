@@ -186,7 +186,7 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module mode_info.
+:- import_module mode_info, hlds_data.
 
 	% Modecheck a unification.
 
@@ -247,6 +247,15 @@ a variable live if its value will be used later on in the computation.
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal), mode_info,
 					mode_info).
 :- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+
+	% modecheck_functor_test(ConsId, Var, IMDelta):
+	%	update the instmap to reflect the fact that
+	%	Var was bound to ConsId. 
+	% This is used for the functor tests in `switch' statements.
+	%
+:- pred modecheck_functor_test(prog_var, cons_id, instmap_delta,
+		mode_info, mode_info).
+:- mode modecheck_functor_test(in, in, out, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1060,6 +1069,10 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
+	%
+	% We need to lock the non-local variables, to ensure
+	% that the condition of the if-then-else does not bind them.
+	%
 	{ instmap__vars(InstMap0, OuterNonLocals) },
 	{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 	mode_info_lock_vars(if_then_else, InnerNonLocals),
@@ -1090,8 +1103,26 @@ modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
+	%
+	% when analyzing a negated goal, nothing is forward-live
+	% (live on forward executution after that goal), because
+	% if the goal succeeds then execution will immediately backtrack.
+	% So we need to set the live variables set to empty here.
+	% This allows those variables to be backtrackably
+	% destructively updated.  (If you try to do non-backtrackable
+	% destructive update on such a variable, it will be caught
+	% later on by unique_modes.m.)
+	%
+	=(ModeInfo),
+	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
+	mode_info_set_live_vars([]),
+	%
+	% We need to lock the non-local variables, to ensure
+	% that the negation does not bind them.
+	%
 	mode_info_lock_vars(negation, NonLocals),
 	modecheck_goal(A0, A),
+	mode_info_set_live_vars(LiveVars0),
 	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not", GoalInfo0).
@@ -1208,6 +1239,10 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
+
+modecheck_goal_expr(bi_implication(_, _), _, _) -->
+	% these should have been expanded out by now
+	{ error("modecheck_goal_expr: unexpected bi_implication") }.
 
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
@@ -1643,15 +1678,12 @@ modecheck_case_list([Case0 | Cases0], Var,
 	{ Case = case(ConsId, IMDelta, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
 
-		% record the fact that Var was bound to ConsId in the
-		% instmap before processing this case
-	mode_info_bind_var_to_functor(Var, ConsId),
+	% record the fact that Var was bound to ConsId in the
+	% instmap before processing this case
+	modecheck_functor_test(Var, ConsId, IMDelta),
+	% modecheck this case (if it is reachable)
 	mode_info_dcg_get_instmap(InstMap1),
-	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
-
-		% modecheck this case (if it is reachable)
-	mode_info_dcg_get_instmap(InstMap2),
-	( { instmap__is_reachable(InstMap2) } ->
+	( { instmap__is_reachable(InstMap1) } ->
 		modecheck_goal(Goal0, Goal1),
 		mode_info_dcg_get_instmap(InstMap)
 	;
@@ -1659,7 +1691,7 @@ modecheck_case_list([Case0 | Cases0], Var,
 		% Instead we optimize the goal away, so that later passes
 		% won't complain about it not having mode information.
 		{ true_goal(Goal1) },
-		{ InstMap = InstMap2 }
+		{ InstMap = InstMap1 }
 	),
 
 	% Don't lose the information added by the functor test above.
@@ -1668,6 +1700,17 @@ modecheck_case_list([Case0 | Cases0], Var,
 
 	mode_info_set_instmap(InstMap0),
 	modecheck_case_list(Cases0, Var, Cases, InstMaps).
+
+	% modecheck_functor_test(ConsId, Var):
+	%	update the instmap to reflect the fact that
+	%	Var was bound to ConsId. 
+	% This is used for the functor tests in `switch' statements.
+	%
+modecheck_functor_test(Var, ConsId, IMDelta) -->
+	mode_info_dcg_get_instmap(InstMap0),
+	mode_info_bind_var_to_functor(Var, ConsId),
+	mode_info_dcg_get_instmap(InstMap1),
+	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2258,15 +2301,15 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 					ArgInstTable, ModuleInfo0) } 
 		->
 			prog_out__write_context(Context),
-			io__write_string(" Sorry, not impemented: `pragma "),
+			io__write_string("Sorry, not implemented: `pragma "),
 			io__write_string(EvalMethodS),
 			io__write_string("'\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    declaration not allowed for procedure with\n"),
+			    "  declaration not allowed for procedure with\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    partially instantiated modes.\n"), 
+			    "  partially instantiated modes.\n"), 
 			( { VerboseErrors = yes } ->
 				io__write_string(
 "	Tabling of predicates/functions with partially instantiated modes
@@ -2283,14 +2326,14 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 				ArgInstTable, ModuleInfo1) } 
 		->
 			prog_out__write_context(Context),
-			io__write_string(" Error: `pragma "),
+			io__write_string("Error: `pragma "),
 			io__write_string(EvalMethodS),
 			io__write_string("'\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    declaration not allowed for procedure with\n"),
+			    "  declaration not allowed for procedure with\n"),
 			prog_out__write_context(Context),
-			io__write_string("    unique modes.\n"), 
+			io__write_string("  unique modes.\n"), 
 			( { VerboseErrors = yes } ->
 				io__write_string(
 "	Tabling of predicates/functions with unique modes is not allowed

@@ -224,6 +224,10 @@ find_follow_vars_in_goal_expr(unify(A,B,C,D,E), _FVInfo,
 find_follow_vars_in_goal_expr(pragma_c_code(A,B,C,D,E,F,G), _FVInfo,
 		FollowVars, pragma_c_code(A,B,C,D,E,F,G), FollowVars).
 
+find_follow_vars_in_goal_expr(bi_implication(_,_), _, _, _, _) :-
+	% these should have been expanded out by now
+	error("find_follow_vars_in_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_call(pred_id, proc_id, list(prog_var), module_info,

@@ -20,10 +20,16 @@
 %	  HLDS call instructions, but currently that is done
 %	  in polymorphism.m)
 %	- it checks for unbound type variables and if there are any,
-%	  it reports an error (or a warning, binding them to the type `void').
+%	  it reports an error (or a warning, binding them to the type `void');
+%	  similarly it checks for unsatisfied type class constraints.
+%
 %  These actions cannot be done until after type inference is complete,
 %  so they need to be a separate "post-typecheck pass"; they are done
 %  here in combination with the purity-analysis pass for efficiency reasons.
+%
+%  We also do elimination of double-negation in this pass.
+%  It needs to be done somewhere after quantification analysis and
+%  before mode analysis, and this is convenient place to do it.
 %
 %
 %  The aim of Mercury's purity system is to allow one to declare certain parts
@@ -87,12 +93,16 @@
 % 			;	(semipure)
 % 			;	(impure).
 
-%  Purity check a whole module.
+%  Purity check a whole module.  Also do the post-typecheck stuff
+%  described above, and eliminate double negations.
 %  The first argument specifies whether there were any type
 %  errors (if so, we suppress some diagnostics in post_typecheck.m
 %  because they are usually spurious).
-:- pred puritycheck(bool, module_info, module_info, io__state, io__state).
-:- mode puritycheck(in, in, out, di, uo) is det.
+%  The third argument specifies whether post_typecheck.m detected
+%  any errors that would cause problems for later passes
+%  (if so, we stop compilation after this pass).
+:- pred puritycheck(bool, module_info, bool, module_info, io__state, io__state).
+:- mode puritycheck(in, in, out, out, di, uo) is det.
 
 %  Sort of a "maximum" for impurity.
 :- pred worst_purity(purity, purity, purity).
@@ -149,14 +159,14 @@
 %				Public Predicates
 
 
-puritycheck(FoundTypeError, HLDS0, HLDS) -->
+puritycheck(FoundTypeError, HLDS0, PostTypecheckError, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Purity-checking clauses...\n"),
-	check_preds_purity(FoundTypeError, HLDS0, HLDS),
+	check_preds_purity(FoundTypeError, HLDS0, PostTypecheckError, HLDS),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -236,27 +246,29 @@ purity_name((impure), "impure").
 %-----------------------------------------------------------------------------%
 %	 Purity-check the code for all the predicates in a module
 
-:- pred check_preds_purity(bool, module_info, module_info,
+:- pred check_preds_purity(bool, module_info, bool, module_info,
 			io__state, io__state).
-:- mode check_preds_purity(in, in, out, di, uo) is det.
+:- mode check_preds_purity(in, in, out, out, di, uo) is det.
 
-check_preds_purity(FoundTypeError, ModuleInfo0, ModuleInfo) -->
+check_preds_purity(FoundTypeError, ModuleInfo0,
+		PostTypecheckError, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo0,
-		ModuleInfo1, 0, NumErrors),
+		ModuleInfo1, 0, NumErrors, no, PostTypecheckError),
 	{ module_info_num_errors(ModuleInfo1, Errs0) },
 	{ Errs is Errs0 + NumErrors },
 	{ module_info_set_num_errors(ModuleInfo1, Errs, ModuleInfo) }.
 
 
 :- pred check_preds_purity_2(list(pred_id), bool, module_info, module_info,
-			int, int, io__state, io__state).
-:- mode check_preds_purity_2(in, in, in, out, in, out, di, uo) is det.
+			int, int, bool, bool, io__state, io__state).
+:- mode check_preds_purity_2(in, in, in, out, in, out, in, out, di, uo) is det.
 
-check_preds_purity_2([], _, ModuleInfo, ModuleInfo,
-		NumErrors, NumErrors) --> [].
+check_preds_purity_2([], _, ModuleInfo, ModuleInfo, NumErrors, NumErrors,
+		PostTypecheckError, PostTypecheckError) --> [].
 check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
-		ModuleInfo, NumErrors0, NumErrors) -->
+		ModuleInfo, NumErrors0, NumErrors,
+		PostTypecheckError0, PostTypecheckError) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	(	
@@ -265,7 +277,8 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	->
 		post_typecheck__finish_imported_pred(ModuleInfo0, PredId,
 				PredInfo0, PredInfo),
-		{ NumErrors1 = NumErrors0 }
+		{ NumErrors1 = NumErrors0 },
+		{ PostTypecheckError1 = PostTypecheckError0 }
 	;
 		write_pred_progress_message("% Purity-checking ", PredId,
 					    ModuleInfo0),
@@ -278,6 +291,17 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 		post_typecheck__check_type_bindings(PredId, PredInfo0,
 				ModuleInfo0, ReportErrs,
 				PredInfo1, UnboundTypeErrsInThisPred),
+		%
+		% if there were any unsatisfied type class constraints,
+		% then that can cause internal errors in polymorphism.m
+		% if we try to continue, so we need to halt compilation
+		% after this pass.
+		%
+		{ UnboundTypeErrsInThisPred \= 0 ->
+			PostTypecheckError1 = yes
+		;
+			PostTypecheckError1 = PostTypecheckError0
+		},
 		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
 				PurityErrsInThisPred),
 		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
@@ -294,13 +318,14 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	(
 		{ pred_info_get_goal_type(PredInfo0, assertion) }
 	->
-		{ post_typecheck__finish_assertion(ModuleInfo1,
-				PredId, ModuleInfo2) }
+		post_typecheck__finish_assertion(ModuleInfo1,
+				PredId, ModuleInfo2)
 	;
 		{ ModuleInfo2 = ModuleInfo1 }
 	),
 	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo2, ModuleInfo,
-				  NumErrors1, NumErrors).
+				  NumErrors1, NumErrors,
+				  PostTypecheckError1, PostTypecheckError).
 
 	% Purity-check the code for single predicate, reporting any errors.
 
@@ -510,10 +535,21 @@ compute_expr_purity(disj(Goals0,Store), disj(Goals,Store), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(not(Goal0), not(Goal), _, PredInfo, ModuleInfo,
+compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
-	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
-			    InClosure, Purity, NumErrors0, NumErrors).
+	%
+	% eliminate double negation
+	%
+	{ negate_goal(Goal0, GoalInfo0, NotGoal0) },
+	( { NotGoal0 = not(Goal1) - _GoalInfo1 } ->
+		compute_goal_purity(Goal1, Goal, PredInfo, ModuleInfo, 
+				    InClosure, Purity, NumErrors0, NumErrors),
+		{ NotGoal = not(Goal) }
+	;
+		compute_goal_purity(NotGoal0, NotGoal1, PredInfo, ModuleInfo, 
+				    InClosure, Purity, NumErrors0, NumErrors),
+		{ NotGoal1 = NotGoal - _ }
+	).
 compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
 		_, PredInfo, ModuleInfo, InClosure, Purity,
 		NumErrors0, NumErrors) -->
@@ -536,6 +572,9 @@ compute_expr_purity(Ccode, Ccode, _, _, ModuleInfo, _, Purity,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) }.
+compute_expr_purity(bi_implication(_, _), _, _, _, _, _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("compute_expr_purity: unexpected bi_implication") }.
 
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal, pred_info,

@@ -152,6 +152,10 @@ lco_in_goal_2(_, unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module,
 lco_in_goal_2(_, pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G), 
 		Module, Module, _, Proc, Proc, no).
 
+lco_in_goal_2(_, bi_implication(_, _), _, _, _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("lco_in_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred lco_in_disj(pred_proc_id, list(hlds_goal), list(hlds_goal),
@@ -241,7 +245,7 @@ lco_in_conj(PredProcId, [Goal0 | Goals0], Unifies0, Goals, Module0, Module,
 		% pred that is called.
 		module_info_pred_info(Module0, CalledPredId, PredInfo),
 		pred_info_import_status(PredInfo, ImportStatus),
-		ImportStatus \= imported,
+		ImportStatus \= imported(_),
 
 		% XXX Instead of disallowing opt_imported predicates, it
 		% would be possible to make a local copy of the
@@ -844,6 +848,9 @@ fix_modes_of_binding_goal_2(pragma_c_code(A, B, C, Vars0, E, F, G),
 		Vars, FMI, GoalInfo, Assign),
 	PragmaC = pragma_c_code(A, B, C, Vars, E, F, G) - GoalInfo,
 	Goal = conj([PragmaC, Assign]).
+
+fix_modes_of_binding_goal_2(bi_implication(_, _), _, _, _, _, _, _, _) :-
+	error("lco__fix_modes_of_binding_goal_2: bi_implication").
 
 :- pred add_unification_to_goal(list(prog_var), fix_modes_info, hlds_goal_info,
 		module_info, prog_var, list(prog_var), fix_modes_info,

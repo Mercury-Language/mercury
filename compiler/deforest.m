@@ -118,21 +118,11 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 	( { Changed = yes } ->
 		pd_info_get_module_info(ModuleInfo2),
 		{ requantify_proc(ProcInfo3, ProcInfo4) },
-		{ proc_info_goal(ProcInfo4, Goal4) },
-		{ proc_info_get_initial_instmap(ProcInfo4,
-			ModuleInfo2, InstMap0) },
-		{ proc_info_headvars(ProcInfo4, ArgVars) },
-		{ proc_info_arglives(ProcInfo4, ModuleInfo2, ArgLives) },
-		{ proc_info_vartypes(ProcInfo4, VarTypes) },
-		{ proc_info_inst_table(ProcInfo4, InstTable4) },
-		{ recompute_instmap_delta(ArgVars, ArgLives, VarTypes,
-			Goal4, Goal, InstMap0, InstTable4, InstTable,
-			_, ModuleInfo2, ModuleInfo3) },
+		{ recompute_instmap_delta_proc(ProcInfo4,
+			ProcInfo, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),
-		{ proc_info_set_goal(ProcInfo4, Goal, ProcInfo5) },
-		{ proc_info_set_inst_table(ProcInfo5, InstTable, ProcInfo) },
 		{ module_info_set_pred_proc_info(ModuleInfo3, PredId, ProcId,
 			PredInfo, ProcInfo, ModuleInfo4) },
 
@@ -223,6 +213,10 @@ deforest__goal(Goal0, Goal) -->
 	
 deforest__goal(Goal, Goal) -->
 	{ Goal = unify(_, _, _, _, _) - _ }.
+
+deforest__goal(bi_implication(_, _) - _, _) -->
+	% these should have been expanded out by now
+	{ error("deforest__goal: unexpected bi_implication") }.
 
 %-----------------------------------------------------------------------------%
 

@@ -575,7 +575,7 @@ rl_out__generate_instr(join(Output, Input1, Input2, Type, Cond) - _, Code) -->
 		rl_out_info_get_output_relation_schema_offset(Output,
 			OutputSchemaOffset),
 		rl_out__generate_exprn(Cond, OutputSchemaOffset, CondExprn),
-		{ Code =
+		{ InstrCode =
 			tree(node([rl_PROC_join_index_simple]),
 			tree(Stream1Code,
 			node([
@@ -583,7 +583,8 @@ rl_out__generate_instr(join(Output, Input1, Input2, Type, Cond) - _, Code) -->
 				rl_PROC_expr(RangeExprn),
 				rl_PROC_expr(CondExprn)
 			])
-		)) }
+		)) },
+		rl_out__generate_stream_instruction(Output, InstrCode, Code)
 	;
 		{ Type = cross },
 		rl_out__generate_join(rl_PROC_join_cross, Output,
@@ -1144,7 +1145,8 @@ rl_out__index_attrs_to_string(Attr1, [Attr2 | Attrs], Str0, Str) :-
 :- pred rl_out__index_attr_to_string(int::in, string::out) is det.
 
 rl_out__index_attr_to_string(Attr, Str) :-
-	string__int_to_string(Attr, AttrStr),
+	% Aditi counts attributes starting from 0.
+	string__int_to_string(Attr - 1, AttrStr),
 	string__append("#:", AttrStr, Str).
 
 %-----------------------------------------------------------------------------%

@@ -52,13 +52,21 @@
 				% output since the last line break.
 	.
 		
-
+	% Convert a list of strings into a list of format_components,
+	% suitable for displaying as an error message.
 :- pred error_util__list_to_pieces(list(string)::in,
 		list(format_component)::out) is det.
 
+	% Display the given error message.
 :- pred write_error_pieces(prog_context::in, int::in,
 	list(format_component)::in, io__state::di, io__state::uo) is det.
 
+	% Report a warning, and set the exit status to error if the
+	% --halt-at-warn option is set. This predicate does the same thing as
+	% prog_io_util__report_warning, except that it does a nicer job of
+	% displaying the warning message.
+:- pred report_warning(prog_context::in, int::in, list(format_component)::in,
+	io__state::di, io__state::uo) is det.
 
 	% Predicates to convert a predicate names to strings.
 
@@ -90,7 +98,7 @@
 
 :- implementation.
 
-:- import_module prog_out.
+:- import_module prog_out, globals, options.
 :- import_module bool, io, list, term, char, string, int.
 
 error_util__list_to_pieces([], []).
@@ -101,6 +109,15 @@ error_util__list_to_pieces([Elem1, Elem2, Elem3 | Elems], Pieces) :-
 	string__append(Elem1, ",", Piece1),
 	error_util__list_to_pieces([Elem2, Elem3 | Elems], Pieces1),
 	Pieces = [fixed(Piece1) | Pieces1].
+
+report_warning(Context, Indent, Components) -->
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
+	( { HaltAtWarn = yes } ->
+		io__set_exit_status(1)
+	;
+		[]
+	),
+	write_error_pieces(Context, Indent, Components).
 
 write_error_pieces(Context, Indent, Components) -->
 	{
@@ -336,7 +353,7 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 	(
 		pred_info_get_goal_type(PredInfo, assertion)
 	->
-		Piece = "assertion"
+		Piece = "promise"
 	;
 		string__int_to_string(OrigArity, ArityPart),
 		string__append_list([

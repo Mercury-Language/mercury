@@ -400,6 +400,9 @@ code_util__translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
 	maybe(rval), maybe(pair(prog_var, rval))).
 :- mode code_util__translate_builtin_2(in, in, in, in, out, out) is semidet.
 
+% WARNING: any changes here will probably require similar changes
+% in ml_code_gen:ml_translate_builtin_2 and vice versa.
+
 code_util__translate_builtin_2("private_builtin", "unsafe_type_cast", 0,
 		[X, Y], no, yes(Y - var(X))).
 code_util__translate_builtin_2("builtin", "unsafe_promise_unique", 0,
@@ -481,6 +484,8 @@ code_util__translate_builtin_2("int", "\\/", 0, [X, Y, Z],
 code_util__translate_builtin_2("int", "builtin_bit_xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "^", 0, [X, Y, Z],
+	no, yes(Z - binop((^), var(X), var(Y)))).
+code_util__translate_builtin_2("int", "xor", 0, [X, Y, Z],
 	no, yes(Z - binop((^), var(X), var(Y)))).
 code_util__translate_builtin_2("int", "builtin_unary_plus", 0, [X, Y],
 	no, yes(Y - var(X))).
@@ -861,6 +866,10 @@ code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
 	CTMax is CMax + TMax,
 	int__min(CTMin, EMin, Min),
 	int__max(CTMax, EMax, Max).
+code_util__count_recursive_calls_2(bi_implication(_, _),
+		_, _, _, _) :-
+	% these should have been expanded out by now
+	error("code_util__count_recursive_calls_2: unexpected bi_implication").
 
 :- pred code_util__count_recursive_calls_conj(list(hlds_goal),
 	pred_id, proc_id, int, int, int, int).

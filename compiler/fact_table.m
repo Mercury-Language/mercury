@@ -618,11 +618,11 @@ struct fact_table_hash_entry_i {
 
 
 #if TAGBITS >= 2
-	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   mkword(mktag(t), mkbody(i))
-	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) mkword(mktag(t), p)
-	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       tag((Word)((p).index))
-	#define FACT_TABLE_HASH_INDEX(w)            unmkbody(w)
-	#define FACT_TABLE_HASH_POINTER(w)          body(w,tag(w))
+	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   MR_mkword(MR_mktag(t), MR_mkbody(i))
+	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) MR_mkword(MR_mktag(t), p)
+	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((Word)((p).index))
+	#define FACT_TABLE_HASH_INDEX(w)            MR_unmkbody(w)
+	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,MR_tag(w))
 #else
 	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const Word *) i), (t)
 	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const Word *) p), (t)
@@ -2566,25 +2566,25 @@ Declare_label(%s_i1);
 
 BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", 1, LABEL(%s_i1));
-	framevar(0) = (Integer) 0;
+	MR_mkframe(""%s/%d"", 1, LABEL(%s_i1));
+	MR_framevar(1) = (Integer) 0;
 	GOTO(LABEL(%s_i1));
 Define_label(%s_i1);
-	if (framevar(0) >= %s) fail();
+	if (MR_framevar(1) >= %s) MR_fail();
 	{
 		/* declare argument vars */
 %s
-		Word ind = framevar(0), tmp;
+		Word ind = MR_framevar(1), tmp;
 		/* lookup fact table */
 %s
 		/* save output args to registers */
 %s
 	}
-	framevar(0)++;
-	succeed();
+	MR_framevar(1)++;
+	MR_succeed();
 END_MODULE
 
 extern ModuleFunc %s_module;
@@ -2646,8 +2646,8 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 	** then jump to the code where the work is actually done.
 	*/
 
-	maxfr = curprevfr;
-	curfr = cursuccfr;
+	MR_maxfr = MR_prevfr_slot(MR_curfr);
+	MR_curfr = MR_succfr_slot(MR_curfr);
 	{
 		Declare_entry(%s);
 		GOTO(ENTRY(%s));
@@ -3100,10 +3100,10 @@ Declare_label(%s_i1);
 
 	BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", %d, LABEL(%s_i1));
+	MR_mkframe(""%s/%d"", %d, LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3120,18 +3120,18 @@ Define_entry(%s);
 %s
 		/* save output args to registers */
 %s
-		framevar(0) = ind + 1;
-		succeed();
+		MR_framevar(1) = ind + 1;
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 Define_label(%s_i1);
-	if (framevar(0) >= %s) 
-		fail();
+	if (MR_framevar(1) >= %s) 
+		MR_fail();
 	{
 		/* create argument vars */
 %s
-		int ind = framevar(0);
+		int ind = MR_framevar(1);
 		/* copy framevars to registers */
 %s		
  		/* copy registers to input arg vars */
@@ -3143,8 +3143,8 @@ Define_label(%s_i1);
 		/* save output args to registers */
 %s
 	}
-	framevar(0)++;
-	succeed();
+	MR_framevar(1)++;
+	MR_succeed();
 END_MODULE
 
 extern ModuleFunc %s_module;
@@ -3258,10 +3258,10 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, DeclCode,
 	->
 		generate_arg_decl_code(VarName, Type, DeclCode0),
 		( ArgMode = top_in ->
-			generate_arg_input_code(VarName, Type, Loc,
-				NumInputArgs0, InputCode0, SaveRegsCode0,
-				GetRegsCode0),
 			NumInputArgs1 is NumInputArgs0 + 1,
+			generate_arg_input_code(VarName, Type, Loc,
+				NumInputArgs1, InputCode0, SaveRegsCode0,
+				GetRegsCode0),
 			OutputCode0 = ""
 		; ArgMode = top_out ->
 			generate_arg_output_code(VarName, Type, Loc,
@@ -3300,9 +3300,9 @@ generate_arg_input_code(Name, Type, RegNum, FrameVarNum, InputCode,
 	convert_type_from_mercury(RegName, Type, Converted),
 	Template = "\t\t%s = %s;\n",
 	string__format(Template, [s(Name), s(Converted)], InputCode),
-	string__format("\t\tframevar(%d) = %s;\n",
+	string__format("\t\tMR_framevar(%d) = %s;\n",
 		[i(FrameVarNum), s(RegName)], SaveRegCode),
-	string__format("\t\t%s = framevar(%d);\n",
+	string__format("\t\t%s = MR_framevar(%d);\n",
 		[s(RegName), i(FrameVarNum)], GetRegCode).
 
 :- pred generate_arg_output_code(string::in, (type)::in, int::in, 
@@ -3339,7 +3339,7 @@ generate_fact_test_code(PredName, PragmaVars, ArgTypes, InstMap, InstTable,
 	generate_test_condition_code(FactTableName, PragmaVars, ArgTypes,
 		InstMap, InstTable, ModuleInfo, 1, yes, FactTableSize,
 		CondCode),
-	string__append_list(["\t\tif(", CondCode, "\t\t) fail();\n"],
+	string__append_list(["\t\tif(", CondCode, "\t\t) MR_fail();\n"],
 		FactTestCode).
 
 :- pred generate_test_condition_code(string, list(pragma_var), list(type),
@@ -3408,10 +3408,10 @@ Declare_label(%s_i1);
 
 BEGIN_MODULE(%s_module)
 	init_entry(%s);
-	init_label(%s_i);
+	init_label(%s_i1);
 BEGIN_CODE
 Define_entry(%s);
-	mkframe(""%s/%d"", 4, LABEL(%s_i1));
+	MR_mkframe(""%s/%d"", 4, LABEL(%s_i1));
 	{
 		/* create argument vars */
 %s
@@ -3426,23 +3426,23 @@ Define_entry(%s);
 %s
 		/* save output args to registers */
 %s
-		if (hashval == -1) succeed_discard();
-		framevar(0) = hashval;
-		framevar(1) = (Word) current_table;
-		framevar(2) = (Word) keytype;
-		framevar(3) = current_key;
-		succeed();
+		if (hashval == -1) MR_succeed_discard();
+		MR_framevar(1) = hashval;
+		MR_framevar(2) = (Word) current_table;
+		MR_framevar(3) = (Word) keytype;
+		MR_framevar(4) = current_key;
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 Define_label(%s_i1);
 	{
 		/* create argument vars */
 %s
-		Integer hashval = framevar(0);
+		Integer hashval = MR_framevar(1);
 		Word ind;
-		void *current_table = (void *)framevar(1);
-		char keytype = (char) framevar(2);
+		void *current_table = (void *) MR_framevar(2);
+		char keytype = (char) MR_framevar(3);
 
 		/* lookup hash table */
 		switch(keytype) 
@@ -3464,11 +3464,11 @@ Define_label(%s_i1);
 %s
 		/* save output args to registers */
 %s
-		if (hashval == -1) succeed_discard();
-		framevar(0) = hashval;
-		succeed();
+		if (hashval == -1) MR_succeed_discard();
+		MR_framevar(1) = hashval;
+		MR_succeed();
 	failure_code_%s:
-		fail();
+		MR_fail();
 	}
 END_MODULE
 
@@ -3494,14 +3494,14 @@ void sys_init_%s_module(void) {
 	generate_hash_code(PragmaVars, ArgTypes, InstMap, InstTable,
 		ModuleInfo, LabelName, 0, PredName, 1, FactTableSize, HashCode),
 
-	generate_hash_lookup_code("(char *)framevar(3)", LabelName2, 0,
+	generate_hash_lookup_code("(char *) MR_framevar(4)", LabelName2, 0,
 		"strcmp(%s, %s) == 0", 's', no, "", [], [], InstMap,
 		InstTable, ModuleInfo, 0, 0, StringHashLookupCode),
-	generate_hash_lookup_code("framevar(3)", LabelName2, 1, "%s == %s",	
+	generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, "%s == %s",	
 		'i', no, "", [], [], InstMap, InstTable, ModuleInfo, 0, 0,
 		IntHashLookupCode),
-	generate_hash_lookup_code("word_to_float(framevar(3))", LabelName2, 2,
-		"%s == %s", 'f', no, "", [], [], InstMap, InstTable,
+	generate_hash_lookup_code("word_to_float(MR_framevar(4))", LabelName2,
+		2, "%s == %s", 'f', no, "", [], [], InstMap, InstTable,
 		ModuleInfo, 0, 0, FloatHashLookupCode),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, InstMap,
 		InstTable, ModuleInfo, 1, FactTableSize, FactLookupCode),

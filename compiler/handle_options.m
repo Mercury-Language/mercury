@@ -250,8 +250,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	option_implies(highlevel_c, gcc_non_local_gotos, bool(no)),
+	option_implies(highlevel_c, gcc_global_registers, bool(no)),
+	option_implies(highlevel_c, asm_labels, bool(no)),
+
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
+	option_implies(check_termination, warn_missing_trans_opt_files,
+		bool(yes)),
 	option_implies(make_transitive_opt_interface, transitive_optimization,
 		bool(yes)),
 	option_implies(transitive_optimization, intermodule_optimization,
@@ -356,6 +362,9 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 		[]
 	),
 
+	% Deep profiling requires `procid' stack layouts
+	option_implies(profile_deep, procid_stack_layout, bool(yes)),
+
 	% --no-reorder-conj implies --no-deforestation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
 
@@ -388,6 +397,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% operations involving tickets, which are generated only with
 	% --use-trail.
 	option_implies(use_trail, optimize_value_number, bool(no)),
+
+	% XXX if trailing is enabled, middle recursion optimization
+	% can generate code which does not allocate a stack frame 
+	% even though stack slots are used to save and restore the
+	% trail, if the code being optimized contains a construct which
+	% might save/restore the trail state, i.e. an if-then-else,
+	% negation, disjunction, or commit.
+	option_implies(use_trail, middle_rec, bool(no)),
 
 	% Minimal model tabling needs to be able to rewrite all the redoips
 	% in a given nondet stack segments. If we allow hijacks, some of these
@@ -468,7 +485,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	option_implies(optimize_frames, optimize_labels, bool(yes)),
-	option_implies(optimize_frames, optimize_jumps, bool(yes)).
+	option_implies(optimize_frames, optimize_jumps, bool(yes)),
+	
+	% Various optimizations which don't yet work on the alias branch.
+	globals__io_set_option(optimize_higher_order, bool(no)),
+	globals__io_set_option(user_guided_type_specialization, bool(no)),
+	globals__io_set_option(type_specialization, bool(no)),
+	globals__io_set_option(deforestation, bool(no)),
+	globals__io_set_option(common_struct, bool(no)).
 
 % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue, IO0, IO).
 % If the SourceBoolOption is set to yes, then the ImpliedOption is set
@@ -555,15 +579,14 @@ long_usage -->
 	% grade of the library, etc for linking (and installation).
 :- type grade_component
 	--->	gcc_ext		% gcc extensions -- see grade_component_table
+	;	par		% parallelism / multithreading
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
 	;	minimal_model	% whether we set up for minimal model tabling
-	;	args		% argument passing convention
-	;	trace		% tracing/debugging options
-	;	par		% parallelism / multithreading
 	;	pic		% Do we need to reserve a register for
 				% PIC (position independent code)?
+	;	trace           % tracing/debugging options
 	.
 
 convert_grade_option(GradeString, Options0, Options) :-
@@ -640,10 +663,8 @@ compute_grade_components(Options, GradeComponents) :-
 :- pred grade_component_table(string, grade_component,
 		list(pair(option, option_data))).
 :- mode grade_component_table(in, out, out) is semidet.
+:- mode grade_component_table(out, in, out) is multi.
 :- mode grade_component_table(out, out, out) is multi.
-
-	% Args method components
-grade_component_table("sa", args, [args - string("simple")]).
 
 	% GCC-hack components
 grade_component_table("none", gcc_ext, [asm_labels - bool(no),
@@ -659,42 +680,49 @@ grade_component_table("fast", gcc_ext, [asm_labels - bool(no),
 grade_component_table("asm_fast", gcc_ext, [asm_labels - bool(yes),
 	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
 
+	% Parallelism/multithreading components.
+grade_component_table("par", par, [parallel - bool(yes)]).
+
 	% GC components
 grade_component_table("gc", gc, [gc - string("conservative")]).
 grade_component_table("agc", gc, [gc - string("accurate")]).
 
-	% Parallelism/MT components.
-grade_component_table("par", par, [parallel - bool(yes)]).
+	% Profiling components
+grade_component_table("prof", prof, [profile_time - bool(yes),
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(no)]).
+grade_component_table("profdeep", prof, [profile_time - bool(yes),
+	profile_deep - bool(yes), profile_calls - bool(no),
+	profile_memory - bool(no)]).
+grade_component_table("proftime", prof, [profile_time - bool(yes),
+	profile_deep - bool(no), profile_calls - bool(no),
+	profile_memory - bool(no)]).
+grade_component_table("profcalls", prof, [profile_time - bool(no),
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(no)]).
+grade_component_table("memprof", prof, [profile_time - bool(no),
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(yes)]).
+grade_component_table("profall", prof, [profile_time - bool(yes),
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(yes)]).
+
+	% Trailing components
+grade_component_table("tr", trail, [use_trail - bool(yes)]).
+
+	% Mimimal model tabling components
+grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)]).
 
 	% Pic reg components
 grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
-
-	% Profiling components
-grade_component_table("prof", prof, [profile_time - bool(yes),
-	profile_calls - bool(yes), profile_memory - bool(no)]).
-grade_component_table("proftime", prof, [profile_time - bool(yes),
-	profile_calls - bool(no), profile_memory - bool(no)]).
-grade_component_table("profcalls", prof, [profile_time - bool(no),
-	profile_calls - bool(yes), profile_memory - bool(no)]).
-grade_component_table("memprof", prof, [profile_time - bool(no),
-	profile_calls - bool(yes), profile_memory - bool(yes)]).
-grade_component_table("profall", prof, [profile_time - bool(yes),
-	profile_calls - bool(yes), profile_memory - bool(yes)]).
 
 	% Debugging/Tracing components
 grade_component_table("debug", trace,
 	[stack_trace - bool(yes), require_tracing - bool(yes)]).
 grade_component_table("trace", trace,
 	[stack_trace - bool(no), require_tracing - bool(yes)]).
-grade_component_table("strace", trace,
+grade_component_table("strce", trace,
 	[stack_trace - bool(yes), require_tracing - bool(no)]).
-
-	% Trailing components
-grade_component_table("tr", trail, [use_trail - bool(yes)]).
-
-	% Mimimal model tabling components
-grade_component_table("mm", minimal_model,
-	[use_minimal_model - bool(yes)]).
 
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.
@@ -709,20 +737,20 @@ reset_grade_options(Options0, Options) :-
 :- pred grade_start_values(pair(option, option_data)).
 :- mode grade_start_values(out) is multi.
 
-grade_start_values(args - string("compact")).
 grade_start_values(asm_labels - bool(no)).
 grade_start_values(gcc_non_local_gotos - bool(no)).
 grade_start_values(gcc_global_registers - bool(no)).
-grade_start_values(gc - string("none")).
 grade_start_values(parallel - bool(no)).
-grade_start_values(pic_reg - bool(no)).
+grade_start_values(gc - string("none")).
+grade_start_values(profile_deep - bool(no)).
 grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
-grade_start_values(stack_trace - bool(no)).
-grade_start_values(require_tracing - bool(no)).
 grade_start_values(use_trail - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
+grade_start_values(pic_reg - bool(no)).
+grade_start_values(stack_trace - bool(no)).
+grade_start_values(require_tracing - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.

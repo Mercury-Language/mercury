@@ -213,12 +213,14 @@
 %-----------------------------------------------------------------------------%
 
 	% Bind a variable in an instmap to a functor at the beginning
-	% of a case in a switch.
+	% of a case in a switch. Aborts on compiler generated cons_ids.
 	% (note: cons_id_to_const must succeed given the cons_id).
 
-:- pred instmap__bind_var_to_functor(prog_var, cons_id, instmap, instmap,
-		inst_table, inst_table, module_info, module_info).
-:- mode instmap__bind_var_to_functor(in, in, in, out, in, out, in, out) is det.
+:- pred instmap__bind_var_to_functor(prog_var, (type), cons_id,
+		instmap, instmap, inst_table, inst_table,
+		module_info, module_info).
+:- mode instmap__bind_var_to_functor(in, in, in, in, out,
+		in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -308,10 +310,10 @@
 
 :- implementation.
 
-:- import_module mode_util, inst_match, prog_data, goal_util.
-:- import_module hlds_data, uniq_count, term.
+:- import_module mode_util, inst_match, prog_data, goal_util, type_util.
+:- import_module hlds_data, uniq_count, inst_util.
 
-:- import_module std_util, require, multi_map, set_bbbtree, string.
+:- import_module std_util, require, multi_map, set_bbbtree, string, term.
 
 :- type instmap_delta	==	instmap.
 
@@ -1310,26 +1312,25 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMap,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
 		InstTable0, InstTable, ModuleInfo0, ModuleInfo) :-
 	instmap__lookup_var(InstMap0, Var, Inst0),
-	bind_inst_to_functor(Inst0, ConsId, Inst, InstTable0, ModuleInfo0,
-			InstMap0, InstTable, ModuleInfo, InstMap1),
+	bind_inst_to_functor(Inst0, Type, ConsId, Inst, InstTable0,
+		ModuleInfo0, InstMap0, InstTable, ModuleInfo, InstMap1),
 	instmap__set(InstMap1, Var, Inst, InstMap).
 
-:- pred bind_inst_to_functor((inst), cons_id, (inst), inst_table, module_info,
-		instmap, inst_table, module_info, instmap).
-:- mode bind_inst_to_functor(in, in, out, in, in, in, out, out, out) is det.
+:- pred bind_inst_to_functor((inst), (type), cons_id, (inst), inst_table,
+		module_info, instmap, inst_table, module_info, instmap).
+:- mode bind_inst_to_functor(in, in, in, out, in, in, in, out, out, out) is det.
 
-bind_inst_to_functor(Inst0, ConsId, Inst, InstTable0, ModuleInfo0,
+bind_inst_to_functor(Inst0, Type, ConsId, Inst, InstTable0, ModuleInfo0,
 		InstMap0, InstTable, ModuleInfo, InstMap) :-
-	( ConsId = cons(_, Arity) ->
-		list__duplicate(Arity, dead, ArgLives),
-		list__duplicate(Arity, free(unique), ArgInsts)
-	;
-		ArgLives = [],
-		ArgInsts = []
-	),
+	% figure out the arity of this constructor,
+	% _including_ any type-infos or typeclass-infos
+	% inserted for existential data types.
+	AdjustedArity = cons_id_adjusted_arity(ModuleInfo0, Type, ConsId),
+	list__duplicate(AdjustedArity, dead, ArgLives),
+	list__duplicate(AdjustedArity, free(unique), ArgInsts),
 	(
 		abstractly_unify_inst_functor(dead, Inst0, ConsId,
 			ArgInsts, ArgLives, real_unify, InstTable0, ModuleInfo0,

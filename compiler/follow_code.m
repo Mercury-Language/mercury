@@ -43,8 +43,6 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
 	Flags = FollowCode - PrevCode,
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_varset(ProcInfo0, Varset0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
 	(
 		move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),
 			% did the goal change?
@@ -52,20 +50,10 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	->
 			% we need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
-		proc_info_headvars(ProcInfo0, HeadVars),
-		implicitly_quantify_clause_body(HeadVars, Goal1,
-			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
-		proc_info_get_initial_instmap(ProcInfo0,
-			ModuleInfo0, InstMap0),
-		proc_info_inst_table(ProcInfo0, InstTable0),
-		proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
-		recompute_instmap_delta(HeadVars, ArgLives, VarTypes,
-			Goal2, Goal, InstMap0, InstTable0, InstTable,
-			_, ModuleInfo0, ModuleInfo),
-		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
-		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-		proc_info_set_varset(ProcInfo2, Varset, ProcInfo3),
-		proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo)
+		proc_info_set_goal(ProcInfo0, Goal1, ProcInfo1),
+		requantify_proc(ProcInfo1, ProcInfo2),
+		recompute_instmap_delta_proc(ProcInfo2, ProcInfo,
+			ModuleInfo0, ModuleInfo)
 	;
 		ModuleInfo = ModuleInfo0,
 		ProcInfo = ProcInfo0
@@ -126,6 +114,10 @@ move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
 move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), 
 			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
+
+move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
+	% these should have been expanded out by now
+	error("move_follow_code_in_goal_2: unexpected bi_implication").
 
 %-----------------------------------------------------------------------------%
 

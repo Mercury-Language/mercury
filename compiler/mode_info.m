@@ -940,7 +940,9 @@ mode_info_bind_var_to_functor(Var, ConsId, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 
-	instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+	mode_info_get_var_types(ModeInfo0, VarTypes),
+	map__lookup(VarTypes, Var, Type),
+	instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
 		InstTable0, InstTable, ModuleInfo0, ModuleInfo),
 
         mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),

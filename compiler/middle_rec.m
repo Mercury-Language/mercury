@@ -320,7 +320,7 @@ middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 middle_rec__split_rec_code([], _, _) :-
 	error("did not find call in middle_rec__split_rec_code").
 middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
-	( Instr0 = call(_, _, _, _) - _ ->
+	( Instr0 = call(_, _, _, _, _) - _ ->
 		(
 			opt_util__skip_comments(Instrs1, Instrs2),
 			Instrs2 = [Instr2 | Instrs3],
@@ -397,7 +397,7 @@ middle_rec__find_used_registers_instr(block(_, _, Instrs), Used0, Used) :-
 middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
-middle_rec__find_used_registers_instr(call(_, _, _, _), Used, Used).
+middle_rec__find_used_registers_instr(call(_, _, _, _, _), Used, Used).
 middle_rec__find_used_registers_instr(mkframe(_, _), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
 middle_rec__find_used_registers_instr(goto(_), Used, Used).
@@ -424,7 +424,7 @@ middle_rec__find_used_registers_instr(discard_tickets_to(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _),
+middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _, _),
 		Used0, Used) :-
 	middle_rec__find_used_registers_components(Components, Used0, Used).
 middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
@@ -454,6 +454,8 @@ middle_rec__find_used_registers_component(pragma_c_outputs(Out), Used0, Used) :-
 	insert_pragma_c_output_registers(Out, Used0, Used).
 middle_rec__find_used_registers_component(pragma_c_user_code(_, _), Used, Used).
 middle_rec__find_used_registers_component(pragma_c_raw_code(_), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_fail_to(_), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_noop, Used, Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
 :- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.

@@ -209,7 +209,7 @@ goedel_output_item(pragma(_Pragma), _Context) -->
 goedel_output_item(assertion(_, _), _Context) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
-			"warning: assertion declarations not allowed. Ignoring\n").
+			"warning: promise declarations not allowed. Ignoring\n").
 
 goedel_output_item(nothing, _) --> [].
 goedel_output_item(typeclass(_, _, _, _, _), _) -->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,11 +70,11 @@
 
 :- implementation.
 
-:- import_module hlds_pred, mercury_to_mercury.
+:- import_module intermod, hlds_pred, mercury_to_mercury.
 :- import_module prog_io, globals, code_util.
 :- import_module passes_aux, prog_out, options, termination.
 
-:- import_module string, list, map, varset, term, std_util.
+:- import_module set, string, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,14 +127,21 @@ trans_opt__write_optfile(Module) -->
 	io__state, io__state).
 :- mode trans_opt__write_preds(in, in, di, uo) is det.
 trans_opt__write_preds([], _) --> [].
-trans_opt__write_preds([ PredId | PredIds ], Module) -->
+trans_opt__write_preds([PredId | PredIds], Module) -->
 	{ module_info_preds(Module, PredTable) },
+	{ module_info_type_spec_info(Module, TypeSpecInfo) },
+	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 
 	( 	
 		{ pred_info_is_exported(PredInfo) },
 		\+ { code_util__predinfo_is_builtin(PredInfo) },
-		\+ { code_util__compiler_generated(PredInfo) }
+		\+ { code_util__compiler_generated(PredInfo) },
+		% XXX These should be allowed, but the predicate
+		% declaration for the specialized predicate is not produced 
+		% before the termination pragmas are read in, resulting
+		% in an undefined predicate error.
+		\+ { set__member(PredId, TypeSpecForcePreds) }
 	->
 		% All predicates to write predicate info into the .trans_opt 
 		% file should go here.
@@ -211,23 +218,9 @@ read_trans_opt_files([Import | Imports],
 
 	maybe_write_string(VeryVerbose, " done.\n"),
 
-	update_error_status(ModuleError, Messages, Error0, Error1),
+	intermod__update_error_status(trans_opt, FileName, ModuleError,
+		Messages, Error0, Error1),
+
 	{ list__append(Items0, Items1, Items2) },
 	read_trans_opt_files(Imports, Items2, Items, Error1, Error).
 
-:- pred update_error_status(module_error, message_list, 
-	bool, bool, io__state, io__state).
-:- mode update_error_status(in, in, in, out, di, uo) is det.
-
-update_error_status(ModuleError, Messages, Error0, Error1) -->
-	(
-		{ ModuleError = no },
-		{ Error1 = Error0 }
-	;
-		{ ModuleError = yes },
-		prog_out__write_messages(Messages),
-		{ Error1 = yes }
-	;
-		{ ModuleError = fatal },
-		{ Error1 = yes }	
-	).

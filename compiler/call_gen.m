@@ -112,8 +112,10 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ CallCode = node([
-		call(Address, label(ReturnLabel), ReturnLiveLvalues, CallModel)
+		call(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
+			CallModel)
 			- CallComment,
 		label(ReturnLabel)
 			- "continuation label"
@@ -197,11 +199,12 @@ call_gen__generate_generic_call(_OuterCodeModel, GenericCall, Args,
 		ReturnLiveLvalues),
 
 	code_info__get_next_label(ReturnLabel),
+	{ goal_info_get_context(GoalInfo, Context) },
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
-			CallModel)
+			Context, CallModel)
 			- "Setup and call",
 		label(ReturnLabel)
 			- "Continuation label"
@@ -397,8 +400,8 @@ call_gen__prepare_for_call(CodeModel, FlushCode, CallModel) -->
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_non },
-		code_info__may_use_nondet_tailcall(TailCall),
-		{ CallModel = nondet(TailCall) },
+		code_info__may_use_nondet_tailcall(TailCallStatus),
+		{ CallModel = nondet(TailCallStatus) },
 		code_info__flush_resume_vars_to_stack(FlushCode),
 		code_info__set_resume_point_and_frame_to_unknown
 	).
@@ -436,22 +439,22 @@ call_gen__call_comment(model_non,  "branch to nondet procedure").
 
 %---------------------------------------------------------------------------%
 
-call_gen__save_variables(Args, Code) -->
+call_gen__save_variables(OutArgs, Code) -->
 	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
-	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
 	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
 	( 
 		{ TypeInfoLiveness = yes }
 	->
 		code_info__get_proc_info(ProcInfo),
-		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 
+		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars0, 
 			TypeInfoVars) },
-		{ set__union(Vars1, TypeInfoVars, Vars) }
+		{ set__union(Vars0, TypeInfoVars, Vars1) }
 	;
-		{ Vars = Vars1 }
+		{ Vars1 = Vars0 }
 	),
+	{ set__difference(Vars1, OutArgs, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 

@@ -11,7 +11,6 @@
 % The MLDS is an intermediate data structure used in compilation;
 % we compile Mercury source -> parse tree -> HLDS -> MLDS -> target (e.g. C).
 % See notes/compiler_design.html for more information about the MLDS & LLDS.
-% [XXX Need to document MLDS in notes/compiler_design.html.]
 %
 % The MLDS is intended to be suitable for generating target code in
 % languages such as Java, Java bytecode, high-level C, C++, or C--, etc.
@@ -209,12 +208,60 @@
 % should always be qualified (even if not overloaded).
 
 %-----------------------------------------------------------------------------%
+%
+% Notes on garbage collection and liveness.
+% 
+
+% "Liveness-accurate GC" is GC in which the collector does not trace local
+% variables which are definitely not live according to a straight-forward
+% static analysis of definite-deadness/possible-liveness.  Liveness-accurate
+% GC is desirable, in general, since tracing through variables which are
+% no longer live may lead to excessive memory retention for some programs.
+% However these programs are relatively rare, so liveness-accurate GC
+% is not always worth the extra complication.
+%
+% The MLDS is therefore designed to optionally support liveness-accurate
+% GC, if the target language supports it.  If liveness-accurate GC is
+% supported and enabled, then it is the responsibility of the target
+% language implementation to do whatever is needed to avoid having the GC
+% trace variables which have gone out of scope.
+%
+% That means that to support liveness-accurate the HLDS->MLDS code
+% generator just needs to cover the cases where a straight-forward liveness
+% calculation on the generated MLDS does not match up with the desired
+% result of a straight-forward liveness calculation on the HLDS.  That is,
+% the HLDS->MLDS code generator must generate code to clobber variables
+% which are no longer live according to a straight-forward liveness
+% calculation on the HLDS but which have not gone out of scope in
+% the generated MLDS.  For example, with our current HLDS->MLDS code
+% generation scheme, this is the case for variables in the `else' of a
+% nondet if-then-else once the `then' has been entered.
+% (XXX Currently ml_code_gen.m does _not_ clobber those variables, though.)
+
+% The rationale for leaving most of the responsibility for liveness-accurate
+% GC up to the MLDS back-end is as follows: at very least we need the
+% target language implementation's _cooperation_, since if the MLDS code
+% generator inserts statements to clobber variables that are no longer live,
+% then an uncooperative target language implementation could just optimize
+% them away, since they are assignments to dead variables.  Given this need
+% for the MLDS target back-end's cooperation, it makes sense to assign as
+% much of the responsibily for this task as is possible to the MLDS target
+% back-end, to keep the front-end simple and to keep the responsibility
+% for this task in one place.
+%
+% But in the cases such as nondet if-then-else, where HLDS-liveness does not
+% match MLDS-liveness, we can't just leave it to the MLDS target back-end,
+% because that would require assuming an unreasonably smart liveness
+% calculation in the MLDS target back-end, so in such cases we do need
+% to handle it in the HLDS->MLDS code generator.
+
+%-----------------------------------------------------------------------------%
 
 :- module mlds.
 
 :- interface.
 
-:- import_module hlds_pred, prog_data, builtin_ops.
+:- import_module hlds_pred, hlds_data, prog_data, builtin_ops.
 
 % To avoid duplication, we use a few things from the LLDS.
 % It would be nice to avoid this dependency...
@@ -294,7 +341,7 @@
 	==	mlds__fully_qualified_name(mlds__entity_name).
 
 :- type mlds__entity_name
-	--->	type(string, arity)		% Name, arity.
+	--->	type(mlds__class_name, arity)	% Name, arity.
 	;	data(mlds__data_name)
 	;	function(
 			mlds__pred_label,	% Identifies the source code
@@ -345,16 +392,18 @@
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(
-			mlds__class
+			mlds__class_defn
 		).
 
 :- type mlds__initializer == list(mlds__rval).
 
 :- type mlds__func_params
 	---> mlds__func_params(
-		assoc_list(entity_name, mlds__type), % arguments (inputs)
-		list(mlds__type)		% return values (outputs)
+		mlds__arguments,	% names and types of arguments (inputs)
+		list(mlds__type)	% types of return values (outputs)
 	).
+
+:- type mlds__arguments == assoc_list(mlds__entity_name, mlds__type).
 
 	% An mlds__func_signature is like an mlds__func_params
 	% except that it only includes the function's type, not
@@ -387,8 +436,12 @@
 					% (cannot inherit anything).
 	.
 
-:- type mlds__class
-	---> mlds__class(
+
+:- type mlds__class_name == string.
+:- type mlds__class == mlds__fully_qualified_name(mlds__class_name).
+
+:- type mlds__class_defn
+	---> mlds__class_defn(
 		mlds__class_kind,
 		mlds__imports,			% imports these classes (or
 						% modules, packages, ...)
@@ -397,7 +450,55 @@
 		mlds__defns			% contains these members
 	).
 
-:- type mlds__type ---> mlds__type(prog_data__type).
+	% Note: the definition of the `mlds__type' type is subject to change.
+	% In particular, we might add new alternatives here, so try to avoid
+	% switching on this type.
+:- type mlds__type
+	--->	% Mercury data types
+		mercury_type(prog_data__type)
+
+		% The type for the continuation functions used
+		% to handle nondeterminism
+	;	mlds__cont_type
+
+		% The type used for storing information about a commit.
+		% This may be `jmp_buf' or `__label__'.
+	;	mlds__commit_type
+
+		% MLDS native builtin types.
+		% These are the builtin types of the MLDS target language,
+		% whatever that may be.
+		% Currently we don't actually use many of these.
+	;	mlds__bool_type
+	;	mlds__int_type
+	;	mlds__float_type
+	;	mlds__char_type
+
+		% MLDS types defined using mlds__class_defn
+	;	mlds__class_type(mlds__class, arity)	% name, arity
+
+		% Pointer types.
+		% Currently these are used for handling output arguments.
+	;	mlds__ptr_type(mlds__type)
+
+		% Function types.
+	;	mlds__func_type(mlds__func_params)
+
+		% A generic type (e.g. `Word') that can hold any Mercury value.
+		% This is used for implementing polymorphism.
+	;	mlds__generic_type
+
+		% A generic pointer type (e.g. `void *' in C)
+		% that can be used to point to the environment
+		% (set of local variables) of the containing function.
+		% This is used for handling nondeterminism,
+		% if the target language doesn't supported
+		% nested functions, and also for handling
+		% closures for higher-order code.
+	;	mlds__generic_env_ptr_type
+
+	;	mlds__base_type_info_type.
+
 :- type mercury_type == prog_data__type.
 
 :- func mercury_type_to_mlds_type(mercury_type) = mlds__type.
@@ -486,6 +587,8 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type mlds__statements == list(mlds__statement).
+
 :- type mlds__statement
 	--->	mlds__statement(
 			mlds__stmt,
@@ -565,10 +668,58 @@
 						% returning more than one value
 						
 	%
-	% exception handling
+	% commits (a specialized form of exception handling)
 	%
 
-	/* XXX not yet implemented */
+		% try_commit(Ref, GoalToTry, CommitHandlerGoal):
+		%	Execute GoalToTry.  If GoalToTry exits via a
+		%	`commit(Ref)' instruction, then execute
+		%	CommitHandlerGoal.
+		%
+		% do_commit(Ref):
+		%	Unwind the stack to the corresponding `try_commit'
+		%	statement for Ref, and branch to the CommitHandlerGoal
+		%	that was specified in that try_commit instruction.
+		%
+		% For both try_commit and commit instructions,
+		% Ref should be the name of a local variable of type
+		% mlds__commit_type.  There should be exactly
+		% one try_commit instruction for each Ref.
+		% do_commit(Ref) instructions should only be used
+		% in goals called from the GoalToTry goal in the
+		% try_commit instruction with the same Ref.
+		%	
+	;	try_commit(mlds__lval, mlds__statement, mlds__statement)
+	;	do_commit(mlds__rval)
+
+	%
+	% exception handling
+	%
+/*********
+XXX Full exception handling support is not yet implemented.
+
+	% We use C++-style exceptions.
+	% For C, the back-end can simulate them using setjmp/longjmp.
+	%
+	% XXX This is tentative -- the current definition may be
+	% a bit too specific to C++-style exceptions.
+	% It might not be a good choice for different target languages.
+
+		% throw the specified exception
+	;	throw(mlds__type, mlds__rval)
+
+		% rethrow the current exception
+		% (only valid inside an exception handler)
+	;	rethrow
+
+		% Execute the specified statement, and if it throws an exception,
+		% and the exception matches any of the exception handlers,
+		% then execute the first matching exception handler.
+	;	try_catch(
+			mlds__statement,
+			list(mlds__exception_handler)
+		)
+**********/
 
 	%
 	% atomic statements
@@ -585,6 +736,22 @@
 	--->	tail_call	% a tail call
 	;	call		% just an ordinary call
 	.
+
+
+	% XXX This is tentative -- the current definition may be
+	% a bit too specific to C++-style exceptions.
+	% It might not be a good choice for different target languages.
+:- type mlds__exception_handler
+	--->	handler(
+			maybe(mlds__type),
+				% if `yes(T)', specifies the type of exceptions to catch
+				% if `no', it means catch all exceptions
+
+			maybe(string)
+				% if `yes(Name)', gives the variable name to use for
+				%	the exception value
+				% if `no', then exception value will not be used
+		).
 
 
 	%
@@ -736,18 +903,30 @@
 %-----------------------------------------------------------------------------%
 
 	%
-	% An lval represents a data location or variable that can be used
-	% as the target of an assignment.
-	%
-	% XXX this probably needs work
+	% A field_id represents some data within an object
 	%
 
-:- type field_id == mlds__fully_qualified_name(field_name).
+:- type field_id 
+	--->		% offset(N) represents the field
+			% at offset N Words.
+	 	offset(mlds__rval)
+	;		% named_field(Name) represents the field
+			% with the specified name.
+		named_field(mlds__fully_qualified_name(field_name))
+	.
+
 :- type field_name == string.
 
+	%
+	% An mlds__var represents a variable or constant.
+	%
 :- type mlds__var == mlds__fully_qualified_name(mlds__var_name).
 :- type mlds__var_name == string.
 
+	%
+	% An lval represents a data location or variable that can be used
+	% as the target of an assignment.
+	%
 :- type mlds__lval 
 
 	%
@@ -801,12 +980,17 @@
 
 	;	const(mlds__rval_const)
 
-	;	unop(unary_op, mlds__rval)
+	;	unop(mlds__unary_op, mlds__rval)
 
 	;	binop(binary_op, mlds__rval, mlds__rval)
 
 	;	mem_addr(mlds__lval).
 		% The address of a variable, etc.
+
+:- type mlds__unary_op
+	--->	box(mlds__type)
+	;	unbox(mlds__type)
+	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const
 	--->	true
@@ -814,10 +998,11 @@
 	;	int_const(int)
 	;	float_const(float)
 	;	string_const(string)
+			% A multi_string_const is a string containing
+			% embedded NULs, whose real length is given
+			% by the integer, and not the location of the
+			% first null character.
 	;	multi_string_const(int, string)
-			% a string containing embedded NULLs,
-			% whose real length is given by the integer,
-			% and not the location of the first NULL
 	;	code_addr_const(mlds__code_addr)
 	;	data_addr_const(mlds__data_addr).
 
@@ -830,7 +1015,7 @@
 			% module name; which var
 
 :- type mlds__data_name
-	--->	var(string)
+	--->	var(mlds__var_name)
 			% ordinary variables
 	;	common(int)
 			% Compiler-introduced constants representing
@@ -841,7 +1026,7 @@
 	%
 	;	type_ctor(mlds__base_data, string, arity)
 			% base_data, type name, type arity
-	;	base_typeclass_info(class_id, string)
+	;	base_typeclass_info(hlds_data__class_id, string)
 			% class name & class arity, names and arities of the
 			% types
 	%
@@ -930,9 +1115,12 @@
 			
 	;	special_pred(
 			string,			% pred name
-			mercury_module_name,	% type module
-			string,			% type name
-			arity			% type arity
+			maybe(mercury_module_name),
+				% The module declaring the type,
+				% if this is different to module defining
+				% the special_pred.
+			string,			% the type name
+			arity			% the type arity
 		).
 
 %-----------------------------------------------------------------------------%
@@ -960,7 +1148,7 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 % Currently mlds__types are just the same as Mercury types.
 % XXX something more complicated may be needed here...
 
-mercury_type_to_mlds_type(Type) = mlds__type(Type).
+mercury_type_to_mlds_type(Type) = mercury_type(Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -1001,7 +1189,9 @@ mercury_std_library_module("builtin").
 mercury_std_library_module("char").
 mercury_std_library_module("dir").
 mercury_std_library_module("eqvclass").
+mercury_std_library_module("exception").
 mercury_std_library_module("float").
+mercury_std_library_module("gc").
 mercury_std_library_module("getopt").
 mercury_std_library_module("graph").
 mercury_std_library_module("group").
@@ -1036,6 +1226,7 @@ mercury_std_library_module("store").
 mercury_std_library_module("string").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
+mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("varset").
 
@@ -1124,7 +1315,7 @@ abstractness_bits(abstract) 	= 0x00.
 abstractness_bits(concrete)	= 0x80.
 
 :- func abstractness_mask = int.
-abstractness_mask = abstractness_bits(abstract).
+abstractness_mask = abstractness_bits(concrete).
 
 %
 % Here we define the functions to lookup a member of the set.

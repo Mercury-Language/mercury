@@ -21,7 +21,7 @@
 :- implementation.
 
 :- import_module hlds_goal.
-:- import_module int, list, std_util.
+:- import_module int, list, std_util, require.
 
 goal_path__fill_slots(Proc0, _ModuleInfo, Proc) :-
 		% The ModuleInfo argument is there just for passes_aux
@@ -60,6 +60,9 @@ fill_expr_slots(generic_call(A,B,C,D), _Path0, generic_call(A,B,C,D)).
 fill_expr_slots(unify(A,B,C,D,E), _Path0, unify(A,B,C,D,E)).
 fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G), _Path0,
 		pragma_c_code(A,B,C,D,E,F,G)).
+fill_expr_slots(bi_implication(_, _), _, _) :-
+	% these should have been expanded out by now
+	error("fill_expr_slots: unexpected bi_implication").
 
 :- pred fill_conj_slots(list(hlds_goal)::in, goal_path::in, int::in,
 	list(hlds_goal)::out) is det.

@@ -12,6 +12,10 @@
 	% For the rules on implicit quantification, see the
 	% Mercury language reference manual.
 	%
+	% This pass also expands out bi-implications (that has to be
+	% done after quantification, and preferably as soon as possible,
+	% so we do it here).
+	%
 	% Rather than making implicit quantification explicit by
 	% inserting additional existential quantifiers in the form of
 	% `some/2' goals, we instead record existential quantification
@@ -355,6 +359,93 @@ implicitly_quantify_goal_2(
 implicitly_quantify_goal_2(pragma_c_code(A,B,C,Vars,E,F,G), _,
 		pragma_c_code(A,B,C,Vars,E,F,G)) --> 
 	implicitly_quantify_atomic_goal(Vars).
+
+implicitly_quantify_goal_2(bi_implication(LHS0, RHS0), Context, Goal) -->
+
+		% get the initial values of various settings
+	quantification__get_quant_vars(QuantVars0),
+	quantification__get_outside(OutsideVars0),
+	quantification__get_lambda_outside(LambdaOutsideVars0),
+
+		% quantified variables cannot be pushed inside a negation,
+		% so we insert the quantified vars into the outside vars set,
+		% and initialize the new quantified vars set to be empty
+		% (the lambda outside vars remain unchanged)
+	{ set__union(OutsideVars0, QuantVars0, OutsideVars1) },
+	{ set__init(QuantVars1) },
+	{ LambdaOutsideVars1 = LambdaOutsideVars0 },
+	quantification__set_quant_vars(QuantVars1),
+
+		% prepare for quantifying the LHS:
+		% add variables from the RHS to the outside vars
+		% and the outside lambda vars sets.
+	{ quantification__goal_vars(RHS0, RHS_Vars, RHS_LambdaVars) },
+	{ set__union(OutsideVars1, RHS_Vars, LHS_OutsideVars) },
+	{ set__union(LambdaOutsideVars1, RHS_LambdaVars,
+			LHS_LambdaOutsideVars) },
+
+		% quantify the LHS
+	quantification__set_outside(LHS_OutsideVars),
+	quantification__set_lambda_outside(LHS_LambdaOutsideVars),
+	implicitly_quantify_goal(LHS0, LHS),
+	quantification__get_nonlocals(LHS_NonLocalVars),
+
+		% prepare for quantifying the RHS:
+		% add nonlocals from the LHS to the outside vars.
+		% (We use the nonlocals rather than the more symmetric
+		% approach of calling quantification__goal_vars on the
+		% LHS goal because it is more efficient.)
+	{ set__union(OutsideVars1, LHS_NonLocalVars, RHS_OutsideVars) },
+	{ RHS_LambdaOutsideVars = LambdaOutsideVars1 },
+
+		% quantify the RHS
+	quantification__set_outside(RHS_OutsideVars),
+	quantification__set_lambda_outside(RHS_LambdaOutsideVars),
+	implicitly_quantify_goal(RHS0, RHS),
+	quantification__get_nonlocals(RHS_NonLocalVars),
+
+		% compute the nonlocals for this goal
+	{ set__union(LHS_NonLocalVars, RHS_NonLocalVars, AllNonLocalVars) },
+	{ set__intersect(AllNonLocalVars, OutsideVars0, NonLocalVarsO) },
+	{ set__intersect(AllNonLocalVars, LambdaOutsideVars0, NonLocalVarsL) },
+	{ set__union(NonLocalVarsO, NonLocalVarsL, NonLocalVars) },
+	quantification__set_nonlocals(NonLocalVars),
+
+		% restore the original values of various settings
+	quantification__set_outside(OutsideVars0),
+	quantification__set_lambda_outside(LambdaOutsideVars0),
+	quantification__set_quant_vars(QuantVars0),
+
+		%
+		% We've figured out the quantification.
+		% Now expand the bi-implication according to the usual
+		% rules:
+		%	LHS <=> RHS
+		% ===>
+		%	(LHS => RHS), (RHS => LHS)
+		% ===>
+		%	(not (LHS, not RHS)), (not (RHS, not LHS))
+		%
+	{ goal_info_init(GoalInfo0) },
+	{ goal_info_set_context(GoalInfo0, Context, GoalInfo1) },
+	{ goal_info_set_nonlocals(GoalInfo1, LHS_NonLocalVars, LHS_GI) },
+	{ goal_info_set_nonlocals(GoalInfo1, RHS_NonLocalVars, RHS_GI) },
+	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GI) },
+	{ NotLHS = not(LHS) - LHS_GI },
+	{ NotRHS = not(RHS) - RHS_GI },
+	{ ForwardsImplication = not(conj([LHS, NotRHS]) - GI) - GI },
+
+		%
+		% Rename apart the local variables of the goals
+		% we've just duplicated.
+		%
+	{ ReverseImplication0 = not(conj([RHS, NotLHS]) - GI) - GI },
+	{ quantification__goal_vars(ReverseImplication0, GoalVars0) },
+	{ set__difference(GoalVars0, NonLocalVars, RenameVars) },
+	quantification__rename_apart(RenameVars, _,
+		ReverseImplication0, ReverseImplication),
+
+	{ Goal = conj([ForwardsImplication, ReverseImplication]) }.
 
 :- pred implicitly_quantify_atomic_goal(list(prog_var), quant_info, quant_info).
 :- mode implicitly_quantify_atomic_goal(in, in, out) is det.
@@ -718,6 +809,10 @@ quantification__goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0,
 quantification__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
+
+quantification__goal_vars_2(bi_implication(LHS, RHS), Set0, LambdaSet0, Set,
+		LambdaSet) :-
+	goal_list_vars_2([LHS, RHS], Set0, LambdaSet0, Set, LambdaSet).
 
 :- pred quantification__unify_rhs_vars(unify_rhs, set(prog_var), set(prog_var),
 					set(prog_var), set(prog_var)).

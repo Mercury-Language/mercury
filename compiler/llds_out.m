@@ -144,6 +144,9 @@
 :- pred llds_out__trace_port_to_string(trace_port, string).
 :- mode llds_out__trace_port_to_string(in, out) is det.
 
+:- pred llds_out__trace_port_to_num(trace_port, int).
+:- mode llds_out__trace_port_to_num(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -300,6 +303,8 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
+		output_c_data_init_list_decls(Datas),
+		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
 		output_rl_file(ModuleName, MaybeRLFile),
@@ -389,7 +394,8 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 
 		{ gather_c_file_labels(Modules, Labels) },
 		{ decl_set_init(DeclSet0) },
-		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
+		output_c_label_decl_list(Labels, StackLayoutLabels,
+			DeclSet0, DeclSet1),
 		output_comp_gen_c_var_list(Vars, DeclSet1, DeclSet2),
 		output_c_data_def_list(Datas, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
@@ -536,8 +542,30 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
+	% Output declarations for each module layout defined in this module
+	% (there should only be one, of course).
+:- pred output_c_data_init_list_decls(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_c_data_init_list_decls([]) --> [].
+output_c_data_init_list_decls([Data | Datas]) -->
+	(
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
+		{ DataName = module_layout }
+	->
+		{ decl_set_init(DeclSet0) },
+		output_data_addr_decls(data_addr(ModuleName, DataName), "", "",
+			0, _, DeclSet0, _DeclSet)
+	;
+		[]
+	),
+	output_c_data_init_list_decls(Datas).
+
 	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
 	% for each type_ctor_info defined in this module.
+	% Also output calls to MR_register_module_layout()
+	% for each module layout defined in this module
+	% (there should only be one, of course).
 
 :- pred output_c_data_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
@@ -566,18 +594,42 @@ output_c_data_init_list([Data | Datas]) -->
 		io__write_int(Arity),
 		io__write_string("_0);\n")
 	;
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, ArgRvals, _, _) },
+		{ DataName = base_typeclass_info(_ClassName, _ClassArity) }
+	->
+		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n"),
+		output_init_method_pointers(1, ArgRvals, DataName, ModuleName),
+		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n")
+	;
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
-		io__write_string("\t\tif (MR_register_module_layout != NULL)"),
-		io__write_string("{\n\t\t\t(*MR_register_module_layout)("),
-		io__write_string("(MR_Module_Layout *)\n\t\t\t\t& "),
+		io__write_string("\t\tif (MR_register_module_layout != NULL) {\n"),
+		io__write_string("\t\t\t(*MR_register_module_layout)("),
+		io__write_string("(MR_Module_Layout *)\n\t\t\t\t&"),
 		output_data_addr(ModuleName, DataName),
 		io__write_string(");\n\t\t}\n")
 	;
 		[]
 	),
 	output_c_data_init_list(Datas).
+
+:- pred output_init_method_pointers(int, list(maybe(rval)), data_name, module_name,
+	io__state, io__state).
+:- mode output_init_method_pointers(in, in, in, in, di, uo) is det.
+
+output_init_method_pointers(_, [], _, _) --> [].
+output_init_method_pointers(ArgNum, [Arg|Args], DataName, ModuleName) -->
+	( { Arg = yes(const(code_addr_const(CodeAddr))) } ->
+		io__write_string("\t\t"),
+		output_data_addr(ModuleName, DataName),
+		io__format(".f%d =\n\t\t\t", [i(ArgNum)]),
+		output_code_addr(CodeAddr),
+		io__write_string(";\n")
+	;
+		[]
+	),
+	output_init_method_pointers(ArgNum + 1, Args, DataName, ModuleName).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
@@ -680,7 +732,6 @@ output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile, 
 			yes, yes, no, "", "", 0, _),
 	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
-output_c_data_def(trace_call_info(_, _, _, _), DeclSet, DeclSet) --> [].
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
 	set_bbbtree(label)::in, decl_set::in, decl_set::out,
@@ -781,37 +832,38 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile,
 		no, yes, yes, "", "", 0, _),
 	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
-output_comp_gen_c_data(trace_call_info(Label, Path, MaxRegInUse, Port),
-		DeclSet0, DeclSet) -->
-	io__write_string("static MR_Trace_Call_Info\nmercury_data__tci__"),
-	output_label(Label),
-	io__write_string(" = {\n\t(const MR_Stack_Layout_Label *)\n"),
-	io__write_string("\t&mercury_data__layout__"),
-	output_label(Label),
-	io__write_string(",\n\t"""),
-	io__write_string(Path),
-	io__write_string(""", "),
-	io__write_int(MaxRegInUse),
-	io__write_string(", "),
-	{ llds_out__trace_port_to_string(Port, PortStr) },
-	io__write_string(PortStr),
-	io__write_string(" };\n"),
-	% Global data structures that hold trace call info
-	% are only ever referred to from calls to MR_trace_struct.
-	% We could add a new kind of data_addr that represents these
-	% structures so that we could put that data_addr inside DeclSet,
-	% but that would require significant extra there for no benefit.
-	{ DeclSet = DeclSet0 }.
 
 llds_out__trace_port_to_string(call, "MR_PORT_CALL").
 llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
+llds_out__trace_port_to_string(redo, "MR_PORT_REDO").
 llds_out__trace_port_to_string(fail, "MR_PORT_FAIL").
+llds_out__trace_port_to_string(exception, "MR_PORT_EXCEPTION").
+llds_out__trace_port_to_string(ite_cond, "MR_PORT_COND").
 llds_out__trace_port_to_string(ite_then, "MR_PORT_THEN").
 llds_out__trace_port_to_string(ite_else, "MR_PORT_ELSE").
-llds_out__trace_port_to_string(switch,   "MR_PORT_SWITCH").
-llds_out__trace_port_to_string(disj,     "MR_PORT_DISJ").
+llds_out__trace_port_to_string(neg_enter,   "MR_PORT_NEG_ENTER").
+llds_out__trace_port_to_string(neg_success, "MR_PORT_NEG_SUCCESS").
+llds_out__trace_port_to_string(neg_failure, "MR_PORT_NEG_FAILURE").
+llds_out__trace_port_to_string(disj,   "MR_PORT_DISJ").
+llds_out__trace_port_to_string(switch, "MR_PORT_SWITCH").
 llds_out__trace_port_to_string(nondet_pragma_first, "MR_PORT_PRAGMA_FIRST").
 llds_out__trace_port_to_string(nondet_pragma_later, "MR_PORT_PRAGMA_LATER").
+
+llds_out__trace_port_to_num(call, 0).
+llds_out__trace_port_to_num(exit, 1).
+llds_out__trace_port_to_num(redo, 2).
+llds_out__trace_port_to_num(fail, 3).
+llds_out__trace_port_to_num(exception, 4).
+llds_out__trace_port_to_num(ite_cond, 5).
+llds_out__trace_port_to_num(ite_then, 6).
+llds_out__trace_port_to_num(ite_else, 7).
+llds_out__trace_port_to_num(neg_enter,   8).
+llds_out__trace_port_to_num(neg_success, 9).
+llds_out__trace_port_to_num(neg_failure, 10).
+llds_out__trace_port_to_num(disj,   11).
+llds_out__trace_port_to_num(switch, 12).
+llds_out__trace_port_to_num(nondet_pragma_first, 13).
+llds_out__trace_port_to_num(nondet_pragma_later, 14).
 
 :- pred output_user_c_code_list(list(user_c_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -875,19 +927,41 @@ output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
 	output_exported_c_functions(Fs).
 
-:- pred output_c_label_decl_list(list(label), decl_set, decl_set,
-	io__state, io__state).
-:- mode output_c_label_decl_list(in, in, out, di, uo) is det.
+:- pred output_c_label_decl_list(list(label), set_bbbtree(label),
+		decl_set, decl_set, io__state, io__state).
+:- mode output_c_label_decl_list(in, in, in, out, di, uo) is det.
 
-output_c_label_decl_list([], DeclSet, DeclSet) --> [].
-output_c_label_decl_list([Label | Labels], DeclSet0, DeclSet) -->
-	output_c_label_decl(Label, DeclSet0, DeclSet1),
-	output_c_label_decl_list(Labels, DeclSet1, DeclSet).
+output_c_label_decl_list([], _, DeclSet, DeclSet) --> [].
+output_c_label_decl_list([Label | Labels], StackLayoutLabels,
+		DeclSet0, DeclSet) -->
+	output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet1),
+	output_c_label_decl_list(Labels, StackLayoutLabels, DeclSet1, DeclSet).
 
-:- pred output_c_label_decl(label, decl_set, decl_set, io__state, io__state).
-:- mode output_c_label_decl(in, in, out, di, uo) is det.
+:- pred output_c_label_decl(label, set_bbbtree(label), decl_set, decl_set,
+		io__state, io__state).
+:- mode output_c_label_decl(in, in, in, out, di, uo) is det.
 
-output_c_label_decl(Label, DeclSet0, DeclSet) -->
+output_c_label_decl(Label, StackLayoutLabels, DeclSet0, DeclSet) -->
+	%
+	% Declare the stack layout entry for this label, if needed.
+	%
+	( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+		{ Label = local(_, _) ->
+			DataName = internal_layout(Label)
+		;
+			DataName = proc_layout(Label)
+		},
+		{ ProcLabel = get_proc_label(Label) },
+		{ ModuleName = get_defining_module_name(ProcLabel) },
+		{ DataAddr = data_addr(ModuleName, DataName) },
+		output_data_addr_decls(DataAddr, "", "", 0, _,
+			DeclSet0, DeclSet1)
+	;
+		{ DeclSet1 = DeclSet0 }
+	),
+	%
+	% Declare the label itself.
+	%
 	(
 		{ Label = exported(_) },
 		io__write_string("Define_extern_entry(")
@@ -912,9 +986,19 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
-	{ decl_set_insert(DeclSet0, code_addr(label(Label)), DeclSet) },
+	{ decl_set_insert(DeclSet1, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
+
+:- func get_proc_label(label) = proc_label.
+get_proc_label(exported(ProcLabel)) = ProcLabel.
+get_proc_label(local(ProcLabel)) = ProcLabel.
+get_proc_label(c_local(ProcLabel)) = ProcLabel.
+get_proc_label(local(ProcLabel, _)) = ProcLabel.
+
+:- func get_defining_module_name(proc_label) = module_name.
+get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
+get_defining_module_name(special_proc(ModuleName, _, _, _, _, _)) = ModuleName.
 
 :- pred output_c_label_init_list(list(label), set_bbbtree(label),
 	io__state, io__state).
@@ -1070,7 +1154,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		:-
 	(
 		(
-			Instr = call(_, label(ContLabel), _, _)
+			Instr = call(_, label(ContLabel), _, _, _)
 		;
 			Instr = mkframe(_, label(ContLabel))
 		;
@@ -1174,7 +1258,7 @@ output_instruction_decls(block(_TempR, _TempF, Instrs),
 output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(call(Target, ContLabel, _, _), DeclSet0, DeclSet) -->
+output_instruction_decls(call(Target, ContLabel, _,_,_), DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
@@ -1239,18 +1323,8 @@ output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Comps, _, _, _), DeclSet0, DeclSet) -->
+output_instruction_decls(pragma_c(_, Comps, _, _, _, _), DeclSet0, DeclSet) -->
 	output_pragma_c_component_list_decls(Comps, DeclSet0, DeclSet).
-
-:- pred output_pragma_c_component_list_decls(list(pragma_c_component),
-	decl_set, decl_set, io__state, io__state).
-:- mode output_pragma_c_component_list_decls(in, in, out, di, uo) is det.
-
-output_pragma_c_component_list_decls([], DeclSet, DeclSet) --> [].
-output_pragma_c_component_list_decls([Component | Components],
-		DeclSet0, DeclSet) -->
-	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
-	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
 output_instruction_decls(init_sync_term(Lval, _), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(fork(Child, Parent, _), DeclSet0, DeclSet) -->
@@ -1262,17 +1336,30 @@ output_instruction_decls(join_and_continue(Lval, Label), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(label(Label), "", "", 0, _, DeclSet1, DeclSet).
 
+:- pred output_pragma_c_component_list_decls(list(pragma_c_component),
+	decl_set, decl_set, io__state, io__state).
+:- mode output_pragma_c_component_list_decls(in, in, out, di, uo) is det.
+
+output_pragma_c_component_list_decls([], DeclSet, DeclSet) --> [].
+output_pragma_c_component_list_decls([Component | Components],
+		DeclSet0, DeclSet) -->
+	output_pragma_c_component_decls(Component, DeclSet0, DeclSet1),
+	output_pragma_c_component_list_decls(Components, DeclSet1, DeclSet).
+
 :- pred output_pragma_c_component_decls(pragma_c_component,
 	decl_set, decl_set, io__state, io__state).
 :- mode output_pragma_c_component_decls(in, in, out, di, uo) is det.
 
 output_pragma_c_component_decls(pragma_c_inputs(Inputs), DeclSet0, DeclSet) -->
 	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet).
-output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet) -->
+output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet)
+		-->
 	output_pragma_output_lval_decls(Outputs, DeclSet0, DeclSet).
 output_pragma_c_component_decls(pragma_c_raw_code(_), DeclSet, DeclSet) --> [].
 output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
 		--> [].
+output_pragma_c_component_decls(pragma_c_fail_to(_), DeclSet, DeclSet) --> [].
+output_pragma_c_component_decls(pragma_c_noop, DeclSet, DeclSet) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -1423,7 +1510,7 @@ output_instruction(assign(Lval, Rval), _) -->
 	output_rval_as_type(Rval, Type),
 	io__write_string(";\n").
 
-output_instruction(call(Target, ContLabel, LiveVals, _), ProfInfo) -->
+output_instruction(call(Target, ContLabel, LiveVals, _, _), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	output_call(Target, ContLabel, CallerLabel),
 	output_gc_livevals(LiveVals).
@@ -1560,7 +1647,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
@@ -1630,6 +1717,11 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 	).
 output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
 	io__write_string(C_Code).
+output_pragma_c_component(pragma_c_fail_to(Label)) -->
+	io__write_string("if (!r1) GOTO_LABEL("),
+	output_label(Label),
+	io__write_string(");\n").
+output_pragma_c_component(pragma_c_noop) --> [].
 
 	% Output the local variable declarations at the top of the 
 	% pragma_c_code code.
@@ -1744,6 +1836,8 @@ output_reset_trail_reason(solve) -->
 	io__write_string("MR_solve").
 output_reset_trail_reason(exception) -->
 	io__write_string("MR_exception").
+output_reset_trail_reason(retry) -->
+	io__write_string("MR_retry").
 output_reset_trail_reason(gc) -->
 	io__write_string("MR_gc").
 
@@ -1832,12 +1926,14 @@ output_layout_locn(Locn) -->
 :- pred output_live_value_type(live_value_type, io__state, io__state).
 :- mode output_live_value_type(in, di, uo) is det.
 
-output_live_value_type(succip) --> io__write_string("MR_succip").
-output_live_value_type(curfr) --> io__write_string("MR_curfr").
-output_live_value_type(maxfr) --> io__write_string("MR_maxfr").
-output_live_value_type(redofr) --> io__write_string("MR_redofr").
-output_live_value_type(redoip) --> io__write_string("MR_redoip").
-output_live_value_type(hp) --> io__write_string("MR_hp").
+output_live_value_type(succip) --> io__write_string("type succip").
+output_live_value_type(curfr) --> io__write_string("type curfr").
+output_live_value_type(maxfr) --> io__write_string("type maxfr").
+output_live_value_type(redofr) --> io__write_string("type redofr").
+output_live_value_type(redoip) --> io__write_string("type redoip").
+output_live_value_type(hp) --> io__write_string("type hp").
+output_live_value_type(trail_ptr) --> io__write_string("type trail_ptr").
+output_live_value_type(ticket) --> io__write_string("type ticket").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
 output_live_value_type(var(Var, Name, Type, LldsInst)) --> 
 	io__write_string("var("),
@@ -1915,15 +2011,8 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
 	; { Const = data_addr_const(DataAddr) } ->
-		( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
-			{ N = N0 },
-			{ DeclSet = DeclSet0 }
-		;
-			{ decl_set_insert(DeclSet0, data_addr(DataAddr),
-				DeclSet) },
-			output_data_addr_decls(DataAddr,
-				FirstIndent, LaterIndent, N0, N)
-		)
+		output_data_addr_decls(DataAddr,
+			FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet)
 	; { Const = float_const(FloatVal) } ->
 		%
 		% If floats are boxed, and the static ground terms
@@ -2419,11 +2508,27 @@ output_uniform_cons_args([], _, _) --> [].
 output_uniform_cons_args([Arg | Args], MaybeType, Indent) -->
 	( { Arg = yes(Rval) } ->
 		io__write_string(Indent),
-		( { MaybeType = yes(_) } ->
-			output_static_rval(Rval)
+		globals__io_get_globals(Globals),
+		(
+			%
+			% Don't output code_addr_consts if they are not 
+			% actually const; instead just output `NULL' here in
+			% the static initializer.  The value will be supplied
+			% by the dynamic initialization code.
+			%
+			{ Rval = const(code_addr_const(_)) },
+			{ globals__have_static_code_addresses(Globals,
+				StaticCode) },
+			{ StaticCode = no }
+		->
+			io__write_string("NULL")
 		;
-			llds_out__rval_type_as_arg(Rval, Type),
-			output_rval_as_type(Rval, Type)
+			( { MaybeType = yes(_) } ->
+				output_static_rval(Rval)
+			;
+				llds_out__rval_type_as_arg(Rval, Type),
+				output_rval_as_type(Rval, Type)
+			)
 		),
 		( { Args \= [] } ->
 			io__write_string(",\n"),
@@ -2547,8 +2652,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ decl_set_insert(DeclSet0, code_addr(CodeAddress),
-			DeclSet) },
+		{ decl_set_insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
@@ -2597,7 +2701,8 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 		{ UseMacro = no },
 		{ NeedDecl = yes }
 	).
-need_code_addr_decls(do_trace_redo_fail, yes) --> [].
+need_code_addr_decls(do_trace_redo_fail_shallow, yes) --> [].
+need_code_addr_decls(do_trace_redo_fail_deep, yes) --> [].
 need_code_addr_decls(do_call_closure, yes) --> [].
 need_code_addr_decls(do_call_class_method, yes) --> [].
 need_code_addr_decls(do_det_aditi_call, yes) --> [].
@@ -2641,8 +2746,10 @@ output_code_addr_decls(do_fail) -->
 		io__write_string("do_fail"),
 		io__write_string(");\n")
 	).
-output_code_addr_decls(do_trace_redo_fail) -->
-	io__write_string("Declare_entry(MR_do_trace_redo_fail);\n").
+output_code_addr_decls(do_trace_redo_fail_shallow) -->
+	io__write_string("Declare_entry(MR_do_trace_redo_fail_shallow);\n").
+output_code_addr_decls(do_trace_redo_fail_deep) -->
+	io__write_string("Declare_entry(MR_do_trace_redo_fail_deep);\n").
 output_code_addr_decls(do_call_closure) -->
 	io__write_string("Declare_entry(mercury__do_call_closure);\n").
 output_code_addr_decls(do_call_class_method) -->
@@ -2686,10 +2793,26 @@ output_label_as_code_addr_decls(c_local(_)) --> [].
 output_label_as_code_addr_decls(local(_, _)) --> [].
 
 :- pred output_data_addr_decls(data_addr, string, string, int, int,
-	io__state, io__state).
-:- mode output_data_addr_decls(in, in, in, in, out, di, uo) is det.
+		decl_set, decl_set, io__state, io__state).
+:- mode output_data_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
 
-output_data_addr_decls(data_addr(ModuleName, VarName),
+output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
+		{ N = N0 },
+		{ DeclSet = DeclSet0 }
+	;
+		{ decl_set_insert(DeclSet0, data_addr(DataAddr),
+			DeclSet) },
+		output_data_addr_decls_2(DataAddr,
+			FirstIndent, LaterIndent, N0, N)
+	).
+
+:- pred output_data_addr_decls_2(data_addr, string, string, int, int,
+	io__state, io__state).
+:- mode output_data_addr_decls_2(in, in, in, in, out, di, uo) is det.
+
+output_data_addr_decls_2(data_addr(ModuleName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
@@ -2715,10 +2838,10 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 
 	globals__io_get_globals(Globals),
 
-		% Don't make decls of type_ctor_infos `const' if we
-		% don't have static code addresses.
+		% Don't make decls of type_ctor_infos etc.
+		% `const' if we don't have static code addresses.
 	(
-		{ VarName = type_ctor(info, _, _) },
+		{ data_name_would_include_code_address(VarName, yes) },
 		{ globals__have_static_code_addresses(Globals, no) }
 	->
 		[]
@@ -2866,8 +2989,10 @@ output_goto(do_fail, _) -->
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_fail));\n")
 	).
-output_goto(do_trace_redo_fail, _) -->
-	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail));\n").
+output_goto(do_trace_redo_fail_shallow, _) -->
+	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_shallow));\n").
+output_goto(do_trace_redo_fail_deep, _) -->
+	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_deep));\n").
 output_goto(do_call_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(mercury__do_call_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2972,8 +3097,10 @@ output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(do_fail) -->
 	io__write_string("ENTRY(do_fail)").
-output_code_addr(do_trace_redo_fail) -->
-	io__write_string("ENTRY(MR_do_trace_redo_fail)").
+output_code_addr(do_trace_redo_fail_shallow) -->
+	io__write_string("ENTRY(MR_do_trace_redo_fail_shallow)").
+output_code_addr(do_trace_redo_fail_deep) -->
+	io__write_string("ENTRY(MR_do_trace_redo_fail_deep)").
 output_code_addr(do_call_closure) -->
 	io__write_string("ENTRY(mercury__do_call_closure)").
 output_code_addr(do_call_class_method) -->
@@ -3601,14 +3728,14 @@ output_rval_const(float_const(FloatVal)) -->
 	io__write_string("(Float) "),
 	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_const(multi_string_const(Length, String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),
@@ -3644,7 +3771,7 @@ output_static_rval(unop(_, _)) -->
 output_static_rval(binop(_, _, _)) -->
 	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
 output_static_rval(mkword(Tag, Exprn)) -->
-	io__write_string("(Word *) mkword("),
+	io__write_string("(Word *) MR_mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_static_rval(Exprn),
@@ -3654,7 +3781,7 @@ output_static_rval(lval(_)) -->
 output_static_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	io__write_string("mkword(mktag("),
+	io__write_string("MR_mkword(MR_mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),
@@ -3673,14 +3800,14 @@ output_rval_static_const(int_const(N)) -->
 output_rval_static_const(float_const(FloatVal)) -->
 	io__write_float(FloatVal).
 output_rval_static_const(string_const(String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_static_const(multi_string_const(Length, String)) -->
-	io__write_string("string_const("""),
+	io__write_string("MR_string_const("""),
 	output_c_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),
@@ -3828,46 +3955,20 @@ llds_out__quote_c_string(String, QuotedString) :-
 :- mode output_binary_op(in, di, uo) is det.
 
 output_binary_op(Op) -->
-	{ llds_out__binary_op_to_string(Op, String) },
-	io__write_string(String).
+	( { c_util__binary_infix_op(Op, String) } ->
+		io__write_string(String)
+	;
+		{ error("llds_out.m: invalid binary operator") }
+	).
 
-llds_out__binary_op_to_string(+, "+").
-llds_out__binary_op_to_string(-, "-").
-llds_out__binary_op_to_string(*, "*").
-llds_out__binary_op_to_string(/, "/").
-llds_out__binary_op_to_string(<<, "<<").
-llds_out__binary_op_to_string(>>, ">>").
-llds_out__binary_op_to_string(&, "&").
-llds_out__binary_op_to_string('|', "|").
-llds_out__binary_op_to_string(^, "^").
-llds_out__binary_op_to_string(mod, "%").
-llds_out__binary_op_to_string(eq, "==").
-llds_out__binary_op_to_string(ne, "!=").
-llds_out__binary_op_to_string(and, "&&").
-llds_out__binary_op_to_string(or, "||").
-llds_out__binary_op_to_string(<, "<").
-llds_out__binary_op_to_string(>, ">").
-llds_out__binary_op_to_string(<=, "<=").
-llds_out__binary_op_to_string(>=, ">=").
-	% The following is just for debugging purposes -
-	% string operators are not output as `str_eq', etc.
-llds_out__binary_op_to_string(array_index, "array_index").
-llds_out__binary_op_to_string(str_eq, "str_eq").
-llds_out__binary_op_to_string(str_ne, "str_ne").
-llds_out__binary_op_to_string(str_lt, "str_lt").
-llds_out__binary_op_to_string(str_gt, "str_gt").
-llds_out__binary_op_to_string(str_le, "str_le").
-llds_out__binary_op_to_string(str_ge, "str_ge").
-llds_out__binary_op_to_string(float_eq, "float_eq").
-llds_out__binary_op_to_string(float_ne, "float_ne").
-llds_out__binary_op_to_string(float_lt, "float_lt").
-llds_out__binary_op_to_string(float_gt, "float_gt").
-llds_out__binary_op_to_string(float_le, "float_le").
-llds_out__binary_op_to_string(float_ge, "float_ge").
-llds_out__binary_op_to_string(float_plus, "float_plus").
-llds_out__binary_op_to_string(float_minus, "float_minus").
-llds_out__binary_op_to_string(float_times, "float_times").
-llds_out__binary_op_to_string(float_divide, "float_divide").
+llds_out__binary_op_to_string(Op, Name) :-
+	( c_util__binary_infix_op(Op, Name0) ->
+		Name = Name0
+	;
+		% The following is just for debugging purposes -
+		% string operators are not output as `str_eq', etc.
+		functor(Op, Name, _)
+	).
 
 %-----------------------------------------------------------------------------%
 

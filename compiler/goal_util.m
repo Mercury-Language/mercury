@@ -114,6 +114,10 @@
 :- pred goals_size(list(hlds_goal), int).
 :- mode goals_size(in, out) is det.
 
+	% Return an indication of the size of the list of clauses.
+:- pred clause_list_size(list(clause), int).
+:- mode clause_list_size(in, out) is det.
+
 	% Test whether the goal calls the given procedure.
 :- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
@@ -124,20 +128,42 @@
 	% have not been determined.
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
+:- mode goal_calls_pred_id(in, out) is nondet.
+
+	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
+	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
+	% or indirect sub-goal.
+	%
+:- pred goal_contains_goal(hlds_goal, hlds_goal).
+:- mode goal_contains_goal(in, out) is multi.
+
+	% direct_subgoal(Goal, DirectSubGoal) is true iff DirectSubGoal is
+	% a direct sub-goal of Goal.
+	%
+:- pred direct_subgoal(hlds_goal_expr, hlds_goal).
+:- mode direct_subgoal(in, out) is nondet.
+
+%-----------------------------------------------------------------------------%
 
 	% Convert a switch back into a disjunction. This is needed 
 	% for the magic set transformation.
+	% This aborts if any of the constructors are existentially typed.
 :- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap,
 		inst_table, list(hlds_goal), prog_varset, prog_varset,
-		map(prog_var, type), map(prog_var, type), module_info).
+		map(prog_var, type), map(prog_var, type),
+		module_info, module_info).
 :- mode goal_util__switch_to_disjunction(in, in, in, in, out,
-		in, out, in, out, in) is det.
+		in, out, in, out, in, out) is det.
 
+	% Convert a case into a conjunction by adding a tag test 
+	% (deconstruction unification) to the case goal.
+	% This aborts if the constructor is existentially typed.
 :- pred goal_util__case_to_disjunct(prog_var, cons_id, hlds_goal, instmap,
 		inst_table, instmap_delta, hlds_goal, prog_varset, prog_varset,
-		map(prog_var, type), map(prog_var, type), module_info).
+		map(prog_var, type), map(prog_var, type),
+		module_info, module_info).
 :- mode goal_util__case_to_disjunct(in, in, in, in, in, in, out, in, out,
-		in, out, in) is det.
+		in, out, in, out) is det.
 
 	% Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
 	% since magic.m and rl_gen.m don't handle if-then-elses.
@@ -348,6 +374,11 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,E,F,G), Must, Subn,
 		pragma_c_code(A,B,C,Vars,E,F,G)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
+
+goal_util__name_apart_2(bi_implication(LHS0, RHS0), Must, Subn,
+		bi_implication(LHS, RHS)) :-
+	goal_util__rename_vars_in_goal(LHS0, Must, Subn, LHS),
+	goal_util__rename_vars_in_goal(RHS0, Must, Subn, RHS).
 
 %-----------------------------------------------------------------------------%
 
@@ -574,6 +605,10 @@ goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
+goal_util__goal_vars_2(bi_implication(LHS - _, RHS - _), Set0, Set) :-
+	goal_util__goal_vars_2(LHS, Set0, Set1),
+	goal_util__goal_vars_2(RHS, Set1, Set).
+
 goal_util__goals_goal_vars([], Set, Set).
 goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
@@ -659,6 +694,21 @@ goals_size([Goal | Goals], Size) :-
 	goals_size(Goals, Size2),
 	Size is Size1 + Size2.
 
+clause_list_size(Clauses, GoalSize) :-
+	GetClauseSize =
+		(pred(Clause::in, Size0::in, Size::out) is det :-
+			Clause = clause(_, ClauseGoal, _),
+			goal_size(ClauseGoal, ClauseSize),
+			Size = Size0 + ClauseSize
+		),
+	list__foldl(GetClauseSize, Clauses, 0, GoalSize0),
+	( Clauses = [_] ->
+		GoalSize = GoalSize0
+	;
+		% Add one for the disjunction.
+		GoalSize = GoalSize0 + 1
+	).
+
 :- pred cases_size(list(case), int).
 :- mode cases_size(in, out) is det.
 
@@ -697,8 +747,19 @@ goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
+goal_expr_size(bi_implication(LHS, RHS), Size) :-
+	goal_size(LHS, Size1),
+	goal_size(RHS, Size2),
+	Size is Size1 + Size2 + 1.
 
 %-----------------------------------------------------------------------------%
+%
+% We could implement goal_calls as
+%	goal_calls(Goal, proc(PredId, ProcId)) :-
+%		goal_contains_subgoal(Goal, call(PredId, ProcId, _, _, _, _)).
+% but the following is more efficient in the (in, in) mode
+% since it avoids creating any choice points.
+%
 
 goal_calls(GoalExpr - _, PredProcId) :-
 	goal_expr_calls(GoalExpr, PredProcId).
@@ -750,12 +811,20 @@ goal_expr_calls(some(_, _, Goal), PredProcId) :-
 goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
 %-----------------------------------------------------------------------------%
+%
+% We could implement goal_calls_pred_id as
+%	goal_calls_pred_id(Goal, PredId) :-
+%		goal_contains_subgoal(Goal, call(PredId, _, _, _, _, _)).
+% but the following is more efficient in the (in, in) mode
+% since it avoids creating any choice points.
+%
 
 goal_calls_pred_id(GoalExpr - _, PredId) :-
 	goal_expr_calls_pred_id(GoalExpr, PredId).
 
 :- pred goals_calls_pred_id(list(hlds_goal), pred_id).
 :- mode goals_calls_pred_id(in, in) is semidet.
+:- mode goals_calls_pred_id(in, out) is nondet.
 
 goals_calls_pred_id([Goal | Goals], PredId) :-
 	(
@@ -766,6 +835,7 @@ goals_calls_pred_id([Goal | Goals], PredId) :-
 
 :- pred cases_calls_pred_id(list(case), pred_id).
 :- mode cases_calls_pred_id(in, in) is semidet.
+:- mode cases_calls_pred_id(in, out) is nondet.
 
 cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
 	(
@@ -776,6 +846,7 @@ cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
 
 :- pred goal_expr_calls_pred_id(hlds_goal_expr, pred_id).
 :- mode goal_expr_calls_pred_id(in, in) is semidet.
+:- mode goal_expr_calls_pred_id(in, out) is nondet.
 
 goal_expr_calls_pred_id(conj(Goals), PredId) :-
 	goals_calls_pred_id(Goals, PredId).
@@ -799,20 +870,51 @@ goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
 
+	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
+	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
+	% or indirect sub-goal.
+	%
+goal_contains_goal(Goal, Goal).
+goal_contains_goal(Goal - _, SubGoal) :-
+	direct_subgoal(Goal, DirectSubGoal),
+	goal_contains_goal(DirectSubGoal, SubGoal).
+
+	% direct_subgoal(Goal, SubGoal) is true iff SubGoal is
+	% a direct sub-goal of Goal.
+	%
+direct_subgoal(some(_, _, Goal), Goal).
+direct_subgoal(not(Goal), Goal).
+direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
+	( Goal = If
+	; Goal = Then
+	; Goal = Else
+	).
+direct_subgoal(conj(ConjList), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(par_conj(ConjList, _), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(disj(DisjList, _), Goal) :-
+	list__member(Goal, DisjList).
+direct_subgoal(switch(_, _, CaseList, _), Goal) :-
+	list__member(Case, CaseList),
+	Case = case(_, _, Goal).
+
+%-----------------------------------------------------------------------------%
+
 goal_util__switch_to_disjunction(_, [], _, _, [], VarSet, VarSet, 
-		VarTypes, VarTypes, _).
+		VarTypes, VarTypes, ModuleInfo, ModuleInfo).
 goal_util__switch_to_disjunction(Var, [case(ConsId, IMDelta, Goal0) | Cases],
 		InstMap, InstTable, [Goal | Goals], VarSet0, VarSet,
-		VarTypes0, VarTypes, ModuleInfo) :-
+		VarTypes0, VarTypes, ModuleInfo0, ModuleInfo) :-
 	goal_util__case_to_disjunct(Var, ConsId, Goal0, InstMap, InstTable,
 		IMDelta, Goal, VarSet0, VarSet1, VarTypes0, VarTypes1,
-		ModuleInfo),
+		ModuleInfo0, ModuleInfo1),
 	goal_util__switch_to_disjunction(Var, Cases, InstMap, InstTable, Goals,
-		VarSet1, VarSet, VarTypes1, VarTypes, ModuleInfo).
+		VarSet1, VarSet, VarTypes1, VarTypes, ModuleInfo1, ModuleInfo).
 
 goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
 		InstMapDelta, Disjunct, VarSet0, VarSet, VarTypes0, VarTypes,
-		ModuleInfo) :-
+		ModuleInfo, ModuleInfo) :-
 	cons_id_arity(ConsId, ConsArity),
 	varset__new_vars(VarSet0, ConsArity, ArgVars, VarSet),
 	map__lookup(VarTypes0, Var, VarType),
@@ -841,7 +943,9 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, InstTable,
 	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
 		UniMode, Unification, UnifyContext),
 	set__singleton_set(NonLocals, Var),
-	goal_info_init(NonLocals, InstMapDelta, semidet, ExtraGoalInfo),
+	% recompute_instmap_delta will fix this up.
+	instmap_delta_init_reachable(ExtraInstMapDelta),
+	goal_info_init(NonLocals, ExtraInstMapDelta, semidet, ExtraGoalInfo),
 
 	% Conjoin the test and the rest of the case.
 	goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -1023,5 +1127,4 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
 	not set__empty(Intersection).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -117,8 +117,9 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
 		Queue2, Queue3, Needed2, Needed3),
+	module_info_classes(ModuleInfo, Classes),
 	module_info_instances(ModuleInfo, Instances),
-	dead_proc_elim__initialize_class_methods(Instances,
+	dead_proc_elim__initialize_class_methods(Classes, Instances,
 		Queue3, Queue, Needed3, Needed).
 
 	% Add all normally exported procedures within the listed predicates
@@ -206,41 +207,32 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
 		Queue1, Queue, Needed1, Needed).
 
-:- pred dead_proc_elim__initialize_class_methods(instance_table, 
+:- pred dead_proc_elim__initialize_class_methods(class_table, instance_table, 
 	entity_queue, entity_queue, needed_map, needed_map).
-:- mode dead_proc_elim__initialize_class_methods(in, in, out, in, out) is det.
+:- mode dead_proc_elim__initialize_class_methods(in, in,
+	in, out, in, out) is det.
 
-dead_proc_elim__initialize_class_methods(Instances, Queue0, Queue, 
+dead_proc_elim__initialize_class_methods(Classes, Instances, Queue0, Queue, 
 		Needed0, Needed) :-
 	map__values(Instances, InstanceDefns0),
 	list__condense(InstanceDefns0, InstanceDefns),
-	list__foldl2(get_instance_pred_procs, InstanceDefns, Queue0, Queue,
-		Needed0, Needed).
+	list__foldl2(get_instance_pred_procs, InstanceDefns, Queue0, Queue1,
+		Needed0, Needed1),
+	map__values(Classes, ClassDefns),
+	list__foldl2(get_class_pred_procs, ClassDefns, Queue1, Queue,
+		Needed1, Needed).
 
 :- pred get_instance_pred_procs(hlds_instance_defn, entity_queue, entity_queue,
 	needed_map, needed_map).
 :- mode get_instance_pred_procs(in, in, out, in, out) is det.
 
 get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
-	Instance = hlds_instance_defn(ImportStatus, _, _, _, _, 
-			PredProcIds, _, _),
-	(
-			% We only need the instance declarations which were
-			% made in this module.
-		status_defined_in_this_module(ImportStatus, yes)
-	->
-		get_instance_pred_procs2(PredProcIds, Queue0, Queue, 
-			Needed0, Needed)
-	;
-		Queue = Queue0,
-		Needed = Needed0
-	).
+	Instance = hlds_instance_defn(_, _, _, _, _, PredProcIds, _, _),
 
-:- pred get_instance_pred_procs2(maybe(list(hlds_class_proc)), 
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode get_instance_pred_procs2(in, in, out, in, out) is det.
-
-get_instance_pred_procs2(PredProcIds, Queue0, Queue, Needed0, Needed) :-
+	%
+	% We need to keep the instance methods for all instances
+	% for optimization of method lookups.
+	%
 	(
 			% This should never happen
 		PredProcIds = no,
@@ -248,16 +240,33 @@ get_instance_pred_procs2(PredProcIds, Queue0, Queue, Needed0, Needed) :-
 		Needed = Needed0
 	;
 		PredProcIds = yes(Ids),
-		AddHldsClassProc = lambda(
-			[PredProc::in, Q0::in, Q::out, N0::in, N::out] is det,
-			(
-				PredProc = hlds_class_proc(PredId, ProcId),
-				queue__put(Q0, proc(PredId, ProcId), Q),
-				map__set(N0, proc(PredId, ProcId), no, N)
-			)),
-		list__foldl2(AddHldsClassProc, Ids, Queue0, Queue, 
+		get_class_interface_pred_procs(Ids, Queue0, Queue,
 			Needed0, Needed)
 	).
+
+:- pred get_class_pred_procs(hlds_class_defn, entity_queue, entity_queue,
+		needed_map, needed_map).
+:- mode get_class_pred_procs(in, in, out, in, out) is det.
+
+get_class_pred_procs(Class, Queue0, Queue, Needed0, Needed) :-
+	Class = hlds_class_defn(_, _, _, _, Methods, _, _),
+	get_class_interface_pred_procs(Methods,
+		Queue0, Queue, Needed0, Needed).
+
+:- pred get_class_interface_pred_procs(list(hlds_class_proc), 
+	entity_queue, entity_queue, needed_map, needed_map).
+:- mode get_class_interface_pred_procs(in, in, out, in, out) is det.
+
+get_class_interface_pred_procs(Ids, Queue0, Queue, Needed0, Needed) :-
+	AddHldsClassProc = lambda(
+		[PredProc::in, Q0::in, Q::out, N0::in, N::out] is det,
+		(
+			PredProc = hlds_class_proc(PredId, ProcId),
+			queue__put(Q0, proc(PredId, ProcId), Q),
+			map__set(N0, proc(PredId, ProcId), no, N)
+		)),
+	list__foldl2(AddHldsClassProc, Ids, Queue0, Queue, 
+		Needed0, Needed).
 
 %-----------------------------------------------------------------------------%
 
@@ -485,6 +494,9 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 		Queue = Queue0,
 		Needed = Needed0
 	).
+dead_proc_elim__examine_expr(bi_implication(_,_), _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("detect_cse_in_goal_2: unexpected bi_implication").
 
 %-----------------------------------------------------------------------------%
 
@@ -566,7 +578,8 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 			)),
 		list__foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo1),
-		pred_info_set_import_status(PredInfo1, imported, PredInfo),
+		pred_info_set_import_status(PredInfo1, imported(interface),
+				PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose,
 			State0, State1),
@@ -667,8 +680,14 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	module_info_get_pragma_exported_procs(ModuleInfo0, PragmaExports),
 	dead_proc_elim__initialize_pragma_exports(PragmaExports,
 		Queue0, _, Needed0, Needed1),
+	%
+	% The goals for the class method procs need to be
+	% examined because they contain calls to the actual method
+	% implementations.
+	%
 	module_info_instances(ModuleInfo0, Instances),
-	dead_proc_elim__initialize_class_methods(Instances,
+	module_info_classes(ModuleInfo0, Classes),
+	dead_proc_elim__initialize_class_methods(Classes, Instances,
 		Queue0, _, Needed1, Needed),
 	map__keys(Needed, Entities),
 	queue__init(Queue1),
@@ -759,6 +778,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% variables from inst `free' to inst `any'.
 			string__remove_suffix(PredName, "_init_any", _),
 			PredArity = 1
+		;
+			% Don't eliminate the clauses for assertions.
+			pred_info_get_goal_type(PredInfo, assertion)
 		)
 	->
 		set__insert(NeededNames0, qualified(PredModule, PredName), 
@@ -828,6 +850,9 @@ pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
 pre_modecheck_examine_goal(pragma_c_code(_, _, _, _, _, _, _) - _) --> [].
 pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
 	pre_modecheck_examine_unify_rhs(Rhs).
+pre_modecheck_examine_goal(bi_implication(_, _) - _) -->
+	% these should have been expanded out by now
+	{ error("pre_modecheck_examine_goal: unexpected bi_implication") }.
 
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in, 
 		dead_pred_info::in, dead_pred_info::out) is det.

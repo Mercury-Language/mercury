@@ -63,7 +63,7 @@ unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
 		unify_gen__generate_construction(Var, ConsId,
 			Args, Modes, IMD, AditiInfo, Code)
 	;
-		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
+		{ Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail) },
 		( { CodeModel = model_det } ->
 			unify_gen__generate_det_deconstruction(Var, ConsId,
 				Args, Modes, IMD, Code)

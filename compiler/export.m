@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,22 +58,15 @@
 :- pred convert_type_from_mercury(string, type, string).
 :- mode convert_type_from_mercury(in, in, out) is det.
 
-	% Certain types, namely io__state and store__store(S),
-	% are just dummy types used to ensure logical semantics;
-	% there is no need to actually pass them, and so when
-	% importing or exporting procedures to/from C, we don't
-	% include arguments with these types.
-:- pred export__exclude_argument_type(type).
-:- mode export__exclude_argument_type(in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds_out, modules.
-:- import_module term, varset.
+:- import_module type_util.
 
+:- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.
 :- import_module list, bool.
 
@@ -92,7 +85,7 @@ export__get_c_export_decls(HLDS, C_ExportDecls) :-
 export__get_c_export_decls_2(_Preds, [], []).
 export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
-	get_export_info(Preds, PredId, ProcId, C_RetType,
+	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
@@ -110,6 +103,8 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
+	%
+	% Declare_entry(<label of called proc>); /* or Declare_static */
 	%
 	% #if SEMIDET
 	%   bool
@@ -138,15 +133,14 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%	restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
-	%		/* by the C function call call_engine().          */
+	%		/* by the C function call MR_call_engine().       */
 	%	save_transient_registers();
-	%	{
-	%	Declare_entry(<label of called proc>);
-	%	call_engine(ENTRY(<label of called proc>);
-	%	}
+	%
+	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
+	%
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
-	%		/* call_engine()				  */
+	%		/* MR_call_engine()				  */
 	%	restore_transient_registers();
 	% #if SEMIDET
 	%	if (!r1) {
@@ -171,7 +165,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
-	get_export_info(Preds, PredId, ProcId,
+	get_export_info(Preds, PredId, ProcId, Exported,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
@@ -184,7 +178,15 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
+	( Exported = yes ->
+		DeclareString = "Declare_entry"
+	;
+		DeclareString = "Declare_static"
+	),
+
 	string__append_list([	"\n",
+				DeclareString, "(", ProcLabelString, ");\n",
+				"\n",
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if NUM_REAL_REGS > 0\n",
@@ -196,12 +198,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
-				"\t{\n\tDeclare_entry(",
-				ProcLabelString,
-				");\n",
-				"\tcall_engine(ENTRY(",
-				ProcLabelString,
-				"));\n\t}\n",
+				"\t(void) MR_call_engine(ENTRY(",
+					ProcLabelString, "), FALSE);\n",
 				"\trestore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
@@ -220,14 +218,19 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	%	Figure out the C return type, the actions on success
 	%	and failure, and the argument locations/modes/types
 	%	for a given procedure.
-:- pred get_export_info(pred_table, pred_id, proc_id,
+:- pred get_export_info(pred_table, pred_id, proc_id, bool,
 			string, string, string, string,
 			assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, out, out, out, out, out) is det.
+:- mode get_export_info(in, in, in, out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, C_RetType,
+get_export_info(Preds, PredId, ProcId, Exported, C_RetType,
 		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
+	( procedure_is_exported(PredInfo, ProcId) ->
+		Exported = yes
+	;
+		Exported = no
+	),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
@@ -245,7 +248,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
 				arg_info(RetArgLoc, RetArgMode) - RetType),
 			RetArgMode = top_out,
-			\+ export__exclude_argument_type(RetType)
+			\+ type_util__is_dummy_argument_type(RetType)
 		->
 			export__type_to_type_string(RetType, C_RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
@@ -299,7 +302,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 :- pred export__include_arg(pair(arg_info, type)::in) is semidet.
 export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	Mode \= top_unused,
-	\+ export__exclude_argument_type(Type).
+	\+ type_util__is_dummy_argument_type(Type).
 
 	% get_argument_declarations(Args, NameThem, DeclString):
 	% build a string to declare the argument types (and if
@@ -478,25 +481,6 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	;
 		ConvertedRval = Rval
 	).
-
-% Certain types, namely io__state and store__store(S),
-% are just dummy types used to ensure logical semantics;
-% there is no need to actually pass them, and so when
-% importing or exporting procedures to/from C, we don't
-% include arguments with these types.
-
-export__exclude_argument_type(Type) :-
-	Type = term__functor(term__atom(":"), [
-			term__functor(term__atom(ModuleName), [], _),
-			term__functor(term__atom(TypeName), TypeArgs, _)
-		], _),
-	list__length(TypeArgs, TypeArity),
-	export__exclude_argument_type_2(ModuleName, TypeName, TypeArity).
-
-:- pred export__exclude_argument_type_2(string::in, string::in, arity::in)
-	is semidet.
-export__exclude_argument_type_2("io", "state", 0).	% io:state/0
-export__exclude_argument_type_2("store", "store", 1).	% store:store/1.
 
 %-----------------------------------------------------------------------------%
 

@@ -450,7 +450,7 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 	).
 
 mercury_output_item(assertion(Goal, VarSet), _, _) -->
-	io__write_string(":- assertion "),
+	io__write_string(":- promise "),
 	{ Indent = 1 },
 	mercury_output_newline(Indent),
 	mercury_output_goal(Goal, VarSet, Indent),
@@ -1229,14 +1229,18 @@ mercury_output_cons_id(type_ctor_info_const(Module, Type, Arity), _) -->
 	{ string__int_to_string(Arity, ArityString) },
 	io__write_strings(["<type_ctor_info for ",
 		ModuleString, ":", Type, "/", ArityString, ">"]).
-mercury_output_cons_id(
-		base_typeclass_info_const(Module, Class, _, InstanceString),
-		_) -->
+mercury_output_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
+		InstanceString), _) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	io__write_string("<base_typeclass_info for "),
 	io__write(Class),
-	io__write_strings([" from module ", ModuleString, ", instance number",
-		InstanceString]).
+	( { ModuleString \= "some bogus module name" } ->
+		io__write_strings([" from module ", ModuleString])
+	;
+		[]
+	),
+	io__format(", instance number %d (%s)>",
+		[i(InstanceNum), s(InstanceString)]).
 mercury_output_cons_id(tabling_pointer_const(_, _), _) -->
 	io__write_string("<tabling pointer>").
 
@@ -1682,7 +1686,7 @@ type_list_to_string_2(_, [], "").
 type_list_to_string_2(VarSet, [T|Ts], String) :-
 	mercury_type_to_string(VarSet, T, String0),
 	type_list_to_string_2(VarSet, Ts, String1),
-	string__append_list([String0, ", ", String1], String).
+	string__append_list([", ", String0, String1], String).
 
 	% XXX this should probably be a little cleverer, like
 	% mercury_output_term. 
@@ -2988,7 +2992,6 @@ mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("aditi_bottom_up").
 mercury_unary_prefix_op("aditi_top_down").
-mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("end_module").
@@ -3009,6 +3012,7 @@ mercury_unary_prefix_op("not").
 mercury_unary_prefix_op("once").
 mercury_unary_prefix_op("pragma").
 mercury_unary_prefix_op("pred").
+mercury_unary_prefix_op("promise").
 mercury_unary_prefix_op("pure").
 mercury_unary_prefix_op("rule").	/* NU-Prolog */
 mercury_unary_prefix_op("semipure").

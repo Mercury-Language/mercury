@@ -303,6 +303,10 @@ traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
 		Info = Info3
 	).
 
+traverse_goal_2(bi_implication(_, _), _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("traverse_goal_2traverse_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 	% Traverse_conj should be invoked with a reversed list of goals.

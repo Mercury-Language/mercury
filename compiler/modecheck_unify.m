@@ -486,18 +486,21 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	mode_info_get_how_to_check(ModeInfo0, HowToCheckGoal),
 
 	%
-	% fully module qualify all cons_ids
+	% Fully module qualify all cons_ids
 	% (except for builtins such as ints and characters).
 	%
 	(
-		ConsId0 = cons(Name, OrigArity),
+		ConsId0 = cons(Name0, OrigArity),
 		type_to_type_id(TypeOfX, TypeId, _),
 		TypeId = qualified(TypeModule, _) - _
 	->
-		unqualify_name(Name, UnqualName),
-		ConsId = cons(qualified(TypeModule, UnqualName), OrigArity)
+		unqualify_name(Name0, UnqualName),
+		Name = qualified(TypeModule, UnqualName),
+		ConsId = cons(Name, OrigArity),
+		fix_type_info_cons_id_arity(ConsId, ArgVars0, InstConsId)
 	;
-		ConsId = ConsId0
+		ConsId = ConsId0,
+		InstConsId = ConsId
 	),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap__lookup_var(InstMap0, X, InstOfX),
@@ -507,7 +510,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	mode_info_get_instmap(ModeInfo1, InstMap1),
 	mode_info_var_is_live(ModeInfo1, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo1, LiveArgs),
-	InstOfY = bound(unique, [functor(ConsId, InstArgs)]),
+	InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
 	(
 		% The occur check: X = f(X) is considered a mode error
 		% unless X is ground.  (Actually it wouldn't be that
@@ -520,7 +523,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	->
 		set__list_to_set([X], WaitingVars),
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, ConsId, ArgVars0,
+			mode_error_unify_var_functor(X, InstConsId, ArgVars0,
 							InstOfX, InstArgs),
 			ModeInfo1, ModeInfo2
 		),
@@ -545,7 +548,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		ArgVars = ArgVars0,
 		ExtraGoals = no_extra_goals
 	;
-		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
+		abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
 			InstArgs, LiveArgs, real_unify, InstTable1,
 			ModuleInfo1, InstMap1,
 			UnifyInst, Det1, InstTable2, ModuleInfo2, InstMap2),
@@ -580,10 +583,11 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			inst_expand(InstMap1, InstTable4, ModuleInfo4,
 				InstOfX, InstOfX2),
 			list__length(ArgVars0, Arity),
-			get_arg_insts(InstOfX2, ConsId, Arity, InitialInstsX),
+			get_arg_insts(InstOfX2, InstConsId,
+				Arity, InitialInstsX),
 			inst_expand(InstMap2, InstTable4, ModuleInfo4,
 				Inst, Inst2),
-			get_arg_insts(Inst2, ConsId, Arity, FinalInstsX)
+			get_arg_insts(Inst2, InstConsId, Arity, FinalInstsX)
 		->
 			assoc_list__from_corresponding_lists(InitialInstsX,
 				FinalInstsX, ModeOfXArgs)
@@ -610,7 +614,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	;
 		set__list_to_set([X | ArgVars0], WaitingVars), % conservative
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, ConsId, ArgVars0,
+			mode_error_unify_var_functor(X, InstConsId, ArgVars0,
 							InstOfX, InstArgs),
 			ModeInfo1, ModeInfo2
 		),

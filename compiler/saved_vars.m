@@ -32,6 +32,10 @@
 		module_info, module_info, io__state, io__state).
 :- mode saved_vars_proc(in, in, in, out, in, out, di, uo) is det.
 
+:- pred saved_vars_proc_no_io(pred_id, proc_id, proc_info, proc_info,
+		module_info, module_info).
+:- mode saved_vars_proc_no_io(in, in, in, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -39,7 +43,7 @@
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
 :- import_module mode_util, prog_data, hlds_data, instmap, inst_match.
 :- import_module inst_table.
-:- import_module bool, list, set, map, std_util, term, varset.
+:- import_module bool, list, set, map, std_util, require, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -47,35 +51,40 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
 	write_proc_progress_message("% Minimizing saved vars in ",
 		PredId, ProcId, ModuleInfo0),
-	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_varset(ProcInfo0, Varset0) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ proc_info_inst_table(ProcInfo0, InstTable0) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	{ init_slot_info(Varset0, VarTypes0, InstTable0, InstMap0, ModuleInfo0,
-		SlotInfo0) },
+	{ saved_vars_proc_no_io(PredId, ProcId, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo) }.
 
-	{ saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo) },
+saved_vars_proc_no_io(_PredId, _ProcId, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_varset(ProcInfo0, Varset0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_inst_table(ProcInfo0, InstTable0),
+	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
+	init_slot_info(Varset0, VarTypes0, InstTable0, InstMap0, ModuleInfo0,
+		SlotInfo0),
 
-	{ final_slot_info(Varset1, VarTypes1, SlotInfo) },
-	{ proc_info_headvars(ProcInfo0, HeadVars) },
+	saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo),
+
+	final_slot_info(Varset1, VarTypes1, SlotInfo),
+	proc_info_headvars(ProcInfo0, HeadVars),
 
 	% hlds_out__write_goal(Goal1, InstTable0,
 	%	ModuleInfo0, Varset1, no, 0, "\n"),
 
 	% recompute the nonlocals for each goal
-	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
-		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
-	{ proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives) },
-	{ recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
-		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
+	implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
+		VarTypes1, Goal2, Varset, VarTypes, _Warnings),
+	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+	recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
+		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo),
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, "\n"),
 
-	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
-	{ proc_info_set_varset(ProcInfo1, Varset, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
-	{ proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo) }.
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
+	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -142,6 +151,10 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
+	;
+		GoalExpr0 = bi_implication(_, _),
+		% these should have been expanded out by now
+		error("saved_vars_in_goal: unexpected bi_implication")
 	),
 	!.
 
@@ -398,6 +411,10 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, PlaceAtEnd, SlotInfo0,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				PlaceAtEnd, SlotInfo3, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
+		;
+			Goal0Expr = bi_implication(_, _),
+			% these should have been expanded out by now
+			error("saved_vars_delay_goal: unexpected bi_implication")
 		)
 	;
 		saved_vars_delay_goal(Goals0, Construct, Var, PlaceAtEnd,
