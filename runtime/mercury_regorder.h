@@ -152,11 +152,6 @@
 #define MR_saved_cut_stack(save_area)	LVALUE_CAST(			      \
 					struct MR_CutStackFrameStruct *,      \
 					save_area[45])
-#define MR_saved_r1(save_area)		LVALUE_CAST(MR_Word, save_area[3])
-#define MR_saved_r2(save_area)		LVALUE_CAST(MR_Word, save_area[4])
-#define MR_saved_r3(save_area)		LVALUE_CAST(MR_Word, save_area[5])
-#define MR_saved_r4(save_area)		LVALUE_CAST(MR_Word, save_area[7])
-#define MR_saved_r5(save_area)		LVALUE_CAST(MR_Word, save_area[8])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	3, \
@@ -313,11 +308,6 @@
 #define MR_saved_cut_next(save_area)	LVALUE_CAST(			      \
 					struct MR_CutStackFrameStruct *,      \
 					save_area[44])
-#define MR_saved_r1(save_area)		LVALUE_CAST(MR_Word, save_area[2])
-#define MR_saved_r2(save_area)		LVALUE_CAST(MR_Word, save_area[3])
-#define MR_saved_r3(save_area)		LVALUE_CAST(MR_Word, save_area[4])
-#define MR_saved_r4(save_area)		LVALUE_CAST(MR_Word, save_area[6])
-#define MR_saved_r5(save_area)		LVALUE_CAST(MR_Word, save_area[7])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \

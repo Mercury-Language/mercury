@@ -80,13 +80,13 @@ void
 MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
 {
 	fprintf(fp, "r1 = %d (%x)\n",
-			MR_saved_r1(saved_regs), MR_saved_r1(saved_regs));
+			saved_reg(saved_regs, 1), saved_reg(saved_regs, 1));
 	fprintf(fp, "r2 = %d (%x)\n",
-			MR_saved_r2(saved_regs), MR_saved_r2(saved_regs));
+			saved_reg(saved_regs, 2), saved_reg(saved_regs, 2));
 	fprintf(fp, "r3 = %d (%x)\n",
-			MR_saved_r3(saved_regs), MR_saved_r3(saved_regs));
+			saved_reg(saved_regs, 3), saved_reg(saved_regs, 3));
 	fprintf(fp, "r4 = %d (%x)\n",
-			MR_saved_r4(saved_regs), MR_saved_r4(saved_regs));
+			saved_reg(saved_regs, 4), saved_reg(saved_regs, 4));
 	fprintf(fp, "r5 = %d (%x)\n",
-			MR_saved_r5(saved_regs), MR_saved_r5(saved_regs));
+			saved_reg(saved_regs, 5), saved_reg(saved_regs, 5));
 }

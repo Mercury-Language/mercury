@@ -7,8 +7,8 @@
 %   procedures.
 %
 % Note: Don't try to print the call stack from within solutions in the input
-% script, since the results will depend on std_util.m was compiled with
-% debugging or not.
+% script, since the results will depend on whether std_util.m was compiled
+% with debugging or not.
 
 :- module retry.
 

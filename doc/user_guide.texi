@@ -1798,6 +1798,9 @@ and @samp{-N} or @samp{--nostrict} specify
 the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
+@c The documentation of fail is commented out, because the implementation does
+@c not yet do this right thing when the procedure call we want to get to the
+@c FAIL port of is inside a commit.
 @c @sp 1
 @c @item fail [-NSans] [@var{num}]
 @c Continues execution until it reaches a FAIL or EXCP port

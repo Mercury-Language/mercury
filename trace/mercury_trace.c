@@ -700,7 +700,8 @@ report_problem:
 ** This function figures out the state of the stacks (i.e. the values of sp,
 ** curfr and maxfr) just after entry to the procedure specified by the given
 ** ancestor level, and returns the proc layout for the specified procedure.
-** It also
+** It also finds the list of call table tips that must be reset on a retry
+** of that ancestor.
 **
 ** If it finds that it cannot do its job, it returns NULL and sets *problem
 ** to point to a string giving the reason for its failure.
