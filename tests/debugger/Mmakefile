@@ -288,7 +288,7 @@ interactive.out.orig: interactive $(INTERACTIVE_INP) $(interactive.ints)
 	$(MDB) ./interactive < $(INTERACTIVE_INP) > interactive.out.orig 2>&1
 
 # We pipe the output through sed to avoid differences for `--use-subdirs',
-# and to remove some spurious warnings that `ld' issues.
+# and to remove some spurious warnings that `gcc' and `ld' issue.
 # XXX we should fix the spurious warnings about unresolved symbols.
 # (The spurious warnings about exception handling are due to a flaw
 # in the Digital Unix 3.2 linker, so that one is DEC's problem.)
@@ -296,8 +296,34 @@ interactive.out: interactive.out.orig
 	cat interactive.out.orig | \
 		sed \
 		    -e '/mdb> mmc_options --use-subdirs/d' \
+		    -e '/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,$$/N' \
+		    -e 's/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,.//' \
+		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,$$/N' \
+		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,.//' \
+		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
+		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
+		    -e '/                 from query.c:[0-9]*:$$/N' \
+		    -e 's/                 from query.c:[0-9]*:.//' \
+		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/unistd.h:[0-9]*: warning: .cuserid. redefined$$/N' \
+		    -e 's/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/unistd.h:[0-9]*: warning: .cuserid. redefined.//' \
+		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdio.h:[0-9]*: warning: this is the location of the previous definition$$/N' \
+		    -e 's/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdio.h:[0-9]*: warning: this is the location of the previous definition.//' \
+		    -e '/In file included from \/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdarg.h:[0-9]*,$$/N' \
+		    -e 's/In file included from \/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdarg.h:[0-9]*,.//' \
+		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,$$/N' \
+		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,.//' \
+		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
+		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
+		    -e '/                 from query.c:[0-9]*:$$/N' \
+		    -e 's/                 from query.c:[0-9]*:.//' \
+		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/va-alpha.h:[0-9]*: warning: redefinition of .va_list.$$/N' \
+		    -e 's/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/va-alpha.h:[0-9]*: warning: redefinition of .va_list..//' \
+		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/va_list.h:[0-9]*: warning: .va_list. previously declared here$$/N' \
+		    -e 's/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/va_list.h:[0-9]*: warning: .va_list. previously declared here.//' \
 		    -e '/\/usr\/bin\/ld:$$/N' \
 		    -e 's/\/usr\/bin\/ld:.//' \
+		    -e '/\/bin\/ld:$$/N' \
+		    -e 's/\/bin\/ld:.//' \
 		    -e '/Warning: Linking some objects which contain exception information sections$$/N' \
 		    -e 's/Warning: Linking some objects which contain exception information sections.//' \
 		    -e '/	and some which do not. This may cause fatal runtime exception handling$$/N' \
