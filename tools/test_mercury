@@ -155,7 +155,7 @@ esac
 cd tests || { false; exit 1; }
 for grade in $GRADES
 do
-	runtests -f "-O5" -g "$grade" $PARALLEL || status=1
+	./runtests -f "-O5" -g "$grade" $PARALLEL || status=1
 	case $grade in
 		*.prof)	cd benchmarks
 			./poly
