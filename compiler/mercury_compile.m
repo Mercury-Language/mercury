@@ -1381,14 +1381,15 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS2,
 		Verbose, Stats),
 
+	export__produce_header_file(HLDS1, ModuleName),
+
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
 		mercury_compile__c_to_obj(ModuleName, NumChunks, CompileOK),
 		{ bool__not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
-	),
-	export__produce_header_file(HLDS1, ModuleName).
+	).
 
 	% Split the code up into bite-size chunks for the C compiler.
 
