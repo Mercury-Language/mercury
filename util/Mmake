@@ -15,7 +15,7 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CC	= ../scripts/mgnuc
+MGNUC	= ../scripts/mgnuc
 CFLAGS	= -I ../runtime
 
 #-----------------------------------------------------------------------------#
@@ -23,7 +23,7 @@ CFLAGS	= -I ../runtime
 all: mkinit
 
 mkinit:	mkinit.c
-	$(CC) $(CFLAGS) -o mkinit mkinit.c
+	$(MGNUC) -s $(GRADE) $(CFLAGS) -o mkinit mkinit.c
 
 #-----------------------------------------------------------------------------#
 
