@@ -362,14 +362,12 @@ getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 :- mode getopt__get_short_option_arg(in, out, in, out) is det.
 
 getopt__get_short_option_arg(Opts, Arg, Args0, Args) :-
-	( Opts = [] ->
-		( Args0 = [ArgPrime | ArgsPrime] ->
-			Arg = ArgPrime,
-			Args = ArgsPrime
-		;
-			string__from_char_list([], Arg),
-			Args = Args0
-		)
+	(
+		Opts = [],
+		Args0 = [ArgPrime | ArgsPrime]
+	->
+		Arg = ArgPrime,
+		Args = ArgsPrime
 	;
 		string__from_char_list(Opts, Arg),
 		Args = Args0
