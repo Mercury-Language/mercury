@@ -1018,33 +1018,27 @@ check_for_ambiguity(IsClassMethod, NeedQualifier, UsedFileTimestamp,
 	recompilation_check_info::out) is det.
 
 check_for_simple_item_ambiguity(ItemType, Name, NeedQualifier, SymName, Arity,
-		ModuleQualifier, MatchingModuleName) -->
+		OldModuleQualifier, OldMatchingModuleName) -->
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
 		{ NeedQualifier = must_be_qualified },
-		{ ModuleQualifier = unqualified("") }
+		{ OldModuleQualifier = unqualified("") }
 	->
 		[]
 	;
-		{ QualifiedName = module_qualify_name(ModuleQualifier, Name) },
-		{ match_sym_name(QualifiedName, SymName) }
+		{ QualifiedName = module_qualify_name(OldModuleQualifier,
+						Name) },
+		{ match_sym_name(QualifiedName, SymName) },
+		\+ { SymName = qualified(OldMatchingModuleName, _) }
 	->
-		(
-			{ SymName = qualified(MatchingModuleName, _) }
-		->
-			[]
-		;
-			{ OldMatchingName =
-				qualified(MatchingModuleName, Name) },
-			{ Reason = item_ambiguity(
-				item_id(ItemType, SymName - Arity), 
+		{ OldMatchingName = qualified(OldMatchingModuleName, Name) },
+		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
 				[item_id(ItemType, OldMatchingName - Arity)]
 			) },
-			=(Info),
-			{ throw(recompile_exception(Reason, Info)) }
-		)
+		=(Info),
+		{ throw(recompile_exception(Reason, Info)) }
 	;
 		[]
 	).
@@ -1055,41 +1049,36 @@ check_for_simple_item_ambiguity(ItemType, Name, NeedQualifier, SymName, Arity,
 	recompilation_check_info::out) is det.
 
 check_for_pred_or_func_ambiguity(ItemType, Name, NeedQualifier,
-		SymName, Arity, ModuleQualifier, MatchingModuleNames) -->
+		SymName, Arity, OldModuleQualifier, OldMatchingModuleNames) -->
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
 		{ NeedQualifier = must_be_qualified },
-		{ ModuleQualifier = unqualified("") }
+		{ OldModuleQualifier = unqualified("") }
 	->
 		[]
 	;
-		{ QualifiedName = module_qualify_name(ModuleQualifier, Name) },
-		{ match_sym_name(QualifiedName, SymName) }
+		{ QualifiedName = module_qualify_name(OldModuleQualifier,
+						Name) },
+		{ match_sym_name(QualifiedName, SymName) },
+		\+ {
+			SymName = qualified(PredModuleName, _),
+			set__member(_ - PredModuleName,
+				OldMatchingModuleNames)
+		}
 	->
-		(
-			{ SymName = qualified(PredModuleName, _) },
-			{ set__member(_ - PredModuleName,
-				MatchingModuleNames) }
-		->
-			[]
-		;
-			{ AmbiguousDecls = list__map(
-			    (func(_ - OldMatchingModule) = Item :-
-				OldMatchingName =
-					qualified(OldMatchingModule, Name),
-				Item = item_id(ItemType,
-						OldMatchingName - Arity)
-			    ),
-			    set__to_sorted_list(MatchingModuleNames)) },
-			{ Reason = item_ambiguity(
-				item_id(ItemType, SymName - Arity), 
+		{ AmbiguousDecls = list__map(
+		    (func(_ - OldMatchingModule) = Item :-
+			OldMatchingName = qualified(OldMatchingModule, Name),
+			Item = item_id(ItemType, OldMatchingName - Arity)
+		    ),
+		    set__to_sorted_list(OldMatchingModuleNames)) },
+		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
 				AmbiguousDecls
-			) },
-			=(Info),
-			{ throw(recompile_exception(Reason, Info)) }
-		)
+		) },
+		=(Info),
+		{ throw(recompile_exception(Reason, Info)) }
 	;
 		[]
 	).
@@ -1220,29 +1209,31 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
-		Qualifier, ResolvedCtors) -->
+		OldModuleQualifier, OldResolvedCtors) -->
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
 		{ NeedQualifier = must_be_qualified },
-		{ Qualifier = unqualified("") }
+		{ OldModuleQualifier = unqualified("") }
 	->
 		[]
 	;
-		{ set__member(ResolvedCtor, ResolvedCtors) }
-	->	
-		[]
-	;
 		{ unqualify_name(SymName, Name) },
+		{ OldName = module_qualify_name(OldModuleQualifier, Name) },
+		{ match_sym_name(OldName, SymName) },
+		\+ { set__member(ResolvedCtor, OldResolvedCtors) }
+	->
 		{ Reason = functor_ambiguity(
-				module_qualify_name(Qualifier, Name),
+				module_qualify_name(OldModuleQualifier, Name),
 				Arity,
 				ResolvedCtor,
-				set__to_sorted_list(ResolvedCtors)
+				set__to_sorted_list(OldResolvedCtors)
 			) },
 		=(Info),
 		{ throw(recompile_exception(Reason, Info)) }
+	;
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

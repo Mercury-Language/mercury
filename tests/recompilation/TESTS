@@ -3,6 +3,7 @@
 # commands for the realclean target in the Mmakefile. 
 
 TESTS_SHOULD_SUCCEED="\
+	add_constructor_nr \
 	add_constructor_r \
 	add_instance_r \
 	add_instance_2_r \
