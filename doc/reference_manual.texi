@@ -5472,17 +5472,25 @@ specified using the syntax
 Note that extra whitespace is not handled --- there should only be a single
 space between the class keyword and the assembly specifier.
 @c XXX we should handle whitespace better
+Value types which have a special name (such as @samp{int32}) can be
+named using their valuetype syntax; they will be marshalled using their
+special name (as is required by section 7.2 of Partition II of the ECMA
+CLI documentation).
 
 For example:
 
 @example
 :- type xmldoc.
 :- pragma foreign_type(il, xmldoc, "class [System.Xml]System.Xml.XmlDocument").
+:- type int32.
+:- pragma foreign_type(il, int32, "valuetype [mscorlib]System.Int32").
 @end example
 
 ensures that on the .NET CLR backend the Mercury type @samp{xmldoc} is
 marshalled by the backend as @samp{System.Xml.XmlDocument} from assembly
-@samp{System.Xml}.
+@samp{System.Xml}, and that the Mercury type @samp{int32} will be
+marshalled by the backend as the CLR type @samp{int32}.
+
 The following example shows how one can use the marshalled data from C#. 
 
 @example

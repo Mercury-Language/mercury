@@ -748,10 +748,11 @@ output_simple_type('&'(Type), Info0, Info) -->
 :- pred name_to_simple_type(class_name::in, ref_or_value::out) is semidet.
 
 name_to_simple_type(Name, Type) :-
-		% Partition II section 'Built-in Types' (7.2 in Beta2) states
-		% that all builtin types *must* be rereferenced by their
-		% special encoding.  See Partition I 'Built-In Types' 
-		% (8.2.2 in Beta2) for the list of all builtin types.
+		% Parition II section 'Built-in Types' (Section 7.2) states
+		% that all builtin types *must* be referenced by their
+		% special encoding in signatures. 
+		% See Parition I 'Built-In Types' % (Section 8.2.2) for the
+		% list of all builtin types.
 	Name = structured_name(AssemblyName, QualifiedName, _),
 	AssemblyName = assembly("mscorlib"),
 	QualifiedName = ["System", TypeName],
