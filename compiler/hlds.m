@@ -83,7 +83,8 @@
 :- export_type category.
 :- type category	--->	deterministic		% functional & total
 			;	semideterministic	% just functional
-			;	nondeterministic.	% neither
+			;	nondeterministic	% neither
+			;	unspecified.
 
 :- type pred_id 	--->	pred(module_name, string, int).
 			%	module, predname, arity
