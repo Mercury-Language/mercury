@@ -225,6 +225,8 @@
 		)
 	.
 
+:- func generic_call_pred_or_func(generic_call) = pred_or_func.
+
 	% Builtin Aditi operations. 
 :- type aditi_builtin
 	--->
@@ -1614,6 +1616,15 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	instmap_delta_init_reachable(InstMapDelta0),
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
+
+generic_call_pred_or_func(higher_order(_, PredOrFunc, _)) = PredOrFunc.
+generic_call_pred_or_func(class_method(_, _, _, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+generic_call_pred_or_func(aditi_builtin(_, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+
+:- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
+simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -135,8 +135,9 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ArgNames = ml_gen_var_names(VarSet, ArgVars) },
+	{ PredOrFunc = generic_call_pred_or_func(GenericCall) },
 	{ Params0 = ml_gen_params(ModuleInfo, ArgNames,
-		BoxedArgTypes, ArgModes, CodeModel) },
+		BoxedArgTypes, ArgModes, PredOrFunc, CodeModel) },
 
 	%
 	% insert the `closure_arg' parameter
@@ -201,7 +202,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	ml_gen_var_list(ArgVars, ArgLvals),
 	ml_variable_types(ArgVars, ActualArgTypes),
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
-		ArgModes, CodeModel, Context,
+		ArgModes, PredOrFunc, CodeModel, Context,
 		InputRvals, OutputLvals, OutputTypes,
 		ConvArgDecls, ConvOutputStatements),
 	{ ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)) },
@@ -303,6 +304,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_arg_types(PredInfo, PredArgTypes) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 
@@ -312,7 +314,7 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	% to pass as the function call's arguments and return values
 	%
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-		ArgModes, CodeModel, Context,
+		ArgModes, PredOrFunc, CodeModel, Context,
 		InputRvals, OutputLvals, OutputTypes,
 		ConvArgDecls, ConvOutputStatements),
 
@@ -536,14 +538,16 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 % Generate rvals and lvals for the arguments of a procedure call
 %
 :- pred ml_gen_arg_list(list(var_name), list(mlds__lval), list(prog_type),
-		list(prog_type), list(mode), code_model, prog_context,
-		list(mlds__rval), list(mlds__lval), list(mlds__type),
-		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_arg_list(in, in, in, in, in, in, in, out, out, out, out, out,
+		list(prog_type), list(mode), pred_or_func, code_model,
+		prog_context, list(mlds__rval), list(mlds__lval),
+		list(mlds__type), mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_arg_list(in, in, in, in, in, in, in, in, out, out, out, out, out,
 		in, out) is det.
 
-ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
-		Context, InputRvals, OutputLvals, OutputTypes,
+ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
+		PredOrFunc, CodeModel, Context,
+		InputRvals, OutputLvals, OutputTypes,
 		ConvDecls, ConvOutputStatements) -->
 	(
 		{ VarNames = [] },
@@ -565,11 +569,13 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 		{ Modes = [Mode | Modes1] }
 	->
 		ml_gen_arg_list(VarNames1, VarLvals1,
-			CallerTypes1, CalleeTypes1, Modes1, CodeModel, Context,
+			CallerTypes1, CalleeTypes1, Modes1,
+			PredOrFunc, CodeModel, Context,
 			InputRvals1, OutputLvals1, OutputTypes1,
 			ConvDecls1, ConvOutputStatements1),
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+		{ mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode) },
 		(
 			{ type_util__is_dummy_argument_type(CalleeType) }
 		->
@@ -581,7 +587,7 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 			{ OutputTypes = OutputTypes1 },
 			{ ConvDecls = ConvDecls1 },
 			{ ConvOutputStatements = ConvOutputStatements1 }
-		; { mode_to_arg_mode(ModuleInfo, Mode, CalleeType, top_in) } ->
+		; { ArgMode = top_in } ->
 			%
 			% it's an input argument
 			%
@@ -618,11 +624,24 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, CodeModel,
 			ml_gen_info_get_globals(Globals),
 			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
 			(
-				%
-				% if the target language allows multiple
-				% return values, then use them
-				%
-				{ CopyOut = yes }
+				(
+					%
+					% if the target language allows
+					% multiple return values, then use them
+					%
+					{ CopyOut = yes }
+				;
+					%
+					% if this is the result argument 
+					% of a model_det function, and it has
+					% an output mode, then return it as a
+					% value
+					%
+					{ VarNames1 = [] },
+					{ CodeModel = model_det },
+					{ PredOrFunc = function },
+					{ ArgMode = top_out }
+				)
 			->
 				{ InputRvals = InputRvals1 },
 				{ OutputLvals = [ArgLval | OutputLvals1] },

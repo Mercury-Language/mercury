@@ -32,6 +32,14 @@
 	% Generate an MLDS assignment statement.
 :- func ml_gen_assign(mlds__lval, mlds__rval, prog_context) = mlds__statement.
 
+	%
+	% Append an appropriate `return' statement for the given code_model
+	% and returning the given lvals, if needed.
+	%
+:- pred ml_append_return_statement(code_model, list(mlds__lval), prog_context,
+		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_append_return_statement(in, in, in, in, out, in, out) is det.
+
 	% Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
 	% But if the block consists only of a single statement with no
 	% declarations, then just return that statement.
@@ -115,7 +123,7 @@
 	% given argument types, modes, and code model.
 	%
 :- func ml_gen_params(module_info, list(string), list(prog_type),
-		list(mode), code_model) = mlds__func_params.
+		list(mode), pred_or_func, code_model) = mlds__func_params.
 
 	% Given a list of variables and their corresponding modes,
 	% return a list containing only those variables which have
@@ -456,11 +464,12 @@
 :- pred ml_gen_info_get_var_types(ml_gen_info, map(prog_var, prog_type)).
 :- mode ml_gen_info_get_var_types(in, out) is det.
 
-:- pred ml_gen_info_get_output_vars(ml_gen_info, list(prog_var)).
-:- mode ml_gen_info_get_output_vars(in, out) is det.
+:- pred ml_gen_info_get_byref_output_vars(ml_gen_info, list(prog_var)).
+:- mode ml_gen_info_get_byref_output_vars(in, out) is det.
 
-:- pred ml_gen_info_set_output_vars(list(prog_var), ml_gen_info, ml_gen_info).
-:- mode ml_gen_info_set_output_vars(in, in, out) is det.
+:- pred ml_gen_info_set_byref_output_vars(list(prog_var),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_set_byref_output_vars(in, in, out) is det.
 
 :- pred ml_gen_info_get_globals(globals, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_get_globals(out, in, out) is det.
@@ -638,6 +647,31 @@ ml_gen_assign(Lval, Rval, Context) = MLDS_Statement :-
 	MLDS_Stmt = atomic(Assign),
 	MLDS_Statement = mlds__statement(MLDS_Stmt,
 		mlds__make_context(Context)).
+
+	%
+	% Append an appropriate `return' statement for the given code_model
+	% and returning the given OutputVarLvals, if needed.
+	%
+ml_append_return_statement(CodeModel, CopiedOutputVarLvals, Context,
+		MLDS_Statements0, MLDS_Statements) -->
+	( { CodeModel = model_semi } ->
+		ml_gen_test_success(Succeeded),
+		{ ReturnStmt = return([Succeeded]) },
+		{ ReturnStatement = mlds__statement(ReturnStmt,
+			mlds__make_context(Context)) },
+		{ MLDS_Statements = list__append(MLDS_Statements0,
+			[ReturnStatement]) }
+	; { CodeModel \= model_non, CopiedOutputVarLvals \= [] } ->
+		{ CopiedOutputVarRvals = list__map(func(Lval) = lval(Lval),
+			CopiedOutputVarLvals) },
+		{ ReturnStmt = return(CopiedOutputVarRvals) },
+		{ ReturnStatement = mlds__statement(ReturnStmt,
+			mlds__make_context(Context)) },
+		{ MLDS_Statements = list__append(MLDS_Statements0,
+			[ReturnStatement]) }
+	;
+		{ MLDS_Statements = MLDS_Statements0 }
+	).
 
 	% Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
 	% But if the block consists only of a single statement with no
@@ -859,12 +893,13 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 		PredInfo, ProcInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_headvars(ProcInfo, HeadVars),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_arg_types(PredInfo, HeadTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
 	FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
-		HeadModes, CodeModel).
+		HeadModes, PredOrFunc, CodeModel).
 
 	% As above, but from the rtti_proc_id rather than
 	% from the module_info, pred_id, and proc_id.
@@ -874,41 +909,74 @@ ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
 	HeadVars = RttiProcId^proc_headvars,
 	ArgTypes = RttiProcId^arg_types,
 	ArgModes = RttiProcId^proc_arg_modes,
+	PredOrFunc = RttiProcId^pred_or_func,
 	CodeModel = RttiProcId^proc_interface_code_model,
 	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
 	FuncParams = ml_gen_params_base(ModuleInfo, HeadVarNames,
-		ArgTypes, ArgModes, CodeModel).
+		ArgTypes, ArgModes, PredOrFunc, CodeModel).
 	
 	% Generate the function prototype for a procedure with the
 	% given argument types, modes, and code model.
 	%
-ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
-		FuncParams :-
+ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
+		CodeModel) = FuncParams :-
 	modes_to_arg_modes(ModuleInfo, HeadModes, HeadTypes, ArgModes),
 	FuncParams = ml_gen_params_base(ModuleInfo, HeadVarNames,
-		HeadTypes, ArgModes, CodeModel).
+		HeadTypes, ArgModes, PredOrFunc, CodeModel).
 
 :- func ml_gen_params_base(module_info, list(string), list(prog_type),
-		list(arg_mode), code_model) = mlds__func_params.
+		list(arg_mode), pred_or_func, code_model) = mlds__func_params.
 
 ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-		CodeModel) = FuncParams :-
+		PredOrFunc, CodeModel) = FuncParams :-
 	module_info_globals(ModuleInfo, Globals),
 	CopyOut = get_copy_out_option(Globals, CodeModel),
 	ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
 		CopyOut, FuncArgs0, RetTypes0),
-	( CodeModel = model_semi ->
-		RetTypes = [mlds__native_bool_type | RetTypes0]
-	; CodeModel = model_non, CopyOut = yes ->
-		RetTypes = []
-	;
-		RetTypes = RetTypes0
-	),
-	( CodeModel = model_non ->
-		( CopyOut = yes ->
-			ContType = mlds__cont_type(RetTypes0)
+	(
+		CodeModel = model_det,
+		%
+		% for model_det Mercury functions whose result argument has an
+		% output mode, make the result into the MLDS return type
+		%
+		(
+			RetTypes0 = [],
+			PredOrFunc = function,
+			pred_args_to_func_args(HeadModes, _, ResultMode),
+			ResultMode = top_out,
+			pred_args_to_func_args(HeadTypes, _, ResultType),
+			\+ type_util__is_dummy_argument_type(ResultType)
+		->
+			pred_args_to_func_args(FuncArgs0, FuncArgs,
+				_RetArgName - RetTypePtr),
+			( RetTypePtr = mlds__ptr_type(RetType) ->
+				RetTypes = [RetType]
+			;
+				error("output mode function result doesn't have pointer type")
+			)
 		;
-			ContType = mlds__cont_type([])
+			FuncArgs = FuncArgs0,
+			RetTypes = RetTypes0
+		)
+	;
+		CodeModel = model_semi,
+		%
+		% for model_semi procedures, return a bool
+		%
+		FuncArgs = FuncArgs0,
+		RetTypes = [mlds__native_bool_type | RetTypes0]
+	;
+		CodeModel = model_non,
+		%
+		% for model_non procedures, we return values
+		% by passing them to the continuation
+		%
+		( CopyOut = yes ->
+			ContType = mlds__cont_type(RetTypes0),
+			RetTypes = []
+		;
+			ContType = mlds__cont_type([]),
+			RetTypes = RetTypes0
 		),
 		ContName = data(var("cont")),
 		ContArg = ContName - ContType,
@@ -925,8 +993,6 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
 			FuncArgs = list__append(FuncArgs0,
 				[ContArg, ContEnvArg])
 		)
-	;
-		FuncArgs = FuncArgs0
 	),
 	FuncParams = mlds__func_params(FuncArgs, RetTypes).
 
@@ -1186,9 +1252,9 @@ ml_gen_var_with_type(Var, Type, Lval) -->
 		{ VarName = ml_gen_var_name(VarSet, Var) },
 		ml_qualify_var(VarName, VarLval),
 		%
-		% output variables are passed by reference...
+		% output variables may be passed by reference...
 		%
-		{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo, OutputVars) },
 		( { list__member(Var, OutputVars) } ->
 			ml_gen_type(Type, MLDS_Type),
 			{ Lval = mem_ref(lval(VarLval), MLDS_Type) }
@@ -1602,7 +1668,9 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 			proc_id :: proc_id,
 			varset :: prog_varset,
 			var_types :: map(prog_var, prog_type),
-			output_vars :: list(prog_var),	% output arguments
+			byref_output_vars :: list(prog_var),
+				% output arguments that are passed by
+				% reference
 
 			%
 			% these fields get updated as we traverse
@@ -1634,7 +1702,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
-	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
+	ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
 		VarTypes),
 
 	FuncLabelCounter = 0,
@@ -1653,7 +1721,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			ProcId,
 			VarSet,
 			VarTypes,
-			OutputVars,
+			ByRefOutputVars,
 			FuncLabelCounter,
 			CommitLabelCounter,
 			CondVarCounter,
@@ -1675,8 +1743,9 @@ ml_gen_info_get_pred_id(Info, Info^pred_id).
 ml_gen_info_get_proc_id(Info, Info^proc_id).
 ml_gen_info_get_varset(Info, Info^varset).
 ml_gen_info_get_var_types(Info, Info^var_types).
-ml_gen_info_get_output_vars(Info, Info^output_vars).
-ml_gen_info_set_output_vars(OutputVars, Info, Info^output_vars := OutputVars).
+ml_gen_info_get_byref_output_vars(Info, Info^byref_output_vars).
+ml_gen_info_set_byref_output_vars(OutputVars, Info,
+		Info^byref_output_vars := OutputVars).
 
 ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 	ml_gen_info_get_globals(Globals),

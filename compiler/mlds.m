@@ -628,9 +628,7 @@
 		string,			% Exported name
 		mlds__qualified_entity_name, % MLDS name for exported entity
 		mlds__func_params,	% MLDS function parameters
-		mlds__context,
-		bool			% is a det function with the
-					% final args mode top_out.
+		mlds__context
 	).
 
 

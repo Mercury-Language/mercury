@@ -555,7 +555,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		_PredInfo, ProcInfo) },
+		PredInfo, ProcInfo) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
 	{ proc_info_argmodes(ProcInfo, ProcArgModes) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
@@ -596,7 +597,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
 		list__length(WrapperHeadVars)) },
 	{ WrapperParams0 = ml_gen_params(ModuleInfo, WrapperHeadVarNames,
-		WrapperBoxedArgTypes, WrapperArgModes, CodeModel) },
+		WrapperBoxedArgTypes, WrapperArgModes, PredOrFunc, CodeModel) },
 
 	% then insert the `closure_arg' parameter
 	{ ClosureArg = data(var("closure_arg")) - mlds__generic_type },
@@ -607,8 +608,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	% also compute the lvals for the parameters,
 	% and local declarations for any --copy-out output parameters
 	ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
-		WrapperArgModes, CodeModel, Context,
-		WrapperHeadVarDecls, WrapperHeadVarLvals),
+		WrapperArgModes, PredOrFunc, CodeModel, Context,
+		WrapperHeadVarDecls, WrapperHeadVarLvals, WrapperCopyOutLvals),
 
 	%
 	% generate code to declare and initialize the closure pointer.
@@ -687,19 +688,17 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 
 	%
 	% For semidet code, add the declaration `bool succeeded;'
-	% and the `return succeeded;' statement.
 	%
 	( { CodeModel = model_semi } ->
 		{ SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context) },
-		{ Decls2 = [SucceededVarDecl | Decls1] },
-		ml_gen_test_success(Succeeded),
-		{ ReturnStmt = return([Succeeded]) },
-		{ ReturnStatement = mlds__statement(ReturnStmt, MLDS_Context) },
-		{ Statements = list__append(Statements1, [ReturnStatement]) }
+		{ Decls2 = [SucceededVarDecl | Decls1] }
 	;
-		{ Decls2 = Decls1 },
-		{ Statements = Statements1 }
+		{ Decls2 = Decls1 }
 	),
+
+	% Add an appropriate `return' statement
+	ml_append_return_statement(CodeModel, WrapperCopyOutLvals, Context,
+		Statements1, Statements),
 
 	%
 	% Insert the local declarations of the wrapper's output arguments,
@@ -738,8 +737,8 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 		Names = [Name | Names1]
 	).
 
-	% ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes, CodeModel,
-	%		LocalVarDefns, HeadVarLvals):
+	% ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes,
+	%		PredOrFunc, CodeModel, LocalVarDefns, HeadVarLvals):
 	%	Generate lvals for the specified head variables
 	%	passed in the specified modes.
 	%	Also generate local definitions for output variables,
@@ -747,16 +746,19 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 	%	rather than passed by reference.
 	%
 :- pred ml_gen_wrapper_arg_lvals(list(var_name), list(prog_type), list(mode),
-		code_model, prog_context, list(mlds__defn), list(mlds__lval),
+		pred_or_func, code_model, prog_context,
+		list(mlds__defn), list(mlds__lval), list(mlds__lval),
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_wrapper_arg_lvals(in, in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_wrapper_arg_lvals(in, in, in, in, in, in, out, out, out, in, out)
+		is det.
 
-ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
-		Defns, Lvals) -->
+ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
+		Defns, Lvals, CopyOutLvals) -->
 	(
 		{ Names = [], Types = [], Modes = [] }
 	->
 		{ Lvals = [] },
+		{ CopyOutLvals = [] },
 		{ Defns = [] }
 	;
 		{ Names = [Name | Names1] },
@@ -764,12 +766,15 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 		{ Modes = [Mode | Modes1] }
 	->
 		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1,
-			CodeModel, Context, Defns1, Lvals1),
+			PredOrFunc, CodeModel, Context,
+			Defns1, Lvals1, CopyOutLvals1),
 		ml_qualify_var(Name, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		( { mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) } ->
+		{ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) },
+		( { ArgMode = top_in } ->
 			{ Lval = VarLval },
+			{ CopyOutLvals = CopyOutLvals1 },
 			{ Defns = Defns1 }
 		;
 			%
@@ -777,7 +782,21 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 			%
 			ml_gen_info_get_globals(Globals),
 			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
-			( { CopyOut = yes } ->
+			(
+				{
+					CopyOut = yes
+				;
+					% for model_det functions,
+					% output mode function results
+					% are mapped to MLDS return values
+					PredOrFunc = function,
+					CodeModel = model_det,
+					ArgMode = top_out,
+					Types1 = [],
+					\+ type_util__is_dummy_argument_type(
+						Type)
+				}
+			->
 				%
 				% output arguments are copied out,
 				% so we need to generate a local declaration
@@ -785,8 +804,11 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 				%
 				{ Lval = VarLval },
 				( { type_util__is_dummy_argument_type(Type) } ->
+					{ CopyOutLvals = CopyOutLvals1 },
 					{ Defns = Defns1 }
 				;
+					{ CopyOutLvals = [Lval |
+						CopyOutLvals1] },
 					ml_gen_local_for_output_arg(Name, Type,
 						Context, Defn),
 					{ Defns = [Defn | Defns1] }
@@ -798,6 +820,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 				%
 				ml_gen_type(Type, MLDS_Type),
 				{ Lval = mem_ref(lval(VarLval), MLDS_Type) },
+				{ CopyOutLvals = CopyOutLvals1 },
 				{ Defns = Defns1 }
 			)
 		),

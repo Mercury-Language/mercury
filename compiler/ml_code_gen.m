@@ -778,28 +778,22 @@ ml_gen_pragma_export_proc(ModuleInfo,
 		MLDS_Name, MLDS_ModuleName),
 	MLDS_FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	MLDS_Context = mlds__make_context(ProgContext),
-
-	(
-		is_output_det_function(ModuleInfo, PredId, ProcId)
-	->
-		IsOutDetFunc = yes
-	;
-		IsOutDetFunc = no
-	),
-
 	ML_Defn = ml_pragma_export(C_Name, qual(MLDS_ModuleName, MLDS_Name),
-			MLDS_FuncParams, MLDS_Context, IsOutDetFunc).
+			MLDS_FuncParams, MLDS_Context).
 
 
 	%
-	% Test to see if the procedure is of the following form
-	%   :- func <name>(...) = V::out is det.
-	% as these need to handled specially.
+	% Test to see if the procedure is 
+	% a model_det function whose function result has an output mode
+	% (whose type is not a dummy argument type like io__state),
+	% and if so, bind RetVar to the procedure's return value.
+	% These procedures need to handled specially: for such functions,
+	% we map the Mercury function result to an MLDS return value.
 	%
-:- pred is_output_det_function(module_info, pred_id, proc_id).
-:- mode is_output_det_function(in, in, in) is semidet.
+:- pred is_output_det_function(module_info, pred_id, proc_id, prog_var).
+:- mode is_output_det_function(in, in, in, out) is semidet.
 
-is_output_det_function(ModuleInfo, PredId, ProcId) :-
+is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
 			ProcInfo),
 	
@@ -808,9 +802,11 @@ is_output_det_function(ModuleInfo, PredId, ProcId) :-
 
 	proc_info_argmodes(ProcInfo, Modes),
 	pred_info_arg_types(PredInfo, ArgTypes),
+	proc_info_headvars(ProcInfo, ArgVars),
 	modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
 	pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
 	pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+	pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
 	RetArgMode = top_out,
 	\+ type_util__is_dummy_argument_type(RetArgType).
@@ -984,13 +980,29 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 
+	% Set up the initial success continuation, if any.
+	% Also figure out which output variables are returned by
+	% value (rather than being passed by reference) and remove
+	% them from the byref_output_vars field in the ml_gen_info.
 	( CodeModel = model_non ->
-		% set up the initial success continuation
-		ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars,
-			MLDSGenInfo0, MLDSGenInfo2)
+		ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
+			MLDSGenInfo0, MLDSGenInfo1)
 	;
-		NondetCopiedOutputVars = [],
-		MLDSGenInfo2 = MLDSGenInfo0
+		(
+			is_output_det_function(ModuleInfo, PredId, ProcId,
+				ResultVar)
+		->
+			CopiedOutputVars = [ResultVar],
+			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+				ByRefOutputVars0),
+			list__delete_all(ByRefOutputVars0,
+				ResultVar, ByRefOutputVars),
+			ml_gen_info_set_byref_output_vars(ByRefOutputVars,	
+				MLDSGenInfo0, MLDSGenInfo1)
+		;
+			CopiedOutputVars = [],
+			MLDSGenInfo1 = MLDSGenInfo0
+		)
 	),
 
 	% This would generate all the local variables at the top of the
@@ -999,23 +1011,29 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	% 		VarTypes, HeadVars, ModuleInfo),
 	% But instead we now generate them locally for each goal.
 	% We just declare the `succeeded' var here,
-	% plus, if --nondet-copy-out is enabled,
-	% locals for the output arguments.
+	% plus locals for any output arguments that are returned by value
+	% (e.g. if --nondet-copy-out is enabled, or for det function return
+	% values).
 	MLDS_Context = mlds__make_context(Context),
-	( NondetCopiedOutputVars = [] ->
+	( CopiedOutputVars = [] ->
 		% optimize common case
 		OutputVarLocals = []
 	;
 		proc_info_varset(ProcInfo, VarSet),
 		proc_info_vartypes(ProcInfo, VarTypes),
-		OutputVarLocals = ml_gen_local_var_decls(VarSet, VarTypes,
-			MLDS_Context, ModuleInfo, NondetCopiedOutputVars)
+		% note that for headvars we must use the types from
+		% the procedure interface, not from the procedure body
+		HeadVarTypes = map__from_corresponding_lists(HeadVars,
+			ArgTypes),
+		OutputVarLocals = ml_gen_local_var_decls(VarSet,
+			map__overlay(VarTypes, HeadVarTypes),
+			MLDS_Context, ModuleInfo, CopiedOutputVars)
 	),
 	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
 			OutputVarLocals],
-	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
+	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 			MLDS_Decls0, MLDS_Statements,
-			MLDSGenInfo2, MLDSGenInfo),
+			MLDSGenInfo1, MLDSGenInfo),
 	ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
 	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
 	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
@@ -1035,9 +1053,9 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars) -->
 		% for the output variables and then pass them to the
 		% continuation, rather than passing them by reference.
 		=(MLDSGenInfo0),
-		{ ml_gen_info_get_output_vars(MLDSGenInfo0,
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
 			NondetCopiedOutputVars) },
-		ml_gen_info_set_output_vars([])
+		ml_gen_info_set_byref_output_vars([])
 	;
 		{ NondetCopiedOutputVars = [] }
 	),
@@ -1092,11 +1110,11 @@ ml_gen_local_var_decl(VarSet, VarTypes, Context, ModuleInfo, Var, MLDS_Defn) :-
 	% Generate the code for a procedure body.
 	%
 :- pred ml_gen_proc_body(code_model, list(prog_var), list(prog_type),
-		hlds_goal, mlds__defns, mlds__statements,
+		list(prog_var), hlds_goal, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_proc_body(in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_proc_body(in, in, in, in, in, out, out, in, out) is det.
 
-ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
+ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 		MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_context(GoalInfo, Context) },
@@ -1111,8 +1129,12 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	% or unification/compare procedures for equivalence types --
 	% the parameters types may not match the types of the head variables.
 	% In such cases, we need to box/unbox/cast them to the right type.
+	% We also grab the original (uncast) lvals for the copied output
+	% variables (if any) here, since for the return statement that
+	% we append below, we want the original vars, not their cast versions.
 	%
-	ml_gen_convert_headvars(HeadVars, ArgTypes, Context,
+	ml_gen_var_list(CopiedOutputVars, CopiedOutputVarOriginalLvals),
+	ml_gen_convert_headvars(HeadVars, ArgTypes, CopiedOutputVars, Context,
 		ConvDecls, ConvInputStatements, ConvOutputStatements),
 	(
 		{ ConvDecls = [] },
@@ -1144,16 +1166,8 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	%
 	% Finally append an appropriate `return' statement, if needed.
 	%
-	( { CodeModel = model_semi } ->
-		ml_gen_test_success(Succeeded),
-		{ ReturnStmt = return([Succeeded]) },
-		{ ReturnStatement = mlds__statement(ReturnStmt,
-			mlds__make_context(Context)) },
-		{ MLDS_Statements = list__append(MLDS_Statements1,
-			[ReturnStatement]) }
-	;
-		{ MLDS_Statements = MLDS_Statements1 }
-	).
+	ml_append_return_statement(CodeModel, CopiedOutputVarOriginalLvals,
+		Context, MLDS_Statements1, MLDS_Statements).
 
 %
 % In certain cases -- for example existentially typed procedures,
@@ -1162,13 +1176,14 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 % In such cases, we need to box/unbox/cast them to the right type.
 % This procedure handles that.
 %
-:- pred ml_gen_convert_headvars(list(prog_var), list(prog_type), prog_context,
+:- pred ml_gen_convert_headvars(list(prog_var), list(prog_type),
+		list(prog_var), prog_context,
 		mlds__defns, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_convert_headvars(in, in, in, out, out, out, in, out) is det.
+:- mode ml_gen_convert_headvars(in, in, in, in, out, out, out, in, out) is det.
 
-ml_gen_convert_headvars([], [], _, [], [], []) --> [].
-ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
+ml_gen_convert_headvars([], [], _, _, [], [], []) --> [].
+ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes], CopiedOutputVars,
 		Context, Decls, InputStatements, OutputStatements) -->
 	ml_variable_type(Var, BodyType),
 	(
@@ -1181,8 +1196,8 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		{ map__is_empty(Subst) }
 	->
 		% just recursively process the remaining arguments
-		ml_gen_convert_headvars(Vars, HeadTypes, Context,
-				Decls, InputStatements, OutputStatements)
+		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
+			Context, Decls, InputStatements, OutputStatements)
 	;
 		%
 		% generate the lval for the head variable
@@ -1210,15 +1225,20 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		%
 		% Recursively process the remaining arguments
 		%
-		ml_gen_convert_headvars(Vars, HeadTypes, Context,
-				Decls1, InputStatements1, OutputStatements1),
+		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
+			Context, Decls1, InputStatements1, OutputStatements1),
 
 		%
 		% Add the code to convert this input or output.
 		%
 		=(MLDSGenInfo2),
-		{ ml_gen_info_get_output_vars(MLDSGenInfo2, OutputVars) },
-		{ list__member(Var, OutputVars) ->
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo2,
+			ByRefOutputVars) },
+		{
+			( list__member(Var, ByRefOutputVars)
+			; list__member(Var, CopiedOutputVars)
+			)
+		->
 			InputStatements = InputStatements1,
 			OutputStatements = list__append(OutputStatements1,
 				ConvOutputStatements)
@@ -1229,9 +1249,9 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		},
 		{ list__append(ConvDecls, Decls1, Decls) }
 	).
-ml_gen_convert_headvars([], [_|_], _, _, _, _) -->
+ml_gen_convert_headvars([], [_|_], _, _, _, _, _) -->
 	{ error("ml_gen_convert_headvars: length mismatch") }.
-ml_gen_convert_headvars([_|_], [], _, _, _, _) -->
+ml_gen_convert_headvars([_|_], [], _, _, _, _, _) -->
 	{ error("ml_gen_convert_headvars: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
@@ -1591,8 +1611,9 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 	( { NondetCopyOut = yes } ->
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-		{ ml_gen_info_get_output_vars(MLDSGenInfo0, OutputVars) },
-		{ VarsToCopy = set__intersect(set__list_to_set(OutputVars),
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+			ByRefOutputVars) },
+		{ VarsToCopy = set__intersect(set__list_to_set(ByRefOutputVars),
 			NonLocals) },
 		ml_gen_make_locals_for_output_args(
 			set__to_sorted_list(VarsToCopy), Context,
