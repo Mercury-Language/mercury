@@ -3362,7 +3362,7 @@ code_info__acquire_reg_for_var(Var, Lval) -->
 		;
 			VarInfo0 = var_locn_info(VarLocn0),
 			var_locn__acquire_reg_start_at_given(
-				NextNonReserved,Lval, VarLocn0, VarLocn),
+				NextNonReserved, Lval, VarLocn0, VarLocn),
 			VarInfo = var_locn_info(VarLocn)
 		)
 	},
