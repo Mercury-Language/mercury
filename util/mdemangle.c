@@ -135,7 +135,7 @@ static void demangle(char *name) {
 	do {
 		if (end == start) goto wrong_format;
 		end--;
-	} while (isdigit(*end));
+	} while (isdigit((unsigned char)*end));
 
 	/*
 	** if we got to an `i', that means it is an internal
@@ -149,7 +149,7 @@ static void demangle(char *name) {
 		do {
 			if (end == start) goto wrong_format;
 			end--;
-		} while (isdigit(*end));
+		} while (isdigit((unsigned char)*end));
 	}
 
 	/*
@@ -163,7 +163,7 @@ static void demangle(char *name) {
 	do {
 		if (end == start) goto wrong_format;
 		end--;
-	} while (isdigit(*end));
+	} while (isdigit((unsigned char)*end));
 	if (*end != '_') goto wrong_format;
 	if (sscanf(end + 1, "%d", &arity) != 1) goto wrong_format;
 
@@ -178,7 +178,7 @@ static void demangle(char *name) {
 	do {
 		if (position == start) goto wrong_format;
 		position--;
-	} while (isdigit(*position));
+	} while (isdigit((unsigned char)*position));
 		/* get the mode number */
 	if (position + 1 - sizeof(ua_suffix) > start 
 		&& sscanf(position + 1, "%d", &mode_num2) == 1
@@ -203,7 +203,7 @@ static void demangle(char *name) {
 	do {
 		if (position == start) goto wrong_format;
 		position--;
-	} while (isdigit(*position));
+	} while (isdigit((unsigned char)*position));
 	if (strncmp(position + 2 - sizeof(ho_suffix),
 		ho_suffix, sizeof(ho_suffix) - 1) == 0) {
 		
@@ -265,7 +265,7 @@ static void demangle(char *name) {
 		do { 
 			if (end == start) goto wrong_format;
 			end--;
-		} while (isdigit(*end));
+		} while (isdigit((unsigned char)*end));
 		if (sscanf(end + 1, "%d", &arity) != 1) {
 			goto wrong_format;
 		}
@@ -292,7 +292,7 @@ static void demangle(char *name) {
 		int count = 0;
 		while (num < end) {
 			char *next_num = num;
-			while (isdigit(*next_num)) {
+			while (isdigit((unsigned char)*next_num)) {
 				next_num++;
 			}
 			if (*next_num != '_' && *next_num != '\0') break;
