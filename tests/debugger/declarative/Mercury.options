@@ -3,9 +3,7 @@ MCFLAGS-deep_sub=--trace deep --suppress-trace context
 MCFLAGS-dependency=--trace rep
 MCFLAGS-dependency2=--trace rep
 MCFLAGS-input_term_dep=--trace rep
-# The following test case triggers a bug in the C compiler under cygwin
-# if --no-optimize-fulljumps is given (or if --opt-space is given).
-MCFLAGS-output_term_dep=--trace rep --optimize-fulljumps
+MCFLAGS-output_term_dep=--trace rep
 MCFLAGS-shallow_2=--trace shallow
 MCFLAGS-special_term_dep=--trace rep
 MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-all
