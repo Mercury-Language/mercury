@@ -1,0 +1,55 @@
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET = all
+
+# We need to use a grade with trailing
+GRADE = asm_fast.gc.tr
+
+# Link in the trailed_update library from ..
+MCFLAGS = -I.. $(EXTRA_MCFLAGS)
+MLFLAGS = -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
+MLLIBS = -ltrailed_update $(EXTRA_MLLIBS)
+VPATH = ..:$(MMAKE_VPATH)
+C2INITFLAGS = ../trailed_update.init
+%_init.c: $(C2INITFLAGS)
+
+#-----------------------------------------------------------------------------#
+
+PROGS	=	interpreter vqueens
+
+DEPENDS =	$(PROGS:%=%.depend)
+CS	=	$(PROGS:%=%.c)
+RESS	=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+%.out: %
+	./$< > $@ 2>&1;
+
+%.res: %.out %.exp
+	diff -c $*.out $*.exp > $@
+
+#-----------------------------------------------------------------------------#
+
+interpreter.out: interpreter interpreter.inp
+	./interpreter interpreter.m < interpreter.inp > interpreter.out
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+.PHONY: all
+all: $(PROGS)
+
+.PHONY: check
+check: $(RESS)
+
+.PHONY: cs
+cs: $(CS)
+
+.PHONY: clean
+clean:
+	rm -f *.out *.res
+
+#-----------------------------------------------------------------------------#
