@@ -804,11 +804,11 @@ get_functor_info(Univ, FunctorInfo) :-
 	get_notag_functor_info(Univ::in, ExpUniv::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-    MR_TypeInfo         type_info;
-    MR_TypeInfo         exp_type_info;
-    MR_TypeCtorInfo     type_ctor_info;
-    MR_NotagFunctorDesc *functor_desc;
-    MR_Word             value;
+    MR_TypeInfo                 type_info;
+    MR_TypeInfo                 exp_type_info;
+    MR_TypeCtorInfo             type_ctor_info;
+    const MR_NotagFunctorDesc   *functor_desc;
+    MR_Word                     value;
 
     MR_unravel_univ(Univ, type_info, value);
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);

@@ -52,7 +52,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_DU:
     case MR_TYPECTOR_REP_DU_USEREQ:
         {
-            MR_DuFunctorDesc    *functor_desc;
+            const MR_DuFunctorDesc    *functor_desc;
 
             if (functor_number < 0 ||
                 functor_number >= MR_type_ctor_num_functors(type_ctor_info))
@@ -76,7 +76,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_ENUM:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
         {
-            MR_EnumFunctorDesc  *functor_desc;
+            const MR_EnumFunctorDesc  *functor_desc;
 
             if (functor_number < 0 ||
                 functor_number >= MR_type_ctor_num_functors(type_ctor_info))
@@ -100,7 +100,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_NOTAG_GROUND:
     case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         {
-            MR_NotagFunctorDesc *functor_desc;
+            const MR_NotagFunctorDesc *functor_desc;
 
             if (functor_number != 0) {
                 MR_fatal_error("MR_get_functor_info: "
