@@ -442,13 +442,8 @@ mercury_compile(Module) -->
 		% magic sets can report errors.
 		{ module_info_num_errors(HLDS50, NumErrors) },
 		( { NumErrors = 0 } ->
-		    { module_info_get_do_aditi_compilation(HLDS50, Aditi) },
-		    ( { Aditi = do_aditi_compilation } ->
-			mercury_compile__generate_rl_bytecode(HLDS50,
-				Verbose, MaybeRLFile)
-		    ;
-			{ MaybeRLFile = no }
-		    ),
+		    mercury_compile__maybe_generate_rl_bytecode(HLDS50,
+				Verbose, MaybeRLFile),
 		    ( { AditiOnly = yes } ->
 		    	[]
 		    ; { HighLevelCode = yes } ->
@@ -1067,18 +1062,63 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__generate_rl_bytecode(module_info, bool,
+:- pred mercury_compile__maybe_generate_rl_bytecode(module_info, bool,
 		maybe(rl_file), io__state, io__state).
-:- mode mercury_compile__generate_rl_bytecode(in, in, out, di, uo) is det.
+:- mode mercury_compile__maybe_generate_rl_bytecode(in, in,
+		out, di, uo) is det.
 
-mercury_compile__generate_rl_bytecode(ModuleInfo, Verbose, MaybeRLFile) -->
-	maybe_write_string(Verbose, "% Generating RL...\n"),
-	maybe_flush_output(Verbose),
-	rl_gen__module(ModuleInfo, RLProcs0),
-	mercury_compile__maybe_dump_rl(RLProcs0, ModuleInfo, "", ""),
-	rl_opt__procs(ModuleInfo, RLProcs0, RLProcs),
-	mercury_compile__maybe_dump_rl(RLProcs, ModuleInfo, "", ".opt"),
-	rl_out__generate_rl_bytecode(ModuleInfo, RLProcs, MaybeRLFile).
+mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
+		Verbose, MaybeRLFile) -->
+	globals__io_lookup_bool_option(aditi, Aditi),
+	(
+		{ Aditi = yes },
+		{ module_info_get_do_aditi_compilation(ModuleInfo,
+			AditiCompile) },
+		(
+			{ AditiCompile = do_aditi_compilation },
+
+			%
+			% Generate the RL procedures.
+			%
+			maybe_write_string(Verbose, "% Generating RL...\n"),
+			maybe_flush_output(Verbose),
+			rl_gen__module(ModuleInfo, RLProcs0),
+			mercury_compile__maybe_dump_rl(RLProcs0,
+				ModuleInfo, "", ""),
+
+			%
+			% Optimize the RL procedures.
+			%
+			rl_opt__procs(ModuleInfo, RLProcs0, RLProcs),
+			mercury_compile__maybe_dump_rl(RLProcs,
+				ModuleInfo, "", ".opt"),
+
+			%
+			% Convert the RL procedures to bytecode.
+			%
+			rl_out__generate_rl_bytecode(ModuleInfo,
+				RLProcs, MaybeRLFile)
+		;
+			{ AditiCompile = no_aditi_compilation },
+			{ MaybeRLFile = no },
+
+			globals__io_lookup_bool_option(aditi_only, AditiOnly),
+			(
+				{ AditiOnly = yes },
+
+				% Always generate a `.rlo' file if compiling
+				% with `--aditi-only'.
+				{ RLProcs = [] },
+				rl_out__generate_rl_bytecode(ModuleInfo,
+					RLProcs, _)
+			;
+				{ AditiOnly = no }
+			)
+		)
+	;
+		{ Aditi = no },
+		{ MaybeRLFile = no }
+	).
 
 %-----------------------------------------------------------------------------%
 
