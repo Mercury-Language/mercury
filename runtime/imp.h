@@ -111,14 +111,10 @@ extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" CONSTRUCTS */
 
-#ifdef __GNUC__
+#ifdef USE_GCC_NONLOCAL_GOTOS
 
 #define LABEL(label)		(&&label)
-#if SPEED
-#define GOTO(label)		do { goto *(label); } while(0)
-#else
 #define GOTO(label)		do { assert(label); goto *(label); } while(0)
-#endif
 
 #else
 
