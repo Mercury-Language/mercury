@@ -6,8 +6,8 @@
 % 	run([progname, '-vVdg', 'foo.nl']).
 % Files such as error.nl can be loaded in manually.
 
-:- dynamic io__inhibit_user_main_predicate/0.
-io__inhibit_user_main_predicate.
+:- dynamic io__inhibit_user_main/0.
+io__inhibit_user_main.
 
 :- trace.
 
