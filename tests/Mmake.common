@@ -42,11 +42,14 @@ DIFF_OPTS=-c
 	-rm -f $@
 	-rm -f $*.res2
 	diff $(DIFF_OPTS) $*.exp $*.out > $@ || \
-		if test -f $*.exp2; then	\
-			diff $(DIFF_OPTS) $*.exp2 $*.out > $*.res2; \
-			test `wc -l < $@` -lt `wc -l < $*.res2` || \
+		{ test -f $*.exp2 && \
+			if diff $(DIFF_OPTS) $*.exp2 $*.out > $*.res2; then \
 				cp $*.res2 $@; \
-		fi
+			else \
+				{ test `wc -l < $@` -le `wc -l < $*.res2` || \
+					cp $*.res2 $@; } && false; \
+			fi \
+		}
 
 #-----------------------------------------------------------------------------#
 
