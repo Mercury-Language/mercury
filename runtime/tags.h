@@ -30,10 +30,10 @@
 
 #define	mktag(t)	((t) << (WORDBITS - TAGBITS))
 #define	unmktag(w)	((Word) (w) >> (WORDBITS - TAGBITS))
-#define	tag(w)		((w) & ~(((Word) (~0) >> TAGBITS)))
+#define	tag(w)		((w) & ~(~(Word)0 >> TAGBITS))
 #define mkbody(i)	(i)
 #define unmkbody(w)	(w)
-#define	body(w, t)	((w) & ((Word) (~0) >> TAGBITS)
+#define	body(w, t)	((w) & (~(Word)0 >> TAGBITS))
 #define	mkword(t, p)	((Word)(t) + (Word)(p))
 #define	field(t, p, i)	((Word *) body((p), (t)))[i]
 
