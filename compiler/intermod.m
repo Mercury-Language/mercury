@@ -945,17 +945,19 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 intermod__write_pragmas(_, _, [], _) --> [].
 intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 	(
-		\+ (
-			% Since the inferred declarations are output, these
-			% don't need to be done in the importing module.
-			{ Marker = infer_type }
-		 ;	{ Marker = infer_modes }
+		% Since the inferred declarations are output, these
+		% don't need to be done in the importing module.
+		% Also purity is output as part of the pred/func decl.
+		( { Marker = infer_type }
+		; { Marker = infer_modes }
+		; { Marker = (impure) }
+		; { Marker = (semipure) }
 		)
 	->
+		[]
+	;
 		{ hlds_out__marker_name(Marker, Name) },
 		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name)
-	;
-		[]
 	),
 	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
 
