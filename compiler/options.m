@@ -943,7 +943,7 @@ options_help_warning -->
 	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
 	io__write_string("\t\twhich are not used in the interface"),
 	io__write_string("\t--warn-missing-opt-files\n"),
-	io__write_string("\t\tWarn about `.opt' files which cannot be opened\n").
+	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n").
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
