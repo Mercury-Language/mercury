@@ -144,7 +144,8 @@ array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	).
 array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 	Size is High - Low,
-	Third is (Size + 1) // 3,
+	Size1 is Size + 1,
+	Third is Size1 // 3,
 	Mid1 is Low + Third,
 	Mid2 is Mid1 + Third,
 	(if
@@ -175,7 +176,8 @@ array__set(two(Low, High, Left, Right), Index, Item, A) :-
 	).
 array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
 	Size is High - Low,
-	Third is (Size + 1) // 3,
+	Size1 is Size + 1,
+	Third is Size1 // 3,
 	Mid1 is Low + Third,
 	Mid2 is Mid1 + Third,
 	(if
