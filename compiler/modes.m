@@ -80,9 +80,14 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 	( { Clauses0 = [] } ->
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
-		io__write_string("% Mode-checking predicate "),
-		write_pred_id(PredId),
-		io__write_string("\n"),
+		lookup_option(very_verbose, bool(VeryVerbose)),
+		( { VeryVerbose = yes } ->
+			io__write_string("% Mode-checking predicate "),
+			write_pred_id(PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
 		{ copy_clauses_to_procs(PredInfo0, PredInfo) },
 		{ map__set(Preds0, PredId, PredInfo, Preds) },
 		{ moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1) }

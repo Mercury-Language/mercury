@@ -18,7 +18,8 @@
 :- type option		--->	verbose
 			;	very_verbose
 			;	dump_hlds
-			;	generate_code.
+			;	generate_code
+			;	builtin_module.
 
 :- pred short_option(character::i, option::output) is semidet.
 :- pred long_option(string::i, option::output) is semidet.

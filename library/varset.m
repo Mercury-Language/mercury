@@ -40,6 +40,10 @@
 :- pred varset__new_var(varset, var, varset).
 :- mode varset__new_var(input, output, output).
 
+	% return a list of all the variables in a varset
+:- pred varset__vars(varset, list(var)).
+:- mode varset__vars(input, output).
+
 	% set the name of a variable
 	% (if there is already a variable with the same name "Foo",
 	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
@@ -103,6 +107,25 @@ varset__is_empty(varset(VarSupply, _, _)) :-
 
 varset__new_var(varset(MaxId0,Names,Vals), Var, varset(MaxId,Names,Vals)) :-
 	term__create_var(MaxId0, Var, MaxId).
+
+%-----------------------------------------------------------------------------%
+
+varset__vars(varset(MaxId0,_,_), L) :-
+	term__init_var_supply(V0),
+	varset__vars_2(V0, MaxId0, [], L1),
+	reverse(L1, L).
+
+:- pred varset__vars_2(var_supply, var_supply, list(var),
+			list(var)).
+:- mode varset__vars_2(input, input, input, output).
+
+varset__vars_2(N, Max, L0, L) :-
+	(N = Max ->
+		L = L0
+	;
+		term__create_var(N, V, N1),
+		varset__vars_2(N1, Max, [V|L0], L)
+	).
 
 %-----------------------------------------------------------------------------%
 

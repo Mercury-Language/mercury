@@ -102,14 +102,14 @@ goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 
 goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
 			TVarSet, Name, Args0, Body0,
-			type_defn(VarSet, TypeDefn, Cond)) :-
-	varset__merge(VarSet0, TVarSet, [Body0 | Args0], VarSet, [Body | Args]),
+			type_defn(VarSet0, TypeDefn, Cond)) :-
+	varset__merge(VarSet0, TVarSet, [Body0 | Args0], _, [Body | Args]),
 	goedel_replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn).
 
 goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 			TVarSet, Name, Args0, Body0,
-			pred(VarSet, PredName, TypesAndModes, Det, Cond)) :-
-	varset__merge(VarSet0, TVarSet, [Body0 | Args0], VarSet, [Body | Args]),
+			pred(VarSet0, PredName, TypesAndModes, Det, Cond)) :-
+	varset__merge(VarSet0, TVarSet, [Body0 | Args0], _, [Body | Args]),
 	goedel_replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
 		no, TypesAndModes, yes).
 	

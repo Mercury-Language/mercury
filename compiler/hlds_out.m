@@ -81,7 +81,7 @@ hlds_out__write_preds(Indent, PredTable) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("]\n").
 
-:- pred hlds_out__write_preds_2(int, list(PredId), pred_table,
+:- pred hlds_out__write_preds_2(int, list(pred_id), pred_table,
 			io__state, io__state).
 :- mode hlds_out__write_preds_2(input, input, input, input, output).
 

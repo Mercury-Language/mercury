@@ -33,6 +33,13 @@
 %		Vars is the list of variables contained in Term, in the order 
 %		obtained by traversing the term depth first, left-to-right.
 
+:- pred term__vars_list(list(term), list(var)).
+:- mode term__vars_list(input, output) is det.
+%	term__vars_list(TermList, Vars)
+%		Vars is the list of variables contained in TermList, in the
+%		order obtained by traversing the list of terms depth-first,
+%		left-to-right.
+
 :- pred term__contains_var(term, var).
 :- mode term__contains_var(input, input) is semidet.
 :- mode term__contains_var(input, output) is nondet.
@@ -171,6 +178,9 @@
 
 term__vars(Term, Vars) :-
 	term__vars_2(Term, [], Vars).
+
+term__vars_list(Terms, Vars) :-
+	term__vars_2_list(Terms, [], Vars).
 
 :- pred term__vars_2(term, list(var), list(var)).
 :- mode term__vars_2(input, input, output) is det.

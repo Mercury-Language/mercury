@@ -519,6 +519,9 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration for that predicate.
 
+:- pred preds_add_implicit(pred_table, pred_id, term__context, pred_table).
+:- mode preds_add_implicit(input, input, input, output).
+
 preds_add_implicit(Preds0, PredId, Context, Preds) :-
 	predicate_arity(PredId, Arity),
 	clauses_info_init(Arity, ClausesInfo),
