@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -47,9 +47,10 @@ extern	bool	MR_debugflag[];
 #define	MR_SREGFLAG		8
 #define	MR_TRACEFLAG		9
 #define	MR_TABLEFLAG		10
-#define	MR_TABLESTACKFLAG	11
-#define	MR_DETAILFLAG		12
-#define	MR_MAXFLAG		13
+#define	MR_TABLEHASHFLAG	11
+#define	MR_TABLESTACKFLAG	12
+#define	MR_DETAILFLAG		13
+#define	MR_MAXFLAG		14
 /* MR_DETAILFLAG should be the last real flag */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -63,6 +64,7 @@ extern	bool	MR_debugflag[];
 #define	MR_sregdebug		MR_debugflag[MR_SREGFLAG]
 #define	MR_tracedebug		MR_debugflag[MR_TRACEFLAG]
 #define	MR_tabledebug		MR_debugflag[MR_TABLEFLAG]
+#define	MR_hashdebug		MR_debugflag[MR_TABLEHASHFLAG]
 #define	MR_tablestackdebug	MR_debugflag[MR_TABLESTACKFLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 

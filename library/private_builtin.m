@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,7 +30,6 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-
 
 	% This section of the module contains predicates that are used
 	% by the compiler, to implement polymorphism. These predicates
@@ -338,7 +337,6 @@ mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 	MR_RTTI_VERSION
 };
 
-
 const struct mercury_data_private_builtin__type_ctor_layout_type_info_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_private_builtin__type_ctor_layout_type_info_1 = {
@@ -414,8 +412,6 @@ const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_s
 } mercury_data_private_builtin__type_ctor_functors_typeclass_info_1 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
-
-
 
 BEGIN_MODULE(type_info_module)
 	init_entry(mercury____Unify___private_builtin__type_info_1_0);
@@ -698,91 +694,136 @@ unused :-
 :- implementation.
 
 :- pragma c_code(table_simple_is_complete(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is succeeded or failed: %lu\\n"",
-			(Unsigned *) T, (unsigned long) (*((Unsigned *) T)));
+		printf(""checking if simple %p is complete: %ld (%lx)\\n"",
+			table, (long) table->MR_simpletable_status,
+			(long) table->MR_simpletable_status);
 	}
 #endif
 	SUCCESS_INDICATOR = 
-		((*((Unsigned *) T) == MR_SIMPLETABLE_FAILED)
-		|| (*((Unsigned *) T) >= MR_SIMPLETABLE_SUCCEEDED));
+		((table->MR_simpletable_status == MR_SIMPLETABLE_FAILED)
+		|| (table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED));
 ").
 
 :- pragma c_code(table_simple_has_succeeded(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is succeeded: %lu\\n"",
-			(Unsigned *) T, (unsigned long) (*((Unsigned *) T)));
+		printf(""checking if simple %p is succeeded: %ld (%lx)\\n"",
+			table, (long) table->MR_simpletable_status,
+			(long) table->MR_simpletable_status);
 	}
 #endif
-	SUCCESS_INDICATOR = (*((Unsigned *) T) >= MR_SIMPLETABLE_SUCCEEDED)
+	SUCCESS_INDICATOR =
+		(table->MR_simpletable_status >= MR_SIMPLETABLE_SUCCEEDED);
 ").
 
 :- pragma c_code(table_simple_has_failed(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is failed: %lu\\n"",
-			(Unsigned *) T, (unsigned long) (*((Unsigned *) T)));
+		printf(""checking if simple %p is failed: %ld (%lx)\\n"",
+			table, (long) table->MR_simpletable_status,
+			(long) table->MR_simpletable_status);
 	}
 #endif
-	SUCCESS_INDICATOR = (*((Unsigned *) T) == MR_SIMPLETABLE_FAILED);
+	SUCCESS_INDICATOR =
+		(table->MR_simpletable_status == MR_SIMPLETABLE_FAILED);
 ").
 
 :- pragma c_code(table_simple_is_active(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is active: %lu\\n"",
-			(Unsigned *) T, (unsigned long) (*((Unsigned *) T)));
+		printf(""checking if simple %p is active: %ld (%lx)\\n"",
+			table, (long) table->MR_simpletable_status,
+			(long) table->MR_simpletable_status);
 	}
 #endif
-	SUCCESS_INDICATOR = (*((Unsigned *) T) == MR_SIMPLETABLE_WORKING);
+	SUCCESS_INDICATOR =
+		(table->MR_simpletable_status == MR_SIMPLETABLE_WORKING);
 ").
 
 :- pragma c_code(table_simple_is_inactive(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is not inactive: %lu\\n"",
-			(Unsigned *) T, (unsigned long) (*((Unsigned *) T)));
+		printf(""checking if simple %p is inactive: %ld (%lx)\\n"",
+			table, (long) table->MR_simpletable_status,
+			(long) table->MR_simpletable_status);
 	}
 #endif
-	SUCCESS_INDICATOR = (*((Unsigned *) T) != MR_SIMPLETABLE_WORKING);
+	SUCCESS_INDICATOR =
+		(table->MR_simpletable_status != MR_SIMPLETABLE_WORKING);
 ").
 
 :- pragma c_code(table_simple_mark_as_succeeded(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as succeeded\\n"", (Unsigned *) T);
+		printf(""marking %p as succeeded\\n"", table);
 	}
 #endif
-	*((Unsigned *) T) = MR_SIMPLETABLE_SUCCEEDED;
+	table->MR_simpletable_status = MR_SIMPLETABLE_SUCCEEDED;
 ").
 
 :- pragma c_code(table_simple_mark_as_failed(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as failed\\n"", (Unsigned *) T);
+		printf(""marking %p as failed\\n"", table);
 	}
 #endif
-	*((Unsigned *) T) = MR_SIMPLETABLE_FAILED;
+	table->MR_simpletable_status = MR_SIMPLETABLE_FAILED;
 ").
 
 :- pragma c_code(table_simple_mark_as_active(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as working\\n"", (Unsigned *) T);
+		printf(""marking %p as working\\n"", table);
 	}
 #endif
-	*((Unsigned *) T) = MR_SIMPLETABLE_WORKING;
+	table->MR_simpletable_status = MR_SIMPLETABLE_WORKING;
 ").
 
 :- pragma c_code(table_simple_mark_as_inactive(T::in), will_not_call_mercury, "
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""marking %p as uninitialized\\n"", (Unsigned *) T);
+		printf(""marking %p as uninitialized\\n"", table);
 	}
 #endif
-	*((Unsigned *) T) = MR_SIMPLETABLE_UNINITIALIZED;
+	table->MR_simpletable_status = MR_SIMPLETABLE_UNINITIALIZED;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -849,10 +890,16 @@ unused :-
 :- implementation.
 
 :- pragma c_code(table_nondet_setup(T0::in, T::out), will_not_call_mercury, "
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifndef	MR_USE_MINIMAL_MODEL
+	fatal_error(""minimal model code entered when not enabled"");
+#else
 #ifdef	MR_THREAD_SAFE
 #error ""Sorry, not yet implemented: mixing minimal model tabling and threads""
 #endif
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T0;
+
 	/*
 	** Initialize the subgoal if this is the first time we see it.
 	** If the subgoal structure already exists but is marked inactive,
@@ -861,20 +908,14 @@ unused :-
 	** In that case, we want to forget all about the old generator.
 	*/
 
-	if (MR_SUBGOAL(T0) == NULL) {
+	if (table->MR_subgoal == NULL) {
 		MR_Subgoal	*subgoal;
 
-		subgoal = (MR_Subgoal *)
-			table_allocate_bytes(sizeof(MR_Subgoal));
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf(""setting up table %p -> %p\\n"",
-				(MR_Subgoal **) T0, subgoal);
-		}
-#endif
+		subgoal = MR_TABLE_NEW(MR_Subgoal);
+
 		subgoal->status = MR_SUBGOAL_INACTIVE;
 		subgoal->leader = NULL;
-		subgoal->followers = MR_GC_NEW(struct MR_SubgoalListNode);
+		subgoal->followers = MR_TABLE_NEW(MR_SubgoalListNode);
 		subgoal->followers->item = subgoal;
 		subgoal->followers->next = NULL;
 		subgoal->followers_tail = &(subgoal->followers->next);
@@ -884,18 +925,24 @@ unused :-
 		subgoal->answer_list_tail = &subgoal->answer_list;
 		subgoal->consumer_list = NULL;
 		subgoal->consumer_list_tail = &subgoal->consumer_list;
+
 #ifdef	MR_TABLE_DEBUG
+		if (MR_tabledebug) {
+			printf(""setting up table %p -> %p, answer slot %p\\n"",
+				table, subgoal, subgoal->answer_list_tail);
+		}
+
 		if (MR_maxfr != MR_curfr) {
 			fatal_error(""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
+
 		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
 		subgoal->generator_sp = MR_sp;
-		MR_SUBGOAL(T0) = subgoal;
+
+		table->MR_subgoal = subgoal;
 	}
 	T = T0;
-#else
-	fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -906,7 +953,11 @@ unused :-
 
 :- pragma c_code(table_nondet_is_complete(T::in),"
 #ifdef	MR_USE_MINIMAL_MODEL
-	SUCCESS_INDICATOR = (MR_SUBGOAL(T)->status == MR_SUBGOAL_COMPLETE);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
+	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_COMPLETE);
 #else
 	fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -914,7 +965,11 @@ unused :-
 
 :- pragma c_code(table_nondet_is_active(T::in), will_not_call_mercury, "
 #ifdef	MR_USE_MINIMAL_MODEL
-	SUCCESS_INDICATOR = (MR_SUBGOAL(T)->status == MR_SUBGOAL_ACTIVE);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
+	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_ACTIVE);
 #else
 	fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -922,9 +977,13 @@ unused :-
 
 :- pragma c_code(table_nondet_mark_as_active(T::in), will_not_call_mercury, "
 #ifdef	MR_USE_MINIMAL_MODEL
-	MR_push_generator(MR_curfr, MR_SUBGOAL(T));
-	MR_register_generator_ptr((MR_Subgoal **) T);
-	MR_SUBGOAL(T)->status = MR_SUBGOAL_ACTIVE;
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
+	MR_push_generator(MR_curfr, table);
+	MR_register_generator_ptr(table);
+	table->MR_subgoal->status = MR_SUBGOAL_ACTIVE;
 #else
 	fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -933,7 +992,11 @@ unused :-
 :- pragma c_code(table_nondet_get_ans_table(T::in, AT::out),
 		will_not_call_mercury, "
 #ifdef	MR_USE_MINIMAL_MODEL
-	AT = (Word) &(MR_SUBGOAL(T)->answer_table);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+
+	AT = (Word) &(table->MR_subgoal->answer_table);
 #else
 	fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -941,38 +1004,40 @@ unused :-
 
 :- pragma c_code(table_nondet_answer_is_not_duplicate(T::in),
 		will_not_call_mercury, "
-#ifdef	MR_USE_MINIMAL_MODEL
-	bool	is_new_answer;
+#ifndef	MR_USE_MINIMAL_MODEL
+	fatal_error(""minimal model code entered when not enabled"");
+#else
+	MR_TrieNode	table;
+	bool		is_new_answer;
+
+	table = (MR_TrieNode) T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
-		printf(""checking if %p is a duplicate answer: %d\\n"",
-			(Word *) T, *((Word *) T));
+		printf(""checking if %p is a duplicate answer: %ld\\n"",
+			table, (long) table->MR_integer);
 	}
 #endif
-	is_new_answer = (*((Word *) T) == MR_ANS_NOT_GENERATED);
-	*((Word *) T) = MR_ANS_GENERATED;
+
+	is_new_answer = (table->MR_integer == 0);
+	table->MR_integer = 1;	/* any nonzero value will do */
 	SUCCESS_INDICATOR = is_new_answer;
-#else
-	fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
 :- pragma c_code(table_nondet_new_ans_slot(T::in, Slot::out),
 		will_not_call_mercury, "
-#ifdef	MR_USE_MINIMAL_MODEL
-	MR_Subgoal		*table;
+#ifndef	MR_USE_MINIMAL_MODEL
+	fatal_error(""minimal model code entered when not enabled"");
+#else
+	MR_TrieNode		table;
+	MR_Subgoal		*subgoal;
 	MR_AnswerListNode	*answer_node;
 
-	table = MR_SUBGOAL(T);
-	table->num_ans += 1;
+	table = (MR_TrieNode) T;
+	subgoal = table->MR_subgoal;
+	subgoal->num_ans++;
 
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf(""new answer slot %d, storing into addr %p\\n"",
-			table->num_ans, table->answer_list_tail);
-	}
-#endif
 	/*
 	**
 	** We fill in the answer_data slot with a dummy value.
@@ -980,17 +1045,23 @@ unused :-
 	** to be executed after we return, which is why we return its address.
 	*/
 
-	answer_node = table_allocate_bytes(sizeof(MR_AnswerListNode));
-	answer_node->answer_num = table->num_ans;
-	answer_node->answer_data = 0;
+	answer_node = MR_TABLE_NEW(MR_AnswerListNode);
+	answer_node->answer_num = subgoal->num_ans;
+	answer_node->answer_data.MR_integer = 0;
 	answer_node->next_answer = NULL;
 
-	*(table->answer_list_tail) = answer_node;
-	table->answer_list_tail = &(answer_node->next_answer);
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""new answer slot %d at %p(%p), storing into %p\\n"",
+			subgoal->num_ans, answer_node,
+			&answer_node->answer_data, subgoal->answer_list_tail);
+	}
+#endif
+
+	*(subgoal->answer_list_tail) = answer_node;
+	subgoal->answer_list_tail = &(answer_node->next_answer);
 
 	Slot = (Word) &(answer_node->answer_data);
-#else
-	fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -1006,7 +1077,17 @@ unused :-
 	"),
 	first_code("
 #ifdef MR_USE_MINIMAL_MODEL
-		LOCALS->cur_node = MR_SUBGOAL(T)->answer_list;
+		MR_TrieNode	table;
+
+		table = (MR_TrieNode) T;
+		LOCALS->cur_node = table->MR_subgoal->answer_list;
+
+  #ifdef MR_TABLE_DEBUG
+		if (MR_tabledebug) {
+			printf(""restoring all answers in %p -> %p\\n"",
+				table, table->MR_subgoal);
+		}
+  #endif
 #endif
 	"),
 	retry_code("
@@ -1016,7 +1097,7 @@ unused :-
 		if (LOCALS->cur_node == NULL) {
 			FAIL;
 		} else {
-			A = LOCALS->cur_node->answer_data;
+			A = (Word) &LOCALS->cur_node->answer_data;
 			LOCALS->cur_node = LOCALS->cur_node->next_answer;
 			SUCCEED;
 		}
@@ -1125,109 +1206,175 @@ unused :-
 :- impure pred table_create_ans_block(ml_subgoal_table_node::in, int::in,
 	ml_answer_block::out) is det.
 
+	% Report statistics on the operation of the tabling system to stderr.
+:- impure pred table_report_statistics is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- pragma c_code(table_lookup_insert_int(T0::in, I::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_INT(T, T0, I);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_INT(table, table0, (Integer) I);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_char(T0::in, C::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_CHAR(T, T0, C);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_CHAR(table, table0, (Integer) C);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_string(T0::in, S::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_STRING(T, T0, S);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_STRING(table, table0, (String) S);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_float(T0::in, F::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_FLOAT(T, T0, F);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_FLOAT(table, table0, F);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_ENUM(T, T0, R, V);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_ENUM(table, table0, R, V);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_user(T0::in, V::in, T::out),
 		will_not_call_mercury, "
-	MR_DEBUG_NEW_TABLE_ANY(T, T0, TypeInfo_for_T, V);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_ANY(table, table0, (Word *) TypeInfo_for_T, V);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_poly(T0::in, V::in, T::out),
 		will_not_call_mercury, "
-	Word T1;
-	MR_DEBUG_NEW_TABLE_TYPEINFO(T1, T0, TypeInfo_for_T);
-	MR_DEBUG_NEW_TABLE_ANY(T, T1, TypeInfo_for_T, V);
+	MR_TrieNode	table0, table;
+
+	table0 = (MR_TrieNode) T0;
+	MR_DEBUG_NEW_TABLE_ANY(table, table0, (Word *) TypeInfo_for_T, V);
+	T = (Word) table;
 ").
 
 :- pragma c_code(table_save_int_ans(T::in, Offset::in, I::in),
 		will_not_call_mercury, "
-	MR_TABLE_SAVE_ANSWER(Offset, T, I,
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, I,
 		mercury_data___type_ctor_info_int_0);
 ").
 
 :- pragma c_code(table_save_char_ans(T::in, Offset::in, C::in),
 		will_not_call_mercury, "
-	MR_TABLE_SAVE_ANSWER(Offset, T, C,
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, C,
 		mercury_data___type_ctor_info_character_0);
 ").
 
 :- pragma c_code(table_save_string_ans(T::in, Offset::in, S::in),
 		will_not_call_mercury, "
-	MR_TABLE_SAVE_ANSWER(Offset, T, (Word) S,
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, (Word) S,
 		mercury_data___type_ctor_info_string_0);
 ").
 
 :- pragma c_code(table_save_float_ans(T::in, Offset::in, F::in),
 		will_not_call_mercury, "
-	MR_TABLE_SAVE_ANSWER(Offset, T, float_to_word(F),
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, float_to_word(F),
 		mercury_data___type_ctor_info_float_0);
 ").
 
 :- pragma c_code(table_save_any_ans(T::in, Offset::in, V::in),
 		will_not_call_mercury, "
-	MR_TABLE_SAVE_ANSWER(Offset, T, V, TypeInfo_for_T);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	MR_TABLE_SAVE_ANSWER(table, Offset, V, TypeInfo_for_T);
 ").
 
 :- pragma c_code(table_restore_int_ans(T::in, Offset::in, I::out),
 		will_not_call_mercury, "
-	I = (Integer) MR_TABLE_GET_ANSWER(Offset, T);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	I = (Integer) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_char_ans(T::in, Offset::in, C::out),
 		will_not_call_mercury, "
-	C = (Char) MR_TABLE_GET_ANSWER(Offset, T);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	C = (Char) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_string_ans(T::in, Offset::in, S::out),
 		will_not_call_mercury, "
-	S = (String) MR_TABLE_GET_ANSWER(Offset, T);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	S = (String) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_float_ans(T::in, Offset::in, F::out),
 		will_not_call_mercury, "
-	F = word_to_float(MR_TABLE_GET_ANSWER(Offset, T));
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	F = word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
 ").
 
 :- pragma c_code(table_restore_any_ans(T::in, Offset::in, V::out),
 		will_not_call_mercury, "
-	V = (Word) MR_TABLE_GET_ANSWER(Offset, T);
+	MR_TrieNode	table;
+
+	table = (MR_TrieNode) T;
+	V = (Word) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_create_ans_block(T0::in, Size::in, T::out),
 		will_not_call_mercury, "
-	MR_TABLE_CREATE_ANSWER_BLOCK(T0, Size);
+	MR_TrieNode	table0;
+
+	table0 = (MR_TrieNode) T0;
+	MR_TABLE_CREATE_ANSWER_BLOCK(table0, Size);
 	T = T0;
 ").
 
 table_loopcheck_error(Message) :-
 	error(Message).
+
+:- pragma c_code(table_report_statistics, will_not_call_mercury, "
+	MR_table_report_statistics(stderr);
+").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

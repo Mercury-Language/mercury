@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -981,6 +981,11 @@
 
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
+
+	% Write statistics about the operation of the tabling system to stderr.
+
+:- pred io__report_tabling_stats(io__state, io__state).
+:- mode io__report_tabling_stats(di, uo) is det.
 
 /*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
@@ -2478,6 +2483,11 @@ io__report_stats -->
 
 io__report_full_memory_stats -->
 	{ impure report_full_memory_stats }.
+
+:- pragma promise_pure(io__report_tabling_stats/2).
+
+io__report_tabling_stats -->
+	{ impure private_builtin__table_report_statistics }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -203,6 +203,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	char			*line;
 	MR_Next			res;
 	MR_Event_Details	event_details;
+	bool			saved_tabledebug;
 
 	if (! interactive) {
 		return MR_trace_event_internal_report(cmd, event_info);
@@ -216,7 +217,16 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	}
 #endif	MR_USE_DECLARATIVE_DEBUGGER
 
+	/*
+	** We want to make sure that the Mercury code used to implement some
+	** of the debugger's commands (a) doesn't generate any trace events,
+	** and (b) doesn't generate any unwanted debugging output.
+	*/
+
 	MR_trace_enabled = FALSE;
+	saved_tabledebug = MR_tabledebug;
+	MR_tabledebug = FALSE;
+
 	MR_trace_internal_ensure_init();
 
 	MR_trace_event_print_internal_report(event_info);
@@ -254,6 +264,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 
 	MR_scroll_next = 0;
 	MR_trace_enabled = TRUE;
+	MR_tabledebug = saved_tabledebug;
 	return jumpaddr;
 }
 
@@ -1506,8 +1517,13 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #ifdef	MR_USE_MINIMAL_MODEL
 	} else if (streq(words[0], "gen_stack")) {
 		if (word_count == 1) {
+			bool	saved_tabledebug;
+
 			do_init_modules();
+			saved_tabledebug = MR_tabledebug;
+			MR_tabledebug = TRUE;
 			MR_print_gen_stack(MR_mdb_out);
+			MR_tabledebug = saved_tabledebug;
 		} else {
 			MR_trace_usage("developer", "gen_stack");
 		}

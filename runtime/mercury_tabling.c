@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,40 +13,106 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** this part defines the functions
-**	MR_int_hash_lookup_or_add(),
-**	MR_float_hash_lookup_or_add(), and
-** 	MR_string_hash_lookup_or_add().
+** This part deals with tabling using resizable hash tables.
 */
-
-/* Initial size of a new table */
-#define TABLE_START_SIZE primes[0]
 
 /*
-** Maximum ratio of used to unused buckets in the table. Must be less than
-** 0.9 if you want even poor lookup times.
+** All hash table slot structures have the same fields, since they are
+** manipulated by the same macro (MR_GENERIC_HASH_LOOKUP_OR_ADD).
+** The variable size part is at the end, in order to make all the offsets
+** the same.
 */
-#define MAX_EL_SIZE_RATIO 0.65
 
-/* Extract info from a table */
-#define SIZE(table)		(((TableRoot *) table)->size)
-#define ELEMENTS(table)	 	(((TableRoot *) table)->used_elements)
-#define BUCKET(table, Bucket) 	((TableNode **) &(((TableRoot *) table)-> \
-					elements))[(Bucket)]
-typedef struct {
-	Word key;
-	Word * data;
-} TableNode;
+typedef struct MR_IntHashTableSlot_Struct	MR_IntHashTableSlot;
+typedef struct MR_FloatHashTableSlot_Struct	MR_FloatHashTableSlot;
+typedef struct MR_StringHashTableSlot_Struct	MR_StringHashTableSlot;
 
-typedef struct {
-	Word size;
-	Word used_elements;
-	Word elements;
-} TableRoot;
+typedef struct MR_AllocRecord_Struct		MR_AllocRecord;
 
-static Word next_prime(Word);
-static Word * create_hash_table(Word);
-static void re_hash(Word *, Word, TableNode * Node);
+struct MR_IntHashTableSlot_Struct {
+	MR_IntHashTableSlot	*next;
+	MR_TableNode		data;
+	Integer			key;
+};
+
+struct MR_FloatHashTableSlot_Struct {
+	MR_FloatHashTableSlot	*next;
+	MR_TableNode		data;
+	Float			key;
+};
+
+struct MR_StringHashTableSlot_Struct {
+	MR_StringHashTableSlot	*next;
+	MR_TableNode		data;
+	String			key;
+};
+
+typedef	union {
+	MR_IntHashTableSlot	*int_slot_ptr;
+	MR_FloatHashTableSlot	*float_slot_ptr;
+	MR_StringHashTableSlot	*string_slot_ptr;
+} MR_HashTableSlotPtr;
+
+struct MR_AllocRecord_Struct {
+	MR_HashTableSlotPtr	chunk;
+	MR_AllocRecord		*next;
+};
+
+/*
+** Our hash table design uses separate chaining to avoid the bad worst case
+** behavior of open addressing. This is important, because the worst case
+** can be expected to occur reasonably often in tabling workloads. The reason
+** is that successive queries are not independent. Often, query N is a
+** recursive call made from query N-1, which means that its input values are
+** much more likely to fall into the same or next hash bucket than an
+** independent query's input values would, especially for integer values.
+** Repeated over many queries, such input pattern can give rise to "convoys",
+** long sequences of occupied hash table slots. Any input value whose search
+** for a free slot runs into the convoy will have very long search time.
+**
+** The `hash_table' field points to an array of `size' slots, each of which
+** is a pointer to a hash table slot; hash table slots have embedded `next'
+** pointers to chain together all the values that hash to the same value.
+**
+** To keep maximum chain lengths bounded (in a statistical sense), we record
+** the number of values in the table (in the `value_count' field), and when
+** this exceeds a certain fraction of the size of the hash table, we increase
+** the size of the hash table and rehash all the existing entries. We do this
+** when the value in the `value_count' field exceeds the one in the `threshold'
+** field, which is set to `size' times MAX_LOAD_FACTOR whenever the size
+** is changed. (This avoids a float multiplication on each insertion.)
+**
+** The reason why the hash table array contains pointers to slots instead of
+** the slots themselves is that the latter would equire the addresses of some
+** hash table slots (those in the array itself and not in a chain) to change
+** when the table is resized. As for why this is bad, see the documentation
+** of the MR_TableNode type in mercury_tabling.h.
+**
+** To avoid calling GC_malloc on each insertion, we allocate memory in chunks,
+** with each chunk containing CHUNK_SIZE hash table slots. The `freeleft'
+** field contains count of the number of hash table slots left in the space
+** allocated but not yet used; the `freespace' field point to the first
+** of these slots.
+**
+** This design leads to pointers into the middle of GC_malloc'd memory.
+** To make sure that the code works even without the boehm gc being compiled
+** with interior pointers, we retain pointers to all the chunks we have
+** allocated in the `allocrecord' field. This field has no purpose other than
+** to serve as roots for boehm gc.
+*/
+
+struct MR_HashTable_Struct {
+	Integer			size;
+	Integer			threshold;
+	Integer			value_count;
+	MR_HashTableSlotPtr	*hash_table;
+	MR_HashTableSlotPtr	freespace;
+	Integer			freeleft;
+	MR_AllocRecord		*allocrecord;
+};
+
+#define	CHUNK_SIZE	256
+#define MAX_LOAD_FACTOR	0.65
 
 /*
 ** Prime numbers which are close to powers of 2.  Used for choosing
@@ -55,15 +121,21 @@ static void re_hash(Word *, Word, TableNode * Node);
 
 #define NUM_OF_PRIMES 16
 static Word primes[NUM_OF_PRIMES] =
-    {127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
-       262147, 524287, 1048573, 2097143, 4194301};
+	{127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
+	262147, 524287, 1048573, 2097143, 4194301};
+
+/* Initial size of a new table */
+#define HASH_TABLE_START_SIZE primes[0]
+
+static	Integer	next_prime(Integer);
 
 /*
 ** Return the next prime number greater than the number received.
 ** If no such prime number can be found, compute an approximate one.
 */
-static Word
-next_prime(Word old_size)
+
+static Integer
+next_prime(Integer old_size)
 {
 	int i;
 
@@ -79,370 +151,434 @@ next_prime(Word old_size)
 	}
 }
 
-/* Create a new empty hash table. */
-static Word *
-create_hash_table(Word table_size)
-{
-   	Word i;
-	TableRoot * table =
-		table_allocate_bytes(sizeof(Word) * 2 +
-				table_size * sizeof(TableNode *));
-
-	table->size = table_size;
-	table->used_elements = 0;
-
-	for (i = 0; i < table_size; i++) {
-		BUCKET(table, i) = NULL;
-	}
-
-	return (Word *) table;
-}
-
 /*
-** Insert key and Data into a new hash table using the given hash.
-** this function does not have to do compares as the given key
-** is definitely not in the table.
+** The MR_GENERIC_HASH_LOOKUP_OR_ADD macro is intended to be the body of
+** a function that looks to see if the given key is in the given hash table.
+** If it is, it returns the address of the data pointer associated with
+** the key. If it is not, it creates a new slot for the key in the table
+** and returns the address of its data pointer.
+**
+** It in turn relies on three groups of macros to perform part of the task.
+**
+** The first group optionally records statistics about the number of successful
+** and unsuccessful searches, and the number of probes they needed. From this
+** information, one can compute the average successful and unsuccessful
+** search lengths.
+**
+** The second optionally prints debugging messages.
+**
+** The third implements the initial creation of the hash table.
 */
-static void
-re_hash(Word * table, Word hash, TableNode * node)
-{
-	Word bucket = hash % SIZE(table);
 
-	while (BUCKET(table, bucket)) {
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-	}
+#ifdef	MR_TABLE_STATISTICS
+static	Unsigned	MR_table_hash_resizes = 0;
+static	Unsigned	MR_table_hash_allocs  = 0;
+static	Unsigned	MR_table_hash_lookups = 0;
+static	Unsigned	MR_table_hash_inserts = 0;
+static	Unsigned	MR_table_hash_lookup_probes = 0;
+static	Unsigned	MR_table_hash_insert_probes = 0;
+#endif
 
-	BUCKET(table, bucket) = node;
-	++ELEMENTS(table);
-}
+#ifdef	MR_TABLE_STATISTICS
+  #define declare_probe_count	Integer	probe_count = 0;
+  #define record_probe_count	do { probe_count++; } while (0)
+  #define record_lookup_count	do {					      \
+					MR_table_hash_lookup_probes +=	      \
+						probe_count;		      \
+					MR_table_hash_lookups++;	      \
+				} while (0)
+  #define record_insert_count	do {					      \
+					MR_table_hash_insert_probes +=	      \
+						probe_count;		      \
+					MR_table_hash_inserts++;	      \
+				} while (0)
+  #define record_resize_count	do { MR_table_hash_resizes++; } while (0)
+  #define record_alloc_count	do { MR_table_hash_allocs++; } while (0)
+#else
+  #define declare_probe_count
+  #define record_probe_count	((void) 0)
+  #define record_lookup_count	((void) 0)
+  #define record_insert_count	((void) 0)
+  #define record_resize_count	((void) 0)
+  #define record_alloc_count	((void) 0)
+#endif
 
-/*
-** Look to see if the given integer key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not; create a new element for the key in the table and
-** return the address of its data pointer.
-*/
+#ifdef	MR_TABLE_DEBUG
+  #define debug_key_msg(keyvalue, keyformat, keycast)			      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search key " keyformat "\n",		      \
+				(keycast) keyvalue);			      \
+		}							      \
+	} while (0)
+
+  #define debug_resize_msg(oldsize, newsize, newthreshold)		      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT expanding table from %d to %d(%d)\n",      \
+				(oldsize), (newsize), (newthreshold));	      \
+		}							      \
+	} while (0)
+
+  #define debug_rehash_msg(rehash_bucket)				      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT rehashing bucket: %d\n",		      \
+				(rehash_bucket));			      \
+		}							      \
+	} while (0)
+
+  #define debug_probe_msg(probe_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT probing bucket: %d\n", (probe_bucket));    \
+		}							      \
+	} while (0)
+
+  #define debug_lookup_msg(home_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search successful in bucket: %d\n",	      \
+				(home_bucket));				      \
+		}							      \
+	} while (0)
+
+  #define debug_insert_msg(home_bucket)					      \
+	do {								      \
+		if (MR_hashdebug) {					      \
+			printf("HT search unsuccessful in bucket: %d\n",      \
+				(home_bucket));				      \
+		}							      \
+	} while (0)
+#else
+  #define debug_key_msg(keyvalue, keyformat, keycast)		((void) 0)
+  #define debug_resize_msg(oldsize, newsize, newthreshold)	((void) 0)
+  #define debug_rehash_msg(rehash_bucket)			((void) 0)
+  #define debug_probe_msg(probe_bucket)				((void) 0)
+  #define debug_lookup_msg(home_bucket)				((void) 0)
+  #define debug_insert_msg(home_bucket)				((void) 0)
+#endif
+
+#define	MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)  \
+	do {								      \
+		Word		i;					      \
+		MR_HashTable	*newtable;				      \
+									      \
+		newtable = MR_TABLE_NEW(MR_HashTable);			      \
+									      \
+		newtable->size = table_size;				      \
+		newtable->threshold = (Integer) ((float) table_size	      \
+				* MAX_LOAD_FACTOR);			      \
+		newtable->value_count = 0;				      \
+		newtable->freespace.table_field = NULL;			      \
+		newtable->freeleft = 0;					      \
+		newtable->allocrecord = NULL;				      \
+		newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,\
+				table_size);				      \
+									      \
+		for (i = 0; i < table_size; i++) {			      \
+			newtable->hash_table[i].table_field = NULL;	      \
+		}							      \
+									      \
+		table_ptr = newtable;					      \
+	} while (0)
+
+#define	MR_GENERIC_HASH_LOOKUP_OR_ADD					      \
+	MR_HashTable	*table;						      \
+	table_type	*slot;						      \
+	Integer		abs_hash;					      \
+	Integer		home;						      \
+	declare_probe_count						      \
+									      \
+	debug_key_msg(key, key_format, key_cast);			      \
+									      \
+	/* Has the table been built? */					      \
+	if (t->MR_hash_table == NULL) {					      \
+		MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,	      \
+			table_field, HASH_TABLE_START_SIZE);		      \
+	}								      \
+									      \
+	table = t->MR_hash_table; /* Deref the table pointer */		      \
+									      \
+	/* Rehash the table if it has grown too full */			      \
+	if (table->value_count > table->threshold) {			      \
+		MR_HashTableSlotPtr	*new_hash_table;		      \
+		int			new_size;			      \
+		int			new_threshold;			      \
+		int			old_bucket;			      \
+		int			new_bucket;			      \
+		table_type		*next_slot;			      \
+									      \
+		new_size = next_prime(table->size);			      \
+		new_threshold = (Integer) ((float) new_size		      \
+				* MAX_LOAD_FACTOR);			      \
+		debug_resize_msg(table->size, new_size, new_threshold);	      \
+		record_resize_count;					      \
+									      \
+		new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
+				new_size);				      \
+		for (new_bucket = 0; new_bucket < new_size; new_bucket++) {   \
+			new_hash_table[new_bucket].table_field = NULL;	      \
+		}							      \
+									      \
+		for (old_bucket = 0; old_bucket < table->size; old_bucket++) {\
+			slot = table->hash_table[old_bucket].table_field;     \
+			while (slot != NULL) {				      \
+				debug_rehash_msg(old_bucket);		      \
+									      \
+				abs_hash = hash(slot->key);		      \
+				if (abs_hash < 0) {			      \
+					abs_hash = -abs_hash;		      \
+				}					      \
+									      \
+				new_bucket = abs_hash % new_size;	      \
+				next_slot = slot->next;			      \
+				slot->next = new_hash_table[new_bucket].      \
+					table_field;			      \
+				new_hash_table[new_bucket].table_field = slot;\
+									      \
+				slot = next_slot;			      \
+			}						      \
+		}							      \
+									      \
+		table_free(table->hash_table);				      \
+		table->hash_table = new_hash_table;			      \
+		table->size = new_size;					      \
+		table->threshold = new_threshold;			      \
+	}								      \
+									      \
+	abs_hash = hash(key);						      \
+	if (abs_hash < 0) {						      \
+		abs_hash = -abs_hash;					      \
+	}								      \
+									      \
+	home = abs_hash % table->size;					      \
+									      \
+	/* Find if the element is present. If not add it */		      \
+	slot = table->hash_table[home].table_field;			      \
+	while (slot != NULL) {						      \
+		debug_probe_msg(home);					      \
+		record_probe_count;					      \
+									      \
+		if (equal_keys(key, slot->key)) {			      \
+			record_lookup_count;				      \
+			debug_lookup_msg(home);				      \
+			return &slot->data;				      \
+		}							      \
+									      \
+		slot = slot->next;					      \
+	}								      \
+									      \
+	debug_insert_msg(home);						      \
+	record_insert_count;						      \
+									      \
+	if (table->freeleft == 0) {					      \
+		MR_AllocRecord	*record;				      \
+									      \
+		table->freespace.table_field = MR_TABLE_NEW_ARRAY(	      \
+				table_type, CHUNK_SIZE);		      \
+		table->freeleft = CHUNK_SIZE;				      \
+									      \
+		record = MR_TABLE_NEW(MR_AllocRecord);			      \
+		record->chunk.table_field = table->freespace.table_field;     \
+		record->next = table->allocrecord;			      \
+		table->allocrecord = record;				      \
+									      \
+		record_alloc_count;					      \
+	}								      \
+									      \
+	slot = table->freespace.table_field;				      \
+	table->freespace.table_field++;					      \
+	table->freeleft--;						      \
+									      \
+	slot->key = key;						      \
+	slot->data.MR_integer = 0;					      \
+	slot->next = table->hash_table[home].table_field;		      \
+	table->hash_table[home].table_field = slot;			      \
+									      \
+	table->value_count++;						      \
+									      \
+	return &slot->data;
+
 MR_TrieNode
 MR_int_hash_lookup_or_add(MR_TrieNode t, Integer key)
 {
-	TableNode * p, * q;
-	Word * table = *t;	/* Deref the table pointer */
-	Word bucket;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	bucket = key % SIZE(table);
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. If not add it */
-	while (p) {
-		if (key == p->key) {
-			return &p->data;
-		}
-
-		bucket++;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = key;
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table, q->key, q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(table);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element */
-		re_hash(new_table, key, p);
-	} else {
-		BUCKET(table, bucket) = p;
-		++ELEMENTS(table);
-	}
-
-	return &p->data;
+#define	key_format		"%ld"
+#define	key_cast		long
+#define	table_type		MR_IntHashTableSlot
+#define	table_field		int_slot_ptr
+#define	hash(key)		(key)
+#define	equal_keys(k1, k2)	(k1 == k2)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	table_type
+#undef	table_field
+#undef	hash(key)
+#undef	equal_keys(k1, k2)
 }
 
-/*
-** Look to see if the given float key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not create a new element for the key in the table and
-** return the address of its data pointer.
-*/
 MR_TrieNode
 MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
 {
-	TableNode	*p, *q;
-	Word		*table = *t;	/* Deref the table pointer */
-	Word		bucket;
-	Word		hash;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	hash = hash_float(key);
-	bucket = hash % SIZE(table);
-
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. If not add it */
-	while (p) {
-		if (key == word_to_float(p->key)) {
-			return &p->data;
-		}
-
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = float_to_word(key);
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table, hash_float(q->key), q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(table);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element */
-		re_hash(new_table, hash, p);
-	} else {
-		++ELEMENTS(table);
-		BUCKET(table, bucket) = p;
-	}
-
-	return &p->data;
+#define	key_format		"%f"
+#define	key_cast		double
+#define	table_type		MR_FloatHashTableSlot
+#define	table_field		float_slot_ptr
+#define	hash(key)		(hash_float(key))
+#define	equal_keys(k1, k2)	(k1 == k2)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	debug_search_key
+#undef	table_type
+#undef	table_field
+#undef	hash(key)
+#undef	equal_keys(k1, k2)
 }
 
-
-
-/*
-** Look to see if the given string key is in the given table. If it
-** is return the address of the data pointer associated with the key.
-** If it is not create a new element for the key in the table and
-** return the address of its data pointer.
-*/
 MR_TrieNode
 MR_string_hash_lookup_or_add(MR_TrieNode t, String key)
 {
-	TableNode * p, * q;
-	Word * table = *t;	/* Deref the table pointer */
-	Word bucket;
-	Word hash;
-
-	/* Has the the table been built? */
-	if (table == NULL) {
-		table = create_hash_table(TABLE_START_SIZE);
-		*t = table;
-	}
-
-	hash = hash_string((Word) key);
-	bucket = hash % SIZE(table);
-
-	p = BUCKET(table, bucket);
-
-	/* Find if the element is present. */
-	while (p) {
-		int res = strtest((String)p->key, key);
-
-		if (res == 0) {
-			return &p->data;
-		}
-
-		++bucket;
-		if (bucket == SIZE(table))
-			bucket = 0;
-
-		p = BUCKET(table, bucket);
-	}
-
-	p = table_allocate_bytes(sizeof(TableNode));
-	p->key = (Word) key;
-	p->data = NULL;
-
-	/* Rehash the table if it has grown to full */
-	if ((float) ELEMENTS(table) / (float) SIZE(table) >
-	   		MAX_EL_SIZE_RATIO)
-	{
-		int old_size = SIZE(table);
-		int new_size = next_prime(old_size);
-		Word * new_table = create_hash_table(new_size);
-		int i;
-
-		for (i = 0; i < old_size; i++) {
-			q = BUCKET(table, i);
-			if (q) {
-				re_hash(new_table,
-					hash_string((Word) q->key), q);
-			}
-		}
-
-		/* Free the old table */
-		table_free(t);
-
-		/* Point to the new table */
-		*t = new_table;
-
-		/* Add a new element to rehashed table */
-		re_hash(new_table, hash, p);
-	} else {
-		BUCKET(table, bucket) = p;
-		++ELEMENTS(table);
-	}
-
-	return &p->data;
+#define	key_format		"%s"
+#define	key_cast		char *
+#define	table_type		MR_StringHashTableSlot
+#define	table_field		string_slot_ptr
+#define	hash(key)		(hash_string((Word) key))
+#define	equal_keys(k1, k2)	(strtest(k1, k2) == 0)
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef	key_format
+#undef	key_cast
+#undef	debug_search_key
+#undef	table_type
+#undef	table_field
+#undef	hash(key)
+#undef	equal_keys(k1, k2)
 }
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** This part defines the MR_int_index_lookup_or_add() function.
-*/
-
-#define ELEMENT(Table, Key) ((Word**)&((Table)[Key]))
-
-/*
-**  MR_int_index_lookup_or_add() : This function maintains a simple indexed
-**	table of size Range.
+** This part deals with tabling using fixed size tables simply indexed
+** by a given integer. t->MR_fix_table[i] contains the trie node for
+** key i.
 */
 
 MR_TrieNode
-MR_int_index_lookup_or_add(MR_TrieNode t, Integer range, Integer key)
+MR_int_fix_index_lookup_or_add(MR_TrieNode t, Integer range, Integer key)
 {
-	Word *table = *t;		/* Deref table */
+	if (t->MR_fix_table == NULL) {
+		t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
+		memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
+	}
 
 #ifdef	MR_TABLE_DEBUG
 	if (key >= range) {
-		fatal_error("MR_int_index_lookup_or_add: key out of range");
+		fatal_error("MR_int_fix_index_lookup_or_add: key out of range");
 	}
 #endif
 
-	if (table == NULL) {
-		*t = table = table_allocate_words(range);
-		memset(table, 0, sizeof(Word *) * range);
-	}
-
-	return ELEMENT(table, key);
+	return &t->MR_fix_table[key];
 }
-
-#undef ELEMENT
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** This part defines the type_info_lookup_or_add() function.
+** This part deals with tabling using expandable tables simply indexed
+** by the given integer minus a given starting point. t->MR_start_table[i+1]
+** contains the trie node for key i - start. t->MR_start_table[0] contains
+** the number of trienode slots currently allocated for the array; this does
+** not include the slot used for the zeroeth element.
 */
 
-typedef struct TreeNode_struct {
-	Word * key;
-	Word value;
-	struct TreeNode_struct * right;
-	struct TreeNode_struct * left;
-} TreeNode;
+#define	MR_START_TABLE_INIT_SIZE	1024
 
 MR_TrieNode
-MR_type_info_lookup_or_add(MR_TrieNode table, Word * type_info)
+MR_int_start_index_lookup_or_add(MR_TrieNode table, Integer start, Integer key)
 {
-	TreeNode *p, *q;
-	int i;
+	Integer	diff, size;
 
-	if (*table == NULL) {
-		p = table_allocate_bytes(sizeof(TreeNode));
+	diff = key - start;
 
-		p->key = type_info;
-		p->value = (Word) NULL;
-		p->left = NULL;
-		p->right = NULL;
-
-		*table = (Word *) p;
-
-		return (Word**) &p->value;
+#ifdef	MR_TABLE_DEBUG
+	if (key < start) {
+		fatal_error("MR_int_start_index_lookup_or_add: small too key");
 	}
+#endif
 
-	p = (TreeNode *) *table;
-
-	while (p != NULL) {
-		i = MR_compare_type_info((Word) p->key, (Word) type_info);
-
-		if (i == COMPARE_EQUAL) {
-			return (Word **) &p->value;
-		}
-
-		q = p;
-
-		if (i == COMPARE_LESS) {
-			p = p->left;
-		} else {
-			p = p->right;
-		}
-	}
-
-	p = table_allocate_bytes(sizeof(TreeNode));
-	p->key = type_info;
-	p->value = (Word) NULL;
-	p->left = NULL;
-	p->right = NULL;
-
-	if (i == COMPARE_LESS) {
-		q->left = p;
+	if (table->MR_start_table == NULL) {
+		size = max(MR_START_TABLE_INIT_SIZE, diff + 1);
+		table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
+					size + 1);
+		memset(table->MR_start_table + 1, 0,
+					sizeof(MR_TableNode) * size);
+		table->MR_start_table[0].MR_integer = size;
 	} else {
-		q ->right = p;
+		size = table->MR_start_table[0].MR_integer;
 	}
 
-	return (Word **) &p->value;
+	if (diff >= size) {
+		MR_TableNode	*new_array;
+		Integer		new_size, i;
+
+		new_size = max(2 * size, diff + 1);
+		new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
+
+		new_array[0].MR_integer = new_size;
+
+		for (i = 0; i < size; i++) {
+			new_array[i + 1] = table->MR_start_table[i + 1];
+		}
+
+		for (; i < new_size; i++) {
+			new_array[i + 1].MR_integer = 0;
+		}
+
+		table->MR_start_table = new_array;
+	}
+
+	return &table->MR_start_table[diff + 1];
 }
 
 /*---------------------------------------------------------------------------*/
 
+MR_TrieNode
+MR_type_info_lookup_or_add(MR_TrieNode table, Word *type_info)
+{
+	MR_TypeInfo	collapsed_type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	MR_TrieNode	node;
+	Word		**type_info_args;
+	int		i;
+
+	/* XXX memory allocation here should be optimized */
+	collapsed_type_info = MR_collapse_equivalences((Word) type_info);
+
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
+			(Word *) collapsed_type_info);
+	node = MR_int_hash_lookup_or_add(table, (Integer) type_ctor_info);
+
+	/*
+	** All calls to MR_type_info_lookup_or_add that have the same value
+	** of node at this point agree on the type_ctor_info of the type
+	** being tabled. They must therefore also agree on its arity.
+	** This is why looping over all the arguments works.
+	**
+	** If collapsed_type_info has a zero-arity type_ctor, then it may be
+	** stored using a one-cell type_info, and type_info_args does not make
+	** sense. This is OK, because in that case it will never be used.
+	*/
+
+	type_info_args = (Word **) collapsed_type_info;
+
+	for (i = 1; i <= type_ctor_info->arity; i++) {
+		node = MR_type_info_lookup_or_add(node, type_info_args[i]);
+	}
+
+	return node;
+}
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** This part defines the MR_table_type() function.
@@ -454,7 +590,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.
 **
-** NOTE : changes to this function will probably also have to be reflected
+** NOTE: changes to this function will probably also have to be reflected
 ** in mercury_deep_copy.c and std_util::ML_expand().
 */
 
@@ -607,7 +743,7 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
 
         case MR_TYPECTOR_REP_STRING:
-            MR_DEBUG_TABLE_STRING(table, data);
+            MR_DEBUG_TABLE_STRING(table, (String) data);
             break;
 
         case MR_TYPECTOR_REP_PRED: {
@@ -719,6 +855,45 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
 
     return table;
 } /* end table_any() */
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_table_report_statistics(FILE *fp)
+{
+	fprintf(fp, "hash table search statistics:\n");
+
+#ifdef	MR_TABLE_STATISTICS
+	if (MR_table_hash_lookups == 0) {
+		fprintf(fp, "no successful searches\n");
+	} else {
+		fprintf(fp, "successful   %6d, "
+				"with an average of %6.3f comparisons\n",
+			MR_table_hash_lookups,
+			(float) MR_table_hash_lookup_probes /
+				(float) MR_table_hash_lookups);
+	}
+
+	if (MR_table_hash_inserts == 0) {
+		fprintf(fp, "no unsuccessful searches\n");
+	} else {
+		fprintf(fp, "unsuccessful %6d, "
+				"with an average of %6.3f comparisons\n",
+			MR_table_hash_inserts,
+			(float) MR_table_hash_insert_probes /
+				(float) MR_table_hash_inserts);
+	}
+
+	fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
+			MR_table_hash_resizes,
+			(float) (100 * MR_table_hash_resizes) /
+			(float) (MR_table_hash_lookups
+				 + MR_table_hash_inserts));
+	fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
+#else
+	fprintf(fp, "not enabled\n");
+#endif
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -1199,7 +1374,8 @@ BEGIN_CODE
 
 Define_entry(mercury__table_nondet_suspend_2_0);
 {
-	MR_Subgoal	*table;
+	MR_TrieNode	table;
+	MR_Subgoal	*subgoal;
 	MR_Consumer	*consumer;
 	MR_ConsumerList	listnode;
 	Integer		cur_gen;
@@ -1219,13 +1395,14 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	*/
 	MR_mkframe("mercury__table_nondet_suspend", 1, ENTRY(do_fail));
 
-	table = MR_SUBGOAL(r1);
+	table = (MR_TrieNode) r1;
+	subgoal = table->MR_subgoal;
 	consumer = table_allocate_bytes(sizeof(MR_Consumer));
-	consumer->remaining_answer_list_ptr = &table->answer_list;
+	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
 
 	save_transient_registers();
 	save_state(&(consumer->saved_state),
-		table->generator_maxfr, table->generator_sp,
+		subgoal->generator_maxfr, subgoal->generator_sp,
 		"suspension", "consumer");
 	restore_transient_registers();
 
@@ -1247,7 +1424,9 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 #endif
 
 		if (fr == MR_gen_stack[cur_gen].generator_frame) {
-			if (MR_gen_stack[cur_gen].generator_table == table) {
+			if (MR_gen_stack[cur_gen].generator_table->MR_subgoal
+					== subgoal)
+			{
 				/*
 				** This is the nondet stack frame of the
 				** generator corresponding to this consumer.
@@ -1292,8 +1471,9 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 				save_transient_registers();
 				make_subgoal_follow_leader(
-					MR_gen_stack[cur_gen].generator_table,
-					table);
+					MR_gen_stack[cur_gen].
+						generator_table->MR_subgoal,
+					subgoal);
 				restore_transient_registers();
 			}
 
@@ -1324,15 +1504,15 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("adding suspension node %p to table %p",
-			(void *) consumer, (void *) table);
-		printf(" at slot %p\n", table->consumer_list_tail);
+			consumer, subgoal);
+		printf(" at slot %p\n", subgoal->consumer_list_tail);
 	}
 #endif
 
-	assert(*(table->consumer_list_tail) == NULL);
-	listnode = table_allocate_bytes(sizeof(struct MR_ConsumerListNode));
-	*(table->consumer_list_tail) = listnode;
-	table->consumer_list_tail = &(listnode->next);
+	assert(*(subgoal->consumer_list_tail) == NULL);
+	listnode = table_allocate_bytes(sizeof(MR_ConsumerListNode));
+	*(subgoal->consumer_list_tail) = listnode;
+	subgoal->consumer_list_tail = &(listnode->next);
 	listnode->item = consumer;
 	listnode->next = NULL;
 }
@@ -1439,7 +1619,7 @@ Define_entry(mercury__table_nondet_resume_1_0);
 		}
 #endif
 	} else {
-		MR_cur_leader->resume_info = MR_GC_NEW(MR_ResumeInfo);
+		MR_cur_leader->resume_info = MR_TABLE_NEW(MR_ResumeInfo);
 
 		save_transient_registers();
 		save_state(&(MR_cur_leader->resume_info->leader_state),
@@ -1586,7 +1766,6 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	** since will not have changed in the meantime.
 	*/
 
-
 	r1 = (Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
 		answer_data;
 
@@ -1690,7 +1869,7 @@ Define_entry(MR_table_nondet_commit);
 	MR_fail();
 END_MODULE
 
-#endif
+#endif	/* MR_USE_MINIMAL_MODEL */
 
 /* Ensure that the initialization code for the above modules gets to run. */
 /*

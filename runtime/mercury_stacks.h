@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -357,11 +357,11 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
 typedef struct MR_GeneratorStackFrameStruct {
 	Word			*generator_frame;
-	MR_Subgoal		*generator_table;
+	MR_TrieNode		generator_table;
 } MR_GeneratorStackFrame;
 
 extern	void			MR_push_generator(Word *frame_addr,
-					MR_Subgoal *table_addr);
+					MR_TrieNode table_addr);
 extern	MR_Subgoal		*MR_top_generator_table(void);
 extern	void			MR_pop_generator(void);
 extern	void			MR_print_gen_stack(FILE *fp);
@@ -370,7 +370,7 @@ extern	void			MR_print_gen_stack(FILE *fp);
 
 typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
 struct MR_CutGeneratorListNode {
-	MR_Subgoal		**generator_ptr;
+	MR_TrieNode		generator_ptr;
 	MR_CutGeneratorList	next_generator;
 };
 
@@ -383,7 +383,7 @@ typedef struct MR_CutStackFrameStruct {
 extern	void			MR_commit_mark(void);
 extern	void			MR_commit_cut(void);
 
-extern	void			MR_register_generator_ptr(MR_Subgoal **);
+extern	void			MR_register_generator_ptr(MR_TrieNode);
 
 #endif	/* MR_USE_MINIMAL_MODEL */
 

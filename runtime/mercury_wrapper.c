@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-1999 The University of Melbourne.
+** Copyright (C) 1994-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -231,7 +231,7 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 	save_regs_to_mem(c_regs);
 
-#ifdef	MR_LOWLEVEL_DEBUG
+#if defined(MR_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG)
 	/*
 	** Ensure stdio & stderr are unbuffered even if redirected.
 	** Using setvbuf() is more complicated than using setlinebuf(),
@@ -668,39 +668,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'd':	
-			if (streq(MR_optarg, "b"))
-				MR_nondstackdebug = TRUE;
-			else if (streq(MR_optarg, "c"))
-				MR_calldebug    = TRUE;
-			else if (streq(MR_optarg, "d"))
-				MR_detaildebug  = TRUE;
-			else if (streq(MR_optarg, "g"))
-				MR_gotodebug    = TRUE;
-			else if (streq(MR_optarg, "G"))
-#ifdef CONSERVATIVE_GC
-			GC_quiet = FALSE;
-#else
-			; /* ignore inapplicable option */
-#endif
-			else if (streq(MR_optarg, "s"))
-				MR_detstackdebug  = TRUE;
-			else if (streq(MR_optarg, "h"))
-				MR_heapdebug    = TRUE;
-			else if (streq(MR_optarg, "f"))
-				MR_finaldebug   = TRUE;
-			else if (streq(MR_optarg, "p"))
-				MR_progdebug    = TRUE;
-			else if (streq(MR_optarg, "m"))
-				MR_memdebug     = TRUE;
-			else if (streq(MR_optarg, "r"))
-				MR_sregdebug    = TRUE;
-			else if (streq(MR_optarg, "t"))
-				MR_tracedebug   = TRUE;
-			else if (streq(MR_optarg, "S"))
-				MR_tablestackdebug = TRUE;
-			else if (streq(MR_optarg, "T"))
-				MR_tabledebug   = TRUE;
-			else if (streq(MR_optarg, "a")) {
+			if (streq(MR_optarg, "a")) {
 				MR_calldebug      = TRUE;
 				MR_nondstackdebug = TRUE;
 				MR_detstackdebug  = TRUE;
@@ -713,6 +681,40 @@ process_options(int argc, char **argv)
 				GC_quiet = FALSE;
 #endif
 			}
+			else if (streq(MR_optarg, "b"))
+				MR_nondstackdebug = TRUE;
+			else if (streq(MR_optarg, "c"))
+				MR_calldebug    = TRUE;
+			else if (streq(MR_optarg, "d"))
+				MR_detaildebug  = TRUE;
+			else if (streq(MR_optarg, "f"))
+				MR_finaldebug   = TRUE;
+			else if (streq(MR_optarg, "g"))
+				MR_gotodebug    = TRUE;
+			else if (streq(MR_optarg, "G"))
+#ifdef CONSERVATIVE_GC
+			GC_quiet = FALSE;
+#else
+			; /* ignore inapplicable option */
+#endif
+			else if (streq(MR_optarg, "h"))
+				MR_heapdebug    = TRUE;
+			else if (streq(MR_optarg, "H"))
+				MR_hashdebug    = TRUE;
+			else if (streq(MR_optarg, "m"))
+				MR_memdebug     = TRUE;
+			else if (streq(MR_optarg, "p"))
+				MR_progdebug    = TRUE;
+			else if (streq(MR_optarg, "r"))
+				MR_sregdebug    = TRUE;
+			else if (streq(MR_optarg, "s"))
+				MR_detstackdebug  = TRUE;
+			else if (streq(MR_optarg, "S"))
+				MR_tablestackdebug = TRUE;
+			else if (streq(MR_optarg, "t"))
+				MR_tracedebug   = TRUE;
+			else if (streq(MR_optarg, "T"))
+				MR_tabledebug   = TRUE;
 			else
 				usage();
 

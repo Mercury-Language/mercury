@@ -1,4 +1,4 @@
-:- module fib.
+:- module fib_float.
 
 :- interface.
 
@@ -8,16 +8,16 @@
 
 :- implementation.
 
-:- import_module benchmarking, require, int.
+:- import_module benchmarking, require, int, float.
 
 main -->
-	perform_trials(20).
+	perform_trials(20.0).
 
-:- pred perform_trials(int::in, io__state::di, io__state::uo) is cc_multi.
+:- pred perform_trials(float::in, io__state::di, io__state::uo) is cc_multi.
 
 perform_trials(N) -->
 	{ trial(N, Time, MTime) },
-	% io__write_int(N),
+	% io__write_float(N),
 	% io__write_string(": "),
 	% io__write_int(Time),
 	% io__write_string("ms vs "),
@@ -40,35 +40,35 @@ perform_trials(N) -->
 	;
 		% We couldn't get a measurable result with N,
 		% and it looks like we can afford a bigger trial
-		perform_trials(N+3)
+		perform_trials(N + 3.0)
 	).
 
-:- pred trial(int::in, int::out, int::out) is cc_multi.
+:- pred trial(float::in, int::out, int::out) is cc_multi.
 
 trial(N, Time, MTime) :-
 	benchmark_det(fib, N, Res, 1, Time),
 	benchmark_det(mfib, N, MRes, 1, MTime),
 	require(unify(Res, MRes), "tabling produces wrong answer").
 
-:- pred fib(int::in, int::out) is det.
+:- pred fib(float::in, float::out) is det.
 
 fib(N, F) :-
-	( N < 2 ->
-		F = 1
+	( N < 2.0 ->
+		F = 1.0
 	;
-		fib(N - 1, F1),
-		fib(N - 2, F2),
+		fib(N - 1.0, F1),
+		fib(N - 2.0, F2),
 		F is F1 + F2
 	).
 
-:- pred mfib(int::in, int::out) is det.
+:- pred mfib(float::in, float::out) is det.
 :- pragma memo(mfib/2).
 
 mfib(N, F) :-
-	( N < 2 ->
-		F = 1
+	( N < 2.0 ->
+		F = 1.0
 	;
-		mfib(N - 1, F1),
-		mfib(N - 2, F2),
+		mfib(N - 1.0, F1),
+		mfib(N - 2.0, F2),
 		F is F1 + F2
 	).

@@ -8,7 +8,13 @@ include ../Mmake.common
 
 SIMPLE_PROGS = \
 	boyer \
+	expand \
+	expand_float \
+	expand_poly \
 	fib \
+	fib_float \
+	fib_list \
+	fib_string \
 	loopcheck
 
 NONDET_PROGS = \

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-1999 The University of Melbourne.
+# Copyright (C) 1998-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -71,6 +71,7 @@ HDRS		=	\
 			mercury_stacks.h	\
 			mercury_string.h	\
 			mercury_tabling.h	\
+			mercury_tabling_macros.h	\
 			mercury_tags.h		\
 			mercury_thread.h	\
 			mercury_timing.h	\

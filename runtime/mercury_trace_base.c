@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -156,9 +156,23 @@ MR_trace_fake(const MR_Stack_Layout_Label *layout)
 	return NULL;
 }
 
+#ifdef	MR_TABLE_DEBUG
+bool	MR_saved_tabledebug;
+#endif
+
 void
 MR_trace_init(void)
 {
+#ifdef	MR_TABLE_DEBUG
+	/*
+	** We don't want to see any tabling debugging messages from
+	** initialization code about entering and leaving commit goals.
+	*/
+
+	MR_saved_tabledebug = MR_tabledebug;
+	MR_tabledebug = FALSE;
+#endif
+
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
 		if (MR_address_of_trace_init_external != NULL) {
@@ -192,6 +206,14 @@ MR_trace_start(bool enabled)
 	MR_trace_call_depth = 0;
 	MR_trace_from_full = TRUE;
 	MR_trace_enabled = enabled;
+
+#ifdef	MR_TABLE_DEBUG
+	/*
+	** Restore the value saved by MR_trace_init.
+	*/
+
+	MR_tabledebug = MR_saved_tabledebug;
+#endif
 
 	/*
 	** Install the SIGINT signal handler.

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -155,6 +155,9 @@
 ** MR_DEBUG_AGC
 ** 	Turn on all debugging information for accurate garbage
 ** 	collection.  (Equivalent to all MR_DEBUG_AGC_* macros above).
+**
+** MR_TABLE_DEBUG
+** 	Enables low-level debugging messages from the tabling system.
 */
 
 #if MR_DEBUG_AGC
@@ -201,6 +204,10 @@
 ** various kinds of representations, then set this macro to a string giving
 ** the name of the file to which the statistics should be appended when the
 ** program exits.
+**
+** MR_TABLE_STATISTICS
+** Enable this if you want to gather statistics about the operation of the
+** tabling system. The results are reported via io__report_tabling_stats.
 */
 
 /*---------------------------------------------------------------------------*/
