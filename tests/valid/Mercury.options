@@ -85,6 +85,7 @@ MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
 MCFLAGS-solv			= --halt-at-warn
+MCFLAGS-solver_type_bug		= --halt-at-warn
 MCFLAGS-tuple_eqv               = --smart-recompilation
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all

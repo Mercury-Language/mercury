@@ -367,7 +367,8 @@ inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 	ModuleInfo = Info^module_info,
 	MaybeSub = Info ^ maybe_sub.
 
-:- type expansions == set(pair(inst)).
+:- type inst_match_inputs ---> inst_match_inputs(inst, inst, maybe(type)).
+:- type expansions == set(inst_match_inputs).
 
 	% The uniqueness_comparison type is used by the predicate
 	% compare_uniqueness to determine what order should be used for
@@ -446,8 +447,8 @@ swap_calculate_sub(none) = none.
 :- pred inst_matches_initial_2 `with_type` inst_matches_pred.
 :- mode inst_matches_initial_2 `with_inst` inst_matches_pred.
 
-inst_matches_initial_2(InstA, InstB, Type, Info0, Info) :-
-	ThisExpansion = InstA - InstB,
+inst_matches_initial_2(InstA, InstB, MaybeType, Info0, Info) :-
+	ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
 	( set__member(ThisExpansion, Info0^expansions) ->
 		Info = Info0
 
@@ -456,7 +457,7 @@ inst_matches_initial_2(InstA, InstB, Type, Info0, Info) :-
 		inst_expand(Info0^module_info, InstB, InstB2),
 		set__insert(Info0^expansions, ThisExpansion, Expansions1),
 		handle_inst_var_subs(inst_matches_initial_2,
-			inst_matches_initial_4, InstA2, InstB2, Type, 
+			inst_matches_initial_4, InstA2, InstB2, MaybeType, 
 			Info0^expansions := Expansions1, Info)
 	).
 
@@ -946,7 +947,7 @@ inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
 :- mode inst_matches_final_2 `with_inst` inst_matches_pred.
 
 inst_matches_final_2(InstA, InstB, MaybeType, Info0, Info) :-
-	ThisExpansion = InstA - InstB,
+	ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
 	( set__member(ThisExpansion, Info0^expansions) ->
 		Info = Info0
 	; InstA = InstB ->
@@ -1119,7 +1120,7 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 :- mode inst_matches_binding_2 `with_inst` inst_matches_pred.
 
 inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
-	ThisExpansion = InstA - InstB,
+	ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
 	( set__member(ThisExpansion, Info0^expansions) ->
 		Info = Info0
 	;
