@@ -81,11 +81,9 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- implementation.
 		main --> io__write_string("Hello, world\n").
 
-		:- pred foo(int).
-		:- mode foo(out) is semidet.
+		:- impure pred foo(int).
 		:- mode foo(in) is semidet.
-		:- pragma c_code(foo(X::in), "").
-		:- pragma c_code(foo(X::out), "").
+		:- pragma c_code(foo(_X::in), "").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
