@@ -5,8 +5,7 @@
 */
 
 /*
-** mercury_macros.h defines macros that are useful in more than one
-** module of the Mercury runtime system.
+** mercury_array_macros.h defines macros for dealing with expandable arrays.
 */
 
 #ifndef MERCURY_ARRAY_MACROS_H
