@@ -210,6 +210,9 @@
 :- pred code_info__update_liveness_info(delta_liveness, code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
 
+:- pred code_info__update_deadness_info(delta_liveness, code_info, code_info).
+:- mode code_info__update_deadness_info(in, in, out) is det.
+
 :- pred code_info__reduce_variables_and_registers(code_info, code_info).
 :- mode code_info__reduce_variables_and_registers(in, out) is det.
 
@@ -1120,10 +1123,14 @@ code_info__remake_code_info_2([V - S|VSs]) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__update_liveness_info(Births - Deaths) -->
+code_info__update_liveness_info(Births - _Deaths) -->
 	code_info__get_liveness_info(Liveness0),
-	{ set__difference(Liveness0, Deaths, Liveness1) },
-	{ set__union(Liveness1, Births, Liveness) },
+	{ set__union(Liveness0, Births, Liveness) },
+	code_info__set_liveness_info(Liveness).
+
+code_info__update_deadness_info(_Births - Deaths) -->
+	code_info__get_liveness_info(Liveness0),
+	{ set__difference(Liveness0, Deaths, Liveness) },
 	code_info__set_liveness_info(Liveness).
 
 %---------------------------------------------------------------------------%
