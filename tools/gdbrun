@@ -28,7 +28,7 @@ do
 	*)	runargs="$runargs $arg" ;;
 	esac
 done
-echo "run$runargs" > "$tmpfile"
+echo "set args $runargs" > "$tmpfile"
 
 echo gdb --command="$tmpfile" $program
 gdb --command="$tmpfile" $program
