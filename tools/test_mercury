@@ -194,30 +194,29 @@ case $status in 0)
 		# the following hack avoids the bug by compiling modules.o
 		# with -O1 rather than -O2
 		#
-		cd library || status=1
-		
+		(cd library && \
+		\
 		PATH=../scripts:../util:$PATH 
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
 		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
-		int.dir/*.o || status=1
-
+		int.dir/*.o && \
+		\
 		PATH=../scripts:../util:$PATH \
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake install_split_library || status=1
-
-		cd .. || status=1
+		../scripts/mmake install_split_library \
+		) || status=1
 
 		: install the shared library grades
 		mmake install_grades LIBGRADES="reg.gc reg.gc.prof" \
 			MMAKEFLAGS="$PARALLEL EXT_FOR_SHARED_LIB=so" || status=1
 
 		: must reinstall a non-shared libgc.a and libgc_prof.a
-		cd boehm_gc || status=1
-		mmake install MMAKEFLAGS=$PARALLEL || status=1
-		mmake clean MMAKEFLAGS=$PARALLEL || status=1
+		(cd boehm_gc && \
+		mmake install MMAKEFLAGS=$PARALLEL && \
+		mmake clean MMAKEFLAGS=$PARALLEL && \
 		mmake install GRADE=asm_fast.gc.prof PROF=_prof \
-		 	MMAKEFLAGS=$PARALLEL || status=1
-		cd .. || status=1
+		 	MMAKEFLAGS=$PARALLEL \
+		) || status=1
 		;;
 	kryten)
 		mmake install MMAKEFLAGS=$PARALLEL || status=1
