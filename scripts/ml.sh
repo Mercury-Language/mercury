@@ -20,8 +20,7 @@
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 verbose=false
 shared=false
-GRADE=none
-LIBMER=libmer.so
+GRADE=fast
 
 while true; do
     case "$1" in
@@ -47,11 +46,21 @@ while true; do
     esac
 done
 
+case "$GRADE" in
+	*.gc)
+		LIBGC=$LIBDIR/gc.a
+		;;
+	*)
+		LIBGC=
+		;;
+esac
+
 if $shared; then
 	LIBMER=libmer.so
 else
 	LIBMER=libmer.a
 fi
+
 LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/$LIBMER"
 
 case "`hostname`" in
@@ -66,6 +75,6 @@ case "`hostname`" in
 esac
 
 if $verbose; then
-	echo $GCC "$@" $LIBDIR_OPTS
+	echo $GCC "$@" $LIBDIR_OPTS $LIBGC
 fi
-exec $GCC "$@" $LIBDIR_OPTS
+exec $GCC "$@" $LIBDIR_OPTS $LIBGC

@@ -7,8 +7,9 @@
 # -v, --verbose
 #	Echo gcc command before executing it.
 # -s<grade>
-#	Select optimization/debug options according to <grade>, which
-#	must be one of debug, none, jump, reg, or fast
+#	Select optimization/debug/gc options according to <grade>, which
+#	must be one of debug, none, jump, reg, or fast, or one of those
+#	with .gc appended.
 #
 # This runs gcc with all warnings enabled, except for the following
 # exceptions:
@@ -25,52 +26,83 @@
 
 C_INCL_DIR=${MERCURY_C_INCL_DIR:-@LIBDIR@/inc}
 
-CHECKOPTS="-ansi
+CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes"
+OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
+DEBUG_OPTS="-g"
 
-case "$1" in
+grade=fast
+verbose=false
+
+while true; do
+    case "$1" in
 	-v|--verbose)
 		verbose=true
-		shift;;
+		shift
+		;;
+	-s)
+		shift
+		grade="$1";
+		shift
+		;;
+	-s*)
+		grade="` expr $1 : '-s\(.*\)' `"
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
 	*)
-		verbose=false
+		break
+		;;
+    esac
+done
+
+case "$grade" in
+	*.gc)	GC_OPTS="-DCONSERVATIVE_GC -DTAGBITS=0"
+		grade="` expr $grade : '\(.*\).gc' `"
+		;;
+	*)
+		GC_OPTS=""
 		;;
 esac
 
-case "$1" in
-	-sfast)
-		GRADEOPTS="-O2 -fomit-frame-pointer -DSPEED
+case "$grade" in
+	fast)
+		GRADE_OPTS="$OPT_OPTS
 			-DUSE_GCC_GLOBAL_REGISTERS -DUSE_GCC_NONLOCAL_GOTOS"
-		shift;;
-	-sreg)
-		GRADEOPTS="-O2 -fomit-frame-pointer -DSPEED
+		;;
+	reg)
+		GRADE_OPTS="$OPT_OPTS
 			-DUSE_GCC_GLOBAL_REGISTERS"
-		shift;;
-	-sjump)
-		GRADEOPTS="-O2 -fomit-frame-pointer -DSPEED
+		;;
+	jump)
+		GRADE_OPTS="$OPT_OPTS
 			-DUSE_GCC_NONLOCAL_GOTOS"
-		shift;;
-	-snone)
-		GRADEOPTS="-O2 -fomit-frame-pointer -DSPEED"
-		shift;;
-	-sinit)
-		GRADEOPTS="-O2 -fomit-frame-pointer -DSPEED"
-		shift;;
-	-sdebug)
-		GRADEOPTS="-g -Wno-uninitialized"
-		shift;;
+		;;
+	none)
+		GRADE_OPTS="$OPT_OPTS"
+		;;
+	init)
+		GRADE_OPTS="$OPT_OPTS"
+		;;
+	debug)
+		GRADE_OPTS="$DEBUG_OPTS"
+		;;
 	*)
-		GRADEOPTS="";;
+		echo "$0: invalid grade \`$grade'" 1>&2;
+		exit 1
 esac
 
-HOSTOPTS=""
+HOST_OPTS=""
 case "`hostname`" in
 	cadillac.*)
 		GCC=/usr/local/bin/gcc ;;
 	kryten.*)
 		GCC=/usr/local/contrib/bin/gcc
-		HOSTOPTS="-msupersparc" ;;
+		HOST_OPTS="-msupersparc" ;;
 	munta.*)
 		GCC=/usr/local/gcc/bin/gcc ;;
 	*)
@@ -80,9 +112,10 @@ esac
 if [ "`uname -r -s`" = "SunOS 4.1.2" ]; then
 	# the header files on cadillac are stuffed, so don't
 	# enable any warnings
-	CHECKOPTS=
+	CHECK_OPTS=
 fi
 if $verbose; then
-	echo $GCC -I $C_INCL_DIR $HOSTOPTS $CHECKOPTS $GRADEOPTS "$@"
+	echo $GCC-I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS \
+		"$@"
 fi
-exec $GCC -I $C_INCL_DIR $HOSTOPTS $CHECKOPTS $GRADEOPTS "$@"
+exec $GCC -I $C_INCL_DIR $HOST_OPTS $CHECK_OPTS $GRADE_OPTS $GC_OPTS "$@"

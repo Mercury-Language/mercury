@@ -35,7 +35,9 @@ sub parse_options {
     $opt_l = 0;
     $opt_s = "";
     do Getopts("gls:");
-    if ($opt_g || $opt_s eq "fast" || $opt_s eq "jump") {
+    if ($opt_g || $opt_s eq "fast" || $opt_s eq "fast.gc"
+		|| $opt_s eq "jump" || $opt_s eq jump.gc)
+    {
 	    $gnuc = 1;
     } else {
 	    $gnuc = 0;
@@ -62,11 +64,11 @@ do println("");
 
 if ($gnuc) {
 	do println("#ifndef USE_GCC_NONLOCAL_GOTOS");
-	do println("#error \"If you don't define USE_GCC_NONLOCAL_GOTOS, then you must not use either of mod2c's -gfast and -gjump options\"");
+	do println("#error \"If you don't define USE_GCC_NONLOCAL_GOTOS, then you must not use mod2c's -sfast or -sjump options\"");
 	do println("#endif");
 } else {
 	do println("#ifdef USE_GCC_NONLOCAL_GOTOS");
-	do println("#error \"If you define USE_GCC_NONLOCAL_GOTOS, you must use one of mod2c's -gfast and -gjump options\"");
+	do println("#error \"If you define USE_GCC_NONLOCAL_GOTOS, you must use one of mod2c's -sfast or -sjump options\"");
 	do println("#endif");
 }
 do println("");
