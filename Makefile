@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998, 2000, 2002 The University of Melbourne. 
+# Copyright (C) 1995-1998, 2000, 2002, 2004 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -43,7 +43,7 @@ install:
 
 .PHONY: clean
 clean:
-	-rm -f */*.o */*.pic_o */*.a */*.so
+	-rm -f */*.o */*.pic_o */*.a */*.so */*.dylib
 	-rm -rf */Mercury/os */Mercury/pic_os */Mercury/libs
 	-rm -f compiler/mercury_compile profiler/mercury_profile 
 	-rm -f util/mdemangle util/mkinit

@@ -58,6 +58,28 @@ MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 		$(READLINE_LIBRARIES)
 
+#-----------------------------------------------------------------------------#
+
+# Set the install name for Darwin shared libraries.  We disable the
+# --shlib-linker-use-install-name mmc option so that the -install_name linker
+# option is not passed in the .dep files.  We do this to avoid a problem when
+# building from the C source distribution:  if the C source distribution is
+# generated on a non-Darwin system then the -install_name option is not passed
+# in the .dep files, so it must be passed here, however if a C source
+# distribution is generated on a Darwin system then by default the
+# -install_name option will be passed in the .dep files which will cause it to
+# be passed twice (here and in the .dep files) which is not allowed by the 
+# linker, so we disable the mmc option which causes the -install_name option
+# to be passed in the .dep files.
+
+MCFLAGS += --no-shlib-linker-use-install-name
+LD_LIBFLAGS-libmer_browser.dylib = -install_name \
+	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_browser.dylib
+LD_LIBFLAGS-libmer_mdbcomp.dylib = -install_name \
+	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_mdbcomp.dylib
+
+#-----------------------------------------------------------------------------#
+
 JAVACFLAGS = -classpath $(LIBRARY_DIR)
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
