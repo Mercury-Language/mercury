@@ -29,6 +29,7 @@ OTHER_SOURCES= \
 	empty_bound_inst_list.m \
 	empty_switch.m \
 	error.m \
+	explicit_quant.m \
 	fail_ite.m \
 	followcode_det_problem.m \
 	func_int_bug_main.m \
@@ -124,6 +125,7 @@ GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-double_vn		= -O4
+MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
 MCFLAGS-livevals_seq		= -O5 --opt-space

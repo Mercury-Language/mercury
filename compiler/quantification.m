@@ -171,12 +171,17 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 				hlds_goal_expr, quant_info, quant_info).
 :- mode implicitly_quantify_goal_2(in, in, out, in, out) is det.
 
-	% we retain explicit existential quantifiers in the source code,
-	% even though they are redundant with the goal_info non_locals,
-	% so that we can easily recalculate the goal_info non_locals
-	% if necessary after program transformation.
+	% After this pass, explicit quantifiers are redundant,
+	% since all variables which were explicitly quantified
+	% have been renamed apart.  So we don't keep them.
+	% We need to keep the structure, though, so that mode
+	% analysis doesn't try to reorder through quantifiers.
+	% (Actually it would make sense to allow mode analysis
+	% to do that, but there reference manual says it doesn't,
+	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
+	% an empty quantifier `some([], Goal)'.
 
-implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
+implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some([], Goal)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
 	quantification__get_quant_vars(QuantVars),
