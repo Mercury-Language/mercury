@@ -20,6 +20,7 @@ ORDINARY_PROGS=	\
 	checked_nondet_tailcall \
 	closure_extension \
 	common_type_cast \
+	compare_spec \
 	construct \
 	copy_pred \
 	curry \

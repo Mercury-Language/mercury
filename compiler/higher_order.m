@@ -2066,7 +2066,7 @@ generate_unsafe_type_cast(ModuleInfo, ToType, Arg, CastArg, Goal,
 	instmap_delta_from_assoc_list([CastArg - ground(shared, none)],
 		InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
-	Goal = call(PredId, ProcId, [Arg, CastArg], not_builtin,
+	Goal = call(PredId, ProcId, [Arg, CastArg], inline_builtin,
 		no, qualified(MercuryBuiltin, "unsafe_type_cast")) - GoalInfo.
 
 :- pred unwrap_no_tag_arg((type)::in, sym_name::in, prog_var::in,
