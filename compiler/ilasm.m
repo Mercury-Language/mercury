@@ -701,50 +701,13 @@ output_simple_type(object, I, I) --> io__write_string("object").
 output_simple_type(string, I, I) --> io__write_string("string").
 output_simple_type(refany, I, I) --> io__write_string("refany").
 output_simple_type(class(Name), Info0, Info) --> 
-	{ Name = structured_name(AssemblyName, QualifiedName, _) },
-		% Parition II section 'Built-in Types' (7.2 in Beta2) states
-		% that all builtin types *must* be rereferenced by their
-		% special encoding.  See Parition I 'Built-In Types' 
-		% (8.2.2 in Beta2) for the list of all builtin types.
-	( 
-		{ AssemblyName = assembly("mscorlib") },
-		{ QualifiedName = ["System", TypeName] }
-	->
-		( { TypeName = "Boolean" } ->
-			output_simple_type(bool, Info0, Info)
-		; { TypeName = "Char" } ->
-			output_simple_type(char, Info0, Info)
-		; { TypeName = "Object" } ->
-			output_simple_type(object, Info0, Info)
-		; { TypeName = "String" } ->
-			output_simple_type(string, Info0, Info)
-		; { TypeName = "Single" } ->
-			output_simple_type(float32, Info0, Info)
-		; { TypeName = "Double" } ->
-			output_simple_type(float64, Info0, Info)
-		; { TypeName = "SByte" } ->
-			output_simple_type(int8, Info0, Info)
-		; { TypeName = "Int16" } ->
-			output_simple_type(int16, Info0, Info)
-		; { TypeName = "Int32" } ->
-			output_simple_type(int32, Info0, Info)
-		; { TypeName = "Int64" } ->
-			output_simple_type(int64, Info0, Info)
-		; { TypeName = "IntPtr" } ->
-			output_simple_type(native_int, Info0, Info)
-		; { TypeName = "UIntPtr" } ->
-			output_simple_type(native_uint, Info0, Info)
-		; { TypeName = "TypedReference" } ->
-			output_simple_type(refany, Info0, Info)
-		; { TypeName = "Byte" } ->
-			output_simple_type(uint8, Info0, Info)
-		; { TypeName = "UInt16" } ->
-			output_simple_type(uint16, Info0, Info)
-		; { TypeName = "UInt32" } ->
-			output_simple_type(uint32, Info0, Info)
-		; { TypeName = "UInt64" } ->
-			output_simple_type(uint64, Info0, Info)
+	( { name_to_simple_type(Name, Type) } ->
+		( { Type = reference(SimpleType) } ->
+			output_simple_type(SimpleType, Info0, Info)
 		;
+				% If it is a value type then we are
+				% refering to the boxed version of the
+				% value type.
 			io__write_string("class "),
 			output_structured_name(Name, Info0, Info)
 		)
@@ -753,8 +716,16 @@ output_simple_type(class(Name), Info0, Info) -->
 		output_structured_name(Name, Info0, Info)
 	).
 output_simple_type(value_class(Name), Info0, Info) --> 
-	io__write_string("valuetype "),
-	output_structured_name(Name, Info0, Info).
+	( { name_to_simple_type(Name, Type) } ->
+		( { Type = value(SimpleType) } ->
+			output_simple_type(SimpleType, Info0, Info)
+		;
+			{ unexpected(this_file, "builtin reference type") }
+		)
+	;
+		io__write_string("valuetype "),
+		output_structured_name(Name, Info0, Info)
+	).
 output_simple_type(interface(Name), Info0, Info) --> 
 	io__write_string("interface "),
 	output_structured_name(Name, Info0, Info).
@@ -767,6 +738,56 @@ output_simple_type('*'(Type), Info0, Info) -->
 output_simple_type('&'(Type), Info0, Info) --> 
 	output_type(Type, Info0, Info),
 	io__write_string("&").
+
+:- type ref_or_value
+	--->	reference(simple_type)
+	;	value(simple_type).
+
+:- pred name_to_simple_type(structured_name::in, ref_or_value::out) is semidet.
+
+name_to_simple_type(Name, Type) :-
+		% Parition II section 'Built-in Types' (7.2 in Beta2) states
+		% that all builtin types *must* be rereferenced by their
+		% special encoding.  See Parition I 'Built-In Types' 
+		% (8.2.2 in Beta2) for the list of all builtin types.
+	Name = structured_name(AssemblyName, QualifiedName, _),
+	AssemblyName = assembly("mscorlib"),
+	QualifiedName = ["System", TypeName],
+	( TypeName = "Boolean",
+		Type = value(bool)
+	; TypeName = "Char",
+		Type = value(char)
+	; TypeName = "Object",
+		Type = reference(object)
+	; TypeName = "String",
+		Type = reference(string)
+	; TypeName = "Single",
+		Type = value(float32)
+	; TypeName = "Double",
+		Type = value(float64)
+	; TypeName = "SByte",
+		Type = value(int8)
+	; TypeName = "Int16",
+		Type = value(int16)
+	; TypeName = "Int32",
+		Type = value(int32)
+	; TypeName = "Int64",
+		Type = value(int64)
+	; TypeName = "IntPtr",
+		Type = value(native_int)
+	; TypeName = "UIntPtr",
+		Type = value(native_uint)
+	; TypeName = "TypedReference",
+		Type = value(refany)
+	; TypeName = "Byte",
+		Type = value(uint8)
+	; TypeName = "UInt16",
+		Type = value(uint16)
+	; TypeName = "UInt32",
+		Type = value(uint32)
+	; TypeName = "UInt64",
+		Type = value(uint64)
+	).
 
 	% The names are all different if it is an opcode.
 	% There's probably a very implementation dependent reason for
