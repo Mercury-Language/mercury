@@ -64,6 +64,8 @@ Changes to the Mercury language:
   extensions which are unlikely to be implemented.
 
 Changes to the Mercury standard library:
+* We've added two new list functions to list.m, namely
+  list__filter_map_corresponding/3 and list__filter_map_corresponding3/4.
 * We've added a func version of error/1, called func_error/1, to require.m.
 * We've added two functions to list.m for mapping functions over
   corresponding members of lists (list__map_corresponding/3 and

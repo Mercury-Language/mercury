@@ -456,6 +456,30 @@
 :- func list__map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C)) =
 		list(D).
 
+	% list__filter_map_corresponding/3 is like list__map_corresponding/3
+	% except the function argument is semidet and the output list
+	% consists of only those applications of the function argument that
+	% succeeded.
+	%
+:- func list__filter_map_corresponding(func(A, B) = C,
+		list(A), list(B)
+	) = list(C).
+:- mode list__filter_map_corresponding(func(in, in) = out is semidet,
+		in, in
+	) = out is det.
+
+	% list__filter_map_corresponding3/4 is like list__map_corresponding3/4
+	% except the function argument is semidet and the output list
+	% consists of only those applications of the function argument that
+	% succeeded.
+	%
+:- func list__filter_map_corresponding3(func(A, B, C) = D,
+		list(A), list(B), list(C)
+	) = list(D).
+:- mode list__filter_map_corresponding3(func(in, in, in) = out is semidet,
+		in, in, in
+	) = out is det.
+
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
 	% (with the initial value of Start), and returns the final
@@ -1204,9 +1228,44 @@ list__map_corresponding3(F, As, Bs, Cs) =
 	  else if As = [],        Bs = [],        Cs = []
 	  then    []
 
-	  else    func_error(
-	  		"list__map_corresponding3: mismatched list arguments"
+	  else    func_error("list__map_corresponding3: \
+mismatched list arguments")
+	).
+
+
+
+list__filter_map_corresponding(_, [],       []      ) = [].
+
+list__filter_map_corresponding(_, [],       [_|_]   ) = 
+	func_error("list__filter_map_corresponding/3: \
+mismatched list arguments").
+
+list__filter_map_corresponding(_, [_|_],    []      ) =
+	func_error("list__filter_map_corresponding/3: \
+mismatched list arguments").
+
+list__filter_map_corresponding(F, [A | As], [B | Bs]) = 
+	( if   F(A, B) = C
+	  then [C | list__filter_map_corresponding(F, As, Bs)]
+	  else list__filter_map_corresponding(F, As, Bs)
+	).
+
+
+
+list__filter_map_corresponding3(F, As, Bs, Cs) =
+
+	( if      As = [A | As0], Bs = [B | Bs0], Cs = [C | Cs0]
+	  then
+	  	  ( if   F(A, B, C) = D
+	            then [D | list__filter_map_corresponding3(F, As0, Bs0, Cs0)]
+		    else list__filter_map_corresponding3(F, As0, Bs0, Cs0)
 		  )
+
+	  else if As = [],        Bs = [],        Cs = []
+	  then    []
+
+	  else    func_error("list__filter_map_corresponding3: \
+mismatched list arguments")
 	).
 
 
