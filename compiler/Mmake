@@ -13,8 +13,10 @@ MAIN_TARGET=mercury_compile
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
-MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
+MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
+		MERCURY_INT_DIR=$(LIBRARY_DIR) mc
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MGNUCFLAGS =	-I $(MERCURY_DIR)/boehm_gc
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
 		mod2init
@@ -23,12 +25,17 @@ ML	=	MERCURY_C_LIB_DIR=`pwd`/$(RUNTIME_DIR) ml
 #-----------------------------------------------------------------------------#
 
 COMPILER_SRCS = $(mercury_compile.srcs)
-COMPILER_OBJS = $(mercury_compile.nos) $(mercury_compile.objs)
-# the use of .objs is for backwards compatibility
+COMPILER_OBJS = $(mercury_compile.nos)
 
 #-----------------------------------------------------------------------------#
 
 # targets
+#
+# mercury_compile
+# mercury_compile.nu
+# mercury_compile.nu.debug
+# mercury_compile.sicstus
+# mercury_compile.sicstus.debug
 
 .PHONY: depend
 depend : mercury_compile.depend
@@ -98,11 +105,10 @@ install_compiler: mercury_compile
 .PHONY: install_compiler_nu
 install_compiler_nu: mercury_compile.nu
 	mkdir -p $(INSTALL_NU_ARCH_DIR) 
-	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile` \
+	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/mercury_compile
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile
-	cp `vpath_find mercury_compile.save` \
-		$(INSTALL_NU_ARCH_DIR)/mercury_compile.save
+	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_compiler_sicstus
 install_compiler_sicstus: mercury_compile.sicstus
