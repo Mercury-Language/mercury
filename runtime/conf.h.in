@@ -158,4 +158,11 @@
 #undef	MR_BIG_ENDIAN
 #undef	MR_LITTLE_ENDIAN
 
+/*
+** The following macro specifies whether the non-ANSI, non-POSIX,
+** but usually available standard library function `tempnam' is
+** available.
+*/
+#undef	IO_HAVE_TEMPNAM
+
 #endif /* CONF_H */

@@ -792,13 +792,27 @@
 
 %-----------------------------------------------------------------------------%
 
-% returns a unique temporary filename.
 :- pred io__tmpnam(string, io__state, io__state).
 :- mode io__tmpnam(out, di, uo) is det.
+	% io__tmpnam(Name, IO0, IO) binds `Name' to a temporary
+	% file name which is different to the name of any existing file.
+	% It will reside in /tmp if the TMPDIR environment variable
+	% is not set, or in the directory specified by TMPDIR if it
+	% is set.
 
-% deletes a file
+:- pred io__tmpnam(string, string, string, io__state, io__state).
+:- mode io__tmpnam(in, in, out, di, uo) is det.
+	% io__tmpnam(Dir, Prefix, Name, IO0, IO) binds `Name' to a
+	% temporary file name which is different to the name of any
+	% existing file. It will reside in the directory specified by
+	% `Dir' and have a prefix using up to the first 5 characters
+	% of `Prefix'.
+
 :- pred io__remove_file(string, io__res, io__state, io__state).
 :- mode io__remove_file(in, out, di, uo) is det.
+	% io__remove_file(FileName, Result, IO0, IO) attempts to remove the
+	% file `FileName', binding Result to ok/0 if it succeeds, or
+	% error/1 if it fails.
 
 %-----------------------------------------------------------------------------%
 
@@ -2514,18 +2528,100 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 ").
 
 /*---------------------------------------------------------------------------*/
+
+	% We need to do an explicit check of TMPDIR because not all
+	% systems check TMPDIR for us (eg Linux #$%*@&).
+io__tmpnam(Name) -->
+	io__get_environment_var("TMPDIR", Result),
+	(
+		{ Result = yes(Dir) },
+		io__tmpnam(Dir, "mtmp", Name)
+	;
+		{ Result = no },
+		io__tmpnam_2(Name)
+	).
+
+:- pred io__tmpnam_2(string::out, io__state::di, io__state::uo) is det.
+
 %#include <stdio.h>
-:- pragma(c_code, io__tmpnam(FileName::out, IO0::di, IO::uo), "{
+:- pragma(c_code, io__tmpnam_2(FileName::out, IO0::di, IO::uo), "{
 	Word tmp;
 
 	incr_hp_atomic(tmp, (L_tmpnam + sizeof(Word)) / sizeof(Word));
 	if (tmpnam((char *)tmp) == NULL) {
-		fprintf(stderr,
-		  ""Mercury runtime: unable to create temporary filename\\n"");
-		exit(1);
+		fatal_error(""unable to create temporary filename"");
 	}
 	FileName = (char *)tmp;
 	update_io(IO0, IO);
+}").
+
+/*---------------------------------------------------------------------------*/
+
+%#include <stdio.h>
+
+:- pragma c_header_code("
+#ifndef IO_HAVE_TEMPNAM
+	#include <sys/stat.h>
+	#include <unistd.h>
+	extern int	ML_io_tempnam_counter;
+	#define	MAX_TEMPNAME_TRIES	5
+#endif
+").
+
+:- pragma c_code("
+#ifndef IO_HAVE_TEMPNAM
+	int	ML_io_tempnam_counter = 0;
+#endif
+").
+
+:- pragma(c_code, io__tmpnam(Dir::in, Prefix::in, FileName::out,
+		IO0::di, IO::uo), "{
+#ifdef	IO_HAVE_TEMPNAM
+	String tmp;
+
+	tmp = tempnam(Dir, Prefix);
+	if (tmp  == NULL) {
+		fatal_error(""unable to create temporary filename"");
+	}
+	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+		(strlen(tmp) + sizeof(Word)) / sizeof(Word));
+	strcpy(FileName, tmp);
+	free(tmp);
+	update_io(IO0, IO);
+#else
+	/*
+	** tempnam was unavailable, so construct a temporary name by
+	** concatenating Dir, `/', the first 5 chars of Prefix, and
+	** a three digit number. The three digit number is generated
+	** by starting with the pid of this process.
+	** Stat is used to check that the file does not exist.
+	*/
+	int	len, err, num_tries;
+	char	countstr[256];
+	struct stat buf;
+
+	len = strlen(Dir) + 1+ 5 + 3 + 1; /* Dir + / + Prefix + counter + \\0 */
+	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+		(len + sizeof(Word)) / sizeof(Word));
+	if (ML_io_tempnam_counter == 0)
+		ML_io_tempnam_counter = getpid();
+	num_tries=0;
+	do {
+		sprintf(countstr, ""%0d"", ML_io_tempnam_counter % 1000);
+		ML_io_tempnam_counter++;
+		strcpy(FileName, Dir);
+		strcat(FileName, ""/"");
+		strncat(FileName, Prefix, 5);
+		strncat(FileName, countstr, 3);
+		err = stat(FileName, &buf);
+		num_tries++;
+	} while (err != -1 && errno != ENOENT
+		&& num_tries < MAX_TEMPNAME_TRIES);
+	if (err != -1 && errno != ENOENT) {
+		fatal_error(""unable to create temporary filename"");
+	}
+	update_io(IO0, IO);
+#endif
 }").
 
 /*---------------------------------------------------------------------------*/
