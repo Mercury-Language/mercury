@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.6 1997-02-03 08:02:42 aet Exp $
+ *	$Id: disasm.c,v 1.7 1997-02-11 07:40:53 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -76,6 +76,11 @@ disassemble(FILE* fp)
 	while (read_bytecode(fp, &bytecode))
 	{
 		print_bytecode(bytecode);
+		/* 
+		 * XXX: should free any heap data in the bytecode here
+		 * Wait till we know what's happening with GC.
+		 */
+		fflush(stdout);
 	} 
 } /* disassemble */
 
