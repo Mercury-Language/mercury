@@ -178,7 +178,11 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			{ \+ code_util__predinfo_is_builtin(PredInfo0) },
 			(
 				{ inlining__is_simple_goal(Goal,
-						InlineThreshold) }
+						InlineThreshold) },
+				{ pred_info_get_marker_list(PredInfo0, 
+					Markers) },
+				{ \+ list__member(request(no_inline), 
+					Markers) }
 			;
 				{ pred_info_requested_inlining(PredInfo0) }
 			;
