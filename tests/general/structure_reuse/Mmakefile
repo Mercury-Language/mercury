@@ -16,7 +16,11 @@ endif
 
 # Any program added here should also be added to the `.cvsignore' file.
 
-PROGS=	internal_alias
+PROGS=	if_then_else		\
+	internal_alias		\
+	interpret
+
+MCFLAGS-interpret=--cell-cache
 
 ACC_FLAGS = --infer-structure-reuse -d structure_reuse -D sr
 
