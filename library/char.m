@@ -477,6 +477,28 @@ char__lower_upper('z', 'Z').
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
+:- pragma foreign_proc("Java",
+        char__to_int(Character::in, Int::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+        Int = (int) Character;
+").
+
+:- pragma foreign_proc("Java",
+        char__to_int(Character::in, Int::in),
+        [will_not_call_mercury, promise_pure, thread_safe],
+"
+        succeeded = ((int) Character == Int);
+").
+
+:- pragma foreign_proc("Java",
+        char__to_int(Character::out, Int::in),
+        [will_not_call_mercury, promise_pure, thread_safe],
+"
+	Character = (char) Int;
+	succeeded = ((int) Character == Int);
+").
+
 % We used unsigned character codes, so the minimum character code
 % is always zero.
 
@@ -499,6 +521,12 @@ char__min_char_value(0).
 	// i.e. only the Unicode characters that fit in 16 bits.
 	// For our purposes, it doesn't matter.
 	Max = 0xffff;
+").
+:- pragma foreign_proc("Java",
+	char__max_char_value(Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Max = (int) java.lang.Character.MAX_VALUE;
 ").
 
 %-----------------------------------------------------------------------------%
