@@ -916,6 +916,16 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 trace__produce_vars([], _, _, Tvars, Tvars, [], empty) --> [].
 trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		[VarInfo | VarInfos], tree(VarCode, VarsCode)) -->
+	trace__produce_var(Var, VarSet, InstMap, Tvars0, Tvars1,
+		VarInfos, VarsCode),
+	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
+		VarInfos, VarsCode).
+
+:- pred trace__produce_var(prog_var::in, prog_varset::in, instmap::in,
+	set(tvar)::in, set(tvar)::out, var_info::out, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+trace__produce_var(Var, VarSet, InstMap, Tvars0, Tvars, VarInfo, VarCode) -->
 	code_info__produce_variable_in_reg_or_stack(Var, VarCode, Lval),
 	code_info__variable_type(Var, Type),
 	code_info__get_module_info(ModuleInfo),
@@ -934,11 +944,8 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	LiveType = var(Var, Name, Type, LldsInst),
 	VarInfo = var_info(direct(Lval), LiveType),
 	type_util__real_vars(Type, TypeVars),
-
-	set__insert_list(Tvars0, TypeVars, Tvars1)
-	},
-	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
-		VarInfos, VarsCode).
+	set__insert_list(Tvars0, TypeVars, Tvars)
+	}.
 
 %-----------------------------------------------------------------------------%
 
