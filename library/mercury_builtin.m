@@ -104,13 +104,6 @@
 :- pred '<='((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
 :- pred '<=>'((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
 
-% builtin arithmetic
-
-:- pred builtin_plus(int::in, int::in, int::out) is det.
-:- pred builtin_minus(int::in, int::in, int::out) is det.
-:- pred builtin_times(int::in, int::in, int::out) is det.
-:- pred builtin_div(int::in, int::in, int::out) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
