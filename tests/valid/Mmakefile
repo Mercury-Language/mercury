@@ -32,6 +32,7 @@ OTHER_SOURCES= \
 	explicit_quant.m \
 	fail_ite.m \
 	followcode_det_problem.m \
+	func_int_bug_main.m \
 	headvar_not_found.m \
 	higher_order.m \
 	higher_order2.m \
@@ -44,6 +45,7 @@ OTHER_SOURCES= \
 	inhibit_warn_test.m \
 	inlining_bug.m \
 	instance_superclass.m \
+	instance_unconstrained_tvar.m \
 	intermod_lambda.m \
 	intermod_test.m \
 	lambda_inference.m\
