@@ -131,6 +131,10 @@ For example:
         Str = T.ToString();
 }").
 
+For more information about the foreign language interface, refer to the Mercury
+Language Reference Manual, which you can find at:
+	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
+
 The implementation will put this C# in a separate file, which will be
 compiled with Microsoft's C# compiler.  Mmake will automatically
 generate dependencies for this file and invoke the C# compiler with the
