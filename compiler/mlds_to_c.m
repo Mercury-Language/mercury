@@ -2588,6 +2588,10 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
+mlds_output_atomic_stmt(Indent, _FuncInfo, gc_check, _) -->
+	mlds_indent(Indent),
+	io__write_string("MR_GC_check();\n").
+
 mlds_output_atomic_stmt(Indent, _FuncInfo, mark_hp(Lval), _) -->
 	mlds_indent(Indent),
 	io__write_string("MR_mark_hp("),

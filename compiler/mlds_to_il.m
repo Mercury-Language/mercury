@@ -415,6 +415,7 @@ rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
 rename_atomic(new_object(L, Tag, HasSecTag, Type, MaybeSize, Ctxt, Args, Types))
 	= new_object(rename_lval(L), Tag, HasSecTag, Type, MaybeSize,
 			Ctxt, list__map(rename_rval, Args), Types).
+rename_atomic(gc_check) = gc_check.
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
 rename_atomic(trail_op(T)) = trail_op(T).
@@ -1757,6 +1758,9 @@ statement_to_il(statement(computed_goto(Rval, MLDSLabels), Context),
 	il_info, il_info).
 :- mode atomic_statement_to_il(in, out, in, out) is det.
 
+atomic_statement_to_il(gc_check, node(Instrs)) --> 
+	{ Instrs = [comment(
+		"gc check -- not relevant for this backend")] }.
 atomic_statement_to_il(mark_hp(_), node(Instrs)) --> 
 	{ Instrs = [comment(
 		"mark hp -- not relevant for this backend")] }.

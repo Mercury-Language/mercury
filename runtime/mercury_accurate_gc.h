@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,6 +18,10 @@
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef MR_HIGHLEVEL_CODE
+/* Perform a garbage collection. */
+extern	void	MR_garbage_collect(void);
+#else
 /*
 ** MR_schedule_agc:
 ** 	Schedule a garbage collection as soon as possible.  The PC
@@ -28,6 +32,7 @@
 */
 extern	void	MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 			MR_Word *curfr_at_signal);
+#endif
 
 /*
 ** Roots apart from the stacks are stored in this data structure.

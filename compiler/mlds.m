@@ -1156,6 +1156,12 @@ XXX Full exception handling support is not yet implemented.
 					% 
 		)
 
+	;	gc_check
+			% Check to see if we need to do a garbage collection,
+			% and if so, do it.
+			% This is used for accurate garbage collection
+			% with the MLDS->C back-end.
+
 	;	mark_hp(mlds__lval)
 			% Tell the heap sub-system to store a marker
 			% (for later use in restore_hp/1 instructions)

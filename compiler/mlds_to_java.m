@@ -2264,6 +2264,9 @@ output_atomic_stmt(Indent, _FuncInfo, NewObject, Context) -->
 	io__write_string("}\n").
 	
 
+output_atomic_stmt(_Indent, _FuncInfo, gc_check, _) -->
+	{ error("mlds_to_java.m: sorry, gc_check not implemented") }.
+
 output_atomic_stmt(_Indent, _FuncInfo, mark_hp(_Lval), _) -->
 	{ error("mlds_to_java.m: sorry, mark_hp not implemented") }.
 

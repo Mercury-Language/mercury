@@ -491,7 +491,7 @@
 
 	% If accurate GC is enabled, and the specified
 	% variable might contain pointers, generate code to call
-	% `private_builtin__gc_trace_var' to trace the variable.
+	% `private_builtin__gc_trace' to trace the variable.
 	% 
 :- pred ml_gen_maybe_gc_trace_code(var_name, prog_type, prog_context,
 		maybe(mlds__statement), ml_gen_info, ml_gen_info).
@@ -1987,7 +1987,7 @@ ml_declare_env_ptr_arg(mlds__argument(Name, Type, GC_TraceCode)) -->
 
 	% If accurate GC is enabled, and the specified
 	% variable might contain pointers, generate code to call
-	% `private_builtin__gc_trace_var' to trace the variable.
+	% `private_builtin__gc_trace' to trace the variable.
 	%
 ml_gen_maybe_gc_trace_code(VarName, Type, Context, Maybe_GC_TraceCode) -->
 	=(MLDSGenInfo),
@@ -2068,7 +2068,7 @@ ml_type_category_might_contain_pointers(polymorphic_type) = yes.
 ml_type_category_might_contain_pointers(user_type) = yes.
 
 
-	% Generate code to call to `private_builtin__gc_trace_var'
+	% Generate code to call to `private_builtin__gc_trace'
 	% to trace the specified variable.
 	%
 :- pred ml_gen_gc_trace_code(var_name, prog_type, prog_context,
@@ -2126,7 +2126,7 @@ ml_gen_gc_trace_code(VarName, Type, Context, GC_TraceCode) -->
 		[MLDS_TypeInfoStatement] ++ [MLDS_TraceStatement],
 		Context) }.
 
-	% Generate a call to `private_builtin__gc_trace_var'
+	% Generate a call to `private_builtin__gc_trace'
 	% for the specified variable, given the variable's name, type,
 	% and the already-constructed type_info variable for that type.
 	%
@@ -2144,9 +2144,9 @@ ml_gen_trace_var(VarName, Type, TypeInfoVar, Context, MLDS_TraceStatement) -->
 	ml_gen_var_lval(VarName, MLDS_Type, VarLval),
 	ml_gen_var(TypeInfoVar, TypeInfoLval),
 	%
-	% Generate the address of `private_builtin__gc_trace_var/1#0'
+	% Generate the address of `private_builtin__gc_trace/1#0'
 	%
-	{ PredName = "gc_trace_var" },
+	{ PredName = "gc_trace" },
 	{ PredOrigArity = 1 },
 	{ Pred = pred((predicate), no, PredName, PredOrigArity, model_det,
 		no) },
@@ -2154,16 +2154,19 @@ ml_gen_trace_var(VarName, Type, TypeInfoVar, Context, MLDS_TraceStatement) -->
 	{ mercury_private_builtin_module(PredModule) },
 	{ MLDS_Module = mercury_module_name_to_mlds(PredModule) },
 	{ Proc = qual(MLDS_Module, Pred - ProcId) },
-	{ ArgTypes = [mlds__pseudo_type_info_type,
-		mlds__ptr_type(mlds__generic_type)] },
+	{ CPointerType = mercury_type(c_pointer_type, user_type,
+			non_foreign_type(c_pointer_type)) },
+	{ ArgTypes = [mlds__pseudo_type_info_type, CPointerType] },
 	{ Signature = mlds__func_signature(ArgTypes, []) },
 	{ FuncAddr = const(code_addr_const(proc(Proc, Signature))) },
 	%
-	% Generate the call `private_builtin__gc_trace_var(TypeInfoVar, &Var)'
+	% Generate the call
+	% `private_builtin__gc_trace(TypeInfoVar, (MR_C_Pointer) &Var);'.
 	%
+	{ CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)) },
 	{ MLDS_TraceStatement = mlds__statement(
 		call(Signature, FuncAddr, no,	
-			[lval(TypeInfoLval), mem_addr(VarLval)], [], call
+			[lval(TypeInfoLval), CastVarAddr], [], call
 		), mlds__make_context(Context)) }.
 
 	% Generate HLDS code to construct the type_info for this type.

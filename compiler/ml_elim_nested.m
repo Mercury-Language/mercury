@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -144,15 +144,13 @@
 % MLDS code to add the information needed to do accurate GC
 % when compiling to C (or to assembler).
 %
-% Basically what we do is to put all all local variables that might
+% Basically what we do is to put all local variables that might
 % contain pointers in structs, with one struct for each stack frame,
 % and chain these structs together.  At GC time, we traverse the chain
 % of structs.  This allows us to accurately scan the C stack.
 %
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
-%	- add call to GC_check at start of every possibly-recursive function
-%	  that might allocate memory (probably via a separate MLDS pass)
 %	- fix problem with undeclared local vars for some test cases
 %	  (e.g. tests/valid/agc_unbound_typevars*).
 %	- fix problem with type classes & `constraint(...)' types
@@ -227,7 +225,7 @@
 %	foo(Arg1Type arg1, Arg2Type arg2, ...)
 %	{
 %		Local1Type local1;
-%		Local1Type local2;
+%		Local2Type local2;
 %		...
 %		local1 = MR_new_object(...);
 %		...
@@ -264,7 +262,7 @@
 %	foo(Arg1Type arg1, Arg2Type arg2, ...)
 %	{
 %		struct foo_frame this_frame;
-%		Local1Type local2;
+%		Local2Type local2;
 %		
 %		this_frame.fixed_fields.prev = stack_chain;
 %		this_frame.fixed_fields.trace = foo_trace;
@@ -272,6 +270,8 @@
 %		this_frame.local1 = NULL;
 %		stack_chain = &this_frame;
 %
+%		GC_check();
+%		
 %		...
 %		this_frame.local1 = MR_new_object(...);
 %		...
@@ -289,13 +289,15 @@
 %		Arg1Type arg1, Arg2Type arg2, ...)
 %	{
 %		struct foo_frame this_frame;
-%		Local1Type local2;
+%		Local2Type local2;
 %		
 %		this_frame.fixed_fields.prev = stack_chain;
 %		this_frame.fixed_fields.trace = foo_trace;
 %		this_frame.arg1 = arg1;
 %		this_frame.local1 = NULL;
 %
+%		GC_check();
+%		
 %		...
 %		this_frame.local1 = MR_new_object(&this_frame, ...);
 %		...
@@ -320,7 +322,7 @@
 %	MR_traverse_stack(struct MR_StackChain *stack_chain)
 %	{
 %		while (stack_chain != NULL) {
-%			(*stack_chain->traverse)(stack_chain);
+%			(*stack_chain->trace)(stack_chain);
 %			stack_chain = stack_chain->prev;
 %		}
 %	}
@@ -499,6 +501,30 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 					Context, _ArgsToCopy, CodeToCopyArgs),
 
 				%
+				% for accurate GC,
+				% add a call to GC_check() at start of every
+				% function that might allocate memory
+				%
+				% (XXX we could perhaps reduce the overhead of
+				% this slightly by only doing it for
+				% possibly-recursive functions, i.e.
+				% by not doing it for leaf functions).
+				% 
+				(
+					Action = chain_gc_stack_frames,
+					statement_contains_statement(FuncBody2,
+						NewObject),
+					NewObject = mlds__statement(atomic(
+					    new_object(_, _, _, _, _, _, _, _)
+					    ), _)
+				->
+					GC_Check = [mlds__statement(
+						atomic(gc_check), Context)]
+				;
+					GC_Check = []
+				),
+
+				%
 				% Insert code to unlink this stack frame
 				% before doing any tail calls or returning
 				% from the function, either explicitly
@@ -539,9 +565,9 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 				% (if any) at the end
 				%
 				FuncBody = ml_block(EnvDecls,
-						InitEnv ++ CodeToCopyArgs ++
-						[FuncBody2] ++ UnchainFrame,
-						Context),
+					InitEnv ++ CodeToCopyArgs ++ GC_Check ++
+					[FuncBody2] ++ UnchainFrame,
+					Context),
 				%
 				% insert the environment struct type at
 				% the start of the list of hoisted definitions
@@ -1597,6 +1623,7 @@ fixup_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
 			MaybeCtorName, Args, ArgTypes)) -->
 	fixup_lval(Target0, Target),
 	fixup_rvals(Args0, Args).
+fixup_atomic_stmt(gc_check, gc_check) --> [].
 fixup_atomic_stmt(mark_hp(Lval0), mark_hp(Lval)) -->
 	fixup_lval(Lval0, Lval).
 fixup_atomic_stmt(restore_hp(Rval0), restore_hp(Rval)) -->
@@ -2135,6 +2162,7 @@ atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
 	( lval_contains_var(Target, Name)
 	; rvals_contains_var(Args, Name)
 	).
+% atomic_stmt_contains_var(gc_check, _) :- fail.
 atomic_stmt_contains_var(mark_hp(Lval), Name) :-
 	lval_contains_var(Lval, Name).
 atomic_stmt_contains_var(restore_hp(Rval), Name) :-

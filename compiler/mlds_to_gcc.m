@@ -2762,6 +2762,9 @@ gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	gen_init_args(Args, ArgTypes, Context, 0, Target, Type, Tag,
 		DefnInfo).
 
+gen_atomic_stmt(_DefnInfo, gc_check, _) -->
+	{ sorry(this_file, "gc_check") }.
+
 gen_atomic_stmt(_DefnInfo, mark_hp(_Lval), _) -->
 	{ sorry(this_file, "mark_hp") }.
 

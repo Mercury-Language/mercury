@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -40,9 +40,10 @@
     #include "gc_inl.h"
   #endif
 #else
-  #include "mercury_regs.h"	/* for MR_hp */
-  #include "mercury_engine.h"	/* for MR_fake_reg (needed by MR_hp) */
-  #include "mercury_overflow.h"	/* for MR_heap_overflow_check() */
+  #include "mercury_regs.h"		/* for MR_hp */
+  #include "mercury_engine.h"		/* for MR_fake_reg (needed by MR_hp) */
+  #include "mercury_overflow.h"		/* for MR_heap_overflow_check() */
+  #include "mercury_accurate_gc.h"	/* for MR_garbage_collect() */
 #endif
 
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)
@@ -499,6 +500,21 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 ** GCC back-end interface.
 */
 MR_Box MR_asm_box_float(MR_Float f);
+
+/*
+** MR_GC_check():
+**	Check to see if we need to do a garbage collection, and if so, do it.
+*/
+#define MR_GC_check()							\
+	do {								\
+		if ((char *) MR_hp + MR_heap_zone_size >=		\
+		    (char *) MR_ENGINE(MR_eng_heap_zone)->MR_zone_end)	\
+		{							\
+			MR_save_registers();				\
+			MR_garbage_collect();				\
+			MR_restore_registers();				\
+		}							\
+	} while (0)
 
 /*---------------------------------------------------------------------------*/
 /*

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -249,7 +249,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 		zone->name, zone->id, (void *) zone->redzone,
 		(void *) zone->top);
 	}
-  #ifdef NATIVE_GC
+  #if defined(NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
 	MR_schedule_agc(get_pc_from_context(context),
 		get_sp_from_context(context),
 		get_curfr_from_context(context));
@@ -930,7 +930,7 @@ get_pc_from_context(void *the_context)
 ** 	the time of the signal, if available.  If it is unavailable,
 ** 	return NULL.
 **
-** XXX We only define this function in accurate gc grades for the moment,
+** XXX We only define this function in LLDS accurate gc grades for the moment,
 ** because it's unlikely to compile everywhere.  It relies on
 ** MR_real_reg_number_sp being defined, which is the name/number of the
 ** machine register that is used for MR_sp.
@@ -940,7 +940,7 @@ static MR_Word *
 get_sp_from_context(void *the_context)
 {
 	MR_Word *sp_at_signal = NULL;
-#ifdef NATIVE_GC
+#if defined(NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
   #if defined(HAVE_SIGCONTEXT_STRUCT)
 
     #ifdef PC_ACCESS
