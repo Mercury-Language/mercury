@@ -78,15 +78,21 @@
 :- import_module parse_tree__prog_util, check_hlds__type_util.
 :- import_module check_hlds__polymorphism.
 :- import_module ml_backend__ml_code_util, hlds__error_util.
+:- import_module ml_backend__ml_util.
 :- import_module libs__globals, libs__options.
 
 :- import_module bool, int, string, list, map, std_util, term, require.
 
 ml_gen_types(ModuleInfo, MLDS_TypeDefns) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	globals__io_get_target(Target),
 	( { HighLevelData = yes } ->
 		{ module_info_types(ModuleInfo, TypeTable) },
-		{ map__keys(TypeTable, TypeCtors) },
+		{ map__keys(TypeTable, TypeCtors0) },
+		{ list__filter((pred(TypeCtor::in) is semidet :-
+				\+ type_ctor_needs_lowlevel_rep(Target,
+					TypeCtor)
+			), TypeCtors0, TypeCtors) },
 		{ list__foldl(ml_gen_type_defn(ModuleInfo, TypeTable),
 			TypeCtors, [], MLDS_TypeDefns) }
 	;

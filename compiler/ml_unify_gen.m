@@ -86,6 +86,7 @@
 :- import_module hlds__hlds_pred, hlds__hlds_out, backend_libs__builtin_ops.
 :- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
 :- import_module ml_backend__ml_type_gen, ml_backend__ml_closure_gen.
+:- import_module ml_backend__ml_util.
 :- import_module parse_tree__prog_util, check_hlds__type_util.
 :- import_module check_hlds__mode_util.
 :- import_module backend_libs__rtti, hlds__error_util.
@@ -1572,7 +1573,12 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 		% tuple types.
 		% 
 		HighLevelData = yes,
-		( type_is_tuple(VarType, _) ->
+		globals__get_target(Globals, Target),
+		(
+			( type_is_tuple(VarType, _)
+			; type_needs_lowlevel_rep(Target, VarType)
+			)
+		->
 			FieldId = offset(const(int_const(Offset)))
 		;
 			FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
@@ -1835,8 +1841,13 @@ ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
 		SecondaryTagField :-
 	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
 	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
 	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
-	( HighLevelData = no ->
+	(
+		( HighLevelData = no
+		; type_needs_lowlevel_rep(Target, VarType)
+		)
+	->
 		% Note: with the low-level data representation,
 		% all fields -- even the secondary tag -- are boxed,
 		% and so we need to unbox (i.e. cast) it back to the

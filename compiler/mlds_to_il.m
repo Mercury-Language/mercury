@@ -1108,7 +1108,7 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 
 		{ MercuryExceptionClassName = 
 			mercury_runtime_name(["Exception"]) },
-		
+
 		{ ExceptionClassName = structured_name(il_system_assembly_name,
 				["System", "Exception"], []) },
 
@@ -1963,7 +1963,8 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			Type = mlds__class_type(_, _, mlds__class) 
 		;
 			DataRep ^ highlevel_data = yes,
-			Type = mlds__mercury_type(_, user_type, _)
+			Type = mlds__mercury_type(MercuryType, user_type, _),
+			\+ type_needs_lowlevel_rep(il, MercuryType)
 		}
 	->
 			% If this is a class, we should call the
@@ -3016,7 +3017,10 @@ mlds_type_to_ilds_type(_, mercury_type(_, enum_type, _)) = il_object_array_type.
 mlds_type_to_ilds_type(_, mercury_type(_, polymorphic_type, _)) =
 	il_generic_type.
 mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type, _)) = 
-	( DataRep ^ highlevel_data = yes ->
+	( 
+		DataRep ^ highlevel_data = yes,
+		\+ type_needs_lowlevel_rep(il, MercuryType)
+	->
 		mercury_type_to_highlevel_class_type(MercuryType)
 	;
 		il_object_array_type
@@ -3611,8 +3615,7 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0,
 	;
 		ClassType = ClassType0
 	),
-	FieldILType0 = mlds_type_to_ilds_type(DataRep,
-		FieldType),
+	FieldILType0 = mlds_type_to_ilds_type(DataRep, FieldType),
 	( FieldILType0 = ilds__type(_, '&'(FieldILType1)) ->
 		FieldILType = FieldILType1
 	;
