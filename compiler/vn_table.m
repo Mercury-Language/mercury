@@ -306,6 +306,8 @@ vn_table__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 			; Operator = (*)
 			; Operator = float_plus
 			; Operator = float_times
+			; Operator = (<<)
+			; Operator = (>>)
 			)
 		)
 	->
