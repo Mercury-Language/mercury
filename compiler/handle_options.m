@@ -971,7 +971,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_lookup_accumulating_option(c_include_directory,
 			CIncludeDirs0),
 		globals__io_set_option(c_include_directory,
-			accumulating([ConfDir/"lib"/"conf" | CIncludeDirs0]))
+			accumulating([ConfDir/"conf" | CIncludeDirs0]))
 	;
 		[]
 	),
