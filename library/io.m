@@ -1998,9 +1998,9 @@ io__set_op_table(_OpTable) --> [].
 
 :- pragma(c_header_code, "
 
-#include ""init.h""
-#include ""wrapper.h""
-#include ""type_info.h""
+#include ""mercury_init.h""
+#include ""mercury_wrapper.h""
+#include ""mercury_type_info.h""
 
 #include <stdio.h>
 #include <stdlib.h>

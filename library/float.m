@@ -269,7 +269,7 @@
 % Header files of mathematical significance.
 %
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 	#include <float.h>
 	#include <math.h>
@@ -406,7 +406,7 @@ float__hash(F) = H :- float__hash(F, H).
 % The floating-point system constants are derived from <float.h> and
 % implemented using the C interface.
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 	#if defined USE_SINGLE_PREC_FLOAT
 		#define	MERCURY_FLOAT_MAX	FLT_MAX

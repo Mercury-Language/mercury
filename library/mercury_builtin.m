@@ -325,7 +325,8 @@ builtin_compare_float(R, F1, F2) :-
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
 
-:- pragma(c_code, builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma c_code(builtin_strcmp(Res::out, S1::in, S2::in),
+	will_not_call_mercury,
 	"Res = strcmp(S1, S2);").
 
 builtin_index_non_canonical_type(_, -1).
@@ -356,9 +357,9 @@ unused :-
 		true
 	).
 
-:- pragma(c_header_code, "#include ""type_info.h""").
+:- pragma c_header_code("#include ""mercury_type_info.h""").
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 
 #ifdef  USE_TYPE_LAYOUT
@@ -653,11 +654,12 @@ compare_error :-
 */
 
 /* This doesn't work, due to the lack of support for aliasing.
-:- pragma(c_code, unsafe_promise_unique(X::in, Y::uo), "Y = X;").
+:- pragma c_code(unsafe_promise_unique(X::in, Y::uo), will_not_call_mercury,
+		"Y = X;").
 */
 
 :- external(unsafe_promise_unique/2).
-:- pragma(c_code, "
+:- pragma c_code("
 Define_extern_entry(mercury__unsafe_promise_unique_2_0);
 
 BEGIN_MODULE(unsafe_promise_unique_module)
@@ -712,9 +714,9 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 :- external(copy/2).
 
-:- pragma(c_header_code, "#include ""deep_copy.h""").
+:- pragma c_header_code("#include ""mercury_deep_copy.h""").
 
-:- pragma(c_code, "
+:- pragma c_code("
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
 
@@ -769,7 +771,7 @@ void sys_init_copy_module(void) {
 
 % The type c_pointer can be used by predicates which use the C interface.
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 /*
  * c_pointer has a special value reserved for its layout, since it needs to

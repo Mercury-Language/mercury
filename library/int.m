@@ -290,11 +290,11 @@ int__log2_2(X, N0, N) :-
 % is/2 is replaced with `=' in the parser, but the following is useful
 % in case you should take the address of `is' or something weird like that.
 
-% we use pragma(c_code) to avoid complaints about redefinition of is/2
+% we use `pragma c_code' to avoid complaints about redefinition of is/2
 % from the Prolog compilers.
 
-:- pragma(c_code, is(X::uo, Y::di),  "X = Y;").
-:- pragma(c_code, is(X::out, Y::in), "X = Y;").
+:- pragma c_code(is(X::uo, Y::di),  will_not_call_mercury, "X = Y;").
+:- pragma c_code(is(X::out, Y::in), will_not_call_mercury, "X = Y;").
 
 %-----------------------------------------------------------------------------%
 
@@ -302,7 +302,9 @@ int__log2_2(X, N0, N) :-
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 */
-:- pragma(c_code, int__to_float(IntVal::in, FloatVal::out), "
+:- pragma c_code(int__to_float(IntVal::in, FloatVal::out),
+		will_not_call_mercury,
+"
 	FloatVal = IntVal;
 ").
 
@@ -313,7 +315,7 @@ int__log2_2(X, N0, N) :-
 ").
 
 
-:- pragma c_code(int__max_int(Max::out), "
+:- pragma c_code(int__max_int(Max::out), will_not_call_mercury, "
 	if (sizeof(Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(Integer) == sizeof(long))
@@ -322,7 +324,7 @@ int__log2_2(X, N0, N) :-
 		fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma c_code(int__min_int(Min::out), "
+:- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
 	if (sizeof(Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(Integer) == sizeof(long))
@@ -331,7 +333,7 @@ int__log2_2(X, N0, N) :-
 		fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma c_code(int__bits_per_int(Bits::out), "
+:- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "
 	Bits = sizeof(Integer) * CHAR_BIT;
 ").
 

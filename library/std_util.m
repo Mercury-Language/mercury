@@ -468,8 +468,8 @@ maybe_pred(Pred, X, Y) :-
 ** user wishes.  This is basically a generalization of solutions/2.
 */
  
-#include ""imp.h""
-#include ""deep_copy.h""
+#include ""mercury_imp.h""
+#include ""mercury_deep_copy.h""
 
 Declare_entry(do_call_nondet_closure);
 Declare_entry(do_call_det_closure);
@@ -933,7 +933,7 @@ univ(X) = Univ :- type_to_univ(X, Univ).
 
 :- pragma c_header_code("
 
-#include ""type_info.h""
+#include ""mercury_type_info.h""
 
 int	ML_compare_type_info(Word type_info_1, Word type_info_2);
 
@@ -1065,7 +1065,7 @@ ML_compare_type_info(Word t1, Word t2)
 **	are defined in runtime/type_info.h.
 */
 
-#include ""type_info.h""
+#include ""mercury_type_info.h""
 
 
 ").
