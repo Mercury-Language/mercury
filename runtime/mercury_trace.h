@@ -18,7 +18,7 @@
 
 #define	MR_trace_incr_seq()	(++MR_trace_call_seqno)
 #define	MR_trace_incr_depth()	(++MR_trace_call_depth)
-#define	MR_trace_reset_depth(d)	do { MR_trace_call_depth = (d) } while (0)
+#define	MR_trace_reset_depth(d)	do { MR_trace_call_depth = (d); } while (0)
 
 extern	int	MR_trace_call_seqno;
 extern	int	MR_trace_call_depth;
