@@ -102,6 +102,7 @@ PROGS=	\
 # some tests need to be compiled with particular options
 
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-lp		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
