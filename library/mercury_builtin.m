@@ -69,23 +69,7 @@
 :- mode ui :: unique -> unique.
 :- mode di :: unique -> clobbered.
 
-% Higher-order predicate modes.
-% This needs to be builtin - the following is just a temporary hack.
-
-:- mode det_pred :: output.
-:- mode det_pred(_, _) :: output.
-:- mode det_pred(_, _, _, _) :: output.
-:- mode det_pred(_, _, _, _, _, _) :: output.
-
-:- mode semidet_pred :: output.
-:- mode semidet_pred(_, _) :: output.
-:- mode semidet_pred(_, _, _, _) :: output.
-:- mode semidet_pred(_, _, _, _, _, _) :: output.
-
-:- mode nondet_pred :: output.
-:- mode nondet_pred(_, _) :: output.
-:- mode nondet_pred(_, _, _, _) :: output.
-:- mode nondet_pred(_, _, _, _, _, _) :: output.
+% Higher-order predicate modes are builtin.
 
 %-----------------------------------------------------------------------------%
 
@@ -116,7 +100,7 @@
 
 % call/N is really a polymorphically moded, builtin part of the language;
 % the many declarations below are just an artifact of the current
-% implementation.
+% implementation.  They ought to be builtin.
 
 :- pred call(pred).
 :- mode call((pred) is semidet) is semidet.
@@ -143,12 +127,15 @@
 :- mode call(pred(in,  out) is multi,   in,  out) is multi.
 :- mode call(pred(in,  out) is nondet,  in,  out) is nondet.
  
-:- mode call(pred(uo, di)   is det,     uo,  di)  is det.
+/* The following modes are not supported.
+   We require all input arguments to come before all output arguments.
 
+:- mode call(pred(uo, di)   is det,     uo,  di)  is det.
 :- mode call(pred(out, in)  is det,     out, in)  is det.
 :- mode call(pred(out, in)  is semidet, out, in)  is semidet.
 :- mode call(pred(out, in)  is multi,   out, in)  is multi.
 :- mode call(pred(out, in)  is nondet,  out, in)  is nondet.
+*/
 
 :- mode call(pred(uo,  uo)  is det,     uo,  uo)  is det.
 
@@ -156,6 +143,31 @@
 :- mode call(pred(out, out) is semidet, out, out) is semidet.
 :- mode call(pred(out, out) is multi,   out, out) is multi.
 :- mode call(pred(out, out) is nondet,  out, out) is nondet.
+
+:- pred call(pred(T1, T2, T3), T1, T2, T3).
+
+:- mode call(pred(in,  in,  in)  is semidet, in,  in,  in)  is semidet.
+
+:- mode call(pred(di,  di,  uo)  is det,     di,  di,  uo)  is det.
+
+:- mode call(pred(in,  in,  out) is det,     in,  in,  out) is det.
+:- mode call(pred(in,  in,  out) is semidet, in,  in,  out) is semidet.
+:- mode call(pred(in,  in,  out) is multi,   in,  in,  out) is multi.
+:- mode call(pred(in,  in,  out) is nondet,  in,  in,  out) is nondet.
+ 
+:- mode call(pred(di,  uo,  uo)  is det,     di,  uo,  uo)  is det.
+
+:- mode call(pred(in,  out, out) is det,     in,  out, out) is det.
+:- mode call(pred(in,  out, out) is semidet, in,  out, out) is semidet.
+:- mode call(pred(in,  out, out) is multi,   in,  out, out) is multi.
+:- mode call(pred(in,  out, out) is nondet,  in,  out, out) is nondet.
+
+:- mode call(pred(uo,  uo,  uo) is det,      uo,  uo,  uo) is det.
+
+:- mode call(pred(out, out, out) is det,     out, out, out) is det.
+:- mode call(pred(out, out, out) is semidet, out, out, out) is semidet.
+:- mode call(pred(out, out, out) is multi,   out, out, out) is multi.
+:- mode call(pred(out, out, out) is nondet,  out, out, out) is nondet.
 
 % In addition, the following predicate-like constructs are builtin:
 %

@@ -109,7 +109,7 @@
 	%
 :- pred list__length(list(_T), int).
 :- mode list__length(in, out) is det.
-:- mode list__length(in, in) is semidet.	% implied
+% :- mode list__length(in, in) is semidet.	% implied
 	% XXX The current mode checker can't handle this mode
 % :- mode list__length(input_list_skel, out) is det.
 
@@ -213,14 +213,11 @@
 :- pred list__sort_and_remove_dups(list(T), list(T)).
 :- mode list__sort_and_remove_dups(in, out) is det.
 
-/****
-This will be added shortly.
 	% list__sort(List0, List):
 	%	List is List0 sorted.
 	%
 :- pred list__sort(list(T), list(T)).
 :- mode list__sort(in, out) is det.
-****/
 
 	% list__reverse(List, Reverse):
 	%	`Reverse' is a list containing the same elements as `List'
@@ -476,7 +473,7 @@ list__length(L, N) :-
 
 :- pred list__length_2(list(T), int, int).
 :- mode list__length_2(in, in, out) is det.
-:- mode list__length_2(in, in, in) is semidet.
+% :- mode list__length_2(in, in, in) is semidet. % implied
 
 list__length_2([], N, N).
 list__length_2([_ | L1], N0, N) :-
@@ -497,10 +494,8 @@ list__reverse_2([X|Xs], L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
-/**** This will be uncommented soon.
 list__sort(L0, L) :-
-	list__qsort(L0, [], L1).
-****/
+	list__qsort(L0, [], L).
 
 list__sort_and_remove_dups(L0, L) :-
 	list__qsort(L0, [], L1),

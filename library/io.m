@@ -438,7 +438,7 @@
 :- mode io__preallocate_heap_space(in, di, uo) is det.
 
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
-:- mode io__gc_call(det_pred(unique, clobbered, free, unique), di, uo) is det.
+:- mode io__gc_call(pred(di, uo) is det, di, uo) is det.
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
