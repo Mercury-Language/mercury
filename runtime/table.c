@@ -94,18 +94,22 @@ tab_get_all_entries(const Table *table)
 }
 
 /*
-**	Hash str into the range 0 to SIZE-1.
+**	Convert a string to a positive int. The return value
+**	mod the table size is a good hash value.
 */
 
 int
-tab_hash(const void *cs)
+tab_str_to_int(const char *cs)
 {
 	reg	int		h;
 	reg	const char	*s;
 
-	s = (const char *) cs;
+	s = cs;
 	for (h = 0; *s != '\0'; s++)
 		h = (h << 1) + *s;
 
-	return ((unsigned) h) % TABLESIZE;
+	if (h < 0)
+		h = -h;
+
+	return h;
 }

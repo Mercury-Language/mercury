@@ -5,35 +5,6 @@
 #include	"dummy.h"
 #include	"init.h"
 
-/* GLOBAL VARIABLES */
-
-/* heap, detstack, and nondstack */
-
-Word	heap[MAXHEAP];
-Word	detstack[MAXDETSTACK];
-Word	nondstack[MAXNONDSTACK];
-
-Word	*heapmin      = &heap[0];
-Word	*detstackmin  = &detstack[CACHE_OFFSET];
-Word	*nondstackmin = &nondstack[CACHE_OFFSET*2];
-
-/* statistics gathering */
-
-#ifndef SPEED
-
-Word	*heapmax;
-Word	*detstackmax;
-Word	*nondstackmax;
-
-#endif
-
-/* label table */
-
-int	cur_entry = 0;
-Label	entries[MAXLABELS];
-
-/* misc. */
-
 char	scratchbuf[256];
 
 extern	bool	check_space;
@@ -42,11 +13,11 @@ extern	bool	check_space;
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
-#define LOCALS_SIZE 1024	/* amount of space to reserve for local vars */
-#define MAGIC_MARKER 187	/* a random character */
-#define MAGIC_MARKER_2 142	/* another random character */
+#define LOCALS_SIZE	1024	/* amount of space to reserve for local vars */
+#define MAGIC_MARKER	187	/* a random character */
+#define MAGIC_MARKER_2	142	/* another random character */
 
-void *global_pointer;		/* used to defeat possible optimization	*/
+void	*global_pointer;	/* used to defeat possible optimization	*/
 
 #endif
 
@@ -54,15 +25,15 @@ void *global_pointer;		/* used to defeat possible optimization	*/
 
 /* FUNCTION PROTOTYPES */
 
-void init_engine(void);
-void call_engine(Code *entry_point);
-static void init_entries(void);
-static void init_registers(void);
+void		init_engine(void);
+void		call_engine(Code *entry_point);
+extern	void	init_memory(void);
+static	void	init_registers(void);
 #ifndef USE_GCC_NONLOCAL_GOTOS
-static Code * engine_done(void);
+static	Code	*engine_done(void);
 #endif
 
-void special_labels_module(void);
+void		special_labels_module(void);
 
 extern EntryPoint ENTRY(do_not_reached);
 
@@ -70,8 +41,7 @@ extern EntryPoint ENTRY(do_not_reached);
 
 void init_engine(void)
 {
-	init_entries();
-	init_modules();
+	init_memory();
 	init_registers();
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	makelabel("engine_done", LABEL(engine_done));
@@ -81,6 +51,7 @@ void init_engine(void)
 /*
 ** initialize the virtual machine registers
 */
+
 static void init_registers(void)
 {
 	hp = heapmin;					
@@ -95,26 +66,12 @@ static void init_registers(void)
 	save_registers();
 }
 
-/*
-** initialize the table of entry points & labels
-*/
-static void init_entries(void)
-{
-	int i;
-	for (i = 0; i < MAXLABELS; i++)
-		entries[i].e_name = "NOT_IN_USE";
-}
-
 /*---------------------------------------------------------------------------*/
 
 /*
 ** call_engine(Code *entry_point)
 **
-**	This routine calls a Prolog routine from C.
-**	(Well, actually it calls the "C as portable assembler" code
-**	for a Ptah/moded-Goedel/whatever-we-decide-to-call-it program,
-**	but you get the idea.  I'm just using the word Prolog in a very
-**	general sense.)
+**	This routine calls a Mercury routine from C.
 **
 **	The called routine must be deterministic.
 **	The virtual machine registers must be set up correctly
@@ -125,7 +82,7 @@ static void init_entries(void)
 **	have to change if we start using the caller-save registers.
 **
 **	The called routine may invoke C functions which in turn
-**	invoke call_engine() to invoke invoke Prolog routines (which
+**	invoke call_engine() to invoke invoke Mercury routines (which
 **	in turn invoke C functions which ... etc. ad infinitum.)
 **
 **	There are two different implementations of this, one for gcc,
@@ -148,6 +105,7 @@ void call_engine(Code *entry_point)
 	** just so long as local variables and temporaries are allocated in
 	** the same way in every function.
 	*/
+
 	unsigned char locals[LOCALS_SIZE];
 
 #ifndef SPEED
@@ -164,12 +122,14 @@ void call_engine(Code *entry_point)
 	** restore any registers that get clobbered by the C function
 	** call mechanism
 	*/
+
 	restore_registers();
 
 	/*
 	** We save the address of the locals in a global pointer to make
 	** sure that gcc can't optimize them away.
 	*/
+
 	global_pointer = locals;
 
 #ifndef SPEED
@@ -273,7 +233,7 @@ void call_engine(Code *entry_point)
 
 	/*
 	** Preserve the value of engine_jmp_buf on the C stack.
-	** This is so "C calls Prolog which calls C which calls Prolog" etc.
+	** This is so "C calls Mercury which calls C which calls Mercury" etc.
 	** will work.
 	*/
 

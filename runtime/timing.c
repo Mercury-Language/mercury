@@ -5,6 +5,7 @@
 
 #include "timing.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 /* Copyright (C) 1987, 1988, 1989, 1992, 1993 Free Software Foundation, Inc.
 
@@ -44,7 +45,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #endif
 #endif
 
-/* Return time used so far, in microseconds.  */
+/* Return time used so far, in milliseconds.  */
 
 int get_run_time (void)
 {
@@ -70,19 +71,19 @@ int get_run_time (void)
 
 #ifdef __svr4__
   times (&tms);
-  return (tms.tms_utime /* + tms.tms_stime */) * (1000000 / _sysconf(3));
+  return (tms.tms_utime /* + tms.tms_stime */) * (1000 / _sysconf(3));
 #else
 #ifdef USG
   times (&tms);
-  return (tms.tms_utime /* + tms.tms_stime */) * (1000000 / HZ);
+  return (tms.tms_utime /* + tms.tms_stime */) * (1000 / HZ);
 #else
 #ifndef VMS
   getrusage (0, &rusage);
-  return (rusage.ru_utime.tv_sec * 1000000 + rusage.ru_utime.tv_usec
-	  /* + rusage.ru_stime.tv_sec * 1000000 + rusage.ru_stime.tv_usec */);
+  return (rusage.ru_utime.tv_sec * 1000 + rusage.ru_utime.tv_usec / 1000
+	  /* + rusage.ru_stime.tv_sec * 1000 + rusage.ru_stime.tv_usec / 1000 */);
 #else /* VMS */
   times (&vms_times);
-  return (vms_times.proc_user_time /* + vms_times.proc_system_time */) * 10000;
+  return (vms_times.proc_user_time /* + vms_times.proc_system_time */) * 10;
 #endif
 #endif
 #endif

@@ -29,8 +29,9 @@ typedef void	Code;
 #define	DETSTACKFLAG	4
 #define	NONDSTACKFLAG	5
 #define	FINALFLAG	6
-#define	DETAILFLAG	7
-#define	MAXFLAG		8
+#define	MEMFLAG		7
+#define	DETAILFLAG	8
+#define	MAXFLAG		9
 /* DETAILFLAG should be the last real flag */
 
 #define	progdebug	debugflag[GOTOFLAG]
@@ -40,43 +41,12 @@ typedef void	Code;
 #define	detstackdebug	debugflag[DETSTACKFLAG]
 #define	nondstackdebug	debugflag[NONDSTACKFLAG]
 #define	finaldebug	debugflag[FINALFLAG]
+#define	memdebug	debugflag[MEMFLAG]
 #define	detaildebug	debugflag[DETAILFLAG]
 
 /* DEFINITIONS FOR THE LABEL TABLE */
 
-typedef struct s_label
-{
-	const char	*e_name;   /* name of the procedure	     */
-	Code		*e_addr;   /* address of the code	     */
-} Label;
-
-#define	MAXLABELS	800
-
-#define	makeentry(n, a)						\
-			(					\
-				assert(cur_entry >= 0),		\
-				assert(cur_entry < MAXLABELS), 	\
-				entries[cur_entry].e_name  = n,	\
-				entries[cur_entry].e_addr  = a,	\
-				cur_entry += 1,			\
-				((void)0)			\
-			)
-
-/* taking the address of labels can inhibit gcc's optimization,
-   because it assumes that anything can jump there,
-   so we want to do so only if we're debugging */
-#ifdef SPEED
-#define makelabel(n, a)	/* nothing */
-#else
-#define	makelabel(n,a)	makeentry((n),(a))
-#endif
-
-/* a table of the entry points defined by the various modules */
-/* TODO: replace this with a hash table */
-
-extern	Label	entries[];
-extern	int	cur_entry;	/* next free slot in entries table   */
-extern	int	which;		/* procedure called from interpreter */
+#include "label.h"
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
@@ -91,24 +61,31 @@ extern	int	which;		/* procedure called from interpreter */
 #define paste(a,b) a##b
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
+
   #ifndef __GNUC__
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
+
   typedef void *EntryPoint;
+
   #define ENTRY(predname) 	paste(entry_,predname)
   #define LABEL(label)		(&&label)
   #define GOTO(label)		do { debuggoto(label); goto *(label); } while(0)
-	  /*
-	  ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
-	  ** that it may allow gcc to generate slightly better code
-	  */
+  /*
+  ** GOTO_LABEL(label) is the same as GOTO(LABEL(label)) except
+  ** that it may allow gcc to generate slightly better code
+  */
   #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)
+
 #else
+
   typedef Code *EntryPoint(void);
+
   #define ENTRY(predname) 	predname
   #define LABEL(label)		(label)
   #define GOTO(label)		do { debuggoto(label); return (label); } while(0)
   #define GOTO_LABEL(label) 	GOTO(LABEL(label))
+
 #endif
 
 /* STANDARD ENTRY POINTS */
@@ -160,22 +137,25 @@ extern	EntryPoint	dosucceed;
 
 /* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
 
-#define	MAXHEAP		0x10000
-#define	MAXDETSTACK	0x10000
-#define	MAXNONDSTACK	0x10000
-#define	CACHE_OFFSET	0x200
+/* beginning of allocated areas */
+extern	Word	*heap;
+extern	Word	*detstack;
+extern	Word	*nondstack;
 
-extern	Word	heap[];
-extern	Word	detstack[];
-extern	Word	nondstack[];
+/* beginning of used areas */
+extern	Word	*heapmin;
+extern	Word	*detstackmin;
+extern	Word	*nondstackmin;
 
+/* highest locations actually used */
 extern	Word	*heapmax;
 extern	Word	*detstackmax;
 extern	Word	*nondstackmax;
 
-extern	Word	*heapmin;
-extern	Word	*detstackmin;
-extern	Word	*nondstackmin;
+/* end of allocated areas */
+extern	Word	*heapend;
+extern	Word	*detstackend;
+extern	Word	*nondstackend;
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
@@ -185,9 +165,11 @@ extern	Word	*nondstackmin;
 				(void)0				\
 			)
 
-/* Note that gcc optimizes `hp += 2; return hp - 2;' to
-   `tmp = hp; hp += 2; return tmp;', so we don't need to
-   use gcc's expression statements here */
+/*
+** Note that gcc optimizes `hp += 2; return hp - 2;'
+** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
+** gcc's expression statements here
+*/
 
 #define create1(w1)	(					\
 				hp = hp + 1,			\
@@ -225,12 +207,14 @@ extern	Word	*nondstackmin;
 #define	detstackvar(n)	sp[-n]
 
 #define	incr_sp(n)	(					\
+				debugincrsp(n, sp),		\
 				sp = sp + (n),			\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	decr_sp(n)	(					\
+				debugdecrsp(n, sp),		\
 				sp = sp - (n),			\
 				detstack_underflow_check(),	\
 				(void)0				\
@@ -375,7 +359,7 @@ extern	Word	*nondstackmin;
 
 #define	heap_overflow_check()					\
 			(					\
-				IF (hp >= &heap[MAXHEAP],(	\
+				IF (hp >= heapend,(		\
 					fprintf(stderr, "heap overflow\n"), \
 					exit(1)			\
 				)),				\
@@ -387,7 +371,7 @@ extern	Word	*nondstackmin;
 
 #define	detstack_overflow_check()				\
 			(					\
-				IF (sp >= &detstack[MAXDETSTACK],(	\
+				IF (sp >= detstackend,(		\
 					fprintf(stderr, "stack overflow\n"), \
 					exit(1)			\
 				)),				\
@@ -408,7 +392,7 @@ extern	Word	*nondstackmin;
 
 #define	nondstack_overflow_check()				\
 			(					\
-				IF (maxfr >= &nondstack[MAXNONDSTACK],(	\
+				IF (maxfr >= nondstackend,(	\
 					fprintf(stderr, 	\
 						"nondstack overflow\n"), \
 					exit(1)			\
@@ -437,6 +421,8 @@ extern	Word	*nondstackmin;
 
 #define	debugcr1(val0, hp)			((void)0)
 #define	debugcr2(val0, val1, hp)		((void)0)
+#define	debugincrsp(val, sp)			((void)0)
+#define	debugdecrsp(val, sp)			((void)0)
 #define	debugpush(val, sp)			((void)0)
 #define	debugpop(val, sp)			((void)0)
 #define	debugregs(msg)				((void)0)
@@ -464,6 +450,12 @@ extern	Word	*nondstackmin;
 
 #define	debugcr2(val0, val1, hp) \
 	IF (heapdebug, (save_registers(), cr2_msg(val0, val1, hp)))
+
+#define	debugincrsp(val, sp) \
+	IF (detstackdebug, (save_registers(), incr_sp_msg((val), (sp))))
+
+#define	debugdecrsp(val, sp) \
+	IF (detstackdebug, (save_registers(), decr_sp_msg((val), (sp))))
 
 #define	debugpush(val, sp) \
 	IF (detstackdebug, (save_registers(), push_msg((val), (sp))))
@@ -556,6 +548,7 @@ extern	Word	do_mklist(int start, int len);
 #define mklist(start,len) do_mklist(start,len)
 #endif
 
+extern	char	scratchbuf[];
 extern	bool	debugflag[];
 
 /* debugging messages, defined in aux.c */
@@ -572,6 +565,8 @@ extern	void	tailcall_msg(const Code *proc);
 extern	void	proceed_msg(void);
 extern	void	cr1_msg(Word val0, const Word *addr);
 extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
+extern	void	incr_sp_msg(Word val, const Word *addr);
+extern	void	decr_sp_msg(Word val, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
 extern	void	goto_msg(const Code *addr);

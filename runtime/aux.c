@@ -1,7 +1,12 @@
 #include 	<stdlib.h>
 #include	"imp.h"
 #include	"list.h"
+#include	"label.h"
 #include	"access.h"
+
+/*--------------------------------------------------------------------*/
+
+/* debugging messages */
 
 void mkframe_msg(void)
 {
@@ -123,6 +128,18 @@ void cr2_msg(Word val0, Word val1, const Word *addr)
 	printheap(addr);
 }
 
+void incr_sp_msg(Word val, const Word *addr)
+{
+	printf("increment sp by %d from ", val);
+	printdetstack(addr);
+}
+
+void decr_sp_msg(Word val, const Word *addr)
+{
+	printf("decrement sp by %d from ", val);
+	printdetstack(addr);
+}
+
 void push_msg(Word val, const Word *addr)
 {
 	printf("push value %9x to ", val);
@@ -145,6 +162,8 @@ void goto_msg(const Code *addr)
 }
 
 /*--------------------------------------------------------------------*/
+
+/* debugging printing tools */
 
 void printint(Word n)
 {
@@ -230,7 +249,7 @@ void printlist(Word p)
 
 		ptr = (Word *) body(t, TAG_CONS);
 		if (((int)ptr & 0x3) || ptr == 0
-		    || ptr < heap || ptr >= heap + MAXHEAP)
+		    || ptr < heapmin || ptr >= heapend)
 		{
 			printf("0x%x (%d)\n", t, t);
 			return;
@@ -263,32 +282,13 @@ void printlist(Word p)
 
 void printlabel(const Code *w)
 {
-	int	i;
+	Label	*label;
 
-	for (i = 0; i < cur_entry; i++)
-		if (entries[i].e_addr == w)
-		{
-			printf("label %s (0x%p)\n", entries[i].e_name, w);
-			return;
-		}
-
-	printf("label UNKNOWN (0x%p)\n", w);
-}
-
-int whichlabel(const char *name)
-{
-	reg	int	i;
-	reg	bool	found;
-
-	found = FALSE;
-	for (i = 0; i < cur_entry; i++)
-	{
-		/* printf("comparing %s and %s\n", name, entries[i].e_name); */
-		if (streq(name, entries[i].e_name))
-			return i;
-	}
-
-	return -1;
+	label = lookup_label_addr(w);
+	if (label != NULL)
+		printf("label %s (0x%p)\n", label->e_name, w);
+	else
+		printf("label UNKNOWN (0x%p)\n", w);
 }
 
 #define	FNULL	((PrintRegFunc *) 0)
@@ -400,7 +400,7 @@ void printframe(const char *msg)
 		printf("r%d:      ", i + 1);
 		value = get_reg(i+1);
 
-		if ((int) heapmin <= value && value <= (int) (&heap[MAXHEAP]))
+		if ((int) heapmin <= value && value < (int) heapend)
 			printlist(value);
 		else
 			printint(value);
@@ -427,7 +427,7 @@ void printregs(const char *msg)
 		printf("r%d:      ", i + 1);
 		value = get_reg(i+1);
 
-		if ((int) heapmin <= value && value <= (int) (&heap[MAXHEAP]))
+		if ((int) heapmin <= value && value < (int) heapend)
 			printlist(value);
 		else
 			printint(value);
