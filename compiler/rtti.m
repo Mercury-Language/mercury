@@ -372,7 +372,6 @@
 	;	pred_ctor
 	;	func_ctor
 	;	tuple
-	;	array
 	;	ref
 	;	type_desc
 	;	type_ctor_desc.
@@ -1113,12 +1112,23 @@ rtti__type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 		impl_ctor_rep_to_string(ImplCtor, RepStr)
 	;
 		TypeCtorDetails = foreign,
-		RepStr = "MR_TYPECTOR_REP_FOREIGN"
+		(
+			type_ctor_is_array(
+				qualified(TypeCtorData ^ tcr_module_name,
+					TypeCtorData ^ tcr_type_name) -
+					TypeCtorData ^ tcr_arity)
+		->
+			% XXX This is a kludge to allow accurate GC
+			% to trace arrays. We should allow users to
+			% provide tracing functions for foreign types.
+			RepStr = "MR_TYPECTOR_REP_ARRAY"
+		;
+			RepStr = "MR_TYPECTOR_REP_FOREIGN"
+		)
 	).
 
 :- pred builtin_ctor_rep_to_string(builtin_ctor::in, string::out) is det.
 
-builtin_ctor_rep_to_string(array, "MR_TYPECTOR_REP_ARRAY").
 builtin_ctor_rep_to_string(int, "MR_TYPECTOR_REP_INT").
 builtin_ctor_rep_to_string(string, "MR_TYPECTOR_REP_STRING").
 builtin_ctor_rep_to_string(float, "MR_TYPECTOR_REP_FLOAT").

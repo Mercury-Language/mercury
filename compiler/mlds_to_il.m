@@ -3355,10 +3355,6 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				; Name = "func", Arity = 0
 				; Name = "tuple", Arity = 0
 				)
-			; LibModuleName0 = "array", 
-				(
-				  Name = "array", Arity = 1
-				)
 			; LibModuleName0 = "type_desc",
 				( 
 				  Name = "type_desc", Arity = 0

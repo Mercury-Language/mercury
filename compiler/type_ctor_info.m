@@ -310,7 +310,6 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 :- pred builtin_type_ctor(string::in, string::in, int::in, builtin_ctor::out)
 	is semidet.
 
-builtin_type_ctor("array", "array", 1, array).
 builtin_type_ctor("builtin", "int", 0, int).
 builtin_type_ctor("builtin", "string", 0, string).
 builtin_type_ctor("builtin", "float", 0, float).
