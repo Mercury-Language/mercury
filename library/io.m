@@ -1311,13 +1311,16 @@
 	--->	exited(int)
 	;	signalled(int).
 
+	% call_system_return_signal(Command, Result, !IO).
 	% Invokes the operating system shell with the specified
 	% Command.  Result is either `ok(ExitStatus)' if it was
-	% possible to invoke the command and the it ran to completion,
-	% `signal(SignalNum)' if the command was killed by a signal, or
-	% `error(ErrorCode)' if the command could not be executed.
-	% The `ExitStatus' will be 0 if the command completed
-	% successfully or the return value of the command otherwise.
+	% possible to invoke the command or `error(Error)' if the command
+	% could not be executed.  If the command could be executed then
+	% ExitStatus is either `exited(ExitCode)' if the command ran to 
+	% completion or `signalled(SignalNum)' if the command was killed by
+	% a signal.  If the command ran to completion then ExitCode will be 0 
+	% if the command ran successfully and the return value of the command
+	% otherwise.
 	%
 :- pred io__call_system_return_signal(string::in,
 	io__res(io__system_result)::out, io::di, io::uo) is det.
