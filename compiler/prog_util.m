@@ -62,6 +62,10 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% First we build up a mapping which records the equivlance type
+	% definitions.  Then we go through the item list and replace
+	% them.
+
 prog_util__expand_eqv_types(Items0, Items) :-
 	map__init(EqvMap0),
 	prog_util__build_eqv_map(Items0, EqvMap0, EqvMap),
@@ -125,8 +129,8 @@ prog_util__replace_eqv_type(
 			func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
 				Det, Cond)) :-
 	prog_util__replace_eqv_type_tms(TypesAndModes0, VarSet0, EqvMap,
-				no, TypesAndModes, VarSet, Found),
-	prog_util__replace_eqv_type_tm(RetTypeAndMode0, VarSet0, EqvMap,
+				no, TypesAndModes, VarSet1, Found),
+	prog_util__replace_eqv_type_tm(RetTypeAndMode0, VarSet1, EqvMap,
 				Found, RetTypeAndMode, VarSet, yes).
 
 :- pred prog_util__replace_eqv_type_defn(type_defn, tvarset, eqv_map,
