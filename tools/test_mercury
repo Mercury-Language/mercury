@@ -70,8 +70,12 @@ TESTDIR=$TOPDIR/test_mercury
 HOSTDIR=$TESTDIR/test_dirs/$HOST
 DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
-# Host to use to build the release of the day.
+# Host to use to build the release of the day source distribution
+# for the mercury-compiler, mercury-tests, and mercury-extras distributions.
 ROTD_HOST=earth
+
+# Host to use to build the release of the day mercury-gcc source distribution.
+GCC_ROTD_HOST=earth
 
 set_status () {
 	status=1;
@@ -786,6 +790,20 @@ case $HOST in $ROTD_HOST)
 	cd $DIR
 	;;
 esac
+case $HOST in $GCC_ROTD_HOST)
+	# build the mercury-gcc source distribution
+	cd $DIR &&
+	rm -f	mercury-gcc/stage[1-4] \
+		mercury-gcc/include \
+		mercury-gcc/mercury \
+		mercury-gcc/*.o &&
+	mv mercury-gcc mercury-gcc-$version &&
+	tar -cf - mercury-gcc-$version | gzip -9 \
+		> $UNSTABLE/mercury-gcc-$version.tar.gz &&
+	mv mercury-gcc-$version mercury-gcc &&
+	true
+	;;
+esac
 
 : run the regression tests on the stage2 compiler
 
@@ -1041,6 +1059,15 @@ case $HOST in $ROTD_HOST)
 	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR
 	;;
 esac
+case $HOST in $GCC_ROTD_HOST)
+	rsh $BETA_FTPHOST \
+		"rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz" &&
+	rcp $UNSTABLE/mercury-gcc-$version-unstable.* \
+		$BETA_FTPHOST:$BETA_FTPDIR  &&
+	rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
+	cp $UNSTABLE/mercury-gcc-$version-unstable.* $BETA_WEBDIR
+	;;
+esac
 
 #-----------------------------------------------------------------------------#
 
@@ -1129,6 +1156,12 @@ ulimit -S -t unlimited
 	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	if [ -d gcc/. && -d mercury-gcc/. ]; then
+		cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
+		cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
+	else	
+		true
+	fi &&
 	echo "test_mercury tagging unstable $BASE_TAG_NAME, finished at `date`" 1>&2
 } || set_status "creating binary distribution"
 
@@ -1151,6 +1184,12 @@ case $status in
 	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+	if [ -d gcc/. && -d mercury-gcc/. ]; then
+		cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
+		cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
+	else	
+		true
+	fi &&
 	echo "test_mercury tagging stable $BASE_TAG_NAME, finished at `date`" 1>&2
        } || set_status "copying binary distribution"
     ;;
@@ -1164,6 +1203,7 @@ case $status in
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
 	date >> $TESTDIR/logs/success."$TEST_ID"
+
 	case $HOST in $ROTD_HOST)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
@@ -1213,6 +1253,26 @@ case $status in
 	        $BETA_WEBDIR/mercury-INSTALL-$version.txt
 	    ;;
 	esac || set_status "updating stable distribution"
+
+	case $HOST in $GCC_ROTD_HOST)
+	    cd $DIR &&
+		# Delete older stable versions that this one replaces
+	    rm -f $STABLE/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-gcc-$version.tar.gz &&
+	    $LN $UNSTABLE/mercury-gcc-$version-unstable.tar.gz \
+	        $STABLE/mercury-gcc-$version.tar.gz &&
+
+	    rsh $BETA_FTPHOST "\
+	    rm -f $BETA_FTPDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-gcc-$version.tar.gz && 
+	    $LN $BETA_FTPDIR/mercury-gcc-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-gcc-$version.tar.gz" &&
+
+	    rm -f $BETA_WEBDIR/mercury-gcc-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    $LN $BETA_WEBDIR/mercury-gcc-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-gcc-$version.tar.gz
+	    ;;
+	esac
 	;;
     *)
 	;;
