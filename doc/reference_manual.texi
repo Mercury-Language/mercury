@@ -2150,6 +2150,20 @@ all of whose nodes are free and bound respectively.
 The shape of these trees is determined by
 the type of the variable to which they apply.
 
+A more concise, alternative syntax exists for @samp{bound} instantiatedness
+trees:
+
+@example
+:- inst maybeskel ---> no ; yes(ground).
+@end example
+
+@noindent
+which is equivalent to writing
+
+@example
+:- inst maybeskel == bound(no ; yes(ground)).
+@end example
+
 As execution proceeds, variables may become more instantiated.
 A @dfn{mode mapping} is a mapping
 from an initial instantiatedness tree to a final instantiatedness tree,
@@ -2199,10 +2213,9 @@ the database over a network, you would need declarations such as
 :- type operation
         --->    lookup(key, data)
         ;       set(key, data).
-:- inst request ==
-        bound(  lookup(ground, free)
-        ;       set(ground, ground)
-        ).
+:- inst request
+	--->	lookup(ground, free)
+        ;       set(ground, ground).
 :- mode create_request == free >> request.
 :- mode satisfy_request == request >> ground.
 @end example
@@ -2211,7 +2224,7 @@ the database over a network, you would need declarations such as
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) == bound( [] ; [Inst | listskel(Inst)] ).
+:- inst maybeskel(Inst) ---> no ; yes(Inst).
 @end example
 
 @noindent
@@ -2660,6 +2673,9 @@ Note that a value is not considered @samp{unique} if it might be
 needed on backtracking.  This means that unique modes are generally
 only useful for code whose determinism is @samp{det} or @samp{cc_multi}
 (@pxref{Determinism}).
+
+Unlike @samp{bound} instantiatedness trees, there is no alternative
+syntax for @samp{unique} instantiatedness trees.
 
 @node Backtrackable destructive update
 @section Backtrackable destructive update
