@@ -22,6 +22,9 @@
 #ifndef MR_NO_USE_READLINE
   #ifdef HAVE_READLINE_READLINE
     #include "readline/readline.h"
+  #else
+    FILE *rl_instream;
+    FILE *rl_outstream;
   #endif
   #ifdef HAVE_READLINE_HISTORY
     #include "readline/history.h"
