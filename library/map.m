@@ -1,7 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Main author: fjh.
+% File: map.m.
+% Main author: fjh, conway.
 %
 % This file provides the 'map' ADT.
 % A map (also known as a dictionary or an associative array) is a collection
@@ -9,8 +13,8 @@
 % Key.
 %
 % The implementation is using balanced binary trees, as provided by
-% tree234.nl.  Virtually all the predicates in this file just
-% forward the work to the corresponding predicate in tree234.nl.
+% tree234.m.  Virtually all the predicates in this file just
+% forward the work to the corresponding predicate in tree234.m.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

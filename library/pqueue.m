@@ -1,11 +1,15 @@
 %---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file pqueue.nl - implements a priority queue.
+% file pqueue.m - implements a priority queue.
+% main author: conway.
 %
 % A qpueue is a priority queue DDT with the smallest element at the root.
 % It takes keys and values to provide a dictionary type function, and
-% is not guarenteed to be stable. XXX this should be fixed.
+% is not guarenteed to be stable. (XXX stability should be fixed.)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -141,3 +145,4 @@ pqueue__assoc_list_to_pqueue([K - V | L], Q) :-
 	pqueue__assoc_list_to_pqueue(L, Q0),
 	pqueue__insert(Q0, K, V, Q).
 
+%---------------------------------------------------------------------------%

@@ -1,11 +1,14 @@
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-% File: queue.nl.
+% File: queue.m.
 % Main author: fjh.
 
 % This file contains a `queue' ADT.
-% This implementation is in terms of a list pair.
+% This implementation is in terms of a pair of lists.
 
 %--------------------------------------------------------------------------%
 

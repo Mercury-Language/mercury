@@ -1,12 +1,20 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: io.nl.
+% File: io.m.
 % Main author: fjh.
 %
 % This file encapsulates all the file I/O.
-% We implement a purely logical I/O system using Prolog's horrible
-% non-logical I/O primitives.
+% We implement a purely logical I/O system using non-logical I/O primitives
+% of the underlying system (C or Prolog).
+% The logicalness is enforced at compile time by using unique modes.
+% (Except that we haven't implemented that yet.  So instead it's checked at
+% runtime.  Except that those checks prevent doing a `redo' in the debugger.
+% So we don't check at all.  Oh well.  Just don't write any programs that
+% depend on it, because they *WILL* break!)
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

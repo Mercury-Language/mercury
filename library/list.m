@@ -1,4 +1,15 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+%
+% Module `list' - defines the list type, and various utility predicates
+% that operate on lists.
+%
+% Main author: fjh.
+%
+%---------------------------------------------------------------------------%
 
 :- module list.
 :- import_module int.

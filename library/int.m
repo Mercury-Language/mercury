@@ -1,5 +1,9 @@
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+%
 % int - some predicates for dealing with machine-size integer numbers.
 %
 % Main authors: conway, fjh.

@@ -1,7 +1,10 @@
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 %
-% File: term_io.nl.
+% File: term_io.m.
 % Main author: fjh.
 %
 % This file encapsulates all the term I/O.

@@ -1,4 +1,8 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
 :- module string.
 	% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because

@@ -1,4 +1,8 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
 % File: string.nu.nl.
 % Main author: fjh.
@@ -9,7 +13,7 @@
 
 % To do this correctly, we really ought to check that the list of
 % ints are all valid character codes (i.e. <= 255), and if not,
-% call error/1.  But string__to_int_list is private to string.nl
+% call error/1.  But string__to_int_list is private to string.m
 % anyway, so for efficiency we don't worry about that run-time type check.
 
 string__to_int_list(S, S).

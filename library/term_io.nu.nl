@@ -1,11 +1,14 @@
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 %
 % File: term_io.nu.nl.
 % Main author: fjh.
 %
 % This file provides implementations for some of the predicates declared
-% in term_io.nl using non-logical NU-Prolog.
+% in term_io.m using non-logical NU-Prolog.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,7 +37,7 @@ term_io__read_term(Result) -->
 	    term__context_init(StreamName, LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
 	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
-		% DCG expansion is now done by prog_io.nl.
+		% DCG expansion is now done by prog_io.m.
 		% expandTerm(Term0, Term1), 
 		Term1 = Term0,
 		( nonvar(Term1), eof(Term1) ->
@@ -138,7 +141,12 @@ varmap__set_id([], Var, Id, [var(Var, no_name, id(Id))]).
 varmap__set_id([V0|VarMap0], Var, Id, [V|VarMap]) :-
 	V0 = var(ThisVar, Name, OldId),
 	( Var == ThisVar ->
-		require(OldId = no_id, "io.nl: internal error (varmap)"),
+		(OldId = no_id ->
+			true
+		;
+			error("term_io.nu.nl: internal error (varmap)"),
+			fail
+		),
 		V = var(ThisVar, Name, id(Id)),
 		VarMap = VarMap0
 	;

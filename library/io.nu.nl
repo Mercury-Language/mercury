@@ -1,11 +1,14 @@
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 %
 % File: io.nu.nl.
 % Main author: fjh.
 %
 % This file provides an implementation of some of the predicates
-% declared in io.nl using non-logical NU-Prolog code.
+% declared in io.m using non-logical NU-Prolog code.
 %
 %-----------------------------------------------------------------------------%
 
@@ -174,7 +177,7 @@ io__call(Goal, IOState0, IOState) :-
 io__call_2(Goal, Solutions, IOState) :-
 	(Solutions = [] ->
 		nl(user_error),
-		write(user_error, 'io.nl: error: goal `'),
+		write(user_error, 'io.nu.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
@@ -187,7 +190,7 @@ io__call_2(Goal, Solutions, IOState) :-
 		IOState = IOState0
 	;
 		nl(user_error),
-		write(user_error, 'io.nl: error: goal `'),
+		write(user_error, 'io.nu.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
@@ -203,7 +206,7 @@ io__call(Goal, IOState0, IOState) :-
 		true
 	;
 		nl(user_error),
-		write(user_error, 'io.nl: error: goal `'),
+		write(user_error, 'io.nu.nl: error: goal `'),
 		functor(Goal, F, N),
 		write(user_error, F),
 		write(user_error, '/'),
@@ -448,14 +451,14 @@ io__update_state(IOState0, IOState) :-
 	% using require/2 here causes rampant memory usage
 	% because the strings get allocated every time
 	( var(IOState0) ->
-		error("io.nl: I/O predicate called with free io__state")
+		error("io.nu.nl: I/O predicate called with free io__state")
 	;
 		true
 	),
 	%%% ( IOState0 = io__state(_, _, current) ->
 	%%% 	true
 	%%% ;
-	%%% 	error("io.nl: cannot retry I/O operation")
+	%%% 	error("io.nu.nl: cannot retry I/O operation")
 	%%% ),
 	%%% IOState0 = io__state(Names, Globals, _),
 	%%% $replacn(2, IOState0, old),
