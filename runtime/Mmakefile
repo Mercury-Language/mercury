@@ -42,8 +42,9 @@ HDRS		=	\
 			mercury_imp.h		\
 			mercury_init.h		\
 			mercury_label.h		\
-			mercury_stack_layout.h	\
 			mercury_memory.h	\
+			mercury_memory_zones.h	\
+			mercury_memory_handlers.h	\
 			mercury_misc.h		\
 			mercury_overflow.h	\
 			mercury_prof.h		\
@@ -53,6 +54,7 @@ HDRS		=	\
 			mercury_spinlock.h	\
 			mercury_std.h		\
 			mercury_stacks.h	\
+			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
 			mercury_string.h	\
 			mercury_table.h		\
@@ -91,6 +93,8 @@ CFILES		= 	mercury_context.c	\
 			mercury_ho_call.c	\
 			mercury_label.c		\
 			mercury_memory.c	\
+			mercury_memory_zones.c	\
+			mercury_memory_handlers.c	\
 			mercury_misc.c		\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\

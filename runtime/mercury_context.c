@@ -3,7 +3,7 @@ INIT mercury_sys_init_context
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,6 +18,7 @@ ENDINIT
 #include <signal.h>
 #endif
 
+#include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"	/* for `memdebug' */
 
