@@ -298,6 +298,9 @@ AC_MSG_CHECKING(for working sigcontext_struct)
 AC_CACHE_VAL(mercury_cv_sigcontext_struct,
 mercury_cv_sigcontext_struct=no
 AC_TRY_RUN([
+/* see runtime/memory.c for documentation of this code */
+
+#define sigcontext_struct sigcontext
 
 #define __KERNEL__
 #include <signal.h>
@@ -341,6 +344,10 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	AC_CACHE_VAL(mercury_cv_pc_access,
 	mercury_cv_pc_access=no
 	AC_TRY_RUN([
+	/* see runtime/memory.c for documentation of this code */
+
+	#define sigcontext_struct sigcontext
+
 	#define __KERNEL__
 	#include <signal.h>
 	#undef __KERNEL__

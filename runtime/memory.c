@@ -29,10 +29,16 @@
 
 /*---------------------------------------------------------------------------*/
 
-#include "regs.h"	/* must come first, due to gloabl register vars */
+#include "regs.h"	/* must come first, due to global register vars */
 #include "conf.h"	/* must come second */
 
 #ifdef HAVE_SIGCONTEXT_STRUCT
+  /*
+  ** Some versions of Linux call it struct sigcontext_struct, some call it
+  ** struct sigcontext.  The following #define eliminates the differences.
+  */
+  #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+
   /*
   ** On some systems (e.g. most versions of Linux) we need to #define
   ** __KERNEL__ to get sigcontext_struct from <signal.h>.
@@ -43,6 +49,10 @@
   #include <signal.h>	/* must come third */
   #undef __KERNEL__
 
+  /*
+  ** Some versions of Linux define it in <signal.h>, others define it in
+  ** <asm/sigcontext.h>.  We try both.
+  */
   #ifdef HAVE_ASM_SIGCONTEXT
     #include <asm/sigcontext.h>
   #endif 

@@ -16,6 +16,9 @@
 
 # include "gc_priv.h"
 # ifdef LINUX
+    /* For Linux 2.1.x, `struct sigcontext_struct' has been renamed as  */
+    /* `struct sigcontext'; hence the following #define.		*/
+#   define sigcontext_struct sigcontext
     /* Ugly hack to get struct sigcontext_struct definition.  Required	*/
     /* for some early 1.3.X releases.  Will hopefully go away soon.	*/
     /* in some later Linux releases, asm/sigcontext.h may have to	*/
