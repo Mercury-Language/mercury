@@ -206,6 +206,7 @@ scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 scripts/mkfifo_using_mknod scripts/Mmake.vars
+scripts/mdb scripts/mdbrc
 ,
 # conftest.junk is used to avoid a warning if there
 # are no files in the list passed to chmod
