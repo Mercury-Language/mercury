@@ -3210,7 +3210,7 @@ The code may be easier to understand if you also use the
 @samp{--no-llds-optimize} option.
 
 @sp 1
-@item --no-line-numbers
+@item -n-, --no-line-numbers
 Do not put source line numbers in the generated code.
 The generated code may be in C (the usual case),
 in Goedel (with @samp{--convert-to-goedel})

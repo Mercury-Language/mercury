@@ -834,6 +834,7 @@ short_option('I', 			search_directories).
 short_option('l', 			link_libraries).
 short_option('L', 			link_library_directories).
 short_option('M', 			generate_dependencies).
+short_option('n', 			line_numbers).
 short_option('N', 			debug_modes).
 short_option('o', 			output_file_name).
 short_option('O', 			opt_level).
@@ -1790,7 +1791,7 @@ options_help_aux_output -->
 % --prolog-dialect is not documented because it is not yet used
 %		"--prolog-dialect {sicstus,nu}",
 %		"\tTarget the named dialect if generating Prolog code.",
-		"--no-line-numbers",
+		"-n-, --no-line-numbers",
 		"\tDo not put source line numbers in the generated code.",
 		"\tThe generated code may be in C (the usual case),",
 		"\tin Goedel (with the option --convert-to-goedel)",
