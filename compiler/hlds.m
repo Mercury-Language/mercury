@@ -756,9 +756,10 @@ procinfo_init(Modes, Det, MContext, NewProc) :-
 	determinism_to_category(Det, Category),
 	map__init(CallInfo),
 	ArgInfo = [],
+	ClauseBody = conj([]) - GoalInfo,
 	NewProc = procedure(
 		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
-		conj([]) - GoalInfo, MContext, CallInfo, Category, ArgInfo
+		ClauseBody, MContext, CallInfo, Category, ArgInfo
 	).
 
 determinism_to_category(det, deterministic).
