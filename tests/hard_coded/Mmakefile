@@ -104,6 +104,7 @@ PROGS=	\
 	string_loop \
 	test_imported_no_tag \
 	term_io_test \
+	type_to_term_bug \
 	tim_qual1 \
 	type_spec \
 	user_defined_equality \

@@ -1165,7 +1165,6 @@ void sys_init_unify_univ_module(void) {
 :- pragma c_header_code("
 
 typedef struct ML_Construct_Info_Struct {
-	int vector_type;
 	int arity;
 	Word *functor_descriptor;
 	Word *argument_vector;
@@ -1536,21 +1535,26 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
 			(Word *) TypeInfo);
 
-		layout_entry = type_ctor_info->type_ctor_layout[
-			info.primary_tag];
 
-		if (info.vector_type == MR_TYPE_CTOR_FUNCTORS_ENUM) {
+		if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_ENUM
+			|| type_ctor_info->type_ctor_rep == 
+			MR_TYPECTOR_REP_ENUM_USEREQ) {
 			/*
-			** Enumeratiors don't have tags or arguments,
+			** Enumerations don't have tags or arguments,
 			** just the enumeration value.
 			*/
 			new_data = (Word) info.secondary_tag;
 		} else {
+			layout_entry = type_ctor_info->type_ctor_layout[
+				info.primary_tag];
 			/* 
 			** It must be some sort of tagged functor.
 			*/
 
-			if (info.vector_type == MR_TYPE_CTOR_FUNCTORS_NO_TAG) {
+			if (type_ctor_info->type_ctor_rep == 
+				MR_TYPECTOR_REP_NOTAG || 
+				type_ctor_info->type_ctor_rep == 
+					MR_TYPECTOR_REP_NOTAG_USEREQ) {
 
 				/*
 				** We set term_vector to point to
@@ -1653,35 +1657,17 @@ ML_get_functor_info(Word type_info, int functor_number,
 	ML_Construct_Info *info)
 {
 	MR_TypeCtorInfo		type_ctor_info;
-	Word *type_ctor_functors;
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
-	if (! MR_type_ctor_rep_is_basically_du(type_ctor_info->type_ctor_rep))
-	{
-		return FALSE;
-	}
 
-	type_ctor_functors = type_ctor_info->type_ctor_functors;
-	info->vector_type = MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors);
+	switch(type_ctor_info->type_ctor_rep) {
 
-	switch (info->vector_type) {
-
-	case MR_TYPE_CTOR_FUNCTORS_ENUM:
-		info->functor_descriptor = MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR(
-				type_ctor_functors);
-		info->arity = 0;
-		info->argument_vector = NULL;
-		info->primary_tag = 0;
-		info->secondary_tag = functor_number;
-		info->functor_name =
-			MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
-				info->functor_descriptor, functor_number);
-		break; 
-
-	case MR_TYPE_CTOR_FUNCTORS_DU:
+	case MR_TYPECTOR_REP_DU:
+	case MR_TYPECTOR_REP_DU_USEREQ:
 		info->functor_descriptor =
 			MR_TYPE_CTOR_FUNCTORS_DU_FUNCTOR_N(
-				type_ctor_functors, functor_number);
+				type_ctor_info->type_ctor_functors,
+				functor_number);
 		info->arity = MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_ARITY(
 			info->functor_descriptor);
 		info->argument_vector =
@@ -1698,10 +1684,24 @@ ML_get_functor_info(Word type_info, int functor_number,
 				info->functor_descriptor);
 		break; 
 
-	case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
+	case MR_TYPECTOR_REP_ENUM:
+	case MR_TYPECTOR_REP_ENUM_USEREQ:
+		info->functor_descriptor = MR_TYPE_CTOR_FUNCTORS_ENUM_VECTOR(
+				type_ctor_info->type_ctor_functors);
+		info->arity = 0;
+		info->argument_vector = NULL;
+		info->primary_tag = 0;
+		info->secondary_tag = functor_number;
+		info->functor_name =
+			MR_TYPE_CTOR_LAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+				info->functor_descriptor, functor_number);
+		break; 
+
+	case MR_TYPECTOR_REP_NOTAG:
+	case MR_TYPECTOR_REP_NOTAG_USEREQ:
 		info->functor_descriptor =
 			MR_TYPE_CTOR_FUNCTORS_NO_TAG_FUNCTOR(
-				type_ctor_functors);
+				type_ctor_info->type_ctor_functors);
 		info->arity = 1;
 		info->argument_vector = MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(
 				info->functor_descriptor);
@@ -1711,19 +1711,39 @@ ML_get_functor_info(Word type_info, int functor_number,
 				info->functor_descriptor);
 		break; 
 
-	case MR_TYPE_CTOR_FUNCTORS_EQUIV: {
+	case MR_TYPECTOR_REP_EQUIV_VAR: 
+	case MR_TYPECTOR_REP_EQUIV: {
 		Word *equiv_type;
 		equiv_type = (Word *) MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(
-				type_ctor_functors);
+				type_ctor_info->type_ctor_functors);
 		return ML_get_functor_info((Word)
 				MR_create_type_info((Word *) type_info, 
 						equiv_type),
 				functor_number, info);
 	}
-	case MR_TYPE_CTOR_FUNCTORS_SPECIAL:
+
+	case MR_TYPECTOR_REP_INT:
+	case MR_TYPECTOR_REP_CHAR:
+	case MR_TYPECTOR_REP_FLOAT:
+	case MR_TYPECTOR_REP_STRING:
+	case MR_TYPECTOR_REP_PRED:
+	case MR_TYPECTOR_REP_UNIV:
+	case MR_TYPECTOR_REP_VOID:
+	case MR_TYPECTOR_REP_C_POINTER:
+	case MR_TYPECTOR_REP_TYPEINFO:
+	case MR_TYPECTOR_REP_TYPECLASSINFO:
+	case MR_TYPECTOR_REP_ARRAY:
+	case MR_TYPECTOR_REP_SUCCIP:
+	case MR_TYPECTOR_REP_HP:
+	case MR_TYPECTOR_REP_CURFR:
+	case MR_TYPECTOR_REP_MAXFR:
+	case MR_TYPECTOR_REP_REDOFR:
+	case MR_TYPECTOR_REP_REDOIP:
+	case MR_TYPECTOR_REP_TRAIL_PTR:
+	case MR_TYPECTOR_REP_TICKET:
 		return FALSE;
-	case MR_TYPE_CTOR_FUNCTORS_UNIV:
-		return FALSE;
+
+	case MR_TYPECTOR_REP_UNKNOWN:
 	default:
 		fatal_error(""std_util:construct - unexpected type."");
 	}
@@ -1937,55 +1957,66 @@ int
 ML_get_num_functors(Word type_info)
 {
 	MR_TypeCtorInfo	type_ctor_info;
-	Word *type_ctor_functors;
 	int		functors;
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
-	if (! MR_type_ctor_rep_is_basically_du(type_ctor_info->type_ctor_rep))
-	{
-		return -1;
-	}
 
-	type_ctor_functors = type_ctor_info->type_ctor_functors;
-
-	switch ((int) MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors)) {
-
-		case MR_TYPE_CTOR_FUNCTORS_DU:
+	switch(type_ctor_info->type_ctor_rep) {
+		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_DU_USEREQ:
 			functors = MR_TYPE_CTOR_FUNCTORS_DU_NUM_FUNCTORS(
-					type_ctor_functors);
+					type_ctor_info->type_ctor_functors);
 			break;
 
-		case MR_TYPE_CTOR_FUNCTORS_ENUM:
+		case MR_TYPECTOR_REP_ENUM:
+		case MR_TYPECTOR_REP_ENUM_USEREQ:
 			functors = MR_TYPE_CTOR_FUNCTORS_ENUM_NUM_FUNCTORS(
-					type_ctor_functors);
+					type_ctor_info->type_ctor_functors);
 			break;
 
-		case MR_TYPE_CTOR_FUNCTORS_EQUIV: {
+		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_NOTAG_USEREQ:
+			functors = 1;
+			break;
+
+		case MR_TYPECTOR_REP_EQUIV_VAR: 
+		case MR_TYPECTOR_REP_EQUIV: {
 			Word *equiv_type;
 			equiv_type = (Word *) 
 				MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(
-					type_ctor_functors);
+					type_ctor_info->type_ctor_functors);
 			functors = ML_get_num_functors((Word)
 					MR_create_type_info((Word *) 
 						type_info, equiv_type));
 			break;
 		}
 
-		case MR_TYPE_CTOR_FUNCTORS_SPECIAL:
+		case MR_TYPECTOR_REP_INT:
+		case MR_TYPECTOR_REP_CHAR:
+		case MR_TYPECTOR_REP_FLOAT:
+		case MR_TYPECTOR_REP_STRING:
+		case MR_TYPECTOR_REP_PRED:
+		case MR_TYPECTOR_REP_UNIV:
+		case MR_TYPECTOR_REP_VOID:
+		case MR_TYPECTOR_REP_C_POINTER:
+		case MR_TYPECTOR_REP_TYPEINFO:
+		case MR_TYPECTOR_REP_TYPECLASSINFO:
+		case MR_TYPECTOR_REP_ARRAY:
+		case MR_TYPECTOR_REP_SUCCIP:
+		case MR_TYPECTOR_REP_HP:
+		case MR_TYPECTOR_REP_CURFR:
+		case MR_TYPECTOR_REP_MAXFR:
+		case MR_TYPECTOR_REP_REDOFR:
+		case MR_TYPECTOR_REP_REDOIP:
+		case MR_TYPECTOR_REP_TRAIL_PTR:
+		case MR_TYPECTOR_REP_TICKET:
 			functors = -1;
 			break;
 
-		case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
-			functors = 1;
-			break;
-
-		case MR_TYPE_CTOR_FUNCTORS_UNIV:
-			functors = -1;
-			break;
-
+		case MR_TYPECTOR_REP_UNKNOWN:
 		default:
 			fatal_error(""std_util:ML_get_num_functors :""
-				"" unknown indicator"");
+				"" unknown type_ctor_rep"");
 	}
 
 	return functors;
