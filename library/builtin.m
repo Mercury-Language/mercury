@@ -215,12 +215,12 @@ promise_only_solution(Pred) = OutVal :-
 :- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
 :- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
 
-:- pragma c_code(cc_cast(X::(pred(out) is cc_multi)) =
-                        (Y::out(pred(out) is det)),
+:- pragma c_code(cc_cast(X :: (pred(out) is cc_multi)) =
+                        (Y :: out(pred(out) is det)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
-:- pragma c_code(cc_cast(X::(pred(out) is cc_nondet)) =
-                        (Y::out(pred(out) is semidet)),
+:- pragma c_code(cc_cast(X :: (pred(out) is cc_nondet)) =
+                        (Y :: out(pred(out) is semidet)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
 
