@@ -1711,7 +1711,7 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% It's a pity that we don't have nested modules.
+% It's a pity that we don't have nested modules. XXX now we do
 
 % :- begin_module unify_proc_info.
 % :- interface.
