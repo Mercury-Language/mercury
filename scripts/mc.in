@@ -18,10 +18,18 @@ C_INCL=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
+LOW_TAG_BITS=@LOW_TAG_BITS@
+NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
 
 case $# in
 	0) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
-		--cc "$CC" --grade "$DEFAULT_GRADE" ;;
+		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		--num-real-r-regs "$NUM_REAL_USER_REGS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		;;
 	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
-		--cc "$CC" --grade "$DEFAULT_GRADE" "$@" ;;
+		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		--num-real-r-regs "$NUM_REAL_USER_REGS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		"$@" ;;
 esac
