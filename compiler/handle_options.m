@@ -367,7 +367,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(static_ground_terms, bool(no)),
 
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
-		( { HighLevelData = yes } ->
+		globals__io_lookup_bool_option(
+				automatic_intermodule_optimization,
+				AutoIntermodOptimization),
+		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
 			globals__io_set_option(intermodule_optimization,
 					bool(yes))
 		;

@@ -2,46 +2,70 @@
 # tests (in most cases reporting diagnostics when writing the `.opt'
 # file). For those tests, we just disable inter-module optimization.
 
-MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization
-MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization
+MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-any_mode	=	--infer-types
 
 # XXX This test should work with --intermodule-optimization, but
 # the compiler doesn't know whether items imported from `.opt' files
 # were imported in the interface or the implementation. The error
 # is reported correctly when building the `.opt' file.
-MCFLAGS-assert_in_interface =	--no-intermodule-optimization
+MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 
-MCFLAGS-children =		--no-intermodule-optimization
+MCFLAGS-children =		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
-MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
 MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-foreign_type =		--compile-only
-MCFLAGS-foreign_type_2 =	--no-intermodule-optimization
-MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
-MCFLAGS-import_in_parent =	--no-intermodule-optimization
-MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization
-MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-foreign_type_2 =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-foreign_type_visibility = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-import_in_parent =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
-MCFLAGS-missing_parent_import = --no-intermodule-optimization
+MCFLAGS-missing_parent_import = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-nonexistent_import =    --no-verbose-make --make nonexistent_import
-MCFLAGS-overloading = 		--no-intermodule-optimization
-MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization
+MCFLAGS-overloading = 		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
-MCFLAGS-test_nested =		--no-intermodule-optimization
-MCFLAGS-transitive_import = --no-intermodule-optimization
-MCFLAGS-transitive_import2 = --no-intermodule-optimization
-MCFLAGS-transitive_import_class = --no-intermodule-optimization
-MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
-MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
+MCFLAGS-test_nested =		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import2 = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import_class = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import_class2 = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-transitive_import_class3 = --no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-typeclass_mode =	--infer-all
-MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
-MCFLAGS-undef_symbol = 		--no-intermodule-optimization
+MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-undef_symbol = 		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization

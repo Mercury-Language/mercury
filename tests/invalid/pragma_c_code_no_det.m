@@ -11,4 +11,3 @@ test(Int) :-
 
 :- pred c_code(int::out).
 :- pragma c_code(c_code(X::out), "X = 1").
-

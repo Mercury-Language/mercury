@@ -117,3 +117,10 @@ e10 :-
 e11 :-
 	Goal2 = lambda([] is semidet, semi),
 	call(Goal2).
+
+:- import_module std_util.
+imp.
+semi :- semidet_fail.
+imp1(_) :- semidet_fail.
+imp2(_, _) :- semidet_fail.
+semi2(_, _) :- semidet_fail.

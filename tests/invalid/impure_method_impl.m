@@ -29,4 +29,5 @@ main -->
 
 :- pragma c_code(foo_m1(_F::in, Val::out), "Val = foo_counter;").
 :- pragma c_code(foo_m2(_F::in, Val::out), "Val = foo_counter++;").
-
+foo_m1(_, 0).
+foo_m2(_, 0).
