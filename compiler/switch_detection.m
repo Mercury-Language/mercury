@@ -166,7 +166,13 @@ detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _,
 detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, unify(A,RHS,C,D,E)) :-
 	( RHS0 = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0) ->
-		detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo,
+		% we need to insert the initial insts for the lambda
+		% variables in the instmap before processing the lambda goal
+		mode_list_get_initial_insts(Modes, ModuleInfo, Insts),
+		assoc_list__from_corresponding_lists(Vars, Insts, VarInsts),
+		instmap_delta_from_assoc_list(VarInsts, InstmapDelta),
+		instmap__apply_instmap_delta(InstMap0, InstmapDelta, InstMap1),
+		detect_switches_in_goal(Goal0, InstMap1, VarTypes, ModuleInfo,
 			Goal),
 		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)
 	;
