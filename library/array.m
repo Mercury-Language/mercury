@@ -269,7 +269,34 @@ Define_extern_entry(mercury____Unify___array__array_1_0);
 Define_extern_entry(mercury____Index___array__array_1_0);
 Define_extern_entry(mercury____Compare___array__array_1_0);
 
-#ifdef  USE_TYPE_LAYOUT
+MR_MODULE_STATIC_OR_EXTERN 
+const struct mercury_data_array__type_ctor_functors_array_1_struct
+	mercury_data_array__type_ctor_functors_array_1;
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_array__type_ctor_layout_array_1_struct
+	mercury_data_array__type_ctor_layout_array_1;
+MR_STATIC_CODE_CONST struct
+mercury_data_array__type_ctor_info_array_1_struct {
+	Integer f1;
+	Code * f2;
+	Code * f3;
+	Code * f4;
+	Code * f5;
+	Word * f6;
+	Word * f7;
+	Word * f8;
+	Word * f9;
+} mercury_data_array__type_ctor_info_array_1 = {
+	(Integer) 1,
+	ENTRY(mercury____Unify___array__array_1_0),
+	ENTRY(mercury____Index___array__array_1_0),
+	ENTRY(mercury____Compare___array__array_1_0),
+	(Word *) &mercury_data_array__type_ctor_layout_array_1,
+	(Word *) &mercury_data_array__type_ctor_functors_array_1,
+	(Word *) &mercury_data_array__type_ctor_layout_array_1,
+	string_const(""array"", 5),
+	string_const(""array"", 5)
+};
 
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__type_ctor_layout_array_1_struct {
@@ -285,8 +312,6 @@ const struct mercury_data_array__type_ctor_functors_array_1_struct {
 } mercury_data_array__type_ctor_functors_array_1 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
-
-#endif
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);

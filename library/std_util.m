@@ -1055,7 +1055,41 @@ det_univ_to_type(Univ, X) :-
  * the representation of data of type `univ'.
  */
 
-#ifdef  USE_TYPE_LAYOUT
+Declare_entry(mercury____Unify___std_util__univ_0_0);
+Declare_entry(mercury____Index___std_util__univ_0_0);
+Declare_entry(mercury____Compare___std_util__univ_0_0);
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_std_util__type_ctor_functors_univ_0_struct
+	mercury_data_std_util__type_ctor_functors_univ_0;
+
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_std_util__type_ctor_layout_univ_0_struct
+	mercury_data_std_util__type_ctor_layout_univ_0;
+
+MR_STATIC_CODE_CONST struct
+mercury_data_std_util__type_ctor_info_univ_0_struct {
+	Integer f1;
+	Code * f2;
+	Code * f3;
+	Code * f4;
+	Word * f5;
+	Word * f6;
+	Word * f7;
+	Word * f8;
+	Word * f9;
+}  mercury_data_std_util__type_ctor_info_univ_0 = {
+	(Integer) 0,
+	ENTRY(mercury____Unify___std_util__univ_0_0),
+	ENTRY(mercury____Index___std_util__univ_0_0),
+	ENTRY(mercury____Compare___std_util__univ_0_0),
+	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
+	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
+	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
+	string_const(""std_util"", 8),
+	string_const(""univ"", 4)
+};
+
 
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__type_ctor_layout_univ_0_struct {
@@ -1089,11 +1123,17 @@ mercury_data_std_util__type_ctor_functors_type_info_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
+#ifndef	COMPACT_ARGS
+
+Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+
+MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
+	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
+	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
+
 #endif
 
-Define_extern_entry(mercury____Unify___std_util__univ_0_0);
-Define_extern_entry(mercury____Index___std_util__univ_0_0);
-Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
