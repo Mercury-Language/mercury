@@ -22,8 +22,10 @@
 % gives the last time the .int3 file was checked for consistency.
 %
 % 2. The .int and .int2 files are created, using the .int3 files
-% of imported modules to fully module qualify all items. Therefore
-% the .int2 file is just a fully qualified version of the .int3 file.
+% of imported modules to fully module qualify all items.
+% The .int2 file is mostly just a fully qualified version of the .int3 file,
+% however it also includes some extra information, such as functors for
+% discriminated union types, which may be needed for mode analysis.
 % The .int3 file must be kept for datestamping purposes. The datestamp
 % on the .date file gives the last time the .int and .int2 files
 % were checked.
@@ -6374,6 +6376,10 @@ get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
 		Imports1 = Imports0,
 		Items1 = [Item1 - Context | Items0],
 		NeedsImports1 = NeedsImports0
+	; make_abstract_unify_compare(Item0, Kind, Item1) ->
+		Imports1 = Imports0,
+		Items1 = [Item1 - Context | Items0],
+		NeedsImports1 = NeedsImports0
 	; include_in_short_interface(Item0) ->
 		Imports1 = Imports0,
 		Items1 = [ItemAndContext | Items0],
@@ -6402,7 +6408,12 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		ShortInterfaceKind,
 		type_defn(VarSet, Name, Args, abstract_type, Cond)) :-
 	(
-		TypeDefn = du_type(_, _)
+		TypeDefn = du_type(_, _),
+		% For the `.int2' files, we need the full definitions of
+		% discriminated union types.  Even if the functors for a type
+		% are not used within a module, we may need to know them for
+		% comparing insts, e.g. for comparing `ground' and `bound(...)'.
+		ShortInterfaceKind = int3
 	;
 		TypeDefn = abstract_type
 	;
@@ -6421,6 +6432,15 @@ make_abstract_defn(instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
 	make_abstract_instance(Item0, Item).
 make_abstract_defn(typeclass(A, B, C, _, E), _,
 		typeclass(A, B, C, abstract, E)).
+
+:- pred make_abstract_unify_compare(item, short_interface_kind, item).
+:- mode make_abstract_unify_compare(in, in, out) is semidet.
+
+make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
+		int2,
+		type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
+	TypeDefn0 = du_type(Constructors, yes(_UnifyCompare)),
+	TypeDefn  = du_type(Constructors, yes(abstract_noncanonical_type)).
 
 
 	% All instance declarations must be written

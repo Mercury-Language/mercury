@@ -230,7 +230,6 @@
 	% Work out the types of the arguments of a functor,
 	% given the cons_id and type of the functor.
 	% Aborts if the functor is existentially typed.
-	% The cons_id is expected to be un-module-qualified.
 	% Note that this will substitute appropriate values for
 	% any type variables in the functor's argument types,
 	% to match their bindings in the functor's type.
@@ -240,7 +239,6 @@
 	% The same as type_util__get_cons_id_arg_types except that it
 	% fails rather than aborting if the functor is existentially
 	% typed.
-	% The cons_id is expected to be un-module-qualified.
 :- pred type_util__get_cons_id_non_existential_arg_types(module_info::in,
 		(type)::in, cons_id::in, list(type)::out) is semidet.
 
@@ -1851,14 +1849,8 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 
 maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity, MaybeTypes)
 		:-
-	( ConsId0 = cons(SymName, _) ->
-		( SymName = qualified(_, Name) ->
-			% get_cons_id_non_existential_arg_types
-			% expects an unqualified cons_id.
-			ConsId = cons(unqualified(Name), Arity)
-		;
-			ConsId = ConsId0
-		),
+	( ConsId0 = cons(_SymName, _) ->
+		ConsId = ConsId0,
 		(
 			MaybeType = yes(Type),
 

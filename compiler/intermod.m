@@ -1103,6 +1103,9 @@ intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
 	intermod_info::in, intermod_info::out) is det.
 
 intermod__resolve_unify_compare_overloading(_, _, no, no, Info, Info).
+intermod__resolve_unify_compare_overloading(_, _,
+	yes(abstract_noncanonical_type), yes(abstract_noncanonical_type),
+	Info, Info).
 intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
 		yes(unify_compare(MaybeUserEq0, MaybeUserCompare0)),
 		yes(unify_compare(MaybeUserEq, MaybeUserCompare)),

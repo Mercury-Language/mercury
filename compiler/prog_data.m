@@ -920,11 +920,20 @@
 
 :- type ctor_field_name == sym_name.
 
+	% unify_compare gives the user-defined unification and/or comparison
+	% predicates for a noncanonical type, if they are known.
+	% The value `abstract_noncanonical_type' represents a discriminated
+	% union type whose definition uses the syntax
+	% `where type_is_abstract_noncanonical' and has been read from a .int2
+	% file.  This means we know that the type has a noncanonical
+	% representation, but we don't know what the unification/comparison
+	% predicates are.
 :- type unify_compare
 	--->	unify_compare(
 			unify :: maybe(equality_pred),
 			compare :: maybe(comparison_pred)
-		).
+		)
+	;	abstract_noncanonical_type.
 
 	% An equality_pred specifies the name of a user-defined predicate
 	% used for equality on a type.  See the chapter on them in the

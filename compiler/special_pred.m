@@ -104,8 +104,9 @@
 	% its special predicates. This will fail for abstract
 	% types and types for which the RTTI information is
 	% defined by hand.
-:- pred can_generate_special_pred_clauses_for_type(type_ctor, hlds_type_body).
-:- mode can_generate_special_pred_clauses_for_type(in, in) is semidet.
+:- pred can_generate_special_pred_clauses_for_type(module_info, type_ctor,
+		hlds_type_body).
+:- mode can_generate_special_pred_clauses_for_type(in, in, in) is semidet.
 
 :- implementation.
 
@@ -210,7 +211,8 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 
 special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 	(
-		type_body_has_user_defined_equality_pred(ModuleInfo, Body, _)
+		type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+			unify_compare(_, _))
 	;
 		Body = du_type(Ctors, _, _, _, _, _),
 		list__member(Ctor, Ctors),
@@ -218,8 +220,10 @@ special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 		ExistQTVars \= []
 	).
 
-can_generate_special_pred_clauses_for_type(TypeCtor, Body) :-
+can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
 	Body \= abstract_type,
-	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body).
+	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
+	\+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+		abstract_noncanonical_type).
 
 %-----------------------------------------------------------------------------%

@@ -2233,7 +2233,18 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 	{ module_info_types(Module0, Types0) },
 	{ list__length(Args, Arity) },
 	{ TypeCtor = Name - Arity },
-	{ Body = abstract_type ->
+	{
+		(
+			Body = abstract_type
+		;
+			Body = du_type(_, _, _, _, _, _),
+			string__suffix(term__context_file(Context), ".int2")
+			% If the type definition comes from a .int2 file then
+			% we need to treat it as abstract.  The constructors
+			% may only be used by the mode system for comparing
+			% `bound' insts to `ground'.
+		)
+	->
 		make_status_abstract(Status0, Status1)
 	;
 		Status1 = Status0
@@ -3691,7 +3702,8 @@ add_special_preds(Module0, TVarSet, Type, TypeCtor, Body, Context, Status,
 	->
 		Module = Module0
 	;
-		can_generate_special_pred_clauses_for_type(TypeCtor, Body)
+		can_generate_special_pred_clauses_for_type(Module0, TypeCtor,
+			Body)
 	->
 		add_special_pred(unify, Module0, TVarSet, Type, TypeCtor,
 			Body, Context, Status, Module1),

@@ -3301,6 +3301,7 @@ get_field_access_constructor(TypeCheckInfo, FuncName, Arity, _AccessType,
 
 :- type cons_error
 	--->	foreign_type_constructor(type_ctor, hlds_type_defn)
+	;	abstract_imported_type
 	;	invalid_field_update(ctor_field_name, hlds_ctor_field_defn,
 			tvarset, list(tvar)).
 
@@ -4865,17 +4866,25 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	% if there are no foreign clauses. Errors will be caught when creating
 	% the `.opt' file.
 	%
+	typecheck_info_get_predid(TypeCheckInfo, PredId),
+	typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	(
 		Body ^ du_type_is_foreign_type = yes(_),
-		typecheck_info_get_predid(TypeCheckInfo, PredId),
-		typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		\+ pred_info_get_goal_type(PredInfo, clauses_and_pragmas),
 		\+ is_unify_or_compare_pred(PredInfo),
 		\+ pred_info_import_status(PredInfo, opt_imported)
 	->
 		ConsTypeInfo = error(foreign_type_constructor(TypeCtor,
 				TypeDefn))
+	;
+		% Do not allow constructors for abstract_imported types unless
+		% the current predicate is opt_imported.
+		hlds_data__get_type_defn_status(TypeDefn, abstract_imported),
+		\+ is_unify_or_compare_pred(PredInfo),
+		\+ pred_info_import_status(PredInfo, opt_imported)
+	->
+		ConsTypeInfo = error(abstract_imported_type)
 	;
 		construct_type(TypeCtor, ConsTypeParams, ConsType),
 		UnivConstraints = [],
@@ -6402,6 +6411,11 @@ report_cons_error(Context,
 		words("for those foreign types.")] },
 	error_util__write_error_pieces_not_first_line(Context,
 		0, ErrorPieces).
+
+report_cons_error(_, abstract_imported_type) --> [].
+		% For `abstract_imported_type' errors, the "undefined symbol"
+		% error written by `report_error_undef_cons' is sufficient so
+		% we do not print an additional error message here.
 
 report_cons_error(_,
 		invalid_field_update(FieldName, FieldDefn, TVarSet, TVars)) -->

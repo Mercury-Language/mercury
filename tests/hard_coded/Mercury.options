@@ -28,6 +28,12 @@ MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 MCFLAGS-split_c_files	=	--trace deep
+MCFLAGS-trans_intermod_user_equality = --intermodule-optimization \
+				--transitive-intermodule-optimization
+MCFLAGS-trans_intermod_user_equality2 = --intermodule-optimization \
+				--transitive-intermodule-optimization
+MCFLAGS-trans_intermod_user_equality3 = --intermodule-optimization \
+				--transitive-intermodule-optimization
 MCFLAGS-type_qual	= 	--infer-all
 MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all

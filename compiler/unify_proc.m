@@ -583,7 +583,10 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 	),
 
 	% Call make_hlds.m to construct the unification predicate.
-	( can_generate_special_pred_clauses_for_type(TypeCtor, TypeBody) ->
+	(
+		can_generate_special_pred_clauses_for_type(ModuleInfo0,
+			TypeCtor, TypeBody)
+	->
 		% If the unification predicate has another status it should
 		% already have been generated. 
 		UnifyPredStatus = pseudo_imported,
@@ -774,6 +777,9 @@ unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
+unify_proc__generate_user_defined_unify_clauses(abstract_noncanonical_type,
+		_, _, _, _) -->
+	{ error("trying to create unify proc for abstract noncanonical type") }.
 unify_proc__generate_user_defined_unify_clauses(UserEqCompare, H1, H2,
 		Context, Clauses) -->
 	{ UserEqCompare = unify_compare(MaybeUnify, MaybeCompare) },
@@ -965,6 +971,10 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 		prog_context::in, list(clause)::out,
 		unify_proc_info::in, unify_proc_info::out) is det.
 
+generate_user_defined_compare_clauses(abstract_noncanonical_type,
+		_, _, _, _, _) -->
+	{ error(
+	    "trying to create compare proc for abstract noncanonical type") }.
 generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
 		Res, H1, H2, Context, Clauses) -->
 	{ ArgVars = [Res, H1, H2] },

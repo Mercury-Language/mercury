@@ -1653,6 +1653,12 @@ get_maybe_equality_compare_preds(ModuleName, B, Body, MaybeEqComp) :-
 	->
 		Body = Body1,
 		( 
+			EqCompTerm = term__functor(
+				term__atom("type_is_abstract_noncanonical"),
+				[], _Context2)
+		->
+			MaybeEqComp = ok(yes(abstract_noncanonical_type))
+		;
 			parse_equality_or_comparison_pred_term("equality",
 				EqCompTerm, PredName)
 		->

@@ -1785,6 +1785,8 @@ mercury_output_equality_compare_preds(
 	;
 		[]
 	).
+mercury_output_equality_compare_preds(yes(abstract_noncanonical_type)) -->
+	io__write_string("where type_is_abstract_noncanonical").
 
 :- pred mercury_output_ctors(list(constructor), tvarset,
 				io__state, io__state).
