@@ -51,6 +51,7 @@
 
 :- pragma(c_header_code, "
 
+#include <stdio.h>
 #include ""timing.h""
 
 ").
