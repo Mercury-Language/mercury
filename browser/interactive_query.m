@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -430,7 +430,7 @@ compile_file(Options, Succeeded) -->
 	%	--no-warn-simple-code
 	%		to avoid spurious warnings in the automatically
 	%		generated parts of the query predicate
-	%	--link-flags --allow-undefined
+	%	--allow-undefined
 	%		needed to allow the query to reference
 	%		symbols defined in the program
 	%
@@ -438,7 +438,7 @@ compile_file(Options, Succeeded) -->
 		"mmc --infer-all --no-verbose-make -O0 --no-c-optimize ",
 		"--no-warn-simple-code --no-warn-det-decls-too-lax ",
 		"--output-compile-error-lines 10000 ",
-		"--link-flags --allow-undefined ", Options,
+		"--allow-undefined ", Options,
 		" --grade ", grade_option,
 		" --pic-reg --compile-to-shared-lib ",
 		query_module_name],
