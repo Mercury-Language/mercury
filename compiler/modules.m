@@ -3821,7 +3821,8 @@ get_item_list_foreign_code(Globals, Items, LangSet) :-
 			% Counting foreign_decls here causes problems with
 			% intermodule optimization.
 			(	
-				Pragma = foreign_code(Lang, _) 
+				Pragma = foreign_code(Lang, _),
+				list__member(Lang, BackendLangs)
 			->
 				set__insert(Set0, Lang, Set),
 				Seen = Seen0
@@ -3864,7 +3865,8 @@ get_item_list_foreign_code(Globals, Items, LangSet) :-
 				% code for it, rather than assembler code.  So
 				% we need to treat `pragma export' like the
 				% other pragmas for foreign code.
-				Pragma = export(_, _, _, _)
+				Pragma = export(_, _, _, _),
+				list__member(c, BackendLangs)
 			->
 				% XXX we assume lang = c for exports
 				Lang = c,
