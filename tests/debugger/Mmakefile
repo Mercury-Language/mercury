@@ -75,9 +75,9 @@ queens.out: queens queens.inp
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
 mdb_command_test.out: queens mdb_command_test.inp
-	-$(MDB) ./queens < mdb_command_test.inp \
+	-$(MDB) ./queens < mdb_command_test.inp 2>&1 \
 		| egrep "internal error in the trace help system" \
-		> mdb_command_test.out 2>&1
+		> mdb_command_test.out
 
 #-----------------------------------------------------------------------------#
 
