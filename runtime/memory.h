@@ -62,11 +62,17 @@ extern	Word 	num_uses[MAX_RN];
 #define MAX_ZONE_NAME	64
 
 typedef struct MEMORY_ZONE {
-	struct MEMORY_ZONE *next;
+	struct MEMORY_ZONE *next; /* the memory zones are organized as a
+				   * linked list of free zones and linked
+				   * list of used zones. The next field
+				   * is NULL or a pointer to the next memory
+				   * zone in the list.
+				   */
 	char	name[MAX_ZONE_NAME+1];
 	Word	*bottom;	/* beginning of the allocated area */
 	Word	*top;		/* end of the allocated area */
 	Word	*min;		/* lowest word of the area to be used */
+	bool	((*handler)(Word *addr, struct MEMORY_ZONE *zone, void *context));
 #ifndef SPEED
 	Word	*max;		/* highest word of the area to be used */
 #endif
@@ -84,7 +90,9 @@ typedef struct MEMORY_ZONE {
 
 extern MemoryZone	zone_table[MAX_ZONES];
 
+	/* A linked list of all the unused zones */
 extern MemoryZone	*free_memory_zones;
+	/* A linked list of all the used zones */
 extern MemoryZone	*used_memory_zones;
 
 extern MemoryZone	*detstack_zone;

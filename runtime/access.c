@@ -118,13 +118,13 @@ Word set_reg(int num, Word val)
 
 Word get_mem(Word *addr)
 {
-	if (heapmin <= addr && addr < heapend)
+	if (heap_zone->min <= addr && addr < heap_zone->top)
 		return *addr;
 
-	if (detstackmin <= addr && addr < detstackend)
+	if (detstack_zone->min <= addr && addr < detstack_zone->top)
 		return *addr;
 
-	if (nondstackmin <= addr && addr < nondstackend)
+	if (nondetstack_zone->min <= addr && addr < nondetstack_zone->top)
 		return *addr;
 
 	/* NOTREACHED */
@@ -135,19 +135,19 @@ Word get_mem(Word *addr)
 
 Word set_mem(Word *addr, Word val)
 {
-	if (heapmin <= addr && addr < heapend)
+	if (heap_zone->min <= addr && addr < heap_zone->top)
 	{
 		*addr = val;
 		return val;
 	}
 
-	if (detstackmin <= addr && addr < detstackend)
+	if (detstack_zone->min <= addr && addr < detstack_zone->top)
 	{
 		*addr = val;
 		return val;
 	}
 
-	if (nondstackmin <= addr && addr < nondstackend)
+	if (nondetstack_zone->min <= addr && addr < nondetstack_zone->top)
 	{
 		*addr = val;
 		return val;

@@ -621,7 +621,9 @@ void run_code(void)
 #endif
 
 #ifndef SPEED
-	heapmax      = heapmin;
+#ifndef CONSERVATIVE_GC
+	heap_zone->max      = heap_zone->min;
+#endif
 	detstack_zone->max  = detstack_zone->min;
 	nondetstack_zone->max = nondetstack_zone->min;
 #endif
@@ -655,8 +657,10 @@ void run_code(void)
 #ifndef	SPEED
 	if (memdebug) {
 		printf("\n");
+#ifndef	CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
-			(long) (heapmax - heapmin));
+			(long) (heap_zone->max - heap_zone->min));
+#endif
 		printf("max detstack used:  %6ld words\n",
 			(long)(detstack_zone->max - detstack_zone->min));
 		printf("max nondstack used: %6ld words\n",

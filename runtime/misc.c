@@ -175,10 +175,14 @@ void reg_msg(void)
 	int	i;
 	Integer	x;
 
-	for(i=1; i<=8; i++) {
+	for(i=1; i<=8; i++)
+	{
 		x = (Integer) get_reg(i);
-		if ( (Integer) heapmin <= x && x < (Integer) heapend)
-			x -= (Integer) heapmin;
+#ifndef CONSERVATIVE_GC
+		if ( (Integer) heap_zone->min <= x
+				&& x < (Integer) heap_zone->top)
+			x -= (Integer) heap_zone->min;
+#endif
 		printf("%8lx ", (long) x);
 	}
 	printf("\n");
@@ -204,8 +208,13 @@ void printstring(const char *s)
 
 void printheap(const Word *h)
 {
+#ifndef CONSERVATIVE_GC
 	printf("ptr 0x%p, offset %3ld words\n",
-		(const void *) h, (long) (Integer) (h - heapmin));
+		(const void *) h, (long) (Integer) (h - heap_zone->min));
+#else
+	printf("ptr 0x%p\n",
+		(const void *) h);
+#endif
 }
 
 void printdetstack(const Word *s)
@@ -288,14 +297,15 @@ static void print_ordinary_regs(void)
 		printf("r%d:      ", i + 1);
 		value = (Integer) get_reg(i+1);
 
-		if ((Integer) heapmin <= value && value < (Integer) heapend)
+#ifndef	CONSERVATIVE_GC
+		if ((Integer) heap_zone->min <= value
+				&& value < (Integer) heap_zone->top)
 			printf("(heap) ");
+#endif
 
 		printf("%ld\n", (long) value);
 	}
 }
-
-#endif
 
 void printlabel(/* const */ Code *w)
 {
@@ -307,6 +317,8 @@ void printlabel(/* const */ Code *w)
 	else
 		printf("label UNKNOWN (0x%p)\n", w);
 }
+
+#endif
 
 #if 0
 
