@@ -1308,12 +1308,12 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 	io__write_string("\n"),
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, VarTypes, TypeVarSet).
 
-:- pred hlds_out__write_call_info(int, call_info, varset,
+:- pred hlds_out__write_stack_slots(int, stack_slots, varset,
 					io__state, io__state).
-:- mode hlds_out__write_call_info(in, in, in, di, uo) is det.
+:- mode hlds_out__write_stack_slots(in, in, in, di, uo) is det.
 
-hlds_out__write_call_info(Indent, CallInfo, VarSet) -->
-	{ map__to_assoc_list(CallInfo, VarSlotList) },
+hlds_out__write_stack_slots(Indent, StackSlots, VarSet) -->
+	{ map__to_assoc_list(StackSlots, VarSlotList) },
 	hlds_out__write_var_to_lvals(VarSlotList, VarSet, Indent).
 
 :- pred hlds_out__write_var_to_lvals(assoc_list(var, lval), varset, int,
@@ -1580,9 +1580,9 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 	( { ImportStatus = pseudo_imported, ProcId = 0 } ->
 		[]
 	;
-		{ proc_info_call_info(Proc, CallInfo) },
+		{ proc_info_stack_slots(Proc, StackSlots) },
 		hlds_out__write_indent(Indent),
-		hlds_out__write_call_info(Indent, CallInfo, VarSet),
+		hlds_out__write_stack_slots(Indent, StackSlots, VarSet),
 		hlds_out__write_indent(Indent),
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,

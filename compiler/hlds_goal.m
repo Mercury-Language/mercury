@@ -156,7 +156,7 @@
 
 :- type is_builtin.
 
-:- type call_info	==	map(var, lval).
+:- type stack_slots	==	map(var, lval).
 
 :- type case		--->	case(cons_id, hlds__goal).
 			%	functor to match with,

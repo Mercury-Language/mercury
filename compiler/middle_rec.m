@@ -109,9 +109,9 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _FV,
 middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 		SwitchGoalInfo, Instrs) -->
 	code_info__push_store_map(FollowVars),
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
-	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
@@ -163,9 +163,9 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 
 	code_info__get_next_label(Loop1Label),
 	code_info__get_next_label(Loop2Label),
-	code_info__get_total_stackslot_count(StackSlots),
+	code_info__get_total_stackslot_count(FrameSize),
 
-	{ StackSlots = 0 ->
+	{ FrameSize = 0 ->
 		MaybeIncrSp = [],
 		MaybeDecrSp = [],
 		InitAuxReg = [assign(AuxReg, const(int_const(0)))
@@ -183,8 +183,8 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 				label(Loop2Label))
 				- "test on upward loop"]
 	;
-		MaybeIncrSp = [incr_sp(StackSlots, PredName) - ""],
-		MaybeDecrSp = [decr_sp(StackSlots) - ""],
+		MaybeIncrSp = [incr_sp(FrameSize, PredName) - ""],
+		MaybeDecrSp = [decr_sp(FrameSize) - ""],
 		InitAuxReg =  [assign(AuxReg, lval(sp))
 				- "initialize counter register"],
 		IncrAuxReg = [],
@@ -205,7 +205,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 		list__condense([
 			[
 				label(EntryLabel) - "Procedure entry point",
-				comment(CallInfoComment) - ""
+				comment(SlotsComment) - ""
 			],
 			EntryTestList,
 			[
@@ -238,7 +238,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 		list__condense([
 			[
 				label(EntryLabel) - "Procedure entry point",
-				comment(CallInfoComment) - ""
+				comment(SlotsComment) - ""
 			],
 			EntryTestList,
 			InitAuxReg,

@@ -85,7 +85,7 @@ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 dependency_graph__sets_to_lists([], Xs, Xs).
 dependency_graph__sets_to_lists([X | Xs], Ys, Zs) :-
 	set__to_sorted_list(X, Y),
-	dependency_graph__sets_to_lists(Xs, [Y|Ys], Zs).
+	dependency_graph__sets_to_lists(Xs, [Y | Ys], Zs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -277,7 +277,7 @@ dependency_graph__add_arcs_in_list([Goal|Goals], Caller, DepGraph0, DepGraph) :-
 :- mode dependency_graph__add_arcs_in_cases(in, in, in, out) is det.
 
 dependency_graph__add_arcs_in_cases([], _Caller, DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cases([case(Cons, Goal)|Goals], Caller,
+dependency_graph__add_arcs_in_cases([case(Cons, Goal) | Goals], Caller,
 						DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cons(Cons, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph1, DepGraph2),
@@ -344,7 +344,7 @@ dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 :- mode dependency_graph__write_dependency_graph_2(in, in, in, di, uo) is det.
 
 dependency_graph__write_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
-dependency_graph__write_dependency_graph_2([Node|Nodes], DepGraph, 
+dependency_graph__write_dependency_graph_2([Node | Nodes], DepGraph, 
 			ModuleInfo) -->
 	{ relation__lookup_element(DepGraph, Node, NodeKey) },
 	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
@@ -363,7 +363,7 @@ dependency_graph__write_dependency_graph_2([Node|Nodes], DepGraph,
 dependency_graph__write_dependency_graph_3([], _Node, _DepGraph, 
 				_ModuleInfo) -->
 	[].
-dependency_graph__write_dependency_graph_3([S|Ss], Node, DepGraph, 
+dependency_graph__write_dependency_graph_3([S | Ss], Node, DepGraph, 
 				ModuleInfo) -->
 	{ relation__lookup_key(DepGraph, S, SNode) },
 	{ Node  = proc(PPredId, PProcId) },
@@ -452,7 +452,7 @@ dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
 % 	Scan's through list of caller's, then call's next predicate to get
 %	callee's
 dependency_graph__write_prof_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
-dependency_graph__write_prof_dependency_graph_2([Node|Nodes], DepGraph, 
+dependency_graph__write_prof_dependency_graph_2([Node | Nodes], DepGraph, 
 			ModuleInfo) -->
 	{ relation__lookup_element(DepGraph, Node, NodeKey) },
 	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
@@ -475,7 +475,7 @@ dependency_graph__write_prof_dependency_graph_2([Node|Nodes], DepGraph,
 dependency_graph__write_prof_dependency_graph_3([], _Node, _DepGraph, 
 				_ModuleInfo) -->
 	[].
-dependency_graph__write_prof_dependency_graph_3([S|Ss], Node, DepGraph, 
+dependency_graph__write_prof_dependency_graph_3([S | Ss], Node, DepGraph, 
 				ModuleInfo) -->
 	{ relation__lookup_key(DepGraph, S, SNode) },
 	{ Node  = proc(PPredId, PProcId) }, % Caller

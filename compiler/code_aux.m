@@ -76,8 +76,8 @@
 :- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__post_goal_update(in, in, out) is det.
 
-:- pred code_aux__explain_call_info(map(var, lval), varset, string).
-:- mode code_aux__explain_call_info(in, in, out) is det.
+:- pred code_aux__explain_stack_slots(stack_slots, varset, string).
+:- mode code_aux__explain_stack_slots(in, in, out) is det.
 
 :- pred code_aux__lookup_type_defn(type, hlds__type_defn, code_info, code_info).
 % :- mode code_aux__lookup_type_defn(in, out, di, uo) is det.
@@ -240,19 +240,20 @@ code_aux__post_goal_update(GoalInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-code_aux__explain_call_info(CallInfo, VarSet, Explanation) :-
-	map__to_assoc_list(CallInfo, CallInfoList),
-	code_aux__explain_call_info_2(CallInfoList, VarSet, "", Explanation1),
+code_aux__explain_stack_slots(StackSlots, VarSet, Explanation) :-
+	map__to_assoc_list(StackSlots, StackSlotsList),
+	code_aux__explain_stack_slots_2(StackSlotsList, VarSet, "",
+		Explanation1),
 	string__append("\nStack slot assignments (if any):\n", Explanation1,
 		Explanation).
 
-:- pred code_aux__explain_call_info_2(assoc_list(var, lval), varset, string,
+:- pred code_aux__explain_stack_slots_2(assoc_list(var, lval), varset, string,
 				string).
-:- mode code_aux__explain_call_info_2(in, in, in, out) is det.
+:- mode code_aux__explain_stack_slots_2(in, in, in, out) is det.
 
-code_aux__explain_call_info_2([], _, String, String).
-code_aux__explain_call_info_2([Var - Lval | Rest], VarSet, String0, String) :-
-	code_aux__explain_call_info_2(Rest, VarSet, String0, String1),
+code_aux__explain_stack_slots_2([], _, String, String).
+code_aux__explain_stack_slots_2([Var - Lval | Rest], VarSet, String0, String) :-
+	code_aux__explain_stack_slots_2(Rest, VarSet, String0, String1),
 	( llds_out__lval_to_string(Lval, LvalString0) ->
 		LvalString = LvalString0
 	;

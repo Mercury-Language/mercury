@@ -68,7 +68,7 @@ disj_gen__generate_det_disj(Goals, Code) -->
 	% fail, we just generate that goal.
 disj_gen__generate_det_disj_2([], _, _, _, _) -->
 	{ error("Empty det disj!") }.
-disj_gen__generate_det_disj_2([Goal|Goals], EndLabel, SavedHP, MustRestoreHP,
+disj_gen__generate_det_disj_2([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		Code) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_determinism(GoalInfo, GoalDet) },
@@ -212,7 +212,7 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 
 disj_gen__generate_semi_cases([], _, _, _, _) -->
 	{ error("disj_gen__generate_semi_cases") }.
-disj_gen__generate_semi_cases([Goal|Goals], EndLabel, SavedHP, MustRestoreHP,
+disj_gen__generate_semi_cases([Goal | Goals], EndLabel, SavedHP, MustRestoreHP,
 		GoalsCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
@@ -343,7 +343,7 @@ disj_gen__generate_non_disj(Goals1, _FollowVars, Code) -->
 
 disj_gen__generate_non_disj_2([], _EndLab, _Code) -->
 	{ error("disj_gen__generate_non_disj_2") }.
-disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
+disj_gen__generate_non_disj_2([Goal | Goals], EndLab, DisjCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
@@ -364,7 +364,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		{ error("disj_gen__generate_non_disj_2 #2") }
 	; { Goals = [Goal2] } ->
 			% Process the last disjunct
-		code_info__remake_with_call_info,
+		code_info__remake_with_stack_slots,
 		code_info__restore_failure_cont(RestoreAfterFailureCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__maybe_pop_stack(ReclaimHeap, PopCode),
@@ -383,7 +383,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 				tree(RestorePopCode, 
 				tree(Goal2Code, EndCode)))))) }
 	;
-		code_info__remake_with_call_info,
+		code_info__remake_with_stack_slots,
 		code_info__modify_failure_cont(ModifyFailureContCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__maybe_restore_ticket(RestoreTicket, 

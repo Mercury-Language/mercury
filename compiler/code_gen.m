@@ -49,7 +49,7 @@
 
 		% This predicate generates code for a goal
 		% and leaves all live values in locations
-		% determined by the call_info structure.
+		% determined by the stack_slots structure.
 
 :- pred code_gen__generate_forced_goal(code_model, hlds__goal, code_tree,
 						code_info, code_info).
@@ -172,7 +172,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 	{ proc_info_variables(ProcInfo, VarInfo) },
 	{ proc_info_liveness_info(ProcInfo, Liveness) },
 	{ proc_info_follow_vars(ProcInfo, FollowVars) },
-	{ proc_info_call_info(ProcInfo, CallInfo) },
+	{ proc_info_stack_slots(ProcInfo, StackSlots) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = accurate ->
@@ -182,7 +182,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 	},
 	globals__io_get_globals(Globals),
 		% initialise the code_info structure 
-	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip, Globals,
+	{ code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, CodeModel, InitialInst, FollowVars,
 		ModuleInfo, Shapes0, CodeInfo0) },
 		% generate code for the procedure
@@ -291,9 +291,9 @@ generate_category_code(model_non, Goal, Instrs, Used) -->
 :- mode code_gen__generate_det_prolog(out, out, in, out) is det.
 
 code_gen__generate_det_prolog(EntryCode, SUsed) -->
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
-	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
 	code_info__get_total_stackslot_count(NS0),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
@@ -302,7 +302,7 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
-		comment(CallInfoComment) - "",
+		comment(SlotsComment) - "",
 		label(Entry) - "Procedure entry point"
 	]) },
 	(
@@ -391,9 +391,9 @@ code_gen__generate_det_epilog(ExitCode) -->
 :- mode code_gen__generate_semi_prolog(out, out, in, out) is det.
 
 code_gen__generate_semi_prolog(EntryCode, SUsed) -->
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
-	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_succip_used(Used),
@@ -402,7 +402,7 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
-		comment(CallInfoComment) - "",
+		comment(SlotsComment) - "",
 		label(Entry) - "Procedure entry point"
 	]) },
 	(
@@ -520,9 +520,9 @@ code_gen__generate_semi_epilog(Instr) -->
 :- mode code_gen__generate_non_prolog(out, out, in, out) is det.
 
 code_gen__generate_non_prolog(EntryCode, no) -->
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
-	{ code_aux__explain_call_info(CallInfo, VarSet, CallInfoComment) },
+	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_total_stackslot_count(NS),
@@ -530,7 +530,7 @@ code_gen__generate_non_prolog(EntryCode, no) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
 	{ CodeA = node([
-		comment(CallInfoComment) - "",
+		comment(SlotsComment) - "",
 		label(Entry) - "Procedure entry point"
 	]) },
 		% The `name' argument to mkframe() is just for
@@ -917,9 +917,9 @@ make_c_arg_list_2([], [], ArgNames, ArgNames).
 make_c_arg_list_2([Var | Vars], [Name | Names], ArgNames0, ArgNames) :-
 	make_c_arg_list_2(Vars, Names, [c_arg(Var, Name) | ArgNames0],
 						ArgNames).
-make_c_arg_list_2([], [_|_], _, _) :-
+make_c_arg_list_2([], [_ | _], _, _) :-
 	error("code_gen:make_c_arg_list_2 - length mismatch").
-make_c_arg_list_2([_|_], [], _, _) :-
+make_c_arg_list_2([_ | _], [], _, _) :-
 	error("code_gen:make_c_arg_list_2 - length mismatch").
 
 :- pred get_c_arg_list_vars(list(c_arg)::in, list(var)::out) is det.
@@ -935,12 +935,12 @@ get_c_arg_list_vars([c_arg(Var, _) | Args], [Var | Vars1]) :-
 :- mode pragma_select_out_args(in, out) is det.
 
 pragma_select_out_args([], []).
-pragma_select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
+pragma_select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
         pragma_select_out_args(Rest, Out0),
         (
                 Mode = top_out
         ->
-                Out = [V|Out0]
+                Out = [V | Out0]
         ;
                 Out = Out0
         ).
@@ -954,12 +954,12 @@ pragma_select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
 :- mode pragma_select_in_args(in, out) is det.
 
 pragma_select_in_args([], []).
-pragma_select_in_args([V - arg_info(_Loc, Mode)|Rest], In) :-
+pragma_select_in_args([V - arg_info(_Loc, Mode) | Rest], In) :-
         pragma_select_in_args(Rest, In0),
         (
                 Mode = top_in
         ->
-		In = [V|In0]
+		In = [V | In0]
         ;
                 In = In0
         ).
@@ -1021,7 +1021,7 @@ get_pragma_input_vars([c_arg(Arg, MaybeName) | Args], Inputs, Code) -->
 :- mode pragma_acquire_regs(in, out, in, out) is det.
 
 pragma_acquire_regs([], []) --> [].
-pragma_acquire_regs([_V|Vars], [Reg|Regs]) -->
+pragma_acquire_regs([_V | Vars], [Reg | Regs]) -->
 	code_info__acquire_reg(Reg),
 	pragma_acquire_regs(Vars, Regs).
 
@@ -1036,11 +1036,11 @@ pragma_acquire_regs([_V|Vars], [Reg|Regs]) -->
 :- mode place_pragma_output_args_in_regs(in, in, out, in, out) is det.
 
 place_pragma_output_args_in_regs([], [], []) --> [].
-place_pragma_output_args_in_regs([_X|_Xs], [], []) --> 
+place_pragma_output_args_in_regs([_X | _Xs], [], []) --> 
 	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
-place_pragma_output_args_in_regs([], [_X|_Xs], []) -->
+place_pragma_output_args_in_regs([], [_X | _Xs], []) -->
 	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
-place_pragma_output_args_in_regs([Arg|Args], [Reg|Regs], [O|Outputs]) -->
+place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], [O | Outputs]) -->
 	( { Arg = c_arg(A, yes(Name)) } ->
 		code_info__variable_type(A, Type),
 		code_info__release_reg(Reg),
@@ -1284,7 +1284,7 @@ code_gen__generate_non_goal_2(pragma_c_code(A, B, C, D, E, F), G, H) -->
 
 code_gen__output_args([], LiveVals) :-
 	set__init(LiveVals).
-code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
+code_gen__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
 	code_gen__output_args(Args, Vs0),
 	(
 		Mode = top_out
@@ -1305,10 +1305,10 @@ code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 
 code_gen__add_saved_succip([], _StackLoc, []).
 code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc, 
-		[Instrn - Comment| Instrns]) :-
+		[Instrn - Comment | Instrns]) :-
 	(
 		Instrn0 = livevals(LiveVals0),
-		Instrns0 \= [goto(succip) - _|_]
+		Instrns0 \= [goto(succip) - _ | _]
 		% XXX we should also test for tailcalls
 		% once we start generating them directly
 	->
@@ -1328,9 +1328,9 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 %---------------------------------------------------------------------------%
 
 code_gen__ensure_vars_are_saved([], empty) --> [].
-code_gen__ensure_vars_are_saved([V|Vs], Code) -->
-	code_info__get_call_info(CallInfo),
-	{ map__lookup(CallInfo, V, Slot) },
+code_gen__ensure_vars_are_saved([V | Vs], Code) -->
+	code_info__get_stack_slots(StackSlots),
+	{ map__lookup(StackSlots, V, Slot) },
 	code_info__place_var(V, Slot, Code0),
 	code_gen__ensure_vars_are_saved(Vs, Code1),
 	{ Code = tree(Code0, Code1) }.

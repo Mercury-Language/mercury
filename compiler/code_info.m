@@ -43,7 +43,7 @@
 :- type code_info.
 
 		% Create a new code_info structure.
-:- pred code_info__init(varset, liveness_info, call_info, bool, globals,
+:- pred code_info__init(varset, liveness_info, stack_slots, bool, globals,
 			pred_id, proc_id, proc_info, code_model, instmap,
 			follow_vars, module_info, shape_table, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
@@ -80,13 +80,13 @@
 
 		% Get the hlds mapping from variables to
 		% stack slots
-:- pred code_info__get_call_info(call_info, code_info, code_info).
-:- mode code_info__get_call_info(out, in, out) is det.
+:- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
+:- mode code_info__get_stack_slots(out, in, out) is det.
 
 		% Set the hlds mapping from variables to
 		% stack slots
-:- pred code_info__set_call_info(call_info, code_info, code_info).
-:- mode code_info__set_call_info(in, in, out) is det.
+:- pred code_info__set_stack_slots(stack_slots, code_info, code_info).
+:- mode code_info__set_stack_slots(in, in, out) is det.
 
 :- pred code_info__get_pred_id(pred_id, code_info, code_info).
 :- mode code_info__get_pred_id(out, in, out) is det.
@@ -170,8 +170,8 @@
 :- pred code_info__remake_with_store_map(code_info, code_info).
 :- mode code_info__remake_with_store_map(in, out) is det.
 
-:- pred code_info__remake_with_call_info(code_info, code_info).
-:- mode code_info__remake_with_call_info(in, out) is det.
+:- pred code_info__remake_with_stack_slots(code_info, code_info).
+:- mode code_info__remake_with_stack_slots(in, out) is det.
 
 :- pred code_info__update_liveness_info(delta_liveness, code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
@@ -472,7 +472,7 @@
 			int,		% Counter for the local labels used
 					% by this procedure.
 			varset,		% The variables in this procedure.
-			call_info,	% The storage allocations for the
+			stack_slots,	% The storage allocations for the
 					% live variables at the end of the
 					% current switch.
 			pred_id,	% The label of the current predicate.
@@ -517,7 +517,7 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
+code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, CodeModel, Requests, FollowVars,
 		ModuleInfo, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -531,7 +531,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	stack__init(PushedVals0),
 	set__init(NondetLives),
 	stack__push(StoreMapStack0, FollowVars, StoreMapStack),
-	code_info__max_slot(CallInfo, SlotCount0),
+	code_info__max_slot(StackSlots, SlotCount0),
 	(
 		CodeModel = model_non
 	->
@@ -543,7 +543,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		SlotCount,
 		0,
 		Varset,
-		CallInfo, 
+		StackSlots, 
 		PredId,
 		ProcId,
 		0,
@@ -569,13 +569,13 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 :- mode code_info__build_input_arg_list(in, out) is det.
 
 code_info__build_input_arg_list([], []).
-code_info__build_input_arg_list([V - Arg|Rest0], VarArgs) :-
+code_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 	Arg = arg_info(Loc, Mode),
 	(
 		Mode = top_in
 	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - lval(reg(Reg))|VarArgs0]
+		VarArgs = [V - lval(reg(Reg)) | VarArgs0]
 	;
 		VarArgs = VarArgs0
 	),
@@ -583,18 +583,18 @@ code_info__build_input_arg_list([V - Arg|Rest0], VarArgs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__max_slot(call_info, int).
+:- pred code_info__max_slot(stack_slots, int).
 :- mode code_info__max_slot(in, out) is det.
 
-code_info__max_slot(CallInfo, SlotCount) :-
-	map__values(CallInfo, CallList),
-	code_info__max_slot_2(CallList, 0, SlotCount).
+code_info__max_slot(StackSlots, SlotCount) :-
+	map__values(StackSlots, StackSlotList),
+	code_info__max_slot_2(StackSlotList, 0, SlotCount).
 
 :- pred code_info__max_slot_2(list(lval), int, int).
 :- mode code_info__max_slot_2(in, in, out) is det.
 
 code_info__max_slot_2([], Max, Max).
-code_info__max_slot_2([L|Ls], Max0, Max) :-
+code_info__max_slot_2([L | Ls], Max0, Max) :-
 	(
 		L = stackvar(N)
 	->
@@ -659,8 +659,8 @@ code_info__clear_all_registers -->
 :- mode code_info__get_variable_slot(in, out, in, out) is det.
 
 code_info__get_variable_slot(Var, Slot) -->
-	code_info__get_call_info(CallInfo),
-	{ map__lookup(CallInfo, Var, Slot) }.
+	code_info__get_stack_slots(StackSlots),
+	{ map__lookup(StackSlots, Var, Slot) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -743,7 +743,7 @@ code_info__place_var(Var, Lval, Code) -->
 :- mode code_info__place_vars(in, out, in, out) is det.
 
 code_info__place_vars([], empty) --> [].
-code_info__place_vars([V-Rs|RestList], Code) -->
+code_info__place_vars([V-Rs | RestList], Code) -->
 	(
 		{ set__to_sorted_list(Rs, RList) },
 		{ code_info__lval_member(L, RList) }
@@ -800,7 +800,7 @@ code_info__cache_expression(Var, Rval) -->
 %---------------------------------------------------------------------------%
 
 code_info__setup_call([], _Direction, empty) --> [].
-code_info__setup_call([V - arg_info(Loc,Mode)|Rest], Direction, Code) -->
+code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
 	(
 		{
 			Mode = top_in,
@@ -879,16 +879,16 @@ code_info__get_arginfo(ArgInfo) -->
 
 code_info__generate_forced_saves(Code) --> 
 	code_info__current_store_map(StoreMap),
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__get_live_variables(Vars),
-	code_info__generate_forced_saves_2(Vars, StoreMap, CallInfo, Code).
+	code_info__generate_forced_saves_2(Vars, StoreMap, StackSlots, Code).
 
 :- pred code_info__generate_forced_saves_2(list(var), map(var, lval),
 			map(var, lval), code_tree, code_info, code_info).
 :- mode code_info__generate_forced_saves_2(in, in, in, out, in, out) is det.
 
-code_info__generate_forced_saves_2([], _Store, _Call, empty) --> [].
-code_info__generate_forced_saves_2([V|Vs], Store, Call, Code) -->
+code_info__generate_forced_saves_2([], _Store, _StackSlots, empty) --> [].
+code_info__generate_forced_saves_2([V | Vs], Store, StackSlots, Code) -->
 	(
 		{ map__search(Store, V, Lval) }
 	->
@@ -896,7 +896,7 @@ code_info__generate_forced_saves_2([V|Vs], Store, Call, Code) -->
 		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
 		code_info__set_exprn_info(Exprn)
 	;
-		{ map__search(Call, V, Lval) }
+		{ map__search(StackSlots, V, Lval) }
 	->
 		code_info__get_exprn_info(Exprn0),
 		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
@@ -909,22 +909,22 @@ code_info__generate_forced_saves_2([V|Vs], Store, Call, Code) -->
 		[s(Name)], Str) },
 		{ error(Str) }
 	),
-	code_info__generate_forced_saves_2(Vs, Store, Call, Code1),
+	code_info__generate_forced_saves_2(Vs, Store, StackSlots, Code1),
 	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_nondet_saves(Code) -->
-	code_info__get_call_info(CallInfo),
-	{ map__to_assoc_list(CallInfo, CallList) },
-	code_info__generate_nondet_saves_2(CallList, Code).
+	code_info__get_stack_slots(StackSlots),
+	{ map__to_assoc_list(StackSlots, StackSlotList) },
+	code_info__generate_nondet_saves_2(StackSlotList, Code).
 
 :- pred code_info__generate_nondet_saves_2(assoc_list(var, lval), code_tree,
 							code_info, code_info).
 :- mode code_info__generate_nondet_saves_2(in, out, in, out) is det.
 
 code_info__generate_nondet_saves_2([], empty) --> [].
-code_info__generate_nondet_saves_2([Var - StackThing|VarSlots], Code) --> 
+code_info__generate_nondet_saves_2([Var - StackThing | VarSlots], Code) --> 
 	(
 		code_info__variable_is_live(Var)
 	->
@@ -968,9 +968,9 @@ code_info__remake_with_store_map -->
 	code_info__get_varset(Varset),
 	code_info__get_live_variables(VarList),
 	{ set__list_to_set(VarList, Vars) },
-	code_info__get_call_info(CallInfo),
+	code_info__get_stack_slots(StackSlots),
 	code_info__current_store_map(StoreMap),
-	{ map__overlay(CallInfo, StoreMap, LvalMap0) },
+	{ map__overlay(StackSlots, StoreMap, LvalMap0) },
 	{ map__select(LvalMap0, Vars, LvalMap) },
 	{ map__to_assoc_list(LvalMap, VarLvals0) },
 	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
@@ -982,19 +982,19 @@ code_info__remake_with_store_map -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-% code_info__remake_with_call_info rebuilds the register info and the
+% code_info__remake_with_stack_slots rebuilds the register info and the
 % variable info structures. It operates under the assumption that if
 % a variable is live, then it should be located in the storage indicated
 % by the call info information. This is for use at the end of the branches
 % in branched structures, where we need to ensure that variables are
 % stored in consistient places.
 
-code_info__remake_with_call_info -->
+code_info__remake_with_stack_slots -->
 	code_info__get_varset(Varset),
 	code_info__get_live_variables(VarList),
 	{ set__list_to_set(VarList, Vars) },
-	code_info__get_call_info(CallInfo),
-	{ map__select(CallInfo, Vars, LvalMap) },
+	code_info__get_stack_slots(StackSlots),
+	{ map__select(StackSlots, Vars, LvalMap) },
 	{ map__to_assoc_list(LvalMap, VarLvals0) },
 	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
 	code_info__get_globals(Globals),
@@ -1008,7 +1008,7 @@ code_info__remake_with_call_info -->
 :- mode code_info__fixup_lvallist(in, out) is det.
 
 code_info__fixup_lvallist([], []).
-code_info__fixup_lvallist([V - L|Ls], [V - lval(L)|Rs]) :-
+code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 	code_info__fixup_lvallist(Ls, Rs).
 
 %---------------------------------------------------------------------------%
@@ -1036,7 +1036,7 @@ code_info__make_vars_dead(Vars0) -->
 :- mode code_info__make_vars_dead_2(in, in, out) is det.
 
 code_info__make_vars_dead_2([]) --> [].
-code_info__make_vars_dead_2([V|Vs]) -->
+code_info__make_vars_dead_2([V | Vs]) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__var_becomes_dead(V, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn),
@@ -1052,15 +1052,15 @@ code_info__make_vars_live(Vars) -->
 :- mode code_info__make_vars_live_2(in, in, out) is det.
 
 code_info__make_vars_live_2([]) --> [].
-code_info__make_vars_live_2([V|Vs]) -->
+code_info__make_vars_live_2([V | Vs]) -->
 	(
 		code_info__current_store_map(Store),
 		{ map__search(Store, V, Lval0) }
 	->
 		{ Lval = Lval0 }
 	;
-		code_info__get_call_info(Call),
-		{ map__search(Call, V, Lval0) }
+		code_info__get_stack_slots(StackSlots),
+		{ map__search(StackSlots, V, Lval0) }
 	->
 		{ Lval = Lval0 }
 	;
@@ -1327,7 +1327,7 @@ code_info__generate_failure(Code) -->
 			{ FailureAddress = FailureAddress0 },
 			{ PlaceCode = empty }
 		;
-			{ FailureMap = [Map - Addr|_] }
+			{ FailureMap = [Map - Addr | _] }
 		->
 			{ FailureAddress = Addr },
 			{ map__to_assoc_list(Map, AssocList) },
@@ -1365,7 +1365,7 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 			{ Code = node([ if_val(Rval, FailureAddress0) -
 						"Test for failure" ]) }
 		;
-			{ FailureMap = [Map - Addr|_] }
+			{ FailureMap = [Map - Addr | _] }
 		->
 			{ FailureAddress = Addr },
 			{ map__to_assoc_list(Map, AssocList) },
@@ -1400,7 +1400,7 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 code_info__can_generate_direct_branch(CodeAddr) -->
 	code_info__failure_cont(failure_cont(known(no), no, FailureMap)),
 	code_info__pick_failure(FailureMap, CodeAddr).
-	% { FailureMap = [Map - CodeAddr|_] },
+	% { FailureMap = [Map - CodeAddr | _] },
 	% { map__is_empty(Map) }.
 
 %---------------------------------------------------------------------------%
@@ -1714,8 +1714,8 @@ code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
 	),
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__produce_vars(VarList, RegMap, RegCode),
-	code_info__get_call_info(CallInfo),
-	{ map__select(CallInfo, Vars, StackMap0) },
+	code_info__get_stack_slots(StackSlots),
+	{ map__select(StackSlots, Vars, StackMap0) },
 	{ map__to_assoc_list(StackMap0, StackList0) },
 	{ code_info__tweak_stacklist(StackList0, StackList) },
 	{ map__from_assoc_list(StackList, StackMap) },
@@ -1732,7 +1732,7 @@ code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
 
 code_info__produce_vars([], Map, empty) -->
 	{ map__init(Map) }.
-code_info__produce_vars([V|Vs], Map, Code) -->
+code_info__produce_vars([V | Vs], Map, Code) -->
 	code_info__produce_vars(Vs, Map0, Code0),
 	code_info__produce_variable_in_reg(V, Code1, Rval),
 	{ set__singleton_set(Rvals, Rval) },
@@ -1746,7 +1746,7 @@ code_info__produce_vars([V|Vs], Map, Code) -->
 :- mode code_info__tweak_stacklist(in, out) is det.
 
 code_info__tweak_stacklist([], []).
-code_info__tweak_stacklist([V-L|Rest0], [V-Rs|Rest]) :-
+code_info__tweak_stacklist([V-L | Rest0], [V-Rs | Rest]) :-
 	set__singleton_set(Rs, lval(L)),
 	code_info__tweak_stacklist(Rest0, Rest).
 
@@ -1766,7 +1766,7 @@ code_info__unset_failure_cont -->
 :- mode code_info__relabel_failure_cont(in, out, in, out) is det.
 
 code_info__relabel_failure_cont([], []) --> [].
-code_info__relabel_failure_cont([Map - _|Rest0], [Map - L|Rest]) -->
+code_info__relabel_failure_cont([Map - _ | Rest0], [Map - L | Rest]) -->
 	code_info__get_next_label(L0),
 	{ L = label(L0) },
 	code_info__relabel_failure_cont(Rest0, Rest).
@@ -1928,7 +1928,7 @@ code_info__generate_failure_cont(FailMap, Code) -->
 
 code_info__generate_failure_continuation([], _) -->
 	{ error("code_info__generate_failure_continuation: no mapping!") }.
-code_info__generate_failure_continuation([C|Cs], Code) -->
+code_info__generate_failure_continuation([C | Cs], Code) -->
 	{ C = Map0 - CodeAddr },
 	(
 		{ CodeAddr = label(Label0) }
@@ -1942,7 +1942,7 @@ code_info__generate_failure_continuation([C|Cs], Code) -->
 		{ Code = node([ label(Label) - "Failure Continuation" ]) },
 		code_info__set_var_locations(Map0)
 	;
-		{ Cs = [_|_] },
+		{ Cs = [_ | _] },
 		{ ThisCode = node([ label(Label) - "End of failure continuation" ]) },
 		code_info__generate_failure_cont_2(Cs, Map0, Map, RestCode),
 		code_info__set_var_locations(Map),
@@ -1955,7 +1955,7 @@ code_info__generate_failure_continuation([C|Cs], Code) -->
 :- mode code_info__generate_failure_cont_2(in, in, out, out, in, out) is det.
 
 code_info__generate_failure_cont_2([], Map, Map, empty) --> [].
-code_info__generate_failure_cont_2([C0|Cs], Map0, Map, Code) -->
+code_info__generate_failure_cont_2([C0 | Cs], Map0, Map, Code) -->
 	{ C0 = ThisMap - CodeAddr0 },
 	(
 		{ CodeAddr0 = label(Label) },
@@ -2017,7 +2017,7 @@ code_info__place_cont_vars([Var - CurrSet | Rest], Map0, Map, Code) -->
 		(
 			% Should use cheapest, currently,
 			% just use first.
-			{ CurrList = [Source|_] },
+			{ CurrList = [Source | _] },
 			{ code_info__lval_member(TargetLval, TargetList) }
 		->
 			{ ThisCode = node([
@@ -2052,7 +2052,7 @@ code_info__place_cont_vars([Var - CurrSet | Rest], Map0, Map, Code) -->
 :- pred code_info__lval_member(lval, list(rval)).
 :- mode code_info__lval_member(out, in) is semidet.
 
-code_info__lval_member(Lval, [X|Xs]) :-
+code_info__lval_member(Lval, [X | Xs]) :-
 	(
 		X = lval(Lval0)
 	->
@@ -2091,7 +2091,7 @@ code_info__flatten_varlval_list([V - Rvals | Rest0], All) :-
 :- mode code_info__flatten_varlval_list_2(in, in, out) is det.
 
 code_info__flatten_varlval_list_2([], _V, []).
-code_info__flatten_varlval_list_2([R|Rs], V, [V - R|Rest]) :-
+code_info__flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
 	code_info__flatten_varlval_list_2(Rs, V, Rest).
 
 %---------------------------------------------------------------------------%
@@ -2135,7 +2135,7 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 :- mode code_info__generate_stack_livevals_2(in, in, out, in, out) is det.
 
 code_info__generate_stack_livevals_2([], Vals, Vals) --> [].
-code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
+code_info__generate_stack_livevals_2([V | Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
 	{ set__insert(Vals0, Slot, Vals1) },
 	code_info__generate_stack_livevals_2(Vs, Vals1, Vals).
@@ -2187,7 +2187,7 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
 :- mode code_info__generate_stack_livelvals_2(in, in, out, in, out) is det.
 
 code_info__generate_stack_livelvals_2([], Vals, Vals) --> [].
-code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
+code_info__generate_stack_livelvals_2([V | Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
 	{ set__insert(Vals0, Slot - V, Vals1) },
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
@@ -2232,8 +2232,8 @@ code_info__get_shape_num(ticket, ticket).
 :- mode code_info__livevals_to_livelvals(in, out, in, in, out) is det.
 
 code_info__livevals_to_livelvals([], [], _GC_Method, C, C).
-code_info__livevals_to_livelvals([L - V|Ls], 
-		[live_lvalue(L, num(S_Num), TypeParams)|Lives], GC_Method) --> 
+code_info__livevals_to_livelvals([L - V | Ls], 
+		[live_lvalue(L, num(S_Num), TypeParams) | Lives], GC_Method) -->
 	( 
 		{ GC_Method = accurate }
 	->
@@ -2365,11 +2365,11 @@ code_info__set_varset(C, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V).
 
-code_info__get_call_info(D, CI, CI) :-
+code_info__get_stack_slots(D, CI, CI) :-
 	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_call_info(D, CI0, CI) :-
+code_info__set_stack_slots(D, CI0, CI) :-
 	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
 		T, U, V),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
@@ -2591,9 +2591,9 @@ code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) -->
 	;
 		{ error("cannot find var for type variable") }
 	),
-	{ proc_info_call_info(ProcInfo, CallInfo) },
+	{ proc_info_stack_slots(ProcInfo, StackSlots) },
 	( 
-		{ map__search(CallInfo, Var, Lval0) }
+		{ map__search(StackSlots, Var, Lval0) }
 	->
 		{ Lval = Lval0 }
 	;

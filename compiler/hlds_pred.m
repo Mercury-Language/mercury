@@ -503,9 +503,9 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- mode proc_info_init(in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), varset, map(var, type), list(var),
-	list(mode), maybe(list(is_live)), hlds__goal, term__context, call_info,
-	determinism, bool, list(arg_info), liveness_info, follow_vars, 
-	map(tvar, var), proc_info).
+	list(mode), maybe(list(is_live)), hlds__goal, term__context,
+	stack_slots, determinism, bool, list(arg_info), liveness_info,
+	follow_vars, map(tvar, var), proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, out) is det.
 
@@ -572,8 +572,8 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_context(proc_info, term__context).
 :- mode proc_info_context(in, out) is det.
 
-:- pred proc_info_call_info(proc_info, call_info).
-:- mode proc_info_call_info(in, out) is det.
+:- pred proc_info_stack_slots(proc_info, stack_slots).
+:- mode proc_info_stack_slots(in, out) is det.
 
 :- pred proc_info_liveness_info(proc_info, liveness_info).
 :- mode proc_info_liveness_info(in, out) is det.
@@ -605,8 +605,8 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_set_follow_vars(proc_info, follow_vars, proc_info).
 :- mode proc_info_set_follow_vars(in, in, out) is det.
 
-:- pred proc_info_set_call_info(proc_info, call_info, proc_info).
-:- mode proc_info_set_call_info(in, in, out) is det.
+:- pred proc_info_set_stack_slots(proc_info, stack_slots, proc_info).
+:- mode proc_info_set_stack_slots(in, in, out) is det.
 
 :- pred proc_info_set_can_process(proc_info, bool, proc_info).
 :- mode proc_info_set_can_process(in, in, out) is det.
@@ -649,7 +649,7 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 			term__context,	% The context of the `:- mode' decl
 					% (or the context of the first clause,
 					% if there was no mode declaration).
-			call_info,	% stack allocations
+			stack_slots,	% stack allocations
 			determinism,	% _inferred_ det'ism
 			bool,		% no if we must not process this
 					% procedure yet (used to delay
@@ -684,7 +684,7 @@ proc_info_init(Arity, Modes, MaybeArgLives, MaybeDet, MContext, NewProc) :-
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
 	InferredDet = erroneous,
-	map__init(CallInfo),
+	map__init(StackSlots),
 	set__init(InitialLiveness),
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
@@ -693,27 +693,27 @@ proc_info_init(Arity, Modes, MaybeArgLives, MaybeDet, MContext, NewProc) :-
 	map__init(TVarsMap),
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
-		ClauseBody, MContext, CallInfo, InferredDet, CanProcess,
+		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
 		ArgInfo, InitialLiveness, FollowVars, TVarsMap
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal,
-		Context, CallInfo, InferredDetism, CanProcess,
+		Context, StackSlots, InferredDetism, CanProcess,
 		ArgInfo, Liveness, FollowVars, TVarMap, ProcInfo) :-
 	ProcInfo = procedure(
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
-		HeadLives, Goal, Context, CallInfo, InferredDetism, CanProcess,
-		ArgInfo, Liveness, FollowVars, TVarMap).
+		HeadLives, Goal, Context, StackSlots, InferredDetism,
+		CanProcess, ArgInfo, Liveness, FollowVars, TVarMap).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 		Context, TVarMap, ProcInfo) :-
-	map__init(CallInfo),
+	map__init(StackSlots),
 	set__init(Liveness),
 	map__init(FollowVars),
 	MaybeHeadLives = no,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
-		MaybeHeadLives, Goal, Context, CallInfo, Detism, yes, [],
+		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
 		Liveness, FollowVars, TVarMap).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
@@ -776,8 +776,8 @@ proc_info_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_, _, _, _, _, _, Goal, _, _, _, _, _, _, _, _).
 proc_info_context(ProcInfo, Context) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, Context, _, _, _, _, _, _, _).
-proc_info_call_info(ProcInfo, CallInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, CallInfo, _, _, _, _, _,
+proc_info_stack_slots(ProcInfo, StackSlots) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, StackSlots, _, _, _, _, _,
 		_).
 proc_info_inferred_determinism(ProcInfo, Detism) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, Detism, _, _, _, _, _).
@@ -804,7 +804,7 @@ proc_info_typeinfo_varmap(ProcInfo, TVarMap) :-
 % 				H	term__context,	% The context of
 % 							% the :- mode decl,
 % 							% not the clause.
-% 				I	call_info,	% stack allocations
+% 				I	stack_slots,	% stack allocations
 % 				J	determinism,	% _inferred_ detism
 % 				K	bool,		% can_process
 % 				L	list(arg_info),	% information about
@@ -857,9 +857,9 @@ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O),
 	ProcInfo = procedure(A, B, C, D, E, F, Goal, H, I, J, K, L, M, N, O).
 
-proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo) :-
+proc_info_set_stack_slots(ProcInfo0, StackSlots, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, CallInfo, J, K, L, M, N,
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, StackSlots, J, K, L, M, N,
 		O).
 
 proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
