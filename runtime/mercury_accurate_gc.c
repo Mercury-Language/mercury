@@ -15,7 +15,7 @@
 ** For the LLDS back-end, we detect heap overflow
 ** using the virtual memory system; the page fault
 ** handler will set the return address to call the
-** garbage collector.
+** garbage collector.  See also compiler/notes/gc_and_c_code.html.
 **
 ** XXX this may cause problems for tight loops that
 **     allocate memory and don't have any procedure
@@ -27,6 +27,9 @@
 ** of overwriting the return address, so instead we
 ** just explicitly call MR_GC_check() to check for
 ** heap overflow before each heap allocation.
+**
+** For documentation on accurate collection in the MLDS back-end,
+** see compiler/ml_elim_nested.m.
 */
 
 #include "mercury_imp.h"
@@ -37,33 +40,51 @@
 #include "mercury_layout_util.h"
 #include "mercury_agc_debug.h"
 
+/*---------------------------------------------------------------------------*/
 /*
 ** Function prototypes.
 */
 
 #ifdef MR_HIGHLEVEL_CODE
 
-void            MR_garbage_collect(void);
-static void     traverse_stack(struct MR_StackChain *top);
+  void          MR_garbage_collect(void);
+  static void   traverse_stack(struct MR_StackChain *top);
 
 #else /* !MR_HIGHLEVEL_CODE */
 
-MR_define_extern_entry(mercury__garbage_collect_0_0);
+  MR_define_extern_entry(mercury__garbage_collect_0_0);
 
-static  void    garbage_collect(MR_Code *saved_success,
+  static void   MR_LLDS_garbage_collect(MR_Code *saved_success,
                         MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
-static  void    copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
+  static void   traverse_call_stack(MR_Code *success_ip, MR_Internal *label,
+                        const MR_Label_Layout *label_layout,
+                        MR_Word **ptr_to_stack_pointer,
+                        MR_Word **ptr_to_current_frame);
+  static void   traverse_nondet_stack(MR_Word *stack_pointer,
+                        MR_Word *max_frame, MR_Word *current_frame);
+  static void   resize_and_reset_redzone(MR_MemoryZone *old_heap,
+                        MR_MemoryZone *new_heap);
+  static void   copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
                         MR_bool copy_regs, MR_Word *stack_pointer,
                         MR_Word *current_frame);
-static  void    copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
+  static void   copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
                         MR_bool copy_regs, MR_Word *stack_pointer,
                         MR_Word *current_frame);
 
 #endif
 
-static  void    garbage_collect_roots(void);
+static void     notify_gc_start(const MR_MemoryZone *old_heap,
+                        const MR_MemoryZone *new_heap);
+static void     notify_gc_end(const MR_MemoryZone *old_heap,
+                        const MR_MemoryZone *new_heap, const MR_Word *old_hp);
+static void     init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap,
+                        MR_Word *old_hp);
+static void     swap_heaps(void);
+static void     traverse_extra_roots(void);
+static void     maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp);
 
+/*---------------------------------------------------------------------------*/
 /*
 ** Global variables (only used in this module, however).
 */
@@ -81,30 +102,10 @@ static MR_RootList root_list = NULL;
 /* The last root on the list */
 static MR_RootList last_root = NULL;
 
+/*---------------------------------------------------------------------------*/
 /*
-** Initialize the forwarding pointer bitmap (MR_has_forwarding_pointer[])
-** with all bits unset (zero).
+** The MLDS version of the collector.
 */
-static void
-init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
-{
-    size_t                          heap_size_in_words;
-    size_t                          num_words_for_bitmap;
-    size_t                          num_bytes_for_bitmap;
-    static size_t                   prev_num_bytes_for_bitmap;
-
-    heap_size_in_words = old_hp - old_heap->min;
-    num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
-    num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
-    if (MR_has_forwarding_pointer == NULL
-        || num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
-    {
-        MR_has_forwarding_pointer =
-                MR_realloc(MR_has_forwarding_pointer, num_bytes_for_bitmap);
-        prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
-    }
-    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
-}
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -121,31 +122,16 @@ void
 MR_garbage_collect(void)
 {
     MR_MemoryZone                   *old_heap, *new_heap;
-    MR_Word                         *old_hp, *new_hp;
+    MR_Word                         *old_hp;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
+    old_hp = MR_virtual_hp;
 
     /*
     ** Print some debugging messages.
     */
-    if (MR_agc_debug) {
-        fprintf(stderr, "\ngarbage_collect() called.\n");
-
-        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-                (long) old_heap->min, (long) old_heap->hardmax);
-        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-                (long) new_heap->min, (long) new_heap->hardmax);
-
-        fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
-    }
-
-    old_hp = MR_virtual_hp;
-
-    /*
-    ** The new heap pointer starts at the bottom of the new heap.
-    */
-    MR_virtual_hp = new_heap->min;
+    notify_gc_start(old_heap, new_heap);
 
     /*
     ** Initialize the forwarding pointer bitmap.
@@ -154,19 +140,10 @@ MR_garbage_collect(void)
 
     /*
     ** Swap the two heaps.
+    ** The new heap pointer starts at the bottom of the new heap.
     */
-    {
-        MR_MemoryZone *tmp;
-
-        tmp = MR_ENGINE(MR_eng_heap_zone2);
-        MR_ENGINE(MR_eng_heap_zone2) = MR_ENGINE(MR_eng_heap_zone);
-        MR_ENGINE(MR_eng_heap_zone) = tmp; 
-    }
-
-    if (MR_agc_debug) {
-        fprintf(stderr, "Swapped heaps\n"); 
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-    }
+    swap_heaps();
+    MR_virtual_hp = new_heap->min;
 
     /*
     ** Copy any roots on the stack
@@ -176,44 +153,20 @@ MR_garbage_collect(void)
     /*
     ** Copy any roots that are not on the stack.
     */
-    garbage_collect_roots();
+    traverse_extra_roots();
+
+    /*
+    ** Clear out the old heap.
+    */
+    maybe_clear_old_heap(old_heap, old_hp);
 
     /*
     ** Print some more debugging messages,
-    ** and clear out the old heap.
     */
     if (MR_agc_debug) {
-        fprintf(stderr, "Clearing old heap:\n");
-
-        {
-            MR_Word *tmp_hp;
-
-            for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-                *tmp_hp = 0xDEADBEAF;
-            }
-        }
-
         fprintf(stderr, "AFTER:\n");
-
-        /* XXX save this, it appears to get clobbered */
-        new_hp = MR_virtual_hp;
-
-        MR_agc_dump_roots(root_list);
-
-        /* XXX restore this, it appears to get clobbered */
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-        MR_virtual_hp = new_hp;
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-
-        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-            (long) ((char *) old_hp - (char *) old_heap->min),
-            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
-        fprintf(stderr, "%ld bytes recovered\n", 
-            (long) ((char *) old_hp - (char *) old_heap->min) -
-            ((char *) MR_virtual_hp - (char *) new_heap->min));
-
-        fprintf(stderr, "garbage_collect() done.\n\n");
     }
+    notify_gc_end(old_heap, new_heap, old_hp);
 }
 
 static void
@@ -228,6 +181,11 @@ traverse_stack(struct MR_StackChain *stack_chain)
         stack_chain = stack_chain->prev;
     }
 }
+
+/*---------------------------------------------------------------------------*/
+/*
+** The LLDS version of the collector.
+*/
 
 #else /* !MR_HIGHLEVEL_CODE */
 
@@ -256,14 +214,12 @@ void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
                 MR_Word *curfr_at_signal)
 {
-    MR_Label_Layout *layout;
-    const MR_Proc_Layout *proc_layout;
-    MR_Long_Lval_Type type;
-    MR_Long_Lval location;
-    const char *reason;
-    MR_Entry *entry_label = NULL;
-    int number;
-    MR_Determinism determinism;
+    const MR_Proc_Layout    *proc_layout;
+    MR_Long_Lval_Type       type;
+    MR_Long_Lval            location;
+    MR_Entry                *entry_label = NULL;
+    int                     number;
+    MR_Determinism          determinism;
 
     if (gc_running) {
         /*
@@ -415,7 +371,7 @@ MR_define_entry(mercury__garbage_collect_0_0);
     gc_running = MR_TRUE;
 
     MR_save_registers();
-    garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
+    MR_LLDS_garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
     MR_restore_registers();
     gc_scheduled = MR_FALSE;
     gc_running = MR_FALSE;
@@ -426,56 +382,37 @@ MR_define_entry(mercury__garbage_collect_0_0);
 
 MR_END_MODULE
 
-/*---------------------------------------------------------------------------*/
-
 /*
-** garbage_collect:
+** MR_LLDS_garbage_collect:
 **
 **      The main garbage collection routine.
 **
 ** This is the version for the LLDS back-end.  Beware that there is some
 ** code duplication with the version for the MLDS back-end, which is above.
-**
-** (We use 4 space tabs here because of the depth of indentation).
 */
 static void
-garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
+MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
         MR_Word *max_frame, MR_Word *current_frame)
 {
-    MR_Internal                     *label, *first_label;
-    int                             i, count;
-    const MR_Label_Layout           *label_layout;
     MR_MemoryZone                   *old_heap, *new_heap;
-    MR_TypeInfoParams               type_params;
-    MR_bool                            succeeded;
-    MR_bool                            top_frame = MR_TRUE;
-    MR_MemoryList                   allocated_memory_cells = NULL;
-    MR_Word                         *old_hp, *new_hp;
-    const MR_Proc_Layout            *proc_layout;
+    MR_Word                         *old_hp;
+
+    MR_Internal                     *label;
+    const MR_Label_Layout           *label_layout;
+
+    MR_Internal                     *first_label;
     MR_Word                         *first_stack_pointer;
-    MR_Word                         *first_current_frame;
     MR_Word                         *first_max_frame;
+    MR_Word                         *first_current_frame;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
-
-    if (MR_agc_debug) {
-        fprintf(stderr, "\ngarbage_collect() called.\n");
-
-        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-            (long) old_heap->min, (long) old_heap->hardmax);
-        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-            (long) new_heap->min, (long) new_heap->hardmax);
-
-        fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
-    }
-
     old_hp = MR_virtual_hp;
 
     /*
-    ** The new heap pointer starts at the bottom of the new heap.
+    ** Print some debugging messages
     */
-    MR_virtual_hp = new_heap->min;
+    notify_gc_start(old_heap, new_heap);
 
     /*
     ** Initialize the forwarding pointer bitmap.
@@ -484,19 +421,10 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
     /*
     ** Swap the two heaps.
+    ** The new heap pointer starts at the bottom of the new heap.
     */
-    {
-        MR_MemoryZone *tmp;
-
-        tmp = MR_ENGINE(MR_eng_heap_zone2);
-        MR_ENGINE(MR_eng_heap_zone2) = MR_ENGINE(MR_eng_heap_zone);
-        MR_ENGINE(MR_eng_heap_zone) = tmp; 
-    }
-
-    if (MR_agc_debug) {
-        fprintf(stderr, "Swapped heaps\n"); 
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-    }
+    swap_heaps();
+    MR_virtual_hp = new_heap->min;
 
     label = MR_lookup_internal_by_addr(success_ip);
     label_layout = label->i_layout;
@@ -506,7 +434,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         first_stack_pointer = stack_pointer;
         first_current_frame = current_frame;
         first_max_frame = max_frame;
+
         fprintf(stderr, "BEFORE:\n");
+
         MR_agc_dump_stack_frames(first_label, old_heap, first_stack_pointer,
                 first_current_frame);
         MR_agc_dump_nondet_stack_frames(first_label, old_heap,
@@ -530,14 +460,78 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     ** way to do that without traversing the success continuation frames of
     ** the nondet stack too.)
     */
+    traverse_call_stack(success_ip, label, label_layout,
+        &stack_pointer, &current_frame);
+
+    /* 
+    ** Next, traverse the whole of the nondet stack.
+    */
+    traverse_nondet_stack(stack_pointer, max_frame, current_frame);
+
+    /*
+    ** Copy any roots that are not on the stack.
+    */
+    traverse_extra_roots();
+
+    /*
+    ** Clear out the old heap.  This needs to be
+    ** done _before_ we reset the redzone.
+    */
+    maybe_clear_old_heap(old_heap, old_hp);
+
+    /*
+    ** Compute the new size at which to GC,
+    ** and reset the redzone on the new heap.
+    */
+    resize_and_reset_redzone(old_heap, new_heap);
+
+    /*
+    ** Print some more debugging messages
+    */
+    if (MR_agc_debug) {
+        MR_Word *new_hp;
+
+        fprintf(stderr, "AFTER:\n");
+
+        /* XXX save this, it appears to get clobbered */
+        new_hp = MR_virtual_hp;
+
+        MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
+            first_current_frame);
+        MR_agc_dump_nondet_stack_frames(first_label, new_heap,
+            first_stack_pointer, first_current_frame, first_max_frame);
+
+        /* XXX restore this, it appears to get clobbered */
+        MR_virtual_hp = new_hp;
+    }
+
+    notify_gc_end(old_heap, new_heap, old_hp);
+}
+
+/*
+** Traverse the call stack.  This includes all of the det stack
+** and the success continuation frames on the nondet stack.  It does not
+** include the failure continuation frames on the nondet stack.
+** (We really only need to traverse the det stack here, but there's no
+** way to do that without traversing the success continuation frames of
+** the nondet stack too.)
+*/
+static void
+traverse_call_stack(MR_Code *success_ip, MR_Internal *label,
+    const MR_Label_Layout *label_layout,
+    MR_Word **ptr_to_stack_pointer, MR_Word **ptr_to_current_frame)
+{
+    MR_bool   top_frame = MR_TRUE;
     /*
     ** For each stack frame ...
     */
     do {
-        MR_Stack_Walk_Step_Result       result;
-        const char                      *problem;
         const MR_Label_Layout           *return_label_layout;
         int                             short_var_count, long_var_count;
+        int                             i;
+        MR_MemoryList                   allocated_memory_cells = NULL;
+        MR_TypeInfoParams               type_params;
+        const MR_Proc_Layout            *proc_layout;
 
         if (MR_agc_debug) {
             MR_printlabel(stderr, (MR_Code *) (MR_Word) label->i_addr);
@@ -557,7 +551,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         ** XXX except for the topmost frame!
         */
         type_params = MR_materialize_type_params_base(label_layout,
-            NULL, stack_pointer, current_frame);
+            NULL, *ptr_to_stack_pointer, *ptr_to_current_frame);
         
         /* Copy each live variable */
 
@@ -572,7 +566,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             type_info = MR_make_type_info(type_params, pseudo_type_info,
                     &allocated_memory_cells);
             copy_long_value(locn, type_info, top_frame,
-                    stack_pointer, current_frame);
+                    *ptr_to_stack_pointer, *ptr_to_current_frame);
             MR_deallocate(allocated_memory_cells);
             allocated_memory_cells = NULL;
         }
@@ -588,7 +582,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             type_info = MR_make_type_info(type_params, pseudo_type_info,
                     &allocated_memory_cells);
             copy_short_value(locn, type_info, top_frame,
-                    stack_pointer, current_frame);
+                    *ptr_to_stack_pointer, *ptr_to_current_frame);
             MR_deallocate(allocated_memory_cells);
             allocated_memory_cells = NULL;
         }
@@ -610,8 +604,8 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
                     MR_fatal_error("can only handle stackvars");
                 }
                 success_ip = (MR_Code *)
-                        MR_based_stackvar(stack_pointer, number);
-                stack_pointer = stack_pointer - 
+                        MR_based_stackvar(*ptr_to_stack_pointer, number);
+                *ptr_to_stack_pointer = *ptr_to_stack_pointer - 
                         proc_layout->MR_sle_stack_slots;
             } else {
                 /*
@@ -624,8 +618,8 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
                 */
                 /* succip is saved in succip_slot */
                 assert(location == -1);
-                success_ip = MR_succip_slot(current_frame);
-                current_frame = MR_succfr_slot(current_frame);
+                success_ip = MR_succip_slot(*ptr_to_current_frame);
+                *ptr_to_current_frame = MR_succfr_slot(*ptr_to_current_frame);
             }
             label = MR_lookup_internal_by_addr(success_ip);
         }
@@ -635,7 +629,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         a redesign of the code around here.
  
         result = MR_stack_walk_step(proc_layout, &label_layout,
-            (MR_Word **) &stack_pointer, &current_frame, &problem);
+            ptr_to_stack_pointer, ptr_to_current_frame, &problem);
 
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
@@ -649,19 +643,27 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         label_layout = return_label_layout;
         top_frame = MR_FALSE;
     } while (label_layout != NULL); /* end for each stack frame... */
+}
 
-    /* 
-    ** Next, traverse the whole of the nondet stack.
-    ** XXX The code below is broken.  We should use
-    **     MR_traverse_nondet_stack_from_layout() instead.
-    **
-    ** XXX Will we need correct value of stack_pointer (the pointer
-    **     to the det stack)?
-    **     Hopefully not, since I think that for nondet code, all values
-    **     should be saved on the nondet stack, not the det stack?
-    */ 
-    
+/*
+** Traverse the whole of the nondet stack.
+**
+** XXX The code below is broken.  We should use
+**     MR_traverse_nondet_stack_from_layout() instead.
+**
+** XXX Will we need correct value of stack_pointer (the pointer
+**     to the det stack)?
+**     Hopefully not, since I think that for nondet code, all values
+**     should be saved on the nondet stack, not the det stack?
+*/ 
+static void
+traverse_nondet_stack(MR_Word *stack_pointer,
+        MR_Word *max_frame, MR_Word *current_frame)
+{
+    MR_bool top_frame = MR_FALSE; /* XXX always false... is this wrong? */
+
     while (max_frame > MR_nondet_stack_trace_bottom) {
+        MR_Internal *label;
 #if 0
         MR_bool registers_valid;
         int frame_size;
@@ -691,7 +693,11 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         stack_pointer = NULL; /* XXX ??? */
 
         if (label != NULL) {
-            int short_var_count, long_var_count;
+            const MR_Label_Layout   *label_layout;
+            int                     short_var_count, long_var_count;
+            int                     i;
+            MR_MemoryList           allocated_memory_cells = NULL;
+            MR_TypeInfoParams       type_params;
 
             label_layout = label->i_layout;
             short_var_count = MR_short_desc_var_count(label_layout);
@@ -747,76 +753,6 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         }
         max_frame = MR_prevfr_slot(max_frame);
     }
-    
-    /*
-    ** Copy any roots that are not on the stack.
-    */
-    garbage_collect_roots();
-
-    if (MR_agc_debug) {
-        fprintf(stderr, "Clearing old heap:\n");
-
-        {
-            MR_Word *tmp_hp;
-
-            for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-                *tmp_hp = 0xDEADBEAF;
-            }
-        }
-
-        fprintf(stderr, "AFTER:\n");
-
-        /* XXX save this, it appears to get clobbered */
-        new_hp = MR_virtual_hp;
-
-        MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
-            first_current_frame);
-        MR_agc_dump_roots(root_list);
-        MR_agc_dump_nondet_stack_frames(first_label, new_heap,
-            first_stack_pointer, first_current_frame, first_max_frame);
-
-        /* XXX restore this, it appears to get clobbered */
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-        MR_virtual_hp = new_hp;
-        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-
-        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-            (long) ((char *) old_hp - (char *) old_heap->min),
-            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
-        fprintf(stderr, "%ld bytes recovered\n", 
-            (long) ((char *) old_hp - (char *) old_heap->min) -
-            ((char *) MR_virtual_hp - (char *) new_heap->min));
-    }
-
-    /* Reset the redzone on the new heap */
-    {
-      /* These counts include some wasted space between ->min and ->bottom. */
-      size_t old_heap_space =
-            (char *) old_heap->redzone_base - (char *) old_heap->bottom;
-      size_t new_heap_usage =
-            (char *) MR_virtual_hp - (char *) new_heap->bottom;
-      size_t gc_heap_size;
-
-      /*
-      ** Set the size at which to GC to be MR_heap_expansion_factor
-      ** (which defaults to two) times the current usage,
-      ** or the size at which we GC'd last time, whichever is larger.
-      */
-      gc_heap_size = MR_round_up(
-            (size_t) (MR_heap_expansion_factor * new_heap_usage),
-            MR_unit);
-      if (gc_heap_size < old_heap_space) {
-          gc_heap_size = old_heap_space;
-      }
-      old_heap->redzone_base = (MR_Word *)
-            ((char *) old_heap->bottom + gc_heap_size);
-      MR_reset_redzone(old_heap);
-    }
-
-    if (MR_agc_debug) {
-        fprintf(stderr, "garbage_collect() done.\n\n");
-    }
-
 }
 
 /*
@@ -940,17 +876,148 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
         break;
     }
 }
-#endif /* !MR_HIGHLEVEL_CODE */
 
 /*
-** garbage_collect_roots:
+** Compute the new size at which to GC,
+** and reset the redzone on the new heap.
+*/
+static void
+resize_and_reset_redzone(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
+{
+    /* Reset the redzone on the new heap */
+    {
+        /* These counts include some wasted space between ->min and ->bottom. */
+        size_t old_heap_space =
+            (char *) old_heap->redzone_base - (char *) old_heap->bottom;
+        size_t new_heap_usage =
+            (char *) MR_virtual_hp - (char *) new_heap->bottom;
+        size_t gc_heap_size;
+
+        /*
+        ** Set the size at which to GC to be MR_heap_expansion_factor
+        ** (which defaults to two) times the current usage,
+        ** or the size at which we GC'd last time, whichever is larger.
+        */
+        gc_heap_size = MR_round_up(
+                (size_t) (MR_heap_expansion_factor * new_heap_usage),
+                MR_unit);
+        if (gc_heap_size < old_heap_space) {
+            gc_heap_size = old_heap_space;
+        }
+        old_heap->redzone_base = (MR_Word *)
+                ((char *) old_heap->bottom + gc_heap_size);
+        MR_reset_redzone(old_heap);
+    }
+}
+
+#endif /* !MR_HIGHLEVEL_CODE */
+
+/*---------------------------------------------------------------------------*/
+/*
+** Subroutines shared between both the LLDS and MLDS versions of the collector.
+*/
+
+/*
+** Print debugging messages at the start of a collection.
+*/
+static void
+notify_gc_start(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap)
+{
+    if (MR_agc_debug) {
+        fprintf(stderr, "\nGarbage collection started.\n");
+
+        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
+                (long) old_heap->min, (long) old_heap->hardmax);
+        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
+                (long) new_heap->min, (long) new_heap->hardmax);
+
+        fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
+    }
+}
+
+/*
+** Print debugging messages at the end of a collection.
+*/
+static void
+notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
+    const MR_Word *old_hp)
+{
+    if (MR_agc_debug) {
+        MR_Word *new_hp;
+
+        /* XXX save this, it appears to get clobbered */
+        new_hp = MR_virtual_hp;
+
+        MR_agc_dump_roots(root_list);
+
+        /* XXX restore this, it appears to get clobbered */
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        MR_virtual_hp = new_hp;
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+
+        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
+            (long) ((char *) old_hp - (char *) old_heap->min),
+            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
+        fprintf(stderr, "%ld bytes recovered\n", 
+            (long) ((char *) old_hp - (char *) old_heap->min) -
+            ((char *) MR_virtual_hp - (char *) new_heap->min));
+
+        fprintf(stderr, "Garbage collection done.\n\n");
+    }
+}
+
+/*
+** Initialize the forwarding pointer bitmap (MR_has_forwarding_pointer[])
+** with all bits unset (zero).
+*/
+static void
+init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
+{
+    size_t                          heap_size_in_words;
+    size_t                          num_words_for_bitmap;
+    size_t                          num_bytes_for_bitmap;
+    static size_t                   prev_num_bytes_for_bitmap;
+
+    heap_size_in_words = old_hp - old_heap->min;
+    num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
+    num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
+    if (MR_has_forwarding_pointer == NULL
+        || num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
+    {
+        MR_has_forwarding_pointer =
+                MR_realloc(MR_has_forwarding_pointer, num_bytes_for_bitmap);
+        prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
+    }
+    memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
+}
+
+/*
+** Swap the two heaps.
+*/
+static void
+swap_heaps(void)
+{
+    MR_MemoryZone *tmp;
+
+    tmp = MR_ENGINE(MR_eng_heap_zone2);
+    MR_ENGINE(MR_eng_heap_zone2) = MR_ENGINE(MR_eng_heap_zone);
+    MR_ENGINE(MR_eng_heap_zone) = tmp; 
+
+    if (MR_agc_debug) {
+        fprintf(stderr, "Swapped heaps\n"); 
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+    }
+}
+
+/*
+** traverse_extra_roots:
 ** 
 **      Copies the extra roots.  The roots are overwritten
 **      with the new data.
 */
 
 static void
-garbage_collect_roots(void) 
+traverse_extra_roots(void) 
 {
     MR_RootList current = root_list;
 
@@ -964,9 +1031,29 @@ garbage_collect_roots(void)
 }
 
 /*
-** MR_agc_add_root_internal:
+** If we're debugging, wipe out the contents of the old heap.
+** This helps ensure that any bugs in the collector show up sooner.
+*/
+static void
+maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp)
+{
+    if (MR_agc_debug) {
+        fprintf(stderr, "Clearing old heap:\n");
+
+        {
+            MR_Word *tmp_hp;
+
+            for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+                *tmp_hp = 0xDEADBEAF;
+            }
+        }
+    }
+}
+
+/*
+** MR_agc_add_root:
 ** 
-**      Adds a new root to the extra roots.
+**      Adds a new root to the set of extra roots.
 */
 
 void
@@ -987,4 +1074,5 @@ MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
         last_root = node;
     }
 }
+
 #endif /* MR_NATIVE_GC */
