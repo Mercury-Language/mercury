@@ -1,0 +1,6 @@
+echo on
+context nextline
+break loopcheck.main
+break loopcheck.loop
+finish
+continue

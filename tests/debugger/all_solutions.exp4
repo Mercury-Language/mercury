@@ -1,0 +1,25 @@
+       1:      1  1 CALL pred all_solutions.main/2-0 (det) all_solutions.m:16
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> break hello
+ 0: + stop  interface pred all_solutions.hello/1-0 (multi)
+mdb> continue
+      12:      8  5 CALL pred all_solutions.hello/1-0 (multi)
+mdb> stack
+   0       pred all_solutions.hello/1-0 (multi)
+   1       pred std_util.builtin_aggregate/4-0 (det)
+   2       pred std_util.builtin_solutions/2-0 (det)
+   3       pred std_util.solutions/2-0 (det)
+   4       pred all_solutions.main/2-0 (det)
+mdb> retry 1
+       4:      4  4 CALL pred std_util.builtin_aggregate/4-0 (det)
+mdb> retry 2
+       2:      2  2 CALL pred std_util.solutions/2-0 (det)
+mdb> retry 3
+not that many ancestors
+mdb> continue -n -S
+Hello again, world
+Hello, world

@@ -1,0 +1,12 @@
+      E1:     C1  1 CALL pred exception_cmd.main/2-0 (det) exception_cmd.m:12
+mdb> echo on
+Command echo enabled.
+mdb> exception
+      E2:     C2  5 EXCP pred exception.throw_impl/1-0 (erroneous)
+mdb> print *
+       Univ (arg 1)           	univ_cons(software_error("oops"))
+mdb> continue
+Uncaught Mercury exception:
+Software Error: oops
+Last trace event was event #E3.
+Last trace event before the unhandled exception was event #E4.

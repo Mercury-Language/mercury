@@ -196,6 +196,16 @@ else
 endif
 MLFLAGS += --trace
 
+# Some of the test cases require a different input in decldebug grades,
+# so we set INP to the appropriate extension to use for those tests.
+# All other tests ignore this variable.
+#
+ifneq "$(findstring .decldebug,$(GRADE))" ""
+    INP=inp2
+else
+    INP=inp
+endif
+
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
@@ -316,8 +326,8 @@ lambda_expr.out: lambda_expr lambda_expr.inp
 label_layout.out: label_layout label_layout.inp
 	$(MDB) ./label_layout < label_layout.inp > label_layout.out 2>&1
 
-loopcheck.out: loopcheck loopcheck.inp
-	if $(MDB) ./loopcheck < loopcheck.inp			\
+loopcheck.out: loopcheck loopcheck.$(INP)
+	if $(MDB) ./loopcheck < loopcheck.$(INP)		\
 		> loopcheck.tmp 2>&1;				\
 	then							\
 		sed -e '/EXCP/s/).*/)/'				\

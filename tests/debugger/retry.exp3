@@ -1,0 +1,165 @@
+      E1:     C1  1 CALL pred retry.main/2-0 (det) retry.m:25
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> scroll off
+Scroll control disabled.
+mdb> context none
+Contexts will not be printed.
+mdb> goal_paths off
+Goal path printing is now off.
+mdb> break det_without_cut_1
+ 0: + stop  interface pred retry.det_without_cut_1/2-0 (det)
+mdb> continue -a
+      E2:     C2  2 CALL pred retry.det_without_cut/2-0 (det)
+      E3:     C3  3 CALL func int.+/2-0 (det)
+      E4:     C3  3 EXIT func int.+/2-0 (det)
+      E5:     C4  3 CALL pred retry.det_without_cut_1/2-0 (det)
+mdb> disable 0
+ 0: - stop  interface pred retry.det_without_cut_1/2-0 (det)
+mdb> retry
+This command is a no-op from this port.
+mdb> stack
+   0       pred retry.det_without_cut_1/2-0 (det)
+   1       pred retry.det_without_cut/2-0 (det)
+   2       pred retry.main/2-0 (det)
+mdb> finish
+      E6:     C4  3 EXIT pred retry.det_without_cut_1/2-0 (det)
+mdb> retry 1
+      E2:     C2  2 CALL pred retry.det_without_cut/2-0 (det)
+mdb> stack
+   0       pred retry.det_without_cut/2-0 (det)
+   1       pred retry.main/2-0 (det)
+mdb> break det_without_cut_2
+ 1: + stop  interface pred retry.det_without_cut_2/2-0 (det)
+mdb> continue -a
+      E3:     C3  3 CALL func int.+/2-0 (det)
+      E4:     C3  3 EXIT func int.+/2-0 (det)
+      E5:     C4  3 CALL pred retry.det_without_cut_1/2-0 (det)
+      E7:     C5  4 CALL pred retry.det_without_cut_2/2-0 (det)
+mdb> delete *
+ 0: D stop  interface pred retry.det_without_cut_1/2-0 (det)
+ 1: E stop  interface pred retry.det_without_cut_2/2-0 (det)
+mdb> retry 2
+      E2:     C2  2 CALL pred retry.det_without_cut/2-0 (det)
+mdb> finish
+      E8:     C2  2 EXIT pred retry.det_without_cut/2-0 (det)
+mdb> stack
+   0       pred retry.det_without_cut/2-0 (det)
+   1       pred retry.main/2-0 (det)
+mdb> break det_with_cut_1
+ 0: + stop  interface pred retry.det_with_cut_1/2-0 (nondet)
+mdb> continue -a
+      E9:     C6  2 CALL pred retry.det_with_cut/2-0 (det)
+     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det)
+     E11:     C7  3 CALL pred retry.det_with_cut_1/2-0 (nondet)
+mdb> delete *
+ 0: E stop  interface pred retry.det_with_cut_1/2-0 (nondet)
+mdb> finish
+     E12:     C7  3 EXIT pred retry.det_with_cut_1/2-0 (nondet)
+mdb> retry 1
+      E9:     C6  2 CALL pred retry.det_with_cut/2-0 (det)
+mdb> finish
+     E13:     C6  2 EXIT pred retry.det_with_cut/2-0 (det)
+mdb> stack
+   0       pred retry.det_with_cut/2-0 (det)
+   1       pred retry.main/2-0 (det)
+mdb> retry -f 1
+      E1:     C1  1 CALL pred retry.main/2-0 (det)
+mdb> break det_with_cut_2
+ 0: + stop  interface pred retry.det_with_cut_2/2-0 (det)
+mdb> continue -a
+      E2:     C2  2 CALL pred retry.det_without_cut/2-0 (det)
+      E3:     C3  3 CALL func int.+/2-0 (det)
+      E4:     C3  3 EXIT func int.+/2-0 (det)
+      E5:     C4  3 CALL pred retry.det_without_cut_1/2-0 (det)
+      E7:     C5  4 CALL pred retry.det_without_cut_2/2-0 (det)
+     E14:     C5  4 EXIT pred retry.det_without_cut_2/2-0 (det)
+     E15:     C8  4 CALL func int.*/2-0 (det)
+     E16:     C8  4 EXIT func int.*/2-0 (det)
+      E6:     C4  3 EXIT pred retry.det_without_cut_1/2-0 (det)
+      E8:     C2  2 EXIT pred retry.det_without_cut/2-0 (det)
+      E9:     C6  2 CALL pred retry.det_with_cut/2-0 (det)
+     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det)
+     E11:     C7  3 CALL pred retry.det_with_cut_1/2-0 (nondet)
+     E17:     C7  3 DISJ pred retry.det_with_cut_1/2-0 (nondet)
+     E18:     C9  4 CALL pred retry.det_with_cut_2/2-0 (det)
+mdb> delete *
+ 0: E stop  interface pred retry.det_with_cut_2/2-0 (det)
+mdb> break nondet
+ 0: + stop  interface pred retry.nondet/2-0 (multi)
+mdb> continue
+     E19:    C10  5 CALL pred retry.nondet/2-0 (multi)
+mdb> print *
+       X0 (arg 1)             	4
+mdb> break nondet_2
+ 1: + stop  interface pred retry.nondet_2/2-0 (det)
+mdb> continue
+     E20:    C11  6 CALL pred retry.nondet_2/2-0 (det)
+mdb> retry 1
+     E19:    C10  5 CALL pred retry.nondet/2-0 (multi)
+mdb> print *
+       X0 (arg 1)             	4
+mdb> delete *
+ 0: E stop  interface pred retry.nondet/2-0 (multi)
+ 1: E stop  interface pred retry.nondet_2/2-0 (det)
+mdb> break fib
+ 0: + stop  interface pred retry.fib/2-0 (det)
+mdb> continue
+6
+4
+9
+40 41 
+50 51 
+     E21:    C12  2 CALL pred retry.fib/2-0 (det)
+mdb> print *
+       N (arg 1)              	15
+mdb> continue
+     E22:    C13  3 CALL pred retry.fib/2-0 (det)
+mdb> print *
+       N (arg 1)              	14
+mdb> continue
+     E23:    C14  4 CALL pred retry.fib/2-0 (det)
+mdb> continue
+     E24:    C15  5 CALL pred retry.fib/2-0 (det)
+mdb> step
+     E25:    C15  5 COND pred retry.fib/2-0 (det)
+mdb> retry 2
+     E22:    C13  3 CALL pred retry.fib/2-0 (det)
+mdb> print *
+       N (arg 1)              	14
+mdb> next
+     E26:    C13  3 COND pred retry.fib/2-0 (det)
+mdb> retry 1
+     E21:    C12  2 CALL pred retry.fib/2-0 (det)
+mdb> finish -n
+     E27:    C12  2 EXIT pred retry.fib/2-0 (det)
+mdb> delete *
+ 0: E stop  interface pred retry.fib/2-0 (det)
+mdb> break t
+ 0: + stop  interface pred retry.t/3-0 (nondet)
+mdb> continue
+987
+     E28:    C16  5 CALL pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+call table does not contain 1 in argument position 1.
+mdb> finish
+marker executed: t 1 2
+     E29:    C16  5 EXIT pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: incomplete
+answer #1: <120>
+mdb> retry
+     E28:    C16  5 CALL pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: inactive
+mdb> finish
+marker executed: t 1 2
+     E29:    C16  5 EXIT pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: incomplete
+answer #1: <120>
+mdb> delete *
+ 0: E stop  interface pred retry.t/3-0 (nondet)
+mdb> continue -n -S
+120 210 
