@@ -620,12 +620,11 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	set__difference(Extras, Extras3, ThenOnlyExtras),
 	stuff_liveness_residue_into_goal(Else1, ThenOnlyExtras, Else).
 
-	% Nondet lives cannot escape from a some if they
-	% are quantified to that quantifier.
+	% Nondet lives cannot escape from a quantifier
 add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0,
 				some(Vars, Goal), Liveness, Extras0) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
-					Goal, Liveness, _Extras).
+					Goal, Liveness, _Extras1).
 
 	% Nondet lives cannot escape from a negation
 add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0,

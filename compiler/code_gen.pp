@@ -682,7 +682,7 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
 	code_gen__generate_goals(Goals, model_det, Instr).
-code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(some(Vars, Goal), _GoalInfo, Instr) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
 	(
@@ -697,7 +697,14 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 		code_gen__generate_goal(model_non, Goal, GoalCode),
 		code_info__generate_det_commit(Commit),
 		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
-	).
+	),
+		% Any variables that became nondet live
+		% during the quantified goal that are
+		% quantified to the scope of that goal
+		% are no longer nondet live.
+	code_info__get_nondet_lives(NondetLives0),
+	{ set__delete_list(NondetLives0, Vars, NondetLives) },
+	code_info__set_nondet_lives(NondetLives).
 code_gen__generate_det_goal_2(disj(_Goals, _FV), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
@@ -1121,6 +1128,11 @@ code_gen__generate_negation(Goal, Code) -->
 :- mode code_gen__generate_negation_general(in, in, out, in, out) is det.
 
 code_gen__generate_negation_general(CodeModel, Goal, Code) -->
+		% make sure that any variables that became
+		% nondet live during the negated goal are
+		% no longer considered nondet live by reinstating
+		% the initial set of nondet live variables.
+	code_info__get_nondet_lives(NondetLives),
 	code_info__get_globals(Globals),
 	{ Goal = _NotGoal - GoalInfo },
 	{ goal_info_cont_lives(GoalInfo, Lives) },
@@ -1155,6 +1167,7 @@ code_gen__generate_negation_general(CodeModel, Goal, Code) -->
 	),
 	code_info__restore_failure_cont(RestoreContCode),
 	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
+	code_info__set_nondet_lives(NondetLives),
 	{ Code = tree(tree(tree(ModContCode, SaveHeapCode), GoalCode),
 			tree(FailCode, tree(RestoreContCode,
 						RestoreHeapCode))) }.
