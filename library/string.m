@@ -115,6 +115,9 @@
 
 :- pred string__from_char_list(list(character), string).
 :- mode string__from_char_list(in, out) is det.
+:- mode string__from_char_list(out, in) is semidet.
+	% XXX second mode should be det too
+	% (but this turns out to be tricky to implement)
 
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
@@ -601,14 +604,11 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 
 :- pred string__char_list_to_int_list(list(character), list(int)).
 :- mode string__char_list_to_int_list(in, out) is det.
+:- mode string__char_list_to_int_list(out, in) is semidet.
 
 string__char_list_to_int_list([], []).
 string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
-	( char__to_int(Char, Code0) ->
-		Code = Code0
-	;
-		error("string__char_list_to_int_list: char__to_int failed")
-	),
+	char__to_int(Char, Code),
 	string__char_list_to_int_list(Chars, Codes).
 
 string__to_upper(StrIn, StrOut) :-
