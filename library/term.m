@@ -105,3 +105,13 @@ term__context_line(LineNumber, LineNumber).
 term__context_init(LineNumber, LineNumber).
 
 %-----------------------------------------------------------------------------%
+
+:- pred term__get_int(term, int).
+:- mode term__get_int(input, output).
+term__get_int(term_functor(term_int(Int), _, _), Int).
+
+:- pred term__get_string(term, string).
+:- mode term__get_string(input, output).
+term__get_string(term_functor(term_string(String), _, _), String).
+
+%-----------------------------------------------------------------------------%

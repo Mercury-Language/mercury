@@ -74,9 +74,10 @@
 					list(var_id),	% head vars
 					list(mode),
 					hlds__goal,	% Body
-					term__context	% The context of
+					term__context,	% The context of
 							% the :- mode decl,
 							% not the clause.
+					call_info	% stack allocations
 				).
 
 :- export_type category.
@@ -157,7 +158,7 @@
 				% into case statements by the determinism
 				% analysis.
 				% Variable, functor-args-goal, followvars
-			;	switch(var_id, list(case), XXX)
+			;	switch(var_id, list(case), follow_vars)
 
 				% Initially only the two terms are filled
 				% in.  Mode analysis fills in the last
@@ -185,6 +186,9 @@
 			;	times.
 				% etc.	XXX
 
+:- export_type call_info.
+:- type call_info	--->	map(var_id, int).
+
 :- export_type case.
 :- type case		--->	case(cons_id, list(var), hlds__goal).
 			%	functor to match with, arguments to extract,
@@ -193,6 +197,9 @@
 	% Initially all unifications are represented as
 	% unify(term, term, _, _), but mode analysis replaces
 	% these with various special cases.
+
+:- export_type follow_vars.
+:- type follow_vars	--->	map(var_id, register).
 
 :- export_type unification.
 :- type unification	--->	
@@ -501,22 +508,28 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 
 procinfo_category(ProcInfo, Category) :-
 	ProcInfo = procedure(Category, _Names, _Types, _HeadVars,
-				_ModeInfo, _Goal, _Context).
+				_ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_variables(ProcInfo, VarSet) :-
 	ProcInfo = procedure(_Category, VarSet, _Types, _HeadVars,
-				_ModeInfo, _Goal, _Context).
+				_ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_vartypes(ProcInfo, VarTypes) :-
 	ProcInfo = procedure(_Category, _Names, VarTypes, _HeadVars,
-				_ModeInfo, _Goal, _Context).
+				_ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_headvars(ProcInfo, HeadVars) :-
 	ProcInfo = procedure(_Category, _Names, _Types, HeadVars,
-				_ModeInfo, _Goal, _Context).
+				_ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_modeinfo(ProcInfo, ModeInfo) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				ModeInfo, _Goal, _Context).
+				ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_goal(ProcInfo, Goal) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
-				_ModeInfo, Goal, _Context).
+				_ModeInfo, Goal, _Context, _CallInfo).
+procinfo_context(ProcInfo, Context) :-
+	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
+				_ModeInfo, _Goal, Context, _CallInfo).
+procinfo_callinfo(ProcInfo, CallInfo) :-
+	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
+				_ModeInfo, _Goal, _Context, CallInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
