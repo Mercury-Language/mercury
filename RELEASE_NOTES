@@ -145,11 +145,9 @@ extensions, and will work in their absence.
 The current Mercury system has been tested extensively on Solaris 2.x,
 IRIX 5.x, OSF/1.1, and Linux, and is also known to run on Ultrix 4.3,
 BSDI 1.1, AIX, and HPUX; it should run without too many changes on
-other Unix variants as well.  It also runs on Windows 95, using the
-gnu-win32 library, although the source distribution requires some
-tweaking to get it to work on Windows 95.  If you do encounter any
-problems, please report them to <mercury-bugs@cs.mu.oz.au> (see the
-BUGS file).
+other Unix variants as well.  It also runs on Windows 95 and Windows
+NT, using the gnu-win32 library.  If you do encounter any problems,
+please report them to <mercury-bugs@cs.mu.oz.au> (see the BUGS file).
 
 The current source distribution uses gcc as the compiler.  We require gcc
 version 2.6.3 or higher.  You will also need GNU make version 3.69 or higher.
@@ -172,6 +170,10 @@ The Mercury distribution contains:
      o  the Mercury frequently asked questions list
      o  the Prolog to Mercury transition guide
      o  some sample Mercury programs
+     o  some extra libraries for
+	- processing HTML forms using the CGI interface
+	- arithmetic on complex and imaginary numbers
+	- graphics using Tk and OpenGL
 
 The Mercury distribution is available via anonymous ftp or WWW
 from the following locations:
