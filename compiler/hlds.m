@@ -11,11 +11,11 @@
 
 :- interface.
 
-:- atd module_info.
+:- adt module_info.
 
-:- atd pred_id.
+:- adt pred_id.
 
-:- atd mode_id.
+:- adt mode_id.
 
 :- type category	--->	deterministic		% functional & total
 			;	semideterministic	% just functional
@@ -23,14 +23,12 @@
 
 :- type goal		--->	goal2 - liveness_info.
 
-:- type goal2		--->	(goal,goal)
+:- type goal2		--->	conj(goals)
 					% could use conj(goals) instead 
-
-			;	true	
 				
 				% The front-end annotates each call with
 				% its mode
-			;	call(pred_id, mode_id, list(var_id))
+			;	call(pred_id, mode_id, list(var_id)) XXX
 
 				% Deterministic disjunctions are converted
 				% into case statements by the compiler
@@ -40,9 +38,7 @@
 			% The remainder aren't used as yet, since
 			% we only handle deterministic code.
 
-			;	{goal;goal}	% {...} quotes ';'/2.
-			;	fail	
-					% could use disj(goals) instead
+			;	disj(goals)
 			;	not(vars,goal)
 					% could use if_then_else instead
 			;	all(vars,goal)
@@ -55,10 +51,10 @@
 
 %-----------------------------------------------------------------------------%
 
-	% This is how types are represented.
+	% This is how types are represented.  XXX
 
 :- type type_defn	--->	du_type(string, list(term), list(constructor))
-			;	uu_type(string, list(term), list(type_body))
+			;	%%% uu_type(string, list(term), list(type_body))
 			;	eqv_type(string, list(term), type_body).
 :- type constructor	==	term.
 :- type type_head	==	term.
