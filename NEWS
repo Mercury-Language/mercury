@@ -33,6 +33,7 @@ NEWS for Mercury release 0.6
   `--static-ground-terms' optimization apply also to floating point
   constants.  These two optimizations improved performance on the
   realistic "pseudoknot" benchmark by nearly a factor of four.
+  (There's still plenty of room for performance improvements, however.)
 
 * We've added some new compiler options to simplify the choice of which
   optimization options to enable.
@@ -85,7 +86,7 @@ NEWS for Mercury release 0.6
   - The code generator now emits better code for constructing deeply nested
     terms, and avoids some unnecessary register shuffling.
 
-  - The value numbering optimization now processes even code sequences
+  - The value numbering optimization now processes code sequences
     containing several heap allocations.
 
   - The `--pred-value-number' option now works.  If it is given, and
@@ -93,6 +94,14 @@ NEWS for Mercury release 0.6
     that is faster to access than the one from which another code
     sequence retrieves the value, this other code sequence will be
     reoptimized taking this into account.
+
+* We've added a little bit of inline assembler code for the Alpha so
+  that we can support the use of gcc non-local gotos and asm labels.
+  This improved both code size and execution speed for the Alpha port
+  by about 20-25%.
+
+* We've ported the Mercury implementation to RS/6000 systems running AIX.
+  (Thanks to Andreas Kuehlmann.)
 
 * We've made a few changes to the Mercury standard library.
 
@@ -118,7 +127,4 @@ NEWS for Mercury release 0.6
     conform to our general naming convention.
 
   - We have removed the (undocumented) library predicate list__map_maybe/3.
-
-* We've ported the Mercury implementation to RS/6000 systems running AIX.
-  (Thanks to Andreas Kuehlmann.)
 
