@@ -2,6 +2,7 @@
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
+#include	"io.h"
 #include	"init.h"
 #include	"ext_stdio.h"
 
@@ -31,14 +32,12 @@ bool		check_space = FALSE;
 
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
-static	Label	*which = NULL;
+static	Code	*which = NULL;
 
 /* misc. */
 
 int		repcounter = 1;
 char		scratchbuf[256];
-
-static Label 	*which_input = NULL;
 
 static	int	start_time;
 static	int	finish_time;
@@ -78,9 +77,12 @@ int main(int argc, char **argv)
 	setvbuf(stderr, NULL, _IONBF, 0);
 #endif
 
-	/* initialize label table */
+	/* initialize label table to be empty */
 	init_entries();
-	init_modules();
+#if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS)
+	do_init_modules();
+#endif
+	mercury_init_io();
 
 	/* process the command line options, save results in global vars */
 	process_options(argc, argv);
@@ -92,6 +94,15 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+void do_init_modules(void)
+{
+	static bool done = FALSE;
+	if (!done) {
+		init_modules();
+		done = TRUE;
+	}
+}
+
 static void process_options(int argc, char **argv)
 {
 	int	c;
@@ -100,8 +111,6 @@ static void process_options(int argc, char **argv)
 	List	*ptr;
 	List	*label_list;
 	Label	*label;
-	FILE	*sfp;
-	char    input_name[256];
 
 	progname = argv[0];
 
@@ -110,30 +119,28 @@ static void process_options(int argc, char **argv)
 
 	if (default_entry != NULL)
 	{
-		which = lookup_label_name(default_entry);
-		if (which == NULL)
-			printf("default entry %s not found\n", default_entry);
+		which = default_entry;
 	}
 
-	while ((c = getopt(argc, argv, "cltp:d:r:w:s:z:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "hcltp:d:r:w:s:z:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
 
+		case 'h':	usage();
+
 		case 'c':	check_space = TRUE;
 
-		when 'l':	sfp = popen("sort -n", "w");
-				label_list = get_all_labels();
+		when 'l':	label_list = get_all_labels();
 				for_list (ptr, label_list)
 				{
 					label = (Label *) ldata(ptr);
-					fprintf(sfp, "%u %x %s\n",
+					printf("%u %x %s\n",
 						(unsigned) label->e_addr,
 						(unsigned) label->e_addr,
 						label->e_name);
 				}
-
-				pclose(sfp);
+				exit(0);
 
 		when 't':	use_own_timer = TRUE;
 
@@ -192,7 +199,8 @@ static void process_options(int argc, char **argv)
 		when 'w':	which = lookup_label_name(optarg);
 				if (which == NULL)
 				{
-					printf("predicate name %s unknown\n",
+					fprintf(stderr,
+						"predicate name %s unknown\n",
 						optarg);
 					exit(1);
 				}
@@ -236,41 +244,19 @@ static void process_options(int argc, char **argv)
 	}
 	mercury_argc = argc - optind;
 	mercury_argv = argv + optind;
-#if 0
-	if (optind < argc && strcmp(argv[optind],"--") == 0) {
-		/* this is a workaround for broken (?) versions of getopt() */
-		/* printf("getopt() is broken\n"); */
-		mercury_argc = argc - optind - 1;
-		mercury_argv = argv + optind + 1;
-	} else {
-		/* printf("getopt() works\n");
-		   printf("argv[optind] = '%s'\n", argv[optind]); */
-	}
-#endif
-
 	if (which == NULL)
 	{
-		printf("no entry name supplied on command line or by default\n");
+		fprintf(stderr, "no entry point supplied on command line "
+				"or by default\n");
 		exit(1);
-	}
-
-	/* search the table for predname_input */
-	if (strneq(which->e_name, "mercury__", 9))
-		which_input = NULL;
-	else
-	{
-		sprintf(input_name, "%s_input", which->e_name);
-		which_input = lookup_label_name(input_name);
-
-		if (which_input == NULL)
-			printf("warning: %s not found\n", input_name);
 	}
 }
 
 static void usage(void)
 {
-	printf("Usage: %s [-clt] [-d[abcdghs]] [-[sz][hdn]#] [-p#] [-r#] [-1#] [-2#] [-3#] -w name\n",
+	printf("Usage: %s [-hclt] [-d[abcdghs]] [-[sz][hdn]#] [-p#] [-r#] [-1#] [-2#] [-3#] -w name\n",
 		progname);
+	printf("-h \t\tprint this usage message\n");
 	printf("-c \t\tcheck cross-function stack usage\n");
 	printf("-l \t\tprint all labels\n");
 	printf("-t \t\tuse own timer\n");
@@ -345,7 +331,7 @@ void run_code(void)
 	if (detaildebug)
 	{
 		sprintf(scratchbuf,
-			"after final call to %s", which->e_name);
+			"after final call");
 		debugregs(scratchbuf);
 	}
 
@@ -415,13 +401,7 @@ do_interpreter:
 	push(maxfr);
 	mkframe("interpreter", 1, LABEL(global_fail));
 
-	/* input routines must be deterministic */
-	if (which_input != NULL)
-		call(which_input->e_addr, LABEL(global_setupdone),
-			LABEL(do_interpreter));
-
-global_setupdone:
-	call(which->e_addr, LABEL(global_success), LABEL(do_interpreter));
+	call(which, LABEL(global_success), LABEL(do_interpreter));
 
 global_success:
 #ifndef	SPEED

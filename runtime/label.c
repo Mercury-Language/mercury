@@ -1,6 +1,7 @@
 #include	"imp.h"
 #include	"table.h"
 #include	"prof.h"
+#include	"init.h"
 
 #define	ENTRY_TABLE_SIZE	(1 << 16)	/* 64k */
 
@@ -52,6 +53,7 @@ Label *makeentry(const char *name, Code *addr)
 
 Label *lookup_label_addr(const Code *addr)
 {
+	do_init_modules();
 #ifndef	SPEED
 	if (progdebug)
 		printf("looking for label at %p\n", addr);
@@ -62,6 +64,7 @@ Label *lookup_label_addr(const Code *addr)
 
 Label *lookup_label_name(const char *name)
 {
+	do_init_modules();
 #ifndef	SPEED
 	if (progdebug)
 		printf("looking for label %s\n", name);
@@ -72,6 +75,7 @@ Label *lookup_label_name(const char *name)
 
 List *get_all_labels(void)
 {
+	do_init_modules();
 	return get_all_entries(entry_name_table);
 }
 

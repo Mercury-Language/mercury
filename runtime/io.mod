@@ -6,6 +6,7 @@
 **  modules `io', `require', and `std_util'.
 */
 
+#include "io.h"
 #include "imp.h"
 #include "wrapper.h"
 
@@ -29,7 +30,7 @@ MercuryFile *mercury_current_output = &mercury_stdout;
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
 #define final_io_state(r)		((void)0)
 
-static void
+void
 mercury_init_io(void)
 {
 	mercury_stdin.file = stdin;
@@ -96,7 +97,6 @@ Declare_entry(mercury__main_2_0);
 Declare_entry(mercury__unify_2_0);
 
 BEGIN_MODULE(io_module)
-	mercury_init_io();
 BEGIN_CODE
 
 mercury__io__run_0_0:

@@ -21,6 +21,7 @@ static	int	cmdtarget;
 
 BEGIN_MODULE(iface_module)
 	/* module initialization */
+	/* XXX this needs to go elsewhere */
 	cmdsize = LINESIZE;
 	cmdline = make_many(char, cmdsize);
 	yykwinit();
