@@ -227,7 +227,7 @@
 	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
 
-    #define JUMP(label)		goto (*label)
+    #define JUMP(label)		goto *(label)
 
   #endif
 
