@@ -4627,12 +4627,16 @@ Note that procedures implemented in C using either
 unless declared otherwise (@pxref{Impurity}), and they must
 be type-correct and mode-correct.  (Determinism-correctness
 is also required, but it follows from the rules already stated
-above.)  They may perform destructive update on their
+above.)  Pure or semipure procedures may perform destructive update on their
 arguments only if those arguments have an appropriate
 unique mode declaration.
-They may perform I/O only if their arguments
+Impure predicates may perform destructive update on data pointed to by
+C pointer arguments, even without unique modes.  But they cannot
+destructively update the arguments themselves.
+Procedures may perform I/O only if their arguments
 include an @samp{io__state} pair (see the @samp{io} chapter
-of the Mercury Library Reference Manual).
+of the Mercury Library Reference Manual), or if they are declared impure
+(@pxref{Impurity}).
 The Mercury implementation is allowed to assume that
 these rules are followed, and to optimize accordingly.
 If the C code is not type-correct, mode-correct,
@@ -4663,6 +4667,12 @@ undesirable optimizations (e.g. reordering, duplicate
 call elimination, tabling, lazy evaluation, @dots{})
 to this procedure, which could effect the behaviour
 of the program in unpredictable ways.
+
+Impure C code relaxes some of these restrictions.  
+Impure C code may perform I/O and although it cannot update its
+arguments directly (unless they have an appropriate unique mode, e.g.
+@samp{di}) it may update something pointed to by its arguments.
+Impure C code procedures must still be type correct and mode correct.
 
 @node Including C headers
 @section Including C headers
@@ -5337,22 +5347,25 @@ C code.
 
 One important aim of Mercury's impurity system is to make the
 distinction between the pure and impure code very clear.  This is done
-by requiring every impure predicate to be so declared, and by requiring
-every call to an impure predicate to be flagged as such.  Predicates
-that are implemented in terms of impure predicates are assumed to be
-impure themselves unless they are explicitly promised to be pure.
+by requiring every impure predicate or function to be so declared, and
+by requiring every call to an impure predicate or function to be flagged as
+such.
+Predicates or functions that are implemented in terms of impure predicates
+or functions are assumed to be impure themselves unless they are
+explicitly promised to be pure.
 
 Please note that the facilities described here are needed only very
 rarely.  The main intent is for implementing language primitives such as
-the all solutions predicates.  Any use of @samp{impure} or @samp{semipure}
-probably indicates either a weakness in the Mercury standard library, or
-the programmer's lack of familiarity with the standard library.
-Newcomers to Mercury are hence encouraged to @strong{skip this section}.
-
-
+the all solutions predicates, or for implementing interfaces to C
+libraries using the C interface.  Any other use of @samp{impure} or
+@samp{semipure} probably indicates either a weakness in the Mercury
+standard library, or the programmer's lack of familiarity with the
+standard library.  Newcomers to Mercury are hence encouraged to
+@strong{skip this section}.
 
 @menu
 * Purity levels::       Choosing the right level of purity.
+* Purity ordering::     How purity levels are ordered 
 * Impurity semantics::  What impure code means.
 * Declaring impurity::  Declaring predicates impure.
 * Impure calls::        Marking a call as impure.
@@ -5368,17 +5381,20 @@ Mercury distinguishes three ``levels'' of purity:
 
 @table @dfn
 @item pure
-Pure predicates and functions always return the same outputs given the
-same inputs.  They do not interact with the ``real'' world (i.e., do any
+For pure procedures, the set of solutions depends only on the
+values of the input arguments.
+They do not interact with the ``real'' world (i.e., do any
 input/output) without taking an io__state (@pxref{Types}) as input and
 returning one as output, and do not make any changes to any data
 structure that will not be undone on backtracking (unless the data
-structure would be unreachable on backtracking).  The behaviour of other
-predicates is never affected by the invocation of pure predicates, nor
-is the behaviour of pure predicates ever affected by the invocation of
-other predicates.
+structure would be unreachable on backtracking).  The behaviour of pure
+predicates is never affected by the invocation of pure predicates.
+It is possible for the invocation of pure predicates to affect the
+behaviour of non-pure predicates and vice versa.
 
-The vast majority of Mercury predicates are pure.  
+By default, Mercury predicates and functions are pure.
+Without using the foreign function interface or calling other impure
+predicates and functions it is impossible to write impure code in Mercury.
 
 @item semipure
 Semipure predicates are just like pure predicates, except that their
@@ -5388,11 +5404,17 @@ reflected by their input arguments, though they do not affect the state
 themselves.
 
 @item impure
-Impure predicates may do anything, including changing the state of the
+Impure predicates may do almost anything, including changing the state of the
 computation.
+They must be type-, mode-, determinism - and uniqueness correct. 
 
 @end table
 
+@node Purity ordering 
+@section Purity ordering
+
+The three levels of purity have a total ordering defined upon them
+(which we will simply call the purity), where @code{pure > semipure > impure}.
 
 @node Impurity semantics
 @section Semantics
@@ -5412,16 +5434,17 @@ which by definition are not part of their declarative semantics.  Thus
 it is the @emph{operational} semantics of impure predicates that Mercury
 must specify, and Mercury compilers must respect.
 
-The operational semantics of a Mercury predicate which invokes impure
-code is a modified form of the @emph{strict sequential} semantics
-(@pxref{Semantics}).  @emph{Impure} goals may not be reordered relative
-to any other goals; not even ``minimal'' reordering as implied by the
-modes is permitted.  If any such reordering is needed, this is a mode
-error.  However, @emph{pure} and @emph{semipure} goals may be reordered
-as long as they are not moved across an impure goal.  Execution of
-impure goals is strict: they must be executed if they are reached, even
-if it can be determined that that computation cannot lead to successful
-termination.
+The operational semantics of a Mercury predicate which invokes
+@emph{impure} code is a modified form of the @emph{strict sequential}
+semantics (@pxref{Semantics}).  @emph{Impure} goals may not be reordered
+relative to any other goals; not even ``minimal'' reordering as implied
+by the modes is permitted.  If any such reordering is needed, this is a
+mode error.  However, @emph{pure} and @emph{semipure} goals may be
+reordered as the compiler desires (within the bounds of the semantics
+the user has specified for the program) as long as they are not moved
+across an impure goal.  Execution of impure goals is strict: they must
+be executed if they are reached, even if it can be determined that that
+computation cannot lead to successful termination.
 
 Semipure goals can be given a ``contextual'' declarative semantics.
 They cannot have any side-effects, so it is expected that, given the
@@ -5436,35 +5459,73 @@ compiler may treat a semipure goal as if it were pure.
 
 
 @node Declaring impurity
-@section Declaring predicate impurity
+@section Declaring impure functions and predicates
+
+Every Mercury predicate or function has exactly two purity values
+associated with it.
+One is the @emph{declared} purity of the predicate or function, which is
+given by the programmer.
+The other value is the @emph{inferred} purity,
+which is calculated from the purity of goals in the body of the
+predicate or function.
 
 A predicate is declared to be impure or semipure by preceding the word
 @code{pred} in its @code{pred} declaration with @code{impure}
-or @code{semipure}, respectively.  That is, a declaration of the form:
+or @code{semipure}, respectively.  
+Similarly, a function is declared impure or semipure by preceding the
+word @code{func} in its @code{func} declaration with @code{impure} or
+@code{semipure}.
+That is, a declaration of the form:
 
 @example
 :- impure pred @var{Pred}(@var{Arguments}@dots{}).
+:- semimpure pred @var{Pred}(@var{Arguments}@dots{}).
 @end example
 
 @noindent
 or
 
 @example
-:- semipure pred @var{Pred}(@var{Arguments}@dots{}).
+:- impure func @var{Func}(@var{Arguments}@dots{}) = Result.
+:- semipure func @var{Func}(@var{Arguments}@dots{}) = Result.
 @end example
 
 @noindent
-declares the predicate @var{Pred} to be impure or semipure, respectively.
+declares the predicate @var{Pred} to be impure and the function
+@var{Func} to be semipure, respectively.
 
+Type class methods may also be declared as @code{impure} or
+@code{semipure} by preceeding the word @code{pred} or @code{func} with the
+appropriate purity level.  An instance of the type class must provide
+method implementations that are at least as pure as the method
+declaration. 
 
 @node Impure calls
 @section Marking a call as impure
 
+Every call to a Mercury predicate or function also has exactly two
+purity values associated with it.
+One is the declared purity of the call, which is
+given by the programmer as an annotation of the call.
+The other value is the inferred purity,
+which is the purity of the predicate or function.
+
+It is an error for the declared purity of a goal to be more pure than
+the inferred purity; the compiler should flag this as an error.
+The compiler should issue a warning if the declared purity of a goal is
+less pure than its inferred purity.
+
 If a predicate is impure or semipure, all calls to it must be preceded
-with the word @code{impure} or @code{semipure}, respectively.  Note
-that only predicate calls need to (and are permitted to) be prefixed
-with @code{impure} or @code{semipure}, compound goals never need this.
-See @ref{Impurity Example} for an example of this.
+with the word @code{impure} or @code{semipure}, respectively. 
+
+If a function is impure or semipure, it must be called as part of a
+simple unification with a variable, and this unification must be
+prefixed by the word @code{impure} or @code{semipure}, respectively.
+
+Note that only predicate calls and unifications of variables with 
+functions need to (and are permitted to) be prefixed
+with @code{impure} or @code{semipure}.  Compound goals never need this.
+See @ref{Impurity Example} for an example of this syntax.
 
 The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 
@@ -5478,10 +5539,22 @@ declarative semantics, without hidden side-effects.
 @node Promising purity
 @section Promising that a predicate is pure
 
-Some predicates which call impure or semipure predicates are themselves
-pure.  In fact, the main purpose of the Mercury impurity system is to
-allow programmers to write pure predicates using impure ones, while protecting
-the procedural implementation from aggressive compiler optimizations.
+Predicates that are implemented in terms of impure or semipure predicates are
+assumed to have the least of the purity of the goals in their body.
+The declared purity of a predicate must not be more pure
+than the inferred purity; if it is, the compiler must generate an error.
+If the declared purity is less pure than the inferred purity, the
+compiler should issue a warning (this is similar to the above case for
+goals).
+Because the inferred purity of the predicate is calculated from the
+declared purity of the calls it executes,  the lowest purity bound is
+propagated up from callee to caller through the program.
+
+However, some predicates which call impure or semipure predicates are
+themselves pure. 
+The only way for the programmer to stop the propagation of impurity is
+to explicitly promise that a predicate or function is pure.
+
 Of course, the Mercury compiler cannot verify that a predicate is pure,
 so it is the programmer's responsibility to ensure this.  If a predicate
 is promised pure and is not, the behaviour of the program is undefined.
@@ -5515,8 +5588,8 @@ and so is not useful as is.  It is meant only as an example.
         [will_not_call_mercury],
         "if (X > max) max = X;").
 
-:- semipure pred get_max(int::out) is det.
-:- pragma c_code(get_max(X::out),
+:- semipure func get_max = (int::out) is det.
+:- pragma c_code(get_max = (X::out),
         [will_not_call_mercury],
         "X = max;").
 
@@ -5529,7 +5602,7 @@ max_solution(Generator, Max) :-
         (   Generator(X),
             impure set_max(X),
             fail
-        ;   semipure get_max(Max)
+        ;   semipure Max = get_max
         ).
 @end example
 

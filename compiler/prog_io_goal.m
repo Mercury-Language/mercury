@@ -147,7 +147,7 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 :- mode parse_goal_2(in, in, in, out, out) is semidet.
 parse_goal_2("true", [], V, true, V).
 parse_goal_2("fail", [], V, fail, V).
-parse_goal_2("=", [A0, B0], V, unify(A, B), V) :-
+parse_goal_2("=", [A0, B0], V, unify(A, B, pure), V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
 /******
@@ -227,7 +227,7 @@ parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [A0, B0], V, unify(A, B), V) :-
+parse_goal_2("is", [A0, B0], V, unify(A, B, pure), V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
 parse_goal_2("impure", [A0], V0, A, V) :-
@@ -244,6 +244,8 @@ parse_goal_with_purity(A0, V0, Purity, A, V) :-
 	parse_goal(A0, V0, A1, V),
 	(   A1 = call(Pred, Args, pure) - _ ->
 		A = call(Pred, Args, Purity)
+	;   A1 = unify(ProgTerm1, ProgTerm2, pure) - _ ->
+		A = unify(ProgTerm1, ProgTerm2, Purity)
 	;
 		% Inappropriate placement of an impurity marker, so we treat
 		% it like a predicate call.  typecheck.m prints out something

@@ -1888,7 +1888,8 @@ mercury_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
 	write_purity_prefix(Purity),
 	mercury_output_call(Name, Term, VarSet, Indent).
 
-mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
+mercury_output_goal_2(unify(A, B, Purity), VarSet, _Indent) -->
+	write_purity_prefix(Purity),
 	mercury_output_term(A, VarSet, no),
 	io__write_string(" = "),
 	mercury_output_term(B, VarSet, no, next_to_graphic_token).

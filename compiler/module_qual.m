@@ -403,7 +403,7 @@ process_assert(if_then_else(_, GA, GB, GC) - _, Symbols, Success) :-
 	list__append(Symbols0, SymbolsC, Symbols),
 	bool__and(SuccessA, SuccessB, Success0),
 	bool__and(Success0, SuccessC, Success).
-process_assert(call(SymName, Args0, _) - _, Symbols, Success) :-
+process_assert(call(SymName, Args0, _Purity) - _, Symbols, Success) :-
 	(
 		SymName = qualified(_, _)
 	->
@@ -421,7 +421,7 @@ process_assert(call(SymName, Args0, _) - _, Symbols, Success) :-
 		Symbols = [],
 		Success = no
 	).
-process_assert(unify(LHS0, RHS0) - _, Symbols, Success) :-
+process_assert(unify(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
 	term__coerce(LHS0, LHS),
 	term__coerce(RHS0, RHS),
 	(

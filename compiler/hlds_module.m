@@ -1324,6 +1324,13 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 				module_info, pred_id, proc_id).
 :- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
 
+	% Get the pred_id matching a higher-order term with
+	% the given argument types, aborting with an error if none is
+	% found.
+:- pred get_pred_id(sym_name, pred_or_func, tvarset, list(type),
+				module_info, pred_id).
+:- mode get_pred_id(in, in, in, in, in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1857,8 +1864,8 @@ insert_into_mna_index(Module, Name, Arity, PredId, MNA_Index0, MNA_Index) :-
 
 %-----------------------------------------------------------------------------%
 
-get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
-			PredId, ProcId) :-
+get_pred_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
+		PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgTypes, Arity),
 	(
@@ -1868,21 +1875,34 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 			TVarSet, ArgTypes, PredId0, _PredName)
 	->
-		PredId = PredId0,
-		get_proc_id(PredicateTable, PredId, ProcId)
+		PredId = PredId0
 	;
 		% Undefined/invalid pred or func.
+		fail
+	).
+
+get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
+			PredId, ProcId) :-
+	( 
+		get_pred_id(SymName, PredOrFunc, TVarSet,
+			ArgTypes, ModuleInfo, PredId0)
+	->
+		PredId = PredId0
+	;
+                % Undefined/invalid pred or func.
 		% the type-checker should ensure that this never happens
+		list__length(ArgTypes, Arity),
 		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
 		prog_out__sym_name_to_string(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
-		string__append_list(
-			["get_pred_id_and_proc_id: ",
+		string__append_list(["get_pred_id_and_proc_id: ", 
 			"undefined/invalid ", PredOrFuncStr,
-			"\n`", Name2, "/", ArityString, "'"],
-			Msg),
+			"\n`", Name2, "/", ArityString, "'"], Msg),
 		error(Msg)
-	).
+
+	),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	get_proc_id(PredicateTable, PredId, ProcId).
 
 :- pred get_proc_id(predicate_table, pred_id, proc_id).
 :- mode get_proc_id(in, in, out) is det.

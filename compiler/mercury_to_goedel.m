@@ -668,7 +668,14 @@ goedel_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
 	goedel_output_call(term__functor(term__atom(Name0), Term,
 		Context0), VarSet, Indent).
 
-goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
+goedel_output_goal_2(unify(A, B, Purity), VarSet, _Indent) -->
+	(   { Purity = pure } ->
+		[]
+	;
+		io__write_string("/* "),
+		write_purity(Purity),
+		io__write_string(" */ ")
+	),
 	goedel_output_term(A, VarSet),
 	io__write_string(" = "),
 	goedel_output_term(B, VarSet).

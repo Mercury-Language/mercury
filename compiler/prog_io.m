@@ -1893,7 +1893,7 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 :- mode process_func_3(in, in, in, in, in, in, in, in, in, out) is det.
 
 process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
-		ExistQVars, ClassContext, Attributes, Result) :-
+		ExistQVars, ClassContext, Attributes0, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( \+ verify_type_and_mode_list(As) ->
 			Result = error("some but not all arguments have modes",
@@ -1914,9 +1914,7 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 		"function result has mode, but function arguments don't",
 					FuncTerm)
 			;
-				% note: impure or semipure functions are not
-				% allowed
-				Purity = (pure),
+				get_purity(Attributes0, Purity, Attributes),
 				varset__coerce(VarSet0, TVarSet),
 				varset__coerce(VarSet0, IVarSet),
 				Result0 = ok(func(TVarSet, IVarSet, ExistQVars,

@@ -182,7 +182,7 @@ all_local:	$(PROGS) $(SPLIT_PROGS:%=%.split)
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = typeclasses sub-modules exceptions
+SUBDIRS = typeclasses sub-modules exceptions purity
 
 dep_subdirs:
 	for dir in $(SUBDIRS); do \

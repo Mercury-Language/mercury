@@ -1,9 +1,9 @@
 :- module purity.
-
+:- interface.
 %----------------------------------------------------------------
 %  Needed for later tests.
-
 :- type foo ---> a ; b.
+:- implementation.
 
 :- impure pred imp is det.
 :- pragma c_code(imp, will_not_call_mercury, ";").

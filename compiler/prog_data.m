@@ -563,7 +563,7 @@
 
 	% atomic goals
 	;	call(sym_name, list(prog_term), purity)
-	;	unify(prog_term, prog_term).
+	;	unify(prog_term, prog_term, purity).
 
 :- type goals		==	list(goal).
 

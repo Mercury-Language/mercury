@@ -1,7 +1,7 @@
 :- module purity_nonsense.
-
-:- impure func undefined_func = foo.		% no impure functions (yet)
-
+:- interface.
+:- type foo == int.
+:- implementation.
 :- impure type badtype ---> oops.
 :- impure mode badmode :: free -> free.
 
