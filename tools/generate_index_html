@@ -88,7 +88,9 @@ skip_file () {
 # Generate a link to a file if it exists.
 # This should be called within a `<ul>' element.
 link_to_existing_file () {
+	#echo link_to_existing_file "$@"
 	if [ -f $1 ]; then
+		#echo YES
 		link_to_file "<li> " $1 "$2"
 	fi
 }
@@ -114,51 +116,55 @@ handle_release () {
 
 do_handle_release () {
 	file=$1
-	date=`expr "$file" : '.*\([0-9]\{4\}-[0-9][0-9]-[0-9][0-9]\).*'`
+	date=`expr "$file" : '.*\([0-9]\{4\}[-_][0-9][0-9][-_][0-9][0-9]\).*'`
+	date_underscores=`echo $date | tr '-' '_'`
+	date=`echo $date | tr '_' '-'`
 
+	#echo "file=$file, date=$date"
 	case $file in
-	    *.rpm|*.deb)
-	    	# XXX Currently we only produce RPMs and Debian
-		# packages for major releases.
-		version=`expr "$file" : ".*-\([0-9.]*[0-9]\)-[0-9].*"`
-		release_name="Release $version"
-		release_id="$version"
-		;;
 	    *-rotd*-unstable*)
 		release_name="Unstable snapshot $date"
 		release_id="rotd-$date-unstable"
+		release_id_underscores="rotd_${date_underscores}_unstable"
 		;;
 	    *-rotd*)
 		release_name="Stable snapshot $date"
 		release_id="rotd-$date"
+		release_id_underscores="rotd_$date_underscores"
 		;;
 	    *-*([0-9.])-beta*-unstable*)
 		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*-unstable.*"`
 		release_name="Unstable $version beta $date"
 		release_id="$version-beta-$date-unstable"
+		release_id_underscores="${version}_beta_${date_underscores}_unstable"
 		;;
 	    *-*([0-9.])-beta*)
 		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*"`
 		release_name="Stable $version beta $date"
 		release_id="$version-beta-$date"
+		release_id_underscores="${version}_beta_$date_underscores"
 		;;
 	    *-*([0-9.])*-unstable*)
 		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*-unstable.*"`
 		release_name="Unstable release $version"
 		release_id="$version-unstable"
+		release_id_underscores="${version}_unstable"
 		;;
 	    *-*([0-9.])*)
+		echo "XXX [release_id=$release_id	file=$file]" 1>&2
 		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*"`
 		release_name="Release $version"
 		release_id="$version"
+		release_id_underscores="$version"
 		;;
 	    *)
 		# Unknown release, this will be put in the list of
 		# other files after all known releases.
+		#echo "unknown file name: $file"
 		return 0
 		;;
 	esac
-	#echo "[release_id=$release_id	file=$file]" 1>&2
+	echo "[release_id=$release_id	file=$file]" 1>&2
 
 	echo "<li> $release_name" >> $INDEX
 	echo '<ul>' >> $INDEX
@@ -168,15 +174,18 @@ do_handle_release () {
 		"Installation instructions"
 	link_to_existing_file mercury-compiler-$release_id.tar.gz \
 		"Source distribution"
-	link_to_existing_file mercury-compiler-$release_id-1.src.rpm \
+	link_to_existing_file \
+		mercury-compiler-$release_id_underscores-1.src.rpm \
 		"Source RPM"
-	link_to_existing_file mercury-compiler-$release_id-1.i386.rpm \
+	link_to_existing_file \
+		mercury-compiler-$release_id_underscores-1.i386.rpm \
 		"RPM (x86)"
 	link_to_existing_file mercury_$release_id-1_i386.deb "Debian (x86)"
 	bindists1=`echo mercury-$release_id.[a-z]*.tar.gz`
 	bindists2=`echo mercury-compiler-$release_id.[a-z]*.zip`
 	case "$bindists1" in
 	    *'*'.tar.gz)
+		bindists=""
 		;;
 	    *)
 	    	bindists="$bindists1"
@@ -303,7 +312,7 @@ handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
 # We list these in reverse alphabetical order,
 # so that the most recently dated ones come first.
 #
-for file in `ls -1 mercury-compiler-${BETA_RELEASE}-beta*.tar.gz \
+for file in `ls -1 mercury-compiler-${BETA_RELEASE}-beta*.{tar.gz,rpm} \
 		mercury-${BETA_RELEASE}-beta*.tar.gz 2>/dev/null | sort -r`
 do
 	case $file in
@@ -315,7 +324,7 @@ done
 #
 # Stable release-of-the-day.
 #
-for file in `ls -1 mercury-compiler-rotd*.tar.gz mercury-rotd-* 2>/dev/null \
+for file in `ls -1 mercury-compiler-rotd*.{tar.gz,rpm} mercury-rotd* 2>/dev/null \
 		| sort -r`
 do
 	case $file in
@@ -327,7 +336,7 @@ done
 #
 # Unstable release-of-the-day
 #
-for file in `ls -1 mercury-compiler-rotd-*-unstable.tar.gz 2>/dev/null \
+for file in `ls -1 mercury-compiler-rotd*-unstable.{tar.gz,rpm} 2>/dev/null \
 		| sort -r`
 do
 	handle_release $file
@@ -336,7 +345,7 @@ done
 #
 # Other assorted releases.
 #
-for file in mercury-compiler-* mercury-rotd-* mercury-gcc-*
+for file in mercury-compiler-* mercury-rotd* mercury-gcc-*
 do
 	handle_release $file
 done
