@@ -33,6 +33,11 @@ DRAFT NEWS for Mercury release 0.7
 
   You can use just plain `write_string' rather than `io__write_string'.
 
+* There is a new `:- use_module' directive.
+
+  This is the same as `:- import_module', except all uses of the imported
+  items must be explicitly module qualified.
+
   More changes to the module system are expected in the future,
   including changing the module qualifier operator to `.'
   (currently either `:' or `__' can be used as module qualifiers).
@@ -51,7 +56,7 @@ DRAFT NEWS for Mercury release 0.7
   The `--intermodule-optimization' option enables cross-module inlining
   and cross-module specialization of higher-order predicates.
   Also `--intermod-unused-args' enables cross-module elimination of
-  unused arguments.
+  unused input arguments.
 
 * We've continued to improve the quality of the code we generate.
 
