@@ -7,7 +7,8 @@ include ../Mmake
 #-----------------------------------------------------------------------------#
 
 NONDETPROGS=	commit_bug disj_disj hello_again interpreter nasty_nondet \
-		nondet_disj nondet_ite nondet_ite_2 partition semidet_lambda
+		nondet_disj nondet_ite nondet_ite_2 nondetlive \
+		partition semidet_lambda
 
 DETPROGS=	arithmetic det_complicated_unify duplicate_label environment \
 		higher_order parse_list petdr1 \
