@@ -679,6 +679,17 @@ peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment,
 		)
 	).
 
+	% If a decr_sp immediately follows an incr_sp of the same amount,
+	% the two cancel out.
+	%
+	%	incr_sp N
+	%	decr_sp N	=>	(nothing)
+	%
+peephole__opt_instr_2(incr_sp(N), _Comment,
+		_Procmap, _Forkmap, Instrs0, Instrs) :-
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [decr_sp(N) - _Comment2 | Instrs].
+
 %-----------------------------------------------------------------------------%
 
 	% Build up a table showing which labels are branched to.
