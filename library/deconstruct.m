@@ -847,12 +847,16 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 	#undef	NONCANON
 
 	if (!success) {
-		/* Fill in some dummy values, to ensure that we don't
-		   try to return uninitialized memory to Mercury.
-		   It doesn't matter what we put here, except that
-		   we must have Arity > MaxArity. */
+		/*
+		** Fill in some dummy values, to ensure that we don't
+		** try to return uninitialized memory to Mercury.
+		** It doesn't matter what we put here, except that
+		** we must have Arity > MaxArity. The casts cast away
+		** const.
+		*/
+
 		Arity = MaxArity + 1;
-		Functor = """";
+		Functor = (MR_String) (MR_Integer) """";
 		Arguments = MR_list_empty();
 	}
 }").
