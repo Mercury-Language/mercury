@@ -71,7 +71,7 @@ main_2(yes(Msg), _) -->
 main_2(no, []) -->
 	usage_error("missing operand").
 main_2(no, [Fname1 | Rest]) -->
-	( { Rest = [ Fname2 | _ ] },
+	( { Rest = [Fname2 | _] },
 	    ( { Fname1 = Fname2 } ->
 		% There are no differences between identical files.
 	    	[]

@@ -74,7 +74,7 @@ lcss__find_diff(File1, File2, Diff) :-
 :- pred lcss__show_lcss(lcss :: in, io__state :: di, io__state :: uo) is det.
 lcss__show_lcss([]) -->
 	io__write_string("[]").
-lcss__show_lcss([ X-Y | Lcss ]) -->
+lcss__show_lcss([X - Y | Lcss]) -->
 	io__write_int(X),
 	io__write_char('-'),
 	io__write_int(Y),
@@ -120,7 +120,7 @@ lcss__find_lcss(File1, File2, Lcss) :-
 
 :- pred lcss__swap(lcss :: in, lcss :: out) is det.
 lcss__swap([], []).
-lcss__swap([I-J | RestIn], [J-I | RestOut]) :-
+lcss__swap([I - J | RestIn], [J - I | RestOut]) :-
 	lcss__swap(RestIn, RestOut).
 
 %-----------------------------------------------------------------------------%
@@ -204,7 +204,7 @@ lcss__build_thresh2(I, N, MatchList, Thresh0, Link0, Thresh1, Link1) :-
 	    % If we have stepped past the end of the file, we
 	    % have finished.
 	    Thresh0=Thresh1, Link0=Link1
-	; MatchList = [ Matches | MatchRest ] ->
+	; MatchList = [Matches | MatchRest] ->
 	    % Otherwise step through each match in this MatchList
 	    % entry, and arrach 
 
@@ -232,7 +232,7 @@ lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 	    K1 is K - 1,
 	    array__set(Thresh0, K, J, Thresh2),
 	    array__lookup(Link0, K1, LinkK1),
-	    array__set(Link0, K, [ I-J | LinkK1 ], Link2)
+	    array__set(Link0, K, [I - J | LinkK1], Link2)
 	;
 	    % Otherwise forget it.
 	    Link0 = Link2, Thresh0 = Thresh2
@@ -245,7 +245,7 @@ lcss__build_thresh3(N, I, [ J | Js ], Thresh0, Link0, Thresh1, Link1) :-
 :- pred lcss__build_thresh4(int, int, int, int, array(int)).
 :- mode lcss__build_thresh4(in, in, in, out, in) is det.
 lcss__build_thresh4(Lo, Hi, J, K, Thresh) :-
-	Width is Hi-Lo,
+	Width is Hi - Lo,
 	( Width < 1 ->
 	    error("lcss__build_thresh4")
 	; Width = 1 ->
@@ -316,20 +316,20 @@ lcss__to_diff2(X, Y, L1, L2, [], Diff) :-
 	    ( Y > L2 ->
 		Diff = []
 	    ;
-		Diff = [add(XLoc,Y-L2)]
+		Diff = [add(XLoc,Y - L2)]
 	    )
 	;
 	    ( Y > L2 ->
-		Diff = [delete(X-L1,YLoc)]
+		Diff = [delete(X - L1,YLoc)]
 	    ;
-		Diff = [change(X-L1,Y-L2)]
+		Diff = [change(X - L1,Y - L2)]
 	    )
 	).
 
 	% Otherwise we only have to consider the amount
 	% of file between the current position and the
 	% next match.
-lcss__to_diff2(X, Y, L1, L2, [X2-Y2 | Lcss], Diff) :-
+lcss__to_diff2(X, Y, L1, L2, [X2 - Y2 | Lcss], Diff) :-
 	XLoc is X - 1,   YLoc is Y - 1,
 	XEnd is X2 - 1,  YEnd is Y2 - 1,
 	XNext is X2 + 1, YNext is Y2 + 1,
@@ -338,15 +338,15 @@ lcss__to_diff2(X, Y, L1, L2, [X2-Y2 | Lcss], Diff) :-
 		lcss__to_diff2(XNext, YNext, L1, L2, Lcss, Diff)
 	    ;
 		lcss__to_diff2(XNext, YNext, L1, L2, Lcss, Diff1),
-		Diff = [ add(XLoc,Y-YEnd) | Diff1 ]
+		Diff = [add(XLoc,Y - YEnd) | Diff1]
 	    )
 	;
 	    ( Y = Y2 ->
 		lcss__to_diff2(XNext, YNext, L1, L2, Lcss, Diff1),
-		Diff = [ delete(X-XEnd,YLoc) | Diff1 ]
+		Diff = [delete(X - XEnd,YLoc) | Diff1]
 	    ;
 		lcss__to_diff2(XNext, YNext, L1, L2, Lcss, Diff1),
-		Diff = [ change(X-XEnd,Y-YEnd) | Diff1 ]
+		Diff = [change(X - XEnd,Y - YEnd) | Diff1]
 	    )
 	).
 
@@ -356,14 +356,14 @@ lcss__to_diff2(X, Y, L1, L2, [X2-Y2 | Lcss], Diff) :-
 	% indexing is implemented in the determinism
 	% checker.
 lcss__display_diff(_, _, []) --> { true }.
-lcss__display_diff(File1, File2, [ SingDiff | Diff ]) -->
-	( { SingDiff = add(X, Y1-Y2) },
+lcss__display_diff(File1, File2, [SingDiff | Diff]) -->
+	( { SingDiff = add(X, Y1 - Y2) },
 	    lcss__write_command(X, X, 'a', Y1, Y2),
 	    lcss__show_file(File2, "> ", Y1, Y2)
-	; { SingDiff = delete(X1-X2, Y) },
+	; { SingDiff = delete(X1 - X2, Y) },
 	    lcss__write_command(X1, X2, 'd', Y, Y),
 	    lcss__show_file(File1, "< ", X1, X2)
-	; { SingDiff = change(X1-X2, Y1-Y2) },
+	; { SingDiff = change(X1 - X2, Y1 - Y2) },
 	    lcss__write_command(X1, X2, 'c', Y1, Y2),
 	    lcss__show_file(File1, "< ", X1, X2),
 	    io__write_string("---\n"),
@@ -374,43 +374,20 @@ lcss__display_diff(File1, File2, [ SingDiff | Diff ]) -->
 	% lcss__display_diff takes a list of diffs and
 	% displays it in the standard diff(1) format.
 % lcss__display_diff(_, _, []) --> { true }.
-% lcss__display_diff(File1, File2, [ add(X, Y1-Y2) | Diff ]) -->
+% lcss__display_diff(File1, File2, [ add(X, Y1 - Y2) | Diff ]) -->
 % 	lcss__write_command(X, X, 'a', Y1, Y2),
 %	lcss__show_file(File2, "> "), Y1, Y2),
 % 	lcss__display_diff(File1, File2, Diff),
-% lcss__display_diff(File1, File2, [ delete(X1-X2, Y) | Diff ]) -->
+% lcss__display_diff(File1, File2, [ delete(X1 - X2, Y) | Diff ]) -->
 % 	lcss__write_command(X1, X2, 'd', Y, Y),
 %	lcss__show_file(File1, "< ", X1, X2),
 % 	lcss__display_diff(File1, File2, Diff).
-% lcss__display_diff(File1, File2, [ change(X1-X2, Y1-Y2) | Diff ]) -->
+% lcss__display_diff(File1, File2, [ change(X1 - X2, Y1 - Y2) | Diff ]) -->
 % 	lcss__write_command(X1, X2, 'c', Y1, Y2),
 %	lcss__show_file(File1, "< ", X1, X2),
 %	io__write_string("---\n"),
 %	lcss__show_file(File2, "> ", Y1, Y2),
 % 	lcss__display_diff(File1, File2, Diff).
-
-
-	% lcss__show_file shows the portion of the file
-	% from Low to High, with each line preceeded by
-	% the Prefix characher and a space.  The diff(1)
-	% format specifies that the lines effected in the
-	% first file should be flagged by '<' and the
-	% lines effected in the second file should be
-	% flagged by '>'.
-:- pred lcss__show_file(file, string, int, int, io__state, io__state).
-:- mode lcss__show_file(in, in, in, in, di, uo) is det.
-lcss__show_file(File, Prefix, Low, High) -->
-	( { Low > High } ->
-	    { true }
-	;
-	    ( { file__get_line(File, Low, Line) } ->
-	    	{ Low1 is Low + 1 },
-	    	io__write_strings([Prefix, Line]),
-	    	lcss__show_file(File, Prefix, Low1, High)
-	    ;
-		{ true }
-	    )
-	).
 
 	% lcss__write_command displays a diff(1) command.
 	% Like ed(1), a pair of numbers which are identical
@@ -434,6 +411,77 @@ lcss__write_command(X1, X2, C, Y1, Y2) -->
 	    io__write_int(Y2)
 	),
 	io__write_char('\n').
+
+	% lcss__display_diff takes a list of diffs and
+	% displays it in the RCS ,v format.
+%lcss__display_diff_rcs(_File1, _File2, []) --> { true }.
+%lcss__display_diff_rcs(File1, File2, [ add(X, Y1 - Y2) | Diff ]) -->
+%	{ Y is Y2 - Y1 + 1 },
+%	lcss__write_command_rcs('a', X, Y),
+%	lcss__show_file(File1, "", Y1, Y2),
+%	lcss__display_diff_rcs(File1, File2, Diff).
+%lcss__display_diff_rcs(File1, File2, [ delete(X1 - X2, Y) | Diff ]) -->
+%	{ X is X2 - X1 + 1 },
+%	lcss__write_command_rcs('d', X, Y),
+%	lcss__display_diff_rcs(File1, File2, Diff).
+%lcss__display_diff_rcs(File1, File2, [ change(X1 - X2, Y1 - Y2) | Diff ]) -->
+%	{ X is X2 - X1 + 1 },
+%	{ Y is Y2 - Y1 + 1 },
+%	lcss__write_command_rcs('d', X, Y),
+%	lcss__write_command_rcs('a', X, Y),
+%	lcss__show_file(File1, "", Y1, Y2),
+%	lcss__display_diff_rcs(File1, File2, Diff).
+
+lcss__display_diff_rcs(_File1, _File2, []) --> { true }.
+lcss__display_diff_rcs(File1, File2, [Cmd | Diff]) -->
+	( { Cmd = add(X, Y1 - Y2) },
+	    { Y is Y2 - Y1 + 1 },
+	    lcss__write_command_rcs('a', X, Y),
+	    lcss__show_file(File2, "", Y1, Y2)
+	; { Cmd = delete(X1 - X2, Y) },
+	    { X is X2 - X1 + 1 },
+	    lcss__write_command_rcs('d', X1, X)
+	; { Cmd = change(X1 - X2, Y1 - Y2) },
+	    { X is X2 - X1 + 1 },
+	    { Y is Y2 - Y1 + 1 },
+	    lcss__write_command_rcs('d', X1, X),
+	    lcss__write_command_rcs('a', X1, Y),
+	    lcss__show_file(File2, "", Y1, Y2)
+	),
+	lcss__display_diff_rcs(File1, File2, Diff).
+
+	% lcss__write_command_rcs displays a diff command in
+	% the RCS ,v format.
+:- pred lcss__write_command_rcs(char, int, int, io__state, io__state).
+:- mode lcss__write_command_rcs(in, in, in, di, uo) is det.
+lcss__write_command_rcs(C, X, Y) -->
+	io__write_char(C),
+	io__write_int(X),
+	io__write_char(' '),
+	io__write_int(Y),
+	io__write_char('\n').
+
+	% lcss__show_file shows the portion of the file
+	% from Low to High, with each line preceeded by
+	% the Prefix characher and a space.  The diff(1)
+	% format specifies that the lines effected in the
+	% first file should be flagged by '<' and the
+	% lines effected in the second file should be
+	% flagged by '>'.
+:- pred lcss__show_file(file, string, int, int, io__state, io__state).
+:- mode lcss__show_file(in, in, in, in, di, uo) is det.
+lcss__show_file(File, Prefix, Low, High) -->
+	( { Low > High } ->
+	    { true }
+	;
+	    ( { file__get_line(File, Low, Line) } ->
+	    	{ Low1 is Low + 1 },
+	    	io__write_strings([Prefix, Line]),
+	    	lcss__show_file(File, Prefix, Low1, High)
+	    ;
+		{ true }
+	    )
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
