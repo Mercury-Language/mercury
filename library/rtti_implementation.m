@@ -32,11 +32,10 @@
 :- import_module deconstruct, list.
 
 :- use_module std_util.
+:- use_module type_desc.
 
-	% Our type_info and type_ctor_info implementations are both
-	% abstract types.
-:- type type_info.
-:- type type_ctor_info.
+:- type type_info == type_desc__type_desc.
+:- type type_ctor_info == type_desc__type_ctor_desc.
 
 :- func get_type_info(T::unused) = (type_info::out) is det.
 
@@ -63,6 +62,12 @@
 	% This is useful in a few places, so we'd like to share the code, but
 	% it's better to put it into an implementation module such as this one.
 :- func unsafe_cast(T1::in) = (T2::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Implementations for use from construct.
+
+:- func num_functors(type_desc__type_desc) = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -123,13 +128,108 @@
 
 	% We keep all the other types abstract.
 
-:- type type_ctor_info ---> type_ctor_info(c_pointer).
-:- type type_info ---> type_info(c_pointer).
 :- type compare_pred ---> compare_pred(c_pointer).
 :- type type_functors ---> type_functors(c_pointer).
 :- type type_layout ---> type_layout(c_pointer).
 :- type pred_type ---> pred_type(c_pointer).
 :- type pseudo_type_info ---> pred_type(c_pointer).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Implementation of the interface to construct.
+%
+
+	% See MR_get_num_functors in runtime/mercury_construct.c
+num_functors(TypeInfo) = NumFunctors :-
+	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+	TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+	( TypeCtorRep = du,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	; TypeCtorRep = du_usereq,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	; TypeCtorRep = reserved_addr,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	; TypeCtorRep = reserved_addr_usereq,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	; TypeCtorRep = enum,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+	; TypeCtorRep = enum_usereq,
+		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
+
+	; TypeCtorRep = notag,
+		NumFunctors = 1
+	; TypeCtorRep = notag_usereq,
+		NumFunctors = 1
+	; TypeCtorRep = notag_ground,
+		NumFunctors = 1
+	; TypeCtorRep = notag_ground_usereq,
+		NumFunctors = 1
+	; TypeCtorRep = tuple,
+		NumFunctors = 1
+	; TypeCtorRep = univ,
+		NumFunctors = 1
+
+	; TypeCtorRep = equiv_ground,
+		error("rtti_implementation num_functors for equiv types")
+	; TypeCtorRep = equiv,
+		error("rtti_implementation num_functors for equiv types")
+
+	; TypeCtorRep = int,
+		NumFunctors = -1
+	; TypeCtorRep = char,
+		NumFunctors = -1
+	; TypeCtorRep = float,
+		NumFunctors = -1
+	; TypeCtorRep = string,
+		NumFunctors = -1
+	; TypeCtorRep = (func),
+		NumFunctors = -1
+	; TypeCtorRep = (pred),
+		NumFunctors = -1
+	; TypeCtorRep = void,
+		NumFunctors = -1
+	; TypeCtorRep = c_pointer,
+		NumFunctors = -1
+	; TypeCtorRep = typeinfo,
+		NumFunctors = -1
+	; TypeCtorRep = type_ctor_info,
+		NumFunctors = -1
+	; TypeCtorRep = type_desc,
+		NumFunctors = -1
+	; TypeCtorRep = type_ctor_desc,
+		NumFunctors = -1
+	; TypeCtorRep = typeclassinfo,
+		NumFunctors = -1
+	; TypeCtorRep = base_typeclass_info,
+		NumFunctors = -1
+	; TypeCtorRep = array,
+		NumFunctors = -1
+	; TypeCtorRep = succip,
+		NumFunctors = -1
+	; TypeCtorRep = hp,
+		NumFunctors = -1
+	; TypeCtorRep = curfr,
+		NumFunctors = -1
+	; TypeCtorRep = maxfr,
+		NumFunctors = -1
+	; TypeCtorRep = redofr,
+		NumFunctors = -1
+	; TypeCtorRep = redoip,
+		NumFunctors = -1
+	; TypeCtorRep = trail_ptr,
+		NumFunctors = -1
+	; TypeCtorRep = ticket,
+		NumFunctors = -1
+	; TypeCtorRep = foreign,
+		NumFunctors = -1
+
+	; TypeCtorRep = unknown,
+		error("num_functors: unknown type_ctor_rep")
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C#",
 	get_type_info(_T::unused) = (TypeInfo::out),
@@ -1778,6 +1878,22 @@ type_layout(_) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("type_layout").
+
+:- func type_ctor_num_functors(type_ctor_info) = int.
+
+:- pragma foreign_proc("C#",
+	type_ctor_num_functors(TypeCtorInfo::in) = (TypeLayout::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	TypeLayout = (int)
+		TypeCtorInfo[(int)
+			type_ctor_info_field_nums.type_ctor_num_functors];
+").
+
+type_ctor_num_functors(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_num_functors").
 
 :- pragma foreign_proc("C",
 	unsafe_cast(VarIn::in) = (VarOut::out),

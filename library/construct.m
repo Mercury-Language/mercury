@@ -86,6 +86,8 @@
 
 :- implementation.
 
+:- use_module rtti_implementation.
+
 :- pragma foreign_decl("C", "
 
 #include ""mercury_type_desc.h""
@@ -102,10 +104,7 @@
 	MR_restore_transient_registers();
 }").
 
-num_functors(_) = _ :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__num_functors").
+num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
 
 :- pragma foreign_proc("C",
 	get_functor(TypeDesc::in, FunctorNumber::in, FunctorName::out,
