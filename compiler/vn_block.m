@@ -19,6 +19,11 @@
 :- pred vn__opt_non_block(list(instruction), livemap, list(instruction)).
 :- mode vn__opt_non_block(in, in, out) is det.
 
+	% Optimize instructions, assume we are restarting inside a block.
+
+:- pred vn__reopt_block(list(instruction), livemap, list(instruction)).
+:- mode vn__reopt_block(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -49,6 +54,14 @@ vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs) :-
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	).
+
+vn__reopt_block(Instrs0, Livemap, Instrs) :-
+	vn__init_tables(Vn_tables0),
+	bintree_set__init(Liveset0),
+	map__init(Ctrlmap0),
+	map__init(Flushmap0),
+	vn__opt_block(Instrs0, Vn_tables0, Livemap, Liveset0,
+		no, no, Ctrlmap0, Flushmap0, 0, [], Instrs).
 
 	% Optimize instructions, assuming we are inside of a block.
 
@@ -118,7 +131,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 			Livemap, SeenLive,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
-		vn__flush_all_nodes(Livevals1, Vn_tables1,
+		vn__flush_all_nodes(Livevals1, Vn_tables1, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
@@ -129,7 +142,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 			Livemap, SeenLive,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
-		vn__flush_all_nodes(Livevals1, Vn_tables1,
+		vn__flush_all_nodes(Livevals1, Vn_tables1, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
@@ -157,7 +170,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 		vn__new_ctrl_node(vn_label(Label), Livemap, SeenLive,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
-		vn__flush_all_nodes(Livevals1, Vn_tables1,
+		vn__flush_all_nodes(Livevals1, Vn_tables1, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			Prev, FlushInstrs),
 		vn__opt_non_block([Instr0 | Instrs0], Livemap, Instrs1),
@@ -167,7 +180,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 		vn__new_ctrl_node(vn_goto(CodeAddr), Livemap, SeenLive,
 			Vn_tables0, Vn_tables1, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
-		vn__flush_all_nodes(Livevals1, Vn_tables1,
+		vn__flush_all_nodes(Livevals1, Vn_tables1, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
@@ -179,7 +192,7 @@ vn__handle_instr(Instr0, Vn_tables0, Livemap, Livevals0, Incrhp, SeenLive,
 			Livemap, SeenLive,
 			Vn_tables1, Vn_tables2, Livevals0, Livevals1,
 			Ctrlmap0, Ctrlmap1, Flushmap0, Flushmap1, Ctrl0, Ctrl1),
-		vn__flush_all_nodes(Livevals1, Vn_tables2,
+		vn__flush_all_nodes(Livevals1, Vn_tables2, Livemap,
 			Incrhp, Ctrlmap1, Flushmap1, Ctrl1,
 			[Instr0 | Prev], FlushInstrs),
 		vn__opt_non_block(Instrs0, Livemap, Instrs1),
@@ -445,7 +458,7 @@ vn__record_livevals([], Vn_tables, Vn_tables,
 		Livevals, Livevals, FlushEntry, FlushEntry).
 vn__record_livevals([Lval | Livelist], Vn_tables0, Vn_tables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry) :-
-	vn__no_heap_lval_to_vnlval(Lval, MaybeVnlval),
+	vn__no_access_lval_to_vnlval(Lval, MaybeVnlval),
 	(
 		MaybeVnlval = yes(Vnlval),
 		( vn__search_desired_value(Vnlval, VnPrime, Vn_tables0) ->

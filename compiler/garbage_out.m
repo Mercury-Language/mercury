@@ -4,7 +4,7 @@
 % Main author: trd 
 %
 % This module creates the label table information and outputs it, for
-% use by the link tool. It then appends the shape table to then end of
+% use by the link tool. It then appends the shape table to the end of
 % this.
 %
 % We traverse the llds, and grab all the continuation labels and their
@@ -149,7 +149,7 @@ garbage_out__remove_fields([], []).
 garbage_out__remove_fields([L|Ls], Ms) :-
 	garbage_out__remove_fields(Ls, Xs),
 	(
-		L = live_lvalue(field(_,_,_), _)
+		L = live_lvalue(field(_, _, _), _)
 	->
 		Ms = Xs
 	;
@@ -167,7 +167,7 @@ garbage_out__remove_fields([L|Ls], Ms) :-
 
 
 %-----------------------------------------------------------------------------%
-% Find the determinisim of this label by looking for framevars or stackvars
+% Find the determinism of this label by looking for framevars or stackvars
 % or succip. If there is no succip, then we assume nondet. 
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__get_det(list(liveinfo), det).
@@ -177,19 +177,19 @@ garbage_out__get_det([], nondeterministic).
 garbage_out__get_det([L | Ls], Det) :-
 	(
 		(
-			L = live_lvalue(stackvar(_),_)
+			L = live_lvalue(stackvar(_), _)
 		;
-			L = live_lvalue(succip,_)
+			L = live_lvalue(succip, _)
 		)
 	->
 		Det = deterministic
 	;
 		(
-			L = live_lvalue(framevar(_),_)
+			L = live_lvalue(framevar(_), _)
 		;
-			L = live_lvalue(maxfr,_)
+			L = live_lvalue(maxfr, _)
 		;
-			L = live_lvalue(curredoip,_)
+			L = live_lvalue(redoip(_), _)
 		)
 	->
 		Det = nondeterministic

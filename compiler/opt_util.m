@@ -42,6 +42,11 @@
 	code_addr, list(instruction), list(instruction)).
 :- mode opt_util__next_modframe(in, in, out, out, out) is semidet.
 
+	% See if these instructions touch nondet stack controls.
+
+:- pred opt_util__touches_nondet_ctrl(list(instruction), bool).
+:- mode opt_util__touches_nondet_ctrl(in, out) is det.
+
 	% Find the first label in the instruction stream.
 
 :- pred opt_util__find_first_label(list(instruction), label).
@@ -482,7 +487,8 @@ opt_util__lval_refers_stackvars(framevar(_), _) :-
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curfr, no).
-opt_util__lval_refers_stackvars(curredoip, no).
+opt_util__lval_refers_stackvars(redoip(Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(hp, no).
 opt_util__lval_refers_stackvars(sp, no).
 opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
@@ -858,5 +864,66 @@ opt_util__remove_both_incr_decr_sp([Instr0 | Instrs0], Instrs) :-
 	;
 		Instrs = [Instr0 | Instrs1]
 	).
+
+opt_util__touches_nondet_ctrl([], no).
+opt_util__touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-
+	( Uinstr = assign(Lval, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch0)
+	; Uinstr = incr_hp(Lval, _, Rval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
+		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
+		bool__or(TouchLval, TouchRval, Touch0)
+	; Uinstr = mark_hp(Lval) ->
+		opt_util__touches_nondet_ctrl_lval(Lval, Touch0)
+	; Uinstr = restore_hp(Rval) ->
+		opt_util__touches_nondet_ctrl_rval(Rval, Touch0)
+	;
+		Touch0 = yes
+	),
+	(
+		Touch0 = yes,
+		Touch = yes
+	;
+		Touch0 = no,
+		opt_util__touches_nondet_ctrl(Instrs, Touch)
+	).
+
+:- pred opt_util__touches_nondet_ctrl_lval(lval, bool).
+:- mode opt_util__touches_nondet_ctrl_lval(in, out) is det.
+
+opt_util__touches_nondet_ctrl_lval(reg(_), no).
+opt_util__touches_nondet_ctrl_lval(stackvar(_), no).
+opt_util__touches_nondet_ctrl_lval(framevar(_), no).
+opt_util__touches_nondet_ctrl_lval(succip, no).
+opt_util__touches_nondet_ctrl_lval(maxfr, yes).
+opt_util__touches_nondet_ctrl_lval(curfr, yes).
+opt_util__touches_nondet_ctrl_lval(redoip(_), yes).
+opt_util__touches_nondet_ctrl_lval(hp, no).
+opt_util__touches_nondet_ctrl_lval(sp, no).
+opt_util__touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval1, Touch1),
+	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
+	bool__or(Touch1, Touch2, Touch).
+opt_util__touches_nondet_ctrl_lval(lvar(_), no).
+opt_util__touches_nondet_ctrl_lval(temp(_), no).
+
+:- pred opt_util__touches_nondet_ctrl_rval(rval, bool).
+:- mode opt_util__touches_nondet_ctrl_rval(in, out) is det.
+
+opt_util__touches_nondet_ctrl_rval(lval(Lval), Touch) :-
+	opt_util__touches_nondet_ctrl_lval(Lval, Touch).
+opt_util__touches_nondet_ctrl_rval(var(_), no).
+opt_util__touches_nondet_ctrl_rval(create(_, _, _), no).
+opt_util__touches_nondet_ctrl_rval(mkword(_, Rval), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
+opt_util__touches_nondet_ctrl_rval(const(_), no).
+opt_util__touches_nondet_ctrl_rval(unop(_, Rval), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
+opt_util__touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval1, Touch1),
+	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
+	bool__or(Touch1, Touch2, Touch).
 
 %-----------------------------------------------------------------------------%

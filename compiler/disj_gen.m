@@ -90,22 +90,23 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_non_disj(Goals, Code) -->
+disj_gen__generate_non_disj(Goals0, Code) -->
 		% Sanity check
-	{ Goals = [] ->
+	{ Goals0 = [] ->
 		error("empty disjunction shouldn't be non-det")
-	; Goals = [_]  ->
+	; Goals0 = [_]  ->
 		error("singleton disjunction")
 	;
 		true
 	},
+	{ disj_gen__sort_cases(Goals0, Goals1) },
 	code_info__generate_nondet_saves(SaveVarsCode),
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 	code_info__get_next_label(EndLab),
-	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode),
+	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
 	{ Code = tree(SaveVarsCode, tree(SaveHeapCode, GoalsCode)) }.
 
 :- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, code_tree,
@@ -149,6 +150,29 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		]) },
 		{ DisjCode = tree(tree(PopCode, ContCode),
 				tree(GoalCode, EndCode)) }
+	).
+
+:- pred disj_gen__sort_cases(list(hlds__goal), list(hlds__goal)).
+:- mode disj_gen__sort_cases(in, out) is det.
+
+disj_gen__sort_cases(Goals0, Goals) :-
+	disj_gen__sort_cases_2(Goals0, CanFail, CannotFail),
+	list__append(CannotFail, CanFail, Goals).
+
+:- pred disj_gen__sort_cases_2(list(hlds__goal), list(hlds__goal),
+					list(hlds__goal)).
+:- mode disj_gen__sort_cases_2(in, out, out) is det.
+
+disj_gen__sort_cases_2([], [], []).
+disj_gen__sort_cases_2([Goal0 - GoalInfo0 | Goals0], CanFail, CannotFail) :-
+	disj_gen__sort_cases_2(Goals0, CanFail0, CannotFail0),
+	goal_info_determinism(GoalInfo0, Category),
+	( Category = deterministic ->
+		CannotFail = [Goal0 - GoalInfo0 | CannotFail0],
+		CanFail = CanFail0
+	;
+		CannotFail = CannotFail0,
+		CanFail = [Goal0 - GoalInfo0 | CanFail0]
 	).
 
 %---------------------------------------------------------------------------%

@@ -318,7 +318,7 @@ vn__choose_cheapest_loc([Loc | Locs], Stack0, Heap0, BestLoc) :-
 		Loc = vn_curfr,
 		BestLoc = Loc
 	;
-		Loc = vn_curredoip,
+		Loc = vn_redoip(_),
 		vn__choose_cheapest_loc(Locs, yes(Loc), Heap0, BestLoc)
 	;
 		Loc = vn_hp,
@@ -643,22 +643,22 @@ vn__flush_old_hp(Srcs0, ReturnRval, Vn_tables0, Vn_tables, Templocs0, Templocs,
 			UserLoc = vn_reg(_)
 		->
 			Vnlval = UserLoc,
-			vn__no_heap_vnlval_to_lval(Vnlval, MaybeLval),
+			vn__no_access_vnlval_to_lval(Vnlval, MaybeLval),
 			(
 				MaybeLval = yes(Lval)
 			;
 				MaybeLval = no,
-				error("register refers to heap")
+				error("register needs access path")
 			),
 			Templocs2 = Templocs1
 		;
 			vn__next_temploc(Templocs1, Templocs2, Vnlval),
-			vn__no_heap_vnlval_to_lval(Vnlval, MaybeLval),
+			vn__no_access_vnlval_to_lval(Vnlval, MaybeLval),
 			(
 				MaybeLval = yes(Lval)
 			;
 				MaybeLval = no,
-				error("temploc refers to heap")
+				error("temploc needs access path")
 			)
 		),
 		ReturnRval = const(int_const(42))	% should not be used
@@ -666,12 +666,12 @@ vn__flush_old_hp(Srcs0, ReturnRval, Vn_tables0, Vn_tables, Templocs0, Templocs,
 		MaybeTag = no,
 		AssignedVn = OldhpVn,
 		vn__next_temploc(Templocs1, Templocs2, Vnlval),
-		vn__no_heap_vnlval_to_lval(Vnlval, MaybeLval),
+		vn__no_access_vnlval_to_lval(Vnlval, MaybeLval),
 		(
 			MaybeLval = yes(Lval)
 		;
 			MaybeLval = no,
-			error("temploc refers to heap")
+			error("temploc needs access path")
 		),
 		ReturnRval = lval(Lval)
 	),
@@ -849,11 +849,11 @@ vn__flush_access_path(Vnlval, Srcs, Lval, Vn_tables0, Vn_tables,
 		Templocs = Templocs0,
 		AccessInstrs = []
 	;
-		Vnlval = vn_curredoip,
-		Lval = curredoip,
-		Vn_tables = Vn_tables0,
-		Templocs = Templocs0,
-		AccessInstrs = []
+		Vnlval = vn_redoip(Vn1),
+		vn__flush_vn(Vn1, [src_access(Vnlval) | Srcs], Rval,
+			Vn_tables0, Vn_tables,
+			Templocs0, Templocs, AccessInstrs),
+		Lval = redoip(Rval)
 	;
 		Vnlval = vn_hp,
 		Lval = hp,
@@ -887,7 +887,7 @@ vn__flush_access_path(Vnlval, Srcs, Lval, Vn_tables0, Vn_tables,
 	% If the vn currently stored in the vnlval is used elsewhere,
 	% and if it cannot be recreated blind (or at least not cheaply),
 	% then save the value somewhere else. We prefer the somewhere else
-	% to be a location where we have to store tha value anyway.
+	% to be a location where we have to store the value anyway.
 	% However, we must not choose a location that is used in the expression
 	% being assigned to the vnlval.
 
@@ -916,7 +916,7 @@ vn__maybe_save_prev_value(Vnlval, Vn, ForbiddenLvals,
 			ReqLocs = [_|_]
 		->
 			vn__choose_cheapest_loc(ReqLocs, no, no, Presumed),
-			vn__no_heap_vnlval_to_lval(Presumed, MaybePresumed),
+			vn__no_access_vnlval_to_lval(Presumed, MaybePresumed),
 			(
 				MaybePresumed = yes(PresumedLval),
 				( list__member(PresumedLval, ForbiddenLvals) ->

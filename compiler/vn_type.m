@@ -19,7 +19,7 @@
 			;	vn_succip
 			;	vn_maxfr
 			;	vn_curfr
-			;	vn_curredoip
+			;	vn_redoip(vn)
 			;	vn_hp
 			;	vn_sp
 			;	vn_field(tag, vn, vn)		% lval

@@ -39,7 +39,7 @@ vn__find_specials(vn_framevar(_), []).
 vn__find_specials(vn_succip, [vn_succip]).
 vn__find_specials(vn_maxfr, [vn_maxfr]).
 vn__find_specials(vn_curfr, [vn_curfr]).
-vn__find_specials(vn_curredoip, [vn_curredoip]).
+vn__find_specials(vn_redoip(Vn), [vn_redoip(Vn)]).
 vn__find_specials(vn_hp, [vn_hp]).
 vn__find_specials(vn_sp, [vn_sp]).
 vn__find_specials(vn_field(_, _, _), []).
@@ -47,7 +47,7 @@ vn__find_specials(vn_temp(_), []).
 
 vn__convert_to_vnlval_and_insert([], Liveset, Liveset).
 vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
-	vn__no_heap_lval_to_vnlval(Lval, MaybeVnlval),
+	vn__no_access_lval_to_vnlval(Lval, MaybeVnlval),
 	(
 		MaybeVnlval = yes(Vnlval),
 		bintree_set__insert(Liveset0, Vnlval, Liveset1)
@@ -85,13 +85,13 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 	% Turn an vnlval into an lval if possible.
 
-:- pred vn__no_heap_vnlval_to_lval(vnlval, maybe(lval)).
-:- mode vn__no_heap_vnlval_to_lval(in, out) is det.
+:- pred vn__no_access_vnlval_to_lval(vnlval, maybe(lval)).
+:- mode vn__no_access_vnlval_to_lval(in, out) is det.
 
 	% Do the reverse.
 
-:- pred vn__no_heap_lval_to_vnlval(lval, maybe(vnlval)).
-:- mode vn__no_heap_lval_to_vnlval(in, out) is det.
+:- pred vn__no_access_lval_to_vnlval(lval, maybe(vnlval)).
+:- mode vn__no_access_lval_to_vnlval(in, out) is det.
 
 :- pred vn__find_sub_vns(vnrval, list(vn)).
 :- mode vn__find_sub_vns(in, out) is det.
@@ -317,7 +317,7 @@ vn__lval_to_vn(Lval, Vn, Vn_tables0, Vn_tables) :-
 	).
 
 vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables) :-
-	vn__no_heap_lval_to_vnlval(Lval, MaybeVnlval),
+	vn__no_access_lval_to_vnlval(Lval, MaybeVnlval),
 	( MaybeVnlval = yes(VnlvalPrime) ->
 		Vnlval = VnlvalPrime,
 		Vn_tables = Vn_tables0
@@ -325,6 +325,9 @@ vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables) :-
 		vn__rval_to_vn(Rval1, Vn1, Vn_tables0, Vn_tables1),
 		vn__rval_to_vn(Rval2, Vn2, Vn_tables1, Vn_tables),
 		Vnlval = vn_field(Tag, Vn1, Vn2)
+	; Lval = redoip(Rval1) ->
+		vn__rval_to_vn(Rval1, Vn1, Vn_tables0, Vn_tables),
+		Vnlval = vn_redoip(Vn1)
 	;
 		error("unexpected lval in vn__lval_to_vnlval")
 	).
@@ -332,31 +335,31 @@ vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables) :-
 % If you to add to this list to fix a determinism error,
 % check vn__lval_to_vnlval above as well.
 
-vn__no_heap_lval_to_vnlval(reg(Reg),		yes(vn_reg(Reg))).
-vn__no_heap_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
-vn__no_heap_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
-vn__no_heap_lval_to_vnlval(succip,		yes(vn_succip)).
-vn__no_heap_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
-vn__no_heap_lval_to_vnlval(curfr,		yes(vn_curfr)).
-vn__no_heap_lval_to_vnlval(curredoip,		yes(vn_curredoip)).
-vn__no_heap_lval_to_vnlval(hp,			yes(vn_hp)).
-vn__no_heap_lval_to_vnlval(sp,			yes(vn_sp)).
-vn__no_heap_lval_to_vnlval(field(_, _, _),	no).
-vn__no_heap_lval_to_vnlval(temp(N),		yes(vn_temp(N))).
-vn__no_heap_lval_to_vnlval(lvar(_Var), _) :-
+vn__no_access_lval_to_vnlval(reg(Reg),		yes(vn_reg(Reg))).
+vn__no_access_lval_to_vnlval(stackvar(N),	yes(vn_stackvar(N))).
+vn__no_access_lval_to_vnlval(framevar(N),	yes(vn_framevar(N))).
+vn__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
+vn__no_access_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
+vn__no_access_lval_to_vnlval(curfr,		yes(vn_curfr)).
+vn__no_access_lval_to_vnlval(redoip(_),		no).
+vn__no_access_lval_to_vnlval(hp,		yes(vn_hp)).
+vn__no_access_lval_to_vnlval(sp,		yes(vn_sp)).
+vn__no_access_lval_to_vnlval(field(_, _, _),	no).
+vn__no_access_lval_to_vnlval(temp(N),		yes(vn_temp(N))).
+vn__no_access_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
 
-vn__no_heap_vnlval_to_lval(vn_reg(Reg),		yes(reg(Reg))).
-vn__no_heap_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
-vn__no_heap_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
-vn__no_heap_vnlval_to_lval(vn_succip,		yes(succip)).
-vn__no_heap_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
-vn__no_heap_vnlval_to_lval(vn_curfr,		yes(curfr)).
-vn__no_heap_vnlval_to_lval(vn_curredoip,	yes(curredoip)).
-vn__no_heap_vnlval_to_lval(vn_hp,		yes(hp)).
-vn__no_heap_vnlval_to_lval(vn_sp,		yes(sp)).
-vn__no_heap_vnlval_to_lval(vn_field(_, _, _), 	no).
-vn__no_heap_vnlval_to_lval(vn_temp(N),		yes(temp(N))).
+vn__no_access_vnlval_to_lval(vn_reg(Reg),	yes(reg(Reg))).
+vn__no_access_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
+vn__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
+vn__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
+vn__no_access_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
+vn__no_access_vnlval_to_lval(vn_curfr,		yes(curfr)).
+vn__no_access_vnlval_to_lval(vn_redoip(_),	no).
+vn__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
+vn__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
+vn__no_access_vnlval_to_lval(vn_field(_, _, _), no).
+vn__no_access_vnlval_to_lval(vn_temp(N),	yes(temp(N))).
 
 vn__lval_access_rval(reg(_), []).
 vn__lval_access_rval(stackvar(_), []).
@@ -364,7 +367,7 @@ vn__lval_access_rval(framevar(_), []).
 vn__lval_access_rval(succip, []).
 vn__lval_access_rval(maxfr, []).
 vn__lval_access_rval(curfr, []).
-vn__lval_access_rval(curredoip, []).
+vn__lval_access_rval(redoip(Rval), [Rval]).
 vn__lval_access_rval(hp, []).
 vn__lval_access_rval(sp, []).
 vn__lval_access_rval(field(_, Rval1, Rval2), [Rval1, Rval2]).
@@ -372,17 +375,38 @@ vn__lval_access_rval(temp(_), []).
 vn__lval_access_rval(lvar(_), _) :-
 	error("lvar detected in value_number").
 
+/* one of these preds should be eliminated XXX */
 vn__vnlval_access_vns(vn_reg(_), []).
 vn__vnlval_access_vns(vn_stackvar(_), []).
 vn__vnlval_access_vns(vn_framevar(_), []).
 vn__vnlval_access_vns(vn_succip, []).
 vn__vnlval_access_vns(vn_maxfr, []).
 vn__vnlval_access_vns(vn_curfr, []).
-vn__vnlval_access_vns(vn_curredoip, []).
+vn__vnlval_access_vns(vn_redoip(Vn), [Vn]).
 vn__vnlval_access_vns(vn_hp, []).
 vn__vnlval_access_vns(vn_sp, []).
 vn__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
 vn__vnlval_access_vns(vn_temp(_), []).
+
+vn__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
+	vn__find_sub_vns_vnlval(Vnlval, SubVns).
+vn__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
+vn__find_sub_vns(vn_const(_), []).
+vn__find_sub_vns(vn_create(_, _, _), []).
+vn__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
+vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
+
+vn__find_sub_vns_vnlval(vn_reg(_), []).
+vn__find_sub_vns_vnlval(vn_stackvar(_), []).
+vn__find_sub_vns_vnlval(vn_framevar(_), []).
+vn__find_sub_vns_vnlval(vn_succip, []).
+vn__find_sub_vns_vnlval(vn_maxfr, []).
+vn__find_sub_vns_vnlval(vn_curfr, []).
+vn__find_sub_vns_vnlval(vn_redoip(Vn), [Vn]).
+vn__find_sub_vns_vnlval(vn_hp, []).
+vn__find_sub_vns_vnlval(vn_sp, []).
+vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
+vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 	vn__lookup_defn(Vn, Vnrval, Vn_tables),
@@ -407,26 +431,6 @@ vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 		vn__is_const_expr(Vn2, IsConst2, Vn_tables),
 		bool__and(IsConst1, IsConst2, IsConst)
 	).
-
-vn__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
-	vn__find_sub_vns_vnlval(Vnlval, SubVns).
-vn__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
-vn__find_sub_vns(vn_const(_), []).
-vn__find_sub_vns(vn_create(_, _, _), []).
-vn__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
-vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
-
-vn__find_sub_vns_vnlval(vn_reg(_), []).
-vn__find_sub_vns_vnlval(vn_stackvar(_), []).
-vn__find_sub_vns_vnlval(vn_framevar(_), []).
-vn__find_sub_vns_vnlval(vn_succip, []).
-vn__find_sub_vns_vnlval(vn_maxfr, []).
-vn__find_sub_vns_vnlval(vn_curfr, []).
-vn__find_sub_vns_vnlval(vn_curredoip, []).
-vn__find_sub_vns_vnlval(vn_hp, []).
-vn__find_sub_vns_vnlval(vn_sp, []).
-vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 vn__find_lvals_in_rval(Rval, Lvals) :-
 	(
@@ -754,10 +758,9 @@ vn__lval_cost(Lval, O0, O, S0, S, H0, H) :-
 		S = S0,
 		H = H0
 	;
-		Lval = curredoip,
-		O = O0,
-		S is S0 + 1,
-		H = H0
+		Lval = redoip(Rval),
+		S1 is S0 + 1,
+		vn__rval_cost(Rval, O0, O, S1, S, H0, H)
 	;
 		Lval = hp,
 		O = O0,

@@ -35,6 +35,9 @@
 :- pred vn__order_cost_msg(int, int).
 :- mode vn__order_cost_msg(in, in) is det.
 
+:- pred vn__order_restart_msg(instruction).
+:- mode vn__order_restart_msg(in) is det.
+
 :- pred vn__flush_start_msg(vn_node).
 :- mode vn__flush_start_msg(in) is det.
 
@@ -159,6 +162,18 @@ vn__order_cost_msg(OrigCost, VnCost) :-
 		;
 			opt_debug__write("Result: no cost improvement\n")
 		)
+	;
+		Flag = no
+	).
+
+vn__order_restart_msg(Instr) :-
+	vn__order_msg_flag(Flag),
+	(
+		Flag = yes,
+		opt_debug__write("starting again at "),  
+		opt_debug__dump_fullinstr(Instr, I_str),
+		opt_debug__write(I_str),
+		opt_debug__write("\n")
 	;
 		Flag = no
 	).

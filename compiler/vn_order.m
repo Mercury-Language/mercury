@@ -13,20 +13,20 @@
 :- import_module vn_type, vn_table.
 :- import_module llds, list.
 
-:- pred vn__flush_all_nodes(vnlvalset, vn_tables, bool, ctrlmap, flushmap, int,
-	list(instruction), list(instruction)).
-:- mode vn__flush_all_nodes(in, in, in, in, in, in, in, out) is det.
+:- pred vn__flush_all_nodes(vnlvalset, vn_tables, livemap, bool,
+	ctrlmap, flushmap, int, list(instruction), list(instruction)).
+:- mode vn__flush_all_nodes(in, in, in, in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module vn_flush, vn_temploc, vn_util, vn_debug, opt_util.
+:- import_module vn_flush, vn_block, vn_temploc, vn_util, vn_debug, opt_util.
 :- import_module atsort, map, bintree_set, string, int, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
-vn__flush_all_nodes(Livevnlvals, Vn_tables0, Incrhp,
+vn__flush_all_nodes(Livevnlvals, Vn_tables0, Livemap, Incrhp,
 		Ctrlmap, Flushmap, Ctrl, RevInstrs, Instrs) :-
 	list__reverse(RevInstrs, OrigInstrs),
 	bintree_set__to_sorted_list(Livevnlvals, Live),
@@ -84,7 +84,30 @@ vn__flush_all_nodes(Livevnlvals, Vn_tables0, Incrhp,
 			Instrs = OrigInstrs
 		)
 	;
-		Instrs = OrigInstrs
+		vn__try_again(OrigInstrs, Livemap, Instrs)
+	).
+
+:- pred vn__try_again(list(instruction), livemap, list(instruction)).
+:- mode vn__try_again(in, in, out) is det.
+
+vn__try_again([], _, []).
+vn__try_again([Instr0 | Instrs0], Livemap, Instrs) :-
+	(
+		Instr0 = Uinstr0 - _,
+		(
+			Uinstr0 = if_val(_, _)
+		;
+			Uinstr0 = restore_hp(_)
+		;
+			Uinstr0 = mark_hp(_)
+		)
+	->
+		vn__order_restart_msg(Instr0),
+		vn__reopt_block(Instrs0, Livemap, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	;
+		vn__try_again(Instrs0, Livemap, Instrs1),
+		Instrs = [Instr0 | Instrs1]
 	).
 
 %-----------------------------------------------------------------------------%

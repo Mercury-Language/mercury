@@ -2657,13 +2657,13 @@ code_info__failure_cont_address(unknown, do_redo).
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
 	code_info__push_temp(curfr, CurfrSlot),
-	code_info__push_temp(curredoip, RedoipSlot),
+	code_info__push_temp(redoip(lval(curfr)), RedoipSlot),
 	{ SaveCode = node([
 		% XXX efficiency of this generated code could be improved
 		assign(CurfrSlot, lval(curfr)) -
 				"Save nondet frame pointer",
 		assign(curfr, lval(maxfr)) - "Point to top of nondet stack",
-		assign(RedoipSlot, lval(curredoip)) - "Save the top redoip"
+		assign(RedoipSlot, lval(redoip(lval(curfr)))) - "Save the top redoip"
 	]) },
 	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
@@ -2687,7 +2687,7 @@ code_info__generate_commit(FailLabel, Commit) -->
 		assign(maxfr, lval(curfr)) - "Prune away unwanted choice-points"
 	]) },
 	{ RestoreRedoIp = node([
-		assign(curredoip, lval(RedoIpSlot)) - "Restore the top redoip"
+		assign(redoip(lval(curfr)), lval(RedoIpSlot)) - "Restore the top redoip"
 	]) },
 	{ RestoreCurfr = node([
 		assign(curfr, lval(CurfrSlot)) -
@@ -2908,15 +2908,14 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 		LiveInfo = LiveInfo0
 	).
 
-
-
 :- pred code_info__get_shape_num(lval, int).
 :- mode code_info__get_shape_num(in, out) is det.
+
 code_info__get_shape_num(succip, -1).
 code_info__get_shape_num(hp, -2).
 code_info__get_shape_num(maxfr, -3).
 code_info__get_shape_num(curfr, -7).	% XXX magic numbers! is this one right?
-code_info__get_shape_num(curredoip, -4).
+code_info__get_shape_num(redoip(_), -4). % And this one?
 code_info__get_shape_num(sp, -5).
 code_info__get_shape_num(lvar(_), -6).
 code_info__get_shape_num(field(_, _, _), -6).

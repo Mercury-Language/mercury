@@ -852,7 +852,8 @@ merge_instmapping_delta_2([Var | Vars], MergeInstMapping, InstMapping0,
 			InstMapping, ModuleInfo0, ModuleInfo) :-
 	map__lookup(MergeInstMapping, Var, MergeInst),
 	( map__search(InstMapping0, Var, Inst0) ->
-	    ( inst_merge(Inst0, MergeInst, ModuleInfo0, Inst, ModuleInfo1) ->
+	    ( inst_merge(Inst0, MergeInst, ModuleInfo0, Inst, ModuleInfoPrime) ->
+		ModuleInfo1 = ModuleInfoPrime,
 		map__det_update(InstMapping0, Var, Inst, InstMapping1)
 	    ;
 		error("merge_instmapping_delta_2: unexpected mode error")

@@ -275,34 +275,37 @@ peephole__match(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 	% These two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__match(mkframe(Descr, Slots, Redoip), Comment,
+peephole__match(mkframe(Descr, Slots, Redoip1), Comment,
 		_Procmap, _Forkmap, Instrs0, Instrs) :-
-	( opt_util__next_modframe(Instrs0, [], Newredoip, Skipped, Rest) ->
+	(
+		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
+		opt_util__touches_nondet_ctrl(Skipped, no)
+	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [mkframe(Descr, Slots, Newredoip) - Comment | Instrs1]
+		Instrs = [mkframe(Descr, Slots, Redoip2) - Comment | Instrs1]
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
 		Instrs1 = [Instr1 | Instrs2],
 		Instr1 = if_val(Test, Target) - Comment2,
 		(
-			Redoip = do_fail,
+			Redoip1 = do_fail,
 			( Target = do_redo ; Target = do_fail)
 		->
 			Instrs = [if_val(Test, do_redo) - Comment2,
 				mkframe(Descr, Slots, do_fail) - Comment | Instrs2]
 		;
-			Redoip = label(_)
+			Redoip1 = label(_)
 		->
 			(
 				Target = do_fail
 			->
 				Instrs = [if_val(Test, do_redo) - Comment2,
-					mkframe(Descr, Slots, Redoip) - Comment | Instrs2]
+					mkframe(Descr, Slots, Redoip1) - Comment | Instrs2]
 			;
 				Target = do_redo
 			->
-				Instrs = [mkframe(Descr, Slots, Redoip) - Comment,
-					if_val(Test, Redoip) - Comment2 | Instrs2]
+				Instrs = [mkframe(Descr, Slots, Redoip1) - Comment,
+					if_val(Test, Redoip1) - Comment2 | Instrs2]
 			;
 				fail
 			)
@@ -310,6 +313,21 @@ peephole__match(mkframe(Descr, Slots, Redoip), Comment,
 			fail
 		)
 	).
+
+	% If a `modframe' is followed by another, with the instructions
+	% in between containing only straight-line code, we can delete
+	% one of the modframes:
+	%
+	%	modframe(Redoip1)	=>	modframe(Redoip2)
+	%	<straightline instrs>		<straightline instrs>
+	%	modframe(Redoip2)
+
+peephole__match(modframe(_), Comment,
+		_Procmap, _Forkmap, Instrs0, Instrs) :-
+	opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
+	opt_util__touches_nondet_ctrl(Skipped, no),
+	list__append(Skipped, Rest, Instrs1),
+	Instrs = [modframe(Redoip2) - Comment | Instrs1].
 
 	% If a decr_sp immediately follows an incr_sp of the same amount,
 	% the two cancel out.

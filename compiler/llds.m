@@ -112,7 +112,7 @@
 			;	succip		% det return address
 			;	maxfr		% top of nondet stack
 			;	curfr		% nondet stack frame pointer
-			;	curredoip	% the redoip of the current
+			;	redoip(rval)	% the redoip of the named
 						% nondet stack frame
 			;	hp		% heap pointer
 			;	sp		% top of det stack
@@ -615,7 +615,8 @@ output_lval_decls(framevar(_)) --> [].
 output_lval_decls(succip) --> [].
 output_lval_decls(maxfr) --> [].
 output_lval_decls(curfr) --> [].
-output_lval_decls(curredoip) --> [].
+output_lval_decls(redoip(Rval)) -->
+	output_rval_decls(Rval).
 output_lval_decls(hp) --> [].
 output_lval_decls(sp) --> [].
 output_lval_decls(lvar(_)) --> [].
@@ -991,8 +992,10 @@ output_lval(maxfr) -->
 	io__write_string("LVALUE_CAST(Word,maxfr)").
 output_lval(curfr) -->
 	io__write_string("LVALUE_CAST(Word,curfr)").
-output_lval(curredoip) -->
-	io__write_string("LVALUE_CAST(Word,curredoip)").
+output_lval(redoip(Rval)) -->
+	io__write_string("LVALUE_CAST(Word,bt_redoip("),
+	output_rval(Rval),
+	io__write_string(")").
 output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
@@ -1041,8 +1044,10 @@ output_rval_lval(maxfr) -->
 	io__write_string("(Integer) maxfr").
 output_rval_lval(curfr) -->
 	io__write_string("(Integer) curfr").
-output_rval_lval(curredoip) -->
-	io__write_string("(Integer) curredoip").
+output_rval_lval(redoip(Rval)) -->
+	io__write_string("(Integer) bt_redoip("),
+	output_rval(Rval),
+	io__write_string(")").
 output_rval_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("(Integer) field("),
 	output_tag(Tag),
