@@ -25,12 +25,13 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-cdeost] [--compile-times] [--test-params] batchname"
+usage="Usage: makebatch [-jN] [-cdeost] [--compile-times] [--save-stage2-on-error] [--test-params] batchname"
 jfactor=-j1
 runtests=""
 objects=""
 cfiles="false"
 save_stage2="false"
+save_stage2_on_error="false"
 errfiles="false"
 compile_times=""
 testparams=""
@@ -58,6 +59,9 @@ do
 
 	-o|--object-files)
 		objects="-k" ;;
+
+	--save-stage2-on-error)
+		save_stage2_on_error="true" ;;
 
 	-s|--stop-at-failure)
 		failed="stop" ;;
@@ -185,9 +189,11 @@ do
 	fi
 
 	echo starting bootcheck of version $visn
+	succeeded=false
 	if tools/bootcheck $gradeopt --copy-runtime $jfactor $runtests \
 	   $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
 	then
+		succeeded=true
 		echo bootcheck of version $visn succeeded
 		cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
 		size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
@@ -254,6 +260,10 @@ do
 		# If a directory with this name already exists,
 		# it probably came from a previous invocation of this script.
 		# This invocation supersedes earlier ones.
+		/bin/rm -fr stage2.batch.$visn > /dev/null
+		mv stage2 stage2.batch.$visn
+	elif $save_stage2_on_error && test $succeeded = false
+	then
 		/bin/rm -fr stage2.batch.$visn > /dev/null
 		mv stage2 stage2.batch.$visn
 	fi

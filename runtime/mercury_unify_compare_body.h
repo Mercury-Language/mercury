@@ -452,10 +452,10 @@ start_label:
 
                 /* CompPred(...ArgTypeInfos..., Res, X, Y) * */
                 for (i = 1; i <= type_arity; i++) {
-                    MR_virtual_reg(i) = args_base[i];
+                    MR_virtual_reg_assign(i, args_base[i]);
                 }
-                MR_virtual_reg(type_arity + 1) = x;
-                MR_virtual_reg(type_arity + 2) = y;
+                MR_virtual_reg_assign(type_arity + 1, x);
+                MR_virtual_reg_assign(type_arity + 2, y);
 
                 MR_restore_registers();
             }

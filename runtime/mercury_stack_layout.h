@@ -782,7 +782,7 @@ typedef	struct MR_Exec_Trace_Struct {
 									\
 		max_r_num = (layout)->MR_sll_entry->MR_sle_max_r_num +	\
 			MR_NUM_SPECIAL_REG;				\
-		max_mr_num = MR_max(max_r_num, MR_MAX_SPECIAL_REG_MR);	\
+		max_mr_num = MR_max(max_r_num, MR_FIRST_UNREAL_R_SLOT); \
 	} while (0)
 
 /*-------------------------------------------------------------------------*/

@@ -1743,9 +1743,11 @@ io__read_line_as_string(Stream, Result, !IO) :-
 		}
 	}
 	if (Res == 0) {
-		MR_offset_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, RetString),
+		MR_Word	ret_string_word;
+		MR_offset_incr_hp_atomic_msg(ret_string_word,
 			0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
 			MR_PROC_LABEL, ""string:string/0"");
+		RetString = (MR_String) ret_string_word;
 		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
 		RetString[i] = '\\0';
 	} else {
@@ -5461,9 +5463,9 @@ throw_io_error(Message) :-
 void
 mercury_io_error(MercuryFilePtr mf, const char *format, ...)
 {
-	va_list args;
-	char message[5000];
-	MR_ConstString message_as_mercury_string;
+	va_list		args;
+	char		message[5000];
+	MR_String	message_as_mercury_string;
 
 	/* the `mf' parameter is currently not used */
 
@@ -5478,7 +5480,7 @@ mercury_io_error(MercuryFilePtr mf, const char *format, ...)
 	MR_save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
-	ML_throw_io_error((MR_String) message_as_mercury_string);
+	ML_throw_io_error(message_as_mercury_string);
 }
 
 ").
@@ -7288,17 +7290,7 @@ io__close_binary_output(Stream, !IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	if (MR_progname) {
-		/*
-		** The silly casting below is needed to avoid
-		** a gcc warning about casting away const.
-		** PrognameOut is of type `MR_String' (char *);
-		** it should be of type `MR_ConstString' (const char *),
-		** but fixing that requires a fair bit of work
-		** on the compiler.
-		*/
-		MR_make_aligned_string(
-			MR_LVALUE_CAST(MR_ConstString, PrognameOut),
-			MR_progname);
+		MR_make_aligned_string(PrognameOut, MR_progname);
 	} else {
 		PrognameOut = DefaultProgname;
 	}
@@ -7776,12 +7768,14 @@ io__make_temp(Dir, Prefix, Name, !IO) :-
 	*/
 	int	len, err, fd, num_tries;
 	char	countstr[256];
+	MR_Word	filename_word;
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
-	MR_offset_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, FileName), 0,
+	MR_offset_incr_hp_atomic_msg(filename_word, 0,
 		(len + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
+	FileName = (MR_String) filename_word;
 	if (ML_io_tempnam_counter == 0) {
 		ML_io_tempnam_counter = getpid();
 	}
@@ -8270,8 +8264,7 @@ io__read_symlink(FileName, Result, !IO) :-
 		Status = 0;
 	} else {
 		buffer[num_chars] = '\\0';
-		MR_make_aligned_string_copy(TargetFileName,
-			buffer);
+		MR_make_aligned_string_copy(TargetFileName, buffer);
 		Status = 1;
 	}
 #else /* !MR_HAVE_READLINK */

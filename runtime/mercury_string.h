@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -37,6 +37,7 @@
 ** MR_string_const("...", len):
 **	Given a C string literal and its length, returns a Mercury string.
 */
+
 #define MR_string_const(string, len) ((MR_String) string)
 
 #define MR_make_string_const(string) \
@@ -46,10 +47,11 @@
 ** MR_bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
 **	Return true iff the two Mercury strings s1 and s2 are equal.
 */
+
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
 /* 
-** void MR_make_aligned_string(MR_ConstString & ptr, const char * string):
+** void MR_make_aligned_string(MR_String ptr, const char *string):
 **	Given a C string `string', set `ptr' to be a Mercury string
 **	with the same contents.  (`ptr' must be an lvalue.)
 **	If the resulting Mercury string is to be used by Mercury code,
@@ -65,17 +67,19 @@
 ** Otherwise, allocate space on the heap and copy the C string to
 ** the Mercury string.
 */
+
 #define MR_make_aligned_string(ptr, string) 				\
 	do { 								\
-	    if (MR_tag((MR_Word) (string)) != 0) {			\
-		MR_make_aligned_string_copy((ptr), (string));		\
-	    } else { 							\
-	    	(ptr) = (string);					\
-	    }								\
+		if (MR_tag((MR_Word) (string)) != 0) {			\
+			MR_make_aligned_string_copy((ptr), (string));	\
+		} else { 						\
+			/* The cast is there to cast away const, if needed */ \
+			(ptr) = (MR_String) (string);			\
+		}							\
 	} while(0)
 
 /*
-** void MR_make_aligned_string_copy(MR_ConstString &ptr, const char * string);
+** void MR_make_aligned_string_copy(MR_String ptr, const char * string);
 **	Same as MR_make_aligned_string(ptr, string), except that the string
 **	is guaranteed to be copied. This is useful for copying C strings
 **	onto the Mercury heap.
@@ -85,29 +89,31 @@
 ** rather than inside Mercury code, you may need to call
 ** MR_{save/restore}_transient_hp().
 */
+
 #define MR_make_aligned_string_copy(ptr, string) 			\
 	do {								\
 		MR_Word make_aligned_string_tmp;			\
-		char * make_aligned_string_ptr;				\
+		char	*make_aligned_string_ptr;			\
 									\
 	  	MR_offset_incr_hp_atomic(make_aligned_string_tmp, 0,	\
-	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
+			(strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
 	    	make_aligned_string_ptr =				\
-		    (char *) make_aligned_string_tmp;			\
+			(char *) make_aligned_string_tmp;		\
 	    	strcpy(make_aligned_string_ptr, (string));		\
 	    	(ptr) = make_aligned_string_ptr;			\
 	} while(0)
 
 /*
-** void MR_make_aligned_string_copy_saved_hp(MR_ConstString &ptr,
+** void MR_make_aligned_string_copy_saved_hp(MR_String ptr,
 ** 		const char * string);
 **	Same as MR_make_aligned_string_copy(ptr, string), except that it uses
 **	MR_offset_incr_saved_hp_atomic instead of MR_offset_incr_hp_atomic.
 */
+
 #define MR_make_aligned_string_copy_saved_hp(ptr, string) 		\
 	do {								\
-		MR_Word make_aligned_string_tmp;			\
-		char * make_aligned_string_ptr;				\
+		MR_Word	make_aligned_string_tmp;			\
+		char	*make_aligned_string_ptr;			\
 									\
 	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
 	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
@@ -118,15 +124,16 @@
 	} while(0)
 
 /*
-** void MR_make_aligned_string_copy_saved_hp_quote(MR_ConstString &ptr,
+** void MR_make_aligned_string_copy_saved_hp_quote(MR_String ptr,
 ** 		const char * string);
 **	Same as MR_make_aligned_string_copy_saved_hp(ptr, string), except that
 **	it puts double quote marks at the start and end of the string.
 */
+
 #define MR_make_aligned_string_copy_saved_hp_quote(ptr, string)		\
 	do {								\
-		MR_Word make_aligned_string_tmp;			\
-		char * make_aligned_string_ptr;				\
+		MR_Word	make_aligned_string_tmp;			\
+		char	*make_aligned_string_ptr;			\
 									\
 	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
 	    	    (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word)); \
@@ -137,8 +144,8 @@
 	} while(0)
 
 /*
-** void MR_allocate_aligned_string_msg(MR_ConstString &ptr, size_t len,
-**		MR_Code *proclabel, const char *type);
+** void MR_allocate_aligned_string_msg(MR_String ptr, size_t len,
+**		MR_Code *proclabel);
 ** Allocate enough word aligned memory to hold len characters.  Also
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
@@ -148,17 +155,18 @@
 ** rather than inside Mercury code, you may need to call
 ** MR_{save/restore}_transient_hp().
 */
+
 #define MR_allocate_aligned_string_msg(ptr, len, proclabel)		\
 	do {								\
-		MR_Word make_aligned_string_tmp;			\
-		char * make_aligned_string_ptr;				\
+		MR_Word	make_aligned_string_tmp;			\
+		char	*make_aligned_string_ptr;			\
 									\
 	  	MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,\
 	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
 		    proclabel, "string:string/0");			\
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
-	    	(ptr) = (MR_String) make_aligned_string_ptr;		\
+	    	(ptr) = make_aligned_string_ptr;			\
 	} while(0)
 
 /*
@@ -173,33 +181,36 @@
 ** The definition here and the definition in string.m
 ** must be kept equivalent.
 */
-#define MR_do_hash_string(hash, s)			\
-	{						\
-	   int len;					\
-	   MR_CHECK_EXPR_TYPE(hash, int);		\
-	   MR_CHECK_EXPR_TYPE(s, MR_ConstString);	\
-	   len = 0;					\
-	   hash = 0;					\
-	   while(((MR_ConstString)(s))[len]) {		\
-		hash ^= (hash << 5);			\
-		hash ^= (MR_UnsignedChar) ((MR_ConstString)(s))[len];	\
-		len++;					\
-	   }						\
-	   hash ^= len;					\
+
+#define MR_do_hash_string(hash, s)					\
+	{								\
+		int len;						\
+		MR_CHECK_EXPR_TYPE(hash, int);				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		len = 0;						\
+		hash = 0;						\
+		while(((MR_ConstString)(s))[len]) {			\
+			hash ^= (hash << 5);				\
+			hash ^= (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			len++;						\
+		}							\
+		hash ^= len;						\
 	}
 
 /*
 ** MR_hash_string(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
+
 MR_Integer	MR_hash_string(MR_ConstString);
 
 #ifdef __GNUC__
 #define MR_hash_string(s)						\
-	({ MR_Integer hash_string_result;				\
-	   MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
-	   MR_do_hash_string(hash_string_result, s);			\
-	   hash_string_result;						\
+	({								\
+	 	MR_Integer hash_string_result;				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		MR_do_hash_string(hash_string_result, s);		\
+		hash_string_result;					\
 	})
 #endif
 
@@ -225,6 +236,7 @@ MR_Integer	MR_hash_string(MR_ConstString);
 ** You will generally need to call MR_{save/restore}_transient_hp()
 ** before/after calling this function.
 */
+
 MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);
 
 #endif /* not MERCURY_STRING_H */

@@ -36,7 +36,7 @@
 ** At the moment, we use variable length arrays that are indexed by
 ** closure argument numbers or by type parameter numbers. We therefore
 ** use a default MR_VARIABLE_SIZED value that is at least as big as
-** both MR_MAX_VIRTUAL_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
+** both MR_MAX_VIRTUAL_R_REG and MR_PSEUDOTYPEINFO_MAX_VAR.
 */
 
 #if __STDC_VERSION__ >= 199901	/* January 1999 */
@@ -195,6 +195,9 @@ typedef       struct MR_DictId_Struct                   MR_DictIdStruct;
 typedef const struct MR_DictId_Struct                   *MR_DictId;
 typedef       struct MR_Dictionary_Struct               MR_DictionaryStruct;
 typedef const struct MR_Dictionary_Struct               *MR_Dictionary;
+
+typedef struct MR_TrailEntry_Struct             MR_TrailEntry;
+typedef struct MR_TrailEntry_Struct             *MR_TrailEntryPtr;
 
 typedef struct MR_Closure_Struct                MR_Closure;
 typedef const MR_Closure                        *MR_ClosurePtr;

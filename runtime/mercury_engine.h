@@ -233,18 +233,18 @@ typedef struct {
 		(setjmp_env)->saved_curfr = MR_curfr;			\
 		(setjmp_env)->saved_maxfr = MR_maxfr;			\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_trail_ptr = 	\
-				MR_trail_ptr);				\
+			MR_trail_ptr);					\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_counter =	\
-				MR_ticket_counter);			\
+			MR_ticket_counter);				\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_high_water =	\
-				MR_ticket_high_water);			\
+			MR_ticket_high_water);				\
 		if (setjmp((setjmp_env)->env)) {			\
 			MR_ENGINE(MR_eng_jmp_buf) = (setjmp_env)->mercury_env;\
 			MR_restore_regs_from_mem((setjmp_env)->regs);	\
-			MR_succip = (setjmp_env)->saved_succip;		\
-			MR_sp = (setjmp_env)->saved_sp;			\
-			MR_curfr = (setjmp_env)->saved_curfr;		\
-			MR_maxfr = (setjmp_env)->saved_maxfr;		\
+			MR_succip_word = (MR_Word) (setjmp_env)->saved_succip;\
+			MR_sp_word = (MR_Word) (setjmp_env)->saved_sp;	\
+			MR_curfr_word = (MR_Word) (setjmp_env)->saved_curfr;\
+			MR_maxfr_word = (MR_Word) (setjmp_env)->saved_maxfr;\
 			MR_IF_USE_TRAIL(MR_trail_ptr = 			\
 					(setjmp_env)->saved_trail_ptr);	\
 			MR_IF_USE_TRAIL(MR_ticket_counter = 		\
@@ -386,7 +386,8 @@ typedef struct MR_mercury_engine_struct {
 
 #define MR_load_engine_regs(eng)					\
   	do {								\
-		MR_IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->MR_eng_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_hp_word = (MR_Word)	\
+			(eng)->MR_eng_hp;)				\
 		MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp =			\
 			(eng)->MR_eng_sol_hp;)				\
 		MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp =		\

@@ -143,8 +143,7 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
         */
 
     if (success) {
-        MR_make_aligned_string(FunctorName, (MR_String) (MR_Word)
-            construct_info.functor_name);
+        MR_make_aligned_string(FunctorName, construct_info.functor_name);
         arity = construct_info.arity;
         Arity = arity;
 
@@ -241,8 +240,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
         */
 
     if (success) {
-        MR_make_aligned_string(FunctorName, (MR_String) (MR_Word)
-            construct_info.functor_name);
+        MR_make_aligned_string(FunctorName, construct_info.functor_name);
         arity = construct_info.arity;
         Arity = arity;
 

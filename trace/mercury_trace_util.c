@@ -133,20 +133,20 @@ MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
 {
 #ifndef MR_HIGHLEVEL_CODE
 	fprintf(fp, "r1 = %ld (%lx)\n",
-		(long) MR_saved_reg(saved_regs, 1),
-		(long) MR_saved_reg(saved_regs, 1));
+		(long) MR_saved_reg_value(saved_regs, 1),
+		(long) MR_saved_reg_value(saved_regs, 1));
 	fprintf(fp, "r2 = %ld (%lx)\n",
-		(long) MR_saved_reg(saved_regs, 2),
-		(long) MR_saved_reg(saved_regs, 2));
+		(long) MR_saved_reg_value(saved_regs, 2),
+		(long) MR_saved_reg_value(saved_regs, 2));
 	fprintf(fp, "r3 = %ld (%lx)\n",
-		(long) MR_saved_reg(saved_regs, 3),
-		(long) MR_saved_reg(saved_regs, 3));
+		(long) MR_saved_reg_value(saved_regs, 3),
+		(long) MR_saved_reg_value(saved_regs, 3));
 	fprintf(fp, "r4 = %ld (%lx)\n",
-		(long) MR_saved_reg(saved_regs, 4),
-		(long) MR_saved_reg(saved_regs, 4));
+		(long) MR_saved_reg_value(saved_regs, 4),
+		(long) MR_saved_reg_value(saved_regs, 4));
 	fprintf(fp, "r5 = %ld (%lx)\n",
-		(long) MR_saved_reg(saved_regs, 5),
-		(long) MR_saved_reg(saved_regs, 5));
+		(long) MR_saved_reg_value(saved_regs, 5),
+		(long) MR_saved_reg_value(saved_regs, 5));
 #endif
 }
 

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -34,6 +34,7 @@
 
     MR_TypeInfo                 type_info;
     MR_Expand_Functor_Only_Info expand_info;
+    MR_ConstString              conststring_functor;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 
@@ -41,5 +42,6 @@
     MR_expand_functor_only(type_info, &TERM_ARG, NONCANON, &expand_info);
     MR_restore_transient_registers();
 
-    MR_deconstruct_get_functor(expand_info, functor_only, FUNCTOR_ARG);
+    MR_deconstruct_get_functor(expand_info, functor_only, conststring_functor);
+    FUNCTOR_ARG = (MR_String) (MR_Integer) conststring_functor;
     MR_deconstruct_get_arity(expand_info, ARITY_ARG);

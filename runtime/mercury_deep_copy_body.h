@@ -384,9 +384,10 @@ try_again:
             RETURN_IF_OUT_OF_RANGE(data, (MR_Word *) data, 0, MR_Word);
 
             {
-                MR_make_aligned_string_copy_saved_hp(
-                        (MR_LVALUE_CAST(MR_String, new_data)),
+                MR_String   new_string;
+                MR_make_aligned_string_copy_saved_hp(new_string,
                         (MR_String) data);
+                new_data = (MR_Word) new_string;
                 leave_forwarding_pointer(data, 0, new_data);
             }
         }
@@ -414,6 +415,7 @@ try_again:
                 MR_Unsigned         args, i;
                 MR_Closure          *old_closure;
                 MR_Closure          *new_closure;
+                MR_Word             new_closure_word;
                 MR_Closure_Layout   *closure_layout;
                 MR_TypeInfo         *type_info_arg_vector;
 
@@ -422,8 +424,8 @@ try_again:
                 args = old_closure->MR_closure_num_hidden_args;
 
                 /* create new closure */
-                MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_closure),
-                    0, args + 3);
+                MR_offset_incr_saved_hp(new_closure_word, 0, args + 3);
+                new_closure = (MR_Closure *) new_closure_word;
 
                 /* copy the fixed fields */
                 new_closure->MR_closure_layout = closure_layout;
@@ -730,6 +732,7 @@ copy_type_info(MR_TypeInfo type_info,
     {
         MR_TypeCtorInfo type_ctor_info;
         MR_Word         *new_type_info_arena;
+        MR_Word         new_type_info_arena_word;
         MR_TypeInfo     *type_info_args;
         MR_TypeInfo     *new_type_info_args;
         int             arity;
@@ -764,20 +767,20 @@ copy_type_info(MR_TypeInfo type_info,
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
-            MR_offset_incr_saved_hp(
-                MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_offset_incr_saved_hp(new_type_info_arena_word,
                 forwarding_pointer_size,
                 MR_var_arity_type_info_size(arity) + forwarding_pointer_size);
+            new_type_info_arena = (MR_Word *) new_type_info_arena_word;
             MR_fill_in_var_arity_type_info(new_type_info_arena,
                 type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->MR_type_ctor_arity;
             type_info_args = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
-            MR_offset_incr_saved_hp(
-                MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_offset_incr_saved_hp(new_type_info_arena_word,
                 forwarding_pointer_size,
                 MR_fixed_arity_type_info_size(arity) + forwarding_pointer_size
             );
+            new_type_info_arena = (MR_Word *) new_type_info_arena_word;
             MR_fill_in_fixed_arity_type_info(new_type_info_arena,
                 type_ctor_info, new_type_info_args);
         }
@@ -805,6 +808,7 @@ copy_typeclass_info(MR_Word typeclass_info_param,
     {
         MR_Word *base_typeclass_info;
         MR_Word *new_typeclass_info;
+        MR_Word new_typeclass_info_word;
         int     num_arg_typeinfos;
         int     num_super;
         int     num_instance_constraints;
@@ -833,10 +837,11 @@ copy_typeclass_info(MR_Word typeclass_info_param,
                 - num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_params(typeclass_info);
-        MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info),
+        MR_offset_incr_saved_hp(new_typeclass_info_word,
             forwarding_pointer_size,
             forwarding_pointer_size + 1 /* for basetypeclass_info */
             + num_instance_constraints + num_super + num_arg_typeinfos);
+        new_typeclass_info = (MR_Word *) new_typeclass_info_word;
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
 

@@ -480,7 +480,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
         /* in case MR_global_hp is transient */
     MR_restore_transient_registers();
-    MR_saved_global_hp(saved_regs) = MR_global_hp;
+    MR_saved_global_hp_word(saved_regs) = (MR_Word) MR_global_hp;
     MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
     return jumpaddr;
 }
@@ -711,7 +711,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     default:
         if (*problem == NULL) {
             *problem = "MR_check_minimal_model_calls failed "
-                    "without reporting problem";
+                "without reporting problem";
         }
 
         goto report_problem;
@@ -727,9 +727,9 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     ** it reflect its state at the time of the entry to the retried call.
     */
 
-    MR_saved_sp(saved_regs) = base_sp;
-    MR_saved_curfr(saved_regs) = base_curfr;
-    MR_saved_maxfr(saved_regs) = base_maxfr;
+    MR_saved_sp_word(saved_regs) = (MR_Word) base_sp;
+    MR_saved_curfr_word(saved_regs) = (MR_Word) base_curfr;
+    MR_saved_maxfr_word(saved_regs) = (MR_Word) base_maxfr;
 
     /*
     ** If the retried call is shallow traced, it must have been called from
@@ -765,9 +765,10 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         MR_print_succip_reg(stdout, saved_regs);
         MR_print_stack_regs(stdout, saved_regs);
 #endif
-        MR_saved_succip(saved_regs) = (MR_Word *) MR_based_stackvar(this_frame,
-                MR_LONG_LVAL_NUMBER(location));
-        MR_saved_sp(saved_regs) -= level_layout->MR_sle_stack_slots;
+        MR_saved_succip_word(saved_regs) =
+            MR_based_stackvar(this_frame, MR_LONG_LVAL_NUMBER(location));
+        MR_saved_sp_word(saved_regs) = (MR_Word)
+            (MR_saved_sp(saved_regs) - level_layout->MR_sle_stack_slots);
 #ifdef  MR_DEBUG_RETRY
         MR_print_succip_reg(stdout, saved_regs);
         MR_print_stack_regs(stdout, saved_regs);
@@ -799,9 +800,9 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         MR_print_succip_reg(stdout, saved_regs);
         MR_print_stack_regs(stdout, saved_regs);
 #endif
-        MR_saved_succip(saved_regs) = MR_succip_slot(this_frame);
-        MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
-        MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
+        MR_saved_succip_word(saved_regs) = MR_succip_slot_word(this_frame);
+        MR_saved_curfr_word(saved_regs) = MR_succfr_slot_word(this_frame);
+        MR_saved_maxfr_word(saved_regs) = MR_prevfr_slot_word(this_frame);
 #ifdef  MR_DEBUG_RETRY
         MR_print_succip_reg(stdout, saved_regs);
         MR_print_stack_regs(stdout, saved_regs);
@@ -828,7 +829,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     }
 
     for (i = 1; i < arg_max; i++) {
-        MR_saved_reg(saved_regs, i) = args[i];
+        MR_saved_reg_assign(saved_regs, i, args[i]);
     }
 
     if (has_io_state && found_io_action_counter) {

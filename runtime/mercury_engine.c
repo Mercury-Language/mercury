@@ -327,8 +327,8 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
 			** MR_create_exception_handler().
 			*/
 			this_frame = MR_curfr;
-			MR_maxfr = MR_prevfr_slot(this_frame);
-			MR_curfr = MR_succfr_slot(this_frame);
+			MR_maxfr_word = MR_prevfr_slot_word(this_frame);
+			MR_curfr_word = MR_succfr_slot_word(this_frame);
 #ifdef MR_USE_TRAIL
 			MR_prune_ticket();
 #endif
@@ -606,7 +606,7 @@ static MR_Code *
 engine_init_registers(void)
 {
 	MR_restore_transient_registers();
-	MR_succip = (MR_Code *) engine_done;
+	MR_succip_word = (MR_Word) (MR_Code *) engine_done;
 	return NULL;
 }
 

@@ -266,6 +266,7 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         ** safe to access the succip and succfr slots
         ** without checking what kind of frame it is.
         */
+
         success = MR_succip_slot(*stack_trace_curfr_ptr);
         *stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
     }

@@ -1016,10 +1016,11 @@ MR_trace_decl_ensure_init(void)
 void
 MR_decl_add_trusted_module(const char *module_name)
 {
-	MR_ConstString aligned_module_name;
+	MR_String aligned_module_name;
 	
 	MR_TRACE_USE_HP(
-		MR_make_aligned_string(aligned_module_name, module_name);
+		MR_make_aligned_string(aligned_module_name,
+			(MR_String) module_name);
 	);
 	MR_trace_decl_ensure_init();
 	MR_TRACE_CALL_MERCURY(

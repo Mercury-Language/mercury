@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 University of Melbourne.
+** Copyright (C) 1998-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,32 +18,12 @@
 #ifndef	MERCURY_MEMORY_ZONES_H
 #define	MERCURY_MEMORY_ZONES_H
 
-#include "mercury_regs.h"		/* for MR_NUM_REAL_REGS */
+#include "mercury_regs.h"		/* for MR_NUM_REAL_R_REGS, etc */
 
-#include <stdlib.h>		/* for size_t */
+#include <stdlib.h>			/* for size_t */
 
-#include "mercury_types.h"	/* for MR_Word */
+#include "mercury_types.h"		/* for MR_Word */
 #include "mercury_std.h"		/* for MR_bool */
-
-
-/* these cannot be changed without lots of modifications elsewhere */
-#define MR_MAX_REAL_REG 32		/* MR_r1 .. MR_r32 */
-
-/* this can be changed at will, including by -D options to the C compiler */
-#ifndef MR_MAX_VIRTUAL_REG
-#define MR_MAX_VIRTUAL_REG	1024
-#endif
-
-/* allocate enough fake_regs to hold both the special regs */
-/* and all the virtual registers */
-#define MR_MAX_FAKE_REG	(MR_NUM_SPECIAL_REG + MR_MAX_VIRTUAL_REG)
-			/* MR_mr0 .. MR_mr37, MR_mr(38) ... MR_mr(1000) ... */
-
-/* used to lookup the fake_reg for a given real reg */
-extern	MR_Word		MR_virtual_reg_map[MR_MAX_REAL_REG];
-
-/* used for counting register usage */
-extern	unsigned long 	MR_num_uses[MR_MAX_RN];
 
 /*
 ** The Mercury runtime uses a number of memory areas or *zones*. These

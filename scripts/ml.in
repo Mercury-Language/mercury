@@ -410,7 +410,7 @@ case $demangle in
 	umask 022
 	try=0
 	until 
-		ML_TMPDIR=$TMPDIR/ml$$
+		ML_TMPDIR=$TMPDIR/ml$$.$try
 		PIPE=$ML_TMPDIR/pipe
 		trap 'rmdir $ML_TMPDIR >/dev/null 2>&1; exit 1' 1 2 3 13 15 
 		mkdir $ML_TMPDIR

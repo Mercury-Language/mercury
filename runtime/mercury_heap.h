@@ -127,17 +127,15 @@
   #define MR_mark_hp(dest)		((void)0)
   #define MR_restore_hp(src)		((void)0)
 
-			/* we use `MR_hp' as a convenient temporary here */
+		/* we use `MR_hp' as a convenient temporary here */
   #define MR_hp_alloc(count) (						\
-		MR_offset_incr_hp(MR_LVALUE_CAST(MR_Word, MR_hp),	\
-			0, (count)),					\
-		MR_hp += (count),					\
+		MR_offset_incr_hp(MR_hp_word, 0, (count)),		\
+		MR_hp_word = (MR_Word) (MR_hp + (count)),		\
 		(void) 0						\
 	)
   #define MR_hp_alloc_atomic(count) (					\
-		MR_offset_incr_hp_atomic(MR_LVALUE_CAST(MR_Word, MR_hp), \
-			0, (count)),					\
-		MR_hp += (count),					\
+		MR_offset_incr_hp_atomic(MR_hp_word, 0, (count)),	\
+		MR_hp_word = (MR_Word) (MR_hp + (count)),		\
 		(void) 0						\
 	)
 
@@ -152,7 +150,7 @@
 			(((MR_Word *) MR_hp) + (offset))),		\
 		MR_debug_tag_offset_incr_hp_base((dest), (tag), (offset), \
 			(count), (is_atomic)),				\
-		MR_hp += (count),					\
+		MR_hp_word = (MR_Word) (MR_hp + (count)),		\
 		MR_heap_overflow_check(),				\
 		(void) 0						\
 	)
@@ -162,7 +160,7 @@
   #define MR_tag_offset_incr_hp_atomic(dest, tag, offset, count)	\
 	MR_tag_offset_incr_hp_base((dest), (tag), (offset), (count), 1)
 
-  #define MR_mark_hp(dest)		((dest) = (MR_Word) MR_hp)
+  #define MR_mark_hp(dest)		((dest) = MR_hp_word)
 
   /*
   ** When restoring MR_hp, we must make sure that we don't truncate the heap
@@ -172,25 +170,23 @@
   */
   #define MR_restore_hp(src)						\
 		(							\
-			MR_LVALUE_CAST(MR_Word, MR_hp) = (src),		\
+			MR_hp_word = (MR_Word) (src),			\
 			(void) 0					\
 		)
 
   /*
   #define	MR_restore_hp(src)					\
 		(							\
-			MR_LVALUE_CAST(MR_Word, MR_hp) =		\
+			MR_hp_word = (MR_Word)
 			  ( (MR_Word) MR_min_hp_rec < (src) ?		\
 			  (src) : (MR_Word) MR_min_hp_rec ),		\
 			(void) 0					\
 		)
   */
 
-  #define MR_hp_alloc(count)		MR_offset_incr_hp(		\
-					MR_LVALUE_CAST(MR_Word, MR_hp), \
+  #define MR_hp_alloc(count)		MR_offset_incr_hp(MR_hp_word,	\
 						0, (count))
-  #define MR_hp_alloc_atomic(count)	MR_offset_incr_hp_atomic(	\
-					MR_LVALUE_CAST(MR_Word, MR_hp),	\
+  #define MR_hp_alloc_atomic(count)	MR_offset_incr_hp_atomic(MR_hp_word, \
 						0, (count))
 
   #define MR_free_heap(ptr)		((void) 0)
@@ -234,7 +230,7 @@
 		proclabel, (type))
 #define MR_tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type)	\
 	MR_tag_offset_incr_hp_atomic_msg((dest), (tag), 0, (count),	\
-		proclabel, (type)) 
+		proclabel, (type))
 
 /*
 ** The MR_offset_incr_hp*() macros are defined in terms of the
@@ -510,6 +506,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 		MR_CHECK_EXPR_TYPE((value), T);				\
 		MR_CHECK_EXPR_TYPE((box), MR_Box);			\
 		if (sizeof(T) > sizeof(MR_Box)) {			\
+			MR_Word box_word;				\
 			size_t size_in_words =				\
 				(sizeof(T) + sizeof(MR_Word) - 1)	\
 				 / sizeof(MR_Word);			\
@@ -520,8 +517,8 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 			** This assumes that we don't keep term sizes	\
 			** in grades that use boxes.			\
 			*/						\
-			MR_offset_incr_hp(MR_LVALUE_CAST(MR_Word, (box)),\
-				0, size_in_words);			\
+			MR_offset_incr_hp(box_word, 0, size_in_words);	\
+			box = (MR_Box) box_word;			\
 			MR_assign_structure(*(T *)(box), (value));	\
 			MR_maybe_record_allocation(size_in_words,	\
 				"", "foreign type: " MR_STRINGIFY(T));	\

@@ -96,6 +96,13 @@ typedef MR_Bool			Bool;
 */
 #ifdef	MR_EXTRA_BACKWARDS_COMPAT
 
+#define MR_saved_reg(save_area, n)					\
+	MR_LVALUE_COND((n) > MR_MAX_REAL_R_REG,				\
+		(save_area)[(n) + MR_NUM_SPECIAL_REG - 1],		\
+		(save_area)[MR_real_r_reg_map[(n) - 1]])
+
+#define MR_virtual_reg(n) 		MR_saved_reg(MR_fake_reg, n)
+
 /*
 ** bool, TRUE and FALSE used to appear in the generated code.
 */

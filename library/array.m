@@ -508,9 +508,13 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 **   the array, and updating the array size accordingly.
 */
 
-#define	ML_alloc_array(newarray, arraysize, proclabel)	\
-	MR_offset_incr_hp_msg(MR_LVALUE_CAST(MR_Word, (newarray)), \
-		0, (arraysize), proclabel, ""array:array/1"")
+#define	ML_alloc_array(newarray, arraysize, proclabel)			\
+	do {								\
+		MR_Word	newarray_word;					\
+		MR_offset_incr_hp_msg(newarray_word, 0, (arraysize),	\
+			proclabel, ""array:array/1"");			\
+		(newarray) = (MR_ArrayPtr) newarray_word;		\
+	} while (0)
 ").
 
 :- pragma foreign_decl("C", "

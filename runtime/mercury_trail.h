@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -199,7 +199,7 @@ typedef enum {
 
 typedef void MR_untrail_func_type(void *datum, MR_untrail_reason);
 
-typedef struct {
+struct MR_TrailEntry_Struct {
 #if !(MR_USE_TAGGED_TRAIL)
 	MR_trail_entry_kind MR_entry_kind;
 #endif
@@ -213,7 +213,7 @@ typedef struct {
 			void *MR_datum;
 		} MR_func;
 	} MR_union;
-} MR_TrailEntry;
+};
 
 /*
 ** Macros for accessing these fields, taking tagging into account.

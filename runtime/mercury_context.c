@@ -3,7 +3,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -119,11 +119,13 @@ MR_init_context(MR_Context *c)
 	c->MR_ctxt_maxfr = c->MR_ctxt_nondetstack_zone->min +
 		MR_NONDET_FIXED_SIZE - 1;
 	c->MR_ctxt_curfr = c->MR_ctxt_maxfr;
-	MR_redoip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
-	MR_redofr_slot(c->MR_ctxt_curfr) = NULL;
-	MR_prevfr_slot(c->MR_ctxt_curfr) = NULL;
-	MR_succip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
-	MR_succfr_slot(c->MR_ctxt_curfr) = NULL;
+	MR_redoip_slot_word(c->MR_ctxt_curfr) = (MR_Word)
+		MR_ENTRY(MR_do_not_reached);
+	MR_redofr_slot_word(c->MR_ctxt_curfr) = (MR_Word) NULL;
+	MR_prevfr_slot_word(c->MR_ctxt_curfr) = (MR_Word) NULL;
+	MR_succip_slot_word(c->MR_ctxt_curfr) = (MR_Word)
+		MR_ENTRY(MR_do_not_reached);
+	MR_succfr_slot_word(c->MR_ctxt_curfr) = (MR_Word) NULL;
 
   #ifdef MR_USE_MINIMAL_MODEL
 	if (c->MR_ctxt_genstack_zone != NULL) {

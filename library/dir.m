@@ -1622,8 +1622,7 @@ dir__read_entry(Dir, Res, !IO) :-
 	IO = IO0;
 	if (FindNextFile(Dir, &file_data)) {
 		Status = 1;
-		MR_make_aligned_string_copy(FileName,
-			file_data.cFileName);
+		MR_make_aligned_string_copy(FileName, file_data.cFileName);
 	} else {
 		Error = GetLastError();
 		Status = (Error == ERROR_NO_MORE_FILES ? -1 : 0);
@@ -1641,8 +1640,7 @@ dir__read_entry(Dir, Res, !IO) :-
 		FileName = NULL;
 		Status = (Error == 0 ? -1 : 0);
 	} else {
-		MR_make_aligned_string_copy(FileName,
-			dir_entry->d_name);
+		MR_make_aligned_string_copy(FileName, dir_entry->d_name);
 		Error = 0;
 		Status = 1;
 	}

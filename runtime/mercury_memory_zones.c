@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000, 2002-2003 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -182,10 +182,6 @@ memalign(size_t unit, size_t size)
 #endif /* MR_PROTECTPAGE */
 
 /*---------------------------------------------------------------------------*/
-
-MR_Word		MR_virtual_reg_map[MR_MAX_REAL_REG] = MR_VIRTUAL_REG_MAP_BODY;
-
-unsigned long	MR_num_uses[MR_MAX_RN];
 
 #define MAX_ZONES	16
 

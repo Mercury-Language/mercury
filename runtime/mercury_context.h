@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -349,10 +349,14 @@ extern	void		MR_schedule(MR_Context *ctxt);
 									\
 		load_context_c = (cptr);				\
 		MR_IF_NOT_HIGHLEVEL_CODE(				\
-			MR_succip  = load_context_c->MR_ctxt_succip;	\
-			MR_sp	   = load_context_c->MR_ctxt_sp;	\
-			MR_maxfr   = load_context_c->MR_ctxt_maxfr; 	\
-			MR_curfr   = load_context_c->MR_ctxt_curfr;	\
+			MR_succip_word  = (MR_Word)			\
+				load_context_c->MR_ctxt_succip;		\
+			MR_sp_word	= (MR_Word)			\
+				load_context_c->MR_ctxt_sp;		\
+			MR_maxfr_word   = (MR_Word)			\
+				load_context_c->MR_ctxt_maxfr; 		\
+			MR_curfr_word   = (MR_Word)			\
+				load_context_c->MR_ctxt_curfr;		\
 		  MR_IF_USE_MINIMAL_MODEL(				\
 			MR_gen_next = load_context_c->MR_ctxt_gen_next;	\
 			MR_cut_next = load_context_c->MR_ctxt_cut_next;	\

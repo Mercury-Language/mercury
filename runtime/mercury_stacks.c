@@ -118,6 +118,15 @@ MR_print_stack_frame_stats(void)
 
 #ifdef	MR_USE_MINIMAL_MODEL
 
+MR_Integer		MR_gen_next_var;
+MR_GenStackFrame	*MR_gen_stack_var;
+
+MR_Integer		MR_cut_next_var;
+MR_CutStackFrame	*MR_cut_stack_var;
+
+MR_Integer		MR_pneg_next_var;
+MR_PNegStackFrame	*MR_pneg_stack_var;
+
 #ifdef	MR_MINIMAL_MODEL_DEBUG
 static	int	MR_pneg_cut_depth = 0;
 #endif

@@ -71,7 +71,6 @@ HDRS		=	\
 			mercury_prof_time.h	\
 			mercury_profiling_builtin.h	\
 			mercury_reg_workarounds.h	\
-			mercury_regorder.h	\
 			mercury_regs.h		\
 			mercury_runtime_util.h	\
 			mercury_signal.h	\

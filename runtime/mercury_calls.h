@@ -38,55 +38,55 @@
 ** So it is simpler (and more efficient) to just comment it out.
 */
 #if 0
-  #define	MR_noprof_call(proc, succ_cont)			\
-		({						\
-			__label__ fixup_gp;			\
-			MR_debugcall((proc), (succ_cont));	\
-			MR_succip = (&&fixup_gp);		\
-			MR_GOTO(proc);				\
-		fixup_gp:					\
-			ASM_FIXUP_REGS				\
-			MR_GOTO(succ_cont); 			\
+  #define	MR_noprof_call(proc, succ_cont)				\
+		({							\
+			__label__ fixup_gp;				\
+			MR_debugcall((proc), (succ_cont));		\
+			MR_succip_word = (MR_Word) (&&fixup_gp);	\
+			MR_GOTO(proc);					\
+		fixup_gp:						\
+			ASM_FIXUP_REGS					\
+			MR_GOTO(succ_cont); 				\
 		})
 	/* same as above, but with MR_GOTO_LABEL rather than MR_GOTO */
-  #define	MR_noprof_call_localret(proc, succ_cont)	\
-		({						\
-			__label__ fixup_gp;			\
-			MR_debugcall((proc), (succ_cont));	\
-			MR_succip = (&&fixup_gp);		\
-			MR_GOTO(proc);				\
-		fixup_gp:					\
-			ASM_FIXUP_REGS				\
-			MR_GOTO_LABEL(succ_cont); 		\
+  #define	MR_noprof_call_localret(proc, succ_cont)		\
+		({							\
+			__label__ fixup_gp;				\
+			MR_debugcall((proc), (succ_cont));		\
+			MR_succip_word = (MR_Word) (&&fixup_gp);	\
+			MR_GOTO(proc);					\
+		fixup_gp:						\
+			ASM_FIXUP_REGS					\
+			MR_GOTO_LABEL(succ_cont); 			\
 		})
 #else
-  #define	MR_noprof_call(proc, succ_cont)			\
-		do {						\
-			MR_debugcall((proc), (succ_cont));	\
-			MR_succip = (succ_cont);		\
-			MR_GOTO(proc);				\
+  #define	MR_noprof_call(proc, succ_cont)				\
+		do {							\
+			MR_debugcall((proc), (succ_cont));		\
+			MR_succip_word = (MR_Word) (succ_cont);		\
+			MR_GOTO(proc);					\
 		} while (0)
-  #define 	MR_noprof_call_localret(proc, succ_cont) 	\
+  #define 	MR_noprof_call_localret(proc, succ_cont) 		\
 		MR_noprof_call((proc), MR_LABEL(succ_cont))
 #endif
 
-#define	MR_noprof_localcall(label, succ_cont)			\
-		do {						\
-			MR_debugcall(MR_LABEL(label), (succ_cont));\
-			MR_succip = (succ_cont);		\
-			MR_GOTO_LABEL(label);			\
+#define	MR_noprof_localcall(label, succ_cont)				\
+		do {							\
+			MR_debugcall(MR_LABEL(label), (succ_cont));	\
+			MR_succip_word = (MR_Word) (succ_cont);		\
+			MR_GOTO_LABEL(label);				\
 		} while (0)
 
-#define	MR_noprof_tailcall(proc)				\
-		do {						\
-			MR_debugtailcall(proc);			\
-			MR_GOTO(proc);				\
+#define	MR_noprof_tailcall(proc)					\
+		do {							\
+			MR_debugtailcall(proc);				\
+			MR_GOTO(proc);					\
 		} while (0)
 
-#define	MR_noprof_localtailcall(label)				\
-		do {						\
-			MR_debugtailcall(MR_LABEL(label));	\
-			MR_GOTO_LABEL(label);			\
+#define	MR_noprof_localtailcall(label)					\
+		do {							\
+			MR_debugtailcall(MR_LABEL(label));		\
+			MR_GOTO_LABEL(label);				\
 		} while (0)
 
 /*

@@ -1036,10 +1036,10 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
     MR_minmodel_stats_cnt_restore_state++;
 #endif
 
-    MR_succip = saved_state->MR_ss_succ_ip;
-    MR_sp = saved_state->MR_ss_s_p;
-    MR_curfr = saved_state->MR_ss_cur_fr;
-    MR_maxfr = saved_state->MR_ss_max_fr;
+    MR_succip_word = (MR_Word) saved_state->MR_ss_succ_ip;
+    MR_sp_word = (MR_Word) saved_state->MR_ss_s_p;
+    MR_curfr_word = (MR_Word) saved_state->MR_ss_cur_fr;
+    MR_maxfr_word = (MR_Word) saved_state->MR_ss_max_fr;
     MR_gen_next = saved_state->MR_ss_gen_sp;
 
     MR_table_copy_words(saved_state->MR_ss_non_stack_real_start,
@@ -2186,8 +2186,9 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
     */
 
     /* MR_gen_next = completion_info->MR_ri_leader_state.MR_ss_gen_next; BUG? */
-    MR_redoip_slot(MR_maxfr) = MR_LABEL(COMPLETION_LABEL(RedoPoint));
-    MR_redofr_slot(MR_maxfr) = MR_maxfr;
+    MR_redoip_slot_word(MR_maxfr) = (MR_Word)
+        MR_LABEL(COMPLETION_LABEL(RedoPoint));
+    MR_redofr_slot_word(MR_maxfr) = MR_maxfr_word;
     MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
 
 #ifdef  MR_TABLE_DEBUG
@@ -2399,7 +2400,7 @@ MR_define_label(COMPLETION_LABEL(ReachedFixpoint));
     MR_restore_transient_registers();
 
     /* XXX this will go code that does fail() */
-    MR_succip = completion_info->MR_ri_saved_succip;
+    MR_succip_word = (MR_Word) completion_info->MR_ri_saved_succip;
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {

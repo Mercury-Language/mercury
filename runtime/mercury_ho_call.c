@@ -414,19 +414,21 @@ MR_define_entry(mercury__do_call_closure_compact);
 	if (num_hidden_args < MR_HO_CALL_INPUTS_COMPACT) {
 		/* copy to the left, from the left */
 		for (i = 1; i <= num_extra_args; i++) {
-			MR_virtual_reg(i + num_hidden_args) =
-				MR_virtual_reg(i + MR_HO_CALL_INPUTS_COMPACT);
+			MR_virtual_reg_assign(i + num_hidden_args,
+				MR_virtual_reg_value(i +
+					MR_HO_CALL_INPUTS_COMPACT));
 		}
 	} else if (num_hidden_args > MR_HO_CALL_INPUTS_COMPACT) {
 		/* copy to the right, from the right */
 		for (i = num_extra_args; i > 0; i--) {
-			MR_virtual_reg(i + num_hidden_args) =
-				MR_virtual_reg(i + MR_HO_CALL_INPUTS_COMPACT);
+			MR_virtual_reg_assign(i + num_hidden_args,
+				MR_virtual_reg_value(i +
+					MR_HO_CALL_INPUTS_COMPACT));
 		}
 	} /* else the new args are in the right place */
 
 	for (i = 1; i <= num_hidden_args; i++) {
-		MR_virtual_reg(i) = closure->MR_closure_hidden_args(i);
+		MR_virtual_reg_assign(i, closure->MR_closure_hidden_args(i));
 	}
 
 	MR_restore_registers();
@@ -474,25 +476,25 @@ MR_define_entry(mercury__do_call_class_method_compact);
 	if (num_extra_instance_args < MR_CLASS_METHOD_CALL_INPUTS_COMPACT) {
 		/* copy to the left, from the left */
 		for (i = 1; i <= num_input_args; i++) {
-			MR_virtual_reg(i + num_extra_instance_args) =
-				MR_virtual_reg(i +
-					MR_CLASS_METHOD_CALL_INPUTS_COMPACT);
+			MR_virtual_reg_assign(i + num_extra_instance_args,
+				MR_virtual_reg_value(i +
+					MR_CLASS_METHOD_CALL_INPUTS_COMPACT));
 		}
 	} else if (num_extra_instance_args >
 			MR_CLASS_METHOD_CALL_INPUTS_COMPACT)
 	{
 		/* copy to the right, from the right */
 		for (i = num_input_args; i > 0; i--) {
-			MR_virtual_reg(i + num_extra_instance_args) =
-				MR_virtual_reg(i +
-					MR_CLASS_METHOD_CALL_INPUTS_COMPACT);
+			MR_virtual_reg_assign(i + num_extra_instance_args,
+				MR_virtual_reg_value(i +
+					MR_CLASS_METHOD_CALL_INPUTS_COMPACT));
 		}
 	} /* else the new args are in the right place */
 
 	for (i = num_extra_instance_args; i > 0; i--) {
-		MR_virtual_reg(i) = 
-			MR_typeclass_info_extra_instance_arg(MR_virtual_reg(1),
-				i);
+		MR_virtual_reg_assign(i,
+			MR_typeclass_info_extra_instance_arg(
+				MR_virtual_reg_value(1), i));
 	}
 
 	MR_restore_registers();
@@ -517,20 +519,20 @@ MR_define_entry(mercury__builtin__unify_2_0);
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
 	MR_Word		x, y;						\
-	MR_Code		*saved_succip;
+	MR_Word		saved_succip_word;
 
 #define initialize()							\
 	do {								\
 		type_info = (MR_TypeInfo) MR_r1;			\
 		x = MR_r2;						\
 		y = MR_r3;						\
-		saved_succip = MR_succip;				\
+		saved_succip_word = MR_succip_word;			\
 	} while(0)
 
 #define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
-		MR_succip = saved_succip;				\
+		MR_succip_word = saved_succip_word;			\
 		MR_proceed();						\
 	} while(0)
 
@@ -593,20 +595,20 @@ MR_define_entry(mercury__builtin__compare_3_3);
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
 	MR_Word		x, y;						\
-	MR_Code		*saved_succip;
+	MR_Word		saved_succip_word;
 
 #define initialize()							\
 	do {								\
 		type_info = (MR_TypeInfo) MR_r1;			\
 		x = MR_r2;						\
 		y = MR_r3;						\
-		saved_succip = MR_succip;				\
+		saved_succip_word = MR_succip_word;			\
 	} while(0)
 
 #define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
-		MR_succip = saved_succip;				\
+		MR_succip_word = saved_succip_word;			\
 		MR_proceed();						\
 	} while(0)
 
@@ -649,20 +651,20 @@ MR_define_entry(mercury__builtin__compare_representation_3_0);
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
 	MR_Word		x, y;						\
-	MR_Code		*saved_succip;
+	MR_Word		saved_succip_word;
 
 #define initialize()							\
 	do {								\
 		type_info = (MR_TypeInfo) MR_r1;			\
 		x = MR_r2;						\
 		y = MR_r3;						\
-		saved_succip = MR_succip;				\
+		saved_succip_word = MR_succip_word;			\
 	} while(0)
 
 #define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
-		MR_succip = saved_succip;				\
+		MR_succip_word = saved_succip_word;			\
 		MR_proceed();						\
 	} while(0)
 
@@ -950,6 +952,7 @@ MR_make_closure(MR_Code *proc_addr)
 {
 	static	int			closure_counter = 0;
 	MR_Closure			*closure;
+	MR_Word				closure_word;
 	MR_Closure_Id			*closure_id;
 	MR_Closure_Dyn_Link_Layout	*closure_layout;
 	char				buf[80];
@@ -1000,8 +1003,8 @@ MR_make_closure(MR_Code *proc_addr)
 #else
 	num_hidden_args = 0;
 #endif
-	MR_offset_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 0,
-		3 + num_hidden_args);
+	MR_offset_incr_hp(closure_word, 0, 3 + num_hidden_args);
+	closure = (MR_Closure *) closure_word;
 
 	closure->MR_closure_layout = (MR_Closure_Layout *) closure_layout;
 	closure->MR_closure_code = proc_addr;

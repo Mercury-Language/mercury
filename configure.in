@@ -533,6 +533,68 @@ case "$MERCURY_CONF_RECONFIGURE" in
 esac
 
 #-----------------------------------------------------------------------------#
+
+cat > conftest.c << EOF
+	struct MR_TypeInfo_Almost_Struct {
+		int	MR_almost;
+	};
+
+	struct MR_TypeCtorInfo_Struct {
+		int	MR_tci1;
+		int	MR_tci2;
+	};
+
+	typedef struct MR_TypeCtorInfo_Struct		*MR_TypeCtorInfo;
+	typedef const struct MR_TypeInfo_Almost_Struct	*MR_TypeInfo;
+
+	struct MR_FA_TypeInfo_Struct1 {
+		MR_TypeCtorInfo	MR_ti_type_ctor_info;
+		MR_TypeInfo	MR_ti_fixed_arity_arg_typeinfos[1];
+	};
+
+	extern  const struct MR_FA_TypeInfo_Struct1	ML_type_ctor_info;
+
+	MR_TypeInfo
+	f(void)
+	{
+		MR_TypeInfo	x;
+
+		x = (MR_TypeInfo) &ML_type_ctor_info;
+		return x;
+	}
+EOF
+
+AC_MSG_CHECKING(whether we can use -fno-strict-aliasing)
+if $CC -O2 -Wall -fno-strict-aliasing -c conftest.c \
+	</dev/null >&AC_FD_CC 2>&1
+then
+	AC_MSG_RESULT(yes)
+
+	AC_MSG_CHECKING(whether we need to use -fno-strict-aliasing)
+	$CC -O2 -Wall -fno-strict-aliasing -c conftest.c \
+		</dev/null >&conftest1.out
+	$CC -O2 -Wall -c conftest.c \
+		</dev/null >&conftest2.out
+	# get the lines that exist only in conftest2.out
+	comm -13 conftest1.out conftest2.out > conftest.2only
+
+	if test -s conftest.2only
+	then
+		AC_MSG_RESULT(yes)
+		CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
+	else
+		AC_MSG_RESULT(no)
+		CFLAGS_FOR_NO_STRICT_ALIASING=""
+	fi
+else
+	AC_MSG_RESULT(no)
+	CFLAGS_FOR_NO_STRICT_ALIASING=
+fi
+
+AC_SUBST(CFLAGS_FOR_NO_STRICT_ALIASING)
+rm -f conftest*
+
+#-----------------------------------------------------------------------------#
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
 # by default, but (inconsistently) on some systems, such as Solaris,
@@ -1866,6 +1928,7 @@ case $ac_cv_prog_gcc in yes)
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
 
@@ -3161,6 +3224,8 @@ case "$CC" in
 	MCFLAGS_FOR_CC=
 	;;
 esac
+
+CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
 
 AC_SUBST(CFLAGS_FOR_ANSI)
 AC_SUBST(CFLAGS_FOR_WARNINGS)

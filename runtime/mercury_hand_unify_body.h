@@ -42,7 +42,7 @@ MR_define_entry(proc_label);
 #ifdef	MR_DEEP_PROFILING
 
 	MR_incr_sp_push_msg(6, name);
-	MR_stackvar(6) = (MR_Word) MR_succip;
+	MR_stackvar(6) = MR_succip_word;
 	MR_stackvar(1) = MR_r1;
 	MR_stackvar(2) = MR_r2;
 
@@ -64,7 +64,7 @@ MR_define_entry(proc_label);
 		EXIT_PORT_RETURN_LABEL(proc_label));
 
 	MR_r1 = 1;
-	MR_succip = (MR_Code *) MR_stackvar(6);
+	MR_succip_word = MR_stackvar(6);
 	MR_decr_sp_pop_msg(6);
 	MR_proceed();
 
@@ -74,7 +74,7 @@ MR_define_label(FAIL_LABEL(proc_label));
 		FAIL_PORT_RETURN_LABEL(proc_label));
 
 	MR_r1 = 0;
-	MR_succip = (MR_Code *) MR_stackvar(6);
+	MR_succip_word = MR_stackvar(6);
 	MR_decr_sp_pop_msg(6);
 	MR_proceed();
 

@@ -35,7 +35,7 @@ Changes to the Mercury standard library:
 * The dir module now handles Microsoft Windows pathnames correctly.
 
 Portability improvements:
-* Nothing yet.
+* We have made the implementation compatible with gcc 3.4.
 
 Changes to the Mercury debugger:
 * Users can now limit the output from stack traces.

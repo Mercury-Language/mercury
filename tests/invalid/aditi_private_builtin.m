@@ -2,7 +2,6 @@
 
 :- interface.
 
-:- import_module io.
 :- import_module aditi.
 
 :- type relation_ticket == c_pointer.

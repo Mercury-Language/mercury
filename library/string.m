@@ -1812,9 +1812,9 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	int_length_modifer = (LengthModifier::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_make_aligned_string(LengthModifier,
-		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
+	MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
 }").
+
 % This predicate is only called if using_sprintf/0, so we produce an error
 % by default.
 int_length_modifer = _ :- error("string.int_length_modifer/0 not defined").
@@ -3475,13 +3475,12 @@ strchars(I, End, Str) =
 	string__substring(Str::in, Start::in, Count::in, SubString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_Integer len;
-	MR_Word tmp;
+	MR_Integer	len;
+	MR_Word		tmp;
+
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
-		MR_make_aligned_string(
-			MR_LVALUE_CAST(MR_ConstString, SubString),
-			"""");
+		MR_make_aligned_string(SubString, """");
 	} else {
 		len = strlen(Str);
 		if (Start > len) Start = len;
@@ -3497,6 +3496,7 @@ strchars(I, End, Str) =
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	MR_Integer len;
+
 	MR_allocate_aligned_string_msg(SubString, Count, MR_PROC_LABEL);
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
@@ -3518,11 +3518,11 @@ strchars(I, End, Str) =
 	string__split(Str::in, Count::in, Left::uo, Right::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_Integer len;
-	MR_Word tmp;
+	MR_Integer	len;
+	MR_Word		tmp;
+
 	if (Count <= 0) {
-		MR_make_aligned_string(MR_LVALUE_CAST(MR_ConstString, Left),
-			"""");
+		MR_make_aligned_string(Left, """");
 		Right = Str;
 	} else {
 		len = strlen(Str);

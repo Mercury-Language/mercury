@@ -358,7 +358,7 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (do_regs) {
-				value = MR_virtual_reg(locn_num);
+				value = MR_virtual_reg_value(locn_num);
 				have_value = MR_TRUE;
 				fprintf(stderr, "r%d\t", locn_num);
 			} else {
@@ -442,7 +442,7 @@ dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 	switch (MR_SHORT_LVAL_TYPE(locn)) {
 		case MR_SHORT_LVAL_TYPE_R:
 			if (do_regs) {
-				value = MR_virtual_reg(locn_num);
+				value = MR_virtual_reg_value(locn_num);
 				have_value = MR_TRUE;
 				fprintf(stderr, "r%d\t", locn_num);
 			} else {

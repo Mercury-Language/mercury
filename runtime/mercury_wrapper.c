@@ -391,9 +391,6 @@ static	void	process_environment_options(void);
 static	void	process_options(int argc, char **argv);
 static	void	usage(void);
 
-#ifdef MR_MEASURE_REGISTER_USAGE
-static	void	print_register_usage_counts(void);
-#endif
 #ifdef MR_TYPE_CTOR_STATS
 static	void	MR_print_type_ctor_stats(void);
 static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
@@ -958,7 +955,7 @@ process_options(int argc, char **argv)
 	int		c;
 	int		long_index;
 
-	while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:n:o:pP:r:sStT:x",
+	while ((c = MR_getopt_long(argc, argv, "acC:d:D:e:i:m:n:o:pP:r:sStT:xX",
 		MR_long_opts, &long_index)) != EOF)
 	{
 		switch (c)
@@ -1319,7 +1316,12 @@ process_options(int argc, char **argv)
 #ifdef MR_BOEHM_GC
 			GC_dont_gc = MR_TRUE;
 #endif
+			break;
 
+		case 'X':
+#ifdef	MR_VERIFY_FAKE_REGISTERS
+			MR_verify_fake_registers();
+#endif
 			break;
 
 		default:	
@@ -1527,7 +1529,7 @@ mercury_runtime_main(void)
 
 #ifdef MR_MEASURE_REGISTER_USAGE
 	printf("\n");
-	print_register_usage_counts();
+	MR_print_register_usage_counts();
 #endif
 
         if (use_own_timer) {
@@ -1651,78 +1653,6 @@ MR_print_one_type_ctor_stat(FILE *fp, const char *op, MR_TypeStat *type_stat)
 
 #endif
 
-#ifdef MR_MEASURE_REGISTER_USAGE
-static void 
-print_register_usage_counts(void)
-{
-	int	i;
-
-	printf("register usage counts:\n");
-	for (i = 0; i < MR_MAX_RN; i++) {
-		if (1 <= i && i <= ORD_RN) {
-			printf("r%d", i);
-		} else {
-			switch (i) {
-
-			case SI_RN:
-				printf("MR_succip");
-				break;
-			case HP_RN:
-				printf("MR_hp");
-				break;
-			case SP_RN:
-				printf("MR_sp");
-				break;
-			case CF_RN:
-				printf("MR_curfr");
-				break;
-			case MF_RN:
-				printf("MR_maxfr");
-				break;
-			case MR_TRAIL_PTR_RN:
-				printf("MR_trail_ptr");
-				break;
-			case MR_TICKET_COUNTER_RN:
-				printf("MR_ticket_counter");
-				break;
-			case MR_TICKET_HIGH_WATER_RN:
-				printf("MR_ticket_high_water");
-				break;
-			case MR_SOL_HP_RN:
-				printf("MR_sol_hp");
-				break;
-			case MR_MIN_HP_REC:
-				printf("MR_min_hp_rec");
-				break;
-			case MR_MIN_SOL_HP_REC:
-				printf("MR_min_sol_hp_rec");
-				break;
-			case MR_GLOBAL_HP_RN:
-				printf("MR_global_hp");
-				break;
-			case MR_GEN_STACK_RN:
-				printf("MR_gen_stack");
-				break;
-			case MR_GEN_NEXT_RN:
-				printf("MR_gen_next");
-				break;
-			case MR_CUT_STACK_RN:
-				printf("MR_cut_stack");
-				break;
-			case MR_CUT_NEXT_RN:
-				printf("MR_cut_next");
-				break;
-			default:
-				printf("UNKNOWN%d", i);
-				break;
-			}
-		}
-
-		printf("\t%lu\n", MR_num_uses[i]);
-	} /* end for */
-} /* end print_register_usage_counts() */
-#endif
-
 #ifdef MR_HIGHLEVEL_CODE
 
 static void
@@ -1808,12 +1738,12 @@ MR_BEGIN_CODE
 
 MR_define_entry(MR_do_interpreter);
 	MR_incr_sp(4);
-	MR_stackvar(1) = (MR_Word) MR_hp;
-	MR_stackvar(2) = (MR_Word) MR_succip;
-	MR_stackvar(3) = (MR_Word) MR_maxfr;
-	MR_stackvar(4) = (MR_Word) MR_curfr;
+	MR_stackvar(1) = MR_hp_word;
+	MR_stackvar(2) = MR_succip_word;
+	MR_stackvar(3) = MR_maxfr_word;
+	MR_stackvar(4) = MR_curfr_word;
 
-	MR_succip = MR_LABEL(wrapper_not_reached);
+	MR_succip_word = (MR_Word) MR_LABEL(wrapper_not_reached);
 	MR_mkframe("interpreter", 1, MR_LABEL(global_fail));
 
 	MR_nondet_stack_trace_bottom = MR_maxfr;
@@ -1879,10 +1809,10 @@ MR_define_label(all_done);
 	}
 #endif
 
-	MR_hp     = (MR_Word *) MR_stackvar(1);
-	MR_succip = (MR_Code *) MR_stackvar(2);
-	MR_maxfr  = (MR_Word *) MR_stackvar(3);
-	MR_curfr  = (MR_Word *) MR_stackvar(4);
+	MR_hp_word     = MR_stackvar(1);
+	MR_succip_word = MR_stackvar(2);
+	MR_maxfr_word  = MR_stackvar(3);
+	MR_curfr_word  = MR_stackvar(4);
 	MR_decr_sp(4);
 
 #ifdef MR_LOWLEVEL_DEBUG

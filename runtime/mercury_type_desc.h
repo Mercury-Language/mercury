@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -62,7 +62,7 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** 1024 arguments, which is more than ../LIMITATIONS promises.
 */
 
-#define MR_MAX_VARIABLE_ARITY		MR_MAX_VIRTUAL_REG
+#define MR_MAX_VARIABLE_ARITY		MR_MAX_VIRTUAL_R_REG
 
 /*
 ** Constructors for the MR_TypeCtorDesc ADT

@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module io, string.
+:- import_module string.
 
 :- pred is(string::in, string::out) is det.
 :- pred foobar(string::in, string::out) is det.

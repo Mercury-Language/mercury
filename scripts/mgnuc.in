@@ -23,6 +23,7 @@ CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
+CFLAGS_FOR_NO_STRICT_ALIASING="@CFLAGS_FOR_NO_STRICT_ALIASING@"
 AS="@AS@"
 
 case "$CC" in
@@ -51,7 +52,7 @@ case "$CC" in
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
 
-	OPT_OPTS="-O2 -fomit-frame-pointer"
+	OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
 	DEBUG_OPT="-g"
 	COMPILER=gcc
 	;;

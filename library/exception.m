@@ -1659,8 +1659,8 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 			return NULL;
 		}
 		MR_restore_transient_registers();
-		MR_sp = base_sp;
-		MR_curfr = base_curfr;
+		MR_sp_word = (MR_Word) base_sp;
+		MR_curfr_word = (MR_Word) base_curfr;
 		MR_save_transient_registers();
 	}
 	return NULL;
@@ -2124,11 +2124,11 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	orig_curfr = MR_curfr;
 	while (MR_redoip_slot(MR_curfr)
-			!= MR_ENTRY(MR_exception_handler_do_fail))
+		!= MR_ENTRY(MR_exception_handler_do_fail))
 	{
-		MR_curfr = MR_succfr_slot(MR_curfr);
+		MR_curfr_word = MR_succfr_slot_word(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(MR_ctxt_nondetstack_zone)->min) {
-			MR_Word *save_succip;
+			MR_Word save_succip_word;
 			/*
 			** There was no exception handler.
 			**
@@ -2150,12 +2150,12 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 			** sufficient since the Mercury code may clobber the
 			** copy of MR_succip in the fake_reg.
 			*/
-			MR_curfr = orig_curfr;
+			MR_curfr_word = (MR_Word) orig_curfr;
 			fflush(stdout);
-			save_succip = MR_succip;
+			save_succip_word = MR_succip_word;
 			MR_save_registers();
 			ML_report_uncaught_exception(exception);
-			MR_succip = save_succip;
+			MR_succip_word = save_succip_word;
 			MR_trace_report(stderr);
 			if (exception_event_number > 0) {
 				if (MR_standardize_event_details) {
@@ -2203,12 +2203,12 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	** This ensures that when we return from this procedure,
 	** we will return to the caller of `builtin_catch'.
 	*/
-	MR_succip = MR_succip_slot(MR_curfr);
+	MR_succip_word = MR_succip_slot_word(MR_curfr);
 
 	/*
 	** Reset the det stack.
 	*/
-	MR_sp = MR_EXCEPTION_STRUCT->MR_excp_stack_ptr;
+	MR_sp_word = (MR_Word) MR_EXCEPTION_STRUCT->MR_excp_stack_ptr;
 
 #ifdef MR_USE_TRAIL
 	/*
@@ -2307,8 +2307,8 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	** and reset the nondet stack top.  (This must be done last,
 	** since it invalidates all the framevars.)
 	*/
-	MR_maxfr = MR_prevfr_slot(MR_curfr);
-	MR_curfr = MR_succfr_slot(MR_curfr);
+	MR_maxfr_word = MR_prevfr_slot_word(MR_curfr);
+	MR_curfr_word = MR_succfr_slot_word(MR_curfr);
 
 	/*
 	** Now longjmp to the catch, which will invoke the handler
@@ -2360,7 +2360,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 			MR_ENTRY(mercury__exception__builtin_throw_1_0));
 	}
 	MR_incr_sp_push_msg(1, ""pred builtin_throw/1"");
-	MR_stackvar(1) = (MR_Word) MR_succip;
+	MR_stackvar(1) = MR_succip_word;
 	MR_call(MR_ENTRY(mercury__do_call_closure_compact),
 		MR_LABEL(mercury__exception__builtin_throw_1_0_i1),
 		MR_ENTRY(mercury__exception__builtin_throw_1_0));
@@ -2371,7 +2371,7 @@ MR_define_label(mercury__exception__builtin_throw_1_0_i1);
 	/* we've just returned from mercury__do_call_closure_compact */
 	MR_r2 = MR_r1;
 	MR_r1 = MR_TRUE;
-	MR_succip = (MR_Code *) MR_stackvar(1);
+	MR_succip_word = MR_stackvar(1);
 	MR_decr_sp_pop_msg(1);
 	MR_proceed(); /* return to the caller of `builtin_catch' */
 

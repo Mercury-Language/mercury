@@ -2430,8 +2430,8 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 	** then jump to the code where the work is actually done.
 	*/
 
-	MR_maxfr = MR_prevfr_slot(MR_curfr);
-	MR_curfr = MR_succfr_slot(MR_curfr);
+	MR_maxfr_word = MR_prevfr_slot_word(MR_curfr);
+	MR_curfr_word = MR_succfr_slot_word(MR_curfr);
 	{
 		MR_declare_entry(%s);
 		MR_GOTO(MR_ENTRY(%s));

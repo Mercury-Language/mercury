@@ -492,10 +492,8 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	( MaybeInitModuleBunches = [] ->
 		true
 	;
-		io__write_string("#ifdef MR_MAY_NEED_INITIALIZATION\n\n", !IO),
 		output_init_bunch_defs(MaybeInitModuleBunches, ModuleName,
-			"maybe", 0, SplitFiles, !IO),
-		io__write_string("#endif\n\n", !IO)
+			"maybe", 0, SplitFiles, !IO)
 	),
 
 	io__write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
@@ -531,10 +529,8 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	( MaybeInitModuleBunches = [] ->
 		true
 	;
-		io__write_string("\n#ifdef MR_MAY_NEED_INITIALIZATION\n", !IO),
 		output_init_bunch_calls(MaybeInitModuleBunches, ModuleName,
-			"maybe", 0, !IO),
-		io__write_string("#endif\n\n", !IO)
+			"maybe", 0, !IO)
 	),
 
 	output_c_data_init_list(Datas, !IO),
@@ -1871,9 +1867,8 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
 
 output_instruction(assign(Lval, Rval), _, !IO) :-
 	io__write_string("\t", !IO),
-	output_lval(Lval, !IO),
+	output_lval_for_assign(Lval, Type, !IO),
 	io__write_string(" = ", !IO),
-	llds__lval_type(Lval, Type),
 	output_rval_as_type(Rval, Type, !IO),
 	io__write_string(";\n", !IO).
 
@@ -4674,6 +4669,95 @@ output_lval(mem_ref(Rval)) -->
 	output_rval(Rval),
 	io__write_string(")").
 
+:- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo) is det.
+
+output_lval_for_assign(reg(RegType, Num), word, !IO) :-
+	require(unify(RegType, r), "output_lval_for_assign: float reg"),
+	output_reg(RegType, Num, !IO).
+output_lval_for_assign(stackvar(N), word, !IO) :-
+	( N < 0 ->
+		error("stack var out of range")
+	;
+		true
+	),
+	io__write_string("MR_sv(", !IO),
+	io__write_int(N, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(framevar(N), word, !IO) :-
+	( N =< 0 ->
+		error("frame var out of range")
+	;
+		true
+	),
+	io__write_string("MR_fv(", !IO),
+	io__write_int(N, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(succip, word, !IO) :-
+	io__write_string("MR_succip_word", !IO).
+output_lval_for_assign(sp, word, !IO) :-
+	io__write_string("MR_sp_word", !IO).
+output_lval_for_assign(hp, word, !IO) :-
+	io__write_string("MR_hp_word", !IO).
+output_lval_for_assign(maxfr, word, !IO) :-
+	io__write_string("MR_maxfr_word", !IO).
+output_lval_for_assign(curfr, word, !IO) :-
+	io__write_string("MR_curfr_word", !IO).
+output_lval_for_assign(succfr(Rval), word, !IO) :-
+	io__write_string("MR_succfr_slot_word(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(prevfr(Rval), word, !IO) :-
+	io__write_string("MR_prevfr_slot_word(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(redofr(Rval), word, !IO) :-
+	io__write_string("MR_redofr_slot_word(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(redoip(Rval), word, !IO) :-
+	io__write_string("MR_redoip_slot_word(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(succip(Rval), word, !IO) :-
+	io__write_string("MR_succip_slot_word(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), word, !IO) :-
+	(
+		MaybeTag = yes(Tag),
+		io__write_string("MR_tfield(", !IO),
+		io__write_int(Tag, !IO),
+		io__write_string(", ", !IO)
+	;
+		MaybeTag = no,
+		io__write_string("MR_mask_field(", !IO)
+	),
+	output_rval(Rval, !IO),
+	io__write_string(", ", !IO),
+	( FieldNumRval = const(int_const(FieldNum)) ->
+		% Avoid emitting the (MR_Integer) cast.
+		io__write_int(FieldNum, !IO)
+	;
+		output_rval(FieldNumRval, !IO)
+	),
+	io__write_string(")", !IO).
+output_lval_for_assign(lvar(_), _, !IO) :-
+	error("output_lval_for_assign: lvar").
+output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
+	(
+		RegType = r,
+		Type = word,
+		io__write_string("MR_tempr", !IO),
+		io__write_int(Num, !IO)
+	;
+		RegType = f,
+		Type = float,
+		io__write_string("MR_tempf", !IO),
+		io__write_int(Num, !IO)
+	).
+output_lval_for_assign(mem_ref(_), _, !IO) :-
+	error("output_lval_for_assign: mem_ref").
+
 %-----------------------------------------------------------------------------%
 
 :- pred output_set_line_num(prog_context::in, io::di, io::uo) is det.
@@ -4724,16 +4808,24 @@ llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
 	string__append(Tmp, ")", Description).
 
 llds_out__reg_to_string(r, N, Description) :-
-	( N > 32 ->
+	( N =< max_real_r_reg ->
+		Template = "MR_r%d"
+	; N =< max_virtual_r_reg ->
 		Template = "MR_r(%d)"
 	;
-		Template = "MR_r%d"
+		error("llds_out__reg_to_string: register number too large")
 	),
 	string__format(Template, [i(N)], Description).
 llds_out__reg_to_string(f, N, Description) :-
 	string__int_to_string(N, N_String),
 	string__append("MR_f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
+
+:- func max_real_r_reg = int.
+:- func max_virtual_r_reg = int.
+
+max_real_r_reg = 32.
+max_virtual_r_reg = 1024.
 
 %-----------------------------------------------------------------------------%
 

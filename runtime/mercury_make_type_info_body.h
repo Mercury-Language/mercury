@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000-2003 The University of Melbourne.
+** Copyright (C) 2000-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,26 +21,27 @@ usual_func(const MR_TypeInfoParams type_info_params,
 }
 
 MR_TypeInfo
-exist_func(const MR_TypeInfoParams type_info_params, 
-	const MR_PseudoTypeInfo pseudo_type_info, const MR_Word *data_value, 
+exist_func(const MR_TypeInfoParams type_info_params,
+	const MR_PseudoTypeInfo pseudo_type_info, const MR_Word *data_value,
 	const MR_DuFunctorDesc *functor_desc
 	MAYBE_DECLARE_ALLOC_ARG)
 {
 	MR_TypeCtorInfo		type_ctor_info;
 	MR_TypeInfo		expanded_type_info;
 	MR_Word			*type_info_arena;
+	MR_Word			type_info_arena_word;
 	MR_PseudoTypeInfo	*pseudo_type_info_arena;
 	int			arity;
 	int			start_region_size;
 	int			i;
 
-	/* 
+	/*
 	** The pseudo_type_info might be a polymorphic variable.
 	** If so, substitute its value, and we are done.
 	*/
 
 	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
-		expanded_type_info = MR_get_arg_type_info(type_info_params, 
+		expanded_type_info = MR_get_arg_type_info(type_info_params,
 			pseudo_type_info, data_value, functor_desc);
 
 		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(
@@ -72,7 +73,8 @@ exist_func(const MR_TypeInfoParams type_info_params,
 		** We use void as a space filler until that can be done.
 		*/
 
-		ALLOCATE_WORDS(type_info_arena, 2);
+		ALLOCATE_WORDS(type_info_arena_word, 2);
+		type_info_arena = (MR_Word *) type_info_arena_word;
 		type_info_arena[0] = (MR_Word) type_ctor_info;
 		type_info_arena[1] = (MR_Word)
 			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0);
@@ -119,8 +121,10 @@ exist_func(const MR_TypeInfoParams type_info_params,
 			** if we haven't done so already.
 			*/
 			if (type_info_arena == NULL) {
-				ALLOCATE_WORDS(type_info_arena,
+				ALLOCATE_WORDS(type_info_arena_word,
 					arity + start_region_size);
+				type_info_arena =
+					(MR_Word *) type_info_arena_word;
 				memcpy(type_info_arena,
 					(MR_Word *) pseudo_type_info,
 					(arity + start_region_size)

@@ -603,7 +603,8 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 				printf("long r%d\n", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = MR_saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg_value(saved_regs,
+					locn_num);
 				*succeeded = MR_TRUE;
 			}
 			break;
@@ -719,7 +720,8 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 				printf("short r%d\n", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = MR_saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg_value(saved_regs,
+					locn_num);
 				*succeeded = MR_TRUE;
 			}
 			break;

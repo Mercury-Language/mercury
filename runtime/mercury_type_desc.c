@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2003 The University of Melbourne.
+** Copyright (C) 2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -84,6 +84,7 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 {
 	MR_TypeCtorInfo type_ctor_info;
 	MR_Word		*new_type_info_arena;
+	MR_Word		new_type_info_arena_word;
 	MR_TypeInfo	*new_type_info_args;
 	int		i;
 
@@ -96,10 +97,10 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 			type_ctor_desc);
 
 		MR_restore_transient_registers();
-		MR_offset_incr_hp_atomic_msg(
-			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+		MR_offset_incr_hp_atomic_msg(new_type_info_arena_word,
 			0, MR_var_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
+		new_type_info_arena = (MR_Word *) new_type_info_arena_word;
 		MR_save_transient_registers();
 		MR_fill_in_var_arity_type_info(new_type_info_arena,
 			type_ctor_info, arity, new_type_info_args);
@@ -113,10 +114,10 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 		}
 
 		MR_restore_transient_registers();
-		MR_offset_incr_hp_atomic_msg(
-			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+		MR_offset_incr_hp_atomic_msg(new_type_info_arena_word,
 			0, MR_fixed_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
+		new_type_info_arena = (MR_Word *) new_type_info_arena_word;
 		MR_save_transient_registers();
 		MR_fill_in_fixed_arity_type_info(new_type_info_arena,
 			type_ctor_info, new_type_info_args);
