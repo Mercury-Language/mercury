@@ -208,8 +208,7 @@ middle_rec__find_unused_register(Instrs, UnusedReg) :-
 :- pred middle_rec__find_unused_register_2(list(int), int, lval).
 :- mode middle_rec__find_unused_register_2(in, in, out) is det.
 
-middle_rec__find_unused_register_2([], N, reg(r(M))) :-
-	M is N + 1.
+middle_rec__find_unused_register_2([], N, reg(r(N))).
 middle_rec__find_unused_register_2([H | T], N, Reg) :-
 	( N < H ->
 		Reg = reg(r(N))
