@@ -163,8 +163,8 @@
 ").
 
 copy_mutvar(Mutvar, Copy) -->
-	get_mutvar(Mutvar, Val),
-	new_mutvar(Val, Copy).
+	tr_store__get_mutvar(Mutvar, Val),
+	tr_store__new_mutvar(Val, Copy).
 
 :- pragma c_code(get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
 		will_not_call_mercury,
