@@ -2,5 +2,9 @@ sicstus_compile sicstus_saved_state
 io.h std_util.h
 *.c
 *.prof
+*.d
+*.err
 library.nu.nl
 mer_std.init
+library.dep
+Mercury
