@@ -1,4 +1,10 @@
-#!/usr/local/bin/perl
+
+# Leave the first line of this file blank!
+# This is a Perl script; the following two lines allow us to avoid
+# embedding the path of the perl interpreter in the script.
+eval "exec perl -S $0 $*"
+    if $running_under_some_shell;
+
 'di';
 'ig00';
 #+##############################################################################
