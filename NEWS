@@ -56,10 +56,22 @@ NEWS for Mercury release 0.6
     the compiler introduces type_info arguments which are often unused.
     This optimization is enabled by the `--optimize-unused-args' option.
 
+  - The --inlining option has been replaced by three other options. One,
+    --inline-simple, reproduces the previous behavior of --inlining: it
+    inlines procedures whose definition is simple (e.g. a conjunction of
+    builtins). Another, --inline-single-use, tells the compiler to inline
+    all procedures that are called exactly once. The compiler can also
+    inline procedures called more than once as long as they are not too
+    bit; the argument of the option --inline-threshold sets a limit
+    on the size of the procedure definition (roughly in terms of the number
+    of logical connectives it has) multiplied by the number of calls to
+    the predicate.
+
   - There's a new option `--optimize-dead-proc' option to eliminate unused
     procedures within a module.  This is useful even if the original source
-    code didn't contain any unused procedures, since inlining and specialization
-    can mean that the original version of a procedure is no longer used.
+    code didn't contain any unused procedures, since inlining and code
+    specialization can make a procedure unused even if there original source
+    had calls to that procedure.
 
   - There's a new option `--split-c-files' which causes the compiler to put
     each C function in its own C file, so that the linker can link in only
