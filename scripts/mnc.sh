@@ -31,10 +31,18 @@ while true; do
 done
 
 for file in "$@"; do
-	rootname="`dirname $file`/`basename $file .nl`"
+	dir="`dirname $file`"
+	case $file in
+		*.m)	base="`basename $file .m`" ;;
+		*.nl)	base="`basename $file .nl`" ;;
+		*)	base="`basename $file`" ;;
+	esac
+	rootname="$dir/$base"
 	tmp=/tmp/mnc$$
 	trap 'rm -f $tmp.nl $tmp.ns $tmp.no; exit 1' 1 2 3 13 15
 	cat $nc_builtin_nl > $tmp.nl
+	# as a special-case hack, if there is a .pp file we use it instead,
+	# after preprocessing away any #if NU_PROLOG commands in it
 	if [ -f "$rootname.pp" ]; then
 		echo "mnc: compiling \`$rootname.pp'"
 		sed -e '/^#if *NU_PROLOG/s/.*//' -e '/^#endif/s/.*//' \
