@@ -82,7 +82,7 @@
 
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
-:- import_module rl_out, llds, inlining, hlds_goal.
+:- import_module rl_out, llds, inlining, hlds_goal, prog_util.
 :- import_module assoc_list, bool, char, int, map.
 :- import_module require, set, std_util, string, term, varset.
 
@@ -754,12 +754,10 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		{ rl_exprn__type_to_aditi_type(Type, AditiType) },
 		{ rl_exprn__compare_bytecode(AditiType, Compare) },
 
-		{ EQConsId = cons(qualified(unqualified("mercury_builtin"),
-				"="), 0) },
-		{ LTConsId = cons(qualified(unqualified("mercury_builtin"),
-				"<"), 0) },
-		{ GTConsId = cons(qualified(unqualified("mercury_builtin"),
-				">"), 0) },
+		{ mercury_public_builtin_module(Builtin) },
+		{ EQConsId = cons(qualified(Builtin, "="), 0) },
+		{ LTConsId = cons(qualified(Builtin, "<"), 0) },
+		{ GTConsId = cons(qualified(Builtin, ">"), 0) },
 		rl_exprn__cons_id_to_rule_number(EQConsId, ResType, EQRuleNo),
 		rl_exprn__cons_id_to_rule_number(GTConsId, ResType, GTRuleNo),
 		rl_exprn__cons_id_to_rule_number(LTConsId, ResType, LTRuleNo),
@@ -838,8 +836,8 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes),
 	( 
 		{ ConsId = cons(SymName, _) },
 		(
-			{ SymName = qualified(unqualified("mercury_builtin"),
-					TypeInfo) },
+			{ mercury_private_builtin_module(Builtin) },
+			{ SymName = qualified(Builtin, TypeInfo) },
 			( { TypeInfo = "type_info" }
 			; { TypeInfo = "type_ctor_info" }
 			)
