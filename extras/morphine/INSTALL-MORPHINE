@@ -15,7 +15,7 @@ cd scripts
 rm -f morphine
 
 # Get the Mercury library path (needed in source scenario)
-MmcDefault=/soft/mercury/library
+MmcDefault=../../library
 
 echo "What is the complete path of the Mercury library source files? [default=$MmcDefault]"
 read RESPONSE
