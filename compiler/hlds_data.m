@@ -187,7 +187,8 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 	--->	du_type(
 			list(constructor), 	% the ctors for this type
 			cons_tag_values,	% their tag values
-			bool		% is this type an enumeration?
+			bool,		% is this type an enumeration?
+			maybe(sym_name) % user-defined equality pred
 		)
 	;	uu_type(list(type))	% not yet implemented!
 	;	eqv_type(type)

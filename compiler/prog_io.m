@@ -709,15 +709,17 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 
-:- pred parse_type_decl_type(string, string, list(term),
-				condition, maybe1(type_defn)).
+:- pred parse_type_decl_type(string, string, list(term), condition,
+				maybe1(type_defn)).
 :- mode parse_type_decl_type(in, in, in, out, out) is semidet.
 
 :- parse_type_decl_type(_, [A|B], _, _, _) when A and B.
 
 parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
-	get_condition(B, Body, Condition),
-	process_du_type(ModuleName, H, Body, R).
+	/* get_condition(...), */
+	Condition = true,
+	get_maybe_equality_pred(B, Body, EqualityPred),
+	process_du_type(ModuleName, H, Body, EqualityPred, R).
 
 parse_type_decl_type(ModuleName, "=", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
@@ -784,6 +786,42 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Result) :-
 
 %-----------------------------------------------------------------------------%
 
+	% get_maybe_equality_pred(Body0, Body, MaybeEqualPred):
+	%	Checks if `Body0' is a term of the form
+	%		`<body> where equality is <symname>'
+	%	If so, returns the `<body>' in Body and the <symname> in
+	%	MaybeEqualPred.  If not, returns Body = Body0 
+	%	and `no' in MaybeEqualPred.
+
+:- pred get_maybe_equality_pred(term, term, maybe1(maybe(sym_name))).
+:- mode get_maybe_equality_pred(in, out, out) is det.
+
+get_maybe_equality_pred(B, Body, MaybeEqualityPred) :-
+	( 
+		B = term__functor(term__atom("where"), Args, _Context1),
+		Args = [Body1, Equality_Is_PredName]
+	->
+		Body = Body1,
+		( 
+			Equality_Is_PredName = term__functor(term__atom("is"),
+				[Equality, PredName], _),
+			Equality = term__functor(term__atom("equality"), [], _)
+		->
+			parse_symbol_name(PredName, MaybeEqualityPred0),
+			process_maybe1(make_yes, MaybeEqualityPred0,
+				MaybeEqualityPred)
+		;
+			MaybeEqualityPred = error("syntax error after `where'",
+				Body)
+		)
+	;
+		Body = B,
+		MaybeEqualityPred = ok(no)
+	).
+
+:- pred make_yes(T::in, maybe(T)::out) is det.
+make_yes(T, yes(T)).
+
 	% get_determinism(Term0, Term, Determinism) binds Determinism
 	% to a representation of the determinism condition of Term0, if any,
 	% and binds Term to the other part of Term0. If Term0 does not
@@ -823,6 +861,20 @@ get_determinism(B, Body, Determinism) :-
 
 :- pred get_condition(term, term, condition).
 :- mode get_condition(in, out, out) is det.
+
+get_condition(Body, Body, true).
+
+/********
+% NU-Prolog supported type declarations of the form
+%	:- pred p(T) where p(X) : sorted(X).
+% or
+%	:- type sorted_list(T) = list(T) where X : sorted(X).
+%	:- pred p(sorted_list(T).
+% There is some code here to support that sort of thing, but
+% probably we would now need to use a different syntax, since
+% Mercury now uses `where' for different purposes (e.g. specifying
+% user-defined equality predicates; also for type classes, eventually...)
+%
 get_condition(B, Body, Condition) :-
 	( 
 		B = term__functor(term__atom("where"), [Body1, Condition1],
@@ -834,6 +886,7 @@ get_condition(B, Body, Condition) :-
 		Body = B,
 		Condition = true
 	).
+********/
 
 %-----------------------------------------------------------------------------%
 
@@ -871,21 +924,31 @@ process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name, Args, Body))).
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 	% This is for "Head ---> Body" (constructor) definitions.
-:- pred process_du_type(string, term, term, maybe1(type_defn)).
-:- mode process_du_type(in, in, in, out) is det.
-process_du_type(ModuleName, Head, Body, Result) :-
+:- pred process_du_type(string, term, term, maybe1(maybe(equality_pred)),
+			maybe1(type_defn)).
+:- mode process_du_type(in, in, in, in, out) is det.
+process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
 	check_for_errors(ModuleName, Head, Body, Result0),
-	process_du_type_2(ModuleName, Result0, Body, Result).
+	process_du_type_2(ModuleName, Result0, Body, EqualityPred, Result).
 
-:- pred process_du_type_2(string, maybe_functor, term, maybe1(type_defn)).
-:- mode process_du_type_2(in, in, in, out) is det.
-process_du_type_2(_, error(Error, Term), _, error(Error, Term)).
-process_du_type_2(ModuleName, ok(Functor, Args), Body, Result) :-
+:- pred process_du_type_2(string, maybe_functor, term,
+			maybe1(maybe(equality_pred)), maybe1(type_defn)).
+:- mode process_du_type_2(in, in, in, in, out) is det.
+process_du_type_2(_, error(Error, Term), _, _, error(Error, Term)).
+process_du_type_2(ModuleName, ok(Functor, Args), Body, MaybeEqualityPred,
+		Result) :-
 	% check that body is a disjunction of constructors
 	( %%% some [Constrs] 
 		convert_constructors(ModuleName, Body, Constrs)
 	->
-		Result = ok(du_type(Functor, Args, Constrs))
+		(
+			MaybeEqualityPred = ok(EqualityPred),
+			Result = ok(du_type(Functor, Args, Constrs,
+						EqualityPred))
+		;
+			MaybeEqualityPred = error(Error, Term),
+			Result = error(Error, Term)
+		)
 	;
 		Result = error("invalid RHS of type definition", Body)
 	).

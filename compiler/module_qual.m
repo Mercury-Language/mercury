@@ -144,7 +144,7 @@ collect_mq_info_2(nothing, Info, Info).
 :- pred add_type_defn(type_defn::in, mq_info::in, mq_info::out) is det.
 
 add_type_defn(TypeDefn, Info0, Info) :-
-	(	TypeDefn = du_type(SymName, Params, _)
+	(	TypeDefn = du_type(SymName, Params, _, _EqualityPred)
 	;	TypeDefn = uu_type(SymName, Params, _)
 	;	TypeDefn = eqv_type(SymName, Params, _)
 	;	TypeDefn = abstract_type(SymName, Params)
@@ -320,12 +320,19 @@ update_import_status(use(_), Info, Info, yes).
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
 	mq_info::out, term__context::in, io__state::di, io__state::uo) is det.
 
-qualify_type_defn(du_type(SymName, Params, Ctors0),
-		du_type(SymName, Params, Ctors), Info0, Info, Context) -->
+qualify_type_defn(du_type(SymName, Params, Ctors0, MaybeEqualityPred0),
+		du_type(SymName, Params, Ctors, MaybeEqualityPred),
+		Info0, Info, Context) -->
 	{ list__length(Params, Arity) },
 	{ mq_info_set_error_context(Info0, type(SymName - Arity) - Context,
 								Info1) },
-	qualify_constructors(Ctors0, Ctors, Info1, Info).
+	qualify_constructors(Ctors0, Ctors, Info1, Info),
+
+	% User-defined equality pred names will be converted into
+	% predicate calls and then module-qualified after type analysis
+	% (during mode analysis).  That way they get full type overloading
+	% resolution, etc.  Thus we don't module-qualify them here.
+	{ MaybeEqualityPred = MaybeEqualityPred0 }.
 
 qualify_type_defn(uu_type(SymName, Params, Types0),
 		uu_type(SymName, Params, Types), Info0, Info, Context) -->

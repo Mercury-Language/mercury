@@ -143,8 +143,9 @@ equiv_type__replace_in_type_defn(uu_type(TName, TArgs, TBody0), VarSet0,
 		EqvMap, uu_type(TName, TArgs, TBody), VarSet, no) :-
 	equiv_type__replace_in_uu(TBody0, VarSet0, EqvMap, TBody, VarSet).
 
-equiv_type__replace_in_type_defn(du_type(TName, TArgs, TBody0), VarSet0,
-			EqvMap, du_type(TName, TArgs, TBody), VarSet, no) :-
+equiv_type__replace_in_type_defn(du_type(TName, TArgs, TBody0, EqPred), VarSet0,
+			EqvMap, du_type(TName, TArgs, TBody, EqPred), VarSet,
+			no) :-
 	equiv_type__replace_in_du(TBody0, VarSet0, EqvMap, TBody, VarSet).
 
 %-----------------------------------------------------------------------------%

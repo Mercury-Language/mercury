@@ -252,7 +252,7 @@ type_is_enumeration(Type, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__search(TypeDefnTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = du_type(_, _, IsEnum),
+	TypeBody = du_type(_, _, IsEnum, _),
 	IsEnum = yes.
 
 type_to_type_id(Type, SymName - Arity, Args) :-
@@ -315,7 +315,7 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 	map__search(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = du_type(Constructors0, _, _),
+	TypeBody = du_type(Constructors0, _, _, _),
 	substitute_type_args(TypeParams, TypeArgs, Constructors0,
 		Constructors).
 

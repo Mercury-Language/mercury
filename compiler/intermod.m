@@ -775,8 +775,9 @@ intermod__write_types(ModuleInfo, TypeTable, [TypeId | TypeIds]) -->
 	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	(
-		{ Body = du_type(Ctors, _, _) },
-		mercury_output_type_defn(VarSet, du_type(Name, Args, Ctors),
+		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
+		mercury_output_type_defn(VarSet,
+				du_type(Name, Args, Ctors, MaybeEqualityPred),
 				Context)
 	;
 		{ Body = uu_type(_) },

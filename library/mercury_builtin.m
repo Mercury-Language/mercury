@@ -198,6 +198,13 @@
 :- pred builtin_compare_pred(comparison_result::out, (pred)::in, (pred)::in)
 	is det.
 
+% The following two preds are used for index/1 or compare/3 on
+% non-canonical types (types for which there is a `where equality is ...'
+% declaration).
+:- pred builtin_index_non_canonical_type(T::in, int::out) is det.
+:- pred builtin_compare_non_canonical_type(comparison_result::out,
+		T::in, T::in) is det.
+
 :- pred unused is det.
 
 	% compare_error is used in the code generated for compare/3 preds
@@ -231,7 +238,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util, int, float, char, string, list.
+:- import_module require, string, std_util, int, float, char, string, list.
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
@@ -310,6 +317,22 @@ builtin_compare_float(R, F1, F2) :-
 
 :- pragma(c_code, builtin_strcmp(Res::out, S1::in, S2::in),
 	"Res = strcmp(S1, S2);").
+
+builtin_index_non_canonical_type(_, -1).
+
+builtin_compare_non_canonical_type(Res, X, _Y) :-
+	% suppress determinism warning
+	( semidet_succeed ->
+		string__append_list([
+			"call to compare/3 for non-canonical type `",
+			type_name(type_of(X)),
+			"'"],
+			Message),
+		error(Message)
+	;
+		% the following is never executed
+		Res = (<)
+	).
 
 :- external(builtin_unify_pred/2).
 :- external(builtin_index_pred/2).

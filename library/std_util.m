@@ -360,7 +360,9 @@
 	% 
 	% Given a data item (Data), binds Functor to a string
 	% representation of the functor and Arity to the arity of this
-	% data item.
+	% data item.  (Aborts if the type of Data is a type with a
+	% non-canonical representation, i.e. one for which there is a
+	% user-defined equality predicate.)
 	%
 :- pred functor(T::in, string::out, int::out) is det.
 
@@ -370,8 +372,11 @@
 	% (ArgumentIndex), starting at 0 for the first argument, binds
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
-	% equal to the arity of the functor or lower than 0 -- argument/3
-	% fails.  The argument returned has the type univ. 
+	% equal to the arity of the functor or lower than 0 -- then
+	% argument/2 fails.  The argument returned has the type univ. 
+	% (Also aborts if the type of Data is a type with a non-canonical
+	% representation, i.e. one for which there is a user-defined
+	% equality predicate.)
 	%
 :- func argument(T::in, int::in) = (univ::out) is semidet.
 
@@ -381,8 +386,11 @@
 	% (ArgumentIndex), starting at 0 for the first argument, binds
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
-	% equal to the arity of the functor or lower than 0 --
-	% det_argument/3 aborts. 
+	% equal to the arity of the functor or lower than 0 -- then
+	% det_argument/2 aborts. 
+	% (Also aborts if the type of Data is a type with a non-canonical
+	% representation, i.e. one for which there is a user-defined
+	% equality predicate.)
 	%
 :- func det_argument(T::in, int::in) = (univ::out) is det.
 
@@ -392,6 +400,9 @@
 	% representation of the functor, Arity to the arity of this data
 	% item, and Arguments to a list of arguments of the functor.
 	% The arguments in the list are each of type univ.
+	% (Aborts if the type of Data is a type with a non-canonical
+	% representation, i.e. one for which there is a user-defined
+	% equality predicate.)
 	%
 :- pred deconstruct(T::in, string::out, int::out, list(univ)::out) is det.
 
@@ -2004,7 +2015,8 @@ ML_get_num_functors(Word type_info)
 	 * non-zero). The arity will always be set.
 	 *
 	 * ML_expand will fill in the other fields (functor, arity,
-	 * argument_vector and type_info_vector) accordingly, but
+	 * argument_vector, type_info_vector, and non_canonical_type)
+	 * accordingly, but
 	 * the values of fields not asked for should be assumed to
 	 * contain random data when ML_expand returns.
 	 * (that is, they should not be relied on to remain unchanged).
@@ -2016,6 +2028,7 @@ typedef struct ML_Expand_Info_Struct {
 	int arity;
 	Word *argument_vector;
 	Word *type_info_vector;
+	bool non_canonical_type;
 	bool need_functor;
 	bool need_args;
 } ML_Expand_Info;
@@ -2041,6 +2054,9 @@ static void ML_expand_builtin(Word data_value, Word entry_value,
 	ML_Expand_Info *info);
 static void ML_expand_complicated(Word data_value, Word entry_value, 
 	Word * type_info, ML_Expand_Info *info);
+
+Declare_entry(mercury__builtin_compare_pred_3_0);
+Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 
 /*
 ** Expand the given data using its type_info, find its
@@ -2069,11 +2085,16 @@ static void ML_expand_complicated(Word data_value, Word entry_value,
 void 
 ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 {
+	Code *compare_pred;
 	Word *base_type_info, *arg_type_info;
 	Word data_value, entry_value, base_type_layout_entry;
 	int entry_tag, data_tag; 
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+
+	compare_pred = (Code *) base_type_info[OFFSET_FOR_COMPARE_PRED];
+	info->non_canonical_type = ( compare_pred ==
+		ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
 	data_tag = tag(data_word);
 	data_value = body(data_word, data_tag);
@@ -2534,11 +2555,23 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	restore_transient_registers();
 
+		/*
+		** Check for attempts to deconstruct a non-canonical type:
+		** such deconstructions must be cc_multi, and since
+		** functor/2 is det, we must treat violations of this
+		** as runtime errors.
+		** (There ought to be a cc_multi version of functor/2
+		** that allows this.)
+		*/
+	if (info.non_canonical_type) {
+		fatal_error(""called functor/2 for a type with a ""
+			""user-defined equality predicate"");
+	}
+
 		/* Copy functor onto the heap */
 	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
 
 	Arity = info.arity;
-
 }").
 
 :- pragma c_code(argument(Type::in, ArgumentIndex::in) = (Argument::out),
@@ -2556,6 +2589,19 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	ML_expand((Word *) TypeInfo_for_T, Type, &info);
 
 	restore_transient_registers();
+
+		/*
+		** Check for attempts to deconstruct a non-canonical type:
+		** such deconstructions must be cc_multi, and since
+		** argument/2 is det, we must treat violations of this
+		** as runtime errors.
+		** (There ought to be a cc_multi version of argument/2
+		** that allows this.)
+		*/
+	if (info.non_canonical_type) {
+		fatal_error(""called argument/2 for a type with a ""
+			""user-defined equality predicate"");
+	}
 
 		/* Check range */
 	success = (ArgumentIndex >= 0 && ArgumentIndex < info.arity);
@@ -2592,7 +2638,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	->
 		Argument = Argument0
 	;
-		error("det_argument : argument out of range")
+		error("det_argument: argument out of range")
 	).
 
 :- pragma c_code(deconstruct(Type::in, Functor::out, Arity::out, 
@@ -2611,6 +2657,19 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	ML_expand((Word *) TypeInfo_for_T, Type, &info);
 	
 	restore_transient_registers();
+
+		/*
+		** Check for attempts to deconstruct a non-canonical type:
+		** such deconstructions must be cc_multi, and since
+		** deconstruct/4 is det, we must treat violations of this
+		** as runtime errors.
+		** (There ought to be a cc_multi version of deconstruct/4
+		** that allows this.)
+		*/
+	if (info.non_canonical_type) {
+		fatal_error(""called deconstruct/4 for a type with a ""
+			""user-defined equality predicate"");
+	}
 
 		/* Get functor */
 	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);

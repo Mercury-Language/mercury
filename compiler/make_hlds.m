@@ -788,7 +788,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	;
 		{ map__set(Types0, TypeId, T, Types) },
 		(
-			{ Body = du_type(ConsList, _, _) }
+			{ Body = du_type(ConsList, _, _, _) }
 		->
 			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, NeedQual, 
@@ -907,8 +907,9 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 			sym_name, list(type_param), hlds_type_body).
 :- mode convert_type_defn(in, in, out, out, out) is det.
 
-convert_type_defn(du_type(Name, Args, Body), Globals, Name, Args,
-		du_type(Body, CtorTags, IsEnum)) :-
+convert_type_defn(du_type(Name, Args, Body, EqualityPred),
+		Globals, Name, Args,
+		du_type(Body, CtorTags, IsEnum, EqualityPred)) :-
 	assign_constructor_tags(Body, Globals, CtorTags, IsEnum).
 convert_type_defn(uu_type(Name, Args, Body), _, Name, Args, uu_type(Body)).
 convert_type_defn(eqv_type(Name, Args, Body), _, Name, Args, eqv_type(Body)).
@@ -1200,7 +1201,7 @@ add_special_pred(SpecialPredId,
 		PredInfo1 = PredInfo0
 	),
 	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
-				Module1, ClausesInfo),
+				Context, Module1, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
@@ -2528,7 +2529,7 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 		;
 			% initialize some fields to junk
 			invalid_pred_id(PredId),
-			hlds_pred__initial_proc_id(ModeId),
+			invalid_proc_id(ModeId),
 			MaybeUnifyContext = no,
 			Call = call(PredId, ModeId, HeadVars, not_builtin,
 					MaybeUnifyContext, Name)

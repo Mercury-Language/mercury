@@ -1685,9 +1685,17 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 	io__state, io__state).
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 
-hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, _Tags, _Enum)) -->
+hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, _Tags, _Enum,
+		MaybeEqualityPred)) -->
 	io__write_string(" --->\n"),
-	hlds_out__write_constructors(Indent, Tvarset, Ctors).
+	hlds_out__write_constructors(Indent, Tvarset, Ctors),
+	( { MaybeEqualityPred = yes(PredName) } ->
+		io__write_string("\n\twhere equality is "),
+		prog_out__write_sym_name(PredName)
+	;
+		[]
+	),
+	io__write_string(".\n").
 hlds_out__write_type_body(_Indent, _Tvarset, uu_type(_)) -->
 	{ error("hlds_out__write_type_body: undiscriminated union found") }.
 hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
@@ -1706,8 +1714,7 @@ hlds_out__write_constructors(_Indent, _Tvarset, []) -->
 hlds_out__write_constructors(Indent, Tvarset, [C]) -->
 	hlds_out__write_indent(Indent),
 	io__write_char('\t'),
-	hlds_out__write_constructor(Tvarset, C),
-	io__write_string(".\n").
+	hlds_out__write_constructor(Tvarset, C).
 hlds_out__write_constructors(Indent, Tvarset, [C | Cs]) -->
 	{ Cs = [_ | _] },
 	hlds_out__write_indent(Indent),

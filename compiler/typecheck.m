@@ -163,7 +163,7 @@
 :- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
-:- import_module passes_aux, clause_to_proc.
+:- import_module passes_aux, clause_to_proc, special_pred.
 
 :- import_module int, list, map, set, string, require, std_util, tree234.
 :- import_module assoc_list, varset, term, term_io.
@@ -336,7 +336,10 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
-	    ( code_util__compiler_generated(PredInfo0)
+	    % But, compiler-generated unify predicates are not guaranteed
+	    % to be type-correct if they call a user-defined equality pred.
+	    ( code_util__compiler_generated(PredInfo0),
+	      \+ pred_is_user_defined_equality_pred(PredInfo0, ModuleInfo)
 	    ; code_util__predinfo_is_builtin(PredInfo0)
 	    )
 	->
@@ -413,7 +416,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				Changed = yes
 			)
 		),
-		typecheck_info_get_found_error(TypeCheckInfo2, Error),
+		typecheck_info_get_found_error(TypeCheckInfo3, Error),
 		(
 			Error = yes,
 			MaybePredInfo = no
@@ -421,13 +424,36 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			Error = no,
 			MaybePredInfo = yes(PredInfo)
 		),
-		typecheck_info_get_io_state(TypeCheckInfo2, IOState)
+		typecheck_info_get_io_state(TypeCheckInfo3, IOState)
 	    )
 	).
 
 	% bool/1 is used to avoid a type ambiguity
 :- pred bool(bool::in) is det.
 bool(_).
+
+:- pred pred_is_user_defined_equality_pred(pred_info::in, module_info::in)
+	is semidet.
+
+pred_is_user_defined_equality_pred(PredInfo, ModuleInfo) :-
+	%
+	% check if the predicate is a compiler-generated unification predicate
+	%
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	special_pred_name_arity(unify, _, PredName, PredArity),
+	%
+	% find out which type it is a unification predicate for,
+	% and check whether that type is a type for which there is
+	% a user-defined equality predicate.
+	%
+	pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
+	special_pred_get_type(PredName, ArgTypes, Type),
+	type_to_type_id(Type, TypeId, _TypeArgs),
+	module_info_types(ModuleInfo, TypeTable),
+	map__lookup(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, Body),
+	Body = du_type(_, _, _, yes(_)).
 
 %-----------------------------------------------------------------------------%
 

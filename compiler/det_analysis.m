@@ -102,7 +102,7 @@
 :- implementation.
 
 :- import_module hlds_goal, prog_data, det_report, det_util.
-:- import_module mode_util, globals, options, passes_aux.
+:- import_module type_util, mode_util, globals, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury, instmap.
 :- import_module bool, list, map, set, std_util, require, term.
 
@@ -388,14 +388,30 @@ det_infer_goal_2(disj(Goals0, SM), _, InstMap0, SolnContext, DetInfo, _, _,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, SM), _,
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, SM), GoalInfo,
 		InstMap0, SolnContext, DetInfo, _, _,
 		switch(Var, SwitchCanFail, Cases, SM), Detism, Msgs) :-
 	det_infer_switch(Cases0, InstMap0, SolnContext, DetInfo,
-		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs),
+		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs0),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
+	% The switch variable tests are in a first_soln context if and only
+	% if the switch goal as a whole was in a first_soln context and the
+	% cases cannot fail.
+	(
+		CasesCanFail = cannot_fail,
+		SolnContext = first_soln
+	->
+		SwitchSolnContext = first_soln
+	;
+		SwitchSolnContext = all_solns
+	),
+	ExaminesRep = yes,
+	det_check_for_noncanonical_type(Var, ExaminesRep, SwitchCanFail,
+		SwitchSolnContext, GoalInfo, switch, DetInfo, Msgs0,
+		SwitchSolns, Msgs),
 	det_conjunction_canfail(SwitchCanFail, CasesCanFail, CanFail),
-	determinism_components(Detism, CanFail, CasesSolns).
+	det_conjunction_maxsoln(SwitchSolns, CasesSolns, NumSolns),
+	determinism_components(Detism, CanFail, NumSolns).
 
 	% For calls, just look up the determinism entry associated with
 	% the called predicate.
@@ -438,7 +454,7 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det),
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
+det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
 		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
@@ -459,14 +475,19 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 				Goal, LambdaInferredDet, Msgs1),
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
-		list__append(Msgs1, Msgs2, Msgs),
+		list__append(Msgs1, Msgs2, Msgs3),
 		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
 				Goal)
 	;
 		RT = RT0,
-		Msgs = []
+		Msgs3 = []
 	),
-	det_infer_unify(U, UnifyDet).
+	det_infer_unify_canfail(U, UnifyCanFail),
+	det_infer_unify_examines_rep(U, ExaminesRepresentation),
+	det_check_for_noncanonical_type(LT, ExaminesRepresentation,
+		UnifyCanFail, SolnContext, GoalInfo, unify(C), DetInfo, Msgs3,
+		UnifyNumSolns, Msgs),
+	determinism_components(UnifyDet, UnifyCanFail, UnifyNumSolns).
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), _GoalInfo0,
 		InstMap0, SolnContext, DetInfo, _NonLocalVars, _DeltaInstMap,
@@ -680,26 +701,96 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 		MaxSolns2, Cases, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs).
 
-	% Deconstruction unifications are deterministic if the type
+%-----------------------------------------------------------------------------%
+
+:- pred det_check_for_noncanonical_type(var, bool, can_fail, soln_context,
+		hlds_goal_info, cc_unify_context, det_info, list(det_msg),
+		soln_count, list(det_msg)).
+:- mode det_check_for_noncanonical_type(in, in, in, in,
+		in, in, in, in, out, out) is det.
+
+det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
+		SolnContext, GoalInfo, GoalContext, DetInfo, Msgs0,
+		NumSolns, Msgs) :-
+	(
+		%
+		% check for unifications that attempt to examine
+		% the representation of a type that does not have
+		% a single representation for each abstract value
+		%
+		ExaminesRepresentation = yes,
+		det_get_proc_info(DetInfo, ProcInfo),
+		proc_info_vartypes(ProcInfo, VarTypes),
+		map__lookup(VarTypes, Var, Type),
+		det_type_has_user_defined_equality_pred(DetInfo, Type,
+			_TypeContext)
+	->
+		( CanFail = can_fail ->
+			proc_info_variables(ProcInfo, VarSet),
+			Msgs = [cc_unify_can_fail(GoalInfo, Var, Type,
+				VarSet, GoalContext) | Msgs0]
+		; SolnContext \= first_soln ->
+			proc_info_variables(ProcInfo, VarSet),
+			Msgs = [cc_unify_in_wrong_context(GoalInfo, Var,
+				Type, VarSet, GoalContext) | Msgs0]
+		;
+			Msgs = Msgs0
+		),
+		( SolnContext = first_soln ->
+			NumSolns = at_most_many_cc
+		;
+			NumSolns = at_most_many
+		)
+	;
+		NumSolns = at_most_one,
+		Msgs = Msgs0
+	).
+
+% return true iff there was a `where equality is <predname>' declaration
+% for the specified type.
+:- pred det_type_has_user_defined_equality_pred(det_info::in, (type)::in,
+		term__context::out) is semidet.
+det_type_has_user_defined_equality_pred(DetInfo, Type, TypeContext) :-
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	module_info_types(ModuleInfo, TypeTable),
+	type_to_type_id(Type, TypeId, _TypeArgs),
+	map__search(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = du_type(_, _, _, yes(_)),
+	hlds_data__get_type_defn_context(TypeDefn, TypeContext).
+
+% return yes iff the results of the specified unification might depend on
+% the concrete representation of the abstract values involved.
+:- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
+det_infer_unify_examines_rep(assign(_, _), no).
+det_infer_unify_examines_rep(construct(_, _, _, _), no).
+det_infer_unify_examines_rep(deconstruct(_, _, _, _, _), yes).
+det_infer_unify_examines_rep(simple_test(_, _), yes).
+det_infer_unify_examines_rep(complicated_unify(_, _), no).
+	% Some complicated modes of complicated unifications _do_
+	% examine the representation...
+	% but we will catch those by reporting errors in the
+	% compiler-generated code for the complicated unification.
+
+
+	% Deconstruction unifications cannot fail if the type
 	% only has one constructor, or if the variable is known to be
 	% already bound to the appropriate functor.
 	% 
 	% This is handled (modulo bugs) by modes.m, which sets
-	% the determinism field in the deconstruct(...) to semidet for
+	% the appropriate field in the deconstruct(...) to can_fail for
 	% those deconstruction unifications which might fail.
-	% But switch_detection.m may set it back to det again, if it moves
-	% the functor test into a switch instead.
+	% But switch_detection.m may set it back to cannot_fail again,
+	% if it moves the functor test into a switch instead.
 
-:- pred det_infer_unify(unification, determinism).
-:- mode det_infer_unify(in, out) is det.
+:- pred det_infer_unify_canfail(unification, can_fail).
+:- mode det_infer_unify_canfail(in, out) is det.
 
-det_infer_unify(deconstruct(_, _, _, _, CanFail), Detism) :-
-	determinism_components(Detism, CanFail, at_most_one).
-det_infer_unify(assign(_, _), det).
-det_infer_unify(construct(_, _, _, _), det).
-det_infer_unify(simple_test(_, _), semidet).
-det_infer_unify(complicated_unify(_, CanFail), Detism) :-
-	determinism_components(Detism, CanFail, at_most_one).
+det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail), CanFail).
+det_infer_unify_canfail(assign(_, _), cannot_fail).
+det_infer_unify_canfail(construct(_, _, _, _), cannot_fail).
+det_infer_unify_canfail(simple_test(_, _), can_fail).
+det_infer_unify_canfail(complicated_unify(_, CanFail), CanFail).
 
 %-----------------------------------------------------------------------------%
 

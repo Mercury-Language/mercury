@@ -916,12 +916,19 @@ mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
 	mercury_output_term(Body, VarSet, no),
 	io__write_string(".\n").
 
-mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
+mercury_output_type_defn_2(du_type(Name, Args, Ctors, MaybeEqualityPred),
+		VarSet, Context) -->
 	io__write_string(":- type "),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no),
 	io__write_string("\n\t--->\t"),
 	mercury_output_ctors(Ctors, VarSet),
+	( { MaybeEqualityPred = yes(EqualityPredName) } ->
+		io__write_string("\n\twhere equality is "),
+		mercury_output_bracketed_sym_name(EqualityPredName)
+	;
+		[]
+	),
 	io__write_string(".\n").
 
 :- pred mercury_output_ctors(list(constructor), varset,

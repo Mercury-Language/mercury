@@ -1564,7 +1564,7 @@ include_in_short_interface(module_defn(_, _)).
 :- pred make_abstract_type_defn(item, item).
 :- mode make_abstract_type_defn(in, out) is semidet.
 
-make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _Ctors), Cond),
+make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
 make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).

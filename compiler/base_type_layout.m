@@ -350,7 +350,7 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		LayoutTypeData = [],
 		FunctorsTypeData = []
 	;
-		TypeBody = du_type(Ctors, ConsTagMap, Enum),
+		TypeBody = du_type(Ctors, ConsTagMap, Enum, _EqualityPred),
 
 			% sort list on tags, so that 
 			% enums, complicated constants and

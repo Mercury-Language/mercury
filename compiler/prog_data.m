@@ -184,7 +184,9 @@
 % type_defn/3 define above
 
 :- type type_defn	--->	du_type(sym_name, list(type_param),
-						list(constructor))
+					list(constructor),
+					maybe(equality_pred)
+				)
 			;	uu_type(sym_name, list(type_param), list(type))
 			;	eqv_type(sym_name, list(type_param), type)
 			;	abstract_type(sym_name, list(type_param)).
@@ -192,6 +194,11 @@
 :- type constructor	==	pair(sym_name, list(constructor_arg)).
 
 :- type constructor_arg	==	pair(string, type).
+
+	% An equality_pred specifies the name of a user-defined predicate
+	% used for equality on a type.  See the chapter on them in the
+	% Mercury Language Reference Manual.
+:- type equality_pred	==	sym_name.
 
 	% probably type parameters should be variables not terms.
 :- type type_param	==	term.

@@ -825,8 +825,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 			;
 				type_to_type_id(Type, TypeId, _)
 			->
-				unify_proc__request_unify(TypeId - UniMode, Det,
-					ModuleInfo0, ModuleInfo),
+				mode_info_get_context(ModeInfo0, Context),
+				unify_proc__request_unify(TypeId - UniMode,
+					Det, Context, ModuleInfo0, ModuleInfo),
 				mode_info_set_module_info(ModeInfo0, ModuleInfo,
 					ModeInfo)
 			;

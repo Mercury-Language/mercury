@@ -234,8 +234,17 @@ goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__write_string("equivalence type unexpected.\n"),
 	io__set_output_stream(OldStream, _).
 
-goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
+goedel_output_type_defn_2(du_type(Name, Args, Ctors, EqualityPred),
+		VarSet, Context) -->
 	{ unqualify_name(Name, Name2) },
+	( { EqualityPred \= no } ->
+		io__write_string("% WARNING: ignored user-defined equality "),
+		io__write_string(" for type `"),
+		io__write_string(Name2),
+		io__write_string("'\n")
+	;
+		[]
+	),
 	{ convert_functor_name(Name2, Name3) },
 	( { option_handle_functor_overloading(Name2) } ->
 		{ string__append("Type__", Name3, TypeModule) },

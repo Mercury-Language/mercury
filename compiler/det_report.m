@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, det_util.
+:- import_module hlds_module, hlds_pred, hlds_goal, det_util, prog_data.
 :- import_module io.
 
 :- type det_msg	--->
@@ -39,6 +39,10 @@
 				term__context)
 				% multiple calls with the same input args.
 			% errors
+		;	cc_unify_can_fail(hlds_goal_info, var, type, varset,
+				cc_unify_context)
+		;	cc_unify_in_wrong_context(hlds_goal_info, var, type,
+				varset, cc_unify_context)
 		;	cc_pred_in_wrong_context(hlds_goal_info, determinism,
 				pred_id, proc_id)
 		;	higher_order_cc_pred_in_wrong_context(hlds_goal_info,
@@ -50,6 +54,10 @@
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
 	;	higher_order_call.
+
+:- type cc_unify_context
+	--->	unify(unify_context)
+	;	switch.
 
 %-----------------------------------------------------------------------------%
 
@@ -96,23 +104,33 @@
 
 global_checking_pass([], ModuleInfo, ModuleInfo) --> [].
 global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
-	{
-		module_info_preds(ModuleInfo0, PredTable),
-		map__lookup(PredTable, PredId, PredInfo),
-		pred_info_procedures(PredInfo, ProcTable),
-		map__lookup(ProcTable, ProcId, ProcInfo),
-		proc_info_declared_determinism(ProcInfo, MaybeDetism),
-		proc_info_inferred_determinism(ProcInfo, InferredDetism)
-	},
+	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+		PredInfo, ProcInfo) },
+	check_determinism(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo1),
+	check_if_main_can_fail(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo1, ModuleInfo2),
+	check_for_multisoln_func(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo2, ModuleInfo3),
+	global_checking_pass(Rest, ModuleInfo3, ModuleInfo).
+
+:- pred check_determinism(pred_id, proc_id, pred_info, proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode check_determinism(in, in, in, in, in, out, di, uo) is det.
+
+check_determinism(PredId, ProcId, _PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo) -->
+	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
+	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
 	(
 		{ MaybeDetism = no },
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ ModuleInfo = ModuleInfo0 }
 	;
 		{ MaybeDetism = yes(DeclaredDetism) },
 		{ compare_determinisms(DeclaredDetism, InferredDetism, Cmp) },
 		(
 			{ Cmp = sameas },
-			{ ModuleInfo1 = ModuleInfo0 }
+			{ ModuleInfo = ModuleInfo0 }
 		;
 			{ Cmp = looser },
 			globals__io_lookup_bool_option(
@@ -126,24 +144,33 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 			;
 				[]
 			),
-			{ ModuleInfo1 = ModuleInfo0 }
+			{ ModuleInfo = ModuleInfo0 }
 		;
 			{ Cmp = tighter },
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 			{ Message = "  error: determinism declaration not satisfied.\n" },
 			report_determinism_problem(PredId,
-				ProcId, ModuleInfo1, Message,
+				ProcId, ModuleInfo, Message,
 				DeclaredDetism, InferredDetism),
 			{ proc_info_goal(ProcInfo, Goal) },
 			globals__io_get_globals(Globals),
-			{ det_info_init(ModuleInfo1, PredId, ProcId, Globals,
+			{ det_info_init(ModuleInfo, PredId, ProcId, Globals,
 				DetInfo) },
 			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
 			% returns false, i.e. it didn't print a message.
 		)
-	),
+	).
+
+:- pred check_if_main_can_fail(pred_id, proc_id, pred_info, proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode check_if_main_can_fail(in, in, in, in, in, out, di, uo) is det.
+
+check_if_main_can_fail(_PredId, _ProcId, PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo) -->
+	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
+	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
 	% check that `main/2' cannot fail
 	( 
 		{ pred_info_name(PredInfo, "main") },
@@ -163,11 +190,19 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 			% that would probably just confuse people.
 		io__write_string(
 			"Error: main/2 must be `det' or `cc_multi'.\n"),
-		{ module_info_incr_errors(ModuleInfo1,
-			ModuleInfo2) }
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }
 	;
-		{ ModuleInfo2 = ModuleInfo1 }
-	),
+		{ ModuleInfo = ModuleInfo0 }
+	).
+
+:- pred check_for_multisoln_func(pred_id, proc_id, pred_info, proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode check_for_multisoln_func(in, in, in, in, in, out, di, uo) is det.
+
+check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo) -->
+	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
+
 	% Functions can only have more than one solution if it is a
 	% non-standard mode.  Otherwise, they would not be referentially
 	% transparent.  (Nondeterministic "functions" like C's `rand()'
@@ -185,7 +220,7 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 			FuncArgModes, _FuncResultMode) },
 		{ \+ (
 			list__member(FuncArgMode, FuncArgModes),
-			\+ mode_is_fully_input(ModuleInfo2, FuncArgMode)
+			\+ mode_is_fully_input(ModuleInfo0, FuncArgMode)
 		  )
 	 	} 
 	->
@@ -193,7 +228,9 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 		{ pred_info_name(PredInfo, PredName) },
 		{ proc_info_context(ProcInfo, FuncContext) },
 		prog_out__write_context(FuncContext),
-		io__write_string("Error: invalid determinism for `"),
+		io__write_string("Error: invalid determinism for function\n"),
+		prog_out__write_context(FuncContext),
+		io__write_string("  `"),
 		report_pred_name_mode(function, PredName, PredArgModes),
 		io__write_string("':\n"),
 		prog_out__write_context(FuncContext),
@@ -215,13 +252,10 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		{ module_info_incr_errors(ModuleInfo2,
-			ModuleInfo3) }
-		
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }
 	;
-		{ ModuleInfo3 = ModuleInfo2 }
-	),
-	global_checking_pass(Rest, ModuleInfo3, ModuleInfo).
+		{ ModuleInfo = ModuleInfo0 }
+	).
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
 		Msgs) :-
@@ -387,7 +421,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
 				TypeDefn) },
 			{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-			{ TypeBody = du_type(_, ConsTable, _) }
+			{ TypeBody = du_type(_, ConsTable, _, _) }
 		->
 			{ map__keys(ConsTable, ConsIds) },
 			{ det_diagnose_missing_consids(ConsIds, Cases,
@@ -413,110 +447,25 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
-	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
-	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
-	( { CmpCanFail = tighter } ->
+	det_diagnose_atomic_goal(Desired, Actual,
 		det_report_call_context(Context, CallContext, DetInfo,
 			PredId, ModeId),
-		io__write_string("can fail.\n"),
-		{ Diagnosed1 = yes }
-	;
-		{ Diagnosed1 = no }
-	),
-	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
-	( { CmpSolns = tighter } ->
-		det_report_call_context(Context, CallContext, DetInfo,
-			PredId, ModeId),
-		io__write_string("can succeed"),
-		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once.\n")
-		;
-			io__write_string(".\n")
-		),
-		{ Diagnosed2 = yes }
-	;
-		{ Diagnosed2 = no }
-	),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
-	(
-		{ Diagnosed = yes }
-	;
-		{ Diagnosed = no },
-		det_report_call_context(Context, CallContext, DetInfo,
-			PredId, ModeId),
-		io__write_string("has unknown determinism problem;\n"),
-		prog_out__write_context(Context),
-		io__write_string("  desired determinism is "),
-		hlds_out__write_determinism(Desired),
-		io__write_string(", while actual determinism is "),
-		hlds_out__write_determinism(Actual),
-		io__write_string(".\n")
-	).
+		Context).
 
 det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
-		Desired, Actual, _, _MiscInfo, yes) -->
+		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
-	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
-	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
-	( { CmpCanFail = tighter } ->
-		prog_out__write_context(Context),
-		io__write_string("  Higher-order predicate call can fail.\n"),
-		{ Diagnosed1 = yes }
-	;
-		{ Diagnosed1 = no }
-	),
-	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
-	( { CmpSolns = tighter } ->
-		prog_out__write_context(Context),
-		io__write_string("  Higher-order predicate call can succeed"),
-		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once.\n")
-		;
-			io__write_string(".\n")
-		),
-		{ Diagnosed2 = yes }
-	;
-		{ Diagnosed2 = no }
-	),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
-	(
-		{ Diagnosed = yes }
-	;
-		{ Diagnosed = no },
-		prog_out__write_context(Context),
-		io__write_string("  Higher-order predicate call has unknown determinism problem;\n"),
-		prog_out__write_context(Context),
-		io__write_string("  desired determinism is "),
-		hlds_out__write_determinism(Desired),
-		io__write_string(", while actual determinism is "),
-		hlds_out__write_determinism(Actual),
-		io__write_string(".\n")
-	).
+	prog_out__write_context(Context),
+	det_diagnose_atomic_goal(Desired, Actual,
+		report_higher_order_call_context(Context), Context).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
-	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
 	{ First = yes, Last = yes },
-	det_report_unify_context(First, Last, Context, UnifyContext, DetInfo,
-				LT, RT),
-	(
-		{ DesiredCanFail = cannot_fail },
-		{ ActualCanFail = can_fail }
-	->
-		io__write_string(" can fail.\n")
-	;
-		io__write_string(" has unknown determinism problem;\n"),
-		prog_out__write_context(Context),
-		io__write_string("  desired determinism is "),
-		hlds_out__write_determinism(Desired),
-		io__write_string(", while actual determinism is "),
-		hlds_out__write_determinism(Actual),
-		io__write_string(".\n")
-	).
+	det_diagnose_atomic_goal(Desired, Actual,
+		det_report_unify_context(First, Last, Context, UnifyContext,
+			DetInfo, LT, RT), Context).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else, _), _GoalInfo,
 		Desired, _Actual, SwitchContext, DetInfo, Diagnosed) -->
@@ -593,6 +542,59 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _, _), GoalInfo, Desired,
 	% XXX
 
 %-----------------------------------------------------------------------------%
+
+:- pred report_higher_order_call_context(term__context::in,
+		io__state::di, io__state::uo) is det.
+report_higher_order_call_context(Context) -->
+	prog_out__write_context(Context),
+	io__write_string("  Higher-order call").
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_diagnose_atomic_goal(determinism, determinism, 
+		pred(io__state, io__state), term__context,
+		io__state, io__state).
+:- mode det_diagnose_atomic_goal(in, in, pred(di, uo) is det, in,
+		di, uo) is det.
+
+det_diagnose_atomic_goal(Desired, Actual, WriteContext, Context) -->
+	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
+	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
+	( { CmpCanFail = tighter } ->
+		call(WriteContext),
+		io__write_string(" can fail.\n"),
+		{ Diagnosed1 = yes }
+	;
+		{ Diagnosed1 = no }
+	),
+	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
+	( { CmpSolns = tighter } ->
+		call(WriteContext),
+		io__write_string(" can succeed"),
+		( { DesiredSolns = at_most_one } ->
+			io__write_string(" more than once.\n")
+		;
+			io__write_string(".\n")
+		),
+		{ Diagnosed2 = yes }
+	;
+		{ Diagnosed2 = no }
+	),
+	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
+	(
+		{ Diagnosed = yes }
+	;
+		{ Diagnosed = no },
+		call(WriteContext),
+		io__write_string(" has unknown determinism problem;\n"),
+		prog_out__write_context(Context),
+		io__write_string("  desired determinism is "),
+		hlds_out__write_determinism(Desired),
+		io__write_string(", while actual determinism is "),
+		hlds_out__write_determinism(Actual),
+		io__write_string(".\n")
+	).
 
 :- pred det_diagnose_conj(list(hlds_goal), determinism,
 	list(switch_context), det_info, bool, io__state, io__state).
@@ -727,15 +729,14 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 					call_unify_context(LT, RT, UC)) },
 			{ First = yes, Last = yes },
 			det_report_unify_context(First, Last,
-				Context, UC, DetInfo, LT, RT),
-			io__write_string(" ")
+				Context, UC, DetInfo, LT, RT)
 		;
 			% this shouldn't happen; every call to __Unify__
 			% should have a unify_context
 			{ CallUnifyContext = no },
 			prog_out__write_context(Context),
 			io__write_string(
-	"  Some weird unification (or explicit call to `__Unify__'?) ")
+	"  Some weird unification (or explicit call to `__Unify__'?)")
 		)
 	;
 		(
@@ -754,7 +755,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 		prog_out__write_context(Context),
 		io__write_string("  call to `"),
 		report_pred_name_mode(PredOrFunc, PredName, ArgModes),
-		io__write_string("' ")
+		io__write_string("'")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -883,6 +884,8 @@ det_msg_get_type(negated_goal_cannot_succeed(_), warning).
 det_msg_get_type(warn_obsolete(_, _), warning).
 det_msg_get_type(warn_infinite_recursion(_), warning).
 det_msg_get_type(duplicate_call(_, _, _), warning).
+det_msg_get_type(cc_unify_can_fail(_, _, _, _, _), error).
+det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
 det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
 det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
@@ -967,6 +970,101 @@ det_report_msg(duplicate_call(SeenCall, PrevContext, Context), ModuleInfo) -->
 	io__write_string("Here is the previous "),
 	det_report_seen_call_id(SeenCall, ModuleInfo),
 	io__write_string(".\n").
+det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
+		_ModuleInfo) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+	{ First0 = yes },
+	( { GoalContext = switch },
+		prog_out__write_context(Context),
+		io__write_string("In switch on variable `"),
+		mercury_output_var(Var, VarSet, no),
+		io__write_string("':\n"),
+		{ First = no }
+	; { GoalContext = unify(UnifyContext) },
+		hlds_out__write_unify_context(First0, UnifyContext, Context,
+			First)
+	),
+	prog_out__write_context(Context),
+	( { First = yes } ->
+		io__write_string("Error: ")
+	;
+		io__write_string("  error: ")
+	),
+	io__write_string("unification for non-canonical type\n"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	( { type_to_type_id(Type, TypeId, _TypeArgs) } ->
+		hlds_out__write_type_id(TypeId)
+	;
+		{ error("det_report_message: type_to_type_id failed") }
+	),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string("  is not guaranteed to succeed.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_strings([
+"	Since the type has a user-defined equality predicate, I must\n",
+"	presume that there is more than one possible concrete\n",
+"	representation for each abstract value of this type.  The success\n",
+"	of this unification might depend on the choice of concrete\n",
+"	representation.  Figuring out whether there is a solution to\n",
+"	this unification would require backtracking over all possible\n",
+"	representations, but I'm not going to do that implicitly.\n",
+"	(If that's really what you want, you must do it explicitly.)\n"
+		])
+	;
+		[]
+	),
+	io__set_exit_status(1).
+det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
+		GoalContext), _ModuleInfo) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+	{ First0 = yes },
+	( { GoalContext = switch },
+		prog_out__write_context(Context),
+		io__write_string("In switch on variable `"),
+		mercury_output_var(Var, VarSet, no),
+		io__write_string("':\n"),
+		{ First = no }
+	; { GoalContext = unify(UnifyContext) },
+		hlds_out__write_unify_context(First0, UnifyContext, Context,
+			First)
+	),
+	prog_out__write_context(Context),
+	( { First = yes } ->
+		io__write_string("Error: ")
+	;
+		io__write_string("  error: ")
+	),
+	io__write_string("unification for non-canonical type\n"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	( { type_to_type_id(Type, TypeId, _TypeArgs) } ->
+		hlds_out__write_type_id(TypeId)
+	;
+		{ error("det_report_message: type_to_type_id failed") }
+	),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  occurs in a context which requires all solutions.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_strings([
+"	Since the type has a user-defined equality predicate, I must\n",
+"	presume that there is more than one possible concrete\n",
+"	representation for each abstract value of this type.  The results\n",
+"	of this unification might depend on the choice of concrete\n",
+"	representation.  Finding all possible solutions to this\n",
+"	unification would require backtracking over all possible\n",
+"	representations, but I'm not going to do that implicitly.\n",
+"	(If that's really what you want, you must do it explicitly.)\n"
+		])
+	;
+		[]
+	),
+	io__set_exit_status(1).
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 		ModuleInfo) -->
 	{ goal_info_get_context(GoalInfo, Context) },

@@ -818,7 +818,7 @@ tag_switch__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	( Body = du_type(_, ConsTable, _) ->
+	( Body = du_type(_, ConsTable, _, _) ->
 		map__to_assoc_list(ConsTable, ConsList),
 		tag_switch__cons_list_to_tag_list(ConsList, TagList)
 	;

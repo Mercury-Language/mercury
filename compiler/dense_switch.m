@@ -128,7 +128,7 @@ dense_switch__type_range(enum_type, Type, TypeRange) -->
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-	{ TypeBody = du_type(_, ConsTable, _) ->
+	{ TypeBody = du_type(_, ConsTable, _, _) ->
 		map__count(ConsTable, TypeRange)
 	;
 		error("dense_switch__type_range: enum type is not d.u. type?")

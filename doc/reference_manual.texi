@@ -80,6 +80,8 @@ into another language, under the above conditions for modified versions.
                       safely use destructive update to modify that value
 * Determinism::       Determinism declarations let you specify that a predicate
                       should never fail or should never succeed more than once
+* Equality preds::    User-defined types can have user-defined equality
+                      predicates.
 * Higher-order::      Mercury supports higher-order predicates and functions,
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
@@ -1828,11 +1830,12 @@ This is one way to achieve ``don't care'' style nondeterminism in Mercury.
 The other situation in which you may want pruning
 and committed choice style nondeterminism
 is when you know that all the solutions returned will be equivalent.
-For example, you might want to count the elements in a set
-by removing them one at a time.
-Removing an unspecified element from a set is a nondeterministic operation,
+For example, you might want to find the maximum element in a set
+by iterating over the elements in the set.
+Iterating over the elements in a set in an unspecified order is a
+nondeterministic operation,
 but no matter which order you remove them,
-the computed size of the set should be the same.
+the maximum value in the set should be the same.
 
 We may eventually extend Mercury to allow users to write
 
@@ -1847,10 +1850,9 @@ This would allow the implementation
 to prune alternative solutions for @samp{Goal}
 if @samp{X} was the only output variable of @samp{Goal}.  
 
-We would also like to allow users
-to specify a user-defined equivalence relation
-as the equality relation for user-defined types,
-so that the @samp{unique} quantifier
+Note that specifying a user-defined equivalence relation
+as the equality predicate for user-defined types (@pxref{Equality preds})
+means that the @samp{unique} quantifier
 could be used to express more general forms of equivalence.
 For example, if you define a set type which represents sets as unsorted lists,
 you would want to define a user-defined equivalence relation for that type,
@@ -1859,8 +1861,9 @@ The @samp{unique} quantifier could then be used for sets
 even though the lists used to represent the sets
 might not be in the same order in every solution.
 
-However, the language does not yet support
-either the @samp{unique} quantifier or user-defined equivalence relations.
+Currently the language does not support the @samp{unique} quantifier. 
+(However, it is possible to achieve a similar effect by using the C interface
+to type-cast a higher-order predicate term.)
 
 @node Committed choice nondeterminism
 @section Committed choice nondeterminism
@@ -1899,17 +1902,131 @@ if-then-else is also in a single-solution context.
 The compiler will check that all calls to a committed-choice
 mode of a predicate do indeed occur in a single-solution context.
 
-There are two reasons to use committed choice determinism annotations.
+There are several reasons to use committed choice determinism annotations.
 One reason is for efficiency: committed choice annotations allow
 the compiler to generate much more efficient code.
-The other reason is for doing I/O, which is allowed only in @samp{det}
+Another reason is for doing I/O, which is allowed only in @samp{det}
 or @samp{cc_multi} predicates, not in @samp{multi} predicates.
+Another is for dealing with types that use non-canonical representations
+(@pxref{Equality preds}).
+And there are a variety of other applications.
 
 It would be nice to be able to declare a mode of a predicate as
 both @samp{multi} and @samp{cc_multi}, and have the compiler call
 the appropriate one depending on whether the call comes from a
 single-solution context or not.  However, the current implementation
 does not yet support this.
+
+@node Equality preds
+@chapter User-defined equality predicates
+
+When defining abstract data types, 
+often it is convenient to use a non-canonical representation ---
+that is, one for which a single abstract value may have more than
+one different possible concrete representations.
+For example, you may wish to implement an abstract type @samp{set}
+by representing a set as an (unsorted) list. 
+
+@example
+:- module set_as_unsorted_list.
+:- interface.
+:- type set(T).
+
+:- implementation.
+:- import_module list.
+:- type set(T) ---> set(list(T)).
+@end example
+
+@noindent
+In this example, the concrete representations @samp{set([1,2])} and
+@samp{set([2,1])} would both represent the same abstract value, namely
+the set containing the elements 1 and 2.
+
+For types such as this, which do not have a canonical representation,
+the standard definition of equality is the desired one; we want equality on
+sets to mean equality of the abstract values, not equality of their
+representations.  To support such types, Mercury allows programmers to
+specify a user-defined equality predicate for user-defined types:
+
+@example
+:- type set(T) ---> set(list(T))
+	where equality is set_equals.
+@end example
+
+@noindent
+Here @samp{set_equals} is the name of a user-defined predicate that
+is used for equality on the type @samp{set(T)}.  It could for example
+be defined in terms of a @samp{subset} predicate.
+
+@example
+:- pred set_equals(set(T)::in, set(T)::in) is semidet.
+set_equals(S1, S2) :-
+	subset(S1, S2),
+	subset(S2, S1).
+@end example
+
+A type declaration for a type @var{T} may contain a
+@samp{where equality is @var{equalitypred}} specification only
+if the following conditions are satisfied:
+
+@itemize @bullet
+@item
+@var{T} must be a discriminated union type; it may not be an
+equivalence type
+
+@item
+@var{equalitypred} must be the name of a predicate with type
+@samp{pred(T, T)} and mode @samp{(in, in) is semidet}.
+
+@end itemize
+
+Types with user-defined equality can only be used in limited ways.
+Because there multiple representations for the same abstract
+value, any attempt to examine the representation of such a value
+is a conceptually non-deterministic operation.  
+In Mercury this is modelled using committed choice nondeterminism.
+
+The semantics of a specifying @samp{where equality is @var{equalitypred}} 
+on the type declaration for a type @var{T} are as follows:
+
+@itemize @bullet
+@item
+If the program contains any deconstruction unification or switch
+on a variable of type @var{T} that could fail, other than unifications
+with mode @samp{(in, in)}, then it is a compile-time error.
+
+@item
+If the program contains any deconstruction unification or switch
+on a variable of type @var{T} that cannot fail, then that operation
+has determinism @samp{cc_multi}.
+
+@item
+Any attempts to examine the representation of a variable of type @var{T}
+using facilities of the standard library (e.g. @samp{argument}/3
+and @samp{functor/3} in @samp{std_util}) that do not have determinism
+@samp{cc_multi} or @samp{cc_nondet} will result in a run-time error.
+
+@item
+In addition to the usual equality axioms,
+the declarative semantics of the program will contain the axiom
+@samp{@var{X} = @var{Y} <=> @var{equalitypred}(X, Y)} for all
+@var{X} and @var{Y} of type @samp{T}.
+
+@item
+Any @samp{(in, in)} unifications for type @var{T} are computed using the
+specified predicate @var{equalitypred}.
+
+@item
+@var{equalitypred} should be an equivalence relation; that is, it must be
+symmetric, reflexive, and transitive.  However, the compiler is not required
+to check this@footnote{If @var{equalitypred} is not an equivalence relation,
+then the program is inconsistent: its declarative semantics 
+contains a contradiction, because the additional axioms for the user-defined
+equality contradict the standard equality axioms.  That implies that the
+implementation may compute any answer at all (@pxref{Semantics}),
+i.e. the behaviour of the program is undefined.}.
+
+@end itemize
 
 @node Higher-order
 @chapter Higher-order programming
