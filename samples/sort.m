@@ -16,89 +16,86 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module string, list, char, require, std_util.
 
-main -->
-	io__command_line_arguments(Args),
+main(!IO) :-
+	io.command_line_arguments(Args, !IO),
 	(
-		{ Args = [] },
-		handle_args(no, no),
-		sort
+		Args = [],
+		handle_args(no, no, !IO),
+		sort(!IO)
 	;
-		{ Args = [Input] },
-		handle_args(yes(Input), no),
-		sort
+		Args = [Input],
+		handle_args(yes(Input), no, !IO),
+		sort(!IO)
 	;
-		{ Args = [Input, Output] },
-		handle_args(yes(Input), yes(Output)),
-		sort
+		Args = [Input, Output], 
+		handle_args(yes(Input), yes(Output), !IO),
+		sort(!IO)
 	;
-		{ Args = [_, _, _ | _] },
-		io__write_string("Usage: sort [Input [Output]]\\n")
+		Args = [_, _, _ | _],
+		io.write_string("Usage: sort [Input [Output]]\\n", !IO)
 	).
 
-:- pred handle_args(maybe(string), maybe(string), io__state, io__state).
-:- mode handle_args(in, in, di, uo) is det.
+:- pred handle_args(maybe(string)::in, maybe(string)::in, io::di, io::uo)
+	is det.
 
-handle_args(InArg, OutArg) -->
+handle_args(InArg, OutArg, !IO) :-
 	(
-		{ InArg = yes(InFilename) },
-		io__see(InFilename, InResult),
+		InArg = yes(InFilename),
+		io.see(InFilename, InResult, !IO),
 		(
-			{ InResult = ok }
+			InResult = ok
 		;
-			{ InResult = error(InError) },
-			{ io__error_message(InError, InMsg) },
-			{ error(InMsg) }
+			InResult = error(InError),
+			io.error_message(InError, InMsg),
+			error(InMsg)
 		)
 	;
-		{ InArg = no }
+		InArg = no
 	),
 	(
-		{ OutArg = yes(OutFilename) },
-		io__tell(OutFilename, OutResult),
+		OutArg = yes(OutFilename),
+		io.tell(OutFilename, OutResult, !IO),
 		(
-			{ OutResult = ok }
+			OutResult = ok
 		;
-			{ OutResult = error(OutError) },
-			{ io__error_message(OutError, OutMsg) },
-			{ error(OutMsg) }
+			OutResult = error(OutError),
+			io.error_message(OutError, OutMsg), 
+			error(OutMsg)
 		)
 	;
-		{ OutArg = no }
+		OutArg = no
 	).
 
-:- pred sort(io__state, io__state).
-:- mode sort(di, uo) is det.
+:- pred sort(io::di, io::uo) is det.
 
-sort -->
-	sort_2([]).
+sort(!IO) :-
+	sort_2([], !IO).
 
-:- pred sort_2(list(string), io__state, io__state).
-:- mode sort_2(in, di, uo) is det.
+:- pred sort_2(list(string)::in, io::di, io::uo) is det.
 
-sort_2(Lines0) -->
-	io__read_line_as_string(Result),
+sort_2(Lines0, !IO) :-
+	io.read_line_as_string(Result, !IO),
 	(
-		{ Result = error(Error) },
-		{ io__error_message(Error, Msg) },
-		{ error(Msg) }
+		Result = error(Error),
+		io.error_message(Error, Msg),
+		error(Msg)
 	;
-		{ Result = eof },
-		sort_output(Lines0)
+		Result = eof,
+		sort_output(Lines0, !IO)
 	;
-		{ Result = ok(Line) },
-		{ insert(Lines0, Line, Lines1) },
-		sort_2(Lines1)
+		Result = ok(Line),
+		insert(Lines0, Line, Lines1),
+		sort_2(Lines1, !IO)
 	).
 
-:- pred insert(list(T), T, list(T)).
-:- mode insert(in, in, out) is det.
+:- pred insert(list(T)::in, T::in, list(T)::out) is det.
 
 insert([], I, [I]).
 insert([H | T], I, L) :-
@@ -110,10 +107,9 @@ insert([H | T], I, L) :-
 		L = [H | NT]
 	).
 
-:- pred sort_output(list(string), io__state, io__state).
-:- mode sort_output(in, di, uo) is det.
+:- pred sort_output(list(string)::in, io::di, io::uo) is det.
 
-sort_output([]) --> [].
-sort_output([Line | Lines]) -->
-	io__write_string(Line),
-	sort_output(Lines).
+sort_output([], !IO).
+sort_output([Line | Lines], !IO) :-
+	io.write_string(Line, !IO),
+	sort_output(Lines, !IO).

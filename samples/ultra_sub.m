@@ -31,109 +31,107 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module list, string, char, map.
+:- import_module list, string, char, map, svmap.
 
-main -->
+main(!IO) :-
 	% I really should add some options for switching whether
 	% capitals or backslashed things are variables.
-	io__command_line_arguments(Args),
+	io.command_line_arguments(Args, !IO),
 	(
-		{ Args = [Pattern0, Template0 | Rest] }
+		Args = [Pattern0, Template0 | Rest]
 	->
-		{ string__to_char_list(Pattern0, Pattern) },
-		{ string__to_char_list(Template0, Template) },
-		process_args(Rest, Pattern, Template)
+		string.to_char_list(Pattern0, Pattern),
+		string.to_char_list(Template0, Template),
+		process_args(Rest, Pattern, Template, !IO)
 	;
-		io__write_string("usage: ultra_sub template pattern [strings]\n")
+		io.write_string(
+			"usage: ultra_sub template pattern [strings]\n", !IO)
 	).
 
 %------------------------------------------------------------------------------%
 
-:- pred process_args(list(string), list(char), list(char),
-					io__state, io__state).
-:- mode process_args(in, in, in, di, uo) is det.
+:- pred process_args(list(string)::in, list(char)::in, list(char)::in,
+	io::di, io::uo) is det.
 
-process_args([], _Pattern, _Template) --> [].
-process_args([Str|Strs], Pattern, Template) -->
+process_args([], _Pattern, _Template, !IO).
+process_args([Str|Strs], Pattern, Template, !IO) :-
 	(
-		{ string__to_char_list(Str, Chars) },
-		{ map__init(Match0) },
-		{ match(Pattern, Chars, Match0, Match) }
+		string.to_char_list(Str, Chars),
+		map.init(Match0),
+		match(Pattern, Chars, Match0, Match)
 	->
 			% If the string matches, then apply the substitution
-		{ sub(Template, Match, ResultChars) },
-		{ string__from_char_list(ResultChars, Result) },
-		io__write_string(Result),
-		io__write_string("\n")
+		sub(Template, Match, ResultChars),
+		string.from_char_list(ResultChars, Result),
+		io.write_string(Result, !IO),
+		io.write_string("\n", !IO)
 	;
-		[]
+		true
 	),
-	process_args(Strs, Pattern, Template).
+	process_args(Strs, Pattern, Template, !IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred match(list(char), list(char),
-			map(char, list(char)), map(char, list(char))).
-:- mode match(in, in, in, out) is semidet.
+:- pred match(list(char)::in, list(char)::in, map(char, list(char))::in, 
+	map(char, list(char))::out) is semidet.
 
 match([], [], Match, Match).
-match([T|Ts], Chars, Match0, Match) :-
+match([T|Ts], Chars, !Match) :-
 	(
-		char__is_upper(T)
+		char.is_upper(T)
 	->
 			% Match against a variable.
-		match_2(T, Chars, [], Ts, Match0, Match)
+		match_2(T, Chars, [], Ts, !Match)
 	;
 		T = ('\\') % don't you love ISO compliant syntax :-(
 	->
 		Ts = [T1|Ts1],
 		Chars = [T1|Chars1],
-		match(Ts1, Chars1, Match0, Match)
+		match(Ts1, Chars1, !Match)
 	;
 		Chars = [T|Chars1],
-		match(Ts, Chars1, Match0, Match)
+		match(Ts, Chars1, !Match)
 	).
 
-:- pred match_2(char, list(char), list(char), list(char), map(char, list(char)), map(char, list(char))).
-:- mode match_2(in, in, in, in, in, out) is semidet.
+:- pred match_2(char::in, list(char)::in, list(char)::in, list(char)::in, 
+	map(char, list(char))::in, map(char, list(char))::out) is semidet.
 
-match_2(X, Chars, Tail, Ts, Match0, Match) :-
+match_2(X, Chars, Tail, Ts, !Match) :-
 	(
 			% Have we bound X? Does it match
 			% an earlier binding?
-		map__search(Match0, X, Chars)
+		map.search(!.Match, X, Chars)
 	->
-		Match1 = Match0
+		true
 	;
-		map__set(Match0, X, Chars, Match1)
+		svmap.set(X, Chars, !Match)
 	),
 	(
 			% Try and match the remainder of the pattern
-		match(Ts, Tail, Match1, Match2)
+		match(Ts, Tail, !Match)
 	->
-		Match = Match2
+		true
 	;
 			% If the match failed, then try
 			% binding less of the string to X.
 		remove_last(Chars, Chars1, C),
-		match_2(X, Chars1, [C|Tail], Ts, Match0, Match)
+		match_2(X, Chars1, [C|Tail], Ts, !Match)
 	).
 
 %------------------------------------------------------------------------------%
 
-:- pred remove_last(list(char), list(char), char).
-:- mode remove_last(in, out, out) is semidet.
+:- pred remove_last(list(char)::in, list(char)::out, char::out) is semidet.
 
 remove_last([X|Xs], Ys, Z) :-
 	remove_last_2(X, Xs, Ys, Z).
 
-:- pred remove_last_2(char, list(char), list(char), char).
-:- mode remove_last_2(in, in, out, out) is det.
+:- pred remove_last_2(char::in, list(char)::in, list(char)::out, char::out)
+	is det.
 
 remove_last_2(X, [], [], X).
 remove_last_2(X, [Y|Ys], [X|Zs], W) :-
@@ -142,17 +140,16 @@ remove_last_2(X, [Y|Ys], [X|Zs], W) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred sub(list(char), map(char, list(char)), list(char)).
-:- mode sub(in, in, out) is det.
+:- pred sub(list(char)::in, map(char, list(char))::in, list(char)::out) is det.
 
 sub([], _Match, []).
 sub([C|Cs], Match, Result) :-
 	(
-		char__is_upper(C),
-		map__search(Match, C, Chars)
+		char.is_upper(C),
+		map.search(Match, C, Chars)
 	->
 		sub(Cs, Match, Result0),
-		list__append(Chars, Result0, Result)
+		list.append(Chars, Result0, Result)
 	;
 		C = ('\\')
 	->

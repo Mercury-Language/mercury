@@ -24,76 +24,76 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module string, list, term, varset, term_io.
 
-main -->
-	io__command_line_arguments(Args),
-	( { Args = [] } ->
-		expand_terms
+main(!IO) :-
+	io.command_line_arguments(Args, !IO),
+	( Args = [] ->
+		expand_terms(!IO)
 	;
-		expand_terms_file_list(Args)
+		expand_terms_file_list(Args, !IO)
 	).
 		
-:- pred expand_terms_file_list(list(string)::in, io__state::di, io__state::uo)
+:- pred expand_terms_file_list(list(string)::in, io::di, io::uo)
 	is det.
 
-expand_terms_file_list([]) --> [].
-expand_terms_file_list([File | Files]) -->
-	expand_terms_file(File),
-	expand_terms_file_list(Files).
+expand_terms_file_list([], !IO).
+expand_terms_file_list([File | Files], !IO) :-
+	expand_terms_file(File, !IO),
+	expand_terms_file_list(Files, !IO).
 
-:- pred expand_terms_file(string::in, io__state::di, io__state::uo) is det.
+:- pred expand_terms_file(string::in, io::di, io::uo) is det.
 
-expand_terms_file(File) -->
-	io__open_input(File, Result),
-	( { Result = ok(Stream) },
-		expand_terms_stream(Stream)
-	; { Result = error(Error) },
-		io__progname("expand_terms", Progname),
-		{ io__error_message(Error, Message) },
-		io__write_strings([
+expand_terms_file(File, !IO) :-
+	io.open_input(File, Result, !IO),
+	( Result = ok(Stream),
+		expand_terms_stream(Stream, !IO)
+	; Result = error(Error),
+		io.progname("expand_terms", Progname, !IO),
+		io.error_message(Error, Message),
+		io.write_strings([
 			Progname, ": ",
 			"error opening file `", File, "' for input:\n\t",
 			Message, "\n"
-		]),
-		io__set_exit_status(1)
+		], !IO),
+		io.set_exit_status(1, !IO)
 	).
 
-:- pred expand_terms_stream(io__input_stream::in, io__state::di, io__state::uo)
+:- pred expand_terms_stream(io.input_stream::in, io::di, io::uo)
 	is det.
 
-expand_terms_stream(Stream) -->
-	io__set_input_stream(Stream, _OldStream),
-	expand_terms.
+expand_terms_stream(Stream, !IO) :-
+	io.set_input_stream(Stream, _OldStream, !IO),
+	expand_terms(!IO).
 
-:- pred expand_terms(io__state::di, io__state::uo) is det.
+:- pred expand_terms(io::di, io::uo) is det.
 
-expand_terms -->
-	term_io__read_term(Result),
-	expand_terms_2(Result).
+expand_terms(!IO) :-
+	term_io.read_term(Result, !IO),
+	expand_terms_2(Result, !IO).
 
-:- pred expand_terms_2(read_term::in, io__state::di, io__state::uo)
+:- pred expand_terms_2(read_term::in, io::di, io::uo)
 	is det.
 
-expand_terms_2(Result) -->
-	( { Result = term(VarSet0, Term0) },
-		{ expand_term(Term0, VarSet0, Term, VarSet) },
-		term_io__write_term(VarSet, Term),
-		io__write_string(".\n"),
-		term_io__read_term(NextResult),
-		expand_terms_2(NextResult)
-	; { Result = eof }
-	; { Result = error(Message, LineNum) },
-		io__input_stream_name(StreamName),
-		{ string__format("%s:%03d: %s\n", [s(StreamName), i(LineNum),
-			s(Message)], FullMessage) },
-		io__write_string(FullMessage),
-		io__set_exit_status(1)
+expand_terms_2(Result, !IO) :-
+	( Result = term(VarSet0, Term0),
+		expand_term(Term0, VarSet0, Term, VarSet),
+		term_io.write_term(VarSet, Term, !IO),
+		io.write_string(".\n", !IO),
+		term_io.read_term(NextResult, !IO),
+		expand_terms_2(NextResult, !IO)
+	; Result = eof
+	; Result = error(Message, LineNum),
+		io.input_stream_name(StreamName, !IO),
+		string.format("%s:%03d: %s\n", [s(StreamName), i(LineNum),
+			s(Message)], FullMessage),
+		io.write_string(FullMessage, !IO),
+		io.set_exit_status(1, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -120,7 +120,7 @@ expand_term(Term0, VarSet0, Term, VarSet) :-
 % `A <=> B' with `A :- B'.
 
 term_expansion(Term0, VarSet, Term, VarSet) :-
-	Term0 = term__functor(term__atom("<=>"), [A, B], Context),
-	Term = term__functor(term__atom(":-"), [A, B], Context).
+	Term0 = term.functor(term.atom("<=>"), [A, B], Context),
+	Term = term.functor(term.atom(":-"), [A, B], Context).
 
 %-----------------------------------------------------------------------------%

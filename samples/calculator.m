@@ -11,7 +11,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list, char, int, string.
@@ -23,24 +23,24 @@
 	;       times(expr, expr)
 	;       div(expr, expr).
 
-main --> 
-	io__write_string("calculator> "),
-	io__flush_output,
-	io__read_line(Res),
-	( { Res = error(_) },
-		io__write_string("Error reading from stdin\n")
-	; { Res = eof },
-		io__write_string("EOF\n")
-	; { Res = ok(Line0) },
-		{ list__delete_all(Line0, ' ', Line) },
-		( { fullexpr(X,Line,[]) } ->
-			{ Num = evalexpr(X) },
-			io__write_int(Num),
-			io__write_string("\n")
+main(!IO) :- 
+	io.write_string("calculator> ", !IO),
+	io.flush_output(!IO),
+	io.read_line(Res, !IO),
+	( Res = error(_),
+		io.write_string("Error reading from stdin\n", !IO)
+	; Res = eof,
+		io.write_string("EOF\n", !IO)
+	; Res = ok(Line0),
+		list.delete_all(Line0, ' ', Line),
+		( fullexpr(X,Line,[]) ->
+			Num = evalexpr(X),
+			io.write_int(Num, !IO),
+			io.write_string("\n", !IO)
 		;
-			io__write_string("Syntax error\n")
+			io.write_string("Syntax error\n", !IO)
 		),
-		main	% recursively call ourself for the next line(s)
+		main(!IO) % recursively call ourself for the next line(s)
 	).
 
 :- func evalexpr(expr) = int.
