@@ -733,13 +733,13 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
 
 
-	% The preferred backend foreign language depends on the target.
+	% The backend foreign languages depend on the target.
 	( 	
 		{ Target = c },
 		{ BackendForeignLanguages = ["c"] }
 	;
 		{ Target = il },
-		{ BackendForeignLanguages = ["csharp", "mc++"] }
+		{ BackendForeignLanguages = ["il", "csharp", "mc++"] }
 	;
 		{ Target = asm },
 		% XXX This is wrong!  It should be asm.
