@@ -9,7 +9,7 @@
 max_lines=10000
 
 # specify the names of the files which gcc/as can't handle
-files_to_fix="llds.c make_hlds.c hlds.c prog_io.c"
+files_to_fix="llds.c make_hlds.c prog_io.c"
 
 #-----------------------------------------------------------------------------#
 
