@@ -35,7 +35,7 @@
 			;	redo
 			;	label(label)
 			;	goto(label)
-			;	if_tag(reg, tag, label)
+			;	if_tag(lval, tag, label)
 					% branch to label if tag doesn't
 					% match reg's tag.
 			;	incr_sp(int)
@@ -230,7 +230,7 @@ output_instruction(goto(Label)) -->
 output_instruction(if_tag(Reg, Tag, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if(tag("),
-	output_reg(Reg),
+	output_lval(Reg),
 	io__write_string(") != "),
 	output_tag(Tag),
 	io__write_string(") GOTO(LABEL("),
