@@ -40,18 +40,20 @@ Ambiguous procedure specification. The matches are:
 0: func breakpoints://2-0 (det)
 1: func breakpoints:print_list://2-0 (det)
 2: func float://2-0 (det)
-3: func rational://2-0 (det)
+3: func int://2-0 (det)
+4: func rational://2-0 (det)
 
-Which do you want to put a breakpoint on (0-3 or *)? 0
+Which do you want to put a breakpoint on (0-4 or *)? 0
  5: + stop  interface func breakpoints://2-0 (det)
 mdb> break //2
 Ambiguous procedure specification. The matches are:
 0: func breakpoints://2-0 (det)
 1: func breakpoints:print_list://2-0 (det)
 2: func float://2-0 (det)
-3: func rational://2-0 (det)
+3: func int://2-0 (det)
+4: func rational://2-0 (det)
 
-Which do you want to put a breakpoint on (0-3 or *)? 0
+Which do you want to put a breakpoint on (0-4 or *)? 0
  6: + stop  interface func breakpoints://2-0 (det)
 mdb> break breakpoints:print_list:-/2
  7: + stop  interface func breakpoints:print_list:-/2-0 (det)
