@@ -4,6 +4,7 @@ pointers to data are all the same size, a Word.
 Pointers are given two-bit tags - the code also assumes that the bottom
 two bits of pointers to words are zero, and fiddles with the bottom
 bits by casting pointers to integers and back again.
+(This can be turned off using mc's `--tags none' option.)
 
 Various parts of the code are conditionalized to take advantage of
 GNU C's special features if they are available, and to use specific
