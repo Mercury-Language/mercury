@@ -2024,8 +2024,8 @@ void sys_init_io_stream_module(void) {
 		   it should be of type `ConstString' (const char *),
 		   but fixing that requires a fair bit of work
 		   on the compiler.  */
-		make_aligned_string(PrognameOut,
-			(String) (Word) progname);
+		make_aligned_string(LVALUE_CAST(ConstString, PrognameOut),
+			progname);
 	} else {
 		PrognameOut = DefaultProgname;
 	}

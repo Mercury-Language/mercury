@@ -855,7 +855,7 @@ void sys_init_unify_univ_module(void) {
 
 
 typedef struct mercury_expand_info {
-	String functor;
+	ConstString functor;
 	int arity;
 	Word *argument_vector;
 	Word *type_info_vector;
@@ -1031,7 +1031,7 @@ mercury_expand_const(Word data_value, Word entry_value, expand_info *info)
 	/* the functors are stored after the enum_indicator and
 	 * the number of functors
 	 */
-	info->functor = (String) ((Word *) entry_value)[data_value +
+	info->functor = (ConstString) ((Word *) entry_value)[data_value +
 		TYPELAYOUT_CONST_FUNCTOR_OFFSET];	
 	info->arity = 0;
 	info->argument_vector = NULL;
@@ -1057,7 +1057,7 @@ mercury_expand_enum(Word data_value, Word entry_value, expand_info *info)
 	 * the number of functors
 	 */
 
-	info->functor = (String) ((Word *) entry_value)[data_value + 
+	info->functor = (ConstString) ((Word *) entry_value)[data_value + 
 		TYPELAYOUT_ENUM_FUNCTOR_OFFSET];	
 	info->arity = 0;
 	info->argument_vector = NULL;
@@ -1158,11 +1158,14 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		/* XXX should escape characters correctly */
 
 		if (info->need_functor) {
-			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			char *str;
+
+			incr_saved_hp_atomic(LVALUE_CAST(Word, str),
 				(strlen((String) data_value) + 2 + 
 					sizeof(Word)) / sizeof(Word));
-			sprintf(info->functor, ""%c%s%c"", '""', 
+			sprintf(str, ""%c%s%c"", '""', 
 				(String) data_value, '""');
+			info->functor = str;
 		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
@@ -1173,11 +1176,14 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		if (info->need_functor) {
 			char buf[500];
 			Float f;
+			char *str;
+
 			f = word_to_float(data_value);
 			sprintf(buf, ""%#.15g"", f);
-			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
 				(strlen(buf) + sizeof(Word)) / sizeof(Word));
-			strcpy(info->functor, buf);
+			strcpy(str, buf);
+			info->functor = str;
 		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
@@ -1187,11 +1193,13 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 	case TYPELAYOUT_INT_VALUE:
 		if (info->need_functor) {
 			char buf[500];
+			char *str;
 
 			sprintf(buf, ""%ld"", (long) data_value);
-			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
 				(strlen(buf) + sizeof(Word)) / sizeof(Word));
-			strcpy(info->functor, buf);
+			strcpy(str, buf);
+			info->functor = str;
 		}
 
 		info->argument_vector = NULL;
@@ -1203,9 +1211,12 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		/* XXX should escape characters correctly */
 
 		if (info->need_functor) {
-			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			char *str;
+
+			incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
 				(3 + sizeof(Word)) / sizeof(Word));
-			sprintf(info->functor, ""\'%c\'"", (char) data_value);
+			sprintf(str, ""\'%c\'"", (char) data_value);
+			info->functor = str;
 		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
@@ -1225,8 +1236,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 
 	case TYPELAYOUT_PREDICATE_VALUE:
 		if (info->need_functor) {
-			make_aligned_string(LVALUE_CAST(String, info->functor), 
-				""<<predicate>>"");
+			make_aligned_string(info->functor, ""<<predicate>>"");
 		}
 		info->argument_vector = NULL;
 		info->type_info_vector = NULL;
@@ -1330,7 +1340,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	restore_transient_registers();
 
 		/* Copy functor onto the heap */
-	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
+	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
 
 	Arity = info.arity;
 
@@ -1404,7 +1414,7 @@ det_arg(Type, ArgumentIndex, Argument) :-
 	restore_transient_registers();
 
 		/* Get functor */
-	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
+	make_aligned_string(LVALUE_CAST(ConstString, Functor), info.functor);
 
 		/* Get arity */
 	Arity = info.arity;
