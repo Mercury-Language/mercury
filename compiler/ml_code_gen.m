@@ -556,6 +556,12 @@
 % Code for if-then-else
 %
 
+%	model_det Cond:
+%		<(Cond -> Then ; Else)>
+%	===>
+%		<Cond>
+%		<Then>
+
 %	model_semi Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
@@ -2668,9 +2674,16 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 	{ Cond = _ - CondGoalInfo },
 	{ goal_info_get_code_model(CondGoalInfo, CondCodeModel) },
 	(
+		%	model_det Cond:
+		%		<(Cond -> Then ; Else)>
+		%	===>
+		%		<Cond>
+		%		<Then>
 		{ CondCodeModel = model_det },
-		% simplify.m should remove these
-		{ error("ml_gen_ite: det cond") }
+		ml_gen_goal(model_det, Cond, CondStatement),
+		ml_gen_goal(CodeModel, Then, ThenStatement),
+		{ MLDS_Decls = [] },
+		{ MLDS_Statements = [CondStatement, ThenStatement] }
 	;
 		%	model_semi cond:
 		%		<(Cond -> Then ; Else)>

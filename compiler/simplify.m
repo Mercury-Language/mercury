@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -907,8 +907,15 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	% cannot succeed, then we replace the if-then-else with the
 	% other disjunct. (We could also eliminate A, but we leave
 	% that to the recursive invocations.)
-	% Note that this simplification is required for the MLDS back-end,
-	% which assumes that conditions of if-then-elses are not model_det.
+	%
+	% Note however that rerunning determinism analysis, which
+	% we do at the end of simplification, may introduce more
+	% occurrences of these; since we don't iterate simplification
+	% and determinism anaysis until a fixpoint is reached,
+	% we don't guarantee to eliminate all such if-then-elses.
+	% Hence the code generator must be prepared to handle the
+	% case when the condition of an if-then-else has determinism
+	% `det' or `failure'.
 	%
 	% The conjunction operator in the remaining disjunct ought to be
 	% a sequential conjunction, because Mercury's if-then-else always
