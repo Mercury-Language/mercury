@@ -373,7 +373,20 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	detect_deadness_in_goal(Cond0, DeadnessThen, LiveInfo,
 		DeadnessCond, Cond1),
 
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	goal_info_get_nonlocals(GoalInfo, NonLocals0),
+	live_info_get_module_info(LiveInfo, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_gc_method(Globals, GCmethod),
+	(
+		GCmethod = accurate
+	->
+		live_info_get_proc_info(LiveInfo, ProcInfo),
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0, 
+			TypeInfoVars),
+		set__union(NonLocals0, TypeInfoVars, NonLocals)
+	;
+		NonLocals = NonLocals0
+	),
 	set__union(DeadnessCond, DeadnessElse, Deadness),
 	set__intersect(Deadness, NonLocals, NonLocalDeadness),
 
