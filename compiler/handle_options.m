@@ -392,6 +392,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% --use-trail.
 	option_implies(use_trail, optimize_value_number, bool(no)),
 
+	% XXX if trailing is enabled, middle recursion optimization
+	% can generate code which does not allocate a stack frame 
+	% even though stack slots are used to save and restore the
+	% trail, if the code being optimized contains a construct which
+	% might save/restore the trail state, i.e. an if-then-else,
+	% negation, disjunction, or commit.
+	option_implies(use_trail, middle_rec, bool(no)),
+
 	% Minimal model tabling needs to be able to rewrite all the redoips
 	% in a given nondet stack segments. If we allow hijacks, some of these
 	% redoips may have been saved in ordinary framevars, which means that
