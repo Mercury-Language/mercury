@@ -768,7 +768,7 @@ pred(Var1::Mode1, Var2::Mode2, @dots{},
 @noindent
 where DCGVar0 and DCGVar1 are fresh variables,
 and Goal is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
-where DCG-transform is the function specified in @pxref{DCG-goals}.
+where DCG-transform is the function specified in @ref{DCG-goals}.
 @xref{Higher-order}.
 
 A higher-order function application is a compound term of one
@@ -3414,7 +3414,7 @@ modes of that predicate or function.  There must be no clauses
 for the specified Mercury procedure; instead, any calls to that
 procedure will be executed by calling the C function named
 @var{C_Name}.  The @var{Attributes} argument is optional; if present,
-it specifies properties of the given C function (see @pxref{C code attributes}).
+it specifies properties of the given C function (@pxref{C code attributes}).
 
 For example, the following code imports the C function @samp{cos()}
 as the Mercury function @samp{cos/1}:
@@ -3426,7 +3426,7 @@ as the Mercury function @samp{cos/1}:
 
 The interface to the C function for a given Mercury procedure is
 determined as follows.  Mercury types are converted to C types
-according to the rules in @xref{Passing data to and from C}.
+according to the rules in @ref{Passing data to and from C}.
 Mercury arguments declared with input modes are passed by value to the
 C function.  For output arguments, the Mercury implementation will pass
 to the C function an address in which to store the result. 
@@ -3454,7 +3454,7 @@ another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
 You may not give a @samp{pragma import} declaration for a procedure
 with determinism @samp{nondet} or @samp{multi}.
 (It is however possible to define a @samp{nondet} or @samp{multi} procedure
-using @samp{pragma c_code} -- see @pxref{Nondet pragma c_code}).
+using @samp{pragma c_code} -- @pxref{Nondet pragma c_code}).
 
 @node pragma c_code
 @subsubsection pragma c_code
@@ -3481,7 +3481,7 @@ The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.  These variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-@xref{Passing data to and from C}.
+@ref{Passing data to and from C}.
 
 The C code fragment may declare local variables, but it should not
 declare any labels or static variables unless there is also a Mercury
@@ -3857,7 +3857,7 @@ the specified Mercury predicate or function.
 The interface to a Mercury procedure is determined as follows.
 (The rules here are just the converse of the rules for @samp{pragma import}).
 Mercury types are converted to C types according to the rules in
-@xref{Passing data to and from C}.
+@ref{Passing data to and from C}.
 Input arguments are passed by value.  For output arguments, the
 caller must pass the address in which to store the result.
 If the Mercury procedure can fail, then its C interface function
@@ -4759,8 +4759,9 @@ Fortunately, however, this is usually what programmers intend.
 @c XXX give an example
 
 For more information on tabling, see K. Sagonas's PhD thesis
+@c XXX this citation doesn't come out properly in DVI format
 @cite{The SLG-WAM: A Search-Efficient Engine for Well-Founded Evaluation
-of Normal Logic Programs.} @ref{[4]}.
+of Normal Logic Programs.} @xref{[4]}.
 The operational semantics of procedures with a @samp{pragma minimal_model}
 declaration corresponds to what Sagonas calls ``SLGd resolution''.
 
@@ -4770,8 +4771,9 @@ the ability to delay goals and then wake them up again.
 The Mercury implementation uses a technique based on copying
 relevant parts of the stack to the heap when delaying goals,
 similar to the one described in
+@c XXX this citation doesn't come out properly in DVI format
 @cite{CAT: the copying approach to tabling},
-by B. Demoen and K. Sagonas @ref{[5]}.
+by B. Demoen and K. Sagonas.  @xref{[5]}.
 This ensures that code which does not use tabling does not pay any
 runtime overheads from the more complicated execution mechanism
 required by (minimal model) tabling.
@@ -4797,14 +4799,18 @@ or if you select a garbage collection method other than the default
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
 available in ``Termination Analysis for Mercury'' by Chris Speirs, Zoltan
-Somogyi and Harald Sondergaard @ref{[1]}.
+Somogyi and Harald Sondergaard.  @xref{[1]}.
+@c XXX this citation doesn't come out properly in DVI format
 
 The analysis is based around an algorithm proposed by Gerhard Groger
 and Lutz Plumer in their paper ``Handling of mutual recursion in
-automatic termination proofs for logic programs.'' @ref{[2]}.
+automatic termination proofs for logic programs.'' @xref{[2]}.
+@c XXX this citation doesn't come out properly in DVI format
 
 For an introduction to termination analysis for logic programs, please
-refer to ``Termination Analysis for Logic Programs'' by Chris Speirs @ref{[3]}.
+refer to ``Termination Analysis for Logic Programs'' by Chris Speirs.
+@c XXX this citation doesn't come out properly in DVI format
+@xref{[3]}.
 
 Information about the termination properties of a predicate or function
 can be given to the compiler.  Pragmas are also available to require
