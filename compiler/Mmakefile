@@ -85,6 +85,7 @@ $(dates_subdir)%.pp_date: %.pp
 # Define $(PP_SED_EXPR) appropriately for each preprocessed module.
 #
 PP_SED_EXPR			= $(PP_SED_EXPR-$*)
+PP_SED_EXPR-aditi_backend	= $(ADITI_SED_EXPR)
 PP_SED_EXPR-rl_file 		= $(ADITI_SED_EXPR)
 PP_SED_EXPR-rl_out		= $(ADITI_SED_EXPR)
 PP_SED_EXPR-maybe_mlds_to_gcc	= $(GCC_SED_EXPR)
@@ -119,7 +120,7 @@ GCC_SED_EXPR =	-e "/^$${hash}if *ENABLE_GCC_BACK_END/,/^$${hash}else/s/.*//" \
 		-e "/^$${hash}endif/s/.*//"
 endif
 
-PREPROCESSED_MODULES = rl_file rl_out maybe_mlds_to_gcc
+PREPROCESSED_MODULES = aditi_backend rl_file rl_out maybe_mlds_to_gcc
 PREPROCESSED_FILES = $(PREPROCESSED_MODULES:%=%.pp)
 PREPROCESSED_M_FILES = $(PREPROCESSED_MODULES:%=%.m)
 PP_DATE_FILES = $(PREPROCESSED_MODULES:%=$(dates_subdir)%.pp_date)

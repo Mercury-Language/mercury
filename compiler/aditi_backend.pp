@@ -50,7 +50,13 @@
 % Phase 7-rl: Emit RL bytecodes.
 %
 %:- module aditi_rl_out.
-   :- include_module rl_out, rl_exprn, rl_code, rl_file.
+   :- include_module rl_out, rl_file. 
+
+#if INCLUDE_ADITI_OUTPUT
+   :- include_module rl_exprn, rl_code.
+#else
+#endif
+
 %:- end_module aditi_rl_out.
        
 %-----------------------------------------------------------------------------%
