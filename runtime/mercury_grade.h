@@ -10,9 +10,9 @@
 ** This is used to get the linker to ensure that different object files
 ** were compiled with consistent grades.
 **
-** Any condition compilation macros that affect link compatibility should be
-** included here. For documentation on the meaning of these macros, see
-** runtime/mercury_conf_param.h.
+** Any conditional compilation macros that affect link compatibility
+** should be included here. For documentation on the meaning of these macros,
+** see runtime/mercury_conf_param.h.
 **
 ** IMPORTANT: any changes here may also require changes to
 **	runtime/mercury_conf_param.h
@@ -32,15 +32,17 @@
 #include "mercury_tags.h"	/* for MR_TAGBITS */
 
 /*
-** Here we build up the MR_GRADE macro part at a time,
-** based on the compilation flags.
+** The following series of tests define two macros piece by piece.
 **
-** IMPORTANT: any changes here will probably require similar
-** changes to compiler/handle_options.m and scripts/mgnuc.in.
+** MR_GRADE encodes the value of all the grade options; we use it to ensure
+** that all object files linked together have the same values of these options.
+**
+** MR_GRADE_OPT encodes the values of only the grade options that it makes
+** sense to change on the compiler command line.
 */
 
 /*
-** This part of the grade is a binary compatibility version number.
+** Part 0 of the grade is a binary compatibility version number.
 ** You should increment it any time you make a change that breaks
 ** binary backwards compatibility.
 ** Note that the binary compatibility version number has no direct
@@ -57,36 +59,46 @@
 #ifdef MR_HIGHLEVEL_CODE
 
   #ifdef MR_HIGHLEVEL_DATA
-    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hl)
+    #define MR_GRADE_PART_1		MR_PASTE2(MR_GRADE_PART_0, hl)
+    #define MR_GRADE_OPT_PART_1		"hl"
   #else
-    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, hlc)
+    #define MR_GRADE_PART_1		MR_PASTE2(MR_GRADE_PART_0, hlc)
+    #define MR_GRADE_OPT_PART_1		"hlc"
   #endif
 
   #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-    #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, _nest)
+    #define MR_GRADE_PART_2		MR_PASTE2(MR_GRADE_PART_1, _nest)
+    #define MR_GRADE_OPT_PART_2		MR_GRADE_OPT_PART_1  "_nest"
   #else
-    #define MR_GRADE_PART_2	MR_GRADE_PART_1
+    #define MR_GRADE_PART_2		MR_GRADE_PART_1
+    #define MR_GRADE_OPT_PART_2		MR_GRADE_OPT_PART_1
   #endif
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
   #ifdef MR_USE_ASM_LABELS
-    #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
+    #define MR_GRADE_PART_1		MR_PASTE2(MR_GRADE_PART_0, asm_)
+    #define MR_GRADE_OPT_PART_1		"asm_"
   #else
-    #define MR_GRADE_PART_1	MR_GRADE_PART_0
+    #define MR_GRADE_PART_1		MR_GRADE_PART_0
+    #define MR_GRADE_OPT_PART_1		""
   #endif
 
   #ifdef MR_USE_GCC_NONLOCAL_GOTOS
     #ifdef MR_USE_GCC_GLOBAL_REGISTERS
-      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, fast)
+      #define MR_GRADE_PART_2		MR_PASTE2(MR_GRADE_PART_1, fast)
+      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "fast"
     #else
-      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
+      #define MR_GRADE_PART_2		MR_PASTE2(MR_GRADE_PART_1, jump)
+      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "jump"
     #endif
   #else
     #ifdef MR_USE_GCC_GLOBAL_REGISTERS
-      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
+      #define MR_GRADE_PART_2		MR_PASTE2(MR_GRADE_PART_1, reg)
+      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "reg"
     #else
-      #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
+      #define MR_GRADE_PART_2		MR_PASTE2(MR_GRADE_PART_1, none)
+      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "none"
     #endif
   #endif
 
@@ -94,22 +106,29 @@
 
 #ifdef MR_THREAD_SAFE
   #define MR_GRADE_PART_3	MR_PASTE2(MR_GRADE_PART_2, _par)
+  #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2 ".par"
 #else
   #define MR_GRADE_PART_3	MR_GRADE_PART_2
+  #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2
 #endif
 
 #if defined(MR_MPS_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _mps)
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".mps"
 #elif defined(MR_BOEHM_GC) || defined(MR_CONSERVATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gc"
 #elif defined(MR_NATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _agc)
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".agc"
 #else
   #define MR_GRADE_PART_4	MR_GRADE_PART_3
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3
 #endif
 
 #ifdef MR_DEEP_PROFILING
   #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profdeep)
+  #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profdeep"
   #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
 	|| defined(MR_MPROF_PROFILE_MEMORY)
     /*
@@ -118,64 +137,76 @@
     */
     #error "Invalid combination of profiling options"
   #endif
-#else
+#else /* ! MR_DEEP_PROFILING */
   #ifdef MR_MPROF_PROFILE_TIME
     #ifdef MR_MPROF_PROFILE_CALLS
       #ifdef MR_MPROF_PROFILE_MEMORY
-      #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profall)
-    #else
-      #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _prof)
-    #endif
-  #else
+        #define MR_GRADE_PART_5		MR_PASTE2(MR_GRADE_PART_4, _profall)
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profall"
+      #else /* ! MR_MPROF_PROFILE_MEMORY */
+        #define MR_GRADE_PART_5		MR_PASTE2(MR_GRADE_PART_4, _prof)
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".prof"
+      #endif /* ! MR_MPROF_PROFILE_MEMORY */
+    #else /* ! MR_MPROF_PROFILE_CALLS */
       #ifdef MR_MPROF_PROFILE_MEMORY
-      /*
-      ** Memory profiling interferes with time profiling,
-      ** so there's no point in allowing this.
-      */
-      #error "Invalid combination of profiling options"
-    #else
-      /* Currently useless, but... */
-      #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _proftime)
-    #endif
-  #endif
-  #else
+        /*
+        ** Memory profiling interferes with time profiling,
+        ** so there's no point in allowing this.
+        */
+        #error "Invalid combination of profiling options"
+      #else /* ! MR_MPROF_PROFILE_MEMORY */
+        /* Currently useless, but... */
+        #define MR_GRADE_PART_5		MR_PASTE2(MR_GRADE_PART_4, _proftime)
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".proftime"
+      #endif /* MR_MPROF_PROFILE_MEMORY */
+    #endif /* MR_MPROF_PROFILE_CALLS */
+  #else /* ! MR_MPROF_PROFILE_TIME */
     #ifdef MR_MPROF_PROFILE_CALLS
       #ifdef MR_MPROF_PROFILE_MEMORY
-      #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _memprof)
-    #else
-      #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profcalls)
-    #endif
-  #else
+        #define MR_GRADE_PART_5		MR_PASTE2(MR_GRADE_PART_4, _memprof)
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".memprof"
+      #else /* ! MR_MPROF_PROFILE_MEMORY */
+        #define MR_GRADE_PART_5		MR_PASTE2(MR_GRADE_PART_4, _profcalls)
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profcalls"
+      #endif /* MR_MPROF_PROFILE_MEMORY */
+    #else /* ! MR_MPROF_PROFILE_CALLS */
       #ifdef MR_MPROF_PROFILE_MEMORY
-      /*
-      ** Call-graph memory profiling requires call profiling,
-      ** and call profiling is reasonably cheap, so there's
-      ** no point in allowing this.
-      */
-      #error "Invalid combination of profiling options"
-    #else
-      #define MR_GRADE_PART_5	MR_GRADE_PART_4
-    #endif
-  #endif
-  #endif
-#endif
+        /*
+        ** Call-graph memory profiling requires call profiling,
+        ** and call profiling is reasonably cheap, so there's
+        ** no point in allowing this.
+        */
+        #error "Invalid combination of profiling options"
+      #else /* ! MR_MPROF_PROFILE_MEMORY */
+        #define MR_GRADE_PART_5		MR_GRADE_PART_4
+        #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4
+      #endif /* MR_MPROF_PROFILE_MEMORY */
+    #endif /* MR_MPROF_PROFILE_CALLS */
+  #endif /* ! MR_MPROF_PROFILE_TIME */
+#endif /* MR_DEEP_PROFILING */
 
 #ifdef MR_USE_TRAIL
   #define MR_GRADE_PART_6	MR_PASTE2(MR_GRADE_PART_5, _tr)
+  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5 ".tr"
 #else
   #define MR_GRADE_PART_6	MR_GRADE_PART_5
+  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5
 #endif
 
 #ifdef MR_RESERVE_TAG
-  #define MR_GRADE_PART_6b	MR_PASTE2(MR_GRADE_PART_6, _rt)
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _rt)
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6 ".rt"
 #else
-  #define MR_GRADE_PART_6b	MR_GRADE_PART_6
+  #define MR_GRADE_PART_7	MR_GRADE_PART_6
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
 #endif
 
 #ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6b, _mm)
+  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mm)
+  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mm"
 #else
-  #define MR_GRADE_PART_7	MR_GRADE_PART_6b
+  #define MR_GRADE_PART_8	MR_GRADE_PART_7
+  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7
 #endif
 
 /*
@@ -218,35 +249,51 @@
   #error "trailing and minimal model tabling are not compatible"
 #endif
 
+/*
+** Parts 9-10 (i.e. tag bits, and (un)boxed float) are documented as
+** "not for general use", and can't be set via the `--grade' option;
+** we therefore can't make them part of the grade option string.
+**
+** Likewise part 11 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
+** by the `--grade' option; it is intended to be set by the configure script
+** at configuration time. So we don't include it in the grade option string.
+*/
+
 #if MR_TAGBITS == 0
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _notags)
+  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _notags)
 #elif defined(MR_HIGHTAGS)
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
+  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, \
   					MR_PASTE2(_hightags, MR_TAGBITS))
 #else
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
+  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, \
   					MR_PASTE2(_tags, MR_TAGBITS))
 #endif
+#define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8
 
 #ifdef MR_BOXED_FLOAT
-  #define MR_GRADE_PART_9	MR_GRADE_PART_8
+  #define MR_GRADE_PART_10	MR_GRADE_PART_9
 #else				/* "ubf" stands for "unboxed float" */
-  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _ubf)
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _ubf)
 #endif
+#define MR_GRADE_OPT_PART_10	MR_GRADE_OPT_PART_9
 
 #ifdef MR_NEW_MERCURYFILE_STRUCT
-  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _file)
-#else
-  #define MR_GRADE_PART_10	MR_GRADE_PART_9
-#endif
-
-#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
-  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _regparm)
-#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
-					defined(__i386__)
-  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _picreg)
+  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _file)
 #else
   #define MR_GRADE_PART_11	MR_GRADE_PART_10
+#endif
+#define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_10
+
+#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
+  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _regparm)
+  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".regparm"
+#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
+					defined(__i386__)
+  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _picreg)
+  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".picreg"
+#else
+  #define MR_GRADE_PART_12	MR_GRADE_PART_11
+  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
 #endif
 
 /*
@@ -257,7 +304,8 @@
 ** Similar considerations apply to procedure call tracing.
 */
 #if defined(MR_DECL_DEBUG)
-  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _decldebug)
+  #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _decldebug)
+  #define MR_GRADE_OPT_PART_13		MR_GRADE_OPT_PART_12 ".decldebug"
   #if ! defined(MR_STACK_TRACE)
     #error "declarative debugging require stack traces"
   #endif
@@ -267,187 +315,29 @@
 #else
   #if defined(MR_STACK_TRACE)
     #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _debug)
+      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _debug)
+      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".debug"
     #else
-      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _strce)
+      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _strce)
+      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".strce"
     #endif
   #else
     #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _trace)
+      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _trace)
+      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".trace"
     #else
-      #define MR_GRADE_PART_12	MR_GRADE_PART_11
+      #define MR_GRADE_PART_13		MR_GRADE_PART_12
+      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12
     #endif
   #endif
 #endif
 
-#define MR_GRADE		MR_GRADE_PART_12
+#define MR_GRADE		MR_GRADE_PART_13
+#define MR_GRADE_OPT		MR_GRADE_OPT_PART_13
 
 #define MR_GRADE_VAR		MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING 	MR_STRINGIFY(MR_GRADE)
 
 extern const char MR_GRADE_VAR;
-
-/*
-** Here we do the same thing as above, but this time we build up a string
-** containing the options to pass to the compiler to select this grade.
-*/
-#ifdef MR_HIGHLEVEL_CODE
-
-  #ifdef MR_HIGHLEVEL_DATA
-    #define MR_GRADE_OPT_PART_1		"hl"
-  #else
-    #define MR_GRADE_OPT_PART_1		"hlc"
-  #endif
-
-  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
-    #define MR_GRADE_OPT_PART_2		MR_GRADE_OPT_PART_1  "_nest"
-  #else
-    #define MR_GRADE_OPT_PART_2		MR_GRADE_OPT_PART_1
-  #endif
-
-#else /* ! MR_HIGHLEVEL_CODE */
-
-  #ifdef MR_USE_ASM_LABELS
-    #define MR_GRADE_OPT_PART_1		"asm_"
-  #else
-    #define MR_GRADE_OPT_PART_1		""
-  #endif
-
-  #ifdef MR_USE_GCC_NONLOCAL_GOTOS
-    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
-      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "fast"
-    #else
-      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "jump"
-    #endif
-  #else
-    #ifdef MR_USE_GCC_GLOBAL_REGISTERS
-      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "reg"
-    #else
-      #define MR_GRADE_OPT_PART_2	MR_GRADE_OPT_PART_1 "none"
-    #endif
-  #endif
-
-#endif /* ! MR_HIGHLEVEL_CODE */
-
-#ifdef MR_THREAD_SAFE
-  #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2 ".par"
-#else
-  #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2
-#endif
-
-#if defined(MR_MPS_GC)
-  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".mps"
-#elif defined(MR_BOEHM_GC) || defined(MR_CONSERVATIVE_GC)
-  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gc"
-#elif defined(MR_NATIVE_GC)
-  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".agc"
-#else
-  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3
-#endif
-
-#ifdef MR_MPROF_PROFILE_TIME
-  #ifdef MR_MPROF_PROFILE_CALLS
-    #ifdef MR_MPROF_PROFILE_MEMORY
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profall"
-    #else
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".prof"
-    #endif
-  #else
-    #ifdef MR_MPROF_PROFILE_MEMORY
-      /*
-      ** Memory profiling interferes with time profiling,
-      ** so there's no point in allowing this.
-      */
-      #error "Invalid combination of profiling options"
-    #else
-      /* Currently useless "but... */
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".proftime"
-    #endif
-  #endif
-#else
-  #ifdef MR_MPROF_PROFILE_CALLS
-    #ifdef MR_MPROF_PROFILE_MEMORY
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".memprof"
-    #else
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profcalls"
-    #endif
-  #else
-    #ifdef MR_MPROF_PROFILE_MEMORY
-      /*
-      ** Call-graph memory profiling requires call profiling,
-      ** and call profiling is reasonably cheap, so there's
-      ** no point in allowing this.
-      */
-      #error "Invalid combination of profiling options"
-    #else
-      #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4
-    #endif
-  #endif
-#endif
-
-#ifdef MR_USE_TRAIL
-  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5 ".tr"
-#else
-  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5
-#endif
-
-#ifdef MR_RESERVE_TAG
-  #define MR_GRADE_OPT_PART_6b	MR_GRADE_OPT_PART_6 ".rt"
-#else
-  #define MR_GRADE_OPT_PART_6b	MR_GRADE_OPT_PART_6
-#endif
-
-#ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6b ".mm"
-#else
-  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6b
-#endif
-
-/*
-** Parts 8-9 above (i.e. tag bits, and (un)boxed float)
-** are documented as "not for general use", and can't be set via the
-** `--grade' option; we don't bother to pass them on.
-**
-** Likewise part 10 above (i.e. MR_NEW_MERCURYFILE_STRUCT)
-** can't be set by the `--grade' option; it's intended to be
-** set by the configure script at configuration time.
-** So we don't bother to pass it on.
-*/
-
-#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".regparm"
-#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
-					defined(__i386__)
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".picreg"
-#else
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7
-#endif
-
-/*
-** Stack traces aren't strictly binary incompatible - but if you
-** try to do a stack trace you might find it doesn't work very
-** well unless all modules are compiled in with --stack-trace.
-** Hence we consider it effectively binary incompatible.
-** Similar considerations apply to procedure call tracing.
-*/
-#if defined(MR_DECL_DEBUG)
-  #define MR_GRADE_OPT_PART_12		MR_GRADE_OPT_PART_11 ".decldebug"
-#else
-  #if defined(MR_STACK_TRACE)
-    #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".debug"
-    #else
-      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".strce"
-    #endif
-  #else
-    #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".trace"
-    #else
-      #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
-    #endif
-  #endif
-#endif
-
-#define MR_GRADE_OPT		MR_GRADE_OPT_PART_12
 
 #endif /* MERCURY_GRADES_H */
