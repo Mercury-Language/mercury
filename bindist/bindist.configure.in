@@ -5,7 +5,7 @@
 #-----------------------------------------------------------------------------#
 
 AC_INIT(./bindist.build_vars.in)
-AC_PREFIX_DEFAULT(/usr/local/mercury-0.5-beta)
+AC_PREFIX_DEFAULT(/usr/local/mercury-0.5)
 AC_CANONICAL_HOST
 AC_SUBST(FULLARCH)
 if test "$prefix" = "NONE"; then
