@@ -490,12 +490,22 @@ END JUNK ***************************/
 :- pred typecheck_goal(hlds__goal, hlds__goal, type_info, type_info).
 :- mode typecheck_goal(in, out, type_info_di, type_info_uo) is det.
 
-typecheck_goal(Goal0 - GoalInfo, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
-	goal_info_context(GoalInfo, Context),
+	% Typecheck a goal.
+	% Note that we save the context of the goal in the typeinfo for
+	% use in error messages.  Also, if the context of the goal is empty,
+	% we set the context of the goal from the surrounding
+	% context saved in the type-info.  (That should probably be done
+	% in make_hlds, but it was easier to do here.)
+
+typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
+	goal_info_context(GoalInfo0, Context),
 	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
+		type_info_get_context(TypeInfo0, EnclosingContext),
+		goal_info_set_context(GoalInfo0, EnclosingContext, GoalInfo),
 		TypeInfo1 = TypeInfo0
 	;
+		GoalInfo = GoalInfo0,
 		type_info_set_context(Context, TypeInfo0, TypeInfo1)
 	),
 
