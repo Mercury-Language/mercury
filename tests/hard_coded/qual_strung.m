@@ -8,12 +8,13 @@
 :- module qual_strung.
 
 :- interface.
-:- import_module list, char, int, float, require, std_util, string.
+:- import_module list, string.
 
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
 
 :- implementation.
+:- import_module bool, char, int, float, require, std_util.
 
 
 string__format( Fstring, Poly_list, Ostring ) :-
