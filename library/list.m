@@ -22,7 +22,7 @@
 	%	A list is either an empty list, denoted `[]',
 	%	or an element `Head' of type `T' followed by a tail `Tail'
 	%	of type `list(T)', denoted `[Head | Tail]'.
-	%	
+	%
 
 :- type list(T) ---> [] ; [T | list(T)].
 
@@ -90,12 +90,11 @@
 	% construction equivalence law.
 	% XXX when we implement rewrite rules, we should change this law
 	% to a rewrite rule.
-:- promise all [L,H,T] ( append([H], T, L) <=> L = [H|T] ).
+:- promise all [L, H, T] ( append([H], T, L) <=> L = [H | T] ).
 
 	% L1 ++ L2 = L :- list__append(L1, L2, L).
-	% 
+	%
 :- func list(T) ++ list(T) = list(T).
-
 
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that
@@ -210,7 +209,7 @@
 	% list__insert(Elem, List0, List):
 	%	`List' is the result of inserting `Elem' somewhere in `List0'.
 	%	Same as `list__delete(List, Elem, List0)'.
-	%	
+	%
 :- pred list__insert(T, list(T), list(T)).
 :- mode list__insert(in, in, in) is semidet.
 :- mode list__insert(in, out, in) is nondet.
@@ -251,20 +250,20 @@
 
 :- func list__delete_elems(list(T), list(T)) = list(T).
 
-	% list__replace(List0, D, R, List) is true iff List is List0 
+	% list__replace(List0, D, R, List) is true iff List is List0
 	% with an occurence of D replaced with R.
 	%
 :- pred list__replace(list(T), T, T, list(T)).
 :- mode list__replace(in, in, in, in) is semidet.
 :- mode list__replace(in, in, in, out) is nondet.
 
-	% list__replace_first(List0, D, R, List) is true iff List is List0 
+	% list__replace_first(List0, D, R, List) is true iff List is List0
 	% with the first occurence of D replaced with R.
 	%
 :- pred list__replace_first(list(T), T, T, list(T)).
 :- mode list__replace_first(in, in, in, out) is semidet.
 
-	% list__replace_all(List0, D, R, List) is true iff List is List0 
+	% list__replace_all(List0, D, R, List) is true iff List is List0
 	% with all occurences of D replaced with R.
 	%
 :- pred list__replace_all(list(T), T, T, list(T)).
@@ -272,7 +271,7 @@
 
 :- func list__replace_all(list(T), T, T) = list(T).
 
-	% list__replace_nth(List0, N, R, List) is true iff List is List0 
+	% list__replace_nth(List0, N, R, List) is true iff List is List0
 	% with Nth element replaced with R.
 	% Fails if N < 1 or if length of List0 < N.
 	% (Position numbers start from 1.)
@@ -280,7 +279,7 @@
 :- pred list__replace_nth(list(T), int, T, list(T)).
 :- mode list__replace_nth(in, in, in, out) is semidet.
 
-	% list__replace_nth_det(List0, N, R, List) is true iff List is List0 
+	% list__replace_nth_det(List0, N, R, List) is true iff List is List0
 	% with Nth element replaced with R.
 	% Aborts if N < 1 or if length of List0 < N.
 	% (Position numbers start from 1.)
@@ -527,7 +526,7 @@
 
 :- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
 
-	% list__foldl2(Pred, List, Start, End, Start2, End2) 
+	% list__foldl2(Pred, List, Start, End, Start2, End2)
 	% calls Pred with each element of List (working left-to-right),
 	% 2 accumulators (with the initial values of Start and Start2),
 	% and returns the final values in End and End2.
@@ -547,7 +546,7 @@
 :- mode list__foldl2(pred(in, di, uo, di, uo) is det,
 		in, di, uo, di, uo) is det.
 
-	% list__foldl3(Pred, List, Start1, End1, Start2, End2, Start3, End3) 
+	% list__foldl3(Pred, List, Start1, End1, Start2, End2, Start3, End3)
 	% calls Pred with each element of List (working left-to-right),
 	% 3 accumulators (with the initial values of Start1, Start2 and Start3),
 	% and returns the final values in End1, End2 and End3.
@@ -571,13 +570,13 @@
 	% returned in End.
 :- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
-								is det.
+		is det.
 :- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out)
-								is det.
+		is det.
 :- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
-                                                                is semidet.
+		is semidet.
 :- mode list__map_foldl(pred(in, out, in, out) is nondet, in, out, in, out)
-                                                                is nondet.
+		is nondet.
 
 	% Same as list__map_foldl, but with two accumulators.
 :- pred list__map_foldl2(pred(X, Y, A, A, B, B), list(X), list(Y), A, A, B, B).
@@ -644,11 +643,11 @@
 
 :- func list__sort(func(X, X) = comparison_result, list(X)) = list(X).
 
-	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
+	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
 	% Sorted is a list containing the same elements as Unsorted, but with
-	% any duplicates removed. Where Sorted is a sorted list, with respect  
+	% any duplicates removed. Where Sorted is a sorted list, with respect
 	% to the ordering defined by the predicate term Compare.
-:- pred list__sort_and_remove_dups(pred(X, X, comparison_result), list(X), 
+:- pred list__sort_and_remove_dups(pred(X, X, comparison_result), list(X),
 	list(X)).
 :- mode list__sort_and_remove_dups(pred(in, in, out) is det, in, out) is det.
 
@@ -662,7 +661,7 @@
 :- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
 
 	% list__merge_and_remove_dups(P, As, Bs, Sorted) is true if and only if
-	% Sorted is a list containing the elements of As and Bs in the order 
+	% Sorted is a list containing the elements of As and Bs in the order
 	% implied by their sorted merge. The ordering of elements is defined by
 	% the higher order comparison predicate P.
 	% As and Bs must be sorted.
@@ -750,7 +749,7 @@ list__append([X | Xs], Ys, [X | Zs]) :-
 list__remove_suffix(List, Suffix, Prefix) :-
 	list__length(List, ListLength),
 	list__length(Suffix, SuffixLength),
-	PrefixLength is ListLength - SuffixLength,
+	PrefixLength = ListLength - SuffixLength,
 	list__split_list(PrefixLength, List, Prefix, Suffix).
 
 %-----------------------------------------------------------------------------%
@@ -760,7 +759,7 @@ list__nth_member_search([X | Xs], Y, N) :-
 		N = 1
 	;
 		list__nth_member_search(Xs, Y, N0),
-		N is N0 + 1
+		N = N0 + 1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -768,8 +767,8 @@ list__nth_member_search([X | Xs], Y, N) :-
 list__index0([X | Xs], N, Elem) :-
 	( N = 0 ->
 		Elem = X
-	; 
-		N1 is N - 1,
+	;
+		N1 = N - 1,
 		list__index0(Xs, N1, Elem)
 	).
 
@@ -781,24 +780,24 @@ list__index0_det(List, N, Elem) :-
 	).
 
 list__index1(List, N, Elem) :-
-	N1 is N - 1,
+	N1 = N - 1,
 	list__index0(List, N1, Elem).
 
 list__index1_det(List, N, Elem) :-
-	N1 is N - 1,
+	N1 = N - 1,
 	list__index0_det(List, N1, Elem).
 
 %-----------------------------------------------------------------------------%
 
 list__condense([], []).
-list__condense([L|Ls], R) :-
+list__condense([L | Ls], R) :-
 	list__condense(Ls, R1),
 	list__append(L, R1, R).
 
 %-----------------------------------------------------------------------------%
 
 list__same_length([], []).
-list__same_length([_|L1], [_|L2]) :-
+list__same_length([_ | L1], [_ | L2]) :-
 	list__same_length(L1, L2).
 
 %-----------------------------------------------------------------------------%
@@ -839,11 +838,9 @@ list__delete_elems(Xs, [E | Es], Zs) :-
 list__replace([X | L], X, Z, [Z | L]).
 list__replace([X | Xs], Y, Z, [X | L]) :-
 	list__replace(Xs, Y, Z, L).
-	
+
 list__replace_first([X | Xs], Y, Z, List) :-
-	(
-		X = Y
-	->
+	( X = Y ->
 		List = [Z | Xs]
 	;
 		List = [X | L1],
@@ -865,9 +862,7 @@ list__replace_nth(Xs, P, R, L) :-
 	list__replace_nth_2(Xs, P, R, L).
 
 list__replace_nth_det(Xs, P, R, L) :-
-	(
-		P > 0
-	->
+	( P > 0 ->
 		(
 			list__replace_nth_2(Xs, P, R, L0)
 		->
@@ -879,17 +874,14 @@ list__replace_nth_det(Xs, P, R, L) :-
 		error("list__replace_nth_det: Can't replace element whose index position is less than 1.")
 	).
 
-
 :- pred list__replace_nth_2(list(T), int, T, list(T)).
 :- mode list__replace_nth_2(in, in, in, out) is semidet.
 
 list__replace_nth_2([X | Xs], P, R, L) :-
-	(
-		P = 1 
-	->
+	( P = 1 ->
 		L = [R | Xs]
 	;
-		P1 is P - 1,
+		P1 = P - 1,
 		list__replace_nth(Xs, P1, R, L0),
 		L = [X | L0]
 	).
@@ -907,9 +899,9 @@ list__member(Element, List, SubList) :-
 %-----------------------------------------------------------------------------%
 
 list__merge(A, B, C) :-
-	( A = [X|Xs] ->
-		( B = [Y|Ys] ->
-			C = [Z|Zs],
+	( A = [X | Xs] ->
+		( B = [Y | Ys] ->
+			C = [Z | Zs],
 			( compare(<, X, Y) ->
 				Z = X,
 				list__merge(Xs, B, Zs)
@@ -925,16 +917,16 @@ list__merge(A, B, C) :-
 	).
 
 list__merge_and_remove_dups(A, B, C) :-
-	( A = [X|Xs] ->
-		( B = [Y|Ys] ->
+	( A = [X | Xs] ->
+		( B = [Y | Ys] ->
 			compare(Res, X, Y),
 			( Res = (<) ->
-				C = [X|Zs],
+				C = [X | Zs],
 				list__merge_and_remove_dups(Xs, B, Zs)
 			; Res = (>) ->
-				C = [Y|Zs],
+				C = [Y | Zs],
 				list__merge_and_remove_dups(A, Ys, Zs)
-			; 
+			;
 				list__merge_and_remove_dups(Xs, B, C)
 			)
 		;
@@ -958,7 +950,7 @@ list__length(L, N) :-
 
 list__length_2([], N, N).
 list__length_2([_ | L1], N0, N) :-
-	N1 is N0 + 1,
+	N1 = N0 + 1,
 	list__length_2(L1, N1, N).
 
 %-----------------------------------------------------------------------------%
@@ -970,7 +962,7 @@ list__reverse(L0, L) :-
 :- mode list__reverse_2(in, in, out) is det.
 
 list__reverse_2([], L, L).
-list__reverse_2([X|Xs], L0, L) :-
+list__reverse_2([X | Xs], L0, L) :-
 	list__reverse_2(Xs, [X | L0], L).
 
 %-----------------------------------------------------------------------------%
@@ -986,22 +978,22 @@ list__sort_and_remove_dups(L0, L) :-
 :- mode list__qsort(in, in, out) is det.
 
 list__qsort([], R, R).
-list__qsort([X|L], R0, R) :-
-        list__partition(L, X, L1, L2),
-        list__qsort(L2, R0, R1),
-        list__qsort(L1, [X|R1], R).
+list__qsort([X | L], R0, R) :-
+	list__partition(L, X, L1, L2),
+	list__qsort(L2, R0, R1),
+	list__qsort(L1, [X | R1], R).
 
 :- pred list__partition(list(T), T, list(T), list(T)).
 :- mode list__partition(in, in, out, out) is det.
 
 list__partition([], _, [], []).
-list__partition([Head|Tail], Partition, Low, High) :-
-        ( compare(<, Head, Partition) ->
-                list__partition(Tail, Partition, Low1, High),
-                Low = [Head|Low1]
-        ;
-                list__partition(Tail, Partition, Low, High1),
-		High = [Head|High1]
+list__partition([Head | Tail], Partition, Low, High) :-
+	( compare(<, Head, Partition) ->
+		list__partition(Tail, Partition, Low1, High),
+		Low = [Head | Low1]
+	;
+		list__partition(Tail, Partition, Low, High1),
+		High = [Head | High1]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1042,7 +1034,7 @@ list__remove_dups(Xs, Ys) :-
 :- mode list__remove_dups_2(in, in, out) is det.
 
 list__remove_dups_2([], _SoFar, []).
-list__remove_dups_2([X|Xs], SoFar0, Zs) :-
+list__remove_dups_2([X | Xs], SoFar0, Zs) :-
 	(
 		bintree_set__member(X, SoFar0)
 	->
@@ -1050,13 +1042,13 @@ list__remove_dups_2([X|Xs], SoFar0, Zs) :-
 	;
 		bintree_set__insert(SoFar0, X, SoFar),
 		list__remove_dups_2(Xs, SoFar, Ys),
-		Zs = [X|Ys]
+		Zs = [X | Ys]
 	).
 
 %-----------------------------------------------------------------------------%
 
 list__remove_adjacent_dups([], []).
-list__remove_adjacent_dups([X|Xs], L) :-
+list__remove_adjacent_dups([X | Xs], L) :-
 	list__remove_adjacent_dups_2(Xs, X, L).
 
 :- pred list__remove_adjacent_dups_2(list(T), T, list(T)).
@@ -1064,7 +1056,7 @@ list__remove_adjacent_dups([X|Xs], L) :-
 :- pragma type_spec(list__remove_adjacent_dups_2/3, T = var(_)).
 
 list__remove_adjacent_dups_2([], X, [X]).
-list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
+list__remove_adjacent_dups_2([X1 | Xs], X0, L) :-
 	(X0 = X1 ->
 		list__remove_adjacent_dups_2(Xs, X1, L)
 	;
@@ -1075,14 +1067,14 @@ list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
 %-----------------------------------------------------------------------------%
 
 list__zip([], Bs, Bs).
-list__zip([A|As], Bs, [A|Cs]) :-
+list__zip([A | As], Bs, [A | Cs]) :-
 	list__zip2(As, Bs, Cs).
 
 :- pred list__zip2(list(T), list(T), list(T)).
 :- mode list__zip2(in, in, out) is det.
 
 list__zip2(As, [], As).
-list__zip2(As, [B|Bs], [B|Cs]) :-
+list__zip2(As, [B | Bs], [B | Cs]) :-
 	list__zip(As, Bs, Cs).
 
 %-----------------------------------------------------------------------------%
@@ -1095,9 +1087,9 @@ list__split3(As, Bs, Cs, Ds) :-
 	list__length(As, AL),
 	list__length(Cs, CL),
 	list__length(Ds, DL),
-	N1 is AL + CL,
-	BL is DL - N1,
-	N2 is AL + BL,
+	N1 = AL + CL,
+	BL = DL - N1,
+	N2 = AL + BL,
 	list__take(AL, Ds, As),
 	list__drop(N2, Ds, Cs),
 	list__drop(AL, Ds, Ts),
@@ -1112,17 +1104,15 @@ list__split_list(N, List, Start, End) :-
 		End = List
 	;
 		N > 0,
-		N1 is N - 1,
+		N1 = N - 1,
 		List = [Head | List1],
 		Start = [Head | Start1],
 		list__split_list(N1, List1, Start1, End)
 	).
 
 list__take(N, As, Bs) :-
-	(
-		N > 0
-	->
-		N1 is N - 1,
+	( N > 0 ->
+		N1 = N - 1,
 		As = [A | As1],
 		Bs = [A | Bs1],
 		list__take(N1, As1, Bs1)
@@ -1138,11 +1128,9 @@ list__take_upto(N, As, Bs) :-
 	).
 
 list__drop(N, As, Bs) :-
-	(
-		N > 0
-	->
-		N1 is N - 1,
-		As = [_|Cs],
+	( N > 0 ->
+		N1 = N - 1,
+		As = [_ | Cs],
 		list__drop(N1, Cs, Bs)
 	;
 		As = Bs
@@ -1152,7 +1140,7 @@ list__drop(N, As, Bs) :-
 
 list__duplicate(N, X, L) :-
 	( N > 0 ->
-		N1 is N - 1,
+		N1 = N - 1,
 		L = [X | L1],
 		list__duplicate(N1, X, L1)
 	;
@@ -1174,9 +1162,9 @@ list__chunk_2([], _ChunkSize, List0, _N, Lists) :-
 		list__reverse(List0, List),
 		Lists = [List]
 	).
-list__chunk_2([X|Xs], ChunkSize, List0, N, Lists) :-
+list__chunk_2([X | Xs], ChunkSize, List0, N, Lists) :-
 	( N > 1 ->
-		N1 is N - 1,
+		N1 = N - 1,
 		list__chunk_2(Xs, ChunkSize, [X | List0], N1, Lists)
 	;
 		list__reverse([X | List0], List),
@@ -1187,7 +1175,7 @@ list__chunk_2([X|Xs], ChunkSize, List0, N, Lists) :-
 %-----------------------------------------------------------------------------%
 
 list__perm([], []).
-list__perm([X|Xs], Ys) :-
+list__perm([X | Xs], Ys) :-
 	list__perm(Xs, Ys0),
 	list__insert(X, Ys0, Ys).
 
@@ -1204,24 +1192,24 @@ list__sublist([SH | ST], [FH | FT]) :-
 %-----------------------------------------------------------------------------%
 
 list__all_same([]).
-list__all_same([H|T]) :-
+list__all_same([H | T]) :-
 	list__all_same_2(H, T).
 
 :- pred list__all_same_2(T, list(T)).
 :- mode list__all_same_2(in, in) is semidet.
 
 list__all_same_2(_, []).
-list__all_same_2(H, [H|T]) :-
+list__all_same_2(H, [H | T]) :-
 	list__all_same_2(H, T).
 
 %-----------------------------------------------------------------------------%
 
-list__last([H|T], Last) :-
+list__last([H | T], Last) :-
 	(
 		T = [],
 		Last = H
 	;
-		T = [_|_],
+		T = [_ | _],
 		list__last(T, Last)
 	).
 
@@ -1268,20 +1256,16 @@ list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
 	call(P, H0, H1, H2, H3),
 	list__map3(P, T0, T1, T2, T3).
 
-
-
 list__map_corresponding(_, [],       []      ) = [].
 
-list__map_corresponding(_, [],       [_|_]   ) = 
+list__map_corresponding(_, [],       [_ | _] ) =
 	func_error("list__map_corresponding/3: mismatched list arguments").
 
-list__map_corresponding(_, [_|_],    []      ) =
+list__map_corresponding(_, [_ | _],  []      ) =
 	func_error("list__map_corresponding/3: mismatched list arguments").
 
-list__map_corresponding(F, [A | As], [B | Bs]) = 
+list__map_corresponding(F, [A | As], [B | Bs]) =
 	[F(A, B) | list__map_corresponding(F, As, Bs)].
-
-
 
 list__map_corresponding3(F, As, Bs, Cs) =
 
@@ -1295,32 +1279,28 @@ list__map_corresponding3(F, As, Bs, Cs) =
 mismatched list arguments")
 	).
 
-
-
 list__filter_map_corresponding(_, [],       []      ) = [].
 
-list__filter_map_corresponding(_, [],       [_|_]   ) = 
+list__filter_map_corresponding(_, [],       [_ | _] ) =
 	func_error("list__filter_map_corresponding/3: \
 mismatched list arguments").
 
-list__filter_map_corresponding(_, [_|_],    []      ) =
+list__filter_map_corresponding(_, [_ | _],  []      ) =
 	func_error("list__filter_map_corresponding/3: \
 mismatched list arguments").
 
-list__filter_map_corresponding(F, [A | As], [B | Bs]) = 
+list__filter_map_corresponding(F, [A | As], [B | Bs]) =
 	( if   F(A, B) = C
 	  then [C | list__filter_map_corresponding(F, As, Bs)]
 	  else list__filter_map_corresponding(F, As, Bs)
 	).
-
-
 
 list__filter_map_corresponding3(F, As, Bs, Cs) =
 
 	( if      As = [A | As0], Bs = [B | Bs0], Cs = [C | Cs0]
 	  then
 	  	  ( if   F(A, B, C) = D
-	            then [D | list__filter_map_corresponding3(F, As0, Bs0, Cs0)]
+		    then [D | list__filter_map_corresponding3(F, As0, Bs0, Cs0)]
 		    else list__filter_map_corresponding3(F, As0, Bs0, Cs0)
 		  )
 
@@ -1331,15 +1311,13 @@ list__filter_map_corresponding3(F, As, Bs, Cs) =
 mismatched list arguments")
 	).
 
-
-
 list__foldl(_, [], Acc, Acc).
-list__foldl(P, [H|T], Acc0, Acc) :-
+list__foldl(P, [H | T], Acc0, Acc) :-
 	call(P, H, Acc0, Acc1),
 	list__foldl(P, T, Acc1, Acc).
 
 list__foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
-list__foldl2(P, [H|T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
+list__foldl2(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
 	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
 	list__foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
 
@@ -1352,18 +1330,18 @@ list__foldl3(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc,
 		ThirdAcc1, ThirdAcc).
 
 list__map_foldl(_, [],  []) -->
-        [].
-list__map_foldl(P, [H0|T0], [H|T]) -->
-        call(P, H0, H),
-        list__map_foldl(P, T0, T).
+	[].
+list__map_foldl(P, [H0 | T0], [H | T]) -->
+	call(P, H0, H),
+	list__map_foldl(P, T0, T).
 
 list__map_foldl2(_, [], [], A, A) --> [].
-list__map_foldl2(P, [H0|T0], [H|T], A0, A) -->
+list__map_foldl2(P, [H0 | T0], [H | T], A0, A) -->
 	call(P, H0, H, A0, A1),
 	list__map_foldl2(P, T0, T, A1, A).
 
 list__foldr(_, [], Acc, Acc).
-list__foldr(P, [H|T], Acc0, Acc) :-
+list__foldr(P, [H | T], Acc0, Acc) :-
 	list__foldr(P, T, Acc0, Acc1),
 	call(P, H, Acc1, Acc).
 
@@ -1371,44 +1349,44 @@ list__filter(P, Xs, Ys) :-
 	list__filter(P, Xs, Ys, _).
 
 list__filter(_, [],  [], []).
-list__filter(P, [H|T], L, M) :-
+list__filter(P, [H | T], L, M) :-
 	( call(P, H) ->
-		L = [H|L1],
+		L = [H | L1],
 		M = M1
 	;
 		L = L1,
-		M = [H|M1]
+		M = [H | M1]
 	),
 	list__filter(P, T, L1, M1).
 
 list__filter_map(_, [],  []).
-list__filter_map(P, [H0|T0], L) :-
+list__filter_map(P, [H0 | T0], L) :-
 	( call(P, H0, H) ->
-		L = [H|L1]
+		L = [H | L1]
 	;
 		L = L1
 	),
 	list__filter_map(P, T0, L1).
 
 list__filter_map(_, [], [], []).
-list__filter_map(P, [H0|T0], L, M) :-
-        ( call(P, H0, H) ->
-                L = [H|L1],
+list__filter_map(P, [H0 | T0], L, M) :-
+	( call(P, H0, H) ->
+		L = [H | L1],
 		M = M1
-        ;
-                L = L1,
-		M = [H0|M1]
-        ),
-        list__filter_map(P, T0, L1, M1).
+	;
+		L = L1,
+		M = [H0 | M1]
+	),
+	list__filter_map(P, T0, L1, M1).
 
 list__takewhile(_, [], [], []).
-list__takewhile(P, [X|Xs], Ins, Outs) :-
+list__takewhile(P, [X | Xs], Ins, Outs) :-
 	( call(P, X) ->
-		Ins = [X|Ins0],
+		Ins = [X | Ins0],
 		list__takewhile(P, Xs, Ins0, Outs)
 	;
 		Ins = [],
-		Outs = [X|Xs]
+		Outs = [X | Xs]
 	).
 
 list__sort_and_remove_dups(P, L0, L) :-
@@ -1416,18 +1394,18 @@ list__sort_and_remove_dups(P, L0, L) :-
 	list__remove_adjacent_dups(L1, L).
 
 list__sort(P, L0, L) :-
-        list__length(L0, N),
-        (
+	list__length(L0, N),
+	(
 		N = 0
 	->
-                L = []
-        ;
+		L = []
+	;
 		list__hosort(P, N, L0, L1, [])
 	->
-                L = L1
-        ;
+		L = L1
+	;
 		error("hosort failed")
-        ).
+	).
 
 % list__hosort is actually det but the compiler can't confirm it
 :- pred list__hosort(pred(X, X, comparison_result), int, list(X),
@@ -1442,12 +1420,12 @@ list__sort(P, L0, L) :-
 	% length implicit in the list itself), we get a semidet unification
 	% when we deconstruct the list.
 list__hosort(P, N, L0, L, Rest) :-
-        (
+	(
 		N = 1
 	->
-                L0 = [X | Rest],
+		L0 = [X | Rest],
 		L = [X]
-        ;
+	;
 		N = 2
 	->
 		L0 = [X, Y | Rest],
@@ -1455,20 +1433,20 @@ list__hosort(P, N, L0, L, Rest) :-
 		(
 			C = (<),
 			L = [X, Y]
-		; 
+		;
 			C = (=),
 			L = [X, Y]
 		;
 			C = (>),
 			L = [Y, X]
 		)
-        ;      
-		N1 is N//2,
+	;
+		N1 = N // 2,
 		list__hosort(P, N1, L0, L1, Middle),
-                N2 is N-N1,
+		N2 = N - N1,
 		list__hosort(P, N2, Middle, L2, Rest),
 		list__merge(P, L1, L2, L)
-        ).
+	).
 
 list__merge(_P, [], [], []).
 list__merge(_P, [], [Y | Ys], [Y | Ys]).
@@ -1477,7 +1455,7 @@ list__merge(P, [H1 | T1], [H2 | T2], L) :-
 	call(P, H1, H2, C),
 	(
 		C = (<),
-		L = [H1 | T],   
+		L = [H1 | T],
 		list__merge(P, T1, [H2 | T2], T)
 	;
 		C = (=),
@@ -1485,7 +1463,7 @@ list__merge(P, [H1 | T1], [H2 | T2], L) :-
 		list__merge(P, T1, T2, T)
 	;
 		C = (>),
-		L = [H2 | T],   
+		L = [H2 | T],
 		list__merge(P, [H1 | T1], T2, T)
 	).
 
@@ -1496,7 +1474,7 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 	call(P, H1, H2, C),
 	(
 		C = (<),
-		L = [H1 | T],   
+		L = [H1 | T],
 		list__merge_and_remove_dups(P, T1, [H2 | T2], T)
 	;
 		C = (=),
@@ -1504,10 +1482,9 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 		list__merge_and_remove_dups(P, T1, T2, T)
 	;
 		C = (>),
-		L = [H2 | T],   
+		L = [H2 | T],
 		list__merge_and_remove_dups(P, [H1 | T1], T2, T)
 	).
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
