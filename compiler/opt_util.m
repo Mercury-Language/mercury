@@ -98,6 +98,18 @@
 :- pred opt_util__filter_in_livevals(list(instruction), list(instruction)).
 :- mode opt_util__filter_in_livevals(in, out) is det.
 
+	% See if an instruction sequence contains incr_sp, and if yes,
+	% what is the increment.
+
+% :- pred opt_util__has_incr_sp(list(instruction), int).
+% :- mode opt_util__has_incr_sp(in, out) is semidet.
+
+	% See if an instruction sequence contains decr_sp, and if yes,
+	% what is the decrement.
+
+% :- pred opt_util__has_decr_sp(list(instruction), int).
+% :- mode opt_util__has_decr_sp(in, out) is semidet.
+
 	% Check whether an instruction can possibly branch away.
 
 :- pred opt_util__can_instr_branch_away(instr, bool).
@@ -379,17 +391,54 @@ opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
 		fail
 	).
 
+:- pred opt_util__detstack_setup(list(instruction), int, list(instruction)).
+:- mode opt_util__detstack_setup(in, out, out) is semidet.
+
+opt_util__detstack_setup(Instrs0, FrameSize, Instrs) :-
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = incr_sp(FrameSize) - _,
+	opt_util__skip_comments_livevals(Instrs2, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = assign(stackvar(FrameSize), lval(succip)) - _,
+	opt_util__skip_comments_livevals(Instrs4, Instrs).
+
+:- pred opt_util__detstack_teardown(list(instruction), int,
+	list(instruction), list(instruction)).
+:- mode opt_util__detstack_teardown(in, in, out, out) is semidet.
+
+opt_util__detstack_teardown(Instrs0, FrameSize, Tail, Instrs) :-
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = assign(succip, lval(stackvar(FrameSize))) - _,
+	opt_util__skip_comments_livevals(Instrs2, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = decr_sp(FrameSize) - _,
+	opt_util__gather_comments_livevals(Instrs4, Comments1, Instrs5),
+	Instrs5 = [Instr5 | Instrs6],
+	( Instr5 = assign(reg(r(1)), const(_)) - _ ->
+		SemiDet = [Instr5],
+		opt_util__gather_comments_livevals(Instrs6, Comments2, Instrs7)
+	;
+		SemiDet = [],
+		Comments2 = [],
+		Instrs7 = Instrs5
+	),
+	Instrs7 = [Instr7 | Instrs],
+	Instr7 = goto(_) - _,
+	list__condense([Comments1, SemiDet, Comments2, [Instr7]], Tail).
+
 opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
-	opt_util__gather_comments_livevals(Instrs0, _Comments0, Instrs1),
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = incr_sp(Framesize) - _,
 	Framesize = 1,
 
-	opt_util__gather_comments_livevals(Instrs2, _Comments1, Instrs3),
+	opt_util__skip_comments_livevals(Instrs2, Instrs3),
 	Instrs3 = [Instr3 | Instrs4],
 	Instr3 = assign(stackvar(Framesize), lval(succip)) - _,
 
-	opt_util__no_stack_straight_line(Instrs4, [], RevShuffle, Instrs5),
+	opt_util__no_stack_straight_line(Instrs4, Shuffle, Instrs5),
 	Instrs5 = [Instr5 | Instrs6],
 	Instr5 = assign(succip, lval(stackvar(Framesize))) - _,
 
@@ -404,7 +453,6 @@ opt_util__chain_pred(Instrs0, Shuffle, Livevals, Tailcall) :-
 	opt_util__gather_comments(Instrs10, _Comments3, Instrs11),
 	Instrs11 = [],
 
-	list__reverse(RevShuffle, Shuffle),
 	Tailcall = [Instr9].
 
 opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
@@ -421,7 +469,7 @@ opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
 	Instrs5 = [Instr5 | Instrs6],
 	Instr5 = if_val(_, label(_)) - _,
 
-	opt_util__no_stack_straight_line(Instrs6, [], RevAfter, Instrs7),
+	opt_util__no_stack_straight_line(Instrs6, After0, Instrs7),
 	Instrs7 = [Instr7 | Instrs8],
 	Instr7 = assign(succip, lval(stackvar(Framesize))) - _,
 
@@ -446,18 +494,25 @@ opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
 	list__condense([Comments0, [Instr1], Comments1], SetupSp),
 	list__condense([[Instr3], Comments2], SetupSuccip),
 	Test = [Instr5],
-	list__reverse(RevAfter, After0),
 	list__condense([After0, Comments3, [Instr11use],
 		Comments4, Comments5], After),
 	Teardown = [Instr7, Instr9],
 	Follow = Instrs14.
 
 :- pred opt_util__no_stack_straight_line(list(instruction),
-	list(instruction), list(instruction), list(instruction)).
-:- mode opt_util__no_stack_straight_line(in, in, out, out) is det.
+	list(instruction), list(instruction)).
+:- mode opt_util__no_stack_straight_line(in, out, out) is det.
 
-opt_util__no_stack_straight_line([], After, After, []).
-opt_util__no_stack_straight_line([Instr0 | Instrs0], After0, After, Instrs) :-
+opt_util__no_stack_straight_line(Instrs0, Shuffle, Instrs) :-
+	opt_util__no_stack_straight_line_2(Instrs0, [], RevShuffle, Instrs),
+	list__reverse(RevShuffle, Shuffle).
+
+:- pred opt_util__no_stack_straight_line_2(list(instruction),
+	list(instruction), list(instruction), list(instruction)).
+:- mode opt_util__no_stack_straight_line_2(in, in, out, out) is det.
+
+opt_util__no_stack_straight_line_2([], After, After, []).
+opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 	Instr0 = Uinstr - _,
 	(
 		(
@@ -473,7 +528,7 @@ opt_util__no_stack_straight_line([Instr0 | Instrs0], After0, After, Instrs) :-
 		)
 	->
 		After1 = [Instr0 | After0],
-		opt_util__no_stack_straight_line(Instrs0, After1, After, Instrs)
+		opt_util__no_stack_straight_line_2(Instrs0, After1, After, Instrs)
 	;
 		After = After0,
 		Instrs = [Instr0 | Instrs0]
@@ -571,6 +626,20 @@ opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 	;
 		Instrs = Instrs1
 	).
+
+% opt_util__has_incr_sp([Instr0 | Instrs0], Inc) :-
+% 	( Instr0 = incr_sp(N) - _Comment ->
+% 		Inc = N
+% 	;
+% 		opt_util__has_incr_sp(Instrs0, Inc)
+% 	).
+
+% opt_util__has_decr_sp([Instr0 | Instrs0], Dec) :-
+% 	( Instr0 = decr_sp(N) - _Comment ->
+% 		Dec = N
+% 	;
+% 		opt_util__has_decr_sp(Instrs0, Dec)
+% 	).
 
 opt_util__new_label_no([], N, N).
 opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-

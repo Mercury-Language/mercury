@@ -125,15 +125,38 @@ middle_rec__gen_det(Goal, Instrs) -->
 		code_info__get_next_label(Loop1Label),
 		code_info__get_next_label(Loop2Label),
 		{ list__append(BeforeList, AfterList, RecCodeList) },
-		{ middle_rec__find_unused_register(RecCodeList, CountReg) },
+
+		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
 		code_info__get_total_stackslot_count(StackSlots),
 
 		( { StackSlots = 0 } ->
 			{ MaybeIncrSp = [] },
-			{ MaybeDecrSp = [] }
+			{ MaybeDecrSp = [] },
+			{ InitAuxReg = [ assign(AuxReg, const(int_const(0)))
+					- "initialize counter register" ] },
+			{ IncrAuxReg = [ assign(AuxReg, binop((+),
+					lval(AuxReg),
+					const(int_const(1))))
+					- "increment loop counter" ] },
+			{ DecrAuxReg = [ assign(AuxReg, binop((-),
+					lval(AuxReg),
+					const(int_const(1))))
+					- "decrement loop counter" ] },
+			{ TestAuxReg = [ if_val(binop((>),
+					lval(AuxReg), const(int_const(0))),
+					label(Loop2Label))
+					- "test on upward loop" ] }
 		;
 			{ MaybeIncrSp = [incr_sp(StackSlots) - ""] },
-			{ MaybeDecrSp = [decr_sp(StackSlots) - ""] }
+			{ MaybeDecrSp = [decr_sp(StackSlots) - ""] },
+			{ InitAuxReg = [ assign(AuxReg, lval(sp))
+					- "initialize counter register" ] },
+			{ IncrAuxReg = [] },
+			{ DecrAuxReg = [] },
+			{ TestAuxReg = [ if_val(binop((>),
+					lval(sp), lval(AuxReg)),
+					label(Loop2Label))
+					- "test on upward loop" ] }
 		),
 
 		{ list__condense([
@@ -142,17 +165,12 @@ middle_rec__gen_det(Goal, Instrs) -->
 				comment(CallInfoComment) - ""
 			],
 			EntryTestList,
+			InitAuxReg,
 			[
-				assign(CountReg, const(int_const(0)))
-					- "initialize counter register",
 				label(Loop1Label) - "start of the down loop"
 			],
 			MaybeIncrSp,
-			[
-				assign(CountReg, binop((+), lval(CountReg),
-					const(int_const(1)))) -
-					"increment loop counter"
-			],
+			IncrAuxReg,
 			BeforeList,
 			Loop1Test,
 			BaseList,
@@ -161,13 +179,9 @@ middle_rec__gen_det(Goal, Instrs) -->
 			],
 			AfterList,
 			MaybeDecrSp,
+			DecrAuxReg,
+			TestAuxReg,
 			[
-				assign(CountReg, binop((-), lval(CountReg),
-					const(int_const(1))))
-					- "decrement loop counter",
-				if_val(binop((>), lval(CountReg),
-					const(int_const(0))), label(Loop2Label))
-					- "test on upward loop",
 				goto(succip) - "exit from recursive case",
 				label(BaseLabel) - "start of base case"
 			],
