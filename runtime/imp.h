@@ -181,7 +181,7 @@ extern	int	hash_string(const char *);
 #include "gc.h"
 
 #define	tag_incr_hp(dest,tag,count) \
-	((dest) = mkword(tag, (Word)GC_MALLOC(count * sizeof(Word))))
+	((dest) = mkword(tag, (Word)newmem(count * sizeof(Word))))
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
 #define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)

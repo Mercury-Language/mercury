@@ -34,7 +34,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
 
 	/* Special case of when pointer in array is NULL */
 	if (!temp) {
-		new_node = malloc(sizeof(prof_node));
+		new_node = make(prof_node);
 		new_node->Callee = Callee;
 		new_node->Caller = Caller;
 		new_node->count = 1;
@@ -52,7 +52,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
                 temp = temp->next;
         }
 
-        new_node = malloc(sizeof(prof_node));
+        new_node = make(prof_node);
         new_node->Callee = Callee;
         new_node->Caller = Caller;
         new_node->count = 1;

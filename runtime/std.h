@@ -49,10 +49,7 @@
 
 #define make(t)			((t *) newmem(sizeof(t)))
 #define make_many(t, n)		((t *) newmem((n) * sizeof(t)))
-
-#define malloc_type(t)		((t *) malloc(sizeof(t)))
-#define malloc_mtype(t, n)	((t *) malloc((n) * sizeof(t)))
-#define realloc_type(t, r, n) 	((t *) realloc((r), (n) * sizeof(t)))
+#define resize_many(t, p, n)	((t *) resizemem((p), (n) * sizeof(t)))
 
 #ifndef	TRUE
 #define	TRUE		1
@@ -62,6 +59,7 @@
 #endif
 
 extern	void	*newmem(size_t);
+extern	void	*resizemem(void *, size_t);
 extern	void	oldmem(void *);
 
 #endif /* STD_H */

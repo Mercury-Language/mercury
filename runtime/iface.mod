@@ -22,7 +22,7 @@ static	int	cmdtarget;
 BEGIN_MODULE(iface_module)
 	/* module initialization */
 	cmdsize = LINESIZE;
-	cmdline = malloc_mtype(char, cmdsize);
+	cmdline = make_many(char, cmdsize);
 	yykwinit();
 BEGIN_CODE
 

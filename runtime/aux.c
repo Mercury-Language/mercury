@@ -116,8 +116,12 @@ void cr2_msg(Word val0, Word val1, const Word *addr)
 
 void incr_hp_msg(Word val, const Word *addr)
 {
+#ifdef CONSERVATIVE_GC
+	printf("allocated %d words at 0x%p\n", val, addr);
+#else
 	printf("increment hp by %d from ", val);
 	printheap(addr);
+#endif
 }
 
 void incr_sp_msg(Word val, const Word *addr)
@@ -352,7 +356,11 @@ void *newmem(size_t n)
 {
 	reg	void	*p;
 
+#ifdef CONSERVATIVE_GC
+	p = GC_MALLOC(n);
+#else
 	p = malloc(n);
+#endif
 	if (p == NULL)
 	{
 		fatal_error("ran out of memory");
@@ -363,7 +371,24 @@ void *newmem(size_t n)
 
 void oldmem(void *p)
 {
+#ifndef CONSERVATIVE_GC
 	free(p);
+#endif
+}
+
+void* resizemem(void *p, size_t size)
+{
+#ifdef CONSERVATIVE_GC
+	p = GC_REALLOC(p, size);
+#else
+	p = realloc(p, size);
+#endif
+	if (p == NULL)
+	{
+		fatal_error("ran out of memory");
+	}
+
+	return p;
 }
 
 void fatal_error(const char *message) {

@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 
 # .gdbinit.arch should be a link to .gdbinit.sparc
-source .gdbinit.arch
+# source .gdbinit.arch
 
 
 # file sys
@@ -25,6 +25,13 @@ document pr
 Prints the registers.
 Doesn't work if you use -DUSE_GCC_GLOBAL_REGISTERS,
 unless you also `source .gdbinit.<machine>'.
+end
+#-----------------------------------------------------------------------------#
+define pr1
+set printregs("Register dump")
+end
+document pr1
+Prints the registers
 end
 #-----------------------------------------------------------------------------#
 define pr2

@@ -182,7 +182,7 @@ getflexline(const char *prompt, FILE *file, char **line, int *line_max)
 		if (i >= lim)
 		{
 			*line_max *= 2;
-			*line = realloc_type(char, *line, *line_max);
+			*line = resize_many(char, *line, *line_max);
 			lim = *line_max-2;
 			buf = *line;
 		}
