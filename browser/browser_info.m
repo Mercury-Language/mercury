@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,26 +15,42 @@
 :- interface.
 :- import_module bool, list, std_util.
 
+:- type browser_term
+	--->	plain_term(
+			univ		% We are browsing a plain term.
+		)
+	;	synthetic_term(
+			string,		% We are browsing a synthetic term,
+					% such as a predicate name applied to
+					% a list of arguments. The string says
+					% what we should print as the functor.
+			list(univ),	% The arguments.
+			maybe(univ)	% If yes, the synthetic term represents
+					% a function call, and the argument
+					% inside the yes() is the return value.
+		).
+
 	% The non-persistent browser information.  A new one of these is
 	% created every time the browser is called, based on the contents
 	% of the persistent state, and lasts for the duration of the call.
 	%
 :- type browser_info
 	--->	browser_info(
-			term	:: univ,	% Term to browse.
-			dirs	:: list(dir),	% The list of directories to
-						% take, starting from the root,
-						% to reach the current subterm.
-			format	:: maybe(portray_format),
-						% Format specified as
-						% an option to the mdb
-						% command.
-			state	:: browser_persistent_state,
-						% Persistent settings.
-			maybe_mark :: maybe(list(dir))
-						% Location of the marked term
-						% relative to the root, or `no'
-						% if there is no mark.
+			term		:: browser_term,
+					% Term to browse.
+			dirs		:: list(dir),
+					% The list of directories to take,
+					% starting from the root, to reach
+					% the current subterm.
+			format		:: maybe(portray_format),
+					% Format specified as an option to the
+					% mdb command.
+			state		:: browser_persistent_state,
+					% Persistent settings.
+			maybe_mark	:: maybe(list(dir))
+					% Location of the marked term
+					% relative to the root, or `no'
+					% if there is no mark.
 		).
 
 :- type dir
@@ -84,9 +100,8 @@
 	% Initialise a new browser_info.  The optional portray_format
 	% overrides the default format.
 	%
-:- pred browser_info__init(T, maybe(portray_format), browser_persistent_state,
-		browser_info).
-:- mode browser_info__init(in, in, in, out) is det.
+:- func browser_info__init(browser_term, maybe(portray_format),
+	browser_persistent_state) = browser_info.
 
 	% Get the format to use for the given caller type.  The optional
 	% portray_format overrides the current default.
@@ -122,6 +137,24 @@
 		bool::in, bool::in, bool::in, setting::in, 
 		browser_persistent_state::in, browser_persistent_state::out) 
 		is det.
+
+%---------------------------------------------------------------------------%
+
+% These three predicates are like the deconstruct, limited_deconstruct and
+% functor procedures in std_util, except they work on browser_terms.
+% This requires them to have an extra argument (the last). For deconstruct
+% and limited_deconstruct, this returns the return value if the browser term
+% represents a function call. For functor, it says whether the browser term
+% represents a function call.
+
+:- pred deconstruct_browser_term(browser_term::in,
+	string::out, int::out, list(univ)::out, maybe(univ)::out) is det.
+
+:- pred limited_deconstruct_browser_term(browser_term::in, int::in,
+	string::out, int::out, list(univ)::out, maybe(univ)::out) is semidet.
+
+:- pred functor_browser_term(browser_term::in, string::out, int::out,
+	bool::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -199,8 +232,8 @@ mercury_bool_no = no.
 
 %---------------------------------------------------------------------------%
 
-browser_info__init(Term, MaybeFormat, State, Info) :-
-	Info = browser_info(univ(Term), [], MaybeFormat, State, no).
+browser_info__init(BrowserTerm, MaybeFormat, State) =
+	browser_info(BrowserTerm, [], MaybeFormat, State, no).
 
 browser_info__get_format(Info, Caller, MaybeFormat, Format) :-
 	(
@@ -413,3 +446,45 @@ get_caller_format_params(Params, pretty, Params ^ pretty_params).
 browser_persistent_state_type(type_of(State)) :-
 	browser_info__init_persistent_state(State).
 
+%---------------------------------------------------------------------------%
+
+deconstruct_browser_term(BrowserTerm, Functor, Arity, Args, MaybeReturn) :-
+	(
+		BrowserTerm = plain_term(Univ),
+		deconstruct(univ_value(Univ), Functor, Arity, Args),
+		MaybeReturn = no
+	;
+		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
+		list__length(Args, Arity)
+	).
+
+limited_deconstruct_browser_term(BrowserTerm, Limit, Functor, Arity, Args,
+		MaybeReturn) :-
+	(
+		BrowserTerm = plain_term(Univ),
+		limited_deconstruct(univ_value(Univ), Limit,
+			Functor, Arity, Args),
+		MaybeReturn = no
+	;
+		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
+		list__length(Args, Arity)
+	).
+
+functor_browser_term(BrowserTerm, Functor, Arity, IsFunc) :-
+	(
+		BrowserTerm = plain_term(Univ),
+		functor(univ_value(Univ), Functor, Arity),
+		IsFunc = no
+	;
+		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
+		list__length(Args, Arity),
+		(
+			MaybeReturn = yes(_),
+			IsFunc = yes
+		;
+			MaybeReturn = no,
+			IsFunc = no
+		)
+	).
+
+%---------------------------------------------------------------------------%

@@ -104,5 +104,26 @@ big(
   [|](1, [|](2, [|]/2)), 
   small)
 browser> quit
+mdb> print goal
+big_data(
+  big(big/3, [|]/2, big/3))
+mdb> browse goal
+browser> ls
+big_data(
+  big(big/3, [|]/2, big/3))
+browser> ^1
+browser> ls
+big(
+  big(big/3, [|]/2, small), 
+  [|](1, [|](2, [|]/2)), 
+  big(big/3, [|]/2, small))
+browser> ^..
+browser> ls
+big_data(
+  big(big/3, [|]/2, big/3))
+browser> ^1^2^2
+browser> ls
+[|](2, [|](3, []))
+browser> quit
 mdb> continue
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small)).

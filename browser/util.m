@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,6 +73,10 @@
 	% remains the same.
 :- pred util__limit(pred(list(T), list(T)), list(T), list(T)).
 :- mode util__limit(pred(in,out) is det, in, out) is det.
+
+	% For use in representing unbound head variables in the "print goal"
+	% commands in the debugger.
+:- type unbound ---> '_'.
 
 %---------------------------------------------------------------------------%
 :- implementation.

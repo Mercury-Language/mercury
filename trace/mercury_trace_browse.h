@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,16 +46,21 @@ typedef enum {
 */
 extern 	void	MR_trace_browse(MR_Word type_info, MR_Word value,
 			MR_Browse_Format format);
+extern 	void	MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list,
+			MR_Word is_func, MR_Browse_Format format);
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 extern 	void	MR_trace_browse_external(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 #endif
 
 /*
-** Display a term (non-interactively).
+** Display a term non-interactively.
 */
 extern	void	MR_trace_print(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
+extern	void	MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
+			MR_Word is_func, MR_Browse_Caller_Type caller,
+			MR_Browse_Format format);
 
 /*
 ** Set browser parameters.

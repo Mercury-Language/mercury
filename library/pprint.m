@@ -150,7 +150,7 @@
 
 :- interface.
 
-:- import_module int, string, list, io.
+:- import_module std_util, int, string, list, io.
 
     % Clients must translate data structures into docs for
     % the pretty printer to display.
@@ -250,6 +250,16 @@
     %
 :- func packed_cs(int, list(doc)) = doc.
 
+    % This is like a depth-limited version of packed_cs/1 that first
+    % calls to_doc/2 on each member of the argument list.
+    %
+:- func packed_cs_to_depth(int, list(T)) = doc.
+
+    % This is like a version of packed_cs_to_depth/1 that first
+    % calls univ_value/1 for each member of the argument list.
+    %
+:- func packed_cs_univ_args(int, list(univ)) = doc.
+
     % separated(PP, Sep, [X1,...,Xn]) =
     %   PP(X1) `<>` Sep `<>` ... Sep `<>` PP(Xn)
     %
@@ -312,7 +322,7 @@
 
 :- implementation.
 
-:- import_module std_util, char, array, map.
+:- import_module char, array, map.
 
 :- type doc
     --->    'NIL'
@@ -526,20 +536,10 @@ packed_cs(Xs) = packed(comma_space, Xs).
 
 %------------------------------------------------------------------------------%
 
-    % This is like a depth-limited version of packed_cs/1 that first
-    % calls to_doc/2 on each member of the argument list.
-    %
-:- func packed_cs_to_depth(int, list(T)) = doc.
-
 packed_cs_to_depth(Depth, Xs) =
     packed_cs(Depth, list__map(to_doc(Depth), Xs)).
 
 %------------------------------------------------------------------------------%
-
-    % This is like a version of packed_cs_to_depth/1 that first
-    % calls univ_value/1 for each member of the argument list.
-    %
-:- func packed_cs_univ_args(int, list(univ)) = doc.
 
 packed_cs_univ_args(Depth, UnivArgs) = 
     packed_cs(

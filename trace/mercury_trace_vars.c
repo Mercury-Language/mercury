@@ -656,6 +656,79 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 	return NULL;
 }
 
+/*
+** The following declaration allocates a cell to a typeinfo even if though
+** its arity is zero. This wastes a word of space but avoids depending on the
+** current typeinfo optimization scheme.
+*/
+
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_type_ctor_info_name(mdb__util, unbound, 0));
+static
+MR_static_type_info_arity_0(MR_unbound_typeinfo_struct,
+	&MR_type_ctor_info_name(mdb__util, unbound, 0));
+
+const char *
+MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
+	MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+	const MR_Proc_Layout	*proc_layout;
+	MR_ConstString		proc_name;
+	MR_Word			is_func;
+	MR_Word			arg_list;
+	MR_Word			arg;
+	MR_TypeInfo		arg_list_typeinfo;
+	MR_Var_Details		*vars;
+	int			arity;
+	int			hv;
+	int			slot;
+
+	proc_layout = MR_point.MR_point_level_entry;
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
+		proc_name = proc_layout->MR_sle_proc_id.
+			MR_proc_comp.MR_comp_pred_name;
+		arity = proc_layout->MR_sle_proc_id.
+			MR_proc_comp.MR_comp_arity;
+		is_func = MR_BOOL_NO;
+	} else {
+		proc_name = proc_layout->MR_sle_proc_id.
+			MR_proc_user.MR_user_name;
+		arity = proc_layout->MR_sle_proc_id.
+			MR_proc_user.MR_user_arity;
+		if (proc_layout->MR_sle_proc_id.MR_proc_user.
+				MR_user_pred_or_func == MR_FUNCTION)
+		{
+			is_func = MR_BOOL_YES;
+		} else {
+			is_func = MR_BOOL_NO;
+		}
+	}
+
+	vars = MR_point.MR_point_vars;
+	for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
+		if (vars[slot].MR_var_is_headvar) {
+			break;
+		}
+	}
+
+	arg_list = MR_list_empty();
+	for (hv = arity; hv >= 1; hv--) {
+		if (slot >= 0 && vars[slot].MR_var_is_headvar
+			&& vars[slot].MR_var_num_suffix == hv)
+		{
+			MR_new_univ_on_hp(arg, vars[slot].MR_var_type,
+				vars[slot].MR_var_value);
+			slot--;
+		} else {
+			MR_new_univ_on_hp(arg, &MR_unbound_typeinfo_struct,
+				MR_UNBOUND);
+		}
+		arg_list = MR_list_cons(arg, arg_list);
+	}
+
+	(*browser)(proc_name, arg_list, is_func, caller, format);
+	return NULL;
+}
+
 const char *
 MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 	MR_Browse_Caller_Type caller, MR_Browse_Format format,

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -225,6 +225,9 @@ static	void	MR_trace_do_noop(void);
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			bool detailed);
 static	void	MR_trace_browse_internal(MR_Word type_info, MR_Word value,
+			MR_Browse_Caller_Type caller, MR_Browse_Format format);
+static	void	MR_trace_browse_goal_internal(MR_ConstString name,
+			MR_Word arg_list, MR_Word is_func,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
 			MR_Browser browser, MR_Browse_Caller_Type caller,
@@ -497,6 +500,31 @@ MR_trace_browse_internal(MR_Word type_info, MR_Word value,
 		default:
 			MR_fatal_error("MR_trace_browse_internal:"
 					" unknown caller type");
+	}
+}
+
+static void
+MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
+	MR_Word is_func, MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+	switch (caller) {
+		
+		case MR_BROWSE_CALLER_BROWSE:
+			MR_trace_browse_goal(name, arg_list, is_func, format);
+			break;
+
+		case MR_BROWSE_CALLER_PRINT:
+			MR_trace_print_goal(name, arg_list, is_func,
+				caller, format);
+			break;
+
+		case MR_BROWSE_CALLER_PRINT_ALL:
+			MR_fatal_error("MR_trace_browse_goal_internal:"
+				" bad caller type");
+
+		default:
+			MR_fatal_error("MR_trace_browse_goal_internal:"
+				" unknown caller type");
 	}
 }
 
@@ -1042,12 +1070,27 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					"browsing", "print"))
 		{
 			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			const char	*problem;
+
+			problem = MR_trace_browse_one_goal(MR_mdb_out,
+				MR_trace_browse_goal_internal,
+				MR_BROWSE_CALLER_PRINT, format);
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
 		} else if (word_count == 2) {
 			const char	*problem;
 
 			if (streq(words[1], "*")) {
 				problem = MR_trace_browse_all(MR_mdb_out,
 					MR_trace_browse_internal, format);
+			} else if (streq(words[1], "goal")) {
+				problem = MR_trace_browse_one_goal(MR_mdb_out,
+					MR_trace_browse_goal_internal,
+					MR_BROWSE_CALLER_PRINT, format);
 			} else if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
 					MR_trace_browse_internal,
@@ -1072,10 +1115,25 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					"browsing", "browse"))
 		{
 			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			const char	*problem;
+
+			problem = MR_trace_browse_one_goal(MR_mdb_out,
+				MR_trace_browse_goal_internal,
+				MR_BROWSE_CALLER_BROWSE, format);
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
 		} else if (word_count == 2) {
 			const char	*problem;
 
-			if (streq(words[1], "exception")) {
+			if (streq(words[1], "goal")) {
+				problem = MR_trace_browse_one_goal(MR_mdb_out,
+					MR_trace_browse_goal_internal,
+					MR_BROWSE_CALLER_BROWSE, format);
+			} else if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
 					MR_trace_browse_internal,
 					MR_BROWSE_CALLER_BROWSE, format);

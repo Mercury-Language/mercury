@@ -28,5 +28,14 @@ set lines 4
 set width 30
 ls
 quit
+print goal
+browse goal
+ls
+^1
+ls
+^..
+ls
+^1^2^2
+ls
+quit
 continue
-

@@ -4,6 +4,53 @@ Command echo enabled.
 mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
+mdb> b functor_names
+ 0: + stop  interface func polymorphic_output:functor_names/2-0 (det)
+mdb> c
+       2:      2  2 CALL func polymorphic_output:functor_names/2-0 (det)
+mdb> delete 0
+ 0: E stop  interface func polymorphic_output:functor_names/2-0 (det)
+mdb> p goal
+functor_names(two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))) = _
+mdb> set format verbose
+mdb> set lines 100
+mdb> p goal
+functor_names
+1-two
+| 1-"three"
+| 2-3
+| 3-three
+| | 1-"four"
+| | 2-4
+| | 3-"one"
+| | 4-1
+| | 5-empty
+| | 6-empty
+| | 7-empty
+| 4-two
+|   1-"two"
+|   2-2
+|   3-empty
+|   4-empty
+2-_
+
+mdb> set format flat
+mdb> browse goal
+browser> ^1
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^2
+error: cannot change to subterm
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^3
+error: cannot change to subterm
+browser> p
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+browser> ^..^r
+browser> p
+'_'
+browser> quit
 mdb> b std_util__det_arg
 mdb: there is no such procedure.
 mdb> c

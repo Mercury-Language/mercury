@@ -2163,6 +2163,13 @@ Prints the values of all the known variables in the current environment.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
+@item print [-fpv]
+@item print [-fpv] goal
+Prints the goal of the current call in its present state of instantiation.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
 @item print [-fpv] exception
 Prints the value of the exception at an EXCP port.
 Reports an error if the current event does not refer to such a port.
@@ -2190,6 +2197,14 @@ and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 For further documentation on the interactive term browser,
 invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
+@sp 1
+@item browse [-fpv]
+@item browse [-fpv] goal
+Invokes the interactive term browser to browse
+the goal of the current call in its present state of instantiation.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 @sp 1
 @item browse [-fpv] exception
 Invokes the interactive term browser to browse

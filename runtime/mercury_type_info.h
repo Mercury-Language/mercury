@@ -292,12 +292,42 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_fill_in_tuple_type_info(arena, type_ctor_info, arity, vector) \
     MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)
 
+#define MR_static_type_info_arity_0(name, ctor)				\
+	struct {							\
+		MR_TypeCtorInfo field1;					\
+	} name = {							\
+		(MR_TypeCtorInfo) (ctor)				\
+	};
+
+#define MR_static_type_info_arity_1(name, ctor, ti1)			\
+	struct {							\
+		MR_TypeCtorInfo field1;					\
+		MR_TypeInfo 	field2;					\
+	} name = {							\
+		(MR_TypeCtorInfo) (ctor),				\
+		(MR_TypeInfo)     (ti1)					\
+	};
+
+#define MR_static_type_info_arity_2(name, ctor, ti1, ti2)		\
+	struct {							\
+		MR_TypeCtorInfo field1;					\
+		MR_TypeInfo 	field2;					\
+		MR_TypeInfo 	field3;					\
+	} name = {							\
+		(MR_TypeCtorInfo) (ctor),				\
+		(MR_TypeInfo)     (ti1),				\
+		(MR_TypeInfo)     (ti2)					\
+	};
+
 /*
 ** Used to define MR_TypeCtorInfos for the builtin types in the hlc grades.
 ** This needs to be exported for use by the array type in the library.
 */
 
 #ifdef MR_HIGHLEVEL_CODE
+
+  #define MR_builtin_type_ctor_info_name(TYPE, ARITY)			      \
+		MR_type_ctor_info_name(builtin, TYPE, ARITY)
 
   #define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			      \
 	MR_PASTE2(mercury__,						      \
@@ -346,6 +376,23 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 		-1							      \
 	}
 
+#else /* MR_HIGHLEVEL_CODE */
+
+  #define MR_builtin_type_ctor_info_name(TYPE, ARITY)			      \
+	MR_PASTE2(mercury_data_,					      \
+	MR_PASTE2(__type_ctor_info_,					      \
+	MR_PASTE2(TYPE,							      \
+	MR_PASTE2(_,							      \
+		 ARITY))))
+
+  #define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			      \
+	MR_PASTE2(mercury_data_,					      \
+	MR_PASTE2(MODULE,						      \
+	MR_PASTE2(__type_ctor_info_,					      \
+	MR_PASTE2(TYPE,							      \
+	MR_PASTE2(_,							      \
+		 ARITY)))))
+
 #endif /* MR_HIGHLEVEL_CODE */
 
 /*---------------------------------------------------------------------------*/
@@ -362,15 +409,25 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 	** the same primary tag (1), and are all allocated secondary tags
 	** starting from 0.
 	*/
-    #define MR_COMPARE_TAG      MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
+  #define MR_ENUM_TAG         MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG)
  
-    #define MR_COMPARE_EQUAL    MR_mkword(MR_COMPARE_TAG, MR_mkbody(0))
-    #define MR_COMPARE_LESS     MR_mkword(MR_COMPARE_TAG, MR_mkbody(1))
-    #define MR_COMPARE_GREATER  MR_mkword(MR_COMPARE_TAG, MR_mkbody(2))         
+  #define MR_COMPARE_EQUAL    MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
+  #define MR_COMPARE_LESS     MR_mkword(MR_ENUM_TAG, MR_mkbody(1))
+  #define MR_COMPARE_GREATER  MR_mkword(MR_ENUM_TAG, MR_mkbody(2))         
+
+  #define MR_BOOL_NO          MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
+  #define MR_BOOL_YES         MR_mkword(MR_ENUM_TAG, MR_mkbody(1))
+
+  #define MR_UNBOUND          MR_mkword(MR_ENUM_TAG, MR_mkbody(0))
 #else
-    #define MR_COMPARE_EQUAL    0
-    #define MR_COMPARE_LESS     1
-    #define MR_COMPARE_GREATER  2
+  #define MR_COMPARE_EQUAL    0
+  #define MR_COMPARE_LESS     1
+  #define MR_COMPARE_GREATER  2
+
+  #define MR_BOOL_NO          0
+  #define MR_BOOL_YES         1
+
+  #define MR_UNBOUND          0
 #endif
 
 /*---------------------------------------------------------------------------*/

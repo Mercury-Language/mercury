@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
@@ -45,6 +45,11 @@
 
 typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
+
+typedef	void	(*MR_GoalBrowser)(MR_ConstString name, MR_Word arg_list,
+			MR_Word is_func, MR_Browse_Caller_Type caller,
+			MR_Browse_Format format);
+
 
 typedef	enum {
 	MR_VAR_SPEC_NUMBER,
@@ -101,6 +106,18 @@ extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
 */
 
 extern	const char	*MR_trace_headvar_num(int n, int *num);
+
+/*
+** Print the call of the current level as a goal.
+**
+** The names are printed to the given file if the file pointer is non-NULL.
+** The goal is printed by giving it to the specified browser.
+*/
+
+extern	const char	*MR_trace_browse_one_goal(FILE *out,
+				MR_GoalBrowser browser,
+				MR_Browse_Caller_Type caller,
+				MR_Browse_Format format);
 
 /*
 ** Print the (names and) values of (the specified parts of) the specified

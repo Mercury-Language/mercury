@@ -1,6 +1,24 @@
 echo on
 register --quiet
 context none
+b functor_names
+c
+delete 0
+p goal
+set format verbose
+set lines 100
+p goal
+set format flat
+browse goal
+^1
+p
+^..^2
+p
+^..^3
+p
+^..^r
+p
+quit
 b std_util__det_arg
 c
 P
