@@ -573,15 +573,21 @@ else
 	LD_LIBFLAGS_FOR_DEBUG="-g"
 
 	#
-	# On Linux ELF, `-rdynamic' is needed to make symbols
-	# exported for use in code linked in with dlopen(),
+	# On Linux ELF, the linker option `-export-dynamic' is needed to make
+	# symbols exported for use in code linked in with dlopen(),
 	# which is used for interactive queries in the
-	# Mercury debugger.
-	#
+	# Mercury debugger.  For gcc, this linker option can be enabled by
+	# passing either `-rdynamic' or `-Wl,-export-dynamic' to gcc;
+	# we use the former.  For lcc 4.2, we need to use `-Wl-export-dynamic'.
+	# 
 	case $FULLARCH in
 		*-linux*aout) ;; # no special options needed
 		*-linux*)
-			LDFLAGS_FOR_TRACE="-rdynamic" ;;
+			case "$CC" in
+			lcc*) LDFLAGS_FOR_TRACE="-Wl-export-dynamic" ;;
+			*) LDFLAGS_FOR_TRACE="-rdynamic" ;;
+			esac
+			;;
 	esac
 
 	USING_MICROSOFT_CL_COMPILER="no"
