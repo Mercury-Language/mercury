@@ -59,24 +59,28 @@
 %		detstackvar(N) = succip
 %	L1:
 %		...
+%		succip = detstackvar(N)
 %		finalization
 %		goto L1
 %
 % The advantage is that we don't destroy the stack frame just to set it up
-% again.
+% again. The restore of succip can be omitted if the procedure makes no calls,
+% since in that case succip must still contain the value it had when this
+% procedure was called.
 %
 % Since the second transformation is a bigger win, we prefer to use it
 % whenever both transformations are possible.
 %
-% NOTE: This module requires label optimisation to be turned on because
-% it cannot handle code sequences of the form
+% NOTE: This module cannot handle code sequences of the form
 %
 %	label1:
 %	label2:
 %
-% The "null block" between the labels makes frameopt choke.  This should
-% be handled by handle_options, but if you see an error of the form
-% "label in substitute_labels_instr", this is a possible cause.
+% Jump optimization converts any gotos to label1 to gotos to label2, making
+% label1 unused, and label optimization removes unused labels. (This works
+% for any number of labels in a sequence, not just two.) Therefore the
+% handle_options module turns on the jump and label optimizations whenever
+% frame optimization is turned on.
 
 %-----------------------------------------------------------------------------%
 
@@ -87,9 +91,6 @@
 :- import_module llds.
 :- import_module bool, list.
 
-	% Delay the construction of det stack frames as long as possible,
-	% in order to avoid the construction in as many cases as possible.
-	%
 	% The first bool output says whether we performed any modifications.
 	% If yes, then we also introduced some extra labels that should be
 	% deleted. The second says whether we introduced any jumps that
@@ -102,7 +103,7 @@
 
 :- implementation.
 
-:- import_module livemap, opt_util, code_util, opt_debug.
+:- import_module livemap, prog_data, opt_util, code_util, opt_debug.
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
 frameopt__main(Instrs0, Instrs, Mod, Jumps) :-
@@ -120,8 +121,11 @@ frameopt__main(Instrs0, Instrs, Mod, Jumps) :-
 		analyze_block_map(LabelSeq0, BlockMap1, BlockMap2, KeepFrame),
 		(
 			KeepFrame = yes(FirstLabel - SecondLabel),
+			can_clobber_succip(LabelSeq0, BlockMap2,
+				CanClobberSuccip),
 			keep_frame(LabelSeq0, BlockMap2,
-				FirstLabel, SecondLabel, BlockMap),
+				FirstLabel, SecondLabel, CanClobberSuccip,
+				BlockMap),
 			LabelSeq = LabelSeq0,
 			NewComment = comment("keeping stack frame") - "",
 			list__append(Comments0, [NewComment], Comments),
@@ -190,21 +194,23 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
 						% setup or teardown. The bool
 						% says whether the code in the
 						% block needs a stack frame.
-			;	teardown(list(instruction)).
+			;	teardown(list(instruction), list(instruction)).
 						% This block contains stack
 						% teardown and goto code;
-						% the arg gives just the goto
-						% code (which should have a
-						% label instruction put before
-						% it if used).
+						% the two args give the instr
+						% that restores succip (if any)
+						% and the goto code (which must
+						% be a list because it may or
+						% mey not contain a liveness
+						% annotation).
 
 %-----------------------------------------------------------------------------%
 
 	% Add labels to the given instruction sequence so that
 	% every basic block has labels around it.
 
-:- pred divide_into_basic_blocks(list(instruction)::in, proc_label::in, int::in,
-	list(instruction)::out, int::out) is det.
+:- pred divide_into_basic_blocks(list(instruction)::in, proc_label::in,
+	int::in, list(instruction)::out, int::out) is det.
 
 divide_into_basic_blocks([], _, N, [], N).
 	% Control can fall of the end of a procedure if that procedure
@@ -295,7 +301,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 			LabelSeq = [Label | LabelSeq0]
 		;
 			frameopt__detstack_teardown(Instrs0, FrameSize,
-				Tail, Teardown, Goto, Remain)
+				Tail, Teardown, RestoreSuccip, Goto, Remain)
 		->
 			( Tail = [] ->
 				MaybeTailInfo = no,
@@ -305,7 +311,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 				TeardownLabel = Label,
 				TeardownInfo = block_info(TeardownLabel,
 					TeardownBlock, [], no,
-					teardown(Goto))
+					teardown(RestoreSuccip, Goto))
 			;
 				block_needs_frame(Tail, Needs),
 				TailInfo = block_info(Label, [Instr0 | Tail],
@@ -319,7 +325,7 @@ build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, BlockMap0, BlockMap,
 				TeardownLabel = NewLabel,
 				TeardownInfo = block_info(TeardownLabel,
 					TeardownBlock, [], no,
-					teardown(Goto))
+					teardown(RestoreSuccip, Goto))
 			),
 			build_block_map(Remain, FrameSize, LabelSeq0,
 				BlockMap0, BlockMap1, ProcLabel, N1, N),
@@ -417,14 +423,15 @@ frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Setup,
 	% We are looking for the teardown components in any order, since
 	% value numbering may change the original order. This is also the
 	% reason why we allow teardown instructions to be interleaved with
-	% instructions that do not access the stack.
+	% instructions that do not access the stack, and why some teardown
+	% instructions (e.g. the one that restores succip) may be missing.
 
 :- pred frameopt__detstack_teardown(list(instruction)::in, int::in,
-	list(instruction)::out, list(instruction)::out,
+	list(instruction)::out, list(instruction)::out, list(instruction)::out,
 	list(instruction)::out, list(instruction)::out) is semidet.
 
 frameopt__detstack_teardown([Instr0 | Instrs0], FrameSize,
-		Tail, Teardown, Goto, Remain) :-
+		Tail, Teardown, RestoreSuccip, Goto, Remain) :-
 	(
 		Instr0 = label(_) - _
 	->
@@ -432,26 +439,29 @@ frameopt__detstack_teardown([Instr0 | Instrs0], FrameSize,
 	;
 		frameopt__detstack_teardown_2([Instr0 | Instrs0], FrameSize,
 			[], [], [], [],
-			TailPrime, TeardownPrime, GotoPrime, RemainPrime)
+			TailPrime, TeardownPrime, RestoreSuccipPrime,
+			GotoPrime, RemainPrime)
 	->
 		Tail = TailPrime,
 		Teardown = TeardownPrime,
+		RestoreSuccip = RestoreSuccipPrime,
 		Goto = GotoPrime,
 		Remain = RemainPrime
 	;
 		frameopt__detstack_teardown(Instrs0, FrameSize,
-			Tail1, Teardown, Goto, Remain),
+			Tail1, Teardown, RestoreSuccip, Goto, Remain),
 		Tail = [Instr0 | Tail1]
 	).
 
 :- pred frameopt__detstack_teardown_2(list(instruction)::in, int::in,
 	list(instruction)::in, list(instruction)::in, list(instruction)::in,
 	list(instruction)::in, list(instruction)::out, list(instruction)::out,
-	list(instruction)::out, list(instruction)::out) is semidet.
+	list(instruction)::out, list(instruction)::out, list(instruction)::out)
+	is semidet.
 
 frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		SeenSuccip0, SeenDecrsp0, SeenExtra0, SeenLivevals0,
-		Tail, Teardown, Goto, Remain) :-
+		Tail, Teardown, RestoreSuccip, Goto, Remain) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = Uinstr1 - _,
@@ -466,14 +476,16 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 			SeenSuccip1 = [Instr1],
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip1, SeenDecrsp0, SeenExtra0,
-				SeenLivevals0, Tail, Teardown, Goto, Remain)
+				SeenLivevals0, Tail, Teardown,
+				RestoreSuccip, Goto, Remain)
 		;
 			opt_util__lval_refers_stackvars(Lval, no),
 			opt_util__rval_refers_stackvars(Rval, no),
 			list__append(SeenExtra0, [Instr1], SeenExtra1),
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip0, SeenDecrsp0, SeenExtra1,
-				SeenLivevals0, Tail, Teardown, Goto, Remain)
+				SeenLivevals0, Tail, Teardown,
+				RestoreSuccip, Goto, Remain)
 		)
 	;
 		Uinstr1 = decr_sp(FrameSize),
@@ -481,19 +493,20 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		SeenDecrsp1 = [Instr1],
 		frameopt__detstack_teardown_2(Instrs2, FrameSize,
 			SeenSuccip0, SeenDecrsp1, SeenExtra0, SeenLivevals0,
-			Tail, Teardown, Goto, Remain)
+			Tail, Teardown, RestoreSuccip, Goto, Remain)
 	;
 		Uinstr1 = livevals(_),
 		SeenLivevals0 = [],
 		SeenLivevals1 = [Instr1],
 		frameopt__detstack_teardown_2(Instrs2, FrameSize,
 			SeenSuccip0, SeenDecrsp0, SeenExtra0, SeenLivevals1,
-			Tail, Teardown, Goto, Remain)
+			Tail, Teardown, RestoreSuccip, Goto, Remain)
 	;
 		Uinstr1 = goto(_),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
 		Tail = SeenExtra0,
+		RestoreSuccip = SeenSuccip0,
 		list__append(SeenLivevals0, [Instr1], Goto),
 		Remain = Instrs2
 	).
@@ -672,6 +685,32 @@ possible_targets(pragma_c(_, _, _, _, _), []).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pred can_clobber_succip(list(label)::in, block_map::in, bool::out) is det.
+
+can_clobber_succip([], _BlockMap, no).
+can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
+	map__lookup(BlockMap, Label, BlockInfo),
+	BlockInfo = block_info(_, Instrs, _, _, _),
+	(
+		list__member(Instr, Instrs),
+		Instr = Uinstr - _,
+		(
+			Uinstr = call(_, _, _, _)
+		;
+			% Only may_call_mercury pragma_c's can clobber succip,
+			% but the LLDS doesn't say whether a given pragma_c
+			% may call Mercury or not. We therefore make the
+			% conservative assumption that it may.
+			Uinstr = pragma_c(_, _, _, _, _)
+		)
+	->
+		CanClobberSuccip = yes
+	;
+		can_clobber_succip(Labels, BlockMap, CanClobberSuccip)
+	).
+
+%-----------------------------------------------------------------------------%
+
 	% Transform the given block sequence to effect the optimization
 	% of keeping the stack frame for recursive tail calls once it has
 	% been set up by the initial entry to the procedure.
@@ -680,38 +719,45 @@ possible_targets(pragma_c(_, _, _, _, _), []).
 	% should replace it in tailcalls that avoid the stack teardown.
 
 :- pred keep_frame(list(label)::in, block_map::in, label::in, label::in,
-	block_map::out) is det.
+	bool::in, block_map::out) is det.
 
-keep_frame([], BlockMap, _FirstLabel, _SecondLabel, BlockMap).
-keep_frame([Label | Labels], BlockMap0, FirstLabel, SecondLabel, BlockMap) :-
+keep_frame([], BlockMap, _, _, _, BlockMap).
+keep_frame([Label | Labels], BlockMap0, FirstLabel, SecondLabel,
+		CanClobberSuccip, BlockMap) :-
 	map__lookup(BlockMap0, Label, BlockInfo0),
 	(
-		BlockInfo0 = block_info(Label, Instrs0, [_], no,
-			teardown(Instrs1)),
-		pick_last(Instrs0, _NonLastInstrs, LastInstr),
-		LastInstr = goto(label(GotoLabel)) - Comment,
+		BlockInfo0 = block_info(Label, OrigInstrs, [_], no,
+			teardown(RestoreSuccip, BareInstrs)),
+		pick_last(OrigInstrs, _NonLastOrigInstrs, LastOrigInstr),
+		LastOrigInstr = goto(label(GotoLabel)) - Comment,
 		same_label_ref(FirstLabel, GotoLabel)
 	->
 		(
-			Instrs0 = [Instr0 | _],
-			Instr0 = label(_) - _
+			OrigInstrs = [OrigInstr0 | _],
+			OrigInstr0 = label(_) - _
 		->
-			NewLabelInstr = Instr0
+			NewLabelInstr = OrigInstr0
 		;
 			error("block does not begin with label")
 		),
-		pick_last(Instrs1, NonLastInstrs, _LastInstr),
+		pick_last(BareInstrs, NonLastBareInstrs, _LastBareInstr),
 		string__append(Comment, " (keeping frame)", NewComment),
 		NewGoto = goto(label(SecondLabel)) - NewComment,
-		list__append([NewLabelInstr | NonLastInstrs], [NewGoto],
-			Instrs),
+		NewFrontInstrs = [NewLabelInstr | NonLastBareInstrs],
+		( CanClobberSuccip = yes ->
+			list__append(RestoreSuccip, [NewGoto], NewBackInstrs)
+		;
+			NewBackInstrs = [NewGoto]
+		),
+		list__append(NewFrontInstrs, NewBackInstrs, Instrs),
 		BlockInfo = block_info(Label, Instrs, [SecondLabel], no,
 			ordinary(yes)),
 		map__det_update(BlockMap0, Label, BlockInfo, BlockMap1)
 	;
 		BlockMap1 = BlockMap0
 	),
-	keep_frame(Labels, BlockMap1, FirstLabel, SecondLabel, BlockMap).
+	keep_frame(Labels, BlockMap1, FirstLabel, SecondLabel,
+		CanClobberSuccip, BlockMap).
 
 :- pred pick_last(list(T)::in, list(T)::out, T::out) is det.
 
@@ -868,7 +914,7 @@ delay_frame_init([Label | Labels], BlockMap, RevMap0, RevMap, Queue0, Queue) :-
 			queue__put(Queue0, Label, Queue1)
 		)
 	;
-		BlockType = teardown(_),
+		BlockType = teardown(_, _),
 		Queue1 = Queue0
 	),
 	rev_map_side_labels(SideLabels, Label, RevMap0, RevMap1),
@@ -1031,7 +1077,7 @@ process_frame_delay([Label0 | Labels0], BlockMap0, ParMap0, FallIntoParallel0,
 				Labels, BlockMap, ParMap, FallIntoParallel)
 		)
 	;
-		Type = teardown(_),
+		Type = teardown(_, _),
 		process_frame_delay(Labels0, BlockMap0,
 			ParMap0, FallIntoParallel0, FramedLabels,
 			FrameSize, Msg, ProcLabel, N0,
@@ -1094,7 +1140,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, BlockMap0, ParMap0,
 				N2 = N1
 			)
 		;
-			FallThroughType = teardown(_),
+			FallThroughType = teardown(_, _),
 			MaybeFallThrough = yes(FallThrough),
 			BlockMap1 = BlockMap0,
 			set__insert(FallIntoParallel0,
@@ -1153,7 +1199,7 @@ mark_parallels_for_teardown([Label0 | Labels0], [Label | Labels],
 		N1 = N0,
 		ParMap1 = ParMap0
 	;
-		Type = teardown(_),
+		Type = teardown(_, _),
 		mark_parallel(Label0, Label, ProcLabel, N0, N1,
 			ParMap0, ParMap1)
 	),
@@ -1288,7 +1334,7 @@ create_parallels([Label0 | Labels0], BlockMap0, ParMap, FallIntoParallel,
 		;
 			error("block with parallel has fall through")
 		),
-		( Type = teardown(Replacement0) ->
+		( Type = teardown(_, Replacement0) ->
 			LabelInstr = label(ParallelLabel)
 				- "non-teardown parallel",
 			Replacement = [LabelInstr | Replacement0],

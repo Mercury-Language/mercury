@@ -293,10 +293,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 	
-	% --optimize-frames implies --optimize-labels
+	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	globals__io_lookup_bool_option(optimize_frames, OptFrames),
 	( { OptFrames = yes } ->
-		globals__io_set_option(optimize_labels, bool(yes))
+		globals__io_set_option(optimize_labels, bool(yes)),
+		globals__io_set_option(optimize_jumps, bool(yes))
 	;
 		[]
 	).
