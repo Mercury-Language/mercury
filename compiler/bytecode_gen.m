@@ -748,6 +748,9 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
 
 bytecode_gen__map_cons_tag(no_tag, no_tag).
+	% `single_functor' is just an optimized version of `unshared_tag(0)'
+	% this optimization is not important for the bytecode
+bytecode_gen__map_cons_tag(single_functor, unshared_tag(0)).
 bytecode_gen__map_cons_tag(unshared_tag(Primary), unshared_tag(Primary)).
 bytecode_gen__map_cons_tag(shared_remote_tag(Primary, Secondary),
 	shared_remote_tag(Primary, Secondary)).

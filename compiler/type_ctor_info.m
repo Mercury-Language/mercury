@@ -666,7 +666,11 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 
 type_ctor_info__process_cons_tag(ConsTag, RttiName, ConsRep,
 		TagMap0, TagMap) :-
-	( ConsTag = unshared_tag(ConsPtag) ->
+	(
+		( ConsTag = single_functor, ConsPtag = 0
+		; ConsTag = unshared_tag(ConsPtag)
+		)
+	->
 		Locn = sectag_none,
 		Ptag = ConsPtag,
 		Stag = 0,

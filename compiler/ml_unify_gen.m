@@ -260,7 +260,9 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, HowToConstruct,
 		%
 		% ordinary compound terms
 		%
-		{ Tag = unshared_tag(TagVal),
+		{ Tag = single_functor, TagVal = 0,
+		  MaybeSecondaryTag = no
+		; Tag = unshared_tag(TagVal),
 		  MaybeSecondaryTag = no
 		; Tag = shared_remote_tag(TagVal, SecondaryTag),
 		  MaybeSecondaryTag = yes(SecondaryTag)
@@ -345,6 +347,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval) -->
 		% compound terms, including lambda expressions
 		%
 		{ Tag = pred_closure_tag(_, _, _), TagVal = 0
+		; Tag = single_functor, TagVal = 0
 		; Tag = unshared_tag(TagVal)
 		; Tag = shared_remote_tag(TagVal, _SecondaryTag)
 		}
@@ -458,6 +461,8 @@ ml_gen_constant(shared_with_reserved_addresses(_, ThisTag), VarType, Rval) -->
 % so we don't need to handle them here.
 ml_gen_constant(no_tag, _, _) -->
 	{ error("ml_gen_constant: no_tag") }.
+ml_gen_constant(single_functor, _, _) -->
+	{ error("ml_gen_constant: single_functor") }.
 ml_gen_constant(unshared_tag(_), _, _) -->
 	{ error("ml_gen_constant: unshared_tag") }.
 ml_gen_constant(shared_remote_tag(_, _), _, _) -->
@@ -1446,6 +1451,11 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 			{ error("ml_code_gen: no_tag: arity != 1") }
 		)
 	;
+		{ Tag = single_functor },
+		% treat single_functor the same as unshared_tag(0)
+		ml_gen_det_deconstruct_2(unshared_tag(0), Type, Var, ConsId,
+			Args, Modes, Context, MLDS_Statements)
+	;
 		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
@@ -1492,6 +1502,11 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 
 ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 	(
+		Tag = single_functor,
+		TagBits = 0,
+		OffSet = 0,
+		ArgNum = 1
+	;
 		Tag = unshared_tag(UnsharedTag),
 		TagBits = UnsharedTag,
 		OffSet = 0,
@@ -1883,6 +1898,7 @@ ml_gen_tag_test_rval(deep_profiling_proc_static_tag(_), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted deep_profiling_proc_static unification").
 ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
+ml_gen_tag_test_rval(single_functor, _, _, _Rval) = const(true).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 	binop(eq, unop(std_unop(tag), Rval),
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
@@ -1926,7 +1942,7 @@ ml_gen_tag_test_rval(shared_with_reserved_addresses(ReservedAddrs, ThisTag),
 	CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
 		EqualRA = ml_gen_tag_test_rval(reserved_address(RA), VarType,
 					ModuleInfo, Rval),
-		TestRval = binop((and), unop(std_unop(not), EqualRA), TestRval0)
+		TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
 	),
 	MatchesThisTag = ml_gen_tag_test_rval(ThisTag, VarType, ModuleInfo,
 			Rval),

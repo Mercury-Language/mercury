@@ -265,9 +265,16 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
 		CtorTags0, CtorTags) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
-		% if we're about to run out of unshared tags, start assigning
-		% shared remote tags instead
-	( Val = MaxTag, Rest \= [] ->
+	% If there's only one functor,
+	% give it the "single_functor" (untagged)
+	% representation, rather than giving it unshared_tag(0).
+	( Val = 0, Rest = [] ->
+		Tag = maybe_add_reserved_addresses(ReservedAddresses,
+			single_functor),
+		map__set(CtorTags0, ConsId, Tag, CtorTags)
+	% if we're about to run out of unshared tags, start assigning
+	% shared remote tags instead
+	; Val = MaxTag, Rest \= [] ->
 		assign_shared_remote_tags([Ctor | Rest], MaxTag, 0,
 			ReservedAddresses, CtorTags0, CtorTags)
 	;

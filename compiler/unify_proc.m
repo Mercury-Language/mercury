@@ -539,7 +539,7 @@ unify_proc__add_lazily_generated_unify_pred(TypeId,
 
 		CtorSymName = unqualified("{}"),
 		ConsId = cons(CtorSymName, TupleArity),
-		map__from_assoc_list([ConsId - unshared_tag(0)],
+		map__from_assoc_list([ConsId - single_functor],
 			ConsTagValues),
 		UnifyPred = no,
 		IsEnum = no,

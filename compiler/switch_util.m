@@ -278,6 +278,7 @@ switch_util__switch_priority(no_tag, 0).		% should never occur
 switch_util__switch_priority(int_constant(_), 1).
 switch_util__switch_priority(reserved_address(_), 1).
 switch_util__switch_priority(shared_local_tag(_, _), 1).
+switch_util__switch_priority(single_functor, 2).
 switch_util__switch_priority(unshared_tag(_), 2).
 switch_util__switch_priority(float_constant(_), 3).
 switch_util__switch_priority(shared_remote_tag(_, _), 4).
@@ -352,7 +353,11 @@ switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 switch_util__get_ptag_counts_2([], Max, Max, PtagCountMap, PtagCountMap).
 switch_util__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 		PtagCountMap0, PtagCountMap) :-
-	( ConsTag = unshared_tag(Primary) ->
+	(
+		( ConsTag = single_functor, Primary = 0
+		; ConsTag = unshared_tag(Primary)
+		)
+	->
 		int__max(MaxPrimary0, Primary, MaxPrimary1),
 		( map__search(PtagCountMap0, Primary, _) ->
 			error("unshared tag is shared")
@@ -406,7 +411,11 @@ switch_util__get_ptag_counts_2([ConsTag | TagList], MaxPrimary0, MaxPrimary,
 switch_util__group_cases_by_ptag([], PtagCaseMap, PtagCaseMap).
 switch_util__group_cases_by_ptag([Case0 | Cases0], PtagCaseMap0, PtagCaseMap) :-
 	Case0 = case(_Priority, Tag, _ConsId, Goal),
-	( Tag = unshared_tag(Primary) ->
+	(
+		( Tag = single_functor, Primary = 0
+		; Tag = unshared_tag(Primary)
+		)
+	->
 		( map__search(PtagCaseMap0, Primary, _Group) ->
 			error("unshared tag is shared")
 		;

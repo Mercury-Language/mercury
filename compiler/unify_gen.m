@@ -256,6 +256,8 @@ unify_gen__generate_tag_test_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
 	error("Attempted deep_profiling_proc_static_tag unification").
 unify_gen__generate_tag_test_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
+unify_gen__generate_tag_test_rval_2(single_functor, _Rval, TestRval) :-
+	TestRval = const(true).
 unify_gen__generate_tag_test_rval_2(unshared_tag(UnsharedTag), Rval,
 		TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
@@ -346,6 +348,11 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, _, Code) -->
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
+unify_gen__generate_construction_2(single_functor,
+		Var, Args, Modes, AditiInfo, GoalInfo, Code) -->
+	% treat single_functor the same as unshared_tag(0)
+	unify_gen__generate_construction_2(unshared_tag(0),
+			Var, Args, Modes, AditiInfo, GoalInfo, Code).
 unify_gen__generate_construction_2(unshared_tag(Ptag),
 		Var, Args, Modes, _, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
@@ -802,6 +809,11 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code) -->
 		;
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
+	;
+		{ Tag = single_functor },
+		% treat single_functor the same as unshared_tag(0)
+		unify_gen__generate_det_deconstruction_2(Var, Cons, Args,
+			Modes, unshared_tag(0), Code)
 	;
 		{ Tag = unshared_tag(Ptag) },
 		{ Rval = var(Var) },

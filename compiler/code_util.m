@@ -709,7 +709,7 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 		% couldn't be, it's just not worth the effort.
 		type_is_tuple(Type, _)
 	->
-		Tag = unshared_tag(0)
+		Tag = single_functor
 	;
 			% Use the type to determine the type_id
 		( type_to_type_id(Type, TypeId0, _) ->

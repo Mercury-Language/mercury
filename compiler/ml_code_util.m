@@ -105,6 +105,18 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Routines for generating expressions.
+%
+
+	% conjunction: ml_gen_and(X,Y) = binop((and), X, Y),
+	% except that it does some constant folding on the result.
+:- func ml_gen_and(mlds__rval, mlds__rval) = mlds__rval.
+
+	% negation: ml_gen_not(X) = unop(std_unop(not), X),
+:- func ml_gen_not(mlds__rval) = mlds__rval.
+
+%-----------------------------------------------------------------------------%
+%
 % Routines for generating types.
 %
 
@@ -949,6 +961,22 @@ ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for generating expressions.
+%
+
+ml_gen_and(X, Y) =
+	(if X = const(true) then
+		Y
+	else if Y = const(true) then
+		X
+	else
+		binop((and), X, Y)
+	).
+
+ml_gen_not(X) = unop(std_unop(not), X).
 
 %-----------------------------------------------------------------------------%
 %

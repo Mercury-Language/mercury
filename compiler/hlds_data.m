@@ -363,6 +363,12 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	;	deep_profiling_proc_static_tag(rtti_proc_label)
 			% This is for constants representing procedure
 			% descriptions for deep profiling.
+	;	single_functor
+			% This is for types with a single functor
+			% (and possibly also some constants represented
+			% using reserved addresses -- see below).
+			% For these types, we don't need any tags.
+			% We just store a pointer to the argument vector.
 	;	unshared_tag(tag_bits)
 			% This is for constants or functors which can be
 			% distinguished with just a primary tag.
@@ -452,6 +458,7 @@ get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_secondary_tag(tabling_pointer_constant(_, _)) = no.
 get_secondary_tag(deep_profiling_proc_static_tag(_)) = no.
+get_secondary_tag(single_functor) = no.
 get_secondary_tag(unshared_tag(_)) = no.
 get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag)) =
 		yes(SecondaryTag).
