@@ -14,52 +14,63 @@
 # massaging it a bit and inserting some extra stuff that is
 # the same for all the Mercury man pages.
 
-# Section headings must match /[A-Za-z ]*:/.
+# Section headings must match /[\/A-Za-z ]*:/.
 # We insert the `.SH' command for them,
-# convert them to uppercase, and replace "USAGE" with "SYNOPSIS".
+# convert them to uppercase, delete the ":",
+# and replace "USAGE" with "SYNOPSIS".
+
+# Section sub-headings start with spaces.
+# We insert the `.SH' command for them.
 
 # Option headings start with a tab and then a `-'.
 # We put them in bold, and indent them differently.
 
+# Each line of the main text must start with a tab.
+# We change the tab to "\&".
+
 program="$1"
 name="`basename $program `"
-quote="'"
 
-manpage="`$program --help 2>&1 \
+trap 'rm -f /tmp/make_manpage$$' 1 2 3 13 15
+$program --help 2>&1 \
 	| sed	\
-		-e '/^[\/A-Za-z ]*:[ 	]/s//.SH &\\
+		-e '/^[\/A-Za-z ]*:[ 	]/s//.SH "&"\
 /'			\
-		-e '/^[\/A-Za-z ]*:/s//.SH &\\
+		-e '/^[\/A-Za-z ]*:/s//.SH "&"\
 /'			\
-		-e '/^	[^-	].*:/s/^	.*$/	.Ve\\
-.B\\
-.Vb 1\\
-\\\\\\& &\\
-.Ve\\
+		-e '/^ .*/s//.SH "&"\
+/'			\
+		-e '/^	[^-	].*:/s/^	.*$/	.Ve\
+.B\
+.Vb 1\
+\\\& &\
+.Ve\
 .Vb 2/' 					\
-		-e '/^	-/s/^	.*$/	.Ve\\
-.B\\
-.Vb 1\\
-\\\\\\& &\\
-.Ve\\
+		-e '/^	-/s/^	.*$/	.Ve\
+.B\
+.Vb 1\
+\\\& &\
+.Ve\
 .Vb 2/' 					\
-		-e 's/\\\\& 	/\\\\\\& /' \
-		-e 's/^		/	\\\\\\&	/g' 	\
+		-e 's/\\& 	/\\\& /' \
+		-e 's/^		/	\\\&	/g' 	\
 		-e 's/^	//' \
 	| sed	\
-		-e '/^.SH [\/A-Za-z ]*:/y/\
+		-e '/^.SH "[\/A-Za-z ]*:[ 	]*"/y/\
 abcdefghijklmnopqrstuvwxyz:/\
 ABCDEFGHIJKLMNOPQRSTUVWXYZ /' \
-		-e 's/^.SH USAGE/.SH SYNOPSIS/' \
-	`"
+		-e 's/^.SH "USAGE[ 	]*"/.SH "SYNOPSIS"/' \
+	> /tmp/make_manpage$$ 
+manpage="`cat /tmp/make_manpage$$`"
+rm -f /tmp/make_manpage$$
 uppername="$name"
 
-if echo "$manpage" | grep '^.SH ARGUMENTS' > /dev/null; then
-	first_half="`echo \"$manpage\" | sed '/^.SH ARGUMENTS/,$d'`"
-	last_half="`echo \"$manpage\" | sed -n '/^.SH ARGUMENTS/,$p'`"
+if echo "$manpage" | grep '^.SH "ARGUMENTS' > /dev/null; then
+	first_half="`echo \"$manpage\" | sed '/^.SH \"ARGUMENTS *\"/,$d'`"
+	last_half="`echo \"$manpage\" | sed -n '/^.SH \"ARGUMENTS *\"/,$p'`"
 else
-	first_half="`echo \"$manpage\" | sed '/^.SH OPTIONS/,$d'`"
-	last_half="`echo \"$manpage\" | sed -n '/^.SH OPTIONS/,$p'`"
+	first_half="`echo \"$manpage\" | sed '/^.SH \"OPTIONS *\"/,$d'`"
+	last_half="`echo \"$manpage\" | sed -n '/^.SH \"OPTIONS *\"/,$p'`"
 fi
 
 cat <<EOF
