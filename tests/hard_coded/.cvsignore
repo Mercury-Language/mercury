@@ -8,3 +8,4 @@ pragma_inline
 higher_order_func_test
 func_test
 free_free_mode
+float_rounding_bug
