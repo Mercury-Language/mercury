@@ -1,8 +1,8 @@
-%-----------------------------------------------------------------------------
-% Copyright (C) 1997-1998, 2003 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 %
 % term_pass2.m
 %
@@ -12,9 +12,10 @@
 % This file contains the code that tries to prove that procedures terminate.
 %
 % For details, please refer to the papers mentioned in termination.m.
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds__term_pass2.
+
 :- interface.
 
 :- import_module hlds__hlds_module.
@@ -29,17 +30,21 @@
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
 	pass_info::in, int::in, termination_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module transform_hlds__term_traversal.
-:- import_module transform_hlds__term_errors.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
 :- import_module hlds__hlds_goal.
 :- import_module parse_tree__prog_data.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__mode_util.
+:- import_module transform_hlds__term_traversal.
+:- import_module transform_hlds__term_errors.
 
-:- import_module std_util, bool, int, assoc_list.
-:- import_module set, bag, map, term, require.
+:- import_module assoc_list, bag, bool, int, map, require, set, std_util.
+:- import_module string, term.
 
 :- type fixpoint_dir
 	--->	up
@@ -66,7 +71,7 @@
 			list(term_errors__error)
 		).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 prove_termination_in_scc(SCC, Module, PassInfo, SingleArgs, Termination) :-
 	init_rec_input_suppliers(SCC, Module, InitRecSuppliers),
@@ -109,8 +114,7 @@ init_rec_input_suppliers([], _, InitMap) :-
 	map__init(InitMap).
 init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	init_rec_input_suppliers(PPIds, Module, RecSupplierMap0),
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	partition_call_args(Module, ArgModes, HeadVars, InArgs, _OutVars),
@@ -124,7 +128,7 @@ init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	list__map(MapIsInput, HeadVars, BoolList),
 	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 	% Perform single arg analysis on the SCC.
 	%
@@ -153,7 +157,9 @@ prove_termination_in_scc_single_arg(SCC, Module, PassInfo) :-
 		prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, 1,
 			Module, PassInfo)
 	;
-		error("empty SCC in prove_termination_in_scc_single_arg")
+
+		unexpected(this_file,
+			"prove_termination_in_scc_single_arg/3: empty SCC.")
 	).
 
 	% Find a procedure of minimum arity among the given list and the
@@ -202,8 +208,7 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
 
 init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
 		RecSupplierMap) :-
-	TrialPPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(Module, TrialPPId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
 		Module, TrialPPIdRecSuppliers),
@@ -248,27 +253,24 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
 :- pred init_rec_input_suppliers_single_arg_others(list(pred_proc_id)::in,
 	module_info::in, used_args::in, used_args::out) is det.
 
-init_rec_input_suppliers_single_arg_others([], _,
-	RecSupplierMap, RecSupplierMap).
+init_rec_input_suppliers_single_arg_others([], _, !RecSupplierMap).
 init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
-		RecSupplierMap0, RecSupplierMap) :-
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+		!RecSupplierMap) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	list__map(map_to_no, HeadVars, BoolList),
-	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap1),
+	map__det_insert(!.RecSupplierMap, PPId, BoolList, !:RecSupplierMap),
 	init_rec_input_suppliers_single_arg_others(PPIds, Module,
-		RecSupplierMap1, RecSupplierMap).
+		!RecSupplierMap).
 
 :- pred lookup_proc_arity(pred_proc_id::in, module_info::in, int::out) is det.
 
 lookup_proc_arity(PPId, Module, Arity) :-
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	list__length(HeadVars, Arity).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_trial(list(pred_proc_id)::in, used_args::in,
 	fixpoint_dir::in, module_info::in, pass_info::in,
@@ -303,7 +305,7 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, Module,
 		Termination = can_loop(Errors)
 	).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- pred prove_termination_in_scc_fixpoint(list(pred_proc_id)::in,
 	fixpoint_dir::in, module_info::in, pass_info::in, used_args::in,
@@ -334,7 +336,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, Module, PassInfo,
 		Result = Result1
 	).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 	% Process a whole SCC, to determine the termination property of each
 	% procedure in that SCC.
@@ -348,8 +350,7 @@ prove_termination_in_scc_pass([], _, _, _, _, NewRecSupplierMap, CallInfo,
 prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 		RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result) :-
 	% Get the goal info.
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
+	module_info_pred_proc_info(Module, PPId, PredInfo, ProcInfo),
 	pred_info_context(PredInfo, Context),
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
@@ -386,27 +387,27 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 		Result = error(Errors)
 	).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- pred update_rec_input_suppliers(list(prog_var)::in, bag(prog_var)::in,
 	fixpoint_dir::in, list(bool)::in, list(bool)::out,
 	bag(prog_var)::in, bag(prog_var)::out) is det.
 
-update_rec_input_suppliers([], _, _, [], [], RecBag, RecBag).
+update_rec_input_suppliers([], _, _, [], [], !RecBag).
 update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
-	error("update_rec_input_suppliers: Unmatched variables").
+	unexpected(this_file,
+		"update_rec_input_suppliers/7: unmatched variables.").
 update_rec_input_suppliers([], _, _, [_ | _], [], _, _) :-
-	error("update_rec_input_suppliers: Unmatched variables").
+	unexpected(this_file,
+		"update_rec_input_suppliers/7: unmatched variables.").
 update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 		[RecInputSupplier0 | RecInputSuppliers0],
-		[RecInputSupplier | RecInputSuppliers],
-		RecBag0, RecBag) :-
+		[RecInputSupplier | RecInputSuppliers], !RecBag) :-
 	(
 		RecInputSupplier0 = yes,
-		bag__insert(RecBag0, Arg, RecBag1)
+		bag__insert(!.RecBag, Arg, !:RecBag)
 	;
-		RecInputSupplier0 = no,
-		RecBag1 = RecBag0
+		RecInputSupplier0 = no
 	),
 	(
 		FixDir = down,
@@ -428,9 +429,9 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 		)
 	),
 	update_rec_input_suppliers(Args, ActiveVars, FixDir,
-		RecInputSuppliers0, RecInputSuppliers, RecBag1, RecBag).
+		RecInputSuppliers0, RecInputSuppliers, !RecBag).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 % This adds the information from a stage 2 traversal to the graph.
 % The graph's nodes are the procedures in the current SCC.
@@ -441,24 +442,26 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 % in the head of p. If there is no finite upper bound, then we insert the
 % details of the call into the list of "infinite" calls.
 
-:- pred add_call_arcs(list(path_info)::in,
-	bag(prog_var)::in, call_weight_info::in, call_weight_info::out) is det.
+:- pred add_call_arcs(list(path_info)::in, bag(prog_var)::in,
+	call_weight_info::in, call_weight_info::out) is det.
 
-add_call_arcs([], _RecInputSuppliers, CallInfo, CallInfo).
-add_call_arcs([Path | Paths], RecInputSuppliers, CallInfo0, CallInfo) :-
+add_call_arcs([], _RecInputSuppliers, !CallInfo).
+add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
 	Path = path_info(PPId, CallSite, GammaConst, GammaVars, ActiveVars),
 	( CallSite = yes(CallPPIdPrime - ContextPrime) ->
 		CallPPId = CallPPIdPrime,
 		Context = ContextPrime
 	;
-		error("no call site in path in stage 2")
+		unexpected(this_file,
+			"add_call_arcs/4: no call site in path in stage 2.")
 	),
 	( GammaVars = [] ->
 		true
 	;
-		error("gamma variables in path in stage 2")
+		unexpected(this_file,
+			"add_call_arc/4: gamma variables in path in stage 2.")
 	),
-	CallInfo0 = InfCalls0 - CallWeights0,
+	!.CallInfo = InfCalls0 - CallWeights0,
 	( bag__is_subbag(ActiveVars, RecInputSuppliers) ->
 		( map__search(CallWeights0, PPId, NeighbourMap0) ->
 			( map__search(NeighbourMap0, CallPPId, OldEdgeInfo) ->
@@ -483,14 +486,14 @@ add_call_arcs([Path | Paths], RecInputSuppliers, CallInfo0, CallInfo) :-
 			map__det_insert(CallWeights0, PPId, NeighbourMap,
 				CallWeights1)
 		),
-		CallInfo1 = InfCalls0 - CallWeights1
+		!:CallInfo = InfCalls0 - CallWeights1
 	;
 		InfCalls1 = [Context - inf_call(PPId, CallPPId) | InfCalls0],
-		CallInfo1 = InfCalls1 - CallWeights0
+		!:CallInfo = InfCalls1 - CallWeights0
 	),
-	add_call_arcs(Paths, RecInputSuppliers, CallInfo1, CallInfo).
+	add_call_arcs(Paths, RecInputSuppliers, !CallInfo).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 	% We use a simple depth first search to find and return the list
 	% of all cycles in the call graph of the SCC where the change in
@@ -587,10 +590,16 @@ zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
 			NewVisitedCalls, CallWeights, Cycles)
 	).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 :- pred map_to_no(T::in, bool::out) is det.
 
 map_to_no(_, no).
 
-%-----------------------------------------------------------------------------
+:- func this_file = string.
+
+this_file = "term_pass2.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module term_pass2.
+%-----------------------------------------------------------------------------%

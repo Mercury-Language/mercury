@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,8 +46,9 @@
 
 :- pred find_arg_sizes_in_scc(list(pred_proc_id)::in, module_info::in,
 	pass_info::in, arg_size_result::out, list(term_errors__error)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -84,7 +85,7 @@
 			list(term_errors__error)
 		).
 
-find_arg_sizes_in_scc(SCC, Module, PassInfo, ArgSize, TermErrors, S0, S) :-
+find_arg_sizes_in_scc(SCC, Module, PassInfo, ArgSize, TermErrors, !IO) :-
 	init_output_suppliers(SCC, Module, InitOutputSupplierMap),
 	find_arg_sizes_in_scc_fixpoint(SCC, Module, PassInfo,
 		InitOutputSupplierMap, Result, TermErrors),
@@ -92,14 +93,12 @@ find_arg_sizes_in_scc(SCC, Module, PassInfo, ArgSize, TermErrors, S0, S) :-
 		Result = ok(Paths, OutputSupplierMap, SubsetErrors),
 
 		( SubsetErrors = [_ | _] ->
-			ArgSize = error(SubsetErrors),
-			S = S0
+			ArgSize = error(SubsetErrors)
 		; Paths = [] ->
 			get_context_from_scc(SCC, Module, Context),
-			ArgSize = error([Context - no_eqns]),
-			S = S0
+			ArgSize = error([Context - no_eqns])
 		;
-			solve_equations(Paths, SCC, MaybeSolution, S0, S),
+			solve_equations(Paths, SCC, MaybeSolution, !IO),
 			(
 				MaybeSolution = yes(Solution),
 				ArgSize = ok(Solution, OutputSupplierMap)
@@ -111,8 +110,7 @@ find_arg_sizes_in_scc(SCC, Module, PassInfo, ArgSize, TermErrors, S0, S) :-
 		)
 	;
 		Result = error(Errors),
-		ArgSize = error(Errors),
-		S = S0
+		ArgSize = error(Errors)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -128,8 +126,7 @@ init_output_suppliers([], _Module, InitMap) :-
 	map__init(InitMap).
 init_output_suppliers([PPId | PPIds], Module, OutputSupplierMap) :-
 	init_output_suppliers(PPIds, Module, OutputSupplierMap0),
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	MapToNo = (pred(_HeadVar::in, Bool::out) is det :- Bool = no),
 	list__map(MapToNo, HeadVars, BoolList),
@@ -209,8 +206,7 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], Module, PassInfo,
 
 find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 		TermErrors) :-
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
+	module_info_pred_proc_info(Module, PPId, PredInfo, ProcInfo),
 	pred_info_context(PredInfo, Context),
 	proc_info_headvars(ProcInfo, Args),
 	proc_info_argmodes(ProcInfo, ArgModes),
@@ -254,9 +250,9 @@ find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-
-	error("update_output_suppliers: Unmatched variables").
+	unexpected(this_file, "update_output_suppliers/4: umatched variables.").
 update_output_suppliers([], _ActiveVars, [_ | _], []) :-
-	error("update_output_suppliers: Unmatched variables").
+	unexpected(this_file, "update_output_suppliers/4: umatched variables.").
 update_output_suppliers([Arg | Args], ActiveVars,
 		[OutputSupplier0 | OutputSuppliers0],
 		[OutputSupplier | OutputSuppliers]) :-
@@ -364,8 +360,8 @@ check_goal_expr_non_term_calls(_, _, _, shorthand(_), _, _, _) :-
 		"shorthand goal encountered during termination analysis."). 
 
 :- pred check_cases_non_term_calls(module_info::in, pred_proc_id::in,
-	vartypes::in, case::in,
-	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+	vartypes::in, case::in, list(term_errors__error)::in,
+	list(term_errors__error)::out) is det.
 
 check_cases_non_term_calls(Module, PPId, VarTypes, case(_, Goal), !Errors) :-
 	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
@@ -389,10 +385,9 @@ check_cases_non_term_calls(Module, PPId, VarTypes, case(_, Goal), !Errors) :-
 % be negative even when a#_# and b are both positive.
 
 :- pred solve_equations(list(path_info)::in, list(pred_proc_id)::in,
-	maybe(list(pair(pred_proc_id, int)))::out,
-	io__state::di, io__state::uo) is det.
+	maybe(list(pair(pred_proc_id, int)))::out, io::di, io::uo) is det.
 
-solve_equations(Paths, PPIds, Result, S0, S) :-
+solve_equations(Paths, PPIds, Result, !IO) :-
 	(
 		convert_equations(Paths, Varset, Equations,
 			Objective, PPVars)
@@ -407,7 +402,7 @@ solve_equations(Paths, PPIds, Result, S0, S) :-
 		% unsafe_perform_io(io__write(AllVars)),
 		% unsafe_perform_io(io__write_string("\n")),
 		lp_solve(Equations, min, Objective, Varset, AllVars, Soln,
-			S0, S),
+			!IO),
 		% unsafe_perform_io(io__write_string("after\n")),
 		(
 			Soln = unsatisfiable,
@@ -419,8 +414,7 @@ solve_equations(Paths, PPIds, Result, S0, S) :-
 			Result = yes(SolutionList)
 		)
 	;
-		Result = no,
-		S = S0
+		Result = no
 	).
 
 :- pred convert_equations(list(path_info)::in, varset::out, lp__equations::out,
@@ -428,9 +422,9 @@ solve_equations(Paths, PPIds, Result, S0, S) :-
 
 convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
 	varset__init(Varset0),
-	map__init(PredProcVars0),
+	map__init(PPVars0),
 	set__init(EqnSet0),
-	convert_equations_2(Paths, PredProcVars0, PPVars, Varset0, Varset,
+	convert_equations_2(Paths, PPVars0, PPVars, Varset0, Varset,
 		EqnSet0, EqnSet),
 	set__to_sorted_list(EqnSet, Equations),
 	map__values(PPVars, Vars),
@@ -442,25 +436,21 @@ convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
 	varset::in, varset::out,
 	set(lp__equation)::in, set(lp__equation)::out) is semidet.
 
-convert_equations_2([], PPVars, PPVars, Varset, Varset, Eqns, Eqns).
-convert_equations_2([Path | Paths], PPVars0, PPVars, Varset0, Varset,
-		Eqns0, Eqns) :-
+convert_equations_2([], !PPVars, !Varset, !Eqns).
+convert_equations_2([Path | Paths], !PPVars, !Varset, !Eqns) :-
 	Path = path_info(ThisPPId, _, IntGamma, PPIds, _),
-	int__to_float(IntGamma, FloatGamma),
+	FloatGamma = float__float(IntGamma),
 	Eqn = eqn(Coeffs, (>=), FloatGamma),
-	pred_proc_var(ThisPPId, ThisVar, Varset0, Varset2, PPVars0, PPVars1),
+	pred_proc_var(ThisPPId, ThisVar, !Varset, !PPVars),
 	Coeffs = [ThisVar - 1.0 | RestCoeffs],
-	Convert = (pred(PPId::in, Coeff::out, Pair0::in, Pair::out) is det :-
-		Pair0 = VS0 - PPV0,
-		pred_proc_var(PPId, Var, VS0, VS, PPV0, PPV),
-		Coeff = Var - (-1.0),
-		Pair = VS - PPV
+	Convert = (pred(PPId::in, Coeff::out, !.VS::in, !:VS::out, !.PPV::in, 
+			!:PPV::out) is det :-
+		pred_proc_var(PPId, Var, !VS, !PPV),
+		Coeff = Var - (-1.0)
 	),
-	list__map_foldl(Convert, PPIds, RestCoeffs, Varset2 - PPVars1,
-		Varset3 - PPVars2),
-	set__insert(Eqns0, Eqn, Eqns1),
-	convert_equations_2(Paths, PPVars2, PPVars, Varset3, Varset,
-		Eqns1, Eqns).
+	list__map_foldl2(Convert, PPIds, RestCoeffs, !Varset, !PPVars),
+	set__insert(!.Eqns, Eqn, !:Eqns),
+	convert_equations_2(Paths, !PPVars, !Varset, !Eqns).
 
 :- pred lookup_coeff(map(pred_proc_id, var)::in, map(var, float)::in,
 	pred_proc_id::in, pair(pred_proc_id, int)::out) is det.
@@ -473,14 +463,12 @@ lookup_coeff(PPIds, Soln, PPId, PPId - ICoeff) :-
 :- pred pred_proc_var(pred_proc_id::in, var::out, varset::in, varset::out,
 	map(pred_proc_id, var)::in, map(pred_proc_id, var)::out) is det.
 
-pred_proc_var(PPId, Var, Varset0, Varset, PPVars0, PPVars) :-
-	( map__search(PPVars0, PPId, Var0) ->
-		Var = Var0,
-		Varset = Varset0,
-		PPVars = PPVars0
+pred_proc_var(PPId, Var, !Varset, !PPVars) :-
+	( map__search(!.PPVars, PPId, Var0) ->
+		Var = Var0
 	;
-		varset__new_var(Varset0, Var, Varset),
-		map__det_insert(PPVars0, PPId, Var, PPVars)
+		varset__new_var(!.Varset, Var, !:Varset),
+		map__det_insert(!.PPVars, PPId, Var, !:PPVars)
 	).
 
 %-----------------------------------------------------------------------------%

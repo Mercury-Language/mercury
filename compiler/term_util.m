@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,9 +113,8 @@
 % that has a `no' in the corresponding place in the BoolList is removed
 % from InVarBag.
 
-:- pred remove_unused_args(bag(prog_var), list(prog_var), list(bool),
-		bag(prog_var)).
-:- mode remove_unused_args(in, in, in, out) is det.
+:- pred remove_unused_args(bag(prog_var)::in, list(prog_var)::in,
+	list(bool)::in, bag(prog_var)::out) is det.
 
 % This predicate sets the argument size info of a given a list of procedures.
 
@@ -135,8 +134,7 @@
 
 % Succeeds if one or more variables in the list are higher order.
 
-:- pred horder_vars(list(prog_var), map(prog_var, type)).
-:- mode horder_vars(in, in) is semidet.
+:- pred horder_vars(list(prog_var)::in , map(prog_var, type)::in) is semidet.
 
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
 	prog_context::out) is det.
@@ -146,16 +144,14 @@
 % Convert a prog_data__pragma_termination_info into a
 % term_util__termination_info, by adding the appropriate context.
 
-:- pred add_context_to_termination_info(maybe(pragma_termination_info),
-		prog_context, maybe(termination_info)).
-:- mode add_context_to_termination_info(in, in, out) is det.
+:- pred add_context_to_termination_info(maybe(pragma_termination_info)::in,
+	prog_context::in, maybe(termination_info)::out) is det.
 
 % Convert a prog_data__pragma_arg_size_info into a
 % term_util__arg_size_info, by adding the appropriate context.
 
-:- pred add_context_to_arg_size_info(maybe(pragma_arg_size_info),
-		prog_context, maybe(arg_size_info)).
-:- mode add_context_to_arg_size_info(in, in, out) is det.
+:- pred add_context_to_arg_size_info(maybe(pragma_arg_size_info)::in,
+	prog_context::in, maybe(arg_size_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -165,11 +161,12 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_out.
 
-:- import_module assoc_list, require.
+:- import_module assoc_list, require, string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -184,9 +181,9 @@ partition_call_args(Module, ArgModes, Args, InVarsBag, OutVarsBag) :-
 
 partition_call_args_2(_, [], [], [], []).
 partition_call_args_2(_, [], [_ | _], _, _) :-
-	error("Unmatched variables in term_util:partition_call_args").
+	unexpected(this_file, "partition_call_args_2/5: unmatched variables.").
 partition_call_args_2(_, [_ | _], [], _, _) :-
-	error("Unmatched variables in term_util__partition_call_args").
+	unexpected(this_file, "partition_call_args_2/5: unmatched variables.").
 partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
 		InputArgs, OutputArgs) :-
 	partition_call_args_2(ModuleInfo, ArgModes, Args,
@@ -221,7 +218,8 @@ split_unification_vars([], Modes, _ModuleInfo, Vars, Vars) :-
 	( Modes = [] ->
 		true
 	;
-		error("term_util:split_unification_vars: Unmatched Variables")
+		unexpected(this_file,
+			"split_unification_vars/5: unmatched variables.")
 	).
 split_unification_vars([Arg | Args], Modes, ModuleInfo,
 		InVars, OutVars):-
@@ -229,50 +227,50 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
 		split_unification_vars(Args, UniModes, ModuleInfo,
 			InVars0, OutVars0),
 		UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
-		( % if
+		( 
 			inst_is_bound(ModuleInfo, ArgInit)
 		->
 			% Variable is an input variable
 			bag__insert(InVars0, Arg, InVars),
 			OutVars = OutVars0
-		; % else if
+		;
 			inst_is_free(ModuleInfo, ArgInit),
 			inst_is_bound(ModuleInfo, ArgFinal)
 		->
 			% Variable is an output variable
 			InVars = InVars0,
 			bag__insert(OutVars0, Arg, OutVars)
-		; % else
+		;
 			InVars = InVars0,
 			OutVars = OutVars0
 		)
 	;
-		error("term_util__split_unification_vars: Unmatched Variables")
+		unexpected(this_file,
+			"split_unification_vars/5: unmatched variables.")
 	).
 
 %-----------------------------------------------------------------------------%
 
-term_util__make_bool_list(HeadVars0, Bools, Out) :-
+make_bool_list(HeadVars0, Bools, Out) :-
 	list__length(Bools, Arity),
 	( list__drop(Arity, HeadVars0, HeadVars1) ->
 		HeadVars = HeadVars1
 	;
-		error("Unmatched variables in term_util:make_bool_list")
+		unexpected(this_file, "make_bool_list/3: unmatched variables.")
 	),
-	term_util__make_bool_list_2(HeadVars, Bools, Out).
+	make_bool_list_2(HeadVars, Bools, Out).
 
-:- pred term_util__make_bool_list_2(list(_T), list(bool), list(bool)).
-:- mode term_util__make_bool_list_2(in, in, out) is det.
+:- pred make_bool_list_2(list(_T)::in, list(bool)::in, list(bool)::out) is det.
 
-term_util__make_bool_list_2([], Bools, Bools).
-term_util__make_bool_list_2([ _ | Vars ], Bools, [no | Out]) :-
-	term_util__make_bool_list_2(Vars, Bools, Out).
+make_bool_list_2([], Bools, Bools).
+make_bool_list_2([ _ | Vars ], Bools, [no | Out]) :-
+	make_bool_list_2(Vars, Bools, Out).
 
 remove_unused_args(Vars, [], [], Vars).
 remove_unused_args(Vars, [], [_X | _Xs], Vars) :-
-	error("Unmatched variables in term_util:remove_unused_args").
+	unexpected(this_file, "remove_unused_args/4: unmatched variables.").
 remove_unused_args(Vars, [_X | _Xs], [], Vars) :-
-	error("Unmatched variables in term_util__remove_unused_args").
+	unexpected(this_file, "remove_unused_args/4: unmatched variables.").
 remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
 	( UsedVar = yes ->
 		% The variable is used, so leave it
@@ -319,14 +317,12 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !Module) :-
 	module_info_set_preds(PredTable, !Module),
 	set_pred_proc_ids_termination_info(PPIds, Termination, !Module).
 
-lookup_proc_termination_info(Module, PredProcId, MaybeTermination) :-
-	PredProcId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+lookup_proc_termination_info(Module, PPId, MaybeTermination) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination).
 
-lookup_proc_arg_size_info(Module, PredProcId, MaybeArgSize) :-
-	PredProcId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+lookup_proc_arg_size_info(Module, PPId, MaybeArgSize) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize).
 
 horder_vars([Arg | Args], VarType) :-
@@ -344,7 +340,7 @@ get_context_from_scc(SCC, Module, Context) :-
 		module_info_pred_info(Module, PredId, PredInfo),
 		pred_info_context(PredInfo, Context)
 	;
-		error("Empty SCC in pass 2 of termination analysis")
+		unexpected(this_file, "get_context_from_scc/3: empty SCC.")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -357,6 +353,14 @@ add_context_to_termination_info(yes(can_loop), Context,
 add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
 add_context_to_arg_size_info(yes(infinite), Context,
-				yes(infinite([Context - imported_pred]))).
+		yes(infinite([Context - imported_pred]))).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "term_util.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module term_util.
 %-----------------------------------------------------------------------------%
