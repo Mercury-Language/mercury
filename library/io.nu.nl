@@ -30,6 +30,7 @@
 
 :- dynamic io__save_progname/1.
 :- dynamic io__save_args/1.
+:- dynamic io__save_exit_status/1.
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
@@ -45,7 +46,8 @@ main(Args) :-
 		;
 			run(Args)
 		),
-		exit(0)
+		io__save_exit_status(ExitStatus),
+		exit(ExitStatus)
 	).
 
 :- pred r(string).
@@ -113,12 +115,15 @@ io__init(Args) :-
 	atoms_to_strings(Args, ArgStrings),
 	retractall(io__save_progname(_)),
 	retractall(io__save_args(_)),
+	retractall(io__save_exit_status(_)),
 	( ArgStrings = [Progname | Rest] ->
 		assert(io__save_progname(Progname)),
 		assert(io__save_args(Rest))
 	;
 		assert(io__save_args([]))
-	).
+	),
+	assert(io__save_exit_status(0)).
+
 
 :- pred atoms_to_strings(list(atom), list(string)).
 :- mode atoms_to_strings(in, out) is det.
@@ -431,6 +436,13 @@ io__progname(DefaultName, Name) -->
 io__command_line_arguments(Args) --> 
 	{ io__save_args(Args) }.
 	
+io__get_exit_status(ExitStatus) --> 
+	{ io__save_exit_status(ExitStatus) }.
+
+io__set_exit_status(ExitStatus) --> 
+	{ retractall(io__save_exit_status(_)) },
+	{ assert(io__save_exit_status(ExitStatus)) }.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -15,9 +15,6 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(in, di, uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -31,31 +28,25 @@
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, bintree, term, varset, hlds.
 :- import_module implication, negation, call_graph.
-:- import_module common.
+:- import_module common, require.
 
 
 %-----------------------------------------------------------------------------%
 
 main -->
-	io__progname("mc", ProgName),
-	io__command_line_arguments(Arguments),
-	main_predicate([ProgName | Arguments]).
+	io__command_line_arguments(Args0),
+	{ getopt__process_options(Args0, Args, Result) },
+	main_2(Result, Args).
 
 	% Validate command line arguments
 
-main_predicate([]) --> usage.
-main_predicate([_ProgName | Args0]) -->
-	{ getopt__process_options(Args0, Args, Result) },
-	main_predicate_2(Result, Args).
+:- pred main_2(maybe_option_table, list(string), io__state, io__state).
+:- mode main_2(in, in, di, uo) is det.
 
-:- pred main_predicate_2(maybe_option_table, list(string),
-			io__state, io__state).
-:- mode main_predicate_2(in, in, di, uo) is det.
-
-main_predicate_2(error(ErrorMessage), _) -->
+main_2(error(ErrorMessage), _) -->
 	usage_error(ErrorMessage).
 
-main_predicate_2(ok(OptionTable0), Args) -->
+main_2(ok(OptionTable0), Args) -->
 	{ map__lookup(OptionTable0, help, Help) },
 	( { Help = bool(yes) } ->
 	    long_usage
@@ -98,7 +89,15 @@ main_predicate_2(ok(OptionTable0), Args) -->
 				Tags_Method = Tags_Method1
 			},
 		        globals__io_init(OptionTable, GC_Method, Tags_Method),
-		        process_module_list(Args)
+		        { strip_module_suffixes(Args, ModuleNames) },
+		        process_module_list(ModuleNames),
+			globals__io_lookup_bool_option(link, Link),
+			io__get_exit_status(ExitStatus),
+			( { Link = yes, ExitStatus = 0 } ->
+			    link_module_list(ModuleNames)
+			;
+			    []
+			)
 		    ;
 			usage_error("Invalid grade option")
 		    )
@@ -188,13 +187,22 @@ set_string_opt(Option, Value, OptionTable0, OptionTable) :-
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
 usage_error(ErrorMessage) -->
-	io__progname("mercury_compile", ProgName),
+	io__progname("mercury_compile", ProgName0),
+	{ dir__basename(ProgName0, ProgName) },
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, ": "),
 	io__write_string(StdErr, ErrorMessage),
 	io__write_string(StdErr, "\n"),
+	io__set_exit_status(1),
 	usage.
+
+:- pred report_error(string::in, io__state::di, io__state::uo) is det.
+report_error(ErrorMessage) -->
+	io__write_string("Error: "),
+	io__write_string(ErrorMessage),
+	io__write_string("\n"),
+	io__set_exit_status(1).
 
 	% Display usage message
 :- pred usage(io__state::di, io__state::uo) is det.
@@ -208,7 +216,6 @@ usage -->
 	io__write_string(StdErr, "Use `"),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " --help' for more information.\n").
-
 
 :- pred long_usage(io__state::di, io__state::uo) is det.
 long_usage -->
@@ -226,19 +233,30 @@ long_usage -->
 	% Remove any `.nl' extension extension before processing
 	% the module name.
 
+:- pred strip_module_suffixes(list(string), list(string)).
+:- mode strip_module_suffixes(in, out) is det.
+
+strip_module_suffixes([], []).
+strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
+	(
+		string__remove_suffix(Module0, ".m", Module1)
+	->
+		Module = Module1
+	;
+		string__remove_suffix(Module0, ".nl", Module2)
+	->
+		Module = Module2
+	;
+		Module = Module0
+	),
+	strip_module_suffixes(Modules0, Modules).
+
 :- pred process_module_list(list(string), io__state, io__state).
 :- mode process_module_list(in, di, uo) is det.
 
 process_module_list([]) --> [].
 process_module_list([Module | Modules]) -->
-	(
-		{ string__remove_suffix(Module, ".nl", ModuleName1) }
-	->
-		{ ModuleName = ModuleName1 }
-	;
-		{ ModuleName = Module }
-	),
-	process_module(ModuleName),
+	process_module(Module),
 	process_module_list(Modules).
 
 	% Open the file and process it.
@@ -336,7 +354,12 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 		{ Command = "mercury_update_interface " }
 	),
 	{ string__append(Command, OutputFileName, ShellCommand) },
-	mercury_compile__invoke_system_command(ShellCommand, _Succeeded).
+	mercury_compile__invoke_system_command(ShellCommand, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem updating interface files")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1017,6 +1040,7 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	globals__io_lookup_bool_option(generate_code, GenerateCode),
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	globals__io_lookup_bool_option(compile, Compile),
+	globals__io_lookup_bool_option(link, Link),
 	(
 		{
 		  FoundSyntaxError = no,
@@ -1024,7 +1048,11 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 		  FoundTypeError = no,
 		  FoundModeError = no,
 		  FoundDeterminismError = no,
-		  ( GenerateCode = yes ; CompileToC = yes ; Compile = yes )
+		  ( GenerateCode = yes
+		  ; CompileToC = yes
+		  ; Compile = yes
+		  ; Link = yes
+		  )
 		}
 	->
 		{ DoCodeGen = yes }
@@ -1045,10 +1073,10 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile, Link]),
 	fail }.
 mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
-	{ getprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, HLDS10 - [DoCodeGen, CompileToC, Compile, Link], Ref),
 	erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -1068,10 +1096,10 @@ mercury_compile(module(Module, _, _, _, FoundSyntaxError)) -->
 	mercury_compile__maybe_dump_hlds(HLDS12, "99", "final"),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile, Link]),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, HLDS12 - [DoCodeGen, CompileToC, Compile, Link], Ref),
 	erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -1084,10 +1112,12 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, HLDS13 - LLDS1 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, HLDS13 - LLDS1 -
+		[DoCodeGen, CompileToC, Compile, Link]),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, HLDS13 - LLDS1 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, HLDS13 - LLDS1 -
+		[DoCodeGen, CompileToC, Compile, Link], Ref),
 	erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -1101,11 +1131,12 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
+	{ putprop(mc, mc, LLDS1 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile] - Shape_Info,
-			 Ref),
+	{ getprop(mc, mc, LLDS1 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
 	erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -1118,10 +1149,12 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
+	{ putprop(mc, mc, LLDS2 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info, Ref),
+	{ getprop(mc, mc, LLDS2 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
 	erase(Ref) },
 	( { DoCodeGen = yes } ->
 #endif
@@ -1131,22 +1164,27 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
+	{ putprop(mc, mc, LLDS2 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info,
-			 Ref),
+	{ getprop(mc, mc, LLDS2 -
+		[DoCodeGen, CompileToC, Compile, Link] - Shape_Info, Ref),
 	erase(Ref) },
 	( { DoCodeGen = yes } ->
 #endif
 		mercury_compile__maybe_write_gc(Module, Shape_Info, LLDS2),
 		(
-			{ CompileToC = yes ; Compile = yes }
+			{ CompileToC = yes ; Compile = yes ; Link = yes }
 		->
 			mercury_compile__mod_to_c(Module,
 				CompileToC_went_OK),
-			( { CompileToC_went_OK = yes, Compile = yes } ->
-				mercury_compile__c_to_obj(Module,
+			(
+				{ CompileToC_went_OK = yes },
+				{ Compile = yes ; Link = yes }
+			->
+				{ string__append(Module, ".c", C_File) },
+				mercury_compile__c_to_obj(C_File,
 					_Compile_went_OK)
 			;	
 				[]
@@ -1251,7 +1289,7 @@ mercury_compile__make_call_graph(ModuleInfo) -->
 		call_graph__write_call_graph(CallGraph, ModuleInfo),
 		io__told
 	;
-		io__write_string("% Unable to write call graph.\n")
+		report_error("unable to write call graph")
 	).
 	
 
@@ -1501,9 +1539,9 @@ mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 				io__state, io__state).
 :- mode mercury_compile__maybe_find_abstr_exports(in, out, di, uo) is det.
 mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
-	globals__io_lookup_string_option(gc, Garbage),
+	globals__io_get_gc_method(GarbageCollectionMethod),
 	(
-		{ Garbage = "accurate" }
+		{ GarbageCollectionMethod = accurate }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Looking up abstract type "),
@@ -1516,7 +1554,6 @@ mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
 	;
 		{ HLDS = HLDS0 }
 	).
-		
 
 %-----------------------------------------------------------------------------%
 
@@ -1568,26 +1605,25 @@ mercury_compile__tree_stats(Description, Tree) -->
 mercury_compile__mod_to_c(Module, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Converting .mod file to C:\n"),
-	globals__io_lookup_bool_option(gcc_non_local_gotos, GCC_Jumps),
-	{ GCC_Jumps = yes ->
-		Options = "-g "
+	{ string__append_list( ["mod2c ", Module, ".mod > ", Module, ".c"],
+			Command) },
+	mercury_compile__invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem converting .mod file to C")
 	;
-		Options = ""
-	},
-	{ string__append_list( ["mod2c ", Options, Module, ".mod > ", Module,
-		".c"], Command) },
-	mercury_compile__invoke_system_command(Command, Succeeded).
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__c_to_obj(string, bool, io__state, io__state).
 :- mode mercury_compile__c_to_obj(in, out, di, uo) is det.
 
-mercury_compile__c_to_obj(Module, Succeeded) -->
+mercury_compile__c_to_obj(C_File, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
-	maybe_write_string(Verbose, Module),
-	maybe_write_string(Verbose, ".c':\n"),
+	maybe_write_string(Verbose, C_File),
+	maybe_write_string(Verbose, "':\n"),
 	globals__io_lookup_string_option(cc, CC),
 	globals__io_lookup_string_option(cflags, CFLAGS),
 	globals__io_lookup_string_option(c_include_directory, C_INCL),
@@ -1627,9 +1663,14 @@ mercury_compile__c_to_obj(Module, Succeeded) -->
 		OptimizeOpt = ""
 	},
 	{ string__append_list( [CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
-		DebugOpt, OptimizeOpt, CFLAGS, " -c ", Module, ".c"],
+		DebugOpt, OptimizeOpt, CFLAGS, " -c ", C_File],
 		Command) },
-	mercury_compile__invoke_system_command(Command, Succeeded).
+	mercury_compile__invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem compiling C file")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1647,12 +1688,10 @@ mercury_compile__invoke_system_command(Command, Succeeded) -->
 		maybe_write_string(Verbose, "% done\n"),
 		{ Succeeded = yes }
 	; { Result = ok(_) } ->
-		io__write_string(
-			"Error: Command returned non-zero exit status\n"
-		),
+		report_error("system command returned non-zero exit status"),
 		{ Succeeded = no }
 	;	
-		io__write_string("Error: unable to invoke command\n"),
+		report_error("unable to invoke system command"),
 		{ Succeeded = no }
 	).
 
@@ -1695,10 +1734,69 @@ mercury_compile__dump_hlds(HLDS_DumpFile, HLDS) -->
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Statistics)
 	;
-		io__write_string("\nError: can't open file `"),
-		io__write_string(HLDS_DumpFile),
-		io__write_string("' for output\n")
+		maybe_write_string(Verbose, "\n"),
+		{ string__append_list( ["can't open file `",
+			HLDS_DumpFile, "' for output"], ErrorMessage) },
+		report_error(ErrorMessage)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred link_module_list(list(string), io__state, io__state).
+:- mode link_module_list(in, di, uo) is det.
+
+link_module_list(Modules) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	( { Modules = [Module | _] } ->
+	    % create the initialization C file
+	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
+	    { string__append(Module, "_init.c", C_Init_File) },
+	    { join_string_list(Modules, ".c ", ["> ", C_Init_File],
+				Mod2InitCmd0) },
+	    { string__append_list(["mod2init " | Mod2InitCmd0], Mod2InitCmd) },
+	    mercury_compile__invoke_system_command(Mod2InitCmd, Mod2InitOK),
+	    maybe_report_stats(Statistics),
+	    ( { Mod2InitOK = no } ->
+		report_error("creation of init file failed")
+	    ;
+		% compile it
+	        maybe_write_string(Verbose, "% Compiling initialization file...\n"),
+		mercury_compile__c_to_obj(C_Init_File, CompileOK),
+	        maybe_report_stats(Statistics),
+		( { CompileOK = no } ->
+		    report_error("compilation of init file failed")
+		;
+	            maybe_write_string(Verbose, "% Linking...\n"),
+		    { join_string_list(Modules, ".o ", [], ObjectList) },
+		    globals__io_lookup_string_option(grade, Grade0),
+		    { Grade0 = "" -> 
+			Grade = "asm_fast.gc"
+		    ;
+			Grade = Grade0
+		    },
+		    { string__append_list(["ml -s ", Grade, " -o ", Module, " ",
+				Module, "_init.o " | ObjectList], LinkCmd) },
+		    mercury_compile__invoke_system_command(LinkCmd, LinkCmdOK),
+		    maybe_report_stats(Statistics),
+		    ( { LinkCmdOK = no } ->
+			report_error("link failed")
+		    ;
+			[]
+		    )
+		)
+	    )
+	;
+	    { error("link_module_list: no modules") }
+	).
+
+:- pred join_string_list(list(string), string, list(string), list(string)).
+:- mode join_string_list(in, in, in, out) is det.
+
+join_string_list([], _Separator, Terminator, Terminator).
+join_string_list([String0 | Strings0], Separator, Terminator,
+			[String0, Separator | Strings]) :-
+	join_string_list(Strings0, Separator, Terminator, Strings).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

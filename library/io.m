@@ -19,10 +19,10 @@
 
 % External interface: imported predicate
 
-% :- pred main_predicate(list(string), io__state, io__state).
-% :- mode main_predicate(in, di, uo) is det.
-%	main_predicate(ArgStrings, IOState0, IOState1).
-%		This module provides startup code which calls main_predicate/3.
+% :- pred main(io__state, io__state).
+% :- mode main(di, uo) is det.
+%	main(IOState0, IOState1).
+%		This module provides startup code which calls main/2.
 
 %-----------------------------------------------------------------------------%
 
@@ -327,6 +327,15 @@
 %		
 %		Does not modify the IO state.
 
+% The io__state contains an integer used to record the program's exit status.
+% When the program finishes, it will return this exit status to the operating
+% system.  The following predicates can be used to get and set the exit status.
+
+:- pred io__get_exit_status(int, io__state, io__state).
+:- mode io__get_exit_status(out, di, uo) is det.
+
+:- pred io__set_exit_status(int, io__state, io__state).
+:- mode io__set_exit_status(in, di, uo) is det.
 
 % The io__state includes a `globals' field which is not used by the I/O
 % library, but can be used by the application.  The globals field is
@@ -503,6 +512,8 @@
 :- external(io__get_line_number/3).
 :- external(io__get_line_number/4).
 :- external(io__command_line_arguments/3).
+:- external(io__get_exit_status/3).
+:- external(io__set_exit_status/3).
 :- external(io__call_system_code/4).
 :- external(io__gc_call/3).
 :- external(io__preallocate_heap_space/3).
