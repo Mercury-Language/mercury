@@ -209,15 +209,19 @@ add_item_decl_pass_1(func(TypeVarSet, InstVarSet, ExistQVars, FuncName,
 add_item_decl_pass_1(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond),
 		Context, Status, Module0, Status, Module) -->
 	{ Status = item_status(ImportStatus, _) },
+	{ IsClassMethod = no },
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
-		ImportStatus, Context, predicate, _, Module).
+		ImportStatus, Context, predicate, IsClassMethod,
+		_, Module).
 
 add_item_decl_pass_1(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 		Cond), Context, Status, Module0, Status, Module) -->
 	{ list__append(Modes, [RetMode], Modes1) },
 	{ Status = item_status(ImportStatus, _) },
+	{ IsClassMethod = no },
 	module_add_mode(Module0, VarSet, FuncName, Modes1,
-		MaybeDet, Cond, ImportStatus, Context, function, _, Module).
+		MaybeDet, Cond, ImportStatus, Context, function, IsClassMethod,
+		_, Module).
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
@@ -2159,8 +2163,14 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 			MaybeDet = no
 		}	
 	->
+		{ check_marker(Markers, class_method) ->
+			IsClassMethod = yes
+		;
+			IsClassMethod = no
+		},
 		module_add_mode(Module1, InstVarSet, PredName, Modes, MaybeDet,
-			Cond, Status, Context, predicate, PredProcId, Module),
+			Cond, Status, Context, predicate, IsClassMethod,
+			PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
 		{ Module = Module1 },
@@ -2215,9 +2225,14 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 		{ MaybeRetMode = yes(RetMode) }
 	->
 		{ list__append(Modes, [RetMode], Modes1) },
+		{ check_marker(Markers, class_method) ->
+			IsClassMethod = yes
+		;
+			IsClassMethod = no
+		},
 		module_add_mode(Module1, InstVarSet, FuncName, Modes1,
 			MaybeDet, Cond, Status, Context, function,
-			PredProcId, Module),
+			IsClassMethod, PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
 		{ Module = Module1 },
@@ -2365,8 +2380,9 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		{ Method = pred_mode(VarSet, PredName, Modes, MaybeDet, 
 			Cond, Context) },
 		{ Status = item_status(ImportStatus, _) },
+		{ IsClassMethod = yes },
 		module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, 
-			Cond, ImportStatus, Context, predicate,
+			Cond, ImportStatus, Context, predicate, IsClassMethod,
 			PredIdProcId, Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	;
@@ -2374,8 +2390,9 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 			Cond, Context) },
 		{ list__append(Modes, [RetMode], Modes1) },
 		{ Status = item_status(ImportStatus, _) },
-		module_add_mode(Module0, VarSet, FuncName, Modes1,
-			MaybeDet, Cond, ImportStatus, Context, function,
+		{ IsClassMethod = yes },
+		module_add_mode(Module0, VarSet, FuncName, Modes1, MaybeDet,
+			Cond, ImportStatus, Context, function, IsClassMethod,
 			PredIdProcId, Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	).
@@ -3029,16 +3046,17 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 
 :- pred module_add_mode(module_info, inst_varset, sym_name, list(mode),
 		maybe(determinism), condition, import_status, prog_context,
-		pred_or_func, pair(pred_id, proc_id), module_info, 
+		pred_or_func, bool, pair(pred_id, proc_id), module_info, 
 		io__state, io__state).
-:- mode module_add_mode(in, in, in, in, in, in, in, in, in, out, out, 
+:- mode module_add_mode(in, in, in, in, in, in, in, in, in, in, out, out, 
 		di, uo) is det.
 
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
 module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
-		Status, MContext, PredOrFunc, PredProcId, ModuleInfo) -->
+		Status, MContext, PredOrFunc, IsClassMethod, PredProcId,
+		ModuleInfo) -->
 
 		% Lookup the pred or func declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), optionally print a
@@ -3059,8 +3077,9 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ PredId = PredId0 }
 	;
 		preds_add_implicit_report_error(ModuleName,
-			PredOrFunc, PredName, Arity, Status, MContext,
-			"mode declaration", PredId, ModuleInfo0, ModuleInfo1)
+			PredOrFunc, PredName, Arity, Status, IsClassMethod,
+			MContext, "mode declaration", PredId,
+			ModuleInfo0, ModuleInfo1)
 	),
 
 		% Lookup the pred_info for this predicate
@@ -3121,16 +3140,16 @@ module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
 	% type inference.
 
 :- pred preds_add_implicit_report_error(module_name, pred_or_func, sym_name,
-		arity, import_status, prog_context, string,
+		arity, import_status, bool, prog_context, string,
 		pred_id, module_info, module_info, io__state, io__state).
-:- mode preds_add_implicit_report_error(in, in, in, in, in, in, in,
+:- mode preds_add_implicit_report_error(in, in, in, in, in, in, in, in,
 		out, in, out, di, uo) is det.
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
-		Status, Context, Description, PredId,
+		Status, IsClassMethod, Context, Description, PredId,
 		ModuleInfo0, ModuleInfo) -->
-	maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
-		Context, Description),
+	maybe_undefined_pred_error(PredName, Arity, PredOrFunc, Status,
+		IsClassMethod, Context, Description),
 
 	( { PredOrFunc = function } ->
 		{ adjust_func_arity(function, FuncArity, Arity) },
@@ -3325,8 +3344,9 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 			{ IsAssertion = no },
 
 			preds_add_implicit_report_error(ModuleName,
-				PredOrFunc, PredName, Arity, Status, Context,
-				"clause", PredId, ModuleInfo0, ModuleInfo1)
+				PredOrFunc, PredName, Arity, Status, no,
+				Context, "clause", PredId,
+				ModuleInfo0, ModuleInfo1)
 		)
 	),
 		% Lookup the pred_info for this pred,
@@ -3538,7 +3558,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		preds_add_implicit_report_error(ModuleName,
-			PredOrFunc, PredName, Arity, Status, Context,
+			PredOrFunc, PredName, Arity, Status, no, Context,
 			"`:- pragma import' declaration",
 			PredId, ModuleInfo0, ModuleInfo1)
 	),
@@ -3849,7 +3869,7 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		preds_add_implicit_report_error(ModuleName,
-			PredOrFunc, PredName, Arity, Status, Context,
+			PredOrFunc, PredName, Arity, Status, no, Context,
 			"`:- pragma c_code' declaration",
 			PredId, ModuleInfo0, ModuleInfo1)
 	),
@@ -3970,8 +3990,9 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 				[s(EvalMethodS)], Message1) },
 
 			preds_add_implicit_report_error(ModuleName,
-				PredOrFunc, PredName, Arity, Status, Context,
-				Message1, PredId, ModuleInfo0, ModuleInfo1),
+				PredOrFunc, PredName, Arity, Status, no,
+				Context, Message1, PredId,
+				ModuleInfo0, ModuleInfo1),
 			{ PredIds = [PredId] }
 		)
 	;
@@ -3987,8 +4008,9 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 				[s(EvalMethodS)], Message1) },
 
 			preds_add_implicit_report_error(ModuleName,
-				predicate, PredName, Arity, Status, Context,
-				Message1, PredId, ModuleInfo0, ModuleInfo1),
+				predicate, PredName, Arity, Status, no,
+				Context, Message1, PredId,
+				ModuleInfo0, ModuleInfo1),
 			{ PredIds = [PredId] }
 		)
 	),
@@ -7298,17 +7320,28 @@ undefined_mode_error(Name, Arity, Context, Description) -->
 	prog_out__write_sym_name_and_arity(Name/Arity),
 	io__write_string("' specifies non-existent mode.\n").
 
-:- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, prog_context,
-				string, io__state, io__state).
-:- mode maybe_undefined_pred_error(in, in, in, in, in, di, uo) is det.
+:- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, import_status,
+		bool, prog_context, string, io__state, io__state).
+:- mode maybe_undefined_pred_error(in, in, in, in, in, in, in, di, uo) is det.
 
 % This is not considered an unconditional error anymore:
-% if there is no :- pred declaration, we just infer one,
-% unless the `--no-infer-types' option was specified.
+% if there is no `:- pred' or `:- func' declaration,
+% and the declaration is local, and not a type class method,
+% and the `--infer-types' option was specified,
+% then we just add an implicit declaration for that predicate or
+% function, marking it as one whose type will be inferred.
 
-maybe_undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
+maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
+		Context, Description) -->
+	{ status_defined_in_this_module(Status, DefinedInThisModule) },
+	{ status_is_exported(Status, IsExported) },
 	globals__io_lookup_bool_option(infer_types, InferTypes),
-	( { InferTypes = yes } ->
+	(
+		{ DefinedInThisModule = yes },
+		{ IsExported = no },
+		{ IsClassMethod = no },
+		{ InferTypes = yes }
+	->
 		[]
 	;
 		io__set_exit_status(1),
