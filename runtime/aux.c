@@ -110,47 +110,48 @@ void proceed_msg(void)
 
 void cr1_msg(Word val0, const Word *addr)
 {
-	printf("put value %9x at ", val0);
+	printf("put value %9lx at ", (long) (Integer) val0);
 	printheap(addr);
 }
 
 void cr2_msg(Word val0, Word val1, const Word *addr)
 {
-	printf("put values %9x,%9x at ", val0, val1);
+	printf("put values %9lx,%9lx at ",	
+		(long) (Integer) val0, (long) (Integer) val1);
 	printheap(addr);
 }
 
 void incr_hp_msg(Word val, const Word *addr)
 {
 #ifdef CONSERVATIVE_GC
-	printf("allocated %d words at 0x%p\n", val, addr);
+	printf("allocated %ld words at 0x%p\n", (long) (Integer) val, addr);
 #else
-	printf("increment hp by %d from ", val);
+	printf("increment hp by %ld from ", (long) (Integer) val);
 	printheap(addr);
 #endif
 }
 
 void incr_sp_msg(Word val, const Word *addr)
 {
-	printf("increment sp by %d from ", val);
+	printf("increment sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
 }
 
 void decr_sp_msg(Word val, const Word *addr)
 {
-	printf("decrement sp by %d from ", val);
+	printf("decrement sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
 }
 
 void push_msg(Word val, const Word *addr)
 {
-	printf("push value %9x to ", val);
+	printf("push value %9lx to ", (long) (Integer) val);
 	printdetstack(addr);
 }
 
 void pop_msg(Word val, const Word *addr)
 {
-	printf("pop value %9x from ", val);
+	printf("pop value %9lx from ", (long) (Integer) val);
 	printdetstack(addr);
 }
 
@@ -165,13 +166,14 @@ void goto_msg(/* const */ Code *addr)
 
 void reg_msg(void)
 {
-	int i,x;
+	int	i;
+	Integer	x;
 
 	for(i=1; i<=8; i++) {
-		x = (int) get_reg(i);
-		if ( (int) heapmin <= x && x < (int) heapend)
-			x -= (int) heapmin;
-		printf("%8x ", x);
+		x = (Integer) get_reg(i);
+		if ( (Integer) heapmin <= x && x < (Integer) heapend)
+			x -= (Integer) heapmin;
+		printf("%8lx ", (long) x);
 	}
 	printf("\n");
 }
@@ -182,7 +184,7 @@ void reg_msg(void)
 
 void printint(Word n)
 {
-	printf("int %d\n", n);
+	printf("int %ld\n", (long) (Integer) n);
 }
 
 void printstring(const char *s)
@@ -192,23 +194,25 @@ void printstring(const char *s)
 
 void printheap(const Word *h)
 {
-	printf("ptr 0x%p, offset %3d words\n", (const void *) h, h - heapmin);
+	printf("ptr 0x%p, offset %3ld words\n",
+		(const void *) h, (long) (Integer) (h - heapmin));
 }
 
 void printdetstack(const Word *s)
 {
-	printf("ptr 0x%p, offset %3d words\n",
-		(const void *) s, s - detstackmin);
+	printf("ptr 0x%p, offset %3ld words\n",
+		(const void *) s, (long) (Integer) (s - detstackmin));
 }
 
 void printnondstack(const Word *s)
 {
 #ifdef	SPEED
-	printf("ptr 0x%p, offset %3d words\n",
-		(const void *) s, s - nondstackmin);
+	printf("ptr 0x%p, offset %3ld words\n",
+		(const void *) s, (long) (Integer) (s - nondstackmin));
 #else
-	printf("ptr 0x%p, offset %3d words, procedure %s\n",
-		(const void *) s, s - nondstackmin, (const char *) s[PREDNM]);
+	printf("ptr 0x%p, offset %3ld words, procedure %s\n",
+		(const void *) s, (long) (Integer) (s - nondstackmin),
+		(const char *) s[PREDNM]);
 #endif
 }
 
@@ -216,8 +220,8 @@ void dumpframe(/* const */ Word *fr)
 {
 	reg	int	i;
 
-	printf("frame at ptr 0x%p, offset %3d words\n",
-		(const void *) fr, fr - nondstackmin);
+	printf("frame at ptr 0x%p, offset %3ld words\n",
+		(const void *) fr, (long) (Integer) (fr - nondstackmin));
 #ifndef	SPEED
 	printf("\t predname  %s\n", bt_prednm(fr));
 #endif
@@ -227,8 +231,9 @@ void dumpframe(/* const */ Word *fr)
 	printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
 
 	for (i = 0; &bt_var(fr,i) > bt_prevfr(fr); i++)
-		printf("\t framevar(%d)  %d 0x%x\n",
-			i, bt_var(fr,i), bt_var(fr,i));
+		printf("\t framevar(%d)  %ld 0x%lx\n",
+			i, (long) (Integer) bt_var(fr,i),
+			(unsigned long) bt_var(fr,i));
 }
 
 void dumpnondstack(void)
@@ -238,58 +243,6 @@ void dumpnondstack(void)
 	printf("\nnondstack dump\n");
 	for (fr = maxfr; fr > nondstackmin; fr = bt_prevfr(fr))
 		dumpframe(fr);
-}
-
-#define	LIST_WRAP	4
-#define	LIST_TRUNC	13
-
-void printlist(Word p)
-{
-	Word	t;
-	Word	lastt;
-	Word	*ptr;
-	int	c;
-
-	t = p;
-	c = 0;
-	while (tag(t) != TAG_NIL && c < LIST_TRUNC)
-	{
-		if ((c % LIST_WRAP) == 0 && c != 0)
-			printf("\n\t ");
-
-		ptr = (Word *) body(t, TAG_CONS);
-		if (((int)ptr & 0x3) || ptr == 0
-		    || ptr < heapmin || ptr >= heapend)
-		{
-			printf("0x%x (%d)\n", t, t);
-			return;
-		}
-		printf("(0x%p)%d.", (void *) & field(TAG_CONS,t,0),
-			field(TAG_CONS,t,0));
-		fflush(stdout);
-		t = field(TAG_CONS, t, 1);
-
-		c += 1;
-	}
-
-	if (tag(t) != TAG_NIL)
-	{
-		printf("ETC.");
-		fflush(stdout);
-		lastt = t;
-		while (tag(t) != TAG_NIL)
-		{
-			lastt = t;
-			t = field(TAG_CONS, t, 1);
-		}
-
-		printf("(0x%p)%d.", (void *) & field(TAG_CONS, lastt, 0),
-			field(TAG_CONS, lastt, 0));
-		fflush(stdout);
-	}
-
-	printf("nil\n");
-	fflush(stdout);
 }
 
 void printlabel(/* const */ Code *w)
@@ -329,17 +282,17 @@ void printregs(const char *msg)
 static void print_ordinary_regs(void)
 {
 	int	i;
-	int	value;
+	Integer	value;
 
 	for (i = 0; i < 8; i++)
 	{
 		printf("r%d:      ", i + 1);
-		value = get_reg(i+1);
+		value = (Integer) get_reg(i+1);
 
-		if ((int) heapmin <= value && value < (int) heapend)
+		if ((Integer) heapmin <= value && value < (Integer) heapend)
 			printf("(heap) ");
 
-		printf("%d\n", value);
+		printf("%ld\n", (long) value);
 	}
 }
 
