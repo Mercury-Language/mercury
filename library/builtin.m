@@ -457,7 +457,7 @@ void sys_init_builtin_types_module(void) {
 	** we might initialize the base_type_info with
 	** garbage
 	*/
-	mercury__builtin__init();
+	mercury__private_builtin__init();
 
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_int_0, _int_);
