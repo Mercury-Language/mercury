@@ -3,8 +3,9 @@
 :- interface.
 :- import_module io.
 
-% main/2 is called by mercury_main() which is called on startup
-% this can be used as a hook for any actions needed on startup
+% To avoid link errors, there still has to be a main/2 defined somewhere
+% in the program; it won't be used, unless the C program calls
+% mercury_call_main(), which will call main/2.
 :- pred main(io__state::di, io__state::uo) is det.
 
 % a Mercury predicate with multiple modes
@@ -26,7 +27,7 @@
 :- implementation.
 :- import_module std_util, int, list.
 
-% for this example, we don't need to perform any actions on startup
+% for this example, main/2 isn't useful
 main --> [].
 
 % well, this is just a silly example...
