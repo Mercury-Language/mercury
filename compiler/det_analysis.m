@@ -52,7 +52,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, io.
+:- import_module hlds_module, hlds_pred, hlds_data, det_report, io.
 
 	% Perform determinism inference for local predicates with no
 	% determinism declarations, and determinism checking for all other
@@ -66,6 +66,12 @@
 :- pred determinism_check_proc(proc_id, pred_id, module_info, module_info,
 	io__state, io__state).
 :- mode determinism_check_proc(in, in, in, out, di, uo) is det.
+
+	% Infer the determinism of a procedure.
+
+:- pred det_infer_proc(pred_id, proc_id, module_info, module_info, globals,
+	determinism, determinism, list(det_msg)).
+:- mode det_infer_proc(in, in, in, out, in, out, out, out) is det.
 
 	% The tables for computing the determinism of compound goals
 	% from the determinism of their components.
@@ -206,12 +212,6 @@ global_final_pass(ModuleInfo0, ProcList, Debug, ModuleInfo) -->
 
 :- type soln_context	--->	all_solns ; first_soln.
 
-	% Infer the determinism of a procedure.
-
-:- pred det_infer_proc(pred_id, proc_id, module_info, module_info, globals,
-	determinism, determinism, list(det_msg)).
-:- mode det_infer_proc(in, in, in, out, in, out, out, out) is det.
-
 det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		Detism0, Detism, Msgs) :-
 
@@ -247,6 +247,10 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% Take the worst of the old and new detisms.
 		% This is needed to prevent loops on p :- not(p)
 		% at least if the initial assumed detism is det.
+		% This may also be needed to ensure that we don't change
+		% the interface determinism of procedures, if we are
+		% re-running determinism analysis.
+
 	determinism_components(Detism0, CanFail0, MaxSoln0),
 	determinism_components(Detism1, CanFail1, MaxSoln1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail),
