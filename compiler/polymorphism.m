@@ -1634,11 +1634,22 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, Impl, OrigArgTypes0,
 	require(unify(NEVs, NumExtraVars), 
 		"list length mismatch in polymorphism processing pragma_c"),
 
-	polymorphism__c_code_add_typeinfos(
-			PredTypeVars, PredTypeVarSet, ExistQVars, Impl,
-			ArgInfo0, ArgInfo1),
+%	The argument order is as follows:
+%	first the UnivTypeInfos (for universally quantified type variables)
+% 	then the ExistTypeInfos (for existentially quantified type variables)
+%	then the UnivTypeClassInfos (for universally quantified constraints)
+%	then the ExistTypeClassInfos (for existentially quantified constraints)
+%	and finally the original arguments of the predicate.
+%
+%	But since we're building ArgInfo by starting with the original
+%	arguments and prepending things as we go, we need to do it in
+%	reverse order.
+
 	polymorphism__c_code_add_typeclass_infos(
 			UnivCs, ExistCs, PredTypeVarSet, Impl,
+			ArgInfo0, ArgInfo1),
+	polymorphism__c_code_add_typeinfos(
+			PredTypeVars, PredTypeVarSet, ExistQVars, Impl,
 			ArgInfo1, ArgInfo),
 
 	%
