@@ -93,7 +93,7 @@ parse_class_name(ModuleName, Arg, VarSet, Result) :-
 :- mode parse_constrained_class(in, in, in, in, out) is det.
 
 parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
-	parse_class_constraints(ModuleName, Constraints, 
+	parse_superclass_constraints(ModuleName, Constraints,
 		ParsedConstraints),
 	(
 		ParsedConstraints = ok(ConstraintList),
@@ -117,6 +117,34 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 		ParsedConstraints = error(String, Term),
 		Result = error(String, Term)
 	).
+
+:- pred parse_superclass_constraints(module_name, term, 
+	maybe1(list(class_constraint))).
+:- mode parse_superclass_constraints(in, in, out) is det.
+
+parse_superclass_constraints(ModuleName, Constraints, Result) :-
+	parse_class_constraints(ModuleName, Constraints, ParsedConstraints),
+	(
+		ParsedConstraints = ok(ConstraintList),
+		(
+			NonVarArg = lambda([C::in, NonVar::out] is semidet, (
+				C = constraint(_, Types),
+				list__filter(
+					lambda([A::in] is semidet, 
+						\+ type_util__var(A, _)),
+					Types, [NonVar | _])
+			)),
+			list__filter_map(NonVarArg, ConstraintList, [E|_Es])
+		->
+			Result = error("constraints on class declaration may only constrain type variables, not compound types", E)
+		;
+			Result = ParsedConstraints
+		)
+	;
+		ParsedConstraints = error(_, _),
+		Result = ParsedConstraints
+	).
+
 
 :- pred parse_unconstrained_class(module_name, term, varset, maybe1(item)).
 :- mode parse_unconstrained_class(in, in, in, out) is det.
@@ -263,8 +291,12 @@ parse_class_constraint_list(ModuleName, [C0|C0s], Result) :-
 parse_class_constraint(_ModuleName, Constraint, Result) :-
 	(
 		parse_qualified_term(Constraint, Constraint, "class constraint",
-			ok(ClassName, Args))
+			ok(ClassName, Args0))
 	->
+		% we need to enforce the invariant that types in type class
+		% constraints do not contain any info in their term__context
+		% fields
+		strip_term_contexts(Args0, Args),
 		Result = ok(constraint(ClassName, Args))
 	;
 		Result = error("expected atom as class name", Constraint)
@@ -337,17 +369,16 @@ parse_instance_constraints(ModuleName, Constraints, Result) :-
 	(
 		ParsedConstraints = ok(ConstraintList),
 		(
-			NonVarArg = lambda([C::in, NonVar::out] is semidet,
-				(
-					C = constraint(_, Types),
-					list__filter(
-						lambda([A::in] is semidet, 
-							\+ type_util__var(A,_)),
-						Types, [NonVar|_])
-				)),
+			NonVarArg = lambda([C::in, NonVar::out] is semidet, (
+				C = constraint(_, Types),
+				list__filter(
+					lambda([A::in] is semidet, 
+						\+ type_util__var(A, _)),
+					Types, [NonVar | _])
+			)),
 			list__filter_map(NonVarArg, ConstraintList, [E|_Es])
 		->
-			Result = error("expected variables in constraints of instance declaration", E)
+			Result = error("constraints on instance declaration may only constrain type variables, not compound types", E)
 		;
 			Result = ParsedConstraints
 		)

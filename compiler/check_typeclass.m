@@ -413,6 +413,9 @@ matching_mode_list(ModuleInfo, [A|As], [B|Bs]) :-
 
 %---------------------------------------------------------------------------%
 
+% check that the superclass constraints are satisfied for the
+% types in this instance declaration
+
 :- pred check_superclass_conformance(list(class_constraint), list(var),
 	varset, module_info, hlds_instance_defn, hlds_instance_defn, 
 	list(string), list(string)).
@@ -446,41 +449,18 @@ check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet,
 	module_info_classes(ModuleInfo, ClassTable),
 
 	(
-			% Reduce the superclass constraints
+			% Try to reduce the superclass constraints,
+			% using the declared instance constraints
+			% and the usual context reduction rules.
 		typecheck__reduce_context_by_rule_application(InstanceTable, 
-			ClassTable, TypeSubst, InstanceVarSet1, InstanceVarSet2,
+			ClassTable, InstanceConstraints, TypeSubst,
+			InstanceVarSet1, InstanceVarSet2,
 			Proofs0, Proofs1, SuperClasses, 
-			ReducedSuperClasses0),
-
-			% Reduce the constraints from the instance declaration
-		typecheck__reduce_context_by_rule_application(InstanceTable, 
-			ClassTable, TypeSubst, InstanceVarSet2, InstanceVarSet2,
-			Proofs1, Proofs2, InstanceConstraints,
-			ReducedInstanceConstraints0)
-	->
-		ReducedSuperClasses0 = ReducedSuperClasses,
-		ReducedInstanceConstraints = ReducedInstanceConstraints0,
-		Proofs = Proofs2, 
-		InstanceVarSet = InstanceVarSet2
-	;
-			% This should never happen, since the superclass and
-			% instance constraints must all contain only variables.
-			% Context reduction can only fail if there is a 
-			% constraint with a type with a bound top-level functor
-			% for which there is no instance decl.
-		error("check_superclass_conformance: context reduction failed")
-	),
-
-		% Check for superclass constraints that are unsatisfied by
-		% the instance declaration
-	list__delete_elems(ReducedSuperClasses, ReducedInstanceConstraints,
-		Unsatisfied),
-	(
-		Unsatisfied = []
+			[])
 	->
 		Errors = Errors0,
 		InstanceDefn = hlds_instance_defn(A, InstanceConstraints,
-			InstanceTypes, D, E, InstanceVarSet, Proofs)
+			InstanceTypes, D, E, InstanceVarSet2, Proofs1)
 	;
 			% XXX improve the error message
 		NewError = "superclass constraint unsatisfied",
@@ -489,4 +469,3 @@ check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet,
 	).
 
 %---------------------------------------------------------------------------%
-

@@ -223,7 +223,19 @@
 	;	share
 	;	automatic.
 
-:- type class_constraint	---> constraint(class_name, list(type)).
+	% A class constraint represents a constraint that a given
+	% list of types is a member of the specified type class.
+	% It is an invariant of this data structure that
+	% the types in a class constraint do not contain any
+	% information in their term__context fields.
+	% This invariant is needed to ensure that we can do
+	% unifications, map__lookups, etc., and get the
+	% expected semantics.
+	% Any code that creates new class constraints must
+	% ensure that this invariant is preserved,
+	% probably by using strip_term_contexts/2 in type_util.m.
+:- type class_constraint
+	---> constraint(class_name, list(type)).
 
 :- type class_name == sym_name.
 

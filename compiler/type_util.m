@@ -64,7 +64,7 @@
 
 	% Given a variable type, return its type variable.
 	
-:- pred type_util__var(type, var).
+:- pred type_util__var(type, tvar).
 :- mode type_util__var(in, out) is semidet.
 :- mode type_util__var(out, in) is det.
 
@@ -180,6 +180,12 @@
 :- pred apply_subst_to_constraint(substitution, class_constraint,
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
+
+% strip out the term__context fields, replacing them with empty
+% term__contexts (as obtained by term__context_init/1)
+% in a type or list of types
+:- pred strip_term_contexts(list(term)::in, list(term)::out) is det.
+:- pred strip_term_context(term::in, term::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -720,7 +726,10 @@ apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
 
 apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types),
+	term__apply_rec_substitution_to_list(Types0, Subst, Types1),
+	% we need to maintain the invariant that types in class constraints
+	% do not have any information in their term__context fields
+	strip_term_contexts(Types1, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_constraints(Subst, Constraints0, Constraints) :-
@@ -730,6 +739,14 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
 	term__apply_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
+
+strip_term_contexts(Terms, StrippedTerms) :-
+	list__map(strip_term_context, Terms, StrippedTerms).
+	
+strip_term_context(term__variable(V), term__variable(V)).
+strip_term_context(term__functor(F, As0, _C0), term__functor(F, As, C)) :-
+	term__context_init(C),
+	strip_term_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

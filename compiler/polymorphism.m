@@ -1143,7 +1143,10 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 	term__vars_list(NewConstrainedTypes, NewConstrainedVars),
 	list__append(NewConstrainedVars, ConstrainedVars0, ConstrainedVars),
 	term__apply_rec_substitution_to_list(NewConstrainedTypes, TypeSubst, 
-		ConstrainedTypes),
+		ConstrainedTypes0),
+	% we need to maintain the invariant that types in class constraints
+	% do not contain any information in their term__context fields
+	strip_term_contexts(ConstrainedTypes0, ConstrainedTypes),
 	NewC = constraint(ClassName, ConstrainedTypes),
 
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0, TypeInfoMap0, 
@@ -1302,7 +1305,11 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 			SubClassConstraint0 = 
 				constraint(SubClassName, SubClassTypes0),
 			term__apply_substitution_to_list(SubClassTypes0, Subst,
-				SubClassTypes),
+				SubClassTypes1),
+			% we need to maintain the invariant that types in
+			% class constraints do not contain any information
+			% in their term__context fields
+			strip_term_contexts(SubClassTypes1, SubClassTypes),
 			SubClassConstraint = 
 				constraint(SubClassName, SubClassTypes),
 			list__length(SubClassTypes, SubClassArity),

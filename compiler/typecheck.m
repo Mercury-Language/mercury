@@ -159,11 +159,11 @@
 	% the instance rules or superclass rules, building up proofs for
 	% redundant constraints
 :- pred typecheck__reduce_context_by_rule_application(instance_table,
-	class_table, tsubst, tvarset, tvarset, 
+	class_table, list(class_constraint), tsubst, tvarset, tvarset, 
 	map(class_constraint, constraint_proof), 
 	map(class_constraint, constraint_proof),
 	list(class_constraint), list(class_constraint)).
-:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, out, 
+:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, in, out, 
 	in, out, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -909,6 +909,8 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_set_called_predid(PredCallId, TypeCheckInfo0,
 		TypeCheckInfo1),
 
+	typecheck_info_get_type_assign_set(TypeCheckInfo1, OrigTypeAssignSet),
+
 		% look up the called predicate's arg types
 	typecheck_info_get_module_info(TypeCheckInfo1, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -976,9 +978,10 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 			% Arguably, we could do context reduction at
 			% a different point. See the paper:
 			% "Type classes: an exploration of the design
-			% space", S.P. Jones, M. Jones 1997.
+			% space", S. Peyton-Jones, M. Jones 1997.
 			% for a discussion of some of the issues.
-		perform_context_reduction(TypeCheckInfo2, TypeCheckInfo)
+		perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo2,
+			TypeCheckInfo)
 
 	;
 		invalid_pred_id(PredId),
@@ -1649,8 +1652,11 @@ checkpoint_tree_stats(Description, Tree) -->
 typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
+	=(OrigTypeCheckInfo),
+	{ typecheck_info_get_type_assign_set(OrigTypeCheckInfo,
+		OrigTypeAssignSet) },
 	typecheck_unify_var_functor(X, F, As),
-	perform_context_reduction.
+	perform_context_reduction(OrigTypeAssignSet).
 typecheck_unification(X, 
 		lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal0),
 		lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, Goal)) -->
@@ -2910,10 +2916,7 @@ typecheck_info_add_type_assign_constraints(NewConstraints, TypecheckInfo0,
 typecheck_constraints(yes, TypeCheckInfo, TypeCheckInfo).
 typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 		% get the declared constraints
-	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints0),
-		% put them in the canonical order
-	list__sort_and_remove_dups(DeclaredConstraints0, DeclaredConstraints),
-
+	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
 
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
 
@@ -2923,13 +2926,9 @@ typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 				CalculatedConstraints0),
 			type_assign_get_type_bindings(TypeAssign, Bindings),
 			apply_rec_subst_to_constraints(Bindings,
-				CalculatedConstraints0, CalculatedConstraints1),
-			list__sort_and_remove_dups(CalculatedConstraints1, 
-				CalculatedConstraints),
-				% XXX. This needs thought. _When_ exactly
-				% do two constraint sets match? This is
-				% certainly too strict.
-			CalculatedConstraints = DeclaredConstraints
+				CalculatedConstraints0, CalculatedConstraints),
+			constraints_match(CalculatedConstraints,
+				DeclaredConstraints)
 		)),
 
 		% reject any type assignment whose constraints don't match the
@@ -2948,12 +2947,21 @@ typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 			TypeAssignSet, TypeCheckInfo)
 	).
 
+			
+	% The calculated constraints must be a subset of the declared
+	% constraints.
+:- pred constraints_match(list(class_constraint)::in,
+		list(class_constraint)::in) is semidet.
+constraints_match(CalculatedConstraints, DeclaredConstraints) :-
+	all [C] list__member(C, CalculatedConstraints) =>
+		list__member(C, DeclaredConstraints).
+
 %-----------------------------------------------------------------------------%
 
-:- pred report_unsatisfied_constraints(type_assign_set,
-	typecheck_info, typecheck_info).
-:- mode report_unsatisfied_constraints(in,
-	typecheck_info_di, typecheck_info_uo) is det.
+:- pred report_unsatisfied_constraints(type_assign_set, typecheck_info,
+					typecheck_info).
+:- mode report_unsatisfied_constraints(in, typecheck_info_di,
+					typecheck_info_uo) is det.
 
 report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
@@ -2982,7 +2990,7 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 			io__write_string("  ", IO1, IO2),
 			io__write_list(Unsatisfied, ", ",
 				mercury_output_constraint(TheVarSet), IO2, IO3),
-			io__write_char('\n', IO3, IO)
+			io__write_string(".\n", IO3, IO)
 		)),
 
 		% XXX this won't be very pretty when there are
@@ -2995,20 +3003,28 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-% perform_context_reduction(TypeCheckInfo0, TypeCheckInfo) is true iff
+% perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo)
+%	is true iff either
 % 	TypeCheckInfo is the typecheck_info that results from performing
-% 	context reduction on the type_assigns in TypeCheckInfo0.
+% 	context reduction on the type_assigns in TypeCheckInfo0,
+%	or, if there is no valid context reduction, then
+%	TypeCheckInfo is TypeCheckInfo0 with the type assign set replaced by
+%	OrigTypeAssignSet (see below).
 %
 % 	Context reduction is the process of eliminating redundant constraints
 % 	from the constraints in the type_assign and adding the proof of the
 % 	constraint's redundancy to the proofs in the same type_assign. There
-% 	are two ways in which a constraint may be redundant:
-% 		- if there is an instance declaration that may be applied, the
-% 		  constraint is replaced by the constraints from that instance
-% 		  declaration
+% 	are three ways in which a constraint may be redundant:
+%		- if a constraint occurs in the pred/func declaration for this
+%		  predicate or function, then it is redundant
+%		  (in this case, the proof is trivial, so there is no need
+%		  to record it in the proof map)
 % 		- if a constraint is present in the set of constraints and all
 % 		  of the "superclass" constraints for the constraints are all
 % 		  present, then all the superclass constraints are eliminated
+% 		- if there is an instance declaration that may be applied, the
+% 		  constraint is replaced by the constraints from that instance
+% 		  declaration
 %
 % 	In addition, context reduction removes repeated constraints.
 %
@@ -3019,17 +3035,24 @@ report_unsatisfied_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 %	instance declaration for that type.
 %
 %	If all type_assigns from the typecheck_info are rejected, than an
-%	appropriate error message is given.
+%	appropriate error message is given, and the type_assign_set is
+%	restored to the original one given by OrigTypeAssignSet.
+%	The reason for this is to avoid reporting the same error at
+%	every subsequent call to perform_context_reduction.
 
-:- pred perform_context_reduction(typecheck_info, typecheck_info).
-:- mode perform_context_reduction(typecheck_info_di, typecheck_info_uo) is det.
+:- pred perform_context_reduction(type_assign_set,
+			typecheck_info, typecheck_info).
+:- mode perform_context_reduction(in,
+			typecheck_info_di, typecheck_info_uo) is det.
 
-perform_context_reduction(TypeCheckInfo0, TypeCheckInfo) :-
+perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_module_info(TypeCheckInfo0, ModuleInfo),
+	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints),
 	module_info_classes(ModuleInfo, ClassTable),
 	module_info_instances(ModuleInfo, InstanceTable),
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
-	list__filter_map(reduce_type_assign_context(ClassTable, InstanceTable), 
+	list__filter_map(reduce_type_assign_context(ClassTable, InstanceTable,
+			DeclaredConstraints), 
 		TypeAssignSet0, TypeAssignSet),
 	(
 			% Check that this context reduction hasn't eliminated
@@ -3038,17 +3061,19 @@ perform_context_reduction(TypeCheckInfo0, TypeCheckInfo) :-
 		TypeAssignSet0 \= []
 	->
 		report_unsatisfied_constraints(TypeAssignSet0,
-			TypeCheckInfo0, TypeCheckInfo)
+			TypeCheckInfo0, TypeCheckInfo1),
+		typecheck_info_set_type_assign_set(TypeCheckInfo1,
+			OrigTypeAssignSet, TypeCheckInfo)
 	;
 		typecheck_info_set_type_assign_set(TypeCheckInfo0,
 			TypeAssignSet, TypeCheckInfo)
 	).
 
-:- pred reduce_type_assign_context(class_table, instance_table, 
-	type_assign, type_assign).
-:- mode reduce_type_assign_context(in, in, in, out) is semidet.
+:- pred reduce_type_assign_context(class_table, instance_table,
+		list(class_constraint), type_assign, type_assign).
+:- mode reduce_type_assign_context(in, in, in, in, out) is semidet.
 
-reduce_type_assign_context(ClassTable, InstanceTable, 
+reduce_type_assign_context(ClassTable, InstanceTable, DeclaredConstraints,
 		TypeAssign0, TypeAssign) :-
 	type_assign_get_typeclass_constraints(TypeAssign0, Constraints0),
 	type_assign_get_type_bindings(TypeAssign0, Bindings),
@@ -3056,7 +3081,8 @@ reduce_type_assign_context(ClassTable, InstanceTable,
 	type_assign_get_constraint_proofs(TypeAssign0, Proofs0),
 
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		ClassTable, Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
+		ClassTable, DeclaredConstraints,
+		Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
 		Constraints0, Constraints),
 
 	type_assign_set_typeclass_constraints(TypeAssign0, Constraints,
@@ -3066,38 +3092,56 @@ reduce_type_assign_context(ClassTable, InstanceTable,
 
 
 typecheck__reduce_context_by_rule_application(InstanceTable, ClassTable, 
-		Bindings, Tvarset0, Tvarset, Proofs0, Proofs, 
-		Constraints0, Constraints) :-
-	apply_instance_rules(Constraints0, InstanceTable, Bindings, 
-		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints1, Changed1),
-	apply_class_rules(Constraints1, ClassTable, Bindings, Tvarset1,
-		Proofs1, Proofs2, Constraints2, Changed2),
+		DeclaredConstraints, Bindings, Tvarset0, Tvarset,
+		Proofs0, Proofs, Constraints0, Constraints) :-
+	apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints1),
+	eliminate_declared_constraints(Constraints1, DeclaredConstraints,
+		Constraints2, Changed1),
+	apply_class_rules(Constraints2, DeclaredConstraints, ClassTable,
+		Tvarset0, Proofs0, Proofs1, Constraints3, Changed2),
+	apply_instance_rules(Constraints3, InstanceTable, 
+		Tvarset0, Tvarset1, Proofs1, Proofs2, Constraints4, Changed3),
 	(
-		Changed1 = no, Changed2 = no
+		Changed1 = no, Changed2 = no, Changed3 = no
 	->
 			% We have reached fixpoint
-		list__sort_and_remove_dups(Constraints2, Constraints),
+		list__sort_and_remove_dups(Constraints4, Constraints),
 		Tvarset = Tvarset1,
 		Proofs = Proofs2
 	;
 		typecheck__reduce_context_by_rule_application(InstanceTable,
-			ClassTable, Bindings, Tvarset1, Tvarset, Proofs2,
-			Proofs, Constraints2, Constraints)
+			ClassTable, DeclaredConstraints, Bindings, Tvarset1,
+			Tvarset, Proofs2, Proofs, Constraints4, Constraints)
+	).
+
+:- pred eliminate_declared_constraints(list(class_constraint), 
+	list(class_constraint), list(class_constraint), bool).
+:- mode eliminate_declared_constraints(in, in, out, out) is det.
+
+eliminate_declared_constraints([], _, [], no).
+eliminate_declared_constraints([C|Cs], DeclaredCs, NewCs, Changed) :-
+	eliminate_declared_constraints(Cs, DeclaredCs, NewCs0, Changed0),
+	(
+		list__member(C, DeclaredCs)
+	->
+		NewCs = NewCs0,
+		Changed = yes
+	;
+		NewCs = [C|NewCs0],
+		Changed = Changed0
 	).
 
 :- pred apply_instance_rules(list(class_constraint), instance_table,
-	tsubst, tvarset, tvarset, map(class_constraint, constraint_proof),
+	tvarset, tvarset, map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof), list(class_constraint), bool).
-:- mode apply_instance_rules(in, in, in, in, out, in, out, out, out) is semidet.
+:- mode apply_instance_rules(in, in, in, out, in, out, out, out) is semidet.
 
-apply_instance_rules([], _, _, Names, Names, Proofs, Proofs, [], no).
-apply_instance_rules([C|Cs], InstanceTable, Bindings, 
-		TVarSet, NewTVarSet, Proofs0, Proofs, 
-		Constraints, Changed) :-
-	C = constraint(ClassName, Types0),
-	list__length(Types0, Arity),
+apply_instance_rules([], _, Names, Names, Proofs, Proofs, [], no).
+apply_instance_rules([C|Cs], InstanceTable, TVarSet, NewTVarSet,
+		Proofs0, Proofs, Constraints, Changed) :-
+	C = constraint(ClassName, Types),
+	list__length(Types, Arity),
 	map__lookup(InstanceTable, class_id(ClassName, Arity), Instances),
-	term__apply_rec_substitution_to_list(Types0, Bindings, Types),
 	(
 		find_matching_instance_rule(Instances, ClassName, Types,
 			TVarSet, NewTVarSet0, Proofs0, Proofs1,
@@ -3109,13 +3153,31 @@ apply_instance_rules([C|Cs], InstanceTable, Bindings,
 		Proofs2 = Proofs1,
 		Changed1 = yes
 	;
+			%
+			% Check that the constraint is not a ground
+			% constraint.  We disallow ground constraints
+			% for which there are no matching instance rules,
+			% even though the module system means that it would
+			% make sense to allow them: even if there
+			% is no instance declaration visible in the current
+			% module, there may be one visible in the caller.
+			% The reason we disallow them is that in practice
+			% allowing this causes type inference to let too
+			% many errors slip through, with the error diagnosis
+			% being too far removed from the real cause of the
+			% error.  Note that ground constraints *are* allowed
+			% if you declare them, since we removed declared
+			% constraints before checking instance rules.
+			%
+		term__contains_var_list(Types, _TVar),
+
 			% Put the old constraint at the front of the list
 		NewConstraints = [C],
 		NewTVarSet1 = TVarSet,
 		Proofs2 = Proofs0,
 		Changed1 = no
 	),
-	apply_instance_rules(Cs, InstanceTable, Bindings, NewTVarSet1,
+	apply_instance_rules(Cs, InstanceTable, NewTVarSet1,
 		NewTVarSet, Proofs2, Proofs, TheRest, Changed2),
 	bool__or(Changed1, Changed2, Changed),
 	list__append(NewConstraints, TheRest, Constraints).
@@ -3178,20 +3240,21 @@ find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 			Proofs, NewConstraints)
 	).
 
-	% To reduce the context using class declarations, we scan the 
-	% context one constraint at a time. For each class in the constraint,
-	% we check to see if any of its superclasses is also a constraint, and 
-	% if so, delete the superclass from the constraint list as it is
-	% redundant.
-:- pred apply_class_rules(list(class_constraint), class_table,
-	tsubst, tvarset, map(class_constraint, constraint_proof),
+	% To reduce the context using class declarations, we scan the
+	% declared contexts plus the current inferred context one
+	% constraint at a time.  For each such class constraint, we
+	% check to see if any of its superclasses is also a constraint,
+	% and if so, delete the superclass from the current constraint
+	% list as it is redundant.
+:- pred apply_class_rules(list(class_constraint), list(class_constraint),
+	class_table, tvarset, map(class_constraint, constraint_proof),
 	map(class_constraint, constraint_proof), list(class_constraint), bool).
 :- mode apply_class_rules(in, in, in, in, in, out, out, out) is det.
 
-apply_class_rules(Constraints0, ClassTable, Bindings, TVarSet, 
+apply_class_rules(Constraints0, DeclaredConstraints, ClassTable, TVarSet, 
 		Proofs0, Proofs, Constraints, Changed) :-
-	apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints1),
-	apply_class_rules_2(Constraints1, Constraints1, ClassTable,
+	list__append(DeclaredConstraints, Constraints0, AllConstraints),
+	apply_class_rules_2(AllConstraints, Constraints0, ClassTable,
 		TVarSet, Proofs0, Proofs, Constraints, Changed).
 
 :- pred apply_class_rules_2(list(class_constraint), list(class_constraint),
@@ -3199,12 +3262,13 @@ apply_class_rules(Constraints0, ClassTable, Bindings, TVarSet,
 	map(class_constraint, constraint_proof), list(class_constraint), bool).
 :- mode apply_class_rules_2(in, in, in, in, in, out, out, out) is det.
 
-	% The first argument is the list of constraints left to be checked.
-	% The second argument is the list of constraints that have not been
-	% rejected. If a redundant constraint is found, it is deleted from
-	% both (if it is still in the first list).
+	% The first argument is the list of declared or inferred constraints
+	% left to be checked.
+	% The second argument is the list of currently inferred constraints
+	% that have not been rejected. If a redundant constraint is found,
+	% it is deleted from both (if it is still in the first list).
 apply_class_rules_2([], Constraints, _, _, Proofs, Proofs, Constraints, no).
-apply_class_rules_2([C|Cs], AllConstraints, ClassTable, TVarSet,
+apply_class_rules_2([C|Cs], Constraints0, ClassTable, TVarSet,
 		Proofs0, Proofs, Constraints, Changed) :-
 	C = constraint(ClassName, Types),
 	list__length(Types, Arity),
@@ -3224,14 +3288,13 @@ apply_class_rules_2([C|Cs], AllConstraints, ClassTable, TVarSet,
 			type_list_subsumes(NewClassTypes, Types, Subst),
 			apply_rec_subst_to_constraint(Subst, ThisConstraint, 
 				RenamedConstraint),
-			list__member(RenamedConstraint, AllConstraints)
+			list__member(RenamedConstraint, Constraints0)
 		)),
 	list__filter_map(IsRedundant, ParentClassConstraints,
 		RedundantConstraints),
 
 		% Delete the redundant constraints
-	list__delete_elems(AllConstraints, RedundantConstraints,
-		NewConstraints),
+	list__delete_elems(Constraints0, RedundantConstraints, Constraints1),
 	list__delete_elems(Cs, RedundantConstraints, NewCs),
 
 		% Remember why the constraints were redundant
@@ -3250,7 +3313,7 @@ apply_class_rules_2([C|Cs], AllConstraints, ClassTable, TVarSet,
 		Changed1 = yes
 	),
 
-	apply_class_rules_2(NewCs, NewConstraints, ClassTable,
+	apply_class_rules_2(NewCs, Constraints1, ClassTable,
 		NewTVarSet, Proofs1, Proofs, Constraints, Changed2),
 	bool__or(Changed1, Changed2, Changed).
 
