@@ -285,6 +285,7 @@
 
 :- implementation.
 :- import_module require, globals, options.
+:- import_module exprn_aux.
 
 %-----------------------------------------------------------------------------%
 
@@ -326,10 +327,9 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("{\n"),
 	output_c_module_init_list_2(Modules, BaseName, 0, 40, 0, InitFuncs),
 	io__write_string("}\n\n"),
-	io__write_string("/* suppress gcc warning */\n"),
-	io__write_string("extern void "),
+	io__write_string("void "),
 	output_init_name(BaseName),
-	io__write_string("(void);\n"),
+	io__write_string("(void); /* suppress gcc warning */\n"),
 	io__write_string("void "),
 	output_init_name(BaseName),
 	io__write_string("(void)\n"),
@@ -807,13 +807,53 @@ output_rval_decls(unop(_, Rval)) -->
 output_rval_decls(binop(_, Rval1, Rval2)) -->
 	output_rval_decls(Rval1),
 	output_rval_decls(Rval2).
+
+	%
+	% Originally we used to output static constants as
+	%
+	%	static const Word mercury_const_...[] = { ... };
+	%
+	% However, if the initializer contains any code addresses,
+	% this causes problems with gcc when using shared libraries,
+	% because the constant will need to be dynamically linked,
+	% but gcc notices that it is of type `Word' which is not a pointer
+	% type and hence assumes that it will not need relocation,
+	% and places it in the `rdata' section.  This causes minor
+	% problems with Solaris: if you use gcc 2.7 and link with `gcc -shared',
+	% you get a link error; the work-around is to link with `gcc -G'.
+	% It also causes major problems with Irix 5: the relocation is not
+	% done, resulting in a core dump at runtime.
+	%
+	% The gcc maintainers said that this was a bug in our code, since it
+	% converted a pointer to an integer, which is ANSI/ISO C says is
+	% implementation-defined.  Hmmph.
+	%
+	% So now we output it as
+	%
+	%	static const Word * mercury_const_...[] = { (Word *)... };
+	%
+	% if the constant refers to any code addresses.
+	% We output the original format if possible, since we want it
+	% to go in rdata if it can, because rdata is shared.
+	% References to other static consts should be resolved at compile time,
+	% not link time, so should not cause problems.
+	%
 output_rval_decls(create(_Tag, ArgVals, Label)) -->
 	output_cons_arg_decls(ArgVals),
-	io__write_string("static const Word mercury_const_"),
-	io__write_int(Label),
-	io__write_string("[] = {\n\t\t"),
-	output_cons_args(ArgVals),
-	io__write_string("};\n\t  ").
+	{ exprn_aux__maybe_rval_list_code_addrs(ArgVals, CodeAddrs) },
+	( { CodeAddrs = [] } ->
+		io__write_string("static const Word mercury_const_"),
+		io__write_int(Label),
+		io__write_string("[] = {\n\t\t"),
+		output_cons_args(ArgVals, no),
+		io__write_string("};\n\t  ")
+	;
+		io__write_string("static const Word * mercury_const_"),
+		io__write_int(Label),
+		io__write_string("[] = {\n\t\t"),
+		output_cons_args(ArgVals, yes),
+		io__write_string("};\n\t  ")
+	).
 
 :- pred output_cons_arg_decls(list(maybe(rval)), io__state, io__state).
 :- mode output_cons_arg_decls(in, di, uo) is det.
@@ -827,12 +867,20 @@ output_cons_arg_decls([Arg | Args]) -->
 	),
 	output_cons_arg_decls(Args).
 
-:- pred output_cons_args(list(maybe(rval)), io__state, io__state).
-:- mode output_cons_args(in, di, uo) is det.
+:- pred output_cons_args(list(maybe(rval)), bool, io__state, io__state).
+:- mode output_cons_args(in, in, di, uo) is det.
+% 	output_cons_args(Args, CastToPointer):
+%		output the arguments;
+%		if CastToPointer is yes, then cast them all to `(Word *)'.
 
-output_cons_args([]) --> [].
-output_cons_args([Arg | Args]) -->
+output_cons_args([], _) --> [].
+output_cons_args([Arg | Args], CastToPointer) -->
 	( { Arg = yes(Rval) } ->
+		( { CastToPointer = yes } ->
+			io__write_string("(Word *) ")
+		;
+			[]
+		),
 		output_rval(Rval)
 	;
 		% `Arg = no' means the argument is uninitialized,
@@ -841,7 +889,7 @@ output_cons_args([Arg | Args]) -->
 	),
 	( { Args \= [] } ->
 		io__write_string(",\n\t\t"),
-		output_cons_args(Args)
+		output_cons_args(Args, CastToPointer)
 	;
 		io__write_string("\n\t  ")
 	).

@@ -32,6 +32,9 @@
 :- pred exprn_aux__simplify_rval(rval, rval).
 :- mode exprn_aux__simplify_rval(in, out) is det.
 
+	% the following predicates take an lval/rval (list)
+	% and return a list of the code_addrs that it references.
+
 :- pred exprn_aux__rval_list_code_addrs(list(rval), list(code_addr)).
 :- mode exprn_aux__rval_list_code_addrs(in, out) is det.
 
@@ -43,6 +46,10 @@
 
 :- pred exprn_aux__lval_code_addrs(lval, list(code_addr)).
 :- mode exprn_aux__lval_code_addrs(in, out) is det.
+
+:- pred exprn_aux__maybe_rval_list_code_addrs(list(maybe(rval)),
+						list(code_addr)).
+:- mode exprn_aux__maybe_rval_list_code_addrs(in, out) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -493,10 +500,6 @@ exprn_aux__lval_list_code_addrs([Lval | Lvals], CodeAddrs) :-
 
 	% give a list of maybe(rval), return a list of the code_addrs
 	% that are reference by that list
-
-:- pred exprn_aux__maybe_rval_list_code_addrs(list(maybe(rval)),
-						list(code_addr)).
-:- mode exprn_aux__maybe_rval_list_code_addrs(in, out) is det.
 
 exprn_aux__maybe_rval_list_code_addrs([], []).
 exprn_aux__maybe_rval_list_code_addrs([MaybeRval | MaybeRvals], CodeAddrs) :-
