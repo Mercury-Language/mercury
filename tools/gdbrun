@@ -26,6 +26,7 @@ do
 	case "$arg" in
 	*" "*)	runargs="$runargs \"$arg\"" ;;
 	*)	runargs="$runargs $arg" ;;
+	esac
 done
 echo "run$runargs" > "$tmpfile"
 
