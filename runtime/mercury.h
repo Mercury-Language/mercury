@@ -273,7 +273,14 @@ typedef struct MR_FO_PseudoTypeInfo_Struct18 MR_FO_PseudoTypeInfo_Struct18;
 typedef struct MR_FO_PseudoTypeInfo_Struct19 MR_FO_PseudoTypeInfo_Struct19;
 typedef struct MR_FO_PseudoTypeInfo_Struct20 MR_FO_PseudoTypeInfo_Struct20;
 
-/* The chain of stack frames, used for accurate GC. */
+/*
+** The chain of stack frames, used for accurate GC.
+**
+** Any changes to this struct may require changes to
+** compiler/ml_elim_nested.m, which generates structs
+** that whose initial members have to match the layout here,
+** and which assumes that the `prev' is at offset zero.
+*/
 struct MR_StackChain {
 	struct MR_StackChain *prev;
 	void (*trace)(void *this_frame);

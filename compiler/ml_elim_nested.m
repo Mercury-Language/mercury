@@ -2086,18 +2086,26 @@ append_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
 :- func ml_gen_unchain_frame(mlds__context, elim_info) = mlds__statement.
 ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 	EnvPtrTypeName = ElimInfo ^ env_ptr_type_name,
-	ModuleName = ElimInfo ^ module_name,
 	%
 	% Generate code to remove this frame from the stack chain:
+	%
 	%	stack_chain = stack_chain->prev;
+	%
+	% Actually, it's not quite as simple as that.  The global
+	% `stack_chain' has type `void *', rather than `MR_StackChain *', and
+	% the MLDS has no way of representing the `struct MR_StackChain' type
+	% (which we'd need to cast it to) or of accessing an unqualified
+	% field name like `prev' (rather than `modulename__prev').
+	%
+	% So we do this in a slightly lower-level fashion, using
+	% a field offset rather than a field name:
+	%
+	%	stack_chain = MR_hl_field(stack_chain, 0);
 	%
 	StackChain = ml_stack_chain_var,
 	Tag = yes(0),
-	PrevFieldName = var_name("prev", no),
-	PrevFieldNameString = ml_var_name_to_string(PrevFieldName),
-	PrevFieldId = named_field(qual(ModuleName, PrevFieldNameString),
-		EnvPtrTypeName),
-	PrevFieldType = mlds__generic_env_ptr_type,
+	PrevFieldId = offset(const(int_const(0))),
+	PrevFieldType = mlds__generic_type,
 	PrevFieldRval = lval(field(Tag, lval(StackChain), PrevFieldId,
 		PrevFieldType, EnvPtrTypeName)),
 	Assignment = assign(StackChain, PrevFieldRval),
