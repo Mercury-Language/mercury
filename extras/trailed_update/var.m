@@ -10,8 +10,14 @@
 %
 % This module provides constraint solving for unification constraints;
 % in other words, it provides Prolog-style variables.
+%
 % It also provides some features for delaying (a.k.a dynamic scheduling,
-% or corouting), specifically freeze/2 and freeze/3.
+% or corouting), specifically freeze/2 and freeze/3.  However, this
+% interface is not yet stable; it may undergo significant changes,
+% or even be removed, in future releases.  (The reason for this is
+% that there are some problems with mode checking higher-order terms
+% containing non-local vars whose inst is `any', and we have not yet
+% solved those problems.)
 %
 % There is no occurs check -- this module does not provide Herbrand terms.
 % Values of type var/1 may be cyclic.  However, the solver not complete
@@ -57,10 +63,12 @@
 	% until a variable is ground.
 	% Often the freeze/3 version is more useful, though,
 	% since this version doesn't allow `Pred' to have any outputs.
-	% (XXX the compiler doesn't check that yet - this is a bug!)
+	% (XXX the compiler doesn't always check that yet - this is a bug!)
 	% Declaratively, freeze(Var, Pred) is true iff Pred(Var) is true.
 	% Operationally, freeze(Var, Pred) delays until Var becomes ground
 	% and then calls Pred(Var).
+	% Warning: the interface to this predicate may be modified in
+	% future releases.
 :- pred freeze(var(T), pred(T)).
 :- mode freeze(in(any), pred(in) is semidet) is semidet.
 :- mode freeze(out(any), pred(in) is semidet) is semidet.
@@ -72,6 +80,8 @@
 	% Declaratively, freeze(X, Pred, Y) is true iff Pred(X, Y) is true.
 	% Operationally, freeze(X, Pred, Y) delays until X becomes ground
 	% and then calls Pred(X, Y).
+	% Warning: the interface to this predicate may be modified in
+	% future releases.
 :- pred freeze(var(T1),  pred(T1, T2), var(T2)).
 :- mode freeze(in,	 pred(in, out) is det, out) is semidet. % really det
 :- mode freeze(in,	 pred(in, out) is semidet, out) is semidet.
