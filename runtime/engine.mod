@@ -202,6 +202,9 @@ engine_done:
 #endif
 }
 
+/* with nonlocal gotos, we don't save the previous locations */
+void dump_prev_locations(void) {}
+
 #else /* not USE_GCC_NONLOCAL_GOTOS */
 
 /*
@@ -256,8 +259,24 @@ static Code *engine_init_registers(void)
 typedef	void	(*FuncPtr)(void);
 typedef Code	*Func(void);
 
-FuncPtr		prev_fps[NUM_PREV_FPS];
-int		prev_fp_index = 0;
+static FuncPtr	prev_fps[NUM_PREV_FPS];
+static int	prev_fp_index = 0;
+
+void dump_prev_locations(void)
+{
+	int i, pos;
+
+#if defined(SPEED) && !defined(DEBUG_GOTOS)
+	if (tracedebug) 
+#endif
+	{
+		printf("previous %d locations:\n", NUM_PREV_FPS);
+		for (i = 0; i < NUM_PREV_FPS; i++) {
+			pos = (i + prev_fp_index) % NUM_PREV_FPS;
+			printlabel(prev_fps[pos]);
+		}
+	}
+}
 
 void call_engine(Code *entry_point)
 {
@@ -298,6 +317,7 @@ void call_engine(Code *entry_point)
 	fp = entry_point;
 
 #if defined(SPEED) && !defined(DEBUG_GOTOS)
+if (!tracedebug) {
 	for (;;)
 	{
 		fp = (*fp)();
@@ -309,7 +329,8 @@ void call_engine(Code *entry_point)
 		fp = (*fp)();
 		fp = (*fp)();
 	}
-#else
+} else
+#endif
 	for (;;)
 	{
 		prev_fps[prev_fp_index] = (FuncPtr) fp;
@@ -321,7 +342,6 @@ void call_engine(Code *entry_point)
 		debugsreg();
 		fp = (*fp)();
 	}
-#endif
 }
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
 

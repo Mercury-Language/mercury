@@ -582,7 +582,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 {
 	fflush(stdout);
 
-	if (sig != SIGBUS || info->si_signo != SIGBUS)
+	if (sig != SIGBUS || !info || info->si_signo != SIGBUS)
 	{
 		fprintf(stderr, "\n*** Mercury runtime: ");
 		fprintf(stderr, "caught strange bus error ***\n");
@@ -624,7 +624,8 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 	}
-
+	dump_prev_locations();
+	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
 
@@ -634,6 +635,8 @@ static void explain_segv(siginfo_t *info, void *context)
 
 	fprintf(stderr, "\n*** Mercury runtime: ");
 	fprintf(stderr, "caught segmentation violation ***\n");
+
+	if (!info) return;
 
 	if (info->si_code > 0)
 	{
@@ -668,7 +671,7 @@ static void explain_segv(siginfo_t *info, void *context)
 
 static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 {
-	if (sig != SIGSEGV || info->si_signo != SIGSEGV)
+	if (sig != SIGSEGV || !info || info->si_signo != SIGSEGV)
 	{
 		fprintf(stderr, "\n*** Mercury runtime: ");
 		fprintf(stderr, "caught strange segmentation violation ***\n");
@@ -695,6 +698,7 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	if (!memdebug)
 		explain_segv(info, context);
 
+	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
@@ -735,7 +739,8 @@ default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 		break;
 
 	}
-
+	dump_prev_locations();
+	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
 

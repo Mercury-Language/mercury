@@ -101,8 +101,8 @@ int main(int argc, char **argv)
 
 	init_entries();
 
-#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS) || \
-		defined(PROFILE_CALLS)  || defined(PROFILE_TIME)
+#if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
+		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
 	do_init_modules();
 #endif
 
@@ -186,6 +186,8 @@ static void process_options(int argc, char **argv)
 					memdebug    = TRUE;
 				else if (streq(optarg, "r"))
 					sregdebug    = TRUE;
+				else if (streq(optarg, "t"))
+					tracedebug   = TRUE;
 				else if (streq(optarg, "a"))
 				{
 					calldebug      = TRUE;
@@ -195,6 +197,7 @@ static void process_options(int argc, char **argv)
 					gotodebug      = TRUE;
 					sregdebug      = TRUE;
 					finaldebug     = TRUE;
+					tracedebug     = TRUE;
 #ifdef CONSERVATIVE_GC
 					GC_quiet = FALSE;
 #endif

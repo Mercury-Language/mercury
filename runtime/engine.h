@@ -16,8 +16,9 @@
 #define	FINALFLAG	6
 #define	MEMFLAG		7
 #define	SREGFLAG	8
-#define	DETAILFLAG	9
-#define	MAXFLAG		10
+#define	TRACEFLAG	9
+#define	DETAILFLAG	10
+#define	MAXFLAG		11
 /* DETAILFLAG should be the last real flag */
 
 #define	progdebug	debugflag[PROGFLAG]
@@ -29,12 +30,14 @@
 #define	finaldebug	debugflag[FINALFLAG]
 #define	memdebug	debugflag[MEMFLAG]
 #define	sregdebug	debugflag[SREGFLAG]
+#define	tracedebug	debugflag[TRACEFLAG]
 #define	detaildebug	debugflag[DETAILFLAG]
 
 extern	bool	debugflag[];
 
 extern	void	init_engine(void);
 extern	void	call_engine(Code *entry_point);
+extern	void	dump_prev_locations(void);
 
 Declare_entry(do_redo);
 Declare_entry(do_fail);
