@@ -146,7 +146,7 @@ EOF
 				cat 1>&2 << EOF
 $progname: Error: parameter to \`--mercury-libs' option should be either
 $progname:   \`shared', \`static', \`none', or \`default', not \`$2'.
-$progname: Try `$0 --help' for help.
+$progname: Try \`$0 --help' for help.
 EOF
 				exit 1
 				;;
