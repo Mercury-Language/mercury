@@ -264,7 +264,7 @@
 
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module parse_tree__modules.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_io_dcg.
 :- import_module parse_tree__prog_io_goal.
@@ -282,12 +282,31 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pragma promise_pure(prog_io.read_module/11).
 prog_io__read_module(OpenFile, DefaultModuleName,
 		ReturnTimestamp, Error, FileData, ModuleName,
 		Messages, Items, MaybeModuleTimestamp, !IO) :-
 	prog_io__read_module_2(OpenFile, DefaultModuleName,
 		no, ReturnTimestamp, Error, FileData, ModuleName,
-		Messages, Items, MaybeModuleTimestamp, !IO).
+		Messages, Items, MaybeModuleTimestamp, !IO),
+	impure get_deprecated_module_qualifier_flag(UsesDeprecatedQual),
+	( UsesDeprecatedQual = yes ->
+		Warning = [
+			words("Warning: the module"),
+			sym_name(ModuleName),
+			words("uses the deprecated module qualifier `:'."),
+			words("Use `.' instead.")
+		],
+		write_error_pieces_plain(Warning, !IO),
+		record_warning(!IO),
+		%
+		% Reset this global variable so the we don't get 
+		% warnings for the next module.
+		%
+		impure set_deprecated_module_qualifier_flag(no)	
+	;
+		true
+	).	
 
 prog_io__read_module_if_changed(OpenFile, DefaultModuleName,
 		OldTimestamp, Error, FileData, ModuleName, Messages,
@@ -3962,6 +3981,33 @@ parse_implicitly_qualified_symbol_name(DefaultModName, Term, Result) :-
 
 %-----------------------------------------------------------------------------%
 
+% In order to issue warning messages for `:' as a module qualifier
+% we set a boolean global variable to yes if `:' as module qualifier
+% is encountered while parsing a module.
+
+:- pragma foreign_decl("C", "extern MR_Bool MC_old_module_qualifier;").
+:- pragma foreign_code("C", "MR_Bool MC_old_module_qualifier = MR_NO;").
+
+:- impure pred set_deprecated_module_qualifier_flag(bool::in) is det.
+:- pragma foreign_proc("C",
+	set_deprecated_module_qualifier_flag(Value::in),
+	[will_not_call_mercury],
+"
+	MC_old_module_qualifier = Value;
+").
+set_deprecated_module_qualifier_flag(_) :- impure private_builtin.imp.
+
+:- impure pred get_deprecated_module_qualifier_flag(bool::out) is det.
+:- pragma foreign_proc("C",
+	get_deprecated_module_qualifier_flag(Value::out),
+	[will_not_call_mercury],
+"
+	Value = MC_old_module_qualifier;
+").
+get_deprecated_module_qualifier_flag(no) :- impure private_builtin.imp.
+
+%-----------------------------------------------------------------------------%
+
 %	A QualifiedTerm is one of
 %		Name(Args)
 %		Module:Name(Args)
@@ -3997,6 +4043,7 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
 		Result = Result0
 	).
 
+:- pragma promise_pure(parse_qualified_term/4).
 parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 	(
 		Term = term__functor(term__atom(FunctorName),
@@ -4011,17 +4058,27 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 			parse_symbol_name(ModuleTerm, ModuleResult),
 			(
 				ModuleResult = ok(Module),
+				( FunctorName = ":" ->
+					impure
+					set_deprecated_module_qualifier_flag(
+						yes)
+				;
+					true
+				),
 				Result = ok(qualified(Module, Name), Args)
+		
 			;
 				ModuleResult = error(_, _),
 				term__coerce(Term, ErrorTerm),
 				Result = error("module name identifier " ++
-					"expected before ':' in " ++
-					"qualified symbol name", ErrorTerm)
+					"expected before '" ++ FunctorName ++ 
+					"' in " ++ "qualified symbol name",
+					ErrorTerm)
 			)
 		;
 			term__coerce(Term, ErrorTerm),
-			Result = error("identifier expected after ':' " ++
+			Result = error("identifier expected after '"
+				++ FunctorName ++ "' " ++
 				"in qualified symbol name", ErrorTerm)
 		)
 	;
