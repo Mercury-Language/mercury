@@ -543,7 +543,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_int_0,
-	(const Word *) string_const(""int"", 5)
+	(const Word *) string_const(""int"", 3)
 #endif
 };
 
@@ -580,7 +580,7 @@ mercury_data___base_type_info_character_0_struct {
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_character_0,
-	(const Word *) string_const(""char"", 6)
+	(const Word *) string_const(""char"", 4)
 #endif
 };
 
@@ -614,7 +614,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_string_0,
-	(const Word *) string_const(""string"", 8)
+	(const Word *) string_const(""string"", 6)
 #endif
 };
 
@@ -648,7 +648,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_float_0,
-	(const Word *) string_const(""float"", 7)
+	(const Word *) string_const(""float"", 5)
 #endif
 };
 
@@ -682,7 +682,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_pred_0,
-	(const Word *) string_const(""pred"", 6)
+	(const Word *) string_const(""pred"", 4)
 #endif
 };
 
