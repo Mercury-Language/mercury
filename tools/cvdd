@@ -6,12 +6,28 @@
 # "cvdd clean_ws work_ws" can be a sufficiently good substitute for a
 # "cvd diff work_ws". It is not intended to be a full replacement, e.g.
 # it doesn't do anything meaningful if you add an entire new directory.
+#
+# Normally, the script restricts its attention to files and directories
+# that are either under CVS control or whose names appear in a file called
+# NEWFILES (for files) or NEWDIRS (for directories). If you specify the -e
+# option, the script will also look at files with the name given as the
+# argument of -e. The intended use is "cvdd -e Log", which includes any changes
+# in Log files to be reflected in the output. This is useful when backing up
+# a workspace.
 
 pathname="."
+extras=""
+extraopts=""
 diffopts=""
+
 while test $# -gt 0
 do
 	case "$1" in
+	-e)
+		extras="$extras $2"
+		extraopts="$extraopts -e $2"
+		shift ; shift
+		;;
 	-p)
 		pathname="$2"
 		shift ; shift
@@ -25,6 +41,8 @@ do
 	esac
 done
 
+usage="usage: cvdd [-e filename] dir1 dir2"
+
 if test "$diffopts" = ""
 then
 	# these are the default diff options
@@ -33,13 +51,13 @@ fi
 
 if test $# -ne 2
 then
-	echo "usage: cvdd dir1 dir2"
+	echo "$usage"
 	exit 1
 fi
 
 if test ! -d "$1" -o ! -d "$2"
 then
-	echo "usage: cvdd dir1 dir2"
+	echo "$usage"
 	exit 1
 fi
 
@@ -67,6 +85,14 @@ trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 1" 1 2 3 15
 	then
 		cat $2/NEWFILES
 	fi
+	for extra in "$extras"
+	do
+		extra=`echo $extra | sed -e 's/^ *//'`
+		if test -f "$1/$extra" -o -f "$2/$extra"
+		then
+			echo $extra
+		fi
+	done
 ) | sort -u > $filelist
 
 (
@@ -104,7 +130,7 @@ for dir in `cat $dirlist`
 do
 	if test -d "$1/$dir/CVS" -a -d "$2/$dir/CVS"
 	then
-		cvdd -p "$pathname/$dir" $diffopts "$1/$dir" "$2/$dir"
+		cvdd -p "$pathname/$dir" $extraopts $diffopts "$1/$dir" "$2/$dir"
 	elif test -d "$1/$dir/CVS"
 	then
 		echo "old dir $1/$dir"
@@ -124,6 +150,6 @@ do
 			more $2/$dir/*
 		fi
 	else
-		echo "neither $1/$dir nor $2/$dir exist"
+		echo "neither $1/$dir nor $2/$dir are under CVS control"
 	fi
 done
