@@ -261,78 +261,13 @@ peephole__match(modframe(Redoip), Comment, Instrs0, Instrs) :-
 	%	succip = detstackvar(N)
 	%	decr_sp N
 
-	% The following transformation is sometimes useful because of the
-	% limitations of frameopt:
-	%
-	%	incr_sp N
-	%	goto L2
-	%     L1:		=>    L1:
-	%	incr_sp N		incr_sp N
-	%     L2:		      L2:
-
-peephole__match(incr_sp(N, Msg), _, Instrs0, Instrs) :-
+peephole__match(incr_sp(N, _), _, Instrs0, Instrs) :-
 	(
 		opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain)
 	->
 		list__append(Between, Remain, Instrs)
 	;
-		Instrs0 = [Instr0, Instr1, Instr2, Instr3 | Instrs3],
-		Instr0 = goto(label(L2)) - _,
-		Instr1 = label(_) - _,
-		Instr2 = incr_sp(N, Msg) - _,
-		Instr3 = label(L2) - _
-	->
-		Instrs = [Instr1, Instr2, Instr3 | Instrs3]
-	;
 		fail
-	).
-
-	% If an incr_sp follows a decr_sp of the same amount, then the two
-	% cancel out. The code in-between may assign to stack vars as long
-	% as it doesn't use stack vars; useless assignments to stack vars
-	% are removed. Any if_vals in the interval must go to a label that
-	% has a parallel that expects a stack frame.
-	%
-	%	decr_sp N
-	%	<no uses of stackvars>
-	%	<if_vals only with teardown equivalents>
-	%	incr_sp N
-
-peephole__match(decr_sp(N), _, Instrs0, Instrs) :-
-	peephole__decr(N, Instrs0, Instrs).
-
-%-----------------------------------------------------------------------------%
-
-:- pred peephole__decr(int, list(instruction), list(instruction)).
-:- mode peephole__decr(in, in, out) is semidet.
-
-peephole__decr(N, Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [Instr1 | Instrs2],
-	Instr1 = Uinstr1 - _,
-	(
-		Uinstr1 = incr_sp(N, _),
-		Instrs = Instrs2
-	;
-		Uinstr1 = assign(Lval, Rval),
-		opt_util__lval_refers_stackvars(Lval, no),
-		opt_util__rval_refers_stackvars(Rval, no),
-		peephole__decr(N, Instrs2, TailInstrs),
-		Instrs = [Instr1 | TailInstrs]
-	;
-		Uinstr1 = incr_hp(Lval, _Tag, Rval),
-		opt_util__lval_refers_stackvars(Lval, no),
-		opt_util__rval_refers_stackvars(Rval, no),
-		peephole__decr(N, Instrs2, TailInstrs),
-		Instrs = [Instr1 | TailInstrs]
-	;
-		Uinstr1 = comment(_),
-		peephole__decr(N, Instrs2, TailInstrs),
-		Instrs = [Instr1 | TailInstrs]
-	;
-		Uinstr1 = livevals(_),
-		peephole__decr(N, Instrs2, TailInstrs),
-		Instrs = [Instr1 | TailInstrs]
 	).
 
 %-----------------------------------------------------------------------------%
