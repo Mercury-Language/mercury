@@ -105,7 +105,7 @@ esac
 
 [ -d $DIR ] || mkdir -p $DIR
 FREE=`$DF $DIR | awk '
-	NR == 2 && $NF > 4 { print $4; exit; }
+	NR == 2 && NF > 4 { print $4; exit; }
 	NR == 3 { print $3; }
 '`
 if [ "$FREE" -lt 10000 ]; then
