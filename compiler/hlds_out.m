@@ -682,6 +682,7 @@ hlds_out__start_in_message(First, Context) -->
 
 hlds_out__write_hlds(Indent, Module) -->
 	{
+		module_info_get_imported_module_specifiers(Module, Imports),
 		module_info_preds(Module, PredTable),
 		module_info_types(Module, TypeTable),
 		module_info_insts(Module, InstTable),
@@ -692,6 +693,11 @@ hlds_out__write_hlds(Indent, Module) -->
 	},
 	hlds_out__write_header(Indent, Module),
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	( { string__contains_char(Verbose, 'I') } ->
+		hlds_out__write_imports(Indent, Imports)
+	;
+		[]
+	),
 	( { string__contains_char(Verbose, 'T') } ->
 		hlds_out__write_types(Indent, TypeTable),
 		io__write_string("\n"),
@@ -723,6 +729,17 @@ hlds_out__write_header(Indent, Module) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(":- module "),
 	prog_out__write_sym_name(Name),
+	io__write_string(".\n\n").
+
+:- pred hlds_out__write_imports(int, set(module_specifier),
+		io__state, io__state).
+:- mode hlds_out__write_imports(in, in, di, uo) is det.
+
+hlds_out__write_imports(Indent, ImportSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string(":- import_module "),
+	io__write_list(set__to_sorted_list(ImportSet), ", ",
+		prog_out__write_sym_name),
 	io__write_string(".\n\n").
 
 :- pred hlds_out__write_footer(int, module_info, io__state, io__state).
