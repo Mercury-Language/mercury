@@ -3554,14 +3554,14 @@ Existential type class constraints are written in the same syntax
 as universal constraints, but using "=>" instead of "<=";
 they signify a constraint that the @emph{callee} must satisfy.
 (If a declaration has both universal and existential constraints,
-then the universal constraints must precede the existential constraints.)
+then the existential constraints must precede the universal constraints.)
 
 For example:
 
 @example
-% Here `c1(T1)' is a universal constraint,
-% and `c2(T2)' is an existential constraint.
-:- all [T1] some [T2] ((pred p(T1, T2) <= c1(T1)) => (c2(T2), c3(T1, T2)).
+% Here `c1(T2)' and `c2(T1, T2)' are existential constraints,
+% and `c3(T1)' is a universal constraint,
+:- all [T1] some [T2] ((pred p(T1, T2) => (c1(T2), c2(T1, T2))) <= c3(T1)).
 @end example
 
 In general, constraints that constrain any existentially quantified
