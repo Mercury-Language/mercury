@@ -1709,21 +1709,32 @@ void sys_init_io_run_module(void) {
 
 	/* Rest of word is pointer to 2 cell struct */
 
-extern Word * mercury_data___base_type_info_int_0[];
-Word * mercury_data_io__base_type_layout_io__stream_0b[] = {
-	(Word *) (Integer) mercury_data___base_type_info_int_0
+extern const struct mercury_data___base_type_info_int_0_struct
+	mercury_data___base_type_info_int_0;
+
+static const struct {
+	const Word *f1;
+} mercury_data_io__base_type_layout_io__stream_0b = {
+	(const Word *) & mercury_data___base_type_info_int_0
 };
 
-Word * mercury_data_io__base_type_layout_io__stream_0a[] = {
-	(Word *) ((Integer) 2),
-	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b),
-	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b),
-	(Word *) string_const(""io__stream"", 10)
+static const struct {
+	Integer f1;
+	const Word *f2;
+	const Word *f3;
+	const Word *f4;
+} mercury_data_io__base_type_layout_io__stream_0a = {
+	((Integer) 2),
+	(const Word *) & mercury_data_io__base_type_layout_io__stream_0b,
+	(const Word *) & mercury_data_io__base_type_layout_io__stream_0b,
+	(const Word *) string_const(""io__stream"", 10)
 };
 
-Word * mercury_data_io__base_type_layout_io__stream_0[] = {
+const struct mercury_data_io__base_type_layout_io__stream_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_io__base_type_layout_io__stream_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_SIMPLE_TAG, 
-		((Integer) mercury_data_io__base_type_layout_io__stream_0a))
+	    (const Word *) & mercury_data_io__base_type_layout_io__stream_0a)
 };
 
 #endif
@@ -1763,7 +1774,7 @@ Define_entry(mercury____Term_To_Type___io__stream_0_0);
 
 Define_entry(mercury____Type_To_Term___io__stream_0_0);
 	/* don't know what to put here. */
-	fatal_error(""cannot covert type io__stream to term"");
+	fatal_error(""cannot convert type io__stream to term"");
 
 END_MODULE
 
@@ -1995,7 +2006,9 @@ void sys_init_io_stream_module(void) {
 	 * close enough.
 	 */
 
-Word * mercury_data_io__base_type_layout_io__external_state_0[] = {
+const struct mercury_data_io__base_type_layout_io__external_state_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_io__base_type_layout_io__external_state_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_INT_VALUE))
 };

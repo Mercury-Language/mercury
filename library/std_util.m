@@ -324,7 +324,9 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 #ifdef  USE_TYPE_LAYOUT
 
-Word * mercury_data_std_util__base_type_layout_univ_0[] = {
+const struct mercury_data_std_util__base_type_layout_univ_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_std_util__base_type_layout_univ_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_UNIV_VALUE))
 };
