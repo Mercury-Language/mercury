@@ -367,9 +367,10 @@ and a right curly bracket.  For example, @code{@{1, '2', "three"@}}
 is a valid tuple term.
 
 An operator term is a term specified using operator notation, as in Prolog.
-Operators can also be formed by enclosing a variable or name between grave
-accents (backquotes).  Any variable or name may
-be used as an operator in this way.  If @var{fun} is a variable or name,
+Operators can also be formed by enclosing a name, a module qualified name
+(@pxref{The module system}), or a variable between grave accents (backquotes).
+Any name or variable may be used as an operator in this way.
+If @var{fun} is a variable or name,
 then a term of the form @code{@var{X} `@var{fun}` @var{Y}} is equivalent to 
 @code{@var{fun}(@var{X}, @var{Y})}. The operator is left associative
 and binds more tightly than every operator other than @samp{^}

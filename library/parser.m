@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -453,22 +453,12 @@ parser__parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term) -->
 			{ OpPriority = OpPriority0 },
 			{ LeftAssoc = LeftAssoc0 },
 			{ RightAssoc = RightAssoc0 },
-			parser__get_token(OpToken, _),
-			(
-				{ OpToken = name(NameOp) }
-			->
-				{ Op = NameOp },
-				{ VariableTerm = [] }
-			;
-				{ OpToken = variable(VariableOp) },
-				{ Op = "" },
-				parser__add_var(VariableOp, Var),
-				{ VariableTerm = [term__variable(Var)] }
-			),
+			parse_backquoted_operator(Qualifier, Op, VariableTerm),
 			parser__get_token(name("`"), _)
 		;
 			{ Op = Op0 },
 			{ VariableTerm = [] },
+			{ Qualifier = no },
 			parser__get_ops_table(OpTable),
 			{ ops__lookup_infix_op(OpTable, Op,
 					OpPriority, LeftAssoc, RightAssoc) }
@@ -481,10 +471,19 @@ parser__parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term) -->
 		parser__parse_term_2(RightPriority, TermKind, RightTerm0),
 		( { RightTerm0 = ok(RightTerm) } ->
 			parser__get_term_context(Context, TermContext),
-			{ OpTerm = term__functor(term__atom(Op),
+			{ OpTerm0 = term__functor(term__atom(Op),
 				list__append(VariableTerm,
 					[LeftTerm, RightTerm]),
 				TermContext) },
+			(
+				{ Qualifier = no },
+				{ OpTerm = OpTerm0 }
+			;
+				{ Qualifier = yes(QTerm) },
+				{ OpTerm = term__functor(term__atom("."),
+					[QTerm, OpTerm0],
+					TermContext) }
+			),
 			parser__parse_rest(MaxPriority, TermKind, OpPriority,
 				OpTerm, Term)
 		;
@@ -506,6 +505,62 @@ parser__parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term) -->
 			Term)
 	;
 		{ Term = ok(LeftTerm) }
+	).
+
+
+:- pred parse_backquoted_operator(maybe(term(T)), string, list(term(T)),
+		parser__state(Ops, T), parser__state(Ops, T)) <= op_table(Ops).
+:- mode parse_backquoted_operator(out, out, out, in, out) is semidet.
+
+parse_backquoted_operator(Qualifier, OpName, VariableTerm) -->
+	parser__get_token(Token, Context),
+	(
+		{ Token = variable(VariableOp) },
+		{ Qualifier = no },
+		{ OpName = "" },
+		parser__add_var(VariableOp, Var),
+		{ VariableTerm = [variable(Var)] }
+	;
+	  	{ Token = name(OpName0) },
+		{ VariableTerm = [] },
+		parser__get_term_context(Context, OpCtxt0),
+		parse_backquoted_operator_2(no, Qualifier,
+			OpCtxt0, OpName0, OpName)
+	).
+
+
+:- pred parse_backquoted_operator_2(maybe(term(T)), maybe(term(T)),
+		term__context, string, string,
+		parser__state(Ops, T), parser__state(Ops, T)) <= op_table(Ops).
+:- mode parse_backquoted_operator_2(in, out, in, in, out, in, out) is semidet.
+
+parse_backquoted_operator_2(Qualifier0, Qualifier, OpCtxt0, OpName0, OpName) -->
+	( if
+		parser__get_token(name(ModuleSeparator), SepContext),
+		{
+			ModuleSeparator = "."
+		;
+			ModuleSeparator = ":"
+		},
+		parser__get_token(name(OpName1), NameContext),
+		{ OpName1 \= "`" }
+	  then
+		parser__get_term_context(SepContext, SepCtxt),
+		parser__get_term_context(NameContext, OpCtxt1),
+	  	{ QTerm1 = term__functor(atom(OpName0), [], OpCtxt0) },
+	  	{
+			Qualifier0 = no,
+			Qualifier1 = yes(QTerm1)
+		;
+			Qualifier0 = yes(QTerm0),
+			Qualifier1 = yes(functor(atom("."), [QTerm0, QTerm1],
+						SepCtxt))
+		},
+		parse_backquoted_operator_2(Qualifier1, Qualifier,
+			OpCtxt1, OpName1, OpName)
+	  else
+	  	{ Qualifier = Qualifier0 },
+		{ OpName    = OpName0 }
 	).
 
 %-----------------------------------------------------------------------------%
