@@ -2275,8 +2275,17 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
 			io__write_strings(DepStream, 
 				["CSHARP_ASSEMBLY_REFS-", 
 					ForeignModuleNameString, "="]),
-			write_dll_dependencies_list(ModuleName,
-				AllDeps, "/r:", DepStream),
+			{
+				ModuleName = unqualified(Str),
+				mercury_std_library_module(Str)
+			->
+				Prefix = "/addmodule:"
+			;
+				Prefix = "/r:"
+			},
+			write_dll_dependencies_list(
+				referenced_dlls(ModuleName, AllDeps),
+				Prefix, DepStream),
 			io__nl(DepStream)
 		;
 			[]
@@ -3967,16 +3976,24 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	io__write_string(DepStream, FileName),
 	write_dependencies_list(Modules, Suffix, DepStream).
 
-:- pred write_dll_dependencies_list(module_name, list(module_name),
-		string, io__output_stream, io__state, io__state).
-:- mode write_dll_dependencies_list(in, in, in, in, di, uo) is det.
+	% Generate the list of .NET DLLs which could be refered to by this
+	% module.  
+	% If we are compiling a module within the standard library we should
+	% reference the runtime DLLs and all other library DLLs.  If we are
+	% outside the library we should just reference mercury.dll (which will
+	% contain all the DLLs).
+	
+:- func referenced_dlls(module_name, list(module_name)) = list(module_name).
 
-write_dll_dependencies_list(Module, Modules0, Prefix, DepStream) -->
+referenced_dlls(Module, Modules0) = Modules :-
 		% If we are not compiling a module in the mercury
 		% std library then replace all the std library dlls with
 		% one reference to mercury.dll.
-	{ Module = unqualified(Str), mercury_std_library_module(Str) ->
-		Modules = Modules0
+	( Module = unqualified(Str), mercury_std_library_module(Str) ->
+			% In the standard library we need to add the
+			% runtime dlls.
+		Modules = [unqualified("mercury_mcpp"),
+				unqualified("mercury_il") | Modules0]
 	;
 		F = (func(M) =
 			( if 
@@ -3989,7 +4006,13 @@ write_dll_dependencies_list(Module, Modules0, Prefix, DepStream) -->
 			)
 		),
 		Modules = list__remove_dups(list__map(F, Modules0))
-	},
+	).
+
+:- pred write_dll_dependencies_list(list(module_name),
+		string, io__output_stream, io__state, io__state).
+:- mode write_dll_dependencies_list(in, in, in, di, uo) is det.
+
+write_dll_dependencies_list(Modules, Prefix, DepStream) -->
 	list__foldl(write_dll_dependency(DepStream, Prefix), Modules).
 
 :- pred write_dll_dependency(io__output_stream, string, module_name,
