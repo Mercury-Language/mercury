@@ -43,30 +43,36 @@
 :- mode in >= in is semidet.
 
 	% absolute value
+:- func int__abs(int) = int.
 :- pred int__abs(int, int).
 :- mode int__abs(in, out) is det.
 
 	% maximum
+:- func int__max(int, int) = int.
 :- pred int__max(int, int, int).
 :- mode int__max(in, in, out) is det.
 
 	% minimum
+:- func int__min(int, int) = int.
 :- pred int__min(int, int, int).
 :- mode int__min(in, in, out) is det.
 
 	% conversion of integer to floating point
+	% OBSOLETE: use float__float/1 instead.
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 
 	% expontiation
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
 	% Y must not be negative.
+:- func int__pow(int, int) = int.
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
 
 	% base 2 logarithm
-	% int__log2(X, N): N is the least integer such that 2 to the power N
-	% is greater than or equal to X.  X must be positive.
+	% int__log2(X) = N is the least integer such that 2 to the
+	% power N is greater than or equal to X.  X must be positive.
+:- func int__log2(int) = int.
 :- pred int__log2(int, int).
 :- mode int__log2(in, out) is det.
 
@@ -178,28 +184,24 @@
 :- mode - in = uo is det.
 
 	% is/2, for backwards compatiblity with Prolog (and with
-	% early implementations of Mercury)
 :- pred is(T, T) is det.
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-	% int__max_int(Max) binds Max to the maximum value of an int
+	% int__max_int is the maximum value of an int
 	% on this machine.
+:- func int__max_int = int.
 :- pred int__max_int(int::out) is det.
 
-:- func int__max_int = int.
-
-	% int__min_int(Max) binds Min to the minimum value of an int
+	% int__min_int is the minimum value of an int
 	% on this machine.
+:- func int__min_int = int.
 :- pred int__min_int(int::out) is det.
 
-:- func int__min_int = int.
-
-	% int__bits_per_int(Bits) binds Bits to the number of bits in an int
+	% int__bits_per_int is the number of bits in an int
 	% on this machine.
-:- pred int__bits_per_int(int::out) is det.
-
 :- func int__bits_per_int = int.
+:- pred int__bits_per_int(int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -374,6 +376,9 @@ X >> Y = Z :-
 		)
 	).
 
+int__abs(Num) = Abs :-
+	int__abs(Num, Abs).
+
 int__abs(Num, Abs) :-
 	(
 		Num < 0
@@ -382,6 +387,9 @@ int__abs(Num, Abs) :-
 	;
 		Abs = Num
 	).
+
+int__max(X, Y) = Max :-
+	int__max(X, Y, Max).
 
 int__max(X, Y, Max) :-
 	(
@@ -392,6 +400,9 @@ int__max(X, Y, Max) :-
 		Max = Y
 	).
 
+int__min(X, Y) = Min :-
+	int__min(X, Y, Min).
+
 int__min(X, Y, Min) :-
 	(
 		X < Y
@@ -400,6 +411,9 @@ int__min(X, Y, Min) :-
 	;
 		Min = Y
 	).
+
+int__pow(Val, Exp) = Result :-
+	int__pow(Val, Exp, Result).
 
 int__pow(Val, Exp, Result) :-
 	( Exp < 0 ->
@@ -419,6 +433,9 @@ int__pow_2(Val, Exp, Result0, Result) :-
 		Result1 is Result0 * Val,
 		int__pow_2(Val, Exp1, Result1, Result)
 	).
+
+int__log2(X) = N :-
+	int__log2(X, N).
 
 int__log2(X, N) :-
 	( X > 0 ->
