@@ -533,12 +533,18 @@ fatal_error(const char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
-	/* See header file for documentation on why we need this function */
+/*
+** See the header file for documentation on why we need this function.
+*/
+
 void
-MR_memcpy(char *dest, const char *src, size_t nbytes)
+MR_memcpy(void *dest, const void *src, size_t nbytes)
 {
+	char		*d = (char *) dest;
+	const char	*s = (const char *) src;
+
 	while (nbytes-- > 0)
-		*dest++ = *src++;
+		*d++ = *s++;
 }
 
 /*

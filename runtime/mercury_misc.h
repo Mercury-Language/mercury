@@ -78,6 +78,6 @@ extern	void	fatal_error(const char *msg, ...) NO_RETURN;
 ** XXX We should fix this eventually by using -fno-builtin since pragma
 ** c_code may call the builtin functions.
 */
-extern	void	MR_memcpy(char *dest, const char *src, size_t nbytes);
+extern	void	MR_memcpy(void *dest, const void *src, size_t nbytes);
 
 #endif /* not MERCURY_MISC_H */

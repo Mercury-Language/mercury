@@ -25,8 +25,8 @@
 
   #define MR_copy_array_element(array, to_index, from_index)		\
 	do {								\
-		MR_memcpy((char *) &array[to_index],			\
-			(const char *) &array[from_index],		\
+		MR_memcpy((void *) &array[to_index],			\
+			(const void *) &array[from_index],		\
 			sizeof(array[to_index]));			\
 	} while(0)
 
