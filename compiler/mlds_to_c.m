@@ -827,7 +827,7 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 		% Now output the declaration for this mlds__defn.
 		%
 		mlds_indent(Context, Indent),
-		mlds_output_decl_flags(Flags, forward_decl, Name),
+		mlds_output_decl_flags(Flags, forward_decl, Name, DefnBody),
 		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
 			DefnBody)
 	).
@@ -907,7 +907,7 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 		[]
 	),
 	mlds_indent(Context, Indent),
-	mlds_output_decl_flags(Flags, definition, Name),
+	mlds_output_decl_flags(Flags, definition, Name, DefnBody),
 	mlds_output_defn_body(Indent, qual(ModuleName, Name), Context,
 			DefnBody).
 
@@ -1753,10 +1753,10 @@ mlds_output_array_type_suffix(array_size(Size0)) -->
 	;	definition.
 
 :- pred mlds_output_decl_flags(mlds__decl_flags, decl_or_defn,
-		mlds__entity_name, io__state, io__state).
-:- mode mlds_output_decl_flags(in, in, in, di, uo) is det.
+		mlds__entity_name, mlds__entity_defn, io__state, io__state).
+:- mode mlds_output_decl_flags(in, in, in, in, di, uo) is det.
 
-mlds_output_decl_flags(Flags, DeclOrDefn, Name) -->
+mlds_output_decl_flags(Flags, DeclOrDefn, Name, DefnBody) -->
 	%
 	% mlds_output_extern_or_static handles both the
 	% `access' and the `per_instance' fields of the mlds__decl_flags.
@@ -1770,7 +1770,7 @@ mlds_output_decl_flags(Flags, DeclOrDefn, Name) -->
 	mlds_output_access_comment(access(Flags)),
 	mlds_output_per_instance_comment(per_instance(Flags)),
 	mlds_output_extern_or_static(access(Flags), per_instance(Flags),
-		DeclOrDefn, Name),
+		DeclOrDefn, Name, DefnBody),
 	mlds_output_virtuality(virtuality(Flags)),
 	mlds_output_finality(finality(Flags)),
 	mlds_output_constness(constness(Flags)),
@@ -1813,13 +1813,17 @@ mlds_output_per_instance_comment_2(per_instance) --> [].
 mlds_output_per_instance_comment_2(one_copy)     --> io__write_string("/* one_copy */ ").
 
 :- pred mlds_output_extern_or_static(access, per_instance, decl_or_defn,
-		mlds__entity_name, io__state, io__state).
-:- mode mlds_output_extern_or_static(in, in, in, in, di, uo) is det.
+		mlds__entity_name, mlds__entity_defn, io__state, io__state).
+:- mode mlds_output_extern_or_static(in, in, in, in, in, di, uo) is det.
 
-mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name) -->
-	(
+mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody)
+		-->
+	( 
 		{ Access = private ; PerInstance = one_copy },
-		{ Name \= type(_, _) }
+		{ Name \= type(_, _) },
+		% Don't output "static" for functions that don't have a body.
+		% This can happen for Mercury procedures declared `:- external'
+		{ DefnBody \= mlds__function(_, _, no) }
 	->
 		io__write_string("static ")
 	;

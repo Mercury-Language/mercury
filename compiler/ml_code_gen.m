@@ -880,10 +880,11 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		( { pred_info_is_imported(PredInfo) } ->
+		{ pred_info_import_status(PredInfo, ImportStatus) },
+		( { ImportStatus = imported(_) } ->
 			{ MLDS_Defns1 = MLDS_Defns0 }
 		;
-			ml_gen_pred(ModuleInfo, PredId, PredInfo,
+			ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
 				MLDS_Defns0, MLDS_Defns1)
 		),
 		ml_gen_preds_2(ModuleInfo, PredIds, PredTable,
@@ -895,12 +896,17 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 	% Generate MLDS definitions for all the non-imported
 	% procedures of a given predicate (or function).
 	%
-:- pred ml_gen_pred(module_info, pred_id, pred_info,
-				mlds__defns, mlds__defns, io__state, io__state).
-:- mode ml_gen_pred(in, in, in, in, out, di, uo) is det.
+:- pred ml_gen_pred(module_info, pred_id, pred_info, import_status,
+			mlds__defns, mlds__defns, io__state, io__state).
+:- mode ml_gen_pred(in, in, in, in, in, out, di, uo) is det.
 
-ml_gen_pred(ModuleInfo, PredId, PredInfo, MLDS_Defns0, MLDS_Defns) -->
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
+		MLDS_Defns0, MLDS_Defns) -->
+	( { ImportStatus = external(_) } ->
+		{ pred_info_procids(PredInfo, ProcIds) }
+	;
+		{ pred_info_non_imported_procids(PredInfo, ProcIds) }
+	),
 	( { ProcIds = [] } ->
 		{ MLDS_Defns = MLDS_Defns0 }
 	;
@@ -997,6 +1003,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = MLDS_DeclFlags :-
 ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			PredInfo, ProcInfo),
+	pred_info_import_status(PredInfo, ImportStatus),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -1022,65 +1029,82 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 
-	% Set up the initial success continuation, if any.
-	% Also figure out which output variables are returned by
-	% value (rather than being passed by reference) and remove
-	% them from the byref_output_vars field in the ml_gen_info.
-	( CodeModel = model_non ->
-		ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
-			MLDSGenInfo0, MLDSGenInfo1)
+	( ImportStatus = external(_) ->
+		%
+		% For Mercury procedures declared `:- external', we generate 
+		% an MLDS definition for them with no function body.
+		% The MLDS -> target code pass can treat this accordingly,
+		% e.g. for C it outputs a function declaration with no
+		% corresponding definition, making sure that the function
+		% is declared as `extern' rather than `static'.
+		%
+		MaybeStatement = no,
+		ExtraDefns = []
 	;
-		(
-			is_output_det_function(ModuleInfo, PredId, ProcId,
-				ResultVar)
-		->
-			CopiedOutputVars = [ResultVar],
-			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
-				ByRefOutputVars0),
-			list__delete_all(ByRefOutputVars0,
-				ResultVar, ByRefOutputVars),
-			ml_gen_info_set_byref_output_vars(ByRefOutputVars,	
-				MLDSGenInfo0, MLDSGenInfo1)
+		% Set up the initial success continuation, if any.
+		% Also figure out which output variables are returned by
+		% value (rather than being passed by reference) and remove
+		% them from the byref_output_vars field in the ml_gen_info.
+		( CodeModel = model_non ->
+			ml_set_up_initial_succ_cont(ModuleInfo,
+				CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
 		;
-			CopiedOutputVars = [],
-			MLDSGenInfo1 = MLDSGenInfo0
-		)
-	),
+			(
+				is_output_det_function(ModuleInfo, PredId,
+					ProcId, ResultVar)
+			->
+				CopiedOutputVars = [ResultVar],
+				ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+					ByRefOutputVars0),
+				list__delete_all(ByRefOutputVars0,
+					ResultVar, ByRefOutputVars),
+				ml_gen_info_set_byref_output_vars(
+					ByRefOutputVars,
+					MLDSGenInfo0, MLDSGenInfo1)
+			;
+				CopiedOutputVars = [],
+				MLDSGenInfo1 = MLDSGenInfo0
+			)
+		),
 
-	% This would generate all the local variables at the top of the
-	% function:
-	%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal, VarSet,
-	% 		VarTypes, HeadVars, ModuleInfo),
-	% But instead we now generate them locally for each goal.
-	% We just declare the `succeeded' var here,
-	% plus locals for any output arguments that are returned by value
-	% (e.g. if --nondet-copy-out is enabled, or for det function return
-	% values).
-	MLDS_Context = mlds__make_context(Context),
-	( CopiedOutputVars = [] ->
-		% optimize common case
-		OutputVarLocals = []
-	;
-		proc_info_varset(ProcInfo, VarSet),
-		proc_info_vartypes(ProcInfo, VarTypes),
-		% note that for headvars we must use the types from
-		% the procedure interface, not from the procedure body
-		HeadVarTypes = map__from_corresponding_lists(HeadVars,
-			ArgTypes),
-		OutputVarLocals = ml_gen_local_var_decls(VarSet,
-			map__overlay(VarTypes, HeadVarTypes),
-			MLDS_Context, ModuleInfo, CopiedOutputVars)
+		% This would generate all the local variables at the top of
+		% the function:
+		%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal,
+		% 		VarSet, VarTypes, HeadVars, ModuleInfo),
+		% But instead we now generate them locally for each goal.
+		% We just declare the `succeeded' var here, plus locals
+		% for any output arguments that are returned by value
+		% (e.g. if --nondet-copy-out is enabled, or for det function
+		% return values).
+		MLDS_Context = mlds__make_context(Context),
+		( CopiedOutputVars = [] ->
+			% optimize common case
+			OutputVarLocals = []
+		;
+			proc_info_varset(ProcInfo, VarSet),
+			proc_info_vartypes(ProcInfo, VarTypes),
+			% note that for headvars we must use the types from
+			% the procedure interface, not from the procedure body
+			HeadVarTypes = map__from_corresponding_lists(HeadVars,
+				ArgTypes),
+			OutputVarLocals = ml_gen_local_var_decls(VarSet,
+				map__overlay(VarTypes, HeadVarTypes),
+				MLDS_Context, ModuleInfo, CopiedOutputVars)
+		),
+		MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
+				OutputVarLocals],
+		ml_gen_proc_body(CodeModel, HeadVars, ArgTypes,
+				CopiedOutputVars, Goal,
+				MLDS_Decls0, MLDS_Statements,
+				MLDSGenInfo1, MLDSGenInfo),
+		ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
+		MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
+		MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements,
+			Context),
+		MaybeStatement = yes(MLDS_Statement)
 	),
-	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
-			OutputVarLocals],
-	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
-			MLDS_Decls0, MLDS_Statements,
-			MLDSGenInfo1, MLDSGenInfo),
-	ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
-	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
-	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
-			MLDS_Params, yes(MLDS_Statement)).
+			MLDS_Params, MaybeStatement).
 
 :- pred ml_set_up_initial_succ_cont(module_info, list(prog_var),
 		ml_gen_info, ml_gen_info).

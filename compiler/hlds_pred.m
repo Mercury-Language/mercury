@@ -258,9 +258,18 @@
 	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
-	--->	imported(section)
+	--->	external(section)
+				% Declared `:- external'.
+				% This means that the implementation
+				% for this procedure will be provided
+				% by some external source, rather than
+				% via Mercury clauses (including
+				% `pragma foreign_code' clauses).
+				% It can be through the use of another
+				% language, or it could be through some
+				% other method we haven't thought of yet.
+	;	imported(section)
 				% defined in the interface of some other module
-				% or `external' (in some other language)
 	;	opt_imported	% defined in the optimization
 				% interface of another module
 	;	abstract_imported % describes a type with only an abstract
@@ -747,6 +756,7 @@ invalid_pred_id(-1).
 invalid_proc_id(-1).
 
 status_is_exported(imported(_),			no).
+status_is_exported(external(_),			no).
 status_is_exported(abstract_imported,		no).
 status_is_exported(pseudo_imported,		no).
 status_is_exported(opt_imported,		no).
@@ -761,6 +771,7 @@ status_is_imported(Status, Imported) :-
 	bool__not(InThisModule, Imported).
 
 status_defined_in_this_module(imported(_),		no).
+status_defined_in_this_module(external(_),		no).
 status_defined_in_this_module(abstract_imported,	no).
 status_defined_in_this_module(pseudo_imported,		no).
 status_defined_in_this_module(opt_imported,		no).
@@ -916,6 +927,8 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
 	( ImportStatus = imported(_) ->
 		ProcIds = []
+	; ImportStatus = external(_) ->
+		ProcIds = []
 	; ImportStatus = pseudo_imported ->
 		pred_info_procids(PredInfo, ProcIds0),
 		% for pseduo_imported preds, procid 0 is imported
@@ -972,7 +985,10 @@ pred_info_arity(PredInfo, PredInfo^arity).
 pred_info_import_status(PredInfo, PredInfo^import_status).
 
 pred_info_is_imported(PredInfo) :-
-	pred_info_import_status(PredInfo, imported(_)).
+	pred_info_import_status(PredInfo, Status),
+	( Status = imported(_)
+	; Status = external(_)
+	).
 
 pred_info_is_pseudo_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -1004,10 +1020,10 @@ pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	status_is_exported(PredInfo0^import_status, Exported),
 	(
 		Exported = yes,
-		PredInfo = PredInfo0^import_status := imported(interface)
+		PredInfo = PredInfo0^import_status := external(interface)
 	;
 		Exported = no,
-		PredInfo = PredInfo0^import_status := imported(implementation)
+		PredInfo = PredInfo0^import_status := external(implementation)
 	).
 
 pred_info_set_import_status(PredInfo, X, PredInfo^import_status := X).

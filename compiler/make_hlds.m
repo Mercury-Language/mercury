@@ -1911,7 +1911,7 @@ combine_status(StatusA, StatusB, Status) :-
 	( combine_status_2(StatusA, StatusB, CombinedStatus) ->
 		Status = CombinedStatus
 	;
-		error("pseudo_imported or pseudo_exported type definition")
+		error("unexpected status for type definition")
 	).
 
 :- pred combine_status_2(import_status, import_status, import_status).

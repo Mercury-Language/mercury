@@ -404,6 +404,10 @@
 			mlds__func_params,	% the arguments & return types
 			maybe(mlds__statement)	% the function body, or `no'
 						% if the function is abstract
+						% or if the function is defined
+						% externally (i.e. the original
+						% Mercury procedure was declared
+						% `:- external').
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(

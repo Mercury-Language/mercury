@@ -830,8 +830,10 @@ is_defined_in_implementation_section(abstract_exported, yes).
 is_defined_in_implementation_section(exported_to_submodules, yes).
 is_defined_in_implementation_section(local, yes).
 is_defined_in_implementation_section(imported(implementation), yes).
+is_defined_in_implementation_section(external(implementation), yes).
 
 is_defined_in_implementation_section(imported(interface), no).
+is_defined_in_implementation_section(external(interface), no).
 is_defined_in_implementation_section(opt_imported, no).
 is_defined_in_implementation_section(abstract_imported, no).
 is_defined_in_implementation_section(pseudo_imported, no).

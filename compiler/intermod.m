@@ -651,7 +651,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% calls a predicate which is exported, then we don't
 		% need to do anything special.
 		%
-		{ Status = exported }
+		{ Status = exported ; Status = external(interface) }
 	->
 		{ DoWrite = yes }
 	;
@@ -672,7 +672,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% we need to put the declaration for the called predicate
 		% in the `.opt' file.
 		%
-		{ Status = local }
+		{ Status = local ; Status = external(implementation) }
 	->
 		{ DoWrite = yes },
 		intermod_info_get_pred_decls(PredDecls0),
@@ -683,31 +683,14 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		; Status = opt_imported
 		}
 	->
+		%
+		% imported pred - add import for module
+		%
 		{ DoWrite = yes },
-		{ module_info_name(ModuleInfo, ThisModule) },
 		{ pred_info_module(PredInfo, PredModule) },
-		(
-			{ PredModule = ThisModule }
-		->
-			%
-			% This can happen in the case of a local predicate
-			% which has been declared as external using a
-			% `:- external(Name/Arity)' declaration, e.g.
-			% because it is implemented as low-level C code.
-			%
-			% We treat these the same as local predicates.
-			%
-			intermod_info_get_pred_decls(PredDecls0),
-			{ set__insert(PredDecls0, PredId, PredDecls) },
-			intermod_info_set_pred_decls(PredDecls)
-		;	
-			%
-			% imported pred - add import for module
-			%
-			intermod_info_get_modules(Modules0),
-			{ set__insert(Modules0, PredModule, Modules) },
-			intermod_info_set_modules(Modules)
-		)
+		intermod_info_get_modules(Modules0),
+		{ set__insert(Modules0, PredModule, Modules) },
+		intermod_info_set_modules(Modules)
 	;
 		{ error("intermod__add_proc: unexpected status") }
 	).
