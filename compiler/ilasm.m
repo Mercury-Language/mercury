@@ -735,6 +735,13 @@ output_instr(end_block(try, Id)) -->
 	io__write_int(Id),
 	io__write_string(" (try block)").
 
+output_instr(context(File, Line)) -->
+	io__write_string(".line "),
+	io__write_int(Line),
+	io__write_string(" '"),
+	io__write_string(File),
+	io__write_string("'\n").
+
 output_instr(call(MethodRef)) --> 
 	io__write_string("call\t"),
 	output_methodref(MethodRef).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -194,11 +194,13 @@
 
 	% NOT INSTRUCTIONS AT ALL
 	% These are just added to the IL instructions to make it easy to
-	% generate instructions.
+	% generate instructions and include debugging information.
 	--->	comment(string)
 	;	label(label)				% a label 
 	;	start_block(blocktype, blockid)		% new block 
 	;	end_block(blocktype, blockid)		% end block
+	;	context(string, int)			% context of following 
+							% code (filename, line)
 
 	% BASE INSTRUCTIONS
 

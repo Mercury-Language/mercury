@@ -324,6 +324,7 @@ generate_method_defn(FunctionDefn) -->
 			% scope.
 		il_info_get_locals_list(Locals),
 		{ InstrsTree = tree__list([
+			context_node(Context),
 			instr_node(start_block(scope(Locals), BlockId)),
 			InstrsTree0, 
 			MaybeRet,
@@ -349,7 +350,7 @@ generate_method_defn(FunctionDefn) -->
 
 
 generate_method_defn(DataDefn) --> 
-	{ DataDefn = defn(data(DataName), _Context, _DeclsFlags, Entity) },
+	{ DataDefn = defn(data(DataName), Context, _DeclsFlags, Entity) },
 	il_info_get_module_name(ModuleName),
 	{ ClassName = mlds_module_name_to_class_name(ModuleName) },
 
@@ -376,11 +377,6 @@ generate_method_defn(DataDefn) -->
 			% Make a field reference for the field
 		{ FieldRef = make_fieldref(il_array_type,
 			ClassName, FieldName) },
-
-		{ AllocComment = comment_node(
-			string__append("allocation for ", FieldName)) },
-		{ InitComment = comment_node(
-			string__append("initializer for ", FieldName)) },
 
 			% If we had to allocate memory, the code
 			% we generate looks like this:
@@ -424,12 +420,22 @@ generate_method_defn(DataDefn) -->
 
 			% Add a store after the alloc instrs (if necessary)
 		{ AllocInstrs = list__condense(tree__flatten(
-			tree(AllocComment,
-			tree(AllocInstrsTree, StoreAllocTree)))) },
+			tree__list([
+				context_node(Context),
+				comment_node(string__append("allocation for ",
+					FieldName)),
+				AllocInstrsTree, 
+				StoreAllocTree]))) },
+
 			% Add a load before the init instrs (if necessary)
 		{ InitInstrs = list__condense(tree__flatten(
-			tree(InitComment,
-			tree(LoadTree, tree(InitInstrTree, StoreInitTree))))) },
+			tree__list([
+				context_node(Context),
+				comment_node(string__append("initializer for ",
+					FieldName)),
+				LoadTree,
+				InitInstrTree,
+				StoreInitTree]))) },
 		
 			% Add these instructions to the lists of
 			% allocation/initialization instructions.
@@ -516,7 +522,7 @@ generate_other_decls(ModuleName, MLDSDefn, Decls) :-
 :- pred generate_defn_initializer(mlds__defn, instr_tree, instr_tree, 
 	il_info, il_info).
 :- mode generate_defn_initializer(in, in, out, in, out) is det.
-generate_defn_initializer(defn(Name, _Context, _DeclFlags, Entity),
+generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 		Tree0, Tree) --> 
 	( 
 		{ Name = data(DataName) },
@@ -544,6 +550,7 @@ generate_defn_initializer(defn(Name, _Context, _DeclFlags, Entity),
 				Comment) },
 			{ Tree = tree__list([
 				Tree0,
+				context_node(Context),
 				comment_node(Comment),
 				LoadMemRefInstrs,
 				AllocInstrs,
@@ -679,7 +686,7 @@ statements_to_il([ S | Statements], tree(Instrs0, Instrs1)) -->
 :- pred statement_to_il(mlds__statement, instr_tree, il_info, il_info).
 :- mode statement_to_il(in, out, in, out) is det.
 
-statement_to_il(statement(block(Defns, Statements), _Context), Instrs) -->
+statement_to_il(statement(block(Defns, Statements), Context), Instrs) -->
 	il_info_get_module_name(ModuleName),
 	il_info_get_next_block_id(BlockId),
 	{ list__map(defn_to_local(ModuleName), Defns, Locals) },
@@ -690,7 +697,8 @@ statement_to_il(statement(block(Defns, Statements), _Context), Instrs) -->
 	{ list__map((pred((K - V)::in, (K - W)::out) is det :- 
 		W = mlds_type_to_ilds_type(V)), Locals, ILLocals) },
 	{ Instrs = tree__list([
-			node([start_block(scope(ILLocals), BlockId)]),
+			context_node(Context),
+			instr_node(start_block(scope(ILLocals), BlockId)),
 			InitInstrsTree,
 			comment_node("block body"),
 			BlockInstrs,
@@ -698,11 +706,12 @@ statement_to_il(statement(block(Defns, Statements), _Context), Instrs) -->
 			]) },
 	il_info_remove_locals(Locals).
 
-statement_to_il(statement(atomic(Atomic), _Context), Instrs) -->
-	atomic_statement_to_il(Atomic, Instrs).
+statement_to_il(statement(atomic(Atomic), Context), Instrs) -->
+	atomic_statement_to_il(Atomic, AtomicInstrs),
+	{ Instrs = tree(context_node(Context), AtomicInstrs) }.
 
 statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail), 
-		_Context), Instrs) -->
+		Context), Instrs) -->
 	( { IsTail = tail_call } ->
 		% For tail calls, to make the code verifiable, 
 		% we need a `ret' instruction immediately after
@@ -739,6 +748,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 			ReturnParam, ParamsList))] }
 	),		
 	{ Instrs = tree__list([
+			context_node(Context),
 			comment_node("call"), 
 			LoadMemRefInstrs,
 			ArgsLoadInstrs,
@@ -750,12 +760,13 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 			]) }.
 
 statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase), 
-		_Context), Instrs) -->
+		Context), Instrs) -->
 	generate_condition(Condition, ConditionInstrs, ElseLabel),
 	il_info_make_next_label(DoneLabel),
 	statement_to_il(ThenCase, ThenInstrs),
 	maybe_map_fold(statement_to_il, ElseCase, empty, ElseInstrs),
 	{ Instrs = tree__list([
+		context_node(Context),
 		comment_node("if then else"),
 		ConditionInstrs,
 		comment_node("then case"),
@@ -776,12 +787,13 @@ statement_to_il(statement(switch(_Type, _Val, _Range, _Cases, _Default),
 	{ error("mlds_to_il.m: `switch' not supported") }.
 
 statement_to_il(statement(while(Condition, Body, AtLeastOnce), 
-		_Context), Instrs) -->
+		Context), Instrs) -->
 	generate_condition(Condition, ConditionInstrs, EndLabel),
 	il_info_make_next_label(StartLabel),
 	statement_to_il(Body, BodyInstrs),
 	{ AtLeastOnce = no,
 		Instrs = tree__list([
+			context_node(Context),
 			comment_node("while"),
 			instr_node(label(StartLabel)),
 			ConditionInstrs,
@@ -793,6 +805,7 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
 			% XXX this generates a branch over branch which
 			% is suboptimal.
 		Instrs = tree__list([
+			context_node(Context),
 			comment_node("while (actually do ... while)"),
 			instr_node(label(StartLabel)),
 			BodyInstrs,
@@ -804,10 +817,11 @@ statement_to_il(statement(while(Condition, Body, AtLeastOnce),
 	}.
 
 
-statement_to_il(statement(return(Rvals), _Context), Instrs) -->
+statement_to_il(statement(return(Rvals), Context), Instrs) -->
 	( { Rvals = [Rval] } ->
 		load(Rval, LoadInstrs),
 		{ Instrs = tree__list([
+			context_node(Context),
 			LoadInstrs,
 			instr_node(ret)]) }
 	;
@@ -815,15 +829,25 @@ statement_to_il(statement(return(Rvals), _Context), Instrs) -->
 		{ sorry(this_file, "multiple return values") }
 	).
 
-statement_to_il(statement(label(Label), _Context), Instrs) -->
+statement_to_il(statement(label(Label), Context), Instrs) -->
 	{ string__format("label %s", [s(Label)], Comment) },
-	{ Instrs = node([comment(Comment), label(Label)]) }.
+	{ Instrs = node([
+			comment(Comment),
+			context_instr(Context),
+			label(Label)
+		]) }.
 
-statement_to_il(statement(goto(Label), _Context), Instrs) -->
+
+
+statement_to_il(statement(goto(Label), Context), Instrs) -->
 	{ string__format("goto %s", [s(Label)], Comment) },
-	{ Instrs = node([comment(Comment), br(label_target(Label))]) }.
+	{ Instrs = node([
+			comment(Comment),
+			context_instr(Context),
+			br(label_target(Label))
+		]) }.
 
-statement_to_il(statement(do_commit(Ref), _Context), Instrs) -->
+statement_to_il(statement(do_commit(Ref), Context), Instrs) -->
 
 	% For commits, we use exception handling.
 	%
@@ -836,13 +860,14 @@ statement_to_il(statement(do_commit(Ref), _Context), Instrs) -->
 
 	load(Ref, RefLoadInstrs),
 	{ Instrs = tree__list([
-		comment_node("do_commit/1"),
-		RefLoadInstrs,
-		instr_node(throw)
+			context_node(Context),
+			comment_node("do_commit/1"),
+			RefLoadInstrs,
+			instr_node(throw)
 		]) }.
 
 statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal), 
-		_Context), Instrs) -->
+		Context), Instrs) -->
 
 	% For commits, we use exception handling.
 	%
@@ -873,6 +898,7 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 			unexpected(this_file, "non-class for commit ref")
 	},	
 	{ Instrs = tree__list([
+		context_node(Context),
 		comment_node("try_commit/3"),
 
 		instr_node(start_block(try, TryBlockId)),
@@ -890,11 +916,12 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 
 		]) }.
 
-statement_to_il(statement(computed_goto(Rval, MLDSLabels), _Context), 
+statement_to_il(statement(computed_goto(Rval, MLDSLabels), Context), 
 		Instrs) -->
 	load(Rval, RvalLoadInstrs),
 	{ Targets = list__map(func(L) = label_target(L), MLDSLabels) },
 	{ Instrs = tree__list([
+		context_node(Context),
 		comment_node("computed goto"),
 		RvalLoadInstrs,
 		instr_node(switch(Targets))
@@ -921,6 +948,8 @@ atomic_statement_to_il(target_code(_Lang, _Code), node(Instrs)) -->
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
 		signature(_, RetType, Params) =^ signature, 
 			% If there is a return value, put it in succeeded.
+			% XXX this is incorrect for functions, which might
+			% return a useful value.
 		{ RetType = void ->
 			StoreReturnInstr = []
 		;
@@ -2426,7 +2455,7 @@ make_constructor(ClassName, mlds__class_defn(_,  _Imports, Inherits,
 :- pred call_field_constructor(list(ilds__id), mlds__defn, list(instr)).
 :- mode call_field_constructor(in, in, out) is det.
 call_field_constructor(ObjClassName, MLDSDefn, Instrs) :-
-	MLDSDefn = mlds__defn(EntityName, _Context, _DeclFlags, Entity), 
+	MLDSDefn = mlds__defn(EntityName, Context, _DeclFlags, Entity), 
 	( 
 		Entity = mlds__data(Type, _Initializer),
 		EntityName = data(DataName)
@@ -2439,14 +2468,18 @@ call_field_constructor(ObjClassName, MLDSDefn, Instrs) :-
 			ILType = il_envptr_type
 		->
 			ClassName = il_envptr_class_name,
-			Instrs = [ldarg(index(0)),
+			Instrs = [
+				context_instr(Context),
+				ldarg(index(0)),
 				newobj_constructor(ClassName),
 				stfld(FieldRef)]
 		;
 			ILType = il_commit_type
 		->
 			ClassName = il_commit_class_name,
-			Instrs = [ldarg(index(0)),
+			Instrs = [
+				context_instr(Context),
+				ldarg(index(0)),
 				newobj_constructor(ClassName),
 				stfld(FieldRef)]
 		;
@@ -2680,6 +2713,17 @@ dcg_set(T, _, T).
 	% Use this to make comments into trees easily.
 :- func comment_node(string) = instr_tree.
 comment_node(S) = node([comment(S)]).
+
+	% Use this to make contexts into trees easily.
+:- func context_node(mlds__context) = instr_tree.
+context_node(Context) = node([context_instr(Context)]).
+
+:- func context_instr(mlds__context) = instr.
+context_instr(Context) = context(FileName, LineNumber) :-
+	ProgContext = mlds__get_prog_context(Context),
+	term__context_file(ProgContext, FileName),
+	term__context_line(ProgContext, LineNumber).
+
 
 	% Use this to make instructions into trees easily.
 :- func instr_node(instr) = instr_tree.

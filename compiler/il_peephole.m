@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -432,6 +432,7 @@ can_call(comment(_Comment)) 			= no.
 can_call(label(_Label)) 			= no. 
 can_call(start_block(_, _Id)) 			= no.
 can_call(end_block(_, _Id)) 			= no.
+can_call(context(_, _)) 			= no.
 can_call(ret) 					= no. 
 can_call((and)) 				= no. 
 can_call(ann_catch) 				= no. 
@@ -529,10 +530,11 @@ can_call(ann_ref(_)) 				= no.
 	% control flow, they are simply part of instr for
 	% convenience.
 :- func equivalent_to_nop(instr) = bool.
-equivalent_to_nop(comment(_)) 			= yes.
-equivalent_to_nop(start_block(scope(_), _)) 	= yes.
-equivalent_to_nop(end_block(scope(_), _)) 	= yes.
-equivalent_to_nop(nop) 				= yes. 
+equivalent_to_nop(comment(_)) 				= yes.
+equivalent_to_nop(start_block(scope(_), _)) 		= yes.
+equivalent_to_nop(end_block(scope(_), _))	 	= yes.
+equivalent_to_nop(nop) 					= yes. 
+equivalent_to_nop(context(_, _)) 			= yes. 
 
 equivalent_to_nop(start_block(try, _))			= no.
 equivalent_to_nop(end_block(try, _))			= no.
@@ -654,6 +656,7 @@ can_branch(switch(_))					= yes.
 can_branch(end_block(_, _)) 				= no.
 can_branch(comment(_)) 					= no.
 can_branch(start_block(_, _)) 				= no.
+can_branch(context(_, _)) 				= no.
 can_branch(nop) 					= no. 
 can_branch(label(_Label)) 				= no. 
 can_branch(call(_MethodRef)) 				= no. 
