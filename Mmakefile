@@ -257,6 +257,10 @@ tar: README INSTALL
 version:
 	@echo $(VERSION)
 
+.PHONY: fullarch
+fullarch:
+	@echo $(FULLARCH)
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: install

@@ -69,6 +69,12 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
 
+BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
+BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
+
+STABLE=$DIR/mercury-latest-stable
+UNSTABLE=$DIR/mercury-latest-unstable
+
 case $ARCH in
 	alpha)
 		# due to a bug in the DEC loader, INSTALL_DIR should be
@@ -449,9 +455,6 @@ cd ..
 
 : update the unstable release
 
-BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
-BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
-
 case $HOST in murlibobo)
 	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
@@ -464,19 +467,25 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-STABLE=mercury-latest-stable
-UNSTABLE=mercury-latest-unstable
-
 : build the binary distribution
+
+{
+	cd $DIR/mercury &&
+	version=`mmake version` &&
+	fullarch=`mmake fullarch` &&
+	mmake bindist &&
+	cd .. &&
+	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
+	rm -f $UNSTABLE/mercury-*.$fullarch.tar.gz &&
+	mv mercury/mercury-$version.$fullarch.tar.gz $STABLE
+} || status=1
 
 case $status in
     0) {
-    	cd $DIR/mercury &&
-    	mmake bindist &&
-	cd .. &&
+    	cd $DIR &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
-	rm -f $STABLE/* &&
-	mv mercury/mercury-$version.*.tar.gz $STABLE
+	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
+	cp $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE
        } || status=1
     ;;
 esac
