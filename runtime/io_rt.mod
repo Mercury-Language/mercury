@@ -432,7 +432,7 @@ mercury____Write___io__external_state_0_0:
 mercury__error_1_0:
 	fflush(stdout);
 	fprintf(stderr, "Software error: %s\n", (char *) r1);
-	abort();
+	exit(1);
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;	/* suppress some dumb warnings */
 #endif
