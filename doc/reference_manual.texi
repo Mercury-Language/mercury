@@ -915,6 +915,15 @@ The type system is based on many-sorted logic, and supports polymorphism,
 type classes (@pxref{Type classes}), and existentially quantified types
 (@pxref{Existential types}).
 
+@menu
+* Builtin types::
+* User-defined types::
+* Predicate and function types::
+@end menu
+
+@node Builtin types
+@section Builtin types
+
 Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
@@ -945,13 +954,22 @@ In this way, we can give a declarative semantics to code that performs I/O.
 
 @end table
 
+@node User-defined types
+@section User-defined types
+
 New types can be introduced with @samp{:- type} declarations.
 There are several categories of derived types:
 
-@itemize @bullet
-@item
-Discriminated unions: these encompass both enumeration and
-record types in other languages.
+@menu
+* Discriminated unions::
+* Equivalence types::
+* Abstract types::
+@end menu
+
+@node Discriminated unions
+@subsection Discriminated unions
+
+These encompass both enumeration and record types in other languages.
 A derived type is defined using @samp{:- type @var{type} ---> @var{body}}. 
 (Note there are @emph{three} dashes in that arrow.
 It should not be confused with the two-dash arrow used for DCGs
@@ -1033,8 +1051,22 @@ to be distinct types (name equivalence).
 Having two different definitions of a type with the same name and arity in
 the same module is an error.
 
-@item
-Equivalence types: these are type abbreviations.
+Constructors may be overloaded among different types:
+there may be any number of constructors with a given name and arity,
+so long as they all have different types.
+However, there must not be more than one constructor
+with the same name, arity, and result type in the same module.
+(There is no particularly good reason for this restriction;
+in the future we may allow several such functors
+as long as they have different argument types.)
+Note that excessive overloading of constructors can slow down type checking
+and can make the program confusing for human readers,
+so overloading should not be over-used.
+
+@node Equivalence types
+@subsection Equivalence types
+
+These are type abbreviations.
 They are defined using @samp{==} as follows.
 They may be polymorphic.
 
@@ -1056,8 +1088,10 @@ as an abbreviation for the type on the right hand side of the definition;
 the two are equivalent in all respects
 in scopes where the equivalence type is visible.
 
-@item
-Abstract types: these are types whose implementation is hidden.
+@node Abstract types
+@subsection Abstract types
+
+These are types whose implementation is hidden.
 The type declarations
 
 @example
@@ -1076,19 +1110,8 @@ named in the interface section of the module.
 Abstract types may be defined as either discriminated union types
 or as equivalence types.
 
-@end itemize
-
-Constructors may be overloaded among different types:
-there may be any number of constructors with a given name and arity,
-so long as they all have different types.
-However, there must not be more than one constructor
-with the same name, arity, and result type in the same module.
-(There is no particularly good reason for this restriction;
-in the future we may allow several such functors
-as long as they have different argument types.)
-Note that excessive overloading of constructors can slow down type checking
-and can make the program confusing for human readers,
-so overloading should not be over-used.
+@node Predicate and function types
+@section Predicate and function types
 
 The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
