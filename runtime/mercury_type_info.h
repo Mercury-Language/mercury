@@ -1046,6 +1046,15 @@ struct MR_TypeCtorInfo_Struct {
 */
 };
 
+/*
+** Check whether an MR_TypeCtorRepInt is a valid MR_TypeCtorRep value.
+*/
+
+#define MR_type_ctor_rep_is_valid(rep_int)                                  \
+    ((unsigned) (rep_int) <= (unsigned) MR_TYPECTOR_REP_UNKNOWN)
+#define MR_type_ctor_has_valid_rep(type_ctor_info)                          \
+    (MR_type_ctor_rep_is_valid(type_ctor_info->MR_type_ctor_rep_CAST_ME))
+
 #define MR_type_ctor_rep(tci)                                               \
     ((MR_TypeCtorRep) ((tci)->MR_type_ctor_rep_CAST_ME))
 

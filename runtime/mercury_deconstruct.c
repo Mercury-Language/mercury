@@ -139,6 +139,10 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error("MR_named_arg_num: term of unknown representation");
+    }
+
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
@@ -261,9 +265,42 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
             return MR_FALSE;
 
-        default:
+        case MR_TYPECTOR_REP_ENUM:
+        case MR_TYPECTOR_REP_ENUM_USEREQ:
+        case MR_TYPECTOR_REP_INT:
+        case MR_TYPECTOR_REP_FLOAT:
+        case MR_TYPECTOR_REP_CHAR:
+        case MR_TYPECTOR_REP_STRING:
+        case MR_TYPECTOR_REP_FUNC:
+        case MR_TYPECTOR_REP_PRED:
+        case MR_TYPECTOR_REP_VOID:
+        case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPECTORINFO:
+        case MR_TYPECTOR_REP_TYPEDESC:
+        case MR_TYPECTOR_REP_TYPECTORDESC:
+        case MR_TYPECTOR_REP_TYPECLASSINFO:
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+        case MR_TYPECTOR_REP_SUCCIP:
+        case MR_TYPECTOR_REP_HP:
+        case MR_TYPECTOR_REP_CURFR:
+        case MR_TYPECTOR_REP_MAXFR:
+        case MR_TYPECTOR_REP_REDOFR:
+        case MR_TYPECTOR_REP_REDOIP:
+        case MR_TYPECTOR_REP_TICKET:
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+        case MR_TYPECTOR_REP_REFERENCE:
+        case MR_TYPECTOR_REP_TUPLE:
+        case MR_TYPECTOR_REP_ARRAY:
+        case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_UNKNOWN:
             return MR_FALSE;
+
+        case MR_TYPECTOR_REP_UNIV:
+            MR_fatal_error("MR_named_arg_num: bad type_ctor_rep");
     }
+
+    MR_fatal_error("MR_named_arg_num: unexpected fallthrough");
 }
 
 static MR_ConstString

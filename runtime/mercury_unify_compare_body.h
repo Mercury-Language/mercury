@@ -90,6 +90,10 @@ start_label:
     MR_register_type_ctor_stat(&type_stat_struct, type_ctor_info);
 #endif
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error(attempt_msg "terms of unknown representation");
+    }
+
     switch (MR_type_ctor_rep(type_ctor_info)) {
 
 #if defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code)
@@ -369,7 +373,7 @@ start_label:
   #endif
             }
 
-            break;
+            MR_fatal_error(MR_STRINGIFY(start_label) ": expected fall thru");
 
 #endif  /* defined(MR_COMPARE_BY_RTTI) || defined(include_compare_rep_code) */
 
@@ -678,6 +682,34 @@ start_label:
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             MR_fatal_error(attempt_msg "base_typeclass_infos");
 
+        case MR_TYPECTOR_REP_UNIV:
+            /* univ is now implemented as a user-defined type */
+            MR_fatal_error(attempt_msg "univ");
+
+        case MR_TYPECTOR_REP_HP:
+            MR_fatal_error(attempt_msg "hp");
+
+        case MR_TYPECTOR_REP_SUCCIP:
+            MR_fatal_error(attempt_msg "succip");
+
+        case MR_TYPECTOR_REP_CURFR:
+            MR_fatal_error(attempt_msg "curfr");
+
+        case MR_TYPECTOR_REP_MAXFR:
+            MR_fatal_error(attempt_msg "maxfr");
+
+        case MR_TYPECTOR_REP_REDOFR:
+            MR_fatal_error(attempt_msg "redofr");
+
+        case MR_TYPECTOR_REP_REDOIP:
+            MR_fatal_error(attempt_msg "redoip");
+
+        case MR_TYPECTOR_REP_TICKET:
+            MR_fatal_error(attempt_msg "ticket");
+
+        case MR_TYPECTOR_REP_TRAIL_PTR:
+            MR_fatal_error(attempt_msg "trail_ptr");
+
         case MR_TYPECTOR_REP_REFERENCE:
 #ifdef  select_compare_code
             /*
@@ -692,10 +724,9 @@ start_label:
 
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(attempt_msg "terms of unknown type");
-
-        default:
-            MR_fatal_error(attempt_msg "terms of unknown representation");
     }
+
+    MR_fatal_error("got to the end of " MR_STRINGIFY(start_label));
 
 #ifdef  select_compare_code
   #undef    return_compare_answer

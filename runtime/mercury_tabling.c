@@ -851,12 +851,16 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
     }
 #endif  /* MR_TABLE_DEBUG */
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error("MR_table_type: term of unknown representation");
+    }
+
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
             MR_DEBUG_TABLE_ENUM(table,
                 MR_type_ctor_num_functors(type_ctor_info), data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_RESERVED_ADDR: 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ: 
@@ -907,7 +911,6 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 goto du_type;
             }
 
-            
         case MR_TYPECTOR_REP_DU: 
         case MR_TYPECTOR_REP_DU_USEREQ: 
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
@@ -1012,7 +1015,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 MR_deallocate(allocated_memory_cells);
             }
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_NOTAG: 
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
@@ -1027,14 +1030,14 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
             }
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND: 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
                 MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
                 MR_notag_functor_arg_type), data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_EQUIV:
             {
@@ -1048,28 +1051,29 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
                 MR_deallocate(allocated_memory_cells);
             }
-            break;
+
+            return table;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             MR_DEBUG_TABLE_ANY(table, MR_pseudo_type_info_is_ground(
                 MR_type_ctor_layout(type_ctor_info).MR_layout_equiv), data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_INT:
             MR_DEBUG_TABLE_INT(table, data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_CHAR:
             MR_DEBUG_TABLE_CHAR(table, data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_FLOAT:
             MR_DEBUG_TABLE_FLOAT(table, data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_STRING:
             MR_DEBUG_TABLE_STRING(table, (MR_String) data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
@@ -1099,7 +1103,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 */
                 MR_DEBUG_TABLE_INT(table, data);
         #endif
-                break;
+
+                return table;
             }
 
         case MR_TYPECTOR_REP_TUPLE:
@@ -1118,37 +1123,32 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                     MR_DEBUG_TABLE_ANY(table, arg_type_info_vector[i + 1],
                         data_value[i]);
                 }
-                break;
+
+                return table;
             }
 
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error("Cannot table a void type");
-            break;
 
         case MR_TYPECTOR_REP_C_POINTER:
             MR_fatal_error("Attempt to table a C_POINTER");
-            break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
             MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo) data);
-            break;
+            return table;
 
         case MR_TYPECTOR_REP_TYPECTORINFO:
             MR_fatal_error("Attempt to table a type_ctor_info");
-            break;
 
         case MR_TYPECTOR_REP_TYPECTORDESC:
             MR_fatal_error("Attempt to table a type_ctor_desc");
-            break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             MR_fatal_error("Attempt to table a type_class_info");
-            break;
 
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             MR_fatal_error("Attempt to table a base_type_class_info");
-            break;
 
         case MR_TYPECTOR_REP_ARRAY:
             {
@@ -1171,57 +1171,48 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 }
 
                 MR_deallocate(allocated_memory_cells);
-                break;
+                return table;
             }
 
         case MR_TYPECTOR_REP_SUCCIP:
             MR_fatal_error("Attempt to table a saved succip");
-            break;
 
         case MR_TYPECTOR_REP_HP:
             MR_fatal_error("Attempt to table a saved hp");
-            break;
 
         case MR_TYPECTOR_REP_CURFR:
             MR_fatal_error("Attempt to table a saved curfr");
-            break;
 
         case MR_TYPECTOR_REP_MAXFR:
             MR_fatal_error("Attempt to table a saved maxfr");
-            break;
 
         case MR_TYPECTOR_REP_REDOFR:
             MR_fatal_error("Attempt to table a saved redofr");
-            break;
 
         case MR_TYPECTOR_REP_REDOIP:
             MR_fatal_error("Attempt to table a saved redoip");
-            break;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
             MR_fatal_error("Attempt to table a saved trail pointer");
-            break;
 
         case MR_TYPECTOR_REP_TICKET:
             MR_fatal_error("Attempt to table a saved ticket");
-            break;
 
         case MR_TYPECTOR_REP_FOREIGN:
             MR_fatal_error("Attempt to table a value of a foreign type");
-            break;
 
         case MR_TYPECTOR_REP_REFERENCE:
             MR_fatal_error("Attempt to table a value of a reference type");
-            break;
+
+        case MR_TYPECTOR_REP_UNIV:
+            MR_fatal_error("MR_table_any: bad type_ctor_rep");
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
-        default:
             MR_fatal_error("Unknown layout tag in table_any");
-            break;
     }
 
-    return table;
-} /* end table_any() */
+    MR_fatal_error("MR_table_type: unexpected fallthrough");
+}
 
 /*---------------------------------------------------------------------------*/
 

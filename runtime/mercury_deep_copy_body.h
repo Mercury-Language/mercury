@@ -92,12 +92,15 @@ copy(MR_Word data, MR_TypeInfo type_info,
 try_again:
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error(MR_STRINGIFY(copy) ": term of unknown representation");
+    }
+
     switch (MR_type_ctor_rep(type_ctor_info)) {
 
     case MR_TYPECTOR_REP_ENUM:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
-        new_data = data;    /* just a copy of the actual item */
-        break;
+        return data;    /* just a copy of the actual item */
 
     case MR_TYPECTOR_REP_RESERVED_ADDR:
     case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
@@ -115,8 +118,7 @@ try_again:
             if ((MR_Unsigned) data <
                 (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
             {
-                new_data = data;
-                break;
+                return data;
             }
 
             /*
@@ -160,8 +162,7 @@ try_again:
 
             switch (ptag_layout->MR_sectag_locn) {
             case MR_SECTAG_LOCAL:
-                new_data = data;    /* just a copy of the actual item */
-                break;
+                return data;    /* just a copy of the actual item */
 
             /* case MR_SECTAG_REMOTE: */
             /* case MR_SECTAG_NONE: */
@@ -292,12 +293,12 @@ try_again:
             case MR_SECTAG_REMOTE:
                 /* see comments above */
                 MR_handle_sectag_remote_or_none(MR_TRUE);
-                break;
+                return new_data;
 
             case MR_SECTAG_NONE:
                 /* see comments above */
                 MR_handle_sectag_remote_or_none(MR_FALSE);
-                break;
+                return new_data;
 
             case MR_SECTAG_VARIABLE:
                 MR_fatal_error("copy(): attempt to copy variable");
@@ -311,11 +312,10 @@ try_again:
 
     case MR_TYPECTOR_REP_NOTAG:
     case MR_TYPECTOR_REP_NOTAG_USEREQ:
-        new_data = copy_arg(NULL, data, NULL,
+        return copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
             MR_type_ctor_layout(type_ctor_info).MR_layout_notag->
             MR_notag_functor_arg_type, lower_limit, upper_limit);
-        break;
 
     case MR_TYPECTOR_REP_NOTAG_GROUND:
     case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
@@ -323,25 +323,21 @@ try_again:
             MR_type_ctor_layout(type_ctor_info).MR_layout_notag
             ->MR_notag_functor_arg_type);
         goto try_again;
-        break;
 
     case MR_TYPECTOR_REP_EQUIV:
-        new_data = copy_arg(NULL, data, NULL,
+        return copy_arg(NULL, data, NULL,
             MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
             MR_type_ctor_layout(type_ctor_info).MR_layout_equiv,
             lower_limit, upper_limit);
-        break;
 
     case MR_TYPECTOR_REP_EQUIV_GROUND:
         type_info = MR_pseudo_type_info_is_ground(
             MR_type_ctor_layout(type_ctor_info).MR_layout_equiv);
         goto try_again;
-        break;
 
     case MR_TYPECTOR_REP_INT:  /* fallthru */
     case MR_TYPECTOR_REP_CHAR:
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_FLOAT:
         #ifdef MR_BOXED_FLOAT
@@ -373,7 +369,7 @@ try_again:
         #else
             new_data = data;
         #endif
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_STRING:
         {
@@ -394,7 +390,7 @@ try_again:
                 leave_forwarding_pointer(data, 0, new_data);
             }
         }
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_FUNC:
     case MR_TYPECTOR_REP_PRED:
@@ -404,8 +400,8 @@ try_again:
             assert(MR_tag(data) == 0);
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
-            RETURN_IF_OUT_OF_RANGE(data, data_value, CLOSURE_FORWARDING_PTR_OFFSET,
-                    MR_Word);
+            RETURN_IF_OUT_OF_RANGE(data, data_value,
+                    CLOSURE_FORWARDING_PTR_OFFSET, MR_Word);
 
             /*
             ** Closures have the structure given by the MR_Closure type.
@@ -463,7 +459,7 @@ try_again:
                     new_data);
             }
         }
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_TUPLE:
         {
@@ -500,11 +496,10 @@ try_again:
                 }
             }
         }
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_VOID:
         MR_fatal_error("Cannot copy a void type");
-        break;
 
     case MR_TYPECTOR_REP_ARRAY:
         {
@@ -535,36 +530,31 @@ try_again:
                 leave_forwarding_pointer(data, 0, new_data);
             }
         }
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_TYPEINFO:
     case MR_TYPECTOR_REP_TYPEDESC:
-        new_data = (MR_Word) copy_type_info((MR_TypeInfo) data,
+        return (MR_Word) copy_type_info((MR_TypeInfo) data,
             lower_limit, upper_limit);
-        break;
 
     case MR_TYPECTOR_REP_TYPECTORINFO:
         /* type_ctor_infos are always pointers to static data */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_TYPECTORDESC:
         /*
         ** type_ctor_descs are always either encoded integers,
         ** or pointers to static data
         */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_TYPECLASSINFO:
-        new_data = (MR_Word) copy_typeclass_info(data,
+        return (MR_Word) copy_typeclass_info(data,
             lower_limit, upper_limit);
-        break;
 
     case MR_TYPECTOR_REP_BASETYPECLASSINFO:
         /* base_typeclass_infos are always pointers to static data */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_C_POINTER:
         {
@@ -586,13 +576,12 @@ try_again:
                 new_data = data;
             }
         }
-        break;
+        return new_data;
 
     case MR_TYPECTOR_REP_SUCCIP: /* fallthru */
     case MR_TYPECTOR_REP_REDOIP:
         /* code addresses are never relocated */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_HP:
         assert(MR_tag(data) == 0);
@@ -601,18 +590,18 @@ try_again:
         } else {
             new_data = data;
         }
+        return new_data;
 
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
-    case MR_TYPECTOR_REP_MAXFR:
+    case MR_TYPECTOR_REP_MAXFR: /* fallthru */
+    case MR_TYPECTOR_REP_REDOFR:
         /* we do not modify the layout of the nondet stack */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_TRAIL_PTR:
     case MR_TYPECTOR_REP_TICKET:
         /* XXX we do not yet compress the trail when doing gc */
-        new_data = data;
-        break;
+        return data;
 
     case MR_TYPECTOR_REP_REFERENCE:
         {
@@ -632,16 +621,19 @@ try_again:
                         (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
             leave_forwarding_pointer(data, 0, new_data);
         }
-        break;
+        return new_data;
 
-    case MR_TYPECTOR_REP_FOREIGN: /* fallthru */
+    case MR_TYPECTOR_REP_FOREIGN:
+        MR_fatal_error("Cannot copy foreign types");
+
+    case MR_TYPECTOR_REP_UNIV:
+        MR_fatal_error(MR_STRINGIFY(copy) ": bad type_ctor_rep");
+
     case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
-    default:
         MR_fatal_error("Unknown layout type in deep copy");
-        break;
     }
 
-    return new_data;
+    MR_fatal_error(MR_STRINGIFY(copy) ": unexpected fallthough");
 }
 
 /*

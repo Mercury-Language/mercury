@@ -267,6 +267,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
     expand_info->limit_reached = MR_FALSE;
 #endif  /* EXPAND_APPLY_LIMIT */
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+            ": term of unknown representation");
+    }
+
     switch(MR_type_ctor_rep(type_ctor_info)) {
 
         case MR_TYPECTOR_REP_ENUM_USEREQ:
@@ -274,11 +279,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (noncanon == MR_NONCANON_ALLOW) {
                 handle_noncanonical_name(type_ctor_info);
                 handle_zero_arity_args();
-                break;
+                return;
             }
             /* else fall through */
 
@@ -286,18 +291,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_functor_name(MR_type_ctor_layout(type_ctor_info).
                     MR_layout_enum[*data_word_ptr]->MR_enum_functor_name);
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (noncanon == MR_NONCANON_ALLOW) {
                 handle_noncanonical_name(type_ctor_info);
                 handle_zero_arity_args();
-                break;
+                return;
             }
             /* else fall through */
 
@@ -321,7 +326,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 					handle_functor_name(ra_layout->MR_ra_constants[data]->
 							MR_ra_functor_name);
 					handle_zero_arity_args();
-					break;
+					return;
 				}
 
 				/*
@@ -330,7 +335,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 				*/
 				for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                     if (data == (MR_Word) ra_layout->
-                            MR_ra_res_symbolic_addrs[i])
+                        MR_ra_res_symbolic_addrs[i])
                     {
                         int offset;
                         offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
@@ -355,11 +360,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (noncanon == MR_NONCANON_ALLOW) {
                 handle_noncanonical_name(type_ctor_info);
                 handle_zero_arity_args();
-                break;
+                return;
             }
             /* else fall through */
 
@@ -409,7 +414,6 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                             /* XXX should throw an exception */
                             MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                                 ": attempt to deconstruct variable");
-                            break;
                         } 
 
                         handle_functor_name("<<variable>>");
@@ -505,18 +509,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 }
 #endif  /* EXPAND_ONE_ARG */
             }
-            break;
+            return;
 
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (noncanon == MR_NONCANON_ALLOW) {
                 handle_noncanonical_name(type_ctor_info);
                 handle_zero_arity_args();
-                break;
+                return;
             }
             /* else fall through */
 
@@ -561,18 +565,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
-            break;
+            return;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (noncanon == MR_NONCANON_ALLOW) {
                 handle_noncanonical_name(type_ctor_info);
                 handle_zero_arity_args();
-                break;
+                return;
             }
             /* else fall through */
 
@@ -615,7 +619,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
-            break;
+            return;
 
         case MR_TYPECTOR_REP_EQUIV:
             {
@@ -627,13 +631,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 EXPAND_FUNCTION_NAME(eqv_type_info, data_word_ptr, noncanon,
                     EXTRA_ARGS expand_info);
             }
-            break;
+            return;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             EXPAND_FUNCTION_NAME(MR_pseudo_type_info_is_ground(
                 MR_type_ctor_layout(type_ctor_info).MR_layout_equiv),
                 data_word_ptr, noncanon, EXTRA_ARGS expand_info);
-            break;
+            return;
 
         case MR_TYPECTOR_REP_INT:
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -652,7 +656,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -670,7 +674,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_FLOAT:
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -691,7 +695,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_STRING:
 #ifdef  EXPAND_FUNCTOR_FIELD
@@ -710,18 +714,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_FUNC:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (higher_order_test(noncanon == MR_NONCANON_ALLOW)) {
                 handle_functor_name("<<function>>");
                 handle_zero_arity_args();
-                break;
+                return;
             } else {
                 goto predfunc;
             }
@@ -731,11 +735,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             } else if (higher_order_test(noncanon == MR_NONCANON_ALLOW)) {
                 handle_functor_name("<<predicate>>");
                 handle_zero_arity_args();
-                break;
+                return;
             } else {
                 goto predfunc;
             }
@@ -827,7 +831,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_NAMED_ARG */
             }
 
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TUPLE:
             expand_info->arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
@@ -866,7 +870,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
-            break;
+            return;
 
         case MR_TYPECTOR_REP_UNIV: {
             MR_Word data_word;
@@ -881,7 +885,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             MR_unravel_univ(data_word, univ_type_info, univ_data);
             EXPAND_FUNCTION_NAME(univ_type_info, &univ_data, noncanon,
                 EXTRA_ARGS expand_info);
-            break;
+            return;
         }
 
         case MR_TYPECTOR_REP_VOID:
@@ -897,12 +901,12 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             }
 
             handle_functor_name("<<c_pointer>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
@@ -989,7 +993,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_ONE_ARG */
             }
 
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TYPECTORINFO:
             {
@@ -1006,7 +1010,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 handle_zero_arity_args();
             }
 
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TYPECTORDESC:
             {
@@ -1032,31 +1036,31 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 handle_zero_arity_args();
             }
 
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             }
 
             handle_functor_name("<<typeclassinfo>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             }
 
             handle_functor_name("<<basetypeclassinfo>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_ARRAY:
             {
@@ -1105,47 +1109,47 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 }
 #endif  /* EXPAND_ONE_ARG */
             }
-            break;
+            return;
 
         case MR_TYPECTOR_REP_SUCCIP:
             handle_functor_name("<<succip>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_HP:
             handle_functor_name("<<hp>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_CURFR:
             handle_functor_name("<<curfr>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_MAXFR:
             handle_functor_name("<<maxfr>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_REDOFR:
             handle_functor_name("<<redofr>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_REDOIP:
             handle_functor_name("<<redoip>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
             handle_functor_name("<<trail_ptr>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_TICKET:
             handle_functor_name("<<ticket>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_FOREIGN:
 #ifdef  MR_USE_MINIMAL_MODEL
@@ -1163,26 +1167,27 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_functor_name("<<foreign>>");
 #endif
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_REFERENCE:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
-                break;
+                return;
             }
 
             handle_functor_name("<<reference>>");
             handle_zero_arity_args();
-            break;
+            return;
 
         case MR_TYPECTOR_REP_UNKNOWN:    /* fallthru */
-        default:
             MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                 ": cannot expand -- unknown data type");
-            break;
     }
+
+    MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                ": unexpected fallthrough");
 }
 
 #undef  EXTRA_ARG1

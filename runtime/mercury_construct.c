@@ -45,6 +45,10 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     construct_info->type_ctor_rep = MR_type_ctor_rep(type_ctor_info);
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error("MR_get_functor_info: term of unknown representation");
+    }
+
     switch(MR_type_ctor_rep(type_ctor_info)) {
 
     case MR_TYPECTOR_REP_RESERVED_ADDR:
@@ -71,7 +75,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->arg_names =
                 functor_desc->MR_du_functor_arg_names;
         }
-        break;
+        return MR_TRUE;
 
     case MR_TYPECTOR_REP_ENUM:
     case MR_TYPECTOR_REP_ENUM_USEREQ:
@@ -93,7 +97,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->arg_pseudo_type_infos = NULL;
             construct_info->arg_names = NULL;
         }
-        break;
+        return MR_TRUE;
 
     case MR_TYPECTOR_REP_NOTAG:
     case MR_TYPECTOR_REP_NOTAG_USEREQ:
@@ -117,7 +121,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             construct_info->arg_names =
                 &functor_desc->MR_notag_functor_arg_name;
         }
-        break;
+        return MR_TRUE;
 
     case MR_TYPECTOR_REP_EQUIV_GROUND:
     case MR_TYPECTOR_REP_EQUIV:
@@ -134,7 +138,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
         /* Tuple types don't have pseudo-type_infos for the functors. */
         construct_info->arg_pseudo_type_infos = NULL;
         construct_info->arg_names = NULL;
-        break;
+        return MR_TRUE;
 
     case MR_TYPECTOR_REP_INT:
     case MR_TYPECTOR_REP_CHAR:
@@ -163,12 +167,14 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_REFERENCE:
         return MR_FALSE;
 
+    case MR_TYPECTOR_REP_UNIV:
+        MR_fatal_error("MR_get_functor_info: bad type_ctor_rep");
+
     case MR_TYPECTOR_REP_UNKNOWN:
-    default:
-        MR_fatal_error(":construct - unexpected type.");
+        MR_fatal_error("MR_get_functor_info: unknown type_ctor_rep");
     }
 
-    return MR_TRUE;
+    MR_fatal_error("MR_get_functor_info: unexpected fallthrough");
 }
 
 /*
@@ -195,7 +201,7 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
     int             comp;
     int             i;
 
-        /* Type check list of arguments */
+    /* Type check the list of arguments */
 
     for (i = 0; i < arity; i++) {
         if (MR_list_is_empty(arg_list)) {
@@ -269,6 +275,10 @@ MR_get_num_functors(MR_TypeInfo type_info)
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
+    if (! MR_type_ctor_has_valid_rep(type_ctor_info)) {
+        MR_fatal_error("MR_get_num_functors: term of unknown representation");
+    }
+
     switch(MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
@@ -276,23 +286,20 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
-            functors = MR_type_ctor_num_functors(type_ctor_info);
-            break;
+            return MR_type_ctor_num_functors(type_ctor_info);
 
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_TUPLE:
-            functors = 1;
-            break;
+            return 1;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
         case MR_TYPECTOR_REP_EQUIV:
-            functors = MR_get_num_functors(
+            return MR_get_num_functors(
                 MR_create_type_info((MR_TypeInfo *) type_info,
                     MR_type_ctor_layout(type_ctor_info).MR_layout_equiv));
-            break;
 
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:
@@ -319,13 +326,14 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_TICKET:
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_REFERENCE:
-            functors = -1;
-            break;
+            return -1;
+
+        case MR_TYPECTOR_REP_UNIV:
+            MR_fatal_error("MR_get_num_functors: bad type_ctor_rep");
 
         case MR_TYPECTOR_REP_UNKNOWN:
-        default:
             MR_fatal_error("MR_get_num_functors: unknown type_ctor_rep");
     }
 
-    return functors;
+    MR_fatal_error("MR_get_num_functors: unexpected fallthrough");
 }
