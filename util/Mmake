@@ -16,28 +16,28 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 MGNUC	= ../scripts/mgnuc
-CFLAGS	= -I ../runtime
+CFLAGS	=
 
 #-----------------------------------------------------------------------------#
 
-all: mkinit
+all: mkinit mdemangle
 
 mkinit:	mkinit.c
 	$(MGNUC) -s $(GRADE) $(CFLAGS) -o mkinit mkinit.c
 
+mdemangle: mdemangle.c
+	$(MGNUC) -s $(GRADE) $(CFLAGS) -o mdemangle mdemangle.c
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: mkinit
+install: mkinit mdemangle
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
-	cp mkinit $(INSTALL_BINDIR)
+	cp `vpath_find mkinit mdemangle` $(INSTALL_BINDIR)
 
 #-----------------------------------------------------------------------------#
 
-clean:
-	-rm -f mkinit.o
-
 realclean:
-	-rm -f mkinit.o mkinit
+	-rm -f mkinit mdemangle
 
 #-----------------------------------------------------------------------------#
