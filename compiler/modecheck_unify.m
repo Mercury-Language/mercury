@@ -472,11 +472,10 @@ modecheck_unification(X,
 		% Now modecheck the unification of X with the lambda-expression.
 		%
 
-		set__to_sorted_list(NonLocals, ArgVars),
+		RHS0 = lambda_goal(PredOrFunc, ArgVars, Vars, Modes, Det, Goal),
 		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
-				Det, Unification0, Mode, Unification,
-				ModeInfo12, ModeInfo),
-		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)
+				Det, RHS0, Unification0, Mode,
+				RHS, Unification, ModeInfo12, ModeInfo)
 	;
 		list__filter(lambda([Var :: in] is semidet,
 			( instmap__lookup_var(InstMap1, Var, Inst),
@@ -494,7 +493,8 @@ modecheck_unification(X,
 			error("modecheck_unification(lambda): very strange var")
 		),
 			% return any old garbage
-		RHS = lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
+		RHS = lambda_goal(PredOrFunc, ArgVars, Vars,
+				Modes0, Det, Goal0),
 		Mode = (free -> free) - (free -> free),
 		Unification = Unification0
 	).
