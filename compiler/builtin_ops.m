@@ -93,7 +93,6 @@
 	;	elem_type_generic	% mlds__generic_type
 	.
 
-
 	% translate_builtin:
 	%
 	% Given a module name, a predicate name, a proc_id and a list of
@@ -244,4 +243,3 @@ builtin_translation("float", ">=", 0, [X, Y],
 	test(binary(float_ge, leaf(X), leaf(Y)))).
 builtin_translation("float", "=<", 0, [X, Y],
 	test(binary(float_le, leaf(X), leaf(Y)))).
-
