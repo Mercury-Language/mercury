@@ -234,34 +234,65 @@ mercury__io__output_stream_3_0:
 	update_io(r2, r3);
 	proceed();
 
+/*
+:- pred io__set_input_stream(io__input_stream, io__input_stream,
+                                io__state, io__state).
+:- mode io__set_input_stream(in, out, di, uo) is det.
+%       io__set_input_stream(NewStream, OldStream, IO0, IO1)
+%               Changes the current input stream to the stream specified.
+%               Returns the previous stream.
+*/
 mercury__io__set_input_stream_4_0:
-	r1 = (int) mercury_current_input;
-	mercury_current_input = (MercuryFile*) r2;
+	r2 = (int) mercury_current_input;
+	mercury_current_input = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__set_output_stream_4_0:
-	r1 = (int) mercury_current_output;
-	mercury_current_output = (MercuryFile*) r2;
+	r2 = (int) mercury_current_output;
+	mercury_current_output = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
 
 /* stream open/close predicates */
 
+/*
+:- pred io__do_open_input(string, int, io__input_stream, io__state, io__state).
+:- mode io__do_open_input(in, out, out, di, uo) is det.
+%       io__do_open_input(File, ResultCode, Stream, IO0, IO1).
+%               Attempts to open a file for input.
+%               Result is 0 for success, -1 for failure.
+*/
 mercury__io__do_open_input_5_0:
 	r3 = (int)mercury_open((char*)r1, "r");
 	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
 
+/*
+:- pred io__do_open_output(string, int, io__output_stream, io__state,
+							io__state).
+:- mode io__do_open_output(in, out, out, di, uo) is det.
+%       io__do_open_output(File, ResultCode, Stream, IO0, IO1).
+%               Attempts to open a file for output.
+%               Result is 0 for success, -1 for failure.
+*/
 mercury__io__do_open_output_5_0:
-	r3 = r2 = (int)mercury_open((char*)r1, "w");
+	r3 = (int)mercury_open((char*)r1, "w");
 	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
 
+/*
+:- pred io__do_open_append(string, int, io__output_stream, io__state,
+				io__state).
+:- mode io__do_open_append(in, out, out, di, uo) is det.
+%       io__do_open_append(File, ResultCode, Stream, IO0, IO1).
+%               Attempts to open a file for appending.
+%               Result is 0 for success, -1 for failure.
+*/
 mercury__io__do_open_append_5_0:
-	r2 = (int)mercury_open((char*)r1, "a");
+	r3 = (int)mercury_open((char*)r1, "a");
 	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
