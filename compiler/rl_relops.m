@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,8 +12,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__instmap, parse_tree__prog_data.
-:- import_module aditi_backend__rl, aditi_backend__rl_info.
+:- import_module aditi_backend__rl.
+:- import_module aditi_backend__rl_info.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list, std_util.
 
 /*
@@ -96,10 +100,16 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_aux, hlds__hlds_data, hlds__hlds_module.
-:- import_module hlds__hlds_pred, check_hlds__mode_util.
-:- import_module libs__tree, aditi_backend__rl_key, libs__globals.
+:- import_module aditi_backend__rl_key.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
 :- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_aux.
+
 :- import_module int, map, require, set.
 
 %-----------------------------------------------------------------------------%

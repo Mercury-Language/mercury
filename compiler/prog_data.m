@@ -22,8 +22,11 @@
 % Any types which are needed in both the parse tree and in the HLDS
 % should be defined here, rather than in hlds*.m.
 
-:- import_module (parse_tree__inst), libs__options, libs__globals.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
 :- import_module recompilation.
+
 :- import_module bool, list, assoc_list, map, set, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -1137,8 +1140,9 @@
 
 :- implementation.
 
-:- import_module string.
 :- import_module check_hlds__purity.
+
+:- import_module string.
 
 :- type pragma_foreign_proc_attributes
 	--->	attributes(

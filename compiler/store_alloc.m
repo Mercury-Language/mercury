@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 
 :- type store_map_run_type
 	--->	final_allocation
@@ -40,13 +41,20 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_llds.
-:- import_module hlds__goal_util, hlds__instmap.
 :- import_module check_hlds__mode_util.
-:- import_module ll_backend__llds, ll_backend__trace, ll_backend__arg_info.
-:- import_module ll_backend__follow_vars, ll_backend__liveness.
-:- import_module libs__options, libs__globals, libs__trace_params.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__follow_vars.
+:- import_module ll_backend__liveness.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, int, require.
 :- import_module list, map, set, std_util, assoc_list.

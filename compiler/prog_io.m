@@ -55,8 +55,10 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
-:- import_module libs__timestamp, (parse_tree__inst).
+:- import_module libs__timestamp.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util.
 
 :- import_module bool, varset, term, list, io, std_util. 
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,9 @@
 
 :- module ml_backend__add_heap_ops.
 :- interface.
-:- import_module hlds__hlds_pred, hlds__hlds_module.
+
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 
 :- pred add_heap_ops(proc_info::in, module_info::in, proc_info::out) is det.
 
@@ -37,17 +39,21 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
-:- import_module (parse_tree__inst).
-:- import_module hlds__hlds_goal, hlds__hlds_data.
-:- import_module hlds__goal_util, hlds__quantification, parse_tree__modules.
+:- import_module backend_libs__code_model.
 :- import_module check_hlds__type_util.
-:- import_module hlds__instmap, backend_libs__code_model.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module hlds__quantification.
 :- import_module ll_backend__code_util.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, string.
 :- import_module assoc_list, list, map, set, varset, std_util, require, term.
-
 
 %
 % As we traverse the goal, we add new variables to hold the

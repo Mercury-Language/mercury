@@ -17,6 +17,7 @@
 :- module backend_libs__proc_label.
 
 :- interface. 
+
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.

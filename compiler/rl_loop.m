@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,6 +27,7 @@
 :- implementation.
 
 :- import_module aditi_backend__rl.
+
 :- import_module assoc_list, bimap, bool, int, list, map, queue, relation.
 :- import_module require, set, std_util.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,9 +15,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_llds.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
 :- import_module ll_backend__code_info.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool.
 
 	% code_aux__contains_simple_recursive_call(G, CI, Last) succeeds
@@ -39,7 +41,9 @@
 :- implementation.
 
 :- import_module hlds__goal_form.
-:- import_module ll_backend__llds, ll_backend__llds_out.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__llds_out.
+
 :- import_module string, list, assoc_list, map, std_util, varset.
 
 %-----------------------------------------------------------------------------%

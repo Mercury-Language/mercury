@@ -9,6 +9,7 @@
 % Build targets which relate to a single module (e.g. C code, object code,
 % interface files).
 %-----------------------------------------------------------------------------%
+
 :- module make__module_target.
 
 :- interface.

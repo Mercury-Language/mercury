@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -99,6 +99,7 @@
 :- interface.
 
 :- import_module ll_backend__llds.
+
 :- import_module list.
 
 :- pred remove_reassign(list(instruction)::in, list(instruction)::out) is det.
@@ -106,6 +107,7 @@
 :- implementation.
 
 :- import_module ll_backend__code_util.
+
 :- import_module std_util, set, map, require.
 
 %-----------------------------------------------------------------------------%

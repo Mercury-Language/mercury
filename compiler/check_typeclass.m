@@ -46,10 +46,11 @@
 
 :- module check_hlds__check_typeclass.
 
-
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__make_hlds.
+:- import_module hlds__hlds_module.
+:- import_module hlds__make_hlds.
+
 :- import_module bool, io.
 
 :- pred check_typeclass__check_instance_decls(module_info, qual_info,
@@ -59,15 +60,22 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module hlds__hlds_pred, hlds__hlds_data, hlds__hlds_goal.
-:- import_module hlds__hlds_out.
-:- import_module check_hlds__type_util, check_hlds__typecheck.
-:- import_module check_hlds__mode_util, check_hlds__inst_match.
 :- import_module backend_libs__base_typeclass_info.
-:- import_module parse_tree__mercury_to_mercury, hlds__error_util.
-:- import_module libs__globals, libs__options. 
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options. 
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, string.
 :- import_module list, assoc_list, map, set, term, varset.

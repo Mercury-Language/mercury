@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,8 +51,11 @@
 
 :- interface.
 
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+
 :- import_module io, bool, list.
-:- import_module hlds__hlds_module, parse_tree__modules, parse_tree__prog_data.
 
 :- pred trans_opt__write_optfile(module_info, io__state, io__state).
 :- mode trans_opt__write_optfile(in, di, uo) is det.
@@ -70,10 +73,15 @@
 
 :- implementation.
 
-:- import_module transform_hlds__intermod, hlds__hlds_pred.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
 :- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_io, libs__globals, ll_backend__code_util.
-:- import_module hlds__passes_aux, parse_tree__prog_out, libs__options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+:- import_module transform_hlds__intermod.
 :- import_module transform_hlds__termination.
 
 :- import_module set, string, list, map, varset, term, std_util.

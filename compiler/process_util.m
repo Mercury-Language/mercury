@@ -72,7 +72,9 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+
 :- import_module std_util, require.
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->

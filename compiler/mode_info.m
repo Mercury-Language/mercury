@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,10 +16,16 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
-:- import_module hlds__hlds_data, hlds__instmap.
-:- import_module parse_tree__prog_data, check_hlds__mode_errors.
-:- import_module check_hlds__delay_info, (parse_tree__inst).
+:- import_module check_hlds__delay_info.
+:- import_module check_hlds__mode_errors.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module map, list, set, bool, assoc_list, std_util, io.
 
 :- interface.
@@ -341,8 +347,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__delay_info, check_hlds__mode_errors.
+:- import_module check_hlds__delay_info.
+:- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_util.
+
 :- import_module term, varset.
 :- import_module require, std_util, queue.
 

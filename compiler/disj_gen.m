@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,8 +17,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, backend_libs__code_model, ll_backend__llds.
+:- import_module backend_libs__code_model.
+:- import_module hlds__hlds_goal.
 :- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
+
 :- import_module list.
 
 :- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
@@ -29,11 +32,15 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_data, hlds__hlds_llds.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_llds.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
 :- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util, ll_backend__trace.
-:- import_module libs__options, libs__globals, libs__tree.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, set, libs__tree, map, std_util, term, require.
 

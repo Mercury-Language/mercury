@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,8 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util.
 :- import_module varset, term.
 
 :- pred parse_dcg_clause(module_name, varset, term, term,
@@ -38,8 +39,11 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_util, check_hlds__purity.
+:- import_module check_hlds__purity.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util.
+
 :- import_module int, map, string, std_util, list.
 
 %-----------------------------------------------------------------------------%

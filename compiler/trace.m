@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,10 +46,14 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_pred, hlds__hlds_module.
-:- import_module ll_backend__code_info, ll_backend__llds.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module libs__globals.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module map, std_util, set.
 
 	% The kinds of external ports for which the code we generate will
@@ -213,14 +217,20 @@
 
 :- implementation.
 
-:- import_module parse_tree__inst.
-:- import_module hlds__instmap, hlds__hlds_llds.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__inst_match, check_hlds__mode_util.
-:- import_module ll_backend__llds_out, ll_backend__layout_out.
-:- import_module ll_backend__continuation_info, ll_backend__code_util.
 :- import_module backend_libs__code_model.
-:- import_module libs__options, libs__trace_params, libs__tree.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__instmap.
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module libs__tree.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__layout_out.
+:- import_module ll_backend__llds_out.
+:- import_module parse_tree__inst.
 
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 

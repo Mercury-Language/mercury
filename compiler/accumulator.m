@@ -129,7 +129,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, io.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module io.
 
 :- pred accumulator__process_proc(pred_id::in, proc_id::in, proc_info::in,
 		proc_info::out, module_info::in, module_info::out,
@@ -140,14 +142,22 @@
 
 :- implementation.
 
-:- import_module (hlds__assertion), hlds__error_util.
-:- import_module transform_hlds__goal_store, hlds__goal_util, libs__globals.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_out.
-:- import_module (parse_tree__inst).
-:- import_module check_hlds__inst_match, hlds__instmap, check_hlds__mode_util.
-:- import_module libs__options.
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__assertion.
+:- import_module hlds__error_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
 :- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+:- import_module transform_hlds__goal_store.
 
 :- import_module assoc_list, bool, int, list, map, multi_map.
 :- import_module require, set, std_util, string, term, varset.

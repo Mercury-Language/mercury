@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
-:- import_module (parse_tree__inst).
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util.
 
 :- import_module list, varset, term.
 
@@ -42,8 +43,11 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_util, check_hlds__type_util, hlds__hlds_pred.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util.
 
 :- import_module term, varset.
 :- import_module int, string, std_util, require, set, map.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1997, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,12 +33,20 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module check_hlds__modes.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+
 :- import_module std_util, list, assoc_list, io, bool, map.
 :- import_module term, varset.
-:- import_module check_hlds__modes, libs__globals, libs__options.
-:- import_module parse_tree__mercury_to_mercury, hlds__passes_aux.
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__instmap.
-:- import_module parse_tree__prog_data, (parse_tree__inst).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,9 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
 :- import_module list.
+
 :- type tree(T)		--->	empty
 			;	node(T)
 			;	tree(tree(T), tree(T)).
@@ -81,6 +83,5 @@ tree__tree_of_lists_is_empty(tree(L, R)) :-
 tree__map(_F, empty) = empty.
 tree__map(F, node(T)) = node(F(T)).
 tree__map(F, tree(L, R)) = tree(tree__map(F, L), tree__map(F, R)).
-
 
 %-----------------------------------------------------------------------------%

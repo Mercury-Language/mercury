@@ -20,7 +20,9 @@
 :- module check_hlds__modecheck_unify.
 :- interface.
 
-:- import_module hlds__hlds_goal, parse_tree__prog_data, check_hlds__mode_info.
+:- import_module check_hlds__mode_info.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
 
 	% Modecheck a unification
 :- pred modecheck_unification(prog_var, unify_rhs, unification, unify_context,
@@ -40,19 +42,30 @@
 
 :- implementation.
 
-:- import_module ll_backend__llds, parse_tree__prog_util.
-:- import_module check_hlds__type_util, parse_tree__module_qual, hlds__instmap.
-:- import_module hlds__hlds_module, hlds__hlds_goal, hlds__hlds_pred.
-:- import_module hlds__hlds_data, hlds__hlds_out.
-:- import_module check_hlds__mode_debug, check_hlds__mode_util.
-:- import_module check_hlds__mode_info, check_hlds__modes.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__inst_util.
+:- import_module check_hlds__mode_debug.
 :- import_module check_hlds__mode_errors.
-:- import_module check_hlds__inst_match, check_hlds__inst_util.
+:- import_module check_hlds__mode_info.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modecheck_call.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
 :- import_module check_hlds__unify_proc.
 :- import_module check_hlds__unique_modes.
-:- import_module check_hlds__typecheck, check_hlds__modecheck_call.
-:- import_module (parse_tree__inst), hlds__quantification, hlds__make_hlds.
-:- import_module check_hlds__polymorphism.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module hlds__make_hlds.
+:- import_module hlds__quantification.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, list, map, std_util, int, set, require.
 :- import_module string, assoc_list.

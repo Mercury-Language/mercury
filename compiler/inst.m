@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000, 2002 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000, 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,9 @@
 %     of the `cons_id' type, and so we could define a new type
 %     `abstract_cons_id' and use that here instead of `cons_id'.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data.
+:- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, map, set.
 
 %-----------------------------------------------------------------------------%

@@ -131,8 +131,13 @@ a variable live if its value will be used later on in the computation.
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, (parse_tree__inst), hlds__instmap.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list, io.
 
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
@@ -323,22 +328,34 @@ a variable live if its value will be used later on in the computation.
 
 :- implementation.
 
-:- import_module hlds__make_hlds, hlds__hlds_data, check_hlds__unique_modes.
+:- import_module check_hlds__clause_to_proc.
+:- import_module check_hlds__delay_info.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__inst_util.
 :- import_module check_hlds__mode_debug.
-:- import_module check_hlds__mode_info, check_hlds__delay_info.
-:- import_module check_hlds__mode_errors, check_hlds__inst_match.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__mode_info.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modecheck_call.
+:- import_module check_hlds__modecheck_unify.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module check_hlds__unify_proc.
+:- import_module check_hlds__unique_modes.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module ll_backend__code_util, check_hlds__unify_proc.
+:- import_module hlds__make_hlds.
+:- import_module hlds__passes_aux.
 :- import_module hlds__special_pred.
-:- import_module libs__globals, libs__options, parse_tree__mercury_to_mercury.
-:- import_module hlds__hlds_out, int, set.
-:- import_module hlds__passes_aux, check_hlds__typecheck.
-:- import_module parse_tree__module_qual, check_hlds__clause_to_proc.
-:- import_module check_hlds__modecheck_unify, check_hlds__modecheck_call.
-:- import_module check_hlds__inst_util, check_hlds__purity.
-:- import_module parse_tree__prog_out, term, varset.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_out.
 
+:- import_module int, set, term, varset.
 :- import_module list, map, string, require, std_util.
 :- import_module assoc_list.
 

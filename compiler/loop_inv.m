@@ -99,7 +99,8 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds__hlds_pred, hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__hlds_module.
 
     % hoist_loop_invariants(PredId, ProcId, PredInfo, 
     %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
@@ -117,16 +118,21 @@
 
 :- implementation.
 
-:- import_module list, assoc_list, std_util, require, set, term, string, bool.
-:- import_module parse_tree__prog_data, parse_tree__inst, parse_tree__prog_util.
-:- import_module hlds__hlds_goal, hlds__instmap, hlds__error_util.
-:- import_module hlds__quantification.
-:- import_module check_hlds.
-:- import_module check_hlds__mode_util, check_hlds__det_util.
-:- import_module check_hlds__inst_match, check_hlds__purity.
 :- import_module backend_libs__code_model.
+:- import_module check_hlds.
+:- import_module check_hlds__det_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module hlds__quantification.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 
-
+:- import_module list, assoc_list, std_util, require, set, term, string, bool.
 
 :- func this_file = string.
 

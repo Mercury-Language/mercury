@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,11 +62,13 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_data.
 :- import_module backend_libs__code_model.
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
 :- import_module libs__globals.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
 
 :- import_module list.
 
@@ -96,11 +98,16 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_tag_switch, ml_backend__ml_string_switch.
-:- import_module ml_backend__ml_code_gen, ml_backend__ml_unify_gen.
-:- import_module ml_backend__ml_code_util, ml_backend__ml_simplify_switch.
-:- import_module backend_libs__switch_util, check_hlds__type_util.
-:- import_module backend_libs__foreign, libs__options.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__switch_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__options.
+:- import_module ml_backend__ml_code_gen.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__ml_simplify_switch.
+:- import_module ml_backend__ml_string_switch.
+:- import_module ml_backend__ml_tag_switch.
+:- import_module ml_backend__ml_unify_gen.
 
 :- import_module bool, int, string, map, libs__tree, std_util, require.
 

@@ -12,7 +12,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+
 :- import_module bool, io, list.
 
 	% lookup_module_source_file(ModuleName, FileName, FileNameIsMapped).
@@ -36,9 +38,12 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out, parse_tree__prog_util.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__modules.
-:- import_module libs__globals, libs__options.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- import_module char, dir, map, std_util, string.
 
 lookup_module_source_file(ModuleName, FileName) -->

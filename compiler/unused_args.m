@@ -43,8 +43,9 @@
 %-------------------------------------------------------------------------------
 :- interface.
 
-:- import_module hlds__hlds_module.
 :- import_module analysis.
+:- import_module hlds__hlds_module.
+
 :- import_module io.
 
 :- pred unused_args__process_module(module_info::in, module_info::out,
@@ -63,18 +64,28 @@
 %-------------------------------------------------------------------------------
 :- implementation.
 
-:- import_module parse_tree__mercury_to_mercury, parse_tree__modules. 
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
-:- import_module hlds__hlds_out, hlds__instmap, hlds__make_hlds.
-:- import_module hlds__quantification, hlds__special_pred.
-:- import_module hlds__passes_aux.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module check_hlds__inst_match, check_hlds__polymorphism.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module hlds__make_hlds.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules. 
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__mmc_analysis.
-:- import_module libs__options, libs__globals.
 
 :- import_module bool, int, char, string, list, assoc_list, set, map.
 :- import_module std_util, require.

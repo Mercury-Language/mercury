@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred lco_modulo_constructors(pred_id, proc_id, module_info,
@@ -27,7 +29,10 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, hlds__passes_aux, hlds__hlds_out.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__passes_aux.
+
 :- import_module list, require, std_util.
 
 %-----------------------------------------------------------------------------%

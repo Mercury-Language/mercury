@@ -160,8 +160,11 @@
 :- module check_hlds__polymorphism.
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
-:- import_module parse_tree__prog_data, hlds__special_pred.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
+:- import_module parse_tree__prog_data.
 
 :- import_module io, list, term, map.
 
@@ -297,18 +300,27 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, check_hlds__typecheck, ll_backend__llds.
-:- import_module parse_tree__prog_io.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module hlds__quantification, hlds__instmap, parse_tree__prog_out.
-:- import_module ll_backend__code_util, check_hlds__unify_proc.
-:- import_module parse_tree__prog_util.
-:- import_module (parse_tree__inst), hlds__hlds_out.
-:- import_module backend_libs__base_typeclass_info, hlds__goal_util.
-:- import_module hlds__passes_aux.
+:- import_module backend_libs__base_typeclass_info.
 :- import_module check_hlds__clause_to_proc.
-:- import_module libs__globals, libs__options.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module check_hlds__unify_proc.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, int, string, set, map.
 :- import_module term, varset, std_util, require, assoc_list.

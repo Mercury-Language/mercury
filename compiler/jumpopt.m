@@ -16,6 +16,7 @@
 
 :- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
+
 :- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps

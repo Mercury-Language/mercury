@@ -18,14 +18,17 @@
 
 :- include_module intermod, trans_opt.
 
-:- include_module dependency_graph.	% XXX imports llds (for profiling labels)
+:- include_module dependency_graph. % XXX imports llds (for profiling labels)
 
 :- include_module table_gen.
 
 :- include_module (lambda).
 
 :- include_module termination.
-   :- include_module term_pass1, term_pass2, term_traversal, term_errors.
+   :- include_module term_pass1.
+   :- include_module term_pass2.
+   :- include_module term_traversal.
+   :- include_module term_errors.
    :- include_module term_util.
    :- include_module lp. % this could alternatively go in the `libs' module
 
@@ -33,7 +36,11 @@
 :- include_module higher_order.
 :- include_module inlining.
 :- include_module deforest.
-   :- include_module constraint, pd_cost, pd_debug, pd_info, pd_term.
+   :- include_module constraint.
+   :- include_module pd_cost.
+   :- include_module pd_debug.
+   :- include_module pd_info.
+   :- include_module pd_term.
    :- include_module pd_util.
 :- include_module delay_construct.
 :- include_module unused_args.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 University of Melbourne.
+% Copyright (C) 2001-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,16 +24,18 @@
 
 :- interface.
 
-:- import_module parse_tree.
 :- import_module hlds.
 :- import_module libs.
+:- import_module parse_tree.
+
+:- import_module libs__timestamp.
+:- import_module parse_tree__prog_data.
+
+:- import_module io, map, set, std_util, term.
 
 :- include_module recompilation__check.
 :- include_module recompilation__usage.
 :- include_module recompilation__version.
-
-:- import_module parse_tree__prog_data, libs__timestamp.
-:- import_module io, map, set, std_util, term.
 
 	% Identify a particular version of a program item.
 	% This could be done using a timestamp or a hash value. 
@@ -242,9 +244,12 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_util.
-:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_util.
+
 :- import_module int, time, bool, list, require, string.
 
 %-----------------------------------------------------------------------------%

@@ -42,9 +42,12 @@
 :- module parse_tree__mercury_to_mercury.
 :- interface.
 
-:- import_module parse_tree__prog_data, (parse_tree__inst).
-:- import_module hlds__hlds_goal, hlds__hlds_data, hlds__hlds_module.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
 :- import_module libs__globals.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, std_util, list, io, varset, term.
 
@@ -352,14 +355,20 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out, parse_tree__prog_util, hlds__hlds_pred.
-:- import_module parse_tree__prog_io_util.
-:- import_module hlds__hlds_out, hlds__instmap.
-:- import_module recompilation__version.
-:- import_module check_hlds__purity, check_hlds__mode_util.
-:- import_module transform_hlds__term_util.
-:- import_module libs__globals, libs__options, transform_hlds__termination.
 :- import_module backend_libs__foreign.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module recompilation__version.
+:- import_module transform_hlds__term_util.
+:- import_module transform_hlds__termination.
 
 :- import_module assoc_list, char, int, string, set, lexer, ops, require.
 :- import_module term, term_io, varset.

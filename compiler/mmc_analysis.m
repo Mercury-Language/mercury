@@ -13,9 +13,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_pred.
 :- import_module analysis.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 
 :- type mmc ---> mmc.
 
@@ -29,9 +29,10 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out, parse_tree__prog_util.
-:- import_module parse_tree__modules.
 :- import_module hlds__hlds_out.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__unused_args.
 
 :- import_module bool, std_util, string.

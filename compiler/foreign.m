@@ -18,8 +18,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, libs__globals.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, list, string, term.
 
@@ -219,14 +222,19 @@
 
 :- implementation.
 
+:- import_module backend_libs__code_model.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_out.
+
 :- import_module list, map, assoc_list, std_util, string, varset, int, term.
 :- import_module require.
-
-:- import_module hlds__hlds_pred, hlds__hlds_module, check_hlds__type_util.
-:- import_module check_hlds__mode_util, hlds__error_util.
-:- import_module hlds__hlds_data, parse_tree__prog_out.
-:- import_module backend_libs__code_model, libs__globals.
-:- import_module parse_tree__modules.
 
 	% Currently we don't use the globals to compare foreign language
 	% interfaces, but if we added appropriate options we might want

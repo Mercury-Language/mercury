@@ -16,21 +16,31 @@
 
 :- module ml_backend__rtti_to_mlds.
 :- interface.
-:- import_module hlds__hlds_module, backend_libs__rtti, ml_backend__mlds.
+
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_module.
+:- import_module ml_backend__mlds.
+
 :- import_module list.
 
 	% return a list of MLDS definitions for the given rtti_data list.
 :- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = mlds__defns.
 
 :- implementation.
-:- import_module parse_tree__prog_data, parse_tree__prog_data.
-:- import_module parse_tree__prog_out, parse_tree__prog_util.
-:- import_module hlds__hlds_data.
-:- import_module check_hlds__type_util.
-:- import_module backend_libs__foreign, backend_libs__type_ctor_info.
+
+:- import_module backend_libs__foreign.
 :- import_module backend_libs__pseudo_type_info.
-:- import_module ml_backend__ml_code_util, ml_backend__ml_unify_gen.
+:- import_module backend_libs__type_ctor_info.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
 :- import_module ml_backend__ml_closure_gen.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__ml_unify_gen.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- import_module bool, string, int, list, assoc_list, map.
 :- import_module std_util, term, require.
 

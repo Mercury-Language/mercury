@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,8 +24,9 @@
 
 :- interface.
 
-:- import_module io, list, term, std_util, bool, integer.
 :- import_module ml_backend__ilds.
+
+:- import_module io, list, term, std_util, bool, integer.
 
 :- pred ilasm__output(
 	list(decl)::in, io__state::di, io__state::uo) is det.
@@ -271,11 +272,13 @@
 
 :- implementation.
 
+:- import_module backend_libs__c_util. % for output_float_literal
+:- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+
 :- import_module char, string, pprint, getopt.
 :- import_module require, int, term_io, varset, bool.
-:- import_module libs__globals, libs__options, hlds__error_util.
-:- import_module backend_libs__c_util. % for output_float_literal
-
 
 	% Some versions of the IL assembler enforce a rule that if you output 
 	% 	.assembly foo { } 

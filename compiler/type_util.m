@@ -18,8 +18,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
-:- import_module parse_tree__prog_data, libs__globals.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_data.
 
 :- import_module term.
 :- import_module bool, std_util, list, map.
@@ -497,11 +500,14 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
 :- import_module backend_libs__foreign.
-:- import_module parse_tree__prog_util.
 :- import_module check_hlds__purity.
-:- import_module libs__options, libs__globals.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util.
+
 :- import_module bool, char, int, string.
 :- import_module assoc_list, require, varset.
 

@@ -13,7 +13,9 @@
 :- module ll_backend__opt_util.
 
 :- interface.
+
 :- import_module ll_backend__llds.
+
 :- import_module bool, map, list, std_util.
 
 :- type instrmap == map(label, instruction).

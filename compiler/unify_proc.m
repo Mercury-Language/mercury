@@ -46,10 +46,15 @@
 :- module check_hlds__unify_proc.
 
 :- interface.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+
+:- import_module check_hlds__mode_info.
 :- import_module hlds__hlds_data.
-:- import_module check_hlds__mode_info, parse_tree__prog_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, std_util, io, list.
 
 :- type proc_requests.
@@ -124,23 +129,36 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options.
-:- import_module ll_backend__code_util, ll_backend__code_info.
+:- import_module check_hlds__clause_to_proc.
+:- import_module check_hlds__cse_detection.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__post_typecheck.
+:- import_module check_hlds__switch_detection.
 :- import_module check_hlds__type_util.
-:- import_module parse_tree__mercury_to_mercury, hlds__hlds_out.
-:- import_module hlds__make_hlds, check_hlds__polymorphism.
-:- import_module check_hlds__post_typecheck, parse_tree__prog_util.
-:- import_module parse_tree__prog_out.
-:- import_module hlds__quantification, check_hlds__clause_to_proc, term.
-:- import_module varset.
-:- import_module check_hlds__modes, check_hlds__mode_util.
-:- import_module check_hlds__inst_match, hlds__instmap, (parse_tree__inst).
-:- import_module check_hlds__switch_detection, check_hlds__cse_detection.
-:- import_module check_hlds__det_analysis, check_hlds__unique_modes.
-:- import_module recompilation.
+:- import_module check_hlds__unique_modes.
 :- import_module hlds__goal_util.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__make_hlds.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module recompilation.
 
-:- import_module libs__tree, map, set, queue, int, string, require, assoc_list.
+:- import_module term.
+:- import_module varset.
+:- import_module map, set, queue, int, string, require, assoc_list.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the proc_requests structure.
@@ -197,7 +215,10 @@ unify_proc__set_req_queue(proc_requests(A, _), ReqQueue,
 %-----------------------------------------------------------------------------%
 
 unify_proc__lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
-	( unify_proc__search_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num1) ->
+	(
+		unify_proc__search_mode_num(ModuleInfo, TypeCtor, UniMode,
+			Det, Num1)
+	->
 		Num = Num1
 	;
 		error("unify_proc.m: unify_proc__search_num failed")

@@ -39,9 +39,12 @@
 
 :- interface.
 
-:- import_module io, bool.
-:- import_module hlds__hlds_module, parse_tree__modules, parse_tree__prog_io.
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+
+:- import_module io, bool.
 
 :- pred intermod__write_optfile(module_info, module_info,
 				io__state, io__state).
@@ -86,20 +89,32 @@
 
 :- implementation.
 
+:- import_module backend_libs__foreign.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module transform_hlds__inlining.
+
 :- import_module assoc_list, dir, getopt, int, list, map, multi_map, require.
 :- import_module set, std_util, string, term, varset.
-
-:- import_module libs__globals, hlds__goal_util.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_pred.
-:- import_module hlds__hlds_out, transform_hlds__inlining, ll_backend__llds.
-:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
-:- import_module parse_tree__modules.
-:- import_module libs__options, hlds__passes_aux, parse_tree__prog_data.
-:- import_module parse_tree__prog_io, parse_tree__prog_out.
-:- import_module parse_tree__prog_util.
-:- import_module hlds__special_pred, check_hlds__typecheck.
-:- import_module check_hlds__type_util, hlds__instmap, (parse_tree__inst).
-:- import_module backend_libs__foreign.
 
 %-----------------------------------------------------------------------------%
 

@@ -16,9 +16,14 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
-:- import_module hlds__hlds_data, libs__globals.
-:- import_module hlds__instmap, parse_tree__prog_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
@@ -97,9 +102,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match, check_hlds__mode_util.
-:- import_module check_hlds__type_util, libs__options, term.
-:- import_module map, require, std_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__options.
+
+:- import_module map, term, require, std_util.
 
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),

@@ -15,6 +15,7 @@
 :- interface.
 
 :- import_module ll_backend__llds.
+
 :- import_module io, list.
 
 :- pred optimize_main(list(c_procedure)::in, global_data::in,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------
@@ -17,7 +17,10 @@
 :- module transform_hlds__term_pass2.
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, transform_hlds__term_util.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module transform_hlds__term_util.
+
 :- import_module list.
 
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
@@ -25,9 +28,12 @@
 
 :- implementation.
 
-:- import_module transform_hlds__term_traversal, transform_hlds__term_errors.
-:- import_module hlds__hlds_goal, parse_tree__prog_data.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module transform_hlds__term_traversal.
+:- import_module transform_hlds__term_errors.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__mode_util.
 
 :- import_module std_util, bool, int, assoc_list.
 :- import_module set, bag, map, term, require.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,8 +26,10 @@
 :- import_module parse_tree__prog_data.
 
 % HLDS modules
-:- import_module hlds__hlds_goal, hlds__hlds_pred, hlds__hlds_module.
+:- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 
 % Standard library modules
 :- import_module bool, set.
@@ -60,12 +62,16 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, hlds__hlds_llds, hlds__hlds_data.
-:- import_module hlds__instmap.
-:- import_module check_hlds__mode_util.
-:- import_module ll_backend__llds, ll_backend__arg_info.
-:- import_module ll_backend__liveness, ll_backend__code_aux.
 :- import_module backend_libs__code_model.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__instmap.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__liveness.
+:- import_module ll_backend__llds.
 
 :- import_module int, list, assoc_list, map, std_util, require.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,9 +45,13 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
-:- import_module backend_libs__code_model, ll_backend__code_info.
+:- import_module backend_libs__code_model.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module ll_backend__code_info.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module list.
 
 :- pred switch_gen__generate_switch(code_model, prog_var, can_fail, list(case),
@@ -59,15 +63,21 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_llds.
-:- import_module check_hlds__type_util.
-:- import_module ll_backend__dense_switch, ll_backend__string_switch.
-:- import_module ll_backend__tag_switch, ll_backend__lookup_switch.
-:- import_module ll_backend__code_gen, ll_backend__unify_gen.
-:- import_module ll_backend__code_aux, ll_backend__code_util.
-:- import_module ll_backend__trace.
 :- import_module backend_libs__switch_util.
-:- import_module libs__globals, libs__options, libs__tree.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_llds.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_gen.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__dense_switch.
+:- import_module ll_backend__lookup_switch.
+:- import_module ll_backend__string_switch.
+:- import_module ll_backend__tag_switch.
+:- import_module ll_backend__trace.
+:- import_module ll_backend__unify_gen.
 
 :- import_module bool, int, string, map, std_util, require.
 

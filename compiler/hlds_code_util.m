@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,9 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- module hlds__hlds_code_util.
+
 :- interface.
 
 :- import_module hlds__hlds_module.
@@ -25,7 +27,9 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+
 :- import_module bool.
 
 are_equivalence_types_expanded(ModuleInfo) :-
@@ -34,5 +38,3 @@ are_equivalence_types_expanded(ModuleInfo) :-
 	HighLevelData = yes,
 	globals__get_target(Globals, Target),
 	( Target = il ; Target = java).
-
-	

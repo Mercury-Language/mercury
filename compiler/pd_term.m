@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,8 +35,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
-:- import_module hlds__instmap, transform_hlds__pd_info.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module transform_hlds__pd_info.
+
 :- import_module list, std_util.
 
 	% pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
@@ -87,8 +91,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds__hlds_pred, (parse_tree__inst), check_hlds__mode_util.
-:- import_module parse_tree__prog_data, transform_hlds__pd_util.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module transform_hlds__pd_util.
+
 :- import_module assoc_list, bool, int, map, require, set.
 
 :- type global_term_info

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,8 +17,13 @@
 
 :- module ll_backend__arg_info.
 :- interface. 
-:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
-:- import_module backend_libs__code_model, ll_backend__llds.
+
+:- import_module backend_libs__code_model.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, assoc_list, set.
 
 	% Annotate every non-aditi procedure in the module with information
@@ -95,7 +100,9 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_util, check_hlds__mode_util.
+:- import_module check_hlds__mode_util.
+:- import_module ll_backend__code_util.
+
 :- import_module std_util, map, int, require.
 
 %-----------------------------------------------------------------------------%

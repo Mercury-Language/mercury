@@ -13,7 +13,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
@@ -242,9 +245,13 @@ about unbound type variables.
 
 :- implementation.
 
-:- import_module libs__options, libs__globals, hlds__hlds_out.
-:- import_module parse_tree__prog_out, check_hlds__mode_util.
-:- import_module parse_tree__mercury_to_mercury, libs__process_util.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_out.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__process_util.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
 
 :- import_module int, string, map, require, varset.
 

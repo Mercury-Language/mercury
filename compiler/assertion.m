@@ -18,8 +18,12 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, parse_tree__prog_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module io, std_util.
 
 	%
@@ -140,9 +144,14 @@
 
 :- implementation.
 
-:- import_module libs__globals, hlds__goal_util, hlds__hlds_out.
-:- import_module libs__options, parse_tree__prog_out, parse_tree__prog_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_out.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- import_module assoc_list, bool, list, map, require, set, std_util.
 
 :- type subst == map(prog_var, prog_var).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,8 +17,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, parse_tree__prog_data.
 :- import_module aditi_backend__rl.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, map.
 
 	% Work out the upper and lower bounds for the inputs to an
@@ -52,8 +55,11 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_util.
+
 :- import_module assoc_list, bool, int, require, set, std_util.
 
 rl_key__extract_indexing(no_inputs, _, _, _, []). 

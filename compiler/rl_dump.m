@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, aditi_backend__rl.
+:- import_module aditi_backend__rl.
+:- import_module hlds__hlds_module.
+
 :- import_module io.
 
 :- pred rl_dump__write_procedure(module_info, rl_proc, io__state, io__state). 
@@ -26,8 +28,11 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds__hlds_out, hlds__hlds_pred.
-:- import_module parse_tree__mercury_to_mercury, parse_tree__prog_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list, map, require, set, std_util.
 :- import_module term, term_io, varset.
 

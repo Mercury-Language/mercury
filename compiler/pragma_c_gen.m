@@ -21,10 +21,12 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_pred.
 :- import_module backend_libs__code_model.
-:- import_module ll_backend__llds, ll_backend__code_info.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
 
 :- import_module list, std_util.
 
@@ -41,12 +43,20 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_llds.
-:- import_module hlds__instmap, hlds__hlds_data, hlds__error_util.
-:- import_module check_hlds__type_util.
-:- import_module ll_backend__llds_out, ll_backend__trace, ll_backend__code_util.
 :- import_module backend_libs__foreign.
-:- import_module libs__options, libs__globals, libs__tree.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__trace.
 
 :- import_module bool, string, int, assoc_list, set, map, require, term.
 

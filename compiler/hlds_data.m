@@ -13,8 +13,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_pred, parse_tree__prog_data, (parse_tree__inst).
 :- import_module backend_libs__rtti.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list, map, std_util, term.
 
 %-----------------------------------------------------------------------------%
@@ -166,8 +169,9 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_util, varset.
-:- import_module require.
+:- import_module parse_tree__prog_util.
+
+:- import_module require, varset.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
 	term__context_init(Context),

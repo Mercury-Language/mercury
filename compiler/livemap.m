@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,8 +16,9 @@
 
 :- interface.
 
-:- import_module list, set, map, std_util.
 :- import_module ll_backend__llds.
+
+:- import_module list, set, map, std_util.
 
 :- type livemap		==	map(label, lvalset).
 :- type lvalset		==	set(lval).
@@ -32,6 +33,7 @@
 :- implementation.
 
 :- import_module ll_backend__opt_util.
+
 :- import_module require, string, bool.
 
 %-----------------------------------------------------------------------------%

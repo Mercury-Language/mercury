@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,9 +13,15 @@
 
 :- interface.
 
-:- import_module transform_hlds__pd_term, hlds__hlds_module, hlds__hlds_pred.
-:- import_module libs__options, hlds__hlds_data, hlds__instmap.
-:- import_module hlds__hlds_goal, parse_tree__prog_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__options.
+:- import_module parse_tree__prog_data.
+:- import_module transform_hlds__pd_term.
+
 :- import_module bool, map, list, io, set, std_util, getopt.
 
 :- type pd_info 
@@ -159,11 +165,17 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds__hlds_pred, parse_tree__prog_data.
-:- import_module transform_hlds__pd_debug, transform_hlds__pd_util.
-:- import_module check_hlds__det_util, libs__globals.
-:- import_module check_hlds__inst_match, hlds__hlds_goal.
-:- import_module parse_tree__prog_util, term.
+:- import_module check_hlds__det_util.
+:- import_module check_hlds__inst_match.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+:- import_module transform_hlds__pd_debug.
+:- import_module transform_hlds__pd_util.
+
+:- import_module term.
 :- import_module assoc_list, bool, int, require, string.
 
 pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-

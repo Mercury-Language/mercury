@@ -18,7 +18,9 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
 :- import_module parse_tree__prog_data.
+
 :- import_module list, io.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
@@ -89,6 +91,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module term, varset, term_io.
 :- import_module require, string, std_util, term, term_io, varset, int.
 

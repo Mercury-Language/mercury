@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,8 +12,10 @@
 
 :- interface.
 
-:- import_module parse_tree__modules, parse_tree__prog_io.
+:- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+
 :- import_module list, io.
 
 :- type modules_to_recompile
@@ -54,15 +56,18 @@
 
 :- implementation.
 
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_data.	% for type field_access_type
+:- import_module hlds__hlds_pred.	% for field_access_function_name,
+					% type pred_id.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__timestamp.
+:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module recompilation__usage.
 :- import_module recompilation__version.
-:- import_module libs__timestamp.
-:- import_module parse_tree__prog_io_util, parse_tree__prog_util.
-:- import_module parse_tree__prog_out, hlds__error_util.
-:- import_module libs__globals, libs__options.
-:- import_module hlds__hlds_pred.	% for field_access_function_name,
-				% type pred_id.
-:- import_module hlds__hlds_data.	% for type field_access_type
 
 :- import_module assoc_list, bool, exception, int, map, parser, require.
 :- import_module set, std_util, string, term, term_io.

@@ -16,7 +16,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module assoc_list, char, io, list, std_util.
 
 	% Given a context, a starting indentation level and a list of words,
@@ -140,8 +143,11 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out, parse_tree__prog_util, libs__globals.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module libs__globals.
 :- import_module libs__options.
+
 :- import_module bool, io, list, term, char, string, int, require.
 
 error_util__list_to_pieces([], []).

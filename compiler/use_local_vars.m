@@ -63,6 +63,7 @@
 
 :- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
+
 :- import_module list, counter.
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,

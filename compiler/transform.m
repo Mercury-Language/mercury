@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,10 @@
 
 :- module transform_hlds__transform.
 :- interface.
-:- import_module hlds__hlds_goal, check_hlds__mode_info.
+
+:- import_module check_hlds__mode_info.
+:- import_module hlds__hlds_goal.
+
 :- import_module list.
 
 %:- pred unfold__in_proc(pred_id, proc_id, hlds_goal_expr,
@@ -45,9 +48,15 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module check_hlds__delay_info.
+:- import_module check_hlds__mode_util.
+:- import_module ll_backend__code_aux.
+:- import_module parse_tree__prog_data.
+
 :- import_module map, set, std_util.
-:- import_module check_hlds__mode_util, check_hlds__delay_info, term, require.
-:- import_module varset, ll_backend__code_aux, parse_tree__prog_data.
+:- import_module term, require.
+:- import_module varset.
 :- import_module hlds__instmap.
 
 %-----------------------------------------------------------------------------%

@@ -14,8 +14,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
+
 :- import_module bool, io, list, map, set, std_util.
 
 	% Check that the argument types and modes are legal for
@@ -118,12 +121,19 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, ll_backend__code_util.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module check_hlds__inst_match.
-:- import_module hlds__instmap, hlds__goal_util, parse_tree__prog_out.
-:- import_module hlds__hlds_out, hlds__error_util, parse_tree__prog_util.
-:- import_module (parse_tree__inst), check_hlds__polymorphism.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module assoc_list, int, require, string, term, varset.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,10 +14,11 @@
 :- module ml_backend__ml_util.
 :- interface.
 
+:- import_module libs__globals.  % for foreign_language
 :- import_module ml_backend__mlds.
 :- import_module parse_tree__prog_data.
+
 :- import_module list, std_util.
-:- import_module libs__globals.  % for foreign_language
 
 %-----------------------------------------------------------------------------%
 	% succeeds iff the definitions contain the entry point to
@@ -161,8 +162,10 @@
 :- implementation.
 
 :- import_module backend_libs__rtti.
-:- import_module parse_tree__prog_io, parse_tree__prog_util.
 :- import_module check_hlds__type_util.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_util.
+
 :- import_module bool, list, std_util.
 
 %-----------------------------------------------------------------------------%

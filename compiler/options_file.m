@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
+
 :- import_module list, io, std_util.
 
 :- type options_variables.
@@ -50,8 +51,11 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_out.
-:- import_module hlds__error_util, libs__globals, libs__options.
+:- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
 
 :- import_module assoc_list, bool, char, dir, exception, map.
 :- import_module require, string, term.

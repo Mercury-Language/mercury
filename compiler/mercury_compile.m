@@ -39,48 +39,75 @@
 	%
 
 	% semantic analysis
-:- import_module libs__handle_options, parse_tree__prog_io.
-:- import_module parse_tree__prog_out, parse_tree__modules.
-:- import_module parse_tree__source_file_map, parse_tree__module_qual.
-:- import_module parse_tree__equiv_type, hlds__make_hlds.
-:- import_module check_hlds__typecheck, check_hlds__purity.
-:- import_module check_hlds__polymorphism, check_hlds__modes.
-:- import_module check_hlds__switch_detection, check_hlds__cse_detection.
-:- import_module check_hlds__det_analysis, check_hlds__unique_modes.
-:- import_module check_hlds__stratify, check_hlds__simplify.
+:- import_module libs__handle_options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__source_file_map.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__equiv_type.
+:- import_module hlds__make_hlds.
+:- import_module check_hlds__typecheck.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__polymorphism.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__switch_detection.
+:- import_module check_hlds__cse_detection.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__unique_modes.
+:- import_module check_hlds__stratify.
+:- import_module check_hlds__simplify.
 
 	% high-level HLDS transformations
-:- import_module check_hlds__check_typeclass, transform_hlds__intermod.
-:- import_module transform_hlds__trans_opt, transform_hlds__table_gen.
+:- import_module check_hlds__check_typeclass.
+:- import_module transform_hlds__intermod.
+:- import_module transform_hlds__trans_opt.
+:- import_module transform_hlds__table_gen.
 :- import_module transform_hlds__lambda.
-:- import_module backend_libs__type_ctor_info, transform_hlds__termination.
-:- import_module transform_hlds__higher_order, transform_hlds__accumulator.
-:- import_module transform_hlds__inlining, transform_hlds__loop_inv.
+:- import_module backend_libs__type_ctor_info.
+:- import_module transform_hlds__termination.
+:- import_module transform_hlds__higher_order.
+:- import_module transform_hlds__accumulator.
+:- import_module transform_hlds__inlining.
+:- import_module transform_hlds__loop_inv.
 :- import_module transform_hlds__deforest.
-:- import_module aditi_backend__dnf, aditi_backend__magic.
+:- import_module aditi_backend__dnf.
+:- import_module aditi_backend__magic.
 :- import_module transform_hlds__dead_proc_elim.
-:- import_module transform_hlds__delay_construct, transform_hlds__unused_args.
-:- import_module transform_hlds__unneeded_code, transform_hlds__lco.
+:- import_module transform_hlds__delay_construct.
+:- import_module transform_hlds__unused_args.
+:- import_module transform_hlds__unneeded_code.
+:- import_module transform_hlds__lco.
 :- import_module ll_backend__deep_profiling.
 
 	% the LLDS back-end
-:- import_module ll_backend__saved_vars, ll_backend__stack_opt.
-:- import_module ll_backend__stack_alloc, ll_backend__follow_code.
-:- import_module ll_backend__liveness, ll_backend__live_vars.
-:- import_module ll_backend__arg_info, ll_backend__store_alloc.
-:- import_module ll_backend__code_gen, ll_backend__optimize.
-:- import_module ll_backend__llds_common, ll_backend__transform_llds.
+:- import_module ll_backend__saved_vars.
+:- import_module ll_backend__stack_opt.
+:- import_module ll_backend__stack_alloc.
+:- import_module ll_backend__follow_code.
+:- import_module ll_backend__liveness.
+:- import_module ll_backend__live_vars.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__store_alloc.
+:- import_module ll_backend__code_gen.
+:- import_module ll_backend__optimize.
+:- import_module ll_backend__llds_common.
+:- import_module ll_backend__transform_llds.
 :- import_module ll_backend__llds_out.
-:- import_module ll_backend__continuation_info, ll_backend__stack_layout.
-:- import_module backend_libs__foreign, backend_libs__export.
+:- import_module ll_backend__continuation_info.
+:- import_module ll_backend__stack_layout.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__export.
 :- import_module backend_libs__base_typeclass_info.
 
 	% the Aditi-RL back-end
-:- import_module aditi_backend__rl_gen, aditi_backend__rl_opt.
+:- import_module aditi_backend__rl_gen.
+:- import_module aditi_backend__rl_opt.
 :- import_module aditi_backend__rl_out.
 
 	% the bytecode back-end
-:- import_module bytecode_backend__bytecode_gen, bytecode_backend__bytecode.
+:- import_module bytecode_backend__bytecode_gen.
+:- import_module bytecode_backend__bytecode.
 
 	% the MLDS back-end
 :- import_module ml_backend__add_trail_ops.	% HLDS -> HLDS
@@ -99,19 +126,31 @@
 :- import_module ml_backend__ml_util.		% MLDS utility predicates 
 
 	% miscellaneous compiler modules
-:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
-:- import_module hlds__hlds_out, ll_backend__llds, aditi_backend__rl.
-:- import_module parse_tree__mercury_to_mercury, hlds__hlds_data.
-:- import_module ll_backend__layout, transform_hlds__dependency_graph.
-:- import_module parse_tree__prog_util, aditi_backend__rl_dump.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__hlds_out.
+:- import_module ll_backend__llds.
+:- import_module aditi_backend__rl.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module hlds__hlds_data.
+:- import_module ll_backend__layout.
+:- import_module transform_hlds__dependency_graph.
+:- import_module parse_tree__prog_util.
+:- import_module aditi_backend__rl_dump.
 :- import_module aditi_backend__rl_file.
-:- import_module libs__options, libs__globals, libs__trace_params.
+:- import_module libs__options.
+:- import_module libs__globals.
+:- import_module libs__trace_params.
 :- import_module check_hlds__goal_path.
 :- import_module hlds__passes_aux.
-:- import_module recompilation, recompilation__usage.
+:- import_module recompilation.
+:- import_module recompilation__usage.
 :- import_module recompilation__check.
 :- import_module libs__timestamp.
-:- import_module make, make__options_file, make__util.
+:- import_module make.
+:- import_module make__options_file.
+:- import_module make__util.
 :- import_module backend_libs__compile_target_code.
 
 	% inter-module analysis framework

@@ -14,8 +14,13 @@
 
 :- module backend_libs__switch_util.
 :- interface.
-:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
-:- import_module hlds__hlds_module, check_hlds__type_util.
+
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, assoc_list, map, std_util.
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,9 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module bool, list, io.
 
 	% Ensure that the module_info contains a version of the
@@ -98,10 +100,15 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
-:- import_module check_hlds__mode_util, libs__globals, libs__options.
-:- import_module ll_backend__code_util, hlds__goal_util.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
 
 % XXX we should not import llds here -- this should depend only on the HLDS,
 % not on the LLDS.  But the LLDS stuff is unfortunately needed for producing

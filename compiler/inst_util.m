@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,8 +41,11 @@ in the general case.
 :- module check_hlds__inst_util.
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_data, parse_tree__prog_data.
-:- import_module (parse_tree__inst).
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, std_util.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real, module_info,
@@ -130,9 +133,13 @@ in the general case.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds__hlds_data, check_hlds__inst_match.
-:- import_module check_hlds__mode_util, check_hlds__det_analysis.
+
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+
 :- import_module bool, std_util, require, map, list, set, int.
 
 	% Abstractly unify two insts.

@@ -22,10 +22,13 @@
 :- module hlds__make_hlds.
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module parse_tree__equiv_type, parse_tree__module_qual.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
+:- import_module parse_tree__equiv_type.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, list, io, std_util.
 
@@ -97,25 +100,41 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_io_dcg, parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out, parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_util, parse_tree__inst.
-:- import_module parse_tree__modules, parse_tree__module_qual.
-:- import_module hlds__hlds_goal, hlds__goal_util, hlds__hlds_out.
-:- import_module hlds__make_tags, hlds__quantification.
-:- import_module hlds__error_util, hlds__passes_aux.
-:- import_module check_hlds__typecheck, check_hlds__type_util.
-:- import_module check_hlds__mode_util, check_hlds__mode_errors.
-:- import_module check_hlds__clause_to_proc, check_hlds__inst_match.
-:- import_module check_hlds__purity, check_hlds__unify_proc.
-:- import_module transform_hlds__term_util.
-:- import_module ll_backend, ll_backend__llds.
-:- import_module ll_backend__fact_table.
+:- import_module backend_libs__export.
+:- import_module backend_libs__foreign.
+:- import_module check_hlds__clause_to_proc.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module check_hlds__unify_proc.
+:- import_module hlds__error_util.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_code_util.
-:- import_module backend_libs__export, backend_libs__foreign.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__make_tags.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend.
+:- import_module ll_backend__fact_table.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_dcg.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module recompilation.
-:- import_module libs__options, libs__globals.
+:- import_module transform_hlds__term_util.
 
 :- import_module string, char, int, set, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.

@@ -15,9 +15,11 @@
 :- module ml_backend__ml_closure_gen.
 :- interface.
 
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_pred, hlds__hlds_goal.
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
 
 :- import_module list.
 
@@ -72,21 +74,26 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_module.
-:- import_module backend_libs__code_model, backend_libs__pseudo_type_info.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
-:- import_module ml_backend__ml_unify_gen, ml_backend__ml_call_gen.
-:- import_module ml_backend__rtti_to_mlds.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
-:- import_module libs__options, libs__globals.
+:- import_module hlds__hlds_module.
+:- import_module libs__globals.
+:- import_module libs__options.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
 :- import_module ll_backend__continuation_info. % needed for
 					   % `generate_closure_layout'
-:- import_module ll_backend__stack_layout. % needed for `represent_locn_as_int'
 :- import_module ll_backend__llds.         % needed for `layout_locn'
+:- import_module ll_backend__stack_layout. % needed for `represent_locn_as_int'
+
+:- import_module ml_backend__ml_call_gen.
+:- import_module ml_backend__ml_unify_gen.
+:- import_module ml_backend__rtti_to_mlds.
 
 :- import_module assoc_list, bool, int, map, set, std_util, string, term.
 

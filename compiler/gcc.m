@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,6 +64,7 @@
 
 :- module gcc.
 :- interface.
+
 :- import_module io, bool.
 
 %-----------------------------------------------------------------------------%
@@ -672,6 +673,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module int, string.
 
 :- pragma c_header_code("

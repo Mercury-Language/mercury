@@ -14,9 +14,14 @@
 :- module hlds__goal_util.
 :- interface.
 
-:- import_module parse_tree__inst, parse_tree__prog_data.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, hlds__instmap.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module assoc_list, bool, list, set, map, term, std_util.
 
 % The predicates rename_var* take a structure and a mapping from var -> var
@@ -239,11 +244,16 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__inst.
-:- import_module hlds__hlds_data, hlds__goal_form, hlds__hlds_llds.
-:- import_module check_hlds__purity, check_hlds__det_analysis.
-:- import_module check_hlds__inst_match, check_hlds__mode_util.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
+:- import_module hlds__goal_form.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_llds.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 
 :- import_module int, string, require, varset.
 

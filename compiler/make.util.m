@@ -8,6 +8,7 @@
 %
 % Assorted predicates used to implement `mmc --make'.
 %-----------------------------------------------------------------------------%
+
 :- module make__util.
 
 :- interface.
@@ -227,6 +228,7 @@
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 foldl2_maybe_stop_at_error(KeepGoing, MakeTarget,

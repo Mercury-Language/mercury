@@ -17,8 +17,11 @@
 :- module libs__handle_options.
 
 :- interface.
+
+:- import_module libs__globals.
+:- import_module libs__options.
+
 :- import_module list, bool, getopt, std_util, io.
-:- import_module libs__globals, libs__options.
 
 	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
 :- pred handle_options(list(string), maybe(string), list(string),
@@ -69,9 +72,12 @@
 
 :- implementation.
 
-:- import_module libs__options, libs__globals, parse_tree__prog_io_util.
-:- import_module libs__trace_params, check_hlds__unify_proc.
-:- import_module parse_tree__prog_data, backend_libs__foreign.
+:- import_module backend_libs__foreign.
+:- import_module check_hlds__unify_proc.
+:- import_module libs__trace_params.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util.
+
 :- import_module char, dir, int, string, map, set, library.
 
 handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->

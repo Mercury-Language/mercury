@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,16 +14,22 @@
 :- interface.
 
 % the front-end phases
-:- import_module parse_tree, hlds, check_hlds, transform_hlds.
+:- import_module check_hlds.
+:- import_module hlds.
+:- import_module parse_tree.
+:- import_module transform_hlds.
 
 % back-ends that we currently use or plan to use
-:- import_module aditi_backend, ll_backend, ml_backend.
+:- import_module aditi_backend.
+:- import_module ll_backend.
+:- import_module ml_backend.
 
 % obsolete or incomplete back-ends
 :- import_module bytecode_backend.
 
 % misc utilities
-:- import_module libs, backend_libs.
+:- import_module backend_libs.
+:- import_module libs.
 
 :- include_module mercury_compile.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,10 +41,14 @@
 
 :- interface.
 
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__switch_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module ll_backend__code_info.
+:- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_data, hlds__hlds_llds.
-:- import_module ll_backend__llds, ll_backend__code_info.
-:- import_module backend_libs__switch_util, backend_libs__code_model.
 
 :- import_module std_util, map, set, list.
 
@@ -69,12 +73,17 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data.
-:- import_module check_hlds__type_util, check_hlds__mode_util, hlds__instmap.
 :- import_module backend_libs__builtin_ops.
-:- import_module ll_backend__dense_switch, ll_backend__code_gen.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_gen.
+:- import_module ll_backend__dense_switch.
 :- import_module ll_backend__exprn_aux.
-:- import_module libs__globals, libs__options, libs__tree.
+:- import_module parse_tree__prog_data.
 
 :- import_module int, require, bool, assoc_list.
 

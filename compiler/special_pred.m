@@ -15,8 +15,12 @@
 
 :- module hlds__special_pred.
 :- interface.
-:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_module.
+
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, map, std_util.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
@@ -105,9 +109,12 @@
 
 :- implementation.
 
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__prog_util.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module libs__globals, libs__options.
+
 :- import_module bool, require.
 
 special_pred_list([unify, index, compare]).

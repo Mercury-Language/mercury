@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,7 +16,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_goal.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+
 :- import_module list.
 
 	% Succeeds if the goal cannot loop forever.
@@ -60,6 +62,7 @@
 
 :- import_module hlds__hlds_pred.
 :- import_module transform_hlds__term_util.
+
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%

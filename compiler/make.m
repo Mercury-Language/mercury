@@ -19,11 +19,14 @@
 
 :- interface.
 
-:- include_module make__options_file, make__util.
+:- include_module make__options_file.
+:- include_module make__util.
 
+:- import_module make__options_file.
 :- import_module parse_tree.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_io.
 
-:- import_module make__options_file, parse_tree__modules, parse_tree__prog_io.
 :- import_module io, list.
 
 	% make__process_args(OptionArgs, NonOptionArgs).
@@ -40,22 +43,36 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- include_module make__dependencies, make__module_dep_file.
-:- include_module make__module_target, make__program_target.
+:- include_module make__dependencies.
+:- include_module make__module_dep_file.
+:- include_module make__module_target.
+:- include_module make__program_target.
 
-:- import_module hlds, libs, backend_libs.
+:- import_module hlds.
+:- import_module libs.
+:- import_module backend_libs.
 :- import_module top_level. % XXX unwanted dependency
 
-:- import_module make__dependencies, make__module_dep_file.
-:- import_module make__module_target, make__program_target, make__util.
+:- import_module make__dependencies.
+:- import_module make__module_dep_file.
+:- import_module make__module_target.
+:- import_module make__program_target.
+:- import_module make__util.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io.
-:- import_module parse_tree__modules, parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_out, parse_tree__prog_io_util.
-:- import_module backend_libs__foreign, backend_libs__compile_target_code.
-:- import_module libs__timestamp, libs__process_util.
-:- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module backend_libs__compile_target_code.
+:- import_module backend_libs__foreign.
 :- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__handle_options.
+:- import_module libs__options.
+:- import_module libs__process_util.
+:- import_module libs__timestamp.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
 :- import_module top_level__mercury_compile. % XXX unwanted dependency
 
 :- import_module assoc_list, bool, char, dir, exception, getopt, int, list.

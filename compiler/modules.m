@@ -39,8 +39,12 @@
 
 :- interface.
 
-:- import_module backend_libs__foreign, parse_tree__prog_data.
-:- import_module parse_tree__prog_io, libs__globals, libs__timestamp.
+:- import_module backend_libs__foreign.
+:- import_module libs__globals.
+:- import_module libs__timestamp.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
+
 :- import_module std_util, bool, list, map, set, io.
 
 %-----------------------------------------------------------------------------%
@@ -738,13 +742,20 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module ll_backend__llds_out, hlds__passes_aux, parse_tree__prog_out.
-:- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
-:- import_module parse_tree__prog_io_util, libs__options, libs__handle_options.
+
+:- import_module backend_libs__foreign.
+:- import_module hlds__passes_aux.
+:- import_module libs__handle_options.
+:- import_module libs__options.
+:- import_module ll_backend__llds_out.
+:- import_module make. 				% XXX undesirable dependency
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module parse_tree__source_file_map.
-:- import_module parse_tree__module_qual, backend_libs__foreign.
 :- import_module recompilation__version.
-:- import_module make. % XXX undesirable dependency
 
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,8 +83,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
+
 :- import_module bool, io, list, map.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
@@ -151,16 +154,22 @@
 :- import_module parse_tree__prog_data.
 
 % HLDS modules
-:- import_module hlds__hlds_data, check_hlds__type_util.
-:- import_module check_hlds__mode_util, hlds__goal_util.
 :- import_module check_hlds__det_analysis.
-:- import_module hlds__quantification, ll_backend__code_aux.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module ll_backend__code_aux.
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__dependency_graph.
-:- import_module hlds__passes_aux, check_hlds__purity.
 
 % Misc
-:- import_module libs__globals, libs__options, libs__trace_params.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__trace_params.
 
 % Standard library modules
 :- import_module bool, int, list, assoc_list, set, std_util, require.

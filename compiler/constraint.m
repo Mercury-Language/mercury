@@ -17,8 +17,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__instmap.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
+
 :- import_module bool, map.
 
 :- type constraint_info.
@@ -45,12 +48,17 @@
 
 :- implementation.
 
-:- import_module hlds__goal_util, hlds__hlds_pred, hlds__hlds_module.
-:- import_module hlds__hlds_data, hlds__passes_aux, hlds__goal_form.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__inst_match.
-:- import_module libs__options, libs__globals.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module hlds__goal_form.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 
 :- import_module assoc_list, list, require, set, std_util.
 :- import_module string, term, varset.

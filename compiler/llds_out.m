@@ -273,16 +273,23 @@
 
 :- implementation.
 
-:- import_module parse_tree__modules, parse_tree__prog_out.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module hlds__hlds_pred, hlds__passes_aux.
-:- import_module ll_backend__layout, ll_backend__layout_out.
-:- import_module ll_backend__rtti_out.
-:- import_module ll_backend__exprn_aux, parse_tree__prog_util.
-:- import_module backend_libs__rtti, backend_libs__export.
-:- import_module backend_libs__c_util, backend_libs__foreign.
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__compile_target_code.
-:- import_module libs__options, libs__trace_params.
+:- import_module backend_libs__export.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module ll_backend__exprn_aux.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__layout_out.
+:- import_module ll_backend__rtti_out.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, char, string, std_util.
 :- import_module set, bintree_set, assoc_list, require.

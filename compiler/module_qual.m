@@ -19,7 +19,9 @@
 %
 :- interface.
 
-:- import_module parse_tree__prog_data, recompilation.
+:- import_module parse_tree__prog_data.
+:- import_module recompilation.
+
 :- import_module bool, list, std_util, io.
 
 	% module_qualify_items(Items0, Items, ModuleName, ReportUndefErrors,
@@ -111,12 +113,18 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module check_hlds__type_util, parse_tree__prog_io.
-:- import_module parse_tree__prog_out, hlds__hlds_out.
-:- import_module parse_tree__prog_util, parse_tree__mercury_to_mercury.
-:- import_module parse_tree__modules, libs__globals, libs__options.
-:- import_module (parse_tree__inst), hlds__instmap.
+:- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.	% for cons_id.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, map, require, set, string, term, varset.
 :- import_module assoc_list.

@@ -18,10 +18,15 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_module.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
-:- import_module mdb, mdb__program_representation.
+:- import_module parse_tree__prog_data.
+
+:- import_module mdb.
+:- import_module mdb__program_representation.
+
 :- import_module list.
 
 :- pred prog_rep__represent_proc(list(prog_var)::in, hlds_goal::in,
@@ -29,8 +34,9 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out.
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_out.
+
 :- import_module string, set, std_util, require, term.
 
 :- type prog_rep__info

@@ -33,7 +33,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, io.
+:- import_module hlds__hlds_module.
+
+:- import_module io.
 
 	% Perform stratification analysis, for the given module.
 	% If the "warn-non-stratification" option is set this 
@@ -46,12 +48,18 @@
 
 :- implementation.
 
-:- import_module transform_hlds__dependency_graph, hlds__hlds_pred.
-:- import_module hlds__hlds_goal, hlds__hlds_data.
-:- import_module hlds__hlds_module, check_hlds__type_util.
-:- import_module check_hlds__mode_util, parse_tree__prog_data.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
-:- import_module parse_tree__prog_out, libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module transform_hlds__dependency_graph.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
 :- import_module string.

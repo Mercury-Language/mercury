@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module bool, list, set.
 :- import_module ll_backend__llds.
+
+:- import_module bool, list, set.
 
 	% Build up a set showing which labels are branched to,
 	% then traverse the instruction list removing unnecessary labels.
@@ -37,6 +38,7 @@
 :- implementation.
 
 :- import_module ll_backend__opt_util.
+
 :- import_module std_util.
 
 labelopt_main(Instrs0, Final, LayoutLabelSet, Instrs, Mod) :-

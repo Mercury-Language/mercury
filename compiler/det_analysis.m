@@ -52,10 +52,16 @@
 
 :- interface.
 
+:- import_module check_hlds__det_report.
+:- import_module check_hlds__det_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
-:- import_module hlds__hlds_data, hlds__instmap.
-:- import_module check_hlds__det_report, check_hlds__det_util, libs__globals.
+
 :- import_module list, std_util, io.
 
 	% Perform determinism inference for local predicates with no
@@ -124,10 +130,15 @@
 
 :- implementation.
 
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modecheck_call.
 :- import_module check_hlds__purity.
-:- import_module check_hlds__type_util, check_hlds__modecheck_call.
-:- import_module check_hlds__mode_util, libs__options, hlds__passes_aux.
-:- import_module hlds__hlds_out, parse_tree__mercury_to_mercury.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_out.
+:- import_module hlds__passes_aux.
+:- import_module libs__options.
+:- import_module parse_tree__mercury_to_mercury.
+
 :- import_module assoc_list, bool, map, set, require, term.
 
 %-----------------------------------------------------------------------------%

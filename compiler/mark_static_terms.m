@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,8 @@
 
 :- interface.
 
-:- import_module hlds__hlds_pred, hlds__hlds_module.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 
 :- pred mark_static_terms(proc_info::in, module_info::in, proc_info::out)
 	is det.
@@ -26,7 +27,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
+
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
+
 :- import_module map, list, bool.
 
 %

@@ -71,7 +71,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred stack_opt_cell(pred_id::in, proc_id::in, proc_info::in, proc_info::out,
@@ -82,18 +84,28 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__mercury_to_mercury.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_llds.
-:- import_module hlds__quantification, hlds__instmap.
-:- import_module hlds__goal_util, hlds__hlds_out.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module check_hlds__inst_match, check_hlds__goal_path.
-:- import_module ll_backend__arg_info, ll_backend__call_gen.
-:- import_module ll_backend__liveness, ll_backend__live_vars.
-:- import_module ll_backend__store_alloc.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__matching.
-:- import_module libs__globals, libs__options.
+:- import_module check_hlds__goal_path.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__call_gen.
+:- import_module ll_backend__live_vars.
+:- import_module ll_backend__liveness.
+:- import_module ll_backend__store_alloc.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
 
 :- import_module counter, bool, int, list, assoc_list.
 :- import_module map, set, std_util, require, term, varset.

@@ -58,7 +58,10 @@
 :- module hlds__make_tags.
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data, libs__globals.
+:- import_module hlds__hlds_data.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list.
 
 % assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma, Globals,
@@ -77,8 +80,12 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_util, check_hlds__type_util.
-:- import_module hlds__error_util, libs__globals, libs__options.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_util.
+
 :- import_module int, map, std_util, require.
 
 %-----------------------------------------------------------------------------%

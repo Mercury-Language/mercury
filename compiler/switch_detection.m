@@ -16,8 +16,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
+
 :- import_module bool, io, list.
 
 :- pred detect_switches(module_info::in, module_info::out,
@@ -48,11 +51,18 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
-:- import_module hlds__instmap, check_hlds__inst_match.
-:- import_module check_hlds__modes, check_hlds__mode_util.
-:- import_module check_hlds__type_util, check_hlds__det_util.
-:- import_module hlds__passes_aux, term.
+:- import_module check_hlds__det_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module parse_tree__prog_data.
+
+:- import_module term.
 :- import_module char, int, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%

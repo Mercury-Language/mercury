@@ -13,10 +13,15 @@
 
 :- interface.
 
-:- import_module transform_hlds__pd_info, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, check_hlds__mode_errors.
-:- import_module parse_tree__prog_data, check_hlds__simplify.
-:- import_module (parse_tree__inst).
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__simplify.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module transform_hlds__pd_info.
+
 :- import_module bool, list, map, set, std_util.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.
@@ -140,17 +145,28 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse_tree__inst.
-:- import_module hlds__goal_util, hlds__hlds_data, hlds__instmap.
-:- import_module hlds__quantification, hlds__goal_form.
-:- import_module check_hlds__purity, check_hlds__type_util.
-:- import_module check_hlds__mode_info, check_hlds__unique_modes.
-:- import_module check_hlds__mode_util, check_hlds__inst_util.
-:- import_module check_hlds__inst_match, check_hlds__det_report.
-:- import_module check_hlds__det_util, check_hlds__det_analysis.
-:- import_module transform_hlds__pd_cost, transform_hlds__pd_debug.
-:- import_module transform_hlds__constraint, transform_hlds__unused_args.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__det_report.
+:- import_module check_hlds__det_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__inst_util.
+:- import_module check_hlds__mode_info.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__unique_modes.
+:- import_module hlds__goal_form.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__instmap.
+:- import_module hlds__quantification.
 :- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module transform_hlds__constraint.
+:- import_module transform_hlds__pd_cost.
+:- import_module transform_hlds__pd_debug.
+:- import_module transform_hlds__unused_args.
+
 :- import_module assoc_list, int, require, set, term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-

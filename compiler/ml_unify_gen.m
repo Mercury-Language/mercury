@@ -15,10 +15,13 @@
 :- module ml_backend__ml_unify_gen.
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module, hlds__hlds_data, hlds__hlds_goal.
 :- import_module backend_libs__code_model.
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, list, std_util.
 
@@ -83,14 +86,21 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_pred, hlds__hlds_out, backend_libs__builtin_ops.
-:- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
-:- import_module ml_backend__ml_type_gen, ml_backend__ml_closure_gen.
-:- import_module ml_backend__ml_util.
-:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
-:- import_module backend_libs__rtti, hlds__error_util.
-:- import_module libs__globals, libs__options.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_call_gen.
+:- import_module ml_backend__ml_closure_gen.
+:- import_module ml_backend__ml_code_gen.
+:- import_module ml_backend__ml_type_gen.
+:- import_module ml_backend__ml_util.
+:- import_module parse_tree__prog_util.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.

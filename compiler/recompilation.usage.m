@@ -12,7 +12,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__modules.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, io, list, map, set, std_util.
@@ -77,12 +79,19 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
-:- import_module check_hlds__type_util, (parse_tree__inst).
-:- import_module hlds__hlds_out, parse_tree__mercury_to_mercury.
-:- import_module hlds__passes_aux, parse_tree__prog_data.
-:- import_module libs__globals, libs__options.
-:- import_module recompilation__version, libs__timestamp.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__timestamp.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+:- import_module recompilation__version.
 
 :- import_module assoc_list, bool, int, require.
 :- import_module queue, std_util, string.

@@ -14,9 +14,14 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
-:- import_module hlds__hlds_data, parse_tree__prog_data.
-:- import_module (parse_tree__inst), hlds__instmap.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -227,11 +232,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, int, map, set, std_util, assoc_list, varset.
-:- import_module parse_tree__prog_util, parse_tree__prog_io.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__inst_match, check_hlds__inst_util.
+
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__inst_util.
 :- import_module check_hlds__mode_info.
+:- import_module check_hlds__type_util.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_util.
+
 :- import_module require, int, map, set, term, std_util, assoc_list, varset.
 
 %-----------------------------------------------------------------------------%

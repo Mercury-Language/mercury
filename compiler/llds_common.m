@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data. % for module_name
+
 :- import_module list.
 
 :- pred llds_common(list(c_procedure)::in, list(comp_gen_c_data)::in,
@@ -30,7 +31,10 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti, ll_backend__layout, ll_backend__llds_out.
+:- import_module backend_libs__rtti.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__llds_out.
+
 :- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info

@@ -30,8 +30,13 @@
 
 :- module check_hlds__post_typecheck.
 :- interface.
-:- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred, parse_tree__prog_data.
+
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, io, bool, std_util.
 
 	% post_typecheck__finish_preds(PredIds, ReportTypeErrors,
@@ -120,15 +125,24 @@
 
 :- implementation.
 
-:- import_module (hlds__assertion).
-:- import_module check_hlds__typecheck, check_hlds__clause_to_proc.
-:- import_module check_hlds__mode_util, check_hlds__inst_match.
-:- import_module (parse_tree__inst), parse_tree__prog_util, hlds__error_util.
-:- import_module parse_tree__mercury_to_mercury, parse_tree__prog_out.
-:- import_module check_hlds__mode_errors, check_hlds__modecheck_call.
-:- import_module hlds__hlds_out, check_hlds__type_util, hlds__goal_util.
+:- import_module check_hlds__clause_to_proc.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modecheck_call.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__typecheck.
+:- import_module hlds__assertion.
+:- import_module hlds__error_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_out.
 :- import_module hlds__special_pred.
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module map, set, assoc_list, term, require, int.
 :- import_module string, varset.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,8 +15,10 @@
 
 :- module ml_backend__java_util.
 :- interface.
-:- import_module string.
+
 :- import_module backend_libs__builtin_ops.
+
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -71,8 +73,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list.
+
 :- import_module hlds__error_util.
+
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 :- module backend_libs__matching.
 
 :- interface.
+
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, list, set.

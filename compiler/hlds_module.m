@@ -21,18 +21,26 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__module_qual.
-:- import_module recompilation.
-:- import_module hlds__hlds_pred, hlds__hlds_data, check_hlds__unify_proc.
-:- import_module hlds__special_pred.
-:- import_module libs__globals, backend_libs__foreign.
 :- import_module analysis.
+:- import_module backend_libs__foreign.
+:- import_module check_hlds__unify_proc.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_data.
+:- import_module recompilation.
+
 :- import_module relation, map, std_util, list, set, multi_map, counter.
 
 :- implementation.
 
-:- import_module hlds__hlds_out, parse_tree__prog_out, parse_tree__prog_util.
-:- import_module check_hlds__typecheck, parse_tree__modules.
+:- import_module check_hlds__typecheck.
+:- import_module hlds__hlds_out.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__mmc_analysis.
 
 :- import_module bool, require, int, string.

@@ -23,8 +23,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data.
-:- import_module backend_libs__rtti, ll_backend__llds_out.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_data.
+:- import_module ll_backend__llds_out.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, io.
 
 	% Output a C expression holding the address of the C name of
@@ -79,12 +82,16 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_out.
-:- import_module hlds__error_util.
-:- import_module backend_libs__pseudo_type_info, backend_libs__type_ctor_info.
 :- import_module backend_libs__c_util.
-:- import_module ll_backend__llds, ll_backend__code_util.
-:- import_module libs__options, libs__globals.
+:- import_module backend_libs__pseudo_type_info.
+:- import_module backend_libs__type_ctor_info.
+:- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_out.
+
 :- import_module int, string, list, assoc_list, map, require, std_util.
 
 %-----------------------------------------------------------------------------%

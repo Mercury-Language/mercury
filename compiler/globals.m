@@ -16,8 +16,12 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module libs__options, libs__trace_params.
-:- import_module parse_tree, parse_tree__prog_data. % for module_name.
+
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module parse_tree.
+:- import_module parse_tree__prog_data. % for module_name.
+
 :- import_module bool, getopt, list, map, io, std_util.
 
 :- type globals.
@@ -220,6 +224,7 @@
 :- implementation.
 
 :- import_module ll_backend__exprn_aux.
+
 :- import_module map, std_util, require, string.
 
 convert_target(String, Target) :-

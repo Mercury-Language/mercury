@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,12 +11,18 @@
 %
 :- module bytecode_backend.
 :- interface.
-:- import_module transform_hlds, check_hlds. % are these needed?
-:- import_module hlds, parse_tree, libs, backend_libs.
+
+:- import_module backend_libs.
+:- import_module check_hlds. 		% is this needed?
+:- import_module hlds.
+:- import_module libs.
+:- import_module parse_tree.
+:- import_module transform_hlds.	% is this needed?
 
 %-----------------------------------------------------------------------------%
 
-:- include_module bytecode, bytecode_gen.
+:- include_module bytecode.
+:- include_module bytecode_gen.
 
 %-----------------------------------------------------------------------------%
 

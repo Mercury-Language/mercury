@@ -90,6 +90,7 @@
 
 :- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
+
 :- import_module bool, list, counter.
 
 	% The first bool output says whether we performed any modifications.

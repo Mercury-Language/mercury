@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module list.
 
 :- pred move_follow_code_in_proc(pred_id::in, proc_id::in, pred_info::in,
@@ -29,10 +32,15 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, hlds__goal_util, check_hlds__mode_util.
-:- import_module parse_tree__prog_data.
-:- import_module libs__globals, libs__options, check_hlds__det_analysis.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
 :- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, map, set, term, std_util, require.
 
 %-----------------------------------------------------------------------------%

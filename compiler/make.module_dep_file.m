@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,11 +9,13 @@
 % Code to read and write the `<module>.module_dep' files, which contain
 % information about inter-module dependencies.
 %-----------------------------------------------------------------------------%
+
 :- module make__module_dep_file.
 
 :- interface.
 
 :- import_module parse_tree__modules.
+
 :- import_module std_util, io.
 
 	% Get the dependencies for a given module.
@@ -27,6 +29,7 @@
 	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 get_module_dependencies(ModuleName, MaybeImports, Info0, Info) -->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module set, list, bool, std_util.
 
 :- pred dnf__transform_module(module_info::in, bool::in,
@@ -60,10 +62,16 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_aux, ll_backend__code_util, hlds__hlds_goal.
-:- import_module hlds__hlds_data, parse_tree__prog_data, hlds__instmap.
-:- import_module transform_hlds__dependency_graph, check_hlds__det_analysis.
+:- import_module check_hlds__det_analysis.
 :- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__instmap.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_data.
+:- import_module transform_hlds__dependency_graph.
+
 :- import_module require, map, list, string, int, bool, std_util, term, varset.
 
 	% Traverse the module structure.

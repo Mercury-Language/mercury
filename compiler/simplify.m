@@ -28,10 +28,16 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
-:- import_module check_hlds__det_report, check_hlds__det_util.
-:- import_module check_hlds__common, hlds__instmap, libs__globals.
+:- import_module check_hlds__common.
+:- import_module check_hlds__det_report.
 :- import_module check_hlds__det_util.
+:- import_module check_hlds__det_util.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+
 :- import_module io, bool, list, map.
 
 :- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
@@ -75,21 +81,30 @@
 
 :- implementation.
 
-:- import_module parse_tree__inst, parse_tree__prog_data.
-:- import_module parse_tree__prog_util.
-:- import_module hlds__hlds_module, hlds__hlds_data, hlds__passes_aux.
-:- import_module hlds__goal_util, hlds__goal_form, hlds__special_pred.
-:- import_module hlds__quantification.
-:- import_module check_hlds__type_util.
-:- import_module check_hlds__mode_util, check_hlds__inst_match.
 :- import_module check_hlds__det_analysis.
-:- import_module check_hlds__modes, check_hlds__purity.
-:- import_module check_hlds__unify_proc.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modes.
 :- import_module check_hlds__polymorphism.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__unify_proc.
+:- import_module hlds__goal_form.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module hlds__special_pred.
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__follow_code.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 :- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.
-:- import_module ll_backend__code_util, ll_backend__follow_code.
-:- import_module libs__options, libs__trace_params.
 
 :- import_module int, set, require, std_util, string, varset, term.
 

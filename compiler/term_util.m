@@ -19,9 +19,12 @@
 
 :- interface.
 
-:- import_module transform_hlds__term_errors, parse_tree__prog_data.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+:- import_module transform_hlds__term_errors.
 
 :- import_module std_util, bool, int, list, map, bag.
 
@@ -208,9 +211,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__inst_match, parse_tree__prog_out.
-:- import_module check_hlds__mode_util, check_hlds__type_util.
-:- import_module libs__globals, libs__options.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_out.
 
 :- import_module assoc_list, require.
 

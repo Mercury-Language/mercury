@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,8 +19,9 @@
 %:- module aditi_hlds.
 %   :- interface.
    :- include_module dnf.
-   :- include_module magic, magic_util.
    :- include_module context.
+   :- include_module magic.
+   :- include_module magic_util.
 %:- end_module aditi_hlds.
 
 %
@@ -43,17 +44,25 @@
 % Phase 6-rl: Low-level (RL -> RL) optimizations
 %
 :- include_module rl_opt.
-   :- include_module rl_block, rl_analyse, rl_liveness, rl_loop, rl_block_opt.
-   :- include_module rl_key, rl_sort, rl_stream.
+   :- include_module rl_analyse.
+   :- include_module rl_block.
+   :- include_module rl_block_opt.
+   :- include_module rl_key.
+   :- include_module rl_liveness.
+   :- include_module rl_loop.
+   :- include_module rl_sort.
+   :- include_module rl_stream.
 
 %
 % Phase 7-rl: Emit RL bytecodes.
 %
 %:- module aditi_rl_out.
-   :- include_module rl_out, rl_file. 
+   :- include_module rl_out.
+   :- include_module rl_file. 
 
 #if INCLUDE_ADITI_OUTPUT
-   :- include_module rl_exprn, rl_code.
+   :- include_module rl_exprn.
+   :- include_module rl_code.
 #else
 #endif
 

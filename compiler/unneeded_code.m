@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred unneeded_code__process_proc_msg(pred_id::in, proc_id::in,
@@ -69,13 +71,20 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__instmap, hlds__quantification.
-:- import_module hlds__goal_form, hlds__passes_aux, hlds__hlds_out.
-:- import_module check_hlds__inst_match, check_hlds__mode_util.
 :- import_module check_hlds__goal_path.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module hlds__goal_form.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module ll_backend__code_aux.
-:- import_module libs__globals, libs__options.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 

@@ -14,8 +14,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data, parse_tree__prog_data, libs__tree.
 :- import_module backend_libs__builtin_ops.
+:- import_module hlds__hlds_data.
+:- import_module libs__tree.
+:- import_module parse_tree__prog_data.
+
 :- import_module char, list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
@@ -138,8 +141,11 @@
 
 :- implementation.
 
-:- import_module backend_libs__bytecode_data, hlds__hlds_pred.
-:- import_module parse_tree__prog_out, backend_libs__c_util.
+:- import_module backend_libs__bytecode_data.
+:- import_module backend_libs__c_util.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_out.
+
 :- import_module library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.

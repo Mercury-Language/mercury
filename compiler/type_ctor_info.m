@@ -35,7 +35,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, backend_libs__rtti.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_module.
+
 :- import_module list.
 
 :- pred type_ctor_info__generate_hlds(module_info::in, module_info::out)
@@ -57,14 +59,24 @@
 
 :- implementation.
 
-:- import_module backend_libs__rtti, backend_libs__pseudo_type_info.
-:- import_module hlds__hlds_data, hlds__hlds_pred, hlds__hlds_out.
-:- import_module hlds__make_tags, parse_tree__prog_data.
-:- import_module parse_tree__prog_util, parse_tree__prog_out.
-:- import_module ll_backend__code_util, hlds__special_pred.
-:- import_module hlds__hlds_code_util, hlds__special_pred.
-:- import_module check_hlds__type_util, libs__globals, libs__options.
-:- import_module backend_libs__builtin_ops, hlds__error_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__pseudo_type_info.
+:- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_code_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__make_tags.
+:- import_module hlds__special_pred.
+:- import_module hlds__special_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, string, int, map, std_util, assoc_list, require.
 :- import_module set, term.

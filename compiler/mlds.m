@@ -287,11 +287,16 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
-:- import_module parse_tree__prog_data, backend_libs__builtin_ops.
-:- import_module backend_libs__rtti, backend_libs__code_model.
-:- import_module backend_libs__foreign, check_hlds__type_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module libs__globals.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, list, std_util, map.
 
@@ -1654,8 +1659,12 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module backend_libs__foreign, parse_tree__modules.
-:- import_module hlds__error_util, libs__globals.
+
+:- import_module backend_libs__foreign.
+:- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module parse_tree__modules.
+
 :- import_module int, term, string, require.
 
 %-----------------------------------------------------------------------------%

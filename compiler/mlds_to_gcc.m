@@ -92,7 +92,10 @@
 :- interface.
 
 :- import_module ml_backend.
-:- import_module ml_backend__mlds, ml_backend__maybe_mlds_to_gcc, bool.
+:- import_module ml_backend__maybe_mlds_to_gcc.
+:- import_module ml_backend__mlds.
+
+:- import_module bool.
 :- use_module io.
 
 	% run_gcc_backend(ModuleName, CallBack, CallBackOutput):
@@ -143,30 +146,38 @@
 :- implementation.
 
 :- use_module gcc.
-:- import_module parse_tree.
-:- import_module hlds.
-:- import_module check_hlds.
-:- import_module libs.
+
 :- import_module backend_libs.
+:- import_module check_hlds.
+:- import_module hlds.
+:- import_module libs.
 :- import_module ll_backend. % XXX
+:- import_module parse_tree.
 
 % XXX some of these imports might be unused
 
-:- import_module ml_backend__ml_util.
-:- import_module ml_backend__mlds_to_c.	% to handle C foreign_code
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__pseudo_type_info.
+:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred.	% for proc_id_to_int and invalid_pred_id
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
-:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
-:- import_module ml_backend__ml_code_util.	% for ml_gen_public_field_decl_flags, which is
-				% used by the code that handles derived classes
-:- import_module hlds__hlds_pred.	% for proc_id_to_int and invalid_pred_id
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module backend_libs__builtin_ops, parse_tree__modules.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module parse_tree__prog_util, check_hlds__type_util.
-:- import_module hlds__error_util.
-:- import_module backend_libs__pseudo_type_info, backend_libs__code_model.
+:- import_module ml_backend__ml_code_util.% for ml_gen_public_field_decl_flags,
+				% which is used by the code that handles
+				% derived classes
+:- import_module ml_backend__ml_util.
+:- import_module ml_backend__mlds_to_c.	% to handle C foreign_code
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.

@@ -29,8 +29,11 @@
 :- module check_hlds__common.
 :- interface.
 
-:- import_module hlds__hlds_pred, hlds__hlds_goal, parse_tree__prog_data.
 :- import_module check_hlds__simplify.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module list.
 
 	% If we find a deconstruction or a construction we cannot optimize,
@@ -81,13 +84,22 @@
 
 :- implementation.
 
-:- import_module hlds__quantification, check_hlds__mode_util.
-:- import_module check_hlds__type_util, parse_tree__prog_util.
-:- import_module check_hlds__det_util, check_hlds__det_report, libs__globals.
-:- import_module libs__options, check_hlds__inst_match, hlds__instmap.
-:- import_module hlds__hlds_data, hlds__hlds_module, (parse_tree__inst).
-:- import_module transform_hlds__pd_cost.
+:- import_module check_hlds__det_report.
+:- import_module check_hlds__det_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__instmap.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_util.
+:- import_module transform_hlds__pd_cost.
+
 :- import_module bool, map, set, eqvclass, require, std_util, string, term.
 
 :- type structure

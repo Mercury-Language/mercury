@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,9 @@
 :- module ml_backend__maybe_mlds_to_gcc.
 :- interface.
 
-:- import_module ml_backend__mlds, bool.
+:- import_module ml_backend__mlds.
+
+:- import_module bool.
 :- use_module io.
 
 :- type frontend_callback(T) == pred(T, io__state, io__state).

@@ -38,7 +38,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, set.
 
 	%
@@ -120,7 +123,8 @@
 
 :- implementation.
 
-:- import_module hlds__instmap, hlds__goal_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__instmap.
 
 :- import_module map, term, varset.
 :- import_module std_util, bool, require.

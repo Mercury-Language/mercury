@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,9 @@
 :- module ml_backend__ml_optimize.
 :- interface.
 
-:- import_module ml_backend__mlds, io.
+:- import_module ml_backend__mlds.
+
+:- import_module io.
 
 :- pred optimize(mlds, mlds, io__state, io__state).
 :- mode optimize(in, out, di, uo) is det.
@@ -41,10 +43,14 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
-:- import_module backend_libs__builtin_ops, libs__globals, libs__options.
+:- import_module backend_libs__builtin_ops.
 :- import_module hlds__error_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__ml_util.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, int, list, require, std_util, string.
 

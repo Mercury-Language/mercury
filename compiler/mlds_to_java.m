@@ -49,6 +49,7 @@
 :- interface.
 
 :- import_module ml_backend__mlds.
+
 :- import_module io.
 
 :- pred mlds_to_java__output_mlds(mlds, io__state, io__state).
@@ -59,27 +60,31 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_util.
-:- import_module ml_backend__java_util. 
-:- import_module backend_libs__c_util.
 	% XXX needed for c_util__output_quoted_string,
 	%     c_util__output_quoted_multi_string, and
 	%     c_util__make_float_literal.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__c_util.
+:- import_module backend_libs__export.	% for export__type_to_type_string
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred.	% for pred_proc_id.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
-:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
-:- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
-:- import_module hlds__hlds_pred.	% for pred_proc_id.
-:- import_module parse_tree__modules.       % for mercury_std_library_name.
-:- import_module ml_backend__ml_code_util.	% for ml_gen_local_var_decl_flags.
+:- import_module ml_backend__java_util. 
+:- import_module ml_backend__ml_code_util. % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend__ml_type_gen.	% for ml_gen_type_name
-:- import_module backend_libs__export.	% for export__type_to_type_string
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module backend_libs__builtin_ops.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module check_hlds__type_util, hlds__error_util.
-:- import_module backend_libs__foreign.
+:- import_module ml_backend__ml_util.
+:- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
+:- import_module parse_tree__modules.       % for mercury_std_library_name.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
 :- import_module bool, int, string, library, list, map, set.
 :- import_module assoc_list, term, std_util, require.

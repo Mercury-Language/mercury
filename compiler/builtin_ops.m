@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,9 +16,11 @@
 
 :- module backend_libs__builtin_ops.
 :- interface.
-:- import_module parse_tree__prog_data, hlds__hlds_pred.
-:- import_module list.
 
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
+:- import_module list.
 
 :- type unary_op
 	--->	mktag

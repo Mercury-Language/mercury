@@ -69,7 +69,8 @@
 
 :- interface. 
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 
 :- pred lambda__process_module(module_info, module_info).
 :- mode lambda__process_module(in, out) is det.
@@ -82,16 +83,25 @@
 
 :- implementation.
 
-:- import_module backend_libs__code_model. % XXX for some back-end dependent optimizations
+:- import_module backend_libs__code_model. % XXX for some back-end dependent
+					   % optimizations
 
 % Parse tree modules
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+
 % HLDS modules
-:- import_module hlds__hlds_goal, hlds__hlds_data, hlds__quantification.
-:- import_module check_hlds__type_util, hlds__goal_util.
-:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__quantification.
+
 % Misc
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
 
 % Standard library modules
 :- import_module list, map, set.

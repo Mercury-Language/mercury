@@ -20,9 +20,13 @@
 
 :- interface.
 
-:- import_module transform_hlds__term_util, transform_hlds__term_errors.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
+:- import_module transform_hlds__term_errors.
+:- import_module transform_hlds__term_util.
+
 :- import_module list, bag, map, std_util, set.
 
 :- type traversal_info
@@ -97,7 +101,9 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, check_hlds__type_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+
 :- import_module bool, int, require.
 
 traverse_goal(Goal, Params, Info0, Info) :-

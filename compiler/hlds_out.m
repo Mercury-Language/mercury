@@ -33,10 +33,14 @@
 :- interface.
 
 % Parse tree modules
-:- import_module parse_tree__prog_data, (parse_tree__inst).
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 % HLDS modules
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
-:- import_module hlds__hlds_data, hlds__instmap.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
 
 :- import_module io, bool, list, term.
 
@@ -257,26 +261,36 @@
 :- implementation.
 
 % Parse tree modules.
-:- import_module parse_tree__prog_out, parse_tree__prog_util.
-:- import_module parse_tree__inst, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 % HLDS modules.
-:- import_module hlds__special_pred, hlds__instmap, hlds__hlds_llds.
-:- import_module check_hlds__purity, check_hlds__check_typeclass.
+:- import_module check_hlds__check_typeclass.
+:- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
-:- import_module transform_hlds__termination, transform_hlds__term_errors.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__instmap.
+:- import_module hlds__special_pred.
+:- import_module transform_hlds__term_errors.
+:- import_module transform_hlds__termination.
 
 % RL back-end modules (XXX should avoid using those here).
 :- import_module aditi_backend__rl.
 
 % LLDS back-end modules (XXX should avoid using those here).
 :- import_module ll_backend.
-:- import_module ll_backend__code_util, ll_backend__llds.
-:- import_module ll_backend__llds_out, ll_backend__trace.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__llds_out.
+:- import_module ll_backend__trace.
 
 % Misc
-:- import_module backend_libs__rtti, backend_libs__foreign.
-:- import_module libs__globals, libs__options.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.
+:- import_module libs__globals.
+:- import_module libs__options.
 
 % Standard library modules
 :- import_module int, string, set, assoc_list, map, multi_map.

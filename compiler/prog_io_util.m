@@ -25,7 +25,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, (parse_tree__inst).
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, map, std_util, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
@@ -167,14 +169,15 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
-:- import_module parse_tree__prog_util.
-:- import_module libs__options, libs__globals.
-
 % XXX we should not need to import hlds*.m here.
 % But currently we need to import hlds_data.m for the `cons_id' type
 % that is used in insts.
 :- import_module hlds__hlds_data.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, string, std_util, term, set.
 

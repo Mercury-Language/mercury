@@ -8,6 +8,7 @@
 %
 % Build targets which relate to whole programs or libraries.
 %-----------------------------------------------------------------------------%
+
 :- module make__program_target.
 
 :- interface.

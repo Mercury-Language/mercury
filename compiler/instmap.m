@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,10 +19,13 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, parse_tree__prog_data.
-:- import_module check_hlds__mode_info, (parse_tree__inst).
 :- import_module check_hlds__mode_errors.
-:- import_module hlds__hlds_data, hlds__hlds_pred.
+:- import_module check_hlds__mode_info.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
 
@@ -308,9 +311,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util, check_hlds__inst_match.
-:- import_module parse_tree__prog_data, hlds__goal_util, check_hlds__type_util.
-:- import_module hlds__hlds_data, check_hlds__inst_util.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__inst_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_data.
 
 :- import_module std_util, require, string, term.
 

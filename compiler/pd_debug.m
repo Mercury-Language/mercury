@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,8 +12,11 @@
 
 :- interface.
 
-:- import_module transform_hlds__pd_info, hlds__hlds_goal, hlds__hlds_pred.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
+:- import_module transform_hlds__pd_info.
+
 :- import_module list, string.
 
 :- pred pd_debug__do_io(pred(io__state, io__state)::pred(di, uo) is det,
@@ -47,10 +50,16 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module libs__globals, hlds__hlds_module, hlds__hlds_out.
-:- import_module hlds__instmap, libs__options.
-:- import_module hlds__instmap, parse_tree__prog_out, hlds__goal_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
+
 :- import_module bool, io, set, std_util.
 
 pd_debug__do_io(Pred) -->

@@ -24,6 +24,7 @@
 :- interface.
 
 :- import_module ml_backend__mlds.
+
 :- import_module io.
 
 	% output_mlds(MLDS, Suffix):
@@ -62,25 +63,30 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__c_util.
+:- import_module backend_libs__code_model.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred.	% for pred_proc_id.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
 				% output_c_file_intro_and_grade.
-:- import_module backend_libs__rtti.		% for rtti__addr_to_string.
-:- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
-:- import_module hlds__hlds_pred.	% for pred_proc_id.
 :- import_module ml_backend__ml_code_util.
 				% for ml_gen_public_field_decl_flags, which is
 				% used by the code that handles derived classes
 :- import_module ml_backend__ml_type_gen.	% for ml_gen_type_name
-:- import_module backend_libs__foreign.
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module backend_libs__builtin_ops, backend_libs__c_util.
+:- import_module ml_backend__ml_util.
+:- import_module ml_backend__rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module check_hlds__type_util, hlds__error_util.
-:- import_module backend_libs__code_model.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
 :- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.

@@ -13,8 +13,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, term.
-:- import_module std_util, list.
+:- import_module parse_tree__prog_data.
+
+:- import_module std_util, list, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -200,7 +201,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module parse_tree__mercury_to_mercury, (parse_tree__inst).
+
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+
 :- import_module bool, require, string, int, map, varset.
 
 %-----------------------------------------------------------------------------%

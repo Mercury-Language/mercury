@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,10 +19,12 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_data, backend_libs__switch_util.
 :- import_module backend_libs__code_model.
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module backend_libs__switch_util.
+:- import_module hlds__hlds_data.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
 
 :- pred ml_string_switch__generate(cases_list::in, prog_var::in,
 		code_model::in, can_fail::in, prog_context::in,
@@ -33,10 +35,13 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_code_gen, ml_backend__ml_switch_gen.
+:- import_module backend_libs__builtin_ops.
+:- import_module check_hlds__type_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_code_gen.
 :- import_module ml_backend__ml_simplify_switch.
-:- import_module backend_libs__builtin_ops, check_hlds__type_util.
-:- import_module libs__globals, libs__options.
+:- import_module ml_backend__ml_switch_gen.
 
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 

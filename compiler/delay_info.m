@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1998, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,8 +20,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, parse_tree__prog_data.
 :- import_module check_hlds__mode_errors.
+:- import_module hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
+
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -90,9 +92,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module check_hlds__mode_errors.	% for the mode_error_info
+						% and delay_info types.
+
 :- import_module int, stack, set, map, require, std_util.
-:- import_module check_hlds__mode_errors.	% for the mode_error_info and delay_info
-				% types.
 
 	% The delay_info structure is a tangled web of substructures
 	% all of which are pointing at each other - debugging it

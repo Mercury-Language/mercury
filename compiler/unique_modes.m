@@ -35,8 +35,12 @@
 
 :- module check_hlds__unique_modes.
 :- interface. 
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
+
 :- import_module check_hlds__mode_info.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module io, bool.
 
 	% check every predicate in a module
@@ -58,15 +62,25 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_data, check_hlds__mode_debug.
-:- import_module check_hlds__modecheck_unify, check_hlds__modecheck_call.
-:- import_module check_hlds__mode_util, parse_tree__prog_out, hlds__hlds_out.
-:- import_module parse_tree__mercury_to_mercury, hlds__passes_aux.
-:- import_module check_hlds__modes, parse_tree__prog_data.
-:- import_module check_hlds__mode_errors, ll_backend__llds.
-:- import_module check_hlds__unify_proc.
-:- import_module (parse_tree__inst), hlds__instmap, check_hlds__inst_match.
+:- import_module check_hlds__inst_match.
 :- import_module check_hlds__inst_util.
+:- import_module check_hlds__mode_debug.
+:- import_module check_hlds__mode_errors.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modecheck_call.
+:- import_module check_hlds__modecheck_unify.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__unify_proc.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+
 :- import_module term, varset.
 :- import_module assoc_list, bag, int, list, map.
 :- import_module require, set, std_util, string.

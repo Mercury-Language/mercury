@@ -12,8 +12,10 @@
 
 :- interface.
 
+:- import_module libs__timestamp.
 :- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_io_util, libs__timestamp.
+:- import_module parse_tree__prog_io_util.
+
 :- import_module io, std_util, term.
 
 	% recompilation__version__compute_version_numbers(SourceFileModTime,
@@ -34,10 +36,13 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
-:- import_module parse_tree__prog_io, parse_tree__prog_util.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_out, (parse_tree__inst).
+:- import_module hlds__hlds_out.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_util.
 
 :- import_module assoc_list, bool, list, map, require, string, varset.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+
 :- import_module io.
 
 :- pred allocate_stack_slots_in_proc(pred_id::in, proc_id::in, module_info::in,
@@ -36,16 +38,21 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal, hlds__hlds_llds.
-:- import_module hlds__hlds_data.
-:- import_module check_hlds__goal_path.
-:- import_module ll_backend__llds, ll_backend__stack_opt.
-:- import_module ll_backend__liveness, ll_backend__live_vars.
-:- import_module ll_backend__trace.
 :- import_module backend_libs__code_model.
-:- import_module libs__globals, libs__options.
-:- import_module libs__trace_params, libs__graph_colour.
+:- import_module check_hlds__goal_path.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module libs__globals.
+:- import_module libs__graph_colour.
+:- import_module libs__options.
+:- import_module libs__trace_params.
+:- import_module ll_backend__live_vars.
+:- import_module ll_backend__liveness.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__stack_opt.
+:- import_module ll_backend__trace.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 

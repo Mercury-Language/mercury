@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_goal, parse_tree__prog_data, ll_backend__llds.
+:- import_module hlds__hlds_goal.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module bool, map, set, std_util.
 
 %
@@ -251,6 +254,7 @@
 :- implementation.
 
 :- import_module hlds__goal_util.
+
 :- import_module list, assoc_list, require.
 
 	% For the meaning of this type, see the documentation of the

@@ -13,7 +13,9 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io_util.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io_util.
+
 :- import_module list, varset, term.
 
 	% parse the pragma declaration. 
@@ -22,9 +24,13 @@
 
 :- implementation.
 
-:- import_module libs__globals, parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module libs__globals.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
-:- import_module transform_hlds__term_util, transform_hlds__term_errors.
+:- import_module transform_hlds__term_errors.
+:- import_module transform_hlds__term_util.
+
 :- import_module int, map, string, std_util, bool, require, set.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-

@@ -12,8 +12,11 @@
 
 :- module parse_tree__equiv_type.
 :- interface.
+
+:- import_module parse_tree__prog_data.
+:- import_module recompilation.
+
 :- import_module bool, list, io, std_util.
-:- import_module recompilation, parse_tree__prog_data.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,13 +56,18 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module assoc_list, bool, require, std_util, map, set, term, varset.
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
-:- import_module parse_tree__prog_out, parse_tree__inst.
 
 % XXX we shouldn't import the HLDS here.
-:- import_module hlds__error_util, check_hlds__mode_util.
-:- import_module hlds__hlds_data, check_hlds__type_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_data.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
+:- import_module assoc_list, bool, require, std_util, map, set, term, varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

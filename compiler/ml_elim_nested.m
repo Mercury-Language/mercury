@@ -435,6 +435,7 @@
 :- interface.
 
 :- import_module ml_backend__mlds.
+
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -453,15 +454,21 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, counter, int, list, std_util, string, require.
 
-:- import_module ml_backend__ml_code_util, ml_backend__ml_util.
-:- import_module parse_tree__prog_util, check_hlds__type_util.
+:- import_module check_hlds__type_util.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__ml_util.
+:- import_module parse_tree__prog_util.
 
 % the following imports are needed for mangling pred names
-:- import_module hlds__hlds_pred, parse_tree__prog_data, parse_tree__prog_out.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+
+:- import_module bool, counter, int, list, std_util, string, require.
 
 	% Perform the specified action on the whole MLDS.
 	%

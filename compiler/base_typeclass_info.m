@@ -20,8 +20,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, list, backend_libs__rtti.
+:- import_module backend_libs__rtti.
+:- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
+
+:- import_module list.
 
 :- pred base_typeclass_info__generate_rtti(module_info, list(rtti_data)).
 :- mode base_typeclass_info__generate_rtti(in, out) is det.
@@ -34,11 +37,17 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_out.
-:- import_module hlds__hlds_data, hlds__hlds_pred, hlds__hlds_out.
-:- import_module ll_backend__code_util, libs__globals, libs__options, term.
-:- import_module bool, string, map, std_util, require, assoc_list.
-:- import_module check_hlds__type_util, int.
+:- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_out.
+
+:- import_module bool, int, string, map, std_util, require, term, assoc_list.
 
 %---------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,7 +155,10 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, parse_tree__prog_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
+
 :- import_module set, io.
 
 	% Add liveness annotations to the goal of the procedure.
@@ -176,23 +179,33 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module parse_tree__prog_util, parse_tree__inst.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_util.
 
 % HLDS modules
-:- import_module hlds__hlds_goal, hlds__hlds_llds.
-:- import_module hlds__hlds_data, hlds__hlds_out.
-:- import_module hlds__instmap, hlds__quantification, hlds__passes_aux.
-:- import_module check_hlds__mode_util, check_hlds__polymorphism.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__polymorphism.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_out.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
 
 % LLDS modules
-:- import_module ll_backend__llds, ll_backend__code_util.
-:- import_module ll_backend__arg_info, ll_backend__trace.
+:- import_module ll_backend__arg_info.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__llds.
+:- import_module ll_backend__trace.
 
 % Modules shared between different back-ends.
 :- import_module backend_libs__code_model.
 
 % Misc
-:- import_module libs__trace_params, libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__trace_params.
 
 % Standard library modules
 :- import_module bool, string, map, std_util, list, assoc_list, require.

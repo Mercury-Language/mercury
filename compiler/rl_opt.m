@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, aditi_backend__rl.
+:- import_module aditi_backend__rl.
+:- import_module hlds__hlds_module.
+
 :- import_module io, list.
 
 :- pred rl_opt__procs(module_info, list(rl_proc), list(rl_proc),
@@ -22,11 +24,17 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module libs__globals, libs__options, hlds__passes_aux.
+:- import_module aditi_backend__rl_block.
+:- import_module aditi_backend__rl_block_opt.
+:- import_module aditi_backend__rl_liveness.
+:- import_module aditi_backend__rl_loop.
+:- import_module aditi_backend__rl_sort.
+:- import_module aditi_backend__rl_stream.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__prog_out.
-:- import_module aditi_backend__rl_block, aditi_backend__rl_liveness.
-:- import_module aditi_backend__rl_block_opt, aditi_backend__rl_loop.
-:- import_module aditi_backend__rl_sort, aditi_backend__rl_stream.
+
 :- import_module bool, list.
 
 rl_opt__procs(ModuleInfo, Procs0, Procs) -->

@@ -58,10 +58,13 @@
 :- module ml_backend__mlds_to_il.
 :- interface.
 
-:- import_module ml_backend__mlds, ml_backend__ilasm, ml_backend__ilds.
-:- import_module io, list, bool, std_util, set.
 :- import_module hlds__hlds_pred. % for `pred_proc_id'.
 :- import_module libs__globals. % for `foreign_language'.
+:- import_module ml_backend__ilasm.
+:- import_module ml_backend__ilds.
+:- import_module ml_backend__mlds.
+
+:- import_module io, list, bool, std_util, set.
 
 %-----------------------------------------------------------------------------%
 
@@ -73,7 +76,6 @@
 :- pred generate_il(mlds, list(ilasm__decl), set(foreign_language),
 		io__state, io__state).
 :- mode generate_il(in, out, out, di, uo) is det.
-
 
 %-----------------------------------------------------------------------------%
 
@@ -132,20 +134,29 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module backend_libs__builtin_ops, backend_libs__c_util.
-:- import_module parse_tree__modules, libs__tree.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module parse_tree__prog_util, ll_backend__llds_out.
-:- import_module backend_libs__pseudo_type_info, backend_libs__rtti.
-:- import_module check_hlds__type_util, backend_libs__code_model.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__c_util.
+:- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
-
-:- import_module ml_backend__il_peephole.
-:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module backend_libs__foreign.
+:- import_module backend_libs__pseudo_type_info.
+:- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__llds_out.
+:- import_module ml_backend__il_peephole.
+:- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_type_gen.
-:- import_module backend_libs__foreign.
+:- import_module ml_backend__ml_util.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+
 :- use_module ll_backend__llds. /* for user_foreign_code */
 
 :- import_module bool, int, map, string, set, list, assoc_list, term.

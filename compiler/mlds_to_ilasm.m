@@ -16,6 +16,7 @@
 :- interface.
 
 :- import_module ml_backend__mlds.
+
 :- import_module io.
 
 	% Convert the MLDS to IL and write it to a file.
@@ -28,17 +29,26 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options, hlds__passes_aux.
-:- import_module backend_libs__builtin_ops, backend_libs__c_util.
-:- import_module parse_tree__modules, libs__tree.
-:- import_module hlds__hlds_pred. % for `pred_proc_id'.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module backend_libs__rtti, check_hlds__type_util, hlds__error_util.
+:- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__foreign.
-
-:- import_module ml_backend__ilds, ml_backend__ilasm, ml_backend__il_peephole.
-:- import_module ml_backend__ml_util, ml_backend__ml_code_util.
+:- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred. % for `pred_proc_id'.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ml_backend__il_peephole.
+:- import_module ml_backend__ilasm.
+:- import_module ml_backend__ilds.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__ml_util.
 :- import_module ml_backend__mlds_to_managed.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 
 :- import_module bool, int, map, string, set, list, assoc_list, term, std_util.
 :- import_module library, require, counter.

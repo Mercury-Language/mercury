@@ -25,8 +25,12 @@
 
 :- module ml_backend__ml_type_gen.
 :- interface.
-:- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_data.
+
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
 :- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
+
 :- import_module io.
 
 	% Generate MLDS definitions for all the types in the HLDS.
@@ -74,12 +78,17 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds__hlds_pred, parse_tree__prog_data.
-:- import_module parse_tree__prog_util, check_hlds__type_util.
+
 :- import_module check_hlds__polymorphism.
-:- import_module ml_backend__ml_code_util, hlds__error_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
+:- import_module hlds__hlds_pred.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_util.
-:- import_module libs__globals, libs__options.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, int, string, list, map, std_util, term, require.
 

@@ -39,7 +39,10 @@ mode system to distinguish between different representations.
 
 :- interface.
 
-:- import_module hlds__hlds_module, parse_tree__prog_data, (parse_tree__inst).
+:- import_module hlds__hlds_module.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -285,9 +288,13 @@ mode system to distinguish between different representations.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds__hlds_data, check_hlds__mode_util.
-:- import_module parse_tree__prog_data, check_hlds__inst_util.
+
+:- import_module check_hlds__inst_util.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_data.
+
 :- import_module list, set, map, term, std_util, require, bool.
 
 inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,19 +23,21 @@
 :- module ml_backend__ml_simplify_switch.
 :- interface.
 
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
+:- import_module ml_backend__ml_code_util.
 
 :- pred ml_simplify_switch(mlds__stmt::in, mlds__context::in,
-		mlds__statement::out,
-		ml_gen_info::in, ml_gen_info::out) is det.
+	mlds__statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module ml_backend__ml_switch_gen, backend_libs__builtin_ops.
+:- import_module backend_libs__builtin_ops.
 :- import_module check_hlds__type_util.
-:- import_module libs__globals, libs__options.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_switch_gen.
 
 :- import_module bool, int, list, map, require, std_util.
 

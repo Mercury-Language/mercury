@@ -16,7 +16,9 @@
 
 :- interface.
 
-:- import_module hlds__hlds_module, aditi_backend__rl.
+:- import_module aditi_backend__rl.
+:- import_module hlds__hlds_module.
+
 :- import_module io.
 
 :- pred rl_gen__module(module_info, rl_code, io__state, io__state).
@@ -25,15 +27,27 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module ll_backend__code_aux, ll_backend__code_util.
-:- import_module check_hlds__det_analysis, hlds__hlds_data, hlds__hlds_goal.
-:- import_module hlds__hlds_pred, hlds__instmap, check_hlds__mode_util.
-:- import_module parse_tree__prog_data, parse_tree__prog_out.
-:- import_module aditi_backend__rl_relops, aditi_backend__rl_info.
-:- import_module libs__tree, check_hlds__type_util.
+:- import_module aditi_backend__rl_info.
+:- import_module aditi_backend__rl_relops.
+:- import_module check_hlds__det_analysis.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module libs__tree.
+:- import_module ll_backend__code_aux.
+:- import_module ll_backend__code_util.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
 :- import_module transform_hlds__dependency_graph.
-:- import_module check_hlds__inst_match, (parse_tree__inst), hlds__goal_util.
-:- import_module transform_hlds__inlining, libs__globals, libs__options.
+:- import_module transform_hlds__inlining.
 
 :- import_module assoc_list, bool, char, int, list, map, queue.
 :- import_module relation, require, set, std_util, string, term, varset.

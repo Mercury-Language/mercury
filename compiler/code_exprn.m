@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,9 +36,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_llds, ll_backend__llds.
+:- import_module hlds__hlds_llds.
 :- import_module libs__options.
+:- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
+
 :- import_module map, set, list, assoc_list.
 
 :- type exprn_info.
@@ -256,7 +258,10 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_util, ll_backend__exprn_aux, libs__tree.
+:- import_module libs__tree.
+:- import_module ll_backend__code_util.
+:- import_module ll_backend__exprn_aux.
+
 :- import_module varset, term.
 :- import_module bool, bag, require, int, string, std_util.
 

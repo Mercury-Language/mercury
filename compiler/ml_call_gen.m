@@ -16,10 +16,12 @@
 :- module ml_backend__ml_call_gen.
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_pred, hlds__hlds_goal.
 :- import_module backend_libs__code_model.
-:- import_module ml_backend__mlds, ml_backend__ml_code_util.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_pred.
+:- import_module ml_backend__ml_code_util.
+:- import_module ml_backend__mlds.
+:- import_module parse_tree__prog_data.
 
 :- import_module list, bool.
 
@@ -113,12 +115,15 @@
 
 :- implementation.
 
-:- import_module ml_backend__ml_closure_gen.
-:- import_module hlds__hlds_module, hlds__hlds_data.
 :- import_module backend_libs__builtin_ops.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
-:- import_module libs__options, libs__globals.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module ml_backend__ml_closure_gen.
 
 :- import_module bool, int, string, std_util, term, varset, require, map.
 

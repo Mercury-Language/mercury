@@ -12,9 +12,12 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__inst.
-:- import_module hlds__hlds_data, hlds__hlds_pred, hlds__hlds_llds.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, char, list, set, map, std_util.
 
@@ -1128,9 +1131,11 @@
 
 :- implementation.
 
+:- import_module check_hlds__det_analysis.
 :- import_module check_hlds__purity.
-:- import_module check_hlds__det_analysis, parse_tree__prog_util.
 :- import_module check_hlds__type_util.
+:- import_module parse_tree__prog_util.
+
 :- import_module require, string, term, varset.
 
 %-----------------------------------------------------------------------------%
@@ -1153,6 +1158,7 @@ generic_call_pred_or_func(aditi_builtin(_, CallId)) =
 	simple_call_id_pred_or_func(CallId).
 
 :- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
+
 simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 
 %-----------------------------------------------------------------------------%

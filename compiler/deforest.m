@@ -34,31 +34,46 @@
 :- interface.
 
 :- import_module hlds__hlds_module.
+
 :- import_module io.
 
 :- pred deforestation(module_info::in, module_info::out,
-		io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module transform_hlds__pd_cost, transform_hlds__pd_debug.
-:- import_module transform_hlds__pd_info, transform_hlds__pd_term.
-:- import_module transform_hlds__pd_util.
-:- import_module hlds__hlds_pred, hlds__hlds_goal, transform_hlds__inlining.
-:- import_module hlds__passes_aux.
-:- import_module (parse_tree__inst), hlds__instmap, check_hlds__inst_match.
-:- import_module check_hlds__simplify.
-:- import_module transform_hlds__dependency_graph, hlds__hlds_data.
-:- import_module check_hlds__det_analysis, libs__globals.
-:- import_module check_hlds__mode_util, hlds__goal_util.
-:- import_module parse_tree__prog_data, parse_tree__prog_util.
-:- import_module check_hlds__purity.
-:- import_module check_hlds__modes, check_hlds__mode_info.
-:- import_module check_hlds__unique_modes, libs__options, hlds__hlds_out.
-:- import_module parse_tree__prog_out, hlds__quantification.
+:- import_module check_hlds__det_analysis.
 :- import_module check_hlds__det_report.
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_info.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__modes.
+:- import_module check_hlds__purity.
+:- import_module check_hlds__simplify.
+:- import_module check_hlds__unique_modes.
+:- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module hlds__passes_aux.
+:- import_module hlds__quantification.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__inst.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
+:- import_module transform_hlds__dependency_graph.
+:- import_module transform_hlds__inlining.
+:- import_module transform_hlds__pd_cost.
+:- import_module transform_hlds__pd_debug.
+:- import_module transform_hlds__pd_info.
+:- import_module transform_hlds__pd_term.
+:- import_module transform_hlds__pd_util.
 
 :- import_module assoc_list, bool, getopt, int, list, map, require.
 :- import_module set, std_util, string, term, varset.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,8 +34,9 @@
 
 :- interface.
 
-:- import_module list.
 :- import_module ml_backend__ilasm.
+
+:- import_module list.
 
 	% Peephole optimize a list of instructions.
 
@@ -46,8 +47,9 @@
 
 :- type instrs == list(instr).
 
-:- import_module assoc_list, bool, map, string, std_util, int.
-:- import_module ml_backend__ilds, require.
+:- import_module ml_backend__ilds.
+
+:- import_module assoc_list, bool, map, string, std_util, int, require.
 
 	% We zip down to the end of the instruction list, and start attempting
 	% to optimize instruction sequences. As long as we can continue

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
+
 :- import_module list, term.
 
 	% Convert a single term into a goal.
@@ -96,9 +97,12 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util, check_hlds__purity.
-:- import_module parse_tree__prog_io, parse_tree__prog_io_util.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__purity.
+:- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_io_util.
 :- import_module transform_hlds__term_util.
+
 :- import_module term.
 :- import_module int, map, string, std_util.
 

@@ -13,7 +13,8 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, parse_tree__prog_io.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_io.
 :- import_module parse_tree__modules.
 :- import_module libs__globals.
 
@@ -165,13 +166,16 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module libs__globals, libs__options, libs__handle_options.
-:- import_module hlds__error_util, hlds__passes_aux, libs__trace_params.
-:- import_module parse_tree__prog_out.
 :- import_module backend_libs__foreign.
-
+:- import_module hlds__error_util.
+:- import_module hlds__passes_aux.
+:- import_module libs__globals.
+:- import_module libs__handle_options.
+:- import_module libs__options.
+:- import_module libs__trace_params.
 :- import_module ll_backend__llds_out.	% for llds_out__make_init_name and
 					% llds_out__make_rl_data_name
+:- import_module parse_tree__prog_out.
 
 :- import_module char, dir, getopt, int, require, string.
 

@@ -24,9 +24,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 :- import_module backend_libs__code_model.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, bool, list, set, map, std_util.
 
@@ -629,10 +631,11 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
+:- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
 
 :- import_module int, string, require, varset.
 

@@ -45,6 +45,7 @@
 
 :- import_module backend_libs__proc_label.
 :- import_module ll_backend__llds.
+
 :- import_module list, counter.
 
 :- pred dupelim_main(list(instruction)::in, proc_label::in,
