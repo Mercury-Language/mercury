@@ -33,7 +33,16 @@
 :- mode graph__insert_node(in, in, out, out) is det.
 
 :- pred graph__find_node(graph(N, A), N, node(N)).
-:- mode graph__find_node(in, in, out) is nondet.
+:- mode graph__find_node(in, in, out) is det.
+
+:- pred graph__lookup_node(graph(N, A), node(N), N).
+:- mode graph__lookup_node(in, in, out) is det.
+
+:- pred graph__successors(graph(N, A), node(N), set(node(N))).
+:- mode graph__successors(in, in, out) is det.
+
+:- pred graph__nodes(graph(N, A), set(node(N))).
+:- mode graph__nodes(in, out) is det.
 
 :- pred graph__insert_edge(graph(N, A), node(N), node(N), A,
 						arc(A), graph(N, A)).
@@ -47,7 +56,8 @@
 
 :- implementation.
 
-:- import_module map, set, int.
+:- import_module map, set, int, std_util, list.
+:- import_module require.
 
 :- type graph(N, A)	--->
 		graph(
@@ -99,7 +109,51 @@ graph__insert_node(G0, NInfo, N, G) :-
 
 graph__find_node(G, I, N) :-
 	graph__get_nodes(G, Ns),
-	map__inverse_search(Ns, I, N).
+	map__to_assoc_list(Ns, NList),
+	graph__find_node_2(NList, I, N).
+
+:- pred graph__find_node_2(assoc_list(T,U), U, T).
+:- mode graph__find_node_2(in, in, out) is det.
+
+graph__find_node_2([], _, _) :-
+	error("graph__find_node_2: no such node.").
+graph__find_node_2([K-V|KVs], V0, K0) :-
+	(
+		V = V0
+	->
+		K0 = K
+	;
+		graph__find_node_2(KVs, V0, K0)
+	).
+
+%------------------------------------------------------------------------------%
+
+graph__lookup_node(G, N, I) :-
+	graph__get_nodes(G, Ns),
+	map__lookup(Ns, N, I).
+
+%------------------------------------------------------------------------------%
+
+graph__successors(G, N, Ss) :-
+	graph__get_edges(G, Es),
+	map__lookup(Es, N, E),
+	set__to_sorted_list(E, EL),
+	graph__successors_2(EL, SL),
+	set__list_to_set(SL, Ss).
+
+:- pred graph__successors_2(list(edge(T,U)), list(node(T))).
+:- mode graph__successors_2(in, out) is det.
+
+graph__successors_2([], []).
+graph__successors_2([edge(_, S)|Es], [S|Ss]) :-
+	graph__successors_2(Es, Ss).
+
+%------------------------------------------------------------------------------%
+
+graph__nodes(G, Ns) :-
+	graph__get_nodes(G, Ns0),
+	map__keys(Ns0, Ns1),
+	set__list_to_set(Ns1, Ns).
 
 %------------------------------------------------------------------------------%
 

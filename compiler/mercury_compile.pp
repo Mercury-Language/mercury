@@ -27,7 +27,7 @@
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, bintree, term, varset, hlds.
-:- import_module implication, negation.
+:- import_module implication, negation, call_graph.
 
 %-----------------------------------------------------------------------------%
 
@@ -911,9 +911,16 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 #endif
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
+	globals__io_lookup_bool_option(make_call_graph, MakeCallGraph),
 	( { DoModeCheck = yes } ->
 		mercury_compile__modecheck(HLDS1, HLDS2, FoundModeError),
 		mercury_compile__maybe_dump_hlds(HLDS2, "2", "modecheck"),
+
+		( { MakeCallGraph = yes } ->
+			mercury_compile__make_call_graph(HLDS2)
+		;
+			[]
+		),
 
 		mercury_compile__maybe_polymorphism(HLDS2, HLDS3),
 
@@ -1142,6 +1149,29 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 	),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
+
+:- pred mercury_compile__make_call_graph(module_info,
+						io__state, io__state).
+:- mode mercury_compile__make_call_graph(in, di, uo) is det.
+
+mercury_compile__make_call_graph(ModuleInfo) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Building call graph..."),
+	maybe_flush_output(Verbose),
+	{ call_graph__build_call_graph(ModuleInfo, CallGraph) },
+	maybe_write_string(Verbose, "done.\n"),
+	{ module_info_name(ModuleInfo, Name) },
+	{ string__append(Name, ".call_graph", WholeName) },
+	io__tell(WholeName, Res),
+	(
+		{ Res = ok }
+	->
+		call_graph__write_call_graph(CallGraph, ModuleInfo),
+		io__told
+	;
+		io__write_string("% Unable to write call graph.\n")
+	).
+	
 
 :- pred mercury_compile__maybe_polymorphism(module_info, module_info,
 						io__state, io__state).

@@ -24,6 +24,10 @@
 			term__context, io__state, io__state).
 :- mode mercury_output_mode_decl(in, in, in, in, in, di, uo) is det.
 
+:- pred mercury_output_mode_subdecl(varset, sym_name, list(mode), determinism,
+			term__context, io__state, io__state).
+:- mode mercury_output_mode_subdecl(in, in, in, in, in, di, uo) is det.
+
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo) is det.
 
@@ -507,6 +511,19 @@ mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	),
 	mercury_output_det_annotation(Det),
 	io__write_string(".\n").
+
+mercury_output_mode_subdecl(VarSet, PredName, Modes, Det, _Context) -->
+	(
+		{ Modes \= [] }
+	->
+		mercury_output_sym_name(PredName),
+		io__write_string("("),
+		mercury_output_mode_list(Modes, VarSet),
+		io__write_string(")")
+	;
+		mercury_output_bracketed_sym_name(PredName)
+	),
+	mercury_output_det_annotation(Det).
 
 :- pred mercury_output_det_annotation(determinism, io__state, io__state).
 :- mode mercury_output_det_annotation(in, di, uo) is det.
