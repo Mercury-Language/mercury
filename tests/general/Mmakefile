@@ -42,6 +42,7 @@ PROGS=		\
 		liveness2 \
 		mode_inf \
 		mode_inf_bug \
+		mode_inference_reorder \
 		mu \
 		nasty_nondet \
 		nondet_disj \
@@ -76,9 +77,11 @@ NOT_WORKING =	dnf
 # Some test cases need special handling.
 #
 
-# mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
+# mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
+# with `--infer-all'.
 MCFLAGS-mode_inf = --infer-all
 MCFLAGS-mode_inf_bug = --infer-all
+MCFLAGS-mode_inference_reorder = --infer-all
 MCFLAGS-intermod_type = --intermodule-optimization
 MCFLAGS-intermod_type2 = --intermodule-optimization
 
