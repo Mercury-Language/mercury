@@ -181,7 +181,8 @@ typedef struct {
   #define MR_store_value_trail_entry(entry, address, value)		\
 	  do {								\
 		(entry)->MR_union.MR_val.MR_address =			\
-			(Word *) mkword(MR_value_trail_tag, (address));	\
+			(Word *) (Word)					\
+			  mkword(MR_value_trail_tag, (address));	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
 
