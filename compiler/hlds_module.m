@@ -1427,10 +1427,20 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgTypes, Arity),
 	(
-		predicate_table_search_pf_sym_arity(PredicateTable,
-			PredOrFunc, SymName, Arity, PredIds),
-		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-			TVarSet, ArgTypes, PredId0, _PredName)
+		(
+			% In this case there is no overloading to resolve,
+			% so just look up the pred_id. 
+			SymName = qualified(Module, Name),
+			predicate_table_search_pf_m_n_a(PredicateTable,
+				PredOrFunc, Module, Name, Arity, [PredId0])
+		;
+			% Resolve overloading using the arguments types. 
+			SymName = unqualified(Name),
+			predicate_table_search_pf_name_arity(PredicateTable,
+				PredOrFunc, Name, Arity, PredIds),
+			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
+				TVarSet, ArgTypes, PredId0, _PredName)
+		)
 	->
 		PredId = PredId0,
 		get_proc_id(PredicateTable, PredId, ProcId)
@@ -1438,12 +1448,12 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 		% Undefined/invalid pred or func.
 		% the type-checker should ensure that this never happens
 		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		unqualify_name(SymName, Name),
+		unqualify_name(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
 		string__append_list(
 			["get_pred_id_and_proc_id: ",
 			"undefined/invalid ", PredOrFuncStr,
-			"\n`", Name, "/", ArityString, "'"],
+			"\n`", Name2, "/", ArityString, "'"],
 			Msg),
 		error(Msg)
 	).
