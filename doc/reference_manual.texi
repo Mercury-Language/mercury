@@ -948,7 +948,9 @@ of data constructors, independent of the definition of the constructor.
 Record syntax expressions are transformed into sequences of calls
 to field selection or update functions (@pxref{Field access functions}).
 
-Record syntax expressions have one of the following forms:
+Record syntax expressions have one of the following forms.
+There are equivalent goals which act on the DCG arguments
+of a clause (@pxref{DCG-goals}).
 
 @table @code
 @item @var{Term} ^ @var{field}
