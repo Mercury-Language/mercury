@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,9 +24,10 @@
 :- import_module hlds_goal, mode_info.
 :- import_module term.
 
-:- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
-				extra_goals, mode_info, mode_info).
-:- mode modecheck_call_pred(in, in, out, out, out,
+:- pred modecheck_call_pred(pred_id, list(var), maybe(determinism),
+				proc_id, list(var), extra_goals,
+				mode_info, mode_info).
+:- mode modecheck_call_pred(in, in, in, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, var, list(var),
@@ -61,7 +62,7 @@
 :- import_module prog_data, hlds_pred, hlds_data, hlds_module, instmap, (inst).
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, make_hlds.
-:- import_module det_report.
+:- import_module det_report, unify_proc.
 :- import_module map, list, bool, std_util, set, require.
 
 modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
@@ -164,8 +165,8 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals = no_extra_goals
 	).
 
-modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
-		ModeInfo0, ModeInfo) :-
+modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
+		TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 
 		% Get the list of different possible modes for the called
 		% predicate
@@ -231,7 +232,8 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 			ModeInfo1, ModeInfo2),
 
 		(	RevMatchingProcIds = [],
-			no_matching_modes(PredId, ArgVars0, WaitingVars,
+			no_matching_modes(PredId, ArgVars0,
+				DeterminismKnown, WaitingVars,
 				TheProcId, ModeInfo2, ModeInfo3),
 			ArgVars = ArgVars0,
 			ExtraGoals = no_extra_goals
@@ -251,11 +253,12 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		mode_info_set_errors(Errors, ModeInfo3, ModeInfo)
 	).
 
-:- pred no_matching_modes(pred_id, list(var), set(var), proc_id, 	
-				mode_info, mode_info).
-:- mode no_matching_modes(in, in, in, out, mode_info_di, mode_info_uo) is det.
+:- pred no_matching_modes(pred_id, list(var), maybe(determinism), set(var),
+				proc_id, mode_info, mode_info).
+:- mode no_matching_modes(in, in, in, in, out, mode_info_di, mode_info_uo)
+	is det.
 
-no_matching_modes(PredId, ArgVars, WaitingVars, TheProcId,
+no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
 		ModeInfo0, ModeInfo) :-
 	%
 	% There were no matching modes.
@@ -267,7 +270,7 @@ no_matching_modes(PredId, ArgVars, WaitingVars, TheProcId,
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_get_markers(PredInfo, Markers),
 	( check_marker(Markers, infer_modes) ->
-		insert_new_mode(PredId, ArgVars, TheProcId,
+		insert_new_mode(PredId, ArgVars, DeterminismKnown, TheProcId,
 			ModeInfo0, ModeInfo1),
 		% we don't yet know the final insts for the newly created mode
 		% of the called predicate, so we set the instmap to unreachable,
@@ -362,8 +365,9 @@ modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars, ExtraGoals,
 		ModeInfo = ModeInfo1
 	).
 
-:- pred insert_new_mode(pred_id, list(var), proc_id, mode_info, mode_info).
-:- mode insert_new_mode(in, in, out, mode_info_di, mode_info_uo) is det.
+:- pred insert_new_mode(pred_id, list(var), maybe(determinism), proc_id,
+			mode_info, mode_info).
+:- mode insert_new_mode(in, in, in, out, mode_info_di, mode_info_uo) is det.
 
 	% Insert a new inferred mode for a predicate.
 	% The initial insts are determined by using a normalised
@@ -371,7 +375,7 @@ modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars, ExtraGoals,
 	% The final insts are initially just assumed to be all `not_reached'.
 	% The determinism for this mode will be inferred.
 
-insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
+insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	% figure out the values of all the variables we need to
 	% create a new mode for this predicate
 	get_var_insts_and_lives(ArgVars, ModeInfo0, InitialInsts, ArgLives),
@@ -382,26 +386,15 @@ insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
 	list__length(ArgVars, Arity),
 	list__duplicate(Arity, not_reached, FinalInsts),
 	inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes),
-	MaybeDeterminism = no,
 
-	% create the new mode
-	add_new_proc(PredInfo0, Arity, Modes, no, yes(ArgLives),
-		MaybeDeterminism, Context, PredInfo1, ProcId),
+	%
+	% call unify_proc__request_proc, which will
+	% create the new procedure, set its "can-process" flag to `no',
+	% and insert it into the queue of requested procedures.
+	%
+	unify_proc__request_proc(PredId, Modes, yes(ArgLives), MaybeDet,
+		Context, ModuleInfo0, ProcId, ModuleInfo),
 
-	% copy the clauses for the predicate to this procedure,
-	% and then store the new proc_info and pred_info
-	% back in the module_info.
-
-	pred_info_procedures(PredInfo1, Procs1),
-	map__lookup(Procs1, ProcId, ProcInfo1),
-	pred_info_clauses_info(PredInfo1, ClausesInfo),
-
-	copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo),
-
-	map__det_update(Procs1, ProcId, ProcInfo, Procs),
-	pred_info_set_procedures(PredInfo1, Procs, PredInfo),
-	map__det_update(Preds0, PredId, PredInfo, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo),
 	mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 
 	% Since we've created a new inferred mode for this predicate,
@@ -433,7 +426,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 		% a good chance of being able to do destructive update.
 		(
 			inst_is_ground(ModuleInfo, Inst),
-			inst_is_unique(ModuleInfo, Inst)
+			inst_is_mostly_unique(ModuleInfo, Inst)
 		->
 			IsLive = dead
 		;

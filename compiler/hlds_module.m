@@ -99,10 +99,10 @@
 	module_info).
 :- mode module_info_set_predicate_table(in, in, out) is det.
 
-	% For an explanation of the unify_requests structure,
+	% For an explanation of the proc_requests structure,
 	% see unify_proc.m.
-:- pred module_info_get_unify_requests(module_info, unify_requests).
-:- mode module_info_get_unify_requests(in, out) is det.
+:- pred module_info_get_proc_requests(module_info, proc_requests).
+:- mode module_info_get_proc_requests(in, out) is det.
 
 :- pred module_info_get_special_pred_map(module_info, special_pred_map).
 :- mode module_info_get_special_pred_map(in, out) is det.
@@ -192,9 +192,9 @@
 :- pred module_info_unused_arg_info(module_info, unused_arg_info).
 :- mode module_info_unused_arg_info(in, out) is det.
 
-:- pred module_info_set_unify_requests(module_info, unify_requests,
+:- pred module_info_set_proc_requests(module_info, proc_requests,
 	module_info).
-:- mode module_info_set_unify_requests(in, in, out) is det.
+:- mode module_info_set_proc_requests(in, in, out) is det.
 
 :- pred module_info_set_unused_arg_info(module_info,
 		unused_arg_info, module_info).
@@ -435,7 +435,7 @@
 	--->	module(
 			module_sub_info,
 			predicate_table,
-			unify_requests,
+			proc_requests,
 			special_pred_map,
 			continuation_info,
 			type_table,
@@ -624,7 +624,7 @@ module_sub_set_model_non_pragma_count(MI0, M, MI) :-
 %	--->	module(
 % A			module_sub_info,
 % B			predicate_table,
-% C			unify_requests,
+% C			proc_requests,
 % D			special_pred_map,
 % E			continuation_info,
 % F			type_table,
@@ -649,7 +649,7 @@ module_info_get_sub_info(MI0, A) :-
 module_info_get_predicate_table(MI0, B) :-
 	MI0 = module(_, B, _, _, _, _, _, _, _, _, _, _).
 
-module_info_get_unify_requests(MI0, C) :-
+module_info_get_proc_requests(MI0, C) :-
 	MI0 = module(_, _, C, _, _, _, _, _, _, _, _, _).
 
 module_info_get_special_pred_map(MI0, D) :-
@@ -691,7 +691,7 @@ module_info_set_predicate_table(MI0, B, MI) :-
 	MI0 = module(A, _, C, D, E, F, G, H, I, J, K, L),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
 
-module_info_set_unify_requests(MI0, C, MI) :-
+module_info_set_proc_requests(MI0, C, MI) :-
 	MI0 = module(A, B, _, D, E, F, G, H, I, J, K, L),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L).
 

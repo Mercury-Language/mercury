@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,12 +206,23 @@ insts_to_mode(Initial, Final, Mode) :-
 				qualified("mercury_builtin", "out"), [])
 	; Initial = free, Final = ground(unique, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "uo"), [])
+	; Initial = free, Final = ground(mostly_unique, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "muo"),
+								[])
 	; Initial = ground(shared, no), Final = ground(shared, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "in"), [])
 	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "di"), [])
+	; Initial = ground(mostly_unique, no),
+	  Final = ground(mostly_clobbered, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "mdi"),
+								[])
 	; Initial = ground(unique, no), Final = ground(unique, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "ui"), [])
+	; Initial = ground(mostly_unique, no),
+	  Final = ground(mostly_unique, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "mui"),
+								[])
 	; Initial = free ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "out"),
 								[Final])

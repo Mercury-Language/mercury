@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,8 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		modecheck_proc(ProcId, PredId, ModuleInfo1, ModuleInfo2, Errs),
+		modecheck_proc(ProcId, PredId, ModuleInfo1,
+				ModuleInfo2, Errs, _Changed),
 		{ Errs > 0 ->
 			error("mode check fails when repeated")
 		;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,8 +41,8 @@
 
 	% just check a single procedure
 :- pred unique_modes__check_proc(proc_id, pred_id, module_info,
-				module_info, io__state, io__state).
-:- mode unique_modes__check_proc(in, in, in, out, di, uo) is det.
+				module_info, bool, io__state, io__state).
+:- mode unique_modes__check_proc(in, in, in, out, out, di, uo) is det.
 
 	% just check a single goal
 :- pred unique_modes__check_goal(hlds_goal, hlds_goal, mode_info, mode_info).
@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_debug, modecheck_unify.
+:- import_module hlds_data, mode_debug, modecheck_unify, modecheck_call.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
@@ -66,9 +66,9 @@ unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
 	check_pred_modes(check_unique_modes, ModuleInfo0, ModuleInfo,
 			_UnsafeToContinue).
 
-unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
+unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, Changed) -->
 	modecheck_proc(ProcId, PredId, check_unique_modes,
-		ModuleInfo0, ModuleInfo, NumErrors),
+		ModuleInfo0, ModuleInfo, NumErrors, Changed),
 	( { NumErrors \= 0 } ->
 		io__set_exit_status(1)
 	;
@@ -387,11 +387,11 @@ unique_modes__check_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "class method call").
 
-unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
+unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 		PredName), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
 	mode_info_set_call_context(call(PredId)),
-	unique_modes__check_call(PredId, ProcId, Args),
+	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
@@ -423,30 +423,83 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-unique_modes__check_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
+unique_modes__check_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId0,
 		Args, ArgNameMap, OrigArgTypes, ExtraPragmaInfo),
 		_GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
 	mode_info_set_call_context(call(PredId)),
-	unique_modes__check_call(PredId, ProcId, Args),
+	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, ExtraPragmaInfo) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
-:- pred unique_modes__check_call(pred_id, proc_id, list(var), 
+:- pred unique_modes__check_call(pred_id, proc_id, list(var), proc_id, 
 			mode_info, mode_info).
-:- mode unique_modes__check_call(in, in, in, mode_info_di, mode_info_uo) is det.
+:- mode unique_modes__check_call(in, in, in, out,
+			mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_call(PredId, ProcId, ArgVars, 
+unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		ModeInfo0, ModeInfo) :-
+	%
+	% set the error list to empty for use below
+	% (saving the old error list and instmap in variables)
+	%
+	mode_info_get_errors(ModeInfo0, OldErrors),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_set_errors([], ModeInfo0, ModeInfo1),
+
+	%
+	% first off, try using the existing mode
+	%
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel,
-				NeverSucceeds, ModeInfo0, ModeInfo).
+				NeverSucceeds, ModeInfo1, ModeInfo2),
+
+	%
+	% see whether or not that worked
+	% (and restore the old error list)
+	%
+	mode_info_get_errors(ModeInfo2, Errors),
+	mode_info_set_errors(OldErrors, ModeInfo2, ModeInfo3),
+	( Errors = [] ->
+		ProcId = ProcId0,
+		ModeInfo = ModeInfo3
+	;
+		%
+		% If it didn't work, restore the original instmap,
+		% and then call modecheck_call_pred.
+		% That will try all the modes, and will infer
+		% new ones if necessary. 
+		%
+		% We set the declared determinism for newly inferred
+		% modes to be the same as the determinism inferred for
+		% the existing mode selected by ordinary (non-unique)
+		% mode analysis.  This means that determinism analysis
+		% will report an error if the determinism changes
+		% as a result of unique mode analysis.  That is OK,
+		% because uniqueness should not affect determinism.
+		%
+		mode_info_set_instmap(InstMap0, ModeInfo3, ModeInfo4),
+		proc_info_inferred_determinism(ProcInfo, Determinism),
+		modecheck_call_pred(PredId, ArgVars, yes(Determinism),
+			ProcId, NewArgVars, ExtraGoals, ModeInfo4, ModeInfo),
+		
+		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
+			true
+		;
+			% this shouldn't happen, since modes.m should do
+			% all the handling of implied modes
+			% XXX it might happen, though, if the user
+			% XXX writes strange code; we should report
+			% XXX a proper error here
+			error("unique_modes.m: call to implied mode?")
+		)
+	).
 
 	% to check a call, we just look up the required initial insts
 	% for the arguments of the call, and then check for each

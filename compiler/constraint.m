@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,7 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
 constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
 	constraint__propagate_in_proc(Pred, Proc, ModuleInfo0, ModuleInfo1),
-	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs),
+	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs, _Changed),
 	( { Errs \= 0 } ->
 	    { error("constraint_propagation3") }
 	;

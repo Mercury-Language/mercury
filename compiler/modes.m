@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,18 +157,24 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_pred_mode(in, in, in, in, out, out, di, uo) is det.
 
 	% Mode-check the code for predicate in a given mode.
+	% Returns the number of errs found and a bool `Changed'
+	% which is true iff another pass of fixpoint analysis
+	% may be needed.
 
-:- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int,
+:- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int, bool,
 			io__state, io__state).
-:- mode modecheck_proc(in, in, in, out, out, di, uo) is det.
+:- mode modecheck_proc(in, in, in, out, out, out, di, uo) is det.
 
 	% Mode-check or unique-mode-check the code for predicate in a
 	% given mode.
+	% Returns the number of errs found and a bool `Changed'
+	% which is true iff another pass of fixpoint analysis
+	% may be needed.
 
 :- pred modecheck_proc(proc_id, pred_id, how_to_check_goal,
-			module_info, module_info, int,
+			module_info, module_info, int, bool,
 			io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
+:- mode modecheck_proc(in, in, in, in, out, out, out, di, uo) is det.
 
 	% Mode-check the code for predicate in a given mode.
 
@@ -319,17 +325,16 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
 		MaxIterations),
 	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
-					ModuleInfo1, UnsafeToContinue),
+					ModuleInfo, UnsafeToContinue),
 	( { WhatToCheck = check_unique_modes },
-		write_mode_inference_messages(PredIds, yes, ModuleInfo1)
+		write_mode_inference_messages(PredIds, yes, ModuleInfo)
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
-			write_mode_inference_messages(PredIds, no, ModuleInfo1)
+			write_mode_inference_messages(PredIds, no, ModuleInfo)
 		;
 			[]
 		)
-	),
-	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
+	).
 
 	% Iterate over the list of pred_ids in a module.
 
@@ -345,29 +350,39 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 	;
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
+
+	% analyze everything which has the "can-process" flag set to `yes'
 	modecheck_pred_modes_2(PredIds, WhatToCheck, ModuleInfo1, ModuleInfo2,
-				no, Changed, 0, NumErrors),
+				no, Changed1, 0, NumErrors),
+
+	% analyze the procedures whose "can-process" flag was no;
+	% those procedures were inserted into the unify requests queue.
+	modecheck_queued_procs(WhatToCheck, ModuleInfo2, ModuleInfo3, Changed2),
+	io__get_exit_status(ExitStatus),
+
+	{ bool__or(Changed1, Changed2, Changed) },
+
 	% stop if we have reached a fixpoint or found any errors
-	( { Changed = no ; NumErrors > 0 } ->
-		{ ModuleInfo = ModuleInfo2 },
+	( { Changed = no ; NumErrors > 0 ; ExitStatus \= 0 } ->
+		{ ModuleInfo = ModuleInfo3 },
 		{ UnsafeToContinue = Changed }
 	;
 		% stop if we exceed the iteration limit
 		( { MaxIterations =< 1 } ->
 			report_max_iterations_exceeded,
-			{ ModuleInfo = ModuleInfo2 },
+			{ ModuleInfo = ModuleInfo3 },
 			{ UnsafeToContinue = yes }
 		;
 			globals__io_lookup_bool_option(debug_modes, DebugModes),
 			( { DebugModes = yes } ->
 				write_mode_inference_messages(PredIds, no,
-						ModuleInfo2)
+						ModuleInfo3)
 			;
 				[]
 			),
 			{ MaxIterations1 is MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
-				WhatToCheck, ModuleInfo2,
+				WhatToCheck, ModuleInfo3,
 				ModuleInfo, UnsafeToContinue)
 		)
 	).
@@ -558,14 +573,14 @@ check_for_indistinguishable_mode([ProcId | ProcIds], NewProcId,
 
 	% Mode-check the code for predicate in a given mode.
 
-modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors) -->
+modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors, Changed) -->
 	modecheck_proc(ProcId, PredId, check_modes,
-		ModuleInfo0, ModuleInfo, NumErrors).
+		ModuleInfo0, ModuleInfo, NumErrors, Changed).
 
 modecheck_proc(ProcId, PredId, WhatToCheck, ModuleInfo0,
-			ModuleInfo, NumErrors) -->
+			ModuleInfo, NumErrors, Changed) -->
 	modecheck_proc_2(ProcId, PredId, WhatToCheck, ModuleInfo0, no,
-			ModuleInfo, _Changed, NumErrors).
+			ModuleInfo, Changed, NumErrors).
 
 :- pred modecheck_proc_2(proc_id, pred_id, how_to_check_goal,
 			module_info, bool, module_info, bool, int,
@@ -908,7 +923,9 @@ modecheck_goal_expr(call(PredId, _, Args0, _, Context, PredName),
 	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 
-	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
+	{ DeterminismKnown = no },
+	modecheck_call_pred(PredId, Args0, DeterminismKnown,
+				Mode, Args, ExtraGoals),
 
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
@@ -963,7 +980,9 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
 
 	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	modecheck_call_pred(PredId, Args0, ProcId, Args, ExtraGoals),
+	{ DeterminismKnown = no },
+	modecheck_call_pred(PredId, Args0, DeterminismKnown,
+				ProcId, Args, ExtraGoals),
 
 	=(ModeInfo),
 	{ Pragma = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args0,
