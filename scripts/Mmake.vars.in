@@ -25,6 +25,8 @@ GPATH		= $(VPATH)
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 
+GRADEFLAGS	= --grade $(GRADE) $(EXTRA_GRADEFLAGS)
+
 MC		= mmc
 MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c

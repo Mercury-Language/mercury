@@ -101,36 +101,36 @@ main_target: $(MAIN_TARGET)
 
 .m.c:
 	rm -f $*.c
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) $< > $*.err 2>&1
+	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
 
 .c.o:
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -c $< -o $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
 
 # .c.pic_o:
-# 	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+# 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
 
 .c.s:
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -S $< -o $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
 
 .c.pic_s:
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
 
 .c.i:
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -E $< > $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
 
 .m.o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -c $*.c -o $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $*.c -o $@
 	$(RM_C) $*.c
 
 .o.pic_o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
 	$(RM_C) $*.c
 
 %.dir/*.o: %.m
 	rm -f $@
-	$(MCS) --grade $(GRADE) $(MCSFLAGS) $<
+	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
 
 #-----------------------------------------------------------------------------#
 

@@ -1075,11 +1075,12 @@ engineer's toolkit.
 @node Building profiled applications
 @section Building profiled applications
 
-To enable profiling, your program must be built in a @samp{.prof} grade.
-For example, if the default grade on your system is @samp{asm_fast.gc}, then
-to compile with profiling enabled, use grade @samp{asm_fast.gc.prof}.  You
-can do this by setting the @samp{GRADE} variable in your Mmake file, e.g. by
-adding the line @samp{GRADE=asm_fast.gc.prof}. 
+To enable profiling, your program must be built with profiling enabled.
+This can be done by passing the @samp{-p} (@samp{--profiling}) option
+to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
+seperately).  If you are using Mmake, then
+you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
+e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
 @xref{Compilation model options} for more information about the
 different grades.
 
@@ -1725,7 +1726,9 @@ link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
 or @samp{symbol MR_runtime_grade multiply defined}.)
 
 The options below must be passed to @samp{mgnuc} and @samp{ml} as well
-as to @samp{mmc}.
+as to @samp{mmc}.  If you are using Mmake, then you should specify
+these options in the @samp{GRADEFLAGS} variable rather than specifying
+them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
 
 @table @asis
 @item @code{-s @var{grade}}

@@ -562,7 +562,8 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			ModuleName, ".dir/", ModuleName, "_000.o: ",
 				ModuleName, ".m\n",
 			"\trm -rf ", ModuleName, ".dir\n",
-			"\t$(MCS) -s$(GRADE) $(MCSFLAGS) ", ModuleName, ".m\n"
+			"\t$(MCS) $(GRADEFLAGS) $(MCSFLAGS) ",
+				ModuleName, ".m\n"
 		]),
 
 		io__close_output(DepStream),
@@ -878,7 +879,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, " : $(", ModuleName, ".os) ",
 		ModuleName, "_init.o\n",
-		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
+		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, " ",
 		ModuleName, "_init.o \\\n",
 		"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
 	]),
@@ -886,7 +887,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, ".split : ", ModuleName, ".split.a ",
 				ModuleName, "_init.o\n",
-		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, ".split ",
+		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, ".split ",
 			ModuleName, "_init.o \\\n",
 			"\t", ModuleName, ".split.a $(MLLIBS)\n\n"
 	]),
@@ -912,7 +913,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
-		"\t$(ML) --make-shared-lib --grade $(GRADE) $(MLFLAGS) -o ",
+		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
 			"lib", ModuleName, ".so \\\n",
 		"\t\t$(", ModuleName, ".pic_os) $(MLLIBS)\n\n"
 	]),
