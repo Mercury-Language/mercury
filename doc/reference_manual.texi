@@ -6022,7 +6022,7 @@ for mapping Mercury types to C# types are described in
 
 C# code in a @code{pragma foreign_proc} declaration
 for any procedure whose determinism indicates that it could fail
-must assign a value of type bool to the variable @samp{succeeded}.
+must assign a value of type bool to the variable @samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
@@ -6032,18 +6032,18 @@ For example:
 :- pragma foreign_proc("C#",
 	string__contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
-        "succeeded = (Str.IndexOf(Ch) != -1);").
+        "SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);").
 @end example
 
 @noindent
 C# code for procedures whose determinism indicates that they cannot fail
-should not access @code{succeeded}.
+should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the C# code.  If the procedure
 succeeds, the C# code must set the values of all output arguments
 before returning.  If the procedure fails, the C# code need only
-set @code{succeeded} to false.
+set @code{SUCCESS_INDICATOR} to false.
 
 @node Using pragma foreign_decl for C#
 @subsubsection Using pragma foreign_decl for C#
@@ -6197,7 +6197,7 @@ is currently not supported.
 @c
 @c The IL code in a @code{pragma foreign_proc} declaration
 @c for any procedure whose determinism indicates that it could fail
-@c must assign a truth value to the local variable @samp{succeeded}.
+@c must assign a truth value to the local variable @samp{SUCCESS_INDICATOR}.
 @c For example:
 @c
 @c @example
@@ -6206,7 +6206,7 @@ is currently not supported.
 @c 	ldloc X
 @c 	ldloc Y
 @c 	ceq
-@c 	stloc succeeded
+@c 	stloc SUCCESS_INDICATOR
 @c ").
 @c @end example
 
@@ -6272,7 +6272,7 @@ and the rules relating IL types to MC++ types.
 
 MC++ code in a @code{pragma foreign_proc} declaration
 for any procedure whose determinism indicates that it could fail
-must assign a value of type bool to the variable @samp{succeeded}.
+must assign a value of type bool to the variable @samp{SUCCESS_INDICATOR}.
 For example:
 
 @example
@@ -6281,18 +6281,18 @@ For example:
 
 :- pragma foreign_proc("MC++", string__contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
-        "succeeded = (Str->IndexOf(Ch) != -1);").
+        "SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);").
 @end example
 
 @noindent
 MC++ code for procedures whose determinism indicates that they cannot fail
-should not access @code{succeeded}.
+should not access @code{SUCCESS_INDICATOR}.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the MC++ code.  If the procedure
 succeeds, the MC++ code must set the values of all output arguments
 before returning.  If the procedure fails, the MC++ code need only
-set @code{succeeded} to false.
+set @code{SUCCESS_INDICATOR} to false.
 
 @node Using pragma foreign_decl for MC++
 @subsubsection Using pragma foreign_decl for MC++
