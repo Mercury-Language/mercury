@@ -1,5 +1,5 @@
 polymorphic_unification.m:019: In clause for `p(in, ((list:list_skel) -> dead))':
 polymorphic_unification.m:019:   in polymorphically-typed unification:
-polymorphic_unification.m:019:   mode error: variable `HeadVar__2' has instantiatedness `(list:list_skel)',
+polymorphic_unification.m:019:   mode error: variable `X' has instantiatedness `(list:list_skel)',
 polymorphic_unification.m:019:   expected instantiatedness was `ground' or `any'.
 For more information, try recompiling with `-E'.

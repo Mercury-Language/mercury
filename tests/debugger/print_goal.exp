@@ -7,7 +7,7 @@ mdb> register --quiet
 mdb> b big_data
  0: + stop  interface pred print_goal:big_data/1-0 (det)
 mdb> b print_goal
- 1: + stop  interface pred print_goal:print_goal/8-0 (det)
+ 1: + stop  interface pred print_goal:print_goal/9-0 (det)
 mdb> c
        2:      2  2 CALL pred print_goal:big_data/1-0 (det)
 mdb> p goal
@@ -18,13 +18,49 @@ mdb> p goal
 big_data(big(big(big/3, 2, small), 3, big(big/3, 6, small)))
 mdb> c
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small)).
-       4:      3  2 CALL pred print_goal:print_goal/8-0 (det)
+       4:      3  2 CALL pred print_goal:print_goal/9-0 (det)
+mdb> v
+        1 HeadVar__1
+        2 _W (arg 2)
+        3 X (arg 3)
+        4 Y (arg 6)
+        5 DCG_0 (arg 8)
 mdb> p goal
-print_goal(100, 101, '_', '_', 102, '_', state('<<c_pointer>>'), '_')
+print_goal(yes, 100, 101, _, _, 102, _, state(<<c_pointer>>), _)
 mdb> finish
-       5:      3  2 EXIT pred print_goal:print_goal/8-0 (det)
+       6:      3  2 EXIT pred print_goal:print_goal/9-0 (det)
+mdb> v
+        1 HeadVar__1
+        2 _W (arg 2)
+        3 X (arg 3)
+        4 HeadVar__4
+        5 HeadVar__5
+        6 Y (arg 6)
+        7 HeadVar__7
+        8 DCG_1 (arg 9)
 mdb> p goal
-print_goal(100, 101, 102, 103, 102, 103, _, state(<<c_pointer>>))
+print_goal(yes, 100, 101, 102, 103, 102, 103, _, state(<<c_pointer>>))
 mdb> c
 103.
 103.
+       7:      4  2 CALL pred print_goal:print_goal/9-0 (det)
+mdb> v
+        1 HeadVar__1
+        2 _W (arg 2)
+        3 X (arg 3)
+        4 Y (arg 6)
+        5 DCG_0 (arg 8)
+mdb> finish
+       9:      4  2 EXIT pred print_goal:print_goal/9-0 (det)
+mdb> v
+        1 HeadVar__1
+        2 _W (arg 2)
+        3 X (arg 3)
+        4 HeadVar__4
+        5 HeadVar__5
+        6 Y (arg 6)
+        7 HeadVar__7
+        8 DCG_1 (arg 9)
+mdb> c
+104.
+104.

@@ -12,11 +12,11 @@ Consulting file `interpreter.m'...
 mdb> vars
         1 HeadVar__1
         2 HeadVar__2
-        3 HeadVar__4
+        3 DCG_0 (arg 4)
 mdb> print *
        HeadVar__1             	term(varset(var_supply(0), empty, empty), functor(atom(":-"), [|](functor/3, []), context("interpreter.m", 22)))
        HeadVar__2             	[]
-       HeadVar__4             	state('<<c_pointer>>')
+       DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> goto 30
       30:     16 12 CALL pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *

@@ -78,7 +78,7 @@ aditi_update_mode_errors.m:125:   mode error: variable `ModifyQ' has instantiate
 aditi_update_mode_errors.m:125:   expected instantiatedness was `(pred(in, out, out, unused, out, out) is nondet)'.
 aditi_update_mode_errors.m:047: In clause for `anc((aditi:aditi_mui), out, out)':
 aditi_update_mode_errors.m:047:   in argument 2 of clause head:
-aditi_update_mode_errors.m:047:   mode error in unification of `HeadVar__2' and `X'.
-aditi_update_mode_errors.m:047:   Variable `HeadVar__2' has instantiatedness `free',
+aditi_update_mode_errors.m:047:   mode error in unification of `X' and `X'.
+aditi_update_mode_errors.m:047:   Variable `X' has instantiatedness `free',
 aditi_update_mode_errors.m:047:   variable `X' has instantiatedness `free'.
 For more information, try recompiling with `-E'.
