@@ -69,11 +69,12 @@ main_2(no, Args, Link) -->
 		usage
 	;
 		{ strip_module_suffixes(Args, ModuleNames) },
-		process_module_list(ModuleNames),
+		process_module_list(ModuleNames, ModulesToLink),
 		io__get_exit_status(ExitStatus),
 		( { ExitStatus = 0 } ->
 			( { Link = yes } ->
-				mercury_compile__link_module_list(ModuleNames)
+				mercury_compile__link_module_list(
+					ModulesToLink)
 			;
 				[]
 			)
@@ -116,20 +117,31 @@ strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
 	),
 	strip_module_suffixes(Modules0, Modules).
 
-:- pred process_module_list(list(string), io__state, io__state).
-:- mode process_module_list(in, di, uo) is det.
+:- pred process_module_list(list(string), list(string), io__state, io__state).
+:- mode process_module_list(in, out, di, uo) is det.
 
-process_module_list([]) --> [].
-process_module_list([Module | Modules]) -->
-	process_module(Module), !,
-	process_module_list(Modules).
+process_module_list(Modules, SubModules) -->
+	process_module_list_2(Modules, SubModulesList),
+	{ list__condense(SubModulesList, SubModules) }.
+
+:- pred process_module_list_2(list(string), list(list(string)),
+			io__state, io__state).
+:- mode process_module_list_2(in, out, di, uo) is det.
+
+process_module_list_2([], []) --> [].
+process_module_list_2([Module0 | Modules0], [Module | Modules]) -->
+	process_module(Module0, Module), !,
+	process_module_list_2(Modules0, Modules).
 
 	% Open the file and process it.
+	% Return the list of modules (including sub-modules,
+	% if they were compiled to seperate object files)
+	% that should be linked into the final executable.
 
-:- pred process_module(string, io__state, io__state).
-:- mode process_module(in, di, uo) is det.
+:- pred process_module(string, list(string), io__state, io__state).
+:- mode process_module(in, out, di, uo) is det.
 
-process_module(PathName) -->
+process_module(PathName, ModulesToLink) -->
 	 	% All messages go to stderr
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, _),
@@ -141,9 +153,10 @@ process_module(PathName) -->
 		globals__io_lookup_bool_option(generate_dependencies,
 			GenerateDeps),
 		( { GenerateDeps = yes } ->
-			generate_dependencies(ModuleName)
+			generate_dependencies(ModuleName),
+			{ ModulesToLink = [] }
 		;
-			process_module_2(ModuleName)
+			process_module_2(ModuleName, ModulesToLink)
 		)
 	;
 		% Currently we don't allow directory names in the
@@ -154,13 +167,14 @@ process_module(PathName) -->
 			ProgName, ": Error in command-line argument `",
 			PathName, "':\n",
 			"arguments may not contain directory names.\n"]),
-		io__set_exit_status(1)
+		io__set_exit_status(1),
+		{ ModulesToLink = [] }
 	).
 
-:- pred process_module_2(module_name, io__state, io__state).
-:- mode process_module_2(in, di, uo) is det.
+:- pred process_module_2(module_name, list(string), io__state, io__state).
+:- mode process_module_2(in, out, di, uo) is det.
 
-process_module_2(ModuleName) -->
+process_module_2(ModuleName, ModulesToLink) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing `"),
 	module_name_to_file_name(ModuleName, ".m", no, FileName),
@@ -179,27 +193,33 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
-		[]
+		{ ModulesToLink = [] }
 	; { Error = yes, HaltSyntax = yes } ->
-		[]
+		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(make_interface, SubModuleList)
+		list__foldl(make_interface, SubModuleList),
+		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(make_short_interface, SubModuleList)
+		list__foldl(make_short_interface, SubModuleList),
+		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(make_private_interface, SubModuleList)
+		list__foldl(make_private_interface, SubModuleList),
+		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
 		module_name_to_file_name(ModuleName, ".ugly", yes,
 					OutputFileName),
-		convert_to_mercury(ModuleName, OutputFileName, Items0)
+		convert_to_mercury(ModuleName, OutputFileName, Items0),
+		{ ModulesToLink = [] }
 	; { ConvertToGoedel = yes } ->
-		convert_to_goedel(ModuleName, Items0)
+		convert_to_goedel(ModuleName, Items0),
+		{ ModulesToLink = [] }
 	;
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(compile, SubModuleList)
+		list__foldl(compile, SubModuleList),
+		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
 
 		% XXX it would be better to do something like
 		%
@@ -230,6 +250,13 @@ make_short_interface(Module - Items) -->
 
 make_private_interface(Module - Items) -->
 	make_private_interface(Module, Items).
+
+:- pred module_to_link(pair(module_name, item_list), string,
+			io__state, io__state).
+:- mode module_to_link(in, out, di, uo) is det.
+
+module_to_link(ModuleName - _Items, ModuleToLink) -->
+	module_name_to_file_name(ModuleName, "", no, ModuleToLink).
 
 %-----------------------------------------------------------------------------%
 
