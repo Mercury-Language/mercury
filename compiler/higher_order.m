@@ -1440,13 +1440,8 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 	% specialization code is expecting to come from the curried
 	% arguments of the higher-order arguments will not be present
 	% in the specialized argument list.
-	module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
-	module_info_globals(ModuleInfo, Globals),
-	proc_interface_should_use_typeinfo_liveness(CalledPredInfo,
-		CalledProc, Globals, TypeInfoLiveness),
 	get_extra_arguments(HigherOrderArgs, Args0, Args),
-	compute_extra_typeinfos(TypeInfoLiveness,
-		Info, Args, ExtraTypeInfoTVars),
+	compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars),
 
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(Args0, VarTypes, CallArgTypes),
@@ -1454,7 +1449,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 
 	Request = request(Caller, proc(CalledPred, CalledProc), Args0,
 		ExtraTypeInfoTVars, HigherOrderArgs, CallArgTypes,
-		TypeInfoLiveness, TVarSet, IsUserSpecProc, Context),
+		yes, TVarSet, IsUserSpecProc, Context),
 
 	% Check to see if any of the specialized
 	% versions of the called pred apply here.
@@ -1507,40 +1502,38 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
 		Result = no_request
 	).
 
-	% If `--typeinfo-liveness' is set, specializing type `T' to `list(U)'
-	% requires passing in the type-info for `U'. This predicate
-	% works out which extra variables to pass in given the argument
-	% list for the call.
-:- pred compute_extra_typeinfos(bool::in, higher_order_info::in,
+	% Specializing type `T' to `list(U)' requires passing in the
+	% type-info for `U'. This predicate works out which extra
+	% variables to pass in given the argument list for the call.
+	% This needs to be done even if --typeinfo-liveness is not
+	% set because the type-infos may be needed when specializing
+	% calls inside the specialized version.
+:- pred compute_extra_typeinfos(higher_order_info::in,
 		list(prog_var)::in, list(tvar)::out) is det.
 
-compute_extra_typeinfos(TypeInfoLiveness, Info, Args1, ExtraTypeInfoTVars) :-
-	( TypeInfoLiveness = yes ->
-		% Work out which type variables don't already have type-infos
-		% in the list of argument types.
-		% The list is in the order which the type variables occur
-		% in the list of argument types so that the extra type-info
-		% arguments for calls to imported user-guided type
-		% specialization procedures can be matched against the
-		% specialized version (`goal_util__extra_nonlocal_typeinfos'
-		% is not used here because the type variables are returned
-		% sorted by variable number, which will vary between calls).
-		ProcInfo = Info ^ proc_info,
-		proc_info_vartypes(ProcInfo, VarTypes),
-		map__apply_to_list(Args1, VarTypes, ArgTypes),
-		term__vars_list(ArgTypes, AllTVars),
-		( AllTVars = [] ->
-			ExtraTypeInfoTVars = []
-		;
-			list__foldl(arg_type_contains_type_info_for_tvar,
-				ArgTypes, [], TypeInfoTVars),
-			list__delete_elems(AllTVars, TypeInfoTVars,
-				ExtraTypeInfoTVars0),
-			list__remove_dups(ExtraTypeInfoTVars0,
-				ExtraTypeInfoTVars)
-		)
-	;
+compute_extra_typeinfos(Info, Args1, ExtraTypeInfoTVars) :-
+	% Work out which type variables don't already have type-infos
+	% in the list of argument types.
+	% The list is in the order which the type variables occur
+	% in the list of argument types so that the extra type-info
+	% arguments for calls to imported user-guided type
+	% specialization procedures can be matched against the
+	% specialized version (`goal_util__extra_nonlocal_typeinfos'
+	% is not used here because the type variables are returned
+	% sorted by variable number, which will vary between calls).
+	ProcInfo = Info ^ proc_info,
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Args1, VarTypes, ArgTypes),
+	term__vars_list(ArgTypes, AllTVars),
+	( AllTVars = [] ->
 		ExtraTypeInfoTVars = []
+	;
+		list__foldl(arg_type_contains_type_info_for_tvar,
+			ArgTypes, [], TypeInfoTVars),
+		list__delete_elems(AllTVars, TypeInfoTVars,
+			ExtraTypeInfoTVars0),
+		list__remove_dups(ExtraTypeInfoTVars0,
+			ExtraTypeInfoTVars)
 	).
 
 :- pred arg_type_contains_type_info_for_tvar((type)::in, list(tvar)::in,
@@ -1659,9 +1652,17 @@ version_matches(Params, ModuleInfo, Request, Version,
 		% specialization.
 		MatchIsPartial = no
 	;
-		Params ^ type_spec = no
-	;
-		pred_info_is_imported(CalleePredInfo)
+		MatchIsPartial = yes,
+		pred_info_get_markers(CalleePredInfo, Markers),
+
+		% Always fully specialize calls to class methods.
+		\+ check_marker(Markers, class_method),
+		\+ check_marker(Markers, class_instance_method),
+		(
+			Params ^ type_spec = no
+		;
+			pred_info_is_imported(CalleePredInfo)
+		)
 	),
 
 	% Rename apart type variables.
