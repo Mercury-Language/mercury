@@ -1467,6 +1467,12 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 	mode_info_get_errors(!.ModeInfo, OldErrors),
 	mode_info_set_errors([], !ModeInfo),
 
+		% Try to schedule goals without inserting any solver
+		% initialisation calls (the flag `may_initialise_solver_vars'
+		% is initialised to `no' by mode_info_init and reset to `no'
+		% after a call has been scheduled using initialisation and
+		% after modecheck_conj_list_4).
+		%
 	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 	delay_info__enter_conj(DelayInfo0, DelayInfo1),
 	mode_info_set_delay_info(DelayInfo1, !ModeInfo),
@@ -1474,31 +1480,27 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 	mode_info_get_live_vars(!.ModeInfo, LiveVars1),
 	mode_info_add_goals_live_vars(Goals0, !ModeInfo),
 
-		% Schedule goals without inserting any solver initialisation
-		% calls (the flag `may_initialise_solver_vars' is initialised
-		% to `no' by mode_info_init and reset to `no' after a
-		% call has been scheduled using initialisation and after
-		% modecheck_conj_list_3).
-		%
-		% We ignore any impurity errors generated here by delaying
-		% impure goals since these problems might be resolved in
-		% modecheck_conj_list_3 by inserting solver type
-		% initialisation calls.
-		%
 	modecheck_conj_list_2(Goals0, Goals1,
-		[], _PrematureRevImpurityErrors, !ModeInfo, !IO),
+		[], RevImpurityErrors0, !ModeInfo, !IO),
 
-		% Try to handle any unscheduled goals by inserting solver
-		% initialisation calls.  We do things this way because we
-		% prefer deconstruction over construct-and-unify.
-		%
 	mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
 	delay_info__leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
 	mode_info_set_delay_info(DelayInfo3, !ModeInfo),
-	modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals2,
-		[], RevImpurityErrors, !ModeInfo, !IO),
 
-	Goals = Goals1 ++ Goals2,
+		% Try to handle any unscheduled goals by inserting solver
+		% initialisation calls, aiming for a deterministic
+		% schedule.
+		%
+	modecheck_conj_list_3(DelayedGoals0, DelayedGoals1, Goals2,
+		RevImpurityErrors0, RevImpurityErrors1, !ModeInfo, !IO),
+
+		% Try to handle any unscheduled goals by inserting solver
+		% initialisation calls, aiming for *any* workable schedule.
+		%
+	modecheck_conj_list_4(DelayedGoals1, DelayedGoals, Goals3,
+		RevImpurityErrors1, RevImpurityErrors, !ModeInfo, !IO),
+
+	Goals = Goals1 ++ Goals2 ++ Goals3,
 
 	mode_info_get_errors(!.ModeInfo, NewErrors),
 	list__append(OldErrors, NewErrors, Errors),
@@ -1649,6 +1651,34 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
 		Goals = Goals2
 	).
 
+	% We may still have some unscheduled goals.  This may be because some
+	% initialisation calls are needed to turn some solver type vars
+	% from inst free to inst any.  This pass attempts to identify a
+	% minimal subset of such vars to initialise that will allow the
+	% remaining goals to be scheduled in a deterministic fashion.
+	%
+	% This works as follows.  If a deterministic schedule exists for
+	% the remaining goals, then each subgoal must also be deterministic.
+	% Moreover, no call may employ an implied mode since these mean
+	% introducing a semidet unification.  Therefore we only need to
+	% consider det procs for calls, constructions for var/functor
+	% unifications, and assignments for var/var unifications.
+	%
+	% If a consistent deterministic schedule exists then every
+	% variable involved in the goals either
+	% - has already been instantiated;
+	% - will be instantiated by a single remaining subgoal;
+	% - will not be instantiated by any remaining subgoal.
+	% Variables in this last category that are solver type variables
+	% should be initialised.  If all the variables that will remain
+	% uninstantiated are in this last category then, after inserting
+	% initialisation call, we should expect another attempt at
+	% scheduling the remaining goals to succeed and produce a
+	% deterministic result.
+	%
+	% XXX At some point we should extend this analysis to handle
+	% disjunction, if-then-else goals, and negation.
+	%
 :- pred modecheck_conj_list_3(list(delayed_goal)::in, list(delayed_goal)::out,
 	list(hlds_goal)::out, impurity_errors::in, impurity_errors::out,
 	mode_info::in, mode_info::out, io::di, io::uo) is det.
@@ -1661,7 +1691,7 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 			%
 		DelayedGoals0 = [],
 		DelayedGoals  = [],
-		Goals = []
+		Goals         = []
 	;
 			% There are some unscheduled goals.  See if
 			% allowing extra initialisation calls (for
@@ -1669,11 +1699,332 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 			%
 		DelayedGoals0 = [_ | _],
 
-		Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
+		(
+				% Extract the HLDS goals from the delayed
+				% goals.
+				%
+			Goals0 = list__map(hlds_goal_from_delayed_goal,
+					DelayedGoals0),
+
+				% Work out which vars are already
+				% instantiated (i.e. have non-free insts).
+				%
+			mode_info_get_instmap(!.ModeInfo, InstMap),
+			instmap__to_assoc_list(InstMap, VarInsts),
+			NonFreeVars0 = set__list_to_set(
+				non_free_vars_in_assoc_list(VarInsts)),
+
+				% Find the set of vars whose instantiation
+				% should lead to a a deterministic
+				% schedule.
+				%
+			CandidateInitVars = promise_only_solution(
+				candidate_init_vars(!.ModeInfo, Goals0,
+				NonFreeVars0)),
+
+				% And verify that all of these vars are
+				% solver type vars (and can therefore be
+				% initialised.)
+				%
+			mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+			mode_info_get_var_types(!.ModeInfo, VarTypes),
+			all [Var] (
+				set__member(Var, CandidateInitVars)
+			=>
+				(	map__lookup(VarTypes, Var, VarType),
+					type_util__type_is_solver_type(
+						ModuleInfo, VarType)
+				)
+			)
+		->
+				% Construct the inferred initialisation goals
+				% and try scheduling again.
+				%
+			CandidateInitVarList =
+				set__to_sorted_list(CandidateInitVars),
+			construct_initialisation_calls(!.ModeInfo,
+				CandidateInitVarList, InitGoals),
+			Goals1 = InitGoals ++ Goals0,
+
+			mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
+			delay_info__enter_conj(DelayInfo0, DelayInfo1),
+			mode_info_set_delay_info(DelayInfo1, !ModeInfo),
+
+			mode_info_add_goals_live_vars(Goals1, !ModeInfo),
+
+			modecheck_conj_list_2(Goals1, Goals,
+				!ImpurityErrors, !ModeInfo, !IO),
+
+			mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
+			delay_info__leave_conj(DelayInfo2, DelayedGoals,
+				DelayInfo3),
+			mode_info_set_delay_info(DelayInfo3, !ModeInfo)
+		;
+				% We couldn't identify a deterministic
+				% solution.
+			DelayedGoals = DelayedGoals0,
+			Goals        = []
+		)
+	).
+
+
+:- pred construct_initialisation_calls(mode_info::in, list(prog_var)::in,
+		list(hlds_goal)::out) is det.
+
+construct_initialisation_calls(_, [], []).
+
+construct_initialisation_calls(ModeInfo, [Var | Vars], [Goal | Goals]) :-
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	map__lookup(VarTypes, Var, VarType),
+	InitialInst           = free,
+	Context               = term__context_init,
+	MaybeCallUnifyContext = no,
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	construct_initialisation_call(ModuleInfo, Var, VarType, InitialInst,
+		Context, MaybeCallUnifyContext, Goal),
+	construct_initialisation_calls(ModeInfo, Vars, Goals).
+
+
+	% XXX will this catch synonyms for `free'?
+	% N.B. This is perhaps the only time when `for' and `free'
+	% can be juxtaposed grammatically :-)
+	%
+:- func non_free_vars_in_assoc_list(assoc_list(prog_var, inst)) =
+		list(prog_var).
+
+non_free_vars_in_assoc_list([]                      ) = [].
+non_free_vars_in_assoc_list([Var - Inst | AssocList]) =
+	( if   ( Inst = free ; Inst = free(_) )
+	  then non_free_vars_in_assoc_list(AssocList)
+	  else [Var | non_free_vars_in_assoc_list(AssocList)]
+	).
+
+
+	% Find a set of vars that, if they were instantiated, might
+	% lead to a deterministic scheduling of the given goals.
+	%
+	% This approximation is fairly crude: it only considers variables as
+	% being free or non-free, rather than having detailed insts.
+	%
+	% XXX Does not completely handle negation, disjunction, if_then_else
+	% goals, foreign_code, or var/lambda unifications.
+	%
+:- pred candidate_init_vars(mode_info::in, list(hlds_goal)::in,
+		set(prog_var)::in, set(prog_var)::out) is cc_nondet.
+
+candidate_init_vars(ModeInfo, Goals, NonFreeVars0, CandidateVars) :-
+	CandidateVars0 = set__init,
+	candidate_init_vars_2(ModeInfo, Goals, NonFreeVars0, NonFreeVars1,
+		CandidateVars0, CandidateVars1),
+	CandidateVars = set__difference(CandidateVars1, NonFreeVars1).
+
+
+:- pred candidate_init_vars_2(mode_info::in, list(hlds_goal)::in,
+		set(prog_var)::in, set(prog_var)::out,
+		set(prog_var)::in, set(prog_var)::out) is nondet.
+
+candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars) :-
+	list__foldl2(candidate_init_vars_3(ModeInfo), Goals,
+		!NonFree, !CandidateVars).
+
+
+:- pred candidate_init_vars_3(mode_info::in, hlds_goal::in,
+		set(prog_var)::in, set(prog_var)::out,
+		set(prog_var)::in, set(prog_var)::out) is nondet.
+
+candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% A var/var unification.
+		%
+	Goal = unify(X, RHS, _, _, _) - _GoalInfo,
+	RHS  = var(Y),
+	(
+		set__member(X, !.NonFree)
+	->
+		not set__member(Y, !.NonFree),
+			% It's an assignment from X to Y.
+		!:NonFree = set__insert(!.NonFree, Y)
+	;
+		set__member(Y, !.NonFree)
+	->
+			% It's an assignment from Y to X.
+		!:NonFree = set__insert(!.NonFree, X)
+	;
+			% It's an assignment one way or the other.
+		(
+			!:NonFree       = set__insert(!.NonFree, X),
+			!:CandidateVars = set__insert(!.CandidateVars, Y)
+		;
+			!:NonFree       = set__insert(!.NonFree, Y),
+			!:CandidateVars = set__insert(!.CandidateVars, X)
+		)
+	).
+
+candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% A var/functor unification, which can only be deterministic
+		% if it's a construction.
+		%
+	Goal = unify(X, RHS, _, _, _) - _GoalInfo,
+	RHS  = functor(_, _, Args),
+		% If this is a construction then X must be free.
+	not set__member(X, !.NonFree),
+		% But X becomes instantiated.
+	!:NonFree = set__insert(!.NonFree, X),
+		% And the Args are potential candidates for initialisation.
+	!:CandidateVars = set__insert_list(!.CandidateVars, Args).
+
+candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% Disjunctions are tricky, because we don't perform
+		% switch analysis until after mode analysis.  So
+		% here we assume that the disjunction is a det switch
+		% and that we can ignore it for the purposes of identifying
+		% candidate vars for initialisation.
+		%
+	Goal = disj(_Goals) - _GoalInfo.
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% We ignore the conditions of if-then-else goals,
+		% but proceed on the assumption that the then and else
+		% arms are det.  This isn't very accurate and may
+		% need refinement.
+		%
+	Goal = if_then_else(_LocalVars, _CondGoal, ThenGoal, ElseGoal) -
+			_GoalInfo,
+	candidate_init_vars_3(ModeInfo, ThenGoal, !.NonFree, NonFreeThen,
+		!CandidateVars),
+	candidate_init_vars_3(ModeInfo, ElseGoal, !.NonFree, NonFreeElse,
+		!CandidateVars),
+	!:NonFree = set__union(NonFreeThen, NonFreeElse).
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% A parallel conjunction.
+		%
+	Goal = par_conj(Goals) - _GoalInfo,
+	candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% An existentially quantified goal.
+		%
+	Goal = some(_, _, Goal) - _GoalInfo,
+	candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars).
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% A conjunction.
+		%
+	Goal = conj(Goals) - _GoalInfo,
+	candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% XXX Is the determinism field of a generic_call
+		% valid at this point?  Determinism analysis is run after
+		% mode analysis.
+		%
+		% We assume that generic calls are deterministic.
+		% The modes field of higher_order calls is junk until
+		% *after* mode analysis, hence we can't handle them here.
+		%
+	Goal = generic_call(Details, Args, ArgModes, _JunkDetism) - _GoalInfo,
+	Details \= higher_order(_, _, _, _),
+	candidate_init_vars_call(ModeInfo, Args, ArgModes,
+		!NonFree, !CandidateVars).
+
+candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
+		% A call (at this point the ProcId is just a dummy value
+		% since it isn't meaningful until the call is scheduled.)
+		%
+	Goal = call(PredId, _, Args, _, _, _) - _GoalInfo,
+		% Find a deterministic proc for this call.
+		%
+	mode_info_get_preds(ModeInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__values(ProcTable, ProcInfos),
+	list__member(ProcInfo, ProcInfos),
+	proc_info_declared_determinism(ProcInfo, yes(DeclaredDetism)),
+	( DeclaredDetism = (det) ; DeclaredDetism = (cc_multidet) ),
+		% Find the argument modes.
+		%
+	proc_info_maybe_declared_argmodes(ProcInfo, yes(ArgModes)),
+		% Process the call args.
+		%
+	candidate_init_vars_call(ModeInfo, Args, ArgModes,
+		!NonFree, !CandidateVars).
+
+
+	% Update !NonFree and !CandidateVars given the args and modes for
+	% a call.
+	%
+:- pred candidate_init_vars_call(mode_info::in,
+		list(prog_var)::in, list(mode)::in,
+		set(prog_var)::in, set(prog_var)::out,
+		set(prog_var)::in, set(prog_var)::out) is semidet.
+
+candidate_init_vars_call(_ModeInfo, [], [], !NonFree, !CandidateVars).
+
+candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
+		!NonFree, !CandidateVars) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_get_insts_semidet(ModuleInfo, Mode, InitialInst, FinalInst),
+	(
+		InitialInst \= free,
+		InitialInst \= free(_)
+	->
+		% This arg is an input that needs instantiation.
+		!:CandidateVars = set__insert(!.CandidateVars, Arg)
+	;
+		% Otherwise this arg could be an output...
+		FinalInst \= free,
+		FinalInst \= free(_)
+	->
+		% And it is.
+		(
+			not set__contains(!.NonFree, Arg)
+		->
+			% This arg is instantiated on output.
+			!:NonFree = set__insert(!.NonFree, Arg)
+		;
+			% This arg appears in an implied mode.
+			false
+		)
+	;
+		% This arg is unused.
+		true
+	),
+	candidate_init_vars_call(ModeInfo, Args, Modes,
+		!NonFree, !CandidateVars).
+
+
+	% We may still have some unscheduled goals.  This may be because some
+	% initialisation calls are needed to turn some solver type vars
+	% from inst free to inst any.  This pass tries to unblock the
+	% remaining goals by conservatively inserting initialisation calls.
+	%
+:- pred modecheck_conj_list_4(list(delayed_goal)::in, list(delayed_goal)::out,
+	list(hlds_goal)::out, impurity_errors::in, impurity_errors::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
+
+modecheck_conj_list_4(DelayedGoals0, DelayedGoals, Goals,
+		!ImpurityErrors, !ModeInfo, !IO) :-
+	(
+			% There are no unscheduled goals, so we don't
+			% need to do anything.
+			%
+		DelayedGoals0 = [],
+		DelayedGoals  = [],
+		Goals         = []
+	;
+			% There are some unscheduled goals.  See if
+			% allowing extra initialisation calls (for
+			% a single goal) makes a difference.
+			%
+		DelayedGoals0 = [_ | _],
+
+		Goals0 = list__map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
 		mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 		delay_info__enter_conj(DelayInfo0, DelayInfo1),
 		mode_info_set_delay_info(DelayInfo1, !ModeInfo),
+
+		mode_info_add_goals_live_vars(Goals0, !ModeInfo),
 
 		mode_info_set_may_initialise_solver_vars(yes, !ModeInfo),
 		modecheck_conj_list_2(Goals0, Goals1,
@@ -1692,13 +2043,10 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 				% We scheduled some goals.  Keep going
 				% until we flounder or succeed.
 				%
-			modecheck_conj_list_3(DelayedGoals1, DelayedGoals,
+			modecheck_conj_list_4(DelayedGoals1, DelayedGoals,
 				Goals2, !ImpurityErrors, !ModeInfo, !IO),
 			Goals = Goals1 ++ Goals2
 		;
-				% We've floundered; there's nothing
-				% more we can do.
-				%
 			DelayedGoals = DelayedGoals1,
 			Goals = Goals1
 		)
