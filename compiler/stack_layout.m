@@ -351,7 +351,7 @@ stack_layout__construct_trace_rvals(MaybeEntryInfo, MaybeExitInfo,
 			ExitRvals),
 		{ list__append(EntryRvals, ExitRvals, RvalList) }
 	;
-		{ error("stack_layout__construct_agc_rvals: entry or exit information not available.") }
+		{ error("stack_layout__construct_trace_rvals: entry or exit information not available.") }
 	).
 
 	% Construct the rvals required for accurate GC.
@@ -394,27 +394,39 @@ stack_layout__construct_agc_rvals(Internal, RvalList) -->
 
 %---------------------------------------------------------------------------%
 
-	% XXX Should also create Tvars.
-
 :- pred stack_layout__construct_livelval_rvals(set(var_info),
 		set(pair(tvar, lval)), list(maybe(rval)),
 		stack_layout_info, stack_layout_info).
 :- mode stack_layout__construct_livelval_rvals(in, in, out, in, out) is det.
 
-stack_layout__construct_livelval_rvals(LiveLvalSet, _TVars, RvalList) -->
+stack_layout__construct_livelval_rvals(LiveLvalSet, TVarSet, RvalList) -->
 	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
 	{ list__length(LiveLvals, Length) },
 	{ LengthRval = const(int_const(Length)) },
 	stack_layout__construct_liveval_pairs(LiveLvals, LiveValRval,
 		NamesRval),
 
-		% XXX We don't yet generate tvars, so we use 0 as
-		% a dummy value.
-	{ TVarRval = const(int_const(0)) },
+	{ set__to_sorted_list(TVarSet, TVars) },
+	{ assoc_list__values(TVars, TypeParamLvals) },
+	stack_layout__construct_type_parameter_locn_vector(TypeParamLvals,
+		TypeParamRval),
+
 	{ RvalList = [yes(LengthRval), yes(LiveValRval),
-		yes(NamesRval), yes(TVarRval)] }.
+		yes(NamesRval), yes(TypeParamRval)] }.
 
 %---------------------------------------------------------------------------%
+
+:- pred stack_layout__construct_type_parameter_locn_vector(list(lval)::in,
+	rval::out, stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__construct_type_parameter_locn_vector(TypeParamLvals,
+		TypeParamVector) -->
+	{ MakeLval = lambda([Lval::in, yes(Rval)::out] is det, (
+		stack_layout__represent_lval(Lval, Rval))) },
+	{ list__map(MakeLval, TypeParamLvals, TypeParamLocs) },
+	stack_layout__get_next_cell_number(CNum1),
+	{ TypeParamVector = create(0, TypeParamLocs, no, CNum1,
+		"stack_layout_type_parameter_locn_vector") }.
 
 	% Construct a vector of (lval, live_value_type) pairs,
 	% and a corresponding vector of variable names.

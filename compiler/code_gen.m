@@ -421,7 +421,8 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 		{ code_gen__select_args_with_mode(Args, top_in, InVars,
 			InLvals) },
 
-		code_gen__generate_var_infos(InVars, InLvals, VarInfos,
+		code_gen__generate_var_infos(InVars, InLvals, VarInfos),
+		code_gen__generate_typeinfos_on_entry(InVars, InLvals,
 			TypeInfos),
 		
 		code_info__get_continuation_info(ContInfo0),
@@ -615,7 +616,9 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 				trace_stack_layout, yes) }
 		->
 			code_gen__generate_var_infos(OutVars, OutLvals,
-				VarInfos, TypeInfos),
+				VarInfos),
+			code_gen__generate_typeinfos_on_exit(OutVars,
+				TypeInfos),
 			code_info__get_continuation_info(ContInfo0),
 			code_info__get_pred_id(PredId),
 			code_info__get_proc_id(ProcId),
@@ -695,35 +698,86 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 
 %---------------------------------------------------------------------------%
 
-	% Generate the list of lval - live_value_type pairs and the
-	% typeinfo variable - lval pairs for any type variables in
-	% the types of the given variables.
+	% Generate the list of lval - live_value_type pairs for the
+	% the given variables.
 
 :- pred code_gen__generate_var_infos(list(var), list(lval),
-		list(var_info), assoc_list(var, lval), code_info, code_info).
-:- mode code_gen__generate_var_infos(in, in, out, out, in, out) is det.
-
-code_gen__generate_var_infos(Vars, Lvals, VarInfos, TypeInfos) -->
-	{ assoc_list__from_corresponding_lists(Vars, Lvals, VarLvals) },
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	code_info__get_instmap(InstMap),
+		list(var_info), code_info, code_info).
+:- mode code_gen__generate_var_infos(in, in, out, in, out) is det.
+code_gen__generate_var_infos(Vars, Lvals, VarInfos) -->
+		% Add the variable names, insts, types and lvals.
 	code_info__get_varset(VarSet),
-	{ MakeVarInfo = lambda([VarLval::in, VarInfo::out] is det, (
-		VarLval = Var - Lval,
-		map__lookup(VarTypes, Var, Type),
+	code_info__get_instmap(InstMap),
+	{ map__from_corresponding_lists(Vars, Lvals, VarLvalMap) },
+	=(CodeInfo),
+	{ MakeVarInfo = lambda([Var::in, VarInfo::out] is det, (
+		map__lookup(VarLvalMap, Var, Lval),
+		code_info__variable_type(Var, Type, CodeInfo, _),
 		instmap__lookup_var(InstMap, Var, Inst),
 		LiveType = var(Type, Inst),
 		varset__lookup_name(VarSet, Var, "V_", Name),
 		VarInfo = var_info(Lval, LiveType, Name)
 	)) }, 
-	{ list__map(MakeVarInfo, VarLvals, VarInfos) },
+	{ list__map(MakeVarInfo, Vars, VarInfos) }.
 
-	% XXX This doesn't work yet.
-	% { list__map(type_util__vars, Types, TypeVarsList) },
-	% { list__condense(TypeVarsList, TypeVars) },
-	% code_info__find_type_infos(TypeVars, TypeInfos),
-	{ TypeInfos = [] }.
+
+	% Generate the tvar - lval pairs for the typeinfos of the
+	% given variables on entry to the procedure (we find the
+	% lval location by looking in the input registers).
+	
+:- pred code_gen__generate_typeinfos_on_entry(list(var), list(lval),
+		assoc_list(tvar, lval), code_info, code_info).
+:- mode code_gen__generate_typeinfos_on_entry(in, in, out, in, out) is det.
+code_gen__generate_typeinfos_on_entry(Vars, Lvals, TypeInfos) -->
+
+	code_gen__find_typeinfos_for_vars(Vars, TVars, TypeInfoVars),
+
+		% Find the locations of the TypeInfoVars.
+	{ map__from_corresponding_lists(Vars, Lvals, VarLvalMap) },
+	{ map__apply_to_list(TypeInfoVars, VarLvalMap, TypeInfoLvals) },
+	{ assoc_list__from_corresponding_lists(TVars, TypeInfoLvals,
+		TypeInfos) }.
+
+	% Generate the tvar - lval pairs for the typeinfos of the
+	% given variables on exit from the procedure (we use code_exprn
+	% to find the lvals).
+
+:- pred code_gen__generate_typeinfos_on_exit(list(var), assoc_list(var, lval),
+		code_info, code_info).
+:- mode code_gen__generate_typeinfos_on_exit(in, out, in, out) is det.
+code_gen__generate_typeinfos_on_exit(Vars, TypeInfos) -->
+
+	code_gen__find_typeinfos_for_vars(Vars, TVars, TypeInfoVars),
+
+		% Find the locations of the TypeInfoVars.
+	code_info__variable_locations(VarLocs),
+	{ map__apply_to_list(TypeInfoVars, VarLocs, TypeInfoLvalSets) },
+	{ FindSingleLval = lambda([Set::in, Lval::out] is det, (
+		(
+			set__remove_least(Set, Value, _),
+			Value = lval(Lval0)
+		->
+			Lval = Lval0
+		;
+			error("code_gen__generate_typeinfos_on_exit: typeinfo var not available")
+		))) },
+	{ list__map(FindSingleLval, TypeInfoLvalSets, TypeInfoLvals) },
+	{ assoc_list__from_corresponding_lists(TVars, TypeInfoLvals,
+		TypeInfos) }.
+
+:- pred code_gen__find_typeinfos_for_vars(list(var), list(tvar), list(var),
+		code_info, code_info).
+:- mode code_gen__find_typeinfos_for_vars(in, out, out, in, out) is det.
+code_gen__find_typeinfos_for_vars(Vars, TypeVars, TypeInfoVars) -->
+		% Find the TypeInfo variables
+	list__map_foldl(code_info__variable_type, Vars, Types),
+	{ list__map(type_util__vars, Types, TypeVarsList) },
+	{ list__condense(TypeVarsList, TypeVars0) },
+	{ list__sort_and_remove_dups(TypeVars0, TypeVars) },
+        code_info__get_proc_info(ProcInfo),
+	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
+	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
+	{ list__map(type_info_locn_var, TypeInfoLocns, TypeInfoVars) }.
 
 %---------------------------------------------------------------------------%
 
