@@ -1585,6 +1585,7 @@ mercury_infix_op("//").
 mercury_infix_op(">>").
 mercury_infix_op("<<").
 mercury_infix_op("**").
+mercury_infix_op("div").
 mercury_infix_op("mod").
 mercury_infix_op("rem").
 mercury_infix_op("^").
