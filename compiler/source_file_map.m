@@ -113,14 +113,15 @@ read_source_file_map(ModuleChars, Map0, Map) -->
 			{ Map = Map0 },
 			io__set_exit_status(1),
 			io__write_string(
-	"mercury_compile: unexpected end of file in Mercury.modules file: ")
+	"mercury_compile: unexpected end of file in Mercury.modules file.\n")
 		;
 			{ FileNameCharsResult = error(Error) },
 			{ Map = Map0 },
 			io__set_exit_status(1),
 			io__write_string(
 	"mercury_compile: error in Mercury.modules file: "),
-			io__write_string(io__error_message(Error))
+			io__write_string(io__error_message(Error)),
+			io__nl
 		)
 	;
 		{ ModuleCharsResult = eof },
@@ -131,7 +132,8 @@ read_source_file_map(ModuleChars, Map0, Map) -->
 		io__set_exit_status(1),
 		io__write_string(
 			"mercury_compile: error in Mercury.modules file: "),
-		io__write_string(io__error_message(Error))
+		io__write_string(io__error_message(Error)),
+		io__nl
 	).
 
 :- pred read_until_char(char::in, list(char)::in, io__result(list(char))::out,
