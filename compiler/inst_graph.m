@@ -206,10 +206,10 @@ descendant_2(InstGraph, Seen, Var, Descendant) :-
 	(
 		Descendant = Arg
 	;
-		( Arg `member` Seen ->
+		( Arg `set__member` Seen ->
 			fail
 		;
-			descendant_2(InstGraph, Seen `insert` Arg,
+			descendant_2(InstGraph, Seen `set__insert` Arg,
 				Arg, Descendant)
 		)
 	).
@@ -235,11 +235,11 @@ foldl_reachable_aux(P, InstGraph, Var, Seen, !Acc) :-
 	map__lookup(InstGraph, Var, node(Functors, _)),
 	map__foldl((pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
 		list__foldl((pred(Arg::in, LAcc0::in, LAcc::out) is det :-
-			( Arg `member` Seen ->
+			( Arg `set__member` Seen ->
 				LAcc = LAcc0
 			;
 				foldl_reachable_aux(P,
-					InstGraph, Arg, Seen `insert` Arg,
+					InstGraph, Arg, Seen `set__insert` Arg,
 					LAcc0, LAcc)
 			)
 		), Args, MAcc0, MAcc)
@@ -266,12 +266,12 @@ foldl_reachable_aux2(P, InstGraph, Var, Seen, !Acc1, !Acc2) :-
 			MAcc20::in, MAcc2::out) is det :-
 		list__foldl2((pred(Arg::in, LAccA0::in, LAccA::out,
 				LAccB0::in, LAccB::out) is det :-
-			( Arg `member` Seen ->
+			( Arg `set__member` Seen ->
 				LAccA = LAccA0,
 				LAccB = LAccB0
 			;
 				foldl_reachable_aux2(P,
-					InstGraph, Arg, Seen `insert` Arg,
+					InstGraph, Arg, Seen `set__insert` Arg,
 					LAccA0, LAccA, LAccB0, LAccB)
 			)
 		), Args, MAcc10, MAcc1, MAcc20, MAcc2)
@@ -294,13 +294,13 @@ corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W) :-
 
 corresponding_nodes_2(_, _, _, _, A, B, A, B).
 corresponding_nodes_2(InstGraphA, InstGraphB, SeenA0, SeenB0, A, B, V, W) :-
-	not ( A `member` SeenA0, B `member` SeenB0 ),
+	not ( A `set__member` SeenA0, B `set__member` SeenB0 ),
 
 	map__lookup(InstGraphA, A, node(FunctorsA, _)),
 	map__lookup(InstGraphB, B, node(FunctorsB, _)),
 
-	SeenA = SeenA0 `insert` A,
-	SeenB = SeenB0 `insert` B,
+	SeenA = SeenA0 `set__insert` A,
+	SeenB = SeenB0 `set__insert` B,
 
 	( map__member(FunctorsA, ConsId, ArgsA) ->
 		( map__is_empty(FunctorsB) ->

@@ -913,7 +913,7 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
 	mode_constraint_var(in(V), V_in, !MCI),
 	mode_constraint_var(out(V), V_out, !MCI),
 	mode_constraint_var(V `at` [], V_, !MCI),
-	( TopLevel `member` HeadVars ->
+	( TopLevel `list__member` HeadVars ->
 		% For each variable V in the instantiation graph, add
 		%	(Vout = Vin + V), ~(Vin * V)
 		!:Constraint = !.Constraint ^

@@ -298,7 +298,7 @@ hhf__add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals,
 			map__lookup(InstGraph0, A, Node),
 			Node = node(_, parent(_))
 		;
-			A `member` NonLocals
+			A `set__member` NonLocals
 		)
 	->
 		VarSet0 = !.HI ^ varset,

@@ -270,7 +270,7 @@ set_input_nodes(Constraint0, Constraint, Info0, Info) :-
 	bimap__ordinates(VarMap, Keys),
 	Constraint1 = ensure_normalised(Constraint0),
 	solutions((pred(ProgVar::out) is nondet :-
-			member(Key, Keys),
+			list__member(Key, Keys),
 			Key = key(in(ProgVar), PredId, LambdaPath),
 			bimap__lookup(VarMap, Key, RobddVar),
 			var_entailed(Constraint1, RobddVar)
