@@ -150,7 +150,7 @@ Mercury 0.5, 15 Febuary 1996
   used those parts of `std_util', you may need to add `import_module'
   declarations to import `assoc_list' and/or `bool'.
 
-Mercury 0.6, 2nd August 1996
+Mercury 0.6, 2 August 1996
 ----------------------------
 
 * We now provide preliminary support for type and mode inference.

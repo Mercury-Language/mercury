@@ -73,3 +73,4 @@ DRAFT NEWS for Mercury release 0.7
 	relation__search_element/3, relation__lookup_element/3,
 	relation__search_key/3, and relation__lookup_key/3
 
+  - set__subset XXX
