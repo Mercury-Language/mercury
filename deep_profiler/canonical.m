@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,8 +21,19 @@
 
 :- implementation.
 
-:- import_module measurements, callgraph, array_util.
-:- import_module io, std_util, bool, int, array, list, map, set, require.
+:- import_module array.
+:- import_module array_util.
+:- import_module bool.
+:- import_module callgraph.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module measurements.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+
 % :- import_module unsafe.
 
 :- type merge_info

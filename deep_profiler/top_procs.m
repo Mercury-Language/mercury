@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,8 +15,12 @@
 
 :- interface.
 
-:- import_module profile, interface, measurements.
-:- import_module std_util, list.
+:- import_module interface.
+:- import_module measurements.
+:- import_module profile.
+
+:- import_module list.
+:- import_module std_util.
 
 :- func find_top_procs(cost_kind, include_descendants, measurement_scope,
 	display_limit, deep) = maybe_error(list(int)).
@@ -48,7 +52,11 @@
 
 :- implementation.
 
-:- import_module bool, int, float, array, require.
+:- import_module array.
+:- import_module bool.
+:- import_module float.
+:- import_module int.
+:- import_module require.
 
 find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
 	find_top_sort_predicate(Sort, InclDesc, Scope, SortCompatible,
@@ -136,19 +144,17 @@ compare_procs_fallback(MainFunc, Deep, PSI1, PSI2) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred filter_top_procs(deep, int, pred(deep, int), int).
-:- mode filter_top_procs(in, in, pred(in, in) is semidet, in) is semidet.
+:- pred filter_top_procs(deep::in, int::in,
+	pred(deep, int)::in(pred(in, in) is semidet), int::in) is semidet.
 
 filter_top_procs(Deep, RootPSI, FilterPred, PSI) :-
 	PSI \= RootPSI,
 	FilterPred(Deep, PSI).
 
-:- pred find_top_sort_predicate(cost_kind, include_descendants,
-	measurement_scope, bool,
-	compare_proc_statics, pred(deep, int)).
-:- mode find_top_sort_predicate(in, in, in, out,
-	out(func(in, in, in) = out is det),
-	out(pred(in, in) is semidet)) is det.
+:- pred find_top_sort_predicate(cost_kind::in, include_descendants::in,
+	measurement_scope::in, bool::out,
+	compare_proc_statics::out(func(in, in, in) = out is det),
+	pred(deep, int)::out(pred(in, in) is semidet)) is det.
 
 find_top_sort_predicate(calls,  self,          overall,  yes,
 	compare_ps_calls_self_overall,  filter_ps_calls_self).
@@ -183,9 +189,8 @@ find_top_sort_predicate(words,  self_and_desc, overall,  yes,
 find_top_sort_predicate(words,  self_and_desc, per_call, yes,
 	compare_ps_words_both_percall,  filter_ps_words_both).
 
-:- pred find_threshold_predicate(cost_kind, include_descendants,
-	bool, pred(deep, float, int)).
-:- mode find_threshold_predicate(in, in, out, out(pred(in, in, in) is semidet))
+:- pred find_threshold_predicate(cost_kind::in, include_descendants::in,
+	bool::out, pred(deep, float, int)::out(pred(in, in, in) is semidet))
 	is det.
 
 find_threshold_predicate(calls,  self,          no,  threshold_ps_time_self).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,14 @@
 
 :- interface.
 
-:- import_module profile, interface, measurements, top_procs.
-:- import_module std_util, bool, list.
+:- import_module interface.
+:- import_module measurements.
+:- import_module profile.
+:- import_module top_procs.
+
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 :- func table_start(preferences) = string.
 :- func table_end(preferences) = string.
@@ -121,7 +127,13 @@
 :- implementation.
 
 :- import_module top_procs.
-:- import_module int, float, char, string, map, require.
+
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

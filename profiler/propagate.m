@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2003-2004 The University of Melbourne.
+% Copyright (C) 1995-1997, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,9 @@
 :- interface.
 
 :- import_module prof_info.
-:- import_module io, relation.
+
+:- import_module io.
+:- import_module relation.
 
 :- pred propagate__counts(relation(string)::in, prof::in, prof::out,
 	io::di, io::uo) is det.
@@ -33,8 +35,16 @@
 
 :- implementation.
 
-:- import_module assoc_list, float, int, list, map, multi_map, require.
-:- import_module string, sparse_bitset, std_util.
+:- import_module assoc_list.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module sparse_bitset.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,12 +56,12 @@
 propagate__counts(CallGraph, !Prof, !IO) :-
 	prof_get_addrdeclmap(!.Prof, AddrDeclMap),
 	prof_get_profnodemap(!.Prof, ProfNodeMap0),
-	
+
 	propagate__identify_cycles(CallGraph, ATSort, CycleInfo),
-	propagate__update_cycles(CycleInfo, AddrDeclMap, ProfNodeMap0, 
+	propagate__update_cycles(CycleInfo, AddrDeclMap, ProfNodeMap0,
 		ProfNodeMap1),
 
-	propagate__counts_2(ATSort, CycleInfo, AddrDeclMap, ProfNodeMap1, 
+	propagate__counts_2(ATSort, CycleInfo, AddrDeclMap, ProfNodeMap1,
 		ProfNodeMap),
 
 	prof_set_cyclemap(fst(CycleInfo), !Prof),
@@ -75,15 +85,15 @@ propagate__identify_cycles(Rel, ATSort, CycleInfo) :-
 		[], ATSort, cycle_info_init, CycleInfo).
 
 :- pred propagate__identify_cycles_2(list(relation_key)::in, int::in,
-	relation(string)::in, relation_key_set::in, 
+	relation(string)::in, relation_key_set::in,
 	list(string)::in, list(string)::out, cycle_info::in, cycle_info::out)
 	is det.
 
 propagate__identify_cycles_2([], _, _, _, !ATSort, !CycleInfo).
 propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, !ATSort,
-		!CycleInfo) :- 
+		!CycleInfo) :-
 	%
-	% Do a DFS on R'.  The nodes we can get to and have not 
+	% Do a DFS on R'.  The nodes we can get to and have not
 	% already visited before are one cycle in the call graph.
 	%
 	relation__dfsrev(RelInv, X, Visit0, Visit, DfsRev0),
@@ -95,13 +105,12 @@ propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, !ATSort,
 		;
 			DfsRev = [],	% This case should never happen
 			error("propagate.identify_cycles_2: empty list\n")
-
 		)
 	->
 		CycleNum = CycleNum0
 	;
 		CycleNum = CycleNum0 + 1,
-		propagate__add_to_cycle_map(DfsRev, CycleNum, !CycleInfo) 
+		propagate__add_to_cycle_map(DfsRev, CycleNum, !CycleInfo)
 	),
 
 	list__append(DfsRev, !ATSort),
@@ -110,7 +119,7 @@ propagate__identify_cycles_2([X | Xs0], CycleNum0, RelInv, Visit0, !ATSort,
 	% been identified as part of a cycle.
 	%
 	list__delete_elems(Xs0, DfsRev0, Xs),
-	propagate__identify_cycles_2(Xs, CycleNum, RelInv, Visit, !ATSort, 
+	propagate__identify_cycles_2(Xs, CycleNum, RelInv, Visit, !ATSort,
 		!CycleInfo).
 
 	% cycle_info_init:
@@ -145,8 +154,8 @@ propagate__update_cycles(_M - MM, AddrDecl, !ProfNodeMap) :-
 	addrdecl::in, prof_node_map::in, prof_node_map::out) is det.
 
 propagate__update_cycles_2([], _, !ProfNodeMap).
-propagate__update_cycles_2([ Num - Preds | Rest], AddrDecl, !ProfNodeMap) :- 
-	propagate__update_cycles_3(Preds, Num, AddrDecl, !ProfNodeMap), 
+propagate__update_cycles_2([ Num - Preds | Rest], AddrDecl, !ProfNodeMap) :-
+	propagate__update_cycles_3(Preds, Num, AddrDecl, !ProfNodeMap),
 	propagate__update_cycles_2(Rest, AddrDecl, !ProfNodeMap).
 
 :- pred propagate__update_cycles_3(list(string)::in, int::in, addrdecl::in,
@@ -164,7 +173,7 @@ propagate__update_cycles_3([P | Ps], CycleNum, AddrDecl, !ProfNodeMap) :-
 	% propagate__counts_2
 	%	XXX
 	%
-:- pred propagate__counts_2(list(string)::in, cycle_info::in, addrdecl::in, 
+:- pred propagate__counts_2(list(string)::in, cycle_info::in, addrdecl::in,
 	prof_node_map::in, prof_node_map::out) is det.
 
 propagate__counts_2([], _, _, !ProfNodeMap).
@@ -181,7 +190,7 @@ propagate__counts_2([Pred | Preds], M - MM, AddrDeclMap, !ProfNodeMap) :-
 		->
 			propagate__process_cycle(CyclePreds, Cycle, AddrDeclMap,
 				!ProfNodeMap),
-			propagate__counts_2(NewPreds, M-MM, AddrDeclMap, 
+			propagate__counts_2(NewPreds, M-MM, AddrDeclMap,
 				!ProfNodeMap)
 		;
 			error("propagate.counts_2: list_drop failed\n")
@@ -211,7 +220,7 @@ propagate__process_cycle(Preds, Cycle, AddrMap, !ProfNodeMap) :-
 	%
 	% Determine the parents of a cycle
 	%
-	propagate__cycle_parents(Preds, AddrMap, !.ProfNodeMap, Total, 
+	propagate__cycle_parents(Preds, AddrMap, !.ProfNodeMap, Total,
 		Recursive, ParentList),
 	%
 	% Build the cycle name.
@@ -237,7 +246,7 @@ propagate__process_cycle(Preds, Cycle, AddrMap, !ProfNodeMap) :-
 	%
 	Address = -Cycle,
 	map__det_insert(!.ProfNodeMap, Address, ProfNode, !:ProfNodeMap),
-	%	
+	%
 	% Propagate the counts XXX
 	%
 	TotalCalls = float__float(Total),
@@ -250,7 +259,7 @@ propagate__process_cycle(Preds, Cycle, AddrMap, !ProfNodeMap) :-
 	%
 :- func propagate__sum_self_counts(list(string), addrdecl, prof_node_map) = int.
 
-propagate__sum_self_counts(Preds, ADMap, PNMap) = 
+propagate__sum_self_counts(Preds, ADMap, PNMap) =
 	list__foldl((func(Pred, Sum0) = Sum :-
 			get_prof_node(Pred, ADMap, PNMap, ProfNode),
 			prof_node_get_initial_counts(ProfNode, InitCount),
@@ -268,7 +277,7 @@ propagate__sum_propagated_counts(Preds, ADMap, PNMap) =
 			get_prof_node(Pred, ADMap, PNMap, ProfNode),
 			prof_node_get_propagated_counts(ProfNode, PropCount),
 			Sum = Sum0 + PropCount
-		), Preds, 0.0).		
+		), Preds, 0.0).
 
 	% propagate__build_cycle_list
 	% Takes the list of predicates and works out how many times each
@@ -316,16 +325,16 @@ propagate__counts_3([ P | Ps], TotalCounts, TotalCalls, AddrMap,
 
 propagate__cycle_parents(Preds, AddrMap, ProfNodeMap, TotalCalls, SelfCalls,
 		ParentList) :-
-	propagate__build_parent_map(Preds, AddrMap, ProfNodeMap, TotalCalls, 
+	propagate__build_parent_map(Preds, AddrMap, ProfNodeMap, TotalCalls,
 		SelfCalls, ParentMap),
 	map__to_assoc_list(ParentMap, ParentAssocList),
 	ParentList = assoc_list_to_pred_info_list(ParentAssocList).
 
 	% propagate__build_parent_map:
-	% Builds a map which contains all the parents of a cycle, and the 
-	% total number of times that parent is called.  Doesn't include the 
+	% Builds a map which contains all the parents of a cycle, and the
+	% total number of times that parent is called.  Doesn't include the
 	% cycle members, and callers which never call any of the members of
-	% the cycle.  At the same time also sums the total calls into the 
+	% the cycle.  At the same time also sums the total calls into the
 	% cycle and the calls internal to the cycle.
 	%
 :- pred propagate__build_parent_map(list(string)::in, addrdecl::in,
@@ -343,17 +352,17 @@ propagate__build_parent_map([C | Cs], AddrMap, ProfNodeMap, TotalCalls,
 	map(string, int)::in, map(string, int)::out) is det.
 
 build_parent_map_2([], _, _, _, !TotalCalls, !SelfCalls, !ParentMap).
-build_parent_map_2([C | Cs], CliqueList, AddrMap, ProfNodeMap, 
-		!TotalCalls, !SelfCalls, !ParentMap) :- 
+build_parent_map_2([C | Cs], CliqueList, AddrMap, ProfNodeMap,
+		!TotalCalls, !SelfCalls, !ParentMap) :-
 	get_prof_node(C, AddrMap, ProfNodeMap, ProfNode),
 	prof_node_get_parent_list(ProfNode, ParentList),
 	add_to_parent_map(ParentList, CliqueList, 0, TotalCalls1,
 		0, SelfCalls1, !ParentMap),
-	
+
 	!:TotalCalls = !.TotalCalls + TotalCalls1,
 	!:SelfCalls  = !.SelfCalls + SelfCalls1,
 	build_parent_map_2(Cs, CliqueList, AddrMap, ProfNodeMap, !TotalCalls,
-		!SelfCalls, !ParentMap). 
+		!SelfCalls, !ParentMap).
 
 	% add_to_parent_map:
 	% Adds list of parents to parent map.  Ignores clique members and
@@ -362,7 +371,7 @@ build_parent_map_2([C | Cs], CliqueList, AddrMap, ProfNodeMap,
 	%
 :- pred add_to_parent_map(list(pred_info)::in, list(string)::in,
 	int::in, int::out, int::in, int::out,
-	map(string, int)::in, map(string, int)::out) is det. 
+	map(string, int)::in, map(string, int)::out) is det.
 
 add_to_parent_map([], _, !TotalCalls, !SelfCalls, !ParentMap).
 add_to_parent_map([P | Ps], CliqueList, !TotalCalls, !SelfCalls, !ParentMap) :-
@@ -375,18 +384,18 @@ add_to_parent_map([P | Ps], CliqueList, !TotalCalls, !SelfCalls, !ParentMap) :-
 			Counts = 0
 		)
 	->
-		!:SelfCalls = !.SelfCalls + Counts, 
-		add_to_parent_map(Ps, CliqueList, !TotalCalls, !SelfCalls, 
+		!:SelfCalls = !.SelfCalls + Counts,
+		add_to_parent_map(Ps, CliqueList, !TotalCalls, !SelfCalls,
 			!ParentMap)
-	;	
+	;
 		(
 			map__search(!.ParentMap, PredName, CurrCount0)
 		->
 			CurrCount = CurrCount0 + Counts,
-			map__det_update(!.ParentMap, PredName, CurrCount, 
+			map__det_update(!.ParentMap, PredName, CurrCount,
 				!:ParentMap)
 		;
-			map__det_insert(!.ParentMap, PredName, Counts, 
+			map__det_insert(!.ParentMap, PredName, Counts,
 				!:ParentMap)
 		),
 		!:TotalCalls = !.TotalCalls + Counts,

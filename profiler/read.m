@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998,2000, 2004 The University of Melbourne.
+% Copyright (C) 1995-1998,2000,2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,11 @@
 :- interface.
 
 :- import_module globals.
-:- import_module int, io, std_util, string.
+
+:- import_module int.
+:- import_module io.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -44,7 +48,9 @@
 :- import_module demangle.
 :- import_module options.
 
-:- import_module bool, list, char.
+:- import_module bool.
+:- import_module char.
+:- import_module list.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
@@ -54,19 +60,19 @@ maybe_read_label_addr(MaybeLabelAddr, !IO) :-
 	(
 		WordResult = ok(CharList),
 		string__from_char_list(CharList, LabelAddrStr),
-		( 
-			string__base_string_to_int(10, LabelAddrStr, 
+		(
+			string__base_string_to_int(10, LabelAddrStr,
 				LabelAddr)
 		->
 			MaybeLabelAddr = yes(LabelAddr)
 		;
 			(
-				string__base_string_to_int(16, LabelAddrStr, 
+				string__base_string_to_int(16, LabelAddrStr,
 					LabelAddrHex)
 			->
 				MaybeLabelAddr = yes(LabelAddrHex)
 			;
-				error("maybe_read_label_addr: Label " ++ 
+				error("maybe_read_label_addr: Label " ++
 					"address not hexadecimal or integer\n")
 			)
 		)
@@ -77,7 +83,7 @@ maybe_read_label_addr(MaybeLabelAddr, !IO) :-
 		WordResult = error(Error),
 		error("maybe_read_label_addr: " ++ io.error_message(Error))
 	).
-		
+
 %-----------------------------------------------------------------------------%
 
 maybe_read_label_name(MaybeLabelName, !IO) :-
@@ -101,7 +107,7 @@ maybe_read_label_name(MaybeLabelName, !IO) :-
 		WordResult = error(Error),
 		error("maybe_read_label_name: " ++ io.error_message(Error))
 	).
-		
+
 %-----------------------------------------------------------------------------%
 
 read_label_addr(LabelAddr, !IO) :-
@@ -109,8 +115,8 @@ read_label_addr(LabelAddr, !IO) :-
 	(
 		WordResult = ok(CharList),
 		string__from_char_list(CharList, LabelAddrStr),
-		( 
-			string__base_string_to_int(10, LabelAddrStr, 
+		(
+			string__base_string_to_int(10, LabelAddrStr,
 				LabelAddr0)
 		->
 			LabelAddr = LabelAddr0
@@ -122,7 +128,7 @@ read_label_addr(LabelAddr, !IO) :-
 				LabelAddr = LabelAddrHex
 			;
 				error("maybe_read_label_addr: " ++
-					"Label address not hexadecimal or " ++ 
+					"Label address not hexadecimal or " ++
 					"integer\n")
 			)
 		)
@@ -133,7 +139,7 @@ read_label_addr(LabelAddr, !IO) :-
 		WordResult = error(Error),
 		error("read_label_addr: " ++ io.error_message(Error))
 	).
-		
+
 %-----------------------------------------------------------------------------%
 
 read_label_name(LabelName, !IO) :-
@@ -155,9 +161,7 @@ read_label_name(LabelName, !IO) :-
 	;
 		WordResult = error(Error),
 		error("read_label_name: " ++ io.error_message(Error))
-
 	).
-
 
 %-----------------------------------------------------------------------------%
 

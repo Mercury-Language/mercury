@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,8 @@
 
 :- interface.
 
-:- import_module array, list.
+:- import_module array.
+:- import_module list.
 
 	% Perform a mode cast on the given array, making the compiler believe
 	% that the ground array is unique. Should be used only if the only use
@@ -103,12 +104,15 @@
 
 :- implementation.
 
-:- import_module int, string.
+:- import_module int.
+:- import_module string.
 
-:- pragma foreign_proc("C", u(A::in) = (B::array_uo),
+:- pragma foreign_proc("C",
+	u(A::in) = (B::array_uo),
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"B = A;"
-).
+"
+	B = A;
+").
 
 array_foldl_from_1(P, A, U0, U) :-
 	array__max(A, Max),

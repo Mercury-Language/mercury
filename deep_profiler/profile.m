@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004 The University of Melbourne.
+% Copyright (C) 2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,12 @@
 :- interface.
 
 :- import_module measurements.
-:- import_module bool, std_util, array, list, map.
+
+:- import_module array.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 :- type profile_stats --->
 	profile_stats(
@@ -428,7 +433,9 @@
 :- implementation.
 
 :- import_module array_util.
-:- import_module int, require.
+
+:- import_module int.
+:- import_module require.
 
 decl_module(ProcId) = DeclModule :-
 	(

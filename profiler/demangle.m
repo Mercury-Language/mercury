@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,9 @@
 %-----------------------------------------------------------------------------%
 
 :- module demangle.
+
 :- interface.
+
 :- import_module string.
 
 :- pred demangle(string::in, string::out) is det.
@@ -55,8 +57,8 @@ demangle(MangledName, Name) :-
 		Name = MangledName
 	).
 
-:- pred demangle_from_asm(string, string).
-:- mode demangle_from_asm(in, out) is semidet.
+:- pred demangle_from_asm(string::in, string::out) is semidet.
+
 demangle_from_asm -->
 	% skip any leading underscore inserted by the C compiler,
 	% and skip the `_entry_' prefix, if any.
@@ -66,11 +68,10 @@ demangle_from_asm -->
 		maybe_remove_prefix("_"),
 		maybe_remove_prefix("_entry_")
 	),
-
 	demangle_from_c.
 
-:- pred demangle_from_c(string, string).
-:- mode demangle_from_c(in, out) is semidet.
+:- pred demangle_from_c(string::in, string::out) is semidet.
+
 demangle_from_c -->
 	( demangle_proc_hl ->
 		{ true }
@@ -86,8 +87,8 @@ demangle_from_c -->
 
 /*---------------------------------------------------------------------------*/
 
-:- pred demangle_proc_ll(string, string).
-:- mode demangle_proc_ll(in, out) is semidet.
+:- pred demangle_proc_ll(string::in, string::out) is semidet.
+
 demangle_proc_ll -->
 	remove_prefix("mercury__"),
 
@@ -148,12 +149,12 @@ demangle_proc_ll -->
 	% This involves stripping off the `__ua<m>', `__uab<m>',
 	% and/or `__ho<n>' added to the end of the
 	% predicate/function name, where m is the mode number.
-	% 
+	%
 	demangle_unused_args(UnusedArgs, ModeNum0, ModeNum1),
 	demangle_higher_order(HigherOrder, ModeNum1, ModeNum),
 
 	%
-	% Make sure special predicates with unused_args 
+	% Make sure special predicates with unused_args
 	% are reported correctly.
 	%
 	( { UnusedArgs = yes(_), Category0 \= ordinary } ->
@@ -191,8 +192,8 @@ demangle_proc_ll -->
 	{ string__append_list(Parts, DemangledName) },
 	dcg_set(DemangledName).
 
-:- pred demangle_proc_hl(string, string).
-:- mode demangle_proc_hl(in, out) is semidet.
+:- pred demangle_proc_hl(string::in, string::out) is semidet.
+
 demangle_proc_hl -->
 	% Symbols in the Mercury standard library get an additional
 	% "mercury__" prefix in their mangled name.
@@ -236,7 +237,7 @@ demangle_proc_hl -->
 		{ Normal = no }
 	),
 
-	( 
+	(
 		%
 		% Scan back past the arity number and then parse it.
 		%
@@ -263,12 +264,12 @@ demangle_proc_hl -->
 	% This involves stripping off the `__ua<m>', `__uab<m>',
 	% and/or `__ho<n>' added to the end of the
 	% predicate/function name, where m is the mode number.
-	% 
+	%
 	demangle_unused_args(UnusedArgs, ModeNum2, ModeNum3),
 	demangle_higher_order(HigherOrder, ModeNum3, ModeNum),
 
 	%
-	% Make sure special predicates with unused_args 
+	% Make sure special predicates with unused_args
 	% are reported correctly.
 	%
 
@@ -322,9 +323,9 @@ demangle_proc_hl -->
 	%
 	fix_mangled_ascii,
 
-	% 
+	%
 	% Fix any mangled ascii codes in the module name, if any.
-	% 
+	%
 	{
 		MaybeModule0 = no,
 		MaybeModule = no
@@ -347,17 +348,17 @@ demangle_proc_hl -->
 	{ string__append_list(Parts, DemangledName) },
 	dcg_set(DemangledName).
 
+:- pred demangle_unused_args(maybe(pair(int, bool))::out, int::in, int::out,
+	string::in, string::out) is det.
 
-:- pred demangle_unused_args(maybe(pair(int, bool)), int, int, string, string).
-:- mode demangle_unused_args(out, in, out, in, out) is det.
 demangle_unused_args(UnusedArgs, ModeNum0, ModeNum) -->
 	%
 	% Process the mangling introduced by unused_args.m.
-	% This involves stripping off the `__ua<m>' or `__uab<m>' added to 
+	% This involves stripping off the `__ua<m>' or `__uab<m>' added to
 	% the end of the predicate/function name, where m is the mode number.
 	% XXX This is out-of-date. The compiler now generates names
 	% such as UnusedArgs__p__[1].
-	% 
+	%
 	(
 		remove_trailing_int(UA_ModeNum),
 		m_remove_suffix("__ua")
@@ -375,8 +376,9 @@ demangle_unused_args(UnusedArgs, ModeNum0, ModeNum) -->
 		{ ModeNum = ModeNum0 }
 	).
 
-:- pred demangle_higher_order(maybe(int), int, int, string, string).
-:- mode demangle_higher_order(out, in, out, in, out) is det.
+:- pred demangle_higher_order(maybe(int)::out, int::in, int::out,
+	string::in, string::out) is det.
+
 demangle_higher_order(HigherOrder, ModeNum0, ModeNum) -->
 	%
 	% Process the mangling introduced by higher_order.m.
@@ -400,8 +402,9 @@ demangle_higher_order(HigherOrder, ModeNum0, ModeNum) -->
 	% skip past the prefix.  Fails if the mode number
 	% is invalid for the specified category.
 	%
-:- pred handle_compiler_generated_pred(int, pred_category, string, string).
-:- mode handle_compiler_generated_pred(in, out, in, out) is semidet.
+:- pred handle_compiler_generated_pred(int::in, pred_category::out,
+	string::in, string::out) is semidet.
+
 handle_compiler_generated_pred(ModeNum0, Category0) -->
 	( remove_prefix("__Unify__") ->
 		{ Category0 = unify }
@@ -413,14 +416,15 @@ handle_compiler_generated_pred(ModeNum0, Category0) -->
 		{ Category0 = index },
 		% there should only be one mode for index/2 preds
 		{ ModeNum0 = 0 }
-	;	
+	;
 		{ Category0 = ordinary }
 	).
 
 	% Remove any prefixes added for introduced predicates,
 	% and get the predicate name.
-:- pred handle_category_etc(string, pred_category, pred_category, string, string).
-:- mode handle_category_etc(out, in, out, in, out) is semidet.
+:- pred handle_category_etc(string::out, pred_category::in, pred_category::out,
+	string::in, string::out) is semidet.
+
 handle_category_etc(PredName, Category0, Category) -->
 	%
 	% we need to look at the pred name and see if it is an
@@ -431,8 +435,8 @@ handle_category_etc(PredName, Category0, Category) -->
 	=(PredName0),
 
 	(
-		( 
-			remove_prefix("IntroducedFrom__") 
+		(
+			remove_prefix("IntroducedFrom__")
 		->
 			{ IntroducedPredType0 = (lambda) }
 		;
@@ -504,11 +508,12 @@ handle_category_etc(PredName, Category0, Category) -->
 		{ PredName = PredName0 }
 	).
 
-:- pred format_proc(pred_category, maybe(string), string, string, int, int,
-		maybe(int), maybe(pair(int, bool)), maybe(int), list(string),
-		list(string)).
-:- mode format_proc(in, in, in, in, in, in, in, in, in, out, in) is det.
-format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum, 
+:- pred format_proc(pred_category::in, maybe(string)::in, string::in,
+	string::in, int::in, int::in, maybe(int)::in,
+	maybe(pair(int, bool))::in, maybe(int)::in,
+	list(string)::out, list(string)::in) is det.
+
+format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 		HigherOrder, UnusedArgs, MaybeInternalLabelNum) -->
 	["<"],
 	{ format_maybe_module(MaybeModule, PredName, QualifiedName) },
@@ -588,12 +593,12 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 
 /*---------------------------------------------------------------------------*/
 
-% 
+%
 % Code to deal with mercury_data items.
 %
 
-:- pred demangle_data(string, string).
-:- mode demangle_data(in, out) is semidet.
+:- pred demangle_data(string::in, string::out) is semidet.
+
 demangle_data -->
 	( remove_prefix("mercury_data_") ->
 		% LLDS mangled data
@@ -645,8 +650,9 @@ demangle_data -->
 	{ format_data(DataCategory, MaybeModule, Name, Arity, Result) },
 	dcg_set(Result).
 
-:- pred format_data(data_category, maybe(string), string, int, string).
-:- mode format_data(in, in, in, in, out) is semidet.
+:- pred format_data(data_category::in, maybe(string)::in, string::in, int::in,
+	string::out) is semidet.
+
 format_data(info, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
 		string__format("<type_ctor_info for type `%s.%s/%d'>",
@@ -679,8 +685,8 @@ format_data(common, MaybeModule, _Name, Arity, Result) :-
 		fail
 	).
 
-:- pred demangle_typeclass_info(string, string).
-:- mode demangle_typeclass_info(in, out) is semidet.
+:- pred demangle_typeclass_info(string::in, string::out) is semidet.
+
 demangle_typeclass_info -->
 	maybe_remove_prefix("mercury_data___"),
 	remove_prefix("base_typeclass_info_"),
@@ -695,8 +701,9 @@ demangle_typeclass_info -->
 		[s(ClassName), s(Args)], Result) },
 	dcg_set(Result).
 
-:- pred demangle_class_args(int, string, string, string).
-:- mode demangle_class_args(in, out, in, out) is semidet.
+:- pred demangle_class_args(int::in, string::out, string::in, string::out)
+	is semidet.
+
 demangle_class_args(Num, FormattedArgs) -->
 	remove_maybe_module_prefix(yes(TypeName), ["arity"]),
 	{ TypeName \= "" },
@@ -729,8 +736,8 @@ demangle_class_args(Num, FormattedArgs) -->
 	% identifier.
 	%
 
-:- pred fix_mangled_ascii(string, string).
-:- mode fix_mangled_ascii(in, out) is semidet.
+:- pred fix_mangled_ascii(string::in, string::out) is semidet.
+
 fix_mangled_ascii -->
 	( remove_prefix("f__") ->
 		insert_prefix("f_")
@@ -772,8 +779,8 @@ fix_mangled_ascii -->
 		[]
 	).
 
-:- pred fix_mangled_ascii_chars(string, string).
-:- mode fix_mangled_ascii_chars(in, out) is semidet.
+:- pred fix_mangled_ascii_chars(string::in, string::out) is semidet.
+
 fix_mangled_ascii_chars -->
 	remove_int(I),
 	( remove_prefix("_") ->
@@ -784,16 +791,16 @@ fix_mangled_ascii_chars -->
 	{ char__to_int(C, I) },
 	insert_prefix_char(C).
 
-/*---------------------------------------------------------------------------*/
+%---------------------------------------------------------------------------%
 
-:- pred remove_int(int, string, string).
-:- mode remove_int(out, in, out) is semidet.
+:- pred remove_int(int::out, string::in, string::out) is semidet.
+
 remove_int(Int) -->
 	remove_digit(Digit),
 	remove_int_2(Digit, Int).
 
-:- pred remove_int_2(int, int, string, string).
-:- mode remove_int_2(in, out, in, out) is semidet.
+:- pred remove_int_2(int::in, int::out, string::in, string::out) is semidet.
+
 remove_int_2(Int0, Int) -->
 	( remove_digit(Next) ->
 		{ Int1 = Int0 * 10 + Next },
@@ -802,14 +809,14 @@ remove_int_2(Int0, Int) -->
 		{ Int = Int0 }
 	).
 
-:- pred remove_digit(int, string, string).
-:- mode remove_digit(out, in, out) is semidet.
+:- pred remove_digit(int::out, string::in, string::out) is semidet.
+
 remove_digit(Digit, String0, String) :-
 	string__first_char(String0, Char, String),
 	digit(Char, Digit).
 
-:- pred digit(character, int).
-:- mode digit(in, uo) is semidet.
+:- pred digit(character::in, int::out) is semidet.
+
 digit('0', 0).
 digit('1', 1).
 digit('2', 2).
@@ -823,8 +830,9 @@ digit('9', 9).
 
 /*---------------------------------------------------------------------------*/
 
-:- pred remove_maybe_module_prefix(maybe(string), list(string), string, string).
-:- mode remove_maybe_module_prefix(out, in, in, out) is det.
+:- pred remove_maybe_module_prefix(maybe(string)::out, list(string)::in,
+	string::in, string::out) is det.
+
 remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
 	(
 		list__member(StopString, StringsToStopAt),
@@ -856,8 +864,9 @@ remove_maybe_module_prefix(MaybeModule, StringsToStopAt, String0, String) :-
 		MaybeModule = no
 	).
 
-:- pred remove_maybe_pred_name(maybe(string), string, string).
-:- mode remove_maybe_pred_name(out, in, out) is det.
+:- pred remove_maybe_pred_name(maybe(string)::out, string::in, string::out)
+	is det.
+
 remove_maybe_pred_name(MaybePredName, String0, String) :-
 	(
 		string__sub_string_search(String0, "__", Index)
@@ -872,8 +881,7 @@ remove_maybe_pred_name(MaybePredName, String0, String) :-
 		MaybePredName = no
 	).
 
-:- pred remove_type_spec(string, string, string) is det.
-:- mode remove_type_spec(out, in, out) is semidet.
+:- pred remove_type_spec(string::out, string::in, string::out) is semidet.
 
 remove_type_spec(TypeSpec, String0, String) :-
 	string__length(String0, Length),
@@ -884,8 +892,8 @@ remove_type_spec(TypeSpec, String0, String) :-
 		String0, 1, Index),
 	string__split(String0, Index + 1, TypeSpec, String).
 
-:- pred find_matching_close_bracket(int, int, string, int, int). 
-:- mode find_matching_close_bracket(in, in, in, in, out) is semidet.
+:- pred find_matching_close_bracket(int::in, int::in, string::in, int::in,
+	int::out) is semidet.
 
 find_matching_close_bracket(NumBrackets0, Length, String, Index0, Index) :-
 	Index0 < Length,
@@ -905,44 +913,44 @@ find_matching_close_bracket(NumBrackets0, Length, String, Index0, Index) :-
 			String, Index0 + 1, Index)
 	).
 
-:- pred maybe_remove_prefix(string, string, string).
-:- mode maybe_remove_prefix(in, in, out) is det.
+:- pred maybe_remove_prefix(string::in, string::in, string::out) is det.
+
 maybe_remove_prefix(Prefix) -->
 	( remove_prefix(Prefix) -> [] ; [] ).
 
-:- pred remove_prefix(string, string, string).
-:- mode remove_prefix(in, in, out) is semidet.
+:- pred remove_prefix(string::in, string::in, string::out) is semidet.
+
 remove_prefix(Prefix, Name0, Name) :-
 	string__append(Prefix, Name, Name0).
 
-:- pred m_remove_suffix(string, string, string).
-:- mode m_remove_suffix(in, in, out) is semidet.
+:- pred m_remove_suffix(string::in, string::in, string::out) is semidet.
+
 m_remove_suffix(Suffix, Name0, Name) :-
 	string__remove_suffix(Name0, Suffix, Name).
 
-:- pred insert_prefix(string, string, string).
-:- mode insert_prefix(in, in, out) is det.
+:- pred insert_prefix(string::in, string::in, string::out) is det.
+
 insert_prefix(Prefix, Name0, Name) :-
 	string__append(Prefix, Name0, Name).
 
-:- pred insert_prefix_char(char, string, string).
-:- mode insert_prefix_char(in, in, out) is det.
+:- pred insert_prefix_char(char::in, string::in, string::out) is det.
+
 insert_prefix_char(Prefix, Name0, Name) :-
 	string__first_char(Name, Prefix, Name0).
 
-:- pred dcg_set(T1, T2, T1).
-:- mode dcg_set(in, in, out) is det.
+:- pred dcg_set(T1::in, T2::in, T1::out) is det.
+
 dcg_set(X, _, X).
 
-:- pred format_maybe_module(maybe(string), string, string).
-:- mode format_maybe_module(in, in, out) is det.
+:- pred format_maybe_module(maybe(string)::in, string::in, string::out) is det.
+
 format_maybe_module(no, Name, QualifiedName) :-
 	string__format("%s", [s(Name)], QualifiedName).
 format_maybe_module(yes(Module), Name, QualifiedName) :-
 	string__format("%s.%s", [s(Module), s(Name)], QualifiedName).
 
-:- pred remove_trailing_int(int, string, string).
-:- mode remove_trailing_int(out, in, out) is semidet.
+:- pred remove_trailing_int(int::out, string::in, string::out) is semidet.
+
 remove_trailing_int(Int) -->
 	remove_trailing_digit(Digit),
 	( remove_trailing_int(Rest) ->
@@ -951,14 +959,14 @@ remove_trailing_int(Int) -->
 		{ Int = Digit }
 	).
 
-:- pred remove_trailing_digit(int, string, string).
-:- mode remove_trailing_digit(out, in, out) is semidet.
+:- pred remove_trailing_digit(int::out, string::in, string::out) is semidet.
+
 remove_trailing_digit(Digit, String0, String) :-
 	string_last_char(String0, Char, String),
 	digit(Char, Digit).
 
-:- pred string_last_char(string, character, string).
-:- mode string_last_char(in, out, out) is semidet.
+:- pred string_last_char(string::in, character::out, string::out) is semidet.
+
 string_last_char(String0, Char, String) :-
 	string__length(String0, Len),
 	Len1 = Len - 1,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2004 The University of Melbourne.
+% Copyright (C) 1994-1998, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,11 +8,10 @@
 %
 % Main author: petdr.
 %
-% Responsible for building the static call graph.  The dynamic call graph is
-% built during the processing of 'Prof.CallPair', if the appropiate option is
-% set.
+% Responsible for building the static call graph. The dynamic call graph is
+% built during the processing of 'Prof.CallPair', if the appropiate option
+% is set.
 %
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module call_graph.
@@ -30,8 +29,12 @@
 :- implementation.
 
 :- import_module read.
-:- import_module options, globals.
-:- import_module require, bool, std_util.
+:- import_module options.
+:- import_module globals.
+
+:- import_module bool.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -43,9 +46,10 @@ call_graph__main(Args, !StaticCallGraph, !IO) :-
 	% available.  NB The dynamic call graph is built as it is read in
 	% in process_addr_pair_file
 	%	
-	( Dynamic = yes ->
-		true
+	(
+		Dynamic = yes
 	;
+		Dynamic = no,
 		build_static_call_graph(Args, VeryVerbose, !StaticCallGraph,
 			!IO)
 	).

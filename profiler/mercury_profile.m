@@ -33,10 +33,23 @@
 
 :- implementation.
 
-:- import_module process_file, call_graph, generate_output, propagate, output.
-:- import_module prof_info, prof_debug, options, globals.
+:- import_module call_graph.
+:- import_module generate_output.
+:- import_module globals.
+:- import_module options.
+:- import_module output.
+:- import_module process_file.
+:- import_module prof_debug.
+:- import_module prof_info.
+:- import_module propagate.
 
-:- import_module bool, list, std_util, string, getopt, relation, library.
+:- import_module bool.
+:- import_module getopt.
+:- import_module library.
+:- import_module list.
+:- import_module relation.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -136,16 +149,19 @@ main_2(no, Args, !IO) :-
 	io__set_output_stream(StdErr, StdOut, !IO),
 	globals__io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
         globals__io_lookup_bool_option(help, Help, !IO),
-        ( Help = yes ->
+        (
+		Help = yes,
 		long_usage(!IO)
         ;
+		Help = no,
 		globals__io_lookup_bool_option(verbose, Verbose, !IO),
 
 		maybe_write_string(Verbose, "% Processing input files...", !IO),
 		process_file__main(Prof0, CallGraph0, !IO),
 		maybe_write_string(Verbose, " done\n", !IO),
 		
-		( CallGraphOpt = yes ->
+		(
+			CallGraphOpt = yes,
 			maybe_write_string(Verbose, "% Building call graph...",
 				!IO),
 			call_graph__main(Args, CallGraph0, CallGraph, !IO),
@@ -156,6 +172,7 @@ main_2(no, Args, !IO) :-
 			propagate__counts(CallGraph, Prof0, Prof, !IO),
 			maybe_write_string(Verbose, " done\n", !IO)
 		;
+			CallGraphOpt = no,
 			Prof = Prof0
 		),
 		

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,19 +16,36 @@
 :- interface.
 
 :- import_module profile.
-:- import_module io, bool, list, std_util.
+
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- pred read_and_startup(string::in, list(string)::in, bool::in,
 	maybe(io__output_stream)::in, maybe_error(deep)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module profile, read_profile, callgraph, canonical.
-:- import_module measurements, array_util.
-:- import_module std_util, int, string, array, assoc_list, set, map, require.
+:- import_module array_util.
+:- import_module callgraph.
+:- import_module canonical.
+:- import_module measurements.
+:- import_module profile.
+:- import_module read_profile.
+
+:- import_module array.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+
 % :- import_module unsafe.
 
 read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream, Res,
@@ -62,7 +79,7 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream, Res,
 	).
 
 :- pred startup(string::in, string::in, bool::in, maybe(io__output_stream)::in,
-	initial_deep::in, deep::out, io__state::di, io__state::uo) is det.
+	initial_deep::in, deep::out, io::di, io::uo) is det.
 
 startup(Machine, DataFileName, Canonical, MaybeOutputStream, InitDeep0, Deep,
 		!IO) :-
@@ -869,7 +886,7 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_report_stats(maybe(io__output_stream)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 % XXX: io__report_stats writes to stderr, which mdprof_cgi has closed.
 % We want to write the report to _OutputStream, but the library doesn't
@@ -882,7 +899,7 @@ maybe_report_stats(yes(_OutputStream), !IO).
 maybe_report_stats(no, !IO).
 
 :- pred maybe_report_msg(maybe(io__output_stream)::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 maybe_report_msg(yes(OutputStream), Msg, !IO) :-
 	io__write_string(OutputStream, Msg, !IO),
@@ -894,20 +911,20 @@ maybe_report_msg(no, _, !IO).
 % Predicates for use in debugging.
 
 % :- pred print_pdis(initial_deep::in, list(int)::in,
-% 	io__state::di, io__state::uo) is det.
+% 	io::di, io::uo) is det.
 % 
 % print_pdis(InitDeep, PDIs, !IO) :-
 % 	io__nl(!IO),
 % 	io__write_list(PDIs, "", print_pdi_nl(InitDeep), !IO).
 % 
-% :- pred print_pdi_nl(initial_deep::in, int::in, io__state::di, io__state::uo)
+% :- pred print_pdi_nl(initial_deep::in, int::in, io::di, io::uo)
 % 	is det.
 % 
 % print_pdi_nl(InitDeep, PDI, !IO) :-
 % 	print_pdi(InitDeep, PDI, !IO),
 % 	io__nl(!IO).
 % 
-% :- pred print_pdi(initial_deep::in, int::in, io__state::di, io__state::uo)
+% :- pred print_pdi(initial_deep::in, int::in, io::di, io::uo)
 % 	is det.
 % 
 % print_pdi(InitDeep, PDI, !IO) :-
@@ -924,20 +941,20 @@ maybe_report_msg(no, _, !IO).
 % 	io__nl(!IO).
 % 
 % :- pred print_csdis(initial_deep::in, list(int)::in,
-% 	io__state::di, io__state::uo) is det.
+% 	io::di, io::uo) is det.
 % 
 % print_csdis(InitDeep, CSDIs, !IO) :-
 % 	io__nl(!IO),
 % 	io__write_list(CSDIs, "", print_csdi_nl(InitDeep), !IO).
 % 
-% :- pred print_csdi_nl(initial_deep::in, int::in, io__state::di, io__state::uo)
+% :- pred print_csdi_nl(initial_deep::in, int::in, io::di, io::uo)
 % 	is det.
 % 
 % print_csdi_nl(InitDeep, CSDI, !IO) :-
 % 	print_csdi(InitDeep, CSDI, !IO),
 % 	io__nl(!IO).
 % 
-% :- pred print_csdi(initial_deep::in, int::in, io__state::di, io__state::uo)
+% :- pred print_csdi(initial_deep::in, int::in, io::di, io::uo)
 % 	is det.
 % 
 % print_csdi(InitDeep, CSDI, !IO) :-
@@ -954,7 +971,7 @@ maybe_report_msg(no, _, !IO).
 % 	print_pdi(InitDeep, CalleePDI, !IO).
 % 
 % :- pred write_pdi_cn_csd(int::in, int::in, int::in,
-% 	io__state::di, io__state::uo) is det.
+% 	io::di, io::uo) is det.
 % 
 % write_pdi_cn_csd(PDI, CN, CSDI, !IO) :-
 % 	io__write_string("pdi ", !IO),

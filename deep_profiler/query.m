@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,19 +13,36 @@
 
 :- interface.
 
-:- import_module profile, interface.
+:- import_module profile.
+:- import_module interface.
+
 :- import_module io.
 
 :- pred try_exec(cmd::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module measurements, top_procs, html_format, exclude.
-:- import_module std_util, bool, int, float, char, string.
-:- import_module array, list, assoc_list, set, map, exception, require.
+:- import_module exclude.
+:- import_module html_format.
+:- import_module measurements.
+:- import_module top_procs.
+
+:- import_module array.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module exception.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -49,7 +66,7 @@ try_exec(Cmd, Pref, Deep, HTML, IO0, IO) :-
 	).
 
 :- pred exec(cmd::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 exec(restart, _Pref, _Deep, _HTML, IO, IO) :-
 	% Our caller is supposed to filter out restart commands.
@@ -477,7 +494,7 @@ generate_proc_page(Cmd, PSPtr, Pref, Deep) =
 
 :- pred generate_proc_callers_page(cmd::in, proc_static_ptr::in,
 	caller_groups::in, int::in, preferences::in, deep::in, string::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 generate_proc_callers_page(Cmd, PSPtr, CallerGroups, BunchNum, Pref, Deep,
 		HTML, IO0, IO) :-
@@ -1394,7 +1411,7 @@ call_site_dynamic_context(Deep, CSDPtr, FileName, LineNumber) :-
 :- pred proc_callers_to_html(preferences::in, deep::in, proc_static_ptr::in,
 	caller_groups::in, int::in,
 	maybe_error({id_fields, string, string, string})::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 proc_callers_to_html(Pref, Deep, PSPtr, CallerGroups, BunchNum0, MaybePage,
 		IO0, IO) :-

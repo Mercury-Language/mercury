@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,15 +14,30 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-:- import_module profile, interface, startup, query, conf, timeout, util.
-:- import_module bool, char, string, int, array, list, set.
-:- import_module require, std_util, getopt.
+:- import_module conf.
+:- import_module interface.
+:- import_module profile.
+:- import_module query.
+:- import_module startup.
+:- import_module timeout.
+:- import_module util.
 
-:- import_module int, string, list, array, exception, require, library.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module exception.
+:- import_module getopt.
+:- import_module int.
+:- import_module library.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 main(!IO) :-
 	io__progname_base("mdprof_test", ProgName, !IO),
@@ -45,7 +60,10 @@ main(!IO) :-
 		;
 			Version = no
 		),
-		( Help = no, Version = no ->
+		(
+			Help = no,
+			Version = no
+		->
 			main2(ProgName, Args, Options, !IO)
 		;
 			true
@@ -58,7 +76,7 @@ main(!IO) :-
 	).
 
 :- pred main2(string::in, list(string)::in, option_table::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 main2(ProgName, Args, Options, !IO) :-
 	( Args = [FileName] ->
@@ -88,7 +106,7 @@ main2(ProgName, Args, Options, !IO) :-
 		write_help_message(ProgName, !IO)
 	).
 
-:- pred write_version_message(string::in, io__state::di, io__state::uo) is det.
+:- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
 	library__version(Version),
@@ -98,7 +116,7 @@ write_version_message(ProgName, !IO) :-
 	io__write_string(Version, !IO),
 	io__nl(!IO).
 
-:- pred write_help_message(string::in, io__state::di, io__state::uo) is det.
+:- pred write_help_message(string::in, io::di, io::uo) is det.
 
 write_help_message(ProgName) -->
 	io__format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
@@ -117,7 +135,7 @@ write_help_message(ProgName) -->
 %-----------------------------------------------------------------------------%
 
 :- pred test_server(string::in, preferences::in, deep::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 test_server(DirName, Pref, Deep, !IO) :-
 	string__format("test -d %s || mkdir -p %s",
@@ -129,7 +147,7 @@ test_server(DirName, Pref, Deep, !IO) :-
 	test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
 
 :- pred test_cliques(int::in, int::in, string::in, preferences::in, deep::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
 	( Cur =< Max ->
@@ -141,7 +159,7 @@ test_cliques(Cur, Max, DirName, Pref, Deep, !IO) :-
 	).
 
 :- pred test_procs(int::in, int::in, string::in, preferences::in, deep::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
 	( Cur =< Max ->
@@ -153,7 +171,7 @@ test_procs(Cur, Max, DirName, Pref, Deep, !IO) :-
 	).
 
 :- pred write_test_html(string::in, string::in, int::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 write_test_html(DirName, BaseName, Num, HTML, !IO) :-
 	% For large programs such as the Mercury compiler, the profiler data

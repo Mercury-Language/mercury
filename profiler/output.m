@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2004 The University of Melbourne.
+% Copyright (C) 1995-1998, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,11 @@
 :- interface.
 
 :- import_module output_prof_info.
-:- import_module string, int, map, io.
+
+:- import_module int.
+:- import_module io.
+:- import_module map.
+:- import_module string.
 
 :- pred output__main(output::in, map(string, int)::in, io::di, io::uo) is det.
 
@@ -31,7 +35,12 @@
 :- import_module options.
 :- import_module generate_output.
 
-:- import_module assoc_list, bool, float, list, require, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module float.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -43,11 +52,12 @@ output__main(Output, IndexMap, !IO) :-
 
 	Output = output(InfoMap, CallList, FlatList),
 	globals__io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
-	( CallGraphOpt = yes ->
+	(
+		CallGraphOpt = yes,
 		output__call_graph_headers(!IO),
 		output_call_graph(CallList, InfoMap, IndexMap, !IO)
 	;
-		true	
+		CallGraphOpt = no
 	),
 
 	output__flat_headers(!IO),
@@ -210,7 +220,10 @@ output_formatted_prof_node(ProfNode, Index, IndexMap, !IO) :-
 		true	
 	),
 
-	( CycleParentList = [], ParentList = [] ->
+	(
+		CycleParentList = [],
+		ParentList = []
+	->
 		io__format("%67s", [s("<spontaneous>\n")], !IO) 
 	;
 		list__sort(CycleParentList, SortedCycleParentList),
@@ -304,7 +317,7 @@ output_formatted_child_list(Children, IndexMap, !IO) :-
 			[f(Self), f(Descendant), i(Calls), i(TotalCalls), 
 			s(Name), i(Index)]),
 		io__write_string(Output, !IO)
-		), Children, !IO).
+	), Children, !IO).
 
 :- pred output__flat_headers(io::di, io::uo) is det.
 
@@ -365,14 +378,15 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap, !IO) :-
 	map__lookup(InfoMap, LabelName, ProfNode),
 	map__lookup(IndexMap, LabelName, Index),
 	(
-		ProfNode = output_prof(Name,	CycleNum,
-					_Percentage,
-					Percentage,	Self,
-					Descendant,	TotalCalls,
-					SelfCalls,	_ParentList,
-					_ChildList,     _,
-					_
-				)
+		ProfNode = output_prof(
+			Name,	CycleNum,
+			_Percentage,
+			Percentage,	Self,
+			Descendant,	TotalCalls,
+			SelfCalls,	_ParentList,
+			_ChildList,     _,
+			_
+		)
 	;
 		ProfNode = output_cycle_prof(_, _, _, _, _, _, _, _, _),
 		error("output_flat_profile: Cannot have output_cycle_prof\n")
@@ -423,9 +437,7 @@ output_alphabet_listing_2([Name - Index | T], !IO) :-
 :- func construct_name(string, int) = string.
 
 construct_name(Name, CycleNum) = FullName :-
-	(
-		CycleNum = 0
-	->
+	( CycleNum = 0 ->
 		FullName = Name
 	;
 		string__int_to_string(CycleNum, CycleStr),

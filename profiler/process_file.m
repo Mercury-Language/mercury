@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,2000, 2004 The University of Melbourne.
+% Copyright (C) 1995-1997,2000, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,9 @@
 :- interface.
 
 :- import_module prof_info.
-:- import_module io, relation.
+
+:- import_module io.
+:- import_module relation.
 
 :- pred process_file__main(prof::out, relation(string)::out, io::di, io::uo)
 	is det.
@@ -31,9 +33,17 @@
 :- implementation.
 
 :- import_module read.
-:- import_module globals, options.
-:- import_module bool, int, require, std_util, string.
-:- import_module list, map.
+:- import_module globals.
+:- import_module options.
+
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -69,21 +79,21 @@ process_file__main(Prof, DynamicCallGraph, !IO) :-
 	maybe_write_string(VVerbose, " done.\n", !IO),
 
 	map__init(CycleMap),
-	prof_set_entire(Scale, Units, TotalCounts, AddrDeclMap, 
+	prof_set_entire(Scale, Units, TotalCounts, AddrDeclMap,
 		ProfNodeMap, CycleMap, Prof),
 	globals__io_get_globals(Globals0, !IO),
-	globals__set_what_to_profile(Globals0, WhatToProfile, Globals),
+	globals__set_what_to_profile(WhatToProfile, Globals0, Globals),
 	globals__io_set_globals(Globals, !IO),
-	
-	( Dynamic = no ->
+
+	(
+		Dynamic = no
 		% maybe_write_string(VVerbose, "\t% Processing "),
 		% maybe_write_string(VVerbose, LibFile),
 		% maybe_write_string(VVerbose, "..."),
 		% process_library_callgraph(_, _),
 		% maybe_write_string(VVerbose, " done.\n"),
-		true 
 	;
-		true
+		Dynamic = yes
 	).
 
 %-----------------------------------------------------------------------------%
@@ -104,7 +114,7 @@ process_addr_decl(AddrDeclMap, ProfNodeMap, !IO) :-
 	io__see(DeclFile, Result, !IO),
 	(
 		Result = ok,
-		process_addr_decl_2(map.init, AddrDeclMap, map.init, 
+		process_addr_decl_2(map.init, AddrDeclMap, map.init,
 			ProfNodeMap, !IO),
 		io__seen(!IO)
 	;
@@ -119,14 +129,15 @@ process_addr_decl(AddrDeclMap, ProfNodeMap, !IO) :-
 
 process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
 	maybe_read_label_addr(MaybeLabelAddr, !IO),
-	( MaybeLabelAddr = yes(LabelAddr) ->
+	(
+		MaybeLabelAddr = yes(LabelAddr),
 		read_label_name(LabelName, !IO),
 		ProfNode = prof_node_init(LabelName),
 		map__det_insert(!.AddrDecl, LabelName, LabelAddr, !:AddrDecl),
 
 		% Labels with different names but the same addresses.
-		( 
-			map__insert(!.ProfNodeMap, LabelAddr, ProfNode, 
+		(
+			map__insert(!.ProfNodeMap, LabelAddr, ProfNode,
 				!:ProfNodeMap)
 		->
 			true
@@ -138,16 +149,15 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
 			map__det_update(!.ProfNodeMap, LabelAddr, NewProfNode,
 				!:ProfNodeMap)
 		),
-		process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) 
+		process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO)
 	;
-		true
+		MaybeLabelAddr = no
 	).
-		
 
 %-----------------------------------------------------------------------------%
 
 	% process_addr:
-	% Reads in the Prof.Counts file and stores all the counts in the 
+	% Reads in the Prof.Counts file and stores all the counts in the
 	% prof_node structure.  Also sums the total counts at the same time.
 	%
 :- pred process_addr(prof_node_map::in, prof_node_map::out,
@@ -172,7 +182,8 @@ process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts, !IO) :-
 		io__write_string("': ", !IO),
 		io__write_string(ErrorMsg, !IO),
 		io__write_string("\n", !IO),
-		io__write_string("The generated profile will only include ", !IO),
+		io__write_string("The generated profile will only include ",
+			!IO),
 		io__write_string("call counts.\n\n", !IO),
 		TotalCounts = 0,
 		% We can use any arbitrary values for WhatToProfile and Scale;
@@ -188,7 +199,8 @@ process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts, !IO) :-
 
 process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
 	maybe_read_label_addr(MaybeLabelAddr, !IO),
-	( MaybeLabelAddr = yes(LabelAddr) ->
+	(
+		MaybeLabelAddr = yes(LabelAddr),
 		read_int(Count, !IO),
 
 		% Add to initial counts if we have a ProfNode structure
@@ -196,10 +208,10 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
 		(
 			map__search(!.ProfNodeMap, LabelAddr, ProfNode0)
 		->
-			prof_node_get_initial_counts(ProfNode0, 
+			prof_node_get_initial_counts(ProfNode0,
 				InitCount0),
 			InitCount = InitCount0 + Count,
-			prof_node_set_initial_counts(InitCount, 
+			prof_node_set_initial_counts(InitCount,
 				ProfNode0, ProfNode),
 			map__set(!.ProfNodeMap, LabelAddr, ProfNode,
 				!:ProfNodeMap),
@@ -207,12 +219,12 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
 		;
 			io__format("\nWarning address " ++
 				"%d not found!  Ignoring address and " ++
-				"continuing computation.\n", 
+				"continuing computation.\n",
 				[i(LabelAddr)], !IO)
 		),
 		process_addr_2(!TotalCounts, !ProfNodeMap, !IO)
 	;
-		true
+		MaybeLabelAddr = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -250,7 +262,8 @@ process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
 process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
 		!IO) :-
 	maybe_read_label_addr(MaybeLabelAddr, !IO),
-	( MaybeLabelAddr = yes(CallerAddr) ->
+	(
+		MaybeLabelAddr = yes(CallerAddr),
 		read_label_addr(CalleeAddr, !IO),
 		read_int(Count, !IO),
 
@@ -278,30 +291,30 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
 			prof_node_concat_to_parent(CallerName, Count,
 				CalleeProfNode1, CalleeProfNode)
 		;
-			prof_node_set_self_calls(Count, CalleeProfNode0, 
+			prof_node_set_self_calls(Count, CalleeProfNode0,
 				CalleeProfNode)
 		),
 
 		% Insert parent information
-		map__set(!.ProfNodeMap, CalleeAddr, CalleeProfNode, !:ProfNodeMap),
+		svmap__set(CalleeAddr, CalleeProfNode, !ProfNodeMap),
 
 		% Add edge to call graph if generating dynamic call graph.
-		( Dynamic = yes ->
+		(
+			Dynamic = yes,
 			relation__add_element(!.DynamicCallGraph,
 				CallerName, CallerKey, !:DynamicCallGraph),
 			relation__add_element(!.DynamicCallGraph,
 				CalleeName, CalleeKey, !:DynamicCallGraph),
-			relation__add(!.DynamicCallGraph, CallerKey, 
+			relation__add(!.DynamicCallGraph, CallerKey,
 				CalleeKey, !:DynamicCallGraph)
 		;
-			true
+			Dynamic = no
 		),
 		process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap,
-			!AddrDecl, !IO) 	
+			!AddrDecl, !IO)
 	;
-		true
+		MaybeLabelAddr = no
 	).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -319,7 +332,7 @@ process_library_callgraph(LibraryATSort, LibPredMap, !IO) :-
 	io__see(LibFile, Result, !IO),
 	(
 		Result = ok,
-		process_library_callgraph_2([], LibraryATSort, LibPredMap0, 
+		process_library_callgraph_2([], LibraryATSort, LibPredMap0,
 			LibPredMap, !IO),
 		io__seen(!IO)
 	;
@@ -337,17 +350,18 @@ process_library_callgraph(LibraryATSort, LibPredMap, !IO) :-
 
 process_library_callgraph_2(!LibATSort, !LibPredMap, !IO) :-
 	maybe_read_label_name(MaybeLabelName, !IO),
-	( MaybeLabelName = yes(LabelName) ->
+	(
+		MaybeLabelName = yes(LabelName),
 		map__det_insert(!.LibPredMap, LabelName, unit, !:LibPredMap),
 		list__cons(LabelName, !LibATSort),
 		process_library_callgraph_2(!LibATSort, !LibPredMap, !IO)
 	;
-		true
+		MaybeLabelName = no
 	).
 
 %-----------------------------------------------------------------------------%
 
-	% Attempt to lookup the addr in the prof_node_map, if it 
+	% Attempt to lookup the addr in the prof_node_map, if it
 	% does not exist then record the name as unknown__<address>
 	% in the relevant data structures.
 	%

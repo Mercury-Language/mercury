@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,58 +25,60 @@
 
 :- interface.
 
-:- import_module bool, io.
+:- import_module bool.
+:- import_module io.
 
-% Add the given file name to the list of files to be cleaned up.
-
-:- pred register_file_for_cleanup(string::in, io__state::di, io__state::uo)
+	% Add the given file name to the list of files to be cleaned up.
+	%
+:- pred register_file_for_cleanup(string::in, io::di, io::uo)
 	is det.
 
-% Remove the given file name from the list of files to be cleaned up.
-
-:- pred unregister_file_for_cleanup(string::in, io__state::di, io__state::uo)
+	% Remove the given file name from the list of files to be cleaned up.
+	%
+:- pred unregister_file_for_cleanup(string::in, io::di, io::uo)
 	is det.
 
-% Remove all file names from the list of files to be cleaned up.
+	% Remove all file names from the list of files to be cleaned up.
+	%
+:- pred unregister_all_files_for_cleanup(io::di, io::uo) is det.
 
-:- pred unregister_all_files_for_cleanup(io__state::di, io__state::uo) is det.
+	% Delete all the files on the cleanup list.
+	%
+:- pred delete_cleanup_files(io::di, io::uo) is det.
 
-% Delete all the files on the cleanup list.
-
-:- pred delete_cleanup_files(io__state::di, io__state::uo) is det.
-
-% Set up signal handlers for all the signals we can catch. The three strings
-% specify the name of the mutex file, the name of the directory containing the
-% `want' files, and the prefix of the names of the `want' files.
-
+	% Set up signal handlers for all the signals we can catch.
+	% The three strings specify the name of the mutex file,
+	% the name of the directory containing the `want' files,
+	% and the prefix of the names of the `want' files.
+	%
 :- pred setup_signals(string::in, string::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-% Set up a timeout for the given number of minutes in the future.
+	% Set up a timeout for the given number of minutes in the future.
+	%
+:- pred setup_timeout(int::in, io::di, io::uo) is det.
 
-:- pred setup_timeout(int::in, io__state::di, io__state::uo) is det.
-
-% Get the lock on the named mutex file if the bool is `no'.
-% (The mutex file exists iff some process holds the lock.)
-% If the bool is `yes', meaning debugging is enabled, do nothing.
-
+	% Get the lock on the named mutex file if the bool is `no'.
+	% (The mutex file exists iff some process holds the lock.)
+	% If the bool is `yes', meaning debugging is enabled, do nothing.
+	%
 :- pred get_lock(bool::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-% Release the lock on the named mutex file if the bool is `no'.
-% (The mutex file exists iff some process holds the lock.)
-% If the bool is `yes', meaning debugging is enabled, do nothing.
-
+	% Release the lock on the named mutex file if the bool is `no'.
+	% (The mutex file exists iff some process holds the lock.)
+	% If the bool is `yes', meaning debugging is enabled, do nothing.
+	%
 :- pred release_lock(bool::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-% Create the `want' file with the given name.
+	% Create the `want' file with the given name.
+	%
+:- pred make_want_file(string::in, io::di, io::uo) is det.
 
-:- pred make_want_file(string::in, io__state::di, io__state::uo) is det.
-
-% Delete the `want' file with the given name.
-
-:- pred remove_want_file(string::in, io__state::di, io__state::uo) is det.
+	% Delete the `want' file with the given name.
+	%
+:- pred remove_want_file(string::in, io::di, io::uo) is det.
 
 :- implementation.
 
@@ -608,7 +610,7 @@ release_lock(Debug, MutexFile, !IO) :-
 		do_release_lock(MutexFile, !IO)
 	).
 
-:- pred do_get_lock(string::in, io__state::di, io__state::uo) is det.
+:- pred do_get_lock(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	do_get_lock(MutexFile::in, S0::di, S::uo),
@@ -622,7 +624,7 @@ release_lock(Debug, MutexFile, !IO) :-
 #endif
 ").
 
-:- pred do_release_lock(string::in, io__state::di, io__state::uo)
+:- pred do_release_lock(string::in, io::di, io::uo)
 	is det.
 
 :- pragma foreign_proc("C",

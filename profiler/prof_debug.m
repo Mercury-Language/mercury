@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2004 The University of Melbourne.
+% Copyright (C) 1995-1997, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,8 +12,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module prof_debug.
+
 :- interface.
-:- import_module set, list, string, io, assoc_list.
+
+:- import_module assoc_list.
+:- import_module io.
+:- import_module list.
+:- import_module set.
+:- import_module string.
 
 :- pred output_cliques(list(set(string))::in, io::di, io::uo) is det.
 
@@ -24,55 +30,50 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
-
 % output_cliques
 %	Used to check that the topological ordering is being done correctly.
-output_cliques([]) --> [].
-output_cliques([C | Cs]) -->
-	io__write_string("================================\n"),
-	{ set__to_sorted_list(C, M) },
-	print_list(M),
-	output_cliques(Cs).
+output_cliques([], !IO).
+output_cliques([C | Cs], !IO) :-
+	io__write_string("================================\n", !IO),
+	set__to_sorted_list(C, M),
+	print_list(M, !IO),
+	output_cliques(Cs, !IO).
 
-output_propagate_info(Clique, Parents) -->
-        io__write_string("************************\n"),
-        io__write_string("Clique\n"),
-        print_set(Clique),
-        io__write_string("\nParents\n"),
-        print_assoc_list(Parents).
+output_propagate_info(Clique, Parents, !IO) :-
+        io__write_string("************************\n", !IO),
+        io__write_string("Clique\n", !IO),
+        print_set(Clique, !IO),
+        io__write_string("\nParents\n", !IO),
+        print_assoc_list(Parents, !IO).
 
+:- pred print_set(set(string)::in, io::di, io::uo) is det.
 
-:- pred print_set(set(string), io__state, io__state).
-:- mode	print_set(in, di, uo) is det.
+print_set(Set, !IO) :-
+	set__to_sorted_list(Set, List),
+	print_list(List, !IO).
 
-print_set(Set) -->
-	{ set__to_sorted_list(Set, List) },
-	print_list(List).
+:- pred print_assoc_list(assoc_list(string,int)::in, io::di, io::uo) is det.
 
+print_assoc_list([], !IO).
+print_assoc_list([ A - B | Xs], !IO) :-
+	io__write_string(A, !IO),
+	io__write_string("\t-\t", !IO),
+	io__write_int(B, !IO),
+	io__write_string("\n", !IO),
+	print_assoc_list(Xs, !IO).
 
-:- pred print_assoc_list(assoc_list(string,int), io__state, io__state).
-:- mode	print_assoc_list(in, di, uo) is det.
+:- pred print_list(list(string)::in, io::di, io::uo) is det.
 
-print_assoc_list([]) --> [].
-print_assoc_list([ A - B | Xs]) -->
-	io__write_string(A),
-	io__write_string("\t-\t"),
-	io__write_int(B),
-	io__write_string("\n"),
-	print_assoc_list(Xs).
-
-:- pred print_list(list(string), io__state, io__state).
-:- mode	print_list(in, di, uo) is det.
-
-print_list([]) --> [].
-print_list([X | Xs]) -->
-	io__write_string(X),
-	io__write_string("\n"),
-	print_list(Xs).
+print_list([], !IO).
+print_list([X | Xs], !IO) :-
+	io__write_string(X, !IO),
+	io__write_string("\n", !IO),
+	print_list(Xs, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module prof_debug.

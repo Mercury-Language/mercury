@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,17 +13,20 @@
 
 :- interface.
 
-:- import_module char, list.
+:- import_module char.
+:- import_module list.
 
 	% split(Str, Char, Pieces): splits Str into pieces at every occurrence
 	% of Char, and returns the pieces in order. No piece will contain Char.
 	% If two Chars occur in a row, split will return the empty string as
 	% the piece between them.
+	%
 :- pred split(string::in, char::in, list(string)::out) is det.
 
 :- implementation.
 
-:- import_module string, require.
+:- import_module require.
+:- import_module string.
 
 split(Str0, SplitChar, Strs) :-
 	string__to_char_list(Str0, Chars0),
@@ -46,6 +49,7 @@ split_2(Chars, SplitChar, PieceStrs) :-
 	% before the first occurrence of SplitChar in Chars in Before, and all
 	% the characters after the first occurrence of SplitChar in Chars in
 	% After. The first occurrence of SplitChar itself is not returned.
+	%
 :- pred find_split_char(list(char)::in, char::in,
 	list(char)::out, list(char)::out) is semidet.
 

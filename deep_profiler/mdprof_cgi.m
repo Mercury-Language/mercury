@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,15 +16,31 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-:- import_module profile, interface, startup, query, conf, timeout, util.
-:- import_module bool, char, string, int, array, list, set.
-:- import_module require, std_util, getopt.
+:- import_module profile.
+:- import_module interface.
+:- import_module startup.
+:- import_module query.
+:- import_module conf.
+:- import_module timeout.
+:- import_module util.
 
-:- import_module int, string, list, array, map, exception, require, library.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module exception.
+:- import_module getopt.
+:- import_module int.
+:- import_module library.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 % The web server should always set QUERY_STRING. It may also pass its contents
 % as arguments, but if any characters specials to the shell occur in the query,
@@ -66,8 +82,7 @@ main(!IO) :-
 		process_command_line(!IO)
 	).
 
-
-:- pred process_command_line(io__state::di, io__state::uo) is cc_multi.
+:- pred process_command_line(io::di, io::uo) is cc_multi.
 
 process_command_line(!IO) :-
 	io__progname_base(mdprof_cgi_progname, ProgName, !IO),
@@ -109,7 +124,7 @@ process_command_line(!IO) :-
 
 mdprof_cgi_progname = "mdprof_cgi".
 
-:- pred write_version_message(string::in, io__state::di, io__state::uo) is det.
+:- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
 	library__version(Version) ,
@@ -119,7 +134,7 @@ write_version_message(ProgName, !IO) :-
 	io__write_string(Version, !IO),
 	io__nl(!IO).
 
-:- pred write_help_message(string::in, io__state::di, io__state::uo) is det.
+:- pred write_help_message(string::in, io::di, io::uo) is det.
 
 write_help_message(ProgName, !IO) :-
 	% The options are deliberately not documented; they change
@@ -133,7 +148,7 @@ write_help_message(ProgName, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred process_args(string::in, list(string)::in, option_table::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 process_args(ProgName, Args, Options, !IO) :-
 	( Args = [FileName] ->
@@ -151,15 +166,15 @@ process_args(ProgName, Args, Options, !IO) :-
 % This predicate is for debugging the command line given to mdprof_cgi by the
 % web server, should that be necessary
 %
-% :- pred write_bracketed_string(string::in, io__state::di, io__state::uo)
+% :- pred write_bracketed_string(string::in, io::di, io::uo)
 % 	is det.
-% 
+%
 % write_bracketed_string(S, !IO) :-
 % 	io__write_string("<", !IO),
 % 	io__write_string(S, !IO),
 % 	io__write_string(">", !IO).
 
-:- pred write_html_header(io__state::di, io__state::uo) is det.
+:- pred write_html_header(io::di, io::uo) is det.
 
 write_html_header(!IO) :-
 	io__write_string(html_header_text, !IO),
@@ -172,7 +187,7 @@ html_header_text = "Content-type: text/html\n\n".
 %-----------------------------------------------------------------------------%
 
 :- pred process_query(cmd::in, maybe(string)::in, string::in,
-	option_table::in, io__state::di, io__state::uo) is cc_multi.
+	option_table::in, io::di, io::uo) is cc_multi.
 
 process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
 	(
@@ -225,7 +240,7 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
 
 :- pred handle_query_from_existing_server(cmd::in, preferences::in,
 	string::in, string::in, string::in, string::in, option_table::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
 		MutexFile, WantFile, Options, !IO) :-
@@ -249,7 +264,7 @@ handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
 
 :- pred handle_query_from_new_server(cmd::in, preferences::in, string::in,
 	string::in, string::in, string::in, string::in, string::in,
-	option_table::in, io__state::di, io__state::uo) is cc_multi.
+	option_table::in, io::di, io::uo) is cc_multi.
 
 handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 		StartupFile, MutexFile, WantFile, Options, !IO) :-
@@ -258,7 +273,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 	lookup_bool_option(Options, server_process, ServerProcess),
 	lookup_bool_option(Options, debug, Debug),
 	lookup_bool_option(Options, record_startup, RecordStartup),
-	( 
+	(
 		RecordStartup = yes,
 		io__open_output(StartupFile, StartupStreamRes, !IO),
 		(
@@ -328,7 +343,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 
 :- pred start_server(option_table::in, string::in, string::in,
 	maybe(io__output_stream)::in, string::in, string::in, deep::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 		MutexFile, WantFile, Deep, !IO) :-
@@ -397,7 +412,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 		DetachRes = in_parent ->
 		% We are in the parent after we spawned the child. We cause
 		% the process to exit simply by not calling server_loop.
-		% 
+		%
 		% We leave the pipes and the startup file; we clean up only
 		% the files involved in the critical section.
 		release_lock(Debug, MutexFile, !IO),
@@ -417,7 +432,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 
 :- pred server_loop(string::in, string::in, int::in,
 	maybe(io__output_stream)::in, bool::in, bool::in, int::in, deep::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 		Debug, Canonical, QueryNum0, Deep0, !IO) :-
@@ -501,7 +516,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_pipes(string::in, bool::out, io__state::di, io__state::uo) is det.
+:- pred make_pipes(string::in, bool::out, io::di, io::uo) is det.
 
 make_pipes(FileName, Success, !IO) :-
 	ToServerPipe = to_server_pipe_name(FileName),
@@ -542,7 +557,7 @@ make_pipes(FileName, Success, !IO) :-
 ").
 
 :- pred check_for_existing_fifos(string::in, string::in, int::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
 	check_for_existing_fifos(Fifo1::in, Fifo2::in, FifoCount::out,
@@ -579,7 +594,7 @@ make_pipes(FileName, Success, !IO) :-
 	;	fork_failed.
 
 :- pred detach_process(detach_process_result::out,
-	io__state::di, io__state::uo) is cc_multi.
+	io::di, io::uo) is cc_multi.
 
 detach_process(Result, !IO) :-
 	raw_detach_process(ResCode, !IO),
@@ -602,7 +617,7 @@ detach_process(Result, !IO) :-
 %
 % - a negative number in the parent (there is no child process).
 
-:- pred raw_detach_process(int::out, io__state::di, io__state::uo) is cc_multi.
+:- pred raw_detach_process(int::out, io::di, io::uo) is cc_multi.
 
 :- pragma foreign_proc("C",
 	raw_detach_process(ResCode::out, S0::di, S::uo),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2000-2001, 2004 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module options.
+
 :- interface.
-:- import_module bool, string, io, getopt.
+
+:- import_module bool.
+:- import_module getopt.
+:- import_module io.
+:- import_module string.
 
 :- type option	
 	% Verbosity options
@@ -55,7 +60,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, map.
+
+:- import_module std_util.
+:- import_module map.
 
 	% Verbosity Options
 option_default(verbose,		bool(no)).
@@ -176,11 +183,13 @@ options_help -->
 
 %-----------------------------------------------------------------------------%
 
-maybe_write_string(yes, String) --> io__write_string(String).
-maybe_write_string(no, _) --> [].
+maybe_write_string(yes, String, !IO) :-
+	io__write_string(String, !IO).
+maybe_write_string(no, _, !IO).
 
-maybe_flush_output(yes) --> io__flush_output.
-maybe_flush_output(no) --> [].
+maybe_flush_output(yes, !IO) :-
+	io__flush_output(!IO).
+maybe_flush_output(no, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module options.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,9 @@
 :- interface.
 
 :- import_module profile.
-:- import_module array, list.
+
+:- import_module array.
+:- import_module list.
 
 :- pred find_cliques(initial_deep::in, list(list(proc_dynamic_ptr))::out)
 	is det.
@@ -28,9 +30,16 @@
 
 :- implementation.
 
-:- import_module profile, cliques, array_util.
-:- import_module int, set.
-% :- import_module io, string, unsafe, require.
+:- import_module array_util.
+:- import_module cliques.
+:- import_module int.
+:- import_module profile.
+:- import_module set.
+
+% :- import_module io.
+% :- import_module require.
+% :- import_module string.
+% :- import_module unsafe.
 
 find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
 	make_graph(InitDeep, Graph),
@@ -141,14 +150,14 @@ index_clique_member(CliqueNum, PDPtr, CliqueIndex0, CliqueIndex) :-
 
 % Predicates for use in debugging.
 
-% :- pred write_arc(int::in, int::in, int::in, io__state::di, io__state::uo)
+% :- pred write_arc(int::in, int::in, int::in, io::di, io::uo)
 % 	is det.
 % 
 % write_arc(FromPDI, ToPDI, CSDI, !IO) :-
 % 	io__format("arc from pd %d to pd %d through csd %d\n",
 % 		[i(FromPDI), i(ToPDI), i(CSDI)], !IO).
 % 
-% :- pred write_pdi_cn(int::in, int::in, io__state::di, io__state::uo) is det.
+% :- pred write_pdi_cn(int::in, int::in, io::di, io::uo) is det.
 % 
 % write_pdi_cn(PDI, CN, !IO) :-
 % 	io__write_string("pdi ", !IO),
