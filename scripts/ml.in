@@ -78,7 +78,7 @@ done
 
 case "$GRADE" in
 	*.gc.prof)
-		LIBGC="-lgc.prof"
+		LIBGC="-lgc_prof"
 		;;
 	*.gc)
 		LIBGC="-lgc"
