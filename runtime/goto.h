@@ -42,13 +42,54 @@
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
 
-	/* The dummy label and the asm statement referencing it below
-	   prevent gcc from making some over-zealous optimizations which
-	   can result in incorrect code. */
+  /* Define the type of a module initialization function */
+  typedef void ModuleFunc(void);
+
+  #ifdef SPLIT_C_FILES
+  #define MODULE_STATIC_OR_EXTERN extern
+  #else
+  #define MODULE_STATIC_OR_EXTERN static
+  #endif
+
+  /* The following macro expands to a dummy assembler statement which
+     contains no code, but which tells gcc that it uses the specified
+     address as an input value.  This is used to trick gcc into
+     thinking that the address is used, in order to suppress unwanted
+     optimizations.  (We used to use `volatile_global_pointer =
+     address' to suppress optimization, but this way is better because
+     it doesn't generate any code.)
+  */
+  #define PRETEND_ADDRESS_IS_USED(address)		\
+	__asm__ __volatile__("" : : "g"(address))
+  /*
+  Explanation:
+  	__asm__
+  	__volatile__			don't optimize this asm away
+  	(
+  		""			empty assembler code
+  		: 			no outputs
+  		: "g" (address)		one input value, `address';
+  					"g" means that it can go in any
+  					general-purpose register
+  	)
+  */
+
+
+  /* Since we're jumping into and out of the middle of functions,
+     we need to make sure that gcc thinks that (1) the function's address
+     is used (otherwise it may optimize the whole function away) and
+     (2) the `return' statement is reachable (otherwise its dataflow
+     analysis for delay slot scheduling may think that global
+     register variables which are only assigned to in the function
+     cannot be live, when in fact they really are).
+     That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
+     macro are for.
+  */
   #define BEGIN_MODULE(module_name)	\
-	static void module_name(void) {	\
-		__asm__("" : : "g"(module_name)); \
-		__asm__("" : : "g"(&& paste(module_name, _dummy_label))); \
+	MODULE_STATIC_OR_EXTERN \
+	void module_name(void) {	\
+		PRETEND_ADDRESS_IS_USED(module_name); \
+		PRETEND_ADDRESS_IS_USED(&& paste(module_name, _dummy_label)); \
 		paste(module_name,_dummy_label): \
 		{
   /* initialization code for module goes here */
@@ -74,14 +115,12 @@
 		__asm__("entry_" stringify(label) ":");	\
 	{
     /*
-       The dummy asm statement below tells gcc that `&&label' gets used,
-       thus preventing an over-zealous gcc from optimizing away `label'
-       and the code that followed.  We used to use
-       `volatile_global_pointer = &&label' to suppress optimization,
-       but this way is better because it doesn't generate any code.
+       The PRETEND_ADDRESS_IS_USED macro is necessary to 
+       prevent an over-zealous gcc from optimizing away `label'
+       and the code that followed. 
     */
     #define init_entry(label)	\
-	__asm__("" : : "g"(&&label)); \
+	PRETEND_ADDRESS_IS_USED(&&label); \
 	make_entry(stringify(label), label)
 
     #define ENTRY(label) 	(&label)
@@ -135,7 +174,11 @@
 #else
   /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
-  #define BEGIN_MODULE(module_name)	static Code* module_name(void) {
+  /* Define the type of a module initialization function */
+  typedef Code * ModuleFunc(void);
+
+  #define BEGIN_MODULE(module_name)	MODULE_STATIC_OR_EXTERN \
+					Code* module_name(void) {
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
