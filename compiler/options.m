@@ -165,6 +165,7 @@
 		;	optimize_repeat
 		;	optimize_vnrepeat
 		;	pred_value_number
+		;	vn_fudge
 	%	- C
 		;	emit_c_loops
 		;	procs_per_c_function
@@ -389,6 +390,7 @@ option_defaults_2(optimization_option, [
 	optimize_repeat		-	int(0),
 	optimize_vnrepeat	-	int(0),
 	pred_value_number	-	bool(no),
+	vn_fudge		-	int(1000),
 
 % LLDS -> C
 	emit_c_loops		-	bool(no),
@@ -608,6 +610,7 @@ long_option("optimise-repeat",		optimize_repeat).
 long_option("optimize-vnrepeat",	optimize_vnrepeat).
 long_option("optimise-vnrepeat",	optimize_vnrepeat).
 long_option("pred-value-number",	pred_value_number).
+long_option("vn-fudge",			vn_fudge).
 
 % LLDS->C optimizations
 long_option("emit-c-loops",		emit_c_loops).

@@ -66,8 +66,8 @@
 :- pred vn_debug__cost_header_msg(string, io__state, io__state).
 :- mode vn_debug__cost_header_msg(in, di, uo) is det.
 
-:- pred vn_debug__cost_msg(int, int, io__state, io__state).
-:- mode vn_debug__cost_msg(in, in, di, uo) is det.
+:- pred vn_debug__cost_msg(bool, int, int, io__state, io__state).
+:- mode vn_debug__cost_msg(in, in, in, di, uo) is det.
 
 :- pred vn_debug__cost_detail_msg(instr, int, int, io__state, io__state).
 :- mode vn_debug__cost_detail_msg(in, in, in, di, uo) is det.
@@ -402,7 +402,7 @@ vn_debug__cost_header_msg(Header) -->
 	vn_debug__cost_msg_flag(Flag),
 	opt_debug__msg(Flag, Header).
 
-vn_debug__cost_msg(OrigCost, VnCost) -->
+vn_debug__cost_msg(Used, OrigCost, VnCost) -->
 	vn_debug__cost_msg_flag(Flag),
 	(
 		{ Flag = yes },
@@ -419,6 +419,11 @@ vn_debug__cost_msg(OrigCost, VnCost) -->
 			io__write_string("Result: cost improvement\n")
 		;
 			io__write_string("Result: no cost improvement\n")
+		),
+		( { Used = yes } ->
+			io__write_string("Used: yes\n")
+		;
+			io__write_string("Used: no\n")
 		)
 	;
 		{ Flag = no }

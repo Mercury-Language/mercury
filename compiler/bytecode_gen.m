@@ -25,7 +25,7 @@
 :- implementation.
 
 :- import_module hlds_pred, hlds_goal, hlds_data, llds.
-:- import_module call_gen, code_util, goal_util, tree.
+:- import_module passes_aux, call_gen, code_util, goal_util, tree.
 
 :- import_module bool, int, list, assoc_list, set, map, std_util, require.
 
@@ -62,14 +62,44 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 :- pred bytecode_gen__pred(pred_id::in, list(proc_id)::in, pred_info::in,
 	module_info::in, byte_tree::out, io__state::di, io__state::uo) is det.
 
-bytecode_gen__pred(_PredId, [], _Predinfo, _ModuleInfo, empty) --> [].
-bytecode_gen__pred(PredId, [ProcId | ProcIds], Predinfo, ModuleInfo, Code) -->
-	bytecode_gen__proc(PredId, ProcId, Predinfo, ModuleInfo, ProcCode),
-	bytecode_gen__pred(PredId, ProcIds, Predinfo, ModuleInfo, ProcsCode),
+bytecode_gen__pred(_PredId, [], _PredInfo, _ModuleInfo, empty) --> [].
+bytecode_gen__pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code) -->
+	write_proc_progress_message("% Generating bytecode for ",
+		PredId, ProcId, ModuleInfo),
+	{ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, ProcCode) },
+	bytecode_gen__pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode),
 	{ Code = tree(ProcCode, ProcsCode) }.
 
-:- pred bytecode_gen__proc(pred_id::in, proc_id::in, pred_info::in,
-	module_info::in, byte_tree::out, io__state::di, io__state::uo) is det.
+:- pred bytecode_gen__proc(proc_id::in, pred_info::in,
+	module_info::in, byte_tree::out) is det.
+
+bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ProcId, ProcInfo),
+
+	proc_info_arg_info(ProcInfo, ArgInfo),
+	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
+
+	call_gen__input_arg_locs(Args, InputArgs),
+	bytecode_gen__gen_pickups(InputArgs, ByteInfo, PickupCode),
+
+	call_gen__output_arg_locs(Args, OutputArgs),
+	bytecode_gen__gen_places(OutputArgs, ByteInfo, PlaceCode),
+
+	proc_info_goal(ProcInfo, Goal),
+	bytecode_gen__init_byte_info(ModuleInfo, Goal, ByteInfo),
+	bytecode_gen__goal(Goal, ByteInfo, 0, N, GoalCode),
+
+	proc_info_determinism(ProcInfo, Detism),
+	Code = tree(
+		tree(
+			node([enter_proc(ProcId, Detism, N)]),
+			PickupCode),
+		tree(
+			GoalCode,
+			tree(
+				PlaceCode,
+				node([endof_proc])))).
 
 %---------------------------------------------------------------------------%
 
@@ -139,6 +169,26 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 				node([enter_switch(ByteVar, N1)]),
 				DisjCode),
 			node([endof_switch, label(N1)]))
+	;
+		GoalExpr = if_then_else(Vars, Cond, Then, Else, _),
+		bytecode_gen__goal(Cond, ByteInfo, N0, N1, CondCode),
+		bytecode_gen__goal(Then, ByteInfo, N1, N2, ThenCode),
+		N3 is N2 + 1,
+		bytecode_gen__goal(Else, ByteInfo, N3, N4, ElseCode),
+		N is N4 + 1,
+		Code = tree(
+			tree(
+				tree(
+					node([enter_if(N2, N4)]),
+					ThenCode),
+				tree(
+					node([enter_then]),
+					ThenCode)),
+			tree(
+				node([endof_then, label(N2)]),
+				tree(
+					ElseCode,
+					node([endof_else, label(N4])))))
 	;
 		GoalExpr = pragma_c_code(_, _, _, _, _),
 		Code = node([pragma_c_code])
@@ -240,7 +290,8 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var1, ByteVar1),
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	Code = node([test(ByteVar1, ByteVar2)]).
-% bytecode_gen__unify(complicated_unify(_, _, _), Var, RHS, ByteInfo, Code) :-
+bytecode_gen__unify(complicated_unify(_, _, _), _Var, _RHS, _ByteInfo, _Code) :-
+	error("we do not handle complicated unifications yet")
 
 %---------------------------------------------------------------------------%
 

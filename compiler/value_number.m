@@ -354,9 +354,20 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 
 		vn_debug__cost_header_msg("new code sequence"),
 		vn_cost__block_cost(Instrs7, Params, yes, VnCost),
-		vn_debug__cost_msg(OrigCost, VnCost),
 
-		( { VnCost < OrigCost } ->
+		globals__io_lookup_int_option(vn_fudge, VnFudge),
+
+		(
+			{ VnCost < OrigCost },
+			{
+				assoc_list__keys(Instrs0, Uinstrs0),
+				assoc_list__keys(Instrs7, Uinstrs7),
+				list__sublist(Uinstrs7, Uinstrs0)
+			;
+				VnCost * 1000 < OrigCost * VnFudge
+			}
+		->
+			vn_debug__cost_msg(yes, OrigCost, VnCost),
 			{ vn_block__build_block_info(Instrs7, LiveMap, Params,
 				ParEntries, LabelNo0, VnTables7, Liveset7,
 				SeenIncr7, Tuple7) },
@@ -370,6 +381,7 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 				{ Tuple = Tuple0 }
 			)
 		;
+			vn_debug__cost_msg(no, OrigCost, VnCost),
 			{ Instrs = Instrs0 },
 			{ Tuple = Tuple0 }
 		),

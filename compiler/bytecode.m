@@ -21,7 +21,7 @@
 
 :- type byte_code	--->	enter_pred(byte_pred_id, int)
 			;	endof_pred
-			;	enter_proc(byte_proc_id, determinism)
+			;	enter_proc(byte_proc_id, determinism, int)
 			;	endof_proc
 			;	label(byte_label_id)
 			;	enter_disjunction(byte_label_id)
@@ -32,6 +32,10 @@
 			;	endof_switch
 			;	enter_switch_arm(cons_id, tag, byte_label_id)
 			;	endof_switch_arm
+			;	enter_if(byte_label_id, byte_label_id)
+			;	enter_then
+			;	endof_then
+			;	endof_else
 			;	enter_negation(byte_label_id)
 			;	endof_negation
 			;	enter_commit
@@ -139,9 +143,10 @@ output_args(enter_pred(PredId, ProcCount)) -->
 	output_pred_id(PredId),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount)) -->
 	output_proc_id(ProcId),
-	output_determinism(Detism).
+	output_determinism(Detism),
+	output_length(LabelCount).
 output_args(endof_proc) --> [].
 output_args(label(LabelId)) -->
 	output_label_id(LabelId).
@@ -160,6 +165,12 @@ output_args(enter_switch_arm(ConsId, Tag, LabelId)) -->
 	output_tag(Tag),
 	output_label_id(LabelId).
 output_args(endof_switch_arm) --> [].
+output_args(enter_if(ElseLabelId, FollowLabelId)) -->
+	output_label_id(ElseLabelId),
+	output_label_id(FollowLabelId).
+output_args(enter_then) --> [].
+output_args(endof_then) --> [].
+output_args(endof_else) --> [].
 output_args(enter_negation(LabelId)) -->
 	output_label_id(LabelId).
 output_args(endof_negation) --> [].
@@ -214,9 +225,10 @@ debug_args(enter_pred(PredId, ProcsCount)) -->
 	debug_pred_id(PredId),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
-debug_args(enter_proc(ProcId, Detism)) -->
+debug_args(enter_proc(ProcId, Detism, LabelCount)) -->
 	debug_proc_id(ProcId),
-	debug_determinism(Detism).
+	debug_determinism(Detism),
+	debug_length(LabelCount).
 debug_args(endof_proc) --> [].
 debug_args(label(LabelId)) -->
 	debug_label_id(LabelId).
@@ -235,6 +247,12 @@ debug_args(enter_switch_arm(ConsId, Tag, LabelId)) -->
 	debug_tag(Tag),
 	debug_label_id(LabelId).
 debug_args(endof_switch_arm) --> [].
+debug_args(enter_if(ElseLabelId, FollowLabelId)) -->
+	debug_label_id(ElseLabelId),
+	debug_label_id(FollowLabelId).
+debug_args(enter_then) --> [].
+debug_args(endof_then) --> [].
+debug_args(endof_else) --> [].
 debug_args(enter_negation(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(endof_negation) --> [].
@@ -485,7 +503,7 @@ debug_unop(Unop) -->
 
 byte_code(enter_pred(_, _),			 0).
 byte_code(endof_pred,				 1).
-byte_code(enter_proc(_, _),			 2).
+byte_code(enter_proc(_, _, _),			 2).
 byte_code(endof_proc,				 3).
 byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
@@ -496,27 +514,31 @@ byte_code(enter_switch(_, _),			 9).
 byte_code(endof_switch,				10).
 byte_code(enter_switch_arm(_, _, _),		11).
 byte_code(endof_switch_arm,			12).
-byte_code(enter_negation(_),			13).
-byte_code(endof_negation,			14).
-byte_code(enter_commit,				15).
-byte_code(endof_commit,				16).
-byte_code(assign(_, _),				17).
-byte_code(test(_, _),				18).
-byte_code(construct(_, _, _, _),		19).
-byte_code(deconstruct(_, _, _, _),		20).
-byte_code(place_arg(_, _),			21).
-byte_code(call(_, _, _, _),			22).
-byte_code(pickup_arg(_, _),			23).
-byte_code(builtin_binop(_, _, _, _),		24).
-byte_code(builtin_unop(_, _, _),		25).
-byte_code(pragma_c_code,			26).
+byte_code(enter_if(_, _),			13).
+byte_code(enter_then,				14).
+byte_code(endof_then,				15).
+byte_code(endof_else,				16).
+byte_code(enter_negation(_),			17).
+byte_code(endof_negation,			18).
+byte_code(enter_commit,				19).
+byte_code(endof_commit,				20).
+byte_code(assign(_, _),				21).
+byte_code(test(_, _),				22).
+byte_code(construct(_, _, _, _),		23).
+byte_code(deconstruct(_, _, _, _),		24).
+byte_code(place_arg(_, _),			25).
+byte_code(call(_, _, _, _),			26).
+byte_code(pickup_arg(_, _),			27).
+byte_code(builtin_binop(_, _, _, _),		28).
+byte_code(builtin_unop(_, _, _),		29).
+byte_code(pragma_c_code,			30).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
 
 byte_debug(enter_pred(_, _),			"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
-byte_debug(enter_proc(_, _),			"enter_proc").
+byte_debug(enter_proc(_, _, _),			"enter_proc").
 byte_debug(endof_proc,				"endof_proc").
 byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").
@@ -527,6 +549,10 @@ byte_debug(enter_switch(_, _),			"enter_switch").
 byte_debug(endof_switch,			"endof_switch").
 byte_debug(enter_switch_arm(_, _, _),		"enter_switch_arm").
 byte_debug(endof_switch_arm,			"endof_switch_arm").
+byte_debug(enter_if(_, _),			"enter_if").
+byte_debug(enter_then,				"enter_then").
+byte_debug(endof_then,				"endof_then").
+byte_debug(endof_else,				"endof_else").
 byte_debug(enter_negation(_),			"enter_negation").
 byte_debug(endof_negation,			"enter_negation").
 byte_debug(enter_commit,			"enter_commit").
