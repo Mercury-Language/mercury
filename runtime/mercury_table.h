@@ -7,7 +7,7 @@
 /*
 ** mercury_table.h - defines the interface to the hash table module.
 **
-** Note that this module has nothing to do with the implementating
+** Note that this module has nothing to do with the implementation
 ** of the "tabling" pragmas such as `pragma memo' -- the implementation
 ** of those features uses Tries, not hash tables, and is defined
 ** in mercury_tabling.h.
