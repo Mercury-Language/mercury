@@ -30,7 +30,7 @@ dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
 
 .PHONY: info
 info: mercury.info mercury_ref.info mercury_user_guide.info \
-	mercury_library.info mercury_faq.info transition_guide.info
+	mercury_library.info mercury_faq.info mercury_trans_guide.info
 
 .PHONY: html
 html: mercury.html user_guide_toc.html reference_manual_toc.html \
@@ -51,7 +51,7 @@ mercury_user_guide.info: user_guide.texi
 	$(MAKEINFO) user_guide.texi
 mercury_ref.info: reference_manual.texi
 	$(MAKEINFO) reference_manual.texi
-transition_guide.info: transition_guide.texi
+mercury_trans_guide.info: transition_guide.texi
 	$(MAKEINFO) transition_guide.texi
 mercury_faq.info: faq.texi
 	$(MAKEINFO) faq.texi

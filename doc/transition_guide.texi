@@ -1,5 +1,5 @@
 \input texinfo
-@setfilename transition_guide.info
+@setfilename mercury_trans_guide.info
 @settitle The Prolog to Mercury transition guide
 
 @ignore
@@ -64,72 +64,117 @@ into another language, under the above conditions for modified versions.
 @end titlepage
 @page
 
-@iftex
-@chapter Getting Started
-@end iftex
-
-@node Top,,, (DIR)
-@ifinfo
+@node Top
 @chapter The Prolog to Mercury transition guide - ALPHA TEST version, July 1995
-@end ifinfo
 @menu
 * Preliminaries::   Introduction
 * Syntax::          Syntax
 * IO::              Input and Output
 * FailLoops::       Failure Driven Loops, Assert and Retract
 * Commits::         Cuts
-% * Problems::        Common Problems
+@c * Problems::        Common Problems
 @end menu
 
-@node Preliminaries, ,, Top
+@node Preliminaries
 @section Introduction
 
-This document assumes the reader to be familiar with Prolog.
-It is intended to help the reader translate existing Prolog
-programs to Mercury. In some cases, where the Prolog code is
-quite declarative and does not make use of Prolog's non-logical
-constructions (very much), then the job will usually be quite
-straight forward. In other cases, where the Prolog program makes
-extensive use of non-logical constructions, for example, it may
-be very difficult (or even impossible to do a direct transliteration).
-This guide should be used in conjunction with the User Guide and
+This document is intended to help the reader translate existing Prolog
+programs to Mercury.  We assume that the reader is familiar with Prolog.
+This guide should be used in conjunction with the Mercury User's Guide and
 Reference Manuals.
 
-@node Syntax, , , Top
+If the Prolog code is quite declarative and does not make use of
+Prolog's non-logical constructions,
+the job of converting it to Mercury will usually be quite straight forward.  
+However, if the Prolog program makes extensive use of non-logical constructions,
+conversion may be very difficult (a direct transliteration may be impossible).
+Mercury code typically has a very different style to most Prolog code.
+
+@node Syntax
 @section Syntax and Declarations
 
 Prolog and Mercury have very similar syntax. Although there
 are a few differences, by and large if a program is accepted
 by a Prolog system, it will be accepted by Mercury. There are
 however a few extra operators defined by the term parser.
-These are
+Here's a complete list of the operators in Mercury.
+
 @example
-else
-if
-implementation
-import_module
-inst
-interface
-mode
-module
-pred
-then
-type
-when
-XXX
+OPERATOR        ASSOCIATIVITY   PRECEDENCE
+*               yfx             400
+**              xfy             300
++               yfx             500
++               fx              500
+,               xfy             1000
+-               yfx             500
+-               fx              500
+--->            xfy             1179
+-->             xfx             1200
+->              xfy             1050
+.               xfy             600
+/               yfx             400
+//              yfx             400
+/\              yfx             500
+:-              xfx             1200
+:-              fx              1200
+::              xfx             1175
+;               xfy             1100
+<               xfx             700
+<<              yfx             400
+<=              xfy             920
+<=>             xfy             920
+=               xfx             700
+=<              xfx             700
+==              xfx             700
+=>              xfy             920
+>               xfx             700
+>=              xfx             700
+>>              yfx             400
+\               fx              500
+\+              fy              900
+\/              yfx             500
+\=              xfx             700
+^               xfy             200
+~               fy              900
+all             fxy             950
+and             xfy             720
+else            xfy             1170
+end_module      fx              1199
+if              fx              1160
+import_module   fx              1199
+inst            fx              1199
+is              xfx             700
+mod             xfx             300
+mode            fx              1199
+module          fx              1199
+not             fy              900
+or              xfy             740
+pred            fx              1180
+rule            fx              1199
+some            fxy             950
+then            xfx             1150
+type            fx              1180
+when            xfx             900
+where           xfx             1175
 @end example
 
 In addition, Mercury implements both existential and
 universal quantification using the syntax
+
 @example
 some Vars Goal
 @end example
+
+@noindent
 and
+
 @example
 all Vars Goal
 @end example
 
-@node IO, , , Top
+Mercury does not (yet) allow users to define their own operators.
+
+@node IO
 @section Input and Output
 
 Mercury is a purely declarative language.
@@ -145,13 +190,18 @@ more on what these mean.
 
 Predicates that do input or output must have these arguments
 added. For example the predicate:
+
 @example
 write_total(Total) :-
-    write("The total is "),
+    write('The total is '),
     write(Total),
-    write(".\n").
+    write('.'),
+    nl.
 @end example
+
+@noindent
 becomes
+
 @example
 :- pred write_total(int, io__state, io__state).
 :- mode write_total(in, di, uo) is det.
@@ -165,15 +215,29 @@ write_total(Total, IO0, IO) :-
 Definite Clause Grammars (DCGs) are convenient syntactic
 sugar to use in this situation. The above clause can
 also be written
+
 @example
 write_total(Total) -->
     io__write_string("The total is "),
     io__write_int(Total),
     io__write_string(".\n").
 @end example
-Any calls (including unifications) that do not need
-the extra arguments are escaped in the usual way by
-surrounding them in braces @code{ @{ @} }.
+
+In DCGs, any calls (including unifications) that do not need
+the extra DCG arguments are escaped in the usual way by
+surrounding them in curly braces (@code{ @{ @} }).
+
+Note that you must call @samp{io__write_string} or @samp{io__write_int}
+as appropriate.  In the next release of the Mercury implementation,
+we will implement a polymorphic @samp{io__write} predicate, so that
+you can write it as
+
+@example
+write_total(Total) -->
+    io__write("The total is "),
+    io__write(Total),
+    io__write(".\n").
+@end example
 
 One of the important consequences of this model for
 input and output is that predicates that can fail may
@@ -191,6 +255,7 @@ the new state of the world is not accessable.
 In some circumstances, Prolog programs that suffer from this problem
 can be fixed by moving the IO out of the failing context.
 For example
+
 @example
     ...
     ( solve(Goal) ->
@@ -200,9 +265,12 @@ For example
     ),
     ...
 @end example
+
+@noindent
 where @code{solve(Goal)} does some IO can be transformed into
 valid Mercury in at least two ways. The first is to make
 @code{solve} deterministic and return a status:
+
 @example
     ...
     solve(Goal, Result, IO6, IO7),
@@ -216,6 +284,7 @@ valid Mercury in at least two ways. The first is to make
 
 The other way is to transform @code{solve} so that all the input
 and output takes place outside it:
+
 @example
     ...
     io__write_string("calling: ", IO6, IO7),
@@ -230,7 +299,7 @@ and output takes place outside it:
     ...
 @end example
 
-@node FailLoops, , , Top
+@node FailLoops
 @section Failure driven loops, assert and retract
 
 Because Mercury is purely declarative, the goal @samp{Goal, fail} is
@@ -268,20 +337,28 @@ of heap reclaimation, but the code does become more declarative and
 hence easier to maintain and understand as well as becoming easier for
 the compiler to optimize.
 
-@node Commits, , , Top
+@node Commits
 @section Cuts and Indexing
 
-The cut operator is not part of the Mercury language (the builtin
-library contains the predicates !/0 and !/2 which are both
-interchangeable with the goal @code{true}). In addition, the
+The cut operator is not part of the Mercury language.
+The builtin library does contain a predicate !/0 (and !/2 for DCGs),
+but it is just defined as being identical to @samp{true},
+and is there primarily for historical reasons@footnote{
+The Mercury compiler was originally bootstrapped using
+NU-Prolog and SICStus Prolog.  We needed to use cuts for
+efficiency in a few places.  Of course, now that we compile
+the Mercury compiler with itself the cuts are not needed --- and
+it runs much faster anyway.}.  In addition, the
 conditional operator @samp{-> ;} does not do a hard cut across
 the condition - only a soft cut which prunes away either the
-`then' or `else' goal.
+`then' or `else' goal.  If there are multiple solutions to the
+condition, they will all be found on backtracking.
 
 Prolog programs that use cuts and a `catch-all' clause should be
 transformed to use @code{-> ;}.
 
 For example
+
 @example
 p(this, ...) :- !,
     ...
@@ -291,7 +368,9 @@ p(Thing, ...) :-
     ...
 @end example
 
+@noindent
 should be written
+
 @example
 p(Thing, ...) :-
     ( Thing = this ->
@@ -310,6 +389,7 @@ a single clause with a disjunction inside the compiler). As a
 consequence, the Mercury compiler indexes on all arguments. It
 also does deep indexing. That is, a predicate such as the following
 will be indexed.
+
 @example
 p([f(g(h)) | Rest]) :- ...
 p([f(g(i)) | Rest]) :- ...
@@ -325,9 +405,7 @@ a type, it is better to write it as a disjunction rather than a
 a type, you can get a determinism error if you forget to add
 the new case to the disjunction. Also, in some situations the
 code generator can do much better with a switch (which is what
-we call a disjunction that will be indexed) by using a jump table,
+we call a disjunction that will be indexed) by using a jump table
 or a hash table rather than a chain of if-then-elses.
-
-
 
 @bye
