@@ -396,11 +396,17 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_predid(TypeInfo0, CallingPredId),
 		typeinfo_get_context(TypeInfo0, Context),
-		report_error_undef_pred(CallingPredId, Context, PredId,
-			IOState0, IOState),
+		typeinfo_get_pred_name_index(TypeInfo, PredNameIndex),
+		predicate_name(PredId, PredName),
+		( map__contains(PredNameIndex, PredName) ->
+			report_error_undef_pred(CallingPredId, Context, PredId,
+				IOState0, IOState)
+		;
+			report_error_pred_num_args(CallingPredId, Context,
+				PredId, IOState0, IOState)
+		),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfoB1),
-		typeinfo_set_found_error(TypeInfoB1, yes, TypeInfoB2),
-		typeinfo_set_type_assign_set(TypeInfoB2, [], TypeInfo)
+		typeinfo_set_found_error(TypeInfoB1, yes, TypeInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1906,6 +1912,17 @@ report_error_undef_pred(CallingPredId, Context, PredId) -->
 	io__write_string("error: undefined predicate `"),
 	write_pred_id(PredId),
 	io__write_string("'.\n").
+
+:- pred report_error_pred_num_args(pred_id, term__context, pred_id,
+			io__state, io__state).
+:- mode report_error_pred_num_args(input, input, input, di, uo).
+
+report_error_pred_num_args(CallingPredId, Context, PredId) -->
+	write_context_and_predid(Context, CallingPredId),
+	prog_out__write_context(Context),
+	io__write_string("error: call to `"),
+	write_pred_id(PredId),
+	io__write_string("' has wrong number of arguments.\n").
 
 :- pred report_error_undef_cons(pred_id, term__context, const, int, 
 			io__state, io__state).

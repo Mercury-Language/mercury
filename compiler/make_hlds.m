@@ -482,7 +482,7 @@ module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
 	% XXX we should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments
 
-pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, Det, _Cond,
+pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		MContext, Preds) -->
 	{ length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
@@ -502,8 +502,31 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, Det, _Cond,
 	else
 		undefined_pred_error(PredName, Arity, MContext,	
 			"mode declaration"),
-		{ Preds = Preds0 }
+		{ preds_add_implicit(Preds0, PredId, MContext, Preds1) },
+		pred_modes_add(Preds1, ModuleName, VarSet, PredName,
+				Modes, Det, Cond, MContext, Preds)
 	).
+
+	% Whenever there is a clause or mode declaration for an undeclared
+	% predicate, we add an implicit declaration for that predicate.
+
+preds_add_implicit(Preds0, PredId, Context, Preds) :-
+	predicate_arity(PredId, Arity),
+	clauses_info_init(Arity, ClausesInfo),
+	map__init(Procs),
+	varset__init(TVarSet0),
+	make_n_fresh_vars(Arity, TVarSet0, TypesVars, TVarSet),
+	var_list_to_term_list(TypeVars, Types),
+	P = predicate(TVarSet, Types, true, ClausesInfo, Procs, Context),
+	map__set(Preds0, PredId, P, Preds).
+
+:- pred var_list_to_term_list(list(var), list(term)).
+:- mode var_list_to_term_list(input, output) is det.
+:- mode var_list_to_term_list(output, input).
+
+var_list_to_term_list([], []).
+var_list_to_term_list([V | Vs0], [term_variable(V) | Vs]) :-
+	var_list_to_term_list(Vs0, Vs).
 
 	% XXX efficiency could be improved
 	% we should probably store the next available ModeId rather
@@ -553,7 +576,9 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		  map__set(Preds0, PredId, PredInfo, Preds) }
 	else
 		undefined_pred_error(PredName, Arity, Context, "clause"),
-		{ Preds = Preds0 }
+		{ preds_add_implicit(Preds0, PredId, Context, Preds1) },
+		clauses_add(Preds1, ModuleName, VarSet, PredName, Args,
+			Body, Context, Preds)
 	).
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
@@ -618,6 +643,10 @@ insert_head_unifications(HeadVars, Args, Goal0, Goal) :-
 		goalinfo_init(GoalInfo),
 		Goal = conj(List) - GoalInfo
 	).
+
+:- pred insert_head_unifications_2(list(var), list(term), int, list(hlds__goal),
+				 list(hlds__goal)).
+:- mode insert_head_unifications_2(input, input, input, input, output).
 
 insert_head_unifications_2([], [], _, List, List).
 insert_head_unifications_2([Var|Vars], [Arg|Args], N0, List0, List) :-

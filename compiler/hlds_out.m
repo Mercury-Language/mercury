@@ -120,7 +120,7 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 			Varset,
 			ArgTypes,
 			_Condition,
-			Clauses, % source level
+			ClausesInfo, % source level
 			ProcTable,
 			_Context
 		),
@@ -136,6 +136,22 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Argument Types\n"),
 	hlds_out__write_argtypes(Indent1, ArgTypes),
+	hlds_out__write_indent(Indent),
+	io__write_string(",\n"),
+	hlds_out__write_indent(Indent1),
+	{ ClausesInfo = clauses_info(Varset, VarTypes, HeadVars, Clauses) },
+	io__write_string("% The variables in this pred\n"),
+	hlds_out__write_varset(Indent1, Varset),
+	hlds_out__write_indent(Indent),
+	io__write_string(",\n"),
+	hlds_out__write_indent(Indent1),
+	io__write_string("% The types of the variables in this pred\n"),
+	hlds_out__write_vartypes(Indent1, VarTypes),
+	hlds_out__write_indent(Indent),
+	io__write_string(",\n"),
+	hlds_out__write_indent(Indent1),
+	io__write_string("% The head variables of this pred\n"),
+	hlds_out__write_anything(Indent1, HeadVars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
@@ -182,9 +198,6 @@ hlds_out__write_clause(Indent, Clause) -->
 	{
 		Clause = clause(
 			Modes,
-			Varset,
-			VarTypes,
-			HeadVars,
 			Goal,
 			_Context
 		),
@@ -195,21 +208,6 @@ hlds_out__write_clause(Indent, Clause) -->
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Modes for which this clause applies:\n\t\t"),
 	hlds_out__write_anything(Indent1, Modes),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_indent(Indent1),
-	io__write_string("% The variables in this clause\n"),
-	hlds_out__write_varset(Indent1, Varset),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_indent(Indent1),
-	io__write_string("% The types of the variables in this clause\n"),
-	hlds_out__write_vartypes(Indent1, VarTypes),
-	hlds_out__write_indent(Indent),
-	io__write_string(",\n"),
-	hlds_out__write_indent(Indent1),
-	io__write_string("% The head variables of this clause\n"),
-	hlds_out__write_anything(Indent1, HeadVars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
@@ -528,14 +526,15 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 	{
 		PredId = pred(Module, Name, Arity),
 		Proc = procedure(
-			Category,
+			_DeclaredDeterminism,
 			VarNames,
 			VarTypes,
 			HeadVars,
 			HeadModes,
 			Goal,
 			_ModeContext,
-			_CallInfo
+			_CallInfo,
+			Category
 		),
 		Indent1 is Indent + 1
 	},
@@ -914,18 +913,15 @@ hlds_out__write_modelist(Indent, X) -->
 
 :- hlds_out__write_category(_, X, _, _) when X.	% NU-Prolog indexing.
 
-hlds_out__write_category(Indent, deterministic(_)) -->
+hlds_out__write_category(Indent, deterministic) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("deterministic\n").
-hlds_out__write_category(Indent, semideterministic(_)) -->
+hlds_out__write_category(Indent, semideterministic) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("semideterministic\n").
-hlds_out__write_category(Indent, nondeterministic(_)) -->
+hlds_out__write_category(Indent, nondeterministic) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("nondeterministic\n").
-hlds_out__write_category(Indent, unspecified) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("unspecified\n").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(input, di, uo).
