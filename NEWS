@@ -246,13 +246,6 @@ Changes to the Mercury language:
 * Mode inference can now infer "mostly-unique" modes as well as
   "unique" modes.
 
-* The module system now includes support for nested sub-modules
-  with optional separate compilation.
-
-  The aim of this extension is twofold: to provide better support
-  for structuring large software packages, and to provide
-  more fine-grained encapsulation.
-
 * The module system now includes support for sub-modules.
 
   The aim of this extension is twofold.  One aim is to provide more
@@ -265,8 +258,8 @@ Changes to the Mercury language:
   to combine a group of existing Mercury modules into a single logical
   package, with proper namespace control and encapsulation.
 
-  See the "Modules" chapter of the Mercury language reference manual for
-  details.
+  See the "Modules" chapter of the Mercury language reference manual
+  for details.
 
 * We've made more improvements to the C interface.
 
@@ -400,6 +393,15 @@ Changes to the Mercury implementation:
   (profile real time) option; profiling just user time or user + system
   time is still not supported on Windows, because to the best of our
   knowledge Windows doesn't provide the necessary system calls.
+
+* Intermediate files can be placed in subdirectories.
+
+  If you use the `--use-subdirs' option to `mmake' or `mmc',
+  then they will create the various intermediate files used
+  by the Mercury implementation in a subdirectory called `Mercury'
+  rather than in the current directory.  (For `mmake', if there
+  is already a `Mercury' subdirectory, then this option is the default.)
+  This keeps your source directories much less cluttered.
 
 * Mmake has a new variable GRADEFLAGS for specifying options that
   affect the grade (compilation model).
