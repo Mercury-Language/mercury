@@ -412,6 +412,7 @@ install_util: util
 
 .PHONY: install_config
 install_config:
+	[ -d $(INSTALL_RECONF_DIR) ] || mkdir -p $(INSTALL_RECONF_DIR)
 	cp VERSION aclocal.m4 configure configure.in config.guess \
 		config.sub install-sh $(INSTALL_RECONF_DIR)
 
