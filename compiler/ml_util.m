@@ -630,16 +630,10 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	; TypeName = qualified(PrivateBuiltin, "typeclass_info")
 	; TypeName = qualified(PrivateBuiltin, "type_info")
 
-	; TypeName = qualified(RttiImplementation, "arg_types")
-	; TypeName = qualified(RttiImplementation, "du_functor_descriptor")
-	; TypeName = qualified(RttiImplementation, "exist_info")
-	; TypeName = qualified(RttiImplementation, "ptag_entry")
-	; TypeName = qualified(RttiImplementation, "sectag_locn")
-	; TypeName = qualified(RttiImplementation, "typeinfo_locn")
-	; TypeName = qualified(RttiImplementation, "type_ctor_info")
-	; TypeName = qualified(RttiImplementation, "type_ctor_rep")
-	; TypeName = qualified(RttiImplementation, "type_info")
-	; TypeName = qualified(RttiImplementation, "type_layout")
+		% Use lowlevel types for all types in rtti_implementation
+		% as this allows as to add new types needed to manipulate
+		% the RTTI type safely easily.
+	; TypeName = qualified(RttiImplementation, _)
 
 	; TypeName = qualified(TypeDesc, "type_desc")
 	; TypeName = qualified(TypeDesc, "type_ctor_desc")
