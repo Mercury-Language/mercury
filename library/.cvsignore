@@ -1,3 +1,4 @@
 sicstus_compile sicstus_saved_state
 *.c
+*.prof
 library.init
