@@ -13,7 +13,7 @@
 :- module vn_type.
 
 :- interface.
-:- import_module llds, bintree_set, list, std_util.
+:- import_module llds, livemap, set, list, std_util.
 
 :- type vn == int.
 
@@ -70,9 +70,7 @@
 :- type parentry	==	pair(lval, list(rval)).
 :- type parallel	--->	parallel(label, label, list(parentry)).
 
-:- type livemap		==	map(label, lvalset).
-:- type lvalset		==	bintree_set(lval).
-:- type vnlvalset	==	bintree_set(vnlval).
+:- type vnlvalset	==	set(vnlval).
 
 :- type ctrlmap		==	map(int, vn_instr).
 :- type flushmap	==	map(int, flushmapentry).

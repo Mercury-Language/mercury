@@ -71,7 +71,7 @@
 						code_info, code_info).
 :- mode code_gen__generate_forced_non_goal(in, out, in, out) is det.
 
-:- pred code_gen__output_args(assoc_list(var, arg_info), bintree_set(lval)).
+:- pred code_gen__output_args(assoc_list(var, arg_info), set(lval)).
 :- mode code_gen__output_args(in, out) is det.
 
 %---------------------------------------------------------------------------%
@@ -79,7 +79,7 @@
 
 :- implementation.
 :- import_module char, string, list, varset, term, map, tree, require.
-:- import_module type_util, mode_util, std_util, int, set, bintree_set.
+:- import_module type_util, mode_util, std_util, int, set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec.
@@ -651,11 +651,11 @@ code_gen__generate_semi_epilog(Instr) -->
 	code_info__get_total_stackslot_count(NS0),
 	code_info__failure_cont(FailCont),
 	{ code_gen__output_args(Args, LiveArgs0) },
-	{ bintree_set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
+	{ set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
 	{ SLiveValCode = node([
 		livevals(LiveArgs) - ""
 	]) },
-	{ bintree_set__singleton_set(LiveArg, reg(r(1))) },
+	{ set__singleton_set(LiveArg, reg(r(1))) },
 	{ FLiveValCode = node([
 		livevals(LiveArg) - ""
 	]) },
@@ -1093,14 +1093,14 @@ code_gen__generate_non_goals([Goal | Goals], Instr) -->
 %---------------------------------------------------------------------------%
 
 code_gen__output_args([], LiveVals) :-
-	bintree_set__init(LiveVals).
+	set__init(LiveVals).
 code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 	code_gen__output_args(Args, Vs0),
 	(
 		Mode = top_out
 	->
 		code_util__arg_loc_to_register(Loc, Reg),
-		bintree_set__insert(Vs0, reg(Reg), Vs)
+		set__insert(Vs0, reg(Reg), Vs)
 	;
 		Vs = Vs0
 	).
@@ -1118,7 +1118,7 @@ code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 		% XXX we should also test for tailcalls
 		% once we start generating them directly
 	->
-		bintree_set__insert(L0, stackvar(N), L1),
+		set__insert(L0, stackvar(N), L1),
 		I = livevals(L1)
         ;
 		I0 = call(T, R, C, LV0)

@@ -15,7 +15,7 @@
 
 :- module llds.		
 :- interface.
-:- import_module io, std_util, list, bintree_set, term, string, int, float.
+:- import_module io, std_util, list, set, term, string, int, float.
 :- import_module tree.
 
 %-----------------------------------------------------------------------------%
@@ -40,7 +40,7 @@
 	--->	comment(string)
 			% Insert a comment into the output code.
 
-	;	livevals(bintree_set(lval))
+	;	livevals(set(lval))
 			% A list of which registers and stack locations
 			% are currently live.
 
@@ -314,7 +314,7 @@ output_c_module_list([M|Ms]) -->
 
 output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\n"),
-	io__write_string("/* this code automatically generated - do no edit.*/\n"),
+	io__write_string("/* this code automatically generated - do not edit.*/\n"),
 	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE(mercury__"),
 	io__write_string(Name),
@@ -386,7 +386,7 @@ output_instruction(livevals(LiveVals)) -->
 		{ PrintModComments = yes }
 	->
 		io__write_string("/*\n * Live lvalues:\n"),
-		{ bintree_set__to_sorted_list(LiveVals, LiveValsList) },
+		{ set__to_sorted_list(LiveVals, LiveValsList) },
 		output_livevals(LiveValsList),
 		io__write_string(" */")
 	;

@@ -287,7 +287,7 @@
 :- pred code_info__get_requests(unify_requests, code_info, code_info).
 :- mode code_info__get_requests(out, in, out) is det.
 
-:- pred code_info__generate_stack_livevals(set(var), bintree_set(lval),
+:- pred code_info__generate_stack_livevals(set(var), set(lval),
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals(in, out, in, out) is det.
 
@@ -312,7 +312,7 @@
 :- implementation.
 
 :- import_module string, require, char, list, map, bimap, tree, int.
-:- import_module code_exprn, bintree_set, varset, term, stack, prog_io.
+:- import_module code_exprn, set, varset, term, stack, prog_io.
 :- import_module type_util, mode_util, options, shapes.
 
 :- pred code_info__get_label_count(int, code_info, code_info).
@@ -1223,31 +1223,30 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
-	{ bintree_set__init(LiveVals0) },
+	{ set__init(LiveVals0) },
 	code_info__generate_stack_livevals_2(VarList, LiveVals0, LiveVals1),
 	code_info__get_pushed_values(Pushed),
 	{ code_info__generate_stack_livevals_3(Pushed, LiveVals1, LiveVals) }.
 
-:- pred code_info__generate_stack_livevals_2(list(var), bintree_set(lval),
-						bintree_set(lval),
+:- pred code_info__generate_stack_livevals_2(list(var), set(lval), set(lval),
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals_2(in, in, out, in, out) is det.
 
 code_info__generate_stack_livevals_2([], Vals, Vals) --> [].
 code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
-	{ bintree_set__insert(Vals0, Slot, Vals1) },
+	{ set__insert(Vals0, Slot, Vals1) },
 	code_info__generate_stack_livevals_2(Vs, Vals1, Vals).
 
 :- pred code_info__generate_stack_livevals_3(stack(pair(lval)), 
-					bintree_set(lval), bintree_set(lval)).
+					set(lval), set(lval)).
 :- mode code_info__generate_stack_livevals_3(in, in, out) is det.
 
 code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
 	(
 		stack__pop(Stack0, Top - _, Stack1)
 	->
-		bintree_set__insert(Vals0, Top, Vals1),
+		set__insert(Vals0, Top, Vals1),
 		code_info__generate_stack_livevals_3(Stack1, Vals1, Vals)
 	;
 		Vals = Vals0
@@ -1274,23 +1273,23 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
-        { bintree_set__init(LiveVals0) },
+        { set__init(LiveVals0) },
         code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
-	{ bintree_set__to_sorted_list(LiveVals1, LiveVals2) },
+	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__livevals_to_livelvals(LiveVals2, LiveVals3),
         code_info__get_pushed_values(Pushed),
         { code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
 
 :- pred code_info__generate_stack_livelvals_2(list(var), 
-					bintree_set(pair(lval, var)),
-					bintree_set(pair(lval, var)),
-						code_info, code_info).
+					set(pair(lval, var)),
+					set(pair(lval, var)),
+					code_info, code_info).
 :- mode code_info__generate_stack_livelvals_2(in, in, out, in, out) is det.
 
 code_info__generate_stack_livelvals_2([], Vals, Vals) --> [].
 code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
-	{ bintree_set__insert(Vals0, Slot - V, Vals1) },
+	{ set__insert(Vals0, Slot - V, Vals1) },
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
 
 :- pred code_info__generate_stack_livelvals_3(stack(pair(lval)), 

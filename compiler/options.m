@@ -104,6 +104,7 @@
 		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_repeat
+		;	optimize_vnrepeat
 		;	static_ground_terms
 		;	smart_indexing
 		;	req_density
@@ -212,7 +213,8 @@ option_defaults_2(optimization_option, [
 	optimize_labels		-	bool(yes),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
-	optimize_repeat		-	int(4),
+	optimize_repeat		-	int(5),
+	optimize_vnrepeat	-	int(2),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
 	req_density		-	int(25),
@@ -327,6 +329,8 @@ long_option("optimize-frames",		optimize_frames).
 long_option("optimise-frames",		optimize_frames).
 long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
+long_option("optimize-vnrepeat",	optimize_vnrepeat).
+long_option("optimise-vnrepeat",	optimize_vnrepeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 long_option("req-density",		req_density).
@@ -478,6 +482,8 @@ options_help -->
 	io__write_string("\t\tDisable stack frame optimizations\n"),
 	io__write_string("\t--optimize-repeat <n>\n"),
 	io__write_string("\t\tIterate optimizations at most <n> times\n"),
+	io__write_string("\t--optimize-vnrepeat <n>\n"),
+	io__write_string("\t\tIterate value numbering at most <n> times\n"),
 	io__write_string("\t--no-static-ground-terms\n"),
 	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
 	io__write_string("\t\tof constructing constant ground terms at compile time\n"),

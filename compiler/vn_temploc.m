@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table.
-:- import_module list, bintree_set, int.
+:- import_module list, set, int.
 
 :- type templocs.
 
@@ -87,7 +87,7 @@ vn__reuse_templocs([Vnlval | Vnlvals], Templocs0, Templocs) :-
 	Templocs0 = quad(Queue0, Livevnlvals, MaxUsed, Next),
 	( Vnlval = vn_field(_, _, _) ->
 		Templocs1 = Templocs0
-	; bintree_set__is_member(Vnlval, Livevnlvals) ->
+	; set__member(Vnlval, Livevnlvals) ->
 		Templocs1 = Templocs0
 	;
 		list__append(Queue0, [Vnlval], Queue1),
@@ -109,7 +109,7 @@ vn__find_free_regs(N, Max, Livevals, Vn_tables, Freeregs) :-
 		N1 is N + 1,
 		vn__find_free_regs(N1, Max, Livevals, Vn_tables, Freeregs0),
 		(
-			bintree_set__member(vn_reg(r(N)), Livevals)
+			set__member(vn_reg(r(N)), Livevals)
 		->
 			Freeregs = Freeregs0
 		;

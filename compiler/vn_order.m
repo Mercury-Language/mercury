@@ -26,7 +26,7 @@
 :- implementation.
 
 :- import_module vn_util, vn_debug, opt_util.
-:- import_module atsort, map, bintree_set, string, int, require, std_util.
+:- import_module atsort, map, set, string, int, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -36,7 +36,7 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 		{ vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables0,
 			MustSuccmap0, MustPredmap0) }
 	->
-		{ bintree_set__to_sorted_list(Liveset, Livelist) },
+		{ set__to_sorted_list(Liveset, Livelist) },
 		{ vn__prod_cons_order(Livelist, VnTables0, VnTables1,
 			MustSuccmap0, MustSuccmap1,
 			MustPredmap0, MustPredmap1) },
@@ -467,7 +467,7 @@ vn__add_aliases([Pair | Pairs], Vn, Sink, Liveset,
 	{ Pair = PairVnlval - PairVn },
 	(
 		{ PairVn = Vn },
-		{ bintree_set__member(PairVnlval, Liveset) }
+		{ set__member(PairVnlval, Liveset) }
 	->
 		vn__order_link_msg(node_lval(PairVnlval), Sink, no),
 		{ vn__add_link(node_lval(PairVnlval), Sink,

@@ -16,8 +16,8 @@
 
 :- import_module llds, list, int, io.
 
-:- pred vn__block_cost(list(instruction), int, io__state, io__state).
-:- mode vn__block_cost(in, out, di, uo) is det.
+:- pred vn__block_cost(list(instruction), bool, int, io__state, io__state).
+:- mode vn__block_cost(in, in, out, di, uo) is det.
 
 :- pred vn__lval_cost(lval, int).
 :- mode vn__lval_cost(in, out) is det.
@@ -29,15 +29,15 @@
 
 :- import_module vn_debug, require, string, std_util.
 
-vn__block_cost(Instr, Cost) -->
-	vn__block_cost_2(Instr, 0, Cost).
+vn__block_cost(Instr, Flag, Cost) -->
+	vn__block_cost_2(Instr, Flag, 0, Cost).
 
-:- pred vn__block_cost_2(list(instruction), int, int,
+:- pred vn__block_cost_2(list(instruction), bool, int, int,
 	io__state, io__state).
-:- mode vn__block_cost_2(in, in, out, di, uo) is det.
+:- mode vn__block_cost_2(in, in, in, out, di, uo) is det.
 
-vn__block_cost_2([], Cost, Cost) --> [].
-vn__block_cost_2([Instr | Instrs], CostBefore, Cost) -->
+vn__block_cost_2([], _, Cost, Cost) --> [].
+vn__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
 	{ Instr = Uinstr - _ },
 	{ vn__instr_cost(Uinstr, InstrCost) },
 	{ Uinstr = if_val(_, _) ->
@@ -50,8 +50,13 @@ vn__block_cost_2([Instr | Instrs], CostBefore, Cost) -->
 	;
 		CostNow is CostBefore + InstrCost
 	},
-	vn__cost_detail_msg(Uinstr, InstrCost, CostNow),
-	vn__block_cost_2(Instrs, CostNow, Cost).
+	(
+		{ Flag = yes },
+		vn__cost_detail_msg(Uinstr, InstrCost, CostNow)
+	;
+		{ Flag = no }
+	),
+	vn__block_cost_2(Instrs, Flag, CostNow, Cost).
 
 :- pred vn__instr_cost(instr, int).
 :- mode vn__instr_cost(in, out) is det.

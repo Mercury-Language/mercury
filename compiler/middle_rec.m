@@ -26,7 +26,7 @@
 
 :- implementation.
 
-:- import_module code_gen, unify_gen, set, bintree_set, int.
+:- import_module code_gen, unify_gen, set, int.
 :- import_module code_util, code_aux, opt_util, std_util, tree, list, require.
 
 %---------------------------------------------------------------------------%
@@ -264,7 +264,7 @@ middle_rec__add_counter_to_livevals([I0|Is0], Lval, [I|Is]) :-
 	(
 		I0 = livevals(Lives0) - Comment
 	->
-		bintree_set__insert(Lives0, Lval, Lives),
+		set__insert(Lives0, Lval, Lives),
 		I = livevals(Lives) - Comment
 	;
 		I = I0
@@ -307,7 +307,7 @@ middle_rec__find_used_registers([Instr - _ | Instrs], Used0, Used) :-
 
 middle_rec__find_used_registers_instr(comment(_), Used, Used).
 middle_rec__find_used_registers_instr(livevals(LvalSet), Used0, Used) :-
-	bintree_set__to_sorted_list(LvalSet, LvalList),
+	set__to_sorted_list(LvalSet, LvalList),
 	middle_rec__find_used_registers_lvals(LvalList, Used0, Used).
 middle_rec__find_used_registers_instr(block(_, Instrs), Used0, Used) :-
 	middle_rec__find_used_registers(Instrs, Used0, Used).

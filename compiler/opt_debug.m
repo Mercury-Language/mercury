@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, vn_util, opt_util.
+:- import_module vn_type, vn_table, vn_util, livemap, opt_util.
 :- import_module llds, atsort, list, std_util, int.
 
 :- pred opt_debug__dump_node_relmap(relmap(vn_node), string).
@@ -158,7 +158,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bintree_set, map, string.
+:- import_module set, map, string.
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
 	map__to_assoc_list(Relmap, Nodemap),
@@ -214,7 +214,7 @@ opt_debug__dump_livemaplist([Label - Lvalset | Livemaplist], Str) :-
 	string__append_list([L_str, " ->", S_str, "\n", Str2], Str).
 
 opt_debug__dump_livevals(Lvalset, Str) :-
-	bintree_set__to_sorted_list(Lvalset, Lvallist),
+	set__to_sorted_list(Lvalset, Lvallist),
 	opt_debug__dump_livelist(Lvallist, Str).
 
 opt_debug__dump_livelist([], "").

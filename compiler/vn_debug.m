@@ -14,11 +14,14 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table.
+:- import_module vn_type, vn_table, livemap.
 :- import_module atsort, map, list, io.
 
 :- pred vn__livemap_msg(livemap, io__state, io__state).
 :- mode vn__livemap_msg(in, di, uo) is det.
+
+:- pred vn__parallel_msg(parallel, io__state, io__state).
+:- mode vn__parallel_msg(in, di, uo) is det.
 
 :- pred vn__order_start_msg(ctrlmap, flushmap, vn_tables, io__state, io__state).
 :- mode vn__order_start_msg(in, in, in, di, uo) is det.
@@ -73,6 +76,35 @@ vn__livemap_msg(Livemap) -->
 	;
 		{ Flag = no }
 	).
+
+vn__parallel_msg(parallel(OldLabel, NewLabel, ParEntries)) -->
+	vn__parallel_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		{ opt_debug__dump_label(OldLabel, O_str) },
+		{ opt_debug__dump_label(NewLabel, N_str) },
+		io__write_string("\nparallel from "),
+		io__write_string(O_str),
+		io__write_string(" to "),
+		io__write_string(N_str),
+		io__write_string("\n"),
+		vn__parentry_msg(ParEntries)
+	;
+		{ Flag = no }
+	).
+
+:- pred vn__parentry_msg(list(parentry), io__state, io__state).
+:- mode vn__parentry_msg(in, di, uo) is det.
+
+vn__parentry_msg([]) --> [].
+vn__parentry_msg([Lval - Rvals | ParEntries]) -->
+	{ opt_debug__dump_lval(Lval, L_str) },
+	{ opt_debug__dump_rvals(Rvals, R_str) },
+	io__write_string(L_str),
+	io__write_string(" -> "),
+	io__write_string(R_str),
+	io__write_string("\n"),
+	vn__parentry_msg(ParEntries).
 
 vn__order_start_msg(Ctrlmap, Flushmap, Vn_tables) -->
 	vn__order_msg_flag(Flag),
@@ -172,6 +204,7 @@ vn__cost_msg(OrigCost, VnCost) -->
 		{ Flag = yes },
 		{ string__int_to_string(OrigCost, OC_str) },
 		{ string__int_to_string(VnCost, VC_str) },
+		io__write_string("\n"),
 		io__write_string("Old cost: "),
 		io__write_string(OC_str),
 		io__write_string("\n"),
@@ -258,6 +291,9 @@ vn__flush_end_msg(Instrs, Vn_tables) -->
 :- pred vn__livemap_msg_flag(bool, io__state, io__state).
 :- mode vn__livemap_msg_flag(out, di, uo) is det.
 
+:- pred vn__parallel_msg_flag(bool, io__state, io__state).
+:- mode vn__parallel_msg_flag(out, di, uo) is det.
+
 :- pred vn__order_sink_msg_flag(bool, io__state, io__state).
 :- mode vn__order_sink_msg_flag(out, di, uo) is det.
 
@@ -276,6 +312,11 @@ vn__flush_end_msg(Instrs, Vn_tables) -->
 %-----------------------------------------------------------------------------%
 
 vn__livemap_msg_flag(Flag) -->
+	globals__io_lookup_int_option(vndebug, Vndebug),
+	{ Bit is Vndebug /\ 64 },
+	{ Bit = 0 -> Flag = no ; Flag = yes }.
+
+vn__parallel_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
 	{ Bit is Vndebug /\ 32 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.

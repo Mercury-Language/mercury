@@ -51,9 +51,9 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require, bintree_set, int.
+:- import_module tree, list, map, std_util, require, set, int.
 :- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
-:- import_module set, shapes.
+:- import_module shapes.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -528,13 +528,13 @@ call_gen__generate_call_livevals(OutArgs, InputArgs, Code) -->
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__insert_arg_livevals(list(arg_loc),
-					bintree_set(lval), bintree_set(lval)).
+					set(lval), set(lval)).
 :- mode call_gen__insert_arg_livevals(in, in, out) is det.
 
 call_gen__insert_arg_livevals([], LiveVals, LiveVals).
 call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 	code_util__arg_loc_to_register(L, R),
-	bintree_set__insert(LiveVals0, reg(R), LiveVals1),
+	set__insert(LiveVals0, reg(R), LiveVals1),
 	call_gen__insert_arg_livevals(As, LiveVals1, LiveVals).
 
 %---------------------------------------------------------------------------%
@@ -591,7 +591,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 		% starting at r4.
 	call_gen__generate_immediate_args(InVars, InVars, 4, ImmediateCode),
 	code_info__generate_stack_livevals(OutArgs, LiveVals0),
-	{ bintree_set__insert(LiveVals0, reg(r(1)), LiveVals) },
+	{ set__insert(LiveVals0, reg(r(1)), LiveVals) },
 	call_gen__generate_return_livevals(OutArgs, [], OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(

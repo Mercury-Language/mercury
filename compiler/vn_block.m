@@ -15,22 +15,26 @@
 
 :- interface.
 
-:- import_module vn_type.
+:- import_module vn_type, livemap.
 :- import_module llds, list, io.
 
 :- pred vn__divide_into_blocks(list(instruction), list(list(instruction))).
 :- mode vn__divide_into_blocks(in, out) is det.
 
-:- pred vn__build_block_info(list(instruction), livemap, int,
+:- pred vn__build_block_info(list(instruction), livemap, list(parentry), int,
 	vn_tables, vnlvalset, bool, vn_ctrl_tuple).
-:- mode vn__build_block_info(in, in, in, out, out, out, out) is det.
+:- mode vn__build_block_info(in, in, in, in, out, out, out, out) is det.
+
+:- pred vn__split_at_next_ctrl_instr(list(instruction), 
+	list(instruction), instruction, list(instruction)).
+:- mode vn__split_at_next_ctrl_instr(in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module vn_table, vn_util, vn_cost, opt_util, opt_debug.
-:- import_module map, bintree_set, int, string, require, std_util.
+:- import_module map, set, int, string, require, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,16 +83,69 @@ vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Blocks) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-vn__build_block_info(Instrs, Livemap, LabelNo0,
+vn__build_block_info(Instrs, Livemap, ParEntries, LabelNo0,
 		VnTables, Liveset, SeenIncr, Tuple) :-
 	vn__init_tables(VnTables0),
-	bintree_set__init(Liveset0),
+	vn__build_from_parallel(ParEntries, VnTables0, VnTables1),
+	set__init(Liveset0),
 	map__init(Ctrlmap0),
 	map__init(Flushmap0),
 	map__init(Parmap0),
 	Tuple0 = tuple(0, Ctrlmap0, Flushmap0, LabelNo0, Parmap0),
-	vn__handle_instrs(Instrs, Livemap, VnTables0, VnTables,
+	vn__handle_instrs(Instrs, Livemap, VnTables1, VnTables,
 		Liveset0, Liveset, no, SeenIncr, Tuple0, Tuple).
+
+:- pred vn__build_from_parallel(list(parentry), vn_tables, vn_tables).
+:- mode vn__build_from_parallel(in, di, uo) is det.
+
+vn__build_from_parallel([], VnTables, VnTables).
+vn__build_from_parallel([Lval - Rvals | ParEntries], VnTables0, VnTables) :-
+	vn__real_fake_parentries(Rvals, RealRvals, FakeRvals),
+	vn__build_from_real_rval(Lval, RealRvals, VnTables0, VnTables1),
+	vn__build_from_fake_rval(Lval, FakeRvals, VnTables1, VnTables2),
+	vn__build_from_parallel(ParEntries, VnTables2, VnTables).
+
+:- pred vn__real_fake_parentries(list(rval), list(rval), list(lval)).
+:- mode vn__real_fake_parentries(di, uo, uo) is det.
+
+vn__real_fake_parentries([], [], []).
+vn__real_fake_parentries([Rval | Rvals], RealRvals, FakeRvals) :-
+	vn__real_fake_parentries(Rvals, RealRvals0, FakeRvals0),
+	( Rval = lval(Lval) ->
+		RealRvals = RealRvals0,
+		FakeRvals = [Lval | FakeRvals0]
+	;
+		RealRvals = [Rval | RealRvals0],
+		FakeRvals = FakeRvals0
+	).
+
+:- pred vn__build_from_real_rval(lval, list(rval), vn_tables, vn_tables).
+:- mode vn__build_from_real_rval(in, in, di, uo) is det.
+
+vn__build_from_real_rval(_Lval, [], VnTables, VnTables).
+vn__build_from_real_rval(Lval, [Rval | _], VnTables0, VnTables) :-
+	vn__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
+	vn__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
+	vn__set_desired_value(Vnlval, Vn, VnTables2, VnTables3),
+	vn__set_current_value(Vnlval, Vn, VnTables3, VnTables).
+
+:- pred vn__build_from_fake_rval(lval, list(lval), vn_tables, vn_tables).
+:- mode vn__build_from_fake_rval(in, in, di, uo) is det.
+
+vn__build_from_fake_rval(_Lval, [], VnTables, VnTables).
+vn__build_from_fake_rval(Lval, [Cheap | Cheaps], VnTables0, VnTables) :-
+	(
+		vn__no_access_lval_to_vnlval(Cheap, yes(VnCheap))
+	->
+		vn__lval_to_vn(Lval, OldVn, VnTables0, VnTables1),
+		vn__set_parallel_value(VnCheap, OldVn, VnTables1, VnTables2)
+	;
+		VnTables2 = VnTables0
+	),
+	vn__build_from_fake_rval(Lval, Cheaps, VnTables2, VnTables).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred vn__handle_instrs(list(instruction), livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, bool, bool, vn_ctrl_tuple,  vn_ctrl_tuple).
@@ -102,6 +159,9 @@ vn__handle_instrs([Uinstr0 - _ | Instrs], Livemap, VnTables0, VnTables,
 		Liveset0, Liveset1, SeenIncr0, SeenIncr1, Tuple0, Tuple1),
 	vn__handle_instrs(Instrs, Livemap, VnTables1, VnTables,
 		Liveset1, Liveset, SeenIncr1, SeenIncr, Tuple1, Tuple).
+
+	% If you change vn__handle_instr, you may also have to change
+	% vn__is_ctrl_instr.
 
 :- pred vn__handle_instr(instr, livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, bool, bool, vn_ctrl_tuple, vn_ctrl_tuple).
@@ -126,7 +186,7 @@ vn__handle_instr(assign(Lval, Rval),
 	vn__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
 	vn__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
 	vn__find_specials(Vnlval, Specials),
-	bintree_set__insert_list(Liveset0, Specials, Liveset).
+	set__insert_list(Liveset0, Specials, Liveset).
 vn__handle_instr(call(Proc, Return, Caller, Info),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -229,7 +289,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 	map__init(FlushEntry0),
 	(
 		Vn_instr = vn_livevals(Livevals),
-		bintree_set__to_sorted_list(Livevals, Livelist),
+		set__to_sorted_list(Livevals, Livelist),
 		vn__convert_to_vnlval_and_insert(Livelist, Liveset0, Liveset),
 		VnTables = VnTables0,
 		FlushEntry = FlushEntry0,
@@ -298,7 +358,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		Vn_instr = vn_mark_hp(Vnlval),
 		vn__rval_to_vn(lval(hp), Vn, VnTables0, VnTables1),
 		vn__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
-		bintree_set__insert(Liveset0, Vnlval, Liveset),
+		set__insert(Liveset0, Vnlval, Liveset),
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
@@ -352,7 +412,7 @@ vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0, VnTables0, VnTables,
 			PrevInstr = vn_livevals(_)
 		->
 			% middle-rec branch back
-			bintree_set__to_sorted_list(Liveset0,
+			set__to_sorted_list(Liveset0,
 				Vnlivelist),
 			vn__record_livevnlvals(Vnlivelist,
 				VnTables1, VnTables,
@@ -378,14 +438,14 @@ vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0, VnTables0, VnTables,
 	;
 		TargetAddr = do_redo
 	->
-		bintree_set__to_sorted_list(Liveset0, Vnlivelist0),
+		set__to_sorted_list(Liveset0, Vnlivelist0),
 		vn__filter_redo_livelist(Vnlivelist0, Vnlivelist),
 		vn__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
 			Liveset0, Liveset, FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		bintree_set__to_sorted_list(Liveset0, Vnlivelist),
+		set__to_sorted_list(Liveset0, Vnlivelist),
 		vn__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
 			Liveset0, Liveset, FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
@@ -415,7 +475,7 @@ vn__filter_redo_livelist([Live0 | Lives0], Lives) :-
 
 vn__record_at_call(VnTables0, VnTables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry) :-
-	bintree_set__to_sorted_list(Livevals0, Livelist),
+	set__to_sorted_list(Livevals0, Livelist),
 	vn__record_livevnlvals(Livelist, VnTables0, VnTables,
 		Livevals0, Livevals1, FlushEntry0, FlushEntry1),
 	vn__record_compulsory_lvals(VnTables, Livevals1, Livevals,
@@ -479,7 +539,7 @@ vn__record_labels([Label | Labels], Livemap, VnTables0, VnTables,
 vn__record_label(Label, Livemap, VnTables0, VnTables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels) :-
 	( map__search(Livemap, Label, Liveset) ->
-		bintree_set__to_sorted_list(Liveset, Livelist),
+		set__to_sorted_list(Liveset, Livelist),
 		vn__record_livevals(Livelist, VnTables0, VnTables,
 			Livevals0, Livevals, FlushEntry0, FlushEntry,
 			ParEntries),
@@ -526,7 +586,7 @@ vn__record_livevals([Lval | Livelist], VnTables0, VnTables,
 			ParEntries0 = []
 		),
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
-		bintree_set__insert(Livevals0, Vnlval, Livevals1)
+		set__insert(Livevals0, Vnlval, Livevals1)
 	;
 		MaybeVnlval = no,
 		VnTables1 = VnTables0,
@@ -554,7 +614,7 @@ vn__record_livevnlvals([Vnlval | Livevnlvallist], VnTables0, VnTables,
 			VnTables0, VnTables1)
 	),
 	map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
-	bintree_set__insert(Livevals0, Vnlval, Livevals1),
+	set__insert(Livevals0, Vnlval, Livevals1),
 	vn__record_livevnlvals(Livevnlvallist, VnTables1, VnTables,
 		Livevals1, Livevals, FlushEntry1, FlushEntry).
 
@@ -583,10 +643,10 @@ vn__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		Livevals0, Livevals, FlushEntry0, FlushEntry) :-
 	( Vnlval = vn_field(_, _, _) ->
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
-		bintree_set__insert(Livevals0, Vnlval, Livevals1)
+		set__insert(Livevals0, Vnlval, Livevals1)
 	; Vnlval = vn_framevar(_) ->
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
-		bintree_set__insert(Livevals0, Vnlval, Livevals1)
+		set__insert(Livevals0, Vnlval, Livevals1)
 	;
 		FlushEntry1 = FlushEntry0,
 		Livevals1 = Livevals0
@@ -622,23 +682,48 @@ vn__find_cheaper_copies_2([Vnlval | Vnlvals], OldCost, Rvals) :-
 		vn__lval_cost(Lval, LvalCost),
 		LvalCost < OldCost
 	->
-		vn__insert_into_copy_list(Lval, LvalCost, Rvals0, Rvals) 
+		Rvals = [lval(Lval) | Rvals0]
 	;
 		Rvals = Rvals0
 	).
 
-:- pred vn__insert_into_copy_list(lval, int, list(rval), list(rval)).
-:- mode vn__insert_into_copy_list(in, in, di, uo) is det.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-vn__insert_into_copy_list(Lval, _, [], [lval(Lval)]).
-vn__insert_into_copy_list(Lval, LvalCost, [Rval0 | Rvals0], Rvals) :-
-	vn__rval_cost(Rval0, RvalCost),
-	( LvalCost < RvalCost ->
-		Rvals = [lval(Lval) | Rvals0]
+vn__split_at_next_ctrl_instr([], _, _, _) :-
+	error("could not find next ctrl instr").
+vn__split_at_next_ctrl_instr([Instr0 | Instrs0], Before, Instr, After) :-
+	Instr0 = Uinstr0 - _,
+	( vn__is_ctrl_instr(Uinstr0, yes) ->
+		Before = [],
+		Instr = Instr0,
+		After = Instrs0
 	;
-		vn__insert_into_copy_list(Lval, LvalCost, Rvals0, Rvals1),
-		Rvals = [Rval0 | Rvals1]
+		vn__split_at_next_ctrl_instr(Instrs0, Before0, Instr, After),
+		Before = [Instr0 | Before0]
 	).
+
+:- pred vn__is_ctrl_instr(instr, bool).
+:- mode vn__is_ctrl_instr(in, out) is det.
+
+vn__is_ctrl_instr(comment(_), no).
+vn__is_ctrl_instr(livevals(_), yes).
+vn__is_ctrl_instr(block(_, _), no).
+vn__is_ctrl_instr(assign(_, _), no).
+vn__is_ctrl_instr(call(_, _, _, _), yes).
+vn__is_ctrl_instr(call_closure(_, _, _), yes).
+vn__is_ctrl_instr(mkframe(_, _, _), yes).
+vn__is_ctrl_instr(modframe(_), no).
+vn__is_ctrl_instr(label(_), yes).
+vn__is_ctrl_instr(goto(_, _), yes).
+vn__is_ctrl_instr(computed_goto(_, _), yes).
+vn__is_ctrl_instr(c_code(_), no).
+vn__is_ctrl_instr(if_val(_, _), yes).
+vn__is_ctrl_instr(incr_hp(_, _, _), no).
+vn__is_ctrl_instr(mark_hp(_), yes).
+vn__is_ctrl_instr(restore_hp(_), yes).
+vn__is_ctrl_instr(incr_sp(_), yes).
+vn__is_ctrl_instr(decr_sp(_), yes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

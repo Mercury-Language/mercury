@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table.
-:- import_module llds, list, bintree_set, int.
+:- import_module llds, list, set, int.
 
 :- implementation.
 
@@ -53,7 +53,7 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 	vn__no_access_lval_to_vnlval(Lval, MaybeVnlval),
 	(
 		MaybeVnlval = yes(Vnlval),
-		bintree_set__insert(Liveset0, Vnlval, Liveset1)
+		set__insert(Liveset0, Vnlval, Liveset1)
 	;
 		MaybeVnlval = no,
 		Liveset1 = Liveset0
@@ -69,6 +69,9 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 :- pred vn__rval_to_vn(rval, vn, vn_tables, vn_tables).
 :- mode vn__rval_to_vn(in, out, di, uo) is det.
+
+:- pred vn__lval_to_vn(lval, vn, vn_tables, vn_tables).
+:- mode vn__lval_to_vn(in, out, di, uo) is det.
 
 :- pred vn__lval_to_vnlval(lval, vnlval, vn_tables, vn_tables).
 :- mode vn__lval_to_vnlval(in, out, di, uo) is det.
@@ -307,9 +310,6 @@ vn__simplify_vnrval(Vnrval0, Vnrval, Vn_tables0, Vn_tables) :-
 		Vn_tables = Vn_tables0
 	).
 
-:- pred vn__lval_to_vn(lval, vn, vn_tables, vn_tables).
-:- mode vn__lval_to_vn(in, out, di, uo) is det.
-
 vn__lval_to_vn(Lval, Vn, Vn_tables0, Vn_tables) :-
 	vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables1),
 	( vn__search_desired_value(Vnlval, Vn_prime, Vn_tables1) ->
@@ -483,7 +483,7 @@ vn__find_lvals_in_rvals([Rval | Rvals], Lvals) :-
 
 vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables) :-
 	vn__build_uses_from_ctrl(0, Ctrlmap, Vn_tables0, Vn_tables1),
-	bintree_set__to_sorted_list(Livevals, Livelist),
+	set__to_sorted_list(Livevals, Livelist),
 	vn__build_uses_from_livevals(Livelist, Vn_tables1, Vn_tables).
 
 :- pred vn__build_uses_from_ctrl(int, ctrlmap, vn_tables, vn_tables).

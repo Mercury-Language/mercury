@@ -65,8 +65,12 @@ optimize__proc_list([P0|Ps0], [P|Ps]) -->
 
 optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
 		   c_procedure(Name, Arity, Mode, Instructions)) -->
-	optimize__repeat(0, Instructions0, Instructions1),
-	optimize__nonrepeat(Instructions1, Instructions),
+	globals__io_lookup_int_option(optimize_repeat, AllRepeat),
+	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
+	{ NovnRepeat is AllRepeat - VnRepeat },
+	optimize__repeat(NovnRepeat, no,  Instructions0, Instructions1),
+	optimize__repeat(VnRepeat, yes, Instructions1, Instructions2),
+	optimize__nonrepeat(Instructions2, Instructions),
 #if NU_PROLOG
 	{ putprop(opt, opt, Instructions) },
 	{ fail }.
@@ -81,32 +85,44 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize__repeat(int, list(instruction), list(instruction),
+:- pred optimize__repeat(int, bool, list(instruction), list(instruction),
 	io__state, io__state).
-:- mode optimize__repeat(in, in, out, di, uo) is det.
+:- mode optimize__repeat(in, in, in, out, di, uo) is det.
 
-optimize__repeat(Iter, Instructions0, Instructions) -->
-	optimize__repeated(Instructions0, Instructions1, Mod),
-	globals__io_lookup_int_option(optimize_repeat, Repeat),
+optimize__repeat(Iter, DoVn, Instructions0, Instructions) -->
+	optimize__repeated(Instructions0, DoVn, Instructions1, Mod),
+	{ Iter1 is Iter - 1 },
 	(
-		{ Iter < Repeat },
+		{ Iter1 > 0 },
 		{ Mod = yes }
 	->
-		{ Iter1 is Iter + 1 },
-		optimize__repeat(Iter1, Instructions1, Instructions)
+		optimize__repeat(Iter1, DoVn, Instructions1, Instructions)
 	;
 		{ Instructions = Instructions1 }
 	).
 
-:- pred optimize__repeated(list(instruction), list(instruction), bool,
+:- pred optimize__repeated(list(instruction), bool, list(instruction), bool,
 	io__state, io__state).
-:- mode optimize__repeated(in, out, out, di, uo) is det.
+:- mode optimize__repeated(in, in, out, out, di, uo) is det.
 
-optimize__repeated(Instructions0, Instructions, Mod) -->
+optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	{ opt_util__find_first_label(Instructions0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 
+	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
+	( { ValueNumber = yes, DoVn = yes } ->
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing value number for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
+		;
+			[]
+		),
+		value_number__main(Instructions0, Instructions1)
+	;
+		{ Instructions1 = Instructions0 }
+	),
 	globals__io_lookup_bool_option(optimize_jumps, Jumpopt),
 	( { Jumpopt = yes } ->
 		( { VeryVerbose = yes } ->
@@ -116,9 +132,9 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt__main(Instructions0, Instructions1, Mod1) }
+		{ jumpopt__main(Instructions1, Instructions2, Mod1) }
 	;
-		{ Instructions1 = Instructions0 },
+		{ Instructions2 = Instructions1 },
 		{ Mod1 = no }
 	),
 	globals__io_lookup_bool_option(optimize_peep, Local),
@@ -130,9 +146,9 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ peephole__main(Instructions1, Instructions2, Mod2) }
+		{ peephole__main(Instructions2, Instructions3, Mod2) }
 	;
-		{ Instructions2 = Instructions1 },
+		{ Instructions3 = Instructions2 },
 		{ Mod2 = no }
 	),
 	globals__io_lookup_bool_option(optimize_labels, LabelElim),
@@ -144,12 +160,12 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instructions2, Instructions, Mod3) }
+		{ labelopt__main(Instructions3, Instructions, Mod3) }
 	;
-		{ Instructions = Instructions2 },
+		{ Instructions = Instructions3 },
 		{ Mod3 = no }
 	),
-	{ Mod1 = no, Mod2 = no, Mod3 = no ->
+	{ Mod1 = no, Mod2 = no, Mod3 = no, Instructions = Instructions0 ->
 		Mod = no
 	;
 		Mod = yes
@@ -159,7 +175,7 @@ optimize__repeated(Instructions0, Instructions, Mod) -->
 #if NU_PROLOG
 	{ putprop(opt, opt, Instructions - Mod) },
 	{ fail }.
-optimize__repeated(Instructions0, Instructions, Mod) -->
+optimize__repeated(Instructions0, _, Instructions, Mod) -->
 	{ getprop(opt, opt, Instructions - Mod, Ref) },
 	{ erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -176,19 +192,6 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 	{ opt_util__find_first_label(Instructions0, Label) },
 	{ opt_util__format_label(Label, LabelStr) },
 
-	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
-	( { ValueNumber = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing value number for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		value_number__main(Instructions0, Instructions1)
-	;
-		{ Instructions1 = Instructions0 }
-	),
 	globals__io_lookup_bool_option(optimize_frames, FrameOpt),
 	( { FrameOpt = yes } ->
 		( { VeryVerbose = yes } ->
@@ -198,11 +201,12 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instructions1, Instructions2, Mod1) }
+		{ frameopt__main(Instructions0, Instructions1, Mod1) }
 	;
-		{ Instructions2 = Instructions1 },
+		{ Instructions1 = Instructions0 },
 		{ Mod1 = no }
 	),
+	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
 	( { ValueNumber = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing post value number for "),
@@ -211,44 +215,8 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 		;
 			[]
 		),
-		{ value_number__post_main(Instructions2, Instructions3) }
+		{ value_number__post_main(Instructions1, Instructions2) }
 	;
-		{ Instructions3 = Instructions2 }
+		{ Instructions2 = Instructions1 }
 	),
-	{ bool__or(Mod1, ValueNumber, Mod2) },
-	( { Mod2 = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing jumps for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ peephole__main(Instructions3, Instructions4, _) }
-	;
-		{ Instructions4 = Instructions3 }
-	),
-	( { Mod2 = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing locally for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ peephole__main(Instructions4, Instructions5, _) }
-	;
-		{ Instructions5 = Instructions4 }
-	),
-	( { Mod2 = yes } ->
-		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing labels for "),
-			io__write_string(LabelStr),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ labelopt__main(Instructions5, Instructions, _) }
-	;
-		{ Instructions = Instructions5 }
-	).
+	optimize__repeated(Instructions2, no, Instructions, _).
