@@ -1,3 +1,6 @@
+echo on
+context none
+register --quiet
 b big_data
 b print_goal
 c
