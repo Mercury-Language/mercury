@@ -861,6 +861,7 @@ opt_debug__dump_layout_name(module_layout(ModuleName), Str) :-
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
 opt_debug__dump_unop(unmktag, "unmktag").
+opt_debug__dump_unop(strip_tag, "strip_tag").
 opt_debug__dump_unop(mkbody, "mkbody").
 opt_debug__dump_unop(unmkbody, "unmkbody").
 opt_debug__dump_unop(not, "not").

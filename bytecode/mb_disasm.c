@@ -920,7 +920,7 @@ unop_table[] = {
 	"unmktag",
 	"mkbody",
 	"unmkbody",
-	"cast_to_unsigned",
+	"strip_tag",
 	"hash_string",
 	"bitwise_complement",
 	"not"

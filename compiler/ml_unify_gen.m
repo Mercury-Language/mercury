@@ -1041,7 +1041,7 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		{ MLDS_Statements = [AssignStatement] }
 	;
 		{ HowToConstruct = reuse_cell(CellToReuse) },
-		{ CellToReuse = cell_to_reuse(ReuseVar, ReuseConsId, _) },
+		{ CellToReuse = cell_to_reuse(ReuseVar, ReuseConsIds, _) },
 
 		{ MaybeConsId = yes(ConsId0) ->
 			ConsId = ConsId0
@@ -1049,10 +1049,17 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 			error("ml_gen_new_object: unknown cons id")
 		},
 
-		ml_variable_type(ReuseVar, ReuseType),
-		ml_cons_id_to_tag(ReuseConsId, ReuseType, ReuseConsIdTag),
-		{ ml_tag_offset_and_argnum(ReuseConsIdTag,
-				ReusePrimaryTag, _ReuseOffSet, _ReuseArgNum) },
+		list__map_foldl(
+			(pred(ReuseConsId::in, ReusePrimTag::out,
+					in, out) is det -->
+				ml_variable_type(ReuseVar, ReuseType),
+				ml_cons_id_to_tag(ReuseConsId, ReuseType,
+						ReuseConsIdTag),
+				{ ml_tag_offset_and_argnum(ReuseConsIdTag,
+						ReusePrimTag,
+						_ReuseOffSet, _ReuseArgNum) }
+			), ReuseConsIds, ReusePrimaryTags0),
+		{ list__remove_dups(ReusePrimaryTags0, ReusePrimaryTags) },
 
 		ml_cons_id_to_tag(ConsId, Type, ConsIdTag),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
@@ -1061,12 +1068,23 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 
 		ml_gen_var(Var, Var1Lval),
 		ml_gen_var(ReuseVar, Var2Lval),
-		{ ReusePrimaryTag = PrimaryTag ->
+
+		{ list__filter((pred(ReuseTag::in) is semidet :-
+				ReuseTag \= PrimaryTag
+			), ReusePrimaryTags, DifferentTags) },
+		{ DifferentTags = [] ->
 			Var2Rval = lval(Var2Lval)
-		;
+		; DifferentTags = [ReusePrimaryTag] ->
+				% The body operator is slightly more
+				% efficient than the strip_tag operator so
+				% we use it when the old tag is known.
 			Var2Rval = mkword(PrimaryTag,
 					binop(body, lval(Var2Lval),
 					ml_gen_mktag(ReusePrimaryTag)))
+		;
+			Var2Rval = mkword(PrimaryTag,
+					unop(std_unop(strip_tag),
+					lval(Var2Lval)))
 		},
 
 		{ MLDS_Statement = ml_gen_assign(Var1Lval, Var2Rval, Context) },

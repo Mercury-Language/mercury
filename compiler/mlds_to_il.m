@@ -1299,6 +1299,7 @@ unaryop_to_il(std_unop(mktag), _, comment_node("mktag (a no-op)")) --> [].
 unaryop_to_il(std_unop(tag), _, Instrs) --> 
 	load(const(int_const(0)), Instrs).
 unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)")) --> [].
+unaryop_to_il(std_unop(strip_tag),_,comment_node("strip_tag (a no-op)")) --> [].
 unaryop_to_il(std_unop(mkbody),	_, comment_node("mkbody (a no-op)")) --> [].
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)")) --> [].
 

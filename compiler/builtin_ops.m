@@ -24,6 +24,7 @@
 	--->	mktag
 	;	tag
 	;	unmktag
+	;	strip_tag
 	;	mkbody
 	;	unmkbody
 	;	hash_string

@@ -1157,6 +1157,7 @@ llds__const_type(label_entry(_), code_ptr).
 llds__unop_return_type(mktag, word).
 llds__unop_return_type(tag, word).
 llds__unop_return_type(unmktag, word).
+llds__unop_return_type(strip_tag, word).
 llds__unop_return_type(mkbody, word).
 llds__unop_return_type(unmkbody, word).
 llds__unop_return_type(hash_string, integer).
@@ -1166,6 +1167,7 @@ llds__unop_return_type(not, bool).
 llds__unop_arg_type(mktag, word).
 llds__unop_arg_type(tag, word).
 llds__unop_arg_type(unmktag, word).
+llds__unop_arg_type(strip_tag, word).
 llds__unop_arg_type(mkbody, word).
 llds__unop_arg_type(unmkbody, word).
 llds__unop_arg_type(hash_string, word).

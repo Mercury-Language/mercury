@@ -1126,8 +1126,7 @@ unop_code(tag,			 1).
 unop_code(unmktag,		 2).
 unop_code(mkbody,		 3).
 unop_code(unmkbody,		 4).
-% We used to use value `5' for cast_to_unsigned.
-% This is now no longer used.
+unop_code(strip_tag,		 5).
 unop_code(hash_string,		 6).
 unop_code(bitwise_complement,	 7).
 unop_code((not),		 8).
@@ -1140,6 +1139,7 @@ unop_debug(tag,			"tag").
 unop_debug(unmktag,		"unmktag").
 unop_debug(mkbody,		"mkbody").
 unop_debug(unmkbody,		"unmkbody").
+unop_debug(strip_tag,		"strip_tag").
 unop_debug(hash_string,		"has_string").
 unop_debug(bitwise_complement,	"bitwise_complement").
 unop_debug((not),		"not").

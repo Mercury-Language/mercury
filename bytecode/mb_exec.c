@@ -1300,7 +1300,7 @@ static MB_Word (*unop_table[])(MB_Machine_State *ms,
 	unop_bad, 		/* unmktag */
 	unop_bad, 		/* mkbody */
 	unop_bad, 		/* unmkbody */
-	unop_bad,		/* cast_to_unsigned */
+	unop_bad,		/* strip_tag  */
 	unop_bad,		/* hash_string */
 	unop_bitwise_complement,
 	unop_not
