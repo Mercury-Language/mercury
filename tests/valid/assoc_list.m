@@ -1,8 +1,6 @@
 :- module assoc_list.
 :- interface.
-:- import_module list.
-
-:- type pair(T1, T2).
+:- import_module list, std_util.
 
 :- pred assoc_list_member(pair(K,V), list(pair(K,V))).
 :- mode assoc_list_member(bound(free - ground) -> ground, in) is semidet.
