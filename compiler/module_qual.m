@@ -84,25 +84,7 @@ module_qual__qualify_mode_list(Modes0, Modes, Context, Info0, Info) -->
 
 module_qual__qualify_type(Type0, Type, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, type_qual - Context, Info1) },
-	qualify_type(Type0, Type, Info1, Info2),
-	%
-	% The types `int', `float', and `string' are builtin types,
-	% defined by the compiler, but arguably they ought to be
-	% defined in int.m, float.m, and string.m, and so if someone
-	% uses the type `int' in the interface, then we don't want
-	% to warn about `import_module int' in the interface.
-	%
-	{
-		Type = term__functor(term__atom(Typename), [], _),
-		( Typename = "int"
-		; Typename = "string"
-		; Typename = "float"
-		)
-	->
-		mq_info_set_module_used(Info2, Typename, Info)
-	;
-		Info = Info2
-	}.
+	qualify_type(Type0, Type, Info1, Info).
 
 :- type mq_info
 	--->	mq_info(
@@ -529,7 +511,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 	{ Type0 = term__functor(F, As, _) },
 	( { is_builtin_func_type(F, As, ArgTypes0, RetType0) } ->
 		qualify_type_list(ArgTypes0, ArgTypes, Info0, Info1),
-		qualify_type(RetType0, RetType, Info1, Info),
+		qualify_type(RetType0, RetType, Info1, Info2),
 		{ term__context_init(Context) },
 		{ Type = term__functor(term__atom("="),
 				[term__functor(term__atom("func"),
@@ -546,15 +528,33 @@ qualify_type(Type0, Type, Info0, Info) -->
 			find_unique_match(TypeId0, TypeId, Types,
 						type_id, Info0, Info1)
 		),
-		qualify_type_list(Args0, Args, Info1, Info),
+		qualify_type_list(Args0, Args, Info1, Info2),
 		{ TypeId = SymName - _ },
 		{ construct_qualified_term(SymName, Args, Type) }	
 	;
 		{ mq_info_get_error_context(Info0, ErrorContext) },
 		report_invalid_type(Type0, ErrorContext),
 		{ Type = Type0 },
-		{ Info = Info0 }
-	).
+		{ Info2 = Info0 }
+	),
+	%
+	% The types `int', `float', and `string' are builtin types,
+	% defined by the compiler, but arguably they ought to be
+	% defined in int.m, float.m, and string.m, and so if someone
+	% uses the type `int' in the interface, then we don't want
+	% to warn about `import_module int' in the interface.
+	%
+	{
+		Type = term__functor(term__atom(Typename), [], _),
+		( Typename = "int"
+		; Typename = "string"
+		; Typename = "float"
+		)
+	->
+		mq_info_set_module_used(Info2, Typename, Info)
+	;
+		Info = Info2
+	}.
 
 	% Qualify the modes in a pragma(c_code, ...) decl.
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
