@@ -49,7 +49,8 @@
 
 :- interface.
 
-:- import_module hlds_module, make_hlds, bool, io.
+:- import_module hlds_module, make_hlds.
+:- import_module bool, io.
 
 :- pred check_typeclass__check_instance_decls(module_info, qual_info,
 	module_info, bool, io__state, io__state).
@@ -57,11 +58,16 @@
 
 :- implementation.
 
-:- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
-:- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module typecheck, int, globals, options, make_hlds, error_util. 
-:- import_module base_typeclass_info, string, hlds_goal, set, prog_out.
-:- import_module mercury_to_mercury, varset, term.
+:- import_module prog_data, prog_out.
+:- import_module hlds_pred, hlds_data, hlds_goal, hlds_out.
+:- import_module type_util, typecheck, mode_util, inst_match.
+:- import_module base_typeclass_info.
+:- import_module mercury_to_mercury, error_util.
+:- import_module globals, options. 
+
+:- import_module int, string.
+:- import_module list, assoc_list, map, set, term, varset.
+:- import_module std_util, require. 
 
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
@@ -190,66 +196,31 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 				MaybePredProcs1, G, H),
 		(
 			MaybePredProcs1 = yes(_),
-			MaybePredProcs2 = MaybePredProcs1
+			MaybePredProcs = MaybePredProcs1
 		;
 			MaybePredProcs1 = no,
-			MaybePredProcs2 = yes([])
+			MaybePredProcs = yes([])
 		),
 
 		%
 		% Make sure the list of instance methods is in the same
 		% order as the methods in the class definition. intermod.m
-		% relies on this. If there were errors, don't change the
-		% list of methods.
-		%
-		(
-			list__length(RevInstanceMethods,
-				list__length(InstanceMethods))
-		->	
-			OrderedInstanceMethods =
-				list__reverse(RevInstanceMethods)
-		;
-			OrderedInstanceMethods = InstanceMethods
-		),
-			
+		% relies on this
+		OrderedInstanceMethods = list__reverse(RevInstanceMethods),
+
 		InstanceDefn2 = hlds_instance_defn(A, B, C, D,
 				concrete(OrderedInstanceMethods),
-				MaybePredProcs2, G, H),
+				MaybePredProcs, G, H),
+
 		%
 		% Check if there are any instance methods left over,
-		% for which we did not produce a pred_id/proc_id;
-		% if there are any, the instance declaration must have
-		% specified some methods that don't occur in the class.
+		% which did not match any of the methods from the
+		% class interface.
 		%
-		InstanceDefn2 = hlds_instance_defn(_, Context, _, _,
-				_, MaybePredProcs, _, _),
-		(
-			MaybePredProcs = yes(PredProcs),
-
-				% Check that we wind with a procedure for each
-				% proc in the type class interface.
-			list__same_length(PredProcs, ClassInterface),
-
-				% Check that we wind with a pred for each
-				% pred in the instance class interface.
-			list__map((pred(PP::in, P::out) is det :-
-				PP = hlds_class_proc(P, _)), PredProcs, Preds0),
-			list__remove_dups(Preds0, Preds),
-			list__same_length(Preds, InstanceMethods)
-		->
-			Errors2 = Errors1
-		;
-			ClassId = class_id(ClassName, ClassArity),
-			prog_out__sym_name_to_string(ClassName,
-				ClassNameString),
-			string__int_to_string(ClassArity, ClassArityString),
-			string__append_list([
-				"In instance declaration for `",
-				ClassNameString, "/", ClassArityString, "': ",
-				"incorrect method name(s)."],
-				NewError),
-			Errors2 = [Context - [words(NewError)] | Errors1]
-		)
+		InstanceDefn2 = hlds_instance_defn(_, Context,
+			_, _, _, _, _, _),
+		check_for_bogus_methods(InstanceMethods, ClassId, PredIds,
+			Context, ModuleInfo1, Errors1, Errors2)
 	),
 
 		% check that the superclass constraints are satisfied for the
@@ -257,6 +228,74 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 	check_superclass_conformance(ClassId, SuperClasses, Vars, ClassVarSet,
 		InstanceDefn2, InstanceDefn,
 		Errors2 - ModuleInfo1, Errors - ModuleInfo).
+
+		%
+		% Check if there are any instance methods left over,
+		% which did not match any of the methods from the
+		% class interface.  If so, add an appropriate error
+		% message to the list of error messages.
+		%
+:- pred check_for_bogus_methods(list(instance_method), class_id, list(pred_id),
+		prog_context, module_info, error_messages, error_messages).
+:- mode check_for_bogus_methods(in, in, in, in, in, in, out) is det.
+
+check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
+		ModuleInfo1, Errors0, Errors) :-
+	module_info_get_predicate_table(ModuleInfo1, PredTable),
+	DefnIsOK = (pred(Method::in) is semidet :-
+		% Find this method definition's p/f, name, arity
+		Method = instance_method(MethodPredOrFunc,
+			MethodName, _MethodDefn,
+			MethodArity, _Context),
+		% Search for pred_ids matching that p/f, name, arity,
+		% and succeed if the method definition p/f, name, and
+		% arity matches at least one of the methods from the
+		% class interface
+		adjust_func_arity(MethodPredOrFunc, MethodArity,
+			MethodPredArity),
+		predicate_table_search_pf_sym_arity(PredTable,
+			MethodPredOrFunc, MethodName, MethodPredArity,
+			MatchingPredIds),
+		some [PredId] (
+			list__member(PredId, MatchingPredIds),
+			list__member(PredId, ClassPredIds)
+		)
+	),
+	list__filter(DefnIsOK, InstanceMethods, _OKInstanceMethods,
+		BogusInstanceMethods),
+	(
+		BogusInstanceMethods = []
+	->
+		Errors = Errors0
+	;
+		%
+		% There were one or more bogus methods.
+		% Construct an appropriate error message.
+		%
+		ClassId = class_id(ClassName, ClassArity),
+		prog_out__sym_name_to_string(ClassName,
+			ClassNameString),
+		string__int_to_string(ClassArity, ClassArityString),
+		string__append_list([
+			"In instance declaration for `",
+			ClassNameString, "/", ClassArityString, "': ",
+			"incorrect method name(s): "],
+			ErrorMsgStart),
+		BogusInstanceMethodNames = list__map(format_method_name,
+			BogusInstanceMethods),
+		error_util__list_to_pieces(BogusInstanceMethodNames,
+			ErrorMsgBody0),
+		ErrorMsgBody = list__append(ErrorMsgBody0, [words(".")]),
+		NewError = Context - [words(ErrorMsgStart) | ErrorMsgBody],
+		Errors = [NewError | Errors0]
+	).
+
+:- func format_method_name(instance_method) = string.
+format_method_name(Method) = StringName :-
+	Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
+	adjust_func_arity(PredOrFunc, Arity, PredArity),
+	hlds_out__simple_call_id_to_string(
+		PredOrFunc - Name/PredArity, StringName).
 
 %----------------------------------------------------------------------------%
 
@@ -280,6 +319,10 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 							% introduced pred
 							% should be given.
 		arity,					% Arity of the method.
+							% (For funcs, this is
+							% the original arity,
+							% not the arity as a
+							% predicate.)
 		existq_tvars,				% Existentially quant.
 							% type variables
 		list(type),				% Expected types of
@@ -344,6 +387,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	MethodName = qualified(PredModule, MethodName0),
 	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	pred_info_procedures(PredInfo, ProcTable),
 	list__map(
 		lambda([TheProcId::in, ModesAndDetism::out] is det, 
@@ -362,11 +406,11 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
 		% Work out the name of the predicate that we will generate
 		% to check this instance method.
-	make_introduced_pred_name(ClassId, MethodName, PredArity, 
+	make_introduced_pred_name(ClassId, MethodName, Arity, 
 		InstanceTypes, PredName),
 	
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-		PredArity, ExistQVars, ArgTypes, ClassContext, ArgModes,
+		Arity, ExistQVars, ArgTypes, ClassContext, ArgModes,
 		Errors0, ArgTypeVars, Status, PredOrFunc),
 
 	check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
@@ -374,7 +418,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		Info0, Info, IO0, IO),
 
 	Info = instance_method_info(ModuleInfo, QualInfo, _PredName,
-		_PredArity, _ExistQVars, _ArgTypes, _ClassContext, _ArgModes,
+		_Arity, _ExistQVars, _ArgTypes, _ClassContext, _ArgModes,
 		Errors, _ArgTypeVars, _Status, _PredOrFunc),
 
 	InstanceCheckInfo = instance_check_info(InstanceDefn,
@@ -395,11 +439,11 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
 				InstanceVarSet, H),
-	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, PredArity,
+	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
-	get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
-		PredArity, MatchingInstanceMethods),
+	get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName,
+		Arity, MatchingInstanceMethods),
 	(
 		MatchingInstanceMethods = [InstanceMethod]
 	->
@@ -435,22 +479,16 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 	;
 		MatchingInstanceMethods = [I1, I2 | Is]
 	->
-			% one kind of error
+		%
+		% duplicate method definition error
+		%
 		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
 		prog_out__sym_name_to_string(ClassName, ClassNameString),
-		(
-			PredOrFunc = predicate,
-			PredOrFuncString = "predicate",
-			RealPredArity = PredArity
-		;
-			PredOrFunc = function,
-			PredOrFuncString = "function",
-			RealPredArity = PredArity - 1
-		),
-		string__int_to_string(RealPredArity, PredArityString),
+		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
+		string__int_to_string(Arity, ArityString),
 		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
 			InstanceTypesString),
 		string__append_list([
@@ -458,7 +496,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			ClassNameString, "(", InstanceTypesString, ")': ",
 			"multiple implementations of type class ",
 			PredOrFuncString, " method `",
-			MethodNameString, "/", PredArityString, "'."],
+			MethodNameString, "/", ArityString, "'."],
 			ErrorHeader),
 		I1 = instance_method(_, _, _, _, I1Context), 
 		Heading = 
@@ -475,26 +513,20 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		list__append(SubsequentErrors, Heading, NewErrors),
 		list__append(NewErrors, Errors0, Errors),
 		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
-			PredArity, ExistQVars, ArgTypes, ClassContext,
+			Arity, ExistQVars, ArgTypes, ClassContext,
 			ArgModes, Errors, ArgTypeVars, Status, PredOrFunc),
 		IO = IO0
 	;
-			% another kind of error
+		%
+		% undefined method error
+		%
 		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
 		prog_out__sym_name_to_string(ClassName, ClassNameString),
-		(
-			PredOrFunc = predicate,
-			PredOrFuncString = "predicate",
-			RealPredArity = PredArity
-		;
-			PredOrFunc = function,
-			PredOrFuncString = "function",
-			RealPredArity = PredArity - 1
-		),
-		string__int_to_string(RealPredArity, PredArityString),
+		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
+		string__int_to_string(Arity, ArityString),
 		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
 			InstanceTypesString),
 		string__append_list([
@@ -502,35 +534,74 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			ClassNameString, "(", InstanceTypesString, ")': ",
 			"no implementation for type class ",
 			PredOrFuncString, " method `",
-			MethodNameString, "/", PredArityString, "'."],
+			MethodNameString, "/", ArityString, "'."],
 			NewError),
 		Errors = [InstanceContext - [words(NewError)] | Errors0],
 		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
-			PredArity, ExistQVars, ArgTypes, ClassContext,
+			Arity, ExistQVars, ArgTypes, ClassContext,
 			ArgModes, Errors,
 			ArgTypeVars, Status, PredOrFunc),
 		IO = IO0
 	).
 
-:- pred get_matching_instance_names(instance_body, pred_or_func,
+	%
+	% Get all the instance definitions which match the specified
+	% predicate/function name/arity, with multiple clause definitions
+	% being combined into a single definition.
+	%
+:- pred get_matching_instance_defns(instance_body, pred_or_func,
 	sym_name, arity, list(instance_method)).
-:- mode get_matching_instance_names(in, in, in, in, out) is det.
+:- mode get_matching_instance_defns(in, in, in, in, out) is det.
 
-get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
-		MethodArity0, MatchingInstanceMethods) :-
-	adjust_func_arity(PredOrFunc, MethodArity, MethodArity0),
-	solutions(
-		(pred(Method::out) is nondet :-
-			InstanceBody = concrete(InstanceMethods),
-			list__member(Method, InstanceMethods),
+get_matching_instance_defns(abstract, _, _, _, []).
+get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
+		MethodArity, ResultList) :-
+	%
+	% First find the instance method definitions that match this
+	% predicate/function's name and arity
+	%
+	list__filter(
+		(pred(Method::in) is semidet :-
 			Method = instance_method(PredOrFunc,
-				MethodName, _InstanceMethodDefn,
+				MethodName, _MethodDefn,
 				MethodArity, _Context)
-	    ),
-	    MatchingInstanceMethods).
+		),
+		InstanceMethods, MatchingMethods),
+	(
+		MatchingMethods = [First, _Second | _],
+		First = instance_method(_, _, _, _, FirstContext),
+		\+ (
+			list__member(DefnViaName, MatchingMethods),
+			DefnViaName = instance_method(_, _, name(_), _, _)
+		)
+	->
+		%
+		% If all of the instance method definitions for this
+		% pred/func are clauses, and there are more than one
+		% of them, then we must combine them all into a
+		% single definition.
+		%
+		MethodToClause = (pred(Method::in, Clauses::out) is semidet :-
+			Method = instance_method(_, _, Defn, _, _),
+			Defn = clauses(Clauses)),
+		list__filter_map(MethodToClause, MatchingMethods, ClausesList),
+		list__condense(ClausesList, FlattenedClauses),
+		CombinedMethod = instance_method(PredOrFunc,
+			MethodName, clauses(FlattenedClauses),
+			MethodArity, FirstContext),
+		ResultList = [CombinedMethod]
+	;
+		%
+		% If there are less than two matching method definitions,
+		% or if any of the instance method definitions is a method
+		% name, then we're done.
+		%
+		ResultList = MatchingMethods
+	).
 	
-	% Just a bit simpler than using a pair of pairs
-:- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
+:- pred pred_or_func_to_string(pred_or_func::in, string::out) is det.
+pred_or_func_to_string(predicate, "predicate").
+pred_or_func_to_string(function, "function").
 
 :- pred produce_auxiliary_procs(list(tvar), pred_markers, list(type),
 	list(class_constraint), tvarset, instance_proc_def, prog_context,
@@ -545,7 +616,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 		InstanceProcIds, Info0, Info, IO0, IO) :-
 
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-		PredArity, ExistQVars0, ArgTypes0, ClassContext0, ArgModes,
+		Arity, ExistQVars0, ArgTypes0, ClassContext0, ArgModes,
 		Errors, ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
@@ -590,6 +661,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
+	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
 		PredArity, ArgTypes, Markers, Context, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
@@ -629,7 +701,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 		ModuleInfo),
 
-	Info = instance_method_info(ModuleInfo, QualInfo, PredName, PredArity,
+	Info = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 		ArgTypeVars, Status, PredOrFunc).
 
@@ -651,14 +723,14 @@ apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
 	sym_name).
 :- mode make_introduced_pred_name(in, in, in, in, out) is det.
 
-make_introduced_pred_name(ClassId, MethodName, PredArity, 
+make_introduced_pred_name(ClassId, MethodName, Arity, 
 		InstanceTypes, PredName) :-
 	ClassId = class_id(ClassName, _ClassArity),
 	prog_out__sym_name_to_string(ClassName, "__", ClassNameString),
 	prog_out__sym_name_to_string(MethodName, "__", MethodNameString),
-		% Perhaps we should include the pred arity in this mangled
+		% Perhaps we should include the arity in this mangled
 		% string?
-	string__int_to_string(PredArity, PredArityString),
+	string__int_to_string(Arity, ArityString),
 	base_typeclass_info__make_instance_string(InstanceTypes, 
 		InstanceString),
 	string__append_list(
@@ -666,7 +738,7 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 		ClassNameString, "__",
 		InstanceString, "____",
 		MethodNameString, "_",
-		PredArityString], 
+		ArityString], 
 		PredNameString),
 	PredName = unqualified(PredNameString).
 

@@ -48,7 +48,11 @@ Changes to the Mercury language:
 
   The old syntax is still accepted but is deprecated.  Support for it may
   eventually be dropped.
- 
+
+* Type class methods can now be defined by listing the clauses
+  directly in the instance declaration.  You no longer need to define a
+  separate predicate or function for each type class method definition.
+
 Changes to the standard library:
 
 * We've added a pretty printing module, `pprint', to the standard library.

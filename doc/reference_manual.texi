@@ -3587,11 +3587,17 @@ define ordinary predicates or functions (@pxref{Items}), and so they
 can be facts, rules, or DCG rules.  The only difference is that in instance
 declarations, clauses are separated by commas rather than being terminated
 by periods, and so rules and DCG rules in instance declarations must
-normally be enclosed in parentheses.
+normally be enclosed in parentheses.  As with ordinary predicates,
+you can have more than one clause for each method.  The clauses must
+satisfy the declared type, modes, determinism and purity for the
+method, after the types of the arguments in the instance declaration
+have been substituted in place of the parameters in the type class
+declaration.
 
-Currently, each method must be defined by a single clause;
-we do not permit using more than than one clause per method.
-(We hope to lift this restriction at some point in the future.)
+These two ways are mutually exclusive: each method must be defined
+either by a single naming definition (using the @samp{pred(@dots{}) is
+@var{predname}} or @samp{func(@dots{}) is @var{funcname}} form),
+or by a set of one or more clauses, but not both.
 
 Here's an example of an instance declaration and the different kinds
 of method definitions that it can contain:
@@ -3602,6 +3608,7 @@ of method definitions that it can contain:
 	func method2(T) = int,
 	pred method3(T::in, int::out) is det
 	pred method4(T::in, io__state::di, io__state::uo) is det
+	func method5(bool, T) = T
 ].
 
 :- instance foo(int) where [
@@ -3615,7 +3622,11 @@ of method definitions that it can contain:
 	(method3(X, Y) :- Y = X + 2),
 
 	% method defined by a DCG rule
-	(method4(X) --> io__print(X), io__nl)
+	(method4(X) --> io__print(X), io__nl),
+
+	% method defined by multiple clauses
+	method5(no, _) = 0,
+	(method5(yes, X) = Y :- X + Y = 0)
 ].
 @end example
 	
