@@ -11,12 +11,12 @@ unsupported_dtd_type(pred(int))
 		<String type="string">a string</String>
 	</Tag_String--1--write_xml-46mytype>
 	<hello--5--write_xml-46mytype functor="hello" type="write_xml.mytype" arity="5">
-		<String type="string">this 
+		<String type="string" field="field1">this 
 
 is a &lt;string&gt;&amp;</String>
-		<Int type="int">-123</Int>
+		<Int type="int" field="Field&lt;2&gt;">-123</Int>
 		<Char type="character">&lt;</Char>
-		<Float type="float">1.12300000000000</Float>
+		<Float type="float" field="another field">1.12300000000000</Float>
 		<yes--0--bool-46bool functor="yes" type="bool.bool" arity="0" />
 	</hello--5--write_xml-46mytype>
 	<a_tuple--1--write_xml-46mytype functor="a_tuple" type="write_xml.mytype" arity="1">
@@ -389,12 +389,12 @@ ok
 		</Tag_String>
 		<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
 			<hello functor="hello" type="write_xml.mytype" arity="5">
-				<String type="string">this 
+				<String type="string" field="field1">this 
 
 is a &lt;string&gt;&amp;</String>
-				<Int type="int">-123</Int>
+				<Int type="int" field="Field&lt;2&gt;">-123</Int>
 				<Char type="character">&lt;</Char>
-				<Float type="float">1.12300000000000</Float>
+				<Float type="float" field="another field">1.12300000000000</Float>
 				<yes functor="yes" type="bool.bool" arity="0" />
 			</hello>
 			<List functor="[|]" type="list.list(write_xml.mytype)" arity="2">
@@ -548,7 +548,10 @@ multiple_functors_for_root
 
 <?xml version="1.0"?>
 <ext--1--write_xml-46ext functor="ext" type="write_xml.ext" arity="1">
-	<Int type="int">1</Int>
+	<Int type="int" field="ext_field_1">1</Int>
 </ext--1--write_xml-46ext>
 Result 9:
 ok
+
+Result 10:
+type_not_ground(tvar513)

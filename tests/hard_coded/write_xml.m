@@ -61,7 +61,7 @@ p(_, _, _, 1).
 
 p1(_, _, "X", []).
 
-:- type ext ---> some [T] ext(T).
+:- type ext ---> some [T] ext(ext_field_1::T).
 
 main(!IO) :-
 	some [!M] (
@@ -166,4 +166,10 @@ main(!IO) :-
 		Result9, !IO),
 	write_string("Result 9:\n", !IO),
 	write(Result9, !IO),
+	nl(!IO),
+	nl(!IO),
+	write_xml_doc('new ext'(1), unique, no_stylesheet, embed, 
+		Result10, !IO),
+	write_string("Result 10:\n", !IO),
+	write(Result10, !IO),
 	nl(!IO).

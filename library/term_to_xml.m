@@ -27,8 +27,7 @@
 % type - the type name of the Mercury type the element represents.
 %
 % field - the field name of a discriminated union functor argument if it has
-% 	one.  XXX Currently field attribute values are not set because of a bug
-% 	in the runtime system.
+% 	one.  
 %
 % The names of the above attributes can also be customized.
 %
@@ -101,7 +100,9 @@
 	% top-level functor since only one root element can be specified by a
 	% DTD.  A DTD also cannot be generated for a type where the mapping
 	% from functors of the type to elements is not unique (since then the
-	% DTD rules for legal children cannot be expressed properly)
+	% DTD rules for legal children cannot be expressed properly).  We also
+	% do not support generation of DTDs for functors with existentially
+	% typed arguments.
 	%
 :- type dtd_generation_result
 	--->	ok
@@ -122,9 +123,22 @@
 	;
 			% At the moment we only support generation of DTDs for
 			% types made up of discriminated unions, arrays,
-			% strings, ints, characters and floats.
+			% strings, ints, characters and floats.  If a type is
+			% not supported, then it is returned as the argument
+			% of this functor.
 			%
-		unsupported_dtd_type(type_desc).
+		unsupported_dtd_type(type_desc)
+	;
+			% If one of the arguments of a functor is existentially
+			% typed, then the pseudo_type_desc for the
+			% existentially quantified argument is returned as the
+			% argument of this functor.  Since the values of
+			% existentially typed arguments can be of any type
+			% (provided any typeclass constraints are satisfied) it
+			% is not generally possible to generate DTD rules for
+			% functors with existentially typed arguments.  
+			%
+		type_not_ground(pseudo_type_desc).
 
 	% Values of this type specify which mapping from functors to elements
 	% to use when generating XML.  The role of a mapping is twofold:
@@ -262,7 +276,7 @@
 	% See the dtd_generation_result type for a list of the other
 	% possible values of DTDResult and their meanings.
 	%
-:- pred write_dtd_from_type(type_desc__type_desc::in, 
+:- pred write_dtd_from_type(type_desc.type_desc::in, 
 	element_mapping::in(element_mapping), dtd_generation_result::out, 
 	io::di, io::uo) is det.
 
@@ -270,7 +284,7 @@
 	% Same as write_dtd_for_type/5 except the DTD will be written to the
 	% given output stream.
 	%
-:- pred write_dtd_from_type(io.output_stream::in, type_desc__type_desc::in, 
+:- pred write_dtd_from_type(io.output_stream::in, type_desc.type_desc::in, 
 	element_mapping::in(element_mapping), dtd_generation_result::out,
 	io::di, io::uo) is det.
 
@@ -354,13 +368,13 @@
 :- implementation.
 
 :- import_module std_util, string, char, bool, array.
-:- import_module exception, map, require.
+:- import_module exception, map, require, construct.
 
 %-----------------------------------------------------------------------------%
 
 write_xml_doc(X, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult, !IO) :-
 	DTDResult = can_generate_dtd(MaybeDTD, ElementMapping,
-		type_desc__type_of(X)),
+		type_desc.type_of(X)),
 	(
 		DTDResult = ok
 	->
@@ -384,7 +398,7 @@ write_xml_doc(Stream, X, ElementMapping, MaybeStyleSheet, MaybeDTD,
 write_xml_doc_cc(X, ElementMapping, MaybeStyleSheet, MaybeDTD, DTDResult, 
 		!IO) :-
 	DTDResult = can_generate_dtd(MaybeDTD, ElementMapping,
-		type_desc__type_of(X)),
+		type_desc.type_of(X)),
 	(
 		DTDResult = ok
 	->
@@ -411,7 +425,7 @@ write_xml_element(NonCanon, MakeElement, IndentLevel, X, !IO) :-
 		!IO).
 
 write_dtd(Term, ElementMapping, DTDResult, !IO) :-
-	type_desc__type_of(Term) = TypeDesc,
+	type_desc.type_of(Term) = TypeDesc,
 	write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO).
 
 write_dtd(Stream, Term, ElementMapping, DTDResult, !IO) :-
@@ -467,13 +481,13 @@ write_doctype(NonCanon, T, ElementMapping, external(DocType), ok, !IO) :-
 	get_element_pred(ElementMapping, MakeElement),
 	deconstruct.deconstruct(T, NonCanon, Functor, Arity, _),
 	(
-		is_discriminated_union(type_desc__type_of(T), _)
+		is_discriminated_union(type_desc.type_of(T), _)
 	->
 		Request = du_functor(Functor, Arity)
 	;
 		Request = none_du
 	),
-	MakeElement(type_desc__type_of(T), Request, Root, _),
+	MakeElement(type_desc.type_of(T), Request, Root, _),
 	io.write_string("<!DOCTYPE ", !IO),
 	io.write_string(Root, !IO),
 	(
@@ -495,7 +509,7 @@ write_doctype(NonCanon, T, ElementMapping, external(DocType), ok, !IO) :-
 
 	% Implementation of the `unique' predefined mapping scheme.
 	%
-:- pred make_unique_element(type_desc__type_desc::in, maybe_functor_info::in,
+:- pred make_unique_element(type_desc.type_desc::in, maybe_functor_info::in,
 	string::out, list(attribute)::out) is det.
 
 % XXX This should be uncommented once memoing can be switched off for grades
@@ -512,7 +526,7 @@ make_unique_element(TypeDesc, du_functor(Functor, Arity), Element,
 		MangledElement = mangle(Functor)
 	),
 	Element = MangledElement ++ "--" ++ string.int_to_string(Arity) ++ 
-		"--" ++ mangle(type_desc__type_name(TypeDesc)).
+		"--" ++ mangle(type_desc.type_name(TypeDesc)).
 make_unique_element(TypeDesc, none_du, Element, Attributes) :-
 	(
 		is_primitive_type(TypeDesc, PrimitiveElement)
@@ -524,16 +538,16 @@ make_unique_element(TypeDesc, none_du, Element, Attributes) :-
 		is_array(TypeDesc, _)
 	->
 		Element = array_element ++ "--" ++
-			mangle(type_desc__type_name(TypeDesc)),
+			mangle(type_desc.type_name(TypeDesc)),
 		Attributes = all_attributes
 	;
-		Element = mangle(type_desc__type_name(TypeDesc)),
+		Element = mangle(type_desc.type_name(TypeDesc)),
 		Attributes = all_attributes
 	).
 
 	% Implementation of the `simple' mapping scheme.
 	%
-:- pred make_simple_element(type_desc__type_desc::in, maybe_functor_info::in,
+:- pred make_simple_element(type_desc.type_desc::in, maybe_functor_info::in,
 	string::out, list(attribute)::out) is det.
 
 % XXX This should be uncommented once memoing can be switched off for grades
@@ -608,23 +622,23 @@ common_mercury_functor("{}", "Tuple").
 
 array_element = "Array".
 
-:- pred is_primitive_type(type_desc__type_desc::in, string::out) is semidet.
+:- pred is_primitive_type(type_desc.type_desc::in, string::out) is semidet.
 
 is_primitive_type(TypeDesc, Element) :-
 	(
-		type_desc__type_of("") = TypeDesc
+		type_desc.type_of("") = TypeDesc
 	->
 		Element = "String"
 	;
-		type_desc__type_of('c') = TypeDesc
+		type_desc.type_of('c') = TypeDesc
 	->
 		Element = "Char"
 	;
-		type_desc__type_of(1) = TypeDesc
+		type_desc.type_of(1) = TypeDesc
 	->
 		Element = "Int"
 	;
-		type_desc__type_of(1.0) = TypeDesc,
+		type_desc.type_of(1.0) = TypeDesc,
 		Element = "Float"
 	).
 
@@ -686,8 +700,9 @@ mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
 	% will be in each list if the type is not a discriminated union.
 	%
 :- pred get_elements_and_args(element_pred::in(element_pred),
-	type_desc__type_desc::in, list(string)::out, list(maybe(string))::out, 
-	list(maybe(int))::out, list(list(type_desc__type_desc))::out, 
+	type_desc.type_desc::in, list(string)::out, 
+	list(maybe(string))::out, 
+	list(maybe(int))::out, list(list(type_desc.pseudo_type_desc))::out, 
 	list(list(attribute))::out) is det.
 
 % XXX This should be uncommented once memoing can be switched off for grades
@@ -701,8 +716,7 @@ get_elements_and_args(MakeElement, TypeDesc, Elements, MaybeFunctors,
 	->
 		FunctorNums = 0 `..` (NumFunctors - 1),
 		(
-			% XXX should change to construct.get_functor
-			list.map3(std_util.get_functor(TypeDesc), FunctorNums, 
+			list.map3(construct.get_functor(TypeDesc), FunctorNums, 
 				Functors, Arities, ArgTypeLists0)
 		->
 			MaybeFunctors = list.map((func(X) = yes(X)), Functors),
@@ -787,7 +801,7 @@ write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ,
 	),
 	deconstruct.deconstruct(Term, NonCanon, Functor, Arity, Args),
 	Term = univ_value(Univ),
-	TypeDesc = type_desc__type_of(Term),
+	TypeDesc = type_desc.type_of(Term),
 	(
 		is_discriminated_union(TypeDesc, _)
 	->
@@ -810,14 +824,8 @@ write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ,
 				yes(Arity), MaybeFieldName, TypeDesc, !IO)
 		;
 			Args = [_ | _],
-			% XXX This has been commented out until a bug in
-			% the runtime system has been fixed that causes
-			% a seg fault when construct.get_functor is invoked on
-			% a functor with existentially quantified argument
-			% types.
-			% ChildMaybeFieldNames = get_field_names(TypeDesc,
-			% 	Functor, Arity),
-			ChildMaybeFieldNames = [],
+			ChildMaybeFieldNames = get_field_names(TypeDesc,
+			 	Functor, Arity),
 			indent(IndentLevel, !IO),
 			write_element_start(Element, Attributes, yes(Functor), 
 				yes(Arity), MaybeFieldName, 
@@ -830,22 +838,24 @@ write_xml_element_univ(NonCanon, MakeElement, IndentLevel, Univ,
 		)
 	).
 
-:- pred is_discriminated_union(type_desc__type_desc::in, int::out) is semidet.
+:- pred is_discriminated_union(type_desc.type_desc::in, int::out) is semidet.
 
 is_discriminated_union(TypeDesc, NumFunctors) :- 
-	NumFunctors = num_functors(TypeDesc),
+	NumFunctors = std_util.num_functors(TypeDesc),
 	NumFunctors > -1.
 
-:- pred is_array(type_desc__type_desc::in, type_desc__type_desc::out)
+:- pred is_array(type_desc.type_desc::in, type_desc.pseudo_type_desc::out)
 	is semidet.
 
-is_array(TypeDesc, ArgType) :-
-	type_desc__type_ctor_and_args(TypeDesc, TypeCtor, ArgTypes),
-	ArgTypes = [ArgType],
-	type_desc__type_ctor_name(TypeCtor) = "array",
-	type_desc__type_ctor_module_name(TypeCtor) = "array".
+is_array(TypeDesc, ArgPseudoType) :-
+	PseudoTypeDesc = type_desc_to_pseudo_type_desc(TypeDesc),
+	type_desc.pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtor, 
+		ArgPseudoTypes),
+	ArgPseudoTypes = [ArgPseudoType],
+	type_desc.type_ctor_name(TypeCtor) = "array",
+	type_desc.type_ctor_module_name(TypeCtor) = "array".
 
-:- func get_field_names(type_desc__type_desc, string, int)
+:- func get_field_names(type_desc.type_desc, string, int)
 	= list(maybe(string)).
 
 % XXX This should be uncommented once memoing can be switched off for grades
@@ -869,14 +879,14 @@ get_field_names(TypeDesc, Functor, Arity) = MaybeFields :-
 		MaybeFields = []
 	).
 
-:- pred find_field_names(type_desc__type_desc::in, list(int)::in, string::in,
+:- pred find_field_names(type_desc.type_desc::in, list(int)::in, string::in,
 	int::in, list(maybe(string))::out) is semidet.
 
 find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity, 
 		MaybeFieldNames) :-
 	(
-		get_functor_with_names(TypeDesc, FunctorNum, Functor, Arity, _,
-			FoundFieldNames)
+		construct.get_functor_with_names(TypeDesc, FunctorNum, 
+			Functor, Arity, _, FoundFieldNames)
 	->
 		MaybeFieldNames = FoundFieldNames
 	;
@@ -970,7 +980,7 @@ indent(IndentLevel, !IO) :-
 	).
 
 :- pred write_primitive_element(string::in, list(attribute)::in, string::in, 
-	maybe(string)::in, type_desc__type_desc::in, io::di, io::uo) is det.
+	maybe(string)::in, type_desc.type_desc::in, io::di, io::uo) is det.
 
 write_primitive_element(Element, Attributes, Value, MaybeFieldName, 
 		TypeDesc, !IO) :-
@@ -985,7 +995,7 @@ write_primitive_element(Element, Attributes, Value, MaybeFieldName,
 	io.write_string(">\n", !IO).
 
 :- pred write_element_start(string::in, list(attribute)::in, maybe(string)::in, 
-	maybe(int)::in, maybe(string)::in, type_desc__type_desc::in,
+	maybe(int)::in, maybe(string)::in, type_desc.type_desc::in,
 	io::di, io::uo) is det.
 
 write_element_start(Element, Attributes, MaybeFunctor, MaybeArity, MaybeField, 
@@ -998,7 +1008,7 @@ write_element_start(Element, Attributes, MaybeFunctor, MaybeArity, MaybeField,
 
 :- pred write_empty_element(string::in, list(attribute)::in, 
 	maybe(string)::in, maybe(int)::in, maybe(string)::in,
-	type_desc__type_desc::in, io::di, io::uo) is det.
+	type_desc.type_desc::in, io::di, io::uo) is det.
 
 write_empty_element(Element, Attributes, MaybeFunctor, MaybeArity, MaybeField, 
 		TypeDesc, !IO) :-
@@ -1016,7 +1026,7 @@ write_element_end(Element, !IO) :-
 	io.write_string(">\n", !IO).
 
 :- pred write_attribute(maybe(string)::in, maybe(int)::in,
-	type_desc__type_desc::in, maybe(string)::in, attribute::in,
+	type_desc.type_desc::in, maybe(string)::in, attribute::in,
 	io::di, io::uo) is det.
 
 write_attribute(MaybeFunctor, MaybeArity, TypeDesc, MaybeFieldName, 
@@ -1035,7 +1045,7 @@ write_attribute(MaybeFunctor, MaybeArity, TypeDesc, MaybeFieldName,
 		)
 	;
 		Source = type_name,
-		MaybeValue = yes(type_desc__type_name(TypeDesc))
+		MaybeValue = yes(type_desc.type_name(TypeDesc))
 	;
 		Source = field_name,
 		MaybeValue = MaybeFieldName
@@ -1089,8 +1099,11 @@ write_dtd_from_type(TypeDesc, ElementMapping, DTDResult, !IO) :-
 		get_element_pred(ElementMapping, MakeElement),
 		(
 			get_elements_and_args(MakeElement, TypeDesc,
-				[RootElement], [_], [_], [ArgTypes], _)
+				[RootElement], [_], [_], [PseudoArgTypes], _)
 		->
+			ArgTypes = list.map(
+				ground_pseudo_type_desc_to_type_desc_det,
+				PseudoArgTypes),
 			io.write_string("<!DOCTYPE ", !IO),
 			io.write_string(RootElement, !IO),
 			io.write_string(" [\n\n", 
@@ -1113,14 +1126,15 @@ can_generate_dtd(ElementMapping, TypeDesc) =  Result :-
 		get_elements_and_args(MakeElement, TypeDesc, [_], [_], [_], 
 			[_], [_])
 	->
-		Result = can_generate_dtd_for_types(MakeElement, [TypeDesc],
-			map.init, map.init)
+		PseudoTypeDesc = type_desc_to_pseudo_type_desc(TypeDesc),
+		Result = can_generate_dtd_for_types(MakeElement, 
+			[PseudoTypeDesc], map.init, map.init)
 	;
 		Result = multiple_functors_for_root
 	).
 
 :- func can_generate_dtd(maybe_dtd::in, element_mapping::in(element_mapping), 
-	type_desc__type_desc::in) = (dtd_generation_result::out) is det.  
+	type_desc.type_desc::in) = (dtd_generation_result::out) is det.  
 
 can_generate_dtd(no_dtd, _, _) = ok.
 can_generate_dtd(external(_), _, _) = ok.
@@ -1128,63 +1142,81 @@ can_generate_dtd(embed, ElementMapping, TypeDesc)
 	= can_generate_dtd(ElementMapping, TypeDesc).
 
 	% Check that we can reliably generate a DTD for the types in the list.
-	% At the moment this means each type (and all the types of the arguments
-	% of functors of the type if it is a discriminated union) must be either
-	% be a discriminated union, an array, an int, a character, a float or a
-	% string.  
+	% At the moment this means each type (and all the types of the
+	% arguments of functors of the type if it is a discriminated union)
+	% must be either a discriminated union, an array, an int, a
+	% character, a float or a string and must not be existentially
+	% quantified.  
+	%
 :- func can_generate_dtd_for_types(element_pred::in(element_pred), 
-	list(type_desc__type_desc)::in, map(type_desc__type_desc, unit)::in, 
-	map(string, type_desc__type_desc)::in) = (dtd_generation_result::out)
-	is det.
+	list(type_desc.pseudo_type_desc)::in, 
+	map(type_desc.type_desc, unit)::in, 
+	map(string, type_desc.type_desc)::in) = 
+	(dtd_generation_result::out) is det.
 	
 can_generate_dtd_for_types(_, [], _, _) = ok.
-can_generate_dtd_for_types(MakeElement, [TypeDesc | TypeDescs], DoneTypeDescs,
-		ElementsSoFar) = Result :-
+can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs], 
+		Done, ElementsSoFar) = Result :-
 	(
-		(
-			is_discriminated_union(TypeDesc, _)
-		;
-			is_array(TypeDesc, _)
-		;
-			is_primitive_type(TypeDesc, _)
-		)
+		TypeDesc = ground_pseudo_type_desc_to_type_desc(
+			PseudoTypeDesc)
 	->
 		(
-			map.search(DoneTypeDescs, TypeDesc, _)
-		->
-			Result = can_generate_dtd_for_types(MakeElement, 
-				TypeDescs, DoneTypeDescs, ElementsSoFar)
-		;
-			get_elements_and_args(MakeElement, TypeDesc, Elements,
-				_, _, ArgLists, _),
-			list.filter(map.contains(ElementsSoFar), Elements, 
-				DupElements),
 			(
-				DupElements = [DupElement | _],
-				map.lookup(ElementsSoFar, DupElement, 
-					DupTypeDesc),
-				DupTypes = [TypeDesc, DupTypeDesc],
-				Result = duplicate_elements(DupElement, 
-					DupTypes)
+				is_discriminated_union(TypeDesc, _)
 			;
-				DupElements = [],
-				list.merge_and_remove_dups(
-					list.condense(ArgLists), 
-					TypeDescs, NewTypeDescs),
-				list.duplicate(length(Elements), TypeDesc, 
-					TypeDescList),
-				map.det_insert_from_corresponding_lists(	
-					ElementsSoFar, Elements, TypeDescList,
-					NewElementsSoFar),
-				map.det_insert(DoneTypeDescs, TypeDesc, unit, 
-					NewDoneTypeDescs),
-				Result = can_generate_dtd_for_types(
-					MakeElement, NewTypeDescs,
-					NewDoneTypeDescs, NewElementsSoFar)
+				is_array(TypeDesc, _)
+			;
+				is_primitive_type(TypeDesc, _)
 			)
+		->
+			
+			(
+				map.contains(Done, TypeDesc)
+			->
+				Result = can_generate_dtd_for_types(
+					MakeElement, PseudoTypeDescs, 
+					Done, ElementsSoFar)
+			;
+				get_elements_and_args(MakeElement, 
+					TypeDesc, Elements, _, _,
+					ArgLists, _),
+				list.filter(map.contains(ElementsSoFar),
+					Elements, DupElements),
+				(
+					DupElements = [DupElement | _],
+					map.lookup(ElementsSoFar, DupElement, 
+						DupTypeDesc),
+					DupTypes = [TypeDesc, DupTypeDesc],
+					Result = duplicate_elements(DupElement, 
+						DupTypes)
+				;
+					DupElements = [],
+					list.merge_and_remove_dups(
+						list.condense(ArgLists), 
+						PseudoTypeDescs, 
+						NewPseudoTypeDescs),
+					list.duplicate(length(Elements),
+						TypeDesc, 
+						TypeDescList),
+				map.det_insert_from_corresponding_lists(
+						ElementsSoFar, Elements,
+						TypeDescList,
+						NewElementsSoFar),
+					map.det_insert(Done, TypeDesc,
+						unit, NewDone),
+					Result = can_generate_dtd_for_types(
+						MakeElement, 
+						NewPseudoTypeDescs,
+						NewDone, 
+						NewElementsSoFar)
+				)
+			)
+		;
+			Result = unsupported_dtd_type(TypeDesc)
 		)
 	;
-		Result = unsupported_dtd_type(TypeDesc)
+		Result = type_not_ground(PseudoTypeDesc)
 	).
 
 	% Write out the DTD entries for all the given types and add the written
@@ -1193,7 +1225,7 @@ can_generate_dtd_for_types(MakeElement, [TypeDesc | TypeDescs], DoneTypeDescs,
 	% entry written.
 	%
 :- pred write_dtd_types(element_pred::in(element_pred), 
-	list(type_desc__type_desc)::in, map(type_desc__type_desc, unit)::in,
+	list(type_desc.type_desc)::in, map(type_desc.type_desc, unit)::in,
 	io::di, io::uo) is det.
 
 write_dtd_types(_, [], _, !IO).
@@ -1239,7 +1271,7 @@ write_attribute_source_kind(arity, yes(Value), !IO) :-
 	% Write an ATTLIST entry for the given attribute.
 	%
 :- pred write_dtd_attlist(string::in, maybe(string)::in, maybe(int)::in,
-	type_desc__type_desc::in, attribute::in, io::di, io::uo) is det.
+	type_desc.type_desc::in, attribute::in, io::di, io::uo) is det.
 
 write_dtd_attlist(Element, MaybeFunctor, MaybeArity, TypeDesc, 	
 		attribute(Name, Source), !IO) :-
@@ -1257,7 +1289,7 @@ write_dtd_attlist(Element, MaybeFunctor, MaybeArity, TypeDesc,
 		)
 	;
 		Source = type_name,
-		MaybeValue = yes(type_desc__type_name(TypeDesc))
+		MaybeValue = yes(type_desc.type_name(TypeDesc))
 	;
 		Source = field_name,
 		MaybeValue = no
@@ -1271,7 +1303,7 @@ write_dtd_attlist(Element, MaybeFunctor, MaybeArity, TypeDesc,
 	io.write_string(">\n", !IO).
 
 :- pred write_dtd_attlists(string::in, list(attribute)::in, maybe(string)::in, 
-	maybe(int)::in, type_desc__type_desc::in, io::di, io::uo) is det.
+	maybe(int)::in, type_desc.type_desc::in, io::di, io::uo) is det.
 
 write_dtd_attlists(Element, Attributes, MaybeFunctor, MaybeArity, TypeDesc, 
 		!IO) :-
@@ -1281,22 +1313,25 @@ write_dtd_attlists(Element, Attributes, MaybeFunctor, MaybeArity, TypeDesc,
 	% Write DTD entries for all the functors for a type.
 	%
 :- pred write_dtd_type_elements(element_pred::in(element_pred),
-	type_desc__type_desc::in, list(type_desc__type_desc)::out,
+	type_desc.type_desc::in, list(type_desc.type_desc)::out,
 	io::di, io::uo) is det.
 
 write_dtd_type_elements(MakeElement, TypeDesc, ChildArgTypes, !IO) :-
 	get_elements_and_args(MakeElement, TypeDesc, Elements, 
-		MaybeFunctors, MaybeArities, ArgTypeLists, AttributeLists),
+		MaybeFunctors, MaybeArities, ArgPseudoTypeLists, 
+		AttributeLists),
+	ArgTypeLists = list.map(list.map(
+		ground_pseudo_type_desc_to_type_desc_det), ArgPseudoTypeLists),
 	list.condense(ArgTypeLists, ChildArgTypes),
 	io.write_string("<!-- Elements for functors of type """, !IO),
-	write_xml_escaped_string(type_desc__type_name(TypeDesc), !IO),
+	write_xml_escaped_string(type_desc.type_name(TypeDesc), !IO),
 	io.write_string(""" -->\n\n", !IO),
 	write_dtd_entries(MakeElement, TypeDesc, Elements, MaybeFunctors,
 		MaybeArities, ArgTypeLists, AttributeLists, !IO).
 
 :- pred write_dtd_entries(element_pred::in(element_pred),
-	type_desc__type_desc::in, list(string)::in, list(maybe(string))::in,
-	list(maybe(int))::in, list(list(type_desc__type_desc))::in,
+	type_desc.type_desc::in, list(string)::in, list(maybe(string))::in,
+	list(maybe(int))::in, list(list(type_desc.type_desc))::in,
 	list(list(attribute))::in, io::di, io::uo) is det.
 
 	% Write all the given DTD entries.
@@ -1334,7 +1369,7 @@ write_dtd_entries(MakeElement, TypeDesc, [Element | Elements],
 			;
 				Tail = [],
 				(
-					num_functors(Head) > 1
+					std_util.num_functors(Head) > 1
 				->
 					Braces = no
 				;
@@ -1386,7 +1421,7 @@ write_dtd_entries(MakeElement, TypeDesc, [Element | Elements],
 	% expression.
 	%
 :- pred write_dtd_allowed_functors_regex(element_pred::in(element_pred),
-	type_desc__type_desc::in, io::di, io::uo) is det.
+	type_desc.type_desc::in, io::di, io::uo) is det.
 
 write_dtd_allowed_functors_regex(MakeElement, TypeDesc, !IO) :-
 	get_elements_and_args(MakeElement, TypeDesc, Elements, _, _, _, _),
