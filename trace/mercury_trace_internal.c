@@ -472,6 +472,12 @@ static	const char *MR_trace_new_source_window(const char *window_cmd,
 static	void	MR_trace_maybe_sync_source_window(MR_Event_Info *event_info,
 			MR_bool verbose);
 static	void	MR_trace_maybe_close_source_window(MR_bool verbose);
+
+static	void	MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit,
+			MR_bool detailed);
+static	void	MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info,
+			int limit, MR_bool detailed);
+
 static	MR_bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -493,6 +499,9 @@ static	MR_bool	MR_trace_options_ignore(MR_bool *ignore_errors, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	MR_bool	MR_trace_options_detailed(MR_bool *detailed, char ***words,
 			int *word_count, const char *cat, const char *item);
+static	MR_bool	MR_trace_options_stack_trace(MR_bool *detailed,
+			char ***words, int *word_count,
+			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_confirmed(MR_bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	MR_bool	MR_trace_options_format(MR_Browse_Format *format,
@@ -1315,7 +1324,7 @@ MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_FALSE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "step"))
+		"forward", "step"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1345,7 +1354,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "goto"))
+		"forward", "goto"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
@@ -1379,7 +1388,7 @@ MR_trace_cmd_next(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "next"))
+		"forward", "next"))
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
@@ -1418,7 +1427,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "finish"))
+		"forward", "finish"))
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
@@ -1459,7 +1468,7 @@ MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "fail"))
+		"forward", "fail"))
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
@@ -1510,7 +1519,7 @@ MR_trace_cmd_exception(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "exception"))
+		"forward", "exception"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1535,7 +1544,7 @@ MR_trace_cmd_return(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "return"))
+		"forward", "return"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1560,7 +1569,7 @@ MR_trace_cmd_forward(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "forward"))
+		"forward", "forward"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1591,7 +1600,7 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "mindepth"))
+		"forward", "mindepth"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -1617,7 +1626,7 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "maxdepth"))
+		"forward", "maxdepth"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -1641,7 +1650,7 @@ MR_trace_cmd_continue(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_FALSE;
 	cmd->MR_trace_print_level = (MR_Trace_Cmd_Type) -1;
 	if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-			"forward", "continue"))
+		"forward", "continue"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1758,7 +1767,7 @@ MR_trace_cmd_level(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	detailed = MR_FALSE;
 	if (! MR_trace_options_detailed(&detailed,
-			&words, &word_count, "browsing", "level"))
+		&words, &word_count, "browsing", "level"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -1783,7 +1792,7 @@ MR_trace_cmd_up(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	detailed = MR_FALSE;
 	if (! MR_trace_options_detailed(&detailed,
-			&words, &word_count, "browsing", "up"))
+		&words, &word_count, "browsing", "up"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -1813,7 +1822,7 @@ MR_trace_cmd_down(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	detailed = MR_FALSE;
 	if (! MR_trace_options_detailed(&detailed,
-			&words, &word_count, "browsing", "down"))
+		&words, &word_count, "browsing", "down"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
@@ -1862,7 +1871,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	int			n;
 
 	if (! MR_trace_options_format(&format, &words, &word_count,
-				"browsing", "print"))
+		"browsing", "print"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1930,7 +1939,7 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	int			n;
 
 	if (! MR_trace_options_format(&format, &words, &word_count,
-				"browsing", "browse"))
+		"browsing", "browse"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -1991,37 +2000,47 @@ MR_trace_cmd_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	const MR_Label_Layout	*layout;
-	MR_Word 		*saved_regs;
 	MR_bool			detailed;
-
-	layout = event_info->MR_event_sll;
-	saved_regs = event_info->MR_saved_regs;
+	int			limit;
 
 	detailed = MR_FALSE;
-	if (! MR_trace_options_detailed(&detailed,
-			&words, &word_count, "browsing", "stack"))
+	if (! MR_trace_options_stack_trace(&detailed, &words, &word_count,
+		"browsing", "stack"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
-		const char	*msg;
-		MR_trace_init_modules();
-		msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
-				MR_saved_sp(saved_regs),
-				MR_saved_curfr(saved_regs),
-				detailed,
-				MR_context_position !=
-					MR_CONTEXT_NOWHERE,
-				&MR_dump_stack_record_print);
-		if (msg != NULL) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "%s.\n", msg);
-		}
+		MR_trace_cmd_stack_2(event_info, 0, detailed);
+	} else if (word_count == 2 &&
+		MR_trace_is_natural_number(words[1], &limit))
+	{
+		MR_trace_cmd_stack_2(event_info, limit, detailed);
 	} else {
 		MR_trace_usage("browsing", "stack");
 	}
 
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_trace_cmd_stack_2(MR_Event_Info *event_info, int limit, MR_bool detailed)
+{
+	const MR_Label_Layout	*layout;
+	MR_Word 		*saved_regs;
+	const char		*msg;
+
+	layout = event_info->MR_event_sll;
+	saved_regs = event_info->MR_saved_regs;
+
+	MR_trace_init_modules();
+	msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
+		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
+		detailed, MR_context_position != MR_CONTEXT_NOWHERE,
+		limit, &MR_dump_stack_record_print);
+
+	if (msg != NULL) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "%s.\n", msg);
+	}
 }
 
 static MR_Next
@@ -2053,10 +2072,10 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Word			pretty_format;
 
 	if (! MR_trace_options_param_set(&print_set, &browse_set,
-			&print_all_set, &flat_format, 
-			&raw_pretty_format, &verbose_format, 
-			&pretty_format, &words, &word_count, "browsing",
-			"set"))
+		&print_all_set, &flat_format, 
+		&raw_pretty_format, &verbose_format, 
+		&pretty_format, &words, &word_count, "browsing",
+		"set"))
 	{
 		; /* the usage message has already been printed */
 	}
@@ -2088,9 +2107,9 @@ MR_trace_cmd_view(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	const char		*msg;
 
 	if (! MR_trace_options_view(&window_cmd, &server_cmd,
-			&server_name, &timeout, &force, &verbose,
-			&split, &close_window, &words, &word_count,
-			"browsing", "view"))
+		&server_name, &timeout, &force, &verbose,
+		&split, &close_window, &words, &word_count,
+		"browsing", "view"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count != 1) {
@@ -2161,8 +2180,8 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	ignore_when = MR_SPY_DONT_IGNORE;
 	ignore_count = 0;
 	if (! MR_trace_options_when_action_multi_ignore(&when, &action,
-			&multi_match, &ignore_when, &ignore_count,
-			&words, &word_count, "breakpoint", "break"))
+		&multi_match, &ignore_when, &ignore_count,
+		&words, &word_count, "breakpoint", "break"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 && MR_streq(words[1], "here")) {
@@ -2328,7 +2347,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	ignore_when = MR_SPY_IGNORE_ENTRY;
 	ignore_count = 1;
 	if (! MR_trace_options_ignore_count(&ignore_when, &ignore_count,
-			&words, &word_count, "breakpoint", "ignore"))
+		&words, &word_count, "breakpoint", "ignore"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
@@ -2573,7 +2592,7 @@ MR_trace_cmd_register(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_bool	verbose;
 
 	if (! MR_trace_options_quiet(&verbose, &words, &word_count,
-			"breakpoint", "register"))
+		"breakpoint", "register"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -3376,40 +3395,50 @@ MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	const MR_Label_Layout	*layout;
-	MR_Word 		*saved_regs;
 	MR_bool			detailed;
+	int			limit;
 
-	layout = event_info->MR_event_sll;
-	saved_regs = event_info->MR_saved_regs;
 	detailed = MR_FALSE;
-
-	if (! MR_trace_options_detailed(&detailed,
-		&words, &word_count, "browsing", "nondet_stack"))
+	if (! MR_trace_options_stack_trace(&detailed, &words, &word_count,
+		"browsing", "nondet_stack"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
-		MR_trace_init_modules();
-		if (detailed) {
-			int	saved_level;
-
-			saved_level = MR_trace_current_level();
-			MR_dump_nondet_stack_from_layout(MR_mdb_out,
-				MR_saved_maxfr(saved_regs),
-				layout,
-				MR_saved_sp(saved_regs),
-				MR_saved_curfr(saved_regs));
-			MR_trace_set_level(saved_level,
-				MR_print_optionals);
-		} else {
-			MR_dump_nondet_stack(MR_mdb_out,
-				MR_saved_maxfr(saved_regs));
-		}
+		MR_trace_cmd_nondet_stack_2(event_info, 0, detailed);
+	} else if (word_count == 2 &&
+		MR_trace_is_natural_number(words[1], &limit))
+	{
+		MR_trace_cmd_nondet_stack_2(event_info, limit, detailed);
 	} else {
 		MR_trace_usage("developer", "nondet_stack");
 	}
 
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, int limit,
+	MR_bool detailed)
+{
+	const MR_Label_Layout	*layout;
+	MR_Word 		*saved_regs;
+
+	layout = event_info->MR_event_sll;
+	saved_regs = event_info->MR_saved_regs;
+
+	MR_trace_init_modules();
+	if (detailed) {
+		int	saved_level;
+
+		saved_level = MR_trace_current_level();
+		MR_dump_nondet_stack_from_layout(MR_mdb_out, limit,
+			MR_saved_maxfr(saved_regs), layout,
+			MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
+		MR_trace_set_level(saved_level, MR_print_optionals);
+	} else {
+		MR_dump_nondet_stack(MR_mdb_out, limit,
+			MR_saved_maxfr(saved_regs));
+	}
 }
 
 static MR_Next
@@ -4533,7 +4562,7 @@ MR_trace_cmd_quit(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 	confirmed = MR_FALSE;
 	if (! MR_trace_options_confirmed(&confirmed,
-			&words, &word_count, "misc", "quit"))
+		&words, &word_count, "misc", "quit"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -4830,7 +4859,7 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "NSans",
-			MR_trace_strict_print_opts, NULL)) != EOF)
+		MR_trace_strict_print_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -4883,7 +4912,7 @@ MR_trace_options_retry(MR_Retry_Across_Io *across_io,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "afio",
-			MR_trace_retry_opts, NULL)) != EOF)
+		MR_trace_retry_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -4938,7 +4967,7 @@ MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "AE:I:OPSaei",
-			MR_trace_when_action_multi_ignore_opts, NULL)) != EOF)
+		MR_trace_when_action_multi_ignore_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -4955,7 +4984,8 @@ MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
 				break;
 
 			case 'E':
-				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				if (! MR_trace_is_natural_number(MR_optarg,
+					ignore_count))
 				{
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
@@ -4964,7 +4994,8 @@ MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
 				break;
 
 			case 'I':
-				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				if (! MR_trace_is_natural_number(MR_optarg,
+					ignore_count))
 				{
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
@@ -5007,7 +5038,7 @@ static struct MR_option MR_trace_ignore_count_opts[] =
 };
 
 static MR_bool
-MR_trace_options_ignore_count(MR_Spy_Ignore_When*ignore_when,
+MR_trace_options_ignore_count(MR_Spy_Ignore_When *ignore_when,
 	int *ignore_count, char ***words, int *word_count,
 	const char *cat, const char *item)
 {
@@ -5015,12 +5046,13 @@ MR_trace_options_ignore_count(MR_Spy_Ignore_When*ignore_when,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "E:I:",
-			MR_trace_ignore_count_opts, NULL)) != EOF)
+		MR_trace_ignore_count_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
 			case 'E':
-				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				if (! MR_trace_is_natural_number(MR_optarg,
+					ignore_count))
 				{
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
@@ -5029,7 +5061,8 @@ MR_trace_options_ignore_count(MR_Spy_Ignore_When*ignore_when,
 				break;
 
 			case 'I':
-				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				if (! MR_trace_is_natural_number(MR_optarg,
+					ignore_count))
 				{
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
@@ -5062,7 +5095,34 @@ MR_trace_options_detailed(MR_bool *detailed, char ***words, int *word_count,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "d",
-			MR_trace_detailed_opts, NULL)) != EOF)
+		MR_trace_detailed_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'd':
+				*detailed = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
+static MR_bool
+MR_trace_options_stack_trace(MR_bool *detailed,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "d",
+		MR_trace_detailed_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -5127,7 +5187,7 @@ MR_trace_options_quiet(MR_bool *verbose, char ***words, int *word_count,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "qv",
-			MR_trace_quiet_opts, NULL)) != EOF)
+		MR_trace_quiet_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -5164,7 +5224,7 @@ MR_trace_options_ignore(MR_bool *ignore_errors, char ***words, int *word_count,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "i",
-			MR_trace_ignore_opts, NULL)) != EOF)
+		MR_trace_ignore_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -5201,7 +5261,7 @@ MR_trace_options_format(MR_Browse_Format *format, char ***words,
 	*format = MR_BROWSE_DEFAULT_FORMAT;
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "frvp",
-			MR_trace_format_opts, NULL)) != EOF)
+		MR_trace_format_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -5248,16 +5308,16 @@ static MR_bool
 MR_trace_options_param_set(MR_Word *print_set, MR_Word *browse_set,
 	MR_Word *print_all_set, MR_Word *flat_format, 
 	MR_Word *raw_pretty_format, MR_Word *verbose_format, 
-	MR_Word *pretty_format, char ***words, int *word_count, const char *cat,
-	const char *item)
+	MR_Word *pretty_format, char ***words, int *word_count,
+	const char *cat, const char *item)
 {
 	int	c;
 	MR_Word	mercury_bool_yes;
 	MR_Word	mercury_bool_no;
 
 	MR_TRACE_CALL_MERCURY(
-			mercury_bool_yes = ML_BROWSE_mercury_bool_yes();
-			mercury_bool_no = ML_BROWSE_mercury_bool_no();
+		mercury_bool_yes = ML_BROWSE_mercury_bool_yes();
+		mercury_bool_no = ML_BROWSE_mercury_bool_no();
 	);
 
 	*print_set = mercury_bool_no;
@@ -5270,7 +5330,7 @@ MR_trace_options_param_set(MR_Word *print_set, MR_Word *browse_set,
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "PBAfrvp",
-			MR_trace_param_set_opts, NULL)) != EOF)
+		MR_trace_param_set_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -5328,17 +5388,17 @@ static struct MR_option MR_trace_view_opts[] =
 
 static MR_bool
 MR_trace_options_view(const char **window_cmd, const char **server_cmd,
-		const char **server_name, int *timeout, MR_bool *force,
-		MR_bool *verbose, MR_bool *split, MR_bool *close_window,
-		char ***words, int *word_count, const char *cat,
-		const char *item)
+	const char **server_name, int *timeout, MR_bool *force,
+	MR_bool *verbose, MR_bool *split, MR_bool *close_window,
+	char ***words, int *word_count, const char *cat,
+	const char *item)
 {
 	int	c;
 	MR_bool	no_close = MR_FALSE;
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "cw:s:n:t:fv2",
-			MR_trace_view_opts, NULL)) != EOF)
+		MR_trace_view_opts, NULL)) != EOF)
 	{
 		/*
 		** Option '-c' is mutually incompatible with '-f', '-t',
@@ -5383,7 +5443,8 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 
 			case 't':
 				if (*close_window ||
-					sscanf(MR_optarg, "%d", timeout) != 1)
+					! MR_trace_is_natural_number(MR_optarg,
+						timeout))
 				{
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
@@ -5486,7 +5547,7 @@ MR_trace_read_help_text(void)
 
 	next_char_slot = 0;
 	while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out))
-			!= NULL)
+		!= NULL)
 	{
 		if (MR_streq(text, "end")) {
 			MR_free(text);
@@ -5507,7 +5568,7 @@ MR_trace_read_help_text(void)
 	}
 
 	MR_ensure_big_enough(next_char_slot, doc_char, char,
-			MR_INIT_DOC_CHARS);
+		MR_INIT_DOC_CHARS);
 	doc_chars[next_char_slot] = '\0';
 	return doc_chars;
 }
@@ -5590,7 +5651,8 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 	*/
 
 	if (raw_word_count > 1 && MR_trace_is_natural_number(raw_words[0], &i)
-			&& ! MR_trace_is_natural_number(raw_words[1], &i)) {
+		&& ! MR_trace_is_natural_number(raw_words[1], &i))
+	{
 		s = raw_words[0];
 		raw_words[0] = raw_words[1];
 		raw_words[1] = s;
@@ -5657,8 +5719,7 @@ MR_trace_break_off_one_word(char *line, int char_pos)
 	MR_bool		quoted = MR_FALSE;
 	MR_bool		another = MR_FALSE;
 
-	while (line[char_pos] != '\0')
-	{
+	while (line[char_pos] != '\0') {
 		if (!quoted && MR_isspace(line[char_pos])) {
 			another = MR_TRUE;
 			break;
