@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- pragma(c_code, c_hello_world(String::in, IO0::di, IO::uo), "
+:- pragma(c_code, c_hello_world(Msg::in, IO0::di, IO::uo), "
 	printf(""Hello, world"");
 	IO = IO0;
 ").
