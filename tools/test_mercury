@@ -376,6 +376,9 @@ case $HOST in murlibobo)
 	mv mercury-tests-$version.tar.gz	\
 	    mercury-latest-unstable/mercury-tests-$version-unstable.tar.gz
 	} || status=1
+	# later parts of this script assume that we've already run configure,
+	# so we need to redo that
+	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
 	;;
 esac
 
