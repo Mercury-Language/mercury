@@ -1230,27 +1230,35 @@ no_clauses(PredName) :-
 //	public int 			        type_ctor_num_functors;
 //   }
    
-    public static mercury.builtin.comparison_result_0 builtin_compare_int_3_p_0(int val1, int val2)
+    public static mercury.builtin.comparison_result_0
+    builtin_compare_int_3_p_0(int val1, int val2)
      {
         if(val1 == val2)
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_equal);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_equal);
 	else if(val1 < val2)
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_less_than);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_less_than);
 	else
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_greater_than);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_greater_than);
 	
      }
 
-    public static mercury.builtin.comparison_result_0 builtin_compare_string_3_p_0(java.lang.String string1, java.lang.String string2)
+    public static mercury.builtin.comparison_result_0
+    builtin_compare_string_3_p_0(String string1, String string2)
      {
 	int value = string1.compareTo(string2);
 	
         if(value == 0)
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_equal);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_equal);
 	else if(value < 0)
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_less_than);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_less_than);
 	else
-	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_greater_than);
+	     return new mercury.builtin.comparison_result_0(
+	     	mercury.builtin.comparison_result_0.f_greater_than);
      }
     
     public static class ref_1
@@ -1262,6 +1270,50 @@ no_clauses(PredName) :-
      {
      	// XXX stub only
      }
+
+    // TypeCtorRep constants
+    public static final int MR_TYPECTOR_REP_ENUM = 0;
+    public static final int MR_TYPECTOR_REP_ENUM_USEREQ = 1;
+    public static final int MR_TYPECTOR_REP_DU = 2;
+    public static final int MR_TYPECTOR_REP_DU_USEREQ = 3;
+    public static final int MR_TYPECTOR_REP_NOTAG = 4;
+    public static final int MR_TYPECTOR_REP_NOTAG_USEREQ = 5;
+    public static final int MR_TYPECTOR_REP_EQUIV = 6;
+    public static final int MR_TYPECTOR_REP_FUNC = 7;
+    public static final int MR_TYPECTOR_REP_INT = 8;
+    public static final int MR_TYPECTOR_REP_CHAR = 9;
+    public static final int MR_TYPECTOR_REP_FLOAT = 10;
+    public static final int MR_TYPECTOR_REP_STRING = 11;
+    public static final int MR_TYPECTOR_REP_PRED = 12;
+    public static final int MR_TYPECTOR_REP_UNIV = 13;
+    public static final int MR_TYPECTOR_REP_SUBGOAL = 14;
+    public static final int MR_TYPECTOR_REP_C_POINTER = 15;
+    public static final int MR_TYPECTOR_REP_TYPEINFO = 16;
+    public static final int MR_TYPECTOR_REP_TYPECLASSINFO = 17;
+    public static final int MR_TYPECTOR_REP_ARRAY = 18;
+    public static final int MR_TYPECTOR_REP_SUCCIP = 19;
+    public static final int MR_TYPECTOR_REP_HP = 20;
+    public static final int MR_TYPECTOR_REP_CURFR = 21;
+    public static final int MR_TYPECTOR_REP_MAXFR = 22;
+    public static final int MR_TYPECTOR_REP_REDOFR = 23;
+    public static final int MR_TYPECTOR_REP_REDOIP = 24;
+    public static final int MR_TYPECTOR_REP_TRAIL_PTR = 25;
+    public static final int MR_TYPECTOR_REP_TICKET = 26;
+    public static final int MR_TYPECTOR_REP_NOTAG_GROUND = 27;
+    public static final int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ = 28;
+    public static final int MR_TYPECTOR_REP_EQUIV_GROUND = 29;
+    public static final int MR_TYPECTOR_REP_TUPLE = 30;
+    public static final int MR_TYPECTOR_REP_RESERVED_ADDR = 31;
+    public static final int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ = 32;
+    public static final int MR_TYPECTOR_REP_TYPECTORINFO = 33;
+    public static final int MR_TYPECTOR_REP_BASETYPECLASSINFO = 34;
+    public static final int MR_TYPECTOR_REP_TYPEDESC = 35;
+    public static final int MR_TYPECTOR_REP_TYPECTORDESC = 36;
+    public static final int MR_TYPECTOR_REP_FOREIGN = 37;
+    public static final int MR_TYPECTOR_REP_REFERENCE = 38;
+    public static final int MR_TYPECTOR_REP_STABLE_C_POINTER = 39;
+    public static final int MR_TYPECTOR_REP_UNKNOWN = 40;
+	
 ").
 
 %-----------------------------------------------------------------------------%
