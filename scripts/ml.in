@@ -40,6 +40,9 @@ Options:
 		libraries, not just the standard Mercury libraries.
 	--make-shared-lib
 		Produce a shared library, rather than an executable.
+	-L <directory>, --lib-dir <directory>
+		Include <directory> in the list of directories that the
+		linker will use to search for libraries.
 	-R <directory>, --shared-lib-dir <directory>
 		Include <directory> in the list of directories that the
 		dynamic linker will use to search for shared libraries.
@@ -154,7 +157,6 @@ EOF
 		;;
 	-shared|--shared)
 		all_libs=shared
-		MAYBE_STATIC_OPT=""
 		case $mercury_libs in static|default)
 			mercury_libs=shared ;;
 		esac
@@ -164,6 +166,14 @@ EOF
 		case $mercury_libs in shared|default)
 			mercury_libs=static ;;
 		esac
+		;;
+	-L|--lib-dir)
+		dir="$2"
+		user_libdir_opts="$user_libdir_opts -L$dir"
+		shift
+		;;
+	-L*)
+		user_libdir_opts="$user_libdir_opts $1"
 		;;
 	-R|--shared-lib-dir)
 		dir="$2"
@@ -318,10 +328,12 @@ case $make_shared_lib in
 	;;
 esac
 
-LIBDIR_OPTS="
+merc_libdir_opts="\
 	-L$LIBDIR/$GRADE/$FULLARCH
 	-L$LIBDIR/$FULLARCH
 "
+LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
+
 case $mercury_libs in
 	shared)
 		LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC $STDLIBS"}
@@ -336,7 +348,7 @@ case $mercury_libs in
 		merc_shlib_dirs=""
 		;;
 	none)	LIBS="$STDLIBS"
-		LIBDIR_OPTS=""
+		LIBDIR_OPTS="$user_libdir_opts"
 		merc_shlib_dirs=""
 		;;
 esac
@@ -386,11 +398,11 @@ case $verbose in
 	case $demangle in
 	    false)
 		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			"$@" $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS
 		;;
 	    true)
 		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			"$@" $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS "|"
+			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
@@ -423,6 +435,6 @@ esac
 case $# in
 	0) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
 		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-	*) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS "$@" \
-		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
+	*) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+		$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
 esac
