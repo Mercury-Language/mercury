@@ -1,6 +1,7 @@
 MCFLAGS-allow_stubs	=	--allow-stubs --no-warn-stubs --infer-all
 MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-cc_and_non_cc_test = 	--no-inlining
 MCFLAGS-constraint	=	--constraint-propagation --enable-termination
 MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
 MCFLAGS-deforest_cc_bug =	--deforestation

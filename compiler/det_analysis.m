@@ -932,7 +932,7 @@ det_find_matching_non_cc_mode_2([TestProcId - ProcInfo | Rest],
 		modes_are_identical_bar_cc(!.ProcId, TestProcId, PredInfo,
 			ModuleInfo)
 	->
-		true
+		!:ProcId = TestProcId
 	;
 		det_find_matching_non_cc_mode_2(Rest, ModuleInfo, PredInfo,
 			!ProcId)

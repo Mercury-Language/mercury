@@ -1,3 +1,7 @@
+% This test should be compiled with --no-inlining. If inlining is enabled,
+% the tests 42=43 and 43=43 will be evaluated at compile time, masking any
+% bugs in the selection of which modes of p and q to call.
+
 :- module cc_and_non_cc_test.
 :- interface.
 :- import_module io.
