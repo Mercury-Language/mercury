@@ -42,8 +42,9 @@ TESTS_SHOULD_FAIL = \
 	type_qual_re \
 	with_type_re
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
+# We currently don't do any testing in java or il grades in this directory
+# because smart compilation doesn't support intermodule-optimization yet
+ifneq "$(filter java% il%,$(GRADE))" ""
 	PROGS=
 else
 	PROGS= $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
