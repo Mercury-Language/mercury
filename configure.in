@@ -461,8 +461,11 @@ if test $mercury_cv_sigcontext_struct = yes; then
 		} else {
 			exit(1);
 		}
-	}], [mercury_cv_pc_access=yes], [true], [true]))
+	}], [mercury_cv_pc_access=eip], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_pc_access)
+	if test $mercury_cv_pc_access != no; then
+		AC_DEFINE_UNQUOTED(PC_ACCESS,$mercury_cv_pc_access)
+	fi
 else
 	AC_MSG_CHECKING(for \`siginfo_t')
 	AC_CACHE_VAL(mercury_cv_siginfo_t,
