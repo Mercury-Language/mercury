@@ -306,10 +306,17 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 			Hlds_Type = hlds__type_defn(_TypeVarSet, TypeParams,
 				du_type(Ctors0, TagVals, _), _, _)
 		->
+			term__term_list_to_var_list(TypeParams,
+				TypeParamVars),
+			map__from_corresponding_lists(TypeParamVars,
+				TypeArgs, TypeSubst),
+			shapes__apply_to_ctors(Ctors0, TypeSubst,
+				Ctors),
+
 			% check for a type with only one functor of arity one:
 			% such a type will have a `no_tag' functor
 			% (unless it is type_info/1)
-			(	Ctors0 = [SingleCtor - [SingleArgType]],
+			(	Ctors = [SingleCtor - [SingleArgType]],
 				SingleCtor \= qualified(_, "type_info"),
 				SingleCtor \= unqualified("type_info")
 			->
@@ -327,17 +334,12 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 					% etc., so inst of arg is the same
 					SingleArgInst = Inst
 				),
-				shapes__create_shape(Type_Tab,
+				shapes__request_shape_number(
 					SingleArgType - SingleArgInst,
-					Shape, S_Tab0, S_Tab)
+					Type_Tab,
+					S_Tab0, S_Tab, ShapeNum),
+				Shape = equivalent(num(ShapeNum))
 			;
-				term__term_list_to_var_list(TypeParams,
-					TypeParamVars),
-				map__from_corresponding_lists(TypeParamVars,
-					TypeArgs, TypeSubst),
-				shapes__apply_to_ctors(Ctors0, TypeSubst,
-					Ctors),
-
 				Shape = quad(A,B,C,D),
 				shapes__create_shapeA(Type_Id, Ctors, TagVals,
 					bit_zero, A, Type_Tab, S_Tab0, S_Tab1),
