@@ -8,16 +8,27 @@
 
 :- module options.
 :- interface.
-:- import_module int, string, std_util, list, io.
+:- import_module int, string, std_util, list, io, map, require.
 
 :- type option_data	--->	bool(bool)
 			;	int(int)
 			;	string(string)
 			;	accumulating(list(string)).
+
+:- type option_table	==	map(option, option_data).
 		
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::output) is det.
+
+:- pred options__lookup_bool_option(option_table, option, bool).
+:- mode options__lookup_bool_option(in, in, out) is det.
+
+:- pred options__lookup_int_option(option_table, option, int).
+:- mode options__lookup_int_option(in, in, out) is det.
+
+:- pred options__lookup_string_option(option_table, option, string).
+:- mode options__lookup_string_option(in, in, out) is det.
 
 :- pred options_help(io__state::di, io__state::uo) is det.
 
@@ -28,14 +39,28 @@
 			io__state::di, io__state::uo) is det.
 :- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
 
-:- type option		--->	verbose
+:- type option		--->
+		% Verbosity/Output options
+				verbose
 			;	very_verbose
 			;	verbose_errors
 			;	statistics
 			;	dump_hlds
 			;	verbose_dump_hlds
+		% Code generation options
 			;	generate_code
+			;	lazy_code
+			;	reclaim_heap_on_semidet_failure
+			;	reclaim_heap_on_nondet_failure
 			;	generate_dependencies
+		% Optimisation Options
+			;	peephole
+			;	peephole_local
+			;	peephole_jump_opt
+			;	peephole_label_elim
+			;	optimize
+			;	debug
+			;	grade
 			;	builtin_module
 			;	make_interface
 			;	heap_space
@@ -53,9 +78,6 @@
 			;	tags
 			;	follow_code
 			;	follow_vars
-			;	lazy_code
-			;	reclaim_heap_on_semidet_failure
-			;	reclaim_heap_on_nondet_failure
 			;	num_tag_bits
 			;	gc
 			;	compile_to_c
@@ -66,9 +88,6 @@
 			;	link
 			;	gcc_non_local_gotos
 			;	gcc_global_registers
-			;	debug
-			;	optimize
-			;	grade
 			;	mod_comments.
 
 :- implementation.
@@ -115,7 +134,11 @@ option_defaults([
 	debug			-	bool(no),
 	optimize		-	bool(no),
 	grade			-	string(""),
-	mod_comments		-	bool(yes)
+	mod_comments		-	bool(yes),
+	peephole		-	bool(yes),
+	peephole_local		-	bool(yes),
+	peephole_jump_opt	-	bool(yes),
+	peephole_label_elim	-	bool(yes)
 ]).
 
 short_option('v', 			verbose).
@@ -189,6 +212,10 @@ long_option("link",			link).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
 long_option("mod-comments",		mod_comments).
+long_option("peephole",			peephole).
+long_option("peephole-local",		peephole_local).
+long_option("peephole-jump-opt",	peephole_jump_opt).
+long_option("peephole-label-elim",	peephole_label_elim).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -282,6 +309,14 @@ options_help -->
 	io__write_string("\t\tEnable debugging.\n"),
 	io__write_string("\t--optimize\n"),
 	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
+	io__write_string("\t--peephole\n"),
+	io__write_string("\t\tEnable the peephole optimisation pass.\n"),
+	io__write_string("\t--peephole-local\n"),
+	io__write_string("\t\tEnable pattern matching optimisations.\n"),
+	io__write_string("\t--peephole-jump-opt\n"),
+	io__write_string("\t\tEliminate jumps to jumps.\n"),
+	io__write_string("\t--peephole-label-elim\n"),
+	io__write_string("\t\tEliminate useless labels\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),
@@ -309,6 +344,33 @@ maybe_write_string(no, _) --> [].
 
 maybe_flush_output(yes) --> io__flush_output.
 maybe_flush_output(no) --> [].
+
+options__lookup_bool_option(OptionTable, Opt, Val) :-
+	(
+		map__lookup(OptionTable, Opt, bool(Val0))
+	->
+		Val = Val0
+	;
+		error("Expected bool option and didn't get one.")
+	).
+
+options__lookup_int_option(OptionTable, Opt, Val) :-
+	(
+		map__lookup(OptionTable, Opt, int(Val0))
+	->
+		Val = Val0
+	;
+		error("Expected bool option and didn't get one.")
+	).
+
+options__lookup_string_option(OptionTable, Opt, Val) :-
+	(
+		map__lookup(OptionTable, Opt, string(Val0))
+	->
+		Val = Val0
+	;
+		error("Expected bool option and didn't get one.")
+	).
 
 :- end_module options.
 
