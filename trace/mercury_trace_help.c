@@ -51,7 +51,7 @@ static  int             MR_help_word_max = 0;
 static  int             MR_help_word_next = 0;
 
 static	void		MR_trace_add_help_word(const char *word);
-static	char *		MR_trace_get_help_word(int slot);
+static	char		*MR_trace_get_help_word(int slot);
 
 const char *
 MR_trace_add_cat(const char *category, int slot, const char *text)
@@ -88,7 +88,8 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 }
 
 static const char *
-MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *text)
+MR_trace_help_add_node(MR_Word path, const char *name, int slot,
+	const char *text)
 {
 	MR_Word	result;
 	char	*msg;
@@ -109,7 +110,7 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *tex
 	);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-			MR_trace_help_system_type);
+		MR_trace_help_system_type);
 
 	return (error ? msg : NULL);
 }
@@ -131,8 +132,8 @@ MR_trace_help(void)
 void
 MR_trace_help_word(const char *word)
 {
-	char	*word_on_heap;
-	MercuryFile mdb_out;
+	char		*word_on_heap;
+	MercuryFile	mdb_out;
 
 	MR_trace_help_ensure_init();
 
@@ -149,13 +150,13 @@ MR_trace_help_word(const char *word)
 void
 MR_trace_help_cat_item(const char *category, const char *item)
 {
-	MR_Word	path;
-	MR_Word	result;
-	char	*msg;
-	char	*category_on_heap;
-	char	*item_on_heap;
-	MR_bool	error;
-	MercuryFile mdb_out;
+	MR_Word		path;
+	MR_Word		result;
+	char		*msg;
+	char		*category_on_heap;
+	char		*item_on_heap;
+	MR_bool		error;
+	MercuryFile	mdb_out;
 
 	MR_trace_help_ensure_init();
 
@@ -196,10 +197,10 @@ MR_trace_help_ensure_init(void)
 		);
 
 		MR_trace_help_system_type = (MR_TypeInfo) MR_make_permanent(
-					(MR_Word) MR_trace_help_system_type,
-					(MR_TypeInfo) typeinfo_type);
+			(MR_Word) MR_trace_help_system_type,
+			(MR_TypeInfo) typeinfo_type);
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-					MR_trace_help_system_type);
+			MR_trace_help_system_type);
 		done = MR_TRUE;
 	}
 }
