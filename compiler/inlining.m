@@ -237,13 +237,14 @@ inlining__create_variables([V|Vs], Varset0, VarTypes0, Subn0, CVars,
 	->
 		NV = V,
 		Varset1 = Varset0,
-		Subn1 = Subn0
+		Subn1 = Subn0,
+		VarTypes1 = VarTypes0
 	;
 		varset__new_var(Varset0, NV, Varset1),
-		map__set(Subn0, V, NV, Subn1)
+		map__set(Subn0, V, NV, Subn1),
+		map__lookup(CVars, V, VT),
+		map__set(VarTypes0, NV, VT, VarTypes1)
 	),
-	map__lookup(CVars, V, VT),
-	map__set(VarTypes0, NV, VT, VarTypes1),
 	inlining__create_variables(Vs, Varset1, VarTypes1, Subn1, CVars,
 		Varset, VarTypes, Subn).
 

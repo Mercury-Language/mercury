@@ -102,7 +102,7 @@ array__init(Low, High, Init, Array) :-
 		Mod2 is Size mod 2,
 		Mod2 = 0,
 		Mod3 is Size mod 3,
-		Mod3 \= 3	% XXX huh? this is a bug
+		Mod3 \= 0
 	->
 		N is Size // 2,
 		L2 is Low + N,
