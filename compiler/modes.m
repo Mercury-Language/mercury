@@ -989,6 +989,14 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 compute_goal_instmap_delta(InstMap0, Goal,
 		GoalInfo0, GoalInfo, ModeInfo0, ModeInfo) :-
 	( Goal = conj([]) ->
+		%
+		% When modecheck_unify.m replaces a unification with a
+		% dead variable with `true', make sure the instmap_delta
+		% of the goal is empty. The code generator and
+		% mode_util__recompute_instmap_delta can be confused
+		% by references to the dead variable in the instmap_delta,
+		% resulting in calls to error/1.
+		%
 		instmap_delta_init_reachable(DeltaInstMap),
 		mode_info_set_instmap(InstMap0, ModeInfo0, ModeInfo)
 	;
