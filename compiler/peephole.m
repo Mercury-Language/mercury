@@ -402,7 +402,7 @@ peephole__match(incr_sp(N), _, _, _, _, Instrs0, Instrs) :-
 	%	decr_sp N 	=>	<...>
 	%	incr_sp N
 
-peephole__match(decr_sp(N), _, _, _, TeardownMap, Instrs0, Instrs) :-
+peephole__match(decr_sp(N), _, _, _, _TeardownMap, Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [incr_sp(N) - _ | Instrs].
 % XXX should be restored when proven OK
