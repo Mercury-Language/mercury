@@ -101,6 +101,13 @@
 					io__state, io__state).
 :- mode hlds_out__write_unify_rhs(in, in, in, in, di, uo) is det.
 
+	% print out a list of variables their corresponding modes
+	% (e.g. for a lambda expressions)
+
+:- pred hlds_out__write_var_modes(list(var), list(mode), varset,
+					io__state, io__state).
+:- mode hlds_out__write_var_modes(in, in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -831,10 +838,6 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet) -->
 	io__write_string(ModuleName),
 	io__write_string(":"),
 	hlds_out__write_functor(Functor, ArgVars, VarSet).
-
-:- pred hlds_out__write_var_modes(list(var), list(mode), varset,
-					io__state, io__state).
-:- mode hlds_out__write_var_modes(in, in, in, di, uo) is det.
 
 hlds_out__write_var_modes([], [], _) --> [].
 hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet) -->
