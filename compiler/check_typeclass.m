@@ -489,10 +489,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
 		OrderedInstanceMethods, Info0, Info, IO0, IO) :-
-	InstanceDefn0 = hlds_instance_defn(A, B, InstanceContext, 
-				InstanceConstraints, InstanceTypes,
-				InstanceBody, MaybeInstancePredProcs,
-				InstanceVarSet, I),
+	InstanceDefn0 = hlds_instance_defn(InstanceModuleName, B,
+		InstanceContext, InstanceConstraints, InstanceTypes,
+		InstanceBody, MaybeInstancePredProcs, InstanceVarSet, I),
 	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
@@ -507,7 +506,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 					_, Context),
 		produce_auxiliary_procs(ClassId, ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
-			InstanceVarSet, 
+			InstanceVarSet, InstanceModuleName,
 			InstancePredDefn, Context,
 			InstancePredId, InstanceProcIds, Info0, Info,
 			IO0, IO),
@@ -527,9 +526,9 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			MaybeInstancePredProcs = no,
 			InstancePredProcs = InstancePredProcs1
 		),
-		InstanceDefn = hlds_instance_defn(A, B, Context, 
-			InstanceConstraints, InstanceTypes, InstanceBody,
-			yes(InstancePredProcs), InstanceVarSet, I)
+		InstanceDefn = hlds_instance_defn(InstanceModuleName, B,
+			Context, InstanceConstraints, InstanceTypes,
+			InstanceBody, yes(InstancePredProcs), InstanceVarSet, I)
 	;
 		MatchingInstanceMethods = [I1, I2 | Is]
 	->
@@ -658,15 +657,15 @@ pred_or_func_to_string(predicate, "predicate").
 pred_or_func_to_string(function, "function").
 
 :- pred produce_auxiliary_procs(class_id, list(tvar), pred_markers, list(type),
-	list(class_constraint), tvarset, instance_proc_def, prog_context,
-	pred_id, list(proc_id), instance_method_info, instance_method_info,
-	io__state, io__state).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, in, out, out, 
+	list(class_constraint), tvarset, module_name, instance_proc_def,
+	prog_context, pred_id, list(proc_id), instance_method_info,
+	instance_method_info, io__state, io__state).
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, in, in, out, out, 
 	in, out, di, uo) is det.
 
 produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
-		InstancePredDefn, Context, PredId,
+		InstanceModuleName, InstancePredDefn, Context, PredId,
 		InstanceProcIds, Info0, Info, IO0, IO) :-
 
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
@@ -713,8 +712,6 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
-	module_info_name(ModuleInfo0, ModuleName),
-
 	Cond = true,
 	map__init(Proofs),
 	add_marker(Markers0, class_instance_method, Markers1),
@@ -742,7 +739,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
 
-	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
+	pred_info_init(InstanceModuleName, PredName, PredArity, ArgTypeVars, 
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
