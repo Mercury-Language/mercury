@@ -124,7 +124,7 @@ term__get_string(term_functor(term_string(String), _, _), String).
 
 :- type substitution == map(variable, term).
 
-:- term_unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
+:- term__unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
 
 :- pred term__unify(term, term, substition, substition).
 :- mode term__unify(input, input, input, output).
