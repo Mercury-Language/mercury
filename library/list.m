@@ -1519,6 +1519,11 @@ list__merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
 
 %-----------------------------------------------------------------------------%
 
+%
+% These functions are exported so that they can be used instead of the
+% names [|]_2 and []_0. These two names can be difficult to use from other
+% managed languages on the il backend.
+%
 :- func empty_list = list(T).
 :- pragma export(empty_list = out, "ML_empty_list").
 empty_list = [].
