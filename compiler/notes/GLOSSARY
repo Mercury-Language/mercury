@@ -28,3 +28,8 @@ codeinfo: a structure used by codegen.m
 switch: a disjunction which does a case analysis on the toplevel
 	functor of some variable.
 
+super-homogenous form (SHF): a simplified, flattened form of goals, where
+	each unification is split into its component pieces; in particular,
+	the arguments of each predicate call and functor must be distinct
+	variables.
+
