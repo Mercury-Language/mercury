@@ -44,8 +44,14 @@ static	MR_next	MR_trace_debug_cmd(MR_trace_cmd_info *cmd,
 			const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, int seqno, int depth,
 			const char *path);
-static	void	MR_trace_browse(int var_count,
+static	void	MR_trace_list_vars(int var_count,
 			const MR_Stack_Layout_Vars *var_info);
+static	void	MR_trace_browse_one(int which_var,
+			const MR_Stack_Layout_Vars *var_info);
+static	void	MR_trace_browse_all(int var_count,
+			const MR_Stack_Layout_Vars *var_info);
+static	Word	*MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars
+			*vars);
 static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Var *var, Word *type_params);
 static	void	MR_trace_help(void);
@@ -258,13 +264,34 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 		} else {
 			printf("This command expects no argument.\n");
 		}
-	} else if (streq(words[0], "p")) {
+	} else if (streq(words[0], "v")) {
 		if (word_count == 1) {
-			MR_trace_browse((int)
-				layout->MR_sll_var_count,
+			MR_trace_list_vars((int) layout->MR_sll_var_count,
 				&layout->MR_sll_var_info);
 		} else {
 			printf("This command expects no argument.\n");
+		}
+	} else if (streq(words[0], "p")) {
+		if (word_count == 2) {
+			if (MR_trace_is_number(words[1], &n)) {
+				if (n < layout->MR_sll_var_count) {
+					MR_trace_browse_one(n,
+						&layout->MR_sll_var_info);
+				} else {
+					printf("There is no variable #%d.\n",
+						n);
+				}
+			} else if streq(words[1], "*") {
+				MR_trace_browse_all((int)
+					layout->MR_sll_var_count,
+					&layout->MR_sll_var_info);
+			} else {
+				printf("The argument of this command should be,\n");
+				printf("a variable number or a '*' indicating all variables.\n");
+			}
+		} else {
+			printf("This command expects one argument,\n");
+			printf("a variable number or a '*' indicating all variables.\n");
 		}
 	} else if (streq(words[0], "d")) {
 		if (word_count == 1) {
@@ -398,7 +425,7 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 }
 
 static void
-MR_trace_browse(int var_count, const MR_Stack_Layout_Vars *vars)
+MR_trace_list_vars(int var_count, const MR_Stack_Layout_Vars *vars)
 {
 	Word	*type_params;
 	bool	succeeded;
@@ -409,6 +436,54 @@ MR_trace_browse(int var_count, const MR_Stack_Layout_Vars *vars)
 		printf("mtrace: no live variables\n");
 		return;
 	}
+
+	for (i = 0; i < var_count; i++) {
+		printf("%3d %s\n", i, MR_name_if_present(vars, i));
+	}
+}
+
+static void
+MR_trace_browse_one(int which_var, const MR_Stack_Layout_Vars *vars)
+{
+	Word	*type_params;
+	int	i;
+
+	type_params = MR_trace_materialize_typeinfos(vars);
+	MR_trace_browse_var(MR_name_if_present(vars, which_var),
+		&vars->MR_slvs_pairs[which_var], type_params);
+	free(type_params);
+}
+
+static void 
+MR_trace_browse_all(int var_count, const MR_Stack_Layout_Vars *vars)
+{
+	Word	*type_params;
+	bool	succeeded;
+	int	count;
+	int	i;
+
+	if (var_count == 0) {
+		printf("mtrace: no live variables\n");
+		return;
+	}
+
+	type_params = MR_trace_materialize_typeinfos(vars);
+
+	for (i = 0; i < var_count; i++) {
+		MR_trace_browse_var(MR_name_if_present(vars, i),
+			&vars->MR_slvs_pairs[i], type_params);
+	}
+
+	free(type_params);
+}
+
+static Word *
+MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars *vars)
+{
+	Word	*type_params;
+	bool	succeeded;
+	int	count;
+	int	i;
 
 	if (vars->MR_slvs_tvars != NULL) {
 		count = (int) (Integer) vars->MR_slvs_tvars[0];
@@ -427,16 +502,11 @@ MR_trace_browse(int var_count, const MR_Stack_Layout_Vars *vars)
 				}
 			}
 		}
+
+		return type_params;
 	} else {
-		type_params = NULL;
+		return NULL;
 	}
-
-	for (i = 0; i < var_count; i++) {
-		MR_trace_browse_var(MR_name_if_present(vars, i),
-			&vars->MR_slvs_pairs[i], type_params);
-	}
-
-	free(type_params);
 }
 
 static void
@@ -765,8 +835,10 @@ MR_trace_help(void)
 		"\tgo to event #N, not printing the trace.\n"
 		"<N> G:\t\t"
 		"\tgo to event #N, printing the trace.\n"
-		"p:\t\t"
-		"\tprint the variables live at this point.\n"
+		"v:\t\t"
+		"\tlist the names of the variables live at this point.\n"
+		"p <n>:\t\t"
+		"\tprint variable #n (or all live vars if <n> is '*')\n"
 		"r:\t\t"
 		"\tcontinue until forward execution is resumed.\n"
 		"[<N>] [s]:\t"
