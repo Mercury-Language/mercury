@@ -221,7 +221,7 @@ add_to_order_zero_term(List, C2, Result) :-
 poly_exp(N, Poly, Result) :-
 	( N = 0 ->
 		Result = const(1)
-	; even(N) ->
+	; poly__even(N) ->
 		M is N // 2,
 		poly_exp(M, Poly, Part),
 		poly_mul(Part, Part, Result)

@@ -71,13 +71,14 @@ main -->
 :- mode lefteven(out) is multidet.
 
 crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
-	odd(A), even(B), even(C), even(E),
+	crypt__odd(A), crypt__even(B), crypt__even(C), crypt__even(E),
 	mult([C, B, A], E, [I, H, G, F | X]),
-	lefteven(F), odd(G), even(H), even(I), zero(X), lefteven(D),
+	lefteven(F), crypt__odd(G), crypt__even(H), crypt__even(I),
+	zero(X), lefteven(D),
 	mult([C, B, A], D, [L, K, J | Y]),
-	lefteven(J), odd(K), even(L), zero(Y),
+	lefteven(J), crypt__odd(K), crypt__even(L), zero(Y),
 	sum2([I, H, G, F], [0, L, K, J], [P, O, N, M | Z]),
-	odd(M), odd(N), even(O), even(P), zero(Z).
+	crypt__odd(M), crypt__odd(N), crypt__even(O), crypt__even(P), zero(Z).
 	% write(' '), write(A), write(B), write(C), nl,
 	% write('  '), write(D), write(E), nl,
 	% write(F), write(G), write(H), write(I), nl,
