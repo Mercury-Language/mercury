@@ -300,7 +300,8 @@ generate_category_code(model_non, Goal, Instrs, Used) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_det_prolog(code_tree, maybe(int), code_info, code_info).
+:- pred code_gen__generate_det_prolog(code_tree, maybe(int),
+	code_info, code_info).
 :- mode code_gen__generate_det_prolog(out, out, in, out) is det.
 
 code_gen__generate_det_prolog(EntryCode, SUsed) -->
@@ -337,15 +338,15 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	->
 		{ CodeB = CodeA }
 	;
+		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ CodeB = tree(
 			CodeA,
-			node([ incr_sp(NS) - "Allocate stack frame" ])
+			node([incr_sp(NS, PredName) - "Allocate stack frame"])
 		) }
 	),
 	{ PStart = node([comment("Start of procedure prologue") - ""]) },
 	{ PEnd = node([comment("End of procedure prologue") - ""]) },
 	{ EntryCode = tree(tree(PStart, CodeB), tree(CodeC, PEnd)) }.
-
 
 %---------------------------------------------------------------------------%
 
@@ -437,9 +438,10 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	->
 		{ CodeB = CodeA }
 	;
+		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ CodeB = tree(
 			CodeA,
-			node([ incr_sp(NS) - "Allocate stack frame" ])
+			node([incr_sp(NS, PredName) - "Allocate stack frame"])
 		) }
 	),
 	{ PStart = node([comment("Start of procedure prologue") - ""]) },

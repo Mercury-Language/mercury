@@ -314,10 +314,10 @@ vn_block__handle_instr(discard_ticket,
 	vn_block__new_ctrl_node(vn_discard_ticket, Livemap,
 		Params, LabelsSoFar, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(incr_sp(N),
+vn_block__handle_instr(incr_sp(N, Msg),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple0, Tuple) :-
-	vn_block__new_ctrl_node(vn_incr_sp(N), Livemap,
+	vn_block__new_ctrl_node(vn_incr_sp(N, Msg), Livemap,
 		Params, LabelsSoFar, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(decr_sp(N),
@@ -465,7 +465,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params, LabelsSoFar,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		VnInstr = vn_incr_sp(_),
+		VnInstr = vn_incr_sp(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -855,7 +855,7 @@ vn_block__is_ctrl_instr(restore_hp(_), yes).
 vn_block__is_ctrl_instr(store_ticket(_), yes).
 vn_block__is_ctrl_instr(restore_ticket(_), yes).
 vn_block__is_ctrl_instr(discard_ticket, yes).
-vn_block__is_ctrl_instr(incr_sp(_), yes).
+vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
 vn_block__is_ctrl_instr(pragma_c(_, _, _, _), no).
 

@@ -1453,8 +1453,12 @@ code_info__generate_semi_pre_commit(RedoLab, PreCommit) -->
 		% problems for accurate garbage collection. Hence we 
 		% make sure the commit vals are made live, so gc
 		% can figure out what is going on later.
+		code_info__get_module_info(ModuleInfo),
+		code_info__get_pred_id(PredId),
+		{ predicate_name(ModuleInfo, PredId, PredName) },
+		{ string__append("commit in ", PredName, Message) },
 		{ PushCode = node([
-			incr_sp(3) - 
+			incr_sp(3, Message) - 
 			"push space for curfr, maxfr, and redoip" 
 		]) },
 		{ CurfrSlot = stackvar(1) },
@@ -1558,8 +1562,12 @@ code_info__generate_det_pre_commit(PreCommit) -->
 		% problems for accurate garbage collection. Hence we 
 		% make sure the commit vals are made live, so gc
 		% can figure out what is going on later.
+		code_info__get_module_info(ModuleInfo),
+		code_info__get_pred_id(PredId),
+		{ predicate_name(ModuleInfo, PredId, PredName) },
+		{ string__append("commit in ", PredName, Message) },
 		{ PushCode = node([
-			incr_sp(3) - 
+			incr_sp(3, Message) - 
 			"push space for curfr, maxfr, and redoip" 
 		]) },
 		{ CurfrSlot = stackvar(1) },

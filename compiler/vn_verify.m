@@ -355,7 +355,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = incr_sp(_),
+		Instr = incr_sp(_, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;

@@ -380,7 +380,7 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 			Predmap1 = Predmap0,
 			VnTables1 = VnTables0
 		;
-			Vn_instr = vn_incr_sp(_),
+			Vn_instr = vn_incr_sp(_, _),
 			Succmap1 = Succmap0,
 			Predmap1 = Predmap0,
 			VnTables1 = VnTables0

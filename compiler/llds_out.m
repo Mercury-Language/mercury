@@ -901,15 +901,15 @@ output_instruction(discard_ticket, _) -->
 	io__write_string("\t"),
 	io__write_string("discard_ticket();").
 
-output_instruction(incr_sp(N), _) -->
-	io__write_string("\t"),
-	io__write_string("incr_sp("),
+output_instruction(incr_sp(N, Msg), _) -->
+	io__write_string("\tincr_sp_push_msg("),
 	io__write_int(N),
-	io__write_string(");").
+	io__write_string(", """),
+	io__write_string(Msg),
+	io__write_string(""");").
 
 output_instruction(decr_sp(N), _) -->
-	io__write_string("\t"),
-	io__write_string("decr_sp("),
+	io__write_string("\tdecr_sp_pop_msg("),
 	io__write_int(N),
 	io__write_string(");").
 

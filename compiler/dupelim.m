@@ -181,7 +181,7 @@ dupelim__replace_labels_instr(restore_ticket(Rval0), Replmap,
 		restore_ticket(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_instr(discard_ticket, _, discard_ticket).
-dupelim__replace_labels_instr(incr_sp(Size), _, incr_sp(Size)).
+dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
 dupelim__replace_labels_instr(pragma_c(A,B,C,D), _, pragma_c(A,B,C,D)).
 

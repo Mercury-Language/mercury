@@ -6,7 +6,7 @@
 
 % LLDS - The Low-Level Data Structure.
 
-% This module defines both the LLDS data structure itself.
+% This module defines the LLDS data structure itself.
 
 % Main authors: conway, fjh.
 
@@ -164,8 +164,11 @@
 			% Decrement the ticket stack by the size of a solver
 			% stack frame.
 
-	;	incr_sp(int)
-			% Increment the det stack pointer.
+	;	incr_sp(int, string)
+			% Increment the det stack pointer. The string is
+			% the name of the procedure, for use in stack dumps.
+			% It is used only in grades in which stack dumps are
+			% enabled (i.e. not in grades where SPEED is defined).
 
 	;	decr_sp(int)
 			% Decrement the det stack pointer.
@@ -298,8 +301,8 @@
 	% local(proc_label)
 	%	Local entry label.
 	% local(proc_label, int)
-	%	Internal local label which can only be accessed externaly if
-	%	it is a continuation label.
+	%	Internal local label which can only be accessed externally
+	%	if it is a continuation label.
 	% exported(proc_label)
 	%	Entry label, which can be accessed from any where.
 

@@ -261,10 +261,10 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [discard_ticket - ""]
 	;
-		Vn_instr = vn_incr_sp(Incr),
+		Vn_instr = vn_incr_sp(Incr, Msg),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
-		Instrs = [incr_sp(Incr) - ""]
+		Instrs = [incr_sp(Incr, Msg) - ""]
 	;
 		Vn_instr = vn_decr_sp(Decr),
 		VnTables = VnTables0,

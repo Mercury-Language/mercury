@@ -25,7 +25,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, unify_gen, code_util, code_aux, opt_util.
+:- import_module hlds_module, hlds_data.
+:- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
 
 %---------------------------------------------------------------------------%
@@ -115,7 +116,8 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
-		Entry) },
+		EntryLabel) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
 
 	code_aux__pre_goal_update(SwitchGoalInfo),
 
@@ -181,7 +183,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 				label(Loop2Label))
 				- "test on upward loop"]
 	;
-		MaybeIncrSp = [incr_sp(StackSlots) - ""],
+		MaybeIncrSp = [incr_sp(StackSlots, PredName) - ""],
 		MaybeDecrSp = [decr_sp(StackSlots) - ""],
 		InitAuxReg =  [assign(AuxReg, lval(sp))
 				- "initialize counter register"],
@@ -202,7 +204,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	{ AfterList = [] ->
 		list__condense([
 			[
-				label(Entry) - "Procedure entry point",
+				label(EntryLabel) - "Procedure entry point",
 				comment(CallInfoComment) - ""
 			],
 			EntryTestList,
@@ -226,7 +228,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	;
 		list__condense([
 			[
-				label(Entry) - "Procedure entry point",
+				label(EntryLabel) - "Procedure entry point",
 				comment(CallInfoComment) - ""
 			],
 			EntryTestList,
@@ -395,7 +397,7 @@ middle_rec__find_used_registers_instr(store_ticket(Lval), Used0, Used) :-
 middle_rec__find_used_registers_instr(restore_ticket(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(discard_ticket, Used, Used).
-middle_rec__find_used_registers_instr(incr_sp(_), Used, Used).
+middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
 middle_rec__find_used_registers_instr(pragma_c(_, Ins, _, Outs), Used0, Used) :-
 	insert_pragma_c_input_registers(Ins, Used0, Used1),

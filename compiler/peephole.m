@@ -50,7 +50,7 @@ peephole__find_setups([Instr0 - _ | Instrs], SetupMap0, SetupMap) :-
 	(
 		Instr0 = label(Label),
 		Instrs = [Instr1, Instr2, Instr3 | _],
-		Instr1 = incr_sp(N) - _,
+		Instr1 = incr_sp(N, _) - _,
 		Instr2 = assign(stackvar(N), lval(succip)) - _,
 		Instr3 = label(SetupLabel) - _
 	->
@@ -292,7 +292,7 @@ peephole__match(modframe(Redoip), Comment, _, _, Instrs0, Instrs) :-
 	%	incr_sp N		incr_sp N
 	%     L2:		      L2:
 
-peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
+peephole__match(incr_sp(N, Msg), _, _, _, Instrs0, Instrs) :-
 	(
 		opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain)
 	->
@@ -301,7 +301,7 @@ peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
 		Instrs0 = [Instr0, Instr1, Instr2, Instr3 | Instrs3],
 		Instr0 = goto(label(L2)) - _,
 		Instr1 = label(_) - _,
-		Instr2 = incr_sp(N) - _,
+		Instr2 = incr_sp(N, Msg) - _,
 		Instr3 = label(L2) - _
 	->
 		Instrs = [Instr1, Instr2, Instr3 | Instrs3]
@@ -401,7 +401,7 @@ peephole__decr(N, TeardownMap, Instrs0, Instrs) :-
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = Uinstr1 - Comment1,
 	(
-		Uinstr1 = incr_sp(N),
+		Uinstr1 = incr_sp(N, _),
 		Instrs = Instrs2
 	;
 		Uinstr1 = if_val(Cond, Addr),

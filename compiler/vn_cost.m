@@ -159,7 +159,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = discard_ticket,
 		Cost = 0
 	;
-		Uinstr = incr_sp(_),
+		Uinstr = incr_sp(_, _),
 		Cost = 0
 	;
 		Uinstr = decr_sp(_),

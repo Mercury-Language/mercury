@@ -222,8 +222,10 @@ vn_util__simplify_vnrval(Vnrval0, Vnrval, VnTables0, VnTables) :-
 :- mode vn_util__simplify_vnrval_binop(in, in, in, out, in, out) is semidet.
 
 vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
-	vn_table__lookup_defn(Vn1, Vnrval1, "vn_util__simplify_vnrval_binop", VnTables0),
-	vn_table__lookup_defn(Vn2, Vnrval2, "vn_util__simplify_vnrval_binop", VnTables0),
+	vn_table__lookup_defn(Vn1, Vnrval1,
+		"vn_util__simplify_vnrval_binop", VnTables0),
+	vn_table__lookup_defn(Vn2, Vnrval2,
+		"vn_util__simplify_vnrval_binop", VnTables0),
 	(
 		Binop = (+),
 		(
@@ -238,8 +240,8 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 						% c1+e21+c22 => e21+c
 			Vnrval1 = vn_const(int_const(I1)),
 			Vnrval2 = vn_binop((+), Vn21, Vn22),
-			vn_table__lookup_defn(Vn22, Vnrval22, "vn_util__simplify_vnrval",
-				VnTables0),
+			vn_table__lookup_defn(Vn22, Vnrval22,
+				"vn_util__simplify_vnrval", VnTables0),
 			Vnrval22 = vn_const(int_const(I22))
 		->
 			I is I1 + I22,
@@ -256,8 +258,8 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		;
 						% e11+c12+c2 => e11+c
 			Vnrval1 = vn_binop((+), Vn11, Vn12),
-			vn_table__lookup_defn(Vn12, Vnrval12, "vn_util__simplify_vnrval",
-				VnTables0),
+			vn_table__lookup_defn(Vn12, Vnrval12,
+				"vn_util__simplify_vnrval", VnTables0),
 			Vnrval12 = vn_const(int_const(I12)),
 			Vnrval2 = vn_const(int_const(I2))
 		->
@@ -268,12 +270,12 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		;
 						% e11+c12+e21+c22 => e11+e21+c
 			Vnrval1 = vn_binop((+), Vn11, Vn12),
-			vn_table__lookup_defn(Vn12, Vnrval12, "vn_util__simplify_vnrval",
-				VnTables0),
+			vn_table__lookup_defn(Vn12, Vnrval12,	
+				"vn_util__simplify_vnrval", VnTables0),
 			Vnrval12 = vn_const(int_const(I12)),
 			Vnrval2 = vn_binop((+), Vn21, Vn22),
-			vn_table__lookup_defn(Vn22, Vnrval22, "vn_util__simplify_vnrval",
-				VnTables0),
+			vn_table__lookup_defn(Vn22, Vnrval22,
+				"vn_util__simplify_vnrval", VnTables0),
 			Vnrval22 = vn_const(int_const(I22))
 		->
 			I is I12 + I22,
@@ -285,8 +287,8 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		;
 						% e11+c12+e2 => e11+e2+c12
 			Vnrval1 = vn_binop((+), Vn11, Vn12),
-			vn_table__lookup_defn(Vn12, Vnrval12, "vn_util__simplify_vnrval",
-				VnTables0),
+			vn_table__lookup_defn(Vn12, Vnrval12,
+				"vn_util__simplify_vnrval", VnTables0),
 			Vnrval12 = vn_const(int_const(_I12)),
 			Vnrval2 = vn_binop((+), _Vn21, _Vn22)
 		->
@@ -305,8 +307,8 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			NI2 is 0 - I2,
 			vn_util__vnrval_to_vn(vn_const(int_const(NI2)), VnConst,
 				VnTables0, VnTables1),
-			vn_util__simplify_vnrval(vn_binop((+), Vn1, VnConst), Vnrval,
-				VnTables1, VnTables)
+			vn_util__simplify_vnrval(vn_binop((+), Vn1, VnConst),
+				Vnrval, VnTables1, VnTables)
 		;
 						% c1-e2 => 0-e2+c1
 			Vnrval1 = vn_const(int_const(I1)),
@@ -314,10 +316,10 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		->
 			vn_util__vnrval_to_vn(vn_const(int_const(0)), VnConst0,
 				VnTables0, VnTables1),
-			vn_util__vnrval_to_vn(vn_binop((-), VnConst0, Vn2), VnExpr,
-				VnTables1, VnTables2),
-			vn_util__simplify_vnrval(vn_binop((+), VnExpr, Vn1), Vnrval,
-				VnTables2, VnTables)
+			vn_util__vnrval_to_vn(vn_binop((-), VnConst0, Vn2),
+				VnExpr, VnTables1, VnTables2),
+			vn_util__simplify_vnrval(vn_binop((+), VnExpr, Vn1),
+				Vnrval, VnTables2, VnTables)
 		;
 			fail
 		)
@@ -693,7 +695,8 @@ vn_util__real_uses([Use0 | Uses0], Uses, VnTables) :-
 			vn_table__search_current_value(Vnlval, Vn, VnTables),
 			( vn_table__search_uses(Vn, AccessUses, VnTables) ->
 				(
-					vn_util__real_uses(AccessUses, [], VnTables)
+					vn_util__real_uses(AccessUses, [],
+						VnTables)
 				;
 					vn_table__search_current_locs(Vn, Locs,
 						VnTables),
@@ -821,7 +824,7 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_discard_ticket,
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_incr_sp(_),
+			VnInstr = vn_incr_sp(_, _),
 			VnTables1 = VnTables0
 		;
 			VnInstr = vn_decr_sp(_),
@@ -873,7 +876,8 @@ vn_util__record_use(Vn, Src, VnTables0, VnTables) :-
 	vn_table__lookup_uses(Vn, OldUses, "vn_util__record_use", VnTables0),
 	vn_table__add_new_use(Vn, Src, VnTables0, VnTables1),
 	( OldUses = [] ->
-		vn_table__lookup_defn(Vn, Vnrval, "vn_util__record_use", VnTables1),
+		vn_table__lookup_defn(Vn, Vnrval, "vn_util__record_use",
+			VnTables1),
 		(
 			Vnrval = vn_origlval(Vnlval),
 			vn_util__record_access([Vnlval], VnTables1, VnTables)

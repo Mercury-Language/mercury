@@ -270,7 +270,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
-		Uinstr0 = incr_sp(_),
+		Uinstr0 = incr_sp(_, _),
 		Livevals = Livevals0,
 		Livemap = Livemap0,
 		Instrs = Instrs0,

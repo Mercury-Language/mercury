@@ -921,8 +921,8 @@ value_number__push_incr_sp_forw(Instrs0, Instrs) :-
 value_number__push_incr_sp_forw_rev([], no, []).
 value_number__push_incr_sp_forw_rev([Instr0 | Instrs0], MaybeFrameSize,
 		Instrs) :-
-	( Instr0 = incr_sp(N) - _ ->
-		value_number__push_incr_sp_forw_rev_2(Instrs0, N, Instrs),
+	( Instr0 = incr_sp(N, Msg) - _ ->
+		value_number__push_incr_sp_forw_rev_2(Instrs0, N, Msg, Instrs),
 		MaybeFrameSize = yes(N)
 	;
 		value_number__push_incr_sp_forw_rev(Instrs0, MaybeFrameSize,
@@ -930,18 +930,17 @@ value_number__push_incr_sp_forw_rev([Instr0 | Instrs0], MaybeFrameSize,
 		Instrs = [Instr0 | Instrs1]
 	).
 
-:- pred value_number__push_incr_sp_forw_rev_2(list(instruction), int,
+:- pred value_number__push_incr_sp_forw_rev_2(list(instruction), int, string,
 	list(instruction)).
-% :- mode value_number__push_incr_sp_forw_rev_2(di, in, uo) is det.
-:- mode value_number__push_incr_sp_forw_rev_2(in, in, out) is det.
+:- mode value_number__push_incr_sp_forw_rev_2(in, in, in, out) is det.
 
-value_number__push_incr_sp_forw_rev_2([], N, [incr_sp(N) - ""]).
-value_number__push_incr_sp_forw_rev_2([Instr0 | Instrs0], N, Instrs) :-
+value_number__push_incr_sp_forw_rev_2([], N, Msg, [incr_sp(N, Msg) - ""]).
+value_number__push_incr_sp_forw_rev_2([Instr0 | Instrs0], N, Msg, Instrs) :-
 	Instr0 = Uinstr0 - _,
 	value_number__boundary_instr(Uinstr0, Boundary),
 	(
 		Boundary = yes,
-		Instrs = [incr_sp(N) - "", Instr0 | Instrs0],
+		Instrs = [incr_sp(N, Msg) - "", Instr0 | Instrs0],
 		opt_util__block_refers_stackvars([Instr0 | Instrs], Ref),
 		(
 			Ref = yes,
@@ -951,7 +950,7 @@ value_number__push_incr_sp_forw_rev_2([Instr0 | Instrs0], N, Instrs) :-
 		)
 	;
 		Boundary = no,
-		value_number__push_incr_sp_forw_rev_2(Instrs0, N, Instrs1),
+		value_number__push_incr_sp_forw_rev_2(Instrs0, N, Msg, Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	).
 
@@ -984,7 +983,7 @@ value_number__push_save_succip_forw_rev_2([], _FrameSize, _) :-
 value_number__push_save_succip_forw_rev_2([Instr0 | Instrs0], FrameSize,
 		Instrs) :-
 	Instr0 = Uinstr0 - _,
-	( Uinstr0 = incr_sp(FrameSize) ->
+	( Uinstr0 = incr_sp(FrameSize, _) ->
 		Instrs = [assign(stackvar(FrameSize), lval(succip)) - "",
 			Instr0 | Instrs0]
 	;
@@ -1049,7 +1048,7 @@ value_number__boundary_instr(restore_hp(_), no).
 value_number__boundary_instr(store_ticket(_), yes).
 value_number__boundary_instr(restore_ticket(_), yes).
 value_number__boundary_instr(discard_ticket, yes).
-value_number__boundary_instr(incr_sp(_), yes).
+value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _), yes).
 

@@ -69,7 +69,7 @@
 			;	vn_store_ticket(vnlval)
 			;	vn_restore_ticket(vn)
 			;	vn_discard_ticket
-			;	vn_incr_sp(int)
+			;	vn_incr_sp(int, string)
 			;	vn_decr_sp(int).
 
 :- type parentry	==	pair(lval, list(rval)).
