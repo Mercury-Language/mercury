@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2004 The University of Melbourne.
+** Copyright (C) 2004-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,8 +10,8 @@
 ** Declares the proc layout structures of the unify, compare and
 ** compare_representation procedures of the builtin types.
 **
-** You should not include this header file in any source file in the trace 
-** or browser directories, or in any file includes from there. The reason
+** You should not include this header file in any source file in the trace
+** or browser directories, or in any file included from there. The reason
 ** is that this file contains extern declarations for the global variables
 ** holding the procedure layout structure of the unify, compare and
 ** compare_representation procedures of the builtin types, and the C compiler
