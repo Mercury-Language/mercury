@@ -13,6 +13,13 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
+ifeq ($(HAVE_NUPROLOG),yes)
+%.exp: %.nu
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+endif
+
+#-----------------------------------------------------------------------------#
+
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
 	tak query
 
