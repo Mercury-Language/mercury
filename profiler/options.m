@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,2000 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,11 +27,12 @@
 		;	profile_time
 		;	profile_memory_words
 		;	profile_memory_cells
+		;	demangle
+	% Filename options
 		;	countfile
 		;	pairfile
 		;	declfile
 		;	libraryfile
-		;	demangle
 	% Miscellaneous Options
 		;	help.
 
@@ -157,6 +158,8 @@ options_help -->
 	io__write_string("\t\tSame as `--profile memory-cells'.\n"),
 	io__write_string("\t-t\n"),
 	io__write_string("\t\tSame as `--profile time'.\n"),
+	io__write_string("\t--no-demangle\n"),
+	io__write_string("\t\tOutput the mangled predicate and function names.\n"),
 
 	io__write_string("\nFilename Options:\n"),
 	io__write_string("\t-C <file>, --count-file <file>\n"),
@@ -169,8 +172,6 @@ options_help -->
 	io__write_string("\t-L <file>, --library-callgraph <file>\n"),
 	io__write_string("\t\tName of the file which contains the call graph for\n"),
 	io__write_string("\t\tthe library modules.\n"),
-	io__write_string("\t--no-demangle\n"),
-	io__write_string("\t\tOuput the unmangled predicate and function names.\n"),
 
 
 	io__write_string("\nVerbosity Options:\n"),

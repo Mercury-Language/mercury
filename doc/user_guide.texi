@@ -2594,6 +2594,9 @@ usually produce quite a lot of output, so you will usually want to
 redirect the output into a file with a command such as
 @samp{mprof > mprof.out}.
 
+For programs built with @samp{--high-level-code}, you need to also
+pass the @samp{--no-demangle} option to @samp{mprof}.
+
 @node Analysis of results
 @section Analysis of results
 

@@ -544,8 +544,21 @@ do
 				EXTRA_CFLAGS="$TEST_CFLAGS" \
 				EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
 			LD_BIND_NOW=1 ./poly > poly.$grade.out &&
-			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
-			{ diff -u poly.mprof-exp poly.$grade.mprof || true; } &&
+			case $grade in
+			*hl*)
+				# for --high-level-code, we need to
+				# pass --no-demangle to mprof
+				mprof --no-demangle -v -m -c \
+					> poly.$grade.mprof 2>&1 &&
+				{ diff -u poly.mprof-exp2 poly.$grade.mprof ||
+					true; }
+				;;
+			*)
+				mprof -v -m -c > poly.$grade.mprof 2>&1 &&
+				{ diff -u poly.mprof-exp poly.$grade.mprof ||
+					true; }
+				;;
+			esac &&
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
