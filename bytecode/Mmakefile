@@ -20,6 +20,7 @@ include $(MERCURY_DIR)/Mmake.common
 MERCURY_SYSTEM	= \
 		$(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h \
 		$(RUNTIME_DIR)/machdeps/*.c $(RUNTIME_DIR)/machdeps/*.h\
+		$(LIBRARY_DIR)/*.m \
 		$(TRACE_DIR)/*.h $(TRACE_DIR)/*.c \
 		$(BROWSER_DIR)/*.h $(BROWSER_DIR)/*.c \
 		$(BOEHM_GC_DIR)/*.h $(BOEHM_GC_DIR)/include/*.h
@@ -50,6 +51,7 @@ MB_HDRS		= \
 		mb_basetypes.h \
 		mb_bytecode.h \
 		mb_disasm.h \
+		mb_exec.h \
 		mb_interface.h \
 		mb_machine.h \
 		mb_machine_def.h \
@@ -63,6 +65,7 @@ MB_HDRS		= \
 MB_CFILES	= \
 		mb_bytecode.c \
 		mb_disasm.c \
+		mb_exec.c \
 		mb_interface.c \
 		mb_interface_stub.c \
 		mb_machine.c \
@@ -89,9 +92,9 @@ HDRS		=
 
 CFILES		= 
 
-MFILES		= simple01.m
+MFILES		= simple.m
 
-OBJS		= simple01_init.o $(MFILES:%.m=%.o) $(CFILES:%.c=%.o)
+OBJS		= simple_init.o $(MFILES:%.m=%.o) $(CFILES:%.c=%.o)
 
 $(OBJS): $(HDRS) $(MB_HDRS)
 
@@ -110,13 +113,17 @@ all: check
 MLOBJS		= $(MB_OBJS)
 
 .PHONY: check
-check: simple01
+check: simple
 
 #-----------------------------------------------------------------------------#
 # tags actually depends on $(MERCURY_SYSTEM) too but since changes to that
 # hardly ever have an effect, just ignore them
-tags: $(ALL_MFILES) $(ALL_CFILES) $(ALL_HDRS)
-	ctags $(TAGFLAGS) $(ALL_MFILES) $(ALL_CFILES) $(ALL_HDRS) $(MERCURY_SYSTEM)
+tags: $(ALL_CFILES) $(ALL_HDRS) tags2
+	ctags $(CTAGFLAGS) $(ALL_CFILES) $(ALL_HDRS) $(MERCURY_SYSTEM)
+
+tags2: $(ALL_MFILES)
+	mtags $(MTAGFLAGS) $(ALL_MFILES) $(MERCURY_SYSTEM)
+	mv tags tags2
 
 .PHONY: depend
 depend: $(ALL_DEPENDS)
@@ -129,7 +136,12 @@ clean_local:
 
 .PHONY: realclean_local
 realclean_local:
-	rm -f tags test
+	rm -f tags tags2 *.mbc *.bytedebug
+# XXX: The dependencies in mmake ignore .mbc and .bytedebug files
+# so we have to manually delete them. We delete all bytecode files
+# because it will leave submodule files if we don't
+# (eg: module simple contains simple2: simple.simple2.mbc will be
+# generated but will not be removed properly)
 
 #-----------------------------------------------------------------------------#
 

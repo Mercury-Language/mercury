@@ -1,7 +1,0 @@
-:- module ops.
-:- interface.
-:- type (ops:specifier).
-:- type (ops:assoc).
-:- type (ops:class).
-:- type (ops:table).
-:- type (ops:priority) == int.

@@ -29,8 +29,6 @@ typedef MR_Word
 typedef MR_Unsigned
 	MB_Unsigned;
 
-#define MB_WORD_BITS	MR_WORDBITS
-
 typedef MR_Integer
 	MB_Integer;
 

@@ -1,4 +1,0 @@
-:- module modes.
-:- interface.
-:- type (modes:how_to_check_goal).
-:- type (modes:extra_goals).

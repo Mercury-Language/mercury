@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,6 +21,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
+/* Stack slots start numbering at 1 */
 #define	MR_based_stackvar(base_sp, n)	((base_sp)[-(n)])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
 

@@ -1,3 +1,0 @@
-:- module tree.
-:- interface.
-:- type (tree:tree(T)).

@@ -11,8 +11,9 @@
 #ifndef MB_MACHINE_SHOW_H
 #define	MB_MACHINE_SHOW_H
 
-#include <stdio.h>
+#include "mb_basetypes.h"
 
+#include <stdio.h>
 #include "mb_machine.h"
 
 /* Display the current state of the machine */

@@ -9,21 +9,15 @@
 */
 
 /* Imports */
-#include	<assert.h>
-#include	<ctype.h>
-#include	<string.h>
-#include	<stdio.h>
-
 #include	"mb_disasm.h"
-#include	"mb_module.h"
-#include	"mb_util.h"
 
-#include	"mb_machine_def.h"
+#include	<string.h>
+#include	"mb_module.h"
 
 /* Exported definitions */
 
-int MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr,
-		char *buffer, int buffer_len, int indent_level);
+int MB_str_bytecode(MB_Bytecode_Addr addr, char *buffer, int buffer_len,
+			int indent_level);
 
 void MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start,
 	MB_Bytecode_Addr end, MB_Word line_len);
@@ -38,6 +32,9 @@ static void str_tag(MB_Tag tag, char *buffer, int buffer_len);
 
 /* Returns a string corresponding to the name of a bytecode type */
 static MB_CString_Const str_bytecode_name(MB_Byte bytecode_id);
+
+/* Returns a string corresponding to the name of a test type */
+static MB_CString_Const str_test_id(MB_Test_id test_id);
 
 /* Returns a string corresponding to the name of a determinism type */
 static MB_CString_Const str_determinism_name(MB_Byte determinism_id);
@@ -63,50 +60,49 @@ static void str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len);
 
 /*
 ** Macros for printing:
-** Expects buffer, buffer_len & last_len to be defined.
+** Expects buffer & buffer_len to be defined.
 ** Wraps calls to snprintf, checks if the buffer is full and
 ** if it is, returns from the function
 */
 
-#define PRINT()		if (buffer_len > 1) { \
-				int last_len; \
-				assert(buffer_len > 0); \
+#define PRINT()		if (buffer_len > 1) {			\
+				int last_len;			\
+				assert(buffer_len > 0);		\
 				last_len = snprintf(buffer, buffer_len,
 
 /* printf arguments get sandwiched between these macros */
-#define ENDPRINT()				);	\
-				if (last_len >= buffer_len) {\
-					last_len = buffer_len-1; \
+#define ENDPRINT()				);		\
+				if (last_len >= buffer_len) {	\
+					last_len = buffer_len-1;\
 				} \
-				buffer += last_len;	\
-				buffer_len -= last_len; \
-				assert(buffer_len > 0); \
-			} else { \
-				assert(buffer_len >= 0); \
-				if (buffer_len == 0) { \
-					buffer--; \
-					buffer_len++; \
-				} \
+				buffer += last_len;		\
+				buffer_len -= last_len;		\
+				assert(buffer_len > 0);		\
+			} else {				\
+				assert(buffer_len >= 0);	\
+				if (buffer_len == 0) {		\
+					buffer--; 		\
+					buffer_len++;		\
+				}				\
 			}
-
 
 /*
 ** Call this after calling a function that has added characters to the buffer
-** Requires that if the function filled the buffer, it must have at least
-** put a null terminator at the end
+** Requires that if the function filled the buffer, it must have put a null
+** terminator at the end
 */
-#define PRINTFILLCHECK() {	\
+#define PRINTFILLCHECK() {					\
 				int str_len = strlen(buffer);	\
 				buffer += str_len;		\
 				buffer_len -= str_len;		\
-				assert(buffer_len > 0); \
+				assert(buffer_len > 0); 	\
 			}
 
 /*
 ** Macro to call a function of the format f(arg, buffer, buffer_len)
 ** where the function fills all or part of the buffer
 */
-#define PRINTCALL(x, y)	(x)((y), buffer, buffer_len); \
+#define PRINTCALL(x, y)	(x)((y), buffer, buffer_len);		\
 			PRINTFILLCHECK()
 
 /*
@@ -121,7 +117,7 @@ static void str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len);
 */
 
 int
-MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
+MB_str_bytecode(MB_Bytecode_Addr addr, char *buffer,
 		int buffer_len, int indent_level)
 {
 	MB_Byte bc_id = MB_code_get_id(addr);
@@ -192,20 +188,10 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 	/* if we only wanted to calculate the indents, return now */
 	if (buffer == NULL || buffer_len <= 0) return next_indent;
 
-	
-	/* indicate det/nondet code */
-	/* 
-	PRINT()
-		"%c",
-		(MB_code_get_det(addr) ? '+' : '-')
-	ENDPRINT()
-	*/
-
-	
 	/* print the indents */
 	while (this_indent > 0) {
 		PRINT()
-			"   "
+			"  "
 		ENDPRINT()
 		this_indent--;
 	}
@@ -409,9 +395,10 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 				
 		case MB_BC_test:
 			PRINT()
-				" [var %d] == [var %d]",
+				" [var %d] == [var %d] [type %s]",
 				(int) bca->test.var1,
-				(int) bca->test.var2
+				(int) bca->test.var2,
+				str_test_id(bca->test.id)
 			ENDPRINT()
 			break;
 				
@@ -490,7 +477,9 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 			len = bca->complex_construct.list_length;
 			
 			PRINT()
-				" %d", (int) len
+				" [%d var%s]",
+		       		(int) len,
+				(len == 1) ? "" : "s"
 			ENDPRINT()
 
 			for (i = 0; i < len; i++) {
@@ -516,8 +505,9 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 
 			len = bca->complex_deconstruct.list_length;
 			PRINT()
-				" %d",
-				(int) len
+				" [%d var%s]",
+		       		(int) len,
+				(len == 1) ? "" : "s"
 			ENDPRINT()
 
 			for (i = 0; i < len; i++) {
@@ -597,10 +587,10 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 				str_unop_name(bca->builtin_unop.unop)
 			ENDPRINT()
 
-			PRINTCALL(str_op_arg,bca->builtin_unop.arg)
+			PRINTCALL(str_op_arg, bca->builtin_unop.arg)
 
 			PRINT()
-				" %d",
+				" => [var %d]",
 				(int) bca->builtin_unop.to_var
 			ENDPRINT()
 			break;
@@ -663,7 +653,7 @@ MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
 
 	return next_indent;
 
-} /* end print_bytecode() */
+} /* end str_bytecode() */
 
 static void
 str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len)
@@ -712,13 +702,8 @@ str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len)
 				cons_id.opt.pred_const.pred_name,
 				(int) cons_id.opt.pred_const.arity,
 				(int) cons_id.opt.pred_const.mode_num,
-				cons_id.opt.pred_const.addr.is_native
-					? "natv" : "byte",
-				cons_id.opt.pred_const.addr.is_native
-					? (MB_Word *) cons_id.opt.pred_const
-							.addr.addr.native
-					: (MB_Word *) cons_id.opt.pred_const
-							.addr.addr.bc
+				"natv",
+				(MB_Word *) cons_id.opt.pred_const.native_addr
 			ENDPRINT()
 			break;
 		case MB_CONSID_CODE_ADDR_CONST:
@@ -766,7 +751,7 @@ str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len)
 	ENDPRINT()
 
 	buffer[buffer_len-1] = 0; /* snprintf may not do it if a long string */
-} /* end print_cons_id() */
+} /* end str_cons_id() */
 
 static void
 str_tag(MB_Tag tag, char *buffer, int buffer_len)
@@ -812,7 +797,7 @@ str_tag(MB_Tag tag, char *buffer, int buffer_len)
 	
 	/* snprintf may not append a null character */
 	buffer[buffer_len-1] = 0;
-} /* end print_tag() */
+} /* end str_tag() */
 
 /*
 ** XXX ORDER: Currently we depend on the order of elements in the table.
@@ -877,6 +862,29 @@ str_bytecode_name(MB_Byte bytecode_id)
 ** XXX ORDER: Currently we depend on the order of elements in the table.
 */
 static const char *
+test_id_table[] = {
+	"int",
+	"char",
+	"string",
+	"float",
+	"user"
+};
+
+/* Returns a string corresponding to the name of a test type */
+static MB_CString_Const
+str_test_id(MB_Test_id test_id)
+{
+	if (test_id >= sizeof(test_id_table) / sizeof(*test_id_table)) {
+		return "<<unknown test type";
+	} else {
+		return (MB_CString_Const) test_id_table[test_id];
+	}
+}
+
+/*
+** XXX ORDER: Currently we depend on the order of elements in the table.
+*/
+static const char *
 determinism_table[] = {
 	"det",
 	"semidet",
@@ -893,7 +901,7 @@ static MB_CString_Const
 str_determinism_name(MB_Byte determinism_id)
 {
 	if (determinism_id >=
-		sizeof(determinism_table) / sizeof(*determinism_table))
+		       	sizeof(determinism_table) / sizeof(*determinism_table))
 	{
 		return (MB_CString_Const) "<<unknown determinism>>"; /* XXX */
 	} else {
@@ -972,7 +980,7 @@ binop_table[] = {
 	"float_le",
 	"float_ge",
 	"body"
-};
+};	/* end binop_table */
 
 static MB_CString_Const
 str_binop_name(MB_Byte binop)
@@ -1058,12 +1066,6 @@ str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len)
 			break;
 		case MB_ARG_INT_CONST:
 			PRINT()
-				/*
-				** XXX: int_const has type Integer which could
-				** be int, long or long long. Correct solution
-				** is to define a format string in conf.h, but
-				** for now assume long is enough
-				*/
 				"[int " MB_FMT_INT " (" MB_FMT_HEX ")]",
 				op_arg.opt.int_const,
 				op_arg.opt.int_const
@@ -1082,19 +1084,17 @@ str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len)
 } /* end str_op_arg() */
 
 /*
-** displays a code listing from address start to end
+** Displays a code listing from address start to end
+** ms may be NULL if desired
 */
-
 void
-MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start, MB_Bytecode_Addr end,
-	MB_Word line_len)
+MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start,
+		MB_Bytecode_Addr end, MB_Word line_len)
 {
-	char buffer[256];
+	char		buffer[256];
+	MB_Word		indent = 0;
 	MB_Bytecode_Addr i;
-	MB_Word	indent = 0;
-	MB_Bytecode_Addr ip = MB_ip_get(ms);
-
-	MB_SAY("linelen: %d\n", line_len);
+	MB_Bytecode_Addr ip = (ms != NULL) ? MB_ip_get(ms) : NULL;
 
 	start = MB_code_range_clamp(start);
 	end = MB_code_range_clamp(end);
@@ -1110,16 +1110,14 @@ MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start, MB_Bytecode_A
 	if (i != MB_CODE_INVALID_ADR) {
 		/* work out the indent level at the start */
 		while (i != start) {
-			indent = MB_str_bytecode(ms,
-					i, NULL, 0, indent);
+			indent = MB_str_bytecode(i, NULL, 0, indent);
 			i++;
 		}
 	}
 
 	/* Show the code */
 	for (; i != end+1; i++) {
-		indent = MB_str_bytecode(ms, i,
-				buffer, line_len, indent);
+		indent = MB_str_bytecode(i, buffer, line_len, indent);
 		fprintf(fp, "%s%p %s\n",
 			(i == ip) ? "-> " : "   ",
 			i,

@@ -12,17 +12,31 @@
 
 struct MB_Machine_State_Struct {
 
-	MB_Module	*module;
 	MB_Bytecode_Addr ip;		/* next instruction pointer */
 
 	/*
 	** The stack that the most ancestral bytecode function was using.
-	** If a procedure finds that its stack frame is equal to this then
-	** it knows it should return to native code rather than bytecode
+	**
+	** At entry, each procedure checks to see if initial_stack is
+	** NULL. If it is, then it replaces it with the current stack
+	** pointer (MB_sp or MB_maxfr depending on code model)
+	**
+	** At procedure exit (MB_BC_endof_proc), the procedure checks the
+	** stack to see whether this invocation was the one that set initfr.
+	** If it was the one that set initfr, it knows it should return to
+	**  native code
+	** If it wasn't, then it must have been called by a bytecode proc
+	**  and returns directly to a bytecode address
+	**
 	*/
 	MB_Word		*initial_stack;
 
-	/* The native code address to return to at finish */
+	/*
+	** The native code address to return to
+	** When a procedure wants to call/return to native code, it sets
+	** ip to MB_CODE_NATIVE_RETURN and native_return to the actual
+	** native code address to return to
+	*/
 	MB_Native_Addr	native_return;
 
 	/* The following proc information is all set by MB_proc_type_check() */
@@ -41,27 +55,5 @@ struct MB_Machine_State_Struct {
 		MB_Word *var;
 	} cur_proc;
 };
-
-#include "mercury_std.h"
-
-#if 0
-
-/* When you redo this, try offsetof() instead */
-
-#if (MR_VARIABLE_SIZED > 0)
-# define MB_CLOSURE_SIZE(x)	(sizeof(MB_Closure) \
-				- sizeof(((MB_Closure *)(NULL))-> \
-					closure_hidden_args \
-				+ sizeof(MB_Word)*(x))
-#else
-# define MB_CLOSURE_SIZE(x)	(sizeof(MB_Closure) \
-				+ sizeof(MB_Word)*(x))
-#endif
-typedef struct {
-	MB_Word		code_addr;
-	MB_Word		num_hidden_args;
-	MB_Word		closure_hidden_args[MR_VARIABLE_SIZED];
-} MB_Closure;
-#endif
 
 #endif /* MB_MACHINE_DEF_H */

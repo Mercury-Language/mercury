@@ -421,7 +421,7 @@ output_c_file_mercury_headers -->
 	),
 	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
 	(	{ GenBytecode = yes },
-		io__write_string("#include ""mb_interface.h""\n")
+		io__write_string("#include ""mb_interface_stub.h""\n")
 	;	{ GenBytecode = no }
 	).
 

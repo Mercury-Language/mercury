@@ -1,6 +1,0 @@
-:- module require.
-:- interface.
-:- pred require:error(string).
-:- mode require:error(mercury_builtin:in) is erroneous.
-:- pred require:require((pred), string).
-:- mode require:require(((pred) is semidet), mercury_builtin:in) is det.

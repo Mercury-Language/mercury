@@ -1,8 +1,0 @@
-:- module prog_io_dcg.
-:- interface.
-:- import_module prog_io_util.
-:- import_module varset, term.
-:- pred prog_io_dcg:parse_dcg_clause(string, (varset:varset), (term:term), (term:term), (term:context), (prog_io_util:maybe_item_and_context)).
-:- mode prog_io_dcg:parse_dcg_clause(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
-:- pred prog_io_dcg:parse_dcg_pred_goal((term:term), (varset:varset), (prog_data:goal), (term:var), (term:var), (varset:varset)).
-:- mode prog_io_dcg:parse_dcg_pred_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out) is det.

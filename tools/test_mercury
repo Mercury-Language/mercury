@@ -330,7 +330,55 @@ cd $DIR || { false; exit 1; }
 rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus)
+	hg)
+		# Check out the Mercury gcc back-end interface sources
+		[ -d mercury-cvs ] || mkdir mercury-cvs
+		(cd mercury-cvs && cvs checkout $CHECKOUT_OPTS gcc/mercury) ||
+			{ false; exit 1; }
+		# Check out the main gcc sources.
+		# See <http://gcc.gnu.org/cvs.html>.
+		#
+		# Once the gcc sources have been checked out here,
+		# the Mercury autoconfiguration script should find them
+		# automatically, so we don't need to bother explicitly
+		# passing `--enable-gcc-back-end' to configure.
+		#
+		# Note that the `cvs login' command, namely
+		# `cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc login'
+		# must be done manually, since there is no easy way to pass
+		# the password (`anoncvs') from a script.
+		# Once it is done once, it will be saved in the user's
+		# ~/.cvspass file, so it doesn't need to be done again.
+		#
+		# XXX This is commented out for now, to save bandwidth,
+		#     since currently we're using a fixed snapshot
+		#     (`-r gcc_ss_20010129') anyway.
+		#     Eventually this should change to use
+		#     `-r gcc_latest_snapshot'.
+		###date
+		###cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
+		###	checkout -r gcc_ss_20010129 gcc || { false; exit 1; }
+		date
+		# Link the Mercury gcc back-end interface sources
+		# into the appropriate place in the gcc sources
+		(cd gcc/gcc && rm -f mercury && \
+			ln -s ../../mercury-cvs/gcc/mercury mercury) \
+			|| { false; exit 1; }
+		# Now configure and build the gcc directory.
+		# The gcc cvs repository includes some automatically
+		# generated files; we need to touch them here before
+		# running configure.
+		# XXX We should perhaps also do `make distclean' before
+		# configure.
+		(cd gcc && 
+			contrib/gcc_update --touch &&
+			sh configure --enable-languages=mercury &&
+			make) || status=1
+		date
+		;;
+esac
+case $HOST in
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -588,10 +636,10 @@ case $HOST in
 			gcc)	GRADES="asm_fast.gc asm_fast
 				asm_fast.gc.prof asm_fast.prof
 				asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-				hlc.gc" ;;
+				hlc.gc hlc.par.gc" ;;
 			*)	GRADES="none.gc none none.gc.prof
 				none.prof none.gc.memprof none.gc.tr
-				none.gc.debug.tr.debug hlc.gc" ;;
+				none.gc.tr.debug hlc.gc hlc.par.gc" ;;
 		esac
 		;;
 	roy)

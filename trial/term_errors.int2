@@ -1,7 +1,0 @@
-:- module term_errors.
-:- interface.
-:- import_module io, bag, std_util, term, list, bool.
-:- import_module hlds_module.
-:- type (term_errors:error) == (std_util:pair((term:context), (term_errors:termination_error))).
-:- type (term_errors:termination_error).
-:- type (term_errors:eqn_soln).

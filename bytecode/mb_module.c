@@ -5,30 +5,12 @@
 **
 */
 
-/*
-#include "mercury_layout_util.h"
-#include "mercury_array_macros.h"
-#include "mercury_getopt.h"
-
-#include "mercury_trace.h"
-#include "mercury_trace_internal.h"
-#include "mercury_trace_declarative.h"
-#include "mercury_trace_alias.h"
-#include "mercury_trace_help.h"
-#include "mercury_trace_browse.h"
-#include "mercury_trace_spy.h"          
-#include "mercury_trace_tables.h"       
-#include "mercury_trace_util.h"         
-#include "mercury_trace_vars.h"         
-#include "mercury_trace_readline.h"
-*/
-
 #include "mb_module.h"
-#include "mb_interface.h"
 
-#include <assert.h>
 #include <string.h>
+#include "mb_interface.h"
 #include "mb_mem.h"
+#include "mb_stack.h"
 
 /* XXX: We should remove these fixed limits */
 #define MAX_CODE_COUNT		10000
@@ -61,24 +43,6 @@
 ** XXX: Can only handle 64MB of bytecode data
 */
 
-#if 0
-#define MB_BCID_MAKE(id, arg)	( ((id) & ((1 << CHAR_BIT) - 1)) | \
-				(((MB_Word*)(arg) - code_arg_data) << CHAR_BIT)\
-				)
-/* get the bytecode id */
-#define MB_BCID_ID(x)		((x) & ((1<<(CHAR_BIT-1)) - 1))
-
-/* get the determinism flag for the given bytecode */
-#define MB_BCID_ISDET		((1) << (CHAR_BIT-1))
-#define MB_BCID_DET(x)		((x) & MB_BCID_ISDET)
-/* get the bytecode argument pointer */
-#define MB_BCID_ARG(x)		((MB_Bytecode_Arg *) \
-				 (code_arg_data + \
-				  	((MB_Unsigned)(x) >> CHAR_BIT)) \
-				 )
-#else
-
-
 #define MB_BCID_MAKE(dest, new_id, new_arg) \
 		((dest).id = (new_id), \
 		(dest).is_det = 0, \
@@ -93,8 +57,6 @@
 #define MB_BCID_DET_SET(x, det)	((x).is_det = (det))
 
 #define MB_BCID_ARG(x)		((MB_Bytecode_Arg *) (code_arg_data + (x).arg))
-#endif
-
 
 /* XXX: not thread safe */
 static MB_Word code_count = 0;
@@ -133,7 +95,7 @@ static MB_Bool	translate_labels(MB_Bytecode_Addr bc, MB_Unsigned number_codes,
 					MB_Stack *label_stack);
 static MB_Bool	translate_detism(MB_Bytecode_Addr bc, MB_Unsigned number_codes);
 static MB_Bool	translate_switch(MB_Bytecode_Addr bc, MB_Unsigned number_codes);
-static MB_Bool	translate_temps(MB_Bytecode_Addr bc, MB_Unsigned number_codes);
+static MB_Bool	translate_vars(MB_Bytecode_Addr bc, MB_Unsigned number_codes);
 
 /* Implementation */
 
@@ -161,6 +123,7 @@ translate_calls(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 		MB_Word		mode_num;
 		/* location to store the proc to be called */
 		MB_Code_Addr	*target_addr = NULL;
+		MB_Native_Addr	*target_native = NULL;
 
 		/* Get the information about the procedure to call */
 		MB_Byte		call_id = MB_code_get_id(bc);
@@ -172,6 +135,7 @@ translate_calls(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 			pred_name	= call_arg->call.pred_name;
 			mode_num	= call_arg->call.mode_num;
 			target_addr	= &call_arg->call.addr;
+			target_native	= NULL;
 
 		} else if (call_id == MB_BC_construct) {
 			MB_Bytecode_Arg *construct_arg =
@@ -179,8 +143,6 @@ translate_calls(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 			if (construct_arg->construct.consid.id ==
 					MB_CONSID_PRED_CONST)
 			{
-			MB_fatal("Unable to translate predicate constructs");
-			#if 0
 				module_name = construct_arg->construct.
 					consid.opt.pred_const.module_name;
 				arity = construct_arg->construct.
@@ -191,28 +153,19 @@ translate_calls(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 					consid.opt.pred_const.pred_name;
 				mode_num = construct_arg->construct.
 					consid.opt.pred_const.mode_num;
-				target_addr = &construct_arg->construct.
-					consid.opt.pred_const.addr;
-			#endif
+				target_addr = NULL;
+				target_native = &construct_arg->construct.
+					consid.opt.pred_const.native_addr;
 			}
 		}
 
 
-		if (pred_name != NULL) {
-			MB_SAY("Looking for %s %s__%s/%d mode %d",
-				(is_func) ? "func" : "pred",
-				module_name,
-				pred_name,
-				arity,
-				mode_num);
-		}
-
 		/* Find the predicate start */
 		if (pred_name != NULL) {
 			/* First check if we can find it in the bytecode */
-			MB_Bytecode_Addr bc_addr = MB_code_find_proc(module_name,
-				pred_name, mode_num,
-				arity, is_func);
+			MB_Bytecode_Addr bc_addr =
+				MB_code_find_proc(module_name, pred_name,
+						mode_num, arity, is_func);
 
 			if (bc_addr == MB_CODE_INVALID_ADR) {
 				/* Otherwise look in the native code */
@@ -220,32 +173,41 @@ translate_calls(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 					MB_code_find_proc_native(module_name,
 					pred_name, mode_num, arity, is_func);
 
-				MB_SAY(" Not found in bytecode");
-
-				MB_SAY(" Address from native: %08x"
-						, native_addr);
-
 				if (native_addr == NULL) {
+					/*
 					MB_util_error(
-						"Warning: proc ref in bytecode"
+						"Warning: Proc ref in bytecode"
 						" at %08x to unknown"
-						" %s %s__%s/%d mode %d"
-						" (will evaluate lazily)",
+						" (will evaluate lazily)\n"
+						"  Unknown: %s"
+							" %s__%s/%d mode %d\n"
+						"  Are you sure the module"
+						" was compiled with trace"
+						" information enabled?\n",
 						(int) i,
 						is_func ? "func" : "pred",
 						module_name,
 						pred_name,
 						(int) arity,
-						(int) mode_num);
-					MB_util_error("Are you sure the module"
-						" was compiled with trace"
-						" information enabled?");
+						(int) mode_num
+						);
+					*/
 				}
-				target_addr->is_native = TRUE;
-				target_addr->addr.native = native_addr;
+				if (target_addr != NULL) {
+					target_addr->is_native = TRUE;
+					target_addr->addr.native = native_addr;
+				}
+				if (target_native != NULL) {
+					*target_native = native_addr;
+				}
 			} else {
-				target_addr->is_native = FALSE;
-				target_addr->addr.bc = bc_addr;
+				if (target_addr != NULL) {
+					target_addr->is_native = FALSE;
+					target_addr->addr.bc = bc_addr;
+				}
+				if (target_native != NULL) {
+					*target_native = NULL;
+				}
 			}
 		}
 	}
@@ -362,8 +324,11 @@ translate_detism(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 		bc_id = MB_code_get_id(bc);
 		if (bc_id == MB_BC_enter_proc) {
 			switch (MB_code_get_arg(bc)->enter_proc.det) {
-				case MB_DET_DET:
+				case MB_DET_FAILURE:
+				case MB_DET_CC_NONDET:
 				case MB_DET_SEMIDET:
+				case MB_DET_CC_MULTIDET:
+				case MB_DET_DET:
 					cur_detism = MB_BCID_ISDET;
 					break;
 				case MB_DET_MULTIDET:
@@ -390,25 +355,41 @@ translate_detism(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 /*
 ** Fill in the variable that each switch arm is using
 ** Returns TRUE if successful
+**
+** XXX: Can only handle a fixed number of nested switched
 */
 static MB_Bool
 translate_switch(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 {
+	#define MAXNESTEDSWITCH	32
 	MB_Unsigned i;
-	MB_Bytecode_Arg *cur_switch = NULL;
+	/* Leave the first switch as NULL to trap any errors */
+	MB_Word cur_switch = 0;
+	MB_Bytecode_Arg *switch_ptr[MAXNESTEDSWITCH] = { NULL };
 	for (i = 0; i < number_codes; i++, bc++) {
 		switch (MB_code_get_id(bc)) {
 			case MB_BC_enter_switch:
-				cur_switch = MB_code_get_arg(bc);
+				cur_switch++;
+				if (cur_switch >= MAXNESTEDSWITCH) {
+					MB_fatal("Too many nested switches");
+				}
+				switch_ptr[cur_switch] = MB_code_get_arg(bc);
 				break;
 				
 			case MB_BC_enter_switch_arm: {
 				MB_Bytecode_Arg *cur_arg
 					= MB_code_get_arg(bc);
 				
-				cur_arg->enter_switch_arm.var =
-					cur_switch->enter_switch.var;
+				cur_arg->enter_switch_arm.var = 
+					switch_ptr[cur_switch]
+						->enter_switch.var;
 				
+				break;
+			}
+
+			case MB_BC_endof_switch: {
+				cur_switch--;
+				assert(cur_switch >= 0);
 				break;
 			}
 		}
@@ -417,32 +398,161 @@ translate_switch(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 } /* translate_switch */
 
 /*
-** Transform temporary stack slot numbers into variable slot numbers
-** for all bytecodes that use a temporary stack slot
+** Transform variable numbers.
+** See mb_interface.h for the det stack layout.
+** Since there is no distinction between vars and temps once loaded (they all
+** use MB_var_[get/set], the var numbers must be incremented by the number
+** of temps
+**
+** Note that translate_switch must already have been called to fill in
+** missing values in enter_switch_arm
+**
 ** Returns TRUE if successful
 */
-#define XLATTEMP(name)	case MB_BC_##name: \
-				cur_arg = MB_code_get_arg(bc); \
-				cur_arg->name.frame_ptr_tmp += \
-					cur_proc_arg->enter_proc.list_length; \
-				break;
+
 static MB_Bool
-translate_temps(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
+translate_vars(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 {
-	MB_Unsigned i;
+	MB_Unsigned j;
+	MB_Unsigned temp_count = 0;
 	MB_Bytecode_Arg *cur_arg ;
-	MB_Bytecode_Arg *cur_proc_arg = NULL;
 	MB_Word code_size = MB_code_size();
-	for (i = 0; i < number_codes; i++, bc++) {
+
+	for (j = 0; j < number_codes; j++, bc++) {
 		switch (MB_code_get_id(bc)) {
 			case MB_BC_enter_proc:
-				cur_proc_arg = MB_code_get_arg(bc);
+				temp_count = MB_code_get_arg(bc)->
+						enter_proc.temp_count;
 				break;
-			XLATTEMP(enter_if);
-			XLATTEMP(enter_then);
-			XLATTEMP(enter_negation);
-			XLATTEMP(endof_negation_goal);
-			XLATTEMP(enter_commit);
+
+			case MB_BC_enter_switch:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->enter_switch.var += temp_count;
+				break;
+
+			case MB_BC_enter_switch_arm:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->enter_switch_arm.var += temp_count;
+				break;
+				
+			case MB_BC_assign:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->assign.to_var += temp_count;
+				cur_arg->assign.from_var += temp_count;
+				break;
+				
+			case MB_BC_test:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->test.var1 += temp_count;
+				cur_arg->test.var2 += temp_count;
+				break;
+
+			case MB_BC_construct: {
+				MB_Unsigned i;
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->construct.to_var += temp_count;
+				for (i = 0;
+					i < cur_arg->construct.list_length;
+					i++)
+				{
+					cur_arg->construct.var_list[i] +=
+						temp_count;
+				}
+
+				break;
+			}
+
+			case MB_BC_deconstruct: {
+				MB_Unsigned i;
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->deconstruct.from_var += temp_count;
+				for (i = 0;
+					i < cur_arg->deconstruct.list_length;
+					i++)
+				{
+					cur_arg->deconstruct.var_list[i] +=
+						temp_count;
+				}
+				break;
+			}
+
+			case MB_BC_complex_construct: {
+				MB_Unsigned i;
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->complex_construct.to_var += temp_count;
+				for (i = 0;
+					i < cur_arg->complex_construct
+							.list_length;
+					i++)
+				{
+					cur_arg->complex_construct.var_dir[i]
+						.var += temp_count;
+				}
+				break;
+			}
+
+			case MB_BC_complex_deconstruct: {
+				MB_Unsigned i;
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->complex_deconstruct.from_var +=
+					temp_count;
+				for (i = 0;
+					i < cur_arg->complex_deconstruct
+							.list_length;
+					i++)
+				{
+					cur_arg->complex_deconstruct.var_dir[i]
+						.var += temp_count;
+				}
+				break;
+			}
+
+			case MB_BC_place_arg:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->place_arg.from_var += temp_count;
+				break;
+
+			case MB_BC_pickup_arg:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->pickup_arg.to_var += temp_count;
+				break;
+
+			/* XXX: HIGHER This should not need to be here */
+			case MB_BC_higher_order_call:
+				cur_arg = MB_code_get_arg(bc);
+				cur_arg->higher_order_call.pred_var +=
+					temp_count;
+				break;
+
+			#define TRANSLATE_OPARG(oparg) \
+				if ((oparg).id == MB_ARG_VAR) { \
+					(oparg).opt.var += temp_count; \
+				}
+
+			case MB_BC_builtin_binop:
+				cur_arg = MB_code_get_arg(bc);
+				TRANSLATE_OPARG(cur_arg->builtin_binop.arg1);
+				TRANSLATE_OPARG(cur_arg->builtin_binop.arg2);
+				cur_arg->builtin_binop.to_var += temp_count;
+				break;
+
+			case MB_BC_builtin_unop:
+				cur_arg = MB_code_get_arg(bc);
+				TRANSLATE_OPARG(cur_arg->builtin_unop.arg);
+				cur_arg->builtin_unop.to_var += temp_count;
+				break;
+				
+			case MB_BC_builtin_bintest:
+				cur_arg = MB_code_get_arg(bc);
+				TRANSLATE_OPARG(cur_arg->builtin_bintest.arg1);
+				TRANSLATE_OPARG(cur_arg->builtin_bintest.arg2);
+				break;
+
+			case MB_BC_builtin_untest:
+				cur_arg = MB_code_get_arg(bc);
+				TRANSLATE_OPARG(cur_arg->builtin_untest.arg);
+				break;
+				
 		}
 	}
 	return TRUE;
@@ -455,10 +565,40 @@ translate_temps(MB_Bytecode_Addr bc, MB_Unsigned number_codes)
 MB_Module *
 MB_module_load_name(MB_CString_Const module_name)
 {
-	MB_Module *module;
-	MB_CString filename = MB_str_new_cat(module_name, ".mbc");
+	MB_Module	*module;
+	MB_CString	filename;
+	FILE	 	*fp;
+	char		*src;
+	char		*dst;
+	
+	/* Turn the : and __ into . for the file name*/
+	filename  = MB_str_new_cat(module_name, ".mbc");
+	src = filename;
+	dst = filename;
+	do {
+		if (*src == ':') {
+			*dst = '.';
+		} else if (src[0] == '_' && src[1] == '_') {
+			src ++;
+			*dst = '.';
+		} else {
+			*dst = *src;
+		}
+		dst++;
+		src++;
+	} while (*src);
+	*dst = *src;
+	
+	fp = fopen(filename, "rb");
 
-	FILE *fp = fopen(filename, "rb");
+	/* Turn the dots back into colons for the module name */
+	src = filename;
+	do {
+		if (*src == '.') {
+			*src = ':';
+		}
+		src++;
+	} while (*src);
 
 	module = MB_module_load(module_name, fp);
 
@@ -476,16 +616,12 @@ MB_module_get(MB_CString_Const module_name)
 {
 	/* Search for the module */
 	MB_Word i;
-	MB_SAY(" Looking for %s among %d modules", module_name, module_count);
+
 	for (i = 0; i < module_count; i++) {
-		MB_SAY("  Testing module %d", i);
 		if (!MB_str_cmp(module_name, module_arr[i]->module_name)) {
-			MB_SAY("  Module %s found", module_name);
 			return module_arr[i];
 		}
 	}
-
-	MB_SAY("  module %s not found, attempting to load", module_name);
 
 	/* We didn't find it so load it */
 	return MB_module_load_name(module_name);
@@ -559,6 +695,7 @@ MB_Module *MB_module_load(MB_CString_Const module_name, FILE *fp)
 
 	/* Create the new module */
 	MB_Module *module	= MB_GC_NEW(MB_Module);
+
 	module->pred_index_stack= MB_stack_new((fp == NULL) ? 0 : 64, FALSE);
 	module->module_name	= MB_str_dup(module_name);
 
@@ -696,7 +833,7 @@ MB_Module *MB_module_load(MB_CString_Const module_name, FILE *fp)
 		(translate_calls(module_start, module_code_count)) &&
 		(translate_detism(module_start, module_code_count)) &&
 		(translate_switch(module_start, module_code_count)) &&
-		(translate_temps(module_start, module_code_count)))
+		(translate_vars(module_start, module_code_count)))
 	{
 		/* Delete the label stack (we've done all the translations) */
 		MB_stack_delete(&label_stack);
@@ -706,7 +843,6 @@ MB_Module *MB_module_load(MB_CString_Const module_name, FILE *fp)
 		MB_fatal("Error reading bytecode file");
 	}
 	return NULL;
-
 } /* MB_module_load */
 
 
@@ -819,12 +955,7 @@ MB_code_find_proc(MB_CString_Const module_name,
 	MB_Module *module = MB_module_get(module_name);
 	MB_Word j;
 
-	MB_SAY(" Looking for %s %s__%s/%d mode %d",
-		(is_func) ? "func" : "pred",
-		module_name, pred_name, arity, mode_num);
-
 	if (MB_stack_size(&module->pred_index_stack) == 0) {
-		MB_SAY(" No bytecode information for this module");
 		return MB_CODE_INVALID_ADR;
 	}
 	
@@ -849,7 +980,6 @@ MB_code_find_proc(MB_CString_Const module_name,
 
 	/* Check if any of the predicates matched */
 	if (j == MB_stack_size(&module->pred_index_stack)) {
-		MB_SAY(" Not found");
 		return MB_CODE_INVALID_ADR;
 	}
 
@@ -875,11 +1005,6 @@ MB_code_find_proc(MB_CString_Const module_name,
 		} else if ((bc_id == MB_BC_endof_pred) ||
 				(bc_id == MB_BC_enter_pred))
 		{
-			MB_SAY("Predicate does not contain "
-					"procedure: %s/%d mode %d",
-				pred_name,
-				(int) arity,
-				(int) mode_num);
 			return MB_CODE_INVALID_ADR;
 		}
  
@@ -887,6 +1012,7 @@ MB_code_find_proc(MB_CString_Const module_name,
 
 	return MB_CODE_INVALID_ADR;
 }
+
 
 
 MB_Word *

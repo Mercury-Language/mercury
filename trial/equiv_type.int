@@ -1,8 +1,0 @@
-:- module equiv_type.
-:- interface.
-:- import_module prog_data, list, io.
-:- pred equiv_type:expand_eqv_types((list:list((prog_data:item_and_context))), (list:list((prog_data:item_and_context))), (bool:bool), (equiv_type:eqv_map), (io:state), (io:state)).
-:- mode equiv_type:expand_eqv_types(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
-:- pred equiv_type:replace_in_type((prog_data:(type)), (prog_data:tvarset), (equiv_type:eqv_map), (prog_data:(type)), (prog_data:tvarset)).
-:- mode equiv_type:replace_in_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
-:- type (equiv_type:eqv_map).
