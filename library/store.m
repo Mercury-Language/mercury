@@ -381,6 +381,96 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_type(java, generic_ref(T, S), "mercury.store.Ref").
+:- pragma foreign_code("Java",
+"
+	public static class Ref {
+		// Object referenced.
+		public java.lang.Object		object;
+
+		// Specific field of object referenced, or null to
+		// specify the object itself.
+		public java.lang.reflect.Field	field;
+
+		// Constructors
+		public Ref(java.lang.Object init) {
+			object	= init;
+			field	= null;
+		}
+		public Ref(java.lang.Object init, int num) {
+			object	= init;
+			setField(num);
+		}
+
+		// Set the field according to a given index.
+		public void setField(int num) {
+			try {
+				field = object.getClass().
+						getDeclaredFields()[num];
+			} catch (java.lang.SecurityException se) {
+				throw new java.lang.RuntimeException(
+						""Security manager denied "" +
+						""access to object fields"");
+			} catch (java.lang.ArrayIndexOutOfBoundsException e) {
+			  	throw new java.lang.RuntimeException(
+						""No such field in object"");
+			} catch (java.lang.Exception e) {
+				throw new java.lang.RuntimeException(
+						""Unable to set field: "" +
+						e.getMessage());
+			}
+		}
+
+		// Return the value of the reference.
+		public java.lang.Object getValue() {
+			if (field == null) {
+				return object;
+			} else {
+				try {
+					return field.get(object);
+				} catch (java.lang.IllegalAccessException e) {
+					throw new java.lang.RuntimeException(
+							""Field "" +
+							""inaccessible"");
+				} catch (java.lang.IllegalArgumentException e)
+				{
+					throw new java.lang.RuntimeException(
+							""Field-object "" +
+							""mismatch"");
+				} catch (java.lang.NullPointerException e) {
+					throw new java.lang.RuntimeException(
+							""Object is null"");
+				} catch (java.lang.Exception e) {
+					throw new java.lang.RuntimeException(
+							""Unable to access "" +
+							""field: "" +
+							e.getMessage());
+				}
+			}
+		}
+
+		// Update the value of the reference.
+		public void setValue(java.lang.Object value) {
+			try {
+				field.set(object, value);
+			} catch (java.lang.IllegalAccessException e) {
+				throw new java.lang.RuntimeException(
+						""Field inaccessible"");
+			} catch (java.lang.IllegalArgumentException e) {
+				throw new java.lang.RuntimeException(
+						""Field-object mismatch"");
+			} catch (java.lang.NullPointerException e) {
+				throw new java.lang.RuntimeException(
+						""Object is null"");
+			} catch (java.lang.Exception e) {
+				throw new java.lang.RuntimeException(
+						""Unable to access field: "" +
+						e.getMessage());
+			}
+		}
+	} // class Ref
+").
+
 :- pragma foreign_proc("C",
 	new_ref(Val::di, Ref::out, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
@@ -390,6 +480,13 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 	MR_define_size_slot(0, Ref, 1);
 	* (MR_Word *) Ref = Val;
 	S = S0;
+").
+
+:- pragma foreign_proc("Java",
+	new_ref(Val::di, Ref::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Ref = new mercury.store.Ref(Val);
 ").
 
 copy_ref_value(Ref, Val) -->
@@ -409,6 +506,13 @@ copy_ref_value(Ref, Val) -->
 "
 	Val = * (MR_Word *) Ref;
 	S = S0;
+").
+
+:- pragma foreign_proc("Java",
+	unsafe_ref_value(Ref::in, Val::uo, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Val = Ref.getValue();
 ").
 
 ref_functor(Ref, Functor, Arity) -->
@@ -455,6 +559,19 @@ ref_functor(Ref, Functor, Arity) -->
 	ArgRef = (MR_Word) arg_ref;
 	S = S0;
 }").
+
+:- pragma foreign_proc("Java",
+	arg_ref(Ref::in, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	/*
+	** XXX Some dynamic type-checking should be done here to check that
+	**     the type of the specified Arg matches the type supplied by the
+	**     caller.  This will require RTTI.
+	*/
+
+	ArgRef = new mercury.store.Ref(Ref.getValue(), ArgNum);
+").
 
 :- pragma foreign_proc("C", 
 	new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
@@ -504,12 +621,32 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
+:- pragma foreign_proc("Java",
+	new_arg_ref(Val::di, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	/*
+	** XXX Some dynamic type-checking should be done here to check that
+	**     the type of the specified Arg matches the type supplied by the
+	**     caller.  This will require RTTI.
+	*/
+
+	ArgRef = new mercury.store.Ref(Val, ArgNum);
+").
+
 :- pragma foreign_proc("C", 
 	set_ref(Ref::in, ValRef::in, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
 	* (MR_Word *) Ref = * (MR_Word *) ValRef;
 	S = S0;
+").
+
+:- pragma foreign_proc("Java",
+	set_ref(Ref::in, ValRef::in, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Ref.setValue(ValRef.getValue());
 ").
 
 :- pragma foreign_proc("C",	
@@ -520,11 +657,25 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 ").
 
+:- pragma foreign_proc("Java",
+	set_ref_value(Ref::in, Val::di, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Ref.setValue(Val);
+").
+
 :- pragma foreign_proc("C",
 	extract_ref_value(_S::di, Ref::in, Val::out),
 	[will_not_call_mercury, promise_pure],
 "
 	Val = * (MR_Word *) Ref;
+").
+
+:- pragma foreign_proc("Java",
+	extract_ref_value(_S::di, Ref::in, Val::out),
+	[will_not_call_mercury, promise_pure],
+"
+	Val = Ref.getValue();
 ").
 
 %-----------------------------------------------------------------------------%
@@ -539,6 +690,13 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
+:- pragma foreign_proc("Java",
+	unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	ArgRef = new mercury.store.Ref(Ref.getValue(), Arg);
+").
+
 :- pragma foreign_proc("C",
 	unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
@@ -548,3 +706,11 @@ ref_functor(Ref, Functor, Arity) -->
 	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
+
+:- pragma foreign_proc("Java",
+	unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	ArgRef = new mercury.store.Ref(Val, Arg);
+").
+
