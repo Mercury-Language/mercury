@@ -354,7 +354,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    Changed = no,
 	    IOState = IOState0
 	;
-	    pred_info_arg_types(PredInfo0, ArgTypeVarSet, ArgTypes0),
+	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes0),
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    pred_info_import_status(PredInfo0, Status),
@@ -382,7 +382,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				PredId, ModuleInfo, IOState0, IOState1)
 		;
 			Inferring = no,
-			varset__vars(ArgTypeVarSet, HeadTypeParams),
+			term__vars_list(ArgTypes0, HeadTypeParams),
 			write_pred_progress_message("% Type-checking ",
 				PredId, ModuleInfo, IOState0, IOState1)
 		),
