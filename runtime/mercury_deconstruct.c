@@ -209,6 +209,8 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     break;
                 case MR_SECTAG_VARIABLE:
                     MR_fatal_error("MR_named_arg_num(): unexpected variable");
+                default:
+                    MR_fatal_error("MR_named_arg_num(): invalid sectag_locn");
             }
 
             if (functor_desc->MR_du_functor_arg_names == NULL) {

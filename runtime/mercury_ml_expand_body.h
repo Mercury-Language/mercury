@@ -151,18 +151,20 @@
 #ifdef  EXPAND_FUNCTOR_FIELD
   #define handle_functor_name(name)                                     \
             do {                                                        \
+                MR_restore_transient_hp();                              \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
                     name);                                              \
+                MR_save_transient_hp();                                 \
             } while (0)
   #define handle_noncanonical_name(tci)                                 \
             do {                                                        \
                 MR_ConstString  name;                                   \
                                                                         \
-                MR_restore_transient_hp();                              \
                 name = MR_expand_type_name(tci);                        \
-                MR_save_transient_hp();                                 \
+                MR_restore_transient_hp();                              \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
                     name);                                              \
+                MR_save_transient_hp();                                 \
             } while (0)
 #else   /* EXPAND_FUNCTOR_FIELD */
   #define handle_functor_name(name)                                     \
@@ -385,6 +387,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         handle_functor_name("<<variable>>");
                         handle_zero_arity_args();
 						return;
+                    default:
+                        MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                             ": invalid sectag_locn");
 				}
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
