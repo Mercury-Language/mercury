@@ -72,9 +72,10 @@
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
 :- import_module continuation_info, trace, trace_params.
-:- import_module code_aux, code_util, middle_rec, passes_aux, llds_out.
+:- import_module code_aux, code_util, middle_rec, llds_out.
 
 % Misc compiler modules
+:- import_module builtin_ops, passes_aux.
 :- import_module globals, options.
 
 % Standard library modules
@@ -575,13 +576,34 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			MaybeFailExternalInfo = no,
 			TraceFailCode = empty
 		},
-		{ TraceSlotInfo ^ slot_trail = yes(_) ->
-			DiscardTraceTicketCode = node([
-				discard_ticket - "discard retry ticket"
-			])
+		( { TraceSlotInfo ^ slot_trail = yes(_) } ->
+			( { TraceSlotInfo ^ slot_from_full =
+				yes(FromFullSlot) }
+			->
+				%
+				% Generate code which discards the ticket
+				% only if it was allocated, i.e. only if
+				% MR_trace_from_full was true on entry.
+				%
+				{ FromFullSlotLval =
+					llds__stack_slot_num_to_lval(
+						model_non, FromFullSlot) },
+				code_info__get_next_label(SkipLabel),
+				{ DiscardTraceTicketCode = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabel)) - "",
+					discard_ticket - "discard retry ticket",
+					label(SkipLabel) - ""
+				]) }
+			;
+				{ DiscardTraceTicketCode = node([
+					discard_ticket - "discard retry ticket"
+				]) }
+			)
 		;
-			DiscardTraceTicketCode = empty
-		},
+			{ DiscardTraceTicketCode = empty }
+		),
 		{ FailCode = node([
 			goto(do_fail) - "fail after fail trace port"
 		]) },
@@ -838,21 +860,43 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				decr_sp(TotalSlots) - "Deallocate stack frame"
 			])
 		},
-		{
-			TraceSlotInfo ^ slot_trail = yes(_),
-			CodeModel \= model_non
+		(
+			{ TraceSlotInfo ^ slot_trail = yes(_) },
+			{ CodeModel \= model_non }
 		->
-			PruneTraceTicketCode = node([
-				prune_ticket - "prune retry ticket"
-			])
+			(
+				{ TraceSlotInfo ^ slot_from_full =
+					yes(FromFullSlot) }
+			->
+				%
+				% Generate code which prunes the ticket
+				% only if it was allocated, i.e. only if
+				% MR_trace_from_full was true on entry.
+				%
+				{ FromFullSlotLval =
+					llds__stack_slot_num_to_lval(
+						CodeModel, FromFullSlot) },
+				code_info__get_next_label(SkipLabel),
+				{ PruneTraceTicketCode = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabel)) - "",
+					prune_ticket - "prune retry ticket",
+					label(SkipLabel) - ""
+				]) }
+			;
+				{ PruneTraceTicketCode = node([
+					prune_ticket - "prune retry ticket"
+				]) }
+			)
 		;
-			PruneTraceTicketCode = empty
-		},
+			{ PruneTraceTicketCode = empty }
+		),
 
 		{ RestoreDeallocCode =
 			tree(RestoreSuccipCode,
-			tree(DeallocCode,
-			     PruneTraceTicketCode))
+			tree(PruneTraceTicketCode,
+			     DeallocCode))
 		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
