@@ -116,7 +116,7 @@ esac
 case "$C_COMPILER" in
 	gcc)	TEST_ID=$BRANCH.$HOST
         	TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs" ;;
-	*)	TEST_ID=$BRANCH.$HOST."$C_COMPILER
+	*)	TEST_ID=$BRANCH.$HOST.$C_COMPILER
 		TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
 esac
 rm -f $TEST_ERROR_FILE
