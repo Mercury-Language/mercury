@@ -9,7 +9,8 @@ include ../Mmake
 PROGS=	arithmetic disj_disj interpreter \
 	nasty_nondet nondet_disj nondet_ite petdr1 \
 	string_test string_test_2 univ \
-	environment duplicate_label
+	environment duplicate_label \
+	commit_bug
 
 # float_test doesn't work because io__write_float
 # prints a different number of digits in the C / NU-Prolog implementations.
