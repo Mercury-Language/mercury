@@ -324,6 +324,7 @@ MR_TypeStat	MR_type_stat_c_compare;
 ** This ensures that there are no cyclic dependencies;
 ** the order is user program -> trace -> browser -> library -> runtime -> gc,
 ** where `->' means "depends on", i.e. "references a symbol of".
+** In the case of the compiler, we insert mdbcomp between browser and library.
 */
 
 void	(*MR_address_of_mercury_init_io)(void);

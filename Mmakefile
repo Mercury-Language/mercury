@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne. 
+# Copyright (C) 1995-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -30,6 +30,7 @@ SUBDIRS = \
 		robdd \
 		library \
 		trace \
+		mdbcomp \
 		browser \
 		analysis \
 		compiler \
@@ -57,8 +58,8 @@ GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
-BROWSER_LIB_NAME = mer_browser
 MDBCOMP_LIB_NAME = mer_mdbcomp
+BROWSER_LIB_NAME = mer_browser
 ANALYSIS_LIB_NAME = mer_analysis
 
 #-----------------------------------------------------------------------------#
@@ -67,7 +68,7 @@ ANALYSIS_LIB_NAME = mer_analysis
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_browser dep_analysis dep_compiler \
+dep: dep_library dep_mdbcomp dep_browser dep_analysis dep_compiler \
 		dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
@@ -76,16 +77,19 @@ dep_library: library/$(deps_subdir)$(STD_LIB_NAME).dep
 library/$(deps_subdir)$(STD_LIB_NAME).dep:
 	+cd library && $(SUBDIR_MMAKE) depend
 
+.PHONY: dep_mdbcomp
+dep_mdbcomp: \
+	mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
+
+mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep:
+	+cd mdbcomp && $(SUBDIR_MMAKE) $(MDBCOMP_LIB_NAME).depend
+
 .PHONY: dep_browser
 dep_browser: \
-	browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep \
-	browser/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep
+	browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep
 
 browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep:
 	+cd browser && $(SUBDIR_MMAKE) $(BROWSER_LIB_NAME).depend
-
-browser/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep:
-	+cd browser && $(SUBDIR_MMAKE) $(MDBCOMP_LIB_NAME).depend
 
 .PHONY: dep_analysis
 dep_analysis: analysis/$(deps_subdir)$(ANALYSIS_LIB_NAME).dep
@@ -127,6 +131,7 @@ deep_profiler/$(deps_subdir)mdprof_test.dep: \
 .PHONY: depend
 depend:
 	+cd library && $(SUBDIR_MMAKE) depend
+	+cd mdbcomp && $(SUBDIR_MMAKE) depend
 	+cd browser && $(SUBDIR_MMAKE) depend
 	+cd analysis && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) depend
@@ -136,6 +141,10 @@ depend:
 .PHONY: depend_library
 depend_library:
 	+cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_mdbcomp
+depend_mdbcomp:
+	+cd mdbcomp && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_browser
 depend_browser:
@@ -183,26 +192,31 @@ robdd: scripts boehm_gc
 library: dep_library scripts util boehm_gc runtime
 	+cd library && $(SUBDIR_MMAKE)
 
+.PHONY: mdbcomp
+mdbcomp: dep_mdbcomp scripts util boehm_gc runtime library
+	+cd mdbcomp && $(SUBDIR_MMAKE)
+
 .PHONY: browser
-browser: dep_browser scripts util boehm_gc runtime library
+browser: dep_browser scripts util boehm_gc runtime library mdbcomp
 	+cd browser && $(SUBDIR_MMAKE)
 
 .PHONY: analysis
-analysis: dep_analysis scripts util boehm_gc runtime library browser trace
+analysis: dep_analysis scripts util boehm_gc runtime library mdbcomp browser \
+		trace
 	+cd analysis && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
-trace: scripts boehm_gc runtime library browser
+trace: scripts boehm_gc runtime library mdbcomp browser
 	+cd trace && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
 compiler: dep_compiler scripts util boehm_gc runtime library \
-		browser trace analysis
+		mdbcomp browser trace analysis
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
 libmmc: dep_compiler scripts util boehm_gc runtime library \
-		browser trace analysis
+		mdbcomp browser trace analysis
 	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
@@ -210,18 +224,19 @@ doc: scripts util
 	+cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
-profiler: dep_profiler scripts util boehm_gc runtime library browser trace
+profiler: dep_profiler scripts util boehm_gc runtime library \
+		mdbcomp browser trace
 	+cd profiler && $(SUBDIR_MMAKE)
 
 .PHONY: deep_profiler
 deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
-		browser trace
+		mdbcomp browser trace
 	+cd deep_profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
-tags: tags_compiler tags_library tags_browser tags_analysis \
+tags: tags_compiler tags_library tags_mdbcomp tags_browser tags_analysis \
 		tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
@@ -231,6 +246,10 @@ tags_compiler:
 .PHONY: tags_library
 tags_library:
 	+cd library && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_mdbcomp
+tags_mdbcomp:
+	+cd mdbcomp && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_browser
 tags_browser:
@@ -253,7 +272,8 @@ tags_deep_profiler:
 # Remove from each of the listed directories mmc-generated files that don't
 # belong there.
 cleanint:
-	for dir in analysis browser compiler deep_profiler library profiler; \
+	for dir in library mdbcomp browser analysis compiler \
+		profiler deep_profiler; \
 	do \
 		echo Looking for inappropriate files in the $$dir directory: ; \
 		( cd $$dir && ../tools/cleanint > .cleanint ) ; \
@@ -321,9 +341,12 @@ tar: $(GENERATED_DOCS)
 	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
 	+cd library && $(SUBDIR_MMAKE) depend
 	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	+cd mdbcomp && $(SUBDIR_MMAKE) depend
+	+cd mdbcomp && $(SUBDIR_MMAKE) all-ints cs \
+		$(MDBCOMP_LIB_NAME).init tags
 	+cd browser && $(SUBDIR_MMAKE) depend
 	+cd browser && $(SUBDIR_MMAKE) all-ints cs \
-		$(BROWSER_LIB_NAME).init $(MDBCOMP_LIB_NAME).init tags
+		$(BROWSER_LIB_NAME).init tags
 	+cd trace && $(SUBDIR_MMAKE) cs
 	+cd analysis && $(SUBDIR_MMAKE) depend
 	+cd analysis && $(SUBDIR_MMAKE) all-ints cs tags
@@ -425,10 +448,10 @@ install: install_main install_grades
 .PHONY: install_main
 install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
-  		install_library install_browser install_trace \
+		install_library install_mdbcomp install_browser install_trace \
 		install_compiler install_profiler install_deep_profiler \
 		install_doc install_config
- 
+
 .PHONY: install_scripts
 install_scripts: scripts
 	+cd scripts && $(SUBDIR_MMAKE) install
@@ -460,6 +483,10 @@ install_boehm_gc: boehm_gc
 install_library: dep_library library
 	+cd library && $(SUBDIR_MMAKE) install
 
+.PHONY: install_mdbcomp
+install_mdbcomp: dep_mdbcomp mdbcomp
+	+cd mdbcomp && $(SUBDIR_MMAKE) install
+
 .PHONY: install_browser
 install_browser: dep_browser browser
 	+cd browser && $(SUBDIR_MMAKE) install
@@ -480,20 +507,11 @@ install_profiler: profiler
 install_deep_profiler: deep_profiler
 	+cd deep_profiler && $(SUBDIR_MMAKE) install
 
+# LIBGRADE_SUFFIXES = .m .int3 .date3 .int2 .int .date .opt .optdate \
+#	.trans_opt .trans_opt_date .d .mh .mih .c_date  .c .o .pic_o
+
 .PHONY: install_grades
-install_grades: scripts
-	for dir in boehm_gc runtime trace; do \
-	    ( cd $$dir; rm -rf tmp_dir; mkdir tmp_dir; \
-		mv -f *.$O *.pic_o *.$A *.so tmp_dir; true ); \
-	done
-	for dir in library browser; do \
-	    ( cd $$dir && rm -rf tmp_dir && mkdir tmp_dir && \
-		for ext in $(GRADE_SUBDIR_EXTS); do \
-		    mv -f *.$$ext Mercury/$${ext}s/*.$$ext tmp_dir; \
-		done; \
-		mv -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O \
-			Mercury/os/*.$O *.$A *.so tmp_dir; true ); \
-	done
+install_grades: all
 	#
 	# Use the newly installed compiler to build the libraries
 	# in various different grades.  We need to override MC=mmc
@@ -501,48 +519,44 @@ install_grades: scripts
 	# runs the newly installed compiler, rather than using the
 	# bootstrap compiler.
 	#
-	+for grade in x $(LIBGRADES); do \
-	    if [ "$$grade" != "x" -a "$$grade" != "$(GRADE)" ]; then \
-	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
-	        ( cd boehm_gc && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade GC_GRADE=$$gc_grade \
-		  	install_lib ) && \
-		( cd runtime && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
-		( cd library && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
-		( cd browser && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
-		( cd trace && \
-		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
-		for dir in boehm_gc runtime trace; do \
-			( cd $$dir && rm -f *.$O *.pic_o *.$A *.so ); \
-		done && \
-		for dir in library browser; do \
-		   ( cd $$dir && \
-		   	for ext in $(GRADE_SUBDIR_EXTS); do \
-				rm -f *.$$ext Mercury/$${ext}s/*.$$ext; \
-			done && \
-			rm -f $(deps_subdir)*.dep $(deps_subdir)*.dv *.$O \
-				Mercury/os/*.$O *.$A *.so ); \
-		done \
-		|| { scripts/mercury_cleanup_install; exit 1; }; \
-	    fi; \
+	/bin/rm -fr tmp_dir
+	scripts/prepare_tmp_dir_fixed_part
+	+for grade in x $(LIBGRADES); do				\
+	    if [ "$$grade" != "x" -a "$$grade" != "$(GRADE)" ]; then	\
+		gc_grade=`scripts/ml --grade $$grade --print-gc-grade`;	\
+		TWS=`/bin/pwd`/tmp_dir;					\
+		scripts/prepare_tmp_dir_grade_part;			\
+	        ( cd tmp_dir/boehm_gc &&				\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade			\
+			WORKSPACE=$$TWS GC_GRADE=$$gc_grade		\
+			install_lib ) &&				\
+		( cd tmp_dir/runtime &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_lib ) &&				\
+		( cd tmp_dir/library &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			depend &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_library ) &&				\
+		( cd tmp_dir/mdbcomp &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			depend &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_library ) &&				\
+		( cd tmp_dir/browser &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			depend &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_library ) &&				\
+		( cd tmp_dir/trace &&					\
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade WORKSPACE=$$TWS	\
+			install_lib ) &&				\
+		true ||							\
+		{ echo "To clean up from failed install, remove tmp_dir"; \
+		  exit 1; };						\
+	    fi;								\
 	done
-	for dir in boehm_gc runtime trace; do \
-	    ( cd $$dir && { mv tmp_dir/* . ; rmdir tmp_dir; true; } ); \
-	done
-	for dir in library browser; do \
-	    ( cd $$dir && { \
-		for ext in $(GRADE_SUBDIR_EXTS); do \
-		    [ -d Mercury/$${ext}s ] && \
-		    	mv tmp_dir/*.$$ext Mercury/$${ext}s; \
-		done; \
-		mv tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
-	    	mv tmp_dir/* . ; rmdir tmp_dir; true; } ); \
-	done
+	if test ! -f .leave_tmp_dir; then rm -fr tmp_dir; fi
 
 .PHONY: install_split_library
 install_split_library: scripts dep_library
@@ -593,6 +607,10 @@ touch_files:
 	touch library/*.optdate
 	chmod +w library/*.dep
 	touch library/*.dep
+	touch mdbcomp/*.date*
+	touch mdbcomp/*.optdate
+	chmod +w mdbcomp/*.dep
+	touch mdbcomp/*.dep
 	touch browser/*.date*
 	touch browser/*.optdate
 	chmod +w browser/*.dep
@@ -614,6 +632,7 @@ touch_files:
 	touch boehm_gc/*.c
 	touch runtime/*.c
 	touch library/*.c
+	touch mdbcomp/*.c
 	touch browser/*.c
 	touch trace/*.c
 	touch compiler/*.c
@@ -646,7 +665,8 @@ clean: clean_subdirs clean_tests
 
 .PHONY: clean_subdirs
 clean_subdirs:
-	rm -rf runtime/tmp_dir library/tmp_dir browser/tmp_dir trace/tmp_dir
+	rm -rf runtime/tmp_dir library/tmp_dir mdbcomp/tmp_dir \
+		browser/tmp_dir trace/tmp_dir
 	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \

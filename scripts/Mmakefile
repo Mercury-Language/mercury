@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2004 The University of Melbourne.
+# Copyright (C) 1996-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -17,7 +17,7 @@ include $(MERCURY_DIR)/Mmake.common
 SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod mercury_cleanup_install canonical_grade \
-	  mercury_config mercury.bat
+	  mercury_config mercury.bat prepare_tmp_dir_fixed_part
 DEBUGGER_SCRIPTS = mdbrc xul_tree.xsl
 EMACS_SCRIPTS = gud.el
 

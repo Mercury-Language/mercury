@@ -23,6 +23,7 @@ CHECK_MHDRS = $(mer_browser.mhs)
 CHECK_OBJS  = $(mer_browser.os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=yes
+ALLOW_MDBCOMP_PREFIX=yes
 
 MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
@@ -35,8 +36,10 @@ include Mercury.options
 
 MAIN_TARGET=main
 
-MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME) $(MDBCOMP_LIB_NAME)
+MERCURY_MAIN_LIB_MODULES=$(BROWSER_LIB_NAME)
 MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES) browse_test declarative_test
+
+VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR)
 
 DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
@@ -50,10 +53,11 @@ CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
 # Don't change these without good reason - if you want to do a temporary
 # change, change ../Mmake.params, or create Mmake.browser.params.
 
-CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
+CFLAGS	+=	$(DLL_CFLAGS) -I$(MDBCOMP_DIR) -I$(TRACE_DIR)
 MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+MCFLAGS +=	-I $(MDBCOMP_DIR) \
+		-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 		$(READLINE_LIBRARIES)
@@ -75,8 +79,6 @@ MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 MCFLAGS += --no-shlib-linker-use-install-name
 LD_LIBFLAGS-libmer_browser.dylib = -install_name \
 	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_browser.dylib
-LD_LIBFLAGS-libmer_mdbcomp.dylib = -install_name \
-	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_mdbcomp.dylib
 
 #-----------------------------------------------------------------------------#
 
@@ -131,55 +133,33 @@ library: $(LIBS)
 depend:	$(DEPENDS)
 $(DEPENDS): Mercury.modules
 
-# This directory contains two libraries, mer_browser and mer_mdbcomp,
-# and mer_browser depends on mer_mdbcomp.  But Mmake will by default
-# assume that each library contains any file referenced from the
-# top-level module which occurs in the current directory, which leads
-# it to incorrectly assume that the mer_browser library should include
-# the mdbcomp.m and program_representation.m files.
-# To avoid this problem, we temporarily rename those files away
-# when building the dependencies for mer_browser.
-#
-# We use the phony .NOTPARALLEL target to disable parallel make,
-# to ensure that we don't try to execute any other rule while
-# the files are renamed.
-# We also need to be careful to ensure that the files get renamed
-# back properly even if making the dependencies fails or a signal occurs.
-# XXX This is all a bit hacky.
-
 .NOTPARALLEL:
 
-$(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
-	trap 'mv RENAMED_mdbcomp.m mdbcomp.m; \
-		mv RENAMED_program_representation.m program_representation.m; \
-		exit 1' 1 2 3 13 15; \
-	mv mdbcomp.m RENAMED_mdbcomp.m; \
-	mv program_representation.m RENAMED_program_representation.m ;\
-	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*; \
-	status=$$?; \
-	mv RENAMED_mdbcomp.m mdbcomp.m; \
-	mv RENAMED_program_representation.m program_representation.m; \
-	exit $$status
+# $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
+# 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 
-lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
-lib$(BROWSER_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
-lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
-lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
-lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
-lib$(BROWSER_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
-lib$(BROWSER_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
-lib$(BROWSER_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
-lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
-lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
-$($(BROWSER_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
-$($(BROWSER_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
-$($(BROWSER_LIB_NAME).ss): $($(MDBCOMP_LIB_NAME).ss)
-$($(BROWSER_LIB_NAME).ils): $($(MDBCOMP_LIB_NAME).ils)
-$($(BROWSER_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
-$($(BROWSER_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
-$($(BROWSER_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
-$($(BROWSER_LIB_NAME).il_dates): $($(MDBCOMP_LIB_NAME).il_dates)
-$($(BROWSER_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
+# The need for these dependencies should be obviated by the fact that the
+# mdbcomp directory is brought up-to-date first.
+
+# lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
+# lib$(BROWSER_LIB_NAME).dylib: lib$(MDBCOMP_LIB_NAME).dylib
+# lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
+# lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
+# lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
+# lib$(BROWSER_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
+# lib$(BROWSER_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
+# lib$(BROWSER_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
+# lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
+# lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
+# $($(BROWSER_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
+# $($(BROWSER_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
+# $($(BROWSER_LIB_NAME).ss): $($(MDBCOMP_LIB_NAME).ss)
+# $($(BROWSER_LIB_NAME).ils): $($(MDBCOMP_LIB_NAME).ils)
+# $($(BROWSER_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
+# $($(BROWSER_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
+# $($(BROWSER_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
+# $($(BROWSER_LIB_NAME).il_dates): $($(MDBCOMP_LIB_NAME).il_dates)
+# $($(BROWSER_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
@@ -202,31 +182,24 @@ int3s:	$(INT3S_TARGETS)
 
 #-----------------------------------------------------------------------------#
 
-tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms)
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms) \
-		../library/*.m
+tags:	$(MTAGS) $($(BROWSER_LIB_NAME).ms)
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags; \
-	$(MTAGS) $($(BROWSER_LIB_NAME).ms) $($(MDBCOMP_LIB_NAME).ms) \
-		../library/*.m ; fi
+	$(MTAGS) $($(BROWSER_LIB_NAME).ms) ../mdbcomp/*.m ../library/*.m ; fi
 
 $(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 		$($(BROWSER_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
 		`vpath_find $($(BROWSER_LIB_NAME).ms)` > $@
 
-$(MDBCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
-		$($(MDBCOMP_LIB_NAME).ms)
-	awk -f $(COMPILER_DIR)/source_stats.awk \
-		`vpath_find $($(MDBCOMP_LIB_NAME).ms)` > $@
-
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
 dates:
-	touch $($(BROWSER_LIB_NAME).dates) $($(MDBCOMP_LIB_NAME).dates)
+	touch $($(BROWSER_LIB_NAME).dates)
 
 #-----------------------------------------------------------------------------#
 
@@ -234,7 +207,8 @@ dates:
 # Some Java compilers require the Java source files to be put in directories
 # which match their package names.  But the Mercury compiler generates them
 # with the package name prefixed to the file name with a ".", not a "/".
-# So we copy the Java source files to where the Java compiler expects them to be.
+# So we copy the Java source files to where the Java compiler expects them
+# to be.
 #
 # XXX This is a hack.  We ought to change the Mercury compiler so that it
 # generates the Java files with the right names in the first place.
@@ -244,15 +218,9 @@ mdb/%.java: mdb.%.java
 	[ -d mdb ] || mkdir mdb
 	cp $< $@
 
-mdbcomp/%.java: mdbcomp.%.java
-	[ -d mdbcomp ] || mkdir mdbcomp
-	cp $< $@
+RENAMED_JAVAS = $($(BROWSER_LIB_NAME).javas:mdb.%.java=mdb/%.java)
 
-RENAMED_JAVAS = $($(BROWSER_LIB_NAME).javas:mdb.%.java=mdb/%.java) \
-	$($(MDBCOMP_LIB_NAME).javas:mdbcomp.%.java=mdbcomp/%.java)
-
-RENAMED_CLASSES = $($(BROWSER_LIB_NAME).classes:mdb.%.class=mdb/%.class) \
-	$($(MDBCOMP_LIB_NAME).classes:mdbcomp.%.class=mdbcomp/%.class)
+RENAMED_CLASSES = $($(BROWSER_LIB_NAME).classes:mdb.%.class=mdb/%.class)
 
 .PHONY: javas
 javas: $(RENAMED_JAVAS)
@@ -264,16 +232,16 @@ classes: $(RENAMED_JAVAS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss ils
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
-os: $($(BROWSER_LIB_NAME).os) $($(MDBCOMP_LIB_NAME).os)
-cs: $($(BROWSER_LIB_NAME).cs) $($(MDBCOMP_LIB_NAME).cs)
-ss: $($(BROWSER_LIB_NAME).ss) $($(MDBCOMP_LIB_NAME).ss)
-ils: $($(BROWSER_LIB_NAME).ils) $($(MDBCOMP_LIB_NAME).ils)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+os: $($(BROWSER_LIB_NAME).os)
+cs: $($(BROWSER_LIB_NAME).cs)
+ss: $($(BROWSER_LIB_NAME).ss)
+ils: $($(BROWSER_LIB_NAME).ils)
 else
-os: $(BROWSER_LIB_NAME).os $(MDBCOMP_LIB_NAME).os
-cs: $(BROWSER_LIB_NAME).cs $(MDBCOMP_LIB_NAME).cs
-ss: $(BROWSER_LIB_NAME).ss $(MDBCOMP_LIB_NAME).ss
-ils: $(BROWSER_LIB_NAME).ils $(MDBCOMP_LIB_NAME).ils
+os: $(BROWSER_LIB_NAME).os
+cs: $(BROWSER_LIB_NAME).cs
+ss: $(BROWSER_LIB_NAME).ss
+ils: $(BROWSER_LIB_NAME).ils
 endif
 
 #-----------------------------------------------------------------------------#
@@ -281,8 +249,6 @@ endif
 # Ensure we recompile mdb__version if VERSION is changed.
 $(os_subdir)mdb.o \
 $(os_subdir)mdb.pic_o \
-$(os_subdir)mdbcomp.o \
-$(os_subdir)mdbcomp.pic_o \
         : $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
@@ -315,24 +281,17 @@ install_library:
 else 
 
 .PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init $(MDBCOMP_LIB_NAME).init install_dirs
+install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
-	cp `vpath_find $(MDBCOMP_LIB_NAME).init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
 install_library: \
 		lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
-		lib$(MDBCOMP_LIB_NAME).$A \
-		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs
 	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find lib$(MDBCOMP_LIB_NAME).$A \
-		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
-		$(INSTALL_MERC_LIB_DIR)
 	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).$A
-	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 
 endif

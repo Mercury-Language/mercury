@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne.
+# Copyright (C) 1995-2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -79,7 +79,7 @@ endif
 # I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
@@ -120,7 +120,7 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/pic_s_dates ] || mkdir Mercury/pic_s_dates
 endif
 
-endif	# MMAKE_USE_MMC_MAKE == no
+endif	# MMAKE_USE_MMC_MAKE != yes
 
 #-----------------------------------------------------------------------------#
 #
@@ -129,7 +129,7 @@ endif	# MMAKE_USE_MMC_MAKE == no
 # duplicated in compiler/modules.m.
 #
 
-ifeq ($(MMAKE_USE_MMC_MAKE), no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 $(date0s_subdir)%.date0 : %.m
 	$(MCPI) $(ALL_GRADEFLAGS) $(ALL_MCPIFLAGS) $(*F)
@@ -170,7 +170,7 @@ $(opts_subdir)%.opt : $(optdates_subdir)%.optdate
 $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 	@:
 
-endif	# MMAKE_USE_MMC_MAKE == no
+endif	# MMAKE_USE_MMC_MAKE != yes
 
 #-----------------------------------------------------------------------------#
 #
@@ -179,7 +179,7 @@ endif	# MMAKE_USE_MMC_MAKE == no
 # duplicated in compiler/modules.m.
 #
 
-ifeq ($(MMAKE_USE_MMC_MAKE), no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 ifeq ($(TARGET_ASM),yes)
 
@@ -306,7 +306,7 @@ endif
 	$(MCE) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
 	@touch $@
 
-endif	# MMAKE_USE_MMC_MAKE == no
+endif	# MMAKE_USE_MMC_MAKE != yes
 
 .m.ugly:
 	$(MC) --convert-to-mercury $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $(*F)
@@ -342,7 +342,7 @@ endif	# MMAKE_USE_MMC_MAKE == no
 # the user may have some C files of their own which need to be compiled.
 #
 
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 ifneq ("$(cs_subdir)","")
 
@@ -365,7 +365,7 @@ $(os_subdir)%.pic_o : $(cs_subdir)%.c
 
 endif # $(cs_subdir) != ""
 
-endif # $(MMAKE_USE_MMC_MAKE) == no
+endif # $(MMAKE_USE_MMC_MAKE) != yes
 
 #-----------------------------------------------------------------------------#
 #

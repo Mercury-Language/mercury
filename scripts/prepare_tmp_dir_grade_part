@@ -1,0 +1,51 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+rm -fr tmp_dir/boehm_gc
+rm -fr tmp_dir/runtime
+rm -fr tmp_dir/trace
+rm -fr tmp_dir/library
+rm -fr tmp_dir/mdbcomp
+rm -fr tmp_dir/browser
+mkdir tmp_dir/boehm_gc
+mkdir tmp_dir/boehm_gc/Mac_files
+mkdir tmp_dir/boehm_gc/cord
+mkdir tmp_dir/boehm_gc/include
+mkdir tmp_dir/boehm_gc/include/private
+cp boehm_gc/Makefile* tmp_dir/boehm_gc
+cp boehm_gc/Mmake* tmp_dir/boehm_gc
+cp boehm_gc/ac* tmp_dir/boehm_gc
+cp boehm_gc/*.[chsS] tmp_dir/boehm_gc
+cp boehm_gc/Mac_files/*.[ch] tmp_dir/boehm_gc/Mac_files
+cp boehm_gc/cord/*.[ch] tmp_dir/boehm_gc/cord
+cp boehm_gc/include/*.[ch] tmp_dir/boehm_gc/include
+cp boehm_gc/include/private/*.[ch] tmp_dir/boehm_gc/include/private
+mkdir tmp_dir/runtime
+mkdir tmp_dir/runtime/machdeps
+cp runtime/Mmake* tmp_dir/runtime
+cp runtime/*.in tmp_dir/runtime
+cp runtime/*.[ch] tmp_dir/runtime
+cp runtime/*.il tmp_dir/runtime
+cp runtime/machdeps/*.h tmp_dir/runtime/machdeps
+mkdir tmp_dir/trace
+cp trace/Mmake* tmp_dir/trace
+cp trace/*.[ch] tmp_dir/trace
+mkdir tmp_dir/library
+cp library/Mmake* tmp_dir/library
+cp library/Mercury.* tmp_dir/library
+cp library/print_extra_inits tmp_dir/library
+cp library/library_strong_name.sn tmp_dir/library
+cp library/*.m tmp_dir/library
+mkdir tmp_dir/mdbcomp
+cp mdbcomp/Mmake* tmp_dir/mdbcomp
+cp mdbcomp/Mercury.* tmp_dir/mdbcomp
+cp mdbcomp/*.m tmp_dir/mdbcomp
+mkdir tmp_dir/browser
+cp browser/Mmake* tmp_dir/browser
+cp browser/Mercury.* tmp_dir/browser
+cp browser/*.m tmp_dir/browser
+exit 0

@@ -1,7 +1,7 @@
 #! /bin/sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1999 Monash University.
-# Copyright (C) 2000-2002 The University of Melbourne.
+# Copyright (C) 2000-2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -32,7 +32,7 @@
 # If there is an error while doing the clean-up, a more aggressive approach
 # is used.  An "mmake clean" is run on the directory in question, and then
 # the `tmp_dir' is deleted completely.  Note that for some directories (e.g.
-# `library' and `browser'), this deletes some C files, which require a
+# `library', `browser'), this deletes some C files, which require a
 # working version of Mercury to rebuild.  However, if the installation got
 # as far as building the different grades of the library, then the compiler
 # (plus its default grade) has already been installed.  The build scripts

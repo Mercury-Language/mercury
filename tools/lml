@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001, 2003 The University of Melbourne.
+# Copyright (C) 2001, 2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -34,7 +34,7 @@ else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/browser/libmer_mdbcomp.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
+MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/mdbcomp/libmer_mdbcomp.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
 export MERCURY_LIBS
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"

@@ -1,0 +1,29 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+ln_s="@LN_S@"
+if test "$ln_s" = "false"
+then
+	ln_s="cp -r"
+fi
+wd=`/bin/pwd`
+
+mkdir tmp_dir
+cp Mmake* tmp_dir
+cp Mercury.* tmp_dir
+cp VERSION tmp_dir
+cp config* tmp_dir
+cp aclocal.m4 tmp_dir
+mkdir tmp_dir/scripts
+cp scripts/* tmp_dir/scripts
+mkdir tmp_dir/tools
+cp tools/* tmp_dir/tools
+$ln_s $wd/compiler tmp_dir
+$ln_s $wd/analysis tmp_dir
+$ln_s $wd/robdd tmp_dir
+$ln_s $wd/util tmp_dir
+exit 0

@@ -9,10 +9,10 @@
 % of data structures that the compiler generates for the debugger, and
 % the predicates that operate on them.
 %
-% The compiler links in this library in all grades, but links in the mdb
-% library (which also in this directory) only when debugging is enabled.
+% The compiler links in this library in all grades, but links in the browser
+% library (module mdb and its submodules) only when debugging is enabled.
 % Therefore the modules of the mdbcomp library should avoid importing any
-% module of the mdb library.
+% part of the mdb module.
 
 :- module mdbcomp.
 

@@ -48,9 +48,9 @@ The subdirectories containing major subsystems are as follows:
 <li> library: the Mercury standard library (written in Mercury)
 <li> compiler: the Mercury compiler (written in Mercury)
 <li> trace: the part of the Mercury debugger that is written in C
-<li> browser: the part of the Mercury debugger that is written in Mercury,
-     including the library that defines the Mercury data structures generated
-     by the compiler for the debugger.
+<li> browser: the part of the Mercury debugger that is written in Mercury
+<li> mdbcomp: the library that defines the Mercury data structures generated
+     by the compiler for the debugger
 <li> profiler: the Mercury profiler (written in Mercury)
 <li> analysis: an inter-module analysis framework (written in Mercury)
 <li> extras: additional Mercury libraries.  These are distributed
@@ -127,8 +127,7 @@ from `configure.in'.
 <h2> Libraries and dependencies </h2>
 
 Each major subsystem (which doesn't include `extras')
-gets compiled to a single library or executable program,
-except for the browser directory, which gets compiled to two libraries.
+gets compiled to a single library or executable program.
 
 On most systems, mutual recursion between libraries is not very
 well supported.  On Unix, for static linking you need to list the
@@ -150,7 +149,7 @@ a program in the following order:
 <li>    the main program object files (e.g. compiler/*.o or profiler/*.o)
 <li>    trace library (trace/libmer_trace.a)
 <li>    browser library (browser/libmer_browser.a)
-<li>    mdbcomp library (browser/libmer_mdbcomp.a)
+<li>    mdbcomp library (mdbcomp/libmer_mdbcomp.a)
 <li>    standard library (library/libmer_std.a)
 <li>    runtime library (runtime/libmer_rt.a)
 <li>    Boehm collector (boehm_gc/libgc.a)
@@ -167,6 +166,6 @@ other components.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2003-10-30 04:24:52 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-01-28 07:11:47 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

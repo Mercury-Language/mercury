@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 The University of Melbourne. 
+# Copyright (C) 1995-2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -2526,7 +2526,8 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 "using grade \`$GRADE' to compile the compiler
 	compiler and library will be rebuilt with new grade
 	installation may take a long time")
-		find library compiler browser analysis profiler deep_profiler \
+		find library compiler browser mdbcomp analysis \
+			profiler deep_profiler \
 			-name \*.c -o -name \*.c_date | \
 			xargs rm > /dev/null 2>&1
 	fi
@@ -3907,7 +3908,7 @@ some_kept=false
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for directory in library compiler profiler deep_profiler browser
+    for directory in library compiler profiler deep_profiler mdbcomp browser
     do
         mercury_check_c_files $directory $directory
         mercury_check_c_files $directory/Mercury/cs $directory/Mercury/c_dates
@@ -3975,9 +3976,10 @@ AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
 scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
 scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
 scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
-scripts/canonical_grade
-scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
+scripts/canonical_grade scripts/mkfifo_using_mknod
 scripts/mercury_config scripts/Mercury.config scripts/Mercury.config.bootstrap
+scripts/prepare_tmp_dir_fixed_part
+bindist/bindist.INSTALL bindist/bindist.Makefile
 tools/lmc tools/dotime runtime/mercury_dotnet.cs java/runtime/Constants.java
 java/runtime/Native.java
 ,
@@ -4003,10 +4005,12 @@ case $reconfiguring in no)
 	# will work correctly if you rerun configure with a new --prefix and
 	# then don't do a `make clean' before running `make'.
 	rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
-	rm -f trace/libmer_trace.so browser/libmer_browse.so
+	rm -f trace/libmer_trace.so browser/libmer_browser.so
+	rm -f mdbcomp/libmer_mdbcomp.so
 	rm -f runtime/libmer_rt.dylib library/libmer_std.dylib 
 	rm -f boehm_gc/libgc.dylib bytecode/libmbi.dylib
 	rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
+	rm -f mdbcomp/libmer_mdbcomp.dylib
 	;;
 esac],
 [reconfiguring=$reconfiguring]

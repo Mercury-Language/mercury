@@ -22,7 +22,7 @@ MAIN_TARGET=all
 
 MERCURY_MAIN_MODULES = top_level mlds_to_gcc
 
-VPATH=$(LIBRARY_DIR) $(BROWSER_DIR) $(ANALYSIS_DIR)
+VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR) $(ANALYSIS_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -47,7 +47,7 @@ force: ;
 $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
-MCFLAGS +=	-I $(BROWSER_DIR) -I $(ANALYSIS_DIR) \
+MCFLAGS +=	-I $(BROWSER_DIR) -I $(MDBCOMP_DIR) -I $(ANALYSIS_DIR) \
 			--c-include-directory $(ANALYSIS_DIR)
 CFLAGS +=	-I$(ANALYSIS_DIR) -I$(ANALYSIS_DIR)/$(mihs_subdir)
 MLOBJS :=	../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
@@ -249,7 +249,7 @@ else
 $(MC_PROG): ../main.$O
 $(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
-$(MC_PROG): $(BROWSER_DIR)/lib$(MDBCOMP_LIB_NAME).$A
+$(MC_PROG): $(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 $(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
 $(MC_PROG): $(ANALYSIS_DIR)/lib$(ANALYSIS_LIB_NAME).$A
@@ -271,7 +271,7 @@ ints:	$(MC_PROG).ints
 #-----------------------------------------------------------------------------#
 
 tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(LIBRARY_DIR)/*.m
 
 .PHONY: tags_file_exists
 tags_file_exists:
@@ -292,7 +292,7 @@ dates:
 
 # Note that the cs and os targets don't build top_level_init.{c,o}
 .PHONY: os cs ss ils
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)
 ss: $($(MC_PROG).ss)

@@ -94,7 +94,7 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs ss ils
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(ANALYSIS_LIB_NAME).os)
 cs: $($(ANALYSIS_LIB_NAME).cs)
 ss: $($(ANALYSIS_LIB_NAME).ss)

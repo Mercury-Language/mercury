@@ -8,7 +8,7 @@
 % debugger. Since this representation is to be included in debuggable
 % executables, it should be as compact as possible, and therefore contains
 % only the information required by the declarative debugger. The structure
-% of this representation is defined by browser/program_representation.m.
+% of this representation is defined by mdbcomp/program_representation.m.
 %
 % Author: zs.
 %

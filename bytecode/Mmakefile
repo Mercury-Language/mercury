@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2002 The University of Melbourne.
+# Copyright (C) 1998-2002, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -57,6 +57,7 @@ CHECK_MHDRS =
 CHECK_OBJS  = $(MB_OBJS)
 ALLOW_LIB_PREFIX=no
 ALLOW_BROWSER_PREFIX=no
+ALLOW_MDBCOMP_PREFIX=no
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
@@ -72,7 +73,8 @@ MERCURY_SYSTEM	= \
 		$(RUNTIME_DIR)/machdeps/*.c $(RUNTIME_DIR)/machdeps/*.h\
 		$(LIBRARY_DIR)/*.m \
 		$(TRACE_DIR)/*.h $(TRACE_DIR)/*.c \
-		$(BROWSER_DIR)/*.h $(BROWSER_DIR)/*.c \
+		$(BROWSER_DIR)/*.m \
+		$(MDBCOMP_DIR)/*.m \
 		$(BOEHM_GC_DIR)/*.h $(BOEHM_GC_DIR)/include/*.h
 
 MERCURY_INC	= \

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2004 The University of Melbourne. 
+# Copyright (C) 2002-2005 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -49,6 +49,7 @@ SCRIPTS_DIR = $(WORKSPACE)/scripts
 RUNTIME_DIR = $(WORKSPACE)/runtime
 LIBRARY_DIR = $(WORKSPACE)/library
 TRACE_DIR = $(WORKSPACE)/trace
+MDBCOMP_DIR = $(WORKSPACE)/mdbcomp
 BROWSER_DIR = $(WORKSPACE)/browser
 BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
 MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
@@ -112,7 +113,7 @@ endif
 MCFLAGS += 	--no-mercury-stdlib-dir -I$(LIBRARY_DIR)
 MGNUCFLAGS +=	--no-mercury-stdlib-dir
 C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
-		--trace-init-file $(BROWSER_DIR)/$(MDBCOMP_LIB_NAME).init
+		--trace-init-file $(MDBCOMP_DIR)/$(MDBCOMP_LIB_NAME).init
 C2INITARGS +=	$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS +=	--no-mercury-stdlib-dir
@@ -126,7 +127,8 @@ C_INCL_DIRS +=	-I$(RUNTIME_DIR)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 C_INCL_DIRS +=	-I$(LIBRARY_DIR) -I$(LIBRARY_DIR)/$(mihs_subdir)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-C_INCL_DIRS +=	-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
+C_INCL_DIRS +=	-I$(MDBCOMP_DIR) -I$(MDBCOMP_DIR)/$(mihs_subdir) \
+		-I$(BROWSER_DIR) -I$(BROWSER_DIR)/$(mihs_subdir) -I$(TRACE_DIR)
 endif
 endif
 endif
@@ -183,7 +185,7 @@ STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
 STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
-		$(BROWSER_DIR)/lib$(MDBCOMP_LIB_NAME).$A
+		$(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A
 endif
 endif
 endif
@@ -209,7 +211,8 @@ endif
 LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
 			$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS) 
 LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
-		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(BROWSER_DIR)
+		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(MDBCOMP_DIR) \
+		-L$(BROWSER_DIR)
 
 MLFLAGS +=	$(LIB_DIR_OPTS)
 MCFLAGS +=	$(LIB_DIR_OPTS)

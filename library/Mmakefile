@@ -22,6 +22,7 @@ CHECK_MHDRS = $(mer_std.mhs)
 CHECK_OBJS  = $(mer_std.os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=no
+ALLOW_MDBCOMP_PREFIX=no
 
 MERCURY_DIR=..
 LINK_RUNTIME_ONLY=yes
@@ -122,7 +123,7 @@ LN	=	ln
 # in the .dep files, so it must be passed here, however if a C source
 # distribution is generated on a Darwin system then by default the
 # -install_name option will be passed in the .dep files which will cause it to
-# be passed twice (here and in the .dep files) which is not allowed by the 
+# be passed twice (here and in the .dep files) which is not allowed by the
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
@@ -165,7 +166,7 @@ depend:	$(STD_LIB_NAME).depend
 .PHONY: check
 check:	$(STD_LIB_NAME).check
 
-.PHONY: all-ints 
+.PHONY: all-ints
 
 ifeq ($(LIBRARY_INTERMODULE),yes)
 
@@ -177,16 +178,16 @@ all-ints: ints int3s
 
 endif
 
-.PHONY: ints 
+.PHONY: ints
 ints:	$(STD_LIB_NAME).ints
 
-.PHONY: int3s 
+.PHONY: int3s
 int3s:	$(STD_LIB_NAME).int3s
 
-.PHONY: opts 
+.PHONY: opts
 opts:	$(STD_LIB_NAME).opts
 
-.PHONY: trans_opts 
+.PHONY: trans_opts
 trans_opts: $(STD_LIB_NAME).trans_opts
 $(STD_LIB_NAME).trans_opts: $($(STD_LIB_NAME).trans_opts)
 
@@ -203,7 +204,7 @@ tags_file_exists:
 $(STD_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk $($(STD_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
 		`vpath_find $($(STD_LIB_NAME).ms)` > $@
-	
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: dates
@@ -218,8 +219,8 @@ dates:
 # rule chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
 # So don't remove the pic_ss target here.
 
-.PHONY: os cs ss pic_ss ils 
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+.PHONY: os cs ss pic_ss ils
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
 ss: $($(STD_LIB_NAME).ss)
@@ -289,8 +290,8 @@ NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 .PHONY: lib_std
 
-# The ilc and il grades target Microsoft's .NET frameworks.  
-ifeq ($(findstring il,$(GRADE)),il)        
+# The ilc and il grades target Microsoft's .NET frameworks.
+ifeq ($(findstring il,$(GRADE)),il)
 
 lib_std: mercury.dll lib$(STD_LIB_NAME)
 
@@ -318,7 +319,7 @@ mercury.dll: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
 		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS) 
+		$(RUNTIME_DLLS)
 
 # This is useful for running PEverify on the library.
 # For multi-file assemblies, PEverify only works on executables,
@@ -327,7 +328,7 @@ mercury_exe.exe: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
 		$(RUNTIME_DLLS) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury_exe.exe \
 		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS) 
+		$(RUNTIME_DLLS)
 
 # The runtime DLLs must be copied into this directory from the runtime
 # directory so they can be installed properly.
@@ -363,12 +364,12 @@ ifeq ("$(findstring il,$(GRADE))$(findstring java,$(GRADE))","")
 # making tree234.$O first improves effective parallelism with parallel makes.
 # `mmc --make' does not support parallel makes, so this dependency just
 # slows things down.
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 lib_std: $(os_subdir)tree234.$O
 endif
 lib_std: lib$(STD_LIB_NAME)
 
-ifeq ($(MMAKE_USE_MMC_MAKE),no)
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 EXTRA_INIT_COMMAND = ./print_extra_inits $($(STD_LIB_NAME).ms)
 
@@ -376,9 +377,10 @@ else
 
 MCFLAGS += --extra-init-command ./print_extra_inits
 
-endif	# 
+endif
 
 endif	# GRADE != il && GRADE != java
+
 #-----------------------------------------------------------------------------#
 
 # Rebuild all the object files if the configuration macros or VERSION
@@ -481,8 +483,9 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 	rm -f $(INSTALL_MODULE_DIR)/library.init \
 		$(INSTALL_MODULE_DIR)/libmercury.init
 
-
 ifneq (,$(findstring il,$(GRADE)))
+
+# XXX some modules in the browser directory need library.int3
 
 .PHONY: install_library
 install_library: mercury.dll install_grade_dirs install_gac \
@@ -520,7 +523,7 @@ install_gac: mercury.dll
 install_strong_name: library_strong_name.sn
 	cp `vpath_find library_strong_name.sn` \
 		$(INSTALL_MERC_LIB_DIR)/mercury.sn
-	
+
 else
 
 ifneq (,$(findstring java,$(GRADE)))
@@ -537,8 +540,11 @@ install_library: jars
 
 else
 
+# we depend on lib$(STD_LIB_NAME) because lib$(STD_LIB_NAME).install_library
+# doesn't make library.int3, but some modules in the browser directory need it.
+
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).install_library
+install_library: lib$(STD_LIB_NAME) lib$(STD_LIB_NAME).install_library
 
 endif  #ifneq (,$(findstring java,$(GRADE)))
 

@@ -23,7 +23,7 @@ do
 done
 
 # copy the interface files and possibly optimization files they will need
-for dir in library browser analysis compiler
+for dir in library mdbcomp analysis compiler
 do
 	cp $dir/*.int* arena
 	cp $dir/*.*opt arena > /dev/null 2>&1

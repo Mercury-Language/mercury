@@ -69,7 +69,7 @@ Options:
 		check to have left a working stage 2 directory.
 	--no-check-namespace
 		Don't build the check_namespace targets in the runtime,
-		trace, browser and library directories.
+		trace, browser, mdbcomp and library directories.
 	-t-, --no-test-suite
 		By default, bootcheck will also run the test quite.
 		This option prevents that.
@@ -569,12 +569,18 @@ then
 		$LN_S $root/library/$STD_LIB_NAME.init .
 		$LN_S $root/library/RESERVED_MACRO_NAMES .
 		cd $root/$stage2dir
+		mkdir mdbcomp
+		cd mdbcomp
+		$LN_S $root/mdbcomp/*.m .
+		cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
+		$LN_S $root/mdbcomp/$MDCOMP_LIB_NAME.init .
+		$LN_S $root/mdbcomp/RESERVED_MACRO_NAMES .
+		cd $root/$stage2dir
 		mkdir browser
 		cd browser
 		$LN_S $root/browser/*.m .
 		cp $root/browser/Mmake* $root/browser/Mercury.options .
 		$LN_S $root/browser/$BROWSER_LIB_NAME.init .
-		$LN_S $root/browser/$MDCOMP_LIB_NAME.init .
 		$LN_S $root/browser/RESERVED_MACRO_NAMES .
 		cd $root/$stage2dir
 		mkdir analysis
@@ -686,6 +692,11 @@ then
 			/bin/rm -f Mmake.params
 			cp $root/Mmake.stage.params Mmake.params
 		fi
+		if test -f $root/Mmake.stage.mdbcomp.params
+		then
+			/bin/rm -f mdbcomp/Mmake.mdbcomp.params
+			cp $root/Mmake.stage.mdbcomp.params mdbcomp/Mmake.mdbcomp.params
+		fi
 		if test -f $root/Mmake.stage.browser.params
 		then
 			/bin/rm -f browser/Mmake.browser.params
@@ -743,8 +754,8 @@ then
 		fi
 
 		if (cd $stage2dir && \
-			$MMAKE $mmake_opts dep_library dep_browser \
-			dep_analysis dep_compiler dep_profiler \
+			$MMAKE $mmake_opts dep_library dep_mdbcomp \
+			dep_browser dep_analysis dep_compiler dep_profiler \
 			dep_deep_profiler)
 		then
 			echo "building of stage 2 dependencies successful"
@@ -775,6 +786,15 @@ then
 
 			mv $stage2dir/library/$STD_LIB_NAME.split.a \
 				$stage2dir/library/$STD_LIB_NAME.a
+		fi
+
+		if (cd $stage2dir/mdbcomp && \
+			$MMAKE $mmake_opts $jfactor library)
+		then
+			echo "building of stage 2 mdbcomp successful"
+		else
+			echo "building of stage 2 mdbcomp not successful"
+			exit 1
 		fi
 
 		if (cd $stage2dir/browser && \
@@ -859,6 +879,11 @@ then
 			echo '** mmake check_namespace failed in library!'
 			check_namespace_status=1
 		}
+		cd $root/$stage2dir/mdbcomp
+		mmake $mmake_opts check_namespace || {
+			echo '** mmake check_namespace failed in mdbcomp!'
+			check_namespace_status=1
+		}
 		cd $root/$stage2dir/browser
 		mmake $mmake_opts check_namespace || {
 			echo '** mmake check_namespace failed in browser!'
@@ -879,7 +904,7 @@ then
 	then
 		true
 	else
-		libdirs="library browser"
+		libdirs="library mdbcomp browser"
 		if $copy_profiler
 		then
 			profdirs="profiler deep_profiler"
@@ -900,7 +925,7 @@ then
 			/bin/rm -f *.o *.pic_o
 		done
 
-		for cleandir in runtime trace library browser
+		for cleandir in runtime trace library mdbcomp browser
 		do
 			cd $root/$stage2dir/$cleandir
 			mmake clean_check
@@ -954,12 +979,17 @@ then
 	cp $root/library/Mmake* $root/library/Mercury.options .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/$stage3dir
+	mkdir mdbcomp
+	cd mdbcomp
+	$LN_S $root/mdbcomp/*.m .
+	cp $root/mdbcomp/Mmake* $root/mdbcomp/Mercury.options .
+	$LN_S $root/mdbcomp/$MDBCOMP_LIB_NAME.init .
+	cd $root/$stage3dir
 	mkdir browser
 	cd browser
 	$LN_S $root/browser/*.m .
 	cp $root/browser/Mmake* $root/browser/Mercury.options .
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
-	$LN_S $root/browser/$MDBCOMP_LIB_NAME.init .
 	cd $root/$stage3dir
 	mkdir analysis
 	cd analysis
@@ -1010,8 +1040,8 @@ then
 		cp /dev/null "$type_stats"
 	fi
 
-	if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_browser \
-		dep_analysis dep_compiler)
+	if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
+		dep_browser dep_analysis dep_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
 	else
@@ -1051,6 +1081,23 @@ then
 	else
 		find $root/$stage2dir/compiler -name "*.o" -print |
 		xargs /bin/rm -f
+	fi
+
+	if (cd $stage3dir/mdbcomp && $MMAKE $mmake_opts $jfactor ${target_ext}s)
+	then
+		echo "building of stage 3 mdbcomp successful"
+	else
+		echo "building of stage 3 mdbcomp initially not successful"
+		df .
+		# try again, in case the failure cause was transient
+		if (cd $stage3dir/mdbcomp && \
+			$MMAKE $mmake_opts $jfactor ${target_ext}s)
+		then
+			echo "building of stage 3 mdbcomp successful"
+		else
+			echo "building of stage 3 mdbcomp not successful"
+			exit 1
+		fi
 	fi
 
 	if (cd $stage3dir/browser && $MMAKE $mmake_opts $jfactor ${target_ext}s)
@@ -1123,7 +1170,7 @@ then
 		exec > "$outfile"	# redirect stdout to $outfile
 	fi
 
-	for dir in library browser analysis compiler; do
+	for dir in library mdbcomp browser analysis compiler; do
 		# `mmake cs' in the compiler directory doesn't build
 		# `top_level_init.c', so we only compare the `.c'
 		# files present in the stage 3 directory.
@@ -1162,6 +1209,7 @@ then
 				# files to be reconstructed
 				# relatively quickly.
 				gzip $root/$stage2dir/library/*.c
+				gzip $root/$stage2dir/mdbcomp/*.c
 				gzip $root/$stage2dir/browser/*.c
 				gzip $root/$stage2dir/compiler/*.c
 				;;

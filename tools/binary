@@ -276,6 +276,7 @@ else
 fi
 ln -s $root/boehm_gc .
 ln -s $root/browser .
+ln -s $root/mdbcomp .
 ln -s $root/trace .
 ln -s $root/doc .
 ln -s $root/scripts .

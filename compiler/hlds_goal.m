@@ -879,7 +879,7 @@
 	% of the list.)
 	%
 	% If any of the following three types is changed, then the
-	% corresponding types in browser/program_representation.m must be
+	% corresponding types in mdbcomp/program_representation.m must be
 	% updated.
 
 :- type goal_path == list(goal_path_step).
@@ -1614,7 +1614,7 @@ goal_path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
 	goal_path_steps_to_strings(Steps, StepStrs).
 
 	% The inverse of this procedure is implemented in
-	% browser/program_representation.m, and must be updated if this
+	% mdbcomp/program_representation.m, and must be updated if this
 	% is changed.
 
 :- pred goal_path_step_to_string(goal_path_step::in, string::out) is det.
