@@ -201,7 +201,7 @@ static const char mercury_funcs[] =
 	"  #endif\n"
 	"#endif\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
-	"	do_init_modules();\n"
+	"	MR_do_init_modules();\n"
 	"#endif\n"
 	"#ifdef MR_HIGHLEVEL_CODE\n"
 	"	MR_program_entry_point = %s;\n"
