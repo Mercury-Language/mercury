@@ -2995,8 +2995,6 @@ will never generate any events.
 @item deep
 A procedure compiled with trace level @samp{deep}
 will always generate all the events requested by the user.
-@c why is this XXX here?
-@c XXX
 By default, this is all possible events,
 but you can tell the compiler that
 you are not interested in some kinds of events
