@@ -48,7 +48,7 @@
 % modules in the Mercury standard library map get a `mercury' prefix,
 % e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.
 
-% 2. Procedures names
+% 2. Procedure names
 %
 % HLDS procedure names map directly to MLDS function names.
 % MLDS function names are structured terms that include sufficient
@@ -61,7 +61,7 @@
 % language will impose.  For example, some target languages (e.g. C++, Java)
 % will support overloading, while others (e.g. C) will not.]
 
-% 3. Procedures signatures
+% 3. Procedure signatures
 %
 % MLDS function signatures are determined by the HLDS procedure's
 % argument types, modes, and determinism.
@@ -80,7 +80,7 @@
 % With the `--copy-out' option, arguments with top_out modes will be returned
 % by value.  This requires the target language to support multiple return
 % values.  The MLDS->target code generator can of course handle that by mapping
-% functions with multiple return values into functions that returns a struct.
+% functions with multiple return values into functions that return a struct.
 % With the `--nondet-copy-out' option, arguments for nondet procedures with
 % top_out modes will be passed as arguments to the continuation.
 
@@ -99,7 +99,7 @@
 % mangled names at the MLDS level is that in some cases the mangling is
 % undesirable, as the original HLDS variable names are what is required
 % (for instance, when interfacing with foreign code which includes
-% references to the original HLDS variables names).]
+% references to the original HLDS variable names).]
 
 % 5. Global data
 %
@@ -111,11 +111,12 @@
 %
 % If there is an MLDS type corresponding to a Mercury type, then
 % the Mercury type name maps directly to the MLDS type name,
-% suitable module-qualified of course. 
+% suitably module-qualified of course. 
 % The MLDS type name includes the type arity (arity overloading is allowed).
 % However, if a low-level data representation scheme is used,
 % then some Mercury types may not have corresponding MLDS type names
-% (that is, the corresponding MLDS type may be just `Word' or its equivalent).
+% (that is, the corresponding MLDS type may be just `MR_Word' or its
+% equivalent).
 
 % 7.  Data constructors.
 %
@@ -157,7 +158,7 @@
 % the target language is up to the target language generator.
 % So the remarks here are just guidelines, not strict rules.
 
-% 1.  Names.
+% 1. Names.
 %
 % If the target language has standard conventions about certain categories
 % of names beginning with uppercase or lowercase letters, then the target
@@ -176,7 +177,7 @@
 % mapped to names of the form "foo.bar.baz" or if dots are not allowed
 % then to "foo__bar__baz".
 
-% 3. Overloading
+% 3. Overloading.
 %
 % If the target does not support overloading, then any Mercury names which
 % are overloaded within a single Mercury module must be qualified to avoid
@@ -265,7 +266,7 @@
 % back-end, to keep the front-end simple and to keep the responsibility
 % for this task in one place.
 %
-% But in the cases such as nondet if-then-else, where HLDS-liveness does not
+% But in cases such as nondet if-then-else, where HLDS-liveness does not
 % match MLDS-liveness, we can't just leave it to the MLDS target back-end,
 % because that would require assuming an unreasonably smart liveness
 % calculation in the MLDS target back-end, so in such cases we do need
@@ -553,12 +554,12 @@
 		% to handle nondeterminism
 	;	mlds__cont_type(mlds__return_types)
 
-		% mlds__commit_type is used for storing information about a commit.
-		% This is an abstract type; the exact definition will depend
-		% on the back-end.  The only operations on this ADT are
-		% `try_commit' and `do_commit'.  This type holds information
-		% about the `try_commit' stack frame that is needed to unwind
-		% the stack when a `do_commit' is executed.
+		% mlds__commit_type is used for storing information about a
+		% commit. This is an abstract type; the exact definition
+		% will depend on the back-end.  The only operations on this ADT
+		% are `try_commit' and `do_commit'.  This type holds
+		% information about the `try_commit' stack frame that is
+		% needed to unwind the stack when a `do_commit' is executed.
 		%
 		% For the C back-end, if we're implementing do_commit/try_commit
 		% using setjmp/longmp, then mlds__commit_type will be jmp_buf.
@@ -567,12 +568,12 @@
 		% of this "type" is actually a label, and doing a goto to that
 		% label will unwind the stack.
 		%
-		% If the back-end implements commits using the target language's,
-		% try/catch-style exception handling, as in Java/C++/etc.,
-		% then the target language implementation's exception handling
-		% support will keep track of the information need to unwind
-		% the stack, and so variables of this type don't need
-		% to be declared at all.
+		% If the back-end implements commits using the target
+		% language's, try/catch-style exception handling, as in
+		% Java/C++/etc., then the target language implementation's
+		% exception handling support will keep track of the information
+		% needed to unwind the stack, and so variables of this type
+		% don't need to be declared at all.
 		%
 		% See also the comments in ml_code_gen.m which show how commits
 		% can be implemented for different target languages.
