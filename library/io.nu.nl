@@ -269,7 +269,7 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
 		retractall(io__save_putback(_)),
-		assert(io__save_putback(PutBack),
+		assert(io__save_putback(PutBack)),
 		char__to_int(Char, Code)
  	;
 		get0(Stream, Code)
@@ -284,7 +284,7 @@ io__putback_char(Stream, Char, IO_0, IO) :-
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
 	retractall(io__save_putback(_)),
-	assert(io__save_putback(PutBack),
+	assert(io__save_putback(PutBack)),
 	IO = IO_0.
 
 io__putback_byte(_Stream, _Char, IO, IO) :-
@@ -542,13 +542,13 @@ io__get_globals(Globals) -->
 	{ io__save_user_globals(Globals) }.
 io__set_globals(Globals) -->
 	{ retractall(io__save_user_globals(_)) },
-	{ assert(io__save_user_globals(Globals) }.
+	{ assert(io__save_user_globals(Globals)) }.
 
 io__get_stream_names(StreamNames) -->
 	{ io__save_stream_names(StreamNames) }.
 io__set_stream_names(StreamNames) -->
 	{ retractall(io__save_stream_names(_)) },
-	{ assert(io__save_stream_names(StreamNames) }.
+	{ assert(io__save_stream_names(StreamNames)) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
