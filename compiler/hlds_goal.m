@@ -155,10 +155,11 @@
 					% information.
 		)
 
-		% C code from a pragma c_code(...) decl.
+		% Foreign code from a pragma foreign_code(...) decl.
 
-	;	pragma_c_code(
-			pragma_c_code_attributes,
+	;	pragma_foreign_code(
+			foreign_language, % the language we are using
+			pragma_foreign_code_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(prog_var),	% The (Mercury) argument variables
@@ -174,9 +175,9 @@
 			list(type),	% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
-			pragma_c_code_impl
+			pragma_foreign_code_impl
 					% Extra information for model_non
-					% pragma_c_codes; none for others.
+					% pragma_foreign_codes; none for others.
 		)
 
 		% parallel conjunction
@@ -671,10 +672,11 @@
 
 :- type goal_path == list(goal_path_step).
 
-	% Given the variable info field from a pragma c_code, get all the
+	% Given the variable info field from a pragma foreign_code, get all the
 	% variable names.
-:- pred get_pragma_c_var_names(list(maybe(pair(string, mode))), list(string)).
-:- mode get_pragma_c_var_names(in, out) is det.
+:- pred get_pragma_foreign_var_names(list(maybe(pair(string, mode))),
+		list(string)).
+:- mode get_pragma_foreign_var_names(in, out) is det.
 
 	% Get a description of a generic_call goal.
 :- pred hlds_goal__generic_call_id(generic_call, call_id).
@@ -784,15 +786,15 @@
 				% reverse order.
 	).
 
-get_pragma_c_var_names(MaybeVarNames, VarNames) :-
-	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
+get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
+	get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
 
-:- pred get_pragma_c_var_names_2(list(maybe(pair(string, mode)))::in,
+:- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mode)))::in,
 	list(string)::in, list(string)::out) is det.
 
-get_pragma_c_var_names_2([], Names, Names).
-get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
+get_pragma_foreign_var_names_2([], Names, Names).
+get_pragma_foreign_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	(
 		MaybeName = yes(Name - _),
 		Names1 = [Name | Names0]
@@ -800,7 +802,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 		MaybeName = no,
 		Names1 = Names0
 	),
-	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
+	get_pragma_foreign_var_names_2(MaybeNames, Names1, Names).
 
 hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
 		generic_call(higher_order(PorF, Arity))).
@@ -1393,7 +1395,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_foreign_code(_,_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1488,7 +1490,7 @@ set_goal_contexts_2(_, Goal, Goal) :-
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
-	Goal = pragma_c_code(_, _, _, _, _, _, _).
+	Goal = pragma_foreign_code(_, _, _, _, _, _, _, _).
 set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),

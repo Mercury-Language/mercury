@@ -575,7 +575,8 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		{ code_info__resume_point_stack_addr(OutsideResumePoint,
 			OutsideResumeAddress) },
 		(
-			{ Goal = pragma_c_code(_,_,_,_,_,_, PragmaCode) - _},
+			{ Goal = pragma_foreign_code(_, _, _, _, _, _, _,
+				PragmaCode) - _},
 			{ PragmaCode = nondet(Fields, FieldsContext,
 				_,_,_,_,_,_,_) }
 		->
@@ -909,7 +910,7 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(pragma_c_code(Attributes,
+code_gen__generate_goal_2(pragma_foreign_code(c, Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,

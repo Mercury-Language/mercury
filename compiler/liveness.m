@@ -313,8 +313,9 @@ detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 detect_liveness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
 	error("unify in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _) :-
-	error("pragma_c_code in detect_liveness_in_goal_2").
+detect_liveness_in_goal_2(pragma_foreign_code(_,_,_,_,_,_,_,_),
+		_, _, _, _, _) :-
+	error("pragma_foreign_code in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	error("bi_implication in detect_liveness_in_goal_2").
@@ -519,8 +520,9 @@ detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
 	error("unify in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(pragma_c_code(_,_,_,_,_,_,_), _, _, _, _, _) :-
-	error("pragma_c_code in detect_deadness_in_goal_2").
+detect_deadness_in_goal_2(pragma_foreign_code(_, _, _, _, _, _, _, _),
+		_, _, _, _, _) :-
+	error("pragma_foreign_code in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(bi_implication(_, _), _, _, _, _, _) :-
 	error("bi_implication in detect_deadness_in_goal_2").
@@ -748,9 +750,8 @@ detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 detect_resume_points_in_goal_2(unify(A,B,C,D,E), _, Liveness, _, _,
 		unify(A,B,C,D,E), Liveness).
 
-detect_resume_points_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, Liveness,
-		_, _,
-		pragma_c_code(A,B,C,D,E,F,G), Liveness).
+detect_resume_points_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), _,
+		Liveness, _, _, pragma_foreign_code(A,B,C,D,E,F,G,H), Liveness).
 
 detect_resume_points_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
 	% these should have been expanded out by now

@@ -601,8 +601,8 @@ det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo,
 		Diagnosed).
 
-det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired, 
-		_, _, _, yes) -->
+det_diagnose_goal_2(pragma_foreign_code(_, _, _, _, _, _, _, _), GoalInfo,
+		Desired, _, _, _, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  Determinism declaration not satisfied. Desired \n"),

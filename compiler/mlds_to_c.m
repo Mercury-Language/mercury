@@ -405,7 +405,7 @@ mlds_output_init_fn_2(ModuleName, [Defn | Defns]) -->
 
 %-----------------------------------------------------------------------------%
 %
-% C interface stuff
+% Foreign language interface stuff
 %
 
 :- pred mlds_output_c_hdr_decls(mlds_module_name, indent, mlds__foreign_code,
@@ -421,14 +421,16 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
 	io__write_list(ExportDefns, "\n",
 			mlds_output_pragma_export_decl(ModuleName, Indent)).
 
-:- pred mlds_output_c_hdr_decl(indent, c_header_code, io__state, io__state).
+:- pred mlds_output_c_hdr_decl(indent,
+	foreign_header_code, io__state, io__state).
 :- mode mlds_output_c_hdr_decl(in, in, di, uo) is det.
 
 mlds_output_c_hdr_decl(_Indent, Code - Context) -->
 	mlds_output_context(mlds__make_context(Context)),
 	io__write_string(Code).
 
-:- pred mlds_output_c_decls(indent, mlds__foreign_code, io__state, io__state).
+:- pred mlds_output_c_decls(indent, mlds__foreign_code,
+	io__state, io__state).
 :- mode mlds_output_c_decls(in, in, di, uo) is det.
 
 % all of the declarations go in the header file or as c_code
@@ -447,10 +449,11 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
 	io__write_list(ExportDefns, "\n",
 			mlds_output_pragma_export_defn(ModuleName, Indent)).
 
-:- pred mlds_output_c_defn(indent, user_c_code, io__state, io__state).
+:- pred mlds_output_c_defn(indent, user_foreign_code,
+	io__state, io__state).
 :- mode mlds_output_c_defn(in, in, di, uo) is det.
 
-mlds_output_c_defn(_Indent, user_c_code(Code, Context)) -->
+mlds_output_c_defn(_Indent, user_foreign_code(c, Code, Context)) -->
 	mlds_output_context(mlds__make_context(Context)),
 	io__write_string(Code).
 

@@ -1014,9 +1014,9 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	typecheck_unification(A, B0, B).
 typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
-typecheck_goal_2(pragma_c_code(A, PredId, C, Args, E, F, G), 
-		pragma_c_code(A, PredId, C, Args, E, F, G)) -->
-	% pragma_c_codes are automatically generated, so they
+typecheck_goal_2(pragma_foreign_code(A, B, PredId, D, Args, F, G, H), 
+		pragma_foreign_code(A, B, PredId, D, Args, F, G, H)) -->
+	% pragma_foreign_codes are automatically generated, so they
 	% will always be type-correct, but we need to do
 	% the type analysis in order to correctly compute the
 	% HeadTypeParams that result from existentially typed pragma_c_codes.

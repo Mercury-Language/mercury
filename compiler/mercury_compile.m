@@ -2118,16 +2118,16 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, GlobalData0, LLDS0,
 % generation of C code for `pragma export' declarations.
 %
 
-:- pred get_c_interface_info(module_info, c_interface_info).
+:- pred get_c_interface_info(module_info, foreign_interface_info).
 :- mode get_c_interface_info(in, out) is det.
 
 get_c_interface_info(HLDS, C_InterfaceInfo) :-
 	module_info_name(HLDS, ModuleName),
-	module_info_get_c_header(HLDS, C_HeaderCode),
-	module_info_get_c_body_code(HLDS, C_BodyCode),
+	module_info_get_foreign_header(HLDS, C_HeaderCode),
+	module_info_get_foreign_body_code(HLDS, C_BodyCode),
 	export__get_c_export_decls(HLDS, C_ExportDecls),
 	export__get_c_export_defns(HLDS, C_ExportDefns),
-	C_InterfaceInfo = c_interface_info(ModuleName,
+	C_InterfaceInfo = foreign_interface_info(ModuleName,
 		C_HeaderCode, C_BodyCode, C_ExportDecls, C_ExportDefns).
 
 %-----------------------------------------------------------------------------%
@@ -2188,7 +2188,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 
-	{ C_InterfaceInfo = c_interface_info(_, _, _, C_ExportDecls, _) },
+	{ C_InterfaceInfo = foreign_interface_info(_, _, _, C_ExportDecls, _) },
 	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	%
@@ -2204,15 +2204,15 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__construct_c_file(c_interface_info, list(c_procedure),
-	list(comp_gen_c_var), list(comp_gen_c_data), c_file, int,
-	io__state, io__state).
+:- pred mercury_compile__construct_c_file(foreign_interface_info,
+	list(c_procedure), list(comp_gen_c_var), list(comp_gen_c_data),
+	c_file, int, io__state, io__state).
 :- mode mercury_compile__construct_c_file(in, in, in, in, out, out, di, uo)
 	is det.
 
 mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		AllData, CFile, ComponentCount) -->
-	{ C_InterfaceInfo = c_interface_info(ModuleSymName,
+	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
 		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
 	{ llds_out__sym_name_mangle(ModuleSymName, MangledModuleName) },
 	{ string__append(MangledModuleName, "_module", ModuleName) },
@@ -2240,8 +2240,8 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 	{ ComponentCount is UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
-:- pred maybe_add_header_file_include(c_export_decls, module_name,
-	c_header_info, c_header_info, io__state, io__state).
+:- pred maybe_add_header_file_include(foreign_export_decls, module_name,
+	foreign_header_info, foreign_header_info, io__state, io__state).
 :- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
 
 maybe_add_header_file_include(C_ExportDecls, ModuleName, 
@@ -2274,12 +2274,12 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 		{ list__append(C_HeaderCode0, [Include], C_HeaderCode) }
 	).
 
-:- pred get_c_body_code(c_body_info, list(user_c_code)).
+:- pred get_c_body_code(foreign_body_info, list(user_foreign_code)).
 :- mode get_c_body_code(in, out) is det.
 
 get_c_body_code([], []).
 get_c_body_code([Code - Context | CodesAndContexts],
-		[user_c_code(Code, Context) | C_Modules]) :-
+		[user_foreign_code(c, Code, Context) | C_Modules]) :-
 	get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,

@@ -878,7 +878,7 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
-	{ Goal0 = pragma_c_code(IsRecursive, PredId, ProcId,
+	{ Goal0 = pragma_foreign_code(Lang, IsRecursive, PredId, ProcId,
 		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode0) },
 	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
 		ArgVars, ExtraVars, CallGoalInfo, ExtraGoals),
@@ -930,8 +930,9 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 		%
 		% plug it all back together
 		%
-		{ Call = pragma_c_code(IsRecursive, PredId, ProcId, ArgVars,
-			ArgInfo, OrigArgTypes, PragmaCode) - CallGoalInfo },
+		{ Call = pragma_foreign_code(Lang, IsRecursive, PredId, 
+			ProcId, ArgVars, ArgInfo, OrigArgTypes, PragmaCode) - 
+			CallGoalInfo },
 		{ list__append(ExtraGoals, [Call], GoalList) },
 		{ conj_list_to_goal(GoalList, GoalInfo, Goal) }
 	).

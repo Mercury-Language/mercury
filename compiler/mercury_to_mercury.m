@@ -71,9 +71,9 @@
 		io__state, io__state).
 :- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pragma_c_code(pragma_c_code_attributes, sym_name,
-		pred_or_func, list(pragma_var), prog_varset, pragma_c_code_impl,
-		io__state, io__state).
+:- pred mercury_output_pragma_c_code(pragma_foreign_code_attributes, sym_name,
+		pred_or_func, list(pragma_var), prog_varset,
+		pragma_foreign_code_impl, io__state, io__state).
 :- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
@@ -322,11 +322,13 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = c_header_code(C_HeaderString) },
 		mercury_output_pragma_c_header(C_HeaderString)
 	;
-		{ Pragma = c_code(Code) }, 
+		{ Pragma = foreign(_Lang, Code) }, 
+		% XXX if it is C code only
 		mercury_output_pragma_c_body_code(Code)
 	;
-		{ Pragma = c_code(Attributes, Pred, PredOrFunc, Vars,
+		{ Pragma = foreign(_Lang, Attributes, Pred, PredOrFunc, Vars,
 			VarSet, PragmaCode) }, 
+		% XXX if it is C code only
 		mercury_output_pragma_c_code(Attributes, Pred, PredOrFunc, 
 			Vars, VarSet, PragmaCode)
 	;
@@ -2337,7 +2339,7 @@ mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_pragma_import(sym_name, pred_or_func, list(mode),
-	pragma_c_code_attributes, string, io__state, io__state).
+	pragma_foreign_code_attributes, string, io__state, io__state).
 :- mode mercury_output_pragma_import(in, in, in, in, in, di, uo) is det.
 
 mercury_output_pragma_import(Name, PredOrFunc, ModeList, Attributes,
@@ -2461,7 +2463,7 @@ mercury_output_tabs(Indent) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_pragma_c_attributes(pragma_c_code_attributes,
+:- pred mercury_output_pragma_c_attributes(pragma_foreign_code_attributes,
 		io__state, io__state).
 :- mode mercury_output_pragma_c_attributes(in, di, uo) is det.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -640,11 +640,11 @@ det_infer_goal_2(some(Vars, CanRemove, Goal0), _, InstMap0, SolnContext,
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 		Goal, Det, Msgs).
 
-	% pragma c_codes are handled in the same way as predicate calls
-det_infer_goal_2(pragma_c_code(IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, PragmaCode), 
+	% pragma foregin_codes are handled in the same way as predicate calls
+det_infer_goal_2(pragma_foreign_code(Language, Attributes, PredId, ProcId,
+			Args, ArgNameMap, OrigArgTypes, PragmaCode), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
-		pragma_c_code(IsRecursive, PredId, ProcId, Args,
+		pragma_foreign_code(Language, Attributes, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, PragmaCode),
 		Detism, Msgs) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),

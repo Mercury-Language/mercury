@@ -274,9 +274,9 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	    DepGraph0 = DepGraph
 	).
 
-% There can be no dependencies within a pragma_c_code
-dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _), _,
-	DepGraph, DepGraph).
+% There can be no dependencies within a pragma_foreign_code
+dependency_graph__add_arcs_in_goal_2(
+	pragma_foreign_code(_, _, _, _, _, _, _, _), _, DepGraph, DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(bi_implication(LHS, RHS), Caller, 
 		DepGraph0, DepGraph) :-
@@ -704,7 +704,7 @@ process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _,
 	).
 process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, 
 		Map, Map) --> [].
-process_aditi_goal(_IsNeg, pragma_c_code(_, _, _, _, _, _, _) - _,
+process_aditi_goal(_IsNeg, pragma_foreign_code(_, _, _, _, _, _, _, _) - _,
 		Map, Map) --> [].
 process_aditi_goal(_, bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now

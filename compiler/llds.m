@@ -30,30 +30,33 @@
 
 %-----------------------------------------------------------------------------%
 
-% c_interface_info holds information used when generating
-% code that uses the C interface.
-:- type c_interface_info
-	---> c_interface_info(
+% foreign_interface_info holds information used when generating
+% code that uses the foreign language interface.
+:- type foreign_interface_info
+	---> foreign_interface_info(
 		module_name,
 		% info about stuff imported from C:
-		c_header_info,
-		c_body_info,
+		foreign_header_info,
+		foreign_body_info,
 		% info about stuff exported to C:
-		c_export_decls,
-		c_export_defns
+		foreign_export_decls,
+		foreign_export_defns
 	).
 
-:- type c_header_info 	==	list(c_header_code).	% in reverse order
-:- type c_body_info 	==	list(c_body_code).	% in reverse order
+:- type foreign_header_info ==	list(foreign_header_code).	
+		% in reverse order
+:- type foreign_body_info   ==	list(foreign_body_code).
+		% in reverse order
 
-:- type c_header_code	==	pair(string, prog_context).
-:- type c_body_code	==	pair(string, prog_context).
+:- type foreign_header_code	==	pair(string, prog_context).
+:- type foreign_body_code	==	pair(string, prog_context).
 
-:- type c_export_defns == list(c_export).
-:- type c_export_decls == list(c_export_decl).
+:- type foreign_export_defns == list(foreign_export).
+:- type foreign_export_decls == list(foreign_export_decl).
 
-:- type c_export_decl
-	---> c_export_decl(
+:- type foreign_export_decl
+	---> foreign_export_decl(
+		foreign_language,	% language of the export
 		string,		% return type
 		string,		% function name
 		string		% argument declarations
@@ -61,7 +64,7 @@
 
 	% the code for `pragma export' is generated directly as strings
 	% by export.m.
-:- type c_export	==	string.
+:- type foreign_export	==	string.
 
 %-----------------------------------------------------------------------------%
 
@@ -106,19 +109,20 @@
 :- type c_file	
 	--->	c_file(
 			module_name,
-			c_header_info,
-			list(user_c_code),
-			list(c_export),
+			foreign_header_info,
+			list(user_foreign_code),
+			list(foreign_export),
 			list(comp_gen_c_var),
 			list(comp_gen_c_data),
 			list(comp_gen_c_module)
 		).
 
-	% Some C code from a `pragma c_code' declaration that is not
+	% Some code from a `pragma foreign_code' declaration that is not
 	% associated with a given procedure.
-:- type user_c_code
-	--->	user_c_code(
-			string,			% C code
+:- type user_foreign_code
+	--->	user_foreign_code(
+			foreign_language,	% language of this code
+			string,			% code
 			term__context		% source code location
 		).
 

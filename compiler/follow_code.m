@@ -124,8 +124,8 @@ move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
-move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G),
-			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
+move_follow_code_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), 
+			pragma_foreign_code(A,B,C,D,E,F,G,H), _, R, R).
 
 move_follow_code_in_goal_2(bi_implication(_, _), _, _, _, _) :-
 	% these should have been expanded out by now

@@ -1181,9 +1181,11 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
-		ArgNameMap, OrigArgTypes, PragmaCode), GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code"),
+modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
+		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
+		GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_foreign_code"),
+
 	=(ModeInfo0),
 	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
 
@@ -1193,13 +1195,13 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
-	{ Pragma = pragma_c_code(IsRecursive, PredId, ProcId, Args0,
-			ArgNameMap, OrigArgTypes, PragmaCode) },
+	{ Pragma = pragma_foreign_code(Language, Attributes, PredId, ProcId,
+			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 			InstMap0, Goal),
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(exit, "pragma_foreign_code").
 
 modecheck_goal_expr(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now

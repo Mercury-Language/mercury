@@ -75,8 +75,9 @@
 	% procedure with so many variables that the back end of the compiler
 	% gets bogged down (for example in the pseudoknot benchmark).
 	%
-	% Due to the way in which we generate code for model_non pragma_c_code,
-	% procedures whose body is such a pragma_c_code must NOT be inlined.
+	% Due to the way in which we generate code for model_non
+	% pragma_foreign_code, procedures whose body is such a
+	% pragma_foreign_code must NOT be inlined.
 
 %-----------------------------------------------------------------------------%
 
@@ -547,8 +548,9 @@ inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].
 
-inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
-		pragma_c_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
+inlining__inlining_in_goal(
+		pragma_foreign_code(A, B, C, D, E, F, G, H) - GoalInfo,
+		pragma_foreign_code(A, B, C, D, E, F, G, H) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
 	% these should have been expanded out by now
@@ -779,7 +781,7 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	proc_info_goal(ProcInfo, CalledGoal),
 	\+ (
 		HighLevelCode = no,
-		CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
+		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_,_) - _,
 		proc_info_interface_code_model(ProcInfo, model_non)
 	),
 
@@ -793,7 +795,7 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	% goals, which can result from inlining.
 	\+ (
 		HighLevelCode = yes,
-		CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _
+		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_,_) - _
 	),
 
 	% Don't inline memoed Aditi predicates.

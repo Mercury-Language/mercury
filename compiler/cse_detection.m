@@ -208,8 +208,8 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 	cse_info, cse_info, bool, hlds_goal_expr).
 :- mode detect_cse_in_goal_2(in, in, in, in, out, out, out) is det.
 
-detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, CseInfo, CseInfo,
-	no, pragma_c_code(A,B,C,D,E,F,G)).
+detect_cse_in_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), _, _, CseInfo,
+	CseInfo, no, pragma_foreign_code(A,B,C,D,E,F,G,H)).
 
 detect_cse_in_goal_2(generic_call(A,B,C,D), _, _, CseInfo, CseInfo,
 	no, generic_call(A,B,C,D)).

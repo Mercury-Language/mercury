@@ -460,8 +460,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
-			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
+intermod__traverse_goal(pragma_foreign_code(A,B,C,D,E,F,G,H) - Info,
+		pragma_foreign_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
 
 intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now
@@ -1067,7 +1067,7 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_lookup_string_option(dump_hlds_options, VerboseDump),
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
-		{ module_info_get_c_header(ModuleInfo, CHeader) },
+		{ module_info_get_foreign_header(ModuleInfo, CHeader) },
 		intermod__write_c_header(CHeader)
 	;
 		[]
@@ -1091,7 +1091,7 @@ intermod__write_modules([Module | Rest]) -->
 		intermod__write_modules(Rest)
 	).
 
-:- pred intermod__write_c_header(list(c_header_code)::in,
+:- pred intermod__write_c_header(list(foreign_header_code)::in,
 				io__state::di, io__state::uo) is det.
 
 intermod__write_c_header([]) --> [].
@@ -1563,17 +1563,17 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
 		(
-			% Pull the C code out of the goal.
+			% Pull the foreign code out of the goal.
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_,_,_,_,_,_,_) - _
+				    X = pragma_foreign_code(_,_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(Attributes,
+			{ CCodeGoal = pragma_foreign_code(c, Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_c_code(Attributes,
+			{ Goal = pragma_foreign_code(c, Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		)
 	->	
@@ -1587,8 +1587,8 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, pragma_c_code_impl::in,
-		pragma_c_code_attributes::in, list(prog_var)::in,
+		pred_or_func::in, pragma_foreign_code_impl::in,
+		pragma_foreign_code_attributes::in, list(prog_var)::in,
 		prog_varset::in, list(maybe(pair(string, mode)))::in,
 		sym_name::in, io__state::di, io__state::uo) is det.
 

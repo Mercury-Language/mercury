@@ -26,18 +26,18 @@
 	% of a C function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
 	% procedure from C.
-:- pred export__get_c_export_decls(module_info, c_export_decls).
+:- pred export__get_c_export_decls(module_info, foreign_export_decls).
 :- mode export__get_c_export_decls(in, out) is det.
 
 	% From the module_info, get a list of c_export_defns,
 	% each of which is a string containing the C code
 	% for defining a C function named in a `pragma export' decl.
-:- pred export__get_c_export_defns(module_info, c_export_defns).
+:- pred export__get_c_export_defns(module_info, foreign_export_defns).
 :- mode export__get_c_export_defns(in, out) is det.
 
 	% Produce a header file containing prototypes for the exported C
 	% functions
-:- pred export__produce_header_file(c_export_decls, module_name,
+:- pred export__produce_header_file(foreign_export_decls, module_name,
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
@@ -79,7 +79,7 @@ export__get_c_export_decls(HLDS, C_ExportDecls) :-
 	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
 
 :- pred export__get_c_export_decls_2(pred_table, list(pragma_exported_proc),
-	list(c_export_decl)).
+	list(foreign_export_decl)).
 :- mode export__get_c_export_decls_2(in, in, out) is det.
 
 export__get_c_export_decls_2(_Preds, [], []).
@@ -89,7 +89,7 @@ export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
-	C_ExportDecl = c_export_decl(C_RetType, C_Function, ArgDecls),
+	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
 	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
@@ -517,11 +517,12 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 		io__set_exit_status(1)
 	).
 
-:- pred export__produce_header_file_2(c_export_decls, io__state, io__state).
+:- pred export__produce_header_file_2(foreign_export_decls, 
+		io__state, io__state).
 :- mode export__produce_header_file_2(in, di, uo) is det.
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
-	{ E = c_export_decl(C_RetType, C_Function, ArgDecls) },
+	{ E = foreign_export_decl(c, C_RetType, C_Function, ArgDecls) },
 
 		% output the function header
 	io__write_string(C_RetType),

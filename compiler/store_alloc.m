@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -203,8 +203,8 @@ store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
 		_, unify(A,B,C,D,E), Liveness).
 
-store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G), Liveness, _, _,
-		_, pragma_c_code(A, B, C, D, E, F, G), Liveness).
+store_alloc_in_goal_2(pragma_foreign_code(A, B, C, D, E, F, G, H), Liveness,
+		_, _, _, pragma_foreign_code(A, B, C, D, E, F, G, H), Liveness).
 
 store_alloc_in_goal_2(bi_implication(_, _), _, _, _, _, _, _) :-
 	% these should have been expanded out by now

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,69 +88,51 @@ parse_pragma_type(_, "c_header_code", PragmaTerms,
 			    ErrorTerm)
         ).
 
+parse_pragma_type(ModuleName, "foreign_code", PragmaTerms,
+			ErrorTerm, VarSet, Result) :-
+	parse_pragma_foreign_code_pragma(ModuleName, "foreign_code",
+		    PragmaTerms, ErrorTerm, VarSet, Result).
+
+	% pragma c_code is almost as if we have written foreign_code
+	% with the language set to "C".
+	% There are a few differences (error messages, some deprecated
+	% syntax is still supported for c_code) so we pass the original
+	% pragma name to parse_pragma_foreign_code_pragma.
 parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 			ErrorTerm, VarSet, Result) :-
 	(
-    	    PragmaTerms = [Just_C_Code_Term]
+	    PragmaTerms = [term__functor(_, _, Context) | _]
 	->
-	    (
-		Just_C_Code_Term = term__functor(term__string(Just_C_Code), [],
-			_)
-	    ->
-	        Result = ok(pragma(c_code(Just_C_Code)))
-	    ;
-		Result = error("expected string for C code", Just_C_Code_Term)
-	    )
+	    LangC = term__functor(term__string("C"), [], Context),
+	    parse_pragma_foreign_code_pragma(ModuleName, "c_code",
+		[LangC | PragmaTerms], ErrorTerm, VarSet, Result)
 	;
-    	    PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
-	->
-	    % XXX we should issue a warning; this syntax is deprecated.
-	    % Result = error("pragma c_code doesn't say whether it can call mercury", PredAndVarsTerm)
-		    % may_call_mercury is a conservative default.
-	    default_attributes(Attributes),
-	    (
-		C_CodeTerm = term__functor(term__string(C_Code), [], Context)
-	    ->
-	        parse_pragma_c_code(ModuleName, Attributes, PredAndVarsTerm,
-	    	    ordinary(C_Code, yes(Context)), VarSet, Result)
-	    ;
-		Result = error("invalid `:- pragma c_code' declaration -- expecting either `may_call_mercury' or `will_not_call_mercury', and a string for C code",
-		    C_CodeTerm)
-	    )
-	;
-    	    PragmaTerms = [PredAndVarsTerm, FlagsTerm, C_CodeTerm]
-	->
-	    (
-		C_CodeTerm = term__functor(term__string(C_Code), [], Context)
-	    ->
-		( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
-	            parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm,
-			ordinary(C_Code, yes(Context)), VarSet, Result)
-	        ; parse_pragma_c_code_attributes_term(PredAndVarsTerm, Flags) ->
-		    % XXX we should issue a warning; this syntax is deprecated
-	            parse_pragma_c_code(ModuleName, Flags, FlagsTerm,
-			ordinary(C_Code, yes(Context)), VarSet, Result)
-	        ;
-		    Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting a C code attribute or list of attributes'",
-			FlagsTerm)
-		)
-	    ;
-		Result = error("invalid third argument in `:- pragma c_code' declaration -- expecting string for C code",
-		    C_CodeTerm)
-	    )
-	;
-	    (
-    	        PragmaTerms = [PredAndVarsTerm, FlagsTerm,
-		    FieldsTerm, FirstTerm, LaterTerm],
-		term__context_init(DummyContext),
-		SharedTerm = term__functor(term__atom("common_code"),
-			[term__functor(term__string(""), [], DummyContext)],
-			DummyContext)
-	    ;
-    	        PragmaTerms = [PredAndVarsTerm, FlagsTerm,
-		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm]
-	    )
-	->
+	    Result = error("wrong number of arguments or unexpected variable in `:- pragma c_code' declaration", 
+		    ErrorTerm)
+	).
+
+:- pred parse_foreign_language(term, foreign_language).
+:- mode parse_foreign_language(in, out) is semidet.
+
+parse_foreign_language(term__functor(term__string("C"), _, _), c).
+parse_foreign_language(term__functor(term__string("c"), _, _), c).
+%parse_foreign_language(term__functor(term__string("C++"), _, _), cplusplus).
+%parse_foreign_language(term__functor(term__string("c++"), _, _), cplusplus).
+
+
+	% This predicate parses both c_code and foreign_code pragmas.
+:- pred parse_pragma_foreign_code_pragma(module_name, string,
+		list(term), term, varset, maybe1(item)).
+:- mode parse_pragma_foreign_code_pragma(in, in, in, in, in, out) is det.
+
+parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
+			ErrorTerm, VarSet, Result) :-
+	string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+		InvalidDeclStr),
+
+	Check6 = (func(PTerms6, ForeignLanguage) = Res is semidet :- 
+            PTerms6 = [PredAndVarsTerm, FlagsTerm,
+		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
 	    ( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
@@ -160,56 +142,200 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 				LaterContext) ->
 	                    ( parse_pragma_keyword("shared_code", SharedTerm,
 			    		Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, Flags,
-				    PredAndVarsTerm,
+	        	        parse_pragma_foreign_code(ModuleName,
+				    ForeignLanguage, Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
 					Later, yes(LaterContext),
 					share, Shared, yes(SharedContext)),
-				    VarSet, Result)
+				    VarSet, Res)
 		            ; parse_pragma_keyword("duplicated_code",
 			    		SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, Flags,
-				    PredAndVarsTerm,
+	        	        parse_pragma_foreign_code(ModuleName,
+				    ForeignLanguage, Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
 					Later, yes(LaterContext),
 					duplicate, Shared, yes(SharedContext)),
-				    VarSet, Result)
+				    VarSet, Res)
 		            ; parse_pragma_keyword("common_code", SharedTerm,
 			    		Shared, SharedContext) ->
-	        	        parse_pragma_c_code(ModuleName, Flags,
-				    PredAndVarsTerm,
+	        	        parse_pragma_foreign_code(ModuleName, 
+				    ForeignLanguage, Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
 				    	First, yes(FirstContext),
 					Later, yes(LaterContext),
 					automatic, Shared, yes(SharedContext)),
-				    VarSet, Result)
+				    VarSet, Res)
 		            ;
-		                Result = error("invalid sixth argument in `:- pragma c_code' declaration -- expecting `common_code(<code>)'",
-			            LaterTerm)
+		                ErrMsg = "-- invalid seventh argument, expecting `common_code(<code>)'",
+				Res = error(string__append(InvalidDeclStr,
+					ErrMsg), SharedTerm)
 			    )
 		        ;
-		            Result = error("invalid fifth argument in `:- pragma c_code' declaration -- expecting `retry_code(<code>)'",
-			        LaterTerm)
+		            ErrMsg = "-- invalid sixth argument, expecting `retry_code(<code>)'",
+			    Res = error(string__append(InvalidDeclStr, ErrMsg),
+			    	LaterTerm)
 			)
 		    ;
-		        Result = error("invalid fourth argument in `:- pragma c_code' declaration -- expecting `first_code(<code>)'",
-			    FirstTerm)
+		        ErrMsg = "-- invalid fifth argument, expecting `first_code(<code>)'",
+			Res = error(string__append(InvalidDeclStr, ErrMsg),
+			    	FirstTerm)
 		    )
 		;
-		    Result = error("invalid third argument in `:- pragma c_code' declaration -- expecting `local_vars(<fields>)'",
-			FieldsTerm)
+		    ErrMsg = "-- invalid fourth argument, expecting `local_vars(<fields>)'",
+		    Res = error(string__append(InvalidDeclStr, ErrMsg),
+			    	FieldsTerm)
 		)
 	    ;
-		Result = error("invalid second argument in `:- pragma c_code' declaration -- expecting pragma c_code attribute or list of attributes'",
-			FlagsTerm)
+		ErrMsg = "-- invalid third argument, expecting foreign code attribute or list of attributes",
+		Res = error(string__append(InvalidDeclStr, ErrMsg), FlagsTerm)
 	    )
+	),
+
+	Check5 = (func(PTerms5, ForeignLanguage) = Res is semidet :- 
+		PTerms5 = [PredAndVarsTerm, FlagsTerm,
+		    FieldsTerm, FirstTerm, LaterTerm],
+		term__context_init(DummyContext),
+		SharedTerm = term__functor(term__atom("common_code"),
+			[term__functor(term__string(""), [], DummyContext)],
+			DummyContext),
+		Res = Check6([PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
+			LaterTerm, SharedTerm], ForeignLanguage)
+	),
+
+	Check3 = (func(PTerms3, ForeignLanguage) = Res is semidet :- 
+    	    PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
+	    (
+		CodeTerm = term__functor(term__string(Code), [], Context)
+	    ->
+		( parse_pragma_c_code_attributes_term(FlagsTerm, Flags) ->
+	            parse_pragma_foreign_code(ModuleName, ForeignLanguage,
+		    	Flags, PredAndVarsTerm,
+			ordinary(Code, yes(Context)), VarSet, Res)
+	        ; parse_pragma_c_code_attributes_term(PredAndVarsTerm, Flags) ->
+		    % XXX we should issue a warning; this syntax is deprecated
+		    % We will continue to accept this if c_code is used, but
+		    % not with foreign_code
+		    ( Pragma = "c_code" ->
+	                parse_pragma_foreign_code(ModuleName, ForeignLanguage, 
+			    Flags, FlagsTerm, ordinary(Code, yes(Context)),
+			    VarSet, Res)
+		    ;
+			ErrMsg = "-- invalid second argument, expecting predicate or function mode",
+		        Res = error(string__append(InvalidDeclStr, ErrMsg), 
+		    	    PredAndVarsTerm)
+		    )	
+	        ;
+		    ErrMsg = "-- invalid third argument, expecting a foreign code attribute or list of attributes",
+		    Res = error(string__append(InvalidDeclStr, ErrMsg), 
+		    	FlagsTerm)
+		)
+	    ;
+		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
+		Res = error(string__append(InvalidDeclStr, ErrMsg), 
+		    	CodeTerm)
+	    )
+	),
+
+
+	Check2 = (func(PTerms2, ForeignLanguage) = Res is semidet :- 
+		PTerms2 = [PredAndVarsTerm, CodeTerm],
+	    	% XXX we should issue a warning; this syntax is deprecated.
+		% We will continue to accept this if c_code is used, but
+		% not with foreign_code
+		( 
+			Pragma = "c_code"
+		->
+			% may_call_mercury is a conservative default.
+			default_attributes(Attributes),
+			(
+			    CodeTerm = term__functor(term__string(Code), [],
+				Context)
+			->
+			    parse_pragma_foreign_code(ModuleName, 
+			        ForeignLanguage, Attributes,
+			    	PredAndVarsTerm, ordinary(Code,
+				yes(Context)), VarSet, Res)
+			;
+			    ErrMsg = "-- expecting either `may_call_mercury' or `will_not_call_mercury', and a string for C code",
+			    Res = error(string__append(InvalidDeclStr, ErrMsg), 
+				CodeTerm)
+	    		)
+		;
+			ErrMsg = "-- doesn't say whether it can call mercury",
+			Res = error(string__append(InvalidDeclStr, ErrMsg),
+				ErrorTerm)
+		)
+	),
+
+	Check1 = (func(PTerms1, ForeignLanguage) = Res is semidet :- 
+		PTerms1 = [Just_Code_Term],
+		(
+			Just_Code_Term = term__functor(term__string(
+				Just_Code), [], _)
+		->
+			Res = ok(pragma(foreign(ForeignLanguage, 
+				Just_Code)))
+		;
+			ErrMsg = "-- expected string for foreign code",
+			Res = error(string__append(InvalidDeclStr, ErrMsg),
+				ErrorTerm)
+		)
+	),
+
+	CheckLength = (func(PTermsLen, ForeignLanguage) = Res :- 
+		( 
+			Res0 = Check1(PTermsLen, ForeignLanguage)
+		->	
+			Res = Res0
+		;
+			Res0 = Check2(PTermsLen, ForeignLanguage)
+		->	
+			Res = Res0
+		;
+			Res0 = Check3(PTermsLen, ForeignLanguage)
+		->	
+			Res = Res0
+		;
+			Res0 = Check5(PTermsLen, ForeignLanguage)
+		->	
+			Res = Res0
+		;
+			Res0 = Check6(PTermsLen, ForeignLanguage)
+		->	
+			Res = Res0
+		;
+			ErrMsg = "-- wrong number of arguments",
+			Res = error(string__append(InvalidDeclStr, ErrMsg), 
+				ErrorTerm)
+		)	
+	),
+
+
+	CheckLanguage = (func(PTermsLang) = Res is semidet :- 
+		PTermsLang = [Lang | Rest],
+		( 
+	    		parse_foreign_language(Lang, ForeignLanguage)
+		->
+			Res = CheckLength(Rest, ForeignLanguage)
+		;
+			ErrMsg = "-- invalid language parameter",
+			Res = error(string__append(InvalidDeclStr, ErrMsg), 
+				Lang)
+		)
+	),
+
+	(
+		Result0 = CheckLanguage(PragmaTerms)
+	->
+		Result = Result0
 	;
-	    Result = error(
-	    "wrong number of arguments in `:- pragma c_code' declaration", 
-		    ErrorTerm)
+		ErrMsg0 = "-- wrong number of arguments",
+		Result = error(string__append(InvalidDeclStr, ErrMsg0),
+			ErrorTerm)
 	).
+
 
 parse_pragma_type(ModuleName, "import", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
@@ -693,7 +819,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	;	thread_safe(thread_safe)
 	.
 
-:- pred parse_pragma_c_code_attributes_term(term, pragma_c_code_attributes).
+:- pred parse_pragma_c_code_attributes_term(term, 
+		pragma_foreign_code_attributes).
 :- mode parse_pragma_c_code_attributes_term(in, out) is semidet.
 
 parse_pragma_c_code_attributes_term(Term, Attributes) :-
@@ -777,12 +904,13 @@ parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
 
 % parse a pragma c_code declaration
 
-:- pred parse_pragma_c_code(module_name, pragma_c_code_attributes, term,
-	pragma_c_code_impl, varset, maybe1(item)).
-:- mode parse_pragma_c_code(in, in, in, in, in, out) is det.
+:- pred parse_pragma_foreign_code(module_name, foreign_language,
+	pragma_foreign_code_attributes, term, pragma_foreign_code_impl,
+	varset, maybe1(item)).
+:- mode parse_pragma_foreign_code(in, in, in, in, in, in, out) is det.
 
-parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
-	VarSet0, Result) :-
+parse_pragma_foreign_code(ModuleName, ForeignLanguage, Flags, PredAndVarsTerm0,
+	PragmaImpl, VarSet0, Result) :-
     parse_pred_or_func_and_args(yes(ModuleName), PredAndVarsTerm0,
     	PredAndVarsTerm0, "`:- pragma c_code' declaration", PredAndArgsResult),
     (
@@ -803,7 +931,7 @@ parse_pragma_c_code(ModuleName, Flags, PredAndVarsTerm0, PragmaImpl,
 	(
 	    Error = no,
 	    varset__coerce(VarSet0, VarSet),
-	    Result = ok(pragma(c_code(Flags, PredName,
+	    Result = ok(pragma(foreign(ForeignLanguage, Flags, PredName,
 		    PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
 	;
 	    Error = yes(ErrorMessage),

@@ -291,12 +291,12 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo,
-			UserCCodes, Exports, Vars, Datas, Modules) },
+			UserForeignCodes, Exports, Vars, Datas, Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_split_c_file_init(ModuleName, Modules, Datas,
 			StackLayoutLabels, MaybeRLFile),
-		output_split_user_c_codes(UserCCodes, ModuleName,
+		output_split_user_foreign_codes(UserForeignCodes, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, 1, Num1),
 		output_split_c_exports(Exports, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, Num1, Num2),
@@ -311,22 +311,22 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 			StackLayoutLabels, MaybeRLFile)
 	).
 
-:- pred output_split_user_c_codes(list(user_c_code)::in,
-	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+:- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
+	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
-output_split_user_c_codes([], _, _, _, Num, Num) --> [].
-output_split_user_c_codes([UserCCode | UserCCodes], ModuleName, C_HeaderLines,
-		StackLayoutLabels, Num0, Num) -->
+output_split_user_foreign_codes([], _, _, _, Num, Num) --> [].
+output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
+		ModuleName, C_HeaderLines, StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
-		[UserCCode], [], [], [], []) },
+		[UserForeignCode], [], [], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
-	output_split_user_c_codes(UserCCodes, ModuleName, C_HeaderLines,
-		StackLayoutLabels, Num1, Num).
+	output_split_user_foreign_codes(UserForeignCodes, ModuleName,
+		C_HeaderLines, StackLayoutLabels, Num1, Num).
 
-:- pred output_split_c_exports(list(c_export)::in,
-	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+:- pred output_split_c_exports(list(foreign_export)::in,
+	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_c_exports([], _, _, _, Num, Num) --> [].
@@ -340,7 +340,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
-	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_vars([], _, _, _, Num, Num) --> [].
@@ -353,7 +353,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
-	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
@@ -366,7 +366,7 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
-	module_name::in, list(c_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_modules([], _, _, _, Num, Num) --> [].
@@ -460,7 +460,7 @@ convert_bool_to_string(yes, "yes").
 
 output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
-		UserCCode, Exports, Vars, Datas, Modules) },
+		UserForeignCode, Exports, Vars, Datas, Modules) },
 	( { SplitFiles = yes(Num) } ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
@@ -481,7 +481,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 		),
 		output_c_file_mercury_headers,
 
-		output_c_header_include_lines(C_HeaderLines),
+		output_foreign_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 
 		{ gather_c_file_labels(Modules, Labels) },
@@ -493,7 +493,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 			DeclSet4, _DeclSet),
-		output_user_c_code_list(UserCCode),
+		output_user_foreign_code_list(UserForeignCode),
 		output_exported_c_functions(Exports),
 
 		( { SplitFiles = yes(_) } ->
@@ -919,51 +919,52 @@ llds_out__trace_port_to_num(switch, 12).
 llds_out__trace_port_to_num(nondet_pragma_first, 13).
 llds_out__trace_port_to_num(nondet_pragma_later, 14).
 
-:- pred output_user_c_code_list(list(user_c_code)::in,
+:- pred output_user_foreign_code_list(list(user_foreign_code)::in,
 	io__state::di, io__state::uo) is det.
 
-output_user_c_code_list([]) --> [].
-output_user_c_code_list([UserCCode | UserCCodes]) -->
-	output_user_c_code(UserCCode),
-	output_user_c_code_list(UserCCodes).
+output_user_foreign_code_list([]) --> [].
+output_user_foreign_code_list([UserForeignCode | UserCCodes]) -->
+	output_user_foreign_code(UserForeignCode),
+	output_user_foreign_code_list(UserCCodes).
 
-:- pred output_user_c_code(user_c_code::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_user_foreign_code(user_foreign_code::in,
+	io__state::di, io__state::uo) is det.
 
-output_user_c_code(user_c_code(C_Code, Context)) -->
+output_user_foreign_code(user_foreign_code(c, Foreign_Code, Context)) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
 		prog_out__write_context(Context),
-		io__write_string(" pragma c_code */\n")
+		io__write_string(" pragma foreign_code */\n")
 	;
 		[]
 	),
 	output_set_line_num(Context),
-	io__write_string(C_Code),
+	io__write_string(Foreign_Code),
 	io__write_string("\n"),
 	output_reset_line_num.
 
-	% output_c_header_include_lines reverses the list of c header lines
-	% and passes them to output_c_header_include_lines_2 which outputs them.
-	% The list must be reversed since they are inserted in reverse order.
-:- pred output_c_header_include_lines(list(c_header_code)::in,
+	% output_foreign_header_include_lines reverses the list of c
+	% header lines and passes them to
+	% output_c_header_include_lines_2 which outputs them.  The list
+	% must be reversed since they are inserted in reverse order.
+:- pred output_foreign_header_include_lines(list(foreign_header_code)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_header_include_lines(Headers) -->
+output_foreign_header_include_lines(Headers) -->
 	{ list__reverse(Headers, RevHeaders) },
-	output_c_header_include_lines_2(RevHeaders).
+	output_foreign_header_include_lines_2(RevHeaders).
 
-:- pred output_c_header_include_lines_2(list(c_header_code)::in,
+:- pred output_foreign_header_include_lines_2(list(foreign_header_code)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_header_include_lines_2([]) --> [].
-output_c_header_include_lines_2([Code - Context | Hs]) -->
+output_foreign_header_include_lines_2([]) --> [].
+output_foreign_header_include_lines_2([Code - Context | Hs]) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
 		prog_out__write_context(Context),
-		io__write_string(" pragma(c_header_code) */\n")
+		io__write_string(" pragma(foreign_header_code) */\n")
 	;
 		[]
 	),
@@ -971,7 +972,7 @@ output_c_header_include_lines_2([Code - Context | Hs]) -->
 	io__write_string(Code),
 	io__write_string("\n"),
 	output_reset_line_num,
-	output_c_header_include_lines_2(Hs).
+	output_foreign_header_include_lines_2(Hs).
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).
 :- mode output_exported_c_functions(in, di, uo) is det.
@@ -1803,7 +1804,7 @@ output_pragma_c_component(pragma_c_fail_to(Label)) -->
 output_pragma_c_component(pragma_c_noop) --> [].
 
 	% Output the local variable declarations at the top of the
-	% pragma_c_code code.
+	% pragma_foreign code for C.
 :- pred output_pragma_decls(list(pragma_c_decl), io__state, io__state).
 :- mode output_pragma_decls(in, di, uo) is det.
 
@@ -1840,7 +1841,7 @@ output_pragma_input_rval_decls([I | Inputs], DeclSet0, DeclSet) -->
 	output_pragma_input_rval_decls(Inputs, DeclSet1, DeclSet).
 
 	% Output the input variable assignments at the top of the
-	% pragma_c_code code.
+	% pragma foreign_code code for C.
 :- pred output_pragma_inputs(list(pragma_c_input), io__state, io__state).
 :- mode output_pragma_inputs(in, di, uo) is det.
 
@@ -1877,7 +1878,7 @@ output_pragma_output_lval_decls([O | Outputs], DeclSet0, DeclSet) -->
 	output_pragma_output_lval_decls(Outputs, DeclSet1, DeclSet).
 
 	% Output the output variable assignments at the bottom of the
-	% pragma_c_code
+	% pragma foreign code for C
 :- pred output_pragma_outputs(list(pragma_c_output), io__state, io__state).
 :- mode output_pragma_outputs(in, di, uo) is det.
 

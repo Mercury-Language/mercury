@@ -1275,8 +1275,9 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) }
 	).
 
-recompute_instmap_delta_2(_, pragma_c_code(A, PredId, ProcId, Args, E, F,
-		G), _, pragma_c_code(A, PredId, ProcId, Args, E, F, G),
+recompute_instmap_delta_2(_, 
+		pragma_foreign_code(A, B, PredId, ProcId, Args, F, G, H), _,
+		pragma_foreign_code(A, B, PredId, ProcId, Args, F, G, H), 
 		_VarTypes, _TVarMap, InstMap, _TypeInfoLiveness, InstMapDelta)
 		-->
 	recompute_instmap_delta_call(PredId, ProcId,

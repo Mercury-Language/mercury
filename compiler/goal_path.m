@@ -78,8 +78,8 @@ fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), Path0, SlotInfo,
 fill_expr_slots(call(A,B,C,D,E,F), _Path0, _Slot, call(A,B,C,D,E,F)).
 fill_expr_slots(generic_call(A,B,C,D), _Path0, _Slot, generic_call(A,B,C,D)).
 fill_expr_slots(unify(A,B,C,D,E), _Path0, _Slot, unify(A,B,C,D,E)).
-fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G), _Path0, _Slot,
-		pragma_c_code(A,B,C,D,E,F,G)).
+fill_expr_slots(pragma_foreign_code(A,B,C,D,E,F,G,H), _Path0, _Slot,
+		pragma_foreign_code(A,B,C,D,E,F,G,H)).
 fill_expr_slots(bi_implication(_, _), _, _, _) :-
 	% these should have been expanded out by now
 	error("fill_expr_slots: unexpected bi_implication").

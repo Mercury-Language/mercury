@@ -1511,13 +1511,16 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		[]
 	).
 
-hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
-			PragmaCode), _, _, _, Indent, Follow, _) -->
+hlds_out__write_goal_2(pragma_foreign_code(Language, _, _, _, ArgVars,
+		ArgNames, _, PragmaCode), _, _, _, Indent, Follow, _) -->
+	% XXX handle other languages
 	hlds_out__write_indent(Indent),
-	io__write_string("$pragma_c_code(["),
+	io__write_string("$pragma_foreign_code( /* "),
+	io__write(Language),
+	io__write_string(" */ ["),
 	hlds_out__write_varnum_list(ArgVars),
 	io__write_string("], ["),
-	{ get_pragma_c_var_names(ArgNames, Names) },
+	{ get_pragma_foreign_var_names(ArgNames, Names) },
 	hlds_out__write_string_list(Names),
 	io__write_string("], "),
 	(

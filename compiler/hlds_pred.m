@@ -204,7 +204,7 @@
 
 	% The type of goals that have been given for a pred.
 
-:- type goal_type 	--->	pragmas		% pragma c_code(...)
+:- type goal_type 	--->	pragmas		% pragma foreign_code(...)
 			;	clauses		
 			;	(assertion)
 			;	none.
@@ -388,7 +388,7 @@
 	;	does_not_terminate
 				% States that this predicate does not
 				% terminate.  This is useful for pragma
-				% c_code, which the compiler assumes to be
+				% foreign_code, which the compiler assumes to be
 				% terminating.
 	;	check_termination
 				% The user requires the compiler to guarantee
@@ -777,7 +777,7 @@ status_defined_in_this_module(local,			yes).
 			goal_type	:: goal_type,
 					% whether the goals seen so far for
 					% this pred are clauses, 
-					% pragma c_code(...) decs, or none
+					% pragma foreign_code(...) decs, or none
 			markers		:: pred_markers,
 					% various boolean flags
 			is_pred_or_func	:: pred_or_func,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,10 +21,10 @@
 :- import_module io, bag, std_util, list, assoc_list.
 
 :- type termination_error
-	--->	pragma_c_code
+	--->	pragma_foreign_code
 			% The analysis result depends on the change constant
-			% of a piece of pragma C code, (which cannot be
-			% obtained without analyzing the C code, which is
+			% of a piece of pragma foreign code, (which cannot be
+			% obtained without analyzing the foreign code, which is
 			% something we cannot do).
 			% Valid in both passes.
 
@@ -135,7 +135,7 @@
 :- import_module bool, int, string, map, bag, require.
 
 indirect_error(horder_call).
-indirect_error(pragma_c_code).
+indirect_error(pragma_foreign_code).
 indirect_error(imported_pred).
 indirect_error(can_loop_proc_called(_, _)).
 indirect_error(horder_args(_, _)).
@@ -260,10 +260,12 @@ term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module) -->
 term_errors__description(horder_call, _, _, Pieces, no) :-
 	Pieces = [words("It contains a higher order call.")].
 
-term_errors__description(pragma_c_code, _, _, Pieces, no) :-
+term_errors__description(pragma_foreign_code, _, _, Pieces, no) :-
 	Pieces = [words("It depends on the properties of"),
 		words("foreign language code included via a"),
 		fixed("`:- pragma c_code'"),
+		words("or"),
+		fixed("`:- pragma foreign'"),
 		words("declaration.")].
 
 term_errors__description(inf_call(CallerPPId, CalleePPId),

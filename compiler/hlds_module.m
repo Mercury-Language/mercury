@@ -38,10 +38,10 @@
 
 :- type module_info.
 
-:- type c_code_info
-	--->	c_code_info(
-			c_header_info,
-			c_body_info
+:- type foreign_code_info
+	--->	foreign_code_info(
+			foreign_header_info,
+			foreign_body_info
 		).
 
 :- type pragma_exported_proc	
@@ -242,17 +242,18 @@
 :- pred module_info_set_globals(module_info, globals, module_info).
 :- mode module_info_set_globals(in, in, out) is det.
 
-:- pred module_info_get_c_header(module_info, c_header_info).
-:- mode module_info_get_c_header(in, out) is det.
+:- pred module_info_get_foreign_header(module_info, foreign_header_info).
+:- mode module_info_get_foreign_header(in, out) is det.
 
-:- pred module_info_set_c_header(module_info, c_header_info, module_info).
-:- mode module_info_set_c_header(in, in, out) is det.
+:- pred module_info_set_foreign_header(module_info, 
+		foreign_header_info, module_info).
+:- mode module_info_set_foreign_header(in, in, out) is det.
 
-:- pred module_info_get_c_body_code(module_info, c_body_info).
-:- mode module_info_get_c_body_code(in, out) is det.
+:- pred module_info_get_foreign_body_code(module_info, foreign_body_info).
+:- mode module_info_get_foreign_body_code(in, out) is det.
 
-:- pred module_info_set_c_body_code(module_info, c_body_info, module_info).
-:- mode module_info_set_c_body_code(in, in, out) is det.
+:- pred module_info_set_foreign_body_code(module_info, foreign_body_info, module_info).
+:- mode module_info_set_foreign_body_code(in, in, out) is det.
 
 :- pred module_info_get_maybe_dependency_info(module_info,
 	maybe(dependency_info)).
@@ -464,8 +465,8 @@
 	module_sub(
 		module_name ::			module_name,
 		globals ::			globals,
-		c_header_info ::		c_header_info,
-		c_body_info ::			c_body_info,
+		foreign_header_info ::		foreign_header_info,
+		foreign_body_info ::		foreign_body_info,
 		maybe_dependency_info ::	maybe(dependency_info),
 		num_errors ::			int,
 		last_lambda_number ::		int,
@@ -586,8 +587,8 @@ module_info_set_cell_count(MI, CC, MI^cell_count := CC).
 
 module_info_name(MI, MI^sub_info^module_name).
 module_info_globals(MI, MI^sub_info^globals).
-module_info_get_c_header(MI, MI^sub_info^c_header_info).
-module_info_get_c_body_code(MI, MI^sub_info^c_body_info).
+module_info_get_foreign_header(MI, MI^sub_info^foreign_header_info).
+module_info_get_foreign_body_code(MI, MI^sub_info^foreign_body_info).
 module_info_get_maybe_dependency_info(MI,
 	MI^sub_info^maybe_dependency_info).
 module_info_num_errors(MI, MI^sub_info^num_errors).
@@ -614,10 +615,10 @@ module_info_get_do_aditi_compilation(MI,
 
 module_info_set_globals(MI, NewVal,
 	MI^sub_info^globals := NewVal).
-module_info_set_c_header(MI, NewVal,
-	MI^sub_info^c_header_info := NewVal).
-module_info_set_c_body_code(MI, NewVal,
-	MI^sub_info^c_body_info := NewVal).
+module_info_set_foreign_header(MI, NewVal,
+	MI^sub_info^foreign_header_info := NewVal).
+module_info_set_foreign_body_code(MI, NewVal,
+	MI^sub_info^foreign_body_info := NewVal).
 module_info_set_maybe_dependency_info(MI, NewVal,
 	MI^sub_info^maybe_dependency_info := NewVal).
 module_info_set_num_errors(MI, NewVal,

@@ -599,15 +599,15 @@
 %-----------------------------------------------------------------------------%
 
 	%
-	% C code required for the C interface.
-	% When compiling to a language other than C,
-	% this part still needs to be generated as C code
-	% and compiled with a C compiler.
+	% Foreign code required for the foreign language interface.
+	% When compiling to a language other than the foreign language,
+	% this part still needs to be generated as C (or whatever) code
+	% and compiled with a C (or whatever) compiler.
 	%
 :- type mlds__foreign_code
 	---> mlds__foreign_code(
-		c_header_info,
-		list(user_c_code),
+		foreign_header_info,
+		list(user_foreign_code),
 		list(mlds__pragma_export)
 	).
 

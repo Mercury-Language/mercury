@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,8 @@ pd_cost__goal(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	pd_cost__unify(NonLocals, Unification, Cost).
 
-pd_cost__goal(pragma_c_code(Attributes, _, _, Args, _, _, _) - _, Cost) :-
+pd_cost__goal(pragma_foreign_code(_, Attributes, _, _, Args, _, _, _) - _,
+		Cost) :-
 	( may_call_mercury(Attributes, will_not_call_mercury) ->
 		Cost1 = 0
 	;

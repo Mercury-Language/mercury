@@ -687,9 +687,10 @@ ml_code_gen(ModuleInfo, MLDS) -->
 :- mode ml_gen_foreign_code(in, out, di, uo) is det.
 
 ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
-	{ module_info_get_c_header(ModuleInfo, C_Header_Info) },
-	{ module_info_get_c_body_code(ModuleInfo, C_Body_Info) },
-	{ ConvBody = (func(S - C) = user_c_code(S, C)) },
+	{ module_info_get_foreign_header(ModuleInfo, C_Header_Info) },
+	{ module_info_get_foreign_body_code(ModuleInfo, C_Body_Info) },
+		% XXX This assumes the language is C.
+	{ ConvBody = (func(S - C) = user_foreign_code(c, S, C)) },
 	{ User_C_Code = list__map(ConvBody, C_Body_Info) },
 	{ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) },
 	{ MLDS_ForeignCode = mlds__foreign_code(C_Header_Info, User_C_Code,
@@ -1538,7 +1539,7 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 	ml_gen_unification(Unification, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(pragma_c_code(Attributes,
+ml_gen_goal_expr(pragma_foreign_code(_Lang, Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (
@@ -1569,7 +1570,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
 
-:- pred ml_gen_nondet_pragma_c_code(code_model, pragma_c_code_attributes,
+:- pred ml_gen_nondet_pragma_c_code(code_model, pragma_foreign_code_attributes,
 		pred_id, proc_id, list(prog_var),
 		list(maybe(pair(string, mode))), list(prog_type), prog_context,
 		string, maybe(prog_context), string, maybe(prog_context),
@@ -1746,7 +1747,8 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	]) },
 	{ MLDS_Decls = ConvDecls }.
 
-:- pred ml_gen_ordinary_pragma_c_code(code_model, pragma_c_code_attributes,
+:- pred ml_gen_ordinary_pragma_c_code(code_model, 
+		pragma_foreign_code_attributes,
 		pred_id, proc_id, list(prog_var),
 		list(maybe(pair(string, mode))), list(prog_type),
 		string, prog_context,

@@ -26,9 +26,9 @@
 :- import_module list, std_util.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
-	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	pragma_foreign_code_attributes::in, pred_id::in, proc_id::in,
 	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
-	hlds_goal_info::in, pragma_c_code_impl::in, code_tree::out,
+	hlds_goal_info::in, pragma_foreign_code_impl::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 :- pred pragma_c_gen__struct_name(module_name::in, string::in, int::in,
@@ -327,7 +327,7 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 %---------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
-	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	pragma_foreign_code_attributes::in, pred_id::in, proc_id::in,
 	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	string::in, maybe(prog_context)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
@@ -555,7 +555,7 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 %-----------------------------------------------------------------------------%
 
 :- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
-	pragma_c_code_attributes::in, pred_id::in, proc_id::in,
+	pragma_foreign_code_attributes::in, pred_id::in, proc_id::in,
 	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
 	string::in, maybe(prog_context)::in,
 	string::in, maybe(prog_context)::in,

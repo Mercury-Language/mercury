@@ -357,8 +357,8 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = source_file(_) },
 		{ Module = Module0 }
 	;
-		{ Pragma = c_code(C_Body_Code) },
-		{ module_add_c_body_code(C_Body_Code, Context,
+		{ Pragma = foreign(_Lang, Body_Code) },
+		{ module_add_c_body_code(Body_Code, Context,
 			Module0, Module) }
 	;
 		{ Pragma  = c_header_code(C_Header) },
@@ -366,7 +366,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		% Handle pragma c_code decls later on (when we process
 		% clauses).
-		{ Pragma = c_code(_, _, _, _, _, _) },
+		{ Pragma = foreign(_, _, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
 		% Handle pragma tabled decls later on (when we process
@@ -647,9 +647,10 @@ add_item_clause(module_defn(_, Defn), Status0, Status, _,
 add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
-		{ Pragma = c_code(Attributes, Pred, PredOrFunc, Vars, 
-			VarSet, PragmaImpl) }
+		{ Pragma = foreign(Language, Attributes, Pred, PredOrFunc,
+			Vars, VarSet, PragmaImpl) }
 	->
+		{ Language = c },
 		module_add_pragma_c_code(Attributes, Pred, PredOrFunc,
 			Vars, VarSet, PragmaImpl, Status, Context,
 			Module0, Module, Info0, Info)
@@ -3469,21 +3470,21 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 :- mode module_add_c_header(in, in, in, out) is det.
 
 module_add_c_header(C_Header, Context, Module0, Module) :-
-	module_info_get_c_header(Module0, C_HeaderIndex0),
+	module_info_get_foreign_header(Module0, C_HeaderIndex0),
 		% store the c headers in reverse order and reverse them later
 		% for efficiency
 	C_HeaderIndex1 = [C_Header - Context|C_HeaderIndex0],
-	module_info_set_c_header(Module0, C_HeaderIndex1, Module).
+	module_info_set_foreign_header(Module0, C_HeaderIndex1, Module).
 	
 :- pred module_add_c_body_code(string, prog_context, module_info, module_info).
 :- mode module_add_c_body_code(in, in, in, out) is det.
 
 module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
-	module_info_get_c_body_code(Module0, C_Body_List0),
+	module_info_get_foreign_body_code(Module0, C_Body_List0),
 		% store the c headers in reverse order and reverse them later
 		% for efficiency
 	C_Body_List = [C_Body_Code - Context | C_Body_List0],
-	module_info_set_c_body_code(Module0, C_Body_List, Module).
+	module_info_set_foreign_body_code(Module0, C_Body_List, Module).
 	
 %-----------------------------------------------------------------------------%
 %
@@ -3497,8 +3498,8 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 %	handling of `pragma export' declarations, in export.m.
 
 :- pred module_add_pragma_import(sym_name, pred_or_func, list(mode),
-		pragma_c_code_attributes, string, import_status, prog_context,
-		module_info, module_info, qual_info, qual_info,
+		pragma_foreign_code_attributes, string, import_status,
+		prog_context, module_info, module_info, qual_info, qual_info,
 		io__state, io__state).
 :- mode module_add_pragma_import(in, in, in, in, in, in, in, in, out,
 		in, out, di, uo) is det.
@@ -3619,7 +3620,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 %	the c_code for a `pragma import' declaration to a pred_info.
 
 :- pred pred_add_pragma_import(pred_info, pred_id, proc_id,
-		pragma_c_code_attributes, string, prog_context, pred_info,
+		pragma_foreign_code_attributes, string, prog_context, pred_info,
 		module_info, module_info, qual_info, qual_info,
 		io__state, io__state).
 :- mode pred_add_pragma_import(in, in, in, in, in, in, out, in, out, in, out,
@@ -3812,8 +3813,8 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(pragma_c_code_attributes, sym_name,
-	pred_or_func, list(pragma_var), prog_varset, pragma_c_code_impl,
+:- pred module_add_pragma_c_code(pragma_foreign_code_attributes, sym_name,
+	pred_or_func, list(pragma_var), prog_varset, pragma_foreign_code_impl,
 	import_status, prog_context, module_info, module_info,
 	qual_info, qual_info, io__state, io__state).
 :- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
@@ -4433,9 +4434,10 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo, _, PragmaImpl), 
-		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
+warn_singletons_in_goal_2(pragma_foreign_code(_, _, _, _, _, ArgInfo, _,
+		PragmaImpl), GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
+	% XXX not just C code
 	warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, Context, 
 		PredCallId, MI).
 
@@ -4511,7 +4513,7 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _Eval, _Fix, _NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_warn_pragma_singletons(pragma_c_code_impl,
+:- pred maybe_warn_pragma_singletons(pragma_foreign_code_impl,
 	list(maybe(pair(string, mode))), prog_context, simple_call_id,
 	module_info, io__state, io__state).
 :- mode maybe_warn_pragma_singletons(in, in, in, in, in, di, uo) is det.
@@ -4528,7 +4530,7 @@ maybe_warn_pragma_singletons(PragmaImpl, ArgInfo, Context, CallId, MI) -->
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% mentioned at least once in the c code fragments that ought to
 	% mention it. If not, it gives a warning.
-:- pred warn_singletons_in_pragma_c_code(pragma_c_code_impl,
+:- pred warn_singletons_in_pragma_c_code(pragma_foreign_code_impl,
 	list(maybe(pair(string, mode))), prog_context, simple_call_id,
 	module_info, io__state, io__state).
 :- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
@@ -4897,8 +4899,8 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % hlds_goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, purity,
-	pragma_c_code_attributes, pred_id, proc_id, prog_varset,
-	list(pragma_var), list(type), pragma_c_code_impl, prog_context,
+	pragma_foreign_code_attributes, pred_id, proc_id, prog_varset,
+	list(pragma_var), list(type), pragma_foreign_code_impl, prog_context,
 	pred_or_func, sym_name, arity, clauses_info, module_info,
 	module_info, qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
@@ -4968,8 +4970,10 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		% Put the purity in the goal_info in case
 		% this c code is inlined
 		add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-		HldsGoal0 = pragma_c_code(Attributes, PredId, ModeId, Args,
-			ArgInfo, OrigArgTypes, PragmaImpl) - GoalInfo
+		% XXX we assume C code
+		HldsGoal0 = pragma_foreign_code(c, Attributes, PredId, 
+			ModeId, Args, ArgInfo, OrigArgTypes, PragmaImpl)
+			- GoalInfo
 		}, 
 			% Apply unifications with the head args.
 			% Since the set of head vars and the set vars in the
@@ -4997,7 +5001,6 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 			TI_VarMap, TCI_VarMap)
 		}
 	).
-
 
 :- pred allocate_vars_for_saved_vars(list(string), list(pair(prog_var, string)),
 	prog_varset, prog_varset).

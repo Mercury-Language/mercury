@@ -879,9 +879,10 @@ qualify_type(Type0, Type, Info0, Info) -->
 
 qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
 qualify_pragma(c_header_code(Code), c_header_code(Code), Info, Info) --> [].
-qualify_pragma(c_code(Code), c_code(Code), Info, Info) --> [].
-qualify_pragma(c_code(Rec, SymName, PredOrFunc, PragmaVars0, Varset, CCode),
-		c_code(Rec, SymName, PredOrFunc, PragmaVars, Varset, CCode), 
+qualify_pragma(foreign(L, C), foreign(L, C), Info, Info) --> [].
+qualify_pragma(
+	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
+	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
 		Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
 qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 

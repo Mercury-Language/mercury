@@ -986,8 +986,8 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % header file, which currently we don't.
 
 pragma_allowed_in_interface(c_header_code(_), no).
-pragma_allowed_in_interface(c_code(_), no).
-pragma_allowed_in_interface(c_code(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign(_, _), no).
+pragma_allowed_in_interface(foreign(_, _, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).

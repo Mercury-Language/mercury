@@ -702,7 +702,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		% Don't warn about directly recursive calls.
 		% (That would cause spurious warnings, particularly
 		% with builtin predicates, or preds defined using
-		% pragma c_code.)
+		% pragma foreign.)
 		%
 		simplify_info_get_det_info(Info0, DetInfo0),
 		det_info_get_pred_id(DetInfo0, ThisPredId),
@@ -1103,7 +1103,7 @@ simplify__goal_2(some(Vars1, CanRemove0, Goal1), SomeInfo,
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = pragma_c_code(_, PredId, ProcId, Args, _, _, _),
+	Goal0 = pragma_foreign_code(_, _, PredId, ProcId, Args, _, _, _),
 	(
 		simplify_do_calls(Info0),
 		goal_info_is_pure(GoalInfo)
@@ -2157,7 +2157,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
 			GoalExpr \= generic_call(_, _, _, _),
-			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _)
+			GoalExpr \= pragma_foreign_code(_, _, _, _, _, _, _, _)
 		)
 	->
 		simplify_info_get_common_info(Info0, CommonInfo0),

@@ -354,9 +354,9 @@ build_live_sets_in_goal_2(unify(_,_,_,D,_), Liveness, ResumeVars0, LiveSets0,
 		LiveSets = LiveSets0
 	).
 
-build_live_sets_in_goal_2(pragma_c_code(Attributes, PredId, ProcId,
-		Args, _, _, _), Liveness, ResumeVars0, LiveSets0,
-		GoalInfo, ModuleInfo, ProcInfo, TypeInfoLiveness,
+build_live_sets_in_goal_2(pragma_foreign_code(_Language, Attributes,
+		PredId, ProcId, Args, _, _, _), Liveness, ResumeVars0, 
+		LiveSets0, GoalInfo, ModuleInfo, ProcInfo, TypeInfoLiveness,
 		Liveness, ResumeVars, LiveSets) :-
 
 	goal_info_get_code_model(GoalInfo, CodeModel),
