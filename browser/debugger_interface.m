@@ -25,7 +25,7 @@
 %	ML_DI_found_match_user
 %	ML_DI_found_match_comp
 %	ML_DI_read_request_from_socket
-% These are used by runtime/mercury_trace_external.c.
+% These are used by trace/mercury_trace_external.c.
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
@@ -175,6 +175,14 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	mmc_options(options)
 			% to call the term browser
 	;	browse(string)
+			% dynamically link the collect module with the 
+			% current execution
+	;	link_collect(string)
+			% execute the collect command
+	;	collect
+			% retrieve the grade the current execution has been 
+			% compiled with
+	;	current_grade
 	.
 
 :- type event_number == int.
@@ -264,7 +272,21 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	det(string)
 	;	end_stack
 	% responses to stack_regs
-	;	stack_regs(int, int, int).
+	;	stack_regs(int, int, int)
+	% responses to link_collect
+	;	link_collect_succeeded
+	;	link_collect_failed
+	% responses to collect
+	;	collect_linked
+	;	collect_not_linked
+	% responses to current_grade
+	;	grade(string)
+	% responses to collect
+	%;	collected(collected_type)
+		% This is commented out because collected_type is unknown at  
+		% compile time since it is defined by users in the dynamically
+		% linked collect module.
+	.
 
 
 %-----------------------------------------------------------------------------%
@@ -586,6 +608,23 @@ get_mmc_options(DebuggerRequest, Options) :-
 	;
 		error("get_mmc_options: not a mmc_options request")
 	).
+%-----------------------------------------------------------------------------%
+
+:- pred get_object_file_name(debugger_request, string).
+:- mode get_object_file_name(in, out) is det.
+
+:- pragma export(get_object_file_name(in, out), "ML_DI_get_object_file_name").
+	% This predicate allows mercury_trace_external.c to retrieve the name 
+	% of the object file to link the current execution with from a 
+	% `link_collect(ObjectFileName)' request.
+get_object_file_name(DebuggerRequest, ObjectFileName) :-
+	(
+		DebuggerRequest = link_collect(ObjectFileName1)
+	->
+		ObjectFileName = ObjectFileName1
+	;
+		error("get_object_file_name: not a link_collect request")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -639,6 +678,9 @@ classify_request(cc_query(_),14).
 classify_request(io_query(_),15).
 classify_request(mmc_options(_),16).
 classify_request(browse(_),17).
+classify_request(link_collect(_),18).
+classify_request(collect,19).
+classify_request(current_grade,20).
 
 
 %-----------------------------------------------------------------------------%

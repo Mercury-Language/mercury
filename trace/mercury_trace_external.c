@@ -30,6 +30,8 @@
 #include "mercury_trace_vars.h"
 
 #include "debugger_interface.h"
+#include "collect_lib.h"
+#include "mercury_deep_copy.h"
 #include "std_util.h"
 
 #include <stdio.h>
@@ -42,6 +44,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <stdlib.h>
+#ifdef HAVE_DLFCN_H
+  #include <dlfcn.h>
+#endif
+
 
 /*
 ** This type must match the definition of classify_request in
@@ -76,7 +83,11 @@ typedef enum {
 				 = 15,/* wait for a io interactive query      */
 	MR_REQUEST_MMC_OPTIONS	 = 16,/* pass down new options to compile
 					 queries with			      */
-	MR_REQUEST_BROWSE	 = 17 /* call the term browser	              */
+	MR_REQUEST_BROWSE	 = 17,/* call the term browser	              */
+	MR_REQUEST_LINK_COLLECT	 = 18,/* dynamically link the collect module  */
+	MR_REQUEST_COLLECT	 = 19,/* collecting monitoring informations   */
+	MR_REQUEST_CURRENT_GRADE = 20 /* retrieving the grade of the current
+					 program has been compiled with       */
 
 } MR_debugger_request_type;
 
@@ -84,6 +95,42 @@ MercuryFile MR_debugger_socket_in;
 MercuryFile MR_debugger_socket_out;
 
 static String	MR_mmc_options;
+
+/*
+** Type of a static variable that indicates in which mode the external 
+** debugger is. When the external debugger is in mode:
+** (1) `MR_searching', it tries to find an event that matches a forward 
+**      move request,
+** (2) `MR_reading_request', it reads a new request on the socket,
+** (3) `MR_collecting', it is collecting information (after a `collect' request).
+*/
+typedef enum {
+	MR_searching, MR_reading_request, MR_collecting
+} MR_external_debugger_mode_type;
+
+static	MR_external_debugger_mode_type 
+	external_debugger_mode = MR_reading_request;
+
+/*
+** Global variable that is used to store the information collected during 
+** a collect request.
+*/
+
+static  Word	MR_collecting_variable;
+
+/*
+** Function pointer used to sent the collecting variable to the external 
+** debugger.
+*/
+
+static	void	(*send_collect_result_ptr)(Word, Word);
+
+/*
+** Variable generated during the dynamic linking that is needed to close
+** this linking properly.
+*/
+
+static	Word	collect_lib_maybe_handle;
 
 /*
 ** Use a GNU C extension to enforce static type checking
@@ -130,8 +177,15 @@ static void	MR_get_list_modules_to_import(Word debugger_request,
 			Integer *modules_list_length_ptr, Word *modules_list_ptr);
 static void	MR_get_mmc_options(Word debugger_request, 
 			String *mmc_options_ptr);
+static void	MR_get_object_file_name(Word debugger_request, 
+			String *object_file_name_ptr);
 static void	MR_get_variable_name(Word debugger_request, String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
+static void	MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, 
+			Word, Word, String, String, String, Integer, Integer, 
+			Integer, String, Word, Word *), Unsigned seqno, 
+			Unsigned depth,	MR_Trace_Port port, 
+			const MR_Stack_Layout_Label *layout, const char *path);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -209,7 +263,7 @@ MR_trace_init_external(void)
 
 	/* 
 	** MR_mmc_options contains the options to pass to mmc when compiling 
-	** queries. We initialise it to the String "".
+	** queries. We initialize it to the String "".
 	*/
 	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
 
@@ -281,7 +335,7 @@ MR_trace_init_external(void)
 
 		if (MR_debug_socket) {
 			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
-				hostname, port);	
+				hostname, port);
 		}
 		inet_address.sin_family = AF_INET;
 		inet_address.sin_addr.s_addr = host_addr;
@@ -369,12 +423,31 @@ void
 MR_trace_final_external(void)
 {
 	/*
-	** This can only happen during a forward_move(),
-	** in which case we want to tell the debugger that
-	** no match was found.
+	** This can only happen during a forward_move or a 
+	** collect request. In the first case, we want to tell 
+	** the debugger that no match was found; in the second 
+	** one we send the result of the collect activity.
 	*/
-	MR_send_message_to_socket("forward_move_match_not_found");
 
+	switch(external_debugger_mode) {
+		case MR_searching:
+			MR_send_message_to_socket("forward_move_match_not_found");
+			break;
+
+		case MR_collecting:
+			MR_TRACE_CALL_MERCURY(
+				(*send_collect_result_ptr)(
+					MR_collecting_variable, 
+					(Word) &MR_debugger_socket_out));
+			#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
+		       	MR_TRACE_CALL_MERCURY(
+				ML_CL_unlink_collect(collect_lib_maybe_handle));
+			#endif
+			break;
+
+		default:
+			fatal_error("Error in the external debugger");
+	}
 	/*
 	** Maybe we should loop to process requests from the
 	** debugger socket here?  Currently we just return,
@@ -387,8 +460,13 @@ MR_trace_final_external(void)
 Code *
 MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
-	static bool	searching = FALSE;
 	static Word	search_data;
+	static void	(*initialize_ptr)(Word *);
+	static void    	(*filter_ptr)(Integer, Integer, Integer, Word,
+				Word, String, String, String, Integer,
+				Integer, Integer, String, Word, Word *);
+	static void	(*get_collect_var_type_ptr)(Word *);
+	static bool    	collect_linked = FALSE;
 	Integer		debugger_request_type;
 	Integer		live_var_number;
 	Word		debugger_request;
@@ -408,17 +486,18 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		*saved_regs = event_info->MR_saved_regs;
 	Integer		modules_list_length;
 	Word		modules_list;
+	static String	MR_object_file_name;
 
 	MR_trace_enabled = FALSE;
 
-        /*
-        ** These globals can be overwritten when we call Mercury code,
-        ** such as the code in browser/debugger_interface.m.
+	/*
+	** These globals can be overwritten when we call Mercury code,
+	** such as the code in browser/debugger_interface.m.
 	** We therefore save them here and restore them before
 	** exiting from this function.  However, we store the
-        ** saved values in a structure that we pass to MR_trace_debug_cmd,
-        ** to allow them to be modified by MR_trace_retry().
-        */
+	** saved values in a structure that we pass to MR_trace_debug_cmd,
+	** to allow them to be modified by MR_trace_retry().
+	*/
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
@@ -426,18 +505,43 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_trace_init_point_vars(event_info->MR_event_sll,
 		event_info->MR_saved_regs);
 
-	if (searching) {
-		/* XXX should also pass registers here,
-		   since they're needed for checking for matches with the
-		   arguments */
-		if (MR_found_match(layout, port, seqno, depth,
-			/* XXX registers */ path, search_data))
-		{
-			MR_send_message_to_socket("forward_move_match_found");
-			searching = FALSE;
-		} else {
+
+	switch(external_debugger_mode) {
+		case MR_searching:
+			/* 
+			** XXX should also pass registers here, since they're 
+			** needed for checking for matches with the arguments 
+			*/
+			if (MR_found_match(layout, port, seqno, depth,
+				/* XXX registers, */ path, search_data))
+			{
+				MR_send_message_to_socket(
+					"forward_move_match_found");
+				external_debugger_mode = MR_reading_request;
+			} else {
+				goto done;
+			}
+			break;
+
+		case MR_collecting:
+			/* 
+			** XXX Add a another request that takes 
+			** arguments into account. We need two kinds 
+			** of request in order to not penalize the 
+			** performance of collect in the cases where 
+			** arguments are not used.
+			**  
+			** arguments = MR_make_var_list(layout, saved_regs);
+			*/
+			MR_COLLECT_filter(*filter_ptr, seqno, depth, port,
+				layout, path);
 			goto done;
-		}
+
+		case MR_reading_request:
+			break;
+
+		default:
+	       		fatal_error("Software error in the debugger.\n");
 	}
 
 	/* loop to process requests read from the debugger socket */
@@ -454,7 +558,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 						"FORWARD_MOVE\n");
 				}
 				search_data = debugger_request;
-			        searching = TRUE;
+			        external_debugger_mode = MR_searching;
 				goto done;
 
 			case MR_REQUEST_CURRENT_LIVE_VAR_NAMES:
@@ -647,6 +751,87 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
 				goto done;
 
+			case MR_REQUEST_LINK_COLLECT:
+			  {
+			        Char	result;
+				Word	MR_collecting_variable_type;
+
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_LINK_COLLECT\n");
+				}
+				MR_get_object_file_name(debugger_request,
+					    &MR_object_file_name);
+				MR_TRACE_CALL_MERCURY(
+					ML_CL_link_collect(
+			       		    MR_object_file_name,
+					    (Word *) &filter_ptr,
+					    (Word *) &initialize_ptr,
+					    (Word *) &send_collect_result_ptr,
+					    (Word *) &get_collect_var_type_ptr,
+					    &collect_lib_maybe_handle,
+					    &result
+					    ));
+				collect_linked = (result == 'y');
+				if (collect_linked) {
+					MR_send_message_to_socket(
+						"link_collect_succeeded");
+					MR_TRACE_CALL_MERCURY(
+					    (*get_collect_var_type_ptr)(
+						&MR_collecting_variable_type));
+					MR_collecting_variable = 
+					    MR_make_permanent(
+						MR_collecting_variable,
+						(Word *) 
+						MR_collecting_variable_type);
+				} else {
+					MR_send_message_to_socket(
+						"link_collect_failed");
+				}
+				break;
+			  }
+			case MR_REQUEST_COLLECT:
+			  {
+				static char *MERCURY_OPTIONS;
+
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_COLLECT\n");
+				}
+				if (collect_linked) {
+					MR_send_message_to_socket(
+						"collect_linked");
+					external_debugger_mode = MR_collecting;
+					MR_TRACE_CALL_MERCURY(
+					  (*initialize_ptr)(&MR_collecting_variable));
+
+					/*
+					** In order to perform the collect from
+					** the current event, we need to call 
+					** filter once here.
+					*/
+					MR_COLLECT_filter(*filter_ptr, seqno, depth,
+						 port, layout, path);
+					
+					goto done;
+				} else {
+					MR_send_message_to_socket(
+						"collect_not_linked");
+					break;
+				}
+			  }
+
+			case MR_REQUEST_CURRENT_GRADE:
+			  {
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_CURRENT_GRADE\n");
+				}
+				MR_send_message_to_socket_format(
+						"grade(\"%s\").\n", 
+						MR_GRADE_OPT);
+				break;
+			  }
 			default:
 				fatal_error("unexpected request read from "
 					"debugger socket");
@@ -1197,6 +1382,16 @@ MR_get_mmc_options(Word debugger_request, String *mmc_options_ptr)
 }
 
 static void
+MR_get_object_file_name(Word debugger_request, String *object_file_name_ptr)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_DI_get_object_file_name(
+			debugger_request, 
+			object_file_name_ptr);
+		);
+}
+
+static void
 MR_get_variable_name(Word debugger_request, String *var_name_ptr)
 {
 	MR_TRACE_CALL_MERCURY(
@@ -1224,6 +1419,34 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 	if (problem != NULL) {
 		MR_send_message_to_socket_format("error(\"%s\").\n", problem);
 	}
+}
+
+
+/*
+** This function calls the collect filtering predicate defined by the user
+** and dynamically link with the execution.
+*/
+static void
+MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word, 
+	String, String, String, Integer, Integer, Integer, String, Word, Word *), 
+       	Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
+	const MR_Stack_Layout_Label *layout, const char *path)
+{		
+	MR_TRACE_CALL_MERCURY((*filter_ptr)(
+		MR_trace_event_number,
+		seqno,
+		depth,
+		port,
+		layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+		(String) layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+		(String) layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+		(String) layout->MR_sll_entry->MR_sle_user.MR_user_name,
+		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+		layout->MR_sll_entry->MR_sle_detism,
+		(String) path,
+		MR_collecting_variable,
+		&MR_collecting_variable));
 }
 
 #endif /* MR_USE_EXTERNAL_DEBUGGER */
