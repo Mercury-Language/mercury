@@ -207,7 +207,7 @@ split_type_and_mode(type_and_mode(T,M), T, M, R, R).
 preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Preds) -->
 	{ length(Types, Arity),
 	  map__init(Procs),
-	  make_predid(ModNm, Name, Arity, PredId) },
+	  make_predid(ModNm, Name, Arity, PredId),
 	  I = predicate(VarSet, Types, Cond, [], Procs) },
 	(if %%% some [I2]
 		{ map__search(Preds0, PredId, I2) }
@@ -256,7 +256,7 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Cond, Preds) --->
 		{ HeadVars = [] },
 		{ NewProc = procedure(nondeterministic, BodyVarSet,
 			BodyTypes, HeadVars, Modes, conj([]) - GoalInfo) },
-		{ map__insert(Procs0, ModeId, NewProc, Procs) }
+		{ map__insert(Procs0, ModeId, NewProc, Procs) },
 		{ P = predicate(VarSet, ArgTypes, Cond, Clauses, Procs) },
 		{ map__set(Preds0, PredId, P) }
 	else
@@ -291,7 +291,7 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Preds) -->
 		  transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
 		  map__init(VarTypes),
 		  Clauses = [clause(ModeIds, NewVarSet, VarTypes,
-				HeadVars, Goal) | Clauses0]
+				HeadVars, Goal) | Clauses0],
 		  PredInfo = predicate(TVarSet, Type, Cond, Clauses, Procs),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
 	else

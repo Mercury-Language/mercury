@@ -41,7 +41,7 @@
 					condition,	% formal specification
 							% (not used)
 
-					clause_list
+					clause_list,
 
 					proc_table
 				).
@@ -594,7 +594,7 @@ inst_substitute_arg(user_defined_inst(Name, Args0), Arg, Param,
 	inst_substitute_args(Args0, Arg, Param, Args).
 
 :- pred inst_substitute_alts(list(bound_inst), inst, inst_param,
-				list(bound_inst).
+				list(bound_inst)).
 :- mode inst_substitute_alts(input, input, input, output).
 
 inst_substitute_alts([], _, _, []).
