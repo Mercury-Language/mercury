@@ -235,12 +235,19 @@ esac
 # Kludge for gcc-2.6.3 bug on mips: if you use gcc global registers and -O2,
 # gcc 2.6.3 gets an internal error compiling library/int.c.
 # As a work-around, we compile that file with -O1.
+# Ditto for gcc-2.6.3 on alpha with compiler/modules.c.
 #
 case $COMPILER in gcc)
-	case "$FULLARCH" in mips*)
-		case "$*" in *" int.c "*|*" int.dir/int_"*".c "*)
-			ARCH_OPTS="$ARCH_OPTS -O1" ;;
-		esac ;;
+	case "$FULLARCH" in
+		mips*)
+			case "$*" in *" int.c "*|*" int.dir/int_"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			esac ;;
+		alpha*)
+			case "$*" in
+			*" modules.c "*|*" modules.dir/modules_"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			esac ;;
 	esac ;;
 esac
 
