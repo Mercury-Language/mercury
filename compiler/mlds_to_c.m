@@ -126,8 +126,6 @@ mlds_to_c__output_mlds(MLDS, Suffix) -->
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS) -->
-	% XXX for bootstrapping
-	io__write_string("#define MR_BOOTSTRAP_TYPE_CTOR_COMPACT\n"),
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
