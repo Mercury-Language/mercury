@@ -345,7 +345,8 @@ lookup_var_names(VarSet, [Var | Vars], Description) :-
 table_gen__transform_proc_if_possible(EvalMethod, PredId, ProcId,
 		!ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO) :-
 	globals__io_get_target(Target, !IO),
-	( Target = c ->
+	globals__io_get_gc_method(GC_Method, !IO),
+	( Target = c, GC_Method \= accurate ->
 		table_gen__transform_proc(EvalMethod, PredId, ProcId,
 			!ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO)
 	;
