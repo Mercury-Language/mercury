@@ -952,6 +952,12 @@ case "$host" in
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
+		# for some reason, using -fpic doesn't seem to work on
+		# Solaris - probably because of problems with the global
+		# pointer register
+		LINK_SHARED_OBJ="$CC -G"
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
 		EXT_FOR_SHARED_LIB=so
 		;;
 	alpha-dec-osf*)
