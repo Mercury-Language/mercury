@@ -88,7 +88,7 @@ into another language, under the above conditions for modified versions.
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
 * Type classes::      Constrained polymorphism
-* Existential types:: Support for data abstraction and heterogenous collections
+* Existential types:: Support for data abstraction and heterogeneous collections
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Various compiler directives, used for the C interface
                       and to control optimization.
@@ -762,7 +762,7 @@ A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.  @xref{Higher-order}.
 
-A lambda expression introduces a new scope: any variables occuring in
+A lambda expression introduces a new scope: any variables occurring in
 the arguments Arg1, Arg2, ... are locally quantified, i.e.
 any occurrences of variables with that name in the lambda
 expression are considered to name a different variable than any
@@ -2525,7 +2525,7 @@ func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
 These insts represent the instantiation state of variables bound
 to higher-order predicate and function terms with the appropriate mode
 and determinism.
-For example, @samp{pred(out) is det} represents the instantion state
+For example, @samp{pred(out) is det} represents the instantiation state
 of being bound to a higher-order predicate term which is @samp{det}
 and accepts one output argument; the term @samp{sum([1,2,3])} from the
 example above is one such higher-order predicate term which matches
@@ -2987,7 +2987,7 @@ in the instance declaration have been substituted in place of the
 parameters in the type class declaration.
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
-It is an error to define more than one implemention for the same
+It is an error to define more than one implementation for the same
 method within a single @samp{instance} declaration.
 
 Any call to a method must have argument types (and in the case of functions,
@@ -3116,7 +3116,7 @@ hash_string(S) = H :-
 @section Type class constraints on predicates and functions
 
 Mercury allows a type class constraint to appear as part of a predicate or
-functions's type signature.  This constrains the values that can be taken
+function's type signature.  This constrains the values that can be taken
 by type variables in the signature to belong to particular type classes.
 
 A type class constraint is of the form:
@@ -3291,7 +3291,7 @@ For example:
 % Here the type variables `T' is existentially quantified
 :- some [T] pred foo(T).
 
-% Here the type variabless `T1' and `T2' are existentially quantified.
+% Here the type variables `T1' and `T2' are existentially quantified.
 :- some [T1, T2] func bar(int, list(T1), set(T2)) = pair(T1, T2).
 
 % Here the type variable `T2' is existentially quantified,
@@ -3540,7 +3540,7 @@ type variables to any type which satisfies the declared type class
 constraints.  Conversely, any occurrence without the @samp{new } prefix
 must be a deconstruction, and is therefore existentially quantified:
 the caller must not bind the existentially quantified type variables,
-but the caller is allowed to depend on those type variables satisfing
+but the caller is allowed to depend on those type variables satisfying
 the declared type class constraints, if any.
 
 For example, the function @samp{make_list} constructs a value of type
@@ -3576,7 +3576,7 @@ process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 
 The standard library module @samp{std_util} provides an abstract
 type named @samp{univ} which can hold values of any type. 
-You can form heterogenous containers (containers that can hold values of
+You can form heterogeneous containers (containers that can hold values of
 different types at the same time) by using data structures
 that contain @code{univ}s, e.g. @samp{list(univ)}.
 
@@ -3641,7 +3641,7 @@ good_example(Name, univ_value(Univ)) :-
 
 Using @samp{univ} doesn't work if you also want to use type class constraints.  
 If you want to use type class constraints, then you must define your own
-existentially typed data type, analagous to @samp{univ}, and use that:
+existentially typed data type, analogous to @samp{univ}, and use that:
 
 @example
 :- type univ_showable ---> some [T] (mkshowable(T) => showable(T)).
@@ -3740,7 +3740,7 @@ semantics if and only if the implementation-defined
 semantics guarantees to compute an answer in finite time for
 any program for which an answer would be computed in finite time for all
 possible executions under the strict commutative semantics
-(i.e. for all possible orderings of conjuctions and disjunctions).
+(i.e. for all possible orderings of conjunctions and disjunctions).
 
 Thus, to summarize, there are in fact a variety of different operational
 semantics for Mercury.  In one of them, the strict sequential semantics, there
@@ -4683,7 +4683,7 @@ then it should probably abort execution with an error message.
 Another use for the function trail is check for floundering
 in the presence of delayed goals.
 
-Often, when implementating certain kinds of constraint solvers, it may
+Often, when implementing certain kinds of constraint solvers, it may
 not be possible to actually solve all of the constraints at the time
 they are added.  Instead, it may be necessary to simply delay their
 execution until a later time, in the hope the constraints may become
@@ -4694,7 +4694,7 @@ is important for the system to check that their are no outstanding
 delayed goals which might cause failure, before execution commits
 to this execution path.  If there are any such delayed goals, the
 computation is said to ``flounder''.  If the check for floundering was
-omitted, then it could lead to unsound behavior,  such as a negation
+omitted, then it could lead to unsound behaviour,  such as a negation
 failing even though logically speaking it ought to have succeeded.
 
 The check for floundering can be implemented using the function trail,
@@ -4847,16 +4847,16 @@ same inputs.  They do not interact with the ``real'' world (i.e., do any
 input/output) without taking an io__state (@pxref{Types}) as input and
 returning one as output, and do not make any changes to any data
 structure that will not be undone on backtracking (unless the data
-structure would be unreachable on backtracking).  The behavior of other
+structure would be unreachable on backtracking).  The behaviour of other
 predicates is never affected by the invocation of pure predicates, nor
-is the behavior of pure predicates ever affected by the invocation of
+is the behaviour of pure predicates ever affected by the invocation of
 other predicates.
 
 The vast majority of Mercury predicates are pure.  
 
 @item semipure
 Semipure predicates are just like pure predicates, except that their
-behavior may be affected by the invocation of impure predicates.  That
+behaviour may be affected by the invocation of impure predicates.  That
 is, they are sensitive to the state of the computation other than as
 reflected by their input arguments, though they do not affect the state
 themselves.
@@ -4940,7 +4940,7 @@ that only predicate calls need to (and are permitted to) be prefixed
 with @code{impure} or @code{semipure}, compound goals never need this.
 See @ref{Impurity Example} for an example of this.
 
-The requiremment that impure or semipure calls be marked with
+The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 
 reading the code to tell which goals are not pure, making code which
 relies on side effects somewhat less mysterious.  Furthermore, it means
@@ -4958,7 +4958,7 @@ allow programmers to write pure predicates using impure ones, while protecting
 the procedural implementation from aggressive compiler optimizations.
 Of course, the Mercury compiler cannot verify that a predicate is pure,
 so it is the programmer's responsibility to ensure this.  If a predicate
-is promised pure and is not, the behavior of the program is undefined.
+is promised pure and is not, the behaviour of the program is undefined.
 
 The programmer may promise that a predicate is pure using the
 @code{promise_pure} pragma:
@@ -5085,7 +5085,7 @@ be created for integer keys.
 
 Implementations are free to ignore @samp{pragma type_spec} declarations.
 Implementations are also free to perform type specialization
-even in the absense of any @samp{pragma type_spec} declarations.
+even in the absence of any @samp{pragma type_spec} declarations.
 
 @node When to use type specialization
 @subsection When to use type specialization
@@ -5241,7 +5241,7 @@ produce very efficient code using this technique.
 
 In the current implementation, the table of facts is compiled into a
 separate C file named @samp{@var{FileName}.c}.  The compiler will
-automatically generate the correct depencencies for this file when the
+automatically generate the correct dependencies for this file when the
 command @samp{mmake @var{main_module}.depend} is invoked.  This ensures
 that the C file will be compiled to @samp{@var{FileName}.o} and then
 linked with the other object files when @samp{mmake @var{main_module}}
@@ -5315,7 +5315,7 @@ the ``minimal model'' semantics.  Anything which is
 true or false in the completion semantics is also true
 or false (respectively) in the minimal model semantics,
 but there are goals for which the minimal model specifies
-that the result is true or false, wheres the completion semantics
+that the result is true or false, whereas the completion semantics
 leaves the result unspecified. 
 For these goals, the usual Mercury semantics requires the
 implementation to either loop or report an error message,
