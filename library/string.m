@@ -395,6 +395,7 @@ string__base_string_to_int_2(Base, String, Int0, Int) :-
 	( string__first_char(String, Char, String1) ->
 		char__to_upper(Char, UpperChar),
 		string__digit_to_char(Digit, UpperChar),
+		Digit < Base,
 		Int1 is Base * Int0,
 		Int2 is Int1 + Digit,
 		string__base_string_to_int_2(Base, String1, Int2, Int) 
