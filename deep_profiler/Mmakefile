@@ -132,6 +132,12 @@ install_cgi_progs: mdprof_cgi
 			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
 	fi
+	# We also install mdprof_cgi in $(INSTALL_MERC_BIN_DIR).
+	# This is done just so that it can easily get put in the
+	# binary distribution (even if the step above failed).
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
+		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
 
 uninstall:
 	# We try to uninstall mdprof_cgi, but failure to do so is not an

@@ -33,7 +33,7 @@ SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
 
-CGI_PROG	= ../deep_profiler/mdprof_cgi
+CGI_PROG	= $(INSTALL_LIB_DIR)/mercury/bin/$(FULLARCH)/mdprof_cgi
 
 VIM_FILES	= ../vim/*
 
