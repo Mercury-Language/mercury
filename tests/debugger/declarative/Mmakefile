@@ -24,6 +24,7 @@ DECLARATIVE_PROGS=		\
 	backtrack		\
 	big			\
 	comp_gen		\
+	family			\
 	filter			\
 	func_call		\
 	gcf			\
@@ -42,7 +43,6 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
 NONWORKING_DECLARATIVE_PROGS=	\
-	family			\
 	higher_order		\
 	ite_2			\
 	solutions

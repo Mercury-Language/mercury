@@ -24,9 +24,9 @@ main -->
 	;	f
 	;	s.
 
-:- pred parent(person::out, person::out) is multi.
-:- pred female(person::in) is semidet.
-:- pred male(person::in) is semidet.
+:- pred parent(person, person).
+:- mode parent(out, out) is multi.
+:- mode parent(in, out) is nondet.
 
 parent(m, a).
 parent(m, b).
@@ -34,8 +34,14 @@ parent(f, a).
 parent(f, b).
 parent(f, c).
 parent(s, c).
+
+:- pred male(person::in) is semidet.
+
 male(f).
 male(s).
+
+:- pred female(person::in) is semidet.
+
 female(X) :-
 	\+ male(X).
 
@@ -44,15 +50,15 @@ female(X) :-
 :- pred common_father(person::out, person::out) is nondet.
 
 common_mother(A, B) :-
-	\+ A = B,
 	parent(M, A),
 	parent(M, B),
+	\+ A = B,
 	female(M).
 
 common_father(A, B) :-
-	\+ A = B,
 	parent(F, A),
 	parent(A, B),		% Oops, that's a bug.
+	\+ A = B,
 	male(F).
 
 
