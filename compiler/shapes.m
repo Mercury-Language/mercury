@@ -59,6 +59,9 @@
 		length_list, contents_list). 
 :- mode shapes__construct_shape_lists(in, out, out, out) is det. 
 
+:- pred shapes__do_abstract_exports(module_info, module_info).
+:- mode shapes__do_abstract_exports(in, out) is det.
+
 :- implementation.
 
 :- type bit_number --->  bit_zero; bit_one; bit_two; bit_three.
@@ -135,11 +138,46 @@ shapes__construct_shape_lists(S_Tab, S_List, L_List, C_List) :-
 	shapes__construct_lists(Tag_List, S_Tab, S_List, L_List, _,
 		C_List, _).
 
+shapes__do_abstract_exports(HLDS0, HLDS) :-
+	module_info_types(HLDS0, Types),
+	module_info_shape_info(HLDS0, Shape_Info),
+	Shape_Info = shape_info(Shapes, Abs_Exports),
+	map__to_assoc_list(Abs_Exports, Export_List),
+	shapes__add_shape_numbers(Export_List, Types, Shapes, Shapes2,
+			 Export_List2),
+	map__from_assoc_list(Export_List2, Abs_Exports2),
+	Shape_Info_2 = shape_info(Shapes2, Abs_Exports2),
+	module_info_set_shape_info(HLDS0, Shape_Info_2, HLDS).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % LOCAL PREDICATES: 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pred shapes__add_shape_numbers(assoc_list(type_id, maybe_shape_num),
+				type_table, shape_table, shape_table, 
+				assoc_list(type_id, maybe_shape_num)).
+:- mode shapes__add_shape_numbers(in, in, in, out, out) is det.
+
+shapes__add_shape_numbers([], _, S, S, []).
+shapes__add_shape_numbers([T - S | Ts] , Types, S0, S2, [ N | Ns] ) :-
+	shapes__add_shape_numbers(Ts, Types, S0, S1, Ns),
+	(
+		S = yes(_)
+	->
+		N = T - S,
+		S2 = S1
+	;	
+		S = no(Type)
+	->
+		shapes__request_shape_number(Type - ground, Types,  
+ 			S1, S2, S_Num),
+		N = T - yes(S_Num)
+	;
+		error("shapes__add_shape_numbers: Unreachable case reached!") 
+	).
+	
 
 %-----------------------------------------------------------------------------%
 % We want to 'remove' the context of the types that we lookup and deal with
@@ -236,13 +274,22 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
 				bit_three, D, Type_Tab, S_Tab3, S_Tab) 
 		;
-			Hlds_Type = hlds__type_defn(_TVarset, _TypeParams,
-		 		abstract_type, _, _) 
+			Hlds_Type = hlds__type_defn(_, _, abstract_type, _, _) 
+		% An abstract type that is imported from elsewhere.
+		% Later we find the real definition.
 		->
 			Shape = abstract(Type),
 			S_Tab = S_Tab0
 		;
-			error("shapes__create_shape_2: not d.u./abstract type")
+			Hlds_Type = hlds__type_defn(_, _, eqv_type(ET), _, _)
+		% The case where an abstract type is equivalent to another
+ 		% abstract type...
+		->
+			shapes__replace_context(ET - ground, EqvType - _),
+			Shape = abstract(EqvType),
+			S_Tab = S_Tab0
+		;
+			error("shapes__create_shape_2: unknown type")
 		)
 	;
 		Type = term__functor(term__atom("pred"), _Vars, _Context) 

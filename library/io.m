@@ -86,15 +86,15 @@
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
-:- pred io__read_anything(_T, io__state, io__state).
+:- pred io__read_anything(io__res(_T), io__state, io__state).
 :- mode io__read_anything(in, di, uo) is det.
 %		Reads its argument to the current output stream.
 %		The argument may be of any type. 
 %		The term read had better be of the right type!
 %		This is a hack!
 
-:- pred io__read_anything(io__input_stream, _T, io__state, io__state).
-:- mode io__read_anything(in, in, di, uo) is det.
+:- pred io__read_anything(io__input_stream, io__res(_T), io__state, io__state).
+:- mode io__read_anything(in, out, di, uo) is det.
 %		Reads its argument to the specified stream.
 %		The argument may be of any type.
 %		The term read had better be of the right type!

@@ -223,6 +223,11 @@
 :- pred llds__binary_op_to_string(binary_op, string).
 :- mode llds__binary_op_to_string(in, out) is det.
 
+	% Output a label (used by garbage collection).
+
+:- pred output_label(label, io__state, io__state).
+:- mode output_label(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -750,8 +755,6 @@ output_label_list_2([Label | Labels]) -->
 	io__write_string(")"),
 	output_label_list_2(Labels).
 
-:- pred output_label(label, io__state, io__state).
-:- mode output_label(in, di, uo) is det.
 
 output_label(exported(ProcLabel)) -->
 	output_proc_label(ProcLabel).

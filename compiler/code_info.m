@@ -403,7 +403,7 @@
 					% that have been pushed during the
 					% procedure
 			globals,	% code generation options
-			stack(lval)	% the locations in use on the stack
+			stack(pair(lval))% the locations in use on the stack
 	).
 
 :- type register_info	==	map(reg, register_stat).
@@ -2484,7 +2484,7 @@ code_info__maybe_pop_stack(Maybe, Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__save_hp(Code) -->
-	code_info__push_temp(HpSlot),
+	code_info__push_temp(hp, HpSlot),
 	{ Code = node([ mark_hp(HpSlot) - "save heap pointer" ]) }.
 
 code_info__restore_hp(Code) -->
@@ -2553,10 +2553,10 @@ code_info__get_total_stackslot_count(NumSlots) -->
 	% increments the push count.  The space will be allocated in the
 	% procedure prologue.
 
-:- pred code_info__push_temp(lval, code_info, code_info).
-:- mode code_info__push_temp(out, in, out) is det.
+:- pred code_info__push_temp(lval, lval, code_info, code_info).
+:- mode code_info__push_temp(in, out, in, out) is det.
 
-code_info__push_temp(StackVar) -->
+code_info__push_temp(Item, StackVar) -->
 	code_info__get_push_count(Count0),
 	{ Count is Count0 + 1 },
 	code_info__set_push_count(Count),
@@ -2564,7 +2564,7 @@ code_info__push_temp(StackVar) -->
 	{ Slot is Count + NumSlots },
 	code_info__stack_variable(Slot, StackVar),
 	code_info__get_pushed_values(VStack0),
-	{ stack__push(VStack0, StackVar, VStack) },
+	{ stack__push(VStack0, StackVar - Item, VStack) },
 	code_info__set_pushed_values(VStack).
 
 %---------------------------------------------------------------------------%
@@ -2634,8 +2634,8 @@ code_info__failure_cont_address(unknown, do_redo).
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
-	code_info__push_temp(MaxfrSlot),
-	code_info__push_temp(RedoipSlot),
+	code_info__push_temp(maxfr, MaxfrSlot),
+	code_info__push_temp(curredoip, RedoipSlot),
 	{ SaveCode = node([
 		assign(MaxfrSlot, lval(maxfr)) - "Save nondet stack pointer",
 		assign(RedoipSlot, lval(curredoip)) - "Save current redoip"
@@ -2765,13 +2765,13 @@ code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
 	),
 	code_info__generate_stack_livevals_2(Vs, Vals2, Vals).
 
-:- pred code_info__generate_stack_livevals_3(stack(lval), bintree_set(lval),
-							bintree_set(lval)).
+:- pred code_info__generate_stack_livevals_3(stack(pair(lval)), 
+					bintree_set(lval), bintree_set(lval)).
 :- mode code_info__generate_stack_livevals_3(in, in, out) is det.
 
 code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
 	(
-		stack__pop(Stack0, Top, Stack1)
+		stack__pop(Stack0, Top - _, Stack1)
 	->
 		bintree_set__insert(Vals0, Top, Vals1),
 		code_info__generate_stack_livevals_3(Stack1, Vals1, Vals)
@@ -2865,15 +2865,16 @@ code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
 	),
 	code_info__generate_stack_livelvals_2(Vs, Vals2, Vals).
 
-:- pred code_info__generate_stack_livelvals_3(stack(lval), list(liveinfo),
-						list(liveinfo)).
+:- pred code_info__generate_stack_livelvals_3(stack(pair(lval)), 
+					list(liveinfo), list(liveinfo)).
 :- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
 
 code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 	(
-		stack__pop(Stack0, Top, Stack1)
+		stack__pop(Stack0, Top - StoredLval , Stack1)
 	->
-		LiveInfo = [live_lvalue(Top, -1) | Lives],
+		code_info__get_shape_num(StoredLval, S_Num),
+		LiveInfo = [live_lvalue(Top, S_Num) | Lives],
 		code_info__generate_stack_livelvals_3(Stack1, LiveInfo0, Lives)
 	;
 		LiveInfo = LiveInfo0
@@ -2881,7 +2882,19 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 
 
 
-
+:- pred code_info__get_shape_num(lval, int).
+:- mode code_info__get_shape_num(in, out) is det.
+code_info__get_shape_num(succip, -1).
+code_info__get_shape_num(hp, -2).
+code_info__get_shape_num(maxfr, -3).
+code_info__get_shape_num(curredoip, -4).
+code_info__get_shape_num(sp, -5).
+code_info__get_shape_num(lvar(_), -6).
+code_info__get_shape_num(field(_, _, _), -6).
+code_info__get_shape_num(temp(_), -6).
+code_info__get_shape_num(reg(_), -6).
+code_info__get_shape_num(stackvar(_), -6).
+code_info__get_shape_num(framevar(_), -6).
 
 :- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
 					 code_info, code_info).
@@ -2960,10 +2973,10 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_store_map(stack(map(var, lval)), code_info, code_info).
 :- mode code_info__set_store_map(in, in, out) is det.
 
-:- pred code_info__get_pushed_values(stack(lval), code_info, code_info).
+:- pred code_info__get_pushed_values(stack(pair(lval)), code_info, code_info).
 :- mode code_info__get_pushed_values(out, in, out) is det.
 
-:- pred code_info__set_pushed_values(stack(lval), code_info, code_info).
+:- pred code_info__set_pushed_values(stack(pair(lval)), code_info, code_info).
 :- mode code_info__set_pushed_values(in, in, out) is det.
 
 code_info__get_stackslot_count(A, CI, CI) :-

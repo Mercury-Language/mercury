@@ -58,7 +58,7 @@
 					predicate_table,
 					unify_requests,
 					special_pred_map,
-					shape_table,
+					shape_info,
 					type_table,
 					inst_table,
 					mode_table,
@@ -120,7 +120,6 @@
 :- type liveness        --->    live
                         ;       dead.
 
-
 %-----------------------------------------------------------------------------%
 
 :- type special_pred_map	==	map(special_pred, pred_id).
@@ -178,6 +177,13 @@ special_pred_info(compare, Type,
 %-----------------------------------------------------------------------------%
 
 :- type shape_id	==	pair(type, inst).
+
+:- type shape_info	--->	shape_info(shape_table, abs_exports).
+
+:- type abs_exports	==	map(type_id, maybe_shape_num).
+
+:- type maybe_shape_num --->	yes(shape_num)
+			;	no(type).
 
 :- type shape_table	==	pair(map(shape_id, pair(shape_num, shape)),int).
 
@@ -613,6 +619,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_shapes(module_info, shape_table).
 :- mode module_info_shapes(in, out) is det.
 
+:- pred module_info_shape_info(module_info, shape_info).
+:- mode module_info_shape_info(in, out) is det.
+
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
 
@@ -664,6 +673,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_set_shapes(module_info, shape_table, module_info).
 :- mode module_info_set_shapes(in, in, out) is det.
 
+:- pred module_info_set_shape_info(module_info, shape_info, module_info).
+:- mode module_info_set_shape_info(in, in, out) is det.
+
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
 
@@ -705,7 +717,9 @@ module_info_init(Name, module(Name, PredicateTable, Requests, UnifyPredMap,
 	map__init(Types),
 	inst_table_init(Insts),
 	map__init(Modes),
-	shapes__init_shape_table(Shapes),
+	shapes__init_shape_table(ShapeTable),
+	map__init(AbsExports),
+	Shapes = shape_info(ShapeTable, AbsExports),
 	map__init(Ctors).
 
 	% Various access predicates which extract different pieces
@@ -743,12 +757,15 @@ module_info_reverse_predids(ModuleInfo0, ModuleInfo) :-
 module_info_get_unify_requests(ModuleInfo, Requests) :-
 	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _, _).
 
+module_info_shapes(ModuleInfo, Shapes) :-
+	module_info_shape_info(ModuleInfo, Shape_Info),
+	Shape_Info = shape_info(Shapes, _AbsExports).
 
 module_info_get_special_pred_map(ModuleInfo, SpecialPredMap) :-
 	ModuleInfo = module(_, _, _, SpecialPredMap, _, _, _, _, _, _, _).
 
-module_info_shapes(ModuleInfo, Shapes) :-
-	ModuleInfo = module(_, _, _, _, Shapes, _, _, _, _, _, _).
+module_info_shape_info(ModuleInfo, ShapeInfo) :-
+	ModuleInfo = module(_, _, _, _, ShapeInfo, _, _, _, _, _, _).
 
 module_info_types(ModuleInfo, Types) :-
 	ModuleInfo = module(_, _, _, _, _, Types, _, _, _, _, _).
@@ -810,8 +827,14 @@ module_info_set_special_pred_map(ModuleInfo0, SpecialPredMap, ModuleInfo) :-
 	ModuleInfo = module(A, B, C, SpecialPredMap, E, F, G, H, I, J, K).
 
 module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K),
+	E = shape_info(_, AbsExports),
+	ModuleInfo = module(A, B, C, D, shape_info(Shapes, AbsExports), 
+		F, G, H, I, J, K).
+
+module_info_set_shape_info(ModuleInfo0, Shape_Info, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J, K),
-	ModuleInfo = module(A, B, C, D, Shapes, F, G, H, I, J, K).
+	ModuleInfo = module(A, B, C, D, Shape_Info, F, G, H, I, J, K).
 
 module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, _, G, H, I, J, K),

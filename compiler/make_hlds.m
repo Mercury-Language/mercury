@@ -34,7 +34,7 @@
 :- import_module term, term_io, varset.
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
-:- import_module make_tags, quantification.
+:- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, type_util, implication.
 
 
@@ -378,7 +378,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			{ special_pred_list(SpecialPredIds) },
 			{ add_special_pred_list(SpecialPredIds,
 					Module1, TVarSet, Type, TypeId,
-					Body, Context, Status, Module2) }
+					Body, Context, Status, Module2a) },
+			{ add_abstract_export(Module2a, Type, TypeId, Module2) }
 		),
 		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
@@ -392,6 +393,16 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 			[]
 		)
 	).
+			
+:- pred add_abstract_export(module_info, type, type_id, module_info).
+:- mode add_abstract_export(in, in, in, out) is det.
+add_abstract_export(Module0, Type, TypeId, Module) :-
+	module_info_shape_info(Module0, Shape_Info0),
+	Shape_Info0 = shape_info(Shapes, Abs_Exports0),
+	S_Num = no(Type),
+	map__set(Abs_Exports0, TypeId, S_Num, Abs_Exports1),
+	Shape_Info = shape_info(Shapes, Abs_Exports1),
+	module_info_set_shape_info(Module0, Shape_Info, Module).
 
 :- pred convert_type_defn(type_defn, globals,
 			sym_name, list(type_param), hlds__type_body).

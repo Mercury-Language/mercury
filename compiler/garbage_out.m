@@ -10,8 +10,9 @@
 % We traverse the llds, and grab all the continuation labels and their
 % corresponding shape information. 
 %
-% Next:
-% 	work on output. 
+% We don't yet handle some of the optimizations that mercury can throw
+% at us - eg middle recursion optimization removes the stack frame 
+% altogether.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -23,7 +24,9 @@
 		 llds, prog_io, type_util, string, term, shapes.
 
 
-:- type continuation_table --->	continuation_table(cont_list).
+:- type garbage_output --->	garbage_output( cont_list, 
+						shape_table, 
+						abs_exports).
 
 :- type cont_list	==	list(gc_label_info).
 
@@ -31,7 +34,7 @@
 					list(liveinfo)).
 
 :- type det		---> 	deterministic
-			;	semideterministic
+			;	semideterministic % really just semidet
 			;	nondeterministic.
 
 %-----------------------------------------------------------------------------%
@@ -40,30 +43,24 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred garbage_out__do_garbage_out(module_info, c_file, io__state, io__state).
+:- pred garbage_out__do_garbage_out(shape_info, c_file, io__state, io__state).
 :- mode garbage_out__do_garbage_out(in, in, di, uo) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% LOCAL PREDICATES: 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-
-
 %-----------------------------------------------------------------------------%
-% 
+% Out main predicate, it just collects and outputs the garbage.
+% Note, we don't yet get the exported abstract type table.
 %-----------------------------------------------------------------------------%
-garbage_out__do_garbage_out(_Module, c_file(Name, Modules)) -->
+garbage_out__do_garbage_out(ShapeInfo, c_file(Name, Modules)) -->
+	{ ShapeInfo = shape_info(ShapeTable, Abs_Exports) },
 	{ string__append(Name, ".garb", FileName) },
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ garbage_out__create_cont_list(Modules, CList) },
-		garbage_out__output_cont_list(CList),
+		garbage_out__output(CList, ShapeTable, Abs_Exports),
 		io__told
 	;
 		io__progname("garbage_out.nl", ProgName),
@@ -73,6 +70,14 @@ garbage_out__do_garbage_out(_Module, c_file(Name, Modules)) -->
                 io__write_string(FileName),
                 io__write_string("' for output\n")
         ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% LOCAL PREDICATES: 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+
 %-----------------------------------------------------------------------------%
 % Want to output only the livevals for call, attach the continuation to them.
 %-----------------------------------------------------------------------------%
@@ -127,7 +132,7 @@ garbage_out__proc_instr(I, Cs, Cout) :-
 	->
 		garbage_out__remove_fields(LiveInfo0, LiveInfo1),
 		garbage_out__get_det(LiveInfo1, Det),
-		list__length(LiveInfo1, Length), 
+		list__length(LiveInfo1, Length),
 		C = gc_label_info(Contn, Det, Length, LiveInfo1),
 		Cout = [C | Cs]
 	;
@@ -150,6 +155,16 @@ garbage_out__remove_fields([L|Ls], Ms) :-
 	;
 		Ms = [L | Xs]
 	).
+
+
+
+%-----------------------------------------------------------------------------%
+% Find the size of the stack frame (at the moment we assume that 
+% size == maximum live 
+%-----------------------------------------------------------------------------%
+
+
+
 
 %-----------------------------------------------------------------------------%
 % Find the determinisim of this label by looking for framevars or stackvars
@@ -185,9 +200,13 @@ garbage_out__get_det([L | Ls], Det) :-
 %-----------------------------------------------------------------------------%
 %
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__output_cont_list(cont_list, io__state, io__state).
-:- mode garbage_out__output_cont_list(in, di, uo) is det.
+:- pred garbage_out__output(cont_list, shape_table, abs_exports, 
+				io__state, io__state).
+:- mode garbage_out__output(in, in, in, di, uo) is det.
 
-garbage_out__output_cont_list(Ls) --> 
-	{ C_Table = continuation_table(Ls) },
-	io__write_anything(C_Table).
+garbage_out__output(List, Shapes, Abs_Exports) --> 
+	{ Garbage = garbage_output(List, Shapes, Abs_Exports) },
+	io__write_anything(Garbage),
+	io__write_string(".\n").
+
+

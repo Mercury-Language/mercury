@@ -23,7 +23,7 @@
 
 :- implementation.
 :- import_module prog_io, make_hlds, typecheck, modes, switch_detection.
-:- import_module polymorphism, garbage_out.
+:- import_module polymorphism, garbage_out, shapes.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
@@ -1044,10 +1044,28 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, HLDS13 - LLDS1 - [DoCodeGen, CompileToC, Compile]),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, HLDS13 - LLDS1 - [DoCodeGen, CompileToC, Compile], Ref),
+	erase(Ref) },
+	globals__io_lookup_bool_option(statistics, Statistics),
+	maybe_report_stats(Statistics),
+
+	( { DoCodeGen = yes } ->
+#endif
+		mercury_compile__maybe_find_abstr_exports(HLDS13, HLDS14), 
+		{ module_info_shape_info(HLDS14, Shape_Info) },
+#if NU_PROLOG
+		[]
+	;
+		[]
+	),
+	{ putprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
+	fail }.
+mercury_compile(module(Module, _, _, _, _)) -->
+	{ getprop(mc, mc, LLDS1 - [DoCodeGen, CompileToC, Compile] - Shape_Info,
+			 Ref),
 	erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
@@ -1060,10 +1078,10 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info, Ref),
 	erase(Ref) },
 	( { DoCodeGen = yes } ->
 #endif
@@ -1073,14 +1091,15 @@ mercury_compile(module(Module, _, _, _, _)) -->
 	;
 		[]
 	),
-	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile]),
+	{ putprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info),
 	fail }.
 mercury_compile(module(Module, _, _, _, _)) -->
-	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile], Ref),
+	{ getprop(mc, mc, LLDS2 - [DoCodeGen, CompileToC, Compile] - Shape_Info,
+			 Ref),
 	erase(Ref) },
 	( { DoCodeGen = yes } ->
 #endif
-		mercury_compile__maybe_write_gc(Module, HLDS13, LLDS2),
+		mercury_compile__maybe_write_gc(Module, Shape_Info, LLDS2),
 		(
 			{ CompileToC = yes ; Compile = yes }
 		->
@@ -1416,10 +1435,10 @@ mercury_compile__output_llds(ModuleName, LLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred mercury_compile__maybe_write_gc(module_name, module_info, c_file,
+:- pred mercury_compile__maybe_write_gc(module_name, shape_info, c_file,
 						io__state, io__state).
 :- mode mercury_compile__maybe_write_gc(in, in, in, di, uo) is det.
-mercury_compile__maybe_write_gc(ModuleName, HLDS, LLDS) -->
+mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 	globals__io_lookup_string_option(gc, Garbage),
 	(
 		{ Garbage = "accurate" }
@@ -1429,7 +1448,7 @@ mercury_compile__maybe_write_gc(ModuleName, HLDS, LLDS) -->
 		maybe_write_string(Verbose, ModuleName),
 		maybe_write_string(Verbose, ".garb'..."),
 		maybe_flush_output(Verbose),
-		garbage_out__do_garbage_out(HLDS, LLDS),
+		garbage_out__do_garbage_out(Shape_Info, LLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics)
@@ -1437,6 +1456,26 @@ mercury_compile__maybe_write_gc(ModuleName, HLDS, LLDS) -->
 		[]		
 	).
 
+:- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info, 
+				io__state, io__state).
+:- mode mercury_compile__maybe_find_abstr_exports(in, out, di, uo) is det.
+mercury_compile__maybe_find_abstr_exports(HLDS0, HLDS) -->
+	globals__io_lookup_string_option(gc, Garbage),
+	(
+		{ Garbage = "accurate" }
+	->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Looking up abstract type "),
+		maybe_write_string(Verbose, "exports..."),
+		maybe_flush_output(Verbose),
+		{ shapes__do_abstract_exports(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		maybe_report_stats(Statistics)
+	;
+		{ HLDS = HLDS0 }
+	).
+		
 
 %-----------------------------------------------------------------------------%
 
