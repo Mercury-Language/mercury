@@ -759,13 +759,13 @@ output_instruction(Instr) -->
 :- mode output_instruction(in, in, in, di, uo) is det.
 
 output_instruction(comment(Comment), _, _) -->
-	io__write_strings(["/* ", Comment, " */"]).
+	io__write_strings(["/* ", Comment, " */\n"]).
 
 output_instruction(livevals(LiveVals), _, _) -->
 	io__write_string("/*\n * Live lvalues:\n"),
 	{ set__to_sorted_list(LiveVals, LiveValsList) },
 	output_livevals(LiveValsList),
-	io__write_string(" */").
+	io__write_string(" */\n").
 
 output_instruction(block(TempR, TempF, Instrs), DeclSet, ProfInfo) -->
 	io__write_string("\t{\n"),

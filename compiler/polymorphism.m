@@ -998,7 +998,8 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 
 		% XXX should this be:
 		% Inst = bound(unique, [functor(ConsId, [])]) ?
-	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
+	unqualify_name(PredName2, PredName3),
+	Inst = bound(unique, [functor(cons(unqualified(PredName3), 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong

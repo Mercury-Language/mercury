@@ -104,7 +104,7 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _FV,
 :- pred middle_rec__generate_switch(var, cons_id, hlds__goal, hlds__goal,
 	follow_vars, hlds__goal_info, code_tree, code_info, code_info).
 :- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
-	is det.
+	is semidet.
 
 middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 		SwitchGoalInfo, Instrs) -->
@@ -226,6 +226,15 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 			]
 		], InstrList)
 	;
+		% The instruction list we are constructing has two copies
+		% of BaseList. If this list of instructions defines any
+		% labels, we must either not apply this version of the
+		% optimization, or we must consistently substitute the
+		% labels (which will be referred to only from within the
+		% BaseList instructions themselves). We choose the former
+		% course.
+		middle_rec__find_labels(BaseList, BaseLabels),
+		BaseLabels = [],
 		list__condense([
 			[
 				label(EntryLabel) - "Procedure entry point",
@@ -491,3 +500,27 @@ insert_pragma_c_output_registers([Output|Outputs], Used0, Used) :-
 	Output = pragma_c_output(Lval, _, _),
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	insert_pragma_c_output_registers(Outputs, Used1, Used).
+
+%---------------------------------------------------------------------------%
+
+	% Find all the labels defined in an instruction sequence.
+
+:- pred middle_rec__find_labels(list(instruction), list(label)).
+:- mode middle_rec__find_labels(in, out) is det.
+
+middle_rec__find_labels(Instrs, Label2) :-
+	middle_rec__find_labels_2(Instrs, [], Label2).
+
+:- pred middle_rec__find_labels_2(list(instruction), list(label), list(label)).
+:- mode middle_rec__find_labels_2(in, in, out) is det.
+
+middle_rec__find_labels_2([], Labels, Labels).
+middle_rec__find_labels_2([Instr - _ | Instrs], Labels0, Labels) :-
+	( Instr = label(Label) ->
+		Labels1 = [Label | Labels0]
+	; Instr = block(_, _, Block) ->
+		middle_rec__find_labels_2(Block, Labels0, Labels1)
+	;
+		Labels1 = Labels0
+	),
+	middle_rec__find_labels_2(Instrs, Labels1, Labels).
