@@ -71,6 +71,12 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	code_info__release_reg(SlotR),
 	code_info__release_reg(StringR),
 
+		% Generate the code for when the hash lookup fails.
+		% This must be done before gen_hash_slots, since
+		% we want to use the exprn_info corresponding to
+		% the start of the switch, not to the end of the last case.
+	code_info__generate_failure(FailCode),
+
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
@@ -105,10 +111,6 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 			  "no match, so fail"
 		])
 	},
-	code_info__generate_failure(FailCodeA),
-	code_info__generate_forced_saves(FailCodeB),
-	{ FailCode = tree(FailCodeA, FailCodeB) },
-	code_info__remake_with_store_map,
 	{
 		JumpCode = node([
 			label(JumpLabel) -
@@ -120,7 +122,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 		% Collect all the generated code fragments together
 	{ Code = tree(tree(VarCode, tree(HashLookupCode, FailCode)),
 			tree(JumpCode, SlotsCode))
-	}.
+	},
+	code_info__remake_with_store_map.
 
 :- pred string_switch__hash_cases(cases_list, int, map(int, cases_list)).
 :- mode string_switch__hash_cases(in, in, out) is det.
