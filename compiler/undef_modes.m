@@ -230,11 +230,11 @@ find_undef_inst_name(user_inst(Name, Args), ErrorContext, ModeDefns, InstDefns)
 		report_undef_inst(InstId, ErrorContext)
 	),
 	find_undef_inst_list(Args, ErrorContext, ModeDefns, InstDefns).
-find_undef_inst_name(unify_inst(_, _, _), _, _, _) -->
+find_undef_inst_name(unify_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(merge_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(ground_inst(_, _, _), _, _, _) -->
+find_undef_inst_name(ground_inst(_, _, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.

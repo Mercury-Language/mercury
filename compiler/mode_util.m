@@ -470,58 +470,62 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
 :- pred inst_lookup_2(inst_name, module_info, inst).
 :- mode inst_lookup_2(in, in, out) is det.
 
-inst_lookup_2(unify_inst(Live, A, B), ModuleInfo, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_table_get_unify_insts(InstTable, UnifyInstTable),
-	map__lookup(UnifyInstTable, unify_inst_pair(Live, A, B), MaybeInst),
-	( MaybeInst = known(Inst0, _) ->
-		Inst = Inst0
-	;
-		Inst = defined_inst(unify_inst(Live, A, B))
-	).
-inst_lookup_2(merge_inst(A, B), ModuleInfo, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_table_get_merge_insts(InstTable, MergeInstTable),
-	map__lookup(MergeInstTable, A - B, MaybeInst),
-	( MaybeInst = known(Inst0) ->
-		Inst = Inst0
-	;
-		Inst = defined_inst(merge_inst(A, B))
-	).
-inst_lookup_2(ground_inst(InstName, IsLive, Uniq), ModuleInfo, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_table_get_ground_insts(InstTable, GroundInstTable),
-	map__lookup(GroundInstTable, ground_inst(InstName, IsLive, Uniq),
-		MaybeInst),
-	( MaybeInst = known(Inst0) ->
-		Inst = Inst0
-	;
-		Inst = defined_inst(ground_inst(InstName, IsLive, Uniq))
-	).
-inst_lookup_2(shared_inst(InstName), ModuleInfo, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_table_get_shared_insts(InstTable, SharedInstTable),
-	map__lookup(SharedInstTable, InstName, MaybeInst),
-	( MaybeInst = known(Inst0) ->
-		Inst = Inst0
-	;
-		Inst = defined_inst(shared_inst(InstName))
-	).
-inst_lookup_2(user_inst(Name, Args), ModuleInfo, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_table_get_user_insts(InstTable, UserInstTable),
-	list__length(Args, Arity),
-	( map__search(UserInstTable, Name - Arity, InstDefn) ->
-		InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _C),
-		inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
-	;
-		Inst = abstract_inst(Name, Args)
-	).
-inst_lookup_2(typed_ground(Uniq, Type), ModuleInfo, Inst) :-
-	propagate_type_info_inst(Type, ModuleInfo, ground(Uniq, no), Inst).
-inst_lookup_2(typed_inst(Type, InstName), ModuleInfo, Inst) :-
-	inst_lookup_2(InstName, ModuleInfo, Inst0),
-	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst).
+inst_lookup_2(InstName, ModuleInfo, Inst) :-
+	( InstName = unify_inst(_, _, _, _),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_unify_insts(InstTable, UnifyInstTable),
+		map__lookup(UnifyInstTable, InstName, MaybeInst),
+		( MaybeInst = known(Inst0, _) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
+	; InstName = merge_inst(A, B),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_merge_insts(InstTable, MergeInstTable),
+		map__lookup(MergeInstTable, A - B, MaybeInst),
+		( MaybeInst = known(Inst0) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
+	; InstName = ground_inst(_, _, _, _),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_ground_insts(InstTable, GroundInstTable),
+		map__lookup(GroundInstTable, InstName, MaybeInst),
+		( MaybeInst = known(Inst0) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
+	; InstName = shared_inst(SharedInstName),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_shared_insts(InstTable, SharedInstTable),
+		map__lookup(SharedInstTable, SharedInstName, MaybeInst),
+		( MaybeInst = known(Inst0) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
+	; InstName = user_inst(Name, Args),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_user_insts(InstTable, UserInstTable),
+		list__length(Args, Arity),
+		( map__search(UserInstTable, Name - Arity, InstDefn) ->
+			InstDefn = hlds__inst_defn(_VarSet, Params, Inst0,
+					_Cond, _C),
+			inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
+		;
+			Inst = abstract_inst(Name, Args)
+		)
+	; InstName = typed_ground(Uniq, Type),
+		propagate_type_info_inst(Type, ModuleInfo, ground(Uniq, no),
+			Inst)
+	; InstName = typed_inst(Type, TypedInstName),
+		inst_lookup_2(TypedInstName, ModuleInfo, Inst0),
+		propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst)
+	),
+	!.
 
 %-----------------------------------------------------------------------------%
 
@@ -814,16 +818,16 @@ inst_apply_substitution(abstract_inst(Name, Args0), Subst,
 inst_name_apply_substitution(user_inst(Name, Args0), Subst,
 		user_inst(Name, Args)) :-
 	inst_list_apply_substitution(Args0, Subst, Args).
-inst_name_apply_substitution(unify_inst(Live, InstA0, InstB0), Subst,
-		unify_inst(Live, InstA, InstB)) :-
+inst_name_apply_substitution(unify_inst(Live, InstA0, InstB0, Real), Subst,
+		unify_inst(Live, InstA, InstB, Real)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 		merge_inst(InstA, InstB)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
-inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq), Subst,
-				ground_inst(Inst, IsLive, Uniq)) :-
+inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq, Real), Subst,
+				ground_inst(Inst, IsLive, Uniq, Real)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(shared_inst(InstName0), Subst,
 				shared_inst(InstName)) :-

@@ -1168,7 +1168,8 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, VarInst0, FinalInst,
-				ModuleInfo0, UnifyInst, Det1, ModuleInfo1)
+				fake_unify, ModuleInfo0,
+				UnifyInst, Det1, ModuleInfo1)
 		->
 			ModuleInfo = ModuleInfo1,
 			VarInst = UnifyInst,
@@ -1207,7 +1208,8 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, Inst0, FinalInst,
-				ModuleInfo0, UnifyInst, _Det, ModuleInfo1)
+				fake_unify, ModuleInfo0,
+				UnifyInst, _Det, ModuleInfo1)
 		->
 			ModuleInfo = ModuleInfo1,
 			Inst = UnifyInst
@@ -1457,12 +1459,12 @@ modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo,
 	mode_info_var_is_live(ModeInfo0, Y, LiveY),
 	(
 		( LiveX = live, LiveY = live ->
-			abstractly_unify_inst(live, InstOfX, InstOfY,
-				ModuleInfo0, UnifyInst, Det1, ModuleInfo1)
+			BothLive = live
 		;
-			abstractly_unify_inst(dead, InstOfX, InstOfY,
-				ModuleInfo0, UnifyInst, Det1, ModuleInfo1)
-		)
+			BothLive = dead
+		),
+		abstractly_unify_inst(BothLive, InstOfX, InstOfY,
+			real_unify, ModuleInfo0, UnifyInst, Det1, ModuleInfo1)
 	->
 		Inst = UnifyInst,
 		Det = Det1,
@@ -1683,7 +1685,7 @@ modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
 	instmap_lookup_var(InstMap0, X, InstOfX),
 	InstOfY = ground(unique, yes(pred_inst_info(LambdaModes, LambdaDet))),
 	(
-		abstractly_unify_inst(dead, InstOfX, InstOfY,
+		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
 			ModuleInfo0, UnifyInst, _Det, ModuleInfo1)
 	->
 		Inst = UnifyInst,
@@ -1771,7 +1773,8 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		ExtraGoals = [] - []
 	;
 		abstractly_unify_inst_functor(LiveX, InstOfX, Name,
-			InstArgs, LiveArgs, ModuleInfo0, UnifyInst, ModuleInfo1)
+			InstArgs, LiveArgs, real_unify, ModuleInfo0,
+			UnifyInst, ModuleInfo1)
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
@@ -1902,7 +1905,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		mode_info_get_module_info(ModeInfo3, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, InitialInstX, InitialInstY,
-				ModuleInfo0, _, Det1, ModuleInfo1)
+				real_unify, ModuleInfo0, _, Det1, ModuleInfo1)
 		->
 			mode_info_set_module_info(ModeInfo3, ModuleInfo1,
 				ModeInfo4),

@@ -301,7 +301,7 @@ mercury_output_inst_name(shared_inst(InstName), VarSet) -->
 	io__write_string("$shared_inst("),
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
-mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->
+mercury_output_inst_name(unify_inst(Liveness, InstA, InstB, Real), VarSet) -->
 	io__write_string("$unify("),
 	( { Liveness = live } ->
 		io__write_string("live, ")
@@ -309,8 +309,13 @@ mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->
 		io__write_string("dead, ")
 	),
 	mercury_output_inst_list([InstA, InstB], VarSet),
+	( { Real = real_unify } ->
+		io__write_string(", real")
+	;
+		io__write_string(", fake")
+	),
 	io__write_string(")").
-mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq), VarSet) -->
+mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq, Real), VarSet) -->
 	io__write_string("$ground("),
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(", "),
@@ -320,6 +325,11 @@ mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq), VarSet) -->
 		io__write_string("dead, ")
 	),
 	mercury_output_uniqueness(Uniq),
+	( { Real = real_unify } ->
+		io__write_string(", real")
+	;
+		io__write_string(", fake")
+	),
 	io__write_string(")").
 mercury_output_inst_name(typed_ground(Uniqueness, Type), _VarSet) -->
 	io__write_string("$typed_ground("),

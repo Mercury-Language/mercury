@@ -235,13 +235,30 @@
 
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
-			;	unify_inst(is_live, inst, inst)
-			;	ground_inst(inst_name, is_live, uniqueness)
+			;	unify_inst(is_live, inst, inst, unify_is_real)
+			;	ground_inst(inst_name, is_live, uniqueness,
+						unify_is_real)
 			;	shared_inst(inst_name)
 			;	typed_ground(uniqueness, type)
 			;	typed_inst(type, inst_name).
 
 :- type is_live		--->	live ; dead.
+
+	% Unifications of insts fall into two categories, "real" and "fake".
+	% The "real" inst unifications correspond to real unifications,
+	% and are not allowed to unify with `clobbered' insts.
+	% "Fake" inst unifications are used for procedure calls in implied
+	% modes, where the final inst of the var must be computed by
+	% unifying its initial inst with the procedure's final inst,
+	% so that if you pass a ground var to a procedure whose mode
+	% is `free -> list_skeleton', the result is ground, not list_skeleton.
+	% But these fake unifications must be allowed to unify with `clobbered'
+	% insts. Hence we pass down a flag to `abstractly_unify_inst' which
+	% specifies whether or not to allow unifications with clobbered values.
+
+:- type unify_is_real
+	--->	real_unify
+	;	fake_unify.
 
 % mode_defn/3 defined above
 

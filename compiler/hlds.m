@@ -213,9 +213,10 @@ determinism_to_code_model(failure,   model_semi).
 
 :- type user_inst_table	==	map(inst_id, hlds__inst_defn).
 
-:- type unify_inst_table ==	map(unify_inst_pair, maybe_inst_det).
+:- type unify_inst_table ==	map(inst_name, maybe_inst_det).
 
-:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst).
+:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst,
+					unify_is_real).
 
 :- type merge_inst_table ==	map(pair(inst), maybe_inst).
 
