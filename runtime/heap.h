@@ -4,6 +4,11 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+#ifndef HEAP_H
+#define HEAP_H
+
+#include "context.h"	/* for min_heap_reclamation_point */
+
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
 #ifdef CONSERVATIVE_GC
@@ -184,3 +189,4 @@
 					save_transient_registers();	\
 				} while (0)
 
+#endif /* HEAP_H */
