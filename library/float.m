@@ -268,10 +268,20 @@ X / Y = Z :-
 #endif
 ").
 
+:- pragma foreign_proc("Java",
+	domain_checks,
+	[thread_safe, promise_pure],
+"
+	succeeded = true;
+").
+
 %---------------------------------------------------------------------------%
 %
 % Conversion functions
 %
+%	For Java, overflows are not detected, so this must be tested for
+%	explicitly.  So every time there's a cast to int, the bounds are
+%	checked first.
 
 float(Int) = Float :-
 	int__to_float(Int, Float).
@@ -290,6 +300,19 @@ float(Int) = Float :-
 "
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
+:- pragma foreign_proc("Java",
+	float__ceiling_to_int(X :: in) = (Ceil :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if( X >  (double)java.lang.Integer.MAX_VALUE ||
+			X <= (double)java.lang.Integer.MIN_VALUE - 1 ){
+		throw( new RuntimeException(
+				""Overflow converting floating point to int"")
+				);
+	} else {
+		Ceil = (int)java.lang.Math.ceil(X);
+	}
+").
 
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
@@ -304,6 +327,19 @@ float(Int) = Float :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
+").
+:- pragma foreign_proc("Java",
+	float__floor_to_int(X :: in) = (Floor :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if( X >= (double)java.lang.Integer.MAX_VALUE + 1 ||
+			X <  (double)java.lang.Integer.MIN_VALUE ) {
+		throw( new RuntimeException(
+				""Overflow converting floating point to int"")
+				);
+	} else {
+		Floor = (int)java.lang.Math.floor(X);
+	}
 ").
 
 	% float__round_to_int(X) returns the integer closest to X.
@@ -320,6 +356,19 @@ float(Int) = Float :-
 "
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
+:- pragma foreign_proc("Java",
+	float__round_to_int(X :: in) = (Round :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if( X >= (double)java.lang.Integer.MAX_VALUE + 0.5 ||
+			X <  (double)java.lang.Integer.MIN_VALUE - 0.5 ) {
+		throw( new RuntimeException(
+				""Overflow converting floating point to int"")
+				);
+	} else {
+		Round = (int)java.lang.Math.round(X);
+	}
+").
 
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
@@ -334,6 +383,19 @@ float(Int) = Float :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Trunc = System.Convert.ToInt32(X);
+").
+:- pragma foreign_proc("Java",
+	float__truncate_to_int(X :: in) = (Trunc :: out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	if( X >= (double)java.lang.Integer.MAX_VALUE + 1 ||
+			X <= (double)java.lang.Integer.MIN_VALUE - 1 ) {
+		throw( new RuntimeException(
+				""Overflow converting floating point to int"")
+				);
+	} else {
+		Trunc = (int)X;
+	}
 ").
 
 %---------------------------------------------------------------------------%
@@ -420,6 +482,9 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 
 %---------------------------------------------------------------------------%
 
+	% In hashing a float in .NET or Java, we ensure that the value is
+	% non-negative, as this condition is not guaranteed by either API.
+
 :- pragma foreign_proc("C",
 	float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -430,7 +495,23 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	float__hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	H = F.GetHashCode();
+	int Code = F.GetHashCode();
+	if( Code < 0 ) {
+		H = -Code ^ 1;
+	} else {
+		H = Code;
+	}
+").
+:- pragma foreign_proc("Java",
+	float__hash(F::in) = (H::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	int Code = (new java.lang.Double(F)).hashCode();
+	if( Code < 0 ) {
+		H = -Code ^ 1;
+	} else {
+		H = Code;
+	}
 ").
 
 %---------------------------------------------------------------------------%
@@ -455,6 +536,12 @@ is_nan_or_inf(Float) :-
 	call bool [mscorlib]System.Double::IsNaN(float64)
 	stloc 'succeeded'
 ").
+:- pragma foreign_proc("Java",
+	is_nan(Flt::in),
+	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+"
+	succeeded = java.lang.Double.isNaN(Flt);
+").
 
 :- pragma promise_pure(is_inf/1).
 :- pragma foreign_proc(c,
@@ -471,6 +558,12 @@ is_nan_or_inf(Float) :-
 	call bool [mscorlib]System.Double::IsInfinity(float64)
 	stloc 'succeeded'
 ").
+:- pragma foreign_proc("Java",
+	is_inf(Flt::in),
+	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+"
+	succeeded = java.lang.Double.isInfinite(Flt);
+").
 
 %---------------------------------------------------------------------------%
 %
@@ -479,12 +572,12 @@ is_nan_or_inf(Float) :-
 % For C, the floating-point system constants are derived from <float.h> and
 % implemented using the C interface.
 %
-% For .NET, the values are mostly hard-coded.
+% For .NET (and java), the values are mostly hard-coded.
 % It's OK to do this, because the ECMA specification for the .NET CLR
 % nails down the representation of System.Double as 64-bit IEEE float.
+% The Java Language Specification also follows the IEEE standard.
 %
-% XXX For Java, we should do the same as for .NET.
-% In fact, maybe we should code these values in Mercury clauses,
+% Many of these values are coded in Mercury clauses,
 % rather than foreign_proc pragmas; assuming IEEE floating point
 % is a reasonable default these days, and doing that might improve
 % the compiler's optimization.
@@ -525,6 +618,12 @@ is_nan_or_inf(Float) :-
 "
 	Max = System.Double.MaxValue;
 ").
+:- pragma foreign_proc("Java",
+	float__max = (Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Max = java.lang.Double.MAX_VALUE;
+").
 
 	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C",
@@ -533,18 +632,20 @@ is_nan_or_inf(Float) :-
 "
 	Min = ML_FLOAT_MIN;
 ").
-:- pragma foreign_proc("C#",
-	float__min = (Min::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// We can't use System.Double.MinValue, because in v1 of the .NET CLR,
-	// that means something completely different: the negative number
-	// with the greatest absolute value.
-	// Instead, we just hard-code the appropriate value (copied from the
-	// glibc header files); this is OK, because the ECMA specification
-	// nails down the representation of double as 64-bit IEEE.
-	Min = 2.2250738585072014e-308;
-").
+% C#:
+%	We can't use System.Double.MinValue, because in v1 of the .NET CLR
+%	that means something completely different: the negative number
+%	with the greatest absolute value.
+%	Instead, we just hard-code the appropriate value (copied from the
+%	glibc header files); this is OK, because the ECMA specification
+%	nails down the representation of double as 64-bit IEEE.
+%
+% Java:
+%	The Java API's java.lang.Double.MIN_VALUE is not normalized,
+%	so can't be used, so we use the same constant as for .NET, as the
+%	Java Language Specification also describes Java doubles as 64 bit IEEE.
+%
+float__min = 2.2250738585072014e-308.
 
 	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C",
@@ -553,20 +654,21 @@ is_nan_or_inf(Float) :-
 "
 	Eps = ML_FLOAT_EPSILON;
 ").
-:- pragma foreign_proc("C#",
-	float__epsilon = (Eps::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
-	// that means something completely different: the smallest (denormal)
-	// positive number.  I don't know what the people who designed that
-	// were smoking; that semantics for 'epsilon' is different from the
-	// use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
-	// Instead, we just hard-code the appropriate value (copied from the
-	// glibc header files); this is OK, because the ECMA specification
-	// nails down the representation of double as 64-bit IEEE.
-	Eps = 2.2204460492503131e-16;
-").
+% C#:
+%	We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
+%	that means something completely different: the smallest (denormal)
+%	positive number.  I don't know what the people who designed that
+%	were smoking; that semantics for 'epsilon' is different from the
+%	use of 'epsilon' in C, Lisp, Ada, etc., not to mention Mercury.
+%	Instead, we just hard-code the appropriate value (copied from the
+%	glibc header files); this is OK, because the ECMA specification
+%	nails down the representation of double as 64-bit IEEE.
+%
+% Java:
+%	The Java API doesn't provide an epsilon constant, so we use the
+%	same constant, which is ok since Java defines doubles as 64 bit IEEE.
+%
+float__epsilon = 2.2204460492503131e-16.
 
 	% Radix of the floating-point representation.
 :- pragma foreign_proc("C",
@@ -575,15 +677,17 @@ is_nan_or_inf(Float) :-
 "
 	Radix = ML_FLOAT_RADIX;
 ").
-:- pragma foreign_proc("C#",
-	float__radix = (Radix::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// The ECMA specification requires that double be 64-bit IEEE.
-	// I think that implies that it must have Radix = 2.
-	// This is definitely right for x86, anyway.
-	Radix = 2;
-").
+% C#:
+%	The ECMA specification requires that double be 64-bit IEEE.
+%	I think that implies that it must have Radix = 2.
+%	This is definitely right for x86, anyway.
+%
+% Java:
+%	The Java API doesn't provide this constant either, so we default to the
+%	same constant as .NET, which is ok since Java defines doubles as 64 bit
+%	IEEE.
+%
+float__radix = 2.
 
 	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C",
@@ -592,13 +696,15 @@ is_nan_or_inf(Float) :-
 "
 	MantDig = ML_FLOAT_MANT_DIG;
 ").
-:- pragma foreign_proc("C#",
-	float__mantissa_digits = (MantDig::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// ECMA specifies that System.Double is 64-bit IEEE float
-	MantDig = 53;
-").
+% C#:
+%	ECMA specifies that System.Double is 64-bit IEEE float
+%
+% Java:
+%	The Java API doesn't provide this constant either, so we default to the
+%	same constant as .NET, which is ok since Java defines doubles as 64 bit
+%	IEEE.
+%
+float__mantissa_digits = 53.
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
@@ -609,13 +715,15 @@ is_nan_or_inf(Float) :-
 "
 	MinExp = ML_FLOAT_MIN_EXP;
 ").
-:- pragma foreign_proc("C#",
-	float__min_exponent = (MinExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// ECMA specifies that System.Double is 64-bit IEEE float
-	MinExp = -1021;
-").
+% C#:
+%	ECMA specifies that System.Double is 64-bit IEEE float
+%
+% Java:
+%	The Java API doesn't provide this constant either, so we default to the
+%	same constant as .NET, which is ok since Java defines doubles as 64 bit
+%	IEEE.
+%
+float__min_exponent = -1021.
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
@@ -626,13 +734,15 @@ is_nan_or_inf(Float) :-
 "
 	MaxExp = ML_FLOAT_MAX_EXP;
 ").
-:- pragma foreign_proc("C#",
-	float__max_exponent = (MaxExp::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	// ECMA specifies that System.Double is 64-bit IEEE float
-	MaxExp = 1024;
-").
+% C#:
+%	ECMA specifies that System.Double is 64-bit IEEE float
+%
+% Java:
+%	The Java API doesn't provide this constant either, so we default to the
+%	same constant as .NET, which is ok since Java defines doubles as 64 bit
+%	IEEE.
+%
+float__max_exponent = 1024.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
