@@ -41,6 +41,10 @@
 **      runtime/mercury_tabling.c
 **      runtime/mercury_type_info.c
 **      library/std_util.m
+**	java/*.java
+**	    (for updating the Java backend RTTI
+**	    structures)
+**     
 */
 
 #ifndef MERCURY_TYPE_INFO_H
