@@ -930,19 +930,14 @@ code_info__generate_expression_2(create(Tag, Args, Label), TargetReg, Code) -->
 		{ Code = tree(CodeA, CodeB) }
 	;
 		{ CodeA = node([
-			assign(TargetReg, mkword(Tag,
-					heap_alloc(const(int_const(Arity)))))
-				- "Allocate heap space & tag the pointer"
+			incr_hp(TargetReg,const(int_const(Arity))) -
+				"Allocate heap",
+			assign(TargetReg, mkword(Tag, lval(TargetReg))) -
+				"Tag the pointer"
 		]) },
 		code_info__generate_cons_args(TargetReg, Tag, 0, Args, CodeB),
 		{ Code = tree(CodeA, CodeB) }
 	).
-code_info__generate_expression_2(heap_alloc(Rval0), TargetReg, Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = node([
-		assign(TargetReg, heap_alloc(Rval)) - "Allocate heap space"
-	]) },
-	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression_2(mkword(Tag, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
@@ -1015,9 +1010,6 @@ code_info__generate_expression_vars(create(Tag, MaybeRvals0, Label),
 	code_info__generate_expression_cons_vars(MaybeRvals0, MaybeRvals, Code).
 code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
-	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(heap_alloc(Rval0), heap_alloc(Rval), Code)
-						-->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
 code_info__generate_expression_vars(unop(Unop, Rval0), unop(Unop, Rval), Code)
 						-->
@@ -2057,8 +2049,6 @@ code_info__expression_dependencies(var(Var0), V0, V) -->
 	).
 code_info__expression_dependencies(create(_Tag, MaybeRvals, _Label), V0, V) -->
 	code_info__expression_cons_dependencies(MaybeRvals, V0, V).
-code_info__expression_dependencies(heap_alloc(Rval), V0, V) -->
-	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(mkword(_Tag, Rval), V0, V) -->
 	code_info__expression_dependencies(Rval, V0, V).
 code_info__expression_dependencies(unop(_Op, Rval), V0, V) -->

@@ -11,7 +11,7 @@
 
 :- module set.
 :- interface.
-:- import_module list.
+:- import_module list, std_util.
 
 :- type set(_T).
 
