@@ -3132,11 +3132,11 @@ The error message should come out like this
 very_long_name.m:123: In module `very_long_name':
 very_long_name.m:123:   error in `import_module' declaration:
 very_long_name.m:123:   module `parent_module:sub_module' is inaccessible.
-very_long_name.m:123:   Either there was no `import_module' or `use_module'
-very_long_name.m:123:   declaration importing module `parent_module',
-very_long_name.m:123:   or the interface for module `parent_module'
-very_long_name.m:123:   does not contain an `include_module' declaration
-very_long_name.m:123:   for module `sub_module'.
+very_long_name.m:123:   Either there was no prior `import_module' or 
+very_long_name.m:123:  `use_module' declaration to import module
+very_long_name.m:123:   `parent_module', or the interface for module
+very_long_name.m:123:   `parent_module' does not contain an `include_module'
+very_long_name.m:123:   declaration for module `sub_module'.
 */
 
 report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
@@ -3161,21 +3161,21 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  Either there was no `import_module' or "),
-		io__write_string("`use_module'\n"),
+		io__write_string("  Either there was no prior "),
+		io__write_string("`import_module' or\n"),
 		prog_out__write_context(Context),
-		io__write_string("  declaration to import module `"),
+		io__write_string("  `use_module' declaration to import "),
+		io__write_string("module\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("',\n"),
+		io__write_string("', or the interface for module\n"),
 		prog_out__write_context(Context),
-		io__write_string("  or the interface for module `"),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("\n"),
+		io__write_string("' does not contain an `include_module'\n"),
 		prog_out__write_context(Context),
-		io__write_strings(["  does not contain an `include_module' ",
-					"declaration\n"]),
-		prog_out__write_context(Context),
-		io__write_string("  for module `"),
+		io__write_string("  declaration for module `"),
 		io__write_string(SubModule),
 		io__write_string("'.\n")
 	;

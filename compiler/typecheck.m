@@ -3194,10 +3194,10 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 			list__sort_and_remove_dups(UnprovenConstraints1,
 				UnprovenConstraints),
 			prog_out__write_context(Context, IO0, IO1),
-			io__write_string("  ", IO1, IO2),
-			io__write_list(UnprovenConstraints, ", ",
+			io__write_string("  `", IO1, IO2),
+			io__write_list(UnprovenConstraints, "', `",
 				mercury_output_constraint(VarSet), IO2, IO3),
-			io__write_string(".\n", IO3, IO)
+			io__write_string("'.\n", IO3, IO)
 		)),
 
 		% XXX this won't be very pretty when there are
