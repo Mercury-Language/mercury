@@ -205,18 +205,32 @@ vn_block__handle_instr(assign(Lval, Rval),
 	vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
 	vn_util__find_specials(Vnlval, LeftSpecials),
 	(
-		% Assignments of this form occur in hijacking.
-		% We must record the left hand side (which will be a stackvar
-		% or framevar) as a must flush location, because liveness will
-		% not force it to be flushed. The reason for this is that
-		% we do not properly include temporary slots (such as those
-		% used by hijacking) in livevals annotations.
-		Rval = lval(SubLval),
-		( SubLval = curfr
-		; SubLval = maxfr
-		; SubLval = redoip(_)
-		; SubLval = redofr(_)
-		)
+		% % Assignments of this form occur in hijacking.
+		% % We must record the left hand side (which will be a stackvar
+		% % or framevar) as a must flush location, because liveness will
+		% % not force it to be flushed. The reason for this is that
+		% % we do not properly include temporary slots (such as those
+		% % used by hijacking) in livevals annotations.
+		% Rval = lval(SubLval),
+		% ( SubLval = curfr
+		% ; SubLval = maxfr
+		% ; SubLval = redoip(_)
+		% ; SubLval = redofr(_)
+		% )
+
+		% Before we leave a disjunction through a non-last disjunct,
+		% the code generator makes sure that the variables needed
+		% on resumption at the next disjunct are in their stack slots.
+		% The resumption point may be reached via a redo() or fail()
+		% operation. Unfortunately, livemap.m does not recognize that
+		% these stack variables are live at points that perform a
+		% redo() or fail() operation. We compensate here by ensuring
+		% that assignments to stack variables are not removed by
+		% value numbering.
+		%
+		% The condition of this test subsumes the condition that used
+		% to be here, which is therefore commented out above.
+		( Lval = stackvar(_) ; Lval = framevar(_) )
 	->
 		Specials = [Vnlval | LeftSpecials]
 	;
