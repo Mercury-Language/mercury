@@ -126,9 +126,6 @@
 				MR_nondstack_overflow_check();		\
 			} while (0)
 
-/* convert a size in bytes to a size in words, rounding up if necessary */
-#define MR_bytes_to_words(x) (((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
-
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\

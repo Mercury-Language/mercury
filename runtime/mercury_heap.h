@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,11 +21,11 @@
 
   #include "gc.h"
 
-  #define MR_tag_incr_hp_n(dest, tag, count) \
-	((dest) = (MR_Word) MR_mkword((tag), \
+  #define MR_tag_incr_hp_n(dest, tag, count) 				\
+	((dest) = (MR_Word) MR_mkword((tag),				\
 			(MR_Word) GC_MALLOC((count) * sizeof(MR_Word))))
-  #define MR_tag_incr_hp_atomic(dest, tag, count) \
-	((dest) = (MR_Word) MR_mkword((tag), \
+  #define MR_tag_incr_hp_atomic(dest, tag, count)			\
+	((dest) = (MR_Word) MR_mkword((tag),				\
 			(MR_Word) GC_MALLOC_ATOMIC((count) * sizeof(MR_Word))))
 
   #ifdef INLINE_ALLOC
@@ -97,7 +97,7 @@
 
 #else /* not CONSERVATIVE_GC */
 
-  #define	MR_tag_incr_hp(dest, tag, count) 			\
+  #define MR_tag_incr_hp(dest, tag, count) 				\
 		(							\
 			(dest) = (MR_Word) MR_mkword(tag, (MR_Word) MR_hp),\
 			MR_debugincrhp(count, MR_hp),			\
@@ -116,13 +116,15 @@
   ** min_heap_reclamation_point. See the comments in mercury_context.h next to
   ** the set_min_heap_reclamation_point() macro.
   */
-  #define	MR_restore_hp(src)	(				\
+  #define MR_restore_hp(src)						\
+		(							\
   			MR_LVALUE_CAST(MR_Word, MR_hp) = (src),		\
   			(void) 0					\
   		)
 
   /*
-  #define	MR_restore_hp(src)	(				\
+  #define	MR_restore_hp(src)					\
+  		(							\
   			MR_LVALUE_CAST(MR_Word, MR_hp) =		\
   			  ( (MR_Word) MR_min_hp_rec < (src) ?		\
   			  (src) : (MR_Word) MR_min_hp_rec ),		\
@@ -165,16 +167,31 @@
 ** be a label name; we may need to prefix `_entry_' in front of it,
 ** which wouldn't work if it was parenthesized.
 */
-#define	MR_incr_hp(dest, count) \
+#define	MR_incr_hp(dest, count) 					\
 		MR_tag_incr_hp((dest), MR_mktag(0), (count))
-#define	MR_incr_hp_msg(dest, count, proclabel, type) \
-		MR_tag_incr_hp_msg((dest), MR_mktag(0), (count), \
+#define	MR_incr_hp_msg(dest, count, proclabel, type)			\
+		MR_tag_incr_hp_msg((dest), MR_mktag(0), (count),	\
 			proclabel, (type))
-#define	MR_incr_hp_atomic(dest, count) \
+#define	MR_incr_hp_atomic(dest, count)					\
 		MR_tag_incr_hp_atomic((dest), MR_mktag(0), (count))
-#define	MR_incr_hp_atomic_msg(dest, count, proclabel, type) \
+#define	MR_incr_hp_atomic_msg(dest, count, proclabel, type)		\
 		MR_tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
+#define	MR_incr_hp_type(dest, typename)					\
+		do {							\
+			Word	tmp;					\
+			MR_tag_incr_hp(tmp, MR_mktag(0),		\
+				(MR_bytes_to_words(sizeof(typename))));	\
+			(dest) = (typename *) tmp;			\
+		} while (0)
+#define	MR_incr_hp_type_msg(dest, typename, proclabel, type)		\
+		do {							\
+			Word	tmp;					\
+			MR_tag_incr_hp_msg(tmp, MR_mktag(0),		\
+				(MR_bytes_to_words(sizeof(typename))),	\
+				proclabel, (type));			\
+			(dest) = (typename *) tmp;			\
+		} while (0)
 
 #ifdef MR_HIGHLEVEL_CODE
 

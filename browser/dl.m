@@ -210,7 +210,12 @@ int	ML_DL_closure_counter = 0;
 	ML_DL_closure_counter++;
 	sprintf(buf, ""@%d;"", ML_DL_closure_counter);
 
-	closure_id = MR_GC_NEW(MR_Closure_Id);
+	/*
+	** XXX All the allocations in this code should use malloc
+	** in deep profiling grades.
+	*/
+
+	MR_incr_hp_type(closure_id, MR_Closure_Id);
 	closure_id->proc_id.MR_proc_user.MR_user_pred_or_func = MR_PREDICATE;
 	closure_id->proc_id.MR_proc_user.MR_user_decl_module = ""unknown"";
 	closure_id->proc_id.MR_proc_user.MR_user_def_module = ""unknown"";
@@ -220,9 +225,9 @@ int	ML_DL_closure_counter = 0;
 	closure_id->module_name = ""dl"";
 	closure_id->file_name = __FILE__;
 	closure_id->line_number = __LINE__;
-	closure_id->goal_path = strdup(buf);
+	MR_make_aligned_string_copy(closure_id->goal_path, buf);
 
-	closure_layout = MR_GC_NEW(MR_Closure_Dyn_Link_Layout);
+	MR_incr_hp_type(closure_layout, MR_Closure_Dyn_Link_Layout);
 	closure_layout->closure_id = closure_id;
 	closure_layout->type_params = NULL;
 	closure_layout->num_all_args = 0;

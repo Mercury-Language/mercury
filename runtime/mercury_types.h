@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,6 +60,12 @@ typedef	MR_uintptr_t		MR_Unsigned;
 typedef	MR_intptr_t		MR_Bool;
 
 /*
+** Convert a size in bytes to a size in words, rounding up if necessary.
+*/
+
+#define MR_bytes_to_words(x)	(((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
+
+/*
 ** `MR_Code *' is used as a generic pointer-to-label type that can point
 ** to any label defined using the Define_* macros in mercury_goto.h.
 */
@@ -109,12 +115,11 @@ typedef const MR_Char *MR_ConstString;
 ** Since it is used in some C code fragments, we define it as MR_Word
 ** in the low-level backend.
 */
+
 #ifdef MR_HIGHLEVEL_CODE
 typedef void 	*MR_Box;
 #else
 typedef MR_Word MR_Box;
 #endif
-
-
 
 #endif /* not MERCURY_TYPES_H */
