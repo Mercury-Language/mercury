@@ -86,47 +86,38 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	code_info__get_variable_register(Var, Lval),
 	code_info__get_fall_through(Fail),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	(
-		{ Tag = string_constant(_String) }
-	->
-		{ error("String tests unimplemented") }
-	;
-		{ Tag = int_constant(Int) }
-	->
-		{ TestCode = node([
-			test(lval(Lval), iconst(Int), Fail) -
-							"Integer test"
-		]) }
-	;
-		{ Tag = float_constant(_Float) }
-	->
-		{ error("Float tests unimplemented") }
-	;
-		{ Tag = simple_tag(SimpleTag) }
-	->
-		{ TestCode = node([
-			if_tag(Lval, SimpleTag, Fail) - "Test tag bits"
-		]) }
-	;
-		{ Tag = complicated_tag(Bits0, Num0) }
-	->
-		{ TestCode = node([
-			if_tag(Lval, Bits0, Fail) - "Test tag bits",
-			test(field(Bits0, lval(Lval), 1), iconst(Num0), Fail) -
-							"Test the tag word"
-		]) }
-	;
-		{ Tag = complicated_constant_tag(Bits1, Num1) }
-	->
-		{ TestCode = node([
-			if_tag(Lval, Bits1, Fail) - "Test tag bits",
-			test(body(lval(Lval)), mkbody(iconst(Num1)), Fail) -
-							"Test the tag word"
-		]) }
-	;
-		{ error("Unrecognised tag type in tag test.") }
-	),
+	{ unify_gen__generate_tag_test_2(Tag, Lval, Fail, TestCode) },
 	{ Code = tree(VarCode, TestCode) }.
+
+:- pred unify_gen__generate_tag_test_2(cons_tag, lval, label, code_tree).
+:- mode unify_gen__generate_tag_test_2(in, in, in, out) is det.
+
+unify_gen__generate_tag_test_2(string_constant(_String), _, _, _) :-
+	error("String tests unimplemented").
+unify_gen__generate_tag_test_2(float_constant(_String), _, _, _) :-
+	error("Float tests unimplemented").
+unify_gen__generate_tag_test_2(int_constant(Int), Lval, Fail, TestCode) :-
+	TestCode = node([
+		test(lval(Lval), iconst(Int), Fail) -
+						"Integer test"
+	]).
+unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Lval, Fail, TestCode) :-
+	TestCode = node([
+		if_tag(Lval, SimpleTag, Fail) - "Test tag bits"
+	]).
+unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, Fail,
+		TestCode) :-
+	TestCode = node([
+		if_tag(Lval, Bits, Fail) - "Test tag bits",
+		test(field(Bits, lval(Lval), 1), iconst(Num), Fail) -
+						"Test the tag word"
+	]).
+unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval, Fail,
+		TestCode) :-
+	TestCode = node([
+		test(lval(Lval), mkword(Bits, mkbody(iconst(Num))),
+			Fail) - "Test for constant"
+	]).
 
 %---------------------------------------------------------------------------%
 

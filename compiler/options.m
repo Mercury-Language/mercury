@@ -39,7 +39,6 @@
 			;	builtin_module
 			;	make_interface
 			;	heap_space
-			;	save_succip
 			;	search_directories
 			;	convert_to_mercury
 			;	convert_to_goedel
@@ -50,7 +49,17 @@
 			;	warn_det_decls_too_lax
 			;	modecheck
 			;	debug_types
-			;	debug_modes.
+			;	debug_modes
+			;	tags
+			;	num_tag_bits
+			;	gc
+			;	compile_to_c
+			;	compile
+			;	cc
+			;	cflags
+			;	link
+			;	gcc_non_local_gotos
+			;	gcc_global_registers.
 
 :- implementation.
 
@@ -66,7 +75,6 @@ option_defaults([
 	builtin_module		-	string("mercury_builtin"),
 	make_interface		-	bool(no),
 	heap_space		-	int(0),
-	save_succip		-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
@@ -77,7 +85,17 @@ option_defaults([
 	warn_det_decls_too_lax	-	bool(yes),
 	modecheck		-	bool(yes),
 	debug_types		- 	bool(no),
-	debug_modes		- 	bool(no)
+	debug_modes		- 	bool(no),
+	tags			-	string("low"),
+	num_tag_bits		-	int(2),
+	gc			-	string("none"),
+	compile_to_c		-	bool(no),
+	compile			-	bool(no),
+	cc			-	string("gcc"),
+	cflags			-	string(""),
+	link			-	bool(no),
+	gcc_non_local_gotos	-	bool(no),
+	gcc_global_registers	-	bool(no)
 ]).
 
 short_option('v', 			verbose).
@@ -91,7 +109,6 @@ short_option('g', 			generate_code).
 short_option('b', 			builtin_module).
 short_option('i', 			make_interface).
 short_option('H', 			heap_space).
-short_option('S', 			save_succip).
 short_option('h', 			help).
 short_option('I', 			search_directories).
 short_option('P', 			convert_to_mercury).
@@ -101,6 +118,7 @@ short_option('m', 			modecheck).
 short_option('T', 			debug_types).
 short_option('N', 			debug_modes).
 short_option('M', 			generate_dependencies).
+short_option('c', 			compile).
 
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -112,7 +130,6 @@ long_option("generate-code",		generate_code).
 long_option("builtin-module",		builtin_module).
 long_option("make-interface",		make_interface).
 long_option("heap-space",		heap_space).
-long_option("save-succip",		save_succip).
 long_option("search-directory",		search_directories).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury).
@@ -127,6 +144,18 @@ long_option("modecheck",		modecheck).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("generate-dependencies",	generate_dependencies).
+long_option("tags",			tags).
+long_option("num-tag-bits",		num_tag_bits).
+long_option("gc",			gc).
+long_option("garbage-collection",	gc).
+long_option("compile-to-C",		compile_to_c).
+long_option("compile-to-c",		compile_to_c).
+long_option("compile",			compile).
+long_option("cc",			cc).
+long_option("cflags",			cflags).
+long_option("link",			link).
+long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
+long_option("gcc-global-registers",	gcc_global_registers).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -186,14 +215,37 @@ options_help -->
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
+	io__write_string("\nCode generation options (**MOSTLY NOT YET IMPLEMENTED**)\n"),
+	io__write_string("\t\tUse GNU C's global register variables extension.\n"),
+	io__write_string("\t--gcc-non-local-gotos\n"),
+	io__write_string("\t\tUse GNU C's \"labels as values\" extension.\n"),
+	io__write_string("\t--gc {none, conservative, accurate}\n"),
+	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
+	io__write_string("\t\tSpecify which method of garbage collection to use.\n"),
+	io__write_string("\t--tags {none, low, high}\n"),
+	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
+	io__write_string("\t\teach word as tag bits (default: low)."),
+	io__write_string("\t--num-tag-bits <n>\n"),
+	io__write_string("\t\tIf using `--tags high', use <n> tag bits.\n"),
+	io__write_string("\t--gcc-global-registers\n"),
+	io__write_string("\t--compile-to-C\n"),
+	io__write_string("\t\tConvert the generated .mod file to a .c file.\n"),
+	io__write_string("\t--compile\n"),
+	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
+	io__write_string("\t--cc <compiler-name>\n"),
+	io__write_string("\t\tSpecify which C compiler to use.\n"),
+	io__write_string("\t--cflags <options>\n"),
+	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
+	io__write_string("\t--link\n"),
+	io__write_string("\t\tLink the named modules to produce an executable.\n"),
+
 	io__write_string("\nMiscellaneous Options:\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),
 	io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),
 	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
 	io__write_string("\t\t\t\"Panic: growing stacks has required shifting the heap\"\n"),
 	io__write_string("\t\tmessage.\n"),
-	io__write_string("\t-S, --save_succip\n"),
-	io__write_string("\t\tForce the code generator to save the success IP.\n"),
+
 	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),
 	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),

@@ -66,6 +66,7 @@
 			;	var(var)
 			;	create(tag, list(rval))
 			;	mkword(tag, rval)
+			;	mktag(rval)
 			;	mkbody(rval)
 			;	body(rval)
 			;	iconst(int)		% integer constants
@@ -412,6 +413,10 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(", "),
 	output_rval(Exprn),
 	io__write_string(")").
+output_rval(mktag(Exprn)) -->
+	io__write_string("mktag("),
+	output_rval(Exprn),
+	io__write_string(")").
 output_rval(mkbody(Exprn)) -->
 	io__write_string("mkbody("),
 	output_rval(Exprn),
@@ -421,9 +426,9 @@ output_rval(body(Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
-	io__write_string("field("),
+	io__write_string("field(tag("),
 	io__write_int(Tag),
-	io__write_string(","),
+	io__write_string("),"),
 	output_rval(Rval),
 	io__write_string(","),
 	io__write_int(Field),
@@ -431,9 +436,9 @@ output_rval(field(Tag, Rval, Field)) -->
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
 output_rval(true) -->
-	io__write_string("1").
+	io__write_string("TRUE").
 output_rval(false) -->
-	io__write_string("0").
+	io__write_string("FALSE").
 output_rval(create(_,_)) -->
 	{ error("Cannot output a create(_,_) expression in code") }.
 output_rval(var(_)) -->
@@ -445,9 +450,9 @@ output_rval(var(_)) -->
 output_lval(reg(R)) -->
 	output_reg(R).
 output_lval(field(Tag, Lval, FieldNum)) -->
-	io__write_string("field("),
+	io__write_string("field(tag("),
 	output_tag(Tag),
-	io__write_string(", "),
+	io__write_string("), "),
 	output_lval(Lval),
 	io__write_string(", "),
 	io__write_int(FieldNum),

@@ -241,9 +241,10 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 
 module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	{ module_info_types(Module0, Types0) },
-	{ type_name_args(TypeDefn, Name, Args, Body),
-	  list__length(Args, Arity),
-	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
+	globals__io_get_globals(Globals),
+	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
+	{ list__length(Args, Arity) },
+	{ T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
@@ -287,15 +288,16 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		)
 	).
 
-:- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
-:- mode type_name_args(in, out, out, out) is det.
+:- pred convert_type_defn(type_defn, globals,
+			sym_name, list(type_param), hlds__type_body).
+:- mode convert_type_defn(in, in, out, out, out) is det.
 
-type_name_args(du_type(Name, Args, Body), Name, Args,
+convert_type_defn(du_type(Name, Args, Body), Globals, Name, Args,
 		du_type(Body, CtorTags, IsEnum)) :-
-	assign_constructor_tags(Body, CtorTags, IsEnum).
-type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
-type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
-type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
+	assign_constructor_tags(Body, Globals, CtorTags, IsEnum).
+convert_type_defn(uu_type(Name, Args, Body), _, Name, Args, uu_type(Body)).
+convert_type_defn(eqv_type(Name, Args, Body), _, Name, Args, eqv_type(Body)).
+convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 
 :- pred ctors_add(list(constructor), type_id, term__context, cons_table,
 			cons_table, io__state, io__state).

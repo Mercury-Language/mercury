@@ -35,25 +35,36 @@
 :- module make_tags.
 :- interface.
 :- import_module std_util.
-:- import_module prog_io, prog_util, hlds.
+:- import_module prog_io, prog_util, hlds, globals.
 
-% assign_constructor_tags(Constructors, TagValues, IsEnum):
+% assign_constructor_tags(Constructors, Globals, TagValues, IsEnum):
 %	Assign a constructor tag to each constructor for a discriminated
 %	union type, and determine whether the type is an enumeration
-%	type or not.
+%	type or not.  (`Globals' is passed because exact way in which
+%	this is done is dependent on a compilation option.)
 
-:- pred assign_constructor_tags(list(constructor), cons_tag_values, bool).
-:- mode assign_constructor_tags(in, out, out) is det.
+:- pred assign_constructor_tags(list(constructor), globals,
+				cons_tag_values, bool).
+:- mode assign_constructor_tags(in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module map, list, int.
+:- import_module globals, options, getopt.
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(Ctors, CtorTags, IsEnum) :-
+assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
+
+		% work out how many tag bits there are
+	globals__get_options(Globals, OptionTable),
+	map__lookup(OptionTable, num_tag_bits, int(NumTagBits0)),
+	globals__get_tags_method(Globals, TagMethod),
+	adjust_num_tag_bits(TagMethod, NumTagBits0, NumTagBits),
+
+		% now assign them
 	map__init(CtorTags0),
 	(
 		ctors_are_all_constants(Ctors)
@@ -63,17 +74,27 @@ assign_constructor_tags(Ctors, CtorTags, IsEnum) :-
 	;
 		IsEnum = no,
 		list__length(Ctors, NumCtors),
-		max_num_tags(MaxNumTags),
+		max_num_tags(NumTagBits, MaxNumTags),
+		MaxTag is MaxNumTags - 1,
 		( NumCtors =< MaxNumTags ->
-			assign_simple_tags(Ctors, 0, CtorTags0, CtorTags)
+			assign_simple_tags(Ctors, 0, MaxTag, CtorTags0,
+					CtorTags)
 		;
 			split_constructors(Ctors, Constants, Functors),
-			assign_constant_tags(Constants, CtorTags0, CtorTags1,
-					NextTag),
-			assign_simple_tags(Functors, NextTag, CtorTags1,
+			assign_constant_tags(Constants, MaxTag, CtorTags0,
+					CtorTags1, NextTag),
+			assign_simple_tags(Functors, NextTag, MaxTag, CtorTags1,
 					CtorTags)
 		)
 	).
+
+:- pred adjust_num_tag_bits(tags_method, int, int).
+:- mode adjust_num_tag_bits(in, in, out) is det.
+
+adjust_num_tag_bits(none, _, 0).
+adjust_num_tag_bits(low, Num0, Num) :-
+	int__min(Num0, 2, Num).  % assuming at least a 32-bit architecture
+adjust_num_tag_bits(high, Num, Num).
 
 :- pred assign_enum_constants(list(constructor), int, cons_tag_values,
 				cons_tag_values).
@@ -87,9 +108,9 @@ assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 	Val1 is Val + 1,
 	assign_enum_constants(Rest, Val1, CtorTags1, CtorTags).
 
-:- pred assign_constant_tags(list(constructor), cons_tag_values,
+:- pred assign_constant_tags(list(constructor), int, cons_tag_values,
 				cons_tag_values, int).
-:- mode assign_constant_tags(in, in, out, out) is det.
+:- mode assign_constant_tags(in, in, in, out, out) is det.
 
 	% If there's no constants, don't do anything.
 	% If there's one constant, allocate it the first simple tag (zero).
@@ -97,13 +118,13 @@ assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 	% tags with the first simple tag as the primary tag, and
 	% different secondary tags starting from zero.
 
-assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
+assign_constant_tags(Constants, MaxTag, CtorTags0, CtorTags1, NextTag) :-
 	( Constants = [] ->
 		NextTag = 0,
 		CtorTags1 = CtorTags0
 	; Constants = [_] ->
 		NextTag = 1,
-		assign_simple_tags(Constants, 0, CtorTags0,
+		assign_simple_tags(Constants, 0, MaxTag, CtorTags0,
 			CtorTags1)
 	;
 		NextTag = 1,
@@ -111,15 +132,13 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 			0, 0, CtorTags0, CtorTags1)
 	).
 
-:- pred assign_simple_tags(list(constructor), int, cons_tag_values,
+:- pred assign_simple_tags(list(constructor), int, int, cons_tag_values,
 				cons_tag_values).
-:- mode assign_simple_tags(in, in, in, out) is det.
+:- mode assign_simple_tags(in, in, in, in, out) is det.
 
-assign_simple_tags([], _, CtorTags, CtorTags).
-assign_simple_tags([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
+assign_simple_tags([], _, _, CtorTags, CtorTags).
+assign_simple_tags([Name - Args | Rest], Val, MaxTag, CtorTags0, CtorTags) :-
 	create_cons_id(Name, Args, ConsId),
-	max_num_tags(NumTags),
-	Max is NumTags - 1,
 		% if we're about to run out of simple tags, start assigning
 		% complicated tags instead
 	( Val = Max, Rest \= [] ->
@@ -129,7 +148,7 @@ assign_simple_tags([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 		Tag = simple_tag(Val),
 		map__set(CtorTags0, ConsId, Tag, CtorTags1),
 		Val1 is Val + 1,
-		assign_simple_tags(Rest, Val1, CtorTags1, CtorTags)
+		assign_simple_tags(Rest, Val1, MaxTag, CtorTags1, CtorTags)
 	).
 
 :- pred assign_complicated_tags(list(constructor), int, int, cons_tag_values,
@@ -162,11 +181,11 @@ assign_complicated_constant_tags([Name - Args | Rest], PrimaryVal,
 
 %-----------------------------------------------------------------------------%
 
-:- pred max_num_tags(int).
-:- mode max_num_tags(out) is det.
+:- pred max_num_tags(int, int).
+:- mode max_num_tags(in, out) is det.
 
-max_num_tags(4).	% currently tags are two bits
-			% this is somewhat machine-dependant
+max_num_tags(NumTagBits, MaxTags) :-
+	int__pow(2, NumTagBits, MaxTags).
 
 %-----------------------------------------------------------------------------%
 

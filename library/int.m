@@ -31,6 +31,9 @@
 :- pred int__min(int, int, int).
 :- mode int__min(in, in, out) is det.
 
+:- pred int__pow(int, int, int).
+:- mode int__pow(in, in, out) is det.
+
 /*
 
 % Undiscriminated unions aren't implemented yet,
@@ -87,31 +90,50 @@
 :- external("NU-Prolog", (>=)/2).
 */
 
-int__abs(I0, I) :-
+int__abs(Num, Abs) :-
 	(
-		I0 < 0
+		Num < 0
 	->
-		I is 0 - I0
+		Abs is 0 - Num
 	;
-		I = I0
+		Abs = Num
 	).
 
-int__max(I0, I1, I) :-
+int__max(X, Y, Max) :-
 	(
-		I0 > I1
+		X > Y
 	->
-		I = I0
+		Max = X
 	;
-		I = I1
+		Max = Y
 	).
 
-int__min(I0, I1, I) :-
+int__min(X, Y, Min) :-
 	(
-		I0 < I1
+		X < Y
 	->
-		I = I0
+		Min = X
 	;
-		I = I1
+		Min = Y
+	).
+
+int__pow(Val, Exp, Result) :-
+	( Exp < 0 ->
+		error("int__pow: negative exponent")
+	;
+		int__pow_2(Val, Exp, 1, Result)
+	).
+
+:- pred int__pow_2(int, int, int, int).
+:- mode int__pow_2(in, in, in, out) is det.
+
+int__pow_2(Val, Exp, Result0, Result) :-
+	( Exp = 0 ->
+		Result = Result0
+	;
+		Exp1 is Exp - 1,
+		Result1 is Result0 * Val,
+		int__pow_2(Val, Exp1, Result1, Result)
 	).
 
 %-----------------------------------------------------------------------------%
