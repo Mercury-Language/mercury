@@ -19,16 +19,19 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 DECLARATIVE_PROGS = \
 	$(LARGE_DECLARATIVE_PROGS) $(SMALL_DECLARATIVE_PROGS)
 
-# These tests run out of memory when run in non-gc grades.
-LARGE_DECLARATIVE_PROGS= 	\
-	app			\
-	queens
 
-SMALL_DECLARATIVE_PROGS= 	\
-	gcf			\
-	if_then_else		\
-	oracle_db		\
-	propositional
+# These tests run out of memory when run in non-gc grades.
+LARGE_DECLARATIVE_PROGS=
+# These tests are disabled until the new backend is finished.
+#	app			\
+#	queens
+
+SMALL_DECLARATIVE_PROGS=
+# These tests are disabled until the new backend is finished.
+#	gcf			\
+#	if_then_else		\
+#	oracle_db		\
+#	propositional
 
 MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
