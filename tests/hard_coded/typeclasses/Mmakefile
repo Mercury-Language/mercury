@@ -1,0 +1,48 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	\
+	constrained_lambda \
+	extract_typeinfo \
+	ho_map \
+	implied_instance \
+	implied_instance_poly \
+	multi_constraint_diff_tvar \
+	multi_constraint_same_tvar \
+	multi_parameter \
+	nondet_class_method \
+	operator_classname \
+	superclass_call
+
+# implied_instance_missing_constraint is not yet included as there is a bug
+# stopping it from working.
+# 
+# Actually, there is a bug, but it isn't in that test case. I'm trying to
+# find exactly how to trigger the bug. Oh well...
+
+#-----------------------------------------------------------------------------#
+
+DEPS=	$(PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+RESS=	$(PROGS:%=%.res)
+MODS=	$(PROGS:%=%.mod)
+
+#-----------------------------------------------------------------------------#
+
+dep:	$(DEPS)
+
+depend:	$(DEPENDS)
+
+check:	$(OUTS) $(RESS)
+
+mods:	$(MODS)
+
+all:	$(PROGS)
+
+#-----------------------------------------------------------------------------#
