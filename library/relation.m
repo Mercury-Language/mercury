@@ -596,42 +596,25 @@ relation__tc(Rel, Tc) :-
 	% Find the fake reflexives
 	relation__effective_domain(Rel, Dom),
 	set__to_sorted_list(Dom, DomList),
-	relation__detect_fake_reflexives(Rel, DomList, FakeRefl),
+	relation__detect_fake_reflexives(Rel, Rtc, DomList, FakeRefl),
 
 	% Remove them from the RTC, giving us the TC.
 	assoc_list__from_corresponding_lists(FakeRefl, FakeRefl, FakeReflComp),
 	relation__remove_assoc_list(Rtc, FakeReflComp, Tc).
 
-:- pred relation__detect_fake_reflexives(relation(T), list(T), list(T)).
-:- mode relation__detect_fake_reflexives(in, in, out) is det.
-relation__detect_fake_reflexives(_Rel, [], []).
-relation__detect_fake_reflexives(Rel, [X | Xs], FakeRefl) :-
-	relation__detect_fake_reflexives(Rel, Xs, FakeRefl1),
-	set__init(Visited0),
-	queue__list_to_queue([X], Q0),
-	( relation__in_transitive_list(Rel, X, Q0, Visited0) ->
-	    FakeRefl = FakeRefl1
+:- pred relation__detect_fake_reflexives(relation(T), relation(T),
+		list(T), list(T)).
+:- mode relation__detect_fake_reflexives(in, in, in, out) is det.
+relation__detect_fake_reflexives(_Rel, _Rtc, [], []).
+relation__detect_fake_reflexives(Rel, Rtc, [X | Xs], FakeRefl) :-
+	relation__detect_fake_reflexives(Rel, Rtc, Xs, Fake1),
+	relation__lookup_from(Rel, X, RelX),
+	relation__lookup_to(Rtc, X, RtcX),
+	set__intersect(RelX, RtcX, Between),
+	( set__empty(Between) ->
+	    FakeRefl = [X | Fake1]
 	;
-	    FakeRefl = [X | FakeRefl1]
-	).
-
-:- pred relation__in_transitive_list(relation(T), T, queue(T), set(T)).
-:- mode relation__in_transitive_list(in, in, in, in) is semidet.
-relation__in_transitive_list(Rel, X, Q0, Visited) :-
-	queue__get(Q0, Y, Q1),
-	( set__member(Y, Visited) ->
-	    relation__in_transitive_list(Rel, X, Q1, Visited)
-	;
-	    relation__lookup_from(Rel, Y, FwdSet),
-	    ( set__member(X, FwdSet) ->
-		true
-	    ;
-		set__difference(FwdSet, Visited, NextSet),
-		set__to_sorted_list(NextSet, NextList),
-		queue__put_list(Q1, NextList, Q2),
-		set__insert(Visited, Y, Visited1),
-	    	relation__in_transitive_list(Rel, X, Q2, Visited1)
-	    )
+	    FakeRefl = Fake1
 	).
 
 %------------------------------------------------------------------------------%
