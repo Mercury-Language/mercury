@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module instmap, (inst).
+:- import_module instmap, (inst), inst_table.
 :- import_module bool, list, map, assoc_list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -205,8 +205,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred apply_inst_key_sub_mode(inst_key_sub, mode, mode).
-:- mode apply_inst_key_sub_mode(in, in, out) is det.
+:- pred apply_inst_table_sub_mode(inst_table_sub, mode, mode).
+:- mode apply_inst_table_sub_mode(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -592,10 +592,10 @@ inst_lookup_2(InstName, InstTable, ModuleInfo, Inst) :-
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, InstTable, ModuleInfo,
 			Inst0, Inst)
-	; InstName = substitution_inst(SubInstName, SubKeys, Sub),
-		inst_table_get_substitution_insts(InstTable, SubInsts),
-		map__lookup(SubInsts, substitution_inst(SubInstName, SubKeys,
-			Sub), MaybeInst),
+	; InstName = other_inst(OtherInstId, OtherInstName),
+		inst_table_get_other_insts(InstTable, OtherInsts),
+		other_inst_table_lookup(OtherInsts, OtherInstId, OtherInstName,
+			MaybeInst),
 		( MaybeInst = known(Inst0) ->
 			Inst = Inst0
 		;
@@ -1238,8 +1238,8 @@ inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
 		typed_inst(T, Inst)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(typed_ground(Uniq, T), _, typed_ground(Uniq, T)).
-inst_name_apply_substitution(substitution_inst(InstName0, K, S), Subst,
-		substitution_inst(InstName, K, S)) :-
+inst_name_apply_substitution(other_inst(Id, InstName0), Subst,
+		other_inst(Id, InstName)) :-
 	inst_name_apply_substitution(InstName0, Subst, InstName).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
@@ -1620,7 +1620,7 @@ recompute_instmap_delta_3(generic_call(A, Vars, Modes, D), GoalInfo,
 	{ recompute_info_get_inst_table(RI0, InstTable0) },
 	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
 	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
-	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
+	{ list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes) },
 	recompute_info_set_inst_table(InstTable),
 	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
 	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
@@ -1795,7 +1795,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		proc_info_argmodes(ProcInfo,
 			argument_modes(ArgInstTable, ArgModes0)),
 		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
-		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
 		recompute_info_set_inst_table(InstTable, RI0, RI1),
 		recompute_instmap_delta_call_2(Args, InstMap0,
 			ArgModes, InstMap, RI1, RI),
@@ -2139,8 +2139,9 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		recompute_info_get_vartypes(RI0, VarTypes),
 		map__lookup(VarTypes, Var, Type),
 		( type_to_type_id(Type, TypeId, _) ->
-			unify_proc__request_unify(TypeId - ComplUniMode,
-				Det, Context, InstTable, ModuleInfo2,
+			unify_proc__request_unify(unify_proc_id(TypeId,
+					InitialInstX, InitialInstY, InstTable),
+				Det, Context, InstMap0, ModuleInfo2,
 				ModuleInfo)
 		;
 			ModuleInfo = ModuleInfo2
@@ -2506,12 +2507,12 @@ make_std_mode(Name, Args, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_inst_key_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
-	inst_apply_sub(Sub, I0, I),
-	inst_apply_sub(Sub, F0, F).
-apply_inst_key_sub_mode(Sub, user_defined_mode(SymName, Insts0),
+apply_inst_table_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
+	inst_apply_inst_table_sub(Sub, I0, I),
+	inst_apply_inst_table_sub(Sub, F0, F).
+apply_inst_table_sub_mode(Sub, user_defined_mode(SymName, Insts0),
 		user_defined_mode(SymName, Insts)) :-
-	list__map(inst_apply_sub(Sub), Insts0, Insts).
+	list__map(inst_apply_inst_table_sub(Sub), Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 

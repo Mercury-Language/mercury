@@ -56,7 +56,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, instmap, (inst).
 :- import_module llds, llds_out, prog_out, prog_io, mercury_to_mercury.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
-:- import_module globals, options, varset, term.
+:- import_module globals, options, inst_table, varset, term.
 :- import_module string, map, list, require, std_util, term_io, getopt.
 :- import_module bool, set, int.
 

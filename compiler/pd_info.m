@@ -161,8 +161,8 @@
 :- implementation.
 
 :- import_module hlds_pred, prog_data, pd_debug, pd_util, det_util, globals.
-:- import_module inst_match, hlds_goal, prog_util, hlds_data, term.
-:- import_module assoc_list, bool, int, require, string.
+:- import_module inst_match, hlds_goal, prog_util, hlds_data, inst_table.
+:- import_module assoc_list, bool, int, require, string, term.
 
 pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
 	map__init(GoalVersionIndex),
@@ -688,14 +688,27 @@ pd_info__goal_is_more_general(InstTable, ModuleInfo, OldGoal, OldInstMap,
 		instmap::in, version_is_exact::in, version_is_exact::out)
 		is semidet.
 
-pd_info__check_insts(_, _, [], _, _, _, Exact, Exact).
+pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming, OldInstMap,
+		NewInstMap, ExactSoFar0, ExactSoFar) :-
+	map__init(AliasMap0),
+	pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming,
+		OldInstMap, NewInstMap, AliasMap0, AliasMap0,
+		ExactSoFar0, ExactSoFar).
+
+:- pred pd_info__check_insts(inst_table::in, module_info::in,
+		list(prog_var)::in, map(prog_var, prog_var)::in, instmap::in,
+		instmap::in, alias_map::in, alias_map::in,
+		version_is_exact::in, version_is_exact::out) is semidet.
+
+pd_info__check_insts(_, _, [], _, _, _, _, _, Exact, Exact).
 pd_info__check_insts(InstTable, ModuleInfo, [OldVar | Vars], VarRenaming,
-		OldInstMap, NewInstMap, ExactSoFar0, ExactSoFar) :-
+		OldInstMap, NewInstMap, AliasMapOld0, AliasMapNew0,
+		ExactSoFar0, ExactSoFar) :-
 	instmap__lookup_var(OldInstMap, OldVar, OldVarInst),
 	map__lookup(VarRenaming, OldVar, NewVar),
 	instmap__lookup_var(NewInstMap, NewVar, NewVarInst),
 	inst_matches_initial(NewVarInst, NewInstMap, OldVarInst, OldInstMap,
-			InstTable, ModuleInfo),
+			InstTable, ModuleInfo, AliasMapOld0, AliasMapOld1),
 	( ExactSoFar0 = exact ->
 		% Does inst_matches_initial(Inst1, Inst2, M) and
 		% inst_matches_initial(Inst2, Inst1, M) imply that Inst1
@@ -703,17 +716,21 @@ pd_info__check_insts(InstTable, ModuleInfo, [OldVar | Vars], VarRenaming,
 		( 
 			inst_matches_initial(OldVarInst, OldInstMap,
 				NewVarInst, NewInstMap, InstTable,
-				ModuleInfo)
+				ModuleInfo, AliasMapNew0, AliasMapNew1)
 		->
-			ExactSoFar1 = exact
+			ExactSoFar1 = exact,
+			AliasMapNew2 = AliasMapNew1
 		;
-			ExactSoFar1 = more_general
+			ExactSoFar1 = more_general,
+			AliasMapNew2 = AliasMapNew0
 		)
 	;
-		ExactSoFar1 = more_general
+		ExactSoFar1 = more_general,
+		AliasMapNew2 = AliasMapNew0
 	),
 	pd_info__check_insts(InstTable, ModuleInfo, Vars, VarRenaming,
-		OldInstMap, NewInstMap, ExactSoFar1, ExactSoFar).
+		OldInstMap, NewInstMap, AliasMapOld1, AliasMapNew2,
+		ExactSoFar1, ExactSoFar).
 
 %-----------------------------------------------------------------------------%
 

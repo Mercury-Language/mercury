@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module builtin_ops.
+:- import_module builtin_ops, inst_table.
 
 :- import_module bool, assoc_list, list, map, set, std_util.
 

@@ -29,7 +29,9 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module inst_table.
+
 :- import_module map.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).

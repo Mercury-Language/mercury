@@ -17,8 +17,8 @@
 
 :- module arg_info.
 :- interface. 
-:- import_module hlds_module, hlds_data, hlds_pred, llds, prog_data.
-:- import_module instmap.
+:- import_module hlds_module, hlds_pred, llds, prog_data.
+:- import_module instmap, inst_table.
 :- import_module list, assoc_list.
 
 :- pred generate_arg_info(module_info, module_info).

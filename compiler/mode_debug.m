@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,7 @@
 :- import_module term, varset, string, require.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
 :- import_module globals, hlds_goal, instmap, prog_data, (inst).
-:- import_module hlds_module, hlds_data.
+:- import_module hlds_module, hlds_data, inst_table.
 
 %-----------------------------------------------------------------------------%
 

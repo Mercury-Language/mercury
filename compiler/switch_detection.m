@@ -50,7 +50,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap, inst_match, (inst).
-:- import_module modes, mode_util, type_util, det_util.
+:- import_module modes, mode_util, type_util, det_util, inst_table.
 :- import_module passes_aux, term.
 :- import_module bool, char, int, assoc_list, map, set, std_util, require.
 

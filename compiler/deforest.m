@@ -28,7 +28,7 @@
 
 :- import_module pd_cost, pd_debug, pd_info, pd_term, pd_util.
 :- import_module hlds_pred, hlds_goal, inlining, passes_aux.
-:- import_module (inst), instmap, inst_match, simplify.
+:- import_module (inst), instmap, inst_table, inst_match, simplify.
 :- import_module dependency_graph, hlds_data, det_analysis, globals.
 :- import_module mode_util, goal_util, prog_data, prog_util, purity.
 :- import_module modes, mode_info, unique_modes, options, hlds_out.

@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util, hlds_data.
+:- import_module prog_io, prog_io_goal, prog_util, hlds_data, inst_table.
 :- import_module term_util, term_errors.
 :- import_module int, map, string, std_util, bool, require.
 

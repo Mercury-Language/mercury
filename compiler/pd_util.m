@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module pd_info, hlds_goal, hlds_module, hlds_pred, mode_errors.
-:- import_module prog_data, simplify, (inst), hlds_data, instmap.
+:- import_module prog_data, simplify, (inst), instmap, inst_table.
 :- import_module bool, list, map, set, std_util.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.

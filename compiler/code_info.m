@@ -31,6 +31,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
 :- import_module continuation_info, prog_data, hlds_data, globals.
+:- import_module inst_table.
 
 :- import_module bool, set, list, map, std_util, assoc_list.
 

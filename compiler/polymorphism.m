@@ -433,7 +433,7 @@
 :- import_module type_util, mode_util, quantification, instmap, prog_out.
 :- import_module code_util, unify_proc, prog_util, make_hlds, inst_util.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
-:- import_module clause_to_proc.
+:- import_module clause_to_proc, inst_table.
 
 :- import_module bool, int, string, set, map.
 :- import_module term, varset, std_util, require, assoc_list.

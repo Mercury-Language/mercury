@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- import_module term_errors, prog_data, instmap.
+:- import_module term_errors, prog_data, instmap, inst_table.
 :- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 
 :- import_module std_util, bool, int, list, map, bag.

@@ -60,7 +60,7 @@
 :- import_module hlds_data, mode_debug, modecheck_unify, modecheck_call.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
-:- import_module (inst), instmap, inst_match, inst_util.
+:- import_module (inst), instmap, inst_match, inst_util, inst_table.
 :- import_module term, varset.
 :- import_module int, list, map, set, std_util, require, assoc_list, string.
 
@@ -197,8 +197,8 @@ select_changed_inst_vars([Var | Vars], InstMapBefore, InstMapAfter,
 	instmap__lookup_var(InstMapBefore, Var, Inst0),
 	instmap__lookup_var(InstMapAfter, Var, Inst),
 	(
-		\+ inst_matches_final(Inst, InstMapAfter, Inst0, InstMapBefore,
-			InstTable, ModuleInfo)
+		\+ inst_matches_final_ignore_aliasing(Inst, InstMapAfter,
+			Inst0, InstMapBefore, InstTable, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
 		select_changed_inst_vars(Vars, InstMapBefore, InstMapAfter,
@@ -413,7 +413,7 @@ unique_modes__check_goal_2(Goal,
 	mode_info_dcg_get_inst_table(InstTable0),
 	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
 	mode_info_set_inst_table(InstTable),
-	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
+	{ list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes) },
 
 	{
 		GenericCall = higher_order(_, _, _),
@@ -526,7 +526,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	mode_info_get_inst_table(ModeInfo1, InstTable1),
 	inst_table_create_sub(InstTable1, ArgInstTable, Sub, InstTable),
 	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
-	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
 
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),

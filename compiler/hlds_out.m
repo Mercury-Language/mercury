@@ -34,7 +34,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module prog_data, llds, instmap, term.
+:- import_module prog_data, llds, instmap, inst_table.
 :- import_module io, bool, map, list, term.
 
 %-----------------------------------------------------------------------------%

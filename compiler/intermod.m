@@ -65,7 +65,7 @@
 
 :- import_module code_util, globals, goal_util, instmap, term, varset.
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
-:- import_module mercury_to_mercury, mode_util, modules.
+:- import_module mercury_to_mercury, mode_util, modules, inst_table.
 :- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
 :- import_module special_pred, typecheck, type_util, instmap, (inst).
 

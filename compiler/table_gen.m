@@ -170,7 +170,7 @@
 :- implementation.
 
 :- import_module hlds_out, prog_out.
-:- import_module hlds_pred, instmap, polymorphism.
+:- import_module hlds_pred, instmap, inst_table, polymorphism.
 :- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.

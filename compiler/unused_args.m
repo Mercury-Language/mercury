@@ -56,6 +56,7 @@
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_data, prog_out, quantification, special_pred.
 :- import_module passes_aux, inst_match, modules, polymorphism, goal_util.
+:- import_module inst_table.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string.

@@ -39,7 +39,7 @@
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
 :- import_module type_util, options, prog_data, prog_out, quantification.
 :- import_module mercury_to_mercury, inlining, polymorphism, prog_util.
-:- import_module special_pred, passes_aux, check_typeclass.
+:- import_module special_pred, passes_aux, check_typeclass, inst_table.
 :- import_module hlds_out. % YYY
 
 :- import_module assoc_list, bool, char, int, list, map, require, set.
@@ -2000,7 +2000,7 @@ create_specialized_versions(Params, [NewPred | NewPreds], NewPredMap0,
 	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo5),
 
 	inst_table_create_sub(InstTable0, ArgIT0, InstSub, ArgIT),
-	list__map(apply_inst_key_sub_mode(InstSub), ArgModes, NewArgModes),
+	list__map(apply_inst_table_sub_mode(InstSub), ArgModes, NewArgModes),
 	proc_info_set_argmodes(NewProcInfo5,
 		argument_modes(ArgIT, NewArgModes), NewProcInfo6),
 

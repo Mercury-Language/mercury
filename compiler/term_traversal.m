@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module term_util, term_errors, instmap.
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module term_util, term_errors, instmap, inst_table.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module list, bag, map, std_util, set.
 
 :- type traversal_info

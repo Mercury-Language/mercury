@@ -29,7 +29,7 @@
 
 :- import_module hlds_goal, passes_aux, hlds_out, (inst), instmap, inst_match.
 :- import_module mode_util, hlds_data, prog_data, type_util, globals, options.
-:- import_module arg_info.
+:- import_module arg_info, inst_table.
 :- import_module list, std_util, map, assoc_list, require.
 :- import_module bool, set, int, varset.
 

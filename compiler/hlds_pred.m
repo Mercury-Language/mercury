@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module term_util.
+:- import_module term_util, inst_table.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
@@ -1380,12 +1380,16 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 	--->	address_is_taken
 	;	address_is_not_taken.
 
+	% The argument_modes should not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_init(arity, list(type), argument_modes,
 	maybe(argument_modes), maybe(list(is_live)), maybe(determinism),
 	prog_context, is_address_taken, proc_info).
 
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
+	% The argument_modes should not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_set(maybe(determinism), prog_varset, map(prog_var, type),
 	list(prog_var), argument_modes, maybe(list(is_live)), hlds_goal,
 	prog_context, stack_slots, determinism, bool, list(arg_info),
@@ -1395,6 +1399,8 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, in, out) is det.
 
+	% The argument_modes should not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_create(prog_varset, map(prog_var, type), list(prog_var),
 	argument_modes, determinism, hlds_goal, prog_context,
 	type_info_varmap, typeclass_info_varmap, is_address_taken,
@@ -1444,9 +1450,13 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 :- pred proc_info_set_headvars(proc_info, list(prog_var), proc_info).
 :- mode proc_info_set_headvars(in, in, out) is det.
 
+	% The argument_modes returned do not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_argmodes(proc_info, argument_modes).
 :- mode proc_info_argmodes(in, out) is det.
 
+	% The argument_modes should not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_set_argmodes(proc_info, argument_modes, proc_info).
 :- mode proc_info_set_argmodes(in, in, out) is det.
 
@@ -1533,9 +1543,13 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 	proc_info).
 :- mode proc_info_set_typeclass_info_varmap(in, in, out) is det.
 
+	% The argument_modes returned do not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_maybe_declared_argmodes(proc_info, maybe(argument_modes)).
 :- mode proc_info_maybe_declared_argmodes(in, out) is det.
 
+	% The argument_modes returned do not depend on any instmap alias
+	% substitutions.
 :- pred proc_info_declared_argmodes(proc_info, argument_modes).
 :- mode proc_info_declared_argmodes(in, out) is det.
 

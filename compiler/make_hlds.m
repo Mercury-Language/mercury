@@ -63,7 +63,7 @@
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
-:- import_module error_util.
+:- import_module error_util, inst_table.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module term, varset, getopt, assoc_list, term_io.

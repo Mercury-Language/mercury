@@ -23,9 +23,7 @@
 % should be defined here, rather than in hlds*.m.
 
 :- import_module (inst).
-:- import_module hlds_data.
-	% YYY hlds_data needed for inst_table definition.  We should move the
-	% definition of inst_table somewhere else.
+:- import_module inst_table.
 :- import_module bool, list, assoc_list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -729,7 +727,38 @@
 	;	mostly_uniq_inst(inst_name)
 	;	typed_ground(uniqueness, type)
 	;	typed_inst(type, inst_name)
-	;	substitution_inst(inst_name, inst_key_set, inst_key_sub).
+	;	other_inst(other_inst_id, inst_name).
+
+	% other_inst_id is used for distinguishing between inst_names
+	% with functor other_inst.
+:- type other_inst_id.
+
+	% other_inst_id_sub describes the substitution that needs to be applied
+	% to other_inst_ids from one procedure to allow them to be compared
+	% to other_inst_ids in another procedure.
+
+:- type other_inst_id_sub.
+
+	% Initialise the other_inst_id.
+
+:- func init_other_inst_id = other_inst_id.
+
+	% Get the next other_inst_id.
+
+:- func inc_other_inst_id(other_inst_id) = other_inst_id.
+
+	% Apply an other_inst_id_sub substitution to an other_inst_id
+	% from another procedure to allow it to be compared with
+	% other_inst_ids from this procedure.
+
+:- func other_inst_id_apply_sub(other_inst_id_sub, other_inst_id)
+		= other_inst_id.
+
+	% Create an other_inst_id_sub to be used by other_inst_id_apply_sub.
+	% The input other_inst_id should be the last other_inst_id used in the
+	% procedure.  
+
+:- func other_inst_id_create_sub(other_inst_id) = other_inst_id_sub.
 
 	% Note: `is_live' records liveness in the sense used by
 	% mode analysis.  This is not the same thing as the notion of liveness
@@ -907,5 +936,20 @@ set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
 	Attrs0 = attributes(MayCallMercury, _),
 	Attrs  = attributes(MayCallMercury, ThreadSafe).
+
+%-----------------------------------------------------------------------------%
+
+:- import_module int.
+
+:- type other_inst_id == int.
+:- type other_inst_id_sub == int.
+
+init_other_inst_id = 0.
+
+inc_other_inst_id(Id) = Id + 1.
+
+other_inst_id_apply_sub(Sub, Id0) = Id0 + Sub.
+
+other_inst_id_create_sub(Id) = Id + 1.
 
 %-----------------------------------------------------------------------------%

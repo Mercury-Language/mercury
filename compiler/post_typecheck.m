@@ -108,7 +108,7 @@
 :- implementation.
 
 :- import_module (assertion), typecheck, clause_to_proc.
-:- import_module mode_util, inst_match, (inst).
+:- import_module mode_util, inst_match, (inst), inst_table.
 :- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
 

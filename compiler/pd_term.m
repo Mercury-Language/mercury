@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_module, hlds_pred, instmap, pd_info.
-:- import_module hlds_data.
+:- import_module inst_table.
 :- import_module list, std_util.
 
 	% pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,

@@ -45,7 +45,7 @@
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
 :- import_module typecheck, modecheck_call, (inst), quantification, make_hlds.
-:- import_module polymorphism, instmap.
+:- import_module polymorphism, instmap, inst_table.
 
 :- import_module bool, list, map, std_util, int, set, require.
 :- import_module string, assoc_list.
@@ -274,7 +274,7 @@ modecheck_unification(X,
 
 	Modes = argument_modes(ArgInstTable, ArgModesX),
 	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
-	list__map(apply_inst_key_sub_mode(Sub), ArgModesX, ArgModes),
+	list__map(apply_inst_table_sub_mode(Sub), ArgModesX, ArgModes),
 	mode_list_get_initial_insts(ArgModes, ModuleInfo0, InitialInsts),
 	assoc_list__from_corresponding_lists(Vars, InitialInsts,
 		VarInitialInsts),
@@ -893,8 +893,8 @@ categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 			ModeInfo = ModeInfo0
 		;
 			modecheck_complicated_unify(X, Y,
-				Type, (IX -> FX), (IY -> FY), Det, UnifyContext,
-				Unification0, ModeInfo0,
+				Type, (IX -> FX), (IY -> FY), InstMapBefore,
+				Det, UnifyContext, Unification0, ModeInfo0,
 				Unification, ModeInfo)
 		)
 	),
@@ -950,27 +950,27 @@ categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 %
 
 :- pred modecheck_complicated_unify(prog_var, prog_var,
-		type, mode, mode, determinism, unify_context,
+		type, mode, mode, instmap, determinism, unify_context,
 		unification, mode_info, unification, mode_info).
-:- mode modecheck_complicated_unify(in, in, in, in, in, in, in,
+:- mode modecheck_complicated_unify(in, in, in, in, in, in, in, in,
 		in, mode_info_di, out, mode_info_uo) is det.
 
-modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
-		Unification0, ModeInfo0, Unification, ModeInfo) :-
+modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, InstMapBefore, Det,
+		UnifyContext, Unification0, ModeInfo0, Unification, ModeInfo) :-
 	%
 	% Build up the unification
 	%
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_get_insts(ModuleInfo0, ModeOfX, InitialInstX, FinalInstX),
 	mode_get_insts(ModuleInfo0, ModeOfY, InitialInstY, FinalInstY),
-	UniMode0 = ((InitialInstX - InitialInstY) -> (FinalInstX - FinalInstY)),
+	UniMode = ((InitialInstX - InitialInstY) -> (FinalInstX - FinalInstY)),
 	determinism_components(Det, CanFail, _),
 	( Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) ->
 		UnifyTypeInfoVars = UnifyTypeInfoVars0
 	;
 		error("modecheck_complicated_unify")
 	),
-	Unification = complicated_unify(UniMode0, CanFail, UnifyTypeInfoVars),
+	Unification = complicated_unify(UniMode, CanFail, UnifyTypeInfoVars),
 
 	%
 	% check that all the type_info or type_class_info variables used
@@ -1008,7 +1008,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		% also be able to handle (in(any), in(any)) unifications.]
 		%
 		Type = term__variable(_),
-		\+ inst_is_ground_or_any(InitialInstX, InstMap, InstTable,
+		\+ inst_is_ground_or_any(InitialInstX, InstMapBefore, InstTable,
 			ModuleInfo2)
 	->
 		set__singleton_set(WaitingVars, X),
@@ -1017,7 +1017,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 			ModeInfo2, ModeInfo)
 	;
 		Type = term__variable(_),
-		\+ inst_is_ground_or_any(InitialInstY, InstMap, InstTable,
+		\+ inst_is_ground_or_any(InitialInstY, InstMapBefore, InstTable,
 			ModuleInfo2)
 	->
 		set__singleton_set(WaitingVars, Y),
@@ -1067,12 +1067,10 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 		%
 		type_to_type_id(Type, TypeId, _)
 	->
-		% YYY Optimise UniMode0 in the case that there
-		%     are no shared inst_keys
-		UniMode0 = UniMode,
 		mode_info_get_context(ModeInfo2, Context),
-		unify_proc__request_unify(TypeId - UniMode,
-			Det, Context, InstTable, ModuleInfo2, ModuleInfo),
+		unify_proc__request_unify(unify_proc_id(TypeId, InitialInstX,
+				InitialInstY, InstTable),
+			Det, Context, InstMapBefore, ModuleInfo2, ModuleInfo),
 		mode_info_set_module_info(ModeInfo2, ModuleInfo,
 			ModeInfo)
 	;

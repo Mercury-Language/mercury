@@ -48,7 +48,7 @@
 
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data.
 :- import_module hlds_module, type_util, mode_util, prog_data, passes_aux.
-:- import_module prog_out, globals, options, (inst), instmap.
+:- import_module prog_out, globals, options, (inst), instmap, inst_table.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
 :- import_module string.

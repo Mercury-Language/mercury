@@ -97,6 +97,7 @@
 
 :- import_module goal_util, globals, hlds_data, hlds_goal, hlds_out, (inst).
 :- import_module inst_match, instmap, mode_util, options, prog_data, prog_util.
+:- import_module inst_table.
 
 :- import_module assoc_list, bool, list, map, multi_map.
 :- import_module require, set, std_util, term, varset.

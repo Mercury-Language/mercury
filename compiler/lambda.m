@@ -69,7 +69,8 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module inst_table.
 :- import_module list, map, set.
 
 :- pred lambda__process_module(module_info, module_info).

@@ -18,6 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module prog_data, mode_errors, delay_info, mode_debug, (inst).
+:- import_module inst_table.
 :- import_module map, list, set, bool, assoc_list, std_util.
 
 :- interface.

@@ -152,7 +152,7 @@
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
 :- import_module prog_data, trace, globals, polymorphism, passes_aux.
-:- import_module inst_match, term, varset.
+:- import_module inst_match, inst_table, term, varset.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module string.

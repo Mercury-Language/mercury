@@ -661,7 +661,7 @@ qualify_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 qualify_inst_name(typed_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-qualify_inst_name(substitution_inst(_, _, _), _, _, _) -->
+qualify_inst_name(other_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 	% Qualify an inst of the form bound(functor(...)).

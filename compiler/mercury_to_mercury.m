@@ -28,7 +28,7 @@
 	;	expand_silently		% Expansion
 	;	expand_noisily.		% alias(IK, Expansion)
 
-:- import_module hlds_goal, hlds_data, prog_data, (inst), instmap.
+:- import_module hlds_goal, hlds_data, prog_data, (inst), instmap, inst_table.
 :- import_module bool, std_util, list, io, varset, term.
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
@@ -991,10 +991,10 @@ mercury_output_structured_inst_name(Expand, typed_inst(Type, InstName),
 		InstMap, InstTable),
 	mercury_output_tabs(Indent),
 	io__write_string(")\n").
-mercury_output_structured_inst_name(Expand, substitution_inst(InstName, _, _),
+mercury_output_structured_inst_name(Expand, other_inst(_Id, InstName),
 		Indent, VarSet, InstMap, InstTable) -->
 	mercury_output_tabs(Indent),
-	io__write_string("$substitution_inst(\n"),
+	io__write_string("$other_inst(\n"),
 	{ Indent1 is Indent + 1 },
 	mercury_output_structured_inst_name(Expand, InstName, Indent1, VarSet,
 		InstMap, InstTable),
@@ -1098,9 +1098,8 @@ mercury_output_inst_name(typed_inst(Type, InstName), VarSet, InstTable) -->
 	io__write_string(", "),
 	mercury_output_inst_name(InstName, VarSet, InstTable),
 	io__write_string(")").
-mercury_output_inst_name(substitution_inst(InstName, _, _), VarSet,
-		InstTable) -->
-	io__write_string("$substitution_inst("),
+mercury_output_inst_name(other_inst(_Id, InstName), VarSet, InstTable) -->
+	io__write_string("$other_inst("),
 	mercury_output_inst_name(InstName, VarSet, InstTable),
 	io__write_string(")").
 

@@ -29,7 +29,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_module, hlds_pred, det_report, det_util.
-:- import_module common, instmap, globals.
+:- import_module common, instmap, inst_table, globals.
 :- import_module io, bool, list, map.
 
 :- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
@@ -1195,8 +1195,12 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
 			SpecialPredMap) },
 		{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
 		{ determinism_components(Det, CanFail, at_most_one) },
-		{ unify_proc__lookup_mode_num(InstTable, ModuleInfo, TypeId,
-		 	UniMode, Det, ProcId) },
+		=(Info),
+		{ simplify_info_get_instmap(Info, InstMap) },
+		{ UniMode = (LI - RI -> _) },
+		{ unify_proc__lookup_mode_num(InstMap, ModuleInfo,
+			unify_proc_id(TypeId, LI, RI, InstTable),
+			Det, ProcId) },
 		{ SymName = unqualified("__Unify__") },
 		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
 		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
@@ -1870,7 +1874,7 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 	% exported for common.m
 :- interface.
 :- import_module set.
-:- import_module prog_data, det_util, instmap, hlds_data.
+:- import_module prog_data, det_util, instmap.
 
 :- pred simplify_info_init(det_info, list(simplification), instmap,
 		prog_varset, map(prog_var, type), simplify_info).

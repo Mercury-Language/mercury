@@ -49,7 +49,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds, purity.
-:- import_module globals.
+:- import_module globals, inst_table.
 :- import_module bool, int, set, map.
 
 maybe_add_default_modes([], Preds, Preds).

@@ -82,7 +82,7 @@
 :- import_module hlds_data, hlds_goal, hlds_pred, dependency_graph.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
 :- import_module mercury_to_mercury, type_util, special_pred.
-:- import_module modules.
+:- import_module modules, inst_table.
 
 :- import_module map, int, char, string, relation, list.
 :- import_module require, bag, set, term, varset.

@@ -60,7 +60,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, instmap, (inst).
+:- import_module hlds_goal, hlds_data, prog_data, instmap, (inst), inst_table.
 :- import_module excess, make_hlds, mode_util.
 :- import_module require, map, string, int, term, varset.
 

@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_pred, llds, prog_data, (inst), term.
-:- import_module bool, list, map, std_util, set_bbbtree.
+:- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -360,53 +360,11 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- interface.
 
-	% The symbol table for insts.
-
 :- type inst_id		==	pair(sym_name, arity).
 				% name, arity.
 
-:- type inst_table.
-
 :- type user_inst_table.
 :- type user_inst_defns ==	map(inst_id, hlds_inst_defn).
-
-:- type unify_inst_table ==	map(inst_name, maybe_inst_det).
-
-:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst,
-					unify_is_real).
-
-:- type merge_inst_table ==	map(merge_inst_pair, maybe_inst).
-
-:- type merge_inst_pair --->	merge_inst_pair(is_live, inst, inst).
-
-:- type ground_inst_table == 	map(inst_name, maybe_inst_det).
-
-:- type any_inst_table == 	map(inst_name, maybe_inst_det).
-
-:- type shared_inst_table == 	map(inst_name, maybe_inst).
-
-:- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
-
-:- type substitution_inst_table == map(substitution_inst, maybe_inst).
-
-:- type clobbered_inst_table == map(inst_name, maybe_inst).
-
-:- type substitution_inst
-	--->	substitution_inst(
-			inst_name,
-			inst_key_set,	% The set of inst_keys that have
-					% had their substitutions expanded.
-			inst_key_sub	% The substitution map used to expand
-					% the substitutions.
-		).
-
-:- type inst_key_set == set_bbbtree(inst_key).
-
-:- type maybe_inst	--->	unknown
-			;	known(inst).
-
-:- type maybe_inst_det	--->	unknown
-			;	known(inst, determinism).
 
 	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
@@ -438,82 +396,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 						% later.  (XXX Abstract insts
 						% are not really supported.)
 
-%-----------------------------------------------------------------------------%
-
-:- pred inst_table_init(inst_table).
-:- mode inst_table_init(out) is det.
-
-:- pred inst_table_get_all_tables(inst_table, substitution_inst_table,
-	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
-	inst_key_table).
-:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out,
-	out, out) is det.
-
-:- pred inst_table_set_all_tables(inst_table, substitution_inst_table,
-	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
-	inst_key_table, inst_table).
-:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, in, in, out)
-	is det.
-
-:- pred inst_table_get_substitution_insts(inst_table, substitution_inst_table).
-:- mode inst_table_get_substitution_insts(in, out) is det.
-
-:- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
-:- mode inst_table_get_unify_insts(in, out) is det.
-
-:- pred inst_table_get_merge_insts(inst_table, merge_inst_table).
-:- mode inst_table_get_merge_insts(in, out) is det.
-
-:- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
-:- mode inst_table_get_ground_insts(in, out) is det.
-
-:- pred inst_table_get_any_insts(inst_table, any_inst_table).
-:- mode inst_table_get_any_insts(in, out) is det.
-
-:- pred inst_table_get_shared_insts(inst_table, shared_inst_table).
-:- mode inst_table_get_shared_insts(in, out) is det.
-
-:- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
-:- mode inst_table_get_mostly_uniq_insts(in, out) is det.
-
-:- pred inst_table_get_clobbered_insts(inst_table, clobbered_inst_table).
-:- mode inst_table_get_clobbered_insts(in, out) is det.
-
-:- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
-:- mode inst_table_get_inst_key_table(in, out) is det.
-
-:- pred inst_table_set_substitution_insts(inst_table, substitution_inst_table,
-	inst_table).
-:- mode inst_table_set_substitution_insts(in, in, out) is det.
-
-:- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
-:- mode inst_table_set_unify_insts(in, in, out) is det.
-
-:- pred inst_table_set_merge_insts(inst_table, merge_inst_table, inst_table).
-:- mode inst_table_set_merge_insts(in, in, out) is det.
-
-:- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
-:- mode inst_table_set_ground_insts(in, in, out) is det.
-
-:- pred inst_table_set_any_insts(inst_table, any_inst_table, inst_table).
-:- mode inst_table_set_any_insts(in, in, out) is det.
-
-:- pred inst_table_set_shared_insts(inst_table, shared_inst_table, inst_table).
-:- mode inst_table_set_shared_insts(in, in, out) is det.
-
-:- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
-					inst_table).
-:- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
-
-:- pred inst_table_set_clobbered_insts(inst_table, clobbered_inst_table,
-					inst_table).
-:- mode inst_table_set_clobbered_insts(in, in, out) is det.
-
-:- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
-:- mode inst_table_set_inst_key_table(in, in, out) is det.
-
 :- pred user_inst_table_init(user_inst_table).
 :- mode user_inst_table_init(out) is det.
 
@@ -534,19 +416,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- implementation.
 
-:- type inst_table
-	--->	inst_table(
-			substitution_inst_table,
-			unify_inst_table,
-			merge_inst_table,
-			ground_inst_table,
-			any_inst_table,
-			shared_inst_table,
-			mostly_uniq_inst_table,
-			clobbered_inst_table,
-			inst_key_table
-		).
-
 :- type user_inst_defns.
 
 :- type user_inst_table
@@ -555,92 +424,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 			list(inst_id)	% Cached for efficiency when module
 				% qualifying the modes of lambda expressions.
 		).
-
-inst_table_init(inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-			AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-			InstKeys)) :-
-	map__init(SubInsts),
-	map__init(UnifyInsts),
-	map__init(MergeInsts),
-	map__init(GroundInsts),
-	map__init(AnyInsts),
-	map__init(SharedInsts),
-	map__init(NondetLiveInsts),
-	map__init(ClobberedInsts),
-	inst_key_table_init(InstKeys).
-
-inst_table_get_all_tables(InstTable, SubInsts, UnifyInsts, MergeInsts,
-		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
-		ClobberedInsts, InstKeys) :-
-	InstTable = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-		InstKeys).
-
-inst_table_set_all_tables(_InstTable0, SubInsts, UnifyInsts, MergeInsts,
-		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
-		ClobberedInsts, InstKeys, InstTable) :-
-	InstTable  = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-		InstKeys).
-
-inst_table_get_substitution_insts(inst_table(SubInsts, _, _, _, _, _, _, _, _),
-			SubInsts).
-
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _, _),
-			UnifyInsts).
-
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _, _, _),
-			MergeInsts).
-
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _, _, _),
-			GroundInsts).
-
-inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _, _, _),
-			AnyInsts).
-
-inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _, _, _),
-			SharedInsts).
-
-inst_table_get_mostly_uniq_insts(
-			inst_table(_, _, _, _, _, _, NondetLiveInsts, _, _),
-			NondetLiveInsts).
-
-inst_table_get_clobbered_insts(
-			inst_table(_, _, _, _, _, _, _, ClobberedInsts, _),
-			ClobberedInsts).
-
-inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, _, InstKeyTable),
-			InstKeyTable).
-
-inst_table_set_substitution_insts(inst_table(_, B, C, D, E, F, G, H, I),
-			SubInsts,
-			inst_table(SubInsts, B, C, D, E, F, G, H, I)).
-
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H, I), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F, G, H, I)).
-
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G, H, I), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F, G, H, I)).
-
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G, H, I), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F, G, H, I)).
-
-inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G, H, I), AnyInsts,
-			inst_table(A, B, C, D, AnyInsts, F, G, H, I)).
-
-inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G, H, I), SharedInsts,
-			inst_table(A, B, C, D, E, SharedInsts, G, H, I)).
-
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H, I),
-			NondetLiveInsts,
-			inst_table(A, B, C, D, E, F, NondetLiveInsts, H, I)).
-
-inst_table_set_clobbered_insts(inst_table(A, B, C, D, E, F, G, _, I),
-			ClobberedInsts,
-			inst_table(A, B, C, D, E, F, G, ClobberedInsts, I)).
-
-inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, H, _), InstKeys,
-			inst_table(A, B, C, D, E, F, G, H, InstKeys)).
 
 user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
 	map__init(InstDefns),
@@ -659,8 +442,6 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			user_inst_table(InstDefns, InstIds)) :-
 	map__optimize(InstDefns0, InstDefns),
 	list__sort(InstIds0, InstIds).
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- interface.
 

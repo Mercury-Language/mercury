@@ -51,8 +51,8 @@
 
 :- interface.
 
-:- import_module llds, hlds_module, hlds_pred, hlds_data, prog_data.
-:- import_module (inst), instmap, trace, globals.
+:- import_module llds, hlds_module, hlds_pred, prog_data.
+:- import_module (inst), instmap, inst_table, trace, globals.
 :- import_module std_util, bool, list, assoc_list, set, map.
 
 	%

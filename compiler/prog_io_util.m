@@ -132,7 +132,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, options, globals.
+:- import_module prog_io, prog_io_goal, options, globals, inst_table.
 
 % XXX we should not need to import hlds*.m here.
 % But currently we need to import hlds_data.m for the `cons_id' type

@@ -93,6 +93,7 @@
 :- import_module prog_util, prog_out, llds_out, modules, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
 :- import_module prog_io, code_util, export, inst_match, (inst), instmap, term.
+:- import_module inst_table.
 
 :- type fact_result
 	--->	ok ; error.

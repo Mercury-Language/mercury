@@ -26,7 +26,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds, arg_info.
 :- import_module passes_aux, call_gen, mode_util, code_util, goal_util.
-:- import_module globals, tree, (inst), instmap, varset, term.
+:- import_module globals, tree, (inst), instmap, inst_table.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term.

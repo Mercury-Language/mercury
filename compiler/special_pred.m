@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 
 :- implementation.
 
-:- import_module type_util, mode_util, prog_util.
+:- import_module type_util, mode_util, prog_util, inst_table.
 
 special_pred_list([unify, index, compare]).
 

@@ -145,7 +145,7 @@
 
 :- import_module continuation_info, type_util, llds_out, tree, hlds_data.
 :- import_module varset.
-:- import_module (inst), instmap, inst_match, mode_util, options.
+:- import_module (inst), instmap, inst_table, inst_match, mode_util, options.
 :- import_module list, bool, int, string, map, std_util, require.
 
 	% Information specific to a trace port.

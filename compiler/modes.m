@@ -310,7 +310,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
 :- import_module modecheck_unify, modecheck_call, inst_util, purity.
-:- import_module prog_out, term, varset.
+:- import_module prog_out, inst_table, term, varset.
 
 :- import_module list, map, string, require, std_util.
 :- import_module assoc_list.
@@ -864,15 +864,17 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 		map__lookup(Procs, ProcId, ProcInfo),
 		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
 		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
+		map__init(AliasMap0),
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
-			InferModes, 1, no, Changed1,
+			InferModes, 1, AliasMap0, no, Changed1,
 			ModeInfo0, ModeInfo1),
 		mode_info_get_changed_flag(ModeInfo1, Changed0),
 		bool__or(Changed0, Changed1, Changed),
 		mode_info_set_changed_flag(Changed, ModeInfo1, ModeInfo)
 	;
+		map__init(AliasMap0),
 		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
-			InferModes, 1, no, _Changed1,
+			InferModes, 1, AliasMap0, no, _Changed1,
 			ModeInfo0, ModeInfo),
 		FinalInsts = FinalInsts0
 	).
@@ -894,12 +896,12 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 	maybe_clobber_insts(Insts0, IsLives, Insts).
 
 :- pred check_final_insts(list(prog_var), list(inst), list(inst), bool, int,
-				bool, bool, mode_info, mode_info).
-:- mode check_final_insts(in, in, in, in, in, in, out, mode_info_di,
+				alias_map, bool, bool, mode_info, mode_info).
+:- mode check_final_insts(in, in, in, in, in, in, in, out, mode_info_di,
 				mode_info_uo) is det.
 
 check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum,
-		Changed0, Changed) -->
+		AliasMap0, Changed0, Changed) -->
 	( { Vars = [], Insts = [], VarInsts = [] } ->
 		{ Changed = Changed0 }
 	; { Vars = [Var|Vars1], Insts = [Inst|Insts1],
@@ -910,11 +912,13 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum,
 	    	{ mode_info_get_instmap(ModeInfo0, InstMap) },
 		(
 			{ inst_matches_final(VarInst, InstMap, Inst, InstMap,
-					InstTable, ModuleInfo) }
+				InstTable, ModuleInfo, AliasMap0, AliasMap1) }
 		->
-			{ Changed1 = Changed0 }
+			{ Changed1 = Changed0 },
+			{ AliasMap2 = AliasMap1 }
 		;
 			{ Changed1 = yes },
+			{ AliasMap2 = AliasMap0 },
 			( { InferModes = yes } ->
 				% if we're inferring the mode, then don't report
 				% an error, just set changed to yes to make sure
@@ -923,13 +927,17 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum,
 			;
 				% XXX this might need to be reconsidered now
 				% we have unique modes
-				( { inst_matches_initial(VarInst, InstMap,
-						Inst, InstMap,
-				    		InstTable, ModuleInfo) } ->
+				(
+					{ inst_matches_initial_ignore_aliasing(
+						VarInst, InstMap, Inst, InstMap,
+				    		InstTable, ModuleInfo) }
+				->
 					{ Reason = too_instantiated }
-				; { inst_matches_initial(Inst, InstMap,
-						VarInst, InstMap,
-				    		InstTable, ModuleInfo) } ->
+				;
+					{ inst_matches_initial_ignore_aliasing(
+						Inst, InstMap, VarInst, InstMap,
+				    		InstTable, ModuleInfo) }
+				->
 					{ Reason = not_instantiated_enough }
 				;
 					% I don't think this can happen. 
@@ -944,7 +952,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum,
 		),
 		{ ArgNum1 is ArgNum + 1 },
 		check_final_insts(Vars1, Insts1, VarInsts1, InferModes, ArgNum1,
-			Changed1, Changed)
+			AliasMap2, Changed1, Changed)
 	;
 		{ error("check_final_insts: length mismatch") }
 	).
@@ -1772,22 +1780,32 @@ modecheck_var_is_live(VarId, ExpectedIsLive, ModeInfo0, ModeInfo) :-
 	% Given a list of variables and a list of initial insts, ensure
 	% that the inst of each variable matches the corresponding initial
 	% inst.
+modecheck_var_has_inst_list(Vars, Insts, ArgNum0) -->
+	{ map__init(AliasMap0) },
+	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum0, AliasMap0).
 
-modecheck_var_has_inst_list([_|_], [], _) -->
+:- pred modecheck_var_has_inst_list_2(list(prog_var), list(inst), int,
+		alias_map, mode_info, mode_info).
+:- mode modecheck_var_has_inst_list_2(in, in, in, in,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_var_has_inst_list_2([_|_], [], _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list([], [_|_], _) -->
+modecheck_var_has_inst_list_2([], [_|_], _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list([], [], _ArgNum) --> [].
-modecheck_var_has_inst_list([Var|Vars], [Inst|Insts], ArgNum0) -->
+modecheck_var_has_inst_list_2([], [], _ArgNum, _) --> [].
+modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts], ArgNum0, AliasMap0) -->
 	{ ArgNum is ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_has_inst(Var, Inst),
-	modecheck_var_has_inst_list(Vars, Insts, ArgNum).
+	modecheck_var_has_inst(Var, Inst, AliasMap0, AliasMap),
+	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum, AliasMap).
 
-:- pred modecheck_var_has_inst(prog_var, inst, mode_info, mode_info).
-:- mode modecheck_var_has_inst(in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_has_inst(prog_var, inst, alias_map, alias_map,
+		mode_info, mode_info).
+:- mode modecheck_var_has_inst(in, in, in, out,
+		mode_info_di, mode_info_uo) is det.
 
-modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
+modecheck_var_has_inst(VarId, Inst, AliasMap0, AliasMap, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	instmap__lookup_var(InstMap, VarId, VarInst),
 
@@ -1795,14 +1813,16 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 	mode_info_get_inst_table(ModeInfo0, InstTable),
 	(
 		inst_matches_initial(VarInst, InstMap, Inst, InstMap,
-			InstTable, ModuleInfo)
+			InstTable, ModuleInfo, AliasMap0, AliasMap1)
 	->
-		ModeInfo = ModeInfo0
+		ModeInfo = ModeInfo0,
+		AliasMap = AliasMap1
 	;
 		set__singleton_set(WaitingVars, VarId),
 		mode_info_error(WaitingVars,
 			mode_error_var_has_inst(VarId, VarInst, Inst),
-			ModeInfo0, ModeInfo)
+			ModeInfo0, ModeInfo),
+		AliasMap = AliasMap0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1911,8 +1931,8 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo00, ModeInfo) :-
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
-			inst_matches_initial(Inst0, InstMap0, Inst, InstMap2,
-					InstTable2, ModuleInfo2)
+			inst_matches_initial_ignore_aliasing(Inst0, InstMap0,
+				Inst, InstMap2, InstTable2, ModuleInfo2)
 		->
 			instmap__set(InstMap2, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo99)
@@ -1989,8 +2009,8 @@ modecheck_force_set_var_inst(Var0, Inst, ModeInfo0, ModeInfo) :-
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
 			% the only thing we can have done is lose uniqueness.
-			inst_matches_initial(Inst0, InstMap0, Inst, InstMap0,
-					InstTable0, ModuleInfo0)
+			inst_matches_initial_ignore_aliasing(Inst0, InstMap0,
+				Inst, InstMap0, InstTable0, ModuleInfo0)
 		->
 			instmap__set(InstMap0, Var0, Inst, InstMap),
 			mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo)
@@ -2053,7 +2073,9 @@ handle_implied_mode(Var0, InstMapBefore, VarInst0, InitialInst0, Var,
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst0, InstMapBefore,
+		% We can ignore aliasing here because we know that the
+		% variable already matches_initial with the initial inst.
+		inst_matches_final_ignore_aliasing(VarInst0, InstMapBefore,
 			InitialInst, InstMap0, InstTable0, ModuleInfo0)
 	->
 		Var = Var0,

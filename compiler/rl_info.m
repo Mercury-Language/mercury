@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,9 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_module, hlds_pred, prog_data, rl, tree.
+:- import_module hlds_module, hlds_pred, prog_data, rl, tree.
+:- import_module inst_table.
+
 :- import_module bool, io, list, map, set, std_util, string.
 
 :- type rl_info.

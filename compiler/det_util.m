@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap, prog_data.
+:- import_module instmap, prog_data, inst_table.
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.

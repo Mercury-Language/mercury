@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, hlds_pred.
-:- import_module instmap, prog_data.
+:- import_module instmap, prog_data, inst_table.
 :- import_module assoc_list, list, std_util, map, set.
 
 %-----------------------------------------------------------------------------%

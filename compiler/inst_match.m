@@ -39,8 +39,10 @@ mode system to distinguish between different representations.
 
 :- interface.
 
-:- import_module hlds_module, hlds_data, prog_data, (inst), instmap.
-:- import_module list.
+:- import_module hlds_module, prog_data, (inst), instmap.
+:- import_module inst_table.
+
+:- import_module list, std_util, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -60,13 +62,15 @@ mode system to distinguish between different representations.
 
 %-----------------------------------------------------------------------------%
 
+:- type alias_map == map(inst_key, maybe(inst_key)).
+
 :- pred inst_matches_initial(inst, instmap, inst, instmap, inst_table,
-		module_info).
-:- mode inst_matches_initial(in, in, in, in, in, in) is semidet.
+		module_info, alias_map, alias_map).
+:- mode inst_matches_initial(in, in, in, in, in, in, in, out) is semidet.
 
 :- pred inst_matches_final(inst, instmap, inst, instmap, inst_table,
-		module_info).
-:- mode inst_matches_final(in, in, in, in, in, in) is semidet.
+		module_info, alias_map, alias_map).
+:- mode inst_matches_final(in, in, in, in, in, in, in, out) is semidet.
 
 	% inst_matches_initial(InstA, InstMapA, InstB, InstMapB, InstTable,
 	%		ModuleInfo):
@@ -106,6 +110,24 @@ mode system to distinguish between different representations.
 	% It might be a good idea to fold inst_matches_initial and
 	% inst_matches_final into a single predicate inst_matches(When, ...)
 	% where When is either `initial' or `final'.
+
+:- pred inst_matches_initial_ignore_aliasing(inst, instmap, inst, instmap,
+		inst_table, module_info).
+:- mode inst_matches_initial_ignore_aliasing(in, in, in, in, in, in)
+		is semidet.
+
+:- pred inst_matches_final_ignore_aliasing(inst, instmap, inst, instmap,
+		inst_table, module_info).
+:- mode inst_matches_final_ignore_aliasing(in, in, in, in, in, in) is semidet.
+
+	% inst_matches_initial_ignore_aliasing and
+	% inst_matches_final_ignore_aliasing are the same as
+	% inst_matches_initial and inst_matches_final, respectively except that
+	% alias insts are expanded and ignored.
+	% These predicates can be used in situations where we are only
+	% interested in comparing bindings and uniqueness between insts rather
+	% than determining whether the insts of a set of variables match
+	% the required insts for a procedure's arguments.
 
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
@@ -289,7 +311,7 @@ mode system to distinguish between different representations.
 
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
-	% the elemement is ground or any, or the corresponding element
+	% the element is ground or any, or the corresponding element
 	% in the liveness list is dead.
 
 :- pred inst_list_is_ground_or_any_or_dead(list(inst), list(is_live),
@@ -301,87 +323,106 @@ mode system to distinguish between different representations.
 
 :- implementation.
 :- import_module hlds_data, mode_util, prog_data, inst_util, type_util.
-:- import_module list, set, map, term, std_util, require.
+:- import_module list, set, term, require, bool.
 
 inst_matches_initial(InstA, InstMapA, InstB, InstMapB,
+			InstTable, ModuleInfo, AliasMap0, AliasMap) :-
+	set__init(Expansions),
+	IgnoreAliasing = no,
+	inst_matches_initial_2(InstA, InstMapA, InstB, InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, AliasMap).
+
+inst_matches_initial_ignore_aliasing(InstA, InstMapA, InstB, InstMapB,
 			InstTable, ModuleInfo) :-
 	set__init(Expansions),
-	inst_matches_initial_2(InstA, InstMapA, InstB, InstMapB,
-		InstTable, ModuleInfo, Expansions).
+	map__init(AliasMap0),
+	IgnoreAliasing = yes,
+	inst_matches_initial_2(InstA, InstMapA, InstB, InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, _AliasMap).
 
 :- type expansions == set(pair(inst)).
 
 :- pred inst_matches_initial_2(inst, instmap, inst, instmap, inst_table,
-		module_info, expansions).
-:- mode inst_matches_initial_2(in, in, in, in, in, in, in) is semidet.
+		module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_matches_initial_2(in, in, in, in, in, in, in, in, in, out)
+		is semidet.
 
 inst_matches_initial_2(InstA, InstMapA, InstB, InstMapB, InstTable, ModuleInfo,
-		Expansions) :-
+		Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
-		true
+		AliasMap = AliasMap0
 /********* 
 		% does this test improve efficiency??
 	; InstA = InstB ->
 		true
 **********/
 	;
+		inst_matches_aliasing(IgnoreAliasing, InstA, InstB,
+			InstMapA, AliasMap0, AliasMap1),
+
 		inst_expand(InstMapA, InstTable, ModuleInfo, InstA, InstA2),
 		inst_expand(InstMapB, InstTable, ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
 		inst_matches_initial_3(InstA2, InstMapA, InstB2, InstMapB,
-			InstTable, ModuleInfo, Expansions2)
+			InstTable, ModuleInfo, Expansions2, IgnoreAliasing,
+			AliasMap1, AliasMap)
 	).
 
 :- pred inst_matches_initial_3(inst, instmap, inst, instmap, inst_table,
-		module_info, expansions).
-:- mode inst_matches_initial_3(in, in, in, in, in, in, in) is semidet.
+		module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_matches_initial_3(in, in, in, in, in, in, in, in, in, out)
+		is semidet.
 
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
 	% occur in `Expansions'.
 
-inst_matches_initial_3(any(UniqA), _, any(UniqB), _, _, _, _) :-
+inst_matches_initial_3(any(UniqA), _, any(UniqB), _, _, _, _, _, AM, AM) :-
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(any(_), _, free(unique), _, _, _, _).
-inst_matches_initial_3(free(unique), _, any(_), _, _, _, _).
-inst_matches_initial_3(free(alias), _, free(alias), _, _, _, _).
+inst_matches_initial_3(any(_), _, free(unique), _, _, _, _, _, AM, AM).
+inst_matches_initial_3(free(unique), _, any(_), _, _, _, _, _, AM, AM).
+inst_matches_initial_3(free(alias), _, free(alias), _, _, _, _, _, AM, AM).
 			% AAA free(alias) should match_initial free(unique)
 			% and vice-versa.  They will as soon as the mode
 			% checker supports the implied modes that would result.
-inst_matches_initial_3(free(unique), _, free(unique), _, _, _, _).
+inst_matches_initial_3(free(unique), _, free(unique), _, _, _, _, _, AM, AM).
 inst_matches_initial_3(bound(UniqA, ListA), InstMapA, any(UniqB), _InstMapB,
-		InstTable, ModuleInfo, _) :-
+		InstTable, ModuleInfo, _, _, AM, AM) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstMapA, InstTable,
 		ModuleInfo).
-inst_matches_initial_3(bound(_Uniq, _List), _, free(_), _, _, _, _).
+inst_matches_initial_3(bound(_Uniq, _List), _, free(_), _, _, _, _, _, AM, AM).
 inst_matches_initial_3(bound(UniqA, ListA), InstMapA, bound(UniqB, ListB), 
-			InstMapB, InstTable, ModuleInfo, Expansions) :-
+		InstMapB, InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, InstMapA, ListB, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+		InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap).
 inst_matches_initial_3(bound(UniqA, ListA), InstMapA, ground(UniqB, no),
-		_InstMapB, InstTable, ModuleInfo, _) :-
+		_InstMapB, InstTable, ModuleInfo, _, _, AM, AM) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, InstMapA, InstTable, ModuleInfo),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstMapA, InstTable,
 			ModuleInfo).
 inst_matches_initial_3(bound(Uniq, List), InstMapA, abstract_inst(_,_),
-		_InstMapB, InstTable, ModuleInfo, _) :-
+		_InstMapB, InstTable, ModuleInfo, _, _, AM, AM) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, InstMapA, InstTable, ModuleInfo),
 	bound_inst_list_is_unique(List, InstMapA, InstTable, ModuleInfo).
 inst_matches_initial_3(bound(Uniq, List), InstMapA, abstract_inst(_,_),
-		_InstMapB, InstTable, ModuleInfo, _) :-
+		_InstMapB, InstTable, ModuleInfo, _, _, AM, AM) :-
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, InstMapA, InstTable, ModuleInfo),
 	bound_inst_list_is_mostly_unique(List, InstMapA, InstTable, ModuleInfo).
-inst_matches_initial_3(ground(UniqA, _PredInst), _, any(UniqB), _, _, _, _) :-
+inst_matches_initial_3(ground(UniqA, _PredInst), _, any(UniqB), _, _, _, _,
+		_, AM, AM) :-
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_Uniq, _PredInst), _, free(_), _, _, _, _).
+inst_matches_initial_3(ground(_Uniq, _PredInst), _, free(_), _, _, _, _, _,
+		AM, AM).
 inst_matches_initial_3(ground(UniqA, _), _, bound(UniqB, List), InstMapB,
-		InstTable, ModuleInfo, _) :-
+		InstTable, ModuleInfo, _, _, _, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	uniq_matches_bound_inst_list(UniqA, List, InstMapB, InstTable,
 			ModuleInfo),
@@ -392,22 +433,25 @@ inst_matches_initial_3(ground(UniqA, _), _, bound(UniqB, List), InstMapB,
 		% for the type.  Problem is we don't know what the type was :-(
 inst_matches_initial_3(ground(UniqA, PredInstA), InstMapA,
 		ground(UniqB, PredInstB), InstMapB,
-		InstTable, ModuleInfo, _) :-
+		InstTable, ModuleInfo, _, _, AM, AM) :-
 	maybe_pred_inst_matches_initial(PredInstA, InstMapA, PredInstB,
 		InstMapB, InstTable, ModuleInfo),
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_UniqA, no), _, abstract_inst(_,_), _, _, _, _) :-
+inst_matches_initial_3(ground(_UniqA, no), _, abstract_inst(_,_), _, _, _, _,
+		_, AM, AM) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
-inst_matches_initial_3(abstract_inst(_,_), _, any(shared), _, _, _, _).
-inst_matches_initial_3(abstract_inst(_,_), _, free(_), _, _, _, _).
+inst_matches_initial_3(abstract_inst(_,_), _, any(shared), _, _, _, _, _,
+		AM, AM).
+inst_matches_initial_3(abstract_inst(_,_), _, free(_), _, _, _, _, _, AM, AM).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), InstMapA,
-		abstract_inst(Name, ArgsB), InstMapB,
-		InstTable, ModuleInfo, Expansions) :-
+		abstract_inst(Name, ArgsB), InstMapB, InstTable, ModuleInfo,
+		Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
 	inst_list_matches_initial(ArgsA, InstMapA, ArgsB, InstMapB,
-		InstTable, ModuleInfo, Expansions).
-inst_matches_initial_3(not_reached, _, _, _, _, _, _).
+		InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap).
+inst_matches_initial_3(not_reached, _, _, _, _, _, _, _, AM, AM).
 
 %-----------------------------------------------------------------------------%
 
@@ -440,16 +484,20 @@ pred_inst_matches(PredInstA, InstMapA, PredInstB, InstMapB, InstTable,
 :- mode pred_inst_matches_2(in, in, in, in, in, in, in) is semidet.
 
 pred_inst_matches_2(
-		pred_inst_info(PredOrFunc, argument_modes(_InstTableA, ModesA),
+		pred_inst_info(PredOrFunc, argument_modes(InstTableA, ModesA),
 				Det),
 		InstMapA,
-		pred_inst_info(PredOrFunc, argument_modes(_InstTableB, ModesB),
+		pred_inst_info(PredOrFunc, argument_modes(InstTableB, ModesB0),
 				Det),
-		InstMapB, InstTable, ModuleInfo, Expansions) :-
-	% XXX This is incorrect in the case where the pred insts have
-	%     aliasing in their argument_modes.
+		InstMapB, _InstTable, ModuleInfo, Expansions) :-
+	inst_table_create_sub(InstTableA, InstTableB, Sub, InstTable),
+	list__map(apply_inst_table_sub_mode(Sub), ModesB0, ModesB),
+
+	% Initialise alias_maps for comparing aliases between the modes.
+	map__init(AliasMapA0),
+	map__init(AliasMapB0),
 	pred_inst_argmodes_matches(ModesA, InstMapA, ModesB, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+		InstTable, ModuleInfo, Expansions, AliasMapA0, AliasMapB0).
 
 	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
 	% succeeds if the initial insts of ModesB specify at least as
@@ -460,20 +508,22 @@ pred_inst_matches_2(
 	% to match_final each other.
 	%
 :- pred pred_inst_argmodes_matches(list(mode), instmap, list(mode), instmap,
-				inst_table, module_info, expansions).
-:- mode pred_inst_argmodes_matches(in, in, in, in, in, in, in) is semidet.
+		inst_table, module_info, expansions, alias_map, alias_map).
+:- mode pred_inst_argmodes_matches(in, in, in, in, in, in, in, in, in)
+		is semidet.
 
-pred_inst_argmodes_matches([], _, [], _, _, _, _).
+pred_inst_argmodes_matches([], _, [], _, _, _, _, _, _).
 pred_inst_argmodes_matches([ModeA|ModeAs], InstMapA, [ModeB|ModeBs],
-		InstMapB, InstTable, ModuleInfo, Expansions) :-
+		InstMapB, InstTable, ModuleInfo, Expansions, AliasMapA0,
+		AliasMapB0) :-
 	mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA),
 	mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
 	inst_matches_final_2(InitialB, InstMapB, InitialA, InstMapA,
-			InstTable, ModuleInfo, Expansions),
+		InstTable, ModuleInfo, Expansions, no, AliasMapA0, AliasMapA1),
 	inst_matches_final_2(FinalA, InstMapA, FinalB, InstMapB,
-			InstTable, ModuleInfo, Expansions),
+		InstTable, ModuleInfo, Expansions, no, AliasMapB0, AliasMapB1),
 	pred_inst_argmodes_matches(ModeAs, InstMapA, ModeBs, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+		InstTable, ModuleInfo, Expansions, AliasMapA1, AliasMapB1).
 
 %-----------------------------------------------------------------------------%
 
@@ -536,20 +586,24 @@ uniq_matches_bound_inst_list(Uniq, List, InstMap, InstTable, ModuleInfo) :-
 	% are sorted.
 
 :- pred bound_inst_list_matches_initial(list(bound_inst), instmap,
-			list(bound_inst), instmap, inst_table,
-			module_info, expansions).
-:- mode bound_inst_list_matches_initial(in, in, in, in, in, in, in) is semidet.
+		list(bound_inst), instmap, inst_table, module_info, expansions,
+		bool, alias_map, alias_map).
+:- mode bound_inst_list_matches_initial(in, in, in, in, in, in, in, in,
+		in, out) is semidet.
 
-bound_inst_list_matches_initial([], _, _, _, _, _, _).
+bound_inst_list_matches_initial([], _, _, _, _, _, _, _, AM, AM).
 bound_inst_list_matches_initial([X|Xs], InstMapA, [Y|Ys], InstMapB,
-			InstTable, ModuleInfo, Expansions) :-
+		InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		inst_list_matches_initial(ArgsX, InstMapA, ArgsY, InstMapB,
-				InstTable, ModuleInfo, Expansions),
+				InstTable, ModuleInfo, Expansions,
+				IgnoreAliasing, AliasMap0, AliasMap1),
 		bound_inst_list_matches_initial(Xs, InstMapA, Ys, InstMapB,
-				InstTable, ModuleInfo, Expansions)
+				InstTable, ModuleInfo, Expansions,
+				IgnoreAliasing, AliasMap1, AliasMap)
 	;
 		compare(>, ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X|Xs].
@@ -558,20 +612,63 @@ bound_inst_list_matches_initial([X|Xs], InstMapA, [Y|Ys], InstMapB,
 			% automatically matches_initial Y.  We just need to
 			% check that [X|Xs] matches_initial Ys.
 		bound_inst_list_matches_initial([X|Xs], InstMapA, Ys,
-				InstMapB, InstTable, ModuleInfo, Expansions)
+				InstMapB, InstTable, ModuleInfo, Expansions,
+				IgnoreAliasing, AliasMap0, AliasMap)
 	).
 
 :- pred inst_list_matches_initial(list(inst), instmap, list(inst), instmap,
-				inst_table, module_info, expansions).
-:- mode inst_list_matches_initial(in, in, in, in, in, in, in) is semidet.
+	inst_table, module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_list_matches_initial(in, in, in, in, in, in, in, in, in, out)
+	is semidet.
 
-inst_list_matches_initial([], _, [], _, _, _, _).
-inst_list_matches_initial([X|Xs], InstMapA, [Y|Ys], InstMapB,
-		InstTable, ModuleInfo, Expansions) :-
+inst_list_matches_initial([], _, [], _, _, _, _, _, AM, AM).
+inst_list_matches_initial([X|Xs], InstMapA, [Y|Ys], InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
 	inst_matches_initial_2(X, InstMapA, Y, InstMapB, InstTable,
-			ModuleInfo, Expansions),
-	inst_list_matches_initial(Xs, InstMapA, Ys, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+			ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap0, AliasMap1),
+	inst_list_matches_initial(Xs, InstMapA, Ys, InstMapB, InstTable,
+			ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap1, AliasMap).
+
+%-----------------------------------------------------------------------------%
+
+	% inst_matches_aliasing(IgnoreAliasing, InstA, InstB,
+	%		InstMapA, AliasMap0, AliasMap).
+	% 	If we are not ignoring aliasing, compare the aliasing of two
+	%	insts with respect to the current alias_map and update the
+	%	alias_map to include new aliasing information.
+	%	InstA must be at least as aliased as InstB for the predicate
+	%	to succeed.
+	%	InstMapA is the instmap associated with InstA.
+
+:- pred inst_matches_aliasing(bool, inst, inst, instmap, alias_map, alias_map).
+:- mode inst_matches_aliasing(in, in, in, in, in, out) is semidet.
+
+inst_matches_aliasing(yes, _, _, _, AliasMap, AliasMap).
+inst_matches_aliasing(no, InstA, InstB, InstMapA, AliasMap0, AliasMap) :-
+	( InstB = alias(IKB) ->
+		( map__search(AliasMap0, IKB, MaybeIK) ->
+			% This inst_key has been seen before.
+			% Check whether InstA has a matching alias.
+			MaybeIK = yes(PrevIK),
+			InstA = alias(IKA),
+			instmap__inst_keys_are_equivalent(PrevIK, InstMapA,
+				IKA, InstMapA),
+			AliasMap = AliasMap0
+		; InstA = alias(IKA) ->
+			% Insert the new pair of corresponding inst_keys
+			% into the alias_map.
+			map__det_insert(AliasMap0, IKB, yes(IKA), AliasMap)
+		;
+			% Record that the new inst_key IKB has no corresponding
+			% inst_key in InstA.  If alias(IKB) occurs a second
+			% time, the predicate will fail.
+			map__det_insert(AliasMap0, IKB, no, AliasMap)
+		)
+	;
+		AliasMap = AliasMap0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -597,45 +694,61 @@ inst_expand_defined_inst(InstTable, ModuleInfo, Inst0, Inst) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_final(InstA, InstMapA, InstB, InstMapB, InstTable, ModuleInfo) :-
+inst_matches_final(InstA, InstMapA, InstB, InstMapB, InstTable, ModuleInfo,
+		AliasMap0, AliasMap) :-
 	set__init(Expansions),
-	inst_matches_final_2(InstA, InstMapA, InstB, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+	IgnoreAliasing = no,
+	inst_matches_final_2(InstA, InstMapA, InstB, InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, AliasMap).
+
+inst_matches_final_ignore_aliasing(InstA, InstMapA, InstB, InstMapB,
+		InstTable, ModuleInfo) :-
+	set__init(Expansions),
+	map__init(AliasMap0),
+	IgnoreAliasing = yes,
+	inst_matches_final_2(InstA, InstMapA, InstB, InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, _AliasMap).
 
 :- pred inst_matches_final_2(inst, instmap, inst, instmap, inst_table,
-		module_info, expansions).
-:- mode inst_matches_final_2(in, in, in, in, in, in, in) is semidet.
+		module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_matches_final_2(in, in, in, in, in, in, in, in, in, out)
+		is semidet.
 
 inst_matches_final_2(InstA, InstMapA, InstB, InstMapB, InstTable,
-		ModuleInfo, Expansions) :-
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
-		true
+		AliasMap = AliasMap0
 	; InstA = InstB ->
-		true
+		AliasMap = AliasMap0
 	;
+		inst_matches_aliasing(IgnoreAliasing, InstA, InstB,
+			InstMapA, AliasMap0, AliasMap1),
+
 		inst_expand(InstMapA, InstTable, ModuleInfo, InstA, InstA2),
 		inst_expand(InstMapB, InstTable, ModuleInfo, InstB, InstB2),
 		set__insert(Expansions, ThisExpansion, Expansions2),
 		inst_matches_final_3(InstA2, InstMapA, InstB2, InstMapB,
-				InstTable, ModuleInfo, Expansions2)
+			InstTable, ModuleInfo, Expansions2, IgnoreAliasing,
+			AliasMap1, AliasMap)
 	).
 
 :- pred inst_matches_final_3(inst, instmap, inst, instmap, inst_table,
-		module_info, expansions).
-:- mode inst_matches_final_3(in, in, in, in, in, in, in) is semidet.
+		module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_matches_final_3(in, in, in, in, in, in, in, in, in, out)
+		is semidet.
 
-inst_matches_final_3(any(UniqA), _, any(UniqB), _, _, _, _) :-
+inst_matches_final_3(any(UniqA), _, any(UniqB), _, _, _, _, _, AM, AM) :-
 	unique_matches_final(UniqA, UniqB).
-inst_matches_final_3(free(unique), _, any(Uniq), _, _, _, _) :-
+inst_matches_final_3(free(unique), _, any(Uniq), _, _, _, _, _, AM, AM) :-
 	% We do not yet allow `free' to match `any',
 	% unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
 	% Among other things, changing this would break compare_inst
 	% in modecheck_call.m.
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_matches_final_3(free(Aliasing), _, free(Aliasing), _, _, _, _).
+inst_matches_final_3(free(Aliasing), _, free(Aliasing), _, _, _, _, _, AM, AM).
 inst_matches_final_3(bound(UniqA, ListA), InstMapA, any(UniqB), _InstMapB,
-		InstTable, ModuleInfo, _) :-
+		InstTable, ModuleInfo, _, _, AM, AM) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstMapA, InstTable,
 			ModuleInfo),
@@ -645,21 +758,23 @@ inst_matches_final_3(bound(UniqA, ListA), InstMapA, any(UniqB), _InstMapB,
 	bound_inst_list_is_ground_or_any(ListA, InstMapA, InstTable,
 			ModuleInfo).
 inst_matches_final_3(bound(UniqA, ListA), InstMapA, bound(UniqB, ListB),
-		InstMapB, InstTable, ModuleInfo, Expansions) :-
+		InstMapB, InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_final(ListA, InstMapA, ListB, InstMapB,
-			InstTable, ModuleInfo, Expansions).
+		InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap).
 inst_matches_final_3(bound(UniqA, ListA), InstMapA, ground(UniqB, no),
-		_InstMapB, InstTable, ModuleInfo, _Exps) :-
+		_InstMapB, InstTable, ModuleInfo, _Exps, _, AM, AM) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, InstMapA, InstTable, ModuleInfo),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstMapA, InstTable,
 			ModuleInfo).
 inst_matches_final_3(ground(UniqA, _), _, any(UniqB), _, _InstTable,
-		_ModuleInfo, _Expansions) :-
+		_ModuleInfo, _Expansions, _, AM, AM) :-
 	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(ground(UniqA, _), _, bound(UniqB, ListB), InstMapB,
-		InstTable, ModuleInfo, _Exps) :-
+		InstTable, ModuleInfo, _Exps, _, AM, AM) :-
 	unique_matches_final(UniqA, UniqB),
 	uniq_matches_bound_inst_list(UniqA, ListB, InstMapB, InstTable,
 			ModuleInfo).
@@ -669,17 +784,18 @@ inst_matches_final_3(ground(UniqA, _), _, bound(UniqB, ListB), InstMapB,
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground(UniqA, PredInstA), InstMapA,
 		ground(UniqB, PredInstB), InstMapB,
-		InstTable, ModuleInfo, Expansions) :-
+		InstTable, ModuleInfo, Expansions, _, AM, AM) :-
 	maybe_pred_inst_matches_final(PredInstA, InstMapA, PredInstB, InstMapB,
 		InstTable, ModuleInfo, Expansions),
 	unique_matches_final(UniqA, UniqB).
-inst_matches_final_3(abstract_inst(_, _), _, any(shared), _, _, _, _).
+inst_matches_final_3(abstract_inst(_, _), _, any(shared), _, _, _, _, _,
+		AM, AM).
 inst_matches_final_3(abstract_inst(Name, ArgsA), InstMapA,
-		abstract_inst(Name, ArgsB), InstMapB,
-		InstTable, ModuleInfo, Expansions) :-
-	inst_list_matches_final(ArgsA, InstMapA, ArgsB, InstMapB,
-		InstTable, ModuleInfo, Expansions).
-inst_matches_final_3(not_reached, _, _, _, _, _, _).
+		abstract_inst(Name, ArgsB), InstMapB, InstTable, ModuleInfo,
+		Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
+	inst_list_matches_final(ArgsA, InstMapA, ArgsB, InstMapB, InstTable,
+		ModuleInfo, Expansions, IgnoreAliasing,AliasMap0, AliasMap).
+inst_matches_final_3(not_reached, _, _, _, _, _, _, _, AM, AM).
 
 :- pred maybe_pred_inst_matches_final(maybe(pred_inst_info), instmap,
 	maybe(pred_inst_info), instmap, inst_table, module_info, expansions).
@@ -693,16 +809,20 @@ maybe_pred_inst_matches_final(yes(PredInstA), InstMapA, yes(PredInstB),
 			InstTable, ModuleInfo, Expansions).
 
 :- pred inst_list_matches_final(list(inst), instmap, list(inst), instmap,
-			inst_table, module_info, expansions).
-:- mode inst_list_matches_final(in, in, in, in, in, in, in) is semidet.
+	inst_table, module_info, expansions, bool, alias_map, alias_map).
+:- mode inst_list_matches_final(in, in, in, in, in, in, in, in, in, out)
+	is semidet.
 
-inst_list_matches_final([], _, [], _, _, _ModuleInfo, _).
+inst_list_matches_final([], _, [], _, _, _ModuleInfo, _, _, AM, AM).
 inst_list_matches_final([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB,
-			InstTable, ModuleInfo, Expansions) :-
+		InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+		AliasMap0, AliasMap) :-
 	inst_matches_final_2(ArgA, InstMapA, ArgB, InstMapB, InstTable,
-			ModuleInfo, Expansions),
+			ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap0, AliasMap1),
 	inst_list_matches_final(ArgsA, InstMapA, ArgsB, InstMapB, InstTable,
-			ModuleInfo, Expansions).
+			ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap1, AliasMap).
 
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
@@ -714,19 +834,23 @@ inst_list_matches_final([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB,
 	% are sorted.
 
 :- pred bound_inst_list_matches_final(list(bound_inst), instmap,
-	list(bound_inst), instmap, inst_table, module_info, expansions).
-:- mode bound_inst_list_matches_final(in, in, in, in, in, in, in) is semidet.
+	list(bound_inst), instmap, inst_table, module_info, expansions,
+	bool, alias_map, alias_map).
+:- mode bound_inst_list_matches_final(in, in, in, in, in, in, in, in, in, out)
+	is semidet.
 
-bound_inst_list_matches_final([], _, _, _, _, _, _).
+bound_inst_list_matches_final([], _, _, _, _, _, _, _, AM, AM).
 bound_inst_list_matches_final([X|Xs], InstMapA, [Y|Ys], InstMapB, InstTable,
-		ModuleInfo, Expansions) :-
+		ModuleInfo, Expansions, IgnoreAliasing, AliasMap0, AliasMap) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		inst_list_matches_final(ArgsX, InstMapA, ArgsY, InstMapB,
-			InstTable, ModuleInfo, Expansions),
+			InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap0, AliasMap1),
 		bound_inst_list_matches_final(Xs, InstMapA, Ys, InstMapB,
-			InstTable, ModuleInfo, Expansions)
+			InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap1, AliasMap)
 	;
 		compare(>, ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X|Xs].
@@ -735,7 +859,8 @@ bound_inst_list_matches_final([X|Xs], InstMapA, [Y|Ys], InstMapB, InstTable,
 			% automatically matches_final Y.  We just need to
 			% check that [X|Xs] matches_final Ys.
 		bound_inst_list_matches_final([X|Xs], InstMapA, Ys, InstMapB,
-			InstTable, ModuleInfo, Expansions)
+			InstTable, ModuleInfo, Expansions, IgnoreAliasing,
+			AliasMap0, AliasMap)
 	).
 
 inst_matches_binding(InstA, InstMapA, InstB, InstMapB, InstTable, ModuleInfo) :-
@@ -1412,8 +1537,8 @@ inst_contains_instname(Inst, InstMap, InstTable, ModuleInfo, InstName) :-
 
 inst_contains_instname_2(defined_inst(InstName1), InstMap, InstTable,
 		ModuleInfo, Expansions0, InstName) :-
-	(
-		InstName = InstName1
+	( InstName = InstName1 ->
+		true
 	;
 		not set__member(InstName1, Expansions0),
 		inst_lookup(InstTable, ModuleInfo, InstName1, Inst1),
