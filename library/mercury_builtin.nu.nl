@@ -23,8 +23,8 @@ builtin_float_plus(X, Y, Z) :- Z is X + Y.
 builtin_float_minus(X, Y, Z) :- Z is X - Y.
 builtin_float_times(X, Y, Z) :- Z is X * Y.
 builtin_float_divide(X, Y, Z) :- Z is X / Y.
-builtin_float_le(X, Y, Z) :- X =< Y.
-builtin_float_lt(X, Y, Z) :- X < Y.
-builtin_float_ge(X, Y, Z) :- X >= Y.
-builtin_float_gt(X, Y, Z) :- X > Y.
+builtin_float_le(X, Y) :- X =< Y.
+builtin_float_lt(X, Y) :- X < Y.
+builtin_float_ge(X, Y) :- X >= Y.
+builtin_float_gt(X, Y) :- X > Y.
 
