@@ -89,7 +89,7 @@ Unsigned	MR_trace_event_number = 0;
 ** control in the debugger when main/2 is called.
 */
 
-Bool		MR_trace_from_full = 1;
+Bool		MR_trace_from_full = TRUE;
 
 #ifdef	MR_TRACE_HISTOGRAM
 
@@ -106,7 +106,7 @@ Code *
 MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	const char * path, int max_mr_num)
 {
-	bool		maybe_from_full;
+	Integer		maybe_from_full;
 	Unsigned	seqno;
 	Unsigned	depth;
 

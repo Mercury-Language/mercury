@@ -368,7 +368,8 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	if (base_sp != NULL && base_curfr != NULL) {
 		bool print_details = FALSE;
 		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			Word maybe_from_full = entry->MR_sle_maybe_from_full;
+			Integer maybe_from_full =
+				entry->MR_sle_maybe_from_full;
 			if (maybe_from_full > 0) {
 				/*
 				** for procedures compiled with shallow
@@ -470,7 +471,7 @@ MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 ** the names that are usually used to denote determinisms.
 */
 
-extern const char * MR_detism_names[] = {
+const char * MR_detism_names[] = {
 	"failure",	/* 0 */
 	"",		/* 1 */
 	"semidet",	/* 2 */
