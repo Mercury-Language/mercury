@@ -243,7 +243,7 @@ option_defaults_2(optimization_option, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
-	optimize_value_number	-	bool(yes),
+	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_vnrepeat	-	int(1),
