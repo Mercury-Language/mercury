@@ -344,8 +344,7 @@ code_gen__generate_det_goal(Goal - GoalInfo, Instr) -->
 	->
 		{ Instr1 = empty }
 	;
-		code_info__generate_eager_flush(Instr1),
-		code_info__remake_with_store_map
+		code_info__generate_eager_flush(Instr1)
 	),
 	{ Instr = tree(Instr0, Instr1) }.
 
@@ -751,8 +750,7 @@ code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
 	->
 		{ Instr1 = empty }
 	;
-		code_info__generate_eager_flush(Instr1),
-		code_info__remake_with_store_map
+		code_info__generate_eager_flush(Instr1)
 	),
 	{ Instr = tree(Instr0, Instr1) }.
 
@@ -932,8 +930,7 @@ code_gen__generate_non_goal(Goal - GoalInfo, Instr) -->
 	->
 		{ Instr1 = empty }
 	;
-	       code_info__generate_eager_flush(Instr1),
-	       code_info__remake_with_store_map
+	       code_info__generate_eager_flush(Instr1)
 	),
 	{ Instr = tree(Instr0, Instr1) }.
 
