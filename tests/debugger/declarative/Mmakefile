@@ -16,12 +16,18 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
 #-----------------------------------------------------------------------------#
 
-DECLARATIVE_PROGS= 		\
+DECLARATIVE_PROGS = \
+	$(LARGE_DECLARATIVE_PROGS) $(SMALL_DECLARATIVE_PROGS)
+
+# These tests run out of memory when run in non-gc grades.
+LARGE_DECLARATIVE_PROGS= 	\
 	app			\
+	queens
+
+SMALL_DECLARATIVE_PROGS= 	\
 	gcf			\
 	if_then_else		\
-	propositional		\
-	queens
+	propositional
 
 MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
@@ -29,18 +35,27 @@ C2INITFLAGS = --trace
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
+# Also the $(LARGE_DECLARATIVE_PROGS) tests only work in `.gc' grades.
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    PROGS=$(DECLARATIVE_PROGS)
+    ifneq "$(findstring .gc,$(GRADE))" ""
+        PROGS=$(DECLARATIVE_PROGS)
+    else
+        PROGS=$(SMALL_DECLARATIVE_PROGS)
+    endif
 else
     ifneq "$(findstring jump,$(GRADE))" ""
-	PROGS=
+        PROGS=
     else
-	ifneq "$(findstring fast,$(GRADE))" ""
-	    PROGS=
-	else
-	    PROGS=$(DECLARATIVE_PROGS)
-	endif
+        ifneq "$(findstring fast,$(GRADE))" ""
+            PROGS=
+        else
+            ifneq "$(findstring .gc,$(GRADE))" ""
+                PROGS=$(DECLARATIVE_PROGS)
+            else
+                PROGS=$(SMALL_DECLARATIVE_PROGS)
+            endif
+        endif
     endif
 endif
 
