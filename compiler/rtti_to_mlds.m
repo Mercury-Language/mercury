@@ -183,7 +183,7 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		gen_init_int(Version),
 		% In the C back-end, these two "structs" are actually unions.
 		% We need to use `init_struct' here so that the initializers
-		% gets inclosed in curly braces.
+		% get enclosed in curly braces.
 		init_struct([
 			gen_init_functors_info(FunctorsInfo, ModuleName, RttiTypeId)
 		]),
