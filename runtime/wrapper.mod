@@ -123,8 +123,12 @@ int main(int argc, char **argv)
 	process_environment_options();
 
 #if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
-		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
+		defined(PROFILE_CALLS) || defined(PROFILE_TIME) || \
+		defined(NATIVE_GC)
 	do_init_modules();
+#endif
+#if (defined(NATIVE_GC)) 
+	gc_continuation_table_init();
 #endif
 
 #ifdef	PROFILE_TIME
