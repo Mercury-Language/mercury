@@ -87,9 +87,19 @@
 % 4. Variables
 %
 % MLDS variable names are determined by the HLDS variable name and
-% (to avoid ambiguity) variable number.
+% (in some cases, to avoid ambiguity) variable number.  The MLDS
+% variable name is a structured term that keeps the original variable
+% name separate from the distinguishing variable number. 
+% It is up to each individual backend to mangle the variable name
+% and number to avoid ambiguity where necessary.
 % All references to MLDS variables must however be fully qualified
 % with the name of the enclosing entity that defines them.
+%
+% [Rationale: the reason for keeping structured names rather than
+% mangled names at the MLDS level is that in some cases the mangling is
+% undesirable, as the original HLDS variable names are what is required
+% (for instance, when interfacing with foreign code which includes
+% references to the original HLDS variables names).]
 
 % 5. Global data
 %
