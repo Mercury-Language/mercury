@@ -171,7 +171,7 @@ static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
 			MR_Var_Spec var_spec, int *which_var_ptr);
 
 static	const char *MR_trace_read_help_text(void);
-static	bool	MR_trace_is_number(char *word, int *value);
+static	bool	MR_trace_is_number(const char *word, int *value);
 static	bool	MR_trace_is_number_prefix(char *word, char **suffix,
 			int *value);
 static	const char *MR_trace_parse_line(char *line,
@@ -1863,12 +1863,13 @@ MR_trace_read_help_text(void)
 }
 
 /*
-** Is the string pointed to by word an integer?
+** Is the string pointed to by word a natural number,
+** i.e. a sequence of digits?
 ** If yes, return its value in *value.
 */
 
 static bool
-MR_trace_is_number(char *word, int *value)
+MR_trace_is_number(const char *word, int *value)
 {
 	if (MR_isdigit(*word)) {
 		*value = *word - '0';
