@@ -41,7 +41,14 @@
 ** changes to compiler/handle_options.m and scripts/mgnuc.in.
 */
 
-#define MR_GRADE_PART_0		redofr_
+/*
+** This part of the grade is a binary compatibility version number.
+** You should increment it any time you make a change that breaks
+** binary backwards compatibility.
+** Note that the binary compatibility version number has no direct
+** relationship with the source release number (which is in ../VERSION).
+*/
+#define MR_GRADE_PART_0		v1_
 
 #ifdef USE_ASM_LABELS
   #define MR_GRADE_PART_1	MR_PASTE2(MR_GRADE_PART_0, asm_)
