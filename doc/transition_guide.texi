@@ -15,7 +15,7 @@ END-INFO-DIR-ENTRY
 @c @smallbook
 @c @cropmarks
 @c @finalout
-@setchapternewpage odd
+@setchapternewpage on
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
@@ -66,13 +66,27 @@ into another language, under the above conditions for modified versions.
 @end titlepage
 @page
 
-@iftex
-@chapter Transition Guide
-@end iftex
-@node Top,,, (DIR)
 @ifinfo
-@chapter The Prolog to Mercury transition guide - BETA TEST version, July 1995
+@node Top
+@top The Prolog to Mercury transition guide - BETA TEST version, July 1995
+
+This guide gives some advice about
+translating Prolog programs into Mercury.
+
+@menu
+* Introduction::    Introduction
+* Syntax::          Syntax
+* IO::              Input and Output
+* FailLoops::       Failure Driven Loops, Assert and Retract
+* Commits::         Cuts
+* Accumulators::    Accumulators and Difference lists
+* Determinism::     Determinism
+@c * Problems::        Common Problems
+@end menu
 @end ifinfo
+
+@node Introduction
+@chapter Introduction
 
 This document is intended to help the reader
 translate existing Prolog programs to Mercury.
@@ -88,18 +102,8 @@ conversion may be very difficult,
 and a direct transliteration may be impossible.
 Mercury code typically has a very different style to most Prolog code.
 
-@menu
-* Syntax::          Syntax
-* IO::              Input and Output
-* FailLoops::       Failure Driven Loops, Assert and Retract
-* Commits::         Cuts
-* Accumulators::    Accumulators and Difference lists
-* Determinism::     Determinism
-@c * Problems::        Common Problems
-@end menu
-
-@node Syntax, IO,, Top
-@section Syntax and Declarations
+@node Syntax
+@chapter Syntax and declarations
 
 Prolog and Mercury have very similar syntax.
 Although there are a few differences,
@@ -183,8 +187,8 @@ all Vars Goal
 
 Mercury does not (yet) allow users to define their own operators.
 
-@node IO, FailLoops, Syntax, Top
-@section Input and Output
+@node IO
+@chapter Input and output
 
 Mercury is a purely declarative language.
 Therefore it cannot use Prolog's mechanism for doing
@@ -313,8 +317,8 @@ and output takes place outside it:
     ...
 @end example
 
-@node FailLoops, Commits, IO, Top
-@section Failure driven loops, assert and retract
+@node FailLoops
+@chapter Failure driven loops, assert and retract
 
 Because Mercury is purely declarative,
 the goal @samp{Goal, fail} is interchangable with the goal @samp{fail, Goal}.
@@ -354,8 +358,8 @@ In any case, the transformed code is more declarative
 and hence easier to maintain and understand for humans
 and easier for the compiler to optimize.
 
-@node Commits, Accumulators, FailLoops, Top
-@section Cuts and Indexing
+@node Commits
+@chapter Cuts and indexing
 
 The cut operator is not part of the Mercury language.
 The builtin library does contain a predicate !/0 (and !/2 for DCGs),

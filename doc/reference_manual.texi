@@ -15,7 +15,7 @@ END-INFO-DIR-ENTRY
 @c @smallbook
 @c @cropmarks
 @c @finalout
-@setchapternewpage off
+@setchapternewpage on
 @ifinfo
 This file documents the Mercury programming language.
 

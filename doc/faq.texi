@@ -1,6 +1,6 @@
 \input texinfo
 @setfilename mercury_faq.info
-@settitle The Mercury FAQ
+@settitle The Mercury FAQ list
 
 @ignore
 @ifinfo
@@ -14,8 +14,8 @@ END-INFO-DIR-ENTRY
 
 @c @smallbook
 @c @cropmarks
-@c @finalout
-@setchapternewpage odd
+@finalout
+@setchapternewpage on
 @ifinfo
 This file is the Mercury Frequently Asked Questions list.
 It contains a list of frequently asked questions about Mercury, with answers.
@@ -43,7 +43,6 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@c @finalout
 @title The Mercury Frequently Asked Questions list
 @subtitle BETA TEST version, July 1995
 @author Fergus Henderson
@@ -67,11 +66,9 @@ into another language, under the above conditions for modified versions.
 @end titlepage
 @page
 
-@iftex
-@chapter The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
-@end iftex
-@node Top,,, (DIR)
 @ifinfo
+@node Top,,, (DIR)
+@top The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
 @menu
 * Programming::     Common programming errors
 * Unimplemented::   Problems caused by unimplemented Mercury features
@@ -200,6 +197,18 @@ The reason is that the code that does the filling in
 must temporarily alias two variables together,
 and the current mode checker does not allow this.
 This limitation will go away in the future.
+
+@item
+@emph{I'm getting an error from the C compiler:}
+@example
+foo.c:45: redeclaration of `mercury_const_3'
+foo.c:37: `mercury_const_3' previously declared here
+@end example
+@emph{Is this a bug?}
+@sp 1
+
+Yes, this is a known bug in the Mercury compiler (sorry!).
+The work-around is to compile with the @samp{--no-static-ground-terms} option.
 
 @end enumerate
 
