@@ -28,7 +28,7 @@
 
 :- interface.
 
-:- import_module io, string, char, int.
+:- import_module bool, io, string, char, int.
 
 
 
@@ -37,6 +37,12 @@
     % the bottom of the main display and any windows).
     %
 :- pred start(io__state::di, io__state::uo) is det.
+
+    % Enable or disable the no-delay option.  If enabled (first argument is
+    % yes) then getch will be a non-blocking call, i.e. return immediately
+    % if no input is ready rather than waiting for input.
+    %
+:- pred nodelay(bool::in, io__state::di, io__state::uo) is det.
 
     % Close a curses session; necessary to return the tty to a sensible
     % state.
@@ -79,14 +85,25 @@
 :- pred attr_set(attr::in, io__state::di, io__state::uo) is det.
 
     % Update the display.  Changes made to the display are not made
-    % visible until doupdate is called.
+    % visible until refresh is called.
     %
+:- pred refresh(io__state::di, io__state::uo) is det.
+
+    % This was supposed to do what refresh does but without preceding calls 
+    % to wnoutrefresh it does nothing.
+    %
+:- pragma obsolete(doupdate/2).
 :- pred doupdate(io__state::di, io__state::uo) is det.
 
     % Read a character from the keyboard (unbuffered) and translate it
-    % if necessary.
+    % if necessary.  In no-delay mode, if no input is waiting, the value
+    % curs__err is returned.
     %
 :- pred getch(int::out, io__state::di, io__state::uo) is det.
+
+    % Throw away any typeahead that has not yet been read by the program.
+    %
+:- pred flushinp(io__state::di, io__state::uo) is det.
 
 
 
@@ -101,6 +118,13 @@
     % Draws a vertical line of char codes C length N moving down.
     %
 :- pred vline(int::in, int::in, io__state::di, io__state::uo) is det.
+
+
+
+    % Error code; currently only used as return value of getch to
+    % indicate that no input is ready.
+    %
+:- func err = int.
 
 
 
@@ -449,6 +473,16 @@ init_pair(FG_BG(COLOR_WHITE, COLOR_WHITE),      COLOR_WHITE, COLOR_WHITE);
 
 % ---------------------------------------------------------------------------- %
 
+:- pragma foreign_proc("C", nodelay(BF::in, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure], "
+
+    nodelay(stdscr, BF);
+    IO = IO0;
+
+").
+
+% ---------------------------------------------------------------------------- %
+
 :- pragma foreign_proc("C", stop(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure], "
 
@@ -538,6 +572,16 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
+:- pragma foreign_proc("C", refresh(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure], "
+
+    refresh();
+    IO = IO0;
+
+").
+
+% ---------------------------------------------------------------------------- %
+
 :- pragma foreign_proc("C", doupdate(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure], "
 
@@ -554,6 +598,23 @@ addstr(Attr, Str) -->
     CharCode = getch();
     IO = IO0;
 
+").
+
+% ---------------------------------------------------------------------------- %
+
+:- pragma foreign_proc("C", flushinp(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure], "
+
+    flushinp();
+    IO = IO0;
+
+").
+
+% ---------------------------------------------------------------------------- %
+
+:- pragma foreign_proc("C", err = (E::out),
+    [will_not_call_mercury, promise_pure], "
+    E = ERR;
 ").
 
 % ---------------------------------------------------------------------------- %
