@@ -96,6 +96,7 @@
 		;	string_switch_size
 		;	tag_switch_size
 		;	inlining
+		;	common_subexpression
 		;	c_optimize
 		;	debug
 		;	grade
@@ -199,7 +200,8 @@ option_defaults_2(optimization_option, [
 	dense_switch_size	-	int(4),
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(8),
-	inlining		-	bool(yes)
+	inlining		-	bool(yes),
+	common_subexpression	-	bool(yes)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -302,6 +304,7 @@ long_option("dense-switch_size",	dense_switch_size).
 long_option("string-switch_size",	string_switch_size).
 long_option("tag-switch-size",		tag_switch_size).
 long_option("inlining",			inlining).
+long_option("common-subexpression",	common_subexpression).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -449,6 +452,8 @@ options_help -->
 	io__write_string("\t--tag-switch-size\n"),
 	io__write_string("\t\tThe number of alternatives in a tag switch\n"),
 	io__write_string("\t\tmust exceed this number\n"),
+	io__write_string("\t--no-common-subexpression\n"),
+	io__write_string("\t\tDisable common subexpression optimisation.\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--no-c-optimize\n"),

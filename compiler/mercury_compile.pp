@@ -28,6 +28,8 @@
 :- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, bintree, term, varset, hlds.
 :- import_module implication, negation, call_graph.
+:- import_module common.
+
 
 %-----------------------------------------------------------------------------%
 
@@ -923,8 +925,8 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 		),
 
 		mercury_compile__maybe_polymorphism(HLDS2, HLDS3),
-
-		mercury_compile__detect_switches(HLDS3, HLDS4),
+		common__optimise_common_subexpressions(HLDS3, HLDS3a),
+		mercury_compile__detect_switches(HLDS3a, HLDS4),
 		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),
 
 		(
