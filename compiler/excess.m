@@ -6,10 +6,19 @@
 
 % Main author: zs.
 
-% This module traverses the goal for each procedure, and removes any
-% assignments that effectively just rename variables. This optimization
-% allows middle recursion optimization to be simplified, and it reduces
-% the pressure on the stack slot allocator.
+% This module traverses the goal for each procedure, looking
+% for conjunctions containing assignment unifications to or from
+% a variable that is local to the conjunction.  Such unifications
+% effectively just introduce a new local name for a variable.
+% This module optimizes away such unifications by replacing all
+% occurrences of the local name with the other name.
+%
+% This HLDS-to-HLDS optimization is applied after the front end has
+% completed all of its semantic checks (i.e. after determinism analysis),
+% but before code generation.
+% 
+% It allows middle recursion optimization to be simplified, 
+% and it reduces the pressure on the stack slot allocator.
 
 %-----------------------------------------------------------------------------%
 
@@ -19,9 +28,11 @@
 
 :- import_module hlds, llds.
 
+	% optimize away excess assignments for a whol module
 :- pred excess_assignments(module_info, module_info).
 :- mode excess_assignments(in, out) is det.
 
+	% optimize away excess assignments for a single procedure
 :- pred excess_assignments_proc(proc_info, module_info, proc_info).
 % :- mode excess_assignments_proc(di, in, uo) is det.
 :- mode excess_assignments_proc(in, in, out) is det.
@@ -81,7 +92,7 @@ excess_assignments_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 
 excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
-	excess_assignments_in_goal(Goal0, ElimVars, Goal),
+	excess_assignments_in_goal(Goal0, [], Goal, ElimVars),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 
 	% XXX We probably ought to remove these vars from the type map as well.
@@ -92,61 +103,76 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred excess_assignments_in_goal(hlds__goal, list(var), hlds__goal).
-:- mode excess_assignments_in_goal(in, out, out) is det.
+% We want to replace code sequences of the form
+%
+%	(  <Foo>,
+%	   LocalVar = OtherVar,
+%	   <Bar>
+%	)
+%
+% with
+%	( <Foo> [LocalVar/OtherVar],
+%	  <Bar> [LocalVar/OtherVar],
+%	)
+%
+% where <Foo> and <Bar> are sequences of conjuncts,
+% LocalVar is a variable that is local to the conjuncts,
+% and the notation `<Foo> [X/Y]' means <Foo> with all
+% occurrences of `X' replaced with `Y'.
 
-excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars, Goal) :-
+:- pred excess_assignments_in_goal(hlds__goal, list(var),
+				   hlds__goal, list(var)).
+:- mode excess_assignments_in_goal(in, in, out, out) is det.
+
+excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 	(
 		GoalExpr0 = conj(Goals0),
-		goal_info_get_nonlocals(GoalInfo0, NonLocal),
-		excess_assignments_in_conj(Goals0, [], NonLocal,
-			ElimVars, Goals),
-		( Goals = [OneGoal] ->
-			Goal = OneGoal
-		;
-			Goal = conj(Goals) - GoalInfo0
-		)
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		excess_assignments_in_conj(Goals0, [], [], NonLocals,
+					Goals, ElimVars),
+		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
 		GoalExpr0 = disj(Goals0),
-		excess_assignments_in_disj(Goals0, ElimVars, Goals),
+		excess_assignments_in_disj(Goals0, ElimVars0, Goals, ElimVars),
 		Goal = disj(Goals) - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
-		excess_assignments_in_goal(NegGoal0, ElimVars, NegGoal),
+		excess_assignments_in_goal(NegGoal0, ElimVars0,
+						NegGoal, ElimVars),
 		Goal = not(NegGoal) - GoalInfo0
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
-		excess_assignments_in_switch(Cases0, ElimVars, Cases),
+		excess_assignments_in_switch(Cases0, ElimVars0,
+						Cases, ElimVars),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-		excess_assignments_in_goal(Cond0, ElimVars1, Cond),
-		excess_assignments_in_goal(Then0, ElimVars2, Then),
-		excess_assignments_in_goal(Else0, ElimVars3, Else),
-		list__append(ElimVars2, ElimVars3, ElimVars23),
-		list__append(ElimVars1, ElimVars23, ElimVars),
+		excess_assignments_in_goal(Cond0, ElimVars0, Cond, ElimVars1),
+		excess_assignments_in_goal(Then0, ElimVars1, Then, ElimVars2),
+		excess_assignments_in_goal(Else0, ElimVars2, Else, ElimVars),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
 		GoalExpr0 = some(Var, SubGoal0),
-		excess_assignments_in_goal(SubGoal0, ElimVars, SubGoal),
+		excess_assignments_in_goal(SubGoal0, ElimVars0,
+					   SubGoal, ElimVars),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
 		GoalExpr0 = call(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = []
+		ElimVars = ElimVars0
 	;
 		GoalExpr0 = unify(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = []
+		ElimVars = ElimVars0
 	;
 		GoalExpr0 = pragma_c_code(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = []
+		ElimVars = ElimVars0
 	).
 
 %-----------------------------------------------------------------------------%
 
-	% We apply each subsitutions as soon as we find the need for it.
+	% We apply each substitution as soon as we find the need for it.
 	% This us to handle code which has V_4 = V_5, V_5 = V_6. If at most
 	% one of these variables is nonlocal, we can eliminate both assignments.
 	% If (say) V_4 and V_6 are nonlocal, then after the V_5 => V_4
@@ -154,65 +180,57 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars, Goal) :-
 	% is left alone.
 
 :- pred excess_assignments_in_conj(list(hlds__goal), list(hlds__goal),
-	set(var), list(var), list(hlds__goal)).
-:- mode excess_assignments_in_conj(in, in, in, out, out) is det.
+	list(var), set(var), list(hlds__goal), list(var)).
+:- mode excess_assignments_in_conj(in, in, in, in, out, out) is det.
 
-excess_assignments_in_conj([], RevGoals, _, [], Goals) :-
+excess_assignments_in_conj([], RevGoals, ElimVars, _, Goals, ElimVars) :-
 	list__reverse(RevGoals, Goals).
-excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, NonLocals,
-		ElimVars, Goals) :-
+excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
+		Goals, ElimVars) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = assign(Lvar, Rvar),
-		set__is_member(Lvar, NonLocals, Lnl),
-		set__is_member(Rvar, NonLocals, Rnl),
-		(
-			Lnl = yes, Rnl = no,
-			From = Rvar, To = Lvar
+		Unif = assign(LeftVar, RightVar),
+		( \+ set__member(LeftVar, NonLocals) ->
+			LocalVar = LeftVar, ReplacementVar = RightVar
+		; \+ set__member(RightVar, NonLocals) ->
+			LocalVar = RightVar, ReplacementVar = LeftVar
 		;
-			Lnl = no, Rnl = yes,
-			From = Lvar, To = Rvar
-		;
-			Lnl = no, Rnl = no,
-			From = Lvar, To = Rvar
+			fail
 		)
 	->
 		map__init(Subn0),
-		map__set(Subn0, From, To, Subn),
+		map__set(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, Subn, Goals1),
 		goal_util__rename_vars_in_goals(RevGoals0, Subn, RevGoals1),
-		excess_assignments_in_conj(Goals1, RevGoals1, NonLocals,
-			ElimVars1, Goals),
-		ElimVars = [From | ElimVars1]
+		ElimVars1 = [LocalVar | ElimVars0]
 	;
 		Goals1 = Goals0,
-		excess_assignments_in_goal(Goal0, ElimVars1, Goal1),
-		RevGoals1 = [Goal1 | RevGoals0],
-		excess_assignments_in_conj(Goals1, RevGoals1, NonLocals,
-			ElimVars2, Goals),
-		list__append(ElimVars1, ElimVars2, ElimVars)
-	).
+		excess_assignments_in_goal(Goal0, ElimVars0, Goal1, ElimVars1),
+		RevGoals1 = [Goal1 | RevGoals0]
+	),
+	excess_assignments_in_conj(Goals1, RevGoals1, ElimVars1,
+		NonLocals, Goals, ElimVars).
 
 %-----------------------------------------------------------------------------%
 
 :- pred excess_assignments_in_disj(list(hlds__goal), list(var),
-	list(hlds__goal)).
-:- mode excess_assignments_in_disj(in, out, out) is det.
+	list(hlds__goal), list(var)).
+:- mode excess_assignments_in_disj(in, in, out, out) is det.
 
-excess_assignments_in_disj([], [], []).
-excess_assignments_in_disj([Goal0 | Goals0], ElimVars, [Goal | Goals]) :-
-	excess_assignments_in_goal(Goal0, ElimVars1, Goal),
-	excess_assignments_in_disj(Goals0, ElimVars2, Goals),
-	list__append(ElimVars1, ElimVars2, ElimVars).
+excess_assignments_in_disj([], ElimVars, [], ElimVars).
+excess_assignments_in_disj([Goal0 | Goals0], ElimVars0,
+			   [Goal | Goals], ElimVars) :-
+	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
+	excess_assignments_in_disj(Goals0, ElimVars1, Goals, ElimVars).
 
-:- pred excess_assignments_in_switch(list(case), list(var), list(case)).
-:- mode excess_assignments_in_switch(in, out, out) is det.
+:- pred excess_assignments_in_switch(list(case), list(var),
+				     list(case), list(var)).
+:- mode excess_assignments_in_switch(in, in, out, out) is det.
 
-excess_assignments_in_switch([], [], []).
-excess_assignments_in_switch([case(Cons, Goal0) | Cases0], ElimVars,
-		[case(Cons, Goal) | Cases]) :-
-	excess_assignments_in_goal(Goal0, ElimVars1, Goal),
-	excess_assignments_in_switch(Cases0, ElimVars2, Cases),
-	list__append(ElimVars1, ElimVars2, ElimVars).
+excess_assignments_in_switch([], ElimVars, [], ElimVars).
+excess_assignments_in_switch([case(Cons, Goal0) | Cases0], ElimVars0,
+		[case(Cons, Goal) | Cases], ElimVars) :-
+	excess_assignments_in_goal(Goal0, ElimVars0, Goal, ElimVars1),
+	excess_assignments_in_switch(Cases0, ElimVars1, Cases, ElimVars).
 
 %-----------------------------------------------------------------------------%
