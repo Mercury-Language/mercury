@@ -16,6 +16,9 @@
 ** you may need to change compiler/stack_layout.m as well.
 */
 
+#include "mercury_types.h"
+#include "mercury_types.h"
+
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_PredFunc

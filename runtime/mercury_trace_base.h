@@ -16,6 +16,8 @@
 #define MERCURY_TRACE_BASE_H
 
 #include <stdio.h>
+#include "mercury_stack_layout.h"
+#include "mercury_std.h"
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type' type

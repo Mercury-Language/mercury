@@ -12,7 +12,8 @@
 #ifndef MERCURY_LIBRARY_TYPES_H
 #define MERCURY_LIBRARY_TYPES_H
 
-#include <stdio.h>	/* for `FILE' */
+#include <stdio.h>		/* for `FILE' */
+#include "mercury_types.h"	/* for `Word' and `Integer' */
 
 /*
 ** The C `MercuryFile' type is used for the Mercury `io__stream' type

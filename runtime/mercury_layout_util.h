@@ -7,6 +7,10 @@
 #ifndef	MERCURY_LAYOUT_UTIL_H
 #define	MERCURY_LAYOUT_UTIL_H
 
+#include "mercury_std.h"
+#include "mercury_types.h"
+#include "mercury_stack_layout.h"
+
 /*
 ** These two functions copy the register state to and from the provided
 ** saved_regs array, which should have room for MAX_FAKE_REG Words.

@@ -16,6 +16,7 @@
 #define	MERCURY_MISC_H
 
 #include "mercury_types.h"	/* for `Code *' */
+#include <stdlib.h>		/* for `size_t' */
 
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	mkframe_msg(void);
