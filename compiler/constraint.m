@@ -8,7 +8,15 @@
 %
 % This module will eventually perform constraint propagation on
 % an entire module.  At the moment, though, it just does propagation
-% within a single goal.  The code is 
+% within a single goal.
+%
+% The constraint propagation transformation attempts to improve
+% the efficiency of a generate-and-test style program by statically
+% scheduling constraints as early as possible, where a "constraint"
+% is any goal which has no output and can fail.
+%
+% XXX Code is broken.  Do not attempt to compile using the
+%     --constraint-propagation option!
 %-----------------------------------------------------------------------------%
 
 :- module constraint.
@@ -58,7 +66,7 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 :- mode constraint_propagation3(in, in, out, di, uo) is det.
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
 constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
-	constraint__transform_proc_1(Pred, Proc, ModuleInfo0, ModuleInfo1),
+	constraint__propagate_in_proc(Pred, Proc, ModuleInfo0, ModuleInfo1),
 	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs),
 	( { Errs \= 0 } ->
 	    { error("constraint_propagation3") }
@@ -69,27 +77,15 @@ constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred constraint__transform_proc_1(pred_id, proc_id, module_info, module_info,
-				io__state, io__state).
-:- mode constraint__transform_proc_1(in, in, in, out, di, uo) is det.
-constraint__transform_proc_1(PredId, ProcId, ModuleInfo0, ModuleInfo,
+:- pred constraint__propagate_in_proc(pred_id, proc_id, module_info,
+				module_info, io__state, io__state).
+:- mode constraint__propagate_in_proc(in, in, in, out, di, uo) is det.
+constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 				IoState0, IoState) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	pred_info_name(PredInfo0, Name),
-	proc_info_declared_determinism(ProcInfo0, Det),
-	proc_info_argmodes(ProcInfo0, Modes),
-	varset__init(ModeVarSet),
-
-	io__write_string("\nProcessing: ", IoState0, IoState1),
-	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
-				Modes, Det, Context, IoState1, IoState2),
-	io__write_string("\n", IoState2, IoState3),
-
-	IoState3 = IoState99,
 
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, VarSet0),
@@ -98,7 +94,7 @@ constraint__transform_proc_1(PredId, ProcId, ModuleInfo0, ModuleInfo,
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_context(ProcInfo0, Context),
-	mode_info_init(IoState99, ModuleInfo0, no, PredId, ProcId,
+	mode_info_init(IoState0, ModuleInfo0, no, PredId, ProcId,
 			Context, VarSet1, InstMap0, ModeInfo0),
 
 	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),
@@ -283,9 +279,6 @@ constraint__find_constraints([Goal0 | Goals0], Goals, Constraints) -->
 	    constraint__find_constraints(Goals0, Goals1, Constraints0),
 	    =(ModeInfo),
 	    ( { constraint__is_constraint(Goal1Info, ModeInfo) } ->
-		mode_info_write_string("Found constraint:\n"),
-		mode_info_write_goal(Goal1, 1),
-		mode_info_write_string("\n"),
 		{ Constraints = [Goal1 | Constraints0] },
 		{ Goals = Goals1 }
 	    ;
@@ -365,10 +358,9 @@ constraint__determinism(failure).
 
 constraint__checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
-%       globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
-%		IOState0, IOState1),
-	IOState0 = IOState1,
-	( semidet_succeed ->
+        globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
+		IOState0, IOState1),
+	( DoCheckPoint = yes ->
 		constraint__checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
 	;
 		IOState = IOState1
