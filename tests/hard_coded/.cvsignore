@@ -5,3 +5,6 @@ qual_is_test
 qual_adv_test
 pragma_c_code
 pragma_inline
+higher_order_func_test
+func_test
+free_free_mode

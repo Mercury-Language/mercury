@@ -5,7 +5,8 @@ main_target: check
 #-----------------------------------------------------------------------------#
 
 PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
-	pragma_c_code pragma_inline higher_order_func_test
+	pragma_c_code pragma_inline higher_order_func_test \
+	free_free_mode func_test
 
 #-----------------------------------------------------------------------------#
 
@@ -18,12 +19,15 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 
 #-----------------------------------------------------------------------------#
 
+DEPS=$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 RESS=	$(PROGS:%=%.res)
 MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
+
+dep: $(DEPS)
 
 depend: $(DEPENDS)
 
