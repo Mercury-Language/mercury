@@ -13,7 +13,6 @@ ENDINIT
 #include "mercury_imp.h"
 
 #include <stdio.h>
-#include <unistd.h>		/* for getpid() and fork() */
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
 #endif
