@@ -12,8 +12,10 @@
 # Options:
 # -v, --verbose
 #	Echo gcc command before executing it.
+# --no-ansi
+#	Don't pass -ansi.
 # --no-check
-#	Don't pass -ansi or any of the -W options.
+#	Don't pass any of the -W options.
 # -s <grade>, --grade <grade>
 #	Select optimization/debug/gc options according to <grade>, which
 #	must be one of debug, none, jump, asm_jump, reg, fast, or asm_fast,
@@ -39,7 +41,8 @@ C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
 
-CHECK_OPTS="-ansi
+ANSI_OPTS="-ansi"
+CHECK_OPTS="
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
@@ -50,6 +53,10 @@ verbose=false
 
 while true; do
     case "$1" in
+	--no-ansi)
+		ANSI_OPTS=
+		shift
+		;;
 	--no-check)
 		CHECK_OPTS=
 		shift
@@ -144,8 +151,8 @@ LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 esac
 
 if $verbose; then
-	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS "$@"
 fi
-exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
 	$GRADE_OPTS $GC_OPTS "$@"
