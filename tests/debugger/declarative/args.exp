@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred args:main/2-0 (cc_multi) args.m:17
+      E1:     C1  1 CALL pred args:main/2-0 (cc_multi) args.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred args:p/5-0 (nondet)
 mdb> continue
-       3:      2  2 CALL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E2:     C2  2 CALL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
-       7:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E3:     C2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> dd
 p(1, 16, 3, 20, 5)
 Valid? no
@@ -16,22 +16,22 @@ Valid? yes
 Found incorrect contour:
 p(1, 16, 3, 20, 5)
 Is this a bug? yes
-       7:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E3:     C2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> continue
-      10:      2  2 REDO pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E4:     C2  2 REDO pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
-      14:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E5:     C2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> dd
 p(1, -2, 3, 2, 5)
 Valid? no
 Found incorrect contour:
 p(1, -2, 3, 2, 5)
 Is this a bug? yes
-      14:      2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E5:     C2  2 EXIT pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> continue
-      17:      2  2 REDO pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E6:     C2  2 REDO pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> finish
-      18:      2  2 FAIL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E7:     C2  2 FAIL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> dd
 Call p(1, _, 3, _, 5)
 Solutions:
@@ -41,6 +41,6 @@ Complete? no
 Found partially uncovered atom:
 p(1, _, 3, _, 5)
 Is this a bug? yes
-      18:      2  2 FAIL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
+      E7:     C2  2 FAIL pred args:p/5-0 (nondet) args.m:24 (args.m:10)
 mdb> continue
 no.

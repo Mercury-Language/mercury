@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred special_term_dep:main/2-0 (det) special_term_dep.m:13
+      E1:     C1  1 CALL pred special_term_dep:main/2-0 (det) special_term_dep.m:13
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred special_term_dep:q/2-0 (semidet)
 mdb> continue
-       3:      3  3 CALL pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
+      E2:     C2  3 CALL pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
 mdb> finish
-       8:      3  3 EXIT pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
+      E3:     C2  3 EXIT pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
 mdb> dd
 p([2, 3])
 Valid? browse 1
@@ -19,12 +19,12 @@ Valid? yes
 Found incorrect contour:
 p([2, 3])
 Is this a bug? yes
-       8:      3  3 EXIT pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
+      E3:     C2  3 EXIT pred special_term_dep:p/1-0 (det) special_term_dep.m:29 (special_term_dep.m:22)
 mdb> continue
 [2, 3]
-      12:      6  3 CALL pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
+      E4:     C3  3 CALL pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
 mdb> finish
-      17:      6  3 EXIT pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
+      E5:     C3  3 EXIT pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
 mdb> dd
 q([1, 2], [3])
 Valid? browse 2
@@ -37,6 +37,6 @@ Valid? yes
 Found incorrect contour:
 q([1, 2], [3])
 Is this a bug? yes
-      17:      6  3 EXIT pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
+      E5:     C3  3 EXIT pred special_term_dep:q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
 mdb> continue
 [3]

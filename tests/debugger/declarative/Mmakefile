@@ -113,19 +113,19 @@ include Mercury.options
 #-----------------------------------------------------------------------------#
 
 aadebug.out: aadebug aadebug.inp
-	$(MDB) ./aadebug < aadebug.inp > aadebug.out 2>&1
+	$(MDB_STD) ./aadebug < aadebug.inp > aadebug.out 2>&1
 
 app.out: app app.inp
-	$(MDB) ./app < app.inp > app.out 2>&1
+	$(MDB_STD) ./app < app.inp > app.out 2>&1
 
 args.out: args args.inp
-	$(MDB) ./args < args.inp > args.out 2>&1
+	$(MDB_STD) ./args < args.inp > args.out 2>&1
 
 backtrack.out: backtrack backtrack.inp
 	$(MDB) ./backtrack < backtrack.inp > backtrack.out 2>&1
 
 big.out: big big.inp
-	$(MDB) ./big < big.inp > big.out 2>&1
+	$(MDB_STD) ./big < big.inp > big.out 2>&1
 
 browse_arg.out: browse_arg browse_arg.inp
 	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1
@@ -152,7 +152,7 @@ family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1
 
 filter.out: filter filter.inp
-	$(MDB) ./filter < filter.inp > filter.out 2>&1
+	$(MDB_STD) ./filter < filter.inp > filter.out 2>&1
 
 func_call.out: func_call func_call.inp
 	$(MDB) ./func_call < func_call.inp > func_call.out 2>&1
@@ -180,10 +180,11 @@ ho5.out: ho5 ho5.inp
 		> ho5.out 2>&1
 
 if_then_else.out: if_then_else if_then_else.inp
-	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
+	$(MDB_STD) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
 
 input_term_dep.out: input_term_dep input_term_dep.inp
-	$(MDB) ./input_term_dep < input_term_dep.inp > input_term_dep.out 2>&1
+	$(MDB_STD) ./input_term_dep < input_term_dep.inp \
+		> input_term_dep.out 2>&1
 
 ite_2.out: ite_2 ite_2.inp
 	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1
@@ -201,14 +202,14 @@ oracle_db.out: oracle_db oracle_db.inp
 	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1
 
 output_term_dep.out: output_term_dep output_term_dep.inp
-	$(MDB) ./output_term_dep < output_term_dep.inp	\
+	$(MDB_STD) ./output_term_dep < output_term_dep.inp	\
 			> output_term_dep.out 2>&1
 
 pd.out: pd pd.inp
 	$(MDB) ./pd < pd.inp > pd.out 2>&1
 
 propositional.out: propositional propositional.inp
-	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1
+	$(MDB_STD) ./propositional < propositional.inp > propositional.out 2>&1
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
@@ -223,7 +224,7 @@ solutions.out: solutions solutions.$(INP)
 	$(MDB) ./solutions < solutions.$(INP) > solutions.out 2>&1
 
 special_term_dep.out: special_term_dep special_term_dep.inp
-	$(MDB) ./special_term_dep < special_term_dep.inp \
+	$(MDB_STD) ./special_term_dep < special_term_dep.inp \
 			> special_term_dep.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
