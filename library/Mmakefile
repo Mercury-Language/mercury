@@ -97,6 +97,11 @@ DLL_DEF_LIB =
 
 endif
 
+# io.m uses library features that are supported by POSIX but which are not
+# part of ANSI C, such as `struct stat', fileno(), and putenv().
+# We need to pass --no-ansi to mgnuc to ensure that these are declared.
+MGNUCFLAGS-io =	--no-ansi
+
 #-----------------------------------------------------------------------------#
 
 # targets
