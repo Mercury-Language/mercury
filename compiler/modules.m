@@ -624,6 +624,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".hs = "),
+	write_dependencies_list(Modules, ".h", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ints = "),
 	write_dependencies_list(Modules, ".int", DepStream),
 	write_dependencies_list(Modules, ".int2", DepStream),
@@ -784,6 +789,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
 		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
+		"\t-rm -f $(", ModuleName, ".hs)\n",
 		"\t-rm -f $(", ModuleName, ".ds)\n",
 		"\t-rm -f ", ModuleName, ".dep ", ModuleName, "\n",
 		"\t-rm -f ", ModuleName, ".split ", ModuleName,".split.a\n\n"
@@ -801,7 +807,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".ints)\n",
 		"\t-rm -f $(", ModuleName, ".int3s)\n",
 		"\t-rm -f $(", ModuleName, ".opts)\n",
-		"\t-rm -f $(", ModuleName, ".ds)\n"
+		"\t-rm -f $(", ModuleName, ".ds)\n",
+		"\t-rm -f $(", ModuleName, ".hs)\n"
 	]),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
