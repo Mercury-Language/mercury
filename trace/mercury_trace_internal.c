@@ -2139,7 +2139,7 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	if (! MR_trace_options_param_set(&print_set, &browse_set,
 		&print_all_set, &flat_format, &raw_pretty_format,
 		&verbose_format, &pretty_format, &words, &word_count,
-		"browsing", "set"))
+		"parameter", "set"))
 	{
 		; /* the usage message has already been printed */
 	}
@@ -2148,7 +2148,7 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			print_all_set, flat_format, raw_pretty_format,
 			verbose_format, pretty_format, words[1], words[2]))
 	{
-		MR_trace_usage("browsing", "set");
+		MR_trace_usage("parameter", "set");
 	}
 
 	return KEEP_INTERACTING;
@@ -6843,8 +6843,6 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		MR_trace_stack_cmd_args, MR_trace_null_completer },
 	{ "browsing", "current", MR_trace_cmd_current,
 		NULL, MR_trace_null_completer },
-	{ "browsing", "set", MR_trace_cmd_set,
-		MR_trace_set_cmd_args, MR_trace_null_completer },
 	{ "browsing", "view", MR_trace_cmd_view,
 		MR_trace_view_cmd_args, MR_trace_null_completer },
 
@@ -6879,6 +6877,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "table_io", "table_io", MR_trace_cmd_table_io,
 		MR_trace_table_io_cmd_args, MR_trace_null_completer },
 
+	{ "parameter", "set", MR_trace_cmd_set,
+		MR_trace_set_cmd_args, MR_trace_null_completer },
 	{ "parameter", "printlevel", MR_trace_cmd_printlevel,
 		MR_trace_printlevel_cmd_args, MR_trace_null_completer },
 	{ "parameter", "mmc_options", MR_trace_cmd_mmc_options,

@@ -42,7 +42,7 @@ table_io   - Commands that let users control the tabling of I/O actions.
 end
 document_category 700 parameter
 parameter  - Commands that let users access debugger parameters.
-             The parameter commands are `printlevel', `echo', `context',
+             The parameter commands are `set', `printlevel', `echo', `context',
              `scroll', `mmc_options', `scope', `alias' and `unalias'.
 
 end

@@ -176,7 +176,7 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	);
 
 	if (error) {
-		printf("internal error in the trace help system: %s\n", msg);
+		printf("error in the trace help system: %s\n", msg);
 	}
 }
 
