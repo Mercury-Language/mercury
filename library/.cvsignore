@@ -24,7 +24,6 @@ library.dv
 Mercury
 *.ilk
 *.pdb
-*.cpp
+*__c_code.cpp
 *.dll
-*.il
 libmer_std.lib

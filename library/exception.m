@@ -308,6 +308,8 @@
 	** The constants in these #defines must be in the same
 	** order as the functors in the Mercury type `determinism'
 	** defined above.
+	** XXX It would be nice to use an enum here, but at the moment
+	** I can't convince the MC++ compiler to accept the syntax for it.
 	*/
 
 #define ML_DET	0

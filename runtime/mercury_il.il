@@ -12,13 +12,22 @@
 // Declare the assemblies we use
 
 .assembly extern 'mercury'{
+	// The version number (we don't really use this at the moment)
 	.ver 0:0:0:0
+
+	// The publickeytoken specifies the public key used to sign the
+	// mercury assembly.  You can retrieve this number using ildasm
+	// or gacutil, or the System.Reflection API.
 	.publickeytoken = ( 22 8C 16 7D 12 AA B B ) 
 }
 
 .assembly extern 'mscorlib'{
 	.ver 1:0:2411:0
 	.publickeytoken = ( B7 7A 5C 56 19 34 E0 89 ) 
+
+	// The hash is the crytographic hash of the contents of the assembly
+	// ildasm will tell you what this number is (and probably the
+	// reflection API).
 	.hash = ( B0 73 F2 4C 14 39 A 35 25 EA 45 F 60 58 C3 84 E0 3B E0 95 ) 
 }
 

@@ -86,6 +86,7 @@ MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	$(DLL_CFLAGS)
+	# -AI sets the assembly search path (just like -I for assemblies)
 MS_CLFLAGS  =	-AI$(RUNTIME_DIR) -I$(RUNTIME_DIR)
 MS_CL_NOASM=:noAssembly
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
@@ -244,6 +245,10 @@ ALL_DLLS_BASE  = $(ALL_DLLS:%.dll=%)
 EMBED_ALL_DLLS = $(foreach dll_name,$(ALL_DLLS_BASE),$(EMBED_ONE_DLL))
 EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name)
 
+# For the moment we generate the library using one big DLL, as there are bugs
+# in the assembly cache installer (gacutil) that prevent us from installing
+# large numbers of assemblies.  The HACK_* versions of the variables implement
+# the big file hack.
 HACK_ALL_DLLS=$(CPP_DLLS) mercury_all.dll $(RUNTIME_DLLS)
 
 HACK_ALL_DLLS_BASE  = $(HACK_ALL_DLLS:%.dll=%)
@@ -254,18 +259,17 @@ HACK_EMBED_ALL_DLLS = $(foreach dll_name,$(HACK_ALL_DLLS_BASE),$(EMBED_ONE_DLL))
 #MS_ILASMFLAGS = /debug
 
 
-# If you do generate a new strong name, you had better update the compiler
-# to generate references to it.  This is sub-optimal -- the compiler should
-# automatically find out what the strong name is.
+# If you do generate a new strong name, you had better update
+# compiler/mlds_to_il.m to generate references to it.  It is also hard-coded
+# in runtime/mercury_il.il.
+# This is hard-coding is sub-optimal -- the compiler should automatically find
+# out what the strong name is.
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
 mercury_all.il: $(library.ils)
 	cat $(library.ils) > mercury_all.il	
 
-# For the moment we do this using one big DLL, as there are bugs in the
-# assembly cache installer (gacutil) that prevent us from installing large
-# numbers of assemblies.
 mercury.dll: $(HACK_ALL_DLLS) mercury_all.dll library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(HACK_ALL_DLLS)
 
