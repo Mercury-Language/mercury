@@ -156,18 +156,23 @@ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_inst_varset(ProcInfo0, InstVarSet0),
-	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
+	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
+	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
 	proc_info_goal(ProcInfo0, Goal0),
 
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, InstVarSet0, TVarMap, Info0),
+		VarSet0, InstVarSet0, TVarMap0, TCVarMap0, Info0),
 	simplify__process_goal(Goal0, Goal, Info0, Info),
 	
 	simplify_info_get_varset(Info, VarSet),
 	simplify_info_get_var_types(Info, VarTypes),
+	simplify_info_get_type_info_varmap(Info, TVarMap),
+	simplify_info_get_typeclass_info_varmap(Info, TCVarMap),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
-	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4),
+	proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo),
 	simplify_info_get_module_info(Info, ModuleInfo),
 	simplify_info_get_msgs(Info, Msgs).
 
@@ -1596,36 +1601,6 @@ simplify__par_conj([Goal0 |Goals0], [Goal | Goals], Info0, Info1, Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__excess_assigns(hlds_goal::in, hlds_goal_info::in,
-		hlds_goals::in, hlds_goals::out,
-		hlds_goals::in, hlds_goals::out, bool::out,
-		simplify_info::in, simplify_info::out) is det.
-
-simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
-		RevGoals0, RevGoals, GoalNeeded, Info0, Info) :-
-	(
-		simplify_do_excess_assigns(Info0),
-		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
-		map__init(Subn0),
-		goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn)
-	->
-		GoalNeeded = no,
-		goal_util__rename_vars_in_goals(Goals0, no,
-			Subn, Goals),
-		goal_util__rename_vars_in_goals(RevGoals0, no,
-			Subn, RevGoals),
-		simplify_info_get_varset(Info0, VarSet0),
-		map__keys(Subn0, RemovedVars),
-		varset__delete_vars(VarSet0, RemovedVars, VarSet),
-		simplify_info_set_varset(Info0, VarSet, Info)
-	;
-		GoalNeeded = yes,
-		Goals = Goals0,
-		RevGoals = RevGoals0,
-		Info = Info0
-	).
-
-
 :- pred simplify__excess_assigns_in_conj(hlds_goal_info::in,
 		list(hlds_goal)::in, list(hlds_goal)::out,
 		simplify_info::in, simplify_info::out) is det.
@@ -1649,7 +1624,18 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
 			simplify_info_get_varset(Info0, VarSet0),
 			map__keys(Subn0, RemovedVars),
 			varset__delete_vars(VarSet0, RemovedVars, VarSet),
-			simplify_info_set_varset(Info0, VarSet, Info)
+			simplify_info_set_varset(Info0, VarSet, Info1),
+			simplify_info_get_type_info_varmap(Info1, TVarMap0),
+			apply_substitutions_to_var_map(TVarMap0,
+				map__init, map__init, Subn, TVarMap),
+			simplify_info_set_type_info_varmap(Info1, TVarMap,
+				Info2),
+			simplify_info_get_typeclass_info_varmap(Info2,
+				TCVarMap0),
+			apply_substitutions_to_typeclass_var_map(TCVarMap0,
+				map__init, map__init, Subn, TCVarMap),
+			simplify_info_set_typeclass_info_varmap(Info2,
+				TCVarMap, Info)
 		)
 	;
 		Goals = Goals0,
@@ -2033,16 +2019,18 @@ simplify__contains_multisoln_goal(Goals) :-
 			lambdas		::	int,
 					% Count of the number of lambdas
 					% which enclose the current goal.
-			type_info_varmap ::	type_info_varmap
+			type_info_varmap ::	type_info_varmap,
+			typeclass_info_varmap ::	typeclass_info_varmap
 		).
 
 simplify_info_init(DetInfo, Simplifications0, InstMap,
-		VarSet, InstVarSet, TVarMap, Info) :-
+		VarSet, InstVarSet, TVarMap, TCVarMap, Info) :-
 	common_info_init(CommonInfo),
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
-		InstMap, VarSet, InstVarSet, no, no, no, 0, 0, TVarMap). 
+		InstMap, VarSet, InstVarSet, no, no, no, 0, 0,
+		TVarMap, TCVarMap). 
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
@@ -2066,7 +2054,8 @@ simplify_info_reinit(Simplifications, InstMap0) -->
 
 :- pred simplify_info_init(det_info::in, list(simplification)::in, instmap::in,
 		prog_varset::in, inst_varset::in, 
-		type_info_varmap::in, simplify_info::out) is det.
+		type_info_varmap::in, typeclass_info_varmap::in,
+		simplify_info::out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_msgs(simplify_info::in, set(det_msg)::out) is det.
@@ -2084,6 +2073,8 @@ simplify_info_reinit(Simplifications, InstMap0) -->
 :- pred simplify_info_get_cost_delta(simplify_info::in, int::out) is det.
 :- pred simplify_info_get_type_info_varmap(simplify_info::in,
 		type_info_varmap::out) is det.
+:- pred simplify_info_get_typeclass_info_varmap(simplify_info::in,
+		typeclass_info_varmap::out) is det.
 
 :- pred simplify_info_get_module_info(simplify_info::in,
 		module_info::out) is det.
@@ -2107,6 +2098,7 @@ simplify_info_rerun_det(SI) :-
 	SI^rerun_det = yes.
 simplify_info_get_cost_delta(SI, SI^cost_delta).
 simplify_info_get_type_info_varmap(SI, SI^type_info_varmap).
+simplify_info_get_typeclass_info_varmap(SI, SI^typeclass_info_varmap).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
 	simplify_info_get_det_info(Info, DetInfo),
@@ -2140,6 +2132,11 @@ simplify_info_get_pred_info(Info, PredInfo) :-
 		simplify_info::out) is det.
 :- pred simplify_info_set_rerun_det(simplify_info::in,
 		simplify_info::out) is det.
+:- pred simplify_info_set_type_info_varmap(simplify_info::in,
+		type_info_varmap::in, simplify_info::out) is det.
+:- pred simplify_info_set_typeclass_info_varmap(simplify_info::in,
+		typeclass_info_varmap::in, simplify_info::out) is det.
+
 :- pred simplify_info_add_msg(simplify_info::in, det_msg::in,
 		simplify_info::out) is det.
 :- pred simplify_info_do_add_msg(simplify_info::in, det_msg::in, 
@@ -2171,6 +2168,9 @@ simplify_info_set_requantify(SI, SI^requantify := yes).
 simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
 simplify_info_set_rerun_det(SI, SI^rerun_det := yes).
 simplify_info_set_cost_delta(SI, Delta, SI^cost_delta := Delta).
+simplify_info_set_type_info_varmap(SI, Map, SI^type_info_varmap := Map).
+simplify_info_set_typeclass_info_varmap(SI, Map,
+		SI^typeclass_info_varmap := Map).
 
 simplify_info_incr_cost_delta(SI, Incr, SI^cost_delta := SI^cost_delta + Incr).
 
