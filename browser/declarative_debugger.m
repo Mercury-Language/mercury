@@ -582,7 +582,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 				% This handles the following cases:
 				% redo, fail, switch, first_disj, later_disj,
 				% then, and neg_fail.  Also handles cond when
-				% the status is anyhing other than failed.
+				% the status is anything other than failed.
 				%
 			Ns1 = Ns0
 		),
