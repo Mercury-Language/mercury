@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -164,35 +164,20 @@ evaluate_builtin_tri("int", "*", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
 	ZVal is XVal * YVal.
-/****
-evaluate_builtin_tri("int", "*", 1, X, Y, Z, X, int_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(int_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
-	YVal \= 0,
-	XVal is ZVal // YVal.
-evaluate_builtin_tri("int", "*", 2, X, Y, Z, Y, int_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(int_const(ZVal), [])]),
-	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
-	XVal \= 0,
-	YVal is ZVal // XVal.
-****/
 
+	% This isn't actually a builtin.
 evaluate_builtin_tri("int", "//", 0, X, Y, Z, Z, int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
 	YVal \= 0,
 	ZVal is XVal // YVal.
-/****
-evaluate_builtin_tri("int", "//", 1, X, Y, Z, X, int_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(int_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
-	XVal is ZVal * YVal.
-evaluate_builtin_tri("int", "//", 2, X, Y, Z, Y, int_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(int_const(ZVal), [])]),
+
+evaluate_builtin_tri("int", "unchecked_quotient", 0, X, Y, Z, Z,
+		int_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(int_const(XVal), [])]),
-	ZVal \= 0,
-	YVal is XVal // ZVal.
-****/
+	Y = _YVar - bound(_YUniq, [functor(int_const(YVal), [])]),
+	YVal \= 0,
+	ZVal is unchecked_quotient(XVal, YVal).
 
 	% This isn't actually a builtin.
 evaluate_builtin_tri("int", "mod", 0, X, Y, Z, Z, int_const(ZVal)) :-
@@ -259,57 +244,30 @@ evaluate_builtin_tri("float", "+", 0, X, Y, Z, Z, float_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
 	ZVal is XVal + YVal.
-evaluate_builtin_tri("float", "+", 1, X, Y, Z, X, float_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
-	XVal is ZVal - YVal.
-evaluate_builtin_tri("float", "+", 2, X, Y, Z, Y, float_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
-	YVal is ZVal - XVal.
 
 evaluate_builtin_tri("float", "-", 0, X, Y, Z, Z, float_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
 	ZVal is XVal - YVal.
-evaluate_builtin_tri("float", "-", 1, X, Y, Z, X, float_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
-	XVal is YVal + ZVal.
-evaluate_builtin_tri("float", "-", 2, X, Y, Z, Y, float_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
-	YVal is XVal - ZVal.
 
 evaluate_builtin_tri("float", "*", 0, X, Y, Z, Z, float_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
 	ZVal is XVal * YVal.
-evaluate_builtin_tri("float", "*", 1, X, Y, Z, X, float_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
-	YVal \= 0.0,
-	XVal is ZVal / YVal.
-evaluate_builtin_tri("float", "*", 2, X, Y, Z, Y, float_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
-	XVal \= 0.0,
-	YVal is ZVal / XVal.
 
-evaluate_builtin_tri("float", "//", 0, X, Y, Z, Z, float_const(ZVal)) :-
+	% This isn't actually a builtin.
+evaluate_builtin_tri("float", "/", 0, X, Y, Z, Z, float_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
 	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
 	YVal \= 0.0,
 	ZVal is XVal / YVal.
-evaluate_builtin_tri("float", "//", 1, X, Y, Z, X, float_const(XVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
-	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
-	XVal is ZVal * YVal.
-evaluate_builtin_tri("float", "//", 2, X, Y, Z, Y, float_const(YVal)) :-
-	Z = _ZVar - bound(_ZUniq, [functor(float_const(ZVal), [])]),
+
+evaluate_builtin_tri("float", "unchecked_quotient", 0, X, Y, Z, Z,
+		float_const(ZVal)) :-
 	X = _XVar - bound(_XUniq, [functor(float_const(XVal), [])]),
-	ZVal \= 0.0,
-	YVal is XVal / ZVal.
+	Y = _YVar - bound(_YUniq, [functor(float_const(YVal), [])]),
+	YVal \= 0.0,
+	ZVal is unchecked_quotient(XVal, YVal).
 
 %------------------------------------------------------------------------------%
 
