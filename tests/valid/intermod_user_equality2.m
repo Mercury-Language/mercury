@@ -17,3 +17,4 @@
 foo_unify(X, X).
 
 foo_field1(ctor1(X, _), X).
+foo_field1(ctor2(X, _), X).
