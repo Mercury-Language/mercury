@@ -1168,9 +1168,23 @@ The special stage name @samp{all} causes the dumping of all stages.
 Multiple dump options accumulate.
 
 @sp 1
-@item -D
-@itemx --verbose-dump-hlds
-With @samp{--dump-hlds}, dumps some additional info.
+@item -D @var{fields}
+@itemx --verbose-dump-hlds @var{fields}
+With @samp{--dump-hlds}, dump with each goal or type
+the fields whose initials are given in the option argument.
+These fields are:
+a - argument modes in unifications,
+b - builtin flags on calls,
+c - contexts of goals and types,
+d - determinism of goals,
+f - follow_vars sets of goals,
+i - instmap deltas of goals,
+n - nonlocal variables of goals,
+p - pre-birth, post-birth, pre-death and post-death sets of goals,
+r - resume points of goals,
+s - store maps of goals.
+The special argument value ``all''
+will cause the printing of all these fields.
 
 @end table
 
