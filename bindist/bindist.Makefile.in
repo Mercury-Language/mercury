@@ -28,8 +28,9 @@ NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
 
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
-LIB_PARTS		= bin doc html inc ints lib modules \
-			@NUPROLOG@ @SICSTUS@
+LIB_PARTS		= bin doc html inc ints lib mdb mmake modules
+LIB_NUPROLOG_PARTS	= @NUPROLOG@
+LIB_SICSTUS_PARTS	= @SICSTUS@
 
 UTILS			= util/mdemangle util/mkinit util/mtags
 
@@ -59,8 +60,15 @@ install_lib:
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	gzip --decompress lib.tar.gz
-	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
-		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
+	# if the binary distribution doesn't include NU-Prolog or
+	# SICStus Prolog support, then attempting to extract them
+	# from the tar file will fail; we therefore ignore any errors
+	# in those two steps.
+	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && {		\
+		tar -xf $$LIB_TAR_FILE $(LIB_NUPROLOG_PARTS);		\
+		tar -xf $$LIB_TAR_FILE $(LIB_SICSTUS_PARTS);		\
+		tar -xf $$LIB_TAR_FILE $(LIB_PARTS);			\
+	}
 	gzip lib.tar # tidy up
 	@echo "-- Done."
 
