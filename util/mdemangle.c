@@ -24,6 +24,11 @@
 static void demangle(char *name);
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2);
+static char *fix_mangled_ascii(char *str, char **end);
+static char *cut_at_double_underscore(char *str, char *end);
+static bool cut_trailing_integer(char *str, char **end, int *num);
+static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
+static bool strip_prefix(char **str, const char *prefix);
 
 int main(int argc, char **argv)
 {
@@ -68,7 +73,7 @@ int main(int argc, char **argv)
 ** demangle() - convert a mangled Mercury identifier into 
 ** human-readable form and then print it to stdout
 **
-** Sorry, the following code is awful.
+** Sorry, the following code is still fairly awful.
 ** It ought to be rewritten in a language with
 ** better string-handling facilities than C!
 */
@@ -87,6 +92,11 @@ static void demangle(char *name) {
 	static const char ua_suffix2[] = "__uab"; /* added by unused_args.m */
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
+	static const char mercury_data[] = "mercury_data_";
+	static const char base_type_layout[] = "base_type_layout_";
+	static const char base_type_info[] = "base_type_info_";
+	static const char common[] = "common";
+
 	char *start = name;
 	char *module = NULL;	/* module name of type for special pred */
 	char *end = name + strlen(name);
@@ -99,6 +109,7 @@ static void demangle(char *name) {
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
+	enum { COMMON, INFO, LAYOUT } data_category;
 
 	/*
 	** skip any leading underscore inserted by the C compiler
@@ -108,67 +119,67 @@ static void demangle(char *name) {
 	/*
 	** skip the `entry_' prefix, if any
 	*/
-	if (strncmp(start, entry, sizeof(entry) - 1) == 0) {
-		start += sizeof(entry) - 1;
-	}
+
+	strip_prefix(&start, entry);
 
 	/*
 	** strip off the `mercury__' prefix
 	*/
-	if (strncmp(start, mercury, sizeof(mercury) - 1) == 0) {
-		start += sizeof(mercury) - 1;
-	} else {
-		goto wrong_format;
+
+	if (!strip_prefix(&start, mercury)) {
+		goto not_plain_mercury;
 	}
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Code for dealing with predicate symbols.
+*/
 
 	/*
 	** strip off the `fn__' prefix, if any
 	*/
-	if (strncmp(start, func_prefix, sizeof(func_prefix) - 1) == 0) {
-		start += sizeof(func_prefix) - 1;
+	if (strip_prefix(&start, func_prefix)) {
+
 		pred_or_func = "function";
 	} else {
 		pred_or_func = "predicate";
 	}
 
 	/*
-	** now start working from the end of the string
-	** scan backwards past the number at the end
+	** Get integer from end of string (it might be the mode number,
+	** it might be the internal label number). We'll assume its mode
+	** number for the moment.
 	*/
-	do {
-		if (end == start) goto wrong_format;
-		end--;
-	} while (isdigit((unsigned char)*end));
+
+	if (!cut_trailing_integer(start, &end, &mode_num)) {
+		goto wrong_format;
+	}
+
+	if (end == start) goto wrong_format;
 
 	/*
 	** if we got to an `i', that means it is an internal
 	** label of the form `mercury__append_3_0_i1'
 	** in that case, save the internal label number and then
-	** scan back past the mode number
+	** get the mode number
 	*/
-	if (*end == 'i') {
-		if (sscanf(end + 1, "%d", &internal) != 1) goto wrong_format;
-		if (*--end != '_') goto wrong_format;
-		do {
-			if (end == start) goto wrong_format;
-			end--;
-		} while (isdigit((unsigned char)*end));
-	}
+	if (*--end == 'i') {
+		internal = mode_num;
+		if (end == start || *--end != '_') goto wrong_format;
 
-	/*
-	** parse the mode number
-	*/
-	if (sscanf(end + 1, "%d", &mode_num) != 1) goto wrong_format;
+		if (!cut_trailing_underscore_integer(start, &end, &mode_num)) {
+			goto wrong_format;
+		}
+	}
 
 	/*
 	** scan back past the arity number and then parse it
 	*/
-	do {
-		if (end == start) goto wrong_format;
-		end--;
-	} while (isdigit((unsigned char)*end));
-	if (*end != '_') goto wrong_format;
-	if (sscanf(end + 1, "%d", &arity) != 1) goto wrong_format;
+
+	if (!cut_trailing_underscore_integer(start, &end, &arity)) {
+		goto wrong_format;
+	}
 
 	/*
 	** Process the mangling introduced by unused_args.m.
@@ -229,15 +240,13 @@ static void demangle(char *name) {
 	** set the `category' to the appropriate value and then
 	** skip past the prefix.
 	*/
-	if (strncmp(start, unify, sizeof(unify) - 1) == 0) {
-		start += sizeof(unify) - 1;
+
+	if (strip_prefix(&start, unify)) {
 		category = UNIFY;
-	} else if (strncmp(start, compare, sizeof(compare) - 1) == 0) {
-		start += sizeof(compare) - 1;
+	} else if (strip_prefix(&start, compare)) {
 		category = COMPARE;
 		if (mode_num != 0) goto wrong_format;
-	} else if (strncmp(start, mindex, sizeof(mindex) - 1) == 0) {
-		start += sizeof(mindex) - 1;
+	} else if (strip_prefix(&start, mindex)) {
 		category = INDEX;
 		if (mode_num != 0) goto wrong_format;
 	} else {
@@ -250,14 +259,7 @@ static void demangle(char *name) {
 	*/
 	if (category != ORDINARY) {
 		module = start++;
-
-		/* Find the __ separating the module name from the type name. */
-		while (*start != '_' || *(start + 1) != '_') {
-			start++;
-		}
-
-		*start = '\0';
-		start += 2;
+		start = cut_at_double_underscore(start, end);
 	}
 
 	/*
@@ -266,47 +268,15 @@ static void demangle(char *name) {
 	*/
 
 	if (unused_args && category != ORDINARY) {
-		do { 
-			if (end == start) goto wrong_format;
-			end--;
-		} while (isdigit((unsigned char)*end));
-		if (sscanf(end + 1, "%d", &arity) != 1) {
+		if (!cut_trailing_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-		*end = '\0';
 	}
 
 	/*
-	** The compiler changes all names starting with `f_' so that
-	** they start with `f__' instead, and uses names starting with
-	** `f_' for mangled names which are sequences of decimal
-	** reprententations of ASCII codes separated by underscores.
-	** If the name starts with `f__', we must change it back to
-	** start with `f_'.  Otherwise, if it starts with `f_' we must
-	** convert the list of ASCII codes back into an identifier.
-	** 
+	** Fix any ascii codes mangled in the predicate name
 	*/
-
-	if (strncmp(start, "f__" , 3) == 0) {
-		start++;
-		*start = 'f';
-	} else if (strncmp(start, "f_", 2) == 0) {
-		char buf[1000];
-		char *num = start + 2;
-		int count = 0;
-		while (num < end) {
-			char *next_num = num;
-			while (isdigit((unsigned char)*next_num)) {
-				next_num++;
-			}
-			if (*next_num != '_' && *next_num != '\0') break;
-			*next_num = '\0';
-			buf[count++] = atoi(num);
-			num = next_num + 1;
-		}
-		buf[count] = '\0';
-		strcpy(start, buf);
-	}
+	start = fix_mangled_ascii(start, &end);
 
 	/*
 	** Now, finally, we can print the demangled symbol name
@@ -341,10 +311,219 @@ static void demangle(char *name) {
 	printf(">");
 	return;
 
+/*---------------------------------------------------------------------------*/
+
+/* 
+** Code to deal with mercury_data items.
+*/
+
+not_plain_mercury:
+
+	if (!strip_prefix(&start, mercury_data)) {
+		goto wrong_format;
+	}
+	module = start;
+	start = cut_at_double_underscore(start, end);
+
+	if (strip_prefix(&start, base_type_info)) {
+		data_category = INFO;
+		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
+			goto wrong_format;
+		}
+		*end = '\0';
+	} else if (strip_prefix(&start, base_type_layout)) {
+		data_category = LAYOUT;
+		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
+			goto wrong_format;
+		}
+		*end = '\0';
+	} else if (strip_prefix(&start, common)) {
+		data_category = COMMON;
+		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
+			goto wrong_format;
+		}
+	} else {
+		goto wrong_format;
+	}
+
+	start = fix_mangled_ascii(start, &end);
+
+	switch (data_category) {
+
+	case INFO:
+		if (*module == '\0') {
+			printf("<base type_info for type '%s'/%d>",
+				start, arity);
+		} else {
+			printf("<base type_info for type '%s:%s'/%d>",
+				module, start, arity);
+		}
+		break;
+	case LAYOUT:
+		if (*module == '\0') {
+			printf("<type layout for type '%s'/%d>",
+				start, arity);
+		} else {
+			printf("<type layout for type '%s:%s'/%d>",
+				module, start, arity);
+		}
+		break;
+	case COMMON:
+		printf("<shared constant number %d for module %s>",
+			arity, module);
+		break;
+
+	default:
+		goto wrong_format;
+
+	}
+	return;
+
 wrong_format:
 	printf("%s", name);
 	return;
 }
+
+	/*
+	** Remove the prefix from a string, if it has 
+	** it. 
+	** Returns TRUE if it has that prefix, and newstr will
+	** then point to the rest of that string.
+	** If the string doesn't have that prefix, newstr will
+	** be unchanged, and the function will return FALSE.
+	*/
+static bool strip_prefix(char **str, const char *prefix) 
+{
+	int len;
+
+	len = strlen(prefix);
+
+	if (strncmp(*str, prefix, len) == 0) {
+		*str = *str + len;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+	/*
+	** Remove trailing integer (at the supplied `real_end' of the
+	** string), and return it in the int pointed to by `num'.   True
+	** is returned if there is an integer at the end, false if not.
+	** If false is returned, the string will not be cut.
+	** `real_end' is updated with the new end of the string
+	*/
+static bool cut_trailing_integer(char *str, char **real_end, int *num) 
+{
+	char *end = *real_end;
+
+	do { 
+		if (end == str) return FALSE;
+		end--;
+	} while (isdigit((unsigned char)*end));
+
+	if (sscanf(end + 1, "%d", num) != 1) {
+		return FALSE;
+	}
+	*++end = '\0';
+	*real_end = end;
+
+	return TRUE;
+}
+
+	/*
+	** Same as cut_trailing_integer, but move end back past
+	** the underscore as well. If cut_trailing_underscore_integer
+	** returns TRUE, the `real_end' will be moved back before the
+	** underscore and the integer. If it returns FALSE, the
+	** `real_end' is unchanged.
+	*/
+static bool cut_trailing_underscore_integer(char *str, char **real_end, 
+	int *num) 
+{
+	char *end = *real_end;
+
+	if (!cut_trailing_integer(str, &end, num)) {
+		return FALSE;
+	}
+	if (end == str || *(--end) != '_') {
+		return FALSE;
+	}
+    *end = '\0';
+	*real_end = end;
+	return TRUE;
+}
+
+	/*
+	** Scan for `__' and cut the string at there (replace first
+	** `_' with `\0', return the part of the string after the `__').
+	** Returns NULL if there is no `__' in the string before the
+	** supplied end.
+	*/
+
+static char *cut_at_double_underscore(char *str, char *end) 
+{
+	while (*str != '_' || *(str + 1) != '_') {
+		if (str == end) {
+			return NULL;
+		}
+		str++;
+	}
+
+	*str = '\0';
+	str += 2;
+
+	return str;
+}
+
+	/*
+	** The compiler changes all names starting with `f_' so that
+	** they start with `f__' instead, and uses names starting with
+	** `f_' for mangled names which are sequences of decimal
+	** reprententations of ASCII codes separated by underscores.
+	** If the name starts with `f__', we must change it back to
+	** start with `f_'.  Otherwise, if it starts with `f_' we must
+	** convert the list of ASCII codes back into an identifier.
+	** 
+	** XXX Note: some symbols are special cased - eg `!' becomes
+	** `f_cut', we should probably translate these special cases
+	** back (see llds_out.m for the special cases). Presently, just
+	** the `f_' will be removed, which still leaves them quite
+	** readable.
+	*/
+
+static char *fix_mangled_ascii(char *str, char **real_end)
+{
+	char *end = *real_end;
+
+	if (strncmp(str, "f__" , 3) == 0) {
+		str++;
+		*str = 'f';
+	} else if (strncmp(str, "f_", 2) == 0) {
+		char buf[1000];
+		char *num = str + 2;
+		int count = 0;
+		while (num < end) {
+			char *next_num = num;
+			while (isdigit((unsigned char)*next_num)) {
+				next_num++;
+			}
+			if (*next_num != '_' && *next_num != '\0') 
+				break;
+			*next_num = '\0';
+			buf[count++] = atoi(num);
+			num = next_num + 1;
+		}
+			/* copy anything after the mangled string */
+		while (num < end) {
+			buf[count++] = *num++;
+		}
+		buf[count] = '\0';
+		strcpy(str, buf);
+	}
+	*real_end = end;
+	return str;
+}
+
 
 static bool check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2)
