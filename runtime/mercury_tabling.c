@@ -1949,7 +1949,7 @@ MR_define_label(mercury__table_nondet_resume_1_0_ReachedFixpoint);
 
 	/* Restore the state we had when table_nondet_resume was called */
 	MR_save_transient_registers();
-	MR_restore_state(&(MR_cur_leader->resume_info->leader_state),
+	restore_state(&(MR_cur_leader->resume_info->leader_state),
 		"resumption", "generator");
 	MR_restore_transient_registers();
 
