@@ -43,9 +43,16 @@ p(2, 2)
 Valid? no
 r(1, 1)
 Valid? yes
-r(2, 2)
-Valid? yes
 s(2)
+Valid? yes
+s(3)
+Valid? yes
+Call s(_)
+Solutions:
+	s(2)
+	s(3)
+Complete? yes
+r(2, 2)
 Valid? yes
 Found incorrect contour:
 p(2, 2)
@@ -60,13 +67,6 @@ Call p(2, _)
 Solutions:
 	p(2, 2)
 Complete? no
-s(3)
-Valid? yes
-Call s(_)
-Solutions:
-	s(2)
-	s(3)
-Complete? yes
 Found partially uncovered atom:
 p(2, _)
 Is this a bug? yes

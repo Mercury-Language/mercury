@@ -24,7 +24,6 @@ pp(S, M, N) :- b(S, M, N).
 
 q(S, M, N) :-
 	(
-		% Fails:
 		a(S, M, -1)
 	->
 		N = 11
@@ -34,7 +33,6 @@ q(S, M, N) :-
 
 r(S, M, N) :-
 	(
-		% Succeeds:
 		\+ a(S, M, -3),
 		b(S, M, 5)
 	->
@@ -42,4 +40,15 @@ r(S, M, N) :-
 	;
 		N = 0
 	).
+
+% shallow_3 defines:
+%
+% :- pred a(string::in, int::in, int::out) is multi.
+%
+% a(_, X, X).
+% a(_, _, 0).
+%
+% :- pred b(string::in, int::in, int::out) is det.
+%
+% b(_, _, 5).
 

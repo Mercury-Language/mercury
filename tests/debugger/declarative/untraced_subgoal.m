@@ -42,3 +42,8 @@ r(X, X).
 s(2).
 s(3).
 
+% :- pred q(int::out) is multi.
+%
+% q(1).
+% q(2).
+

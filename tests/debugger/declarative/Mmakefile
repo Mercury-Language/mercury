@@ -31,7 +31,9 @@ DECLARATIVE_PROGS=		\
 	output_term_dep		\
 	propositional		\
 	queens			\
+	shallow			\
 	small			\
+	solutions		\
 	special_term_dep	\
 	tabled_read_decl	\
 	throw
@@ -41,13 +43,13 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
 NONWORKING_DECLARATIVE_PROGS=	\
-	shallow			\
-	solutions
 
 ifneq "$(findstring .debug,$(GRADE))" ""
     PROGS_2=$(DECLARATIVE_PROGS)
+    SOLUTIONS_INP=solutions.inp2
 else
     PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS)
+    SOLUTIONS_INP=solutions.inp
 endif
 
 # Debugging does not work in MLDS (hl*) and deep profiling (profdeep) grades.
@@ -183,8 +185,8 @@ shallow.out: shallow shallow.inp
 small.out: small small.inp
 	$(MDB) ./small < small.inp > small.out 2>&1
 
-solutions.out: solutions solutions.inp
-	$(MDB) ./solutions < solutions.inp > solutions.out 2>&1
+solutions.out: solutions $(SOLUTIONS_INP)
+	$(MDB) ./solutions < $(SOLUTIONS_INP) > solutions.out 2>&1
 
 special_term_dep.out: special_term_dep special_term_dep.inp
 	$(MDB) ./special_term_dep < special_term_dep.inp \
