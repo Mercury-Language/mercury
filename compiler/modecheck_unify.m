@@ -487,7 +487,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		),
 		mode_info_get_var_types(ModeInfo1, VarTypes),
 		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
-				X, ConsId, ArgVars0, VarTypes,
+				X, ConsId, ArgVars0, VarTypes, UnifyContext,
 				Unification0, ModeInfo1,
 				Unification1, ModeInfo2),
 		split_complicated_subunifies(Unification1, ArgVars0,
@@ -1038,13 +1038,13 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_functor(mode, list(mode), list(mode), prog_var,
-		cons_id, list(prog_var), map(prog_var, type),
+		cons_id, list(prog_var), map(prog_var, type), unify_context,
 		unification, mode_info, unification, mode_info).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
-		X, NewConsId, ArgVars, VarTypes,
+		X, NewConsId, ArgVars, VarTypes, UnifyContext,
 		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(VarTypes, X, TypeOfX),
@@ -1061,8 +1061,14 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	(
 		mode_is_output(ModuleInfo, ModeOfX)
 	->
+		% It's a construction.
 		Unification = construct(X, ConsId, ArgVars, ArgModes),
-		ModeInfo = ModeInfo0
+
+		% For existentially quantified data types,
+		% check that any type_info or type_class_info variables in the
+		% construction are ground.
+		check_type_info_args_are_ground(ArgVars, VarTypes,
+			UnifyContext, ModeInfo0, ModeInfo)
 	;
 		% It's a deconstruction.
 		(
@@ -1109,6 +1115,30 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 			)
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
+	).
+
+	% Check that any type_info or type_class_info variables
+	% in the argument list are ground.
+:- pred check_type_info_args_are_ground(list(prog_var), map(prog_var, type),
+		unify_context, mode_info, mode_info).
+:- mode check_type_info_args_are_ground(in, in, in,
+		mode_info_di, mode_info_uo) is det.
+
+check_type_info_args_are_ground([], _VarTypes, _UnifyContext) --> [].
+check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
+		-->
+	( 
+		{ map__lookup(VarTypes, ArgVar, ArgType) },
+		{ is_introduced_type_info_type(ArgType) }
+	->
+		mode_info_set_call_context(unify(UnifyContext)),
+		{ InitialArgNum = 0 },
+		modecheck_var_has_inst_list([ArgVar], [ground(shared, no)],
+			InitialArgNum),
+		check_type_info_args_are_ground(ArgVars, VarTypes,
+			UnifyContext)
+	;
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1364,8 +1364,28 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% is this a construction or deconstruction of an
 		% existentially typed data type?
 		%
-		ConsId0 = cons(_, _),
-		type_util__get_existq_cons_defn(ModuleInfo0, TypeOfX, ConsId0,
+
+		%
+		% Check whether the functor had a "new " prefix.
+		% If so, assume it is a construction, and strip off the prefix.
+		% Otherwise, assume it is a deconstruction.
+		%
+		ConsId0 = cons(Functor0, Arity),
+		(
+			remove_new_prefix(Functor0, OrigFunctor)
+		->
+			ConsId = cons(OrigFunctor, Arity),
+			IsConstruction = yes
+		;
+			ConsId = ConsId0,
+			IsConstruction = no
+		),
+
+		%
+		% Check whether the functor (with the "new " prefix removed)
+		% is an existentially typed functor.
+		%
+		type_util__get_existq_cons_defn(ModuleInfo0, TypeOfX, ConsId,
 			ConsDefn)
 	->
 		%
@@ -1375,10 +1395,10 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		map__apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
 		goal_info_get_context(GoalInfo0, Context),
 		polymorphism__process_existq_unify_functor(ConsDefn,
-			ActualArgTypes, TypeOfX, Context,
+			IsConstruction, ActualArgTypes, TypeOfX, Context,
 			ExtraVars, ExtraGoals, PolyInfo0, PolyInfo),
 		list__append(ExtraVars, ArgVars0, ArgVars),
-		Unify = unify(X0, functor(ConsId0, ArgVars), Mode0,
+		Unify = unify(X0, functor(ConsId, ArgVars), Mode0,
 				Unification0, UnifyContext) - GoalInfo0,
 		list__append(ExtraGoals, [Unify], GoalList),
 		conj_list_to_goal(GoalList, GoalInfo0, Goal)
@@ -1494,13 +1514,13 @@ make_fresh_vars([Type|Types], VarSet0, VarTypes0,
 % an existentially quantified data constructor.
 %
 :- pred polymorphism__process_existq_unify_functor(
-		ctor_defn, list(type), (type), prog_context,
+		ctor_defn, bool, list(type), (type), prog_context,
 		list(prog_var), list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__process_existq_unify_functor(in, in, in, in,
+:- mode polymorphism__process_existq_unify_functor(in, in, in, in, in,
 		out, out, in, out) is det.
 
-polymorphism__process_existq_unify_functor(
-		CtorDefn, ActualArgTypes, ActualRetType, Context,
+polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
+		ActualArgTypes, ActualRetType, Context,
 		ExtraVars, ExtraGoals, PolyInfo0, PolyInfo) :-
 
 	CtorDefn = ctor_defn(CtorTypeVarSet, ExistQVars0,
@@ -1544,19 +1564,22 @@ polymorphism__process_existq_unify_functor(
 	% type class constraints
 	%
 	
-	% assume it's a deconstruction
-	polymorphism__make_typeclass_info_head_vars(	
-			ExistentialConstraints, 
-			ExtraTypeClassVars,
-			PolyInfo1, PolyInfo2),
-	ExtraTypeClassGoals = [],
-/*******
-	% assume it's a construction
-	polymorphism__make_typeclass_info_vars(	
-			ExistentialConstraints, [], Context,
-			ExtraTypeClassVars, ExtraTypeClassGoals,
-			PolyInfo1, PolyInfo2),
-*******/
+	(
+		IsConstruction = yes,
+		% assume it's a construction
+		polymorphism__make_typeclass_info_vars(	
+				ExistentialConstraints, [], Context,
+				ExtraTypeClassVars, ExtraTypeClassGoals,
+				PolyInfo1, PolyInfo2)
+	;
+		IsConstruction = no,
+		% assume it's a deconstruction
+		polymorphism__make_typeclass_info_head_vars(	
+				ExistentialConstraints, 
+				ExtraTypeClassVars,
+				PolyInfo1, PolyInfo2),
+		ExtraTypeClassGoals = []
+	),
 
 	polymorphism__update_typeclass_infos(
 			ExistentialConstraints, ExtraTypeClassVars,

@@ -62,6 +62,16 @@
 :- pred is_introduced_type_info_type(type).
 :- mode is_introduced_type_info_type(in) is semidet.
 
+	% In the forwards mode, this predicate checks for a "new " prefix
+	% at the start of the functor name, and removes it if present;
+	% it fails if there is no such prefix.
+	% In the reverse mode, this predicate prepends such a prefix.
+	% (These prefixes are used for construction unifications
+	% with existentially typed functors.)
+:- pred remove_new_prefix(sym_name, sym_name).
+:- mode remove_new_prefix(in, out) is semidet.
+:- mode remove_new_prefix(out, in) is det.
+
 	% Given a type, determine what sort of type it is.
 
 :- pred classify_type(type, module_info, builtin_type).
@@ -277,7 +287,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, require, std_util.
+:- import_module bool, require, std_util, string.
 :- import_module prog_io, prog_io_goal, prog_util.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -317,6 +327,11 @@ is_introduced_type_info_type(Type) :-
 	; Name = "base_typeclass_info"
 	),
 	mercury_private_builtin_module(PrivateBuiltin).
+
+remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
+	string__append("new ", Name, Name0).
+remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
+	string__append("new ", Name, Name0).
 
 %-----------------------------------------------------------------------------%
 

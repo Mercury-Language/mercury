@@ -3168,6 +3168,41 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 	;
 		ConsInfoList0 = []
 	),
+
+	% For "existentially typed" functors, whether the functor
+	% is actually existentially typed depends on whether it is
+	% used as a constructor or as a deconstructor.  As a constructor,
+	% it is universally typed, but as a deconstructor, it is
+	% existentially typed.  But type checking and polymorphism need
+	% to know whether it is universally or existentially quantified
+	% _before_ mode analysis has inferred the mode of the unification.
+	% Therefore, we use a special syntax for construction unifications
+	% with existentially quantified functors: instead of just using the
+	% functor name (e.g. "Y = foo(X)", the programmer must use the
+	% special functor name "new foo" (e.g. "Y = 'new foo'(X)").
+	% 
+	% Here we check for occurrences of functor names starting with
+	% "new ".  For these, we look up the original functor in the
+	% constructor symbol table, and for any occurrences of that
+	% functor we flip the quantifiers on the type definition
+	% (i.e. convert the existential quantifiers and constraints
+	% into universal ones).
+	(
+		Functor = cons(Name, Arity),
+		remove_new_prefix(Name, OrigName),
+		OrigFunctor = cons(OrigName, Arity),
+		map__search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
+	->
+		convert_cons_defn_list(TypeCheckInfo, HLDS_ExistQConsDefnList,
+			ExistQuantifiedConsInfoList),
+		list__filter_map(flip_quantifiers, ExistQuantifiedConsInfoList,
+			UnivQuantifiedConsInfoList),
+		list__append(UnivQuantifiedConsInfoList,
+			ConsInfoList0, ConsInfoList1)
+	;
+		ConsInfoList1 = ConsInfoList0
+	),
+
 	% Check if Functor is a constant of one of the builtin atomic
 	% types (string, float, int, character).  If so, insert
 	% the resulting cons_type_info at the start of the list.
@@ -3181,10 +3216,11 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
 			constraints([], [])),
-		ConsInfoList1 = [ConsInfo | ConsInfoList0]
+		ConsInfoList2 = [ConsInfo | ConsInfoList1]
 	;
-		ConsInfoList1 = ConsInfoList0
+		ConsInfoList2 = ConsInfoList1
 	),
+
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
@@ -3192,10 +3228,30 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		builtin_pred_type(TypeCheckInfo, Functor, Arity,
 			PredConsInfoList)
 	->
-		list__append(ConsInfoList1, PredConsInfoList, ConsInfoList)
+		list__append(ConsInfoList2, PredConsInfoList, ConsInfoList)
 	;
-		ConsInfoList = ConsInfoList1
+		ConsInfoList = ConsInfoList2
 	).
+
+:- pred flip_quantifiers(cons_type_info, cons_type_info).
+:- mode flip_quantifiers(in, out) is semidet.
+
+flip_quantifiers(cons_type_info(A, ExistQVars0, C, D, Constraints0),
+		cons_type_info(A, ExistQVars, C, D, Constraints)) :-
+	% Fail if there are no existentially quantifier variables.
+	% We do this because we want to allow the 'new foo' syntax only 
+	% for existentially typed functors, not for ordinary functors.
+	% 
+	ExistQVars0 \= [],
+
+	% convert the existentially quantified type vars into
+	% universally quantified type vars by just discarding
+	% the old list of existentially quantified type vars and
+	% replacing it with an empty list.
+	ExistQVars = [],
+
+	% convert the existential constraints into universal constraints
+	dual_constraints(Constraints0, Constraints).
 
 %-----------------------------------------------------------------------------%
 

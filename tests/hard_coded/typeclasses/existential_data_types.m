@@ -67,15 +67,4 @@ my_exist_t = 43.
 
 my_univ_value(make_my_univ(X)) = X.
 
-/*
-** Construction of existentially typed data types are not yet implemented,
-** so we have to use the C interface.
-*/
-% my_univ(X) = make_my_univ(X).
-:- pragma c_code(my_univ(Value::in) = (Univ::out), will_not_call_mercury, "
-        incr_hp(Univ, 2);
-        field(mktag(0), Univ, 0) = (Word)
-                TypeClassInfo_for_existential_data_types__fooable_T;
-        field(mktag(0), Univ, 1) = (Word) Value;
-
-").
+my_univ(X) = 'new make_my_univ'(X).
