@@ -704,6 +704,129 @@ mercury__string__append_3_3_i1:
 
 /*-----------------------------------------------------------------------*/
 
+/*
+:- pred string__split(string, int, string, string).
+:- mode string__split(in, in, out, out) is det.
+%	string__split(String, Count, LeftSubstring, RightSubstring):
+%	`LeftSubstring' is the left-most `Count' characters of `String',
+%	and `RightSubstring' is the remainder of `String'.
+%	(If `Count' is out of the range [0, length of `String'], it is
+%	treated as if it were the nearest end-point of that range.)
+*/
+
+mercury__string__split_4_0:
+	{
+	  char *string = (char *) r1;
+	  Integer count = (Integer) r2;
+	  Integer len;
+
+	  if (count <= 0) {
+		r3 = (Word) "";
+		r4 = r1;
+		proceed();
+	  }
+	  len = strlen(string);
+	  if (count > len) count = len;
+	  incr_hp_atomic(r3, (count + sizeof(Word)) / sizeof(Word));
+	  memcpy((char *)r3, string, count);
+	  ((char *)r3)[count] = '\0';
+	  incr_hp_atomic(r4, (len - count + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r4, string + count);
+	  proceed();
+	}
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__first_char(string, character, string).
+:- mode string__first_char(in, in, in) is semidet.	% implied
+:- mode string__first_char(in, out, in) is semidet.	% implied
+:- mode string__first_char(in, in, out) is semidet.	% implied
+:- mode string__first_char(in, out, out) is semidet.
+:- mode string__first_char(out, in, in) is det.
+%	string__first_char(String, Char, Rest) is true iff
+%		Char is the first character of String, and Rest is the
+%		remainder.
+*/
+
+/*
+:- mode string__first_char(in, in, in) is semidet.	% implied
+*/
+mercury__string__first_char_3_0:
+	{ char *string = (char *)r2;
+	  char c = (char)r3;
+	  char *rest = (char *)r4;
+	  
+	  r1 = (string[0] == c && c != 0 && strcmp(string + 1, rest) == 0);
+	  proceed();
+	}
+
+/*
+:- mode string__first_char(in, out, in) is semidet.	% implied
+*/
+mercury__string__first_char_3_1:
+	{ char *string = (char *)r2;
+	  char *rest = (char *)r4;
+	  r3 = string[0];
+	  r1 = (r3 != '\0' && strcmp(string + 1, rest) == 0);
+	  proceed();
+	}
+
+/*
+:- mode string__first_char(in, in, out) is semidet.	% implied
+*/
+mercury__string__first_char_3_2:
+	{ char *string = (char *)r2;
+	  char c = (char)r3;
+
+	  if (string[0] != c || c == '\0') {
+		r1 = FALSE;
+		proceed();
+	  }
+	  string++;
+	  incr_hp_atomic(r4, (strlen(string) + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r4, string);
+	  r1 = TRUE;
+	  proceed();
+	}
+
+/*
+:- mode string__first_char(in, out, out) is semidet.
+*/
+mercury__string__first_char_3_3:
+	{ char *string = (char *)r2;
+
+	  r3 = string[0];
+	  if (r3 == '\0') {
+		r1 = FALSE;
+		proceed();
+	  }
+	  string++;
+	  incr_hp_atomic(r4, (strlen(string) + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r4, string);
+	  r1 = TRUE;
+	  proceed();
+	}
+
+/*
+:- mode string__first_char(out, in, in) is det.
+*/
+mercury__string__first_char_3_4:
+	{ char c = (char)r2;
+	  char *rest = (char *)r3;
+	  size_t len = strlen(rest) + 1;
+	  char *string;
+
+	  incr_hp_atomic(r1, (len + sizeof(Word)) / sizeof(Word));
+	  ((char *)r1)[0] = c;
+	  strcpy((char *)r1 + 1, rest);
+
+	  proceed();
+	}
+
+/*-----------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------*/
+
 mercury__term_io__read_term_3_0:
 	tailcall(ENTRY(mercury__parser__read_term_3_0),
 	  	LABEL(mercury__term_io__read_term_3_0));
