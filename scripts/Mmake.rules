@@ -180,7 +180,7 @@ $(rlos_subdir)%.rlo : %.m
 
 # .NET back-end
 $(ils_subdir)%.il : %.m
-	rm -f $(ils_subdir)$*.c
+	rm -f $(ils_subdir)$*.il
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
 
 # If we are removing the .c files, we need to tell Make that we're

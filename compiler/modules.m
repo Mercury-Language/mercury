@@ -1949,7 +1949,17 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					"$(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) ",
 					"\\\n",
 				"\t\t-c ", CFileName, " -o $@\n",
-				"endif # RM_C != :\n"
+				"endif # RM_C != :\n",
+				ILFileName, " : ", SourceFileName, "\n",
+				"\trm -f ", ILFileName, "\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"--il-only $< > ", ErrFileName,
+					" 2>&1\n",
+				RLOFileName, " : ", SourceFileName, "\n",
+				"\trm -f ", RLOFileName, "\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"--aditi-only $< > ", ErrFileName,
+					" 2>&1\n"
 			])
 		;
 			[]
