@@ -160,6 +160,18 @@ Define_extern_entry(mercury____Compare___uniq_array__uniq_array_1_0);
 Define_extern_entry(mercury____TermToType___uniq_array__uniq_array_1_0);
 Define_extern_entry(mercury____TypeToTerm___uniq_array__uniq_array_1_0);
 
+#ifdef	SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+Word * mercury_data__uniq_array__base_type_info_uniq_array_1[] = {
+	(Word *) ((Integer) 1),
+	(Word *) (Integer) ENTRY(mercury____Unify___uniq_array__uniq_array_1_0),
+	(Word *) (Integer) ENTRY(mercury____Index___uniq_array__uniq_array_1_0),
+	(Word *) (Integer) ENTRY(mercury____Compare___uniq_array__uniq_array_1_0),
+	(Word *) (Integer) ENTRY(mercury____TermToType___uniq_array__uniq_array_1_0),
+	(Word *) (Integer) ENTRY(mercury____TypeToTerm___uniq_array__uniq_array_1_0)
+};
+
+#endif
+
 BEGIN_MODULE(uniq_array_module)
 	init_entry(mercury____Unify___uniq_array__uniq_array_1_0);
 	init_entry(mercury____Index___uniq_array__uniq_array_1_0);
