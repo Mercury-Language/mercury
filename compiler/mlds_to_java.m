@@ -3071,7 +3071,11 @@ output_cast_rval(Type, Exprn, ModuleName) -->
 	io__write_string("("),
 	output_type(Type),
 	io__write_string(") "),
-	output_rval_maybe_with_enum(Exprn, ModuleName).
+	( { java_builtin_type(Type, "int", _, _) } ->
+		output_rval_maybe_with_enum(Exprn, ModuleName)
+	;
+		output_rval(Exprn, ModuleName)
+	).
 
 :- pred output_boxed_rval(mlds__type, mlds__rval, mlds_module_name,
 		io__state, io__state).
