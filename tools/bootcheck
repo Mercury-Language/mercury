@@ -583,6 +583,7 @@ then
 		$LN_S $root/conf* .
 		$LN_S $root/aclocal.m4 .
 		$LN_S $root/VERSION .
+		$LN_S $root/install-sh .
 		$LN_S $root/.*.in .
 		rm -f config*.log
 		cp $root/Mmake* $root/Mercury.options .
@@ -829,6 +830,7 @@ then
 	$LN_S $root/conf* .
 	$LN_S $root/aclocal.m4 .
 	$LN_S $root/VERSION .
+	$LN_S $root/install-sh .
 	$LN_S $root/.*.in .
 	rm -f config*.log
 	cp $root/stage2/Mmake* $root/stage2/Mercury.options .
