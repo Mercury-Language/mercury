@@ -139,6 +139,15 @@ mode analysis:
 
 - mode segments & high-level transformation of circularly moded programs.
 
+determinism analysis:
+---------------------
+
+- propagate information about bindings from the condition of an if-then-else
+  to the else so that
+	(if X = [] then .... else X = [A|As], ...)
+  is considered det.
+
+- turn chains of if-then-elses into switchs where possible.
 
 higher-order preds:
 -------------------
