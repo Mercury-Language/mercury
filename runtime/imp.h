@@ -219,26 +219,29 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				debugcall((proc), (succ_cont));	\
 				succip = (succ_cont);		\
 				PROFILE((proc), (current_label));	\
-				set_prof_current_proc(proc); \
+				set_prof_current_proc(proc);	\
 				GOTO(proc);			\
 			} while (0)
 
-#define	call_closure(succ_cont)					\
+#define	call_det_closure(succ_cont, current_label)		\
 		do {						\
-			Declare_entry(do_call_closure); \
-			call(ENTRY(do_call_closure), succ_cont); \
+			Declare_entry(do_call_det_closure);	\
+			call(ENTRY(do_call_det_closure),	\
+				(succ_cont), (current_label));	\
 		} while (0)
 
-#define	call_semidet_closure(succ_cont)				\
+#define	call_semidet_closure(succ_cont, current_label)		\
 		do {						\
 			Declare_entry(do_call_semidet_closure); \
-			call(ENTRY(do_call_semidet_closure), succ_cont); \
+			call(ENTRY(do_call_semidet_closure),	\
+				(succ_cont), (current_label));	\
 		} while (0)
 
-#define	solutions(succ_cont)					\
+#define	call_nondet_closure(succ_cont, current_label)		\
 		do {						\
-			Declare_entry(do_solutions);		\
-			call(ENTRY(do_solutions), succ_cont); 	\
+			Declare_entry(do_call_nondet_closure);	\
+			call(ENTRY(do_call_nondet_closure),	\
+				(succ_cont), (current_label));	\
 		} while (0)
 
 #define	localtailcall(label, current_label)			\

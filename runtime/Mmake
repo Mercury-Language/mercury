@@ -25,10 +25,10 @@ HDRS		= access.h aux.h conf.h dummy.h engine.h getopt.h imp.h init.h \
 		  ext_stdlib.h
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h
-MODS		= engine.mod io.mod wrapper.mod call.mod
+MODS		= engine.mod io.mod wrapper.mod call.mod solutions.mod
 OBJS		= engine.o io.o wrapper.o call.o \
 		  access.o aux.o dummy.o label.o \
-		  list.o memory.o table.o timing.o
+		  list.o memory.o table.o timing.o solutions.o
 PIC_OBJS	= $(OBJS:.o=.$(PIC_O))
 
 #-----------------------------------------------------------------------------#
@@ -73,6 +73,11 @@ install_mods:
 install_lib: libmer.a libmer.$(SO)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 	cp `vpath_find libmer.a libmer.$(SO)` $(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# prevent GNU make from removing these intermediate files
+dont_remove: engine.c io.c wrapper.c call.c solutions.c
 
 #-----------------------------------------------------------------------------#
 

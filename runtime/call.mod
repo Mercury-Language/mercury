@@ -21,6 +21,10 @@
  *	in r1, the number of additional input arguments in r2, the number
  *	of output arguments to expect in r3, and the additional input arguments
  *	in r4..r(M+3).
+ *	The output arguments are returned in registers r1, r2, ...
+ *
+ *	XXX doesn't work for calling nondet preds! (pushes/pops don't match)
+ *
  */
 
 #include "imp.h"
@@ -29,7 +33,7 @@ BEGIN_MODULE(call_module)
 
 BEGIN_CODE
 
-do_call_closure:
+do_call_det_closure:
 {
 	Word closure;
 	int i, num_in_args, num_extra_args;
@@ -59,10 +63,10 @@ do_call_closure:
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(do_closure_return),
-		LABEL(do_call_closure));
+	call((Code *)field(0, closure, 1), LABEL(do_det_closure_return),
+		LABEL(do_det_call_closure));
 }
-do_closure_return:
+do_det_closure_return:
 {
 	int i,num_in_args, num_out_args;
 
@@ -127,6 +131,57 @@ do_semidet_closure_return:
 	restore_registers();
 
 	proceed();
+}
+
+do_call_nondet_closure:
+{
+	Word closure;
+	int i, num_in_args, num_extra_args;
+
+	closure = r1; /* The closure */
+	num_in_args = field(0, closure, 0); /* number of input args */
+	num_extra_args = r2; /* number of immediate input args */
+
+	mkframe("do_call_nondet_closure", 2, ENTRY(do_fail));
+	framevar(0) = r3;	/* The number of output args to unpack */
+	framevar(1) = num_in_args + num_extra_args;
+				/* The number of input args */
+
+	save_registers();
+
+	if (num_in_args < 3) {
+		for (i=1; i<=num_extra_args;i++) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} else if (num_in_args > 3) {
+		for (i=num_extra_args; i>0; i--) {
+			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+		}
+	} /* else do nothing because i == 3 */
+
+	for(i=1; i <= num_in_args; i++) 
+		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+
+	restore_registers();
+
+	call((Code *)field(0, closure, 1), LABEL(do_nondet_closure_return),
+		LABEL(do_nondet_call_closure));
+}
+do_nondet_closure_return:
+{
+	int i,num_in_args, num_out_args;
+
+	num_in_args = framevar(1); /* restore the input arg counter */
+	num_out_args = framevar(0); /* restore the ouput arg counter */
+
+	save_registers();
+
+	for (i=1; i<= num_out_args; i++)
+		virtual_reg(i) = virtual_reg(i+num_in_args);
+
+	restore_registers();
+
+	succeed();
 }
 
 /* See polymorphism.nl for explanation of these offsets and how the

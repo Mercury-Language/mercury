@@ -80,9 +80,14 @@
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(complicated_mode, out) is det.
 
+% Note!  solutions/2 is implemented, but the compiler currently
+% DOES NOT CHECK that the higher-order pred term you pass has the correct
+% mode for it's argument (out) and the correct determinism (nondet). 
+% If you pass the wrong sort of pred, your program will most likely dump
+% core.
+
 % The following is a temporary hack until we implement higher-order
 % modes.
-
 :- mode complicated_mode :: input.
 
 %-----------------------------------------------------------------------------%
@@ -111,14 +116,21 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module require, set.
 
 :- external(report_stats/0).
 :- external(type_to_univ/2).
 :- external(gc_call/1).		% currently only implemented for Prolog
-:- external(solutions/2).	% currently only implemented for Prolog
 :- external(semidet_fail/0).
 :- external(semidet_succeed/0).
+
+:- pred builtin_solutions(pred(T), set(T)).
+:- mode builtin_solutions(complicated_mode, out) is det.
+:- external(builtin_solutions/2).
+
+solutions(Pred, List) :-
+	builtin_solutions(Pred, Set),
+	set__to_sorted_list(Set, List).
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-
