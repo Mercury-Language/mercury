@@ -109,6 +109,10 @@
 
 :- pred output_label(label::in, io::di, io::uo) is det.
 
+	% Output a label without the standard mercury__ prefix.
+
+:- pred output_label(label::in, bool::in, io::di, io::uo) is det.
+
 	% Convert a label to a C string. The boolean controls whether
 	% a prefix ("mercury__") is added to the string.
 
@@ -816,20 +820,6 @@ classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
 	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
-	% ChunkSize should be as large as possible to reduce the size of the
-	% file being generated, but small enough not to overload the fixed
-	% limits of our target C compilers.
-	ChunkSize = 20,
-	% The process of creating the multi_map reverses the order of
-	% CommonDatas, we now undo this reversal.
-	list__chunk(list__reverse(CommonDatas), ChunkSize, CommonDataChunks),
-	list__foldl2(output_common_decl_chunk(TypeNum), CommonDataChunks,
-		!DeclSet, !IO).
-
-:- pred output_common_decl_chunk(int::in, list(common_data)::in,
-	decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
 	io__write_string("\n", !IO),
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
 	ExportedFromFile = SplitFiles,
@@ -850,12 +840,68 @@ output_common_decl_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
 		decl_set_insert(TypeDeclId, !DeclSet)
 	),
 	(
-		ExportedFromFile = yes,
-		io__write_string("const struct ", !IO)
-	;
 		ExportedFromFile = no,
-		io__write_string("static const struct ", !IO)
-	),
+		% There should be a macro MR_DEF_COMMON<n> for every n up to
+		% ChunkSize.
+		ChunkSize = 10,
+		list__chunk(list__reverse(CommonDatas), ChunkSize,
+			CommonDataChunks),
+		list__foldl2(output_common_decl_shorthand_chunk(TypeNum),
+			CommonDataChunks, !DeclSet, !IO)
+	;
+		ExportedFromFile = yes,
+		% ChunkSize should be as large as possible to reduce the size
+		% of the file being generated, but small enough not to overload
+		% the fixed limits of our target C compilers.
+		ChunkSize = 20,
+		% The process of creating the multi_map reverses the order of
+		% CommonDatas, we now undo this reversal.
+		list__chunk(list__reverse(CommonDatas), ChunkSize,
+			CommonDataChunks),
+		list__foldl2(output_common_decl_chunk(ModuleName, TypeNum),
+			CommonDataChunks, !DeclSet, !IO)
+	).
+
+:- pred output_common_decl_shorthand_chunk(int::in, list(common_data)::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_common_decl_shorthand_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
+	io__write_string("MR_DEF_COMMON", !IO),
+	io__write_int(list__length(CommonDatas), !IO),
+	io__write_string("(", !IO),
+	io__write_int(TypeNum, !IO),
+	io__write_string(",", !IO),
+	output_common_decl_shorthand_chunk_entries(CommonDatas, !DeclSet, !IO),
+	io__write_string(")\n", !IO).
+
+:- pred output_common_decl_shorthand_chunk_entries(list(common_data)::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_common_decl_shorthand_chunk_entries([], !DeclSet, !IO) :-
+	error("output_common_decl_shorthand_chunk_entries: empty list").
+output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
+		!DeclSet, !IO) :-
+	CommonData = common_data(ModuleName, CellNum, TypeAndValue),
+	TypeNum = common_cell_get_type_num(TypeAndValue),
+	VarName = common(CellNum, TypeNum),
+	VarDeclId = data_addr(data_addr(ModuleName, VarName)),
+	decl_set_insert(VarDeclId, !DeclSet),
+	io__write_int(CellNum, !IO),
+	(
+		CommonDatas = [_ | _],
+		io__write_string(",", !IO),
+		output_common_decl_shorthand_chunk_entries(CommonDatas,
+			!DeclSet, !IO)
+	;
+		CommonDatas = []
+	).
+
+:- pred output_common_decl_chunk(module_name::in, int::in,
+	list(common_data)::in, decl_set::in, decl_set::out, io::di, io::uo)
+	is det.
+
+output_common_decl_chunk(ModuleName, TypeNum, CommonDatas, !DeclSet, !IO) :-
+	io__write_string("const struct ", !IO),
 	output_common_cell_type_name(ModuleName, TypeNum, !IO),
 	io__nl(!IO),
 	output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO).
@@ -1297,7 +1343,8 @@ group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
 :- pred output_c_label_init_group(string::in,
 	pair(proc_label, list(int))::in, io::di, io::uo) is det.
 
-output_c_label_init_group(Suffix, ProcLabel - LabelNums, !IO) :-
+output_c_label_init_group(Suffix, ProcLabel - RevLabelNums, !IO) :-
+	list__reverse(RevLabelNums, LabelNums),
 	% There must be macros of the form MR_init_label<n> and
 	% MR_init_label_sl<n> for every <n> up to MaxChunkSize.
 	MaxChunkSize = 8,
@@ -1394,15 +1441,21 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
 	;
 		true
 	),
+	(
+		PrintComments = yes,
 	io__write_string("/* code for predicate '", !IO),
-		% Now that we have unused_args.m mangling predicate names,
-		% we should probably demangle them here.
+			% Now that we have unused_args.m mangling predicate
+			% names, we should probably demangle them here.
 	io__write_string(Name, !IO),
 	io__write_string("'/", !IO),
 	io__write_int(Arity, !IO),
 	io__write_string(" in mode ", !IO),
 	io__write_int(ModeNum, !IO),
-	io__write_string(" */\n", !IO),
+		io__write_string(" */\n", !IO)
+	;
+		PrintComments = no
+	),
+
 	llds_out__find_caller_label(Instrs, CallerLabel),
 	llds_out__find_cont_labels(Instrs, bintree_set__init, ContLabelSet),
 	( EmitCLoops = yes ->
@@ -1688,7 +1741,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 			WhileSet, !IO)
 	; Instr0 = if_val(Rval, label(Label)) ->
 		io__write_string("\tif (", !IO),
-		output_rval(Rval, !IO),
+		output_test_rval(Rval, !IO),
 		io__write_string(")\n\t\tcontinue;\n", !IO),
 		(
 			PrintComments = yes,
@@ -1865,7 +1918,7 @@ output_instruction(computed_goto(Rval, Labels), _, !IO) :-
 output_instruction(if_val(Rval, Target), ProfInfo, !IO) :-
 	ProfInfo = CallerLabel - _,
 	io__write_string("\tif (", !IO),
-	output_rval_as_type(Rval, bool, !IO),
+	output_test_rval(Rval, !IO),
 	io__write_string(") {\n\t\t", !IO),
 	output_goto(Target, CallerLabel, !IO),
 	io__write_string("\t}\n", !IO).
@@ -2067,8 +2120,8 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
 output_pragma_c_component(pragma_c_raw_code(C_Code, _), !IO) :-
 	io__write_string(C_Code, !IO).
 output_pragma_c_component(pragma_c_fail_to(Label), !IO) :-
-	io__write_string("if (!MR_r1) MR_GOTO_LABEL(", !IO),
-	output_label(Label, !IO),
+	io__write_string("if (!MR_r1) MR_GOTO_LAB(", !IO),
+	output_label(Label, no, !IO),
 	io__write_string(");\n", !IO).
 output_pragma_c_component(pragma_c_noop, !IO).
 
@@ -2669,10 +2722,10 @@ output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
 		io__write_string(" =\n{\n", !IO),
 		(
 			TypeAndValue = plain_type_and_value(_, ArgsTypes),
-			output_cons_args(ArgsTypes, "\t", !IO)
+			output_cons_args(ArgsTypes, !IO)
 		;
 			TypeAndValue = grouped_type_and_value(_, ArgGroups),
-			output_cons_arg_groups(ArgGroups, "\t", !IO)
+			output_cons_arg_groups(ArgGroups, !IO)
 		),
 		io__write_string(LaterIndent, !IO),
 		io__write_string("};\n", !IO)
@@ -2795,12 +2848,11 @@ output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
 	% Output the arguments, each on its own line prefixing with Indent,
 	% and with a cast appropriate to its type if necessary.
 
-:- pred output_cons_args(assoc_list(rval, llds_type)::in, string::in,
-	io::di, io::uo) is det.
+:- pred output_cons_args(assoc_list(rval, llds_type)::in, io::di, io::uo)
+	is det.
 
-output_cons_args([], _Indent, !IO).
-output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
-	io__write_string(Indent, !IO),
+output_cons_args([], !IO).
+output_cons_args([Rval - Type | RvalsTypes], !IO) :-
 	(
 		direct_field_int_constant(Type) = yes,
 		Rval = const(int_const(N))
@@ -2811,59 +2863,54 @@ output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
 	),
 	( RvalsTypes \= [] ->
 		io__write_string(",\n", !IO),
-		output_cons_args(RvalsTypes, Indent, !IO)
+		output_cons_args(RvalsTypes, !IO)
 	;
 		io__write_string("\n", !IO)
 	).
 
-:- pred output_cons_arg_groups(list(common_cell_arg_group)::in, string::in,
-	io::di, io::uo) is det.
+:- pred output_cons_arg_groups(list(common_cell_arg_group)::in, io::di, io::uo)
+	is det.
 
-output_cons_arg_groups([], _Indent, !IO).
-output_cons_arg_groups([Group | Groups], Indent, !IO) :-
+output_cons_arg_groups([], !IO).
+output_cons_arg_groups([Group | Groups], !IO) :-
 	Group = common_cell_arg_group(Type, _, Rvals),
-	io__write_string(Indent, !IO),
 	io__write_string("{\n", !IO),
 	(
 		direct_field_int_constant(Type) = yes,
 		list__map(project_int_constant, Rvals, Ints)
 	->
-		output_cons_arg_group_ints(Ints, Indent, !IO)
+		output_cons_arg_group_ints(Ints, !IO)
 	;
-		output_cons_arg_group_elements(Type, Rvals, Indent, !IO)
+		output_cons_arg_group_elements(Type, Rvals, !IO)
 	),
-	io__write_string(Indent, !IO),
 	( Groups \= [] ->
 		io__write_string("},\n", !IO),
-		output_cons_arg_groups(Groups, Indent, !IO)
+		output_cons_arg_groups(Groups, !IO)
 	;
 		io__write_string("}\n", !IO)
 	).
 
 :- pred output_cons_arg_group_elements(llds_type::in, list(rval)::in,
-	string::in, io::di, io::uo) is det.
+	io::di, io::uo) is det.
 
-output_cons_arg_group_elements(_, [], _Indent, !IO).
-output_cons_arg_group_elements(Type, [Rval | Rvals], Indent, !IO) :-
-	io__write_string(Indent, !IO),
+output_cons_arg_group_elements(_, [], !IO).
+output_cons_arg_group_elements(Type, [Rval | Rvals], !IO) :-
 	output_rval_as_type(Rval, Type, !IO),
 	( Rvals \= [] ->
 		io__write_string(",\n", !IO),
-		output_cons_arg_group_elements(Type, Rvals, Indent, !IO)
+		output_cons_arg_group_elements(Type, Rvals, !IO)
 	;
 		io__write_string("\n", !IO)
 	).
 
-:- pred output_cons_arg_group_ints(list(int)::in, string::in,
-	io::di, io::uo) is det.
+:- pred output_cons_arg_group_ints(list(int)::in, io::di, io::uo) is det.
 
-output_cons_arg_group_ints([], _Indent, !IO).
-output_cons_arg_group_ints([Int | Ints], Indent, !IO) :-
-	io__write_string(Indent, !IO),
+output_cons_arg_group_ints([], !IO).
+output_cons_arg_group_ints([Int | Ints], !IO) :-
 	io__write_int(Int, !IO),
 	( Ints \= [] ->
 		io__write_string(",\n", !IO),
-		output_cons_arg_group_ints(Ints, Indent, !IO)
+		output_cons_arg_group_ints(Ints, !IO)
 	;
 		io__write_string("\n", !IO)
 	).
@@ -3030,8 +3077,8 @@ output_code_addr_decls(do_not_reached, !IO) :-
 :- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
 output_label_as_code_addr_decls(exported(ProcLabel), !IO) :-
-	io__write_string("MR_declare_entry(", !IO),
-	output_label(exported(ProcLabel), !IO),
+	io__write_string("MR_decl_entry(", !IO),
+	output_label(exported(ProcLabel), no, !IO),
 	io__write_string(");\n", !IO).
 output_label_as_code_addr_decls(local(ProcLabel), !IO) :-
 	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
@@ -3180,9 +3227,9 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
 		bintree_set__is_member(Label, ContLabelSet),
 		ProfileTime = yes
 	->
-		io__write_string("\tMR_update_prof_current_proc(MR_LABEL(",
+		io__write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(",
 			!IO),
-		output_label(CallerLabel, !IO),
+		output_label(CallerLabel, no, !IO),
 		io__write_string("));\n", !IO)
 	;
 		true
@@ -3210,8 +3257,8 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		;
 			ProfileCalls = no,
-			io__write_string("MR_noprof_tailcall(", !IO),
-			output_label_as_code_addr(Label, !IO),
+			io__write_string("MR_np_tailcall_ent(", !IO),
+			output_label(Label, no, !IO),
 			io__write_string(");\n", !IO)
 		)
 	;
@@ -3227,8 +3274,8 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		;
 			ProfileCalls = no,
-			io__write_string("MR_noprof_tailcall(", !IO),
-			output_label_as_code_addr(Label, !IO),
+			io__write_string("MR_np_tailcall_ent(", !IO),
+			output_label(Label, no, !IO),
 			io__write_string(");\n", !IO)
 		)
 	;
@@ -3244,14 +3291,14 @@ output_goto(label(Label), CallerLabel, !IO) :-
 			io__write_string(");\n", !IO)
 		;
 			ProfileCalls = no,
-			io__write_string("MR_noprof_localtailcall(", !IO),
-			output_label(Label, !IO),
+			io__write_string("MR_np_localtailcall(", !IO),
+			output_label(Label, no, !IO),
 			io__write_string(");\n", !IO)
 		)
 	;
 		Label = local(_, _),
-		io__write_string("MR_GOTO_LABEL(", !IO),
-		output_label(Label, !IO),
+		io__write_string("MR_GOTO_LAB(", !IO),
+		output_label(Label, no, !IO),
 		io__write_string(");\n", !IO)
 	).
 output_goto(imported(ProcLabel), CallerLabel, !IO) :-
@@ -3265,9 +3312,9 @@ output_goto(imported(ProcLabel), CallerLabel, !IO) :-
 		io__write_string(");\n", !IO)
 	;
 		ProfileCalls = no,
-		io__write_string("MR_noprof_tailcall(MR_ENTRY(", !IO),
-		output_proc_label(ProcLabel, !IO),
-		io__write_string("));\n", !IO)
+		io__write_string("MR_np_tailcall_ent(", !IO),
+		output_proc_label(ProcLabel, no, !IO),
+		io__write_string(");\n", !IO)
 	).
 output_goto(succip, _, !IO) :-
 	io__write_string("MR_proceed();\n", !IO).
@@ -3308,25 +3355,28 @@ output_goto(do_call_closure, CallerLabel, !IO) :-
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
 	io__write_string(");\n\t\t", !IO),
-	io__write_string("MR_noprof_tailcall(" ++
-		"MR_ENTRY(mercury__do_call_closure_compact));\n", !IO).
+	io__write_string("MR_np_tailcall_ent(do_call_closure_compact);\n",
+		!IO).
 output_goto(do_call_class_method, CallerLabel, !IO) :-
 	% see comment in output_call for why we use `noprof_' etc. here
 	io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 	output_label_as_code_addr(CallerLabel, !IO),
 	io__write_string(");\n\t\t", !IO),
-	io__write_string("MR_noprof_tailcall(" ++
-		"MR_ENTRY(mercury__do_call_class_method_compact));\n", !IO).
+	io__write_string("MR_np_tailcall(do_call_class_method_compact));\n",
+		!IO).
 output_goto(do_not_reached, CallerLabel, !IO) :-
 	io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t",
 		!IO),
 	output_label_as_code_addr(CallerLabel, !IO),
 	io__write_string(");\n", !IO).
 
-	% Note that we also do some optimization here by
-	% outputting `localcall' rather than `call' for
-	% calls to local labels, or `call_localret' for
+	% Note that we also do some optimization here by outputting `localcall'
+	% rather than `call' for calls to local labels, or `call_localret' for
 	% calls which return to local labels (i.e. most of them).
+	%
+	% We also reduce the size of the output by emitting shorthand forms of
+	% the relevant macros when possible, allowing those shorthand macros
+	% to apply mercury__ prefixes and possible MR_ENTRY() wrappers.
 
 :- pred output_call(code_addr::in, code_addr::in, label::in, io::di, io::uo)
 	is det.
@@ -3351,18 +3401,10 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 		ProfileCall = no,
 		io__write_string("MR_set_prof_ho_caller_proc(", !IO),
 		output_label_as_code_addr(CallerLabel, !IO),
-		io__write_string(");\n\t", !IO),
-		io__write_string("MR_noprof_", !IO)
+		io__write_string(");\n\t", !IO)
 	;
 		globals__io_lookup_bool_option(profile_calls, ProfileCall,
-			!IO),
-		(
-			ProfileCall = yes,
-			io__write_string("MR_", !IO)
-		;
-			ProfileCall = no,
-			io__write_string("MR_noprof_", !IO)
-		)
+			!IO)
 	),
 	(
 		Target = label(Label),
@@ -3371,22 +3413,107 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 		; Label = local(_, _)
 		)
 	->
-		io__write_string("localcall(", !IO),
+		(
+			ProfileCall = yes,
+			io__write_string("MR_localcall(", !IO),
 		output_label(Label, !IO),
 		io__write_string(",\n\t\t", !IO),
 		output_code_addr(Continuation, !IO)
+	;
+			ProfileCall = no,
+			code_addr_to_string_base(Continuation, BaseStr,
+				NeedsPrefix, Wrapper),
+			(
+				NeedsPrefix = no,
+				io__write_string("MR_noprof_localcall(", !IO),
+				output_label(Label, no, !IO),
+				io__write_string(",\n\t\t", !IO),
+				io__write_string(BaseStr, !IO),
+				output_code_addr_from_pieces(BaseStr,
+					NeedsPrefix, Wrapper, !IO)
+			;
+				NeedsPrefix = yes,
+				Wrapper = entry,
+				io__write_string("MR_np_localcall_ent(", !IO),
+				output_label(Label, no, !IO),
+				io__write_string(",\n\t\t", !IO),
+				io__write_string(BaseStr, !IO)
+			;
+				NeedsPrefix = yes,
+				Wrapper = label,
+				io__write_string("MR_np_localcall_lab(", !IO),
+				output_label(Label, no, !IO),
+				io__write_string(",\n\t\t", !IO),
+				io__write_string(BaseStr, !IO)
+			;
+				NeedsPrefix = yes,
+				Wrapper = none,
+				io__write_string("MR_np_localcall(", !IO),
+				output_label(Label, no, !IO),
+				io__write_string(",\n\t\t", !IO),
+				output_code_addr_from_pieces(BaseStr,
+					NeedsPrefix, Wrapper, !IO)
+			)
+		)
 	;
 		Continuation = label(ContLabel),
 		( ContLabel = c_local(_)
 		; ContLabel = local(_, _)
 		)
 	->
-		io__write_string("call_localret(", !IO),
+		(
+			ProfileCall = yes,
+			io__write_string("MR_call_localret(", !IO),
 		output_code_addr(Target, !IO),
 		io__write_string(",\n\t\t", !IO),
 		output_label(ContLabel, !IO)
 	;
-		io__write_string("call(", !IO),
+			ProfileCall = no,
+			code_addr_to_string_base(Target, BaseStr,
+				NeedsPrefix, Wrapper),
+			(
+				NeedsPrefix = no,
+				io__write_string("MR_noprof_call_localret(",
+					!IO),
+				output_code_addr_from_pieces(BaseStr,
+					NeedsPrefix, Wrapper, !IO),
+				io__write_string(",\n\t\t", !IO),
+				output_label(ContLabel, !IO)
+			;
+				NeedsPrefix = yes,
+				Wrapper = entry,
+				io__write_string("MR_np_call_localret_ent(",
+					!IO),
+				io__write_string(BaseStr, !IO),
+				io__write_string(",\n\t\t", !IO),
+				output_label(ContLabel, no, !IO)
+			;
+				NeedsPrefix = yes,
+				Wrapper = label,
+				% We should never get here; the conditions
+				% that lead here in this switch should have
+				% been caught by the first if-then-else
+				% condition that tests Target.
+				error("output_call: calling label")
+			;
+				NeedsPrefix = yes,
+				Wrapper = none,
+				io__write_string("MR_np_call_localret(",
+					!IO),
+				output_code_addr_from_pieces(BaseStr,
+					NeedsPrefix, Wrapper, !IO),
+				io__write_string(",\n\t\t", !IO),
+				output_label(ContLabel, no, !IO)
+			)
+		)
+	;
+		(
+			ProfileCall = yes,
+			io__write_string("MR_call(", !IO)
+		;
+			ProfileCall = no,
+			io__write_string("MR_noprof_call(", !IO)
+		),
 		output_code_addr(Target, !IO),
 		io__write_string(",\n\t\t", !IO),
 		output_code_addr(Continuation, !IO)
@@ -3399,37 +3526,91 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
 	),
 	io__write_string(");\n", !IO).
 
-output_code_addr(label(Label), !IO) :-
-	output_label_as_code_addr(Label, !IO).
-output_code_addr(imported(ProcLabel), !IO) :-
+output_code_addr(CodeAddr, !IO) :-
+	code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper),
+	output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO).
+
+:- type wrapper --->	entry ; label ; none.
+
+:- pred output_code_addr_from_pieces(string::in, bool::in, wrapper::in,
+	io::di, io::uo) is det.
+
+output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
+	(
+		Wrapper = none,
+		(
+			NeedsPrefix = yes,
+			io__write_string(mercury_label_prefix, !IO)
+		;
+			NeedsPrefix = no
+		),
+		io__write_string(BaseStr, !IO)
+	;
+		Wrapper = entry,
+		(
+			NeedsPrefix = yes,
+			% The _AP version of the macro adds the prefix.
+			io__write_string("MR_ENTRY_AP(", !IO),
+			io__write_string(BaseStr, !IO),
+			io__write_string(")", !IO)
+		;
+			NeedsPrefix = no,
 	io__write_string("MR_ENTRY(", !IO),
-	output_proc_label(ProcLabel, !IO),
-	io__write_string(")", !IO).
-output_code_addr(succip, !IO) :-
-	io__write_string("MR_succip", !IO).
-output_code_addr(do_succeed(Last), !IO) :-
+			io__write_string(BaseStr, !IO),
+			io__write_string(")", !IO)
+		)
+	;
+		Wrapper = label,
+		(
+			NeedsPrefix = yes,
+			% The _AP version of the macro adds the prefix.
+			io__write_string("MR_LABEL_AP(", !IO),
+			io__write_string(BaseStr, !IO),
+			io__write_string(")", !IO)
+		;
+			NeedsPrefix = no,
+			io__write_string("MR_LABEL(", !IO),
+			io__write_string(BaseStr, !IO),
+			io__write_string(")", !IO)
+		)
+	).
+
+:- pred code_addr_to_string_base(code_addr::in, string::out,
+	bool::out, wrapper::out) is det.
+
+code_addr_to_string_base(label(Label), BaseStr, yes, Wrapper) :-
+	BaseStr = label_to_c_string(Label, no),
+	IsEntry = label_is_entry(Label),
+	(
+		IsEntry = yes,
+		Wrapper = entry
+	;
+		IsEntry = no,
+		Wrapper = label
+	).
+code_addr_to_string_base(imported(ProcLabel), BaseStr, yes, entry) :-
+	BaseStr = proc_label_to_c_string(ProcLabel, no).
+code_addr_to_string_base(succip, "MR_succip", no, none).
+code_addr_to_string_base(do_succeed(Last), BaseStr, no, entry) :-
 	(
 		Last = no,
-		io__write_string("MR_ENTRY(MR_do_succeed)", !IO)
+		BaseStr = "MR_do_succeed"
 	;
 		Last = yes,
-		io__write_string("MR_ENTRY(MR_do_last_succeed)", !IO)
+		BaseStr = "MR_do_last_succeed"
 	).
-output_code_addr(do_redo, !IO) :-
-	io__write_string("MR_ENTRY(MR_do_redo)", !IO).
-output_code_addr(do_fail, !IO) :-
-	io__write_string("MR_ENTRY(MR_do_fail)", !IO).
-output_code_addr(do_trace_redo_fail_shallow, !IO) :-
-	io__write_string("MR_ENTRY(MR_do_trace_redo_fail_shallow)", !IO).
-output_code_addr(do_trace_redo_fail_deep, !IO) :-
-	io__write_string("MR_ENTRY(MR_do_trace_redo_fail_deep)", !IO).
-output_code_addr(do_call_closure, !IO) :-
-	io__write_string("MR_ENTRY(mercury__do_call_closure_compact)", !IO).
-output_code_addr(do_call_class_method, !IO) :-
-	io__write_string("MR_ENTRY(mercury__do_call_class_method_compact)",
-		!IO).
-output_code_addr(do_not_reached, !IO) :-
-	io__write_string("MR_ENTRY(MR_do_not_reached)", !IO).
+code_addr_to_string_base(do_redo, "MR_do_redo", no, entry).
+code_addr_to_string_base(do_fail, "MR_do_fail", no, entry).
+code_addr_to_string_base(do_trace_redo_fail_shallow, BaseStr, no, entry) :-
+	BaseStr = "MR_do_trace_redo_fail_shallow".
+code_addr_to_string_base(do_trace_redo_fail_deep, BaseStr, no, entry) :-
+	BaseStr = "MR_do_trace_redo_fail_deep".
+code_addr_to_string_base(do_call_closure, BaseStr, no, entry) :-
+	BaseStr = "mercury__do_call_closure_compact".
+code_addr_to_string_base(do_call_class_method, BaseStr, no, entry) :-
+	BaseStr = "mercury__do_call_class_method_compact".
+code_addr_to_string_base(do_not_reached, BaseStr, no, entry) :-
+	BaseStr = "MR_do_not_reached".
 
 	% Output a maybe data address, with a `no' meaning NULL.
 
@@ -3527,29 +3708,36 @@ output_common_prefix(ModuleName, Prefix, !IO) :-
 
 :- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
-output_label_as_code_addr(exported(ProcLabel)) -->
-	io__write_string("MR_ENTRY("),
-	output_label(exported(ProcLabel)),
-	io__write_string(")").
-output_label_as_code_addr(local(ProcLabel)) -->
-	io__write_string("MR_ENTRY("),
-	output_label(local(ProcLabel)),
-	io__write_string(")").
-output_label_as_code_addr(c_local(ProcLabel)) -->
-	io__write_string("MR_LABEL("),
-	output_label(c_local(ProcLabel)),
-	io__write_string(")").
-output_label_as_code_addr(local(N, ProcLabel)) -->
-	io__write_string("MR_LABEL("),
-	output_label(local(N, ProcLabel)),
-	io__write_string(")").
+output_label_as_code_addr(Label, !IO) :-
+	label_as_code_addr_to_string(Label, Str),
+	io__write_string(Str, !IO).
+
+:- func label_is_entry(label) = bool.
+
+label_is_entry(exported(_)) = yes.
+label_is_entry(local(_)) = yes.
+label_is_entry(c_local(_)) = no.
+label_is_entry(local(_, _)) = no.
+
+:- pred label_as_code_addr_to_string(label::in, string::out) is det.
+
+label_as_code_addr_to_string(Label, Str) :-
+	LabelStr = llds_out__label_to_c_string(Label, no),
+	IsEntry = label_is_entry(Label),
+	(
+		IsEntry = yes,
+		Str = "MR_ENTRY_AP(" ++ LabelStr ++ ")"
+	;
+		IsEntry = no,
+		Str = "MR_LABEL_AP(" ++ LabelStr ++ ")"
+	).
 
 :- pred output_label_list(list(label)::in, io::di, io::uo) is det.
 
 output_label_list([], !IO).
 output_label_list([Label | Labels], !IO) :-
-	io__write_string("MR_LABEL(", !IO),
-	output_label(Label, !IO),
+	io__write_string("MR_LABEL_AP(", !IO),
+	output_label(Label, no, !IO),
 	io__write_string(")", !IO),
 	output_label_list_2(Labels, !IO).
 
@@ -3558,8 +3746,8 @@ output_label_list([Label | Labels], !IO) :-
 output_label_list_2([], !IO).
 output_label_list_2([Label | Labels], !IO) :-
 	io__write_string(" MR_AND\n\t\t", !IO),
-	io__write_string("MR_LABEL(", !IO),
-	output_label(Label, !IO),
+	io__write_string("MR_LABEL_AP(", !IO),
+	output_label(Label, no, !IO),
 	io__write_string(")", !IO),
 	output_label_list_2(Labels, !IO).
 
@@ -3608,8 +3796,6 @@ output_label_defn(local(Num, ProcLabel), !IO) :-
 output_label(Label, !IO) :-
 	LabelStr = llds_out__label_to_c_string(Label, yes),
 	io__write_string(LabelStr, !IO).
-
-:- pred output_label(label::in, bool::in, io::di, io::uo) is det.
 
 output_label(Label, AddPrefix, !IO) :-
 	LabelStr = llds_out__label_to_c_string(Label, AddPrefix),
@@ -3783,6 +3969,187 @@ output_float_rval(Rval, IsPtr, !IO) :-
 		io__write_string(")", !IO)
 	).
 
+:- pred output_test_rval(rval::in, io::di, io::uo) is det.
+
+output_test_rval(Test, !IO) :-
+	(
+		is_int_cmp(Test, Left, RightConst, OpStr, _)
+	->
+		io__write_string(OpStr, !IO),
+		io__write_string("(", !IO),
+		output_rval(Left, !IO),
+		io__write_string(",", !IO),
+		io__write_int(RightConst, !IO),
+		io__write_string(")", !IO)
+	;
+		Test = unop(not, InnerTest),
+		is_int_cmp(InnerTest, Left, RightConst, _, NegOpStr)
+	->
+		io__write_string(NegOpStr, !IO),
+		io__write_string("(", !IO),
+		output_rval(Left, !IO),
+		io__write_string(",", !IO),
+		io__write_int(RightConst, !IO),
+		io__write_string(")", !IO)
+	;
+		is_ptag_test(Test, Rval, Ptag, Negated)
+	->
+		(
+			Negated = no,
+			io__write_string("MR_PTAG_TEST(", !IO)
+		;
+			Negated = yes,
+			io__write_string("MR_PTAG_TESTR(", !IO)
+		),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(")", !IO)
+	;
+		Test = unop(not, InnerTest),
+		is_ptag_test(InnerTest, Rval, Ptag, Negated)
+	->
+		(
+			Negated = no,
+			io__write_string("MR_PTAG_TESTR(", !IO)
+		;
+			Negated = yes,
+			io__write_string("MR_PTAG_TEST(", !IO)
+		),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(")", !IO)
+	;
+		Test = binop(and, Left, Right),
+		is_ptag_test(Left, Rval, Ptag, no),
+		is_remote_stag_test(Right, Rval, Ptag, Stag)
+	->
+		io__write_string("MR_RTAGS_TEST(", !IO),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Stag, !IO),
+		io__write_string(")", !IO)
+	;
+		Test = unop(not, InnerTest),
+		InnerTest = binop(and, Left, Right),
+		is_ptag_test(Left, Rval, Ptag, no),
+		is_remote_stag_test(Right, Rval, Ptag, Stag)
+	->
+		io__write_string("MR_RTAGS_TESTR(", !IO),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Stag, !IO),
+		io__write_string(")", !IO)
+	;
+		is_local_stag_test(Test, Rval, Ptag, Stag, Negated)
+	->
+		(
+			Negated = no,
+			io__write_string("MR_LTAGS_TEST(", !IO)
+		;
+			Negated = yes,
+			io__write_string("MR_LTAGS_TESTR(", !IO)
+		),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Stag, !IO),
+		io__write_string(")", !IO)
+	;
+		Test = unop(not, InnerTest),
+		is_local_stag_test(InnerTest, Rval, Ptag, Stag, Negated)
+	->
+		(
+			Negated = no,
+			io__write_string("MR_LTAGS_TESTR(", !IO)
+		;
+			Negated = yes,
+			io__write_string("MR_LTAGS_TEST(", !IO)
+		),
+		output_rval(Rval, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Ptag, !IO),
+		io__write_string(",", !IO),
+		io__write_int(Stag, !IO),
+		io__write_string(")", !IO)
+	;
+		output_rval_as_type(Test, bool, !IO)
+	).
+
+:- pred is_int_cmp(rval::in, rval::out, int::out, string::out, string::out)
+	is semidet.
+
+is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
+	Test = binop(Op, Left, Right),
+	Right = const(int_const(RightConst)),
+	(
+		Op = eq,
+		OpStr = "MR_INT_EQ",
+		NegOpStr = "MR_INT_NE"
+	;
+		Op = ne,
+		OpStr = "MR_INT_NE",
+		NegOpStr = "MR_INT_EQ"
+	;
+		Op = (<),
+		OpStr = "MR_INT_LT",
+		NegOpStr = "MR_INT_GE"
+	;
+		Op = (>),
+		OpStr = "MR_INT_GT",
+		NegOpStr = "MR_INT_LT"
+	;
+		Op = (<=),
+		OpStr = "MR_INT_LE",
+		NegOpStr = "MR_INT_GT"
+	;
+		Op = (>=),
+		OpStr = "MR_INT_GE",
+		NegOpStr = "MR_INT_LT"
+	).
+
+:- pred is_ptag_test(rval::in, rval::out, int::out, bool::out) is semidet.
+
+is_ptag_test(Test, Rval, Ptag, Negated) :-
+	Test = binop(Op, Left, Right),
+	Left = unop(tag, Rval),
+	Right = unop(mktag, const(int_const(Ptag))),
+	(
+		Op = eq,
+		Negated = no
+	;
+		Op = ne,
+		Negated = yes
+	).
+
+:- pred is_remote_stag_test(rval::in, rval::in, int::in, int::out) is semidet.
+
+is_remote_stag_test(Test, Rval, Ptag, Stag) :-
+	Test = binop(eq, Left, Right),
+	Left = lval(field(yes(Ptag), Rval, Zero)),
+	Zero = const(int_const(0)),
+	Right = const(int_const(Stag)).
+
+:- pred is_local_stag_test(rval::in, rval::out, int::out, int::out, bool::out)
+	is semidet.
+
+is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
+	Test = binop(Op, Rval, Right),
+	Right = mkword(Ptag, unop(mkbody, const(int_const(Stag)))),
+	(
+		Op = eq,
+		Negated = no
+	;
+		Op = ne,
+		Negated = yes
+	).
+
 output_rval(const(Const), !IO) :-
 	output_rval_const(Const, !IO).
 output_rval(unop(UnaryOp, Exprn), !IO) :-
@@ -3916,7 +4283,7 @@ output_rval(lval(Lval), !IO) :-
 	% or its variants, to avoid warnings about discarding const.
 	( Lval = field(MaybeTag, Rval, FieldNumRval) ->
 		( MaybeTag = yes(Tag) ->
-			io__write_string("MR_const_tfield(", !IO),
+			io__write_string("MR_ctfield(", !IO),
 			io__write_int(Tag, !IO),
 			io__write_string(", ", !IO)
 		;
@@ -3940,13 +4307,13 @@ output_rval(mem_addr(MemRef), !IO) :-
 	(
 		MemRef = stackvar_ref(N),
 		output_llds_type_cast(data_ptr, !IO),
-		io__write_string("&MR_stackvar(", !IO),
+		io__write_string("&MR_sv(", !IO),
 		io__write_int(N, !IO),
 		io__write_string(")", !IO)
 	;
 		MemRef = framevar_ref(N),
 		output_llds_type_cast(data_ptr, !IO),
-		io__write_string("&MR_framevar(", !IO),
+		io__write_string("&MR_fv(", !IO),
 		io__write_int(N, !IO),
 		io__write_string(")", !IO)
 	;
@@ -4044,8 +4411,8 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
 		io__write_string(")", !IO)
 	).
 output_rval_const(label_entry(Label), !IO) :-
-	io__write_string("MR_ENTRY(", !IO),
-	output_label(Label, !IO),
+	io__write_string("MR_ENTRY_AP(", !IO),
+	output_label(Label, no, !IO),
 	io__write_string(")", !IO).
 
 :- pred output_type_ctor_addr(module_name::in, string::in, int::in,
@@ -4249,11 +4616,11 @@ llds_out__binary_op_to_string(Op, Name) :-
 
 llds_out__lval_to_string(framevar(N), Description) :-
 	string__int_to_string(N, N_String),
-	string__append("MR_framevar(", N_String, Tmp),
+	string__append("MR_fv(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 llds_out__lval_to_string(stackvar(N), Description) :-
 	string__int_to_string(N, N_String),
-	string__append("MR_stackvar(", N_String, Tmp),
+	string__append("MR_sv(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
 	llds_out__reg_to_string(RegType, RegNum, Reg_String),

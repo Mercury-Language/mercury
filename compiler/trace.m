@@ -972,10 +972,10 @@ trace__code_model_to_string(model_non,  "MR_MODEL_NON").
 trace__stackref_to_string(Lval, LvalStr) :-
 	( Lval = stackvar(Slot) ->
 		string__int_to_string(Slot, SlotString),
-		string__append_list(["MR_stackvar(", SlotString, ")"], LvalStr)
+		string__append_list(["MR_sv(", SlotString, ")"], LvalStr)
 	; Lval = framevar(Slot) ->
 		string__int_to_string(Slot, SlotString),
-		string__append_list(["MR_framevar(", SlotString, ")"], LvalStr)
+		string__append_list(["MR_fv(", SlotString, ")"], LvalStr)
 	;
 		error("non-stack lval in stackref_to_string")
 	).
@@ -1029,7 +1029,8 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 	( CodeModel = model_non ->
 		RedoLayoutSlot = framevar(4)
 	;
-		error("attempt to access redo layout slot for det or semi procedure")
+		error("attempt to access redo layout slot " ++
+			"for det or semi procedure")
 	).
 
 %-----------------------------------------------------------------------------%
