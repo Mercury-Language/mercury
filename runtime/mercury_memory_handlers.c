@@ -133,7 +133,6 @@ try_munprotect(void *addr, void *context)
 	return FALSE;
 #else
 	Word *    fault_addr;
-	Word *    new_zone;
 	MemoryZone *zone;
 
 	fault_addr = (Word *) addr;

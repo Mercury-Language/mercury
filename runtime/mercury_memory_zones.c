@@ -101,8 +101,6 @@ unsigned long	num_uses[MAX_RN];
 
 #define MAX_ZONES	16
 
-static MemoryZone *zone_table = NULL;
-
 static MemoryZone *used_memory_zones = NULL;
 static MemoryZone *free_memory_zones = NULL;
 #ifdef	MR_THREAD_SAFE
@@ -183,6 +181,10 @@ get_zone(void)
 	return zone;
 }
 
+#if 0
+
+/* this function is not currently used */
+
 static void 
 unget_zone(MemoryZone *zone)
 {
@@ -211,6 +213,8 @@ unget_zone(MemoryZone *zone)
 	free_memory_zones = zone;
 	MR_UNLOCK(free_memory_zones_lock, "unget_zone");
 }
+
+#endif
 
 /*
 ** successive calls to next_offset return offsets modulo the primary
