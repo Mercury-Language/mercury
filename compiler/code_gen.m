@@ -867,8 +867,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		code_info__post_goal_update(GoalInfo)
 	;
 		{ Code = empty }
-	),
-	!.
+	).
 
 %---------------------------------------------------------------------------%
 

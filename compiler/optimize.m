@@ -36,7 +36,7 @@
 
 optimize_main([], _, []) --> [].
 optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
-	optimize__proc(Proc0, GlobalData, Proc), !,
+	optimize__proc(Proc0, GlobalData, Proc),
 	optimize_main(Procs0, GlobalData, Procs).
 
 optimize__proc(CProc0, GlobalData, CProc) -->

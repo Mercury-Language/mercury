@@ -2313,12 +2313,12 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 :- pred process_maybe1(maker(T1, T2), maybe1(T1), maybe1(T2)).
 :- mode process_maybe1(maker, in, out) is det.
-process_maybe1(Maker, ok(X), ok(Y)) :- !, call(Maker, X, Y).
+process_maybe1(Maker, ok(X), ok(Y)) :- call(Maker, X, Y).
 process_maybe1(_, error(M, T), error(M, T)).
 
 :- pred process_maybe1_to_t(maker(T1, maybe1(T2)), maybe1(T1), maybe1(T2)).
 :- mode process_maybe1_to_t(maker, in, out) is det.
-process_maybe1_to_t(Maker, ok(X), Y) :- !, call(Maker, X, Y).
+process_maybe1_to_t(Maker, ok(X), Y) :- call(Maker, X, Y).
 process_maybe1_to_t(_, error(M, T), error(M, T)).
 
 %-----------------------------------------------------------------------------%

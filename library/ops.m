@@ -96,21 +96,21 @@ ops__op_specifier_to_class(fyx, binary_prefix(y,x)).
 ops__op_specifier_to_class(fxy, binary_prefix(x,y)).
 
 ops__lookup_infix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
-	ops__op_table(Name, after, Specifier, Priority), !,
+	ops__op_table(Name, after, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier,
 		infix(LeftAssoc, RightAssoc)).
 
 ops__lookup_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
-	ops__op_table(Name, before, Specifier, Priority), !,
+	ops__op_table(Name, before, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier, prefix(LeftAssoc)).
 
 ops__lookup_binary_prefix_op(_OpTable, Name, Priority, LeftAssoc, RightAssoc) :-
-	ops__op_table(Name, before, Specifier, Priority), !,
+	ops__op_table(Name, before, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier,
 		binary_prefix(LeftAssoc, RightAssoc)).
 
 ops__lookup_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
-	ops__op_table(Name, after, Specifier, Priority), !,
+	ops__op_table(Name, after, Specifier, Priority),
 	ops__op_specifier_to_class(Specifier, postfix(LeftAssoc)).
 
 ops__lookup_op(_OpTable, Name) :-

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -273,10 +273,10 @@ lexer__string_set_line_number(LineNumber, Posn0, Posn) :-
 
 lexer__get_token(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
@@ -393,10 +393,10 @@ lexer__string_get_token(String, Len, Token, Context) -->
 
 lexer__get_token_2(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
@@ -538,9 +538,9 @@ lexer__graphic_token_char('\\').
 
 lexer__get_dot(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = end }
 	; { Result = ok(Char) },
 		( { lexer__whitespace_after_dot(Char) } ->
@@ -594,10 +594,10 @@ lexer__whitespace_after_dot('%').
 
 lexer__skip_to_eol(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
@@ -630,10 +630,10 @@ lexer__string_skip_to_eol(String, Len, Token, Context) -->
 
 lexer__get_slash(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = name("/") }
 	; { Result = ok(Char) },
@@ -676,10 +676,10 @@ lexer__string_get_slash(String, Len, Posn0, Token, Context) -->
 
 lexer__get_comment(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
@@ -713,10 +713,10 @@ lexer__string_get_comment(String, Len, Posn0, Token, Context) -->
 
 lexer__get_comment_2(Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
@@ -761,9 +761,9 @@ lexer__string_get_comment_2(String, Len, Posn0, Token, Context) -->
 
 lexer__get_quoted_name(QuoteChar, Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated quote") }
 	; { Result = ok(Char) },
 		( { Char = QuoteChar } ->
@@ -804,9 +804,9 @@ lexer__string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0,
 
 lexer__get_quoted_name_quote(QuoteChar, Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__finish_quoted_name(QuoteChar, Chars, Token) }
 	; { Result = ok(Char) },
 		( { Char = QuoteChar } ->
@@ -857,11 +857,11 @@ lexer__finish_quoted_name(QuoteChar, Chars, Token) :-
 
 lexer__get_quoted_name_escape(QuoteChar, Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated quoted name") }
-	; { Result = ok(Char) }, !,
+	; { Result = ok(Char) },
 		( { Char = '\n' } ->
 			lexer__get_quoted_name(QuoteChar, Chars, Token)
 		; { lexer__escape_char(Char, EscapedChar) } ->
@@ -930,11 +930,11 @@ lexer__escape_char('`', '`').
 
 lexer__get_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated quote") }
-	; { Result = ok(Char) }, !,
+	; { Result = ok(Char) },
 		( { char__is_hex_digit(Char) } ->
 			lexer__get_hex_escape(QuoteChar, Chars,
 						[Char | HexChars], Token)
@@ -1020,11 +1020,11 @@ lexer__string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
 
 lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated quote") }
-	; { Result = ok(Char) }, !,
+	; { Result = ok(Char) },
 		( { char__is_octal_digit(Char) } ->
 			lexer__get_octal_escape(QuoteChar, Chars,
 						[Char | OctalChars], Token)
@@ -1131,9 +1131,9 @@ lexer__string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
 
 lexer__get_name(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_string(Chars, Name) },
 		{ Token = name(Name) }
 	; { Result = ok(Char) },
@@ -1184,10 +1184,10 @@ lexer__string_get_name(String, Len, Posn0, Token, Context) -->
 
 lexer__get_source_line_number(Chars, Token, Context) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		lexer__get_context(Context),
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		lexer__get_context(Context),
 		{ Token = error(
 			"unexpected end-of-file in `#' line number directive") }
@@ -1269,9 +1269,9 @@ lexer__string_get_source_line_number(String, Len, Posn1, Token, Context) -->
 
 lexer__get_graphic(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_string(Chars, Name) },
 		{ Token = name(Name) }
 	; { Result = ok(Char) },
@@ -1310,9 +1310,9 @@ lexer__string_get_graphic(String, Len, Posn0, Token, Context) -->
 
 lexer__get_variable(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_string(Chars, VariableName) },
 		{ Token = variable(VariableName) }
 	; { Result = ok(Char) },
@@ -1355,9 +1355,9 @@ lexer__string_get_variable(String, Len, Posn0, Token, Context) -->
 
 lexer__get_zero(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = integer(0) }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
@@ -1422,9 +1422,9 @@ lexer__string_get_zero(String, Len, Posn0, Token, Context) -->
 
 lexer__get_char_code(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated char code constant") }
 	; { Result = ok(Char) },
 		{ char__to_int(Char, CharCode) },
@@ -1450,9 +1450,9 @@ lexer__string_get_char_code(String, Len, Posn0, Token, Context) -->
 
 lexer__get_binary(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated binary constant") }
 	; { Result = ok(Char) },
 		( { char__is_binary_digit(Char) } ->
@@ -1487,9 +1487,9 @@ lexer__string_get_binary(String, Len, Posn0, Token, Context) -->
 
 lexer__get_binary_2(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_int(Chars, 2, Token) }
 	; { Result = ok(Char) },
 		( { char__is_binary_digit(Char) } ->
@@ -1526,9 +1526,9 @@ lexer__string_get_binary_2(String, Len, Posn0, Token, Context) -->
 
 lexer__get_octal(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated octal constant") }
 	; { Result = ok(Char) },
 		( { char__is_octal_digit(Char) } ->
@@ -1563,9 +1563,9 @@ lexer__string_get_octal(String, Len, Posn0, Token, Context) -->
 
 lexer__get_octal_2(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_int(Chars, 8, Token) }
 	; { Result = ok(Char) },
 		( { char__is_octal_digit(Char) } ->
@@ -1602,9 +1602,9 @@ lexer__string_get_octal_2(String, Len, Posn0, Token, Context) -->
 
 lexer__get_hex(Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated hex constant") }
 	; { Result = ok(Char) },
 		( { char__is_hex_digit(Char) } ->
@@ -1640,9 +1640,9 @@ lexer__string_get_hex(String, Len, Posn0, Token, Context) -->
 
 lexer__get_hex_2(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_int(Chars, 16, Token) }
 	; { Result = ok(Char) },
 		( { char__is_hex_digit(Char) } ->
@@ -1680,9 +1680,9 @@ lexer__string_get_hex_2(String, Len, Posn0, Token, Context) -->
 
 lexer__get_number(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_int(Chars, 10, Token) }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
@@ -1731,9 +1731,9 @@ lexer__string_get_number(String, Len, Posn0, Token, Context) -->
 
 lexer__get_int_dot(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		io__putback_char('.'),
 		{ lexer__rev_char_list_to_int(Chars, 10, Token) }
 	; { Result = ok(Char) },
@@ -1776,9 +1776,9 @@ lexer__string_get_int_dot(String, Len, Posn0, Token, Context) -->
 
 lexer__get_float_decimals(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_float(Chars, Token) }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
@@ -1820,9 +1820,9 @@ lexer__string_get_float_decimals(String, Len, Posn0, Token, Context) -->
 
 lexer__get_float_exponent(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_float(Chars, Token) }
 	; { Result = ok(Char) },
 		( { Char = ('+') ; Char = ('-') } ->
@@ -1870,9 +1870,9 @@ lexer__string_get_float_exponent(String, Len, Posn0, Token, Context) -->
 
 lexer__get_float_exponent_2(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ Token = error("unterminated exponent in float token") }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
@@ -1918,9 +1918,9 @@ lexer__string_get_float_exponent_2(String, Len, Posn0, Token, Context) -->
 
 lexer__get_float_exponent_3(Chars, Token) -->
 	io__read_char(Result),
-	( { Result = error(Error) }, !,
+	( { Result = error(Error) },
 		{ Token = io_error(Error) }
-	; { Result = eof }, !,
+	; { Result = eof },
 		{ lexer__rev_char_list_to_float(Chars, Token) }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->

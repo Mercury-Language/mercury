@@ -1794,7 +1794,6 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	; { CanFail = cannot_fail },
 		io__write_string(" => ")
 	),
-	!,
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
 
@@ -1807,7 +1806,6 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail, TypeInfoVars),
 	; { CanFail = cannot_fail },
 		io__write_string("cannot_fail, ")
 	),
-	!,
 	io__write_string("mode: "),
 	mercury_output_uni_mode(Mode, InstVarSet),
 	io__write_string("\n"),

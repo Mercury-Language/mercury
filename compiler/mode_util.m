@@ -529,8 +529,7 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 		inst_lookup_2(TypedInstName, ModuleInfo, Inst0),
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst)
-	),
-	!.
+	).
 
 %-----------------------------------------------------------------------------%
 
