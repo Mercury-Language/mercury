@@ -1053,16 +1053,32 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 #include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
 #include ""mercury_tabling.h""		/* for MR_TrieNode, etc. */
 
+#ifdef MR_HIGHLEVEL_CODE
+  #define MR_TYPE_CTOR_INFO_INT	      \
+  	mercury__builtin__builtin__type_ctor_info_int_0
+  #define MR_TYPE_CTOR_INFO_STRING    \
+  	mercury__builtin__builtin__type_ctor_info_string_0
+  #define MR_TYPE_CTOR_INFO_FLOAT     \
+  	mercury__builtin__builtin__type_ctor_info_float_0
+  #define MR_TYPE_CTOR_INFO_CHAR      \
+  	mercury__builtin__builtin__type_ctor_info_character_0
+  #define MR_TYPE_CTOR_INFO_IO_STATE  \
+  	mercury__io__io__type_ctor_info_state_0
+#else
+  #define MR_TYPE_CTOR_INFO_INT	      mercury_data___type_ctor_info_int_0
+  #define MR_TYPE_CTOR_INFO_STRING    mercury_data___type_ctor_info_string_0
+  #define MR_TYPE_CTOR_INFO_FLOAT     mercury_data___type_ctor_info_float_0
+  #define MR_TYPE_CTOR_INFO_CHAR      mercury_data___type_ctor_info_character_0
+  #define MR_TYPE_CTOR_INFO_IO_STATE  mercury_data_io__type_ctor_info_state_0
+#endif
+
+
 extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
-	mercury_data___type_ctor_info_int_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
-	mercury_data___type_ctor_info_string_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
-	mercury_data___type_ctor_info_float_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
-	mercury_data___type_ctor_info_character_0;
-extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
-	mercury_data_io__type_ctor_info_state_0;
+	MR_TYPE_CTOR_INFO_INT,
+	MR_TYPE_CTOR_INFO_STRING,
+	MR_TYPE_CTOR_INFO_FLOAT,
+	MR_TYPE_CTOR_INFO_CHAR,
+	MR_TYPE_CTOR_INFO_IO_STATE;
 
 ").
 
@@ -1151,7 +1167,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, I,
-		&mercury_data___type_ctor_info_int_0);
+		&MR_TYPE_CTOR_INFO_INT);
 ").
 
 :- pragma foreign_proc("C",
@@ -1161,7 +1177,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, C,
-		&mercury_data___type_ctor_info_character_0);
+		&MR_TYPE_CTOR_INFO_CHAR);
 ").
 
 :- pragma foreign_proc("C",
@@ -1171,7 +1187,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
-		&mercury_data___type_ctor_info_string_0);
+		&MR_TYPE_CTOR_INFO_STRING);
 ").
 
 :- pragma foreign_proc("C",
@@ -1183,11 +1199,11 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 #ifdef MR_HIGHLEVEL_CODE
 	MR_TABLE_SAVE_ANSWER(table, Offset,
 		(MR_Word) MR_box_float(F),
-		&mercury_data___type_ctor_info_float_0);
+		&MR_TYPE_CTOR_INFO_FLOAT);
 #else
 	MR_TABLE_SAVE_ANSWER(table, Offset,
 		MR_float_to_word(F),
-		&mercury_data___type_ctor_info_float_0);
+		&MR_TYPE_CTOR_INFO_FLOAT);
 #endif
 ").
 
@@ -1198,7 +1214,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table = (MR_TrieNode) T;
 	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
-		&mercury_data_io__type_ctor_info_state_0);
+		&MR_TYPE_CTOR_INFO_IO_STATE);
 ").
 
 :- pragma foreign_proc("C", 

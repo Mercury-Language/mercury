@@ -160,7 +160,7 @@ void
 ML_report_stats(void)
 {
 	int			time_at_prev_stat;
-#ifndef MR_HIGHLEVEL_CODE
+#if !defined(MR_HIGHLEVEL_CODE) || !defined(CONSERVATIVE_GC)
 	MercuryEngine		*eng;
 #endif
 #ifdef MR_MPROF_PROFILE_MEMORY
@@ -175,7 +175,7 @@ ML_report_stats(void)
 	time_at_prev_stat = MR_time_at_last_stat;
 	MR_time_at_last_stat = MR_get_user_cpu_miliseconds();
 
-#ifndef MR_HIGHLEVEL_CODE
+#if !defined(MR_HIGHLEVEL_CODE) || !defined(CONSERVATIVE_GC)
 	eng = MR_get_engine();
 #endif
 

@@ -106,8 +106,12 @@ MR_init_thread(MR_when_to_use when_to_use)
 
 	switch (when_to_use) {
 		case MR_use_later :
+#ifdef MR_HIGHLEVEL_CODE
+			MR_fatal_error("Sorry, not implemented: "
+				"--high-level-code and multiple engines");
+#else
 			(void) MR_call_engine(MR_ENTRY(MR_do_runnext), FALSE);
-
+#endif
 			MR_destroy_engine(eng);
 			return FALSE;
 

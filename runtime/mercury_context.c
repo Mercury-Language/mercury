@@ -92,6 +92,8 @@ MR_init_context(MR_Context *c)
 #ifdef	MR_THREAD_SAFE
 	c->MR_ctxt_owner_thread = (MercuryThread) NULL;
 #endif
+
+#ifndef MR_HIGHLEVEL_CODE
 	c->MR_ctxt_succip = MR_ENTRY(MR_do_not_reached);
 
 	if (c->MR_ctxt_detstack_zone != NULL) {
@@ -116,7 +118,8 @@ MR_init_context(MR_Context *c)
 	** minus one word, to the base address to get the maxfr/curfr pointer
 	** for the first frame on the nondet stack.
 	*/
-	c->MR_ctxt_maxfr = c->MR_ctxt_nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
+	c->MR_ctxt_maxfr = c->MR_ctxt_nondetstack_zone->min +
+		MR_NONDET_FIXED_SIZE - 1;
 	c->MR_ctxt_curfr = c->MR_ctxt_maxfr;
 	MR_redoip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_redofr_slot(c->MR_ctxt_curfr) = NULL;
@@ -124,11 +127,12 @@ MR_init_context(MR_Context *c)
 	MR_succip_slot(c->MR_ctxt_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_succfr_slot(c->MR_ctxt_curfr) = NULL;
 
-#ifdef	MR_USE_MINIMAL_MODEL
+  #ifdef MR_USE_MINIMAL_MODEL
 	if (c->MR_ctxt_generatorstack_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_generatorstack_zone);
 	} else {
-		c->MR_ctxt_generatorstack_zone = MR_create_zone("generatorstack", 0,
+		c->MR_ctxt_generatorstack_zone = MR_create_zone(
+			"generatorstack", 0,
 			MR_generatorstack_size, MR_next_offset(),
 			MR_generatorstack_zone_size, MR_default_handler);
 	}
@@ -142,7 +146,8 @@ MR_init_context(MR_Context *c)
 			MR_cutstack_zone_size, MR_default_handler);
 	}
 	c->MR_ctxt_cut_next = 0;
-#endif
+  #endif /* MR_USE_MINIMAL_MODEL */
+#endif /* !MR_HIGHLEVEL_CODE */
 
 #ifdef MR_USE_TRAIL
 	if (c->MR_ctxt_trail_zone != NULL) {
@@ -169,8 +174,10 @@ MR_create_context(void)
 	if (free_context_list == NULL) {
 		MR_UNLOCK(free_context_list_lock, "create_context i");
 		c = MR_GC_NEW(MR_Context);
+#ifndef MR_HIGHLEVEL_CODE
 		c->MR_ctxt_detstack_zone = NULL;
 		c->MR_ctxt_nondetstack_zone = NULL;
+#endif
 #ifdef MR_USE_TRAIL
 		c->MR_ctxt_trail_zone = NULL;
 #endif
@@ -300,6 +307,8 @@ MR_schedule(MR_Context *ctxt)
 	MR_UNLOCK(MR_runqueue_lock, "schedule");
 }
 
+#ifndef MR_HIGHLEVEL_CODE
+
 MR_define_extern_entry(MR_do_runnext);
 
 MR_BEGIN_MODULE(scheduler_module)
@@ -377,6 +386,8 @@ MR_define_entry(MR_do_runnext);
 
 MR_END_MODULE
 
+#endif /* !MR_HIGHLEVEL_CODE */
+
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_scheduler_wrapper_init(void);
 void mercury_sys_init_scheduler_wrapper_init_type_tables(void);
@@ -386,7 +397,9 @@ void mercury_sys_init_scheduler_wrapper_write_out_proc_statics(FILE *fp);
 
 void mercury_sys_init_scheduler_wrapper_init(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	scheduler_module();
+#endif
 }
 
 void mercury_sys_init_scheduler_wrapper_init_type_tables(void)

@@ -224,6 +224,8 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
 void
 MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 {
+#ifndef MR_HIGHLEVEL_CODE
+
 	int	frame_size;
 
 	MR_do_init_modules();
@@ -275,6 +277,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 
 		base_maxfr = MR_prevfr_slot(base_maxfr);
 	}
+
+#endif /* !MR_HIGHLEVEL_CODE */
 }
 
 static	const MR_Proc_Layout	*prev_entry_layout;

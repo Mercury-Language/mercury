@@ -58,7 +58,7 @@ MR_init_engine(MercuryEngine *eng)
 
 	MR_init_memory();
 
-#ifndef USE_GCC_NONLOCAL_GOTOS
+#if !defined(USE_GCC_NONLOCAL_GOTOS) && !defined(MR_HIGHLEVEL_CODE)
 	{
 		static bool made_engine_done_label = FALSE;
 		if (!made_engine_done_label) {
@@ -110,7 +110,7 @@ MR_init_engine(MercuryEngine *eng)
 #endif
 
 	/*
-	** Finally, allocate an initialize context (Mercury thread)
+	** Finally, allocate an initial context (Mercury thread)
 	** in the engine and initialize the per-context stuff.
 	*/
 	eng->MR_eng_this_context = MR_create_context();

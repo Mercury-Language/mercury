@@ -338,6 +338,8 @@ MR_print_ordinary_regs(void)
 
 #endif /* defined(MR_DEBUG_GOTOS) */
 
+#ifndef MR_HIGHLEVEL_CODE
+
 static void 
 MR_printdetslot_as_label(const MR_Integer offset)
 {
@@ -394,6 +396,8 @@ MR_printnondstack(const MR_Word *s)
 		(long) (MR_Integer)
 			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 }
+
+#endif /* !MR_HIGHLEVEL_CODE */
 
 void 
 MR_print_heapptr(FILE *fp, const MR_Word *s)

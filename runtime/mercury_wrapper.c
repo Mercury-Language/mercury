@@ -342,7 +342,7 @@ mercury_runtime_init(int argc, char **argv)
 
 	(*MR_address_of_mercury_init_io)();
 
-#ifdef MR_HIGHLEVEL_CODE
+#if defined(MR_HIGHLEVEL_CODE) && defined(CONSERVATIVE_GC)
 	MR_init_memory();
   #ifdef MR_USE_TRAIL
 	/* initialize the trail */

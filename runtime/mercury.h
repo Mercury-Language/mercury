@@ -39,6 +39,10 @@
   #ifdef INLINE_ALLOC
     #include "gc_inl.h"
   #endif
+#else
+  #include "mercury_regs.h"	/* for MR_hp */
+  #include "mercury_engine.h"	/* for MR_fake_reg (needed by MR_hp) */
+  #include "mercury_overflow.h"	/* for MR_heap_overflow_check() */
 #endif
 
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_MPROF_PROFILE_TIME)
@@ -318,16 +322,17 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 **	Allocates memory on the garbage-collected heap.
 */
 
-#ifdef INLINE_ALLOC
-  #ifndef __GNUC__
-    #error "INLINE_ALLOC requires GNU C"
-  #endif
-  /*
-  ** This must be a macro, not an inline function, because
-  ** GNU C's `__builtin_constant_p' does not work inside
-  ** inline functions
-  */
-  #define MR_GC_MALLOC_INLINE(bytes)                                    \
+#ifdef CONSERVATIVE_GC
+  #ifdef INLINE_ALLOC
+    #ifndef __GNUC__
+      #error "INLINE_ALLOC requires GNU C"
+    #endif
+    /*
+    ** This must be a macro, not an inline function, because
+    ** GNU C's `__builtin_constant_p' does not work inside
+    ** inline functions
+    */
+    #define MR_GC_MALLOC_INLINE(bytes)                                    \
         ( __extension__ __builtin_constant_p(bytes) &&			\
 	  (bytes) <= 16 * sizeof(MR_Word)				\
         ? ({    void * temp;                                            \
@@ -343,11 +348,42 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
           })                                                            \
         : GC_MALLOC(bytes)                         			\
         )
-  #define MR_new_object(type, size, name) \
+    #define MR_new_object(type, size, name) \
   		((type *) MR_GC_MALLOC_INLINE(size))
-#else
-  #define MR_new_object(type, size, name) \
+  #else /* !INLINE_ALLOC */
+    #define MR_new_object(type, size, name) \
   		((type *) GC_MALLOC(size)) 
+  #endif /* !INLINE_ALLOC */
+
+#else /* !CONSERVATIVE_GC */
+
+  #ifndef __GNUC__
+    /*
+    ** We need GNU C's `({...})' expressions.
+    ** It's not worth worrying about compilers other than GNU C for
+    ** this obscure combination of options.
+    */
+    #error "For C compilers other than GNU C, `--high-level-code' requires `--gc conservative'"
+  #endif
+
+  /*
+  ** XXX Note that currently we don't need to worry about alignment here,
+  **     other than word alignment, because floating point fields will
+  **	 be boxed if they don't fit in a word.
+  **     This would need to change if we ever start using unboxed
+  **     fields whose alignment requirement is greater than one word.
+  */
+  #define MR_new_object(type, size, name)				\
+     ({ 								\
+        size_t MR_new_object_num_words;					\
+        MR_Word MR_new_object_ptr;					\
+									\
+	MR_new_object_num_words = 					\
+		((size) + sizeof(MR_Word) - 1) / sizeof(MR_Word);	\
+	MR_incr_hp(MR_new_object_ptr, MR_new_object_num_words);		\
+	/* return */ (type *) MR_new_object_ptr;			\
+      })
+
 #endif
 
 /*
@@ -359,7 +395,10 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
 #if defined(__GNUC__) && !defined(MR_AVOID_MACROS)
   #define MR_box_float(f) ({						\
-	MR_Float *MR_box_float_ptr = (MR_Float *)			\
+	MR_Float *MR_box_float_ptr;					\
+									\
+	MR_make_hp_float_aligned();					\
+	MR_box_float_ptr = 						\
 		MR_new_object(MR_Float, sizeof(MR_Float), "float");	\
 	*MR_box_float_ptr = (f);					\
 	/* return */ (MR_Box) MR_box_float_ptr;				\
@@ -369,8 +408,10 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
   MR_EXTERN_INLINE MR_Box
   MR_box_float(MR_Float f) {
-	MR_Float *ptr = (MR_Float *)
-		MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	MR_Float *ptr;
+
+	MR_make_hp_float_aligned();
+	ptr = MR_new_object(MR_Float, sizeof(MR_Float), "float");
 	*ptr = f;
 	return (MR_Box) ptr;
   }

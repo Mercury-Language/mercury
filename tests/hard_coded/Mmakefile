@@ -255,12 +255,6 @@ MCFLAGS-unused_float_box_test =	--infer-all
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
-# these tests run out of memory unless we have GC
-GRADEFLAGS-integer_test		=	--gc conservative
-GRADEFLAGS-integer_test_init	=	--gc conservative
-GRADEFLAGS-rational_test 	=	--gc conservative
-GRADEFLAGS-rational_test_init	=	--gc conservative
-
 C2INITFLAGS-parse		= 	--trace
 MLFLAGS-parse			=	--trace --static
 
@@ -282,6 +276,15 @@ no_fully_strict.out: no_fully_strict
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
+
+# These tests run out of memory in non-GC grades
+# unless we increase the heap size from the default 4M.
+# The sizes specified here (70 Mb and 20 Mb respectively)
+# are sufficient for running these tests on 64-bit systems.
+integer_test.out: integer_test
+	MERCURY_OPTIONS="--heap-size 70000" ./integer_test > $@ 2>&1
+rational_test.out: rational_test
+	MERCURY_OPTIONS="--heap-size 20000" ./rational_test > $@ 2>&1
 
 #-----------------------------------------------------------------------------#
 

@@ -59,12 +59,6 @@
   #define MR_IF_THREAD_SAFE(x)
 #endif
 
-/*
-** The field names that correspond to virtual machine registers:
-** 	sp, maxfr & curfr
-** are prefixed with `context_' so that they don't get replaced
-** during macro expansion.
-*/
 typedef struct MR_Context_Struct MR_Context;
 struct MR_Context_Struct {
 	MR_Context	 *MR_ctxt_next;	
@@ -92,6 +86,7 @@ struct MR_Context_Struct {
 		*/
 #endif
 
+#ifndef MR_HIGHLEVEL_CODE
 	MR_Code		*MR_ctxt_succip;
 		/* succip for this context */
 
@@ -106,7 +101,7 @@ struct MR_Context_Struct {
 		/* saved maxfr pointer for this context */
 	MR_Word		*MR_ctxt_curfr;
 		/* saved curfr pointer for this context */
-#ifdef	MR_USE_MINIMAL_MODEL
+  #ifdef MR_USE_MINIMAL_MODEL
 	MR_MemoryZone	*MR_ctxt_genstack_zone;
 		/* pointer to the genstack_zone for this context */
 	MR_Integer	MR_ctxt_gen_next;
@@ -115,7 +110,8 @@ struct MR_Context_Struct {
 		/* pointer to the cutstack_zone for this context */
 	MR_Integer	MR_ctxt_cut_next;
 		/* saved cut stack index for this context */
-#endif
+  #endif /* MR_USE_MINIMAL_MODEL */
+#endif /* !MR_HIGHLEVEL_CODE */
 
 #ifdef	MR_USE_TRAIL
 	MR_MemoryZone	*MR_ctxt_trail_zone;
@@ -227,11 +223,13 @@ extern	void		MR_flounder(void);
 
 extern	void		MR_schedule(MR_Context *ctxt);
 
-MR_declare_entry(MR_do_runnext);
-#define MR_runnext()						\
+#ifndef MR_HIGHLEVEL_CODE
+  MR_declare_entry(MR_do_runnext);
+  #define MR_runnext()						\
 	do {							\
 		MR_GOTO(MR_ENTRY(MR_do_runnext));		\
-	} while (0)						\
+	} while (0)
+#endif
 
 #ifdef	MR_THREAD_SAFE
   #define MR_IF_MR_THREAD_SAFE(x)	x
@@ -239,14 +237,15 @@ MR_declare_entry(MR_do_runnext);
   #define MR_IF_MR_THREAD_SAFE(x)
 #endif
 
-/*
-** fork_new_context(MR_Code *child, MR_Code *parent, int numslots):
-** create a new context to execute the code at `child', and
-** copy the topmost `numslots' from the current stackframe.
-** The new context gets put on the runqueue, and the current
-** context resumes at `parent'.
-*/
-#define MR_fork_new_context(child, parent, numslots) do {		\
+#ifndef MR_HIGHLEVEL_CODE
+  /*
+  ** fork_new_context(MR_Code *child, MR_Code *parent, int numslots):
+  ** create a new context to execute the code at `child', and
+  ** copy the topmost `numslots' from the current stackframe.
+  ** The new context gets put on the runqueue, and the current
+  ** context resumes at `parent'.
+  */
+  #define MR_fork_new_context(child, parent, numslots) do {		\
 		MR_Context	*f_n_c_context;				\
 		int		fork_new_context_i;			\
 		f_n_c_context = MR_create_context();			\
@@ -264,6 +263,7 @@ MR_declare_entry(MR_do_runnext);
 		MR_schedule(f_n_c_context);				\
 		MR_GOTO(parent);					\
 	} while (0)
+#endif /* MR_HIGHLEVEL_CODE */
 
 #ifndef	CONSERVATIVE_GC
 
@@ -332,18 +332,26 @@ MR_declare_entry(MR_do_runnext);
   #define MR_IF_USE_MINIMAL_MODEL(x)
 #endif
 
+#ifndef MR_HIGHLEVEL_CODE
+  #define MR_IF_NOT_HIGHLEVEL_CODE(x) x
+#else
+  #define MR_IF_NOT_HIGHLEVEL_CODE(x)
+#endif
+
 #define MR_load_context(cptr)						\
 	do {								\
 		MR_Context	*load_context_c;			\
 									\
 		load_context_c = (cptr);				\
-		MR_succip	= load_context_c->MR_ctxt_succip;	\
-		MR_sp		= load_context_c->MR_ctxt_sp;		\
-		MR_maxfr	= load_context_c->MR_ctxt_maxfr; 	\
-		MR_curfr	= load_context_c->MR_ctxt_curfr;	\
-		MR_IF_USE_MINIMAL_MODEL(				\
+		MR_IF_NOT_HIGHLEVEL_CODE(				\
+			MR_succip  = load_context_c->MR_ctxt_succip;	\
+			MR_sp	   = load_context_c->MR_ctxt_sp;	\
+			MR_maxfr   = load_context_c->MR_ctxt_maxfr; 	\
+			MR_curfr   = load_context_c->MR_ctxt_curfr;	\
+		  MR_IF_USE_MINIMAL_MODEL(				\
 			MR_gen_next = load_context_c->MR_ctxt_gen_next;	\
 			MR_cut_next = load_context_c->MR_ctxt_cut_next;	\
+		  )							\
 		)							\
 	        MR_IF_USE_TRAIL(					\
 			MR_trail_zone = load_context_c->MR_ctxt_trail_zone;\
@@ -353,14 +361,15 @@ MR_declare_entry(MR_do_runnext);
 		    MR_ticket_high_water =				\
 				 load_context_c->MR_ctxt_ticket_high_water;\
 	    	)							\
-		MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =	\
+		MR_IF_NOT_HIGHLEVEL_CODE(				\
+		  MR_ENGINE(MR_eng_context).MR_ctxt_detstack_zone =	\
 				load_context_c->MR_ctxt_detstack_zone;	\
-		MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =	\
+		  MR_ENGINE(MR_eng_context).MR_ctxt_nondetstack_zone =	\
 				load_context_c->MR_ctxt_nondetstack_zone;\
-		MR_IF_USE_MINIMAL_MODEL(				\
-			MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =\
+		  MR_IF_USE_MINIMAL_MODEL(				\
+		    MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone =   \
 				load_context_c->MR_ctxt_genstack_zone;	\
-			MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =\
+		    MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone =   \
 				load_context_c->MR_ctxt_cutstack_zone;	\
 		    MR_gen_stack = (MR_GeneratorStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
@@ -368,6 +377,7 @@ MR_declare_entry(MR_do_runnext);
 		    MR_cut_stack = (MR_CutStackFrame *)			\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone;		\
+	    	  )							\
 	    	)							\
 		MR_set_min_heap_reclamation_point(load_context_c);	\
 	} while (0)
@@ -377,13 +387,15 @@ MR_declare_entry(MR_do_runnext);
 		MR_Context	*save_context_c;			\
 									\
 		save_context_c = (cptr);				\
-		save_context_c->MR_ctxt_succip	= MR_succip;		\
-		save_context_c->MR_ctxt_sp	= MR_sp;		\
-		save_context_c->MR_ctxt_maxfr   = MR_maxfr;		\
-		save_context_c->MR_ctxt_curfr   = MR_curfr;		\
-		MR_IF_USE_MINIMAL_MODEL(				\
+		MR_IF_NOT_HIGHLEVEL_CODE(				\
+			save_context_c->MR_ctxt_succip	= MR_succip;	\
+			save_context_c->MR_ctxt_sp	= MR_sp;	\
+			save_context_c->MR_ctxt_maxfr   = MR_maxfr;	\
+			save_context_c->MR_ctxt_curfr   = MR_curfr;	\
+		  MR_IF_USE_MINIMAL_MODEL(				\
 			save_context_c->MR_ctxt_gen_next = MR_gen_next;	\
 			save_context_c->MR_ctxt_cut_next = MR_cut_next;	\
+		  )							\
 		)							\
 		MR_IF_USE_TRAIL(					\
 			save_context_c->MR_ctxt_trail_zone = MR_trail_zone;\
@@ -393,25 +405,27 @@ MR_declare_entry(MR_do_runnext);
 			save_context_c->MR_ctxt_ticket_high_water =	\
 						MR_ticket_high_water;	\
 		)							\
-		save_context_c->MR_ctxt_detstack_zone =			\
+		MR_IF_NOT_HIGHLEVEL_CODE(				\
+		  save_context_c->MR_ctxt_detstack_zone =		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_detstack_zone;		\
-		save_context_c->MR_ctxt_nondetstack_zone =		\
+		  save_context_c->MR_ctxt_nondetstack_zone =		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_nondetstack_zone;	\
-		MR_IF_USE_MINIMAL_MODEL(				\
-			save_context_c->MR_ctxt_genstack_zone =		\
+		  MR_IF_USE_MINIMAL_MODEL(				\
+		    save_context_c->MR_ctxt_genstack_zone =		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_genstack_zone;		\
-			save_context_c->MR_ctxt_cutstack_zone =		\
+		    save_context_c->MR_ctxt_cutstack_zone =		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone;		\
-			assert(MR_gen_stack == (MR_GeneratorStackFrame *)\
+		    assert(MR_gen_stack == (MR_GeneratorStackFrame *)	\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_genstack_zone);		\
 		    assert(MR_cut_stack == (MR_CutStackFrame *)		\
 				MR_ENGINE(MR_eng_context).		\
 					MR_ctxt_cutstack_zone);		\
+		  )							\
 		)							\
 		MR_save_hp_in_context(save_context_c);			\
 	} while (0)
