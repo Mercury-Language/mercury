@@ -14,7 +14,7 @@
 :- instance c1(list(T)) where [ ].
 :- instance c2(list(T)) where [ ].
 
-:- pred p is det.
+:- pred p(T::in) is det.
 
 :- implementation.
 
@@ -22,7 +22,7 @@
 	% the typeclass info for this call: if the substitution from "T" in
 	% the typeclass decl to "list(T)" in the instance is applied
 	% recursively, an infinite loop results.
-p :- q([1]).
+p(X) :- q([X]).
 
 :- pred q(T) <= c2(T).
 :- mode q(in) is det.
