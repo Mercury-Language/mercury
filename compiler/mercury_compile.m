@@ -907,7 +907,7 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
 			{ TimestampFiles = [] }
 		;
 			module_name_to_file_name(ModuleName,
-				TimestampSuffix, no, FileName),
+				TimestampSuffix, yes, FileName),
 			{ TimestampFiles = [FileName] }
 		)
 	    ).
