@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -173,6 +173,7 @@ demangle(const char *orig_name)
 
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
+	static const char mercury_common[] = "mercury_common_";
 	static const char mercury_data[] = "mercury_data_";
 	static const char type_ctor_layout[] = "type_ctor_layout_";
 	static const char type_ctor_info[] = "type_ctor_info_";
@@ -677,6 +678,14 @@ not_plain_mercury:
 		start++;
 	}
 
+	if (strip_prefix(&start, mercury_common)) {
+		if (!strip_leading_integer(&start, &arity)) {
+			goto wrong_format;
+		}
+		printf("<shared constant number %d>", arity);
+		return;
+	}
+
 	if (strip_prefix(&start, mercury_data)) {
 		/* LLDS */
 		high_level = MR_FALSE;
@@ -972,6 +981,8 @@ strip_leading_integer(char **start_ptr, int *num)
 	** is returned if there is an integer at the end, false if not.
 	** If false is returned, the string will not be cut.
 	** `real_end' is updated with the new end of the string
+	** Requires *str to contain more than just a number; doesn't work 
+	** if the trailing integer starts at the first character of str.
 	*/
 static MR_bool 
 cut_trailing_integer(char *str, char **real_end, int *num) 
