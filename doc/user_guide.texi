@@ -6521,45 +6521,9 @@ The directory containing the installed Mercury standard library.
 If the MERCURY_ALL_C_INCL_DIRS, MERCURY_ALL_MC_C_INCL_DIRS,
 MERCURY_INT_DIR, MERCURY_MOD_LIB_MODS and MERCURY_TRACE_LIB_MODS
 variables are set the value of MERCURY_STDLIB_DIR will be ignored.
-
-@sp 1
-@item MERCURY_ALL_C_INCL_DIRS
-@vindex MERCURY_ALL_C_INCL_DIRS
-A list of options for the C compiler that specifies
-all the directories the C compiler should search for the C header files
-of the Mercury runtime system and garbage collector.
-The default value of this variable is @samp{-I$MERCURY_STDLIB_DIR/inc},
-since usually all these header files are installed in one directory.
-This environment variable is used by @samp{mgnuc};
-it should generally be kept in sync with
-@code{MERCURY_ALL_MC_C_INCL_DIRS}, which is used by @samp{mmc}.
-
-@sp 1
-@item MERCURY_ALL_MC_C_INCL_DIRS
-@vindex MERCURY_ALL_MC_C_INCL_DIRS
-A list of options for mmc that specifies
-all the directories it should search for the C header files
-of the Mercury runtime system and garbage collector.
-The default value of this variable is
-@samp{--c-include-directory $MERCURY_STDLIB_DIR/inc},
-since usually all these header files are installed in one directory.
-This environment variable is used by @samp{mmc};
-it should generally be kept in sync with
-@code{MERCURY_ALL_C_INCL_DIRS}, which is used by @samp{mgnuc}.
-
-@sp 1
-@item MERCURY_INT_DIR
-@vindex MERCURY_INT_DIR
-Directory for the Mercury library interface
-files (@file{*.int}, @file{*.int2}, @file{*.int3} and @file{*.opt}).
-
-@sp 1
-@item MERCURY_C_LIB_DIR
-@vindex MERCURY_C_LIB_DIR
-Base directory containing the Mercury libraries (@file{libmer_*.a} and
-possibly @file{libmer_*.so}) for each configuration and grade.
-The libraries for each configuration and grade should
-be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
+@samp{--mercury-stdlib-dir} options passed to the @samp{mmc}, @samp{ml},
+@samp{mgnuc} and @samp{c2init} scripts override the setting of
+the MERCURY_STDLIB_DIR environment variable.
 
 @sp 1
 @item MERCURY_NONSHARED_LIB_DIR
@@ -6568,32 +6532,6 @@ For IRIX 5, this environment variable can be used to specify a
 directory containing a version of libgcc.a which has been compiled with
 @samp{-mno-abicalls}.  See the file @samp{README.IRIX-5} in the Mercury
 source distribution.
-
-@item MERCURY_MOD_LIB_MODS
-@vindex MERCURY_MOD_LIB_MODS
-The names of the .init files in the Mercury library.
-
-@item MERCURY_TRACE_LIB_MODS
-@vindex MERCURY_TRACE_LIB_MODS
-The names of the .init files in the Mercury library which should
-only be used when tracing is enabled.
-
-@sp 1
-@item MERCURY_COMPILER
-@vindex MERCURY_COMPILER
-Filename of the Mercury Compiler.
-
-@sp 1
-@item MERCURY_MKINIT
-@vindex MERCURY_MKINIT
-Filename of the program to create the @file{*_init.c} file.
-
-@sp 1
-@item MERCURY_DEBUGGER_INIT
-@vindex MERCURY_DEBUGGER_INIT
-Name of a file that contains startup commands for the Mercury debugger.
-This file should contain documentation for the debugger command set,
-and possibly a set of default aliases.
 
 @sp 1
 @item MERCURY_OPTIONS
@@ -6774,6 +6712,78 @@ to the file or device specified by @var{filename}.
 @c not documented here.
 
 @end table
+
+@sp 1
+@item MERCURY_COMPILER
+@vindex MERCURY_COMPILER
+Filename of the Mercury Compiler.
+
+@sp 1
+@item MERCURY_MKINIT
+@vindex MERCURY_MKINIT
+Filename of the program to create the @file{*_init.c} file.
+
+@sp 1
+@item MERCURY_DEBUGGER_INIT
+@vindex MERCURY_DEBUGGER_INIT
+Name of a file that contains startup commands for the Mercury debugger.
+This file should contain documentation for the debugger command set,
+and possibly a set of default aliases.
+
+@end table
+
+The following environment variables are deprecated, and may
+be ignored by future releases.
+
+@table @code
+
+@sp 1
+@item MERCURY_ALL_C_INCL_DIRS
+@vindex MERCURY_ALL_C_INCL_DIRS
+A list of options for the C compiler that specifies
+all the directories the C compiler should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this variable is @samp{-I$MERCURY_STDLIB_DIR/inc},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mgnuc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_MC_C_INCL_DIRS}, which is used by @samp{mmc}.
+
+@sp 1
+@item MERCURY_ALL_MC_C_INCL_DIRS
+@vindex MERCURY_ALL_MC_C_INCL_DIRS
+A list of options for mmc that specifies
+all the directories it should search for the C header files
+of the Mercury runtime system and garbage collector.
+The default value of this variable is
+@samp{--c-include-directory $MERCURY_STDLIB_DIR/inc},
+since usually all these header files are installed in one directory.
+This environment variable is used by @samp{mmc};
+it should generally be kept in sync with
+@code{MERCURY_ALL_C_INCL_DIRS}, which is used by @samp{mgnuc}.
+
+@sp 1
+@item MERCURY_INT_DIR
+@vindex MERCURY_INT_DIR
+Directory for the Mercury library interface
+files (@file{*.int}, @file{*.int2}, @file{*.int3} and @file{*.opt}).
+
+@sp 1
+@item MERCURY_C_LIB_DIR
+@vindex MERCURY_C_LIB_DIR
+Base directory containing the Mercury libraries (@file{libmer_*.a} and
+possibly @file{libmer_*.so}) for each configuration and grade.
+The libraries for each configuration and grade should
+be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
+
+@item MERCURY_MOD_LIB_MODS
+@vindex MERCURY_MOD_LIB_MODS
+The names of the .init files in the Mercury library.
+
+@item MERCURY_TRACE_LIB_MODS
+@vindex MERCURY_TRACE_LIB_MODS
+The names of the .init files in the Mercury library which should
+only be used when tracing is enabled.
 
 @end table
 
