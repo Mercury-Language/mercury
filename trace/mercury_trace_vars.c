@@ -595,6 +595,10 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 			}
 		}
 
+		if (!found) {
+			return "there is such variable";
+		}
+
 		if (MR_point.MR_point_vars[i].MR_var_is_ambiguous) {
 			if (must_be_unique) {
 				return "variable name is not unique";

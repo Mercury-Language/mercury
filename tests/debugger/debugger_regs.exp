@@ -5,6 +5,8 @@ mdb>
        2:      2  2 CALL pred debugger_regs:data/41-0 (det) 
 mdb> 
        3:      2  2 EXIT pred debugger_regs:data/41-0 (det) 
+mdb> print NoSuchVar
+mdb: there is such variable.
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
        HeadVar__2             	"a0"
