@@ -33,15 +33,6 @@ MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
 		$(READLINE_LIBRARIES)
 
-# XXX Smart recompilation currently doesn't work when the module
-# name doesn't match the file name, so disable warnings about it
-# not working in this directory.
-MCFLAGS += --no-warn-smart-recompilation
-
-# XXX There is a bug in deforestation which causes the compiler
-# to abort compiling declarative_user.m.
-MCFLAGS-mdb.declarative_user = --no-deforestation
-
 MCFLAGS-mer_browser = --no-warn-nothing-exported
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
