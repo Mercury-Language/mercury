@@ -7,6 +7,7 @@
 #include "mercury_imp.h"
 
 #include "mercury_type_info.h"
+#include "mercury_ho_call.h"
 #include <stdio.h>
 
 /*---------------------------------------------------------------------------*/
@@ -109,7 +110,6 @@ re_hash(Word * table, Word hash, TableNode * node)
 
 	while (BUCKET(table, bucket)) {
 		++bucket;
-
 		if (bucket == SIZE(table))
 			bucket = 0;
 	}
@@ -146,6 +146,7 @@ MR_int_hash_lookup_or_add(MR_TrieNode t, Integer key)
 			return &p->data;
 		}
 
+		bucket++;
 		if (bucket == SIZE(table))
 			bucket = 0;
 
@@ -218,8 +219,8 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
 		if (key == word_to_float(p->key)) {
 			return &p->data;
 		}
-		++bucket;
 
+		++bucket;
 		if (bucket == SIZE(table))
 			bucket = 0;
 
@@ -296,8 +297,8 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, String key)
 		if (res == 0) {
 			return &p->data;
 		}
-		++bucket;
 
+		++bucket;
 		if (bucket == SIZE(table))
 			bucket = 0;
 
@@ -597,18 +598,29 @@ MR_table_type(MR_TrieNode table, Word *type_info, Word data)
             break;
 
         case MR_TYPECTOR_REP_PRED: {
+	    /*
+	    ** XXX tabling of the closures by tabling their code address
+	    ** and arguments is not yet implemented, due to the difficulty
+	    ** of figuring out the closure argument types.
+	    */
+	#if 0
+	    MR_closure closure = (MR_Closure *) data_value;
+            Word num_hidden_args = closure->MR_closure_num_hidden_args;
             int i;
-            Word args = data_value[0];
 
-            MR_DEBUG_TABLE_STRING(table, args);
-            MR_DEBUG_TABLE_STRING(table, data_value[1]);
-
-            for (i = 0; i < args; i++) {
+            MR_DEBUG_TABLE_INT(table, closure->MR_closure_code);
+            for (i = 1; i <= num_hidden_args; i++) {
         	MR_DEBUG_TABLE_ANY(table,
-                    (Word *) type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
-                    data_value[i+2]);
+                    <type_info for hidden closure argument number i>,
+                    closure->MR_closure_hidden_args(i));
             }
             break;
+	#endif
+	    /*
+	    ** Instead, we use the following rather simplistic means of
+	    ** tabling closures: we just table based on the closure address.
+	    */
+            MR_DEBUG_TABLE_INT(table, (Word) data_value);
         }
         case MR_TYPECTOR_REP_UNIV:
             MR_DEBUG_TABLE_TYPEINFO(table,
