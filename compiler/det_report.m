@@ -374,7 +374,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 			PredId, ModeId),
 		io__write_string("can succeed"),
 		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once\n.")
+			io__write_string(" more than once.\n")
 		;
 			io__write_string(".\n")
 		),
@@ -416,7 +416,7 @@ det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
 		prog_out__write_context(Context),
 		io__write_string("  Higher-order predicate call can succeed"),
 		( { DesiredSolns = at_most_one } ->
-			io__write_string(" more than once\n.")
+			io__write_string(" more than once.\n")
 		;
 			io__write_string(".\n")
 		),
