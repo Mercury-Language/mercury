@@ -44,8 +44,10 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury Library Reference Manual
-@subtitle ALPHA TEST version - May, 1995
+@subtitle BETA TEST version - July, 1995
 @c @author Fergus Henderson
+@c @author Thomas Conway
+@c @author Zoltan Somogyi
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995 University of Melbourne.
@@ -67,7 +69,7 @@ into another language, under the above conditions for modified versions.
 
 @node Top,,, (DIR)
 @ifinfo
-@chapter Mercury Library Reference Manual - ALPHA TEST version, March 1995
+@chapter Mercury Library Reference Manual - BETA TEST version, July 1995
 @end ifinfo
 
 The Mercury standard library contains a variety of modules which we

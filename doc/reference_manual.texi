@@ -44,8 +44,10 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury Language Reference Manual
-@subtitle ALPHA TEST version - March, 1995
+@subtitle BETA TEST version - July, 1995
 @author Fergus Henderson
+@author Thomas Conway
+@author Zoltan Somogyi
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995 University of Melbourne.
@@ -67,7 +69,7 @@ into another language, under the above conditions for modified versions.
 
 @node Top,,, (DIR)
 @ifinfo
-@chapter Mercury Language Reference Manual - ALPHA TEST version, March 1995
+@chapter Mercury Language Reference Manual - BETA TEST version, July 1995
 @end ifinfo
 @menu
 * Introduction::      A brief introduction to Mercury
@@ -75,7 +77,7 @@ into another language, under the above conditions for modified versions.
 * Types::             Mercury has a strong parametric polymorphic type system
 * Modes::             Modes allow you to specify the direction of data flow
 * Determinism::       Determinism declarations let you specify that a predicate
-		      should never fail or should never succeed more than once
+                      should never fail or should never succeed more than once
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         An informal semantics for Mercury programs
 @end menu
@@ -92,18 +94,28 @@ It improves on existing logic programming languages by providing
 increased productivity, reliability and efficiency, and by avoiding the
 need for non-logical program constructs.
 
-Mercury has strong type, mode and determinism checking at compile
-time.  In addition to improving reliability, this static checking
-improves productivity during development and maintenance by detecting
-errors early in the software life-cycle.  The information provided by
-the programmers' declarations is very useful documentation that is
-guaranteed to be correct, and which is also extremely useful to the
-compiler for generating efficient code.
+Mercury requires programmers to supply
+type, mode and determinism declarations for the predicates they write.
+The compiler checks these declarations,
+and rejects the program if it cannot prove
+that every predicate satisfies its declarations.
+This improves reliability,
+since many kinds of errors simply cannot happen
+in successfully compiled Mercury programs.
+It also improves productivity,
+since the compiler pinoints many errors
+that would otherwise require manual debugging to locate.
+The fact that declarations are checked by the compiler
+makes them much more useful than comments
+to anyone who has to maintain the program.
+The compiler also exploits the guaranteed correctness of the declarations
+for significantly improving the efficiency of the code it generates.
 
 To facilitate programming-in-the-large, to allow separate compilation,
 and to support encapsulation, Mercury has a simple module system.
 Mercury's standard library has a variety of pre-defined modules
-for common programming tasks.
+for common programming tasks;
+see the Mercury Library Reference manual.
 
 @node Syntax, Types, Introduction, Top
 @chapter Syntax
@@ -152,10 +164,12 @@ they are not abbreviations for lists of character codes.
 @section Items
 
 Each item in a Mercury module is either a declaration or a clause.
-If the top-level functor of the term is @samp{:-/1}, the item is a
-declaration, otherwise it is a clause.  If the top-level functor of the
-term is @samp{:-/2}, the item is a rule.  If the top-level functor is
-@samp{-->/2}, the item is a DCG rule.  Otherwise, the item is a fact.
+If the top-level functor of the term is @samp{:-/1},
+the item is a declaration, otherwise it is a clause.
+There are three types of clauses.
+If the top-level functor of the item is @samp{:-/2}, the item is a rule.
+If the top-level functor is @samp{-->/2}, the item is a DCG rule.
+Otherwise, the item is a fact.
 
 @node Declarations, Facts, Items, Syntax
 @section Declarations
@@ -180,19 +194,23 @@ the @samp{inst} and @samp{mode} declarations are for the mode system,
 and the remainder are for the module system.  They are described in
 more detail in their respective chapters.
 
-(Note that for historical reasons, the current implementation allows
-@samp{when/2} declarations, but ignores them.)
+(The current implementation allows @samp{when/2} declarations,
+but ignores them.
+This helps when one wants to write a program
+that is both a Mercury program and an NU-Prolog program.)
 
 @node Facts, Rules, Declarations, Syntax
 @section Facts
 
-A fact is an item of the form @samp{@var{Head}}, where the top-level
-functor of @var{Head} is not @code{:-/1}, @code{:-/2}, or @code{-->/2}.
-The @var{Head} term must not be a variable.  The top-level functor
-of the @var{Head} determines which predicate the clause belongs to;
-the predicate must have been declared in a previous @samp{pred}
-declaration in this module.  A fact is equivalent to a rule
-@samp{@var{Head} :- true}.
+A fact is an item of the form @samp{@var{Head}},
+where the top-level functor of @var{Head}
+is not @code{:-/1}, @code{:-/2}, or @code{-->/2}.
+The @var{Head} term must not be a variable.
+The top-level functor of the @var{Head}
+determines which predicate the clause belongs to;
+the predicate must have been declared
+in a previous @samp{pred} declaration in this module.
+A fact is equivalent to a rule @samp{@var{Head} :- true}.
 
 @node Rules, Goals, Facts, Syntax
 @section Rules
@@ -210,48 +228,56 @@ A goal is a term of one of the following forms:
 
 @table @code
 @item some @var{Vars} @var{Goal}
-An existential quantification.  @var{Vars} must be a list of variables.
+An existential quantification.
+@var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
 
 @item all @var{Vars} @var{Goal}
-A universal quantification.  @var{Vars} must be a list of variables.
+A universal quantification.
+@var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
 This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
 
 @item @var{Goal1}, @var{Goal2}
-A conjunction.  @var{Goal1} and @var{Goal2} must be valid goals.
+A conjunction.
+@var{Goal1} and @var{Goal2} must be valid goals.
 
 @item @var{Goal1} ; @var{Goal2}
-A disjunction.  @var{Goal1} and @var{Goal2} must be valid goals.
-@var{Goal1} must not be of the form @samp{Goal1a -> Goal1b}.
-(If it is, then the goal is an if-then-else, not a disjunction.)
+where @var{Goal1} is not of the form @samp{Goal1a -> Goal1b}:
+a disjunction.
+@var{Goal1} and @var{Goal2} must be valid goals.
 
 @item true
-The empty conjunction.  Always succeeds.
+The empty conjunction.
+Always succeeds.
 
 @item fail
-The empty disjunction.  Always fails.
+The empty disjunction.
+Always fails.
 
 @item not @var{Goal}
 @itemx \+ @var{Goal}
-A negation.  The two different syntaxes have identical semantics.
+A negation.
+The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
 
 @item @var{Goal1} => @var{Goal2}
-An implication.  This is an abbreviation for
-@samp{not (@var{Goal1}, not @var{Goal2})}.
+An implication.
+This is an abbreviation for @samp{not (@var{Goal1}, not @var{Goal2})}.
 
 @item @var{Goal1} <= @var{Goal2}
-A reverse implication.  This is an abbreviation for
-@samp{not (@var{Goal2}, not @var{Goal1})}.
+A reverse implication.
+This is an abbreviation for @samp{not (@var{Goal2}, not @var{Goal1})}.
 
 @item @var{Goal1} <=> @var{Goal2}
-A logical equivalence.  This is an abbreviation for
-@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}.
+A logical equivalence.
+This is an abbreviation for
+@samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}).
 
 @item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
 @itemx @var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}
-An if-then-else.  The two different syntaxes have identical semantics.
+An if-then-else.
+The two different syntaxes have identical semantics.
 @var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid goals.
 Note that the ``else'' part is @emph{not} optional.
 
@@ -263,12 +289,14 @@ An inequality.
 This is an abbreviation for @samp{not (@var{Term1} = @var{Term2})}.
 
 @item @var{Call}
-Any term which does not match any of the above forms must be
-a predicate call.  If the term is a variable @var{Var}, it is treated
-as if it were @samp{call(@var{Var})}.  Otherwise, the top-level
-functor of the term determines the predicate called; the predicate
-must be declared in a @code{pred} declaration in the module or in
-the interface of an imported module.
+Any term which does not match any of the above forms
+must be a predicate call.
+If the term is a variable @var{Var},
+it is treated as if it were @samp{call(@var{Var})}.
+Otherwise, the top-level functor of the term
+determines the predicate called;
+the predicate must be declared in a @code{pred} declaration
+in the module or in the interface of an imported module.
 
 @end table
 
@@ -284,10 +312,11 @@ A DCG-rule is an abbreviation for an ordinary rule with two
 additional implicit arguments appended to the arguments of @var{Head}.
 These arguments are fresh variables which we shall call
 @var{V_in} and @var{V_out}.
-The @var{Body} must be a valid DCG-goal, and is an abbreviation for
-an ordinary goal.  We shall define a function
-@samp{DCG-transform(@var{V_in}, @var{V_out}, @var{DCG-goal})} which
-specifies how DCG goals are transformed into ordinary goals.
+The @var{Body} must be a valid DCG-goal,
+and is an abbreviation for an ordinary goal.
+The next section defines a function
+@samp{DCG-transform(@var{V_in}, @var{V_out}, @var{DCG-goal})}
+which specifies how DCG goals are transformed into ordinary goals.
 
 @node DCG-goals, Implicit quantification, DCG-rules, Syntax
 @section DCG-goals
@@ -296,7 +325,8 @@ A DCG-goal is a term of one of the following forms:
 
 @table @code
 @item some @var{Vars} @var{DCG-goal}
-A DCG existential quantification.  @var{Vars} must be a list of variables.
+A DCG existential quantification.
+@var{Vars} must be a list of variables.
 @var{DCG-goal} must be a valid DCG-goal.
 
 Semantics:
@@ -306,7 +336,8 @@ some Vars transform(V_in, V_out, DCG_goal)
 @end example
 
 @item all @var{Vars} @var{DCG-goal}
-A DCG universal quantification.  @var{Vars} must be a list of variables.
+A DCG universal quantification.
+@var{Vars} must be a list of variables.
 @var{DCG-goal} must be a valid DCG-goal.
 
 Semantics:
@@ -316,13 +347,15 @@ all Vars transform(V_in, V_out, DCG_goal)
 @end example
 
 @item @var{DCG-goal1}, @var{DCG-goal2}
-A DCG sequence.  Intuitively, this means ``parse DCG-goal1 and then
-parse DCG-goal2'' or ``do DCG-goal1 and then do DCG-goal2''.  (Note
-that the only way this construct actually forces the desired sequencing
-is by the modes of the implicit DCG arguments.) @var{DCG-goal1} and
-@var{DCG-goal2} must be valid DCG-goals.
+A DCG sequence.
+Intuitively, this means ``parse DCG-goal1 and then parse DCG-goal2''
+or ``do DCG-goal1 and then do DCG-goal2''.
+(Note that the only way this construct actually forces the desired sequencing
+is by the modes of the implicit DCG arguments.)
+@var{DCG-goal1} and @var{DCG-goal2} must be valid DCG-goals.
 
 Semantics:
+@c XXX too indented
 @example
 transform(V_in, V_out, (DCG-goal1, DCG-goal2)) =
 transform(V_in, V_new, DCG_goal1), transform(V_new, V_out, DCG_goal2)
@@ -335,13 +368,15 @@ A disjunction.  @var{DCG-goal1} and @var{DCG-goal2} must be valid goals.
 (If it is, then the goal is an if-then-else, not a disjunction.)
 
 Semantics:
+@c XXX too indented
 @example
 transform(V_in, V_out, (DCG_goal1 ; DCG_goal2)) =
 transform(V_in, V_out, DCG_goal1) ; transform(V_in, V_out, DCG_goal2)
 @end example
 
 @item @{ @var{Goal} @}
-A brace-enclosed ordinary goal.  @var{Goal} must be a valid goal.
+A brace-enclosed ordinary goal.
+@var{Goal} must be a valid goal.
 
 Semantics:
 @example
@@ -349,10 +384,11 @@ transform(V_in, V_out, @{ Goal @}) = (Goal, V_out = V_in)
 @end example
 
 @itemx [@var{Term}, ...]
-A DCG input match.  Unifies the implicit DCG input variable V_in, which
-must have type @samp{list(_)}, with a list whose initial elements are
-the terms specified and whose tail is the implicit DCG output variable
-V_out.
+A DCG input match.
+Unifies the implicit DCG input variable V_in,
+which must have type @samp{list(_)},
+with a list whose initial elements are the terms specified
+and whose tail is the implicit DCG output variable V_out.
 
 Semantics:
 @example
@@ -370,7 +406,8 @@ transform(V_in, V_out, []) = (V_out = V_in)
 
 @item not @var{DCG-goal}
 @itemx \+ @var{DCG-goal}
-A DCG negation.  The two different syntaxes have identical semantics.
+A DCG negation.
+The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
 
 Semantics:
@@ -382,14 +419,15 @@ where V_new is a fresh variable.
 
 @item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
 @itemx @var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}
-A DCG if-then-else.  The two different syntaxes have identical semantics.
+A DCG if-then-else.
+The two different syntaxes have identical semantics.
 @var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid DCG-goals.
 
 Semantics:
 @example
 transform(V_in, V_out, if CondGoal then ThenGoal else ElseGoal) =
 if transform(V_in, V_cond, CondGoal) then
-	transform(V_cond, V_out, ThenGoal)
+        transform(V_cond, V_out, ThenGoal)
 else
         transform(V_in, V_out, ElseGoal)
 @end example
@@ -403,14 +441,16 @@ transform(V_in, V_out, =(Term)) = (Term = V_in, V_out = Vin)
 @end example
 
 @item @var{DCG-call}
-Any term which does not match any of the above forms must be
-a DCG predicate call.  If the term is a variable @var{Var}, it is treated
-as if it were @samp{call(@var{Var})}.  Then, the two implicit DCG
-arguments are appended to the specified arguments.
+Any term which does not match any of the above forms
+must be a DCG predicate call.
+If the term is a variable @var{Var},
+it is treated as if it were @samp{call(@var{Var})}.
+Then, the two implicit DCG arguments are appended to the specified arguments.
 
 Semantics:
 @example
-transform(V_in, V_out, p(A1, ..., AN)) = p(A1, ..., AN, V_in, V_Out)
+transform(V_in, V_out, p(A1, ..., AN)) =
+p(A1, ..., AN, V_in, V_Out)
 @end example
 
 @end table
@@ -596,7 +636,7 @@ with a @samp{:- pred} declaration.  These declarations may be
 polymorphic.  For example:
 
 @example
-	:- pred list__member(T, list(T)).
+        :- pred list__member(T, list(T)).
 @end example
 
 Predicates may not be overloaded: there must only be one predicate
@@ -734,11 +774,11 @@ read and write access to the items it stores.  To represent accesses to
 the database over a network, you would need declarations such as
 
 @example
-:- type	operation
+:- type operation
         --->    lookup(key, data)
         ;       set(key, data).
 :- inst request --->
-	bound(  lookup(ground, free)
+        bound(  lookup(ground, free)
         ;       set(ground, ground)
         ).
 :- mode create_request :: free -> request.
@@ -764,8 +804,7 @@ are as follows:
 :- mode length(in_listskel, out).
 :- mode length(out_listskel, in).
 
-:- pred append(list(T), list(T),
-	   list(T)).
+:- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out).
 :- mode append(out, out, in).
 @end example
@@ -1147,7 +1186,7 @@ We plan to eventually extend Mercury to allow users to write
 
 @example
 
-	unique [X] Goal
+        unique [X] Goal
 
 @end example
 

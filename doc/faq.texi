@@ -1,0 +1,172 @@
+\input texinfo
+@setfilename mercury_faq.info
+@settitle The Mercury FAQ
+
+@ignore
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* Mercury FAQ: (mercury_faq).      The Mercury Frequently Asked Questions list
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+@end ignore
+
+@c @smallbook
+@c @cropmarks
+@c @finalout
+@setchapternewpage odd
+@ifinfo
+This file documents the Mercury implementation.
+
+Copyright (C) 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@c @finalout
+@title The Mercury Frequently Asked Questions list
+@subtitle BETA TEST version, July 1995
+@author Fergus Henderson
+@author Thomas Conway
+@author Zoltan Somogyi
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+
+@node Top,,, (DIR)
+@ifinfo
+@chapter The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
+@end ifinfo
+@menu
+* Modules::         Common problems with the module system
+* Programming::     Common programming errors
+* Unimplemented::   Problems caused by unimplemented Mercury features
+* Last resort::     What to do when all else fails
+@end menu
+
+@node Modules, Programming,, Top
+@section Common problems with the module system
+
+@table @emph
+
+@item What does the error message ``undefined symbol @samp{'.'/2}'' mean?
+
+You need to explicitly import the @samp{list} module
+
+@example
+:- import_module list.
+@end example
+
+@noindent
+if your code uses lists.
+
+@end table
+
+@node Programming, Unimplemented, Modules, Top
+@section Common programming errors
+
+@table @emph
+
+@item Why doesn't @samp{X <= 3} work?
+
+In Mercury, less-than-or-equal to is written as @samp{=<} not
+as @samp{<=}, which is used for reverse implication.
+
+@item I get a mode error (or a "scope error") in an if-then-else. I checked and both branches bind the same variables. What is the error?
+
+A common cause of this sort of error is trying to bind non-local variables
+in the @emph{condition} of the if-then-else. Since
+
+@example
+(
+	Cond
+->
+	Then
+;
+	Else
+)
+@end example
+
+@noindent
+is equivalent to
+
+@example
+(
+	Cond,
+	Then
+;
+	not Cond,
+	Else
+)
+@end example
+
+@noindent
+attempting to bind in Cond a variable that occurs outside Cond and Then
+would lead to an unsound negation.
+Mode analysis therefore rejects such programs.
+
+@end table
+
+@node Unimplemented, Last resort, Programming, Top
+@section Problems caused by unimplemented Mercury features
+
+@table @emph
+@item How can I avoid getting a compile-time error when I try to fill in a partially instantiated data structure?
+
+At the moment, you can't if XXX.
+The reason is that XXX
+
+@end table
+
+@node Last resort,, Unimplemented, Top
+@section What to do when all else fails
+
+@table @emph
+
+@item I'm getting an error message that I don't understand.  What can I do?
+
+Try compiling with the @samp{-e} (@samp{--verbose-errors}) option.
+This option causes the compiler to give even more verbose descriptions
+than usual.
+
+@item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
+
+Send mail to mercury-bugs@@cs.mu.oz.au, and we'll try to solve your problem.
+
+@end table
+
+@contents
+@bye
