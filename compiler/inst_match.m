@@ -309,7 +309,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, set, svset, map, term, std_util, require, bool.
+:- import_module int, list, set, svset, map, term, std_util, require, bool.
 
 inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-
 	inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _, no, _).
@@ -667,6 +667,34 @@ equivalent_sym_names(unqualified(S), qualified(_, S)).
 equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
 	equivalent_sym_names(QualA, QualB).
 
+	% Check that the first cons_id is lexically greater than the
+	% second, after all module qualifiers have been removed.
+	%
+:- pred greater_than_disregard_module_qual(cons_id::in, cons_id::in)
+	is semidet.
+
+greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
+	(
+		ConsIdA = cons(QNameA, ArityA),
+		ConsIdB = cons(QNameB, ArityB)
+	->
+		(	QNameA = unqualified(NameA)
+		;	QNameA = qualified(_, NameA)
+		),
+		(	QNameB = unqualified(NameB)
+		;	QNameB = qualified(_, NameB)
+		),
+		compare(O, NameA, NameB),
+		(
+			O = (>)
+		;
+			O = (=),
+			ArityA > ArityB
+		)
+	;
+		compare((>), ConsIdA, ConsIdB)
+	).
+
 %-----------------------------------------------------------------------------%
 
 	% Update the inst_var_sub that is computed by inst_matches_initial.
@@ -863,13 +891,13 @@ bound_inst_list_matches_initial([], _, _, !Info).
 bound_inst_list_matches_initial([X | Xs], [Y | Ys], MaybeType, !Info) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
-	( ConsIdX = ConsIdY ->
+	( equivalent_cons_ids(ConsIdX, ConsIdY) ->
 		maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
 			ConsIdX, list__length(ArgsX), MaybeTypes),
 		inst_list_matches_initial(ArgsX, ArgsY, MaybeTypes, !Info),
 		bound_inst_list_matches_initial(Xs, Ys, MaybeType, !Info)
 	;
-		compare(>, ConsIdX, ConsIdY),
+		greater_than_disregard_module_qual(ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X | Xs].
 			% Hence [X | Xs] implicitly specifies `not_reached'
 			% for the args of ConsIdY, and hence
@@ -1059,13 +1087,13 @@ bound_inst_list_matches_final([], _, _, !Info).
 bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
-	( ConsIdX = ConsIdY ->
+	( equivalent_cons_ids(ConsIdX, ConsIdY) ->
 		maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
 			ConsIdX, list__length(ArgsX), MaybeTypes),
 		inst_list_matches_final(ArgsX, ArgsY, MaybeTypes, !Info),
 		bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
 	;
-		compare(>, ConsIdX, ConsIdY),
+		greater_than_disregard_module_qual(ConsIdX, ConsIdY),
 			% ConsIdY does not occur in [X | Xs].
 			% Hence [X | Xs] implicitly specifies `not_reached'
 			% for the args of ConsIdY, and hence
@@ -1205,13 +1233,13 @@ bound_inst_list_matches_binding([], _, _, !Info).
 bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
-	( ConsIdX = ConsIdY ->
+	( equivalent_cons_ids(ConsIdX, ConsIdY) ->
 		maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
 			ConsIdX, list__length(ArgsX), MaybeTypes),
 		inst_list_matches_binding(ArgsX, ArgsY, MaybeTypes, !Info),
 		bound_inst_list_matches_binding(Xs, Ys, MaybeType, !Info)
 	;
-		compare(>, ConsIdX, ConsIdY),
+		greater_than_disregard_module_qual(ConsIdX, ConsIdY),
 			% ConsIdX does not occur in [X | Xs].
 			% Hence [X | Xs] implicitly specifies `not_reached'
 			% for the args of ConsIdY, and hence
