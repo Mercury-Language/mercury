@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1997, 1999, 2001 The University of Melbourne.
+# Copyright (C) 1996-1997, 1999, 2001, 2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -31,11 +31,11 @@ HTML_TO_TEXT=TERM=vt100 lynx -dump
 
 DOCS_TEXT=allocation.text authors.text coding_standards.text \
 	compiler_design.text gc_and_c_code.text glossary.text \
-	module_system.text release_checklist.text reviews.text todo.text \
+	release_checklist.text reviews.text todo.text \
 	work_in_progress.text
 DOCS_HTML=allocation.html authors.html coding_standards.html \
 	compiler_design.html gc_and_c_code.html glossary.html \
-	module_system.html release_checklist.html reviews.html todo.html \
+	release_checklist.html reviews.html todo.html \
 	work_in_progress.html
 DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
 
