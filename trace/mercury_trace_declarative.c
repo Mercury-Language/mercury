@@ -423,9 +423,12 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	** We pass goal_path to Mercury code, which expects its type to be
 	** MR_String, not MR_ConstString, even though it treats the string as
 	** constant.
+	**
+	** return_label_layout may be NULL even if result is MR_STEP_OK, if
+	** the current event is inside the code of main/2.
 	*/
 
-	if (result == MR_STEP_OK) {
+	if (result == MR_STEP_OK && return_label_layout != NULL) {
 		goal_path = (MR_String) (MR_Integer)
 			MR_label_goal_path(return_label_layout);
 	} else {
