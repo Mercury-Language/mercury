@@ -158,7 +158,7 @@ install_mercury: install_ints install_mods install_library
 
 .PHONY: install_ints
 install_ints: $(library.ints)
-	mkdir -p $(INSTALL_INT_DIR)
+	[ -d $(INSTALL_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
 	for file in `vpath_find $(library.ints)`; do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
 		cp $$file $$target.tmp; \
@@ -167,7 +167,7 @@ install_ints: $(library.ints)
 
 .PHONY: install_mods
 install_mods: $(library.cs)
-	mkdir -p $(INSTALL_MODULE_DIR)
+	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	for file in `vpath_find $(library.cs)`; do \
 		grep '^BEGIN_MODULE' $$file > \
 			$(INSTALL_MODULE_DIR)/`basename $$file .c`.init; \
@@ -175,7 +175,7 @@ install_mods: $(library.cs)
 
 .PHONY: install_library
 install_library: libmercury.a libmercury.so
-	mkdir -p $(INSTALL_MERC_LIB_DIR)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 	cp `vpath_find libmercury.a libmercury.so` $(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_nuprolog
@@ -184,15 +184,15 @@ install_nuprolog: install_library_nu install_interpreter_nu
 .PHONY: install_library_nu
 install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
 			nc_builtin.nl np_builtin.nl
-	mkdir -p $(INSTALL_NU_DIR)
+	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
 	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
-	mkdir -p $(INSTALL_NU_ARCH_DIR)
+	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS)` \
 		$(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_interpreter_nu
 install_interpreter_nu: library.nu
-	mkdir -p $(INSTALL_NU_ARCH_DIR)
+	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/library.nu
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
@@ -203,12 +203,12 @@ install_sicstus: install_interpreter_sicstus install_sicstus_compile
 
 .PHONY: install_interpreter_sicstus
 install_interpreter_sicstus: library.sicstus.debug
-	mkdir -p $(INSTALL_SP_ARCH_DIR)
+	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
 	cp library.sicstus.debug $(INSTALL_SP_ARCH_DIR)
 
 .PHONY: install_sicstus_compile
 install_sicstus_compile: sicstus_compile
-	mkdir -p $(INSTALL_SP_ARCH_DIR)
+	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
 	cp sicstus_compile $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#
