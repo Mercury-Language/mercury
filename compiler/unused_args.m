@@ -20,6 +20,10 @@
 %	- used to instantiate an output variable
 %	- involved in a simple test, switch or a semidet deconstruction 
 %	- used as an argument to another predicate in this module which is used.
+%  In accurate gc grades, the following variables are also considered used
+%	- a type-info (or part of a type-info) of a type parameter of the 
+%	  type of a variable that is used (for example, if a variable
+%	  of type list(T) is used, then TypeInfo_for_T is used)
 %
 %  The first step is to determine which arguments of which predicates are
 %	used locally to their predicate. For each unused argument, a set of
@@ -247,8 +251,20 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		initialise_vardep(VarDep0, Vars, VarDep1),
 		setup_output_args(ModuleInfo, HeadVars,
 			ArgModes, VarDep1, VarDep2),
+		
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_gc_method(Globals, GCMethod),
+		( GCMethod = accurate ->
+			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+			setup_typeinfo_deps(Vars, VarTypes, 
+				proc(PredId, ProcId), TVarMap, VarDep2,
+				VarDep3)
+		;
+			VarDep2 = VarDep3
+		),
+
 		proc_info_goal(ProcInfo, Goal - _),
-		traverse_goal(ModuleInfo, Goal, VarDep2, VarDep),
+		traverse_goal(ModuleInfo, Goal, VarDep3, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
 		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
 		OptProcs1 = OptProcs0
@@ -269,8 +285,32 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 %-------------------------------------------------------------------------------
 	% Predicates for manipulating the var_usage and var_dep structures.
 
+	% For each variable ensure the typeinfos describing the
+	% type parameters of the type of the variable depend on the
+	% head variable.
+	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
+	% is used if HeadVar1 is used.
+:- pred setup_typeinfo_deps(list(var)::in, map(var, type)::in, pred_proc_id::in,
+			map(tvar, var)::in, var_dep::in, var_dep::out) is det.
+
+setup_typeinfo_deps([], _, _, _, VarDep, VarDep). 
+setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0, 
+		VarDep) :-
+	map__lookup(VarTypeMap, Var, Type),
+	type_util__vars(Type, TVars),
+	list__map(lambda([TVar::in, TypeInfoVar::out] is det, 
+		map__lookup(TVarMap, TVar, TypeInfoVar)), TVars, TypeInfoVars),
+	AddArgDependency = 
+		lambda([TVar::in, VarDepA::in, VarDepB::out] is det, (
+			add_arg_dep(VarDepA, TVar, PredProcId, Var, VarDepB)
+		)),
+	list__foldl(AddArgDependency, TypeInfoVars, VarDep0, VarDep1),
+	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap, 
+		VarDep1, VarDep).
+
+
 	% Get output arguments for a procedure given the headvars and the
-	% argument modes.
+	% argument modes, and set them as used.
 :- pred setup_output_args(module_info::in, list(var)::in, list(mode)::in,
 			var_dep::in, var_dep::out) is det.
 
