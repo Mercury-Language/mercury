@@ -20,7 +20,11 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
 	%%% { statistics },
-	add_item_list_clauses(Items, Module1, Module).
+	% We reverse the itemlist before inserting the clauses,
+	% so that we can build up the individual clause lists
+	% in the correct order 
+	{ reverse(Items, RevItems) },
+	add_item_list_clauses(RevItems, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -200,6 +204,11 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 
 %-----------------------------------------------------------------------------%
 
+	% We allow more than one "definition" for a given type so
+	% long all of them except one are actually just declarations,
+	% e.g. `:- type t.', which is parsed as an type definition for
+	% t which defines t as an abstract_type.
+
 :- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
 			term__context, module_info, io__state, io__state).
 :- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
@@ -209,21 +218,31 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	{ type_name_args(TypeDefn, Name, Args, Body),
 	  length(Args, Arity),
 	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
-	(if %%% some [T2]
-		{ map__search(Types0, Name - Arity, T2) }
-	then
+	(
+		% if there was an existing non-abstract definition for the type
+		{ map__search(Types0, Name - Arity, T2) },
+		{ T2 = hlds__type_defn(_, _, Body_2, _, _) },
+		{ \+ (Body_2 = abstract_type) }
+	->
 		{ Module = Module0 },
-		(if 
+	  	(
+			% then if this definition was abstract, ignore it
+			{ Body = abstract_type }
+		->
+			[]
+		;
+			% otherwise give a warning or an error
 			{ type_is_compat(T, T2) }
-		then
+		->
 			duplicate_def_warning(Name, Arity, "type", Context)
-		else
+		;
 			multiple_def_error(Name, Arity, "type", Context)
 		)
-	else
-		{ TypeId = Name - Arity,
-		  map__insert(Types0, TypeId, T, Types),
-		 (if some [ConsList]
+	;
+		{ 
+		  TypeId = Name - Arity,
+		  map__set(Types0, TypeId, T, Types),
+		  (if some [ConsList]
 			Body = du_type(ConsList)
 		  then
 			moduleinfo_ctors(Module0, Ctors0),
@@ -243,6 +262,9 @@ type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
 type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
 type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
+
+	% Two type definitions are compatible if they have exactly the
+	% same argument lists and bodies.
 
 :- pred type_is_compat(hlds__type_defn, hlds__type_defn).
 :- mode type_is_compat(input, input).
