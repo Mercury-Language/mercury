@@ -974,6 +974,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% which has a different label layout structure),
 	% so we need to disable it when tracing.
 	option_implies(procid_stack_layout, optimize_dups, bool(no)),
+	% likewise for accurate GC
+	option_implies(agc_stack_layout, optimize_dups, bool(no)),
 
 	% XXX deforestation and constraint propagation do not perform
 	% folding on polymorphic predicates correctly with
