@@ -81,7 +81,7 @@
 	;	if_val(rval, code_addr)
 			% If rval is true, then goto code_addr.
 
-	;	incr_hp(lval, maybe(int), rval)
+	;	incr_hp(lval, maybe(tag), rval)
 			% Get a memory block of a given size
 			% and put its address in the given lval,
 			% possibly after tagging it with an rval.
@@ -127,7 +127,7 @@
 				% and just reference the label.
 				% Only constant term create() rvals should
 				% get output, others will get transformed
-				% to mkword(Tag, heap_alloc(Size)) plus
+				% to incr_hp(..., Tag, Size) plus
 				% assignments to the fields
 			;	mkword(tag, rval)
 			;	const(rval_const)
@@ -551,7 +551,12 @@ output_rval_decls(var(_)) -->
 	{ error("output_rval_decls: unexpected var") }.
 output_rval_decls(mkword(_, Rval)) --> 
 	output_rval_decls(Rval).
-output_rval_decls(const(_)) --> [].
+output_rval_decls(const(Const)) -->
+	( { Const = pred_constant(CodeAddress) } ->
+		output_code_addr_decls(CodeAddress)
+	;
+		[]
+	).
 output_rval_decls(unop(_, Rval)) -->
 	output_rval_decls(Rval).
 output_rval_decls(binop(_, Rval1, Rval2)) -->
