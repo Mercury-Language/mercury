@@ -26,8 +26,12 @@ MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	-- -static -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
+MSC	=	MERCURY_SICSTUS_COMPILER=$(LIBRARY_DIR)/sicstus_compile \
+		$(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
-MSC	=	MERCURY_SICSTUS_COMPILER=../library/sicstus_compile msc
+MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
+		$(SCRIPTS_DIR)/mnc
+MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
 MNLFLAGS =	-u 6000
 
 #-----------------------------------------------------------------------------#
