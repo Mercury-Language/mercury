@@ -1136,10 +1136,21 @@ propagate_ctor_info(ground(Uniq, no), _Type,
 		BoundInsts0),
 	list__sort_and_remove_dups(BoundInsts0, BoundInsts),
 	Inst = bound(Uniq, BoundInsts).
-propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
-	% for higher-order pred modes, the information we need is already
-	% in the inst, so we leave it unchanged
-			ground(Uniq, yes(PredInstInfo))).
+propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, ModuleInfo,
+			ground(Uniq, yes(PredInstInfo))) :-
+	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+	( type_is_higher_order(Type, PredOrFunc, ArgTypes) ->
+		propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+			Modes0, Modes)
+	;
+		% The inst is not a valid inst for the type,
+		% so leave it alone. This can only happen if the user
+		% has made a mistake.  A mode error should hopefully
+		% be reported if anything tries to match with the inst.
+		Modes = Modes0
+	).
+
 propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
 propagate_ctor_info(inst_var(_), _, _, _, _) :-
@@ -1175,10 +1186,21 @@ ex_propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Subst,
 % ex_propagate_ctor_info(ground(Uniq, no), Type, _, _, Inst) :-
 %	Inst = defined_inst(typed_ground(Uniq, Type)). 
 ex_propagate_ctor_info(ground(Uniq, no), _Type, _, _, ground(Uniq, no)).
-ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
-	% for higher-order pred modes, the information we need is already
-	% in the inst, so we leave it unchanged
-			ground(Uniq, yes(PredInstInfo))).
+ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
+		ModuleInfo, ground(Uniq, yes(PredInstInfo))) :-
+	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
+	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
+	term__apply_substitution(Type0, Subst, Type),
+	( type_is_higher_order(Type, PredOrFunc, ArgTypes) ->
+		propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+			Modes0, Modes)
+	;
+		% The inst is not a valid inst for the type,
+		% so leave it alone. This can only happen if the user
+		% has made a mistake.  A mode error should hopefully
+		% be reported if anything tries to match with the inst.
+		Modes = Modes0
+	).
 ex_propagate_ctor_info(not_reached, _Type, _, _ModuleInfo, not_reached).
 ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
 	error("propagate_ctor_info: unbound inst var").
