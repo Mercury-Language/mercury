@@ -960,7 +960,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <=
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	save_transient_registers();
-	exception = deep_copy((Word *) exception,
+	exception = deep_copy(&exception,
 		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
 		MR_EXCEPTION_FRAMEVARS->heap_ptr,
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
@@ -977,7 +977,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <=
 		MR_solutions_heap_zone->top);
 	save_transient_registers();
-	exception = deep_copy((Word *) exception,
+	exception = deep_copy(&exception,
 		(Word *) &mercury_data_std_util__type_ctor_info_univ_0,
 		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
 	restore_transient_registers();
