@@ -231,8 +231,10 @@ config.status: configure VERSION
 		exit 1; \
 	fi
 
-Mmake.common: Mmake.common.in config.status
+Mmake.common: Mercury.options Mmake.common.in config.status
 	./config.status
+
+Mercury.options:
 	touch Mercury.options
 
 README: .README.in VERSION
