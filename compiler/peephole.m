@@ -17,8 +17,7 @@
 :- import_module bool, list.
 :- import_module llds, globals.
 
-	% Peephole optimize a list of instructions.  The given list of
-	% patterns are not optimized.
+	% Peephole optimize a list of instructions.
 
 :- pred peephole__optimize(gc_method, list(instruction), list(instruction),
 		bool).
@@ -158,7 +157,7 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 	%	if_val(test, redo)		if_val(test, label)
 	%
 	% These two patterns are mutually exclusive because if_val is not
-	% straigh-line code.
+	% straight-line code.
 
 peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 		Instrs0, Instrs) :-
@@ -283,6 +282,7 @@ peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 
 	% Given a GC method, return the list of invalid peephole
 	% optimizations.
+
 :- pred peephole__invalid_opts(gc_method, list(pattern)). 
 :- mode peephole__invalid_opts(in, out) is det.
 
