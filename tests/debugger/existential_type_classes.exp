@@ -9,15 +9,15 @@ mdb> break -i do_foo
 mdb> continue -a
        2:      2  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
+       HeadVar__1             	42
 mdb> 
        3:      3  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
+       HeadVar__1             	42
 mdb> 
        4:      4  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
+       HeadVar__1             	42
 mdb> continue -a
        5:      5  5 CALL pred existential_type_classes:int_foo/2-0 (det) 
        6:      5  5 EXIT pred existential_type_classes:int_foo/2-0 (det) 
@@ -25,20 +25,20 @@ mdb> continue -a
        8:      3  3 EXIT pred existential_type_classes:foo/2-0 (det) 
        9:      2  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
-       HeadVar__2           		84
+       HeadVar__1             	42
+       HeadVar__2             	84
 mdb> continue -a
       10:      6  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		"blah"
+       HeadVar__1             	"blah"
 mdb> 
       11:      7  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		"blah"
+       HeadVar__1             	"blah"
 mdb> 
       12:      8  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__string__arity0______existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		"blah"
+       HeadVar__1             	"blah"
 mdb> continue -a
       13:      9  5 CALL pred existential_type_classes:string_foo/2-0 (det) 
       14:      9  5 EXIT pred existential_type_classes:string_foo/2-0 (det) 
@@ -46,22 +46,22 @@ mdb> continue -a
       16:      7  3 EXIT pred existential_type_classes:foo/2-0 (det) 
       17:      6  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		"blah"
-       HeadVar__2           		4
+       HeadVar__1             	"blah"
+       HeadVar__2             	4
 mdb> continue -a
       18:     10  2 CALL func existential_type_classes:my_exist_t/1-0 (det) 
       19:     10  2 EXIT func existential_type_classes:my_exist_t/1-0 (det) 
       20:     11  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> 
       21:     12  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> 
       22:     13  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> continue -a
       23:     14  5 CALL pred existential_type_classes:int_foo/2-0 (det) 
       24:     14  5 EXIT pred existential_type_classes:int_foo/2-0 (det) 
@@ -69,8 +69,8 @@ mdb> continue -a
       26:     12  3 EXIT pred existential_type_classes:foo/2-0 (det) 
       27:     11  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
-       HeadVar__2           		86
+       HeadVar__1             	43
+       HeadVar__2             	86
 mdb> continue -a
       28:     15  2 CALL func existential_type_classes:call_my_exist_t/1-0 (det) 
       29:     16  3 CALL func existential_type_classes:my_exist_t/1-0 (det) 
@@ -78,15 +78,15 @@ mdb> continue -a
       31:     15  2 EXIT func existential_type_classes:call_my_exist_t/1-0 (det) 
       32:     17  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> 
       33:     18  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> 
       34:     19  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
+       HeadVar__1             	43
 mdb> continue -a
       35:     20  5 CALL pred existential_type_classes:int_foo/2-0 (det) 
       36:     20  5 EXIT pred existential_type_classes:int_foo/2-0 (det) 
@@ -94,8 +94,8 @@ mdb> continue -a
       38:     18  3 EXIT pred existential_type_classes:foo/2-0 (det) 
       39:     17  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		43
-       HeadVar__2           		86
+       HeadVar__1             	43
+       HeadVar__2             	86
 mdb> continue -a
       40:     21  2 CALL func existential_type_classes:my_univ/2-0 (det) 
       41:     21  2 EXIT func existential_type_classes:my_univ/2-0 (det) 
@@ -103,15 +103,15 @@ mdb> continue -a
       43:     22  2 EXIT func existential_type_classes:my_univ_value/2-0 (det) 
       44:     23  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		45
+       HeadVar__1             	45
 mdb> 
       45:     24  3 CALL pred existential_type_classes:foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		45
+       HeadVar__1             	45
 mdb> 
       46:     25  4 CALL pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		45
+       HeadVar__1             	45
 mdb> continue -a
       47:     26  5 CALL pred existential_type_classes:int_foo/2-0 (det) 
       48:     26  5 EXIT pred existential_type_classes:int_foo/2-0 (det) 
@@ -119,8 +119,8 @@ mdb> continue -a
       50:     24  3 EXIT pred existential_type_classes:foo/2-0 (det) 
       51:     23  2 EXIT pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		45
-       HeadVar__2           		90
+       HeadVar__1             	45
+       HeadVar__2             	90
 mdb> 
       52:     27  2 CALL func existential_type_classes:my_univ/2-0 (det) 
 mdb> 
@@ -128,17 +128,17 @@ mdb>
 mdb> 
       54:     28  2 CALL func existential_type_classes:call_my_univ_value/2-0 (det) 
 mdb> P
-       HeadVar__1           		my_univ('<<c_pointer>>')
+       HeadVar__1             	my_univ('<<c_pointer>>')
 mdb> 
       55:     29  3 CALL func existential_type_classes:my_univ_value/2-0 (det) 
 mdb> P
-       Univ                 		my_univ('<<c_pointer>>')
+       Univ                   	my_univ('<<c_pointer>>')
 mdb> continue -a
       56:     29  3 EXIT func existential_type_classes:my_univ_value/2-0 (det) 
       57:     28  2 EXIT func existential_type_classes:call_my_univ_value/2-0 (det) 
       58:     30  2 CALL pred existential_type_classes:do_foo/2-0 (det) 
 mdb> P
-       HeadVar__1           		"something"
+       HeadVar__1             	"something"
 mdb> continue -S
 84
 4

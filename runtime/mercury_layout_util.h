@@ -54,14 +54,6 @@ extern	Word	*MR_materialize_typeinfos_base(
 			Word *base_sp, Word *base_curfr);
 
 /*
-** Given a stack layout and the saved copy of the registers,
-** get the values of the live variables as a list of univs.
-** Any memory needed is allocated on the Mercury heap.
-*/
-extern	Word	MR_make_var_list(const MR_Stack_Layout_Label *layout,
-			Word *saved_regs);
-
-/*
 ** If the given encoded location refers to a register, return its number.
 ** If it does not, return -1.
 */
@@ -111,10 +103,7 @@ extern	Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 ** non-null.
 **
 ** MR_get_type and MR_get_type_base are similar but do not
-** return the value, whereas the functions with _filtered deliberately
-** do not suceed if the variable's name indicates that the value is likely
-** to be too big. This is a temporary measure only, until we get a better
-** term printer.
+** return the value.
 **
 ** All of these functions may need to allocate memory (to hold the
 ** type_infos that they return); any memory that they allocate will
@@ -133,13 +122,6 @@ extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
 extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params, Word *type_info);
-extern	bool	MR_get_type_and_value_filtered(
-			const MR_Stack_Layout_Vars *vars, int var,
-			Word *saved_regs, const char *name,
-			Word *type_params, Word *type_info, Word *value);
-extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Vars *vars, int var, 
-			Word *saved_regs, const char *name, Word *type_params, 
-			Word *type_info);
 
 /*
 ** MR_write_variable:
@@ -149,33 +131,5 @@ extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Vars *vars, int var,
 */
 
 extern	void	MR_write_variable(Word type_info, Word value);
-
-/*
-** Type used in the term browser call
-*/
-
-typedef	enum {
-	VAR_NUMBER,
-	VAR_NAME
-} MR_Var_Spec_Kind;
-
-typedef struct {
-	MR_Var_Spec_Kind	MR_var_spec_kind;
-	int			MR_var_spec_number; /* valid if VAR_NUMBER */
-	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
-} MR_Var_Spec;
-
-/*
-** Find and validate the number of a variable given by a variable
-** specification in the given layout. If successful, store the
-** number of the variable in *which_var_ptr, and return a NULL 
-** string; otherwise return a string containing an error message.
-*/
-
-extern	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-			MR_Var_Spec var_spec, int *which_var_ptr);
-
-extern	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
-			*layout, int *var_count_ptr);
 
 #endif	/* MERCURY_LAYOUT_UTIL_H */

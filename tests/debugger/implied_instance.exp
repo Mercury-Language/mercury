@@ -7,11 +7,11 @@ P      =>    print *
 mdb> goto 2
        2:      2  2 CALL pred implied_instance:p/2-0 (det) 
 mdb> P
-       HeadVar__1           		2
+       HeadVar__1             	2
 mdb> 
        3:      3  3 CALL pred implied_instance:Introduced_pred_for_implied_instance__sumable__int__arity0______implied_instance__p_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		2
+       HeadVar__1             	2
 mdb> break -e p
  0: + stop      entry pred implied_instance:p/2-0 (det)
 mdb> continue -a
@@ -21,24 +21,24 @@ mdb> continue -a
        7:      2  2 EXIT pred implied_instance:p/2-0 (det) 
        8:      5  2 CALL pred implied_instance:p/2-0 (det) 
 mdb> P
-       HeadVar__1           		[42, 24, 1, 2, 3]
+       HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> 
        9:      6  3 CALL pred implied_instance:Introduced_pred_for_implied_instance__sumable__list__list__arity1______implied_instance__p_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		[42, 24, 1, 2, 3]
+       HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> 
       10:      7  4 CALL pred implied_instance:sum_int_list/2-0 (det) 
 mdb> P
-       HeadVar__1           		[42, 24, 1, 2, 3]
+       HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> continue -a
       11:      7  4 SWTC pred implied_instance:sum_int_list/2-0 (det) s1;
       12:      8  5 CALL pred implied_instance:p/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
+       HeadVar__1             	42
 mdb> 
       13:      9  6 CALL pred implied_instance:Introduced_pred_for_implied_instance__sumable__int__arity0______implied_instance__p_2/2-0 (det) 
 mdb> P
-       HeadVar__1           		42
+       HeadVar__1             	42
 mdb> continue -S
 2
 72
