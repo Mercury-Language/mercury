@@ -110,14 +110,17 @@ DRAFT NEWS for Mercury release 0.7
 
   - We've finally implemented a generic `io__write' predicate.
 
-  - The std_util.m module now contains predicates for traversing
-    terms of arbitrary type: arg/3, det_arg/3, functor/3, and
-    expand/4.  These are similar to Prolog's arg/3, functor/3,
-    and '=..'.  (There is as yet no method for _constructing_
-    terms of arbitrary type, however.)
-    XXX we need to fix the order of the arguments to arg/3 to
-    match the standard Prolog ordering
+  - The std_util.m module now contains functions and predicates for
+    traversing and constructing terms of arbitrary type. 
+    	For traversal: 
+    		predicates argument/3, det_argument/3, functor/3,
+		and expand/4.
+    	These are similar to Prolog's arg/3, functor/3, and '=..'.
 
+	For construction: 
+		functions type_of/1, num_functors/1, construct/3 and
+		predicate get_functor/5.
+    
   - We have a new module called time.m XXX to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
     in this module.
