@@ -124,7 +124,7 @@ insert explicit calls to initialize constraint variables.
 
 	% Compute the inst that results from abstractly unifying two variables.
 
-:- pred abstractly_unify_inst_functor(is_live, inst, const, list(inst),
+:- pred abstractly_unify_inst_functor(is_live, inst, cons_id, list(inst),
 				list(is_live), unify_is_real, module_info,
 				inst, module_info).
 :- mode abstractly_unify_inst_functor(in, in, in, in, in, in, in, out, out)
@@ -1266,10 +1266,8 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, Real, ModuleInfo0,
 	% unifies a variable (or rather, it's instantiatedness)
 	% with a functor.
 
-abstractly_unify_inst_functor(Live, InstA, Name, ArgInsts, ArgLives,
+abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives,
 		Real, ModuleInfo0, Inst, ModuleInfo) :-
-	list__length(ArgInsts, Arity),
-	make_functor_cons_id(Name, Arity, ConsId),
 	inst_expand(ModuleInfo0, InstA, InstA2),
 	abstractly_unify_inst_functor_2(Live, InstA2, ConsId, ArgInsts,
 			ArgLives, Real, ModuleInfo0, Inst, ModuleInfo).

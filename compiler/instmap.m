@@ -137,8 +137,7 @@
 :- mode instmap_delta_set(in, in, in, out) is det.
 
 	% Bind a variable in an instmap to a functor at the beginning
-	% of a case in a switch.
-	% (note: cons_id_to_const must succeed given the cons_id).
+	% of a case in a switch. Aborts on compiler generated cons_ids.
 :- pred instmap_delta_bind_var_to_functor(var, cons_id, instmap,
 		instmap_delta, instmap_delta, module_info, module_info).
 :- mode instmap_delta_bind_var_to_functor(in, in, in, in, out, in, out) is det.
@@ -408,15 +407,11 @@ instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
 :- mode bind_inst_to_functor(in, in, out, in, out) is det.
 
 bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
-	( cons_id_to_const(ConsId, Name1, Arity) ->
-		list__duplicate(Arity, dead, ArgLives),
-		list__duplicate(Arity, free, ArgInsts),
-		Name = Name1
-	;
-		error("bind_inst_to_functor: cons_id to const failed")
-	),
+	cons_id_arity(ConsId, Arity),
+	list__duplicate(Arity, dead, ArgLives),
+	list__duplicate(Arity, free, ArgInsts),
 	(
-		abstractly_unify_inst_functor(dead, Inst0, Name, ArgInsts, 
+		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts, 
 			ArgLives, real_unify, ModuleInfo0, Inst1, ModuleInfo1)
 	->
 		ModuleInfo = ModuleInfo1,

@@ -919,10 +919,23 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 		io__set_output_stream(OldStream, _),
 		{ ConsDefns2 = ConsDefns1 }
 	;
-		{ ConsDefns2 = [ConsDefn | ConsDefns1] }
+		{ ConsDefns2 = [ConsDefn | ConsDefns1] }	
 	),
-	{ map__set(Ctors0, ConsId, ConsDefns2, Ctors1) },
-	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
+	{ map__set(Ctors0, ConsId, [ConsDefn | ConsDefns1], Ctors1) },
+	{ ConsId = cons(qualified(_, ConsName), Arity) ->
+		% Add an unqualified version of the cons_id to the cons_table.
+		UnqualifiedConsId = cons(unqualified(ConsName), Arity),
+		( map__search(Ctors1, UnqualifiedConsId, ConsDefns2) ->
+			map__set(Ctors1, UnqualifiedConsId,
+				[ConsDefn | ConsDefns2], Ctors2)
+		;
+			map__set(Ctors1, UnqualifiedConsId, 
+				[ConsDefn], Ctors2)
+		)
+	;
+		Ctors2 = Ctors1
+	},
+	ctors_add(Rest, TypeId, Context, Ctors2, Ctors).
 
 %---------------------------------------------------------------------------%
 

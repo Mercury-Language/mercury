@@ -1040,10 +1040,7 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 
 	Term = functor(cons(PredName2, 0), []),
 
-		% Since constructors in bound insts cannot be module
-		% qualified, remove the qualifier here.
-	unqualify_name(PredName2, PredName3),
-	Inst = bound(unique, [functor(cons(unqualified(PredName3), 0), [])]),
+	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -1145,7 +1142,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	ConsId = cons(unqualified(Symbol), 1),
+	ConsId = cons(qualified("mercury_builtin", Symbol), 1),
 	TypeInfoTerm = functor(ConsId, ArgVars),
 
 	% introduce a new variable
@@ -1173,7 +1170,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons(unqualified(Symbol), NumArgVars),
+	InstConsId = cons(qualified("mercury_builtin", Symbol), NumArgVars),
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),

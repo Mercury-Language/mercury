@@ -81,6 +81,9 @@
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo) is det.
 
+:- pred mercury_output_cons_id(cons_id, bool, io__state, io__state).
+:- mode mercury_output_cons_id(in, in, di, uo) is det.
+
 :- pred mercury_output_inst_list(list(inst), varset, io__state, io__state).
 :- mode mercury_output_inst_list(in, in, di, uo) is det.
 
@@ -535,15 +538,10 @@ mercury_output_any_uniqueness(mostly_clobbered) -->
 
 mercury_output_bound_insts([], _) --> [].
 mercury_output_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
-	{ cons_id_to_const(ConsId, Name0, _Arity) ->
-		Name = Name0
-	;
-		error("mercury_output_bound_insts: cons_id_to_const failed")
-	},
 	( { Args = [] } ->
-		mercury_output_bracketed_constant(Name)
+		mercury_output_cons_id(ConsId, yes)
 	;
-		term_io__write_constant(Name),
+		mercury_output_cons_id(ConsId, no),
 		io__write_string("("),
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
@@ -554,6 +552,25 @@ mercury_output_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
 		io__write_string(" ; "),
 		mercury_output_bound_insts(BoundInsts, VarSet)
 	).
+
+mercury_output_cons_id(cons(Name, _), Bracketed) -->
+	( { Bracketed = yes } ->
+		mercury_output_bracketed_sym_name(Name)
+	;
+		mercury_output_sym_name(Name)
+	).
+mercury_output_cons_id(int_const(X), _) -->
+	io__write_int(X).
+mercury_output_cons_id(float_const(X), _) -->
+	io__write_float(X).
+mercury_output_cons_id(string_const(X), _) -->
+	io__write_strings(["""", X, """"]).
+mercury_output_cons_id(pred_const(_, _), _) -->
+	{ error("mercury_output_cons_id: pred_const") }.
+mercury_output_cons_id(code_addr_const(_, _), _) -->
+	{ error("mercury_output_cons_id: code_addr_const") }.
+mercury_output_cons_id(base_type_info_const(_, _, _), _) -->
+	{ error("mercury_output_cons_id: base_type_info_const") }.
 
 :- mercury_output_mode_defn(_, X, _, _, _) when X. 	% NU-Prolog indexing.
 

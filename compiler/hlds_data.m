@@ -57,13 +57,18 @@
 
 	% Various predicates for accessing the cons_id type.
 
-	% Given a cons_id, convert it into a const (from term.m) and
-	% an integer arity.  Fails if the cons_id is not representable
-	% as a const (for example, if it is a higher-order pred constant
-	% or an address constant or has a module qualifier).
+	% Given a cons_id and a list of argument terms, convert it into a
+	% term. Fails if the cons_id is a pred_const, code_addr_const or
+	% base_type_info_const.
 
-:- pred cons_id_to_const(cons_id, const, arity).
-:- mode cons_id_to_const(in, out, out) is semidet.
+:- pred cons_id_and_args_to_term(cons_id, list(term), term).
+:- mode cons_id_and_args_to_term(in, in, out) is semidet.
+
+	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
+	% and base_type_info_const.
+
+:- pred cons_id_arity(cons_id, arity).
+:- mode cons_id_arity(in, out) is det.
 
 	% The reverse conversion - make a cons_id for a functor.
 	% Given a const and an arity for the functor, create a cons_id.
@@ -82,20 +87,51 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module prog_util.
+:- import_module require, std_util.
 
-	% Module qualified cons_ids can't be converted to consts.
-cons_id_to_const(cons(unqualified(Name), Arity), term__atom(Name), Arity).
-cons_id_to_const(int_const(Int), term__integer(Int), 0).
-cons_id_to_const(string_const(String), term__string(String), 0).
-cons_id_to_const(float_const(Float), term__float(Float), 0).
+cons_id_and_args_to_term(int_const(Int), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__integer(Int), [], Context).
+cons_id_and_args_to_term(float_const(Float), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__float(Float), [], Context).
+cons_id_and_args_to_term(string_const(String), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__string(String), [], Context).
+cons_id_and_args_to_term(cons(SymName, _Arity), Args, Term) :-
+	construct_qualified_term(SymName, Args, Term).
+
+cons_id_arity(cons(_, Arity), Arity).
+cons_id_arity(int_const(_), 0).
+cons_id_arity(string_const(_), 0).
+cons_id_arity(float_const(_), 0).
+cons_id_arity(pred_const(_, _), _) :-
+	error("cons_id_arity: can't get arity of pred_const").
+cons_id_arity(code_addr_const(_, _), _) :-
+	error("cons_id_arity: can't get arity of code_addr_const").
+cons_id_arity(base_type_info_const(_, _, _), _) :-
+	error("cons_id_arity: can't get arity of base_type_info_const").
 
 make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
 
-make_cons_id(SymName, Args, _TypeId, cons(SymName, Arity)) :-
+make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
+	(
+		SymName0 = unqualified(ConsName),
+		(
+			TypeId = unqualified(_) - _,
+			SymName = SymName0
+		;
+			TypeId = qualified(TypeModule, _) - _,
+			SymName = qualified(TypeModule, ConsName)
+		)
+	;
+		SymName0 = qualified(_, _),
+		SymName = SymName0
+	),
 	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%

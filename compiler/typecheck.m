@@ -141,7 +141,7 @@
 
 :- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
-:- import_module mercury_to_mercury, options, getopt, globals.
+:- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc.
 
 :- import_module int, list, map, string, require, std_util, tree234.
@@ -2375,9 +2375,7 @@ type_info_get_ctor_list_2(TypeInfo, Functor, Arity, ConsInfoList) :-
 	% us a list of possible cons_type_infos.
 	type_info_get_ctors(TypeInfo, Ctors),
 	(
-		% Qualified functors can only be function calls or
-		% higher-order predicate constants.
-		Functor = cons(unqualified(_), Arity),
+		Functor = cons(_, _),
 		map__search(Ctors, Functor, HLDS_ConsDefnList)
 	->
 		convert_cons_defn_list(TypeInfo, HLDS_ConsDefnList,
@@ -2775,11 +2773,12 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
-	hlds_out__write_functor_cons_id(Functor, Args, VarSet, no),
+	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
+	hlds_out__write_functor_cons_id(Functor1, Args, VarSet, no),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),
-	write_functor_name(Functor, Arity),
+	write_functor_name(Functor1, Arity),
 	io__write_string(".\n"),
 
 	% XXX we should print type pairs (one type from each side)
@@ -2823,16 +2822,17 @@ write_argument_name(VarSet, VarId) -->
 :- mode write_functor_name(in, in, di, uo) is det.
 
 write_functor_name(Functor, Arity) -->
+	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
 	( { Arity = 0 } ->
 		io__write_string("constant `"),
 		( { Functor = cons(Name, _) } ->
 			prog_out__write_sym_name(Name)
 		;
-			hlds_out__write_cons_id(Functor)
+			hlds_out__write_cons_id(Functor1)
 		)
 	;
 		io__write_string("functor `"),
-		hlds_out__write_cons_id(Functor)
+		hlds_out__write_cons_id(Functor1)
 	),
 	io__write_string("'").
 
@@ -2881,22 +2881,15 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 			io__state, io__state).
 :- mode write_cons_type(in, in, in, di, uo) is det.
 
-write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, Context)
-		-->
+write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, _) -->
+	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
 	{ strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes) },
 	( { ArgTypes \= [] } ->
-		{
-			cons_id_to_const(Functor, Const, _)
-		->
-			Term = term__functor(Const, ArgTypes, Context)
+		( { cons_id_and_args_to_term(Functor1, ArgTypes, Term) } ->
+			mercury_output_term(Term, TVarSet, no)
 		;
-			Functor = cons(SymName, _)
-		->
-			construct_qualified_term(SymName, ArgTypes, Term)
-		;
-			error("typecheck:write_cons_type - invalid cons_id")
-		},	
-		mercury_output_term(Term, TVarSet, no),
+			{ error("typecheck:write_cons_type - invalid cons_id") }
+		),	
 		io__write_string(" :: ")
 	;
 		[]
@@ -3335,14 +3328,6 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	% clearer error messages
 	%
 	(
-		{ Functor = cons(qualified(Module, Name), Arity) }
-	->
-			% qualified cons_ids can only be function calls
-			% or higher-order pred constants.
-		{ string__int_to_string(Arity, ArStr) },
-		io__write_strings(["  error: undefined predicate or function `",
-				Module, ":", Name, "'/", ArStr, ".\n"])
-	;
 		{ Functor = cons(unqualified(Name), _) },
 		{ language_builtin(Name, Arity) }
 	->
@@ -3404,7 +3389,8 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 		)
 	;
 		io__write_string("  error: undefined symbol `"),
-		hlds_out__write_cons_id(Functor),
+		{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
+		hlds_out__write_cons_id(Functor1),
 		io__write_string("'.\n")
 	).
 

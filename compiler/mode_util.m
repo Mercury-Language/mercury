@@ -214,10 +214,20 @@
 :- pred get_arg_lives(list(mode), module_info, list(is_live)).
 :- mode get_arg_lives(in, in, out) is det.
 
-	% Predicate to make error messages more readable by stripping
+	% Predicates to make error messages more readable by stripping
 	% "mercury_builtin" module qualifiers from modes.
-:- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
-						list(mode)::out) is det.
+
+:- pred strip_builtin_qualifier_from_cons_id(cons_id, cons_id).
+:- mode strip_builtin_qualifier_from_cons_id(in, out) is det.
+
+:- pred strip_builtin_qualifiers_from_mode_list(list(mode), list(mode)).
+:- mode strip_builtin_qualifiers_from_mode_list(in, out) is det.
+
+:- pred strip_builtin_qualifiers_from_inst_list(list(inst), list(inst)).
+:- mode strip_builtin_qualifiers_from_inst_list(in, out) is det.
+
+:- pred strip_builtin_qualifiers_from_inst((inst), (inst)).
+:- mode strip_builtin_qualifiers_from_inst(in, out) is det.
 
 	% Given the switched on variable and the instmaps before the switch
 	% and after a branch make sure that any information added by the
@@ -1062,7 +1072,13 @@ propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
 	(
 		type_constructors(Type, ModuleInfo, Constructors)
 	->
-		propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
+		% Many of the calls to this predicate from inst_match.m do
+		% not require expansion of ground insts to bound insts.
+		% At the moment the extra expansion only complicates the insts
+		% unnecessarily, so this is disabled.
+		% propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
+		%	Inst) 
+		ex_propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
 			Inst)
 	;
 		Inst = Inst0
@@ -1096,9 +1112,9 @@ propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
 propagate_ctor_info(free(_), _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
-propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors, ModuleInfo,
+propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Constructors, ModuleInfo,
 		Inst) :-
-	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
+	propagate_ctor_info_2(BoundInsts0, Type, Constructors, ModuleInfo,
 		BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
@@ -1106,7 +1122,8 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors, ModuleInfo,
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-propagate_ctor_info(ground(Uniq, no), _Type, Constructors, ModuleInfo, Inst) :-
+propagate_ctor_info(ground(Uniq, no), _Type,
+		Constructors, ModuleInfo, Inst) :-
 	constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
 		BoundInsts0),
 	list__sort_and_remove_dups(BoundInsts0, BoundInsts),
@@ -1135,9 +1152,9 @@ ex_propagate_ctor_info(any(Uniq), _Type, _, _, any(Uniq)).
 						% XXX loses type info!
 ex_propagate_ctor_info(free(_), _, _, _, _) :-
 	error("ex_propagate_ctor_info: type info already present").
-ex_propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors,
+ex_propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Constructors,
 		ModuleInfo, Inst) :-
-	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
+	propagate_ctor_info_2(BoundInsts0, Type, Constructors, ModuleInfo,
 		BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
@@ -1145,8 +1162,11 @@ ex_propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors,
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-ex_propagate_ctor_info(ground(Uniq, no), Type, _, _, Inst) :-
-	Inst = defined_inst(typed_ground(Uniq, Type)).
+% The information added by this is not yet used, so it's disabled since
+% it unnecessarily complicates the insts.
+% ex_propagate_ctor_info(ground(Uniq, no), Type, _, _, Inst) :-
+%	Inst = defined_inst(typed_ground(Uniq, Type)). 
+ex_propagate_ctor_info(ground(Uniq, no), _Type, _, _, ground(Uniq, no)).
 ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
 	% for higher-order pred modes, the information we need is already
 	% in the inst, so we leave it unchanged
@@ -1178,16 +1198,69 @@ constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 :- mode ctor_arg_list_to_inst_list(in, in, out) is det.
 
 ctor_arg_list_to_inst_list([], _, []).
-ctor_arg_list_to_inst_list([_Name - Type | Args], Uniq, [Inst | Insts]) :-
-	Inst = defined_inst(typed_ground(Uniq, Type)),
+ctor_arg_list_to_inst_list([_Name - _Type | Args], Uniq, [Inst | Insts]) :-
+	% The information added by this is not yet used, so it's disabled 
+	% since it unnecessarily complicates the insts.
+	% Inst = defined_inst(typed_ground(Uniq, Type)), 
+	Inst = ground(Uniq, no),
 	ctor_arg_list_to_inst_list(Args, Uniq, Insts).
 
-:- pred propagate_ctor_info_2(list(bound_inst), list(constructor),
+:- pred propagate_ctor_info_2(list(bound_inst), (type), list(constructor),
 		module_info, list(bound_inst)).
-:- mode propagate_ctor_info_2(in, in, in, out) is det.
+:- mode propagate_ctor_info_2(in, in, in, in, out) is det.
 
-propagate_ctor_info_2(BoundInsts0, _Constructors, _ModuleInfo, BoundInsts) :-
-	BoundInsts = BoundInsts0.	% XXX Stub only!!
+propagate_ctor_info_2(BoundInsts0, Type, Constructors,
+		ModuleInfo, BoundInsts) :-
+	(
+		type_to_type_id(Type, TypeId, _),
+		TypeId = qualified(TypeModule, _) - _
+	->
+		propagate_ctor_info_3(BoundInsts0, TypeModule,
+			Constructors, ModuleInfo, BoundInsts1),
+		list__sort(BoundInsts1, BoundInsts)
+	;
+		% Builtin types don't need processing.
+		BoundInsts = BoundInsts0
+	).
+
+:- pred propagate_ctor_info_3(list(bound_inst), string, list(constructor),
+		module_info, list(bound_inst)).
+:- mode propagate_ctor_info_3(in, in, in, in, out) is det.
+
+propagate_ctor_info_3([], _, _, _, []).
+propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
+		ModuleInfo, [BoundInst | BoundInsts]) :-
+	BoundInst0 = functor(ConsId0, ArgInsts0),
+	( ConsId0 = cons(unqualified(Name), Ar) ->
+		ConsId = cons(qualified(TypeModule, Name), Ar)
+	;
+		ConsId = ConsId0
+	),
+	(
+		ConsId = cons(ConsName, Arity),
+		GetCons = lambda([Ctor::in] is semidet, (
+				Ctor = ConsName - CtorArgs,
+				list__length(CtorArgs, Arity)
+			)),
+		list__filter(GetCons, Constructors, [Constructor])
+	->
+		Constructor = _ - Args,
+		GetArgTypes = lambda([CtorArg::in, ArgType::out] is det, (
+				CtorArg = _ArgName - ArgType
+			)),
+		list__map(GetArgTypes, Args, ArgTypes),
+		propagate_type_info_inst_list(ArgTypes,
+			ModuleInfo, ArgInsts0, ArgInsts),
+		BoundInst = functor(ConsId, ArgInsts)
+	;
+		% The cons_id is not a valid constructor for the type,
+		% so leave it alone. This can only happen in a user defined
+		% bound_inst. A mode error should be reported if anything
+		% tries to match with the inst.
+		BoundInst = functor(ConsId, ArgInsts0)
+	),
+	propagate_ctor_info_3(BoundInsts0, TypeModule,
+		Constructors, ModuleInfo, BoundInsts).
 
 %-----------------------------------------------------------------------------%
 
@@ -1680,6 +1753,14 @@ strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts0),
 	strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
 	strip_builtin_qualifier_from_sym_name(SymName0, SymName).
 
+strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
+	( ConsId0 = cons(Name0, Arity) ->
+		strip_builtin_qualifier_from_sym_name(Name0, Name),
+		ConsId = cons(Name, Arity)
+	;
+		ConsId = ConsId0
+	).
+
 :- pred strip_builtin_qualifier_from_sym_name(sym_name::in,
 						sym_name::out) is det.
 
@@ -1690,12 +1771,8 @@ strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
 		SymName = SymName0
 	).
 
-:- pred strip_builtin_qualifiers_from_inst_list(list(inst)::in,
-						list(inst)::out) is det.
 strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
 	list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
-
-:- pred strip_builtin_qualifiers_from_inst((inst)::in, (inst)::out) is det.
 
 strip_builtin_qualifiers_from_inst(inst_var(V), inst_var(V)).
 strip_builtin_qualifiers_from_inst(not_reached, not_reached).
@@ -1722,7 +1799,8 @@ strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
 :- pred strip_builtin_qualifiers_from_bound_inst(bound_inst::in,
 					bound_inst::out) is det.
 strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
-	BoundInst0 = functor(ConsId, Insts0),
+	BoundInst0 = functor(ConsId0, Insts0),
+	strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
 	BoundInst = functor(ConsId, Insts),
 	list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 

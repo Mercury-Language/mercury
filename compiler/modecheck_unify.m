@@ -97,7 +97,7 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 		Unify = unify(X, var(Y), Modes, Unification, UnifyContext)
 	).
 
-modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
+modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 			UnifyContext, GoalInfo0, HowToCheckGoal,
 			Goal, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -116,7 +116,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% been expanded.)
 		%
 		HowToCheckGoal \= check_unique_modes,
-		Name = cons(unqualified(ApplyName), _),
+		ConsId = cons(unqualified(ApplyName), _),
 		( ApplyName = "apply" ; ApplyName = "" ),
 		Arity >= 2,
 		ArgVars0 = [FuncVar | FuncArgVars]
@@ -143,7 +143,23 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 
 		% Find the set of candidate predicates which have the
 		% specified name and arity (and module, if module-qualified)
-		Name = cons(PredName, _),
+		ConsId = cons(PredName, _),
+		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
+
+		%
+		% We don't do this for compiler-generated predicates;
+		% they are assumed to have been generated with all
+		% functions already expanded.
+		% If we did this check for compiler-generated
+		% predicates, it would cause the wrong behaviour
+		% in the case where there is a user-defined function
+		% whose type is exactly the same as the type of
+		% a constructor.  (Normally that would cause
+		% a type ambiguity error, but compiler-generated
+		% predicates are not type-checked.)
+		%
+
+		\+ code_util__compiler_generated(PredInfo),
 		(
 			PredName = unqualified(UnqualPName),
 			predicate_table_search_func_name_arity(PredTable,
@@ -153,27 +169,12 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 			% have argument/return types which subsume the actual
 			% argument/return types of this function call
   
-			module_info_pred_info(ModuleInfo0,
-					ThisPredId, PredInfo),
 			pred_info_typevarset(PredInfo, TVarSet),
 			map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 			list__append(ArgTypes0, [TypeOfX], ArgTypes),
 			typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-				TVarSet, ArgTypes, PredId, QualifiedFuncName),
+				TVarSet, ArgTypes, PredId, QualifiedFuncName)
 
-			%
-			% We don't do this for compiler-generated predicates;
-			% they are assumed to have been generated with all
-			% functions already expanded.
-			% If we did this check for compiler-generated
-			% predicates, it would cause the wrong behaviour
-			% in the case where there is a user-defined function
-			% whose type is exactly the same as the type of
-			% a constructor.  (Normally that would cause
-			% a type ambiguity error, but compiler-generated
-			% predicates are not type-checked.)
-			%
-			\+ code_util__compiler_generated(PredInfo)
 		;
 			PredName = qualified(FuncModule, UnqualName),
 			predicate_table_search_func_m_n_a(PredTable,
@@ -189,7 +190,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		ProcId = 0,
 		list__append(ArgVars0, [X0], ArgVars),
 		FuncCallUnifyContext = call_unify_context(X0,
-					functor(Name, ArgVars0), UnifyContext),
+			functor(ConsId, ArgVars0), UnifyContext),
 		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 		%
@@ -223,7 +224,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 
 		% check if variable has a higher-order pred type
 		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
-		Name = cons(PName, _),
+		ConsId = cons(PName, _),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
@@ -277,7 +278,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		),
 
 		CallUnifyContext = call_unify_context(X0,
-					functor(Name, ArgVars0), UnifyContext),
+				functor(ConsId, ArgVars0), UnifyContext),
 		LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
 				yes(CallUnifyContext), QualifiedPName),
 
@@ -327,19 +328,13 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% It's not a higher-order pred unification - just
 		% call modecheck_unify_functor to do the ordinary thing.
 		%
-		( cons_id_to_const(Name, Const0, _) ->
-			Const = Const0
-		;
-			% This should be caught by typecheck.
-			error("sorry, not implemented: module qualified constructors")
-		),
 		mode_info_get_instmap(ModeInfo0, InstMap0),
-		modecheck_unify_functor(X0, Const, ArgVars0, Unification0,
-				ExtraGoals, Mode, ArgVars, Unification,
-				ModeInfo0, ModeInfo),
+		modecheck_unify_functor(X0, TypeOfX, ConsId, ArgVars0, 
+				Unification0, ExtraGoals, Mode, ArgVars,
+				Unification, ModeInfo0, ModeInfo),
 		%
 		% Optimize away construction of unused terms by
-		% replace the unification with `true'.
+		% replacing the unification with `true'.
 		%
 		(
 			Unification = construct(ConstructTarget, _, _, _),
@@ -347,7 +342,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		->
 			Goal = conj([])
 		;
-			Functor = functor(Name, ArgVars),
+			Functor = functor(ConsId, ArgVars),
 			Unify = unify(X, Functor, Mode, Unification,
 				UnifyContext),
 			X = X0,
@@ -502,24 +497,33 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		Unification = Unification0
 	).
 
-:- pred modecheck_unify_functor(var, const, list(var), unification,
+:- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
 			pair(list(hlds__goal)), pair(mode), list(var),
 			unification,
 			mode_info, mode_info).
-:- mode modecheck_unify_functor(in, in, in, in, out, out, out, out,
+:- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
-modecheck_unify_functor(X, Name, ArgVars0, Unification0,
+modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			ExtraGoals, Mode, ArgVars, Unification,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	list__length(ArgVars0, Arity),
+	(
+		% module qualify cons_ids
+		ConsId0 = cons(unqualified(Name), _),
+		type_to_type_id(TypeOfX, TypeId, _),
+		TypeId = qualified(TypeModule, _) - _
+	->
+		ConsId = cons(qualified(TypeModule, Name), Arity)
+	;
+		ConsId = ConsId0
+	),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap__lookup_var(InstMap0, X, InstOfX),
 	instmap__lookup_vars(ArgVars0, InstMap0, InstArgs),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo0, LiveArgs),
-	list__length(ArgVars0, Arity),
-	make_functor_cons_id(Name, Arity, ConsId),
 	InstOfY = bound(unique, [functor(ConsId, InstArgs)]),
 	(
 		% The occur check: X = f(X) is considered a mode error
@@ -533,7 +537,7 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 	->
 		set__list_to_set([X], WaitingVars),
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, Name, ArgVars0,
+			mode_error_unify_var_functor(X, ConsId, ArgVars0,
 							InstOfX, InstArgs),
 			ModeInfo0, ModeInfo1
 		),
@@ -557,7 +561,7 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		ArgVars = ArgVars0,
 		ExtraGoals = [] - []
 	;
-		abstractly_unify_inst_functor(LiveX, InstOfX, Name,
+		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
 			InstArgs, LiveArgs, real_unify, ModuleInfo0,
 			UnifyInst, ModuleInfo1)
 	->
@@ -582,7 +586,7 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		),
 		mode_info_get_var_types(ModeInfo1, VarTypes),
 		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
-				X, Name, ArgVars0, VarTypes,
+				X, ConsId, ArgVars0, VarTypes,
 				Unification0, ModeInfo1,
 				Unification1, ModeInfo2),
 		split_complicated_subunifies(Unification1, ArgVars0,
@@ -597,7 +601,7 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 	;
 		set__list_to_set([X | ArgVars0], WaitingVars), % conservative
 		mode_info_error(WaitingVars,
-			mode_error_unify_var_functor(X, Name, ArgVars0,
+			mode_error_unify_var_functor(X, ConsId, ArgVars0,
 							InstOfX, InstArgs),
 			ModeInfo0, ModeInfo1
 		),
@@ -926,17 +930,16 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 % unification or a deconstruction.  It also works out whether it will
 % be deterministic or semideterministic.
 
-:- pred categorize_unify_var_functor(mode, list(mode), list(mode), var, const,
-			list(var), map(var, type), unification, mode_info,
-			unification, mode_info).
+:- pred categorize_unify_var_functor(mode, list(mode), list(mode), var,
+		cons_id, list(var), map(var, type), unification, mode_info,
+		unification, mode_info).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
 categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
-		X, Name, ArgVars, VarTypes, Unification0, ModeInfo0,
+		X, NewConsId, ArgVars, VarTypes, Unification0, ModeInfo0,
 		Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	list__length(ArgVars, Arity),
 	map__lookup(VarTypes, X, TypeOfX),
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	( Unification0 = construct(_, ConsId0, _, _) ->
@@ -944,7 +947,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
 		ConsId = ConsId1
 	;
-		make_functor_cons_id(Name, Arity, ConsId)
+		ConsId = NewConsId
 	),
 	mode_util__modes_to_uni_modes(ModeOfXArgs, ArgModes0,
 						ModuleInfo, ArgModes),
@@ -987,7 +990,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
 			mode_error_unify_pred(X,
-					error_at_functor(Name, ArgVars),
+					error_at_functor(ConsId, ArgVars),
 					TypeOfX, PredOrFunc),
 					ModeInfo0, ModeInfo)
 			;

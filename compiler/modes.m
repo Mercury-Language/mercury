@@ -490,14 +490,12 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	;
 		proc_info_context(ProcInfo0, Context)
 	),
-/**************
 		% extract the predicate's type from the pred_info
 		% and propagate the type information into the modes
 	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
 			ArgModes1),
-**************/
-	ArgModes1 = ArgModes0,
+
 		% modecheck the clause - first set the initial instantiation
 		% of the head arguments, mode-check the body, and
 		% then check that the final instantiation matches that in
@@ -1064,17 +1062,10 @@ modecheck_case_list([Case0 | Cases0], Var,
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	( { cons_id_to_const(ConsId, _Const, Arity) } ->
-		{ list__duplicate(Arity, free, ArgInsts) },
-		modecheck_set_var_inst(Var,
-			bound(unique, [functor(ConsId, ArgInsts)]))
-	;
-		% cons_id_to_const will fail for pred_consts and
-		% address_consts; we don't worry about them,
-		% since you can't have a switch on a higher-order
-		% pred term anyway.
-		[]
-	),
+	{ cons_id_arity(ConsId, Arity) },
+	{ list__duplicate(Arity, free, ArgInsts) },
+	modecheck_set_var_inst(Var,
+		bound(unique, [functor(ConsId, ArgInsts)])),
 
 	modecheck_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),

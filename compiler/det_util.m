@@ -111,12 +111,9 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
 interpret_unify(X, var(Y), Subst0, Subst) :-
 	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
 interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
-	term__context_init(Context),
 	term__var_list_to_term_list(ArgVars, ArgTerms),
-	cons_id_to_const(ConsId, Functor, _),
-	term__unify(term__variable(X),
-		term__functor(Functor, ArgTerms, Context),
-		Subst0, Subst).
+	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
+	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
 interpret_unify(_X, lambda_goal(_PredOrFunc, _LambdaVars, _Modes, _Det, _Goal),
 		Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with

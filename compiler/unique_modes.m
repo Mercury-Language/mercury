@@ -126,11 +126,10 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Extract the useful fields in the proc_info.
 	%
 	proc_info_headvars(ProcInfo0, Args),
-	proc_info_argmodes(ProcInfo0, ArgModes),
+	proc_info_argmodes(ProcInfo0, ArgModes0),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 	proc_info_goal(ProcInfo0, Goal0),
 
-/**************
 	%
 	% extract the predicate's type from the pred_info
 	% and propagate the type information into the modes
@@ -138,7 +137,6 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
 			ArgModes),
-**************/
 
 	%
 	% Figure out the right context to use.
@@ -599,13 +597,10 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel, NeverSucceeds,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-/*********************
 	% propagate type info into modes
 	mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
 		ProcArgModes0, ProcArgModes),
-*********************/
-	ProcArgModes = ProcArgModes0,
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 				InitialInsts),
 	modecheck_var_has_inst_list(ArgVars, InitialInsts, 0,
@@ -689,17 +684,10 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 		% record the fact that Var was bound to ConsId in the
 		% instmap before processing this case
-	( { cons_id_to_const(ConsId, _Const, Arity) } ->
-		{ list__duplicate(Arity, free, ArgInsts) },
-		modecheck_set_var_inst(Var,
-			bound(unique, [functor(ConsId, ArgInsts)]))
-	;
-		% cons_id_to_const will fail for pred_consts and
-		% address_consts; we don't worry about them,
-		% since you can't have a switch on a higher-order
-		% pred term anyway.
-		[]
-	),
+	{ cons_id_arity(ConsId, Arity) },
+	{ list__duplicate(Arity, free, ArgInsts) },
+	modecheck_set_var_inst(Var,
+		bound(unique, [functor(ConsId, ArgInsts)])),
 
 	unique_modes__check_goal(Goal0, Goal1),
 	mode_info_dcg_get_instmap(InstMap),

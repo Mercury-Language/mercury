@@ -765,13 +765,12 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
-	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
-/***********
+	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts0),
 		% propagate type information into the modes
 	proc_info_vartypes(ProcInfo, VarTypes),
-	propagate_type_info_inst_list(VarTypes, ModuleInfo, InitialInsts0,
+	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
+	propagate_type_info_inst_list(ArgTypes, ModuleInfo, InitialInsts0,
 					InitialInsts),
-***********/
 	assoc_list__from_corresponding_lists(HeadVars, InitialInsts, InstAL),
 	instmap__from_assoc_list(InstAL, InstMap).
 

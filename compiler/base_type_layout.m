@@ -914,8 +914,8 @@ base_type_layout__tag_type_and_value(base_type_info_constant(_, _, _), -1,unused
 base_type_layout__get_cons_args(LayoutInfo, ConsId, TypeArgs) :-
 	base_type_layout__get_cons_table(LayoutInfo, ConsTable),
 	base_type_layout__get_type_id(LayoutInfo, TypeId),
-	map__lookup(ConsTable, ConsId, HldsConsList),
 	(
+		map__search(ConsTable, ConsId, HldsConsList),
 		list__filter(lambda([X::in] is semidet, (
 				X = hlds__cons_defn(_, TypeId, _))),
 			HldsConsList,

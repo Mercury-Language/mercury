@@ -639,52 +639,15 @@ code_util__cons_id_to_tag(code_addr_const(P,M), _, _, code_addr_constant(P,M)).
 code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
 code_util__cons_id_to_tag(base_type_info_const(M,T,A), _, _,
 		base_type_info_constant(M,T,A)).
-code_util__cons_id_to_tag(cons(qualified(_, _), _), _, _, _) :-
-	% should have been transformed into a function call or pred_const.
-	error("code_util__cons_id_to_tag - qualified cons_id").
-code_util__cons_id_to_tag(cons(unqualified(Name), Arity),
-			Type, ModuleInfo, Tag) :-
+code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	(
 			% handle the `character' type specially
 		Type = term__functor(term__atom("character"), [], _),
-	 	string__char_to_string(Char, Name)
+		Name = unqualified(ConsName),
+	 	string__char_to_string(Char, ConsName)
 	->
 		char__to_int(Char, CharCode),
 		Tag = int_constant(CharCode)
-	;
-			% handle higher-order types specially
-		type_is_higher_order(Type, PredOrFunc, PredArgTypes)
-	->
-		list__length(PredArgTypes, PredArity),
-		module_info_get_predicate_table(ModuleInfo, PredicateTable),
-		TotalArity is Arity + PredArity,
-		(
-			predicate_table_search_pf_name_arity(
-				PredicateTable, PredOrFunc, Name, TotalArity,
-				PredIds)
-		->
-			( PredIds = [PredId] ->
-				predicate_table_get_preds(PredicateTable,
-					Preds),
-				map__lookup(Preds, PredId, PredInfo),
-				pred_info_procedures(PredInfo, Procs),
-				map__keys(Procs, ProcIds),
-				( ProcIds = [ProcId] ->
-					Tag = pred_closure_tag(PredId, ProcId)
-				;
-					error("sorry, not implemented: taking address of predicate or function with multiple modes")
-				)
-			;
-					% cons_id ought to include the module
-					% prefix, so that we could use
-					% predicate_table__search_pf_m_n_a to 
-					% prevent this from happening
-				error("code_util__cons_id_to_tag: ambiguous pred or func")
-			)
-		;
-			% the type-checker should ensure that this never happens
-			error("code_util__cons_id_to_tag: invalid pred or func")
-		)
 	;
 			% Use the type to determine the type_id
 		( type_to_type_id(Type, TypeId0, _) ->
@@ -710,7 +673,7 @@ code_util__cons_id_to_tag(cons(unqualified(Name), Arity),
 			)
 		),
 			% Finally look up the cons_id in the table
-		map__lookup(ConsTable, cons(unqualified(Name), Arity), Tag)
+		map__lookup(ConsTable, cons(Name, Arity), Tag)
 	).
 
 %-----------------------------------------------------------------------------%

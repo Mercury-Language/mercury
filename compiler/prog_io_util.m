@@ -284,10 +284,18 @@ convert_bound_inst_list([H0|T0], [H|T]) :-
 :- pred convert_bound_inst(term, bound_inst).
 :- mode convert_bound_inst(in, out) is semidet.
 
-convert_bound_inst(term__functor(Name0, Args0, _), functor(ConsId, Args)) :-
-	list__length(Args0, Arity),
-	make_functor_cons_id(Name0, Arity, ConsId),
-	convert_inst_list(Args0, Args).
+convert_bound_inst(InstTerm, functor(ConsId, Args)) :-
+	InstTerm = term__functor(Functor, Args0, _),
+	( Functor = term__atom(_) ->
+		parse_qualified_term(InstTerm, "", ok(SymName, Args1)),
+		list__length(Args1, Arity),
+		ConsId = cons(SymName, Arity)
+	;
+		Args1 = Args0,
+		list__length(Args1, Arity),
+		make_functor_cons_id(Functor, Arity, ConsId)
+	),
+	convert_inst_list(Args1, Args).
 
 disjunction_to_list(Term, List) :-
 	binop_term_to_list(";", Term, List).

@@ -884,15 +884,15 @@ process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name, Args, Body))).
 :- mode process_du_type(in, in, in, out) is det.
 process_du_type(ModuleName, Head, Body, Result) :-
 	check_for_errors(ModuleName, Head, Body, Result0),
-	process_du_type_2(Result0, Body, Result).
+	process_du_type_2(ModuleName, Result0, Body, Result).
 
-:- pred process_du_type_2(maybe_functor, term, maybe1(type_defn)).
-:- mode process_du_type_2(in, in, out) is det.
-process_du_type_2(error(Error, Term), _, error(Error, Term)).
-process_du_type_2(ok(Functor, Args), Body, Result) :-
+:- pred process_du_type_2(string, maybe_functor, term, maybe1(type_defn)).
+:- mode process_du_type_2(in, in, in, out) is det.
+process_du_type_2(_, error(Error, Term), _, error(Error, Term)).
+process_du_type_2(ModuleName, ok(Functor, Args), Body, Result) :-
 	% check that body is a disjunction of constructors
 	( %%% some [Constrs] 
-		convert_constructors(Body, Constrs)
+		convert_constructors(ModuleName, Body, Constrs)
 	->
 		Result = ok(du_type(Functor, Args, Constrs))
 	;
@@ -977,29 +977,29 @@ check_for_errors_3(Name, Args, Body, Head, Result) :-
 	% (known as a "disjunction", even thought the terms aren't goals
 	% in this case) into a list of constructors
 
-:- pred convert_constructors(term, list(constructor)).
-:- mode convert_constructors(in, out) is semidet.
-convert_constructors(Body, Constrs) :-
+:- pred convert_constructors(string, term, list(constructor)).
+:- mode convert_constructors(in, in, out) is semidet.
+convert_constructors(ModuleName, Body, Constrs) :-
 	disjunction_to_list(Body, List),
-	convert_constructors_2(List, Constrs).
+	convert_constructors_2(ModuleName, List, Constrs).
 
 	% true if input argument is a valid list of constructors
 
-:- pred convert_constructors_2(list(term), list(constructor)).
-:- mode convert_constructors_2(in, out) is semidet.
-convert_constructors_2([], []).
-convert_constructors_2([Term | Terms], [Constr | Constrs]) :-
-	convert_constructor(Term, Constr),
-	convert_constructors_2(Terms, Constrs).
+:- pred convert_constructors_2(string, list(term), list(constructor)).
+:- mode convert_constructors_2(in, in, out) is semidet.
+convert_constructors_2(_, [], []).
+convert_constructors_2(ModuleName, [Term | Terms], [Constr | Constrs]) :-
+	convert_constructor(ModuleName, Term, Constr),
+	convert_constructors_2(ModuleName, Terms, Constrs).
 
 	% true if input argument is a valid constructor.
 	% Note that as a special case, one level of
 	% curly braces around the constructor are ignored.
 	% This is to allow you to define ';'/2 constructors.
 
-:- pred convert_constructor(term, constructor).
-:- mode convert_constructor(in, out) is semidet.
-convert_constructor(Term, Result) :-
+:- pred convert_constructor(string, term, constructor).
+:- mode convert_constructor(in, in, out) is semidet.
+convert_constructor(ModuleName, Term, Result) :-
 	( 
 		Term = term__functor(term__atom("{}"), [Term1], _Context)
 	->
@@ -1007,7 +1007,8 @@ convert_constructor(Term, Result) :-
 	;
 		Term2 = Term
 	),
-	parse_qualified_term(Term2, "convert_constructor/2", ok(F, As)),
+	parse_qualified_term(ModuleName, Term2,
+		"convert_constructor/2", ok(F, As)),
 	convert_constructor_arg_list(As, Args),
 	Result = F - Args.
 

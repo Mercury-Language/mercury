@@ -83,14 +83,13 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		PredInstInfo = pred_inst_info(PredOrFunc, Modes0, Det0),
 		list__length(Modes0, Arity)
 	->
-		Modes = Modes0,
 		Det = Det0,
 
 		%
 		% Check that `Args0' have livenesses which match the
 		% expected livenesses.
 		%
-		get_arg_lives(Modes, ModuleInfo0, ExpectedArgLives),
+		get_arg_lives(Modes0, ModuleInfo0, ExpectedArgLives),
 		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
 			ModeInfo0, ModeInfo1),
 
@@ -99,11 +98,9 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% initial insts, and set their new final insts (introducing
 		% extra unifications for implied modes, if necessary).
 		%
-	/*********************
 		% propagate type info into modes
-		propagate_type_info_mode_list(Types, ModuleInfo0, Modes1,
+		propagate_type_info_mode_list(Types, ModuleInfo0, Modes0,
 			Modes),
-	*********************/
 		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
 		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
 					ModeInfo1, ModeInfo2),
@@ -171,13 +168,10 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
 					ModeInfo0, ModeInfo1),
 
-/*********************
 		% propagate type info into modes
 		mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
 		propagate_type_info_mode_list(ArgTypes, ModuleInfo,
 			ProcArgModes0, ProcArgModes),
-*********************/
-		ProcArgModes = ProcArgModes0,
 
 		%
 		% Check that `ArgsVars0' have insts which match the expected
@@ -261,13 +255,10 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
-/**************
 		% propagate the type information into the modes
 	mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
 		ProcArgModes0, ProcArgModes),
-**************/
-	ProcArgModes = ProcArgModes0,
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 
 		% check whether the livenesses of the args matches their

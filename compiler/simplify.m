@@ -312,9 +312,9 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 	; Cases1 = [case(ConsId, SingleGoal0)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
+		cons_id_arity(ConsId, Arity),
 		(
 			SwitchCanFail = can_fail,
-			cons_id_to_const(ConsId, _, Arity),
 			MaybeConsIds \= yes([ConsId])
 		->
 			simplify__create_test_unification(Var, ConsId, Arity,
