@@ -3196,9 +3196,10 @@ case $remake_dependencies in true)
 	MERCURY_MSG("regenerating dependencies to enable GCC backend")
 	MERCURY_MSG("and/or disable Aditi backend.")
 
-	mmake depend >&AC_FD_CC 2>&1
-	if test $? != 0; then
-		exit $?
+	mmake depend
+	status=$?
+	if test $status != 0; then
+		exit $status
 	fi
 	;;
 esac
