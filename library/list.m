@@ -401,6 +401,22 @@
 :- pred list__last(list(T), T).
 :- mode list__last(in, out) is semidet.
 
+	% A deterministic version of list__last, which aborts instead of
+	% failing if the input list is empty.
+:- pred list__last_det(list(T), T).
+:- mode list__last_det(in, out) is det.
+
+	% list__split_last(List, AllButLast, Last) is true
+	%	if Last is the last element of List and AllButLast is the list
+	%	of elements before it.
+:- pred list__split_last(list(T), list(T), T).
+:- mode list__split_last(in, out, out) is semidet.
+
+	% A deterministic version of list__split_last, which aborts instead of
+	% failing if the input list is empty.
+:- pred list__split_last_det(list(T), list(T), T).
+:- mode list__split_last_det(in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % The following group of predicates use higher-order terms to simplify
@@ -1186,6 +1202,32 @@ list__last([H|T], Last) :-
 	;
 		T = [_|_],
 		list__last(T, Last)
+	).
+
+list__last_det(List, Last) :-
+	( list__last(List, LastPrime) ->
+		Last = LastPrime
+	;
+		error("list__last_det: empty list")
+	).
+
+list__split_last([H | T], AllButLast, Last) :-
+	(
+		T = [],
+		AllButLast = [],
+		Last = H
+	;
+		T = [_ | _],
+		list__split_last(T, AllButLast1, Last),
+		AllButLast = [H | AllButLast1]
+	).
+
+list__split_last_det(List, AllButLast, Last) :-
+	( list__split_last(List, AllButLastPrime, LastPrime) ->
+		AllButLast = AllButLastPrime,
+		Last = LastPrime
+	;
+		error("list__split_last_det: empty list")
 	).
 
 %-----------------------------------------------------------------------------%

@@ -64,12 +64,13 @@ Changes to the Mercury language:
   extensions which are unlikely to be implemented.
 
 Changes to the Mercury standard library:
-* We've added two new list functions to list.m, namely
-  list__filter_map_corresponding/3 and list__filter_map_corresponding3/4.
-* We've added a func version of error/1, called func_error/1, to require.m.
-* We've added two functions to list.m for mapping functions over
-  corresponding members of lists (list__map_corresponding/3 and
-  list__map_corresponding3/4).
+
+* We've added four functions to list.m for mapping functions over
+  corresponding members of lists: list__map_corresponding/3,
+  list__map_corresponding3/4, list__filter_map_corresponding/3
+  and list__filter_map_corresponding3/4.
+* We've added some other new functions to list.m, namely
+  list__last_det/2, list__split_last/3 and list__split_last_det/3.
 * We've added cc_multi modes to list__foldl/4 and list__foldr/4.
 * As mentioned above, the constructor for lists has changed from './2'
   to `[|]/2'. This change affects the behaviour of the term manipulation
@@ -80,6 +81,8 @@ Changes to the Mercury standard library:
   Also beware that std_util__functor and std_util__deconstruct now
   return `[|]' rather than `.' for lists, and calls to std_util__construct
   which construct lists may need to be updated.
+
+* We've added a func version of error/1, called func_error/1, to require.m.
 
 * ops.m now defines a typeclass which can be used to define operator
   precedence tables for use by parser.m and term_io.m. See
