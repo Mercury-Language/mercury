@@ -1477,11 +1477,10 @@
 %		Gets the value Value associated with the environment
 %		variable Var.  Fails if the variable was not set.
 
-:- impure pred io__putenv(string).
-:- mode io__putenv(in) is semidet.
-%	io__putenv(VarString).
-%		If VarString is a string of the form "name=value",
-%		sets the environment variable name to the specified
+:- impure pred io__setenv(string, string).
+:- mode io__setenv(in, in) is semidet.
+%	io__setenv(NameString,ValueString).
+%		Sets the named environment variable to the specified
 %		value.  Fails if the operation does not work.
 
 %-----------------------------------------------------------------------------%
@@ -3304,8 +3303,7 @@ io__get_environment_var(Var, OptValue) -->
 :- pragma promise_pure(io__set_environment_var/4).
 
 io__set_environment_var(Var, Value) -->
-	{ string__format("%s=%s", [s(Var), s(Value)], EnvString) },
-	( { impure io__putenv(EnvString) } ->
+	( { impure io__setenv(Var, Value) } ->
 	    []
 	;
 	    { string__format("Could not set environment variable `%s'",
@@ -5720,9 +5718,17 @@ io__call_system_code(_, _, _) -->
 
 /*---------------------------------------------------------------------------*/
 
-/* io__getenv and io__putenv, from io.m */
+/* io__getenv and io__setenv */
+
+:- pragma foreign_decl("C", "
+#include <stdlib.h>	/* for getenv() and putenv() */
+").
+:- pragma foreign_decl("MC++", "
+#include <stdlib.h>	/* for putenv() */
+").
 
 :- pragma promise_semipure(io__getenv/2).
+
 :- pragma foreign_proc("C", io__getenv(Var::in, Value::out),
 		[will_not_call_mercury, tabled_for_io],
 "{
@@ -5730,32 +5736,60 @@ io__call_system_code(_, _, _) -->
 	SUCCESS_INDICATOR = (Value != 0);
 }").
 
-:- pragma foreign_proc("C", io__putenv(VarAndValue::in),
-		[will_not_call_mercury, tabled_for_io],
-"
-	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
-").
-
-:- pragma foreign_proc("MC++", io__getenv(Var::in, Value::out),
+:- pragma foreign_proc("C#", io__getenv(Var::in, Value::out),
 		[will_not_call_mercury, tabled_for_io],
 "{
-	Value = System::Environment::GetEnvironmentVariable(Var);
-	SUCCESS_INDICATOR = (Value != 0);
+	Value = System.Environment.GetEnvironmentVariable(Var);
+	SUCCESS_INDICATOR = (Value != null);
 }").
-
-:- pragma foreign_proc("MC++", io__putenv(_VarAndValue::in),
-		[will_not_call_mercury, tabled_for_io],
-"
-	mercury::runtime::Errors::SORRY(
-		""No SetEnvironmentVariable method appears to be available."");
-	SUCCESS_INDICATOR = 0;
-").
 
 io__getenv(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("io__getenv").
+
+
+io__setenv(Var, Value) :-
+	string__format("%s=%s", [s(Var), s(Value)], EnvString),
+	impure io__putenv(EnvString).
+
+
+:- impure pred io__putenv(string).
+:- mode io__putenv(in) is semidet.
+%	io__putenv(VarString).
+%		If VarString is a string of the form "name=value",
+%		sets the environment variable name to the specified
+%		value.  Fails if the operation does not work.
+%		Not supported for .NET.
+%		This should only be called from io__setenv.
+
+:- pragma foreign_proc("C", io__putenv(VarAndValue::in),
+		[will_not_call_mercury, tabled_for_io],
+"
+	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
+").
+
+:- pragma foreign_proc("MC++", io__putenv(VarAndValue::in),
+		[will_not_call_mercury, tabled_for_io],
+"
+	/*
+	** Unfortunately there is no API in the .NET standard library
+	** for setting environment variables.  So we need to use
+	** platform-specific methods.  Currently we use the Posix function
+	** putenv(), which is also supported on Windows.
+	*/
+
+	/*
+	** Convert VarAndValue from a .NET managed string (System.String)
+	** to an unmanaged C string (`char *') on the unmanaged C heap,
+	** and then just invoke putenv().
+	*/
+	char __nogc *c_string = static_cast<char*>(
+			System::Runtime::InteropServices::Marshal::
+			StringToHGlobalAnsi(VarAndValue).ToPointer()); 
+	SUCCESS_INDICATOR = (putenv(c_string) == 0);
+").
 
 io__putenv(_) :-
 	% This version is only used for back-ends for which there is no

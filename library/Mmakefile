@@ -212,7 +212,11 @@ DEBUG_MS_ILASMFLAGS=
 
 	# -AI sets the assembly search path (just like -I for assemblies)
 MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` $(DEBUG_MS_CLFLAGS)
-MS_CL_NOASM=:noAssembly
+# For some reason, using /clr:noAssembly results in a link error when
+# building io__cpp_code.dll, because it doesn't link in the native library
+# needed for putenv().  So we need to use /link /noassembly instead.
+# MS_CL_NOASM=:noAssembly
+MS_CL_LIBS=/link /noassembly
 MS_CSCFLAGS=/t:module $(DEBUG_MS_CSCFLAGS)
 MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
 
