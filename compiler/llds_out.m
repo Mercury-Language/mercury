@@ -491,9 +491,9 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 			DeclSet1, DeclSet2),
 		output_comp_gen_c_var_list(Vars, DeclSet2, DeclSet3),
 		output_comp_gen_c_data_list(Datas, DeclSet3, DeclSet4),
-		output_user_foreign_code_list(UserForeignCode),
 		output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 			DeclSet4, _DeclSet),
+		output_user_foreign_code_list(UserForeignCode),
 		output_exported_c_functions(Exports),
 
 		( { SplitFiles = yes(_) } ->
@@ -991,10 +991,8 @@ llds_out__trace_port_to_num(nondet_pragma_later, 14).
 
 output_user_foreign_code_list([]) --> [].
 output_user_foreign_code_list([UserForeignCode | UserCCodes]) -->
-	output_user_foreign_code_list(UserCCodes),
-		% This list is in reverse declared order and we want to
-		% output in the declared order.
-	output_user_foreign_code(UserForeignCode).
+	output_user_foreign_code(UserForeignCode),
+	output_user_foreign_code_list(UserCCodes).
 
 :- pred output_user_foreign_code(user_foreign_code::in,
 	io__state::di, io__state::uo) is det.
