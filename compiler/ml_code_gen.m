@@ -2638,7 +2638,7 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% a cast is for polymorphic types, which are
 			% `Word' in the C interface but `MR_Box' in the
 			% MLDS back-end.
-			( type_util__var(VarType, _) ->
+			( type_util__var(OrigType, _) ->
 				RHS_Cast = "(MR_Box) "
 			;
 				RHS_Cast = ""
