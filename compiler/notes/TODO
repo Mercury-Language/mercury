@@ -2,42 +2,37 @@
 
 TODO LIST:
 ----------
+code generation:
+---------------
 
-followvars.nl
--------------
+- nondeterministic code generation - fix various problems:
+  1 - heap reclamation still not being done in some places;
+  2 - failure continuation handling is up the creek.
 
-- Make it work.  (??? Very low priority???)
+- generate code for complicated_unify's (there are some comments about
+  this in the paper.)
 
-code_gen.nl
-----------
+- generate code for higher-order preds and polymorphic complicated_unify's.
 
-- nondeterministic code generation - fix various problems
-
-- improve code generation (if_redo, etc.)
-
-typecheck.nl
+typechecking
 ------------
 
 - improve error messages for unification of var & functor
 
 - see also wish list comments at the start of typecheck.nl
 
-modes.nl
---------
+modes analysis
+--------------
 
 - detect incorrect usage of `bound(...)' insts.
 
 - handle undefined insts/modes gracefully
 
+- handle unique modes!
+
 - handle polymorphic modes
 
 - see also comments at the start of modes.nl
-
-stack_alloc.nl
---------------
-
-- make it work: it needs to assign stack slots for variables
-  which need to be saved over a call
 
 general
 -------
@@ -65,9 +60,6 @@ general
 
 - optimization of various sorts
 
-- generate code for complicated_unify's (there are some comments about
-  this in the paper.)
-
 - array.nl: write a predicate to resize arrays.
 
 - garbage collection
@@ -82,8 +74,8 @@ mercury_to_goedel.nl
 WISH LIST
 ---------
 
-codegen.nl
-----------
+code generation:
+---------------
 
 - The generated code should include some profiling hooks.
   In particular, we should add a version of the heap allocation
@@ -93,8 +85,6 @@ codegen.nl
 
 - Generate constant compound terms at compile time rather than at runtime.
 
-- Add a peephole optimization pass
-
 general
 -------
 
@@ -102,6 +92,10 @@ general
 
 - more work on module system, separate compilation, and the multiple
   specialization problem
+
+- deforestation
+
+- mode segments & high-level transformation of circularly moded programs.
 
 - implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
