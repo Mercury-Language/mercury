@@ -1234,20 +1234,29 @@ set_list_of_preds_exported([PredId | PredIds], Preds0, Preds) :-
 	% Read in and process the optimization interfaces.
 
 intermod__grab_optfiles(Module0, Module, FoundError) -->
-		%
-		% Let make_hlds know the opt_imported stuff is coming.
-		%
-	{ append_pseudo_decl(Module0, opt_imported, Module1) },
-	{ module_imports_get_items(Module1, Items0) },
 
 		%
 		% Read in the .opt files for imported and ancestor modules.
 		%
-	{ Module1 = module_imports(ModuleName, Ancestors0, InterfaceDeps0,
+	{ Module0 = module_imports(ModuleName, Ancestors0, InterfaceDeps0,
 					ImplementationDeps0, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
+
+		%
+		% Append the items to the current item list, using
+		% a `opt_imported' psuedo-declaration to let
+		% make_hlds know the opt_imported stuff is coming.
+		%
+	{ module_imports_get_items(Module0, Items0) },
+	{ make_pseudo_decl(opt_imported, OptImportedDecl) },
+	{ list__append(Items0, [OptImportedDecl | OptItems], Items1) },
+	{ module_imports_set_items(Module0, Items1, Module1) },
+
+		%
+		% Figure out which .int files are needed by the .opt files
+		%
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
 	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
@@ -1258,12 +1267,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .int, and .int2 files needed by the .opt files.
 		% (XXX do we also need to read in .int0 files here?)
 		%
-	{ module_imports_set_items(Module1, [], Module2) },
 	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
-				Module2, Module3),
+				Module1, Module2),
 	process_module_indirect_imports(NewIndirectDeps, ".int2",
-				Module3, Module4),
-	{ module_imports_get_items(Module4, InterfaceItems) },
+				Module2, Module3),
 
 		%
 		% Get the :- pragma unused_args(...) declarations created
@@ -1280,28 +1287,25 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 					Item = pragma(PragmaType) - _,
 					PragmaType = unused_args(_,_,_,_,_)
 				)) },
-		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) }
+		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) },
+
+		{ module_imports_get_items(Module3, Items3) },
+		{ list__append(Items3, PragmaItems, Items) },
+		{ module_imports_set_items(Module3, Items, Module) }
 	;
-		{ PragmaItems = [] },
+		{ Module = Module3 },
 		{ UAError = no }
 	),
 
 		%
 		% Figure out whether anything went wrong
 		%
-	{ module_imports_get_error(Module4, FoundError0) },
+	{ module_imports_get_error(Module, FoundError0) },
 	{ ( FoundError0 \= no ; OptError = yes ; UAError = yes) ->
 		FoundError = yes
 	;
 		FoundError = no
-	},
-
-		%
-		% Concatenate everything together.
-		%
-	{ list__condense([Items0, PragmaItems, OptItems, InterfaceItems],
-		Items) },
-	{ module_imports_set_items(Module4, Items, Module) }.
+	}.
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
 			item_list::out, bool::in, bool::out,

@@ -38,6 +38,7 @@ SOURCES= \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
+	test_nested.m \
 	type_inf_loop.m \
 	type_loop.m \
 	type_mismatch.m \
@@ -53,6 +54,7 @@ SOURCES= \
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
+#	parent.undeclared_child.m
 #	freefree.m 	(need bromage's aliasing stuff)
 #	no_exports.m	(this is really a WISHLIST item)
 #
@@ -83,7 +85,9 @@ check:	$(ERRS) $(ERR_RESS)
 
 errs:	$(ERRS)
 
-depend:
+# we only need to make the dependencies for test cases consisting of
+# multiple modules; currently the only such test case is test_nested.m
+depend:	test_nested.depend
 
 clean:
 	rm -f *.c *.o *.err *.err2 *.d *.err_res

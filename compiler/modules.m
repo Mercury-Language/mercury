@@ -194,6 +194,13 @@
 				module_imports).
 :- mode module_imports_set_indirect_deps(in, in, out) is det.
 
+	% make an item_and_context for a module declaration
+	% or pseudo-declaration such as `:- imported'
+	% (which is inserted by the compiler, but can't be used
+	% in user code).
+:- pred make_pseudo_decl(module_defn, item_and_context).
+:- mode make_pseudo_decl(in, out) is det.
+
 	% append_pseudo_decl(Module0, PseudoDecl, Module):
 	%	append the specified module declaration to the list
 	%	of items in Module0 to give Module.
@@ -1022,8 +1029,6 @@ append_pseudo_decl(Module0, PseudoDecl, Module) :-
 				IndirectDeps, PublicChildren, FactDeps,
 				Items, Error).
 
-:- pred make_pseudo_decl(module_defn, item_and_context).
-:- mode make_pseudo_decl(in, out) is det.
 make_pseudo_decl(PseudoDecl, Item) :-
 	term__context_init(Context),
 	varset__init(Varset),
@@ -2476,7 +2481,9 @@ process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 			{ ModImplementationImports = ModImplementationImports0 }
 		;
 			{ ModImplementationImports =
-				[Import | ModImplementationImports0] }
+				[Import | ModImplementationImports0] },
+			check_module_accessibility(ModuleName, Import,
+				ModItems0)
 		),
 		{ get_dependencies(Items, IndirectImports1, IndirectUses1) },
 		{ list__append(IndirectImports0, IndirectImports1,
@@ -2492,6 +2499,114 @@ process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 		process_module_long_interfaces(Imports, Ext,
 			IndirectImports3, IndirectImports, Module1, Module)
 	).
+
+:- pred check_module_accessibility(module_name, module_name, item_list,
+				io__state, io__state).
+:- mode check_module_accessibility(in, in, in, di, uo) is det.
+
+check_module_accessibility(ModuleName, ImportedModule, Items) -->
+	( { ImportedModule = qualified(ParentModule, SubModule) } ->
+		%
+		% Check that the imported/used module is accessible,
+		% by searching through the current item list (we should
+		% have already read in the imported module's parent module
+		% at this point, so the item list should include the items
+		% in the parent's interface) looking for an `include_module'
+		% declaration that names it.
+		%
+		(
+			{ get_children(Items, AccessibleSubModules) },
+			{ list__member(ImportedModule, AccessibleSubModules) }
+		->
+			[]
+		;
+			% The user attempted to import an inaccessible
+			% sub-module, so report an error.
+			% Unfortunately we didn't get passed the
+			% context of the `import_module' or `use_module'
+			% declaration(s), so we need to search the item
+			% list again to find them.
+			{ FindImports = lambda([Item::in] is semidet, (
+				Item = module_defn(_, ModuleDefn) - _,
+				( ModuleDefn = import(module(Mods))
+				; ModuleDefn = use(module(Mods))
+				),
+				list__member(ImportedModule, Mods)
+			  )) },
+			{ list__filter(FindImports, Items, ImportItems) },
+			{ ImportItems = [] ->
+				error("check_parent_module")
+			;
+				true
+			},
+			list__foldl(report_inaccessible_module_error(
+				ModuleName, ParentModule, SubModule),
+				ImportItems)
+		)
+	;
+		[]
+	).
+
+:- pred report_inaccessible_module_error(module_name, module_name, string,
+			item_and_context, io__state, io__state).
+:- mode report_inaccessible_module_error(in, in, in, in, di, uo) is det.
+
+/*
+The error message should come out like this
+(the second sentence is included only with --verbose-errors):
+very_long_name.m:123: In module `very_long_name':
+very_long_name.m:123:   error in `import_module' declaration:
+very_long_name.m:123:   module `parent_module:sub_module' is inaccessible.
+very_long_name.m:123:   Either there was no `import_module' or `use_module'
+very_long_name.m:123:   declaration importing module `parent_module',
+very_long_name.m:123:   or the interface for module `parent_module'
+very_long_name.m:123:   does not contain an `include_module' declaration
+very_long_name.m:123:   for module `sub_module'.
+*/
+
+report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
+		Item - Context) -->
+	{ Item = module_defn(_, import(module(_))) ->
+		DeclName = "import_module"
+	; Item = module_defn(_, use(module(_))) ->
+		DeclName = "use_module"
+	;
+		error("report_inaccessible_parent_error: invalid item")
+	},
+	prog_out__write_context(Context),
+	io__write_string("In module `"),
+	prog_out__write_sym_name(ModuleName),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_strings(["  error in `", DeclName, "' declaration:\n"]),
+	prog_out__write_context(Context),
+	io__write_string("  module `"),
+	prog_out__write_sym_name(qualified(ParentModule, SubModule)),
+	io__write_string("' is inaccessible.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("  Either there was no `import_module' or "),
+		io__write_string("`use_module'\n"),
+		prog_out__write_context(Context),
+		io__write_string("  declaration to import module `"),
+		prog_out__write_sym_name(ParentModule),
+		io__write_string("',\n"),
+		prog_out__write_context(Context),
+		io__write_string("  or the interface for module `"),
+		prog_out__write_sym_name(ParentModule),
+		io__write_string("\n"),
+		prog_out__write_context(Context),
+		io__write_strings(["  does not contain an `include_module' ",
+					"declaration\n"]),
+		prog_out__write_context(Context),
+		io__write_string("  for module `"),
+		io__write_string(SubModule),
+		io__write_string("'.\n")
+	;
+		[]
+	),
+	io__set_exit_status(1).
 
 %-----------------------------------------------------------------------------%
 

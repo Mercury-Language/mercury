@@ -2702,12 +2702,9 @@ In particular:
 
 @itemize @bullet
 @item it supports only separate sub-modules, not nested sub-modules; 
-@item module qualifiers must use the fully-qualified module name; 
-@item the compiler doesn't check that the parent module is imported/used
-      before allowing import/use of its sub-modules;
-@item it doesn't check that there is an include_module declaration in the
-	parent for each module claiming to be a child of that parent;
-@item privacy of private sub-modules is not enforced
+@item if you mix an @samp{import_module} declaration for a parent module
+      with a @samp{use_module} declaration for the child, or vice versa,
+      then the compiler may report some spurious errors.
 @end itemize
 
 @node Type classes
