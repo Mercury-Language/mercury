@@ -37,7 +37,7 @@ patch_opium_files(FileName) :-
 	print(Copy),nl,
 	sh(Copy),
 
-	concat_string(["patch -i ", SourceDir, PatchFile, " ", SourceDir, File], Patch),
+	concat_string(["patch ", SourceDir, File, " ", SourceDir, PatchFile], Patch),
 	print(Patch),nl,
 	sh(Patch).
 

@@ -45,12 +45,12 @@ install it ;-)
 
 o Architectures: sparc/Solaris2.[5,6,7] and i686/Linux kernel 2.0
 o ECLiPSe 4.1 or later
-o Mercury: later than 1999-15-10 release of the day.
+o Mercury: later than 1999-15-10 release of the day, or version 0.9 or later.
 
 				-o-
 
-For more information about Morphine, you can have a look at the Morphine
-web site:
+For more information about Morphine, including a tutorial on how to use
+the system, please look at the Morphine web site:
 
 http://www.irisa.fr/lande/jahier/download.html
 
