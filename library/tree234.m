@@ -191,6 +191,9 @@
 
 :- pragma type_spec(tree234__set(in, in, in, out), K = var(_)).
 
+:- pragma type_spec(tree234__update(in, in, in, out), K = var(_)).
+:- pragma type_spec(tree234__update(in, in, in, out), K = int).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.

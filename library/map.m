@@ -435,6 +435,9 @@
 :- pragma type_spec(map__set(in, in, in, out), K = var(_)).
 :- pragma type_spec(map__set/3, K = var(_)).
 
+:- pragma type_spec(map__det_update/4, K = var(_)).
+:- pragma type_spec(map__det_update/4, K = int).
+
 :- pragma type_spec(map__overlay/2, K = var(_)).
 :- pragma type_spec(map__overlay/3, K = var(_)).
 

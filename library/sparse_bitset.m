@@ -42,6 +42,7 @@
 :- interface.
 
 :- import_module enum, list, term.
+:- use_module set.
 
 :- type sparse_bitset(T). % <= enum(T).
 
@@ -80,13 +81,24 @@
 :- pred sorted_list_to_set(list(T), sparse_bitset(T)) <= enum(T).
 :- mode sorted_list_to_set(in, out) is det.
 
-	% `to_sorted_list(Set, List)' returns a list
+	% `sorted_list_to_set(Set)' returns a bitset containing
+	% only the members of `Set'.
+	% `List' must be sorted.
+	% Takes O(card(Set)) time and space.
+:- func from_set(set.set(T)) = sparse_bitset(T) <= enum(T).
+
+	% `to_sorted_list(Set)' returns a list
 	% containing all the members of `Set', in sorted order.
 	% Takes O(card(Set)) time and space.
 :- func to_sorted_list(sparse_bitset(T)) = list(T) <= enum(T).
 
 :- pred to_sorted_list(sparse_bitset(T), list(T)) <= enum(T).
 :- mode to_sorted_list(in, out) is det.
+
+	% `to_sorted_list(Set)' returns a set.set containing all
+	% the members of `Set', in sorted order.
+	% Takes O(card(Set)) time and space.
+:- func to_set(sparse_bitset(T)) = set.set(T) <= enum(T).
 
 	% `make_singleton_set(Elem)' returns a set
 	% containing just the single element `Elem'.
@@ -113,6 +125,12 @@
 	% Takes O(rep_size(Set)) time.
 :- pred contains(sparse_bitset(T), T) <= enum(T).
 :- mode contains(in, in) is semidet.
+
+        % `member(Set, X)' is true iff `X' is a member of `Set'.
+	% Takes O(rep_size(Set)) time.
+:- pred member(T, sparse_bitset(T)) <= enum(T).
+:- mode member(in, in) is semidet.
+:- mode member(out, in) is nondet.
 
 	% `insert(Set, X)' returns the union
 	% of `Set' and the set containing only `X'.
@@ -214,12 +232,28 @@
 	% Takes O(card(Set)) time.
 :- func foldl(func(T, U) = U, sparse_bitset(T), U) = U <= enum(T).
 
+:- pred foldl(pred(T, U, U), sparse_bitset(T), U, U) <= enum(T).
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldl(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
+
 	% `foldr(Func, Set, Start)' calls Func with each element
 	% of `Set' (in reverse sorted order) and an accumulator
 	% (with the initial value of `Start'), and returns
 	% the final value.
 	% Takes O(card(Set)) time.
 :- func foldr(func(T, U) = U, sparse_bitset(T), U) = U <= enum(T).
+
+:- pred foldr(pred(T, U, U), sparse_bitset(T), U, U) <= enum(T).
+:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldr(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -238,6 +272,12 @@
 
 :- pragma type_spec(to_sorted_list/1, T = var(_)).
 :- pragma type_spec(to_sorted_list/1, T = int).
+
+:- pragma type_spec(to_set/1, T = var(_)).
+:- pragma type_spec(to_set/1, T = int).
+
+:- pragma type_spec(from_set/1, T = var(_)).
+:- pragma type_spec(from_set/1, T = int).
 
 :- pragma type_spec(make_singleton_set/1, T = var(_)).
 :- pragma type_spec(make_singleton_set/1, T = int).
@@ -260,8 +300,14 @@
 :- pragma type_spec(foldr/3, T = int).
 :- pragma type_spec(foldr/3, T = var(_)).
 
+:- pragma type_spec(foldr/4, T = int).
+:- pragma type_spec(foldr/4, T = var(_)).
+
 :- pragma type_spec(foldl/3, T = int).
 :- pragma type_spec(foldl/3, T = var(_)).
+
+:- pragma type_spec(foldl/4, T = int).
+:- pragma type_spec(foldl/4, T = var(_)).
 
 :- pragma type_spec(list_to_set/2, T = var(_)).
 :- pragma type_spec(list_to_set/2, T = int).
@@ -326,60 +372,95 @@ equal(X, X).
 
 to_sorted_list(Set) = foldr(func(Elem, Acc0) = [Elem | Acc0], Set, []).
 
+to_set(Set) = set.sorted_list_to_set(to_sorted_list(Set)).
+
+from_set(Set) = sorted_list_to_set(set.to_sorted_list(Set)).
+
 %-----------------------------------------------------------------------------%
 
-foldl(F, sparse_bitset(Set), Acc0) = foldl_2(F, Set, Acc0).
+foldl(P, sparse_bitset(Set), !Acc) :-
+	foldl_2(P, Set, !Acc).
 
-:- func foldl_2(func(T, U) = U, bitset_impl, U) = U <= enum(T).
-:- pragma type_spec(foldl_2/3, T = int).
-:- pragma type_spec(foldl_2/3, T = var(_)).
+foldl(F, sparse_bitset(Set), Acc0) = Acc :-
+	foldl_2(
+		(pred(E::in, Acc1::in, Acc2::out) is det :-
+			Acc2 = F(E, Acc1)
+		), Set, Acc0, Acc).
 
-foldl_2(_, [], Acc) = Acc.
-foldl_2(F, [H | T], Acc0) = Acc :-
-	Acc1 = fold_bits(low_to_high, F, H ^ offset, H ^ bits, Acc0),
-	Acc = foldl_2(F, T, Acc1).
+:- pred foldl_2(pred(T, U, U), bitset_impl, U, U) <= enum(T).
+:- mode foldl_2(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldl_2(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl_2(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl_2(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldl_2(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldl_2(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-foldr(F, sparse_bitset(Set), Acc0) = foldr_2(F, Set, Acc0).
+:- pragma type_spec(foldl_2/4, T = int).
+:- pragma type_spec(foldl_2/4, T = var(_)).
+
+foldl_2(_, [], !Acc).
+foldl_2(P, [H | T], !Acc) :-
+	fold_bits(low_to_high, P, H ^ offset, H ^ bits, bits_per_int, !Acc),
+	foldl_2(P, T, !Acc).
+
+foldr(P, sparse_bitset(Set), !Acc) :-
+	foldr_2(P, Set, !Acc).
+
+foldr(F, sparse_bitset(Set), Acc0) = Acc :-
+	foldr_2(
+		(pred(E::in, Acc1::in, Acc2::out) is det :-
+			Acc2 = F(E, Acc1)
+		), Set, Acc0, Acc).
 
 :- func foldr_2(func(T, U) = U, bitset_impl, U) = U <= enum(T).
 :- pragma type_spec(foldr_2/3, T = int).
 :- pragma type_spec(foldr_2/3, T = var(_)).
+
+:- pred foldr_2(pred(T, U, U), bitset_impl, U, U) <= enum(T).
+:- mode foldr_2(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldr_2(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldr_2(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr_2(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode foldr_2(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
+:- mode foldr_2(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
 	% We don't just use list__foldr here because the
 	% overhead of allocating the closure for fold_bits
 	% is significant for the compiler's runtime,
 	% so it's best to avoid that even if
 	% `--optimize-higher-order' is not set.
-foldr_2(_, [], Acc) = Acc.
-foldr_2(F, [H | T], Acc0) = Acc :-
-	Acc1 = foldr_2(F, T, Acc0),
-	Acc = fold_bits(high_to_low, F, H ^ offset, H ^ bits, Acc1).
+foldr_2(_, [], !Acc).
+foldr_2(P, [H | T], !Acc) :-
+	foldr_2(P, T, !Acc),
+	fold_bits(high_to_low, P, H ^ offset, H ^ bits, bits_per_int, !Acc).
 
-:- func fold_bits(fold_direction, func(T, U) = U, int, int, U) = U <= enum(T).
-:- pragma type_spec(fold_bits/5, T = int).
-:- pragma type_spec(fold_bits/5, T = var(_)).
-
-fold_bits(Dir, F, Offset, Bits, Acc0) = Acc :-
-	Size = bits_per_int,
-	Acc = fold_bits_2(Dir, F, Offset, Bits, Size, Acc0).
+	% Do a binary search for the 1 bits in an int.
+:- pred fold_bits(fold_direction, pred(T, U, U),
+		int, int, int, U, U) <= enum(T).
+:- mode fold_bits(in, pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode fold_bits(in, pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode fold_bits(in, pred(in, in, out) is semidet,
+		in, in, in, in, out) is semidet.
+:- mode fold_bits(in, pred(in, in, out) is nondet,
+		in, in, in, in, out) is nondet.
+:- mode fold_bits(in, pred(in, di, uo) is cc_multi,
+		in, in, in, di, uo) is cc_multi.
+:- mode fold_bits(in, pred(in, in, out) is cc_multi,
+		in, in, in, in, out) is cc_multi.
+:- pragma type_spec(fold_bits/7, T = int).
+:- pragma type_spec(fold_bits/7, T = var(_)).
 
 :- type fold_direction
 	--->	low_to_high
 	;	high_to_low
 	.
 
-	% Do a binary search for the 1 bits in an int.
-:- func fold_bits_2(fold_direction, func(T, U) = U,
-		int, int, int, U) = U <= enum(T).
-:- pragma type_spec(fold_bits_2/6, T = int).
-:- pragma type_spec(fold_bits_2/6, T = var(_)).
-
-fold_bits_2(Dir, F, Offset, Bits, Size, Acc0) = Acc :-
+fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 	( Bits = 0 ->
-		Acc = Acc0
+		true
 	; Size = 1 ->
 		( Elem = from_int(Offset) ->
-			Acc = F(Elem, Acc0)
+			P(Elem, !Acc)
 		;
 			% We only apply `from_int/1' to integers returned
 			% by `to_int/1', so it should never fail.
@@ -397,16 +478,15 @@ fold_bits_2(Dir, F, Offset, Bits, Size, Acc0) = Acc :-
 
 		(
 			Dir = low_to_high,
-			Acc1 = fold_bits_2(Dir, F, Offset, LowBits,
-					HalfSize, Acc0),
-			Acc = fold_bits_2(Dir, F, Offset + HalfSize, HighBits,
-					HalfSize, Acc1)
+			fold_bits(Dir, P, Offset, LowBits, HalfSize, !Acc),
+			fold_bits(Dir, P, Offset + HalfSize, HighBits,
+					HalfSize, !Acc)
 		;
 			Dir = high_to_low,
-			Acc1 = fold_bits_2(Dir, F, Offset + HalfSize, HighBits,
-					HalfSize, Acc0),
-			Acc = fold_bits_2(Dir, F, Offset, LowBits,
-					HalfSize, Acc1)
+			fold_bits(Dir, P, Offset + HalfSize, HighBits,
+					HalfSize, !Acc),
+			fold_bits(Dir, P, Offset, LowBits,
+					HalfSize, !Acc)
 		)
 	).
 
@@ -621,6 +701,53 @@ contains_2([Data | Rest], Index) :-
 		get_bit(Data ^ bits, Index - Offset) \= 0
 	;		
 		contains_2(Rest, Index)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma promise_pure(member/2).
+
+member(Elem::in, Set::in) :-
+	contains(Set, Elem).
+member(Elem::out, sparse_bitset(Set)::in) :-
+	member_2(Index, Set),
+	( Elem0 = from_int(Index) ->
+		Elem = Elem0	
+	;
+		% We only apply `from_int/1' to integers returned
+		% by `to_int/1', so it should never fail.
+		error("sparse_bitset.m: `enum__from_int/1' failed")
+	).
+
+:- pred member_2(int, bitset_impl).
+:- mode member_2(out, in) is nondet.
+
+member_2(Index, [Elem | Elems]) :-
+	( member_3(Index, Elem ^ offset, bits_per_int, Elem ^ bits)
+	; member_2(Index, Elems)
+	).
+
+:- pred member_3(int, int, int, int).
+:- mode member_3(out, in, in, in) is nondet.
+
+member_3(Index, Offset, Size, Bits) :-
+	( Bits = 0 ->
+		fail
+	; Size = 1 ->
+		Index = Offset
+	;
+		HalfSize = unchecked_right_shift(Size, 1),
+		Mask = mask(HalfSize),
+		
+		% Extract the low-order half of the bits.
+		LowBits = Mask /\ Bits,
+
+		% Extract the high-order half of the bits.
+		HighBits = Mask /\ unchecked_right_shift(Bits, HalfSize), 
+
+		( member_3(Index, Offset, HalfSize, LowBits)
+		; member_3(Index, Offset + HalfSize, HalfSize, HighBits)
+		)
 	).
 
 %-----------------------------------------------------------------------------%

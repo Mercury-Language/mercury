@@ -810,7 +810,7 @@
 
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
-:- import_module getopt, multi_map.
+:- import_module getopt, multi_map, sparse_bitset.
 
 %-----------------------------------------------------------------------------%
 
@@ -3819,9 +3819,11 @@ generate_dependencies_write_d_files([Dep | Deps],
 
 get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
 	relation__add_element(DepsRel0, ModuleName, ModuleKey, DepsRel),
-	relation__lookup_from(DepsRel, ModuleKey, DepsKeysSet),
-	set__to_sorted_list(DepsKeysSet, DepsKeys),
-	list__map(relation__lookup_key(DepsRel), DepsKeys, Deps).
+	relation__lookup_key_set_from(DepsRel, ModuleKey, DepsKeysSet),
+	foldl(
+		(pred(Key::in, Deps0::in, [Dep | Deps0]::out) is det :-
+			relation__lookup_key(DepsRel, Key, Dep)
+		), DepsKeysSet, [], Deps).
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.

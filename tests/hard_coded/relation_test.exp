@@ -58,3 +58,5 @@ composition of Rel1 and Rel2 =
 "b" - "c1"
 "c" - "d1"
 
+relation__is_dag(Rel) failed as expected
+relation__is_dag(Rel) succeeded

@@ -31,7 +31,17 @@ main -->
 	print("rtc of Rel ="), nl, print_rel(RTC_Rel), nl,
 	print("Rel2 ="), nl, print_rel(Rel2), nl,
 	print("composition of Rel1 and Rel2 ="), nl,
-			print_rel(ComposedRel), nl.
+			print_rel(ComposedRel), nl,
+	( { relation__is_dag(Rel) } ->
+		io__write_string("Error: relation__is_dag(Rel) succeeded\n")
+	;
+		io__write_string("relation__is_dag(Rel) failed as expected\n")
+	),
+	( { relation__is_dag(Rel2) } ->
+		io__write_string("relation__is_dag(Rel) succeeded\n")
+	;
+		io__write_string("Error: relation__is_dag(Rel2) failed\n")
+	).
 
 :- pred print_rel(relation(T), state, state).
 :- mode print_rel(in, di, uo) is det.

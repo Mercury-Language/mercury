@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
 :- implementation.
 
 :- import_module assoc_list, float, int, list, map, multi_map, require.
-:- import_module string, set_bbbtree, std_util.
+:- import_module string, sparse_bitset, std_util.
 % :- import_module writeln.
 
 :- type cycle_info ==	pair(
@@ -80,13 +80,13 @@ propagate__identify_cycles(Rel, ATSort, CycleInfo) :-
 	relation__dfsrev(Rel, DfsRev),
 	relation__inverse(Rel, RelInv),
 	cycle_info_init(CycleInfo0),
-	set_bbbtree__init(Visit0),
+	init(Visit0),
 	propagate__identify_cycles_2(DfsRev, 1, RelInv, Visit0, [], 
 						CycleInfo0, ATSort, CycleInfo).
 
 
 :- pred propagate__identify_cycles_2(list(relation_key), int, relation(string), 
-			set_bbbtree(relation_key), list(string),
+			relation_key_set, list(string),
 			cycle_info, list(string), cycle_info).
 :- mode propagate__identify_cycles_2(in, in, in, in, in, in, out, out) is det.
 

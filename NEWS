@@ -125,6 +125,23 @@ Changes to the Mercury standard library:
 	input_stream_foldl2_io_maybe_stop/{6,7},
 	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
 
+* We've added predicates relation__lookup_key_set_from/3 and
+  relation__lookup_key_set_to/3.
+
+* The type of the arguments giving the initial set of visited nodes
+  to relation__dfs and relation__dfsrev has changed from set_bbbtree
+  to sparse_bitset.
+
+* Efficiency of the operations in the relation module has been
+  greatly improved.
+
+* Some predicates and functions have been added to the sparse_bitset module:
+	to_set/1,
+	from_set/1,
+	member/2,
+	foldl/4,
+	foldr/4.
+
 * exception.m now contains a predicate finally/6 which can be used to
   ensure that resources are released whether a called closure exits
   normally or throws an exception.
