@@ -12,6 +12,7 @@ Changes to the Mercury language:
 * Support for defining predicates or functions
   using different clauses for different modes.
 * Support for Haskell-like "@" expressions.
+* Generalized foreign language interface.
 
 Changes to the Mercury compiler:
 * A new `--make' option, for simpler building of programs.
@@ -47,11 +48,12 @@ DETAILED LISTING
 Changes to the Mercury language:
 
 * We have added support for constrained polymorphic modes.  See the section on
-  Constrained Polymorphic Modes in the Modes chapter of the reference manual.
+  Constrained Polymorphic Modes in the Modes chapter of the Mercury Language
+  Reference Manual.
 
 * A more general alternative to DCG syntax has been added to the language
   to simplify the manipulation of threaded state.  See the section on State
-  Variables in the Syntax chapter in the reference manual.
+  Variables in the Syntax chapter in the Mercury Language Reference Manual.
 
 * If a higher-order function term has inst 'ground' it is now assumed to have
   the standard higher-order function inst 'func(in, .., in) = out is det'.
@@ -121,6 +123,17 @@ Changes to the Mercury language:
   `:- pragma c_import_module' declarations to make sure that the
   header file for the imported module is built before it is needed,
   which it can't do if the header file is explicitly #included.
+
+* The foreign language interface has been generalized to support
+  interfacing with languages other than C.
+
+  In particular, the Mercury compiler's .NET back-end now supports
+  interfacing with C#, IL, and "Managed C++" (C++ with Microsoft's
+  extensions for the .NET CLR).  Mercury procedures can be defined
+  using inline code fragments written in any of these languages.
+
+  For details, see the new "Foreign language interface" chapter of
+  the Mercury Language Reference Manual.
 
 * We've removed the undocumented operators `export_adt', `export_cons',
   `export_module', `export_op', `export_pred', `export_sym', `export_type',
