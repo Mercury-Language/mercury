@@ -2454,7 +2454,7 @@ The Mercury module system is relatively simple and straightforward.
 Each module must start with a @samp{:- module @var{ModuleName}}
 declaration, specifying the name of the module. 
 
-A @samp{:- interface.} declaration indicates
+An @samp{:- interface.} declaration indicates
 the start of the module's interface section:
 this section specifies the entities that are exported by this module.
 Mercury provides support for abstract data types, by allowing the
@@ -2467,7 +2467,7 @@ and (sub-)modules.
 The interface section may not contain definitions for functions or
 predicates (i.e. clauses), or definitions of (sub-)modules. 
 
-A @samp{:- implementation.} declaration indicates
+An @samp{:- implementation.} declaration indicates
 the start of the module's implementation section. 
 Any entities declared in this section are local to the module
 (and its sub-modules) and cannot be used by other modules.
@@ -2652,7 +2652,7 @@ of sub-modules.
 :- include_module @var{Module1}, @var{Module2}, @dots{}, @var{ModuleN}.
 @end example
 
-Each of the named sub-modules in a @samp{:- include_module} declaration
+Each of the named sub-modules in an @samp{:- include_module} declaration
 must be defined in a separate source file.
 The mapping between module names and source file names is
 implementation-defined.  (The University of Melbourne Mercury
@@ -2667,7 +2667,7 @@ implementation sections, and it may optionally end with a @samp{:- end_module}
 declaration.  (Note: the module names in the @samp{:- module}
 and @samp{:- end_module} declaration need not be fully-qualified.)
 
-If a @samp{:- include_module} declaration occurs in the interface
+If an @samp{:- include_module} declaration occurs in the interface
 section of a module, then only the declarations (interfaces) of the sub-modules
 are included in the parent module's interface; the definitions
 (implementations) of the sub-modules are considered to be implicitly
@@ -2682,12 +2682,12 @@ identical to those of nested sub-modules.
 Any declarations in the parent module, including those in the
 parent module's implementation section, are visible in the parent's
 sub-modules, including indirect sub-modules (i.e. sub-sub-modules, etc.).
-Similarly, declarations in the interfaces of any modules imported using a
+Similarly, declarations in the interfaces of any modules imported using an
 @samp{:- import_module} or a @samp{:- use_module} in the parent module
 are visible in the parent's sub-modules, including indirect sub-modules.
 However, declarations in a child module are not visible in the parent
 module or in "sibling" modules (other children of the same parent)
-unless the child is explicitly imported using a @samp{:- import_module}
+unless the child is explicitly imported using an @samp{:- import_module}
 or @samp{:- use_module} declaration. 
 
 Note that as mentioned previously, all @samp{:- import_module} and
