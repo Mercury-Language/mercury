@@ -836,7 +836,7 @@ mmc_option_type(csharp_flags) = option(not_split, "--csharp-flags").
 mmc_option_type(ml_flags) = option(not_split, "--link-flags").
 mmc_option_type(ml_objs) = option(split, "--link_object").
 mmc_option_type(ml_libs) = option(not_split, "--link-flags").
-mmc_option_type(c2init_args) = option(split, "--init-files").
+mmc_option_type(c2init_args) = option(split, "--init-file").
 mmc_option_type(libraries) = option(split, "--mercury-library").
 mmc_option_type(lib_dirs) = option(split, "--mercury-library-directory").
 
