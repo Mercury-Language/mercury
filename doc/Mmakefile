@@ -111,6 +111,7 @@ library-chapters.texi: $(LIBRARY_DIR)/*.m
 		echo "@example"; \
 		sed -n -e '/:- implementation/q' \
 			-e 's/^%----*----% *$$/%--------------------------------------------------%/' \
+			-e 's/@/@@/g' \
 			-e 's/{/@{/g' \
 			-e 's/}/@}/g' \
 			-e 'p' \
