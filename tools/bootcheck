@@ -877,12 +877,12 @@ then
 		else
 		case "$grade" in
 			*debug*)
-					# These files take up a lot of disk
-					# space, so we compress them. This
-					# reduces the probability that running
-					# the tests will run out of disk space,
-					# while still allowing the original
-					# files to be reconstructed
+				# These files take up a lot of disk
+				# space, so we compress them. This
+				# reduces the probability that running
+				# the tests will run out of disk space,
+				# while still allowing the original
+				# files to be reconstructed
 				# relatively quickly.
 				gzip $root/stage2/library/*.c
 				gzip $root/stage2/browser/*.c
@@ -923,7 +923,7 @@ then
 	MMAKE_DIR="$root/${stage2_insert}scripts"
 	export MMAKE_DIR
 
-		# for mkinit, mmc, mgnuc, ml etc
+	# Set PATH for mkinit, mmc, mgnuc, ml etc
 	PATH=$root/${stage2_insert}util:$root/${stage2_insert}scripts:$PATH
 	export PATH
 fi
