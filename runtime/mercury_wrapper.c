@@ -51,7 +51,7 @@ ENDINIT
 #else
   size_t	heap_size =		 4096;
 #endif
-size_t		detstack_size =  	 2048;
+size_t		detstack_size =  	 4096;
 size_t		nondstack_size =  	  128;
 size_t		solutions_heap_size =	 1024;
 size_t		global_heap_size =	 1024;
