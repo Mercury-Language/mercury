@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,19 +22,22 @@
 :- import_module list.
 
 :- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
-	store_map::in, code_tree::out, code_info::in, code_info::out) is det.
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data, ll_backend__code_gen.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_llds.
+:- import_module ll_backend__code_gen.
 :- import_module ll_backend__code_util, ll_backend__trace.
 :- import_module libs__options, libs__globals, libs__tree.
 
 :- import_module bool, set, libs__tree, map, std_util, term, require.
 
-disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
+disj_gen__generate_disj(CodeModel, Goals, DisjGoalInfo, Code) -->
 	(
 		{ Goals = [] },
 		( { CodeModel = model_semi } ->
@@ -52,16 +55,18 @@ disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
 			set__init(ResumeVars)
 		},
 		disj_gen__generate_real_disj(CodeModel, ResumeVars,
-			Goals, StoreMap, Code)
+			Goals, DisjGoalInfo, Code)
 	).
 
 %---------------------------------------------------------------------------%
 
 :- pred disj_gen__generate_real_disj(code_model::in, set(prog_var)::in,
-	list(hlds_goal)::in, store_map::in, code_tree::out,
+	list(hlds_goal)::in, hlds_goal_info::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, StoreMap, Code) -->
+disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, DisjGoalInfo, Code)
+		-->
+
 		% Make sure that the variables whose values will be needed
 		% on backtracking to any disjunct are materialized into
 		% registers or stack slots. Their locations are recorded
@@ -114,10 +119,11 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, StoreMap, Code) -->
 
 	code_info__remember_position(BranchStart),
 	disj_gen__generate_disjuncts(Goals, CodeModel, ResumeMap, no,
-		HijackInfo, StoreMap, EndLabel,
+		HijackInfo, DisjGoalInfo, EndLabel,
 		ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
 		BranchStart, no, MaybeEnd, GoalsCode),
 
+	{ goal_info_get_store_map(DisjGoalInfo, StoreMap) },
 	code_info__after_all_branches(StoreMap, MaybeEnd),
 	( { CodeModel = model_non } ->
 		code_info__set_resume_point_to_unknown
@@ -136,7 +142,7 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, StoreMap, Code) -->
 
 :- pred disj_gen__generate_disjuncts(list(hlds_goal)::in,
 	code_model::in, resume_map::in, maybe(resume_point_info)::in,
-	disj_hijack_info::in, store_map::in, label::in,
+	disj_hijack_info::in, hlds_goal_info::in, label::in,
 	bool::in, maybe(lval)::in, maybe(lval)::in, position_info::in,
 	maybe(branch_end_info)::in, maybe(branch_end_info)::out,
 	code_tree::out, code_info::in, code_info::out) is det.
@@ -144,7 +150,7 @@ disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, StoreMap, Code) -->
 disj_gen__generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _) -->
 	{ error("empty disjunction!") }.
 disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
-		MaybeEntryResumePoint, HijackInfo, StoreMap, EndLabel,
+		MaybeEntryResumePoint, HijackInfo, DisjGoalInfo, EndLabel,
 		ReclaimHeap, MaybeHpSlot0, MaybeTicketSlot,
 		BranchStart0, MaybeEnd0, MaybeEnd, Code) -->
 
@@ -182,7 +188,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			{ RestoreTicketCode = empty }
 		),
 
-			% The pre_goal_update sanity check insist on
+			% The pre_goal_update sanity check insists on
 			% no_resume_point, to make sure that all resume
 			% points have been handled by surrounding code.
 		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
@@ -244,7 +250,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			{ ResumeVarsCode = empty },
 
 			code_info__maybe_release_hp(MaybeHpSlot),
-			% we're committing to this disjunct
+			% We're committing to this disjunct if it succeeds.
 			code_info__maybe_reset_prune_and_release_ticket(
 				MaybeTicketSlot, commit, PruneTicketCode),
 
@@ -264,6 +270,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			% the disjunction to the place indicated by StoreMap,
 			% and accumulate information about the code_info state
 			% at the ends of the branches so far.
+		{ goal_info_get_store_map(DisjGoalInfo, StoreMap) },
 		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
 			SaveCode),
 
@@ -273,8 +280,8 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 		]) },
 
 		disj_gen__generate_disjuncts(Goals, CodeModel, FullResumeMap,
-			yes(NextResumePoint), HijackInfo, StoreMap, EndLabel,
-			ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+			yes(NextResumePoint), HijackInfo, DisjGoalInfo,
+			EndLabel, ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
 			BranchStart, MaybeEnd1, MaybeEnd, RestCode),
 
 		{ Code =
@@ -305,6 +312,7 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
 		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
+		{ goal_info_get_store_map(DisjGoalInfo, StoreMap) },
 		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 			SaveCode),
 

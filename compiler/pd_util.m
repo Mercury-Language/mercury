@@ -566,11 +566,11 @@ pd_util__get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], FoundBranch0,
 
 pd_util__get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
 	Goal = if_then_else(_, _ - CondInfo, _ - ThenInfo,
-		_ - ElseInfo, _) - _,
+		_ - ElseInfo) - _,
 	goal_info_get_instmap_delta(CondInfo, CondDelta),
 	goal_info_get_instmap_delta(ThenInfo, ThenDelta),
 	goal_info_get_instmap_delta(ElseInfo, ElseDelta).
-pd_util__get_branch_instmap_deltas(switch(_, _, Cases, _) - _,
+pd_util__get_branch_instmap_deltas(switch(_, _, Cases) - _,
 		InstMapDeltas) :-
 	GetCaseInstMapDelta =
 		lambda([Case::in, InstMapDelta::out] is det, (
@@ -578,7 +578,7 @@ pd_util__get_branch_instmap_deltas(switch(_, _, Cases, _) - _,
 			goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
 		)),
 	list__map(GetCaseInstMapDelta, Cases, InstMapDeltas).
-pd_util__get_branch_instmap_deltas(disj(Disjuncts, _) - _, InstMapDeltas) :-
+pd_util__get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
 	GetDisjunctInstMapDelta =
 		lambda([Disjunct::in, InstMapDelta::out] is det, (
 			Disjunct = _ - DisjInfo,
@@ -594,7 +594,7 @@ pd_util__get_branch_instmap_deltas(disj(Disjuncts, _) - _, InstMapDeltas) :-
 		set(prog_var)::in, set(prog_var)::out) is det.
 
 pd_util__get_left_vars(Goal, Vars0, Vars) :-
-	( Goal = switch(Var, _, _, _) - _ ->
+	( Goal = switch(Var, _, _) - _ ->
 		set__insert(Vars0, Var, Vars)
 	;
 		Vars = Vars0
@@ -634,7 +634,7 @@ pd_util__get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 
 		% We have extra information about a switched-on variable 
 		% at the end of each branch.
-	( Goal = switch(SwitchVar, _, _, _) - _ ->
+	( Goal = switch(SwitchVar, _, _) - _ ->
 		( map__search(ExtraVars1, SwitchVar, SwitchVarSet0) ->
 			set__insert(SwitchVarSet0, BranchNo, SwitchVarSet)
 		;
@@ -658,7 +658,7 @@ pd_util__get_sub_branch_vars_goal(Module, _, [], _, _, Vars, Vars, Module).
 pd_util__get_sub_branch_vars_goal(ModuleInfo0, ProcArgInfo, [Goal | GoalList], 
 		VarTypes, InstMap0, Vars0, SubVars, ModuleInfo) :-
 	Goal = GoalExpr - GoalInfo,
-	( GoalExpr = if_then_else(_, Cond, Then, Else, _) ->
+	( GoalExpr = if_then_else(_, Cond, Then, Else) ->
 		Cond = _ - CondInfo,
 		goal_info_get_instmap_delta(CondInfo, CondDelta),
 		instmap__apply_instmap_delta(InstMap0, CondDelta, InstMap1),
@@ -669,11 +669,11 @@ pd_util__get_sub_branch_vars_goal(ModuleInfo0, ProcArgInfo, [Goal | GoalList],
 		pd_util__examine_branch(ModuleInfo0, ProcArgInfo, 2, ElseList,
 			VarTypes, InstMap0, Vars1, Vars2),
 		ModuleInfo1 = ModuleInfo0
-	; GoalExpr = disj(Goals, _) ->
+	; GoalExpr = disj(Goals) ->
 		pd_util__examine_branch_list(ModuleInfo0, ProcArgInfo, 
 			1, Goals, VarTypes, InstMap0, Vars0, Vars2),
 		ModuleInfo1 = ModuleInfo0
-	; GoalExpr = switch(Var, _, Cases, _) ->
+	; GoalExpr = switch(Var, _, Cases) ->
 		pd_util__examine_case_list(ModuleInfo0, ProcArgInfo, 1, Var,
 			Cases, VarTypes, InstMap0, Vars0, Vars2, ModuleInfo1)
 	;

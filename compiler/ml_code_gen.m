@@ -1982,7 +1982,7 @@ ml_gen_commit_var_decl(Context, VarName) =
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_goal_expr(in, in, in, out, out, in, out) is det.
 
-ml_gen_goal_expr(switch(Var, CanFail, CasesList, _), CodeModel, Context,
+ml_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_switch(Var, CanFail, CasesList, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
@@ -1991,7 +1991,7 @@ ml_gen_goal_expr(some(_Vars, _CanRemove, Goal), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else, _),
+ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 			MLDS_Decls, MLDS_Statements).
@@ -2004,11 +2004,11 @@ ml_gen_goal_expr(conj(Goals), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_conj(Goals, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(disj(Goals, _), CodeModel, Context,
+ml_gen_goal_expr(disj(Goals), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	ml_gen_disj(Goals, CodeModel, Context, MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(par_conj(Goals, _SM), CodeModel, Context,
+ml_gen_goal_expr(par_conj(Goals), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
 	% XXX currently we treat parallel conjunction the same as

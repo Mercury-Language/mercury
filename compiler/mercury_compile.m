@@ -48,7 +48,7 @@
 	% high-level HLDS transformations
 :- import_module check_hlds__check_typeclass, transform_hlds__intermod.
 :- import_module transform_hlds__trans_opt, transform_hlds__table_gen.
-:- import_module (transform_hlds__lambda).
+:- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info, transform_hlds__termination.
 :- import_module transform_hlds__higher_order, transform_hlds__accumulator.
 :- import_module transform_hlds__inlining, transform_hlds__deforest.
@@ -59,16 +59,16 @@
 :- import_module ll_backend__deep_profiling.
 
 	% the LLDS back-end
-:- import_module ll_backend__saved_vars, ll_backend__liveness.
-:- import_module ll_backend__follow_code, ll_backend__live_vars.
+:- import_module ll_backend__saved_vars, ll_backend__stack_opt.
+:- import_module ll_backend__stack_alloc, ll_backend__follow_code.
+:- import_module ll_backend__liveness, ll_backend__live_vars.
 :- import_module ll_backend__arg_info, ll_backend__store_alloc.
-:- import_module check_hlds__goal_path.
 :- import_module ll_backend__code_gen, ll_backend__optimize.
-:- import_module backend_libs__foreign, backend_libs__export.
-:- import_module backend_libs__base_typeclass_info.
 :- import_module ll_backend__llds_common, ll_backend__transform_llds.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__continuation_info, ll_backend__stack_layout.
+:- import_module backend_libs__foreign, backend_libs__export.
+:- import_module backend_libs__base_typeclass_info.
 
 	% the Aditi-RL back-end
 :- import_module aditi_backend__rl_gen, aditi_backend__rl_opt.
@@ -101,6 +101,7 @@
 :- import_module parse_tree__prog_util, aditi_backend__rl_dump.
 :- import_module aditi_backend__rl_file.
 :- import_module libs__options, libs__globals, libs__trace_params.
+:- import_module check_hlds__goal_path.
 :- import_module hlds__passes_aux.
 :- import_module recompilation, recompilation__usage.
 :- import_module recompilation__check.
@@ -1955,20 +1956,23 @@ mercury_compile__backend_pass_by_phases(HLDS51, HLDS99,
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_followcode(HLDS51, Verbose, Stats, HLDS52),
-	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"),
+	mercury_compile__maybe_saved_vars(HLDS51, Verbose, Stats, HLDS53),
+	mercury_compile__maybe_dump_hlds(HLDS53, "53", "saved_vars_const"),
 
-	mercury_compile__simplify(HLDS52, no, yes, Verbose, Stats, 
-		process_all_nonimported_nonaditi_procs, HLDS53),
-	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
+	mercury_compile__maybe_stack_opt(HLDS53, Verbose, Stats, HLDS55),
+	mercury_compile__maybe_dump_hlds(HLDS55, "55", "saved_vars_cell"),
 
-	mercury_compile__maybe_saved_vars(HLDS53, Verbose, Stats, HLDS56),
-	mercury_compile__maybe_dump_hlds(HLDS56, "56", "savedvars"),
+	mercury_compile__maybe_followcode(HLDS55, Verbose, Stats, HLDS57),
+	mercury_compile__maybe_dump_hlds(HLDS57, "57", "followcode"),
 
-	mercury_compile__compute_liveness(HLDS56, Verbose, Stats, HLDS59),
-	mercury_compile__maybe_dump_hlds(HLDS59, "59", "liveness"),
+	mercury_compile__simplify(HLDS57, no, yes, Verbose, Stats, 
+		process_all_nonimported_nonaditi_procs, HLDS59),
+	mercury_compile__maybe_dump_hlds(HLDS59, "59", "simplify2"),
 
-	mercury_compile__compute_stack_vars(HLDS59, Verbose, Stats, HLDS65),
+	mercury_compile__compute_liveness(HLDS59, Verbose, Stats, HLDS61),
+	mercury_compile__maybe_dump_hlds(HLDS61, "61", "liveness"),
+
+	mercury_compile__compute_stack_vars(HLDS61, Verbose, Stats, HLDS65),
 	mercury_compile__maybe_dump_hlds(HLDS65, "65", "stackvars"),
 
 	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68),
@@ -2108,69 +2112,91 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 	in, out, out, di, uo) is det.
 
 mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
-		ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, Proc) -->
+		ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, ProcCode) -->
 	{ module_info_globals(ModuleInfo0, Globals) },
+	{ globals__lookup_bool_option(Globals, optimize_saved_vars_const,
+		SavedVarsConst) },
+	(
+		{ SavedVarsConst = yes },
+		saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfoSavedConst,
+			ModuleInfo0, ModuleInfoSavedConst)
+	;
+		{ SavedVarsConst = no },
+		{ ProcInfoSavedConst = ProcInfo0 },
+		{ ModuleInfoSavedConst = ModuleInfo0 }
+	),
+	{ globals__lookup_bool_option(Globals, optimize_saved_vars_cell,
+		SavedVarsCell) },
+	(
+		{ SavedVarsCell = yes },
+		stack_opt_cell(PredId, ProcId,
+			ProcInfoSavedConst, ProcInfoSavedCell,
+			ModuleInfoSavedConst, ModuleInfoSavedCell)
+	;
+		{ SavedVarsCell = no },
+		{ ProcInfoSavedCell = ProcInfoSavedConst },
+		{ ModuleInfoSavedCell = ModuleInfoSavedConst }
+	),
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
 	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
-		{ move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo1,
-			ModuleInfo0, ModuleInfo1) }
+		{ move_follow_code_in_proc(PredInfo,
+			ProcInfoSavedCell, ProcInfoFollowCode,
+			ModuleInfoSavedCell, ModuleInfoFollow) }
 	;
-		{ ProcInfo1 = ProcInfo0 },
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ ProcInfoFollowCode = ProcInfoSavedCell },
+		{ ModuleInfoFollow = ModuleInfoSavedCell }
 	),
 	{ simplify__find_simplifications(no, Globals, Simplifications) },
 	simplify__proc([do_once | Simplifications], PredId, ProcId,
-		ModuleInfo1, ModuleInfo2, ProcInfo1, ProcInfo2),
-	{ globals__lookup_bool_option(Globals, optimize_saved_vars,
-		SavedVars) },
-	( { SavedVars = yes } ->
-		saved_vars_proc(PredId, ProcId, ProcInfo2, ProcInfo3,
-			ModuleInfo2, ModuleInfo3)
-	;
-		{ ProcInfo3 = ProcInfo2 },
-		{ ModuleInfo3 = ModuleInfo2 }
-	),
+		ModuleInfoFollow, ModuleInfoSimplify,
+		ProcInfoFollowCode, ProcInfoSimplify),
 	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
-		ModuleInfo3),
-	detect_liveness_proc(PredId, ProcId, ModuleInfo3,
-		ProcInfo3, ProcInfo4),
+		ModuleInfoSimplify),
+	detect_liveness_proc(PredId, ProcId, ModuleInfoSimplify,
+		ProcInfoSimplify, ProcInfoLiveness),
 	write_proc_progress_message("% Allocating stack slots in ", PredId,
-		                ProcId, ModuleInfo3),
-	{ allocate_stack_slots_in_proc(ProcInfo4, PredId, ModuleInfo3,
-		ProcInfo5) },
+		ProcId, ModuleInfoSimplify),
+	allocate_stack_slots_in_proc(PredId, ProcId, ModuleInfoSimplify,
+		ProcInfoLiveness, ProcInfoStackSlot),
 	write_proc_progress_message(
 		"% Allocating storage locations for live vars in ",
-				PredId, ProcId, ModuleInfo3),
-	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
+		PredId, ProcId, ModuleInfoSimplify),
+	{ allocate_store_maps(final_allocation, ProcInfoStackSlot,
+		PredId, ModuleInfoSimplify, ProcInfoStoreAlloc) },
 	globals__io_get_trace_level(TraceLevel),
 	( { trace_level_is_none(TraceLevel) = no } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
-					PredId, ProcId, ModuleInfo3),
-		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo) }
+			PredId, ProcId, ModuleInfoSimplify),
+		{ goal_path__fill_slots(ProcInfoStoreAlloc, ModuleInfoSimplify,
+			ProcInfo) }
 	;
-		{ ProcInfo = ProcInfo6 }
+		{ ProcInfo = ProcInfoStoreAlloc }
 	),
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
-				PredId, ProcId, ModuleInfo3),
-	{ module_info_get_cell_counter(ModuleInfo3, CellCounter0) },
-	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
-		GlobalData0, GlobalData1, CellCounter0, CellCounter, Proc0) },
+		PredId, ProcId, ModuleInfoSimplify),
+	{ module_info_get_cell_counter(ModuleInfoSimplify, CellCounter0) },
+	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId,
+		ModuleInfoSimplify, GlobalData0, GlobalData1,
+		CellCounter0, CellCounter, ProcCode0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
-	( { Optimize = yes } ->
-		optimize__proc(Proc0, GlobalData1, Proc)
+	(
+		{ Optimize = yes },
+		optimize__proc(ProcCode0, GlobalData1, ProcCode)
 	;
-		{ Proc = Proc0 }
+		{ Optimize = no },
+		{ ProcCode = ProcCode0 }
 	),
-	{ Proc = c_procedure(_, _, PredProcId, Instructions, _, _, _) },
+	{ ProcCode = c_procedure(_, _, PredProcId, Instructions, _, _, _) },
 	write_proc_progress_message(
 		"% Generating call continuation information for ",
-			PredId, ProcId, ModuleInfo3),
+		PredId, ProcId, ModuleInfoSimplify),
 	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
-		ModuleInfo3, GlobalData1, GlobalData) },
-	{ module_info_set_cell_counter(ModuleInfo3, CellCounter, ModuleInfo) }.
+		ModuleInfoSimplify, GlobalData1, GlobalData) },
+	{ module_info_set_cell_counter(ModuleInfoSimplify, CellCounter,
+		ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2913,12 +2939,30 @@ mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS) -->
 	is det.
 
 mercury_compile__maybe_saved_vars(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
+	globals__io_lookup_bool_option(optimize_saved_vars_const, SavedVars),
 	( { SavedVars = yes } ->
-		maybe_write_string(Verbose, "% Reordering to minimize variable saves...\n"),
+		maybe_write_string(Verbose,
+			"% Minimizing variable saves using constants...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(update_module_io(
 			saved_vars_proc), HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
+:- pred mercury_compile__maybe_stack_opt(module_info::in, bool::in, bool::in,
+	module_info::out, io__state::di, io__state::uo) is det.
+
+mercury_compile__maybe_stack_opt(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(optimize_saved_vars_cell, SavedVars),
+	( { SavedVars = yes } ->
+		maybe_write_string(Verbose,
+			"% Minimizing variable saves using cells...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_module_io(
+			stack_opt_cell), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -2965,7 +3009,7 @@ mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing stack vars..."),
 	maybe_flush_output(Verbose),
 	process_all_nonimported_nonaditi_procs(
-		update_proc_predid(allocate_stack_slots_in_proc),
+		update_proc_io(allocate_stack_slots_in_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
@@ -2978,7 +3022,7 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Allocating store map..."),
 	maybe_flush_output(Verbose),
 	process_all_nonimported_nonaditi_procs(
-		update_proc_predid(store_alloc_in_proc),
+		update_proc_predid(allocate_store_maps(final_allocation)),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).

@@ -237,30 +237,30 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
 		GoalExpr = conj(Goals),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = disj(Goals0, SM),
+		GoalExpr0 = disj(Goals0),
 		apply_tail_recursion_to_disj(Goals0, ApplyInfo,
 			Goals, FoundTailCall0, FoundTailCall),
-		GoalExpr = disj(Goals, SM),
+		GoalExpr = disj(Goals),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0, SM),
+		GoalExpr0 = switch(Var, CanFail, Cases0),
 		apply_tail_recursion_to_cases(Cases0, ApplyInfo,
 			Cases, FoundTailCall0, FoundTailCall),
-		GoalExpr = switch(Var, CanFail, Cases, SM),
+		GoalExpr = switch(Var, CanFail, Cases),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
-		GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0, SM),
+		GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
 		apply_tail_recursion_to_goal(Then0, ApplyInfo,
 			Then, FoundTailCall0, FoundTailCall1, _),
 		apply_tail_recursion_to_goal(Else0, ApplyInfo,
 			Else, FoundTailCall1, FoundTailCall, _),
-		GoalExpr = if_then_else(Vars, Cond, Then, Else, SM),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else),
 		Goal = GoalExpr - GoalInfo0,
 		Continue = no
 	;
-		GoalExpr0 = par_conj(_, _),
+		GoalExpr0 = par_conj(_),
 		Goal = Goal0,
 		FoundTailCall = FoundTailCall0,
 		Continue = no
@@ -383,15 +383,15 @@ figure_out_rec_call_numbers(Goal, N0, N, TailCallSites0, TailCallSites) :-
 		figure_out_rec_call_numbers_in_goal_list(Goals, N0, N,
 			TailCallSites0, TailCallSites)
 	;
-		GoalExpr = disj(Goals, _),
+		GoalExpr = disj(Goals),
 		figure_out_rec_call_numbers_in_goal_list(Goals, N0, N,
 			TailCallSites0, TailCallSites)
 	;
-		GoalExpr = switch(_, _, Cases, _),
+		GoalExpr = switch(_, _, Cases),
 		figure_out_rec_call_numbers_in_case_list(Cases, N0, N,
 			TailCallSites0, TailCallSites)
 	;
-		GoalExpr = if_then_else(_, Cond, Then, Else, _),
+		GoalExpr = if_then_else(_, Cond, Then, Else),
 		figure_out_rec_call_numbers(Cond, N0, N1,
 			TailCallSites0, TailCallSites1),
 		figure_out_rec_call_numbers(Then, N1, N2,
@@ -399,7 +399,7 @@ figure_out_rec_call_numbers(Goal, N0, N, TailCallSites0, TailCallSites) :-
 		figure_out_rec_call_numbers(Else, N2, N,
 			TailCallSites2, TailCallSites)
 	;
-		GoalExpr = par_conj(Goals, _),
+		GoalExpr = par_conj(Goals),
 		figure_out_rec_call_numbers_in_goal_list(Goals, N0, N,
 			TailCallSites0, TailCallSites)
 	;
@@ -726,7 +726,7 @@ transform_semi_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 				ExitPortCode
 			]) - ExitConjGoalInfo,
 			FailPortCode
-		], map__init) - ExitConjGoalInfo
+		]) - ExitConjGoalInfo
 	]) - GoalInfo,
 	proc_info_set_varset(Proc0, Vars, Proc1),
 	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
@@ -856,10 +856,10 @@ transform_non_proc(ModuleInfo, PredProcId, Proc0, Proc, yes(ProcStatic)) :-
 				disj([
 					ExitPortCode,
 					RedoPortCode
-				], map__init) - ExitRedoGoalInfo
+				]) - ExitRedoGoalInfo
 			]) - CallExitRedoGoalInfo,
 			FailPortCode
-		], map__init) - CallExitRedoGoalInfo
+		]) - CallExitRedoGoalInfo
 	]) - GoalInfo,
 	proc_info_set_varset(Proc0, Vars, Proc1),
 	proc_info_set_vartypes(Proc1, VarTypes, Proc2),
@@ -935,18 +935,18 @@ transform_goal(Path, conj(Goals0) - Info0, conj(Goals) - Info,
 	transform_conj(0, Path, Goals0, Goals, AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, par_conj(Goals0, SM) - Info0,
-		par_conj(Goals, SM) - Info, AddedImpurity) -->
+transform_goal(Path, par_conj(Goals0) - Info0,
+		par_conj(Goals) - Info, AddedImpurity) -->
 	transform_conj(0, Path, Goals0, Goals, AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, switch(Var, CF, Cases0, SM) - Info0,
-		switch(Var, CF, Cases, SM) - Info, AddedImpurity) -->
+transform_goal(Path, switch(Var, CF, Cases0) - Info0,
+		switch(Var, CF, Cases) - Info, AddedImpurity) -->
 	transform_switch(list__length(Cases0), 0, Path, Cases0, Cases,
 		AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
 
-transform_goal(Path, disj(Goals0, SM) - Info0, disj(Goals, SM) - Info,
+transform_goal(Path, disj(Goals0) - Info0, disj(Goals) - Info,
 		AddedImpurity) -->
 	transform_disj(0, Path, Goals0, Goals, AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info0, Info) }.
@@ -976,8 +976,8 @@ transform_goal(Path, some(QVars, CanRemove, Goal0) - Info0,
 	transform_goal([exist(MaybeCut) | Path], Goal0, Goal, AddedImpurity),
 	{ add_impurity_if_needed(AddedImpurity, Info1, Info) }.
 
-transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0, SM) - Info0,
-		if_then_else(IVars, Cond, Then, Else, SM) - Info,
+transform_goal(Path, if_then_else(IVars, Cond0, Then0, Else0) - Info0,
+		if_then_else(IVars, Cond, Then, Else) - Info,
 		AddedImpurity) -->
 	transform_goal([ite_cond | Path], Cond0, Cond, AddedImpurityC),
 	transform_goal([ite_then | Path], Then0, Then, AddedImpurityT),
@@ -1219,7 +1219,7 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 					ExtraVars, failure),
 
 			FailGoalInfo = fail_goal_info,
-			FailGoal = disj([], init) - FailGoalInfo,
+			FailGoal = disj([]) - FailGoalInfo,
 
 			list__append(FailGoals, [FailGoal], FailGoalsAndFail),
 
@@ -1235,7 +1235,7 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 					conj(
 						FailGoalsAndFail
 					) - ReturnFailsGoalInfo
-				], init) - WrappedGoalGoalInfo]
+				]) - WrappedGoalGoalInfo]
 			], Goals),
 			Goal = conj(Goals) - GoalInfo
 		)
@@ -1313,7 +1313,7 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 		NoBindExtGoalInfo),
 
 	FailGoalInfo = fail_goal_info,
-	FailGoal = disj([], init) - FailGoalInfo,
+	FailGoal = disj([]) - FailGoalInfo,
 
 	RestoreFailGoalInfo = impure_unreachable_init_goal_info(ExtraNonLocals,
 		failure),
@@ -1342,7 +1342,7 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 					RestoreStuff,
 					FailGoal
 				]) - RestoreFailGoalInfo
-			], init) - ExtGoalInfo
+			]) - ExtGoalInfo
 		]) - GoalInfo
 	;
 		CodeModel = model_non,
@@ -1357,13 +1357,13 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
 							ReZeroStuff,
 							FailGoal
 						]) - RezeroFailGoalInfo
-					], init) - NoBindExtGoalInfo
+					]) - NoBindExtGoalInfo
 				]) - ExtGoalInfo,
 				conj([
 					RestoreStuff,
 					FailGoal
 				]) - RestoreFailGoalInfo
-			], init) - ExtGoalInfo
+			]) - ExtGoalInfo
 		]) - GoalInfo
 	).
 

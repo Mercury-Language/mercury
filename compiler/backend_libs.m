@@ -23,6 +23,7 @@
 :- include_module rtti, type_ctor_info, pseudo_type_info, base_typeclass_info.
 :- include_module foreign, export.
 :- include_module compile_target_code.
+:- include_module matching.
 
 %-----------------------------------------------------------------------------%
 

@@ -15,8 +15,9 @@
 
 :- import_module parse_tree__prog_data.
 :- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__instmap, transform_hlds__term_util.
+:- import_module hlds__instmap, hlds__hlds_llds.
 :- import_module check_hlds__mode_errors.
+:- import_module transform_hlds__term_util.
 :- import_module libs__globals.
 
 :- import_module bool, list, set, map, std_util, term, varset.

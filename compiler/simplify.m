@@ -342,8 +342,10 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		goal_info_get_context(GoalInfo0, Context),
 		(
 			simplify_do_warn(Info0),
-			\+ (goal_contains_goal(Goal0, SubGoal),
-			    SubGoal = disj([], _) - _)
+			\+ (
+				goal_contains_goal(Goal0, SubGoal),
+				SubGoal = disj([]) - _
+			)
 		->
 			simplify_info_add_msg(Info0,
 				goal_cannot_succeed(Context), Info1)
@@ -530,7 +532,7 @@ simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		GoalInfo = GoalInfo0
 	).
 
-simplify__goal_2(par_conj(Goals0, SM), GoalInfo0, Goal,
+simplify__goal_2(par_conj(Goals0), GoalInfo0, Goal,
 		GoalInfo, Info0, Info) :-
 	(
 		Goals0 = []
@@ -548,10 +550,10 @@ simplify__goal_2(par_conj(Goals0, SM), GoalInfo0, Goal,
 	;
 		GoalInfo = GoalInfo0,
 		simplify__par_conj(Goals0, Goals, Info0, Info0, Info),
-		Goal = par_conj(Goals, SM)
+		Goal = par_conj(Goals)
 	).
 
-simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
+simplify__goal_2(disj(Disjuncts0), GoalInfo0,
 		Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
 	simplify__disj(Disjuncts0, [], Disjuncts, [], InstMaps,
@@ -566,7 +568,7 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		simplify__maybe_wrap_goal(GoalInfo0, GoalInfo1,
 			Goal1, Goal, GoalInfo, Info1, Info2)
 	;
-		Goal = disj(Disjuncts, SM),
+		Goal = disj(Disjuncts),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		simplify_info_get_var_types(Info1, VarTypes),
@@ -596,7 +598,7 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		Info = Info2
 	).
 
-simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
+simplify__goal_2(switch(Var, SwitchCanFail0, Cases0),
 		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
 	simplify_info_get_module_info(Info0, ModuleInfo0),
@@ -641,7 +643,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 			type_util__is_existq_cons(ModuleInfo1,
 					Type, ConsId)
 		    ->
-		    	Goal = switch(Var, SwitchCanFail, Cases, SM),
+		    	Goal = switch(Var, SwitchCanFail, Cases),
 			goal_info_get_nonlocals(GoalInfo0, NonLocals),
 			simplify_info_get_var_types(Info1, VarTypes),
 			merge_instmap_deltas(InstMap0, NonLocals, VarTypes,
@@ -690,7 +692,7 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		pd_cost__eliminate_switch(CostDelta),
 		simplify_info_incr_cost_delta(Info4, CostDelta, Info5)
 	;
-		Goal = switch(Var, SwitchCanFail, Cases, SM),
+		Goal = switch(Var, SwitchCanFail, Cases),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
 		simplify_info_get_var_types(Info1, VarTypes),
@@ -981,7 +983,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	% conjunction construct. This will change when constraint pushing
 	% is finished, or when we start doing coroutining.
 
-simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
+simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Cond0 = _ - CondInfo0,
 	goal_info_get_determinism(CondInfo0, CondDetism0),
@@ -1039,7 +1041,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		goal_info_get_context(GoalInfo0, Context),
 		simplify_info_add_msg(Info1, ite_cond_cannot_succeed(Context),
 			Info)
-	; Else0 = disj([], _) - _ ->
+	; Else0 = disj([]) - _ ->
 		% (A -> C ; fail) is equivalent to (A, C)
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
@@ -1074,7 +1076,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			ModuleInfo0, ModuleInfo1),
 		simplify_info_set_module_info(Info6, ModuleInfo1, Info7),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo1),
-		IfThenElse = if_then_else(Vars, Cond, Then, Else, SM),
+		IfThenElse = if_then_else(Vars, Cond, Then, Else),
 
 		goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
 		determinism_components(IfThenElseDetism0, IfThenElseCanFail,
@@ -1092,7 +1094,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			%
 			( CondCanFail = cannot_fail
 			; CondSolns = at_most_zero
-			; Else = disj([], _) - _ 
+			; Else = disj([]) - _ 
 			)
 		->
 			simplify_info_undo_goal_updates(Info0, Info7, Info8),
@@ -1153,7 +1155,7 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Info = Info3
 	;
 		% replace `not fail' with `true'
-		Goal1 = disj([], _) - _GoalInfo2
+		Goal1 = disj([]) - _GoalInfo2
 	->
 		true_goal(Context, Goal - GoalInfo),
 		Info = Info3
@@ -1609,7 +1611,7 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 		simplify__conjoin_goal_and_rev_goal_list(Goal1,
 			RevGoals0, RevGoals1),
 
-		( (Goal1 = disj([], _) - _ ; Goals0 = []) ->
+		( (Goal1 = disj([]) - _ ; Goals0 = []) ->
 			RevGoals = RevGoals1
 		;
 			% We insert an explicit failure at the end
@@ -1790,7 +1792,7 @@ simplify__switch(Var, [Case0 | Cases0], RevCases0, Cases, InstMaps0, InstMaps,
 	simplify__goal(Goal0, Goal, Info3, Info4),
 
 		% Remove failing branches. 
-	( Goal = disj([], _) - _ ->
+	( Goal = disj([]) - _ ->
 		RevCases = RevCases0,
 		InstMaps1 = InstMaps0,
 		CanFail1 = can_fail,
@@ -1898,7 +1900,7 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 			% since that can result from mode analysis
 			% pruning away cases in a switch which cannot
 			% succeed due to sub-typing in the modes.
-			Goal0 \= disj([], _) - _
+			Goal0 \= disj([]) - _
 		->
 			goal_info_get_context(GoalInfo, Context),
 			simplify_info_add_msg(Info2, 
@@ -1913,7 +1915,7 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 
 		( 
 			(
-				Goal0 = disj([], _) - _
+				Goal0 = disj([]) - _
 			;
 				% Only remove disjuncts that might loop
 				% or call error/1 if --no-fully-strict.
@@ -1968,19 +1970,18 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 				OutputVars = yes
 			),
 			simplify__fixup_disj(Disjuncts, Detism, OutputVars,
-				GoalInfo, SM, InstMap0, DetInfo, Goal,
+				GoalInfo, InstMap0, DetInfo, Goal,
 				MsgsA, Msgs)
 		;
 	****/
 
 :- pred simplify__fixup_disj(list(hlds_goal), determinism, bool,
-	hlds_goal_info, store_map, hlds_goal_expr,
+	hlds_goal_info, hlds_goal_expr,
 	simplify_info, simplify_info).
-:- mode simplify__fixup_disj(in, in, in, in, in, out, in, out) is det.
+:- mode simplify__fixup_disj(in, in, in, in, out, in, out) is det.
 
-simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
-		Goal, Info0, Info) :-
-	det_disj_to_ite(Disjuncts, GoalInfo, SM, IfThenElse),
+simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, Goal, Info0, Info) :-
+	det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
 	simplify__goal(IfThenElse, Simplified, Info0, Info),
 	Simplified = Goal - _.
 
@@ -2001,13 +2002,12 @@ simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
 	%		Disjunct3
 	%	).
 
-:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, store_map,
-	hlds_goal).
-:- mode det_disj_to_ite(in, in, in, out) is det.
+:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, hlds_goal).
+:- mode det_disj_to_ite(in, in, out) is det.
 
-det_disj_to_ite([], _GoalInfo, _SM, _) :-
+det_disj_to_ite([], _GoalInfo, _) :-
 	error("reached base case of det_disj_to_ite").
-det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
+det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 	( Disjuncts = [] ->
 		Goal = Disjunct
 	;
@@ -2016,7 +2016,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
 
 		true_goal(Then),
 
-		det_disj_to_ite(Disjuncts, GoalInfo, SM, Rest),
+		det_disj_to_ite(Disjuncts, GoalInfo, Rest),
 		Rest = _RestGoal - RestGoalInfo,
 
 		goal_info_get_nonlocals(CondGoalInfo, CondNonLocals),
@@ -2043,7 +2043,7 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, SM, Goal) :-
 		determinism_components(Detism, CanFail, MaxSoln),
 		goal_info_set_determinism(NewGoalInfo1, Detism, NewGoalInfo),
 
-		Goal = if_then_else([], Cond, Then, Rest, SM) - NewGoalInfo
+		Goal = if_then_else([], Cond, Then, Rest) - NewGoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2329,7 +2329,7 @@ simplify_info_update_instmap(SI, Goal, SI^instmap := InstMap) :-
 
 simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 	(
-		( code_util__cannot_stack_flush(Goal) 
+		( code_util__cannot_flush(Goal) 
 		; simplify_do_more_common(Info0)
 		)
 	->

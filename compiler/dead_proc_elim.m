@@ -426,7 +426,7 @@ dead_proc_elim__examine_goal(GoalExpr - _, CurrProc, Queue0, Queue,
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__examine_expr(in, in, in, out, in, out) is det.
 
-dead_proc_elim__examine_expr(disj(Goals, _), CurrProc, Queue0, Queue,
+dead_proc_elim__examine_expr(disj(Goals), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
 		Needed0, Needed).
@@ -434,7 +434,7 @@ dead_proc_elim__examine_expr(conj(Goals), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
 		Needed0, Needed).
-dead_proc_elim__examine_expr(par_conj(Goals, _SM), CurrProc, Queue0, Queue,
+dead_proc_elim__examine_expr(par_conj(Goals), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goals(Goals, CurrProc, Queue0, Queue,
 		Needed0, Needed).
@@ -446,11 +446,11 @@ dead_proc_elim__examine_expr(some(_, _, Goal), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
 		Needed0, Needed).
-dead_proc_elim__examine_expr(switch(_, _, Cases, _), CurrProc, Queue0, Queue,
+dead_proc_elim__examine_expr(switch(_, _, Cases), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_cases(Cases, CurrProc, Queue0, Queue,
 		Needed0, Needed).
-dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else, _),
+dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Cond, CurrProc, Queue0, Queue1,
 		Needed0, Needed1),
@@ -859,13 +859,13 @@ dead_pred_elim_process_clause(clause(_, Goal, _, _)) -->
 
 pre_modecheck_examine_goal(conj(Goals) - _) -->
 	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(par_conj(Goals, _) - _) -->
+pre_modecheck_examine_goal(par_conj(Goals) - _) -->
 	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(disj(Goals, _) - _) -->
+pre_modecheck_examine_goal(disj(Goals) - _) -->
 	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(if_then_else(_, If, Then, Else, _) - _) -->
+pre_modecheck_examine_goal(if_then_else(_, If, Then, Else) - _) -->
 	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
-pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
+pre_modecheck_examine_goal(switch(_, _, Cases) - _) -->
 	{ ExamineCase = lambda([Case::in, Info0::in, Info::out] is det, (
 		Case = case(_, Goal),
 		pre_modecheck_examine_goal(Goal, Info0, Info)

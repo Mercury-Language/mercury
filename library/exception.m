@@ -1858,7 +1858,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 		MR_tailcall(MR_ENTRY(mercury__do_call_closure), 
 			MR_ENTRY(mercury__exception__builtin_throw_1_0));
 	}
-	MR_incr_sp_push_msg(1, ""builtin_throw/1"");
+	MR_incr_sp_push_msg(1, ""pred builtin_throw/1"");
 	MR_stackvar(1) = (MR_Word) MR_succip;
 	MR_call(MR_ENTRY(mercury__do_call_closure), 
 		MR_LABEL(mercury__exception__builtin_throw_1_0_i1),

@@ -603,7 +603,7 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 
 compute_expr_purity(conj(Goals0), conj(Goals), _, InClosure, Purity) -->
 	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
-compute_expr_purity(par_conj(Goals0, SM), par_conj(Goals, SM), _,
+compute_expr_purity(par_conj(Goals0), par_conj(Goals), _,
 		InClosure, Purity) -->
 	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
 compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
@@ -665,8 +665,8 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
 
 		{ GoalExpr = generic_call(GenericCall, Args, Modes, Det) }
 	).
-compute_expr_purity(switch(Var,Canfail,Cases0,Storemap),
-		switch(Var,Canfail,Cases,Storemap), _, InClosure, Purity) -->
+compute_expr_purity(switch(Var, Canfail, Cases0),
+		switch(Var, Canfail, Cases), _, InClosure, Purity) -->
 	compute_cases_purity(Cases0, Cases, InClosure, pure, Purity).
 compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 		ActualPurity) -->
@@ -750,8 +750,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 		{ GoalExpr = Unif0 },
 		{ ActualPurity = pure }
 	).
-compute_expr_purity(disj(Goals0,Store), disj(Goals,Store), _,
-		InClosure, Purity) -->
+compute_expr_purity(disj(Goals0), disj(Goals), _, InClosure, Purity) -->
 	compute_goals_purity(Goals0, Goals, InClosure, pure, Purity).
 compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, InClosure, Purity) -->
 	%
@@ -768,12 +767,12 @@ compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, InClosure, Purity) -->
 compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
 		_, InClosure, Purity) -->
 	compute_goal_purity(Goal0, Goal, InClosure, Purity).
-compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
-		if_then_else(Vars,Goali,Goalt,Goale,Store), _,
+compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
+		if_then_else(Vars, Cond, Then, Else), _,
 		InClosure, Purity) -->
-	compute_goal_purity(Goali0, Goali, InClosure, Purity1),
-	compute_goal_purity(Goalt0, Goalt, InClosure, Purity2),
-	compute_goal_purity(Goale0, Goale, InClosure, Purity3),
+	compute_goal_purity(Cond0, Cond, InClosure, Purity1),
+	compute_goal_purity(Then0, Then, InClosure, Purity2),
+	compute_goal_purity(Else0, Else, InClosure, Purity3),
 	{ worst_purity(Purity1, Purity2, Purity12) },
 	{ worst_purity(Purity12, Purity3, Purity) }.
 compute_expr_purity(ForeignProc0, ForeignProc, _, _, Purity) -->

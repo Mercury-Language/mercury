@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,9 +14,10 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_goal, hlds__hlds_data.
-:- import_module backend_libs__switch_util, backend_libs__code_model.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_llds.
 :- import_module ll_backend__llds, ll_backend__code_info.
+:- import_module backend_libs__switch_util, backend_libs__code_model.
 
 :- import_module list.
 
@@ -30,12 +31,14 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, hlds__hlds_module.
-:- import_module hlds__hlds_pred, ll_backend__code_gen, ll_backend__trace.
-:- import_module libs__options, libs__globals, check_hlds__type_util.
 :- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal. 
+:- import_module check_hlds__type_util.
+:- import_module ll_backend__code_gen, ll_backend__trace.
+:- import_module backend_libs__builtin_ops.
+:- import_module libs__options, libs__globals, libs__tree.
 
-:- import_module assoc_list, map, libs__tree, bool, int, string.
+:- import_module bool, int, string, assoc_list, map.
 :- import_module require, std_util.
 
 %-----------------------------------------------------------------------------%

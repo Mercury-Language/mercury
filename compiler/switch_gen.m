@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -51,30 +51,34 @@
 :- import_module list.
 
 :- pred switch_gen__generate_switch(code_model, prog_var, can_fail, list(case),
-	store_map, hlds_goal_info, code_tree, code_info, code_info).
-:- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
+	hlds_goal_info, code_tree, code_info, code_info).
+:- mode switch_gen__generate_switch(in, in, in, in, in, out, in, out)
 	is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds__hlds_llds.
+:- import_module check_hlds__type_util.
 :- import_module ll_backend__dense_switch, ll_backend__string_switch.
 :- import_module ll_backend__tag_switch, ll_backend__lookup_switch.
 :- import_module ll_backend__code_gen, ll_backend__unify_gen.
 :- import_module ll_backend__code_aux, ll_backend__code_util.
-:- import_module backend_libs__switch_util, check_hlds__type_util.
-:- import_module ll_backend__trace, libs__globals, libs__options.
+:- import_module ll_backend__trace.
+:- import_module backend_libs__switch_util.
+:- import_module libs__globals, libs__options, libs__tree.
 
-:- import_module bool, int, string, map, libs__tree, std_util, require.
+:- import_module bool, int, string, map, std_util, require.
 
 %---------------------------------------------------------------------------%
 
 	% Choose which method to use to generate the switch.
 	% CanFail says whether the switch covers all cases.
 
-switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
-		GoalInfo, Code) -->
+switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
+		Code) -->
+	{ goal_info_get_store_map(GoalInfo, StoreMap) },
 	switch_gen__determine_category(CaseVar, SwitchCategory),
 	code_info__get_next_label(EndLabel),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),

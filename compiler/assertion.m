@@ -537,14 +537,14 @@ equal_goals(call(PredId, _, VarsA, _, _, _) - _,
 equal_goals(generic_call(Type, VarsA, _, _) - _,
 		generic_call(Type, VarsB, _, _) - _, Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
-equal_goals(switch(Var, CanFail, CasesA, _) - _,
-		switch(Var, CanFail, CasesB, _) - _, Subst0, Subst) :-
+equal_goals(switch(Var, CanFail, CasesA) - _,
+		switch(Var, CanFail, CasesB) - _, Subst0, Subst) :-
 	equal_goals_cases(CasesA, CasesB, Subst0, Subst).
 equal_goals(unify(VarA, RHSA, _, _, _) - _, unify(VarB, RHSB, _, _, _) - _,
 		Subst0, Subst) :-
 	equal_vars([VarA], [VarB], Subst0, Subst1),
 	equal_unification(RHSA, RHSB, Subst1, Subst).
-equal_goals(disj(GoalAs, _) - _, disj(GoalBs, _) - _, Subst0, Subst) :-
+equal_goals(disj(GoalAs) - _, disj(GoalBs) - _, Subst0, Subst) :-
 	equal_goals_list(GoalAs, GoalBs, Subst0, Subst).
 equal_goals(not(GoalA) - _, not(GoalB) - _, Subst0, Subst) :-
 	equal_goals(GoalA, GoalB, Subst0, Subst).
@@ -552,8 +552,8 @@ equal_goals(some(VarsA, _, GoalA) - _, some(VarsB, _, GoalB) - _,
 		Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst1),
 	equal_goals(GoalA, GoalB, Subst1, Subst).
-equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA, _) - _,
-		if_then_else(VarsB, IfB, ThenB, ElseB, _) - _, Subst0, Subst) :-
+equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
+		if_then_else(VarsB, IfB, ThenB, ElseB) - _, Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst1),
 	equal_goals(IfA, IfB, Subst1, Subst2),
 	equal_goals(ThenA, ThenB, Subst2, Subst3),
@@ -562,7 +562,7 @@ equal_goals(foreign_proc(Attribs, PredId, _, VarsA, _, _, _) - _,
 		foreign_proc(Attribs, PredId, _, VarsB, _, _, _) -
 			_, Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
-equal_goals(par_conj(GoalAs, _) - _, par_conj(GoalBs, _) - _, Subst0, Subst) :-
+equal_goals(par_conj(GoalAs) - _, par_conj(GoalBs) - _, Subst0, Subst) :-
 	equal_goals_list(GoalAs, GoalBs, Subst0, Subst).
 equal_goals(shorthand(ShorthandGoalA) - GoalInfoA,
 	    shorthand(ShorthandGoalB) - GoalInfoB, Subst0, Subst) :-
@@ -668,20 +668,20 @@ assertion__normalise_goal(foreign_proc(A,B,C,D,E,F,G) - GI,
 		foreign_proc(A,B,C,D,E,F,G) - GI).
 assertion__normalise_goal(conj(Goals0) - GI, conj(Goals) - GI) :-
 	assertion__normalise_conj(Goals0, Goals).
-assertion__normalise_goal(switch(A,B,Case0s,D) - GI, switch(A,B,Cases,D)-GI) :-
+assertion__normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
 	assertion__normalise_cases(Case0s, Cases).
-assertion__normalise_goal(disj(Goal0s,B) - GI, disj(Goals,B) - GI) :-
+assertion__normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
 	assertion__normalise_goals(Goal0s, Goals).
 assertion__normalise_goal(not(Goal0) - GI, not(Goal) - GI) :-
 	assertion__normalise_goal(Goal0, Goal).
 assertion__normalise_goal(some(A,B,Goal0) - GI, some(A,B,Goal) - GI) :-
 	assertion__normalise_goal(Goal0, Goal).
-assertion__normalise_goal(if_then_else(A, If0, Then0, Else0, E) - GI,
-		if_then_else(A, If, Then, Else, E) - GI) :-
+assertion__normalise_goal(if_then_else(A, If0, Then0, Else0) - GI,
+		if_then_else(A, If, Then, Else) - GI) :-
 	assertion__normalise_goal(If0, If),
 	assertion__normalise_goal(Then0, Then),
 	assertion__normalise_goal(Else0, Else).
-assertion__normalise_goal(par_conj(Goal0s,B) - GI, par_conj(Goals,B) - GI) :-
+assertion__normalise_goal(par_conj(Goal0s) - GI, par_conj(Goals) - GI) :-
 	assertion__normalise_goals(Goal0s, Goals).
 assertion__normalise_goal(shorthand(ShortHandGoal0) - GI0, 
 		shorthand(ShortHandGoal) - GI) :-
@@ -775,20 +775,20 @@ assertion__in_interface_check(foreign_proc(_,PredId,_,_,_,_,_) -
 	).
 assertion__in_interface_check(conj(Goals) - _, PredInfo, Module0, Module) -->
 	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
-assertion__in_interface_check(switch(_,_,_,_) - _, _, _, _) -->
+assertion__in_interface_check(switch(_,_,_) - _, _, _, _) -->
 	{ error("assertion__in_interface_check: assertion contains switch.") }.
-assertion__in_interface_check(disj(Goals,_) - _, PredInfo, Module0, Module) -->
+assertion__in_interface_check(disj(Goals) - _, PredInfo, Module0, Module) -->
 	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
 assertion__in_interface_check(not(Goal) - _, PredInfo, Module0, Module) -->
 	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
 assertion__in_interface_check(some(_,_,Goal) - _, PredInfo, Module0, Module) -->
 	assertion__in_interface_check(Goal, PredInfo, Module0, Module).
-assertion__in_interface_check(if_then_else(_, If, Then, Else, _) - _,
+assertion__in_interface_check(if_then_else(_, If, Then, Else) - _,
 		PredInfo, Module0, Module) -->
 	assertion__in_interface_check(If, PredInfo, Module0, Module1),
 	assertion__in_interface_check(Then, PredInfo, Module1, Module2),
 	assertion__in_interface_check(Else, PredInfo, Module2, Module).
-assertion__in_interface_check(par_conj(Goals,_) - _, PredInfo,
+assertion__in_interface_check(par_conj(Goals) - _, PredInfo,
 		Module0, Module) -->
 	assertion__in_interface_check_list(Goals, PredInfo, Module0, Module).
 assertion__in_interface_check(shorthand(ShorthandGoal) - _GoalInfo, PredInfo,

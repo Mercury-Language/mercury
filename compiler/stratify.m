@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,20 +152,20 @@ first_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc,
 		ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(par_conj(Goals, _SM), _GoalInfo, Negated, WholeScc, 
+first_order_check_goal(par_conj(Goals), _GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(disj(Goals, _Follow), _GoalInfo, Negated, 
+first_order_check_goal(disj(Goals), _GoalInfo, Negated, 
 		WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(switch(_Var, _Fail, Cases, _Follow), _GoalInfo,
+first_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo,
 		Negated, WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
 first_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo, 
-	Else - EInfo, _Follow), _GoalInfo, Negated, WholeScc, ThisPredProcId,
+		Else - EInfo), _GoalInfo, Negated, WholeScc, ThisPredProcId,
 		Error, Module0, Module) -->
 	first_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
 		Error, Module0, Module1),
@@ -307,21 +307,21 @@ higher_order_check_goal(conj(Goals), _GoalInfo, Negated, WholeScc,
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(par_conj(Goals, _), _GoalInfo, Negated, WholeScc, 
+higher_order_check_goal(par_conj(Goals), _GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(disj(Goals, _Follow), _GoalInfo, Negated, WholeScc, 
+higher_order_check_goal(disj(Goals), _GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal_list(Goals, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(switch(_Var, _Fail, Cases, _Follow), _GoalInfo,
+higher_order_check_goal(switch(_Var, _Fail, Cases), _GoalInfo,
 		Negated, WholeScc, ThisPredProcId, HighOrderLoops, 
 		Error, Module0, Module) -->
 	higher_order_check_case_list(Cases, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
 higher_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo, 
-		Else - EInfo, _Follow), _GoalInfo, Negated, WholeScc, 
+		Else - EInfo), _GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal(Cond, CInfo, yes, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module1),
@@ -802,17 +802,16 @@ check_goal1(generic_call(_Var, _Vars, _Modes, _Det),
 
 check_goal1(conj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
-check_goal1(par_conj(Goals, _), Calls0, Calls, HasAT0, HasAT,
+check_goal1(par_conj(Goals), Calls0, Calls, HasAT0, HasAT,
 		CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
-check_goal1(disj(Goals, _Follow), Calls0, Calls, HasAT0, HasAT, CallsHO0, 
-		CallsHO) :-
+check_goal1(disj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
-check_goal1(switch(_Var, _Fail, Cases, _Follow), Calls0, Calls, HasAT0, 
+check_goal1(switch(_Var, _Fail, Cases), Calls0, Calls, HasAT0, 
 		HasAT, CallsHO0, CallsH0) :- 
 	check_case_list(Cases, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsH0).
-check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo,
-		_Follow), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
+check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo),
+		Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal1(Cond, Calls0, Calls1, HasAT0, HasAT1, CallsHO0, CallsHO1),
 	check_goal1(Then, Calls1, Calls2, HasAT1, HasAT2, CallsHO1, CallsHO2),
 	check_goal1(Else, Calls2, Calls, HasAT2, HasAT, CallsHO2, CallsHO).
@@ -901,14 +900,14 @@ get_called_procs(generic_call(_Var, _Vars, _Modes, _Det), Calls, Calls).
 
 get_called_procs(conj(Goals), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
-get_called_procs(par_conj(Goals, _), Calls0, Calls) :-
+get_called_procs(par_conj(Goals), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
-get_called_procs(disj(Goals, _Follow), Calls0, Calls) :-
+get_called_procs(disj(Goals), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
-get_called_procs(switch(_Var, _Fail, Cases, _Follow), Calls0, Calls) :-
+get_called_procs(switch(_Var, _Fail, Cases), Calls0, Calls) :-
 	check_case_list(Cases, Calls0, Calls).
 get_called_procs(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, 
-		Else - _EInfo, _Follow), Calls0, Calls) :-
+		Else - _EInfo), Calls0, Calls) :-
 	get_called_procs(Cond, Calls0, Calls1),
 	get_called_procs(Then, Calls1, Calls2),
 	get_called_procs(Else, Calls2, Calls). 

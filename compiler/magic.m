@@ -272,7 +272,7 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 		ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) -->
 	{ proc_info_goal(ProcInfo0, Goal0) },
 
-	{ Goal0 = if_then_else(_Vars, Cond, Then, Else, _SM) - GoalInfo ->
+	{ Goal0 = if_then_else(_Vars, Cond, Then, Else) - GoalInfo ->
 		goal_util__if_then_else_to_disjunction(Cond, Then, Else, 
 			GoalInfo, Disj),
 		Goal1 = Disj - GoalInfo,
@@ -282,7 +282,7 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 		% in the copies of the condition.
 		requantify_proc(ProcInfo1, ProcInfo3),
 		ModuleInfo1 = ModuleInfo0
-	; Goal0 = switch(Var, _Canfail, Cases, _SM) - GoalInfo ->
+	; Goal0 = switch(Var, _Canfail, Cases) - GoalInfo ->
 		proc_info_varset(ProcInfo0, VarSet0),
 		proc_info_vartypes(ProcInfo0, VarTypes0),
 		proc_info_get_initial_instmap(ProcInfo0, 
@@ -294,8 +294,7 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1),
 		proc_info_set_varset(ProcInfo0, VarSet1, ProcInfo1),
 		proc_info_set_vartypes(ProcInfo1, VarTypes1, ProcInfo2),
-		map__init(SM),
-		Goal1 = disj(Disjuncts, SM) - GoalInfo,
+		Goal1 = disj(Disjuncts) - GoalInfo,
 		proc_info_set_goal(ProcInfo2, Goal1, ProcInfo3)
 	;
 		ProcInfo3 = ProcInfo0,
@@ -1505,12 +1504,12 @@ magic__preprocess_goal(Goal, Goals, HOMap0, HOMap) -->
 	% Switches, if-then-elses and disjunctions involving database calls
 	% should have been transformed into separate procedures by dnf.m.
 magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) -->
-	{ Goal = disj(_, _) - _ }.
+	{ Goal = disj(_) - _ }.
 magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) -->
-	{ Goal = switch(_, _, _, _) - _ }.
+	{ Goal = switch(_, _, _) - _ }.
 magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) --> 
-	{ Goal = if_then_else(_, _, _, _, _) - _ }.
-magic__preprocess_goal_2(par_conj(_, _) - _, _, _, _) -->
+	{ Goal = if_then_else(_, _, _, _) - _ }.
+magic__preprocess_goal_2(par_conj(_) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: parallel conjunction in Aditi procedures") }.
 magic__preprocess_goal_2(generic_call(_, _, _, _) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: higher-order or class-method calls in Aditi procedures") }.

@@ -2153,6 +2153,9 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		% creating the `.c', `.s' or `.il'.
 		%
 		module_name_to_file_name(ModuleName, ".il", no, ILFileName),
+/* ### In clause for predicate `modules:write_dependency_file/5': */
+/* ###   in argument 2 of call to predicate `module_name_to_file_name/6': */
+/* ###   error: undefined symbol `module_dep_file_extension/0'. */
 		module_name_to_file_name(ModuleName, module_dep_file_extension,
 			no, ModuleDepFileName),
 		io__write_strings(DepStream, [
@@ -3594,6 +3597,9 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".module_deps = "),
+/* ### In clause for predicate `modules:generate_dv_file/6': */
+/* ###   in argument 3 of call to predicate `write_compact_dependencies_list/7': */
+/* ###   error: undefined symbol `module_dep_file_extension/0'. */
 	write_compact_dependencies_list(Modules, "$(module_deps_subdir)",
 			module_dep_file_extension, Basis, DepStream),
 	io__write_string(DepStream, "\n"),

@@ -527,21 +527,20 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 inlining__inlining_in_goal(conj(Goals0) - GoalInfo, conj(Goals) - GoalInfo) -->
 	inlining__inlining_in_conj(Goals0, Goals).
 
-inlining__inlining_in_goal(par_conj(Goals0, SM) - GoalInfo,
-		par_conj(Goals, SM) - GoalInfo) -->
+inlining__inlining_in_goal(par_conj(Goals0) - GoalInfo,
+		par_conj(Goals) - GoalInfo) -->
 	inlining__inlining_in_disj(Goals0, Goals).
 
-inlining__inlining_in_goal(disj(Goals0, SM) - GoalInfo,
-		disj(Goals, SM) - GoalInfo) -->
+inlining__inlining_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo) -->
 	inlining__inlining_in_disj(Goals0, Goals).
 
-inlining__inlining_in_goal(switch(Var, Det, Cases0, SM) - GoalInfo,
-		switch(Var, Det, Cases, SM) - GoalInfo) -->
+inlining__inlining_in_goal(switch(Var, Det, Cases0) - GoalInfo,
+		switch(Var, Det, Cases) - GoalInfo) -->
 	inlining__inlining_in_cases(Cases0, Cases).
 
 inlining__inlining_in_goal(
-		if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo,
-		if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo) -->
+		if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
+		if_then_else(Vars, Cond, Then, Else) - GoalInfo) -->
 	inlining__inlining_in_goal(Cond0, Cond),
 	inlining__inlining_in_goal(Then0, Then),
 	inlining__inlining_in_goal(Else0, Else).

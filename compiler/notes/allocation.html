@@ -154,16 +154,24 @@ to say that those variables are "magically" in those locations.
 
 <p>
 
-We handle these by including a store_map field to if_then_else, switch and disj
-goal expressions (this field used to be called the follow_vars field). This
-field is ignored through most of the compilation process; it is meaningful
-only from the follow_vars pass onwards.
+We handle these by including a store_map field in the goal_infos of
+if_then_else, switch and disj goals.
+This field, like most other goal_info fields
+we will talk about in the rest of this document,
+is a subfield of the code_gen_info field of the goal_info.
+Through most of the compilation process,
+the code_gen_info field contains no information;
+its individual subfields are filled in
+during the various pre-passes of the LLDS code generator.
+The store map subfield
+it is meaningful only from the follow_vars pass onwards.
 
 <p>
 
-The follow_vars pass fills these fields with advisory information, saying
-where things that will be used in code following the branched structure
-should be. This advisory information may include duplicates (two variables
+The follow_vars pass fills this field of goals representing branched control
+structures with advisory information, saying where things that will be used
+in code following the branched structure should be.
+This advisory information may include duplicates (two variables
 mapped to the same location), it may miss some variables that are live at
 the end of the branched structure, and it may include variables that are
 not live at that point.
@@ -209,9 +217,10 @@ arg_info list.
 
 <p>
 
-We handle these through the resume_point field in goal infos. During the
-liveness pass, we fill in this field for every goal that establishes
-a point at which execution may resume after backtracking. This means
+We handle these through the resume_point subfield of the code_gen_info field
+in goal infos. During the liveness pass, we fill in this field for every goal
+that establishes a point at which execution may resume after backtracking.
+This means
 the conditions of if-then-elses (the resumption point is the start of
 the else part), every disjunct in a disjunction except the last (the
 resumption point is the start of the next disjunct), and goals inside
@@ -548,6 +557,6 @@ registers. Instead, it should keep the variable in its stack slot.
 <!-------------------------->
 <hr>
 <!-------------------------->
-Last update was $Date: 1997-10-30 08:33:01 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-28 03:44:36 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

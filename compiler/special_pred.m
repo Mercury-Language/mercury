@@ -54,8 +54,22 @@
 :- pred special_pred_list(list(special_pred_id)).
 :- mode special_pred_list(out) is det.
 
+	% Given the mangled predicate name and the list of argument types,
+	% work out which type this special predicate is for.
+	% Note that this gets called after the polymorphism.m pass, so
+	% type_info arguments may have been inserted at the start; hence we
+	% find the type at a known position from the end of the list
+	% (by using list__reverse).
+
+	% Currently for most of the special predicates the type variable
+	% can be found in the last type argument, except for index, for
+	% which it is the second-last argument.
+
 :- pred special_pred_get_type(string, list(Type), Type).
 :- mode special_pred_get_type(in, in, out) is semidet.
+
+:- pred special_pred_get_type_det(string, list(Type), Type).
+:- mode special_pred_get_type_det(in, in, out) is det.
 
 :- pred special_pred_description(special_pred_id, string).
 :- mode special_pred_description(in, out) is det.
@@ -91,9 +105,10 @@
 
 :- implementation.
 
-:- import_module libs__globals, libs__options, check_hlds__type_util.
-:- import_module check_hlds__mode_util, parse_tree__prog_util.
-:- import_module bool.
+:- import_module parse_tree__prog_util.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module libs__globals, libs__options.
+:- import_module bool, require.
 
 special_pred_list([unify, index, compare]).
 
@@ -120,17 +135,6 @@ special_pred_info(compare, Type,
 	in_mode(In),
 	uo_mode(Uo).
 
-	% Given the mangled predicate name and the list of argument types,
-	% work out which type this special predicate is for.
-	% Note that this gets called after the polymorphism.m pass, so
-	% type_info arguments may have been inserted at the start; hence we
-	% find the type at a known position from the end of the list
-	% (by using list__reverse).
-
-	% Currently for most of the special predicates the type variable
-	% can be found in the last type argument, except for index, for
-	% which it is the second-last argument.
-
 special_pred_get_type("__Unify__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("unify", Types, T) :-
@@ -143,6 +147,13 @@ special_pred_get_type("__Compare__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("compare", Types, T) :-
 	list__reverse(Types, [T | _]).
+
+special_pred_get_type_det(Name, ArgTypes, Type) :-
+	( special_pred_get_type(Name, ArgTypes, TypePrime) ->
+		Type = TypePrime
+	;
+		error("special_pred_get_type_det: special_pred_get_type failed")
+	).
 
 special_pred_description(unify, "unification predicate").
 special_pred_description(compare, "comparison predicate").

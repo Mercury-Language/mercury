@@ -160,14 +160,14 @@ traverse_goal_2(conj(Goals), _, Params, Info0, Info) :-
 	list__reverse(Goals, RevGoals),
 	traverse_conj(RevGoals, Params, Info0, Info).
 
-traverse_goal_2(par_conj(Goals, _SM), _, Params, Info0, Info) :-
+traverse_goal_2(par_conj(Goals), _, Params, Info0, Info) :-
 	list__reverse(Goals, RevGoals),
 	traverse_conj(RevGoals, Params, Info0, Info).
 
-traverse_goal_2(switch(_, _, Cases, _), _, Params, Info0, Info) :-
+traverse_goal_2(switch(_, _, Cases), _, Params, Info0, Info) :-
 	traverse_switch(Cases, Params, Info0, Info).
 
-traverse_goal_2(disj(Goals, _StoreMap), _, Params, Info0, Info) :-
+traverse_goal_2(disj(Goals), _, Params, Info0, Info) :-
 	traverse_disj(Goals, Params, Info0, Info).
 
 traverse_goal_2(not(Goal), _, Params, Info0, Info) :-
@@ -179,7 +179,7 @@ traverse_goal_2(not(Goal), _, Params, Info0, Info) :-
 traverse_goal_2(some(_Vars, _, Goal), _GoalInfo, Params, Info0, Info) :-
 	traverse_goal(Goal, Params, Info0, Info).
 
-traverse_goal_2(if_then_else(_, Cond, Then, Else, _), _, Params, Info0, Info) :-
+traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, Info0, Info) :-
 	traverse_conj([Then, Cond], Params, Info0, Info1),
 	traverse_goal(Else, Params, Info0, Info2),
 	combine_paths(Info1, Info2, Params, Info).

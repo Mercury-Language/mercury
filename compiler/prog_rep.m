@@ -148,18 +148,17 @@ prog_rep__represent_goal_expr(unify(_, _, _, Uni, _), GoalInfo, InstMap0,
 prog_rep__represent_goal_expr(conj(Goals), _, InstMap0, Info, Rep) :-
 	prog_rep__represent_conj(Goals, InstMap0, Info, Reps),
 	Rep = conj_rep(Reps).
-prog_rep__represent_goal_expr(par_conj(_, _), _, _, _, _) :-
+prog_rep__represent_goal_expr(par_conj(_), _, _, _, _) :-
 	error("Sorry, not yet implemented:\n\
 	parallel conjunctions and declarative debugging").
-prog_rep__represent_goal_expr(disj(Goals, _SM), _, InstMap0, Info, Rep)
-		:-
+prog_rep__represent_goal_expr(disj(Goals), _, InstMap0, Info, Rep) :-
 	prog_rep__represent_disj(Goals, InstMap0, Info, DisjReps),
 	Rep = disj_rep(DisjReps).
 prog_rep__represent_goal_expr(not(Goal), _GoalInfo, InstMap0, Info, Rep)
 		:-
 	prog_rep__represent_goal(Goal, InstMap0, Info, InnerRep),
 	Rep = negation_rep(InnerRep).
-prog_rep__represent_goal_expr(if_then_else(_, Cond, Then, Else, _SM),
+prog_rep__represent_goal_expr(if_then_else(_, Cond, Then, Else),
 		_, InstMap0, Info, Rep) :-
 	prog_rep__represent_goal(Cond, InstMap0, Info, CondRep),
 	Cond = _ - CondGoalInfo,
@@ -168,7 +167,7 @@ prog_rep__represent_goal_expr(if_then_else(_, Cond, Then, Else, _SM),
 	prog_rep__represent_goal(Then, InstMap1, Info, ThenRep),
 	prog_rep__represent_goal(Else, InstMap0, Info, ElseRep),
 	Rep = ite_rep(CondRep, ThenRep, ElseRep).
-prog_rep__represent_goal_expr(switch(_, _, Cases, _SM), _,
+prog_rep__represent_goal_expr(switch(_, _, Cases), _,
 		InstMap0, Info, Rep) :-
 	prog_rep__represent_cases(Cases, InstMap0, Info, CaseReps),
 	Rep = switch_rep(CaseReps).

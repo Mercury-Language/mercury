@@ -89,11 +89,10 @@ goal_cannot_loop_aux(MaybeModuleInfo, Goal) :-
 goal_cannot_loop_expr(MaybeModuleInfo, conj(Goals)) :-
 	list__member(Goal, Goals) =>
 		goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals, _)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals)) :-
 	list__member(Goal, Goals) =>
 		goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo,
-		switch(_Var, _Category, Cases, _)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
 	list__member(Case, Cases) =>
 		(
 		Case = case(_, Goal),
@@ -104,7 +103,7 @@ goal_cannot_loop_expr(MaybeModuleInfo, not(Goal)) :-
 goal_cannot_loop_expr(MaybeModuleInfo, some(_Vars, _, Goal)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo,
-		if_then_else(_Vars, Cond, Then, Else, _)) :-
+		if_then_else(_Vars, Cond, Then, Else)) :-
 	goal_cannot_loop_aux(MaybeModuleInfo, Cond),
 	goal_cannot_loop_aux(MaybeModuleInfo, Then),
 	goal_cannot_loop_aux(MaybeModuleInfo, Else).
@@ -133,15 +132,15 @@ contains_only_builtins(Goal - _GoalInfo) :-
 
 contains_only_builtins_expr(conj(Goals)) :-
 	contains_only_builtins_list(Goals).
-contains_only_builtins_expr(disj(Goals, _)) :-
+contains_only_builtins_expr(disj(Goals)) :-
 	contains_only_builtins_list(Goals).
-contains_only_builtins_expr(switch(_Var, _Category, Cases, _)) :-
+contains_only_builtins_expr(switch(_Var, _Category, Cases)) :-
 	contains_only_builtins_cases(Cases).
 contains_only_builtins_expr(not(Goal)) :-
 	contains_only_builtins(Goal).
 contains_only_builtins_expr(some(_Vars, _, Goal)) :-
 	contains_only_builtins(Goal).
-contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else, _)) :-
+contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else)) :-
 	contains_only_builtins(Cond),
 	contains_only_builtins(Then),
 	contains_only_builtins(Else).

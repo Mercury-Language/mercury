@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2000,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -100,20 +100,22 @@
 :- import_module ll_backend__code_info.
 :- import_module list.
 
-:- pred par_conj_gen__generate_par_conj(list(hlds_goal), hlds_goal_info,
-				code_model, code_tree, code_info, code_info).
-:- mode par_conj_gen__generate_par_conj(in, in, in, out, in, out) is det.
+:- pred par_conj_gen__generate_par_conj(list(hlds_goal)::in,
+	hlds_goal_info::in, code_model::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds__hlds_data, ll_backend__code_gen, ll_backend__code_util.
-:- import_module libs__options, libs__globals, parse_tree__prog_data.
-:- import_module hlds__hlds_module, (parse_tree__inst), hlds__instmap.
-:- import_module check_hlds__mode_util, ll_backend__code_info.
-:- import_module ll_backend__continuation_info.
-:- import_module set, libs__tree, list, map, std_util, require, int.
+:- import_module parse_tree__prog_data, parse_tree__inst. 
+:- import_module hlds__hlds_module, hlds__hlds_data, hlds__instmap.
+:- import_module check_hlds__mode_util.
+:- import_module ll_backend__code_gen, ll_backend__code_util.
+:- import_module ll_backend__code_info, ll_backend__continuation_info.
+:- import_module libs__options, libs__globals, libs__tree.
+
+:- import_module bool, int, list, set, map, std_util, require.
 
 %---------------------------------------------------------------------------%
 
@@ -155,12 +157,12 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 			- "store the sync-term on the stack"
 	]) },
 	code_info__release_reg(RegLval),
-	code_info__clear_all_registers,
+	code_info__clear_all_registers(no),
 	par_conj_gen__generate_det_par_conj_2(Goals, 0, SyncSlot, SpSlot,
 		Initial, no, GoalCode),
 	code_info__release_temp_slot(SyncSlot),
 	{ Code = tree(tree(SaveCode, MakeTerm), GoalCode) },
-	code_info__clear_all_registers,
+	code_info__clear_all_registers(no),
 	par_conj_gen__place_all_outputs(Outputs).
 
 :- pred par_conj_gen__generate_det_par_conj_2(list(hlds_goal), int, lval, lval,

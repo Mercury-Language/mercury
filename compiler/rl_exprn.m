@@ -832,7 +832,7 @@ rl_exprn__goal(not(NegGoal) - _, Fail, Code) -->
 		tree(Fail, 
 		node([rl_PROC_label(EndLabel)])
 	)) }.
-rl_exprn__goal(if_then_else(_, Cond, Then, Else, _) - _, Fail, Code) -->
+rl_exprn__goal(if_then_else(_, Cond, Then, Else) - _, Fail, Code) -->
 	rl_exprn_info_get_next_label_id(StartElse),
 	rl_exprn_info_get_next_label_id(EndIte),
 	{ CondFail = node([rl_EXP_jmp(StartElse)]) },
@@ -848,16 +848,16 @@ rl_exprn__goal(if_then_else(_, Cond, Then, Else, _) - _, Fail, Code) -->
 	)))) }.
 rl_exprn__goal(conj(Goals) - _, Fail, Code) -->
 	rl_exprn__goals(Goals, Fail, Code).
-rl_exprn__goal(par_conj(_, _) - _, _, _) -->
+rl_exprn__goal(par_conj(_) - _, _, _) -->
 	{ error("rl_exprn__goal: par_conj not yet implemented") }.
-rl_exprn__goal(disj(Goals, _) - _Info, Fail, Code) -->
+rl_exprn__goal(disj(Goals) - _Info, Fail, Code) -->
 		% Nondet disjunctions should have been transformed into
 		% separate Aditi predicates by dnf.m.
 	rl_exprn_info_get_next_label_id(EndDisj),
 	{ GotoEnd = node([rl_EXP_jmp(EndDisj)]) },
 	rl_exprn__disj(Goals, GotoEnd, Fail, DisjCode),
 	{ Code = tree(DisjCode, node([rl_PROC_label(EndDisj)])) }.
-rl_exprn__goal(switch(Var, _, Cases, _) - _, Fail, Code) -->
+rl_exprn__goal(switch(Var, _, Cases) - _, Fail, Code) -->
 	rl_exprn_info_get_next_label_id(EndSwitch),
 	{ GotoEnd = node([rl_EXP_jmp(EndSwitch)]) },
 	rl_exprn__cases(Var, Cases, GotoEnd, Fail, SwitchCode),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -41,10 +41,12 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_module, hlds__hlds_pred, ll_backend__llds_out.
-:- import_module ll_backend__trace, libs__tree.
-:- import_module ll_backend__code_util, backend_libs__foreign.
-:- import_module libs__options, libs__globals.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_llds.
+:- import_module hlds__instmap.
+:- import_module ll_backend__llds_out, ll_backend__trace.
+:- import_module ll_backend__code_util.
+:- import_module backend_libs__foreign.
+:- import_module libs__options, libs__globals, libs__tree.
 
 :- import_module bool, string, int, assoc_list, set, map, require, term.
 
@@ -527,7 +529,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	( { MayCallMercury = will_not_call_mercury } ->
 		[]
 	;
-		code_info__clear_all_registers
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+		{ instmap_delta_is_reachable(InstMapDelta) ->
+			OkToDelete = no
+		;
+			OkToDelete = yes
+		},
+		code_info__clear_all_registers(OkToDelete)
 	),
 
 	%

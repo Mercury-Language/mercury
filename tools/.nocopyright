@@ -37,4 +37,8 @@ speedtest
 test_mercury
 type_ctor_stats
 cvdd
+avg_frame_size
+compare_frame_sizes
+extract_incr_sp
+frame_sizes
 .cvsignore

@@ -22,12 +22,12 @@
 :- module hlds__make_hlds.
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_module.
-:- import_module hlds__hlds_pred.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__equiv_type, parse_tree__module_qual.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 :- import_module hlds__special_pred.
 
-:- import_module io, std_util, list, bool.
+:- import_module bool, list, io, std_util.
 
 % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
 %		UndefTypes, UndefModes):
@@ -97,25 +97,24 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal.
 :- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_io_dcg, parse_tree__prog_io_util.
-:- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_out, parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_util, parse_tree__inst.
 :- import_module parse_tree__modules, parse_tree__module_qual.
-:- import_module parse_tree__prog_util, libs__options, hlds__hlds_out.
-:- import_module check_hlds__typecheck.
-:- import_module hlds__make_tags, hlds__quantification, (parse_tree__inst).
-:- import_module libs__globals.
-:- import_module ll_backend__code_util, check_hlds__unify_proc.
-:- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module check_hlds__mode_errors.
-:- import_module parse_tree__mercury_to_mercury, hlds__passes_aux.
+:- import_module hlds__hlds_goal, hlds__goal_util, hlds__hlds_out.
+:- import_module hlds__make_tags, hlds__quantification.
+:- import_module hlds__error_util, hlds__passes_aux.
+:- import_module check_hlds__typecheck, check_hlds__type_util.
+:- import_module check_hlds__mode_util, check_hlds__mode_errors.
 :- import_module check_hlds__clause_to_proc, check_hlds__inst_match.
-:- import_module ll_backend__fact_table, check_hlds__purity, hlds__goal_util.
-:- import_module transform_hlds__term_util, backend_libs__export.
-:- import_module ll_backend__llds.
-:- import_module hlds__error_util, backend_libs__foreign.
+:- import_module check_hlds__purity, check_hlds__unify_proc.
+:- import_module transform_hlds__term_util.
+:- import_module ll_backend, ll_backend__llds.
+:- import_module ll_backend__code_util, ll_backend__fact_table.
+:- import_module backend_libs__export, backend_libs__foreign.
 :- import_module recompilation.
+:- import_module libs__options, libs__globals.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
@@ -4788,15 +4787,15 @@ warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
-warn_singletons_in_goal_2(par_conj(Goals, _SM), _GoalInfo, QuantVars, VarSet,
+warn_singletons_in_goal_2(par_conj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
-warn_singletons_in_goal_2(disj(Goals, _), _GoalInfo, QuantVars, VarSet,
+warn_singletons_in_goal_2(disj(Goals), _GoalInfo, QuantVars, VarSet,
 		PredCallId, MI) -->
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, PredCallId, MI).
 
-warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases, _),
+warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases),
 			_GoalInfo, QuantVars, VarSet, PredCallId, MI) -->
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId, MI).
 
@@ -4821,7 +4820,7 @@ warn_singletons_in_goal_2(some(Vars, _, SubGoal), GoalInfo, QuantVars, VarSet,
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
 	warn_singletons_in_goal(SubGoal, QuantVars1, VarSet, PredCallId, MI).
 
-warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
+warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
 				QuantVars, VarSet, PredCallId, MI) -->
 	%
 	% warn if any quantified variables do not occur in the condition
@@ -5647,9 +5646,8 @@ transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet,
 		transform_info, transform_info, io__state, io__state).
 :- mode transform_goal_2(in, in, in, in, out, out, in, out, di, uo) is det.
 
-transform_goal_2(fail, _, VarSet, _, disj([], Empty) - GoalInfo, VarSet,
+transform_goal_2(fail, _, VarSet, _, disj([]) - GoalInfo, VarSet,
 		Info, Info) -->
-	{ map__init(Empty) },
 	{ goal_info_init(GoalInfo) }.
 
 transform_goal_2(true, _, VarSet, _, conj([]) - GoalInfo, VarSet,
@@ -5672,13 +5670,12 @@ transform_goal_2(some(Vars0, Goal0), _, VarSet0, Subst,
 
 
 transform_goal_2(if_then_else(Vars0, A0, B0, C0), _, VarSet0, Subst,
-	if_then_else(Vars, A, B, C, Empty) - GoalInfo, VarSet, Info0, Info)
-		-->
+		if_then_else(Vars, A, B, C) - GoalInfo, VarSet,
+		Info0, Info) -->
 	{ substitute_vars(Vars0, Subst, Vars) },
 	transform_goal(A0, VarSet0, Subst, A, VarSet1, Info0, Info1),
 	transform_goal(B0, VarSet1, Subst, B, VarSet2, Info1, Info2),
 	transform_goal(C0, VarSet2, Subst, C, VarSet, Info2, Info),
-	{ map__init(Empty) },
 	{ goal_info_init(GoalInfo) }.
 
 transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
@@ -7279,9 +7276,8 @@ unravel_unification(term__variable(X), RHS,
 		unravel_unification(term__variable(X), ElseTerm,
 			Context, MainContext, SubContext, VarSet33, pure,
 			ElseGoal, VarSet, Info3, Info),
-		{ map__init(Empty) },
-		{ IfThenElse = if_then_else(Vars, IfGoal, ThenGoal, ElseGoal,
-			Empty) },
+		{ IfThenElse = if_then_else(Vars, IfGoal,
+			ThenGoal, ElseGoal) },
 		{ goal_info_init(Context, GoalInfo) },
 		{ Goal = IfThenElse - GoalInfo }
 	;

@@ -18,9 +18,11 @@
 % Pre-passes to transform or annotate the HLDS
 % (XXX these are not listed in right order)
 :- include_module saved_vars.	% transform
-:- include_module arg_info.		% annotate
-:- include_module liveness.		% annotate
-:- include_module live_vars.		% annotate
+:- include_module stack_opt.	% transform
+:- include_module stack_alloc.	% annotate
+:- include_module arg_info.	% annotate
+:- include_module liveness.	% annotate
+:- include_module live_vars.	% annotate
 :- include_module follow_code.	% transform
 :- include_module follow_vars.	% annotate
 :- include_module store_alloc.	% annotate

@@ -145,7 +145,7 @@
 :- pred code_util__cons_id_to_tag(cons_id, type, module_info, cons_tag).
 :- mode code_util__cons_id_to_tag(in, in, in, out) is det.
 
-	% Succeed if the given goal cannot encounter a context
+	% Succeed if execution of the given goal cannot encounter a context
 	% that causes any variable to be flushed to its stack slot.
 	% If such a goal needs a resume point, and that resume point cannot
 	% be backtracked to once control leaves the goal, then the only entry
@@ -154,6 +154,13 @@
 
 :- pred code_util__cannot_stack_flush(hlds_goal).
 :- mode code_util__cannot_stack_flush(in) is semidet.
+
+	% Succeed if execution of the given goal cannot encounter a context
+	% that causes any variable to be flushed to its stack slot or to a
+	% register.
+
+:- pred code_util__cannot_flush(hlds_goal).
+:- mode code_util__cannot_flush(in) is semidet.
 
 	% Succeed if the given goal cannot fail before encountering a context
 	% that forces all variables to be flushed to their stack slots.
@@ -490,12 +497,12 @@ code_util__goal_may_allocate_heap_2(not(Goal), May) :-
 	code_util__goal_may_allocate_heap(Goal, May).
 code_util__goal_may_allocate_heap_2(conj(Goals), May) :-
 	code_util__goal_list_may_allocate_heap(Goals, May).
-code_util__goal_may_allocate_heap_2(par_conj(_, _), yes).
-code_util__goal_may_allocate_heap_2(disj(Goals, _), May) :-
+code_util__goal_may_allocate_heap_2(par_conj(_), yes).
+code_util__goal_may_allocate_heap_2(disj(Goals), May) :-
 	code_util__goal_list_may_allocate_heap(Goals, May).
-code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases, _), May) :-
+code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases), May) :-
 	code_util__cases_may_allocate_heap(Cases, May).
-code_util__goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E, _), May) :-
+code_util__goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E), May) :-
 	( code_util__goal_may_allocate_heap(C, yes) ->
 		May = yes
 	; code_util__goal_may_allocate_heap(T, yes) ->
@@ -573,13 +580,13 @@ code_util__goal_may_alloc_temp_frame_2(not(Goal), May) :-
 	code_util__goal_may_alloc_temp_frame(Goal, May).
 code_util__goal_may_alloc_temp_frame_2(conj(Goals), May) :-
 	code_util__goal_list_may_alloc_temp_frame(Goals, May).
-code_util__goal_may_alloc_temp_frame_2(par_conj(Goals, _), May) :-
+code_util__goal_may_alloc_temp_frame_2(par_conj(Goals), May) :-
 	code_util__goal_list_may_alloc_temp_frame(Goals, May).
-code_util__goal_may_alloc_temp_frame_2(disj(Goals, _), May) :-
+code_util__goal_may_alloc_temp_frame_2(disj(Goals), May) :-
 	code_util__goal_list_may_alloc_temp_frame(Goals, May).
-code_util__goal_may_alloc_temp_frame_2(switch(_Var, _Det, Cases, _), May) :-
+code_util__goal_may_alloc_temp_frame_2(switch(_Var, _Det, Cases), May) :-
 	code_util__cases_may_alloc_temp_frame(Cases, May).
-code_util__goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E, _), May) :-
+code_util__goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E), May) :-
 	( code_util__goal_may_alloc_temp_frame(C, yes) ->
 		May = yes
 	; code_util__goal_may_alloc_temp_frame(T, yes) ->
@@ -600,7 +607,6 @@ code_util__goal_may_alloc_temp_frame_2_shorthand(bi_implication(G1, G2),
 	;
 		code_util__goal_may_alloc_temp_frame(G2, May)
 	).
-
 
 :- pred code_util__goal_list_may_alloc_temp_frame(list(hlds_goal)::in,
 	bool::out) is det.
@@ -756,8 +762,10 @@ code_util__cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
 	BuiltinState = inline_builtin.
 code_util__cannot_stack_flush_2(conj(Goals)) :-
 	code_util__cannot_stack_flush_goals(Goals).
-code_util__cannot_stack_flush_2(switch(_, _, Cases, _)) :-
+code_util__cannot_stack_flush_2(switch(_, _, Cases)) :-
 	code_util__cannot_stack_flush_cases(Cases).
+code_util__cannot_stack_flush_2(not(unify(_, _, _, Unify, _) - _)) :-
+	Unify \= complicated_unify(_, _, _).
 
 :- pred code_util__cannot_stack_flush_goals(list(hlds_goal)).
 :- mode code_util__cannot_stack_flush_goals(in) is semidet.
@@ -774,6 +782,29 @@ code_util__cannot_stack_flush_cases([]).
 code_util__cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
 	code_util__cannot_stack_flush(Goal),
 	code_util__cannot_stack_flush_cases(Cases).
+
+%-----------------------------------------------------------------------------%
+
+code_util__cannot_flush(GoalExpr - _) :-
+	code_util__cannot_flush_2(GoalExpr).
+
+:- pred code_util__cannot_flush_2(hlds_goal_expr).
+:- mode code_util__cannot_flush_2(in) is semidet.
+
+code_util__cannot_flush_2(unify(_, _, _, Unify, _)) :-
+	Unify \= complicated_unify(_, _, _).
+code_util__cannot_flush_2(call(_, _, _, BuiltinState, _, _)) :-
+	BuiltinState = inline_builtin.
+code_util__cannot_flush_2(conj(Goals)) :-
+	code_util__cannot_flush_goals(Goals).
+
+:- pred code_util__cannot_flush_goals(list(hlds_goal)).
+:- mode code_util__cannot_flush_goals(in) is semidet.
+
+code_util__cannot_flush_goals([]).
+code_util__cannot_flush_goals([Goal | Goals]) :-
+	code_util__cannot_flush(Goal),
+	code_util__cannot_flush_goals(Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -848,14 +879,16 @@ code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 code_util__count_recursive_calls_2(conj(Goals), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
 		Min, Max).
-code_util__count_recursive_calls_2(par_conj(Goals, _), PredId, ProcId, Min, Max) :-
-	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0, Min, Max).
-code_util__count_recursive_calls_2(disj(Goals, _), PredId, ProcId, Min, Max) :-
+code_util__count_recursive_calls_2(par_conj(Goals), PredId, ProcId,
+		Min, Max) :-
+	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
+		Min, Max).
+code_util__count_recursive_calls_2(disj(Goals), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(switch(_, _, Cases, _), PredId, ProcId,
+code_util__count_recursive_calls_2(switch(_, _, Cases), PredId, ProcId,
 		Min, Max) :-
 	code_util__count_recursive_calls_cases(Cases, PredId, ProcId, Min, Max).
-code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
+code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else),
 		PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls(Cond, PredId, ProcId, CMin, CMax),
 	code_util__count_recursive_calls(Then, PredId, ProcId, TMin, TMax),

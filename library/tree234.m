@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -270,89 +270,71 @@ tree234__search(T, K, V) :-
 		T = empty,
 		fail
 	;
-		T = two(K0, _, _, _),
+		T = two(K0, V0, T0, T1),
 		compare(Result, K, K0),
 		(
 			Result = (<),
-			T = two(_, _, T0, _),
 			tree234__search(T0, K, V)
 		;
 			Result = (=),
-			T = two(_, V0, _, _),
 			V = V0
 		;
 			Result = (>),
-			T = two(_, _, _, T1),
 			tree234__search(T1, K, V)
 		)
 	;
-		T = three(K0, _, _, _, _, _, _),
+		T = three(K0, V0, K1, V1, T0, T1, T2),
 		compare(Result0, K, K0),
 		(
 			Result0 = (<),
-			T = three(_, _, _, _, T0, _, _),
 			tree234__search(T0, K, V)
 		;
 			Result0 = (=),
-			T = three(_, V0, _, _, _, _, _),
 			V = V0
 		;
 			Result0 = (>),
-			T = three(_, _, K1, _, _, _, _),
 			compare(Result1, K, K1),
 			(
 				Result1 = (<),
-				T = three(_, _, _, _, _, T1, _),
 				tree234__search(T1, K, V)
 			;
 				Result1 = (=),
-				T = three(_, _, _, V1, _, _, _),
 				V = V1
 			;
 				Result1 = (>),
-				T = three(_, _, _, _, _, _, T2),
 				tree234__search(T2, K, V)
 			)
 		)
 	;
-		T = four(_, _, K1, _, _, _, _, _, _, _),
+		T = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, K, K1),
 		(
 			Result1 = (<),
-			T = four(K0, _, _, _, _, _, _, _, _, _),
 			compare(Result0, K, K0),
 			(
 				Result0 = (<),
-				T = four(_, _, _, _, _, _, T0, _, _, _),
 				tree234__search(T0, K, V)
 			;
 				Result0 = (=),
-				T = four(_, V0, _, _, _, _, _, _, _, _),
 				V = V0
 			;
 				Result0 = (>),
-				T = four(_, _, _, _, _, _, _, T1, _, _),
 				tree234__search(T1, K, V)
 			)
 		;
 			Result1 = (=),
-			T = four(_, _, _, V1, _, _, _, _, _, _),
 			V = V1
 		;
 			Result1 = (>),
-			T = four(_, _, _, _, K2, _, _, _, _, _),
 			compare(Result2, K, K2),
 			(
 				Result2 = (<),
-				T = four(_, _, _, _, _, _, _, _, T2, _),
 				tree234__search(T2, K, V)
 			;
 				Result2 = (=),
-				T = four(_, _, _, _, _, V2, _, _, _, _),
 				V = V2
 			;
 				Result2 = (>),
-				T = four(_, _, _, _, _, _, _, _, _, T3),
 				tree234__search(T3, K, V)
 			)
 		)
@@ -372,20 +354,17 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
 		T = empty,
 		fail
 	;
-		T = two(K0, _, _, _),
+		T = two(K0, V0, T0, T1),
 		compare(Result, SearchK, K0),
 		(
 			Result = (<),
-			T = two(_, _, T0, _),
 			tree234__lower_bound_search(T0, SearchK, K, V)
 		;
 			Result = (=),
-			T = two(_, V0, _, _),
 			K = SearchK,
 			V = V0
 		;
 			Result = (>),
-			T = two(_, _, _, T1),
 			( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
 				K = Kp,
 				V = Vp
@@ -396,24 +375,20 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
 			)
 		)
 	;
-		T = three(K0, _, _, _, _, _, _),
+		T = three(K0, V0, K1, V1, T0, T1, T2),
 		compare(Result0, SearchK, K0),
 		(
 			Result0 = (<),
-			T = three(_, _, _, _, T0, _, _),
 			tree234__lower_bound_search(T0, SearchK, K, V)
 		;
 			Result0 = (=),
-			T = three(_, V0, _, _, _, _, _),
 			K = SearchK,
 			V = V0
 		;
 			Result0 = (>),
-			T = three(_, _, K1, _, _, _, _),
 			compare(Result1, SearchK, K1),
 			(
 				Result1 = (<),
-				T = three(_, _, _, _, _, T1, _),
 				( tree234__lower_bound_search(T1, SearchK,
 					Kp, Vp)
 				-> 
@@ -426,91 +401,76 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
 				)
 			;
 				Result1 = (=),
-				T = three(_, _, _, V1, _, _, _),
 				K = SearchK,
 				V = V1
 			;
 				Result1 = (>),
-				T = three(_, _, _, _, _, _, T2),
 				( tree234__lower_bound_search(T2, SearchK,
 					Kp, Vp)
 				-> 
 					K = Kp,
 					V = Vp
 				;
-					T = three(_, _, _, V1, _, _, _),
 					K = K1,
 					V = V1
 				)
 			)
 		)
 	;
-		T = four(_, _, K1, _, _, _, _, _, _, _),
+		T = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, SearchK, K1),
 		(
 			Result1 = (<),
-			T = four(K0, _, _, _, _, _, _, _, _, _),
 			compare(Result0, SearchK, K0),
 			(
 				Result0 = (<),
-				T = four(_, _, _, _, _, _, T0, _, _, _),
 				tree234__lower_bound_search(T0, SearchK, K, V)
 			;
 				Result0 = (=),
-				T = four(_, V0, _, _, _, _, _, _, _, _),
 				K = SearchK,
 				V = V0
 			;
 				Result0 = (>),
-				T = four(_, _, _, _, _, _, _, T1, _, _),
 				( tree234__lower_bound_search(T1, SearchK,
 					Kp, Vp)
 				-> 
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, V0, _, _, _, _, _, _, _, _),
 					K = K0,
 					V = V0
 				)
 			)
 		;
 			Result1 = (=),
-			T = four(_, _, _, V1, _, _, _, _, _, _),
 			K = SearchK,
 			V = V1
 		;
 			Result1 = (>),
-			T = four(_, _, _, _, K2, _, _, _, _, _),
 			compare(Result2, SearchK, K2),
 			(
 				Result2 = (<),
-				T = four(_, _, _, _, _, _, _, _, T2, _),
 				( tree234__lower_bound_search(T2, SearchK,
 					Kp, Vp)
 				-> 
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, _, _, V1, _, _, _, _, _, _),
 					K = K1,
 					V = V1
 				)
 			;
 				Result2 = (=),
-				T = four(_, _, _, _, _, V2, _, _, _, _),
 				K = SearchK,
 				V = V2
 			;
 				Result2 = (>),
-				T = four(_, _, _, _, _, _, _, _, _, T3),
 				( tree234__lower_bound_search(T3, SearchK,
 					Kp, Vp)
 				-> 
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, _, _, _, _, V2, _, _, _, _),
 					K = K2,
 					V = V2
 				)
@@ -534,11 +494,10 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
 		T = empty,
 		fail
 	;
-		T = two(K0, _, _, _),
+		T = two(K0, V0, T0, T1),
 		compare(Result, SearchK, K0),
 		(
 			Result = (<),
-			T = two(_, _, T0, _),
 			( tree234__upper_bound_search(T0, SearchK, Kp, Vp) -> 
 				K = Kp,
 				V = Vp
@@ -549,130 +508,108 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
 			)
 		;
 			Result = (=),
-			T = two(_, V0, _, _),
 			K = SearchK,
 			V = V0
 		;
 			Result = (>),
-			T = two(_, _, _, T1),
 			tree234__upper_bound_search(T1, SearchK, K, V)
 		)
 	;
-		T = three(K0, _, _, _, _, _, _),
+		T = three(K0, V0, K1, V1, T0, T1, T2),
 		compare(Result0, SearchK, K0),
 		(
 			Result0 = (<),
-			T = three(_, _, _, _, T0, _, _),
 			( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
 				K = Kp,
 				V = Vp
 			;
-				T = three(_, V0, _, _, _, _, _),
 				K = K0,
 				V = V0
 			)
 		;
 			Result0 = (=),
-			T = three(_, V0, _, _, _, _, _),
 			K = SearchK,
 			V = V0
 		;
 			Result0 = (>),
-			T = three(_, _, K1, _, _, _, _),
 			compare(Result1, SearchK, K1),
 			(
 				Result1 = (<),
-				T = three(_, _, _, _, _, T1, _),
 				( tree234__upper_bound_search(T1, SearchK,
 					Kp, Vp)
 				->
 					K = Kp,
 					V = Vp
 				;
-					T = three(_, _, _, V1, _, _, _),
 					K = K1,
 					V = V1
 				)
 			;
 				Result1 = (=),
-				T = three(_, _, _, V1, _, _, _),
 				K = SearchK,
 				V = V1
 			;
 				Result1 = (>),
-				T = three(_, _, _, _, _, _, T2),
 				tree234__upper_bound_search(T2, SearchK, K, V)
 			)
 		)
 	;
-		T = four(_, _, K1, _, _, _, _, _, _, _),
+		T = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, SearchK, K1),
 		(
 			Result1 = (<),
-			T = four(K0, _, _, _, _, _, _, _, _, _),
 			compare(Result0, SearchK, K0),
 			(
 				Result0 = (<),
-				T = four(_, _, _, _, _, _, T0, _, _, _),
 				( tree234__upper_bound_search(T0, SearchK,
 					Kp, Vp)
 				->
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, V0, _, _, _, _, _, _, _, _),
 					K = K0,
 					V = V0
 				)
 			;
 				Result0 = (=),
-				T = four(_, V0, _, _, _, _, _, _, _, _),
 				K = SearchK,
 				V = V0
 			;
 				Result0 = (>),
-				T = four(_, _, _, _, _, _, _, T1, _, _),
 				( tree234__upper_bound_search(T1, SearchK,
 					Kp, Vp)
 				->
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, _, _, V1, _, _, _, _, _, _),
 					K = K1,
 					V = V1
 				)
 			)
 		;
 			Result1 = (=),
-			T = four(_, _, _, V1, _, _, _, _, _, _),
 			K = SearchK,
 			V = V1
 		;
 			Result1 = (>),
-			T = four(_, _, _, _, K2, _, _, _, _, _),
 			compare(Result2, SearchK, K2),
 			(
 				Result2 = (<),
-				T = four(_, _, _, _, _, _, _, _, T2, _),
 				( tree234__upper_bound_search(T2, SearchK,
 					Kp, Vp)
 				->
 					K = Kp,
 					V = Vp
 				;
-					T = four(_, _, _, _, _, V2, _, _, _, _),
 					K = K2,
 					V = V2
 				)
 			;
 				Result2 = (=),
-				T = four(_, _, _, _, _, V2, _, _, _, _),
 				K = SearchK,
 				V = V2
 			;
 				Result2 = (>),
-				T = four(_, _, _, _, _, _, _, _, _, T3),
 				tree234__upper_bound_search(T3, SearchK, K, V)
 			)
 		)
@@ -694,112 +631,85 @@ tree234__update(Tin, K, V, Tout) :-
 		Tin = empty,
 		fail
 	;
-		Tin = two(K0, _, _, _),
+		Tin = two(K0, V0, T0, T1),
 		compare(Result, K, K0),
 		(
 			Result = (<),
-			Tin = two(_, _, T0, _),
 			tree234__update(T0, K, V, NewT0),
-			Tin = two(_, V0, _, T1),
 			Tout = two(K0, V0, NewT0, T1)
 		;
 			Result = (=),
-			Tin = two(_, _, T0, T1),
 			Tout = two(K0, V, T0, T1)
 		;
 			Result = (>),
-			Tin = two(_, _, _, T1),
 			tree234__update(T1, K, V, NewT1),
-			Tin = two(_, V0, T0, _),
 			Tout = two(K0, V0, T0, NewT1)
 		)
 	;
-		Tin = three(K0, _, _, _, _, _, _),
+		Tin = three(K0, V0, K1, V1, T0, T1, T2),
 		compare(Result0, K, K0),
 		(
 			Result0 = (<),
-			Tin = three(_, _, _, _, T0, _, _),
 			tree234__update(T0, K, V, NewT0),
-			Tin = three(_, V0, K1, V1, _, T1, T2),
 			Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
 		;
 			Result0 = (=),
-			Tin = three(_, _, K1, V1, T0, T1, T2),
 			Tout = three(K0, V, K1, V1, T0, T1, T2)
 		;
 			Result0 = (>),
-			Tin = three(_, _, K1, _, _, _, _),
 			compare(Result1, K, K1),
 			(
 				Result1 = (<),
-				Tin = three(_, _, _, _, _, T1, _),
 				tree234__update(T1, K, V, NewT1),
-				Tin = three(_, V0, _, V1, T0, _, T2),
 				Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
 			;
 				Result1 = (=),
-				Tin = three(_, V0, _, _, T0, T1, T2),
 				Tout = three(K0, V0, K1, V, T0, T1, T2)
 			;
 				Result1 = (>),
-				Tin = three(_, _, _, _, _, _, T2),
 				tree234__update(T2, K, V, NewT2),
-				Tin = three(_, V0, _, V1, T0, T1, _),
 				Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
 			)
 		)
 	;
-		Tin = four(_, _, K1, _, _, _, _, _, _, _),
+		Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, K, K1),
 		(
 			Result1 = (<),
-			Tin = four(K0, _, _, _, _, _, _, _, _, _),
 			compare(Result0, K, K0),
 			(
 				Result0 = (<),
-				Tin = four(_, _, _, _, _, _, T0, _, _, _),
 				tree234__update(T0, K, V, NewT0),
-				Tin = four(_, V0, _, V1, K2, V2, _, T1, T2, T3),
 				Tout = four(K0, V0, K1, V1, K2, V2,
 					NewT0, T1, T2, T3)
 			;
 				Result0 = (=),
-				Tin = four(_, _, _, V1, K2, V2, T0, T1, T2, T3),
 				Tout = four(K0, V, K1, V1, K2, V2,
 					T0, T1, T2, T3)
 			;
 				Result0 = (>),
-				Tin = four(_, _, _, _, _, _, _, T1, _, _),
 				tree234__update(T1, K, V, NewT1),
-				Tin = four(_, V0, _, V1, K2, V2, T0, _, T2, T3),
 				Tout = four(K0, V0, K1, V1, K2, V2,
 					T0, NewT1, T2, T3)
 			)
 		;
 			Result1 = (=),
-			Tin = four(K0, V0, _, _, K2, V2, T0, T1, T2, T3),
 			Tout = four(K0, V0, K1, V, K2, V2, T0, T1, T2, T3)
 		;
 			Result1 = (>),
-			Tin = four(_, _, _, _, K2, _, _, _, _, _),
 			compare(Result2, K, K2),
 			(
 				Result2 = (<),
-				Tin = four(_, _, _, _, _, _, _, _, T2, _),
 				tree234__update(T2, K, V, NewT2),
-				Tin = four(K0, V0, _, V1, _, V2, T0, T1, _, T3),
 				Tout = four(K0, V0, K1, V1, K2, V2,
 					T0, T1, NewT2, T3)
 			;
 				Result2 = (=),
-				Tin = four(K0, V0, _, V1, _, _, T0, T1, T2, T3),
 				Tout = four(K0, V0, K1, V1, K2, V,
 					T0, T1, T2, T3)
 			;
 				Result2 = (>),
-				Tin = four(_, _, _, _, _, _, _, _, _, T3),
 				tree234__update(T3, K, V, NewT3),
-				Tin = four(K0, V0, _, V1, _, V2, T0, T1, T2, _),
 				Tout = four(K0, V0, K1, V1, K2, V2,
 					T0, T1, T2, NewT3)
 			)

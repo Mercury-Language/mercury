@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,30 +93,30 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 			Goals, SlotInfo),
 		conj_list_to_goal(Goals, GoalInfo0, Goal)
 	;
-		GoalExpr0 = par_conj(Goals0, SM),
+		GoalExpr0 = par_conj(Goals0),
 			% saved_vars_in_disj treats its goal list as
 			% an independent list of goals, so we can use
 			% it to process the list of parallel conjuncts too.
 		saved_vars_in_disj(Goals0, SlotInfo0, Goals, SlotInfo),
-		Goal = par_conj(Goals, SM) - GoalInfo0
+		Goal = par_conj(Goals) - GoalInfo0
 	;
-		GoalExpr0 = disj(Goals0, SM),
+		GoalExpr0 = disj(Goals0),
 		saved_vars_in_disj(Goals0, SlotInfo0, Goals, SlotInfo),
-		Goal = disj(Goals, SM) - GoalInfo0
+		Goal = disj(Goals) - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
 		saved_vars_in_goal(NegGoal0, SlotInfo0, NegGoal, SlotInfo),
 		Goal = not(NegGoal) - GoalInfo0
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0, SM),
+		GoalExpr0 = switch(Var, CanFail, Cases0),
 		saved_vars_in_switch(Cases0, SlotInfo0, Cases, SlotInfo),
-		Goal = switch(Var, CanFail, Cases, SM) - GoalInfo0
+		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, SM),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
 		saved_vars_in_goal(Cond0, SlotInfo0, Cond, SlotInfo1),
 		saved_vars_in_goal(Then0, SlotInfo1, Then, SlotInfo2),
 		saved_vars_in_goal(Else0, SlotInfo2, Else, SlotInfo),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo0
+		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
 		GoalExpr0 = some(Var, CanRemove, SubGoal0),
 		saved_vars_in_goal(SubGoal0, SlotInfo0, SubGoal, SlotInfo),
@@ -222,12 +222,12 @@ can_push(Var, First) :-
 		;
 			FirstExpr = not(_)
 		;
-			FirstExpr = disj(_, _)
+			FirstExpr = disj(_)
 		;
-			FirstExpr = switch(SwitchVar, _, _, _),
+			FirstExpr = switch(SwitchVar, _, _),
 			Var \= SwitchVar
 		;
-			FirstExpr = if_then_else(_, _, _, _, _)
+			FirstExpr = if_then_else(_, _, _, _)
 		)
 	;
 		true
@@ -307,7 +307,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 			saved_vars_delay_goal(Goals1, Construct, Var,
 				IsNonLocal, SlotInfo0, Goals, SlotInfo)
 		;
-			Goal0Expr = par_conj(_ParConj, _SM),
+			Goal0Expr = par_conj(_ParConj),
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, SlotInfo0, Goals1, SlotInfo),
 			Goals = [Goal0|Goals1]
@@ -339,15 +339,15 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo2, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
-			Goal0Expr = disj(Disjuncts0, SM),
+			Goal0Expr = disj(Disjuncts0),
 			push_into_goals_rename(Disjuncts0, Construct, Var,
 				SlotInfo0, Disjuncts, SlotInfo1),
-			Goal1 = disj(Disjuncts, SM) - Goal0Info,
+			Goal1 = disj(Disjuncts) - Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
-			Goal0Expr = switch(SwitchVar, CF, Cases0, SM),
+			Goal0Expr = switch(SwitchVar, CF, Cases0),
 			( SwitchVar = Var ->
 				saved_vars_delay_goal(Goals0, Construct, Var,
 					IsNonLocal, SlotInfo0,
@@ -356,7 +356,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 			;
 				push_into_cases_rename(Cases0, Construct, Var,
 					SlotInfo0, Cases, SlotInfo1),
-				Goal1 = switch(SwitchVar, CF, Cases, SM)
+				Goal1 = switch(SwitchVar, CF, Cases)
 					- Goal0Info,
 				saved_vars_delay_goal(Goals0, Construct, Var,
 					IsNonLocal, SlotInfo1,
@@ -364,14 +364,14 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				Goals = [Goal1 | Goals1]
 			)
 		;
-			Goal0Expr = if_then_else(V, Cond0, Then0, Else0, SM),
+			Goal0Expr = if_then_else(V, Cond0, Then0, Else0),
 			push_into_goal_rename(Cond0, Construct, Var,
 				SlotInfo0, Cond, SlotInfo1),
 			push_into_goal_rename(Then0, Construct, Var,
 				SlotInfo1, Then, SlotInfo2),
 			push_into_goal_rename(Else0, Construct, Var,
 				SlotInfo2, Else, SlotInfo3),
-			Goal1 = if_then_else(V, Cond, Then, Else, SM)
+			Goal1 = if_then_else(V, Cond, Then, Else)
 				- Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, SlotInfo3, Goals1, SlotInfo),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 % in each block by looking for the temp(_, _) lvals that represent those local
 % variables.
 %
-% This module looks for two patterns. The first is
+% This module looks for three patterns. The first is
 %
 %	<instruction that defines a fake register>
 %	<instructions that use and possibly define the fake register>
@@ -45,6 +45,15 @@
 % lval as well. This is a win because the cost of the assignment is less than
 % the savings from replacing the fake register or stack slot references with
 % local variable references.
+%
+% The third pattern we look for consists of a sequence of instructions in which
+% a false register or stack slot is used several times, including at least once
+% in the first instruction as a part of a path to a memory location, before
+% being redefined or maybe aliased. This typically occurs when the code
+% generator fills in the fields of a structure or extracts the fields of a
+% structure. Again, we replace the false register or stack slot with a
+% temporary after assigning the value in the false register or stack slot to
+% the temporary.
 
 %-----------------------------------------------------------------------------%
 
@@ -56,18 +65,21 @@
 :- import_module list, counter.
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,
-	proc_label::in, int::in, counter::in, counter::out) is det.
+	proc_label::in, int::in, int::in, counter::in, counter::out) is det.
 
 :- implementation.
 
 :- import_module ll_backend__basic_block, ll_backend__livemap.
-:- import_module ll_backend__exprn_aux, ll_backend__opt_util.
-:- import_module int, set, map, counter, std_util, require.
+:- import_module ll_backend__exprn_aux, ll_backend__code_util.
+:- import_module ll_backend__opt_util.
+
+:- import_module int, set, map, std_util, require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, C0, C) :-
+use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, AccessThreshold,
+		C0, C) :-
 	create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C1,
 		LabelSeq, BlockMap0),
 	flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
@@ -79,17 +91,18 @@ use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, C0, C) :-
 		C = C0
 	;
 		MaybeLiveMap = yes(LiveMap),
-		list__foldl(use_local_vars_block(LiveMap, NumRealRRegs),
-			LabelSeq, BlockMap0, BlockMap),
+		list__foldl(use_local_vars_block(LiveMap, NumRealRRegs,
+			AccessThreshold), LabelSeq, BlockMap0, BlockMap),
 		flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
 		list__append(Comments, Instrs1, Instrs),
 		C = C1
 	).
 
-:- pred use_local_vars_block(livemap::in, int::in, label::in, block_map::in,
-	block_map::out) is det.
+:- pred use_local_vars_block(livemap::in, int::in, int::in, label::in,
+	block_map::in, block_map::out) is det.
 
-use_local_vars_block(LiveMap, NumRealRRegs, Label, BlockMap0, BlockMap) :-
+use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
+		BlockMap0, BlockMap) :-
 	map__lookup(BlockMap0, Label, BlockInfo0),
 	BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
 		JumpLabels, MaybeFallThrough),
@@ -111,7 +124,8 @@ use_local_vars_block(LiveMap, NumRealRRegs, Label, BlockMap0, BlockMap) :-
 	),
 	counter__init(1, TempCounter0),
 	use_local_vars_instrs(RestInstrs0, RestInstrs,
-		TempCounter0, TempCounter, NumRealRRegs, MaybeEndLiveLvals),
+		TempCounter0, TempCounter, NumRealRRegs, AccessThreshold,
+		MaybeEndLiveLvals),
 	( TempCounter = TempCounter0 ->
 		BlockMap = BlockMap0
 	;
@@ -165,25 +179,39 @@ find_live_lvals_in_annotations(Uinstr - _, LiveLvals0, LiveLvals) :-
 		LiveLvals = LiveLvals0
 	).
 
+%-----------------------------------------------------------------------------%
+
 :- pred use_local_vars_instrs(list(instruction)::in, list(instruction)::out,
+	counter::in, counter::out, int::in, int::in, maybe(lvalset)::in)
+	is det.
+
+use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
+		NumRealRRegs, AccessThreshold, MaybeEndLiveLvals) :-
+	opt_assign(RestInstrs0, RestInstrs1,
+		TempCounter0, TempCounter1, NumRealRRegs, MaybeEndLiveLvals),
+	( AccessThreshold >= 1 ->
+		opt_access(RestInstrs1, RestInstrs,
+			TempCounter1, TempCounter, NumRealRRegs, set__init,
+			AccessThreshold)
+	;
+		RestInstrs = RestInstrs1,
+		TempCounter = TempCounter1
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred opt_assign(list(instruction)::in, list(instruction)::out,
 	counter::in, counter::out, int::in, maybe(lvalset)::in) is det.
 
-use_local_vars_instrs([], [], TempCounter, TempCounter, _, _).
-use_local_vars_instrs([Instr0 | TailInstrs0], Instrs,
+opt_assign([], [], TempCounter, TempCounter, _, _).
+opt_assign([Instr0 | TailInstrs0], Instrs,
 		TempCounter0, TempCounter, NumRealRRegs, MaybeEndLiveLvals) :-
 	Instr0 = Uinstr0 - _Comment0,
 	(
 		( Uinstr0 = assign(ToLval, _FromRval)
 		; Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _Type)
 		),
-		(
-			ToLval = reg(r, RegNum),
-			RegNum > NumRealRRegs
-		;
-			ToLval = stackvar(_)
-		;
-			ToLval = framevar(_)
-		)
+		base_lval_worth_replacing(NumRealRRegs, ToLval)
 	->
 		counter__allocate(TempNum, TempCounter0, TempCounter1),
 		NewLval = temp(r, TempNum),
@@ -197,7 +225,7 @@ use_local_vars_instrs([Instr0 | TailInstrs0], Instrs,
 			list__map_foldl(exprn_aux__substitute_lval_in_instr(
 				ToLval, NewLval),
 				TailInstrs0, TailInstrs1, 0, _),
-			use_local_vars_instrs(TailInstrs1, TailInstrs,
+			opt_assign(TailInstrs1, TailInstrs,
 				TempCounter1, TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr | TailInstrs]
@@ -209,22 +237,97 @@ use_local_vars_instrs([Instr0 | TailInstrs0], Instrs,
 			substitute_lval_in_defn(ToLval, NewLval,
 				Instr0, Instr),
 			CopyInstr = assign(ToLval, lval(NewLval)) - "",
-			use_local_vars_instrs(TailInstrs1, TailInstrs,
+			opt_assign(TailInstrs1, TailInstrs,
 				TempCounter1, TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr, CopyInstr | TailInstrs]
 		;
-			use_local_vars_instrs(TailInstrs0, TailInstrs,
+			opt_assign(TailInstrs0, TailInstrs,
 				TempCounter0, TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr0 | TailInstrs]
 		)
 	;
-		use_local_vars_instrs(TailInstrs0, TailInstrs,
+		opt_assign(TailInstrs0, TailInstrs,
 			TempCounter0, TempCounter,
 			NumRealRRegs, MaybeEndLiveLvals),
 		Instrs = [Instr0 | TailInstrs]
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred opt_access(list(instruction)::in, list(instruction)::out,
+	counter::in, counter::out, int::in, lvalset::in, int::in) is det.
+
+opt_access([], [], TempCounter, TempCounter, _, _, _).
+opt_access([Instr0 | TailInstrs0], Instrs,
+		TempCounter0, TempCounter, NumRealRRegs, AlreadyTried0,
+		AccessThreshold) :-
+	Instr0 = Uinstr0 - _Comment0,
+	(
+		Uinstr0 = assign(ToLval, FromRval),
+		lvals_in_lval(ToLval, ToSubLvals),
+		lvals_in_rval(FromRval, FromSubLvals),
+		list__append(ToSubLvals, FromSubLvals, SubLvals),
+		list__filter(
+			base_lval_worth_replacing_not_tried(
+				AlreadyTried0, NumRealRRegs),
+			SubLvals, ReplaceableSubLvals),
+		ReplaceableSubLvals = [ChosenLval | ChooseableRvals]
+	->
+		counter__allocate(TempNum, TempCounter0, TempCounter1),
+		TempLval = temp(r, TempNum),
+		lvals_in_lval(ChosenLval, SubChosenLvals),
+		require(unify(SubChosenLvals, []),
+			"opt_access: nonempty SubChosenLvals"),
+		substitute_lval_in_instr_until_defn(ChosenLval, TempLval,
+			[Instr0 | TailInstrs0], Instrs1, 0, NumReplacements),
+		set__insert(AlreadyTried0, ChosenLval, AlreadyTried1),
+		( NumReplacements >= AccessThreshold ->
+			TempAssign = assign(TempLval, lval(ChosenLval))
+				- "factor out common sub lval",
+			Instrs2 = [TempAssign | Instrs1],
+			opt_access(Instrs2, Instrs, TempCounter1, TempCounter,
+				NumRealRRegs, AlreadyTried1, AccessThreshold)
+		; ChooseableRvals = [_ | _] ->
+			opt_access([Instr0 | TailInstrs0], Instrs,
+				TempCounter0, TempCounter,
+				NumRealRRegs, AlreadyTried1, AccessThreshold)
+		;
+			opt_access(TailInstrs0, TailInstrs,
+				TempCounter0, TempCounter,
+				NumRealRRegs, set__init, AccessThreshold),
+			Instrs = [Instr0 | TailInstrs]
+		)
+	;
+		opt_access(TailInstrs0, TailInstrs,
+			TempCounter0, TempCounter,
+			NumRealRRegs, set__init, AccessThreshold),
+		Instrs = [Instr0 | TailInstrs]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred base_lval_worth_replacing(int::in, lval::in) is semidet.
+
+base_lval_worth_replacing(NumRealRRegs, Lval) :-
+	(
+		Lval = reg(r, RegNum),
+		RegNum > NumRealRRegs
+	;
+		Lval = stackvar(_)
+	;
+		Lval = framevar(_)
+	).
+
+:- pred base_lval_worth_replacing_not_tried(lvalset::in, int::in, lval::in)
+	is semidet.
+
+base_lval_worth_replacing_not_tried(AlreadyTried, NumRealRRegs, Lval) :-
+	\+ set__member(Lval, AlreadyTried),
+	base_lval_worth_replacing(NumRealRRegs, Lval).
+
+%-----------------------------------------------------------------------------%
 
 	% When processing substituting e.g. tempr1 for e.g. r2
 	% in the instruction that defines r2, we must be careful

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,17 +55,16 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_module, hlds__hlds_data.
+:- import_module hlds__hlds_module, hlds__hlds_data, hlds__hlds_llds.
 :- import_module check_hlds__polymorphism, check_hlds__type_util.
 :- import_module check_hlds__mode_util, check_hlds__unify_proc, hlds__instmap.
-:- import_module backend_libs__builtin_ops.
 :- import_module ll_backend__arg_info, ll_backend__code_util.
 :- import_module ll_backend__trace.
 :- import_module aditi_backend__rl.
-:- import_module libs__globals, libs__options.
+:- import_module backend_libs__builtin_ops.
+:- import_module libs__globals, libs__options, libs__tree. 
 
-:- import_module std_util, bool, int, libs__tree, map, set.
-:- import_module varset, require, string.
+:- import_module bool, int, string, map, set, std_util, require, varset.
 
 %---------------------------------------------------------------------------%
 
@@ -223,12 +222,9 @@ call_gen__maybe_remove_aditi_state_args(GenericCall, Args0, Types0, Modes0,
 		% not stuff up the argument numbers in error messages).
 		% Here is as good a place as any.
 		get_state_args_det(Types0, TupleTypes, _, _),
-		call_gen__remove_tuple_state_arg(TupleTypes,
-			Args0, Args),
-		call_gen__remove_tuple_state_arg(TupleTypes,
-			Types0, Types),
-		call_gen__remove_tuple_state_arg(TupleTypes,
-			Modes0, Modes)
+		call_gen__remove_tuple_state_arg(TupleTypes, Args0, Args),
+		call_gen__remove_tuple_state_arg(TupleTypes, Types0, Types),
+		call_gen__remove_tuple_state_arg(TupleTypes, Modes0, Modes)
 	;
 		Args = Args0,
 		Types = Types0,
@@ -596,13 +592,19 @@ call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs) -->
 	hlds_goal_info::in, set(prog_var)::in, instmap::in,
 	list(liveinfo)::out, code_info::in, code_info::out) is det.
 
-call_gen__handle_return(ArgsInfos, _GoalInfo, _NonLiveOutputs, ReturnInstMap,
+call_gen__handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
 		ReturnLiveLvalues) -->
-	code_info__clear_all_registers,
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap_delta_is_reachable(InstMapDelta) ->
+		OkToDeleteAny = no
+	;
+		OkToDeleteAny = yes
+	},
+	code_info__clear_all_registers(OkToDeleteAny),
 	code_info__get_forward_live_vars(Liveness),
 	call_gen__rebuild_registers(ArgsInfos, Liveness, OutputArgLocs),
 	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		ReturnLiveLvalues).
+		OkToDeleteAny, ReturnLiveLvalues).
 
 :- pred call_gen__find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
 	set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.

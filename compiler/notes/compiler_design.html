@@ -701,18 +701,34 @@ The last HLDS-to-HLDS transformation implements deep profiling
 			<dd>
 			Currently uses one of two simple algorithms, but
 			we may add other algorithms later.
+		<dt> transforming procedure definitions to reduce the number
+			of variables that need their own stack slots
+			<dd>
+			The main algorithm in stack_opt.m figures out when
+			variable A can be reached from a cell pointed to by
+			variable B, so that storing variable B on the stack
+			obviates the need to store variable A on the stack
+			as well.
+			This algorithm relies on an implementation of
+			the maximal matching algorithm in matching.m.
 		<dt> annotation of goals with liveness information (liveness.m)
 			<dd>
 			This records the birth and death of each variable
 			in the HLDS goal_info.
 		<dt> allocation of stack slots
 			<dd>
-			This is done by live_vars.m, which works
-			out which variables need to be saved on the
-			stack when (trace.m determines what variables
-			are needed for debugging purposes).
-			It then uses graph_colour.m to determine
-			a good allocation of variables to stack slots.
+			This is done by stack_alloc.m, with the assistance of
+			the following modules:
+
+			<ul>
+			<li> live_vars.m works out which variables need
+			to be saved on the stack when.
+
+			<li> graph_colour.m contains the algorithm that
+			stack_alloc.m calls to convert sets of variables
+			that must be saved on the stack at the same time
+			to an assignment of a stack slot to each such variable.
+			</ul>
 		<dt> migration of builtins following branched structures
 			<dd>
 			This transformation, which is performed by
@@ -767,9 +783,11 @@ The last HLDS-to-HLDS transformation implements deep profiling
 		<li> commit_gen.m (commits)
 		<li> pragma_c_gen.m (embedded C code)
 		</ul>
-		<p>
 
-	It also calls middle_rec.m to do middle recursion optimization.
+	<p>
+
+	code_gen.m also calls middle_rec.m to do middle recursion optimization,
+	which is implemented during code generation.
 
 	<p>
 
@@ -810,6 +828,10 @@ The last HLDS-to-HLDS transformation implements deep profiling
 		<dt> trace.m
 			<dd>
 			Inserts calls to the runtime debugger.
+		<dt> trace_params.m
+			<dd>
+			Holds the parameter settings controlling
+			the handling of execution tracing.
 		</dl>
 
 <dt> code generation for `pragma export' declarations (export.m)
@@ -1234,6 +1256,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-03-18 04:44:16 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-28 03:44:36 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

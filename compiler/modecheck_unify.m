@@ -573,8 +573,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		%,
 		% Unifying two preds is not erroneous as far as the
 		% mode checker is concerned, but a mode _error_.
-		map__init(Empty),
-		Goal = disj([], Empty),
+		Goal = disj([]),
 		FinalModeInfo = ModeInfo
 	;
 		Functor = functor(ConsId, ArgVars),
@@ -831,8 +830,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 		%
 		% Unifying two preds is not erroneous as far as the
 		% mode checker is concerned, but a mode _error_.
-		map__init(Empty),
-		Unify = disj([], Empty)
+		Unify = disj([])
 	;
 		Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification,
 				UnifyContext)

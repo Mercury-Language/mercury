@@ -5225,8 +5225,7 @@ primitive goals that can fail.
 @sp 1
 @item --optimize-saved-vars
 @findex --optimize-saved-vars
-Reorder goals to minimize the number of variables
-that have to be saved across calls.
+Minimize the number of variables that have to be saved across calls.
 
 @sp 1
 @item --deforestation

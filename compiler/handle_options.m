@@ -606,6 +606,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			globals__io_set_option(optimize_duplicate_calls,
 				bool(no)),
 			globals__io_set_option(optimize_constructor_last_call,
+				bool(no)),
+			globals__io_set_option(optimize_saved_vars_cell,
 				bool(no))
 		;
 			[]
@@ -650,7 +652,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			% The following options cause the info required
 			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
-		globals__io_set_option(body_typeinfo_liveness, bool(yes))
+		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
+			% To support up-level printing, we need to save
+			% variables across a call even if the call cannot
+			% succeed.
+		globals__io_set_option(opt_no_return_calls, bool(no))
 	;
 		[]
 	),
@@ -977,6 +983,10 @@ postprocess_options_lowlevel -->
 		% --no-lazy-code requires --follow-vars for acceptable
 		% performance.
 	option_neg_implies(lazy_code, follow_vars, bool(yes)),
+
+		% --optimize-saved-vars-cell requires --use-local-vars for
+		% acceptable performance.
+	option_implies(optimize_saved_vars_cell, use_local_vars, bool(yes)),
 
 		% --optimize-frames requires --optimize-labels and
 		% --optimize-jumps
@@ -1465,3 +1475,5 @@ convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("paths", "cP").
 convert_dump_alias("petdr", "din").
+convert_dump_alias("osv", "bcdglmnpruvP").	% for debugging
+						% --optimize-saved-vars-cell

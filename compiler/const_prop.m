@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -382,7 +382,6 @@ make_construction(Var - _, ConsId, Goal) :-
 :- mode make_true_or_fail(in, in, out, out) is det.
 
 make_true_or_fail(yes, GoalInfo, conj([]), GoalInfo).
-make_true_or_fail(no, GoalInfo, disj([], SM), GoalInfo) :-
-	map__init(SM).
+make_true_or_fail(no, GoalInfo, disj([]), GoalInfo).
 
 %------------------------------------------------------------------------------%

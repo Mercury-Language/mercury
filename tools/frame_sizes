@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# This script extracts information about the sizes of stack frames of
+# procedures in various versions of the Mercury compiler (compiled with
+# the LLDS back end) from the C files saved by makebatch -c.
+#
+# Given a batch named x, this script puts the summary files in SP.x.n,
+# where n goes from 01 up to the number of versions in the batch.
+#
+# These files contains one line per procedure that has a stack frame.
+# Each line contains the following fields.
+#
+# - the version number of the batch;
+# - the size of the stack frame of the procedure;
+# - the id of the stack containing the stack frame (det or non);
+# - an indication whether the procedure is from a "pred" or a "func";
+# - the id of the procedure, complete with module name, arity and mode number.
+
+if test $# -lt 1
+then
+	echo "Usage: frame_sizes batchname ..."
+	exit 1
+fi
+
+for prefix in $@
+do
+	n=1
+	n2=`two_digit $n`
+	while test -d $prefix.library.$n2
+	do
+		echo "creating SP.$prefix.$n2 and AVG.$prefix.$n2"
+		gunzip $prefix.library.$n2/*.c.gz $prefix.compiler.$n2/*.c.gz > /dev/null 2>&1
+		( echo VERSION_NUMBER $n2 ; cat $prefix.library.$n2/*.c $prefix.compiler.$n2/*.c ) | extract_incr_sp > SP.$prefix.$n2
+		gzip $prefix.library.$n2/*.c $prefix.compiler.$n2/*.c > /dev/null 2>&1
+		avg_frame_size SP.$prefix.$n2 > AVG.$prefix.$n2
+		n=`expr $n + 1`
+		n2=`two_digit $n`
+	done
+done

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 :- interface. 
 :- import_module parse_tree__prog_data, hlds__hlds_module, hlds__hlds_pred.
 :- import_module backend_libs__code_model, ll_backend__llds.
-:- import_module list, assoc_list.
+:- import_module list, assoc_list, set.
 
 	% Annotate every non-aditi procedure in the module with information
 	% about its argument passing interface.
@@ -30,9 +30,9 @@
 :- pred make_arg_infos(list(type)::in, list(mode)::in, code_model::in,
 	module_info::in, list(arg_info)::out) is det.
 
-	% Given a list of the head variables and their argument information,
-	% return a list giving the input variables and their initial locations.
-:- pred arg_info__build_input_arg_list(assoc_list(prog_var, arg_info)::in,
+	% Given a procedure that already has its arg_info field filled in,
+	% return a list giving its input variables and their initial locations.
+:- pred arg_info__build_input_arg_list(proc_info::in,
 	assoc_list(prog_var, lval)::out) is det.
 
 	% Divide the given list of arguments into those treated as inputs
@@ -59,6 +59,31 @@
 :- pred arg_info__partition_args(assoc_list(prog_var, arg_info)::in,
 	assoc_list(prog_var, arg_info)::out,
 	assoc_list(prog_var, arg_info)::out) is det.
+
+	% Partition the head variables of the given procedure into three sets:
+	% the inputs, the outputs, and the unused arguments. This is done based
+	% on the arg_info annotations of the arguments, which means that this
+	% predicate should only be called after the arg_info pass has been
+	% run.
+:- pred arg_info__partition_proc_args(proc_info::in, module_info::in,
+	set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
+
+	% Like arg_info__partition_proc_args, but partitions the actual
+	% arguments of a call (given in the fourth argument) instead of the
+	% head variables. Since the first (proc_info) argument is now the
+	% proc_info of the callee, we need to pass the types of the arguments
+	% (in the caller) separately.
+:- pred arg_info__partition_proc_call_args(proc_info::in, vartypes::in,
+	module_info::in, list(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::out, set(prog_var)::out) is det.
+
+	% Like arg_info__partition_proc_call_args, but partitions the actual
+	% arguments of a generic call, so instead of looking up the types and
+	% modes of the arguments in the module_info, we get them from the
+	% arguments.
+:- pred arg_info__partition_generic_call_args(module_info::in,
+	list(prog_var)::in, list(type)::in, list(mode)::in,
+	set(prog_var)::out, set(prog_var)::out, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -181,8 +206,17 @@ make_arg_infos_list([_|_], [], _, _, _, _) :-
 
 %---------------------------------------------------------------------------%
 
-arg_info__build_input_arg_list([], []).
-arg_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
+arg_info__build_input_arg_list(ProcInfo, VarLvals) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_arg_info(ProcInfo, ArgInfos),
+	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
+	arg_info__build_input_arg_list_2(VarArgInfos, VarLvals).
+
+:- pred arg_info__build_input_arg_list_2(assoc_list(prog_var, arg_info)::in,
+	assoc_list(prog_var, lval)::out) is det.
+
+arg_info__build_input_arg_list_2([], []).
+arg_info__build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
 	Arg = arg_info(Loc, Mode),
 	( Mode = top_in ->
 		code_util__arg_loc_to_register(Loc, Reg),
@@ -190,7 +224,7 @@ arg_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 	;
 		VarArgs = VarArgs0
 	),
-	arg_info__build_input_arg_list(Rest0, VarArgs0).
+	arg_info__build_input_arg_list_2(Rest0, VarArgs0).
 
 %---------------------------------------------------------------------------%
 
@@ -274,3 +308,72 @@ arg_info__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 	).
 
 %---------------------------------------------------------------------------%
+
+arg_info__partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
+	proc_info_headvars(ProcInfo, Vars),
+	proc_info_argmodes(ProcInfo, Modes),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, Types),
+	arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+		Inputs, Outputs, Unuseds).
+
+arg_info__partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
+		Inputs, Outputs, Unuseds) :-
+	proc_info_argmodes(ProcInfo, Modes),
+	map__apply_to_list(Vars, VarTypes, Types),
+	arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+		Inputs, Outputs, Unuseds).
+
+arg_info__partition_generic_call_args(ModuleInfo, Vars, Types, Modes,
+		Inputs, Outputs, Unuseds) :-
+	arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+		Inputs, Outputs, Unuseds).
+
+:- pred arg_info__do_partition_proc_args(module_info::in, list(prog_var)::in,
+	list(type)::in, list(mode)::in, set(prog_var)::out,
+	set(prog_var)::out, set(prog_var)::out) is det.
+
+arg_info__do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
+		Inputs, Outputs, Unuseds) :-
+	(
+		arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+			set__init, Inputs1, set__init, Outputs1,
+			set__init, Unuseds1)
+	->
+		Inputs = Inputs1,
+		Outputs = Outputs1,
+		Unuseds = Unuseds1
+	;
+		error("arg_info__do_partition_proc_args: list length mismatch")
+	).
+
+:- pred arg_info__partition_proc_args_2(list(prog_var)::in, list(type)::in,
+	list(mode)::in, module_info::in,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out) is semidet.
+
+arg_info__partition_proc_args_2([], [], [], _ModuleInfo,
+		Inputs, Inputs, Outputs, Outputs, Unuseds, Unuseds).
+arg_info__partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
+		ModuleInfo, Inputs0, Inputs, Outputs0, Outputs,
+		Unuseds0, Unuseds) :-
+	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
+	(
+		ArgMode = top_in,
+		set__insert(Inputs0, Var, Inputs1),
+		Outputs1 = Outputs0,
+		Unuseds1 = Unuseds0
+	;
+		ArgMode = top_out,
+		Inputs1 = Inputs0,
+		set__insert(Outputs0, Var, Outputs1),
+		Unuseds1 = Unuseds0
+	;
+		ArgMode = top_unused,
+		Inputs1 = Inputs0,
+		Outputs1 = Outputs0,
+		set__insert(Unuseds0, Var, Unuseds1)
+	),
+	arg_info__partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
+		Inputs1, Inputs, Outputs1, Outputs, Unuseds1, Unuseds).

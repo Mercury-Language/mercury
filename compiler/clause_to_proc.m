@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,8 +191,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 			GoalInfo2 = GoalInfo
 		),
 
-		map__init(Empty),
-		Goal = disj(GoalList, Empty) - GoalInfo
+		Goal = disj(GoalList) - GoalInfo
 	),
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, Proc).

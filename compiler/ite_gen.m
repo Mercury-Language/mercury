@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 :- import_module ll_backend__code_info.
 
 :- pred ite_gen__generate_ite(code_model::in, hlds_goal::in, hlds_goal::in,
-	hlds_goal::in, store_map::in, code_tree::out,
+	hlds_goal::in, hlds_goal_info::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 :- pred ite_gen__generate_negation(code_model::in, hlds_goal::in,
@@ -32,15 +32,17 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_data, libs__tree, backend_libs__builtin_ops.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__instmap, hlds__hlds_llds.
 :- import_module ll_backend__code_gen, ll_backend__code_util.
-:- import_module ll_backend__trace, libs__options, libs__globals.
-:- import_module hlds__instmap.
+:- import_module ll_backend__trace.
+:- import_module backend_libs__builtin_ops.
+:- import_module libs__options, libs__globals, libs__tree.
 
 :- import_module bool, set, term, list, map, std_util, require.
 
-ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
-		-->
+ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
+		Code) -->
 	{ CondGoal0 = CondExpr - CondInfo0 },
 	{ goal_info_get_code_model(CondInfo0, CondCodeModel) },
 	{
@@ -129,6 +131,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 			MaybeTicketSlot, commit, ResetTicketCode)
 	),
 
+	{ goal_info_get_store_map(IteGoalInfo, StoreMap) },
 	code_info__get_instmap(EndCondInstMap),
 	( { instmap__is_unreachable(EndCondInstMap) } ->
 		% If the instmap indicates we cannot reach the then part,

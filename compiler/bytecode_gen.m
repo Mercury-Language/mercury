@@ -233,10 +233,10 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		GoalExpr = conj(GoalList),
 		bytecode_gen__conj(GoalList, ByteInfo0, ByteInfo, Code)
 	;
-		GoalExpr = par_conj(_GoalList, _SM),
+		GoalExpr = par_conj(_GoalList),
 		sorry(this_file, "bytecode_gen of parallel conjunction")
 	;
-		GoalExpr = disj(GoalList, _),
+		GoalExpr = disj(GoalList),
 		( GoalList = [] ->
 			Code = node([fail]),
 			ByteInfo = ByteInfo0
@@ -250,7 +250,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			Code = tree(EnterCode, tree(DisjCode, EndofCode))
 		)
 	;
-		GoalExpr = switch(Var, _, CasesList, _),
+		GoalExpr = switch(Var, _, CasesList),
 		bytecode_gen__get_next_label(ByteInfo0, EndLabel, ByteInfo1),
 		bytecode_gen__switch(CasesList, Var, ByteInfo1, EndLabel,
 			ByteInfo, SwitchCode),
@@ -259,7 +259,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		EndofCode = node([endof_switch, label(EndLabel)]),
 		Code = tree(EnterCode, tree(SwitchCode, EndofCode))
 	;
-		GoalExpr = if_then_else(_Vars, Cond, Then, Else, _),
+		GoalExpr = if_then_else(_Vars, Cond, Then, Else),
 		bytecode_gen__get_next_label(ByteInfo0, EndLabel, ByteInfo1),
 		bytecode_gen__get_next_label(ByteInfo1, ElseLabel, ByteInfo2),
 		bytecode_gen__get_next_temp(ByteInfo2, FrameTemp, ByteInfo3),

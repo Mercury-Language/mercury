@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 :- type trace_level.
 :- type trace_suppress_items.
 
-	% the bool should be the setting of the `require_tracing' option.
+	% The bool should be the setting of the `require_tracing' option.
 :- pred convert_trace_level(string::in, bool::in, trace_level::out) is semidet.
 
 :- pred convert_trace_suppress(string::in, trace_suppress_items::out)
@@ -31,6 +31,7 @@
 
 	% These functions check for various properties of the trace level.
 :- func trace_level_is_none(trace_level) = bool.
+:- func trace_level_needs_input_vars(trace_level) = bool.
 :- func trace_level_needs_fixed_slots(trace_level) = bool.
 :- func trace_level_needs_from_full_slot(trace_level) = bool.
 :- func trace_level_needs_decl_debug_slots(trace_level) = bool.
@@ -80,6 +81,12 @@ trace_level_is_none(shallow) = no.
 trace_level_is_none(deep) = no.
 trace_level_is_none(decl) = no.
 trace_level_is_none(decl_rep) = no.
+
+trace_level_needs_input_vars(none) = no.
+trace_level_needs_input_vars(shallow) = yes.
+trace_level_needs_input_vars(deep) = yes.
+trace_level_needs_input_vars(decl) = yes.
+trace_level_needs_input_vars(decl_rep) = yes.
 
 trace_level_needs_fixed_slots(none) = no.
 trace_level_needs_fixed_slots(shallow) = yes.

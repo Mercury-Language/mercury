@@ -464,12 +464,11 @@ goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
 intermod__traverse_goal(conj(Goals0) - Info, conj(Goals) - Info, DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
-intermod__traverse_goal(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info,
+intermod__traverse_goal(par_conj(Goals0) - Info, par_conj(Goals) - Info,
 		DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
-intermod__traverse_goal(disj(Goals0, SM) - Info, disj(Goals, SM) - Info,
-		DoWrite) -->
+intermod__traverse_goal(disj(Goals0) - Info, disj(Goals) - Info, DoWrite) -->
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
 intermod__traverse_goal(Goal, Goal, DoWrite) -->
@@ -483,8 +482,8 @@ intermod__traverse_goal(Goal, Goal, DoWrite) -->
 intermod__traverse_goal(generic_call(A,B,C,D) - Info,
 			generic_call(A,B,C,D) - Info, yes) --> [].
 
-intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
-		switch(A, B, Cases, D) - Info, DoWrite) -->
+intermod__traverse_goal(switch(A, B, Cases0) - Info,
+		switch(A, B, Cases) - Info, DoWrite) -->
 	intermod__traverse_cases(Cases0, Cases, DoWrite).
 
 	% Export declarations for preds used in higher order pred constants
@@ -500,8 +499,8 @@ intermod__traverse_goal(some(Vars, CanRemove, Goal0) - Info,
 		some(Vars, CanRemove, Goal) - Info, DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite).
 
-intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
-		if_then_else(Vars, Cond, Then, Else, SM) - Info, DoWrite) -->
+intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0) - Info,
+		if_then_else(Vars, Cond, Then, Else) - Info, DoWrite) -->
 	intermod__traverse_goal(Cond0, Cond, DoWrite1),
 	intermod__traverse_goal(Then0, Then, DoWrite2),
 	intermod__traverse_goal(Else0, Else, DoWrite3),

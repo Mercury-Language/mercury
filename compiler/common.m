@@ -184,6 +184,10 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 			Goal = Goal0,
 			Info = Info0
 		;
+			% Do not delete deconstruction unifications inserted by
+			% stack_opt.m, which has done a more comprehensive cost
+			% analysis than common.m can do.
+			\+ goal_info_has_feature(GoalInfo, stack_opt),
 			common__find_matching_cell(Var, ConsId, ArgVars,
 				deconstruction, Info0, OldStruct)
 		->

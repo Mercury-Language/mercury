@@ -611,16 +611,16 @@ rl_key__extract_key_range(Goal) -->
 		rl_key__extract_key_range_unify(Unify)
 	; { Goal = call(PredId, ProcId, CallArgs, _, _, _) - _ } ->
 		rl_key__extract_key_range_call(PredId, ProcId, CallArgs)
-	; { Goal = disj(Goals, _) - _ } ->
+	; { Goal = disj(Goals) - _ } ->
 		key_info_get_constraints(Cnstrs0),
 		rl_key__extract_key_range_disj(Cnstrs0, Goals, [], Cnstrs),
 		key_info_set_constraints(Cnstrs)
-	; { Goal = switch(Var, _CanFail, Cases, _) - _ } ->
+	; { Goal = switch(Var, _CanFail, Cases) - _ } ->
 		key_info_get_constraints(Cnstrs0),
 		rl_key__extract_key_range_switch(Cnstrs0, Var, Cases,
 			[], Cnstrs),
 		key_info_set_constraints(Cnstrs)
-	; { Goal = if_then_else(_, Cond, Then, Else, _) - _ } ->
+	; { Goal = if_then_else(_, Cond, Then, Else) - _ } ->
 		key_info_get_constraints(Cnstrs0),
 		rl_key__extract_key_range(Cond),
 		rl_key__extract_key_range(Then),

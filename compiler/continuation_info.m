@@ -293,8 +293,8 @@
 :- pred continuation_info__generate_return_live_lvalues(
 	assoc_list(prog_var, arg_loc)::in, instmap::in, list(prog_var)::in,
 	map(prog_var, set(lval))::in, assoc_list(lval, slot_contents)::in,
-	proc_info::in, module_info::in, globals::in, list(liveinfo)::out)
-	is det.
+	proc_info::in, module_info::in, globals::in, bool::in,
+	list(liveinfo)::out) is det.
 
 	% Generate the layout information we need for a resumption point,
 	% a label where forward execution can restart after backtracking.
@@ -320,8 +320,11 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, ll_backend__code_util.
-:- import_module check_hlds__type_util, check_hlds__inst_match, libs__options.
+:- import_module hlds__hlds_goal, hlds__hlds_llds.
+:- import_module check_hlds__type_util, check_hlds__inst_match.
+:- import_module ll_backend__code_util.
+:- import_module libs__options.
+
 :- import_module string, require, term, varset.
 
 %-----------------------------------------------------------------------------%
@@ -514,11 +517,11 @@ continuation_info__some_arg_is_higher_order(PredInfo) :-
 
 continuation_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
 		Vars, VarLocs, Temps, ProcInfo, ModuleInfo, Globals,
-		LiveLvalues) :-
+		OkToDeleteAny, LiveLvalues) :-
 	globals__want_return_var_layouts(Globals, WantReturnVarLayout),
 	proc_info_stack_slots(ProcInfo, StackSlots),
 	continuation_info__find_return_var_lvals(Vars, StackSlots,
-		OutputArgLocs, VarLvals),
+		OkToDeleteAny, OutputArgLocs, VarLvals),
 	continuation_info__generate_var_live_lvalues(VarLvals, ReturnInstMap,
 		VarLocs, ProcInfo, ModuleInfo,
 		WantReturnVarLayout, VarLiveLvalues),
@@ -526,21 +529,26 @@ continuation_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
 	list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues).
 
 :- pred continuation_info__find_return_var_lvals(list(prog_var)::in,
-	stack_slots::in, assoc_list(prog_var, arg_loc)::in,
+	stack_slots::in, bool::in, assoc_list(prog_var, arg_loc)::in,
 	assoc_list(prog_var, lval)::out) is det.
 
-continuation_info__find_return_var_lvals([], _, _, []).
+continuation_info__find_return_var_lvals([], _, _, _, []).
 continuation_info__find_return_var_lvals([Var | Vars], StackSlots,
-		OutputArgLocs, [Var - Lval | VarLvals]) :-
+		OkToDeleteAny, OutputArgLocs, VarLvals) :-
+	continuation_info__find_return_var_lvals(Vars, StackSlots,
+		OkToDeleteAny, OutputArgLocs, TailVarLvals),
 	( assoc_list__search(OutputArgLocs, Var, ArgLoc) ->
 		% On return, output arguments are in their registers.
-		code_util__arg_loc_to_register(ArgLoc, Lval)
-	;
+		code_util__arg_loc_to_register(ArgLoc, Lval),
+		VarLvals = [Var - Lval | TailVarLvals]
+	; map__search(StackSlots, Var, Lval) ->
 		% On return, other live variables are in their stack slots.
-		map__lookup(StackSlots, Var, Lval)
-	),
-	continuation_info__find_return_var_lvals(Vars, StackSlots,
-		OutputArgLocs, VarLvals).
+		VarLvals = [Var - Lval | TailVarLvals]
+	; OkToDeleteAny = yes ->
+		VarLvals = TailVarLvals
+	;
+		error("continuation_info__find_return_var_lvals: no slot")
+	).
 
 :- pred continuation_info__generate_temp_live_lvalues(
 	assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.

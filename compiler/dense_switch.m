@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,10 +16,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, hlds__hlds_data, hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_data, hlds__hlds_llds.
+:- import_module ll_backend__llds, ll_backend__code_info.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__switch_util, check_hlds__type_util.
-:- import_module ll_backend__llds, ll_backend__code_info.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
@@ -52,8 +53,9 @@
 
 :- implementation.
 
-:- import_module backend_libs__builtin_ops, hlds__hlds_module.
+:- import_module hlds__hlds_goal, hlds__hlds_module.
 :- import_module ll_backend__code_gen, ll_backend__trace.
+:- import_module backend_libs__builtin_ops.
 
 :- import_module char, map, libs__tree, int, std_util, require, list.
 

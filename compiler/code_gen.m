@@ -57,6 +57,10 @@
 :- pred code_gen__generate_goal(code_model::in, hlds_goal::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
+		% Return the message that identifies the procedure to pass to
+		% the incr_sp_push_msg macro in the generated C code.
+:- func code_gen__push_msg(module_info, pred_id, proc_id) = string.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -67,8 +71,9 @@
 :- import_module parse_tree__prog_util.
 
 % HLDS modules
-:- import_module hlds__hlds_out, hlds__instmap, check_hlds__type_util.
-:- import_module check_hlds__mode_util, hlds__goal_util.
+:- import_module hlds__hlds_llds, hlds__hlds_out.
+:- import_module hlds__instmap, hlds__goal_util, hlds__special_pred.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
 
 % LLDS code generator modules.
 :- import_module ll_backend__call_gen, ll_backend__unify_gen.
@@ -77,7 +82,6 @@
 :- import_module ll_backend__par_conj_gen, ll_backend__pragma_c_gen.
 :- import_module ll_backend__commit_gen.
 :- import_module ll_backend__continuation_info, ll_backend__trace.
-:- import_module libs__trace_params.
 :- import_module ll_backend__code_aux, ll_backend__code_util.
 :- import_module ll_backend__middle_rec, ll_backend__llds_out.
 
@@ -85,6 +89,7 @@
 :- import_module backend_libs__builtin_ops, hlds__passes_aux.
 :- import_module backend_libs__rtti.
 :- import_module libs__globals, libs__options.
+:- import_module libs__trace_params.
 
 % Standard library modules
 :- import_module bool, char, int, string.
@@ -737,14 +742,12 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 	;
 		{ TraceFillCode = empty }
 	),
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_module(PredInfo, ModuleName) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
 
-	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
-	{ string__int_to_string(Arity, ArityStr) },
-	{ string__append_list([ModuleNameString, ":", PredName, "/", ArityStr],
-		PushMsg) },
+	{ PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId) },
 	(
 		{ CodeModel = model_non }
 	->
@@ -944,7 +947,8 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				{ PruneTraceTicketCode = node([
 					prune_ticket - "prune retry ticket"
 				]) },
-				{ PruneTraceTicketCodeCopy = PruneTraceTicketCode }
+				{ PruneTraceTicketCodeCopy =
+					PruneTraceTicketCode }
 			)
 		;
 			{ PruneTraceTicketCode = empty },
@@ -1132,46 +1136,41 @@ code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code)
 	unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code).
 code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
 	code_gen__generate_goals(Goals, CodeModel, Code).
-code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->
+code_gen__generate_goal_2(par_conj(Goals), GoalInfo, CodeModel, Code) -->
 	par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code).
-code_gen__generate_goal_2(disj(Goals, StoreMap), _, CodeModel, Code) -->
-	disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code).
+code_gen__generate_goal_2(disj(Goals), GoalInfo, CodeModel, Code) -->
+	disj_gen__generate_disj(CodeModel, Goals, GoalInfo, Code).
 code_gen__generate_goal_2(not(Goal), _GoalInfo, CodeModel, Code) -->
 	ite_gen__generate_negation(CodeModel, Goal, Code).
-code_gen__generate_goal_2(if_then_else(_Vars, Cond, Then, Else, StoreMap),
-		_GoalInfo, CodeModel, Code) -->
-	ite_gen__generate_ite(CodeModel, Cond, Then, Else, StoreMap, Code).
-code_gen__generate_goal_2(switch(Var, CanFail, CaseList, StoreMap),
+code_gen__generate_goal_2(if_then_else(_Vars, Cond, Then, Else),
+		GoalInfo, CodeModel, Code) -->
+	ite_gen__generate_ite(CodeModel, Cond, Then, Else, GoalInfo, Code).
+code_gen__generate_goal_2(switch(Var, CanFail, CaseList),
 		GoalInfo, CodeModel, Code) -->
 	switch_gen__generate_switch(CodeModel, Var, CanFail, CaseList,
-		StoreMap, GoalInfo, Code).
+		GoalInfo, Code).
 code_gen__generate_goal_2(some(_Vars, _, Goal), _GoalInfo, CodeModel, Code) -->
 	commit_gen__generate_commit(CodeModel, Goal, Code).
 code_gen__generate_goal_2(generic_call(GenericCall, Args, Modes, Det),
 		GoalInfo, CodeModel, Code) -->
 	call_gen__generate_generic_call(CodeModel, GenericCall, Args,
 		Modes, Det, GoalInfo, Code).
-
-code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
+code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _,_),
 		GoalInfo, CodeModel, Code) -->
-	(
-		{ BuiltinState = not_builtin }
-	->
+	( { BuiltinState = not_builtin } ->
 		call_gen__generate_call(CodeModel, PredId, ProcId, Args,
 			GoalInfo, Code)
 	;
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(foreign_proc(Attributes,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
-		GoalInfo, CodeModel, Instr) -->
-	( 
-		{ foreign_language(Attributes, c) } 
-	->
+code_gen__generate_goal_2(foreign_proc(Attributes, PredId, ProcId,
+		Args, ArgNames, OrigArgTypes, PragmaCode),
+		GoalInfo, CodeModel, Code) -->
+	( { foreign_language(Attributes, c) } ->
 		pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-			PredId, ModeId, Args, ArgNames, OrigArgTypes,
-			GoalInfo, PragmaCode, Instr)
+			PredId, ProcId, Args, ArgNames, OrigArgTypes,
+			GoalInfo, PragmaCode, Code)
 	;
 		{ error("code_gen__generate_goal_2: foreign code other than C unexpected") }
 	).
@@ -1298,7 +1297,6 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		"\t\tMR_GOTO(return_addr);\n"
 		], BytecodeCall),
 
-		
 	BytecodeInstructions = [
 		label(Entry) - "Procedure entry point",
 
@@ -1314,4 +1312,42 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		) - "Entry stub"
 	].
 
+%---------------------------------------------------------------------------%
+
+:- type type_giving_arg --->	last_arg ; last_but_one_arg.
+
+code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, ModuleName),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	( special_pred_name_arity(_, _, PredName, Arity) ->
+		pred_info_arg_types(PredInfo, ArgTypes),
+		special_pred_get_type_det(PredName, ArgTypes, Type),
+		code_gen__find_arg_type_ctor_name(Type, TypeName),
+		string__append_list([PredName, "for_", TypeName], FullPredName)
+	;
+		FullPredName = PredName
+	),
+	pred_or_func_to_str(PredOrFunc, PredOrFuncString),
+	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+	string__int_to_string(Arity, ArityStr),
+	proc_id_to_int(ProcId, ProcNum),
+	string__int_to_string(ProcNum, ProcNumStr),
+	string__append_list([PredOrFuncString, ModuleNameString, ":",
+		FullPredName, "/", ArityStr, "-", ProcNumStr], PushMsg).
+
+:- pred code_gen__find_arg_type_ctor_name((type)::in, string::out) is det.
+
+code_gen__find_arg_type_ctor_name(Type, TypeName) :-
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
+		TypeCtor = TypeCtorSymName - TypeCtorArity,
+		prog_out__sym_name_to_string(TypeCtorSymName, TypeCtorName),
+		string__int_to_string(TypeCtorArity, ArityStr),
+		string__append_list([TypeCtorName, "_", ArityStr], TypeName)
+	;
+		TypeName = "unknown"
+	).
+		
 %---------------------------------------------------------------------------%

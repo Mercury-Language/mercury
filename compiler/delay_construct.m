@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,23 +115,23 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 		delay_construct_in_goals(Goals1, InstMap0, DelayInfo, Goals),
 		Goal = conj(Goals) - GoalInfo0
 	;
-		GoalExpr0 = par_conj(Goals0, SM),
+		GoalExpr0 = par_conj(Goals0),
 		delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),
-		Goal = par_conj(Goals, SM) - GoalInfo0
+		Goal = par_conj(Goals) - GoalInfo0
 	;
-		GoalExpr0 = disj(Goals0, SM),
+		GoalExpr0 = disj(Goals0),
 		delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),
-		Goal = disj(Goals, SM) - GoalInfo0
+		Goal = disj(Goals) - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
 		delay_construct_in_goal(NegGoal0, InstMap0, DelayInfo, NegGoal),
 		Goal = not(NegGoal) - GoalInfo0
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0, SM),
+		GoalExpr0 = switch(Var, CanFail, Cases0),
 		delay_construct_in_cases(Cases0, InstMap0, DelayInfo, Cases),
-		Goal = switch(Var, CanFail, Cases, SM) - GoalInfo0
+		Goal = switch(Var, CanFail, Cases) - GoalInfo0
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, SM),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
 		Cond0 = _ - CondInfo0,
 		goal_info_get_instmap_delta(CondInfo0, CondInstMapDelta),
 		instmap__apply_instmap_delta(InstMap0, CondInstMapDelta,
@@ -139,7 +139,7 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 		delay_construct_in_goal(Cond0, InstMap0, DelayInfo, Cond),
 		delay_construct_in_goal(Then0, InstMapThen, DelayInfo, Then),
 		delay_construct_in_goal(Else0, InstMap0, DelayInfo, Else),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo0
+		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo0
 	;
 		GoalExpr0 = some(Var, CanRemove, SubGoal0),
 		delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),

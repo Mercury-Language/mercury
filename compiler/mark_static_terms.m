@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@ goal_mark_static_terms(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo) -->
 goal_expr_mark_static_terms(conj(Goals0), conj(Goals), SI0, SI) :-
 	conj_mark_static_terms(Goals0, Goals, SI0, SI).
 
-goal_expr_mark_static_terms(par_conj(Goals0, SM), par_conj(Goals, SM),
+goal_expr_mark_static_terms(par_conj(Goals0), par_conj(Goals),
 		SI0, SI) :-
 	% it's OK to treat parallel conjunctions as if they were
 	% sequential here, since if we mark any variables as
@@ -66,11 +66,11 @@ goal_expr_mark_static_terms(par_conj(Goals0, SM), par_conj(Goals, SM),
 	% done at compile time.
 	conj_mark_static_terms(Goals0, Goals, SI0, SI).
 
-goal_expr_mark_static_terms(disj(Goals0, B), disj(Goals, B), SI0, SI0) :-
+goal_expr_mark_static_terms(disj(Goals0), disj(Goals), SI0, SI0) :-
 	% we revert to the original static_info at the end of branched goals
 	disj_mark_static_terms(Goals0, Goals, SI0).
 
-goal_expr_mark_static_terms(switch(A, B, Cases0, D), switch(A, B, Cases, D),
+goal_expr_mark_static_terms(switch(A, B, Cases0), switch(A, B, Cases),
 		SI0, SI0) :-
 	% we revert to the original static_info at the end of branched goals
 	cases_mark_static_terms(Cases0, Cases, SI0).
@@ -82,8 +82,8 @@ goal_expr_mark_static_terms(not(Goal0), not(Goal), SI0, SI0) :-
 goal_expr_mark_static_terms(some(A, B, Goal0), some(A, B, Goal), SI0, SI) :-
 	goal_mark_static_terms(Goal0, Goal, SI0, SI).
 
-goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0, E),
-		if_then_else(A, Cond, Then, Else, E), SI0, SI0) :-
+goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
+		if_then_else(A, Cond, Then, Else), SI0, SI0) :-
 	% we run the Cond and the Then in sequence,
 	% and we run the Else in parallel with that,
 	% and then we throw away the static_infos we computed

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,18 +64,18 @@ lco_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals)) :-
 	lco_in_conj(RevGoals0, [], ModuleInfo, Goals).
 
 	% XXX Some execution algorithm issues here.
-lco_in_goal_2(par_conj(_Goals0, SM), _ModuleInfo, par_conj(_Goals, SM)) :-
+lco_in_goal_2(par_conj(_Goals0), _ModuleInfo, par_conj(_Goals)) :-
 	error("sorry: lco of parallel conjunction not implemented").
 
-lco_in_goal_2(disj(Goals0, SM), ModuleInfo, disj(Goals, SM)) :-
+lco_in_goal_2(disj(Goals0), ModuleInfo, disj(Goals)) :-
 	lco_in_disj(Goals0, ModuleInfo, Goals).
 
-lco_in_goal_2(switch(Var, Det, Cases0, SM), ModuleInfo,
-		switch(Var, Det, Cases, SM)) :-
+lco_in_goal_2(switch(Var, Det, Cases0), ModuleInfo,
+		switch(Var, Det, Cases)) :-
 	lco_in_cases(Cases0, ModuleInfo, Cases).
 
-lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, SM), ModuleInfo,
-		if_then_else(Vars, Cond, Then, Else, SM)) :-
+lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0), ModuleInfo,
+		if_then_else(Vars, Cond, Then, Else)) :-
 	lco_in_goal(Then0, ModuleInfo, Then),
 	lco_in_goal(Else0, ModuleInfo, Else).
 

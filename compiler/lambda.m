@@ -252,22 +252,22 @@ lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 
 lambda__process_goal_2(conj(Goals0), GoalInfo, conj(Goals) - GoalInfo) -->
 	lambda__process_goal_list(Goals0, Goals).
-lambda__process_goal_2(par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM) - GoalInfo) -->
+lambda__process_goal_2(par_conj(Goals0), GoalInfo,
+		par_conj(Goals) - GoalInfo) -->
 	lambda__process_goal_list(Goals0, Goals).
-lambda__process_goal_2(disj(Goals0, SM), GoalInfo, disj(Goals, SM) - GoalInfo)
+lambda__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo)
 		-->
 	lambda__process_goal_list(Goals0, Goals).
 lambda__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo) -->
 	lambda__process_goal(Goal0, Goal).
-lambda__process_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo, 
-			switch(Var, CanFail, Cases, SM) - GoalInfo) -->
+lambda__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo, 
+			switch(Var, CanFail, Cases) - GoalInfo) -->
 	lambda__process_cases(Cases0, Cases).
 lambda__process_goal_2(some(Vars, CanRemove, Goal0), GoalInfo,
 			some(Vars, CanRemove, Goal) - GoalInfo) -->
 	lambda__process_goal(Goal0, Goal).
-lambda__process_goal_2(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-			if_then_else(Vars, A, B, C, SM) - GoalInfo) -->
+lambda__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
+			if_then_else(Vars, A, B, C) - GoalInfo) -->
 	lambda__process_goal(A0, A),
 	lambda__process_goal(B0, B),
 	lambda__process_goal(C0, C).

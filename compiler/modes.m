@@ -1101,17 +1101,17 @@ modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
 	% empty.
 	% A stack of these structures is maintained to handle nested parallel
 	% conjunctions properly.
-modecheck_goal_expr(par_conj(List0, SM), GoalInfo0, par_conj(List, SM)) -->
+modecheck_goal_expr(par_conj(List0), GoalInfo0, par_conj(List)) -->
 	mode_checkpoint(enter, "par_conj"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList),
 	instmap__unify(NonLocals, InstMapNonlocalList),
 	mode_checkpoint(exit, "par_conj").
 
-modecheck_goal_expr(disj(List0, SM), GoalInfo0, Goal) -->
+modecheck_goal_expr(disj(List0), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "disj"),
 	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ Goal = disj(List0, SM) },
+		{ Goal = disj(List0) },
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
@@ -1122,7 +1122,7 @@ modecheck_goal_expr(disj(List0, SM), GoalInfo0, Goal) -->
 	),
 	mode_checkpoint(exit, "disj").
 
-modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
+modecheck_goal_expr(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "if-then-else"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
@@ -1152,7 +1152,7 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	mode_info_dcg_get_instmap(InstMapC),
 	mode_info_set_instmap(InstMap0),
 	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
-	{ Goal = if_then_else(Vs, A, B, C, SM) },
+	{ Goal = if_then_else(Vs, A, B, C) },
 	mode_checkpoint(exit, "if-then-else").
 
 modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
@@ -1258,8 +1258,8 @@ modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
-modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
-		switch(Var, CanFail, Cases, SM)) -->
+modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
+		switch(Var, CanFail, Cases)) -->
 	mode_checkpoint(enter, "switch"),
 	( { Cases0 = [] } ->
 		{ Cases = [] },

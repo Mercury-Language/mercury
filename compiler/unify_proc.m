@@ -1242,8 +1242,7 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 		Return_R) },
 
 	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases),
-	{ map__init(Empty) },
-	{ CasesGoal = disj(Cases, Empty) - GoalInfo },
+	{ CasesGoal = disj(Cases) - GoalInfo },
 
 	unify_proc__build_call("compare_error", [], Context, Abort),
 
@@ -1252,10 +1251,10 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 		Call_Y_Index, 
 		if_then_else([], Call_Less_Than, Return_Less_Than,
 		    if_then_else([], Call_Greater_Than, Return_Greater_Than,
-		        if_then_else([], CasesGoal, Return_R, Abort, Empty
-		        ) - GoalInfo, Empty
-		    ) - GoalInfo, Empty
-		) - GoalInfo
+		        if_then_else([], CasesGoal, Return_R, Abort)
+		        - GoalInfo)
+		    - GoalInfo)
+		- GoalInfo
 	]) - GoalInfo }.
 
 %	unify_proc__generate_compare_cases: for a type such as 
@@ -1440,8 +1439,7 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 			R, var(R1), Context, explicit, [], Return_R1) },
 		{ Condition = conj([Do_Comparison, Check_Not_Equal])
 					- GoalInfo },
-		{ map__init(Empty) },
-		{ Goal = if_then_else([], Condition, Return_R1, ElseCase, Empty)
+		{ Goal = if_then_else([], Condition, Return_R1, ElseCase)
 					- GoalInfo},
 		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
 			Context, ElseCase)

@@ -627,7 +627,7 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 		RefinedGoals = RefinedGoals0,
 		Changed = Changed0
 	;
-		GoalExpr0 = par_conj(_, _),
+		GoalExpr0 = par_conj(_),
 		Goal = Goal0,
 		unneeded_code__demand_inputs(Goal, ModuleInfo, InstMap0,
 			everywhere, WhereNeededMap0, WhereNeededMap),
@@ -642,7 +642,7 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 		GoalExpr = conj(Conjuncts),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = switch(SwitchVar, CanFail, Cases0, StoreMap),
+		GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
 		(
 			Cases0 = [case(_, _ - FirstCaseGoalInfo) | _],
 			goal_info_get_goal_path(FirstCaseGoalInfo,
@@ -668,10 +668,10 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 			WhereNeededMap1, BranchNeededMap, WhereNeededMap2),
 		unneeded_code__demand_var(GoalPath, everywhere, SwitchVar,
 			WhereNeededMap2, WhereNeededMap),
-		GoalExpr = switch(SwitchVar, CanFail, Cases, StoreMap),
+		GoalExpr = switch(SwitchVar, CanFail, Cases),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = disj(Disjuncts0, StoreMap),
+		GoalExpr0 = disj(Disjuncts0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		map__map_values(unneeded_code__demand_var_everywhere,
 			WhereNeededMap0, WhereNeededMap1),
@@ -679,10 +679,10 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 			VarTypes, ModuleInfo, Options, GoalPath, Disjuncts,
 			WhereNeededMap1, WhereNeededMap1, WhereNeededMap,
 			RefinedGoals0, RefinedGoals, Changed0, Changed),
-		GoalExpr = disj(Disjuncts, StoreMap),
+		GoalExpr = disj(Disjuncts),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0, StoreMap),
+		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		BranchPoint = branch_point(GoalPath, ite), 
 		map__map_values(unneeded_code__demand_var_everywhere,
@@ -692,7 +692,7 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 			GoalPath, Cond, Then, Else, WhereNeededMap1,
 			WhereNeededMap, RefinedGoals0, RefinedGoals, Changed0,
 			Changed),
-		GoalExpr = if_then_else(Quant, Cond, Then, Else, StoreMap),
+		GoalExpr = if_then_else(Quant, Cond, Then, Else),
 		Goal = GoalExpr - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),
@@ -971,7 +971,7 @@ unneeded_code__refine_goal(Goal0, RefinedGoals0, Goal, RefinedGoals) :-
 		Goal = Goal0,
 		RefinedGoals = RefinedGoals0
 	;
-		GoalExpr0 = par_conj(_, _),
+		GoalExpr0 = par_conj(_),
 		Goal = Goal0,
 		RefinedGoals = RefinedGoals0
 	;
@@ -981,25 +981,25 @@ unneeded_code__refine_goal(Goal0, RefinedGoals0, Goal, RefinedGoals) :-
 		GoalExpr = conj(Conjuncts),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = switch(SwitchVar, CanFail, Cases0, StoreMap),
+		GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		unneeded_code__refine_cases(Cases0, RefinedGoals0,
 			GoalPath, 1, Cases, RefinedGoals),
-		GoalExpr = switch(SwitchVar, CanFail, Cases, StoreMap),
+		GoalExpr = switch(SwitchVar, CanFail, Cases),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = disj(Disjuncts0, StoreMap),
+		GoalExpr0 = disj(Disjuncts0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		unneeded_code__refine_disj(Disjuncts0, RefinedGoals0,
 			GoalPath, 1, Disjuncts, RefinedGoals),
-		GoalExpr = disj(Disjuncts, StoreMap),
+		GoalExpr = disj(Disjuncts),
 		Goal = GoalExpr - GoalInfo0
 	;
-		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0, StoreMap),
+		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		unneeded_code__refine_ite(Cond0, Then0, Else0, RefinedGoals0,
 			GoalPath, Cond, Then, Else, RefinedGoals),
-		GoalExpr = if_then_else(Quant, Cond, Then, Else, StoreMap),
+		GoalExpr = if_then_else(Quant, Cond, Then, Else),
 		Goal = GoalExpr - GoalInfo0
 	;
 		GoalExpr0 = not(NegGoal0),

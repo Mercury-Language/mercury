@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,7 +191,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			Goals, NewPredIds0, NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
-		GoalExpr0 = par_conj(_Goals0, _SM),
+		GoalExpr0 = par_conj(_Goals0),
 		error("sorry, dnf of parallel conjunction not implemented")
 	;
 		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
@@ -206,24 +206,24 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			DnfInfo, NegGoal, NewPredIds0, NewPredIds),
 		Goal = not(NegGoal) - GoalInfo
 	;
-		GoalExpr0 = disj(Goals0, SM),
+		GoalExpr0 = disj(Goals0),
 		dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Goals, NewPredIds0, NewPredIds),
-		Goal = disj(Goals, SM) - GoalInfo
+		Goal = disj(Goals) - GoalInfo
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0, SM),
+		GoalExpr0 = switch(Var, CanFail, Cases0),
 		dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
 			Cases, NewPredIds0, NewPredIds),
-		Goal = switch(Var, CanFail, Cases, SM) - GoalInfo
+		Goal = switch(Var, CanFail, Cases) - GoalInfo
 	;
-		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, SM),
+		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
 		% XXX should handle nonempty Vars
 		dnf__transform_ite(Cond0, Then0, Else0, InstMap0,
 			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base, 0,
 			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo
+		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
 		ModuleInfo = ModuleInfo0,
@@ -452,12 +452,12 @@ dnf__is_atomic_expr(MaybeNonAtomic, _, _, conj([Call | Tests]), IsAtomic) :-
 	;
 		IsAtomic = no
 	).
-dnf__is_atomic_expr(_, _, _, par_conj(_, _), no).
+dnf__is_atomic_expr(_, _, _, par_conj(_), no).
 dnf__is_atomic_expr(_, _, _, generic_call(_, _, _, _), yes).
 dnf__is_atomic_expr(_, _, _, call(_, _, _, _, _, _), yes).
-dnf__is_atomic_expr(_, _, _, switch(_, _, _, _), no).
+dnf__is_atomic_expr(_, _, _, switch(_, _, _), no).
 dnf__is_atomic_expr(_, _, _, unify(_, _, _, _, _), yes).
-dnf__is_atomic_expr(_, _, _, disj(_, _), no).
+dnf__is_atomic_expr(_, _, _, disj(_), no).
 dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, not(NegGoalExpr - _),
 		IsAtomic) :-
 	( InNeg = no ->
@@ -474,7 +474,7 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
 	;
 		IsAtomic = no
 	).
-dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _, _), no).
+dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _), no).
 dnf__is_atomic_expr(_, _, _, foreign_proc(_, _, _, _, _, _, _), yes).
 dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, shorthand(ShorthandGoal),
 		IsAtomic) :-
@@ -493,11 +493,11 @@ dnf__is_atomic_expr_shorthand(_, _, _, bi_implication(_,_), no).
 
 dnf__free_of_nonatomic(conj(Goals) - _, NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
-dnf__free_of_nonatomic(par_conj(Goals, _) - _, NonAtomic) :-
+dnf__free_of_nonatomic(par_conj(Goals) - _, NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
 dnf__free_of_nonatomic(call(PredId, ProcId, _, _, _, _) - _, NonAtomic) :-
 	\+ set__member(proc(PredId, ProcId), NonAtomic).
-dnf__free_of_nonatomic(switch(_, _, Cases, _) - _, NonAtomic) :-
+dnf__free_of_nonatomic(switch(_, _, Cases) - _, NonAtomic) :-
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 dnf__free_of_nonatomic(unify(_, _, _, Uni, _) - _, NonAtomic) :-
 	\+ (
@@ -505,7 +505,7 @@ dnf__free_of_nonatomic(unify(_, _, _, Uni, _) - _, NonAtomic) :-
 			_, _, _, _, _),
 		set__member(proc(PredId, ProcId), NonAtomic)
 	).
-dnf__free_of_nonatomic(disj(Goals, _) - GoalInfo, NonAtomic) :-
+dnf__free_of_nonatomic(disj(Goals) - GoalInfo, NonAtomic) :-
 		% For Aditi, nondet disjunctions are non-atomic, 
 		% no matter what they contain.
 	goal_info_get_determinism(GoalInfo, Detism),
@@ -515,7 +515,7 @@ dnf__free_of_nonatomic(not(Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
 dnf__free_of_nonatomic(some(_, _, Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
-dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else, _) - GoalInfo, 
+dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else) - GoalInfo, 
 		NonAtomic) :-
 		% For Aditi, nondet if-then-elses are non-atomic, 
 		% no matter what they contain.

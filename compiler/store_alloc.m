@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,36 +28,38 @@
 
 :- import_module hlds__hlds_module, hlds__hlds_pred.
 
-:- pred store_alloc_in_proc(proc_info, pred_id, module_info, proc_info).
-:- mode store_alloc_in_proc(in, in, in, out) is det.
+:- type store_map_run_type
+	--->	final_allocation
+	;	for_stack_opt.
+
+:- pred allocate_store_maps(store_map_run_type::in, proc_info::in, pred_id::in,
+	module_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_llds.
+:- import_module hlds__goal_util, hlds__instmap.
+:- import_module check_hlds__mode_util.
+:- import_module ll_backend__llds, ll_backend__trace, ll_backend__arg_info.
 :- import_module ll_backend__follow_vars, ll_backend__liveness.
-:- import_module hlds__hlds_goal, ll_backend__llds, parse_tree__prog_data.
 :- import_module libs__options, libs__globals, libs__trace_params.
-:- import_module ll_backend__trace.
-:- import_module hlds__goal_util, check_hlds__mode_util, hlds__instmap.
-:- import_module list, map, set, std_util, assoc_list.
-:- import_module bool, int, require.
 
-:- type stack_slot_info
-	--->	stack_slot_info(
-			bool,		% was follow_vars run?
-			int,		% the number of real r regs
-			stack_slots	% maps each var to its stack slot
-					% (if it has one)
-		).
+:- import_module bool, int, require.
+:- import_module list, map, set, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%
 
-store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
+allocate_store_maps(RunType, ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
-	( ApplyFollowVars = yes ->
+	(
+		RunType = final_allocation,
+		ApplyFollowVars = yes
+	->
 		proc_info_goal(ProcInfo0, Goal0),
 
 		find_final_follow_vars(ProcInfo0,
@@ -81,22 +83,47 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	;
 		set__init(ResumeVars0)
 	),
+	arg_info__build_input_arg_list(ProcInfo0, InputArgLvals),
+	LastLocns0 = initial_last_locns(InputArgLvals),
 	globals__lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
 	proc_info_stack_slots(ProcInfo0, StackSlots),
-	StackSlotsInfo = stack_slot_info(ApplyFollowVars, NumRealRRegs,
-		StackSlots),
-	store_alloc_in_goal(Goal2, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotsInfo, Goal, _),
+	StoreAllocInfo = store_alloc_info(ModuleInfo, ApplyFollowVars,
+		NumRealRRegs, StackSlots),
+	store_alloc_in_goal(Goal2, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goal, _, _),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
+
+:- func initial_last_locns(assoc_list(prog_var, lval)) = last_locns.
+
+initial_last_locns([]) = map__init.
+initial_last_locns([Var - Lval | VarLvals]) =
+	map__det_insert(initial_last_locns(VarLvals), Var,
+		set__make_singleton_set(Lval)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_goal(hlds_goal, liveness_info, set(prog_var),
-		module_info, stack_slot_info, hlds_goal, liveness_info).
-:- mode store_alloc_in_goal(in, in, in, in, in, out, out) is det.
+:- type store_alloc_info
+	--->	store_alloc_info(
+			module_info		:: module_info,
+			done_follow_vars	:: bool,
+						% was follow_vars run?
+			num_real_r_regs		:: int,
+						% the number of real r regs
+			stack_slots		:: stack_slots
+						% maps each var to its stack
+						% slot (if it has one)
+		).
 
-store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goal - GoalInfo0, Liveness) :-
+:- type where_stored	== set(lval).	% These lvals may contain var() rvals.
+
+:- type last_locns	== map(prog_var, where_stored).
+
+:- pred store_alloc_in_goal(hlds_goal::in, liveness_info::in, set(prog_var)::in,
+	last_locns::in, store_alloc_info::in, hlds_goal::out,
+	liveness_info::out, last_locns::out) is det.
+
+store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goal - GoalInfo, Liveness, LastLocns) :-
 	% note: we must be careful to apply deaths before births
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths),
 	goal_info_get_pre_births(GoalInfo0, PreBirths),
@@ -105,8 +132,8 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
-	store_alloc_in_goal_2(Goal0, Liveness2, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goal1, Liveness3),
+	store_alloc_in_goal_2(Goal0, Liveness2, ResumeVars0, LastLocns0,
+		PostDeaths, StoreAllocInfo, Goal, Liveness3, LastLocns),
 	set__difference(Liveness3, PostDeaths, Liveness4),
 	% If any variables magically become live in the PostBirths,
 	% then they have to mundanely become live in a parallel goal,
@@ -115,155 +142,150 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 	% Any variables that become magically live at the end of the goal
 	% should not be included in the store map.
 	set__union(Liveness4, PostBirths, Liveness),
-	(
-		Goal1 = switch(Var, CanFail, Cases, AdvisoryStoreMap)
-	->
+	( goal_util__goal_is_branched(Goal) ->
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
+		( goal_info_maybe_get_store_map(GoalInfo0, StoreMapPrime) ->
+			AdvisoryStoreMap = StoreMapPrime
+		;
+			AdvisoryStoreMap = map__init
+		),
 		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
-			StackSlotInfo, StoreMap),
-		Goal = switch(Var, CanFail, Cases, StoreMap)
+			StoreAllocInfo, StoreMap),
+		goal_info_set_store_map(GoalInfo0, StoreMap, GoalInfo)
 	;
-		Goal1 = if_then_else(Vars, Cond, Then, Else, AdvisoryStoreMap)
-	->
-		set__union(Liveness4, ResumeVars0, MappedSet),
-		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
-			StackSlotInfo, StoreMap),
-		Goal = if_then_else(Vars, Cond, Then, Else, StoreMap)
-	;
-		Goal1 = disj(Disjuncts, AdvisoryStoreMap)
-	->
-		set__union(Liveness4, ResumeVars0, MappedSet),
-		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
-			StackSlotInfo, StoreMap),
-		Goal = disj(Disjuncts, StoreMap)
-	;
-		Goal = Goal1
+		GoalInfo = GoalInfo0
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Here we process each of the different sorts of goals.
 
-:- pred store_alloc_in_goal_2(hlds_goal_expr, liveness_info,
-		set(prog_var), module_info, stack_slot_info, hlds_goal_expr,
-		liveness_info).
-:- mode store_alloc_in_goal_2(in, in, in, in, in, out, out) is det.
+:- pred store_alloc_in_goal_2(hlds_goal_expr::in, liveness_info::in,
+	set(prog_var)::in, last_locns::in, set(prog_var)::in,
+	store_alloc_info::in, hlds_goal_expr::out, liveness_info::out,
+	last_locns::out) is det.
 
-store_alloc_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, conj(Goals), Liveness) :-
-	store_alloc_in_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, Liveness).
+store_alloc_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, LastLocns0,
+		_, StoreAllocInfo, conj(Goals), Liveness, LastLocns) :-
+	store_alloc_in_conj(Goals0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goals, Liveness, LastLocns).
 
-store_alloc_in_goal_2(par_conj(Goals0, SM), Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, par_conj(Goals, SM), Liveness) :-
-	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, Liveness).
+store_alloc_in_goal_2(par_conj(Goals0), Liveness0, ResumeVars0, LastLocns0,
+		_, StoreAllocInfo, par_conj(Goals), Liveness, LastLocns) :-
+	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goals, Liveness, LastLocns).
 
-store_alloc_in_goal_2(disj(Goals0, FV), Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, disj(Goals, FV), Liveness) :-
-	store_alloc_in_disj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, Liveness).
+store_alloc_in_goal_2(disj(Goals0), Liveness0, ResumeVars0, LastLocns0,
+		_, StoreAllocInfo, disj(Goals), Liveness, LastLocns) :-
+	store_alloc_in_disj(Goals0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goals, Liveness, LastLocnsList),
+	merge_last_locations(LastLocnsList, LastLocns).
 
-store_alloc_in_goal_2(not(Goal0), Liveness0, _ResumeVars0, ModuleInfo,
-		StackSlotInfo, not(Goal), Liveness) :-
+store_alloc_in_goal_2(not(Goal0), Liveness0, _ResumeVars0, LastLocns0,
+		_, StoreAllocInfo, not(Goal), Liveness, LastLocns0) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_resume_point(GoalInfo0, ResumeNot),
 	goal_info_resume_vars_and_loc(ResumeNot, ResumeNotVars, _),
-	store_alloc_in_goal(Goal0, Liveness0, ResumeNotVars, ModuleInfo,
-		StackSlotInfo, Goal, Liveness).
+	store_alloc_in_goal(Goal0, Liveness0, ResumeNotVars, LastLocns0,
+		StoreAllocInfo, Goal, Liveness, _).
 
-store_alloc_in_goal_2(switch(Var, Det, Cases0, FV), Liveness0, ResumeVars0,
-		ModuleInfo, StackSlotInfo,
-		switch(Var, Det, Cases, FV), Liveness) :-
-	store_alloc_in_cases(Cases0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Cases, Liveness).
+store_alloc_in_goal_2(switch(Var, Det, Cases0), Liveness0, ResumeVars0,
+		LastLocns0, _, StoreAllocInfo,
+		switch(Var, Det, Cases), Liveness, LastLocns) :-
+	store_alloc_in_cases(Cases0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Cases, Liveness, LastLocnsList),
+	merge_last_locations(LastLocnsList, LastLocns).
 
-store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
-		Liveness0, ResumeVars0, ModuleInfo, StackSlotInfo,
-		if_then_else(Vars, Cond, Then, Else, FV), Liveness) :-
+store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
+		Liveness0, ResumeVars0, LastLocns0, _, StoreAllocInfo,
+		if_then_else(Vars, Cond, Then, Else), Liveness, LastLocns) :-
 	Cond0 = _ - CondGoalInfo0,
 	goal_info_get_resume_point(CondGoalInfo0, ResumeCond),
 	goal_info_resume_vars_and_loc(ResumeCond, ResumeCondVars, _),
-	store_alloc_in_goal(Cond0, Liveness0, ResumeCondVars, ModuleInfo,
-		StackSlotInfo, Cond, Liveness1),
-	store_alloc_in_goal(Then0, Liveness1, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Then, Liveness),
-	store_alloc_in_goal(Else0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Else, _Liveness2).
+	store_alloc_in_goal(Cond0, Liveness0, ResumeCondVars, LastLocns0,
+		StoreAllocInfo, Cond, Liveness1, LastLocnsCond),
+	store_alloc_in_goal(Then0, Liveness1, ResumeVars0, LastLocnsCond,
+		StoreAllocInfo, Then, Liveness, LastLocnsThen),
+	store_alloc_in_goal(Else0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Else, _Liveness2, LastLocnsElse),
+	merge_last_locations([LastLocnsThen, LastLocnsElse], LastLocns).
 
 store_alloc_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, ResumeVars0,
-		ModuleInfo,
-		StackSlotInfo, some(Vars, CanRemove, Goal), Liveness) :-
-	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goal, Liveness).
+		LastLocns0, _, StoreAllocInfo,
+		some(Vars, CanRemove, Goal), Liveness, LastLocns) :-
+	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goal, Liveness, LastLocns).
 
-store_alloc_in_goal_2(generic_call(A, B, C, D), Liveness, _, _,
-		_, generic_call(A, B, C, D), Liveness).
+store_alloc_in_goal_2(generic_call(A, B, C, D), Liveness, _, LastLocns,
+		_, _, generic_call(A, B, C, D), Liveness, LastLocns).
 
-store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
-		_, call(A, B, C, D, E, F), Liveness).
+store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, LastLocns,
+		_, _, call(A, B, C, D, E, F), Liveness, LastLocns).
 
-store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
-		_, unify(A,B,C,D,E), Liveness).
+store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, LastLocns,
+		_, _, unify(A,B,C,D,E), Liveness, LastLocns).
 
-store_alloc_in_goal_2(foreign_proc(A, B, C, D, E, F, G), Liveness,
-		_, _, _, foreign_proc(A, B, C, D, E, F, G), Liveness).
+store_alloc_in_goal_2(foreign_proc(A, B, C, D, E, F, G), Liveness, _,
+		LastLocns, _, _, foreign_proc(A, B, C, D, E, F, G),
+		Liveness, LastLocns).
 
-store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
+store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("store_alloc_in_goal_2: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_conj(list(hlds_goal), liveness_info, set(prog_var),
-	module_info, stack_slot_info, list(hlds_goal), liveness_info).
-:- mode store_alloc_in_conj(in, in, in, in, in, out, out) is det.
+:- pred store_alloc_in_conj(list(hlds_goal)::in, liveness_info::in,
+	set(prog_var)::in, last_locns::in, store_alloc_info::in,
+	list(hlds_goal)::out, liveness_info::out, last_locns::out) is det.
 
-store_alloc_in_conj([], Liveness, _, _, _, [], Liveness).
-store_alloc_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, [Goal | Goals], Liveness) :-
+store_alloc_in_conj([], Liveness, _, LastLocns, _, [], Liveness, LastLocns).
+store_alloc_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, [Goal | Goals], Liveness, LastLocns) :-
 	(
 			% XXX should be threading the instmap
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 		instmap_delta_is_unreachable(InstMapDelta)
 	->
-		store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
-			StackSlotInfo, Goal, Liveness),
+		store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, LastLocns0,
+			StoreAllocInfo, Goal, Liveness, LastLocns),
 		Goals = Goals0
 	;
-		store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
-			StackSlotInfo, Goal, Liveness1),
-		store_alloc_in_conj(Goals0, Liveness1, ResumeVars0, ModuleInfo,
-			StackSlotInfo, Goals, Liveness)
+		store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, LastLocns0,
+			StoreAllocInfo, Goal, Liveness1, LastLocns1),
+		store_alloc_in_conj(Goals0, Liveness1, ResumeVars0, LastLocns1,
+			StoreAllocInfo, Goals, Liveness, LastLocns)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_par_conj(list(hlds_goal), liveness_info, set(prog_var),
-	module_info, stack_slot_info, list(hlds_goal), liveness_info).
-:- mode store_alloc_in_par_conj(in, in, in, in, in, out, out) is det.
+:- pred store_alloc_in_par_conj(list(hlds_goal)::in, liveness_info::in,
+	set(prog_var)::in, last_locns::in, store_alloc_info::in,
+	list(hlds_goal)::out, liveness_info::out, last_locns::out) is det.
 
-store_alloc_in_par_conj([], Liveness, _, _, _, [], Liveness).
-store_alloc_in_par_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, [Goal | Goals], Liveness) :-
-	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goal, Liveness),
-	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, _Liveness1).
+store_alloc_in_par_conj([], Liveness, _, LastLocns, _,
+		[], Liveness, LastLocns).
+store_alloc_in_par_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, [Goal | Goals], Liveness, LastLocns) :-
+	% XXX ignoring _Liveness1 looks fishy
+	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goal, Liveness, LastLocns1),
+	store_alloc_in_par_conj(Goals0, Liveness0, ResumeVars0, LastLocns1,
+		StoreAllocInfo, Goals, _Liveness1, LastLocns).
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_disj(list(hlds_goal), liveness_info, set(prog_var),
-	module_info, stack_slot_info, list(hlds_goal), liveness_info).
-:- mode store_alloc_in_disj(in, in, in, in, in, out, out) is det.
+:- pred store_alloc_in_disj(list(hlds_goal)::in, liveness_info::in,
+	set(prog_var)::in, last_locns::in, store_alloc_info::in,
+	list(hlds_goal)::out, liveness_info::out, list(last_locns)::out)
+	is det.
 
-store_alloc_in_disj([], Liveness, _, _, _, [], Liveness).
-store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, [Goal | Goals], Liveness) :-
+store_alloc_in_disj([], Liveness, _, _, _, [], Liveness, []).
+store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, [Goal | Goals], Liveness,
+		[LastLocnsGoal | LastLocnsDisj]) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_resume_point(GoalInfo0, ResumeGoal),
 	(
@@ -272,25 +294,37 @@ store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 	;
 		ResumeGoal = resume_point(ResumeGoalVars, _)
 	),
-	store_alloc_in_goal(Goal0, Liveness0, ResumeGoalVars, ModuleInfo,
-		StackSlotInfo, Goal, Liveness),
-	store_alloc_in_disj(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, _Liveness1).
+	store_alloc_in_goal(Goal0, Liveness0, ResumeGoalVars, LastLocns0,
+		StoreAllocInfo, Goal, Liveness, LastLocnsGoal),
+	store_alloc_in_disj(Goals0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goals, _Liveness1, LastLocnsDisj).
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_cases(list(case), liveness_info, set(prog_var),
-	module_info, stack_slot_info, list(case), liveness_info).
-:- mode store_alloc_in_cases(in, in, in, in, in, out, out) is det.
+:- pred store_alloc_in_cases(list(case)::in, liveness_info::in,
+	set(prog_var)::in, last_locns::in, store_alloc_info::in,
+	list(case)::out, liveness_info::out, list(last_locns)::out) is det.
 
-store_alloc_in_cases([], Liveness, _, _, _, [], Liveness).
+store_alloc_in_cases([], Liveness, _, _, _, [], Liveness, []).
 store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
-		ModuleInfo, StackSlotInfo,
-		[case(Cons, Goal) | Goals], Liveness) :-
-	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goal, Liveness),
-	store_alloc_in_cases(Goals0, Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, Goals, _Liveness1).
+		LastLocns0, StoreAllocInfo, [case(Cons, Goal) | Goals],
+		Liveness, [LastLocnsGoal | LastLocnsCases]) :-
+	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goal, Liveness, LastLocnsGoal),
+	store_alloc_in_cases(Goals0, Liveness0, ResumeVars0, LastLocns0,
+		StoreAllocInfo, Goals, _Liveness1, LastLocnsCases).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred merge_last_locations(list(last_locns)::in, last_locns::out) is det.
+
+merge_last_locations(LastLocnsList, LastLocns) :-
+	( LastLocnsList = [LastLocnsPrime | _] ->
+		LastLocns = LastLocnsPrime
+	;
+		LastLocns = map__init
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -308,11 +342,10 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
 	% generate a store map that maps every live variable to its own
 	% real location.
 
-:- pred store_alloc_allocate_storage(list(prog_var), store_map,
-		stack_slot_info, store_map).
-:- mode store_alloc_allocate_storage(in, in, in, out) is det.
+:- pred store_alloc_allocate_storage(list(prog_var)::in, store_map::in,
+	store_alloc_info::in, store_map::out) is det.
 
-store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, StoreMap) :-
+store_alloc_allocate_storage(LiveVars, FollowVars, StoreAllocInfo, StoreMap) :-
 
 	% This addresses point 1
 	map__keys(FollowVars, FollowKeys),
@@ -325,7 +358,7 @@ store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, StoreMap) :-
 		SeenLvals0, SeenLvals, StoreMap0, StoreMap1),
 
 	% This addresses point 2
-	store_alloc_allocate_extras(LiveVars, N, SeenLvals, StackSlotInfo,
+	store_alloc_allocate_extras(LiveVars, N, SeenLvals, StoreAllocInfo,
 		StoreMap1, StoreMap).
 
 :- pred store_alloc_remove_nonlive(list(prog_var), list(prog_var),
@@ -369,11 +402,11 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 		SeenLvals1, SeenLvals, StoreMap1, StoreMap).
 
 :- pred store_alloc_allocate_extras(list(prog_var), int, set(lval),
-		stack_slot_info, store_map, store_map).
+		store_alloc_info, store_map, store_map).
 :- mode store_alloc_allocate_extras(in, in, in, in, in, out) is det.
 
 store_alloc_allocate_extras([], _, _, _, StoreMap, StoreMap).
-store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StackSlotInfo,
+store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StoreAllocInfo,
 		StoreMap0, StoreMap) :-
 	(
 		map__contains(StoreMap0, Var)
@@ -385,7 +418,7 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StackSlotInfo,
 	;
 		% We have not yet allocated a slot for this variable,
 		% which means it is not in the follow vars (if any).
-		StackSlotInfo = stack_slot_info(FollowVars, NumRealRRegs,
+		StoreAllocInfo = store_alloc_info(_, FollowVars, NumRealRRegs,
 			StackSlots),
 		(
 			map__search(StackSlots, Var, StackSlot),
@@ -414,7 +447,7 @@ store_alloc_allocate_extras([Var | Vars], N0, SeenLvals0, StackSlotInfo,
 		map__det_insert(StoreMap0, Var, Locn, StoreMap1),
 		set__insert(SeenLvals0, Locn, SeenLvals1)
 	),
-	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StackSlotInfo,
+	store_alloc_allocate_extras(Vars, N1, SeenLvals1, StoreAllocInfo,
 		StoreMap1, StoreMap).
 
 %-----------------------------------------------------------------------------%

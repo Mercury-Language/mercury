@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,12 +97,12 @@ goal_add_trail_ops(GoalExpr0 - GoalInfo, Goal) -->
 goal_expr_add_trail_ops(conj(Goals0), GI, conj(Goals) - GI) -->
 	conj_add_trail_ops(Goals0, Goals).
 
-goal_expr_add_trail_ops(par_conj(Goals0, SM), GI, par_conj(Goals, SM) - GI) -->
+goal_expr_add_trail_ops(par_conj(Goals0), GI, par_conj(Goals) - GI) -->
 	conj_add_trail_ops(Goals0, Goals).
 
-goal_expr_add_trail_ops(disj([], B), GI, disj([], B) - GI) --> [].
+goal_expr_add_trail_ops(disj([]), GI, disj([]) - GI) --> [].
 
-goal_expr_add_trail_ops(disj(Goals0, B), GoalInfo, Goal - GoalInfo) -->
+goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo) -->
 	{ Goals0 = [_|_] },
 
 	{ goal_info_get_context(GoalInfo, Context) },
@@ -115,10 +115,9 @@ goal_expr_add_trail_ops(disj(Goals0, B), GoalInfo, Goal - GoalInfo) -->
 	new_ticket_var(TicketVar),
 	gen_store_ticket(TicketVar, Context, StoreTicketGoal),
 	disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals),
-	{ Goal = conj([StoreTicketGoal, disj(Goals, B) - GoalInfo]) }.
+	{ Goal = conj([StoreTicketGoal, disj(Goals) - GoalInfo]) }.
 
-goal_expr_add_trail_ops(switch(A, B, Cases0, D), GI,
-		switch(A, B, Cases, D) - GI) -->
+goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI) -->
 	cases_add_trail_ops(Cases0, Cases).
 
 goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
@@ -132,7 +131,6 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
 	{ determinism_components(Determinism, _CanFail, NumSolns) },
 	{ true_goal(Context, True) },
 	{ fail_goal(Context, Fail) },
-	{ map__init(SM) },
 	ModuleInfo =^ module_info,
 	{ NumSolns = at_most_zero ->
 		% The "then" part of the if-then-else will be unreachable,
@@ -146,7 +144,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
 	;
 		ThenGoal = Fail
 	},
-	{ NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True, SM) },
+	{ NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True) },
 	goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal).
 
 goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
@@ -202,9 +200,7 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 			{ FailGoal = _ - FailGoalInfo },
 			{ FailCode = conj([ResetTicketUndoGoal,
 				DiscardTicketGoal, FailGoal]) - FailGoalInfo },
-			{ map__init(SM) },
-			{ Goal3 = disj([SuccCode, FailCode], SM) -
-				OuterGoalInfo }
+			{ Goal3 = disj([SuccCode, FailCode]) - OuterGoalInfo }
 		;
 			{ Goal3 = SuccCode }
 		),
@@ -214,7 +210,7 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 		{ Goal = some(A, B, Goal1) }
 	).
 
-goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0, E), GoalInfo,
+goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
 		Goal - GoalInfo) -->
 	goal_add_trail_ops(Cond0, Cond),
 	goal_add_trail_ops(Then0, Then1),
@@ -250,7 +246,7 @@ goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0, E), GoalInfo,
 	{ Else1 = _ - Else1GoalInfo },
 	{ Else = conj([ResetTicketUndoGoal, DiscardTicketGoal, Else1])
 		- Else1GoalInfo },
-	{ IfThenElse = if_then_else(A, Cond, Then, Else, E) - GoalInfo },
+	{ IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo },
 	{ Goal = conj([StoreTicketGoal, IfThenElse]) }.
 
 

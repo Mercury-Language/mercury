@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -433,7 +433,7 @@ standardize(Goal0, Goal) :-
 		(
 			Goal0 = conj([Goal1]) - _
 		;
-			Goal0 = disj([Goal1], _) - _
+			Goal0 = disj([Goal1]) - _
 		)
 	->
 		standardize(Goal1, Goal)
@@ -458,7 +458,7 @@ standardize(Goal0, Goal) :-
 identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 		Type, Base, BaseInstMap, Rec, RecInstMap) :-
 	(
-		Goal = switch(_Var, _CanFail, Cases, _StoreMap) - _GoalInfo,
+		Goal = switch(_Var, _CanFail, Cases) - _GoalInfo,
 		Cases = [case(_IdA, GoalA), case(_IdB, GoalB)],
 		goal_to_conj_list(GoalA, GoalAList),
 		goal_to_conj_list(GoalB, GoalBList)
@@ -481,7 +481,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 		BaseInstMap = InitialInstMap,
 		RecInstMap = InitialInstMap
 	;
-		Goal = disj(Goals, _StoreMap) - _GoalInfo,
+		Goal = disj(Goals) - _GoalInfo,
 		Goals = [GoalA, GoalB],
 		goal_to_conj_list(GoalA, GoalAList),
 		goal_to_conj_list(GoalB, GoalBList)
@@ -504,8 +504,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 		BaseInstMap = InitialInstMap,
 		RecInstMap = InitialInstMap
 	;
-		Goal = if_then_else(_Vars, If, Then, Else, _StoreMap) -
-				_GoalInfo,
+		Goal = if_then_else(_Vars, If, Then, Else) - _GoalInfo,
 
 		If = _IfGoal - IfGoalInfo,
 		goal_info_get_instmap_delta(IfGoalInfo, IfInstMapDelta),
@@ -1874,82 +1873,82 @@ acc_unification(Out - Acc, Goal) :-
 top_level(switch_base_rec, Goal, OrigBaseGoal, OrigRecGoal,
 		NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = switch(Var, CanFail, Cases0, StoreMap) - GoalInfo,
+		Goal = switch(Var, CanFail, Cases0) - GoalInfo,
 		Cases0 = [case(IdA, _), case(IdB, _)]
 	->
 		OrigCases = [case(IdA, OrigBaseGoal), case(IdB, OrigRecGoal)],
-		OrigGoal = switch(Var, CanFail, OrigCases, StoreMap) - GoalInfo,
+		OrigGoal = switch(Var, CanFail, OrigCases) - GoalInfo,
 
 		NewCases = [case(IdA, NewBaseGoal), case(IdB, NewRecGoal)],
-		NewGoal = switch(Var, CanFail, NewCases, StoreMap) - GoalInfo
+		NewGoal = switch(Var, CanFail, NewCases) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).
 top_level(switch_rec_base, Goal, OrigBaseGoal, OrigRecGoal,
 		NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = switch(Var, CanFail, Cases0, StoreMap) - GoalInfo,
+		Goal = switch(Var, CanFail, Cases0) - GoalInfo,
 		Cases0 = [case(IdA, _), case(IdB, _)]
 	->
 		OrigCases = [case(IdA, OrigRecGoal), case(IdB, OrigBaseGoal)],
-		OrigGoal = switch(Var, CanFail, OrigCases, StoreMap) - GoalInfo,
+		OrigGoal = switch(Var, CanFail, OrigCases) - GoalInfo,
 
 		NewCases = [case(IdA, NewRecGoal), case(IdB, NewBaseGoal)],
-		NewGoal = switch(Var, CanFail, NewCases, StoreMap) - GoalInfo
+		NewGoal = switch(Var, CanFail, NewCases) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).
 top_level(disj_base_rec, Goal, OrigBaseGoal,
 		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = disj(Goals, StoreMap) - GoalInfo,
+		Goal = disj(Goals) - GoalInfo,
 		Goals = [_, _]
 	->
 		OrigGoals = [OrigBaseGoal, OrigRecGoal],
-		OrigGoal = disj(OrigGoals, StoreMap) - GoalInfo,
+		OrigGoal = disj(OrigGoals) - GoalInfo,
 
 		NewGoals = [NewBaseGoal, NewRecGoal],
-		NewGoal = disj(NewGoals, StoreMap) - GoalInfo
+		NewGoal = disj(NewGoals) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).
 top_level(disj_rec_base, Goal, OrigBaseGoal,
 		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = disj(Goals, StoreMap) - GoalInfo,
+		Goal = disj(Goals) - GoalInfo,
 		Goals = [_, _]
 	->
 		OrigGoals = [OrigRecGoal, OrigBaseGoal],
-		OrigGoal = disj(OrigGoals, StoreMap) - GoalInfo,
+		OrigGoal = disj(OrigGoals) - GoalInfo,
 
 		NewGoals = [NewRecGoal, NewBaseGoal],
-		NewGoal = disj(NewGoals, StoreMap) - GoalInfo
+		NewGoal = disj(NewGoals) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).
 top_level(ite_base_rec, Goal, OrigBaseGoal,
 		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = if_then_else(Vars, If, _, _, StoreMap) - GoalInfo
+		Goal = if_then_else(Vars, If, _, _) - GoalInfo
 	->
 		OrigGoal = if_then_else(Vars, If,
-				OrigBaseGoal, OrigRecGoal, StoreMap) - GoalInfo,
+				OrigBaseGoal, OrigRecGoal) - GoalInfo,
 
 		NewGoal = if_then_else(Vars, If,
-				NewBaseGoal, NewRecGoal, StoreMap) - GoalInfo
+				NewBaseGoal, NewRecGoal) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).
 top_level(ite_rec_base, Goal, OrigBaseGoal,
 		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
-		Goal = if_then_else(Vars, If, _, _, StoreMap) - GoalInfo
+		Goal = if_then_else(Vars, If, _, _) - GoalInfo
 	->
 		OrigGoal = if_then_else(Vars, If,
-				OrigRecGoal, OrigBaseGoal, StoreMap) - GoalInfo,
+				OrigRecGoal, OrigBaseGoal) - GoalInfo,
 
 		NewGoal = if_then_else(Vars, If,
-				NewRecGoal, NewBaseGoal, StoreMap) - GoalInfo
+				NewRecGoal, NewBaseGoal) - GoalInfo
 	;
 		error("top_level: not the correct top level")
 	).

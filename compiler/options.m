@@ -92,6 +92,7 @@
 		;	debug_rl_opt
 		;	debug_il_asm	% il_asm = IL generation via asm
 		;	debug_liveness
+		;	debug_stack_opt
 		;	debug_make
 	% Output options
 		;	make_short_interface
@@ -354,6 +355,7 @@
 
 		;	gcc_local_labels
 		;	prefer_switch
+		;	opt_no_return_calls
 
 	% Optimization Options
 		;	opt_level
@@ -389,6 +391,20 @@
 		;	optimize_duplicate_calls
 		;	constant_propagation
 		;	excess_assign
+		;	optimize_saved_vars_const
+		;	optimize_saved_vars_cell
+		;	optimize_saved_vars_cell_loop
+		;	optimize_saved_vars_cell_full_path
+		;	optimize_saved_vars_cell_on_stack
+		;	optimize_saved_vars_cell_candidate_headvars
+		;	optimize_saved_vars_cell_cv_store_cost
+		;	optimize_saved_vars_cell_cv_load_cost
+		;	optimize_saved_vars_cell_fv_store_cost
+		;	optimize_saved_vars_cell_fv_load_cost
+		;	optimize_saved_vars_cell_op_ratio
+		;	optimize_saved_vars_cell_node_ratio
+		;	optimize_saved_vars_cell_all_path_node_ratio
+		;	optimize_saved_vars_cell_include_all_candidates
 		;	optimize_saved_vars
 		;	delay_construct
 		;	follow_code
@@ -434,6 +450,7 @@
 		;	pessimize_tailcalls
 		;	checked_nondet_tailcalls
 		;	use_local_vars
+		;	local_var_access_threshold
 		;	optimize_labels
 		;	optimize_dups
 %%% unused:	;	optimize_copyprop
@@ -622,6 +639,7 @@ option_defaults_2(verbosity_option, [
 	debug_rl_opt		-	bool(no),
 	debug_il_asm		-	bool(no),
 	debug_liveness		-	int(-1),
+	debug_stack_opt		-	int(-1),
 	debug_make		-	bool(no)
 ]).
 option_defaults_2(output_option, [
@@ -824,7 +842,8 @@ option_defaults_2(code_gen_option, [
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
 	gcc_local_labels	-	bool(no),
-	prefer_switch		-	bool(yes)
+	prefer_switch		-	bool(yes),
+	opt_no_return_calls	-	bool(yes)
 ]).
 option_defaults_2(special_optimization_option, [
 		% Special optimization options.
@@ -870,7 +889,21 @@ option_defaults_2(optimization_option, [
 	optimize_duplicate_calls -	bool(no),
 	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
-	optimize_saved_vars	-	bool(no),
+	optimize_saved_vars_const	-	bool(no),
+	optimize_saved_vars_cell	-	bool(no),
+	optimize_saved_vars_cell_loop	-	bool(yes),
+	optimize_saved_vars_cell_full_path -	bool(yes),
+	optimize_saved_vars_cell_on_stack -	bool(yes),
+	optimize_saved_vars_cell_candidate_headvars -	bool(yes),
+	optimize_saved_vars_cell_cv_store_cost -	int(3),
+	optimize_saved_vars_cell_cv_load_cost -		int(1),
+	optimize_saved_vars_cell_fv_store_cost -	int(1),
+	optimize_saved_vars_cell_fv_load_cost -		int(1),
+	optimize_saved_vars_cell_op_ratio -	int(100),
+	optimize_saved_vars_cell_node_ratio -	int(100),
+	optimize_saved_vars_cell_all_path_node_ratio -	int(100),
+	optimize_saved_vars_cell_include_all_candidates -	bool(yes),
+	optimize_saved_vars	-	bool_special,
 	delay_construct		-	bool(no),
 	prev_code		-	bool(no),
 	follow_code		-	bool(no),
@@ -878,12 +911,12 @@ option_defaults_2(optimization_option, [
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
 	higher_order_size_limit	-	int(20),
-	higher_order_arg_limit -	int(10),
+	higher_order_arg_limit	-	int(10),
 	unneeded_code		-	bool(no),
-	unneeded_code_copy_limit	-	int(10),
+	unneeded_code_copy_limit-	int(10),
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
-	introduce_accumulators -	bool(no),
+	introduce_accumulators	-	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -922,6 +955,7 @@ option_defaults_2(optimization_option, [
 	pessimize_tailcalls	-	bool(no),
 	checked_nondet_tailcalls -	bool(no),
 	use_local_vars		-	bool(no),
+	local_var_access_threshold -	int(2),
 	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
 %%%	optimize_copyprop	-	bool(no),
@@ -1133,6 +1167,7 @@ long_option("debug-rl-opt",		debug_rl_opt).
 	% system built into .NET improves.
 long_option("debug-il-asm",		debug_il_asm).
 long_option("debug-liveness",		debug_liveness).
+long_option("debug-stack-opt",		debug_stack_opt).
 long_option("debug-make",		debug_make).
 
 % output options (mutually exclusive)
@@ -1338,6 +1373,7 @@ long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
 long_option("gcc-local-labels",		gcc_local_labels).
 long_option("prefer-switch",		prefer_switch).
+long_option("opt-no-return-calls",	opt_no_return_calls).
 
 % optimization options
 
@@ -1375,6 +1411,22 @@ long_option("optimise-constant-propagation", constant_propagation).
 long_option("optimize-constant-propagation", constant_propagation).
 long_option("optimize-saved-vars",	optimize_saved_vars).
 long_option("optimise-saved-vars",	optimize_saved_vars).
+long_option("optimize-saved-vars-const",	optimize_saved_vars_const).
+long_option("optimise-saved-vars-const",	optimize_saved_vars_const).
+long_option("optimize-saved-vars-cell",	optimize_saved_vars_cell).
+long_option("optimise-saved-vars-cell",	optimize_saved_vars_cell).
+long_option("osv-loop",			optimize_saved_vars_cell_loop).
+long_option("osv-full-path",		optimize_saved_vars_cell_full_path).
+long_option("osv-on-stack",		optimize_saved_vars_cell_on_stack).
+long_option("osv-cand-head",		optimize_saved_vars_cell_candidate_headvars).
+long_option("osv-cvstore-cost",		optimize_saved_vars_cell_cv_store_cost).
+long_option("osv-cvload-cost",		optimize_saved_vars_cell_cv_load_cost).
+long_option("osv-fvstore-cost",		optimize_saved_vars_cell_fv_store_cost).
+long_option("osv-fvload-cost",		optimize_saved_vars_cell_fv_load_cost).
+long_option("osv-op-ratio",		optimize_saved_vars_cell_op_ratio).
+long_option("osv-node-ratio",		optimize_saved_vars_cell_node_ratio).
+long_option("osv-allpath-node-ratio",	optimize_saved_vars_cell_all_path_node_ratio).
+long_option("osv-all-cand",		optimize_saved_vars_cell_include_all_candidates).
 long_option("delay-construct",		delay_construct).
 long_option("delay-constructs",		delay_construct).
 long_option("prev-code",		prev_code).
@@ -1470,6 +1522,7 @@ long_option("optimise-fulljumps",	optimize_fulljumps).
 long_option("pessimize-tailcalls",	pessimize_tailcalls).
 long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
 long_option("use-local-vars",		use_local_vars).
+long_option("local-var-access-threshold", local_var_access_threshold).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
@@ -1707,6 +1760,12 @@ special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
 		N = N0
 	),
 	set_opt_level(N, OptionTable0, OptionTable).
+special_handler(optimize_saved_vars, bool(Optimize),
+		OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, optimize_saved_vars_const, bool(Optimize),
+		OptionTable1),
+	map__set(OptionTable1, optimize_saved_vars_cell, bool(Optimize),
+		OptionTable).
 special_handler(mercury_library_directory_special, string(Dir),
 			OptionTable0, ok(OptionTable)) :-
 	OptionTable = option_table_add_mercury_library_directory(
@@ -1866,7 +1925,7 @@ opt_level(2, _, [
 
 opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
-	optimize_saved_vars	-	bool(yes),
+	optimize_saved_vars_const -	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
 	deforestation		-	bool(yes),
@@ -2788,6 +2847,10 @@ options_help_code_generation -->
 %		"\tThis option has no effect unless the `--high-level-code' option",
 %		"\tis enabled.  It also has no effect if the `--target' option is",
 %		"\tset to `il'.",
+% This optimization is for implementors only. Turning this option on provides
+% the fairest possible test of --optimize-saved-vars-cell.
+%		"--no-opt-no-return-calls",
+%		"\tDo not optimize the stack usage of calls that cannot return.",
 
 	]),
 
@@ -2914,9 +2977,17 @@ options_help_hlds_hlds_optimization -->
 		"--delay-constructs",
 		"\tReorder goals to move construction unifications after",
 		"\tprimitive goals that can fail.",
+		% "--optimize-saved-vars-const",
+		% "\tMinimize the number of variables saved across calls by",
+		% "\tintroducing duplicate copies of variables bound to",
+		% "\tconstants in each interval between flushes where they",
+		% "\tare needed.",
+		% "--optimize-saved-vars-cell",
+		% "\tMinimize the number of variables saved across calls by",
+		% "\ttrying to use saved variables pointing to cells to reach",
+		% "\tthe variables stored in those cells.",
 		"--optimize-saved-vars",
-		"\tReorder goals to minimize the number of variables",
-		"\tthat have to be saved across calls.",
+		"\tMinimize the number of variables saved across calls.",
 		"--optimize-unused-args",
 		"\tRemove unused predicate arguments.",
 		"\tThis will cause the compiler to generate more",

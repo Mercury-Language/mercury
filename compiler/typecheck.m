@@ -1012,14 +1012,14 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeCheckInfo0,
 typecheck_goal_2(conj(List0), conj(List)) -->
 	checkpoint("conj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(par_conj(List0, SM), par_conj(List, SM)) -->
+typecheck_goal_2(par_conj(List0), par_conj(List)) -->
 	checkpoint("par_conj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(disj(List0, SM), disj(List, SM)) -->
+typecheck_goal_2(disj(List0), disj(List)) -->
 	checkpoint("disj"),
 	typecheck_goal_list(List0, List).
-typecheck_goal_2(if_then_else(Vs, A0, B0, C0, SM),
-		if_then_else(Vs, A, B, C, SM)) -->
+typecheck_goal_2(if_then_else(Vs, A0, B0, C0),
+		if_then_else(Vs, A, B, C)) -->
 	checkpoint("if"),
 	typecheck_goal(A0, A),
 	checkpoint("then"),
@@ -1065,7 +1065,7 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	typecheck_info_set_arg_num(0),
 	typecheck_info_set_unify_context(UnifyContext),
 	typecheck_unification(A, B0, B).
-typecheck_goal_2(switch(_, _, _, _), _) -->
+typecheck_goal_2(switch(_, _, _), _) -->
 	{ error("unexpected switch") }.
 typecheck_goal_2(foreign_proc(A, PredId, C, Args, E, F, G), 
 		foreign_proc(A, PredId, C, Args, E, F, G)) -->

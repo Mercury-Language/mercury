@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,25 +90,25 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, R0, R) :-
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, R0, R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, R0, R).
 
-move_follow_code_in_goal_2(par_conj(Goals0, SM), par_conj(Goals, SM),
+move_follow_code_in_goal_2(par_conj(Goals0), par_conj(Goals),
 		Flags, R0, R) :-
 		% move_follow_code_in_disj treats its list of goals as
 		% independent goals, so we can use it to process the
 		% independent parallel conjuncts.
 	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
 
-move_follow_code_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Flags, R0, R) :-
+move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, R0, R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, R0, R).
 
 move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
-move_follow_code_in_goal_2(switch(Var, Det, Cases0, SM),
-		switch(Var, Det, Cases, SM), Flags, R0, R) :-
+move_follow_code_in_goal_2(switch(Var, Det, Cases0),
+		switch(Var, Det, Cases), Flags, R0, R) :-
 	move_follow_code_in_cases(Cases0, Cases, Flags, R0, R).
 
-move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
-		if_then_else(Vars, Cond, Then, Else, SM), Flags, R0, R) :-
+move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
+		if_then_else(Vars, Cond, Then, Else), Flags, R0, R) :-
 	move_follow_code_in_goal(Cond0, Cond, Flags, R0, R1),
 	move_follow_code_in_goal(Then0, Then, Flags, R1, R2),
 	move_follow_code_in_goal(Else0, Else, Flags, R2, R).
@@ -213,15 +213,13 @@ move_follow_code_in_conj_2([Goal0 | Goals0], RevPrevGoals0, RevPrevGoals,
 %-----------------------------------------------------------------------------%
 
 move_follow_code_select([], [], []).
-move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
-	(
-		move_follow_code_is_builtin(Goal)
-	->
+move_follow_code_select([Goal | Goals], FollowGoals, RestGoals) :-
+	( move_follow_code_is_builtin(Goal) ->
 		move_follow_code_select(Goals, FollowGoals0, RestGoals),
-		FollowGoals = [Goal|FollowGoals0]
+		FollowGoals = [Goal | FollowGoals0]
 	;
 		FollowGoals = [],
-		RestGoals = [Goal|Goals]
+		RestGoals = [Goal | Goals]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -231,20 +229,20 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 
 move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 	(
-		Goal0 = switch(Var, Det, Cases0, SM),
+		Goal0 = switch(Var, Det, Cases0),
 		move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases),
-		Goal = switch(Var, Det, Cases, SM)
+		Goal = switch(Var, Det, Cases)
 	;
-		Goal0 = disj(Goals0, SM),
+		Goal0 = disj(Goals0),
 		move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals),
-		Goal = disj(Goals, SM)
+		Goal = disj(Goals)
 	;
-		Goal0 = if_then_else(Vars, Cond, Then0, Else0, SM),
+		Goal0 = if_then_else(Vars, Cond, Then0, Else0),
 		follow_code__conjoin_goal_and_goal_list(Then0,
 			FollowGoals, Then),
 		follow_code__conjoin_goal_and_goal_list(Else0,
 			FollowGoals, Else),
-		Goal = if_then_else(Vars, Cond, Then, Else, SM)
+		Goal = if_then_else(Vars, Cond, Then, Else)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -426,18 +426,18 @@ fixup_proc_info(MustRecompute, Goal0, Info0, Info) :-
 traverse_goal_2(conj(Goals0) - Info, conj(Goals) - Info) -->
 	list__map_foldl(traverse_goal_2, Goals0, Goals).
 
-traverse_goal_2(par_conj(Goals0, SM) - Info, par_conj(Goals, SM) - Info) -->
+traverse_goal_2(par_conj(Goals0) - Info, par_conj(Goals) - Info) -->
 		% traverse_disj treats its list of goals as independent
 		% rather than specifically disjoint, so we can use it
 		% to process a list of independent parallel conjuncts.
 	traverse_disj(Goals0, Goals).
 
-traverse_goal_2(disj(Goals0, SM) - Info, disj(Goals, SM) - Info) -->
+traverse_goal_2(disj(Goals0) - Info, disj(Goals) - Info) -->
 	traverse_disj(Goals0, Goals).
 
 		% a switch is treated as a disjunction
-traverse_goal_2(switch(Var, CanFail, Cases0, SM) - Info,
-		switch(Var, CanFail, Cases, SM) - Info) -->
+traverse_goal_2(switch(Var, CanFail, Cases0) - Info,
+		switch(Var, CanFail, Cases) - Info) -->
 	traverse_cases(Cases0, Cases).
 
 		% check whether this call could be specialized
@@ -466,7 +466,7 @@ traverse_goal_2(Goal0, Goal) -->
 
 		% if-then-elses are handled as disjunctions
 traverse_goal_2(Goal0, Goal) -->
-	{ Goal0 = if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo },
+	{ Goal0 = if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo },
 	get_pre_branch_info(PreInfo),
 	traverse_goal_2(Cond0, Cond),
 	traverse_goal_2(Then0, Then),
@@ -474,7 +474,7 @@ traverse_goal_2(Goal0, Goal) -->
 	set_pre_branch_info(PreInfo),
 	traverse_goal_2(Else0, Else),
 	get_post_branch_info(PostElseInfo),
-	{ Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo },
+	{ Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo },
 	{ merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo) },
 	set_post_branch_info(PostInfo).
 
@@ -1005,7 +1005,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 		Goal0 = call(_, _, _, _, _, _)
 	->
 		Goal0 = call(CalledPred, CalledProc, Args0, IsBuiltin,
-					MaybeContext, _SymName0)
+			MaybeContext, _SymName0)
 	;
 		error("higher_order.m: call expected")
 	),

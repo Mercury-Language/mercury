@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-1999,2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1659,7 +1659,7 @@ rl_gen__inline_call(_PredProcId, CalledPredInfo, CalledProcInfo, CurriedArgs,
 			insert_tuple(output_rel(OutputRel, []),
 				OutputRel0, TupleGoal) - ""
 		]) }
-	; { Goal = disj(_, _) - _ } ->
+	; { Goal = disj(_) - _ } ->
 		% create an empty relation 
 		rl_info_get_new_temporary(schema(OutputArgTypes), OutputRel),
 		{ Code = node([init(output_rel(OutputRel, [])) - ""]) }

@@ -27,6 +27,7 @@
 
 :- import_module parse_tree__prog_data, parse_tree__prog_out.
 :- import_module hlds__hlds_module, hlds__hlds_data, hlds__goal_form.
+:- import_module hlds__hlds_llds.
 :- import_module ll_backend__code_gen, ll_backend__unify_gen.
 :- import_module ll_backend__code_util, ll_backend__opt_util.
 :- import_module ll_backend__code_aux.
@@ -41,7 +42,7 @@
 middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		GoalExpr = switch(Var, cannot_fail, [Case1, Case2], SM),
+		GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
 		Case1 = case(ConsId1, Goal1),
 		Case2 = case(ConsId2, Goal2),
 		(
@@ -50,19 +51,19 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
-				SM, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			contains_only_builtins(Goal2),
 			code_aux__contains_simple_recursive_call(Goal1,
 				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
-				SM, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			fail
 		)
 	;
-		GoalExpr = if_then_else(Vars, Cond, Then, Else, SM),
+		GoalExpr = if_then_else(Vars, Cond, Then, Else),
 		(
 			contains_only_builtins(Cond),
 			contains_only_builtins(Then),
@@ -71,7 +72,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_else, SM, GoalInfo, Instrs,
+				in_else, GoalInfo, Instrs,
 				CodeInfo0, CodeInfo)
 		;
 			contains_only_builtins(Cond),
@@ -81,7 +82,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_then, SM, GoalInfo, Instrs,
+				in_then, GoalInfo, Instrs,
 				CodeInfo0, CodeInfo)
 		;
 			fail
@@ -93,12 +94,12 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_ite(list(prog_var), hlds_goal, hlds_goal,
-	hlds_goal, ite_rec, store_map, hlds_goal_info,
+	hlds_goal, ite_rec, hlds_goal_info,
 	code_tree, code_info, code_info).
-:- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
+:- mode middle_rec__generate_ite(in, in, in, in, in, in, out, in, out)
 	is det.
 
-middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
+middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo,
 		Instrs) -->
 	( { semidet_fail } ->
 		{ Instrs = empty }
@@ -109,12 +110,12 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
 %---------------------------------------------------------------------------%
 
 :- pred middle_rec__generate_switch(prog_var, cons_id, hlds_goal, hlds_goal,
-	store_map, hlds_goal_info, code_tree, code_info, code_info).
-:- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
+	hlds_goal_info, code_tree, code_info, code_info).
+:- mode middle_rec__generate_switch(in, in, in, in, in, out, in, out)
 	is semidet.
 
-middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
-		SwitchGoalInfo, Instrs) -->
+middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
+		Instrs) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -130,6 +131,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ tree__flatten(EntryTestCode, EntryTestListList) },
 	{ list__condense(EntryTestListList, EntryTestList) },
 
+	{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
 	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(model_det, Base, BaseGoalCode),
 	code_info__generate_branch_end(StoreMap, no, MaybeEnd1,
@@ -194,11 +196,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 				label(Loop2Label))
 				- "test on upward loop"]
 	;
-		predicate_module(ModuleInfo, PredId, ModuleName),
-		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
-		predicate_name(ModuleInfo, PredId, PredName),
-		string__append_list([ModuleNameString, ":", PredName],
-			PushMsg),
+		PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId),
 		MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
 		MaybeDecrSp = [decr_sp(FrameSize) - ""],
 		InitAuxReg =  [assign(AuxReg, lval(sp))

@@ -575,9 +575,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, TableIoStates,
 		Context, CallSaveAnsGoalInfo),
 	CallSaveAnsGoal = CallSaveAnsGoalEx - CallSaveAnsGoalInfo,
 
-	map__init(StoreMap),
 	GenIfNecGoalEx = if_then_else([], OccurredGoal,
-		RestoreAnsGoal, CallSaveAnsGoal, StoreMap),
+		RestoreAnsGoal, CallSaveAnsGoal),
 	create_instmap_delta([OccurredGoal, RestoreAnsGoal,
 		CallSaveAnsGoal], GenIfNecInstMapDelta0),
 	set__insert(OrigNonLocals, TableVar, GenIfNecNonLocals),
@@ -599,7 +598,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, TableIoStates,
 	CheckAndGenAnsGoal = CheckAndGenAnsGoalEx - CheckAndGenAnsGoalInfo,
 
 	BodyGoalEx = if_then_else([], InRangeGoal, CheckAndGenAnsGoal,
-		OrigGoal, StoreMap),
+		OrigGoal),
 	create_instmap_delta([InRangeGoal, CheckAndGenAnsGoal, OrigGoal],
 		BodyInstMapDelta0),
 	instmap_delta_restrict(BodyInstMapDelta0, OrigNonLocals,
@@ -687,9 +686,8 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		NoLoopGenGoalInfo),
 	NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
-	map__init(StoreMap),
 	GenAnsGoalEx = if_then_else([], ActiveCheckGoal,
-		LoopErrorGoal, NoLoopGenAnsGoal, StoreMap),
+		LoopErrorGoal, NoLoopGenAnsGoal),
 	create_instmap_delta([ActiveCheckGoal, LoopErrorGoal,
 		NoLoopGenAnsGoal], GenAnsInstMapDelta0),
 	instmap_delta_restrict(GenAnsInstMapDelta0, GenAnsNonLocals,
@@ -700,7 +698,7 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
 	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
-		GenAnsGoal, StoreMap),
+		GenAnsGoal),
 	create_instmap_delta([CompleteCheckGoal, RestoreAnsGoal, GenAnsGoal],
 		ITEInstMapDelta0),
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
@@ -767,7 +765,6 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 
 	set__insert(OrigNonLocals, TableVar, GenAnsNonLocals),
 
-	map__init(StoreMap),
 	(
 		(
 			EvalMethod = eval_loop_check
@@ -799,7 +796,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
 		GenTrueAnsGoalEx = if_then_else([], ActiveCheckGoal,
-			LoopErrorGoal, NoLoopGenAnsGoal, StoreMap),
+			LoopErrorGoal, NoLoopGenAnsGoal),
 		create_instmap_delta([ActiveCheckGoal, LoopErrorGoal,
 			NoLoopGenAnsGoal], GenTrueAnsInstMapDelta0),
 		instmap_delta_restrict(GenTrueAnsInstMapDelta0,
@@ -865,7 +862,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	),
 
 	GenAnsGoalEx = if_then_else([], GenTrueAnsGoal, SaveAnsGoal,
-		MarkAsFailedGoal, StoreMap),
+		MarkAsFailedGoal),
 	create_instmap_delta([GenTrueAnsGoal, SaveAnsGoal, MarkAsFailedGoal],
 		GenAnsGoalInstMapDelta0),
 	instmap_delta_restrict(GenAnsGoalInstMapDelta0, GenAnsNonLocals,
@@ -875,7 +872,7 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
 	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
-		GenAnsGoal, StoreMap),
+		GenAnsGoal),
 	create_instmap_delta([CompleteCheckGoal, RestoreAnsGoal, GenAnsGoal],
 		ITEInstMapDelta0),
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
@@ -946,7 +943,6 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	true_goal(TrueGoal),
 	fail_goal(FailGoal),
 
-	map__init(StoreMap),
 	(
 		EvalMethod = eval_memo
 	->
@@ -984,11 +980,11 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	;
 		ResumeGoal = FailGoal
 	),
-	GenAnsGoalEx = disj([GenAnsGoalPart1, ResumeGoal], StoreMap),
+	GenAnsGoalEx = disj([GenAnsGoalPart1, ResumeGoal]),
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalPart1GoalInfo,
 
 	ITE1GoalEx = if_then_else([], IsActiveCheckGoal, ActiveGoal,
-		GenAnsGoal, StoreMap),
+		GenAnsGoal),
 	ITE1Goal = ITE1GoalEx - GenAnsGoalPart1GoalInfo,
 
 	(
@@ -997,7 +993,7 @@ table_gen__create_new_non_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 		ITE2Goal = ITE1Goal
 	;
 		ITE2GoalEx = if_then_else([], CompleteCheckGoal,
-			RestoreAllAnsGoal, ITE1Goal, StoreMap),
+			RestoreAllAnsGoal, ITE1Goal),
 		ITE2Goal = ITE2GoalEx - GenAnsGoalPart1GoalInfo
 	),
 

@@ -15,7 +15,7 @@
 				 % etc.
 :- import_module transform_hlds. % needed for term_util, etc.
 :- import_module backend_libs. % XXX needed for rtti, foreign, etc.
-:- import_module ll_backend. % XXX needed for `llds__lval',
+% :- import_module ll_backend. % XXX needed for `llds__lval',
 				 % which is used in various annotations
 				 % in the HLDS (stack_slots, follow_vars, etc.)
 
@@ -23,7 +23,7 @@
 
 % The HLDS data structure itself
 :- include_module hlds_data, hlds_goal, hlds_pred, hlds_module.
-:- include_module instmap.
+:- include_module hlds_llds, instmap.
 :- include_module (assertion), special_pred.
 
 % Modules for creating the HLDS

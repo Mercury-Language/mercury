@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_goal, hlds__hlds_llds.
 :- import_module ll_backend__code_info.
 :- import_module bool.
 

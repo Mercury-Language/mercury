@@ -283,19 +283,19 @@ dependency_graph__add_arcs_in_goal_2(conj(Goals), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(par_conj(Goals, _SM), Caller, 
+dependency_graph__add_arcs_in_goal_2(par_conj(Goals), Caller, 
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(disj(Goals, _), Caller, 
+dependency_graph__add_arcs_in_goal_2(disj(Goals), Caller, 
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_list(Goals, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases, _),
+dependency_graph__add_arcs_in_goal_2(switch(_Var, _Det, Cases),
 					Caller, DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_cases(Cases, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else, _),
+dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else),
 			Caller, DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Cond, Caller, DepGraph0, DepGraph1),
 	dependency_graph__add_arcs_in_goal(Then, Caller, DepGraph1, DepGraph2),
@@ -717,18 +717,18 @@ process_aditi_goal(Goal) -->
 
 process_aditi_goal(IsNeg, conj(Goals) - _, Map0, Map) -->
 	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
-process_aditi_goal(_IsNeg, par_conj(_, _) - _, _, _) -->
+process_aditi_goal(_IsNeg, par_conj(_) - _, _, _) -->
 	{ error("process_aditi_goal - par_conj") }.
-process_aditi_goal(IsNeg, disj(Goals, _) - _, Map0, Map) -->
+process_aditi_goal(IsNeg, disj(Goals) - _, Map0, Map) -->
 	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
-process_aditi_goal(IsNeg, switch(_, _, Cases, _) - _, Map0, Map) -->
+process_aditi_goal(IsNeg, switch(_, _, Cases) - _, Map0, Map) -->
 	{ NegCallsInCases = 
 	    lambda([Case::in, M0::in, M::out, AInfo0::in, AInfo::out] is det, (
 		Case = case(_ConsId, Goal),
 		process_aditi_goal(IsNeg, Goal, M0, M, AInfo0, AInfo)
 	    )) },
 	list__foldl2(NegCallsInCases, Cases, Map0, Map).
-process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else, _) - _, 
+process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else) - _, 
 		Map0, Map) -->
 	process_aditi_goal(yes, Cond, Map0, Map1),
 	process_aditi_goal(IsNeg, Then, Map1, Map2),

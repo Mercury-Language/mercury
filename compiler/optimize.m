@@ -373,8 +373,10 @@ optimize__middle(Instrs0, Final, LayoutLabelSet, ProcLabel, C0, C,
 			[]
 		),
 		globals__io_lookup_int_option(num_real_r_regs, NumRealRRegs),
+		globals__io_lookup_int_option(local_var_access_threshold,
+			AccessThreshold),
 		{ use_local_vars__main(Instrs3, Instrs,
-			ProcLabel, NumRealRRegs, C2, C) },
+			ProcLabel, NumRealRRegs, AccessThreshold, C2, C) },
 		optimize__maybe_opt_debug(Instrs, C, "after use_local_vars",
 			OptDebugInfo3, OptDebugInfo)
 	;

@@ -52,18 +52,20 @@
 %-------------------------------------------------------------------------------
 :- implementation.
 
+:- import_module parse_tree__mercury_to_mercury, parse_tree__modules. 
+:- import_module parse_tree__prog_data, parse_tree__prog_out.
 :- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
-:- import_module hlds__hlds_out, check_hlds__type_util, hlds__instmap.
-:- import_module ll_backend__code_util, libs__globals, hlds__make_hlds.
-:- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
-:- import_module libs__options, parse_tree__prog_data, parse_tree__prog_out.
+:- import_module hlds__hlds_out, hlds__instmap, hlds__make_hlds.
 :- import_module hlds__quantification, hlds__special_pred.
-:- import_module hlds__passes_aux, check_hlds__inst_match.
-:- import_module parse_tree__modules, check_hlds__polymorphism.
+:- import_module hlds__passes_aux.
 :- import_module hlds__goal_util.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module check_hlds__inst_match, check_hlds__polymorphism.
+:- import_module ll_backend__code_util.
+:- import_module libs__options, libs__globals.
 
-:- import_module assoc_list, bool, char, int, list, map, require.
-:- import_module set, std_util, string.
+:- import_module bool, int, char, string, list, assoc_list, set, map.
+:- import_module std_util, require.
 
 		% Information about the dependencies of a variable
 		% that is not known to be used.
@@ -398,15 +400,15 @@ traverse_goal(Info, conj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle parallel conjunction
-traverse_goal(Info, par_conj(Goals, _SM), UseInf0, UseInf) :-
+traverse_goal(Info, par_conj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle disjunction
-traverse_goal(Info, disj(Goals, _), UseInf0, UseInf) :-
+traverse_goal(Info, disj(Goals), UseInf0, UseInf) :-
 	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle switch
-traverse_goal(Info, switch(Var, _, Cases, _), UseInf0, UseInf) :-
+traverse_goal(Info, switch(Var, _, Cases), UseInf0, UseInf) :-
 	set_var_used(Var, UseInf0, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
 	traverse_list_of_goals(Info, Goals, UseInf1, UseInf).
@@ -421,7 +423,7 @@ traverse_goal(Info, call(PredId, ProcId, Args, _, _, _),
 		UseInf0, UseInf).
 
 % handle if then else
-traverse_goal(Info, if_then_else(_, Cond - _, Then - _, Else - _, _),
+traverse_goal(Info, if_then_else(_, Cond - _, Then - _, Else - _),
 			UseInf0, UseInf) :-
 	traverse_goal(Info, Cond, UseInf0, UseInf1),
 	traverse_goal(Info, Then, UseInf1, UseInf2),
@@ -1216,13 +1218,13 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 						Changed, Goals0, Goals).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		par_conj(Goals0, SM) - GoalInfo,
-		par_conj(Goals, SM) - GoalInfo) :-
+		par_conj(Goals0) - GoalInfo,
+		par_conj(Goals) - GoalInfo) :-
 	fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, no,
 						Changed, Goals0, Goals).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		disj(Goals0, SM) - GoalInfo, disj(Goals, SM) - GoalInfo) :-
+		disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo) :-
 	fixup_disjuncts(ModuleInfo, UnusedVars, ProcCallInfo,
 				no, Changed, Goals0, Goals).
 
@@ -1232,14 +1234,14 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 				Changed, NegGoal0, NegGoal).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		switch(Var, CanFail, Cases0, SM) - GoalInfo,
-		switch(Var, CanFail, Cases, SM) - GoalInfo) :-
+		switch(Var, CanFail, Cases0) - GoalInfo,
+		switch(Var, CanFail, Cases) - GoalInfo) :-
 	fixup_cases(ModuleInfo, UnusedVars, ProcCallInfo,
 				no, Changed, Cases0, Cases).
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
-		if_then_else(Vars, Cond0, Then0, Else0, SM) - GoalInfo, 
-		if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo) :- 
+		if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo, 
+		if_then_else(Vars, Cond, Then, Else) - GoalInfo) :- 
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed1, Cond0, Cond),
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed2, Then0, Then),
 	fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed3, Else0, Else),
@@ -1598,21 +1600,6 @@ report_unused_args(PredInfo, UnusedArgs) -->
 		output_arg_list(UnusedArgs),
 		io__write_string(" are unused.\n")
 	).
-
-:- pred write_int_list(list(int)::in, io__state::di, io__state::uo) is det.
-
-write_int_list([]) --> [].
-write_int_list([First | Rest]) -->
-	io__write_int(First),
-	write_int_list_2(Rest).
-
-:- pred write_int_list_2(list(int)::in, io__state::di, io__state::uo) is det.
-
-write_int_list_2([]) --> [].
-write_int_list_2([First | Rest]) -->
-	io__write_string(", "),
-	io__write_int(First),
-	write_int_list_2(Rest).
 
 	% adjust warning message for the presence of type_infos.
 :- pred adjust_unused_args(int::in, list(int)::in, list(int)::out) is det.

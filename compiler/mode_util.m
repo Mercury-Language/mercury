@@ -1323,9 +1323,8 @@ update_module_info(P, R) -->
 		recompute_info, recompute_info).
 :- mode recompute_instmap_delta_2(in, in, in, out, in, in, out, in, out) is det.
 
-recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0, SM), GoalInfo,
-		switch(Var, Det, Cases, SM), VarTypes, InstMap, InstMapDelta)
-		-->
+recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
+		switch(Var, Det, Cases), VarTypes, InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
 		VarTypes, InstMap, NonLocals, InstMapDelta).
@@ -1335,13 +1334,13 @@ recompute_instmap_delta_2(Atomic, conj(Goals0), _, conj(Goals),
 	recompute_instmap_delta_conj(Atomic, Goals0, Goals,
 		VarTypes, InstMap, InstMapDelta).
 
-recompute_instmap_delta_2(Atomic, par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM), VarTypes, InstMap, InstMapDelta) -->
+recompute_instmap_delta_2(Atomic, par_conj(Goals0), GoalInfo,
+		par_conj(Goals), VarTypes, InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
 		VarTypes, InstMap, NonLocals, InstMapDelta).
 
-recompute_instmap_delta_2(Atomic, disj(Goals0, SM), GoalInfo, disj(Goals, SM),
+recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
 		VarTypes, InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
@@ -1352,8 +1351,8 @@ recompute_instmap_delta_2(Atomic, not(Goal0), _, not(Goal),
 	{ instmap_delta_init_reachable(InstMapDelta) },
 	recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap, _).
 
-recompute_instmap_delta_2(Atomic, if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-		if_then_else(Vars, A, B, C, SM), VarTypes, InstMap0,
+recompute_instmap_delta_2(Atomic, if_then_else(Vars, A0, B0, C0), GoalInfo,
+		if_then_else(Vars, A, B, C), VarTypes, InstMap0,
 		InstMapDelta) -->
 	recompute_instmap_delta_1(Atomic, A0, A, VarTypes, InstMap0,
 		InstMapDelta1),
