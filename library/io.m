@@ -1966,7 +1966,8 @@ io__write_ordinary_term(Term, Priority) -->
 			term_io__quote_atom(Functor),
 			io__write_char(')')
 		;
-			term_io__quote_atom(Functor)
+			term_io__quote_atom(Functor,
+				maybe_adjacent_to_graphic_token)
 		),
 		(
 			{ Args = [X|Xs] }

@@ -55,7 +55,8 @@
 
 :- pred term_io__write_constant(const, io__state, io__state).
 :- mode term_io__write_constant(in, di, uo) is det.
-%		Writes a constant (integer, float, or atom) to stdout.
+%		Writes a constant (integer, float, string, or atom)
+%		to stdout.
 
 :- pred term_io__write_variable(var, varset, io__state, io__state).
 :- mode term_io__write_variable(in, in, di, uo) is det.
@@ -94,6 +95,24 @@
 :- mode term_io__quote_single_char(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+%-----------------------------------------------------------------------------%
+:- interface.
+
+	% for use by io.m.
+
+:- type adjacent_to_graphic_token
+	--->	maybe_adjacent_to_graphic_token
+	;	not_adjacent_to_graphic_token.
+
+:- pred term_io__quote_atom(string, adjacent_to_graphic_token,
+		io__state, io__state).
+:- mode term_io__quote_atom(in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -275,7 +294,8 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 			term_io__write_constant(Functor),
 			io__write_char(')')
 		;
-			term_io__write_constant(Functor)
+			term_io__write_constant(Functor,
+				maybe_adjacent_to_graphic_token)
 		),
 		(
 			{ Args = [X|Xs] }
@@ -348,14 +368,20 @@ term_io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 
 %-----------------------------------------------------------------------------%
 
-	% write the functor
-term_io__write_constant(term__integer(I)) -->
+term_io__write_constant(Const) -->
+	term_io__write_constant(Const, not_adjacent_to_graphic_token).
+
+:- pred term_io__write_constant(const, adjacent_to_graphic_token,
+	io__state, io__state).
+:- mode term_io__write_constant(in, in, di, uo) is det.
+
+term_io__write_constant(term__integer(I), _) -->
 	io__write_int(I).
-term_io__write_constant(term__float(F)) -->
+term_io__write_constant(term__float(F), _) -->
 	io__write_float(F).
-term_io__write_constant(term__atom(A))  -->
-	term_io__quote_atom(A).
-term_io__write_constant(term__string(S)) -->
+term_io__write_constant(term__atom(A), NextToGraphicToken)  -->
+	term_io__quote_atom(A, NextToGraphicToken).
+term_io__write_constant(term__string(S), _) -->
 	term_io__quote_string(S).
 
 %-----------------------------------------------------------------------------%
@@ -366,6 +392,9 @@ term_io__quote_char(C) -->
 	io__write_char('''').
 
 term_io__quote_atom(S) -->
+	term_io__quote_atom(S, not_adjacent_to_graphic_token).
+
+term_io__quote_atom(S, NextToGraphicToken) -->
 	(
 		% I didn't make these rules up: see ISO Prolog 6.3.1.3
 		% and 6.4.2.
@@ -385,7 +414,17 @@ term_io__quote_atom(S) -->
 			{ string__to_char_list(S, Chars) },
 			{ \+ (  list__member(Char, Chars),
 				\+ lexer__graphic_token_char(Char)) },
-			{ Chars \= [] }
+			{ Chars \= [] },
+			%
+			% If the token could be the last token in a term,
+			% and the term could be followed with ".\n",
+			% then we need to quote the token, otherwise
+			% the "." would be considered part of the
+			% same graphic token.  We can only leave it
+			% unquoted if we're sure it won't be adjacent
+			% to any graphic token.
+			%
+			{ NextToGraphicToken = not_adjacent_to_graphic_token }
 		;
 			% 6.3.1.3: atom = open list, close list ;
 			{ S = "[]" }

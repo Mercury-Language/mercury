@@ -1,6 +1,7 @@
 var("X") + int(3) * var("X^2") ; (type)
 { type }
-{ :- }
+{ ':-' }
+':-'
 { blah }
 blah ; (type), (type) * blah ; (type)
 ((blah ; blah), blah) * blah ; blah
