@@ -2383,7 +2383,7 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 			% even though its declaration is polymorphic.
 
 		goal_util__generate_simple_call(mercury_private_builtin_module,
-			"superclass_from_typeclass_info",
+			"superclass_from_typeclass_info", predicate,
 			[SubClassVar, IndexVar, Var], only_mode, det, no,
 			[], ModuleInfo, term__context_init, SuperClassGoal),
 
@@ -2840,8 +2840,8 @@ polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 		string__append_list(
 			["builtin_", SpecialName, "_", CategoryName], Name),
 		lookup_builtin_pred_proc_id(ModuleInfo,
-			mercury_private_builtin_module, Name, Arity,
-			only_mode, PredId, ProcId),
+			mercury_private_builtin_module, Name, predicate,
+			Arity, only_mode, PredId, ProcId),
 		PredName = qualified(mercury_private_builtin_module, Name)
 	).
 
@@ -3078,7 +3078,7 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		TypeInfoVar, VarSet, VarTypes),
 
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"type_info_from_typeclass_info",
+		"type_info_from_typeclass_info", predicate,
 		[TypeClassInfoVar, IndexVar, TypeInfoVar], only_mode, det, no,
 		[TypeInfoVar - ground(shared, none)], ModuleInfo,
 		term__context_init, CallGoal),

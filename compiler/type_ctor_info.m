@@ -162,8 +162,8 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		Compare = proc(ComparePredId, CompareProcId)
 	;
 		lookup_builtin_pred_proc_id(ModuleInfo,
-			mercury_private_builtin_module, "unused", 0,
-			only_mode, PredId, ProcId),
+			mercury_private_builtin_module, "unused",
+			predicate, 0, only_mode, PredId, ProcId),
 		Unused = proc(PredId, ProcId),
 		Unify = Unused,
 		Compare = Unused

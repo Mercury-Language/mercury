@@ -145,7 +145,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
 		% So we use a call to `private_builtin__unused' (which
 		% will call error/1) rather than `fail' for the "then" part.
 		mercury_private_builtin_module(PrivateBuiltin),
-		generate_simple_call(PrivateBuiltin, "unused",
+		generate_simple_call(PrivateBuiltin, "unused", predicate,
 			[], only_mode, det,
 			no, [], ModuleInfo, Context, ThenGoal)
 	;
@@ -475,8 +475,8 @@ ticket_counter_type = c_pointer_type.
 generate_call(PredName, Args, Detism, MaybeFeature, InstMap, Module, Context,
 		CallGoal) :-
 	mercury_private_builtin_module(BuiltinModule),
-	goal_util__generate_simple_call(BuiltinModule, PredName, Args,
-		only_mode, Detism, MaybeFeature, InstMap, Module,
+	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
+		Args, only_mode, Detism, MaybeFeature, InstMap, Module,
 		Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

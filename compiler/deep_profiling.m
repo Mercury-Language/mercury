@@ -1471,22 +1471,22 @@ classify_call(ModuleInfo, Expr, Class) :-
 	( Expr = call(PredId, ProcId, Args, _, _, _) ->
 		(
 			lookup_builtin_pred_proc_id(ModuleInfo,
-				mercury_public_builtin_module, "unify", 2,
-				mode_no(0), PredId, _),
+				mercury_public_builtin_module, "unify",
+				predicate, 2, mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)
 		;
 			lookup_builtin_pred_proc_id(ModuleInfo,
-				mercury_public_builtin_module, "compare", 3,
-				mode_no(0), PredId, _),
+				mercury_public_builtin_module, "compare",
+				predicate, 3, mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)
 		;
 			lookup_builtin_pred_proc_id(ModuleInfo,
 				mercury_public_builtin_module,
-				"compare_representation", 3,
+				"compare_representation", predicate, 3,
 				mode_no(0), PredId, _),
 			Args = [TypeInfoVar | _]
 		->

@@ -682,8 +682,9 @@ generate_stub_clause(PredName, PredInfo0, PredInfo, ModuleInfo, StubClause,
 		CalleeName = "no_clauses"
 	),
 	pred_info_context(PredInfo, Context),
-	generate_simple_call(PrivateBuiltin, CalleeName, [PredNameVar],
-		only_mode, det, no, [], ModuleInfo, Context, CallGoal),
+	generate_simple_call(PrivateBuiltin, CalleeName, predicate,
+		[PredNameVar], only_mode, det, no, [], ModuleInfo,
+		Context, CallGoal),
 	%
 	% Combine the unification and call into a conjunction
 	%

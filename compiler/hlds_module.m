@@ -1320,8 +1320,8 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 	;       mode_no(int).		% The Nth mode, counting from 0.
 
 :- pred lookup_builtin_pred_proc_id(module_info, module_name,
-		string, arity, mode_no, pred_id, proc_id).
-:- mode lookup_builtin_pred_proc_id(in, in, in, in, in, out, out) is det.
+		string, pred_or_func, arity, mode_no, pred_id, proc_id).
+:- mode lookup_builtin_pred_proc_id(in, in, in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -2029,27 +2029,47 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 		error(Message)
 	).
 
-lookup_builtin_pred_proc_id(Module, ModuleName, PredName, 
+lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		Arity, ModeNo, PredId, ProcId) :-
 	module_info_get_predicate_table(Module, PredTable),
 	(
+		(
+			PredOrFunc = predicate,
 		predicate_table_search_pred_m_n_a(PredTable,
-			is_fully_qualified, ModuleName, PredName, Arity,
+				is_fully_qualified, ModuleName, ProcName, Arity,
+				[PredId0])
+		;
+			PredOrFunc = function,
+			predicate_table_search_func_m_n_a(PredTable,
+				is_fully_qualified, ModuleName, ProcName, Arity,
 			[PredId0])
+		)
 	->
 		PredId = PredId0
 	;
 		% Some of the table builtins are polymorphic,
 		% and for them we need to subtract one from the arity
 		% to take into account the type_info argument.
+		% XXX The caller should supply us with the exact arity.
+		% Guessing how many of the arguments are typeinfos and/or
+		% typeclass_infos, as this code here does, is error-prone
+		% as well as inefficient.
+		(
+			PredOrFunc = predicate,
 		predicate_table_search_pred_m_n_a(PredTable,
-			is_fully_qualified, ModuleName, PredName, Arity - 1,
-			[PredId0])
+				is_fully_qualified, ModuleName, ProcName,
+				Arity - 1, [PredId0])
+		;
+			PredOrFunc = function,
+			predicate_table_search_func_m_n_a(PredTable,
+				is_fully_qualified, ModuleName, ProcName,
+				Arity - 1, [PredId0])
+		)
 	->
 		PredId = PredId0
 	;
 		string__int_to_string(Arity, ArityS),
-		string__append_list(["can't locate ", PredName,
+		string__append_list(["can't locate ", ProcName,
 			"/", ArityS], ErrorMessage),
 		error(ErrorMessage)
 	),
@@ -2064,7 +2084,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, PredName,
 		;
 			error(string__format( 
 				"expected single mode for %s/%d",
-				[s(PredName), i(Arity)]))
+				[s(ProcName), i(Arity)]))
 		)
 	;
 		ModeNo = mode_no(N),
@@ -2075,7 +2095,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, PredName,
 		;
 			error(string__format(
 				"there is no mode %d for %s/%d",
-				[i(N), s(PredName), i(Arity)]))
+				[i(N), s(ProcName), i(Arity)]))
 		)
 	).
 

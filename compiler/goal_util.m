@@ -220,7 +220,7 @@
 :- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
 		hlds_goal::in, hlds_goal::in) is semidet.
 
-	% generate_simple_call(ModuleName, PredName, Args, ModeNo,
+	% generate_simple_call(ModuleName, ProcName, PredOrFunc, Args, ModeNo,
 	%		Detism, MaybeFeature, InstMapDelta,
 	%		ModuleInfo, Context, CallGoal):
 	% Generate a call to a builtin procedure (e.g.
@@ -235,9 +235,12 @@
 	% from 0.
 	%
 :- pred goal_util__generate_simple_call(module_name::in, string::in,
-	list(prog_var)::in, mode_no::in, determinism::in,
+	pred_or_func::in, list(prog_var)::in, mode_no::in, determinism::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
+
+:- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
+	prog_context::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -603,8 +606,7 @@ goal_util__goal_vars_2(unify(Var, RHS, _, Unif, _), Set0, Set) :-
 	),	
 	goal_util__rhs_goal_vars(RHS, Set2, Set).
 
-goal_util__goal_vars_2(generic_call(GenericCall, ArgVars, _, _),
-		Set0, Set) :-
+goal_util__goal_vars_2(generic_call(GenericCall, ArgVars, _, _), Set0, Set) :-
 	goal_util__generic_call_vars(GenericCall, Vars0),
 	set__insert_list(Set0, Vars0, Set1),
 	set__insert_list(Set1, ArgVars, Set).
@@ -1228,10 +1230,10 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
-		MaybeFeature, InstMap, Module, Context, CallGoal) :-
+goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, Args, ModeNo,
+		Detism, MaybeFeature, InstMap, Module, Context, CallGoal) :-
 	list__length(Args, Arity),
-	lookup_builtin_pred_proc_id(Module, ModuleName, PredName, 
+	lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		Arity, ModeNo, PredId, ProcId),
 
 	% builtin_state only uses this to work out whether
@@ -1241,7 +1243,7 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 	builtin_state(Module, InvalidPredId, PredId, ProcId, BuiltinState),
 
 	Call = call(PredId, ProcId, Args, BuiltinState, no,
-		qualified(ModuleName, PredName)),
+		qualified(ModuleName, ProcName)),
 	set__init(NonLocals0),
 	set__insert_list(NonLocals0, Args, NonLocals),
 	determinism_components(Detism, _CanFail, NumSolns),
@@ -1264,6 +1266,14 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 		CallGoalInfo = CallGoalInfo0
 	),
 	CallGoal = Call - CallGoalInfo.
+
+generate_unsafe_cast(InArg, OutArg, Context, Goal) :-
+	set__list_to_set([InArg, OutArg], NonLocals),
+	instmap_delta_from_assoc_list([OutArg - ground(shared, none)],
+		InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
+	Goal = generic_call(unsafe_cast, [InArg, OutArg],
+		[in_mode, out_mode], det) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 

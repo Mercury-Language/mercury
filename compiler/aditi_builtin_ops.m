@@ -197,8 +197,8 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 
 	ModuleInfo0 =^ module_info,
 	{ lookup_builtin_pred_proc_id(ModuleInfo0,
-		aditi_private_builtin_module, "do_call_returning_relation", 4,
-		only_mode, BuiltinPredId, BuiltinProcId) },
+		aditi_private_builtin_module, "do_call_returning_relation",
+		predicate, 4, only_mode, BuiltinPredId, BuiltinProcId) },
 
 	%
 	% Build the input arguments describing the procedure to call.
@@ -304,7 +304,7 @@ transform_aditi_builtin(Builtin, Args, Modes, Det, GoalInfo, Goal) -->
 	{ aditi_builtin_info(ModuleInfo, Builtin,
 		BuiltinProcName, BuiltinProcArity, ConstArgs) },
 	{ lookup_builtin_pred_proc_id(ModuleInfo, aditi_private_builtin_module,
-		BuiltinProcName, BuiltinProcArity, only_mode,
+		BuiltinProcName, predicate, BuiltinProcArity, only_mode,
 		PredId, ProcId) },
 	generate_const_args(ConstArgs, ConstArgVars, ConstArgGoals),
 	transform_aditi_builtin_2(Builtin, Args, Modes, Det,
@@ -478,7 +478,7 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	; Det = erroneous, Proc = "do_erroneous_call"
 	},
 	{ lookup_builtin_pred_proc_id(ModuleInfo0,
-		aditi_private_builtin_module, Proc, 4, only_mode,
+		aditi_private_builtin_module, Proc, predicate, 4, only_mode,
 		BuiltinPredId, BuiltinProcId) },
 	{ BuiltinSymName = qualified(aditi_private_builtin_module, Proc) },
 
