@@ -25,12 +25,24 @@
 
 #-----------------------------------------------------------------------------#
 
+usage() {
+	echo "Usage: $0 <branch-dir> <stability>" 1>&2
+	echo '<branch-dir> can be "rotd", "0.11.1-beta", "0.11", etc.'
+	echo '(It must match the subdirectory name on the web site.)'
+	echo '<stability> must be either "stable" or "unstable".' 1>&2
+	exit 1
+}
+
 # Parse the command-line arguments
-case "$#:$1" in
-	1:stable|1:unstable)
-		stability=$1 ;;
-	*) 
-		echo "Usage: $0 [stable|unstable]" 1>&2; exit 1 ;;
+
+case "$#" in
+	2)	branch_dir=$1; stability=$2 ;;
+	*)	usage ;;
+esac
+case "$stability" in
+	stable|unstable)
+		;;
+	*)	usage ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -43,12 +55,12 @@ esac
 # This is also used to find the .tar.gz source distribution and the
 # "latest-stable-version" and "latest-unstable-version" files.
 WEBDIR=/home/mercury/public/installed_w3/download/files
-BETA_WEBDIR=$WEBDIR/beta-releases/rotd
+BETA_WEBDIR=$WEBDIR/beta-releases/$branch_dir
 
 # Place to install files for the FTP site
 FTP_HOST=ftp.mercury.cs.mu.oz.au
 FTPDIR=$FTP_HOST:/home/ftp/pub/mercury
-BETA_FTPDIR=$FTPDIR/beta-releases/rotd
+BETA_FTPDIR=$FTPDIR/beta-releases/$branch_dir
 
 # Place to record log file (rpmbuild.out)
 LOGDIR=/home/mercury/public/test_mercury/logs
