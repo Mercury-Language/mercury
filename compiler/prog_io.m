@@ -100,6 +100,7 @@
 
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module hlds_data, hlds_pred, prog_util, globals, options, (inst).
+:- import_module purity.
 :- import_module bool, int, string, std_util, parser, term_io, dir, require.
 :- import_module varset, term.
 
@@ -514,11 +515,12 @@ parse_decl(ModuleName, VarSet, F, Result) :-
 process_decl(ModuleName, VarSet, "type", [TypeDecl], Result) :-
 	parse_type_decl(ModuleName, VarSet, TypeDecl, Result).
 
+	%  If this clause is changed, also modify clause below for "impure."
 process_decl(ModuleName, VarSet, "pred", [PredDecl], Result) :-
-	parse_type_decl_pred(ModuleName, VarSet, PredDecl, Result).
+	parse_type_decl_pred(ModuleName, VarSet, PredDecl, pure, Result).
 
 process_decl(ModuleName, VarSet, "func", [FuncDecl], Result) :-
-	parse_type_decl_func(ModuleName, VarSet, FuncDecl, Result).
+	parse_type_decl_func(ModuleName, VarSet, FuncDecl, pure, Result).
 
 process_decl(ModuleName, VarSet, "mode", [ModeDecl], Result) :-
 	parse_mode_decl(ModuleName, VarSet, ModeDecl, Result).
@@ -661,6 +663,38 @@ process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Result) :-
 process_decl(ModuleName, VarSet, "pragma", Pragma, Result):-
 	parse_pragma(ModuleName, VarSet, Pragma, Result).
 
+	%  XXX I'm not very happy with this.  I believe this should
+	%  recursively call process_decl in order to process the pred or func
+	%  declaration.  The information that the pred/func decl is preceeded
+	%  by "impure" should be carried by another argument, which can be
+	%  generalised to a list of declared properties or attributes.  Then
+	%  each predicate for handling a declaration would have to handle
+	%  the list of properties, and complain about any invalid properties.
+	%  This is a more general solution, and avoids the code duplication of
+	%  the calls to parse_type_decl_{pred,func}.
+
+process_decl(ModuleName, VarSet, "impure", [Decl], Result):-
+	process_purity_decl(ModuleName, VarSet, (impure), Decl, Result).
+process_decl(ModuleName, VarSet, "semipure", [Decl], Result):-
+	process_purity_decl(ModuleName, VarSet, (semipure), Decl, Result).
+
+
+:- pred process_purity_decl(string, varset, purity, term, maybe1(item)).
+:- mode process_purity_decl(in, in, in, in, out) is det.
+
+process_purity_decl(ModuleName, VarSet, Purity, Decl, Result) :-
+	(   Decl = term__functor(term__atom("pred"), [PredDecl], _Context)
+	->	
+		    parse_type_decl_pred(ModuleName, VarSet,
+					 PredDecl, Purity, Result)
+% 	;   Decl = term__functor(term__atom("func"), [FuncDecl], _Context)
+% 	->	
+% 		    parse_type_decl_func(ModuleName, VarSet,
+% 					 FuncDecl, Purity, Result)
+	;   
+		Result = error("invalid impurity declaration", Decl)
+	).
+
 :- pred parse_type_decl(string, varset, term, maybe1(item)).
 :- mode parse_type_decl(in, in, in, out) is det.
 parse_type_decl(ModuleName, VarSet, TypeDecl, Result) :-
@@ -729,43 +763,42 @@ parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
 
 %-----------------------------------------------------------------------------%
 
-	% parse_type_decl_pred(Pred, Condition, Result) succeeds
-	% if Pred is a predicate type declaration, and binds Condition
-	% to the condition for that declaration (if any), and Result to
-	% a representation of the declaration.
-:- pred parse_type_decl_pred(string, varset, term, maybe1(item)).
-:- mode parse_type_decl_pred(in, in, in, out) is det.
+	% parse_type_decl_pred(ModuleName, VarSet, Pred, Purity, Result)
+	% succeeds if Pred is a predicate type declaration, and binds Result
+	% to a representation of the declaration.
+:- pred parse_type_decl_pred(string, varset, term, purity, maybe1(item)).
+:- mode parse_type_decl_pred(in, in, in, in, out) is det.
 
-parse_type_decl_pred(ModuleName, VarSet, Pred, R) :-
+parse_type_decl_pred(ModuleName, VarSet, Pred, Purity, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
         process_type_decl_pred(ModuleName, MaybeDeterminism, VarSet, Body2,
-                                Condition, R).
+                                Condition, Purity, R).
 
 :- pred process_type_decl_pred(string, maybe1(maybe(determinism)), varset,
-				term, condition, maybe1(item)).
-:- mode process_type_decl_pred(in, in, in, in, in, out) is det.
+				term, condition, purity, maybe1(item)).
+:- mode process_type_decl_pred(in, in, in, in, in, in, out) is det.
 
-process_type_decl_pred(_MNm, error(Term, Reason), _, _, _,
+process_type_decl_pred(_MNm, error(Term, Reason), _, _, _, _,
 			error(Term, Reason)).
 process_type_decl_pred(ModuleName, ok(MaybeDeterminism), VarSet, Body,
-			Condition, R) :-
-        process_pred(ModuleName, VarSet, Body, Condition, MaybeDeterminism, R).
+			Condition, Purity, R) :-
+        process_pred(ModuleName, VarSet, Body, Condition, MaybeDeterminism,
+		     Purity, R).
 
 %-----------------------------------------------------------------------------%
 
-	% parse_type_decl_func(Func, Condition, Result) succeeds
-	% if Func is a function type declaration, and binds Condition
-	% to the condition for that declaration (if any), and Result to
+	% parse_type_decl_func(ModuleName, Varset, Func, Purity, Result)
+	% succeeds if Func is a function type declaration, and binds Result to
 	% a representation of the declaration.
-:- pred parse_type_decl_func(string, varset, term, maybe1(item)).
-:- mode parse_type_decl_func(in, in, in, out) is det.
+:- pred parse_type_decl_func(string, varset, term, purity, maybe1(item)).
+:- mode parse_type_decl_func(in, in, in, in, out) is det.
 
-parse_type_decl_func(ModuleName, VarSet, Func, R) :-
+parse_type_decl_func(ModuleName, VarSet, Func, Purity, R) :-
 	get_condition(Func, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-        process_maybe1_to_t(process_func(ModuleName, VarSet, Body2, Condition),
-				MaybeDeterminism, R).
+        process_maybe1_to_t(process_func(ModuleName, VarSet, Body2, Condition,
+					 Purity), MaybeDeterminism, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1079,25 +1112,26 @@ convert_constructor(ModuleName, Term, Result) :-
 	% parse a `:- pred p(...)' declaration
 
 :- pred process_pred(string, varset, term, condition, maybe(determinism),
-			maybe1(item)).
-:- mode process_pred(in, in, in, in, in, out) is det.
+			purity, maybe1(item)).
+:- mode process_pred(in, in, in, in, in, in, out) is det.
 
-process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Result) :-
+process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Purity, Result) :-
 	parse_qualified_term(ModuleName, PredType, PredType,
 		"`:- pred' declaration", R),
-	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Result).
+	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Purity, Result).
 
 :- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
-			condition, maybe1(item)).
-:- mode process_pred_2(in, in, in, in, in, out) is det.
-process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Result) :-
+			condition, purity, maybe1(item)).
+:- mode process_pred_2(in, in, in, in, in, in, out) is det.
+process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Purity, Result) :-
 	(
 		convert_type_and_mode_list(As0, As)
 	->
 		(
 			verify_type_and_mode_list(As)
 		->
-			Result = ok(pred(VarSet, F, As, MaybeDet, Cond))
+			Result = ok(pred(VarSet, F, As, MaybeDet, Cond,
+					 Purity))
 		;
 			Result = error("some but not all arguments have modes", PredType)
 		)
@@ -1105,7 +1139,7 @@ process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Result) :-
 		Result = error("syntax error in `:- pred' declaration",
 				PredType)
 	).
-process_pred_2(error(M, T), _, _, _, _, error(M, T)).
+process_pred_2(error(M, T), _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1137,11 +1171,11 @@ verify_type_and_mode_list_2([Head | Tail], First) :-
 
 	% parse a `:- func p(...)' declaration
 
-:- pred process_func(string, varset, term, condition, maybe(determinism),
-			maybe1(item)).
-:- mode process_func(in, in, in, in, in, out) is det.
+:- pred process_func(string, varset, term, condition, purity,
+			maybe(determinism), maybe1(item)).
+:- mode process_func(in, in, in, in, in, in, out) is det.
 
-process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
+process_func(ModuleName, VarSet, Term, Cond, Purity, MaybeDet, Result) :-
 	(
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
@@ -1149,16 +1183,16 @@ process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 		parse_qualified_term(ModuleName, FuncTerm, Term,
 			"`:- func' declaration", R),
 		process_func_2(R, FuncTerm, ReturnTypeTerm, VarSet, MaybeDet,
-				Cond, Result)
+				Cond, Purity, Result)
 	;
 		Result = error("`=' expected in `:- func' declaration", Term)
 	).
 
 :- pred process_func_2(maybe_functor, term, term, varset, maybe(determinism),
-			condition, maybe1(item)).
-:- mode process_func_2(in, in, in, in, in, in, out) is det.
+			condition, purity, maybe1(item)).
+:- mode process_func_2(in, in, in, in, in, in, in, out) is det.
 process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
-		Result) :-
+		Purity, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( \+ verify_type_and_mode_list(As) ->
 			Result = error("some but not all arguments have modes",
@@ -1187,7 +1221,7 @@ process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 					FuncTerm)
 			;
 				Result = ok(func(VarSet, F, As, ReturnType,
-					MaybeDet, Cond))
+					MaybeDet, Cond, Purity))
 			)
 		;
 			Result = error(
@@ -1199,7 +1233,7 @@ process_func_2(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 			"syntax error in arguments of `:- func' declaration",
 					FuncTerm)
 	).
-process_func_2(error(M, T), _, _, _, _, _, error(M, T)).
+process_func_2(error(M, T), _, _, _, _, _, _, error(M, T)).
 
 %-----------------------------------------------------------------------------%
 

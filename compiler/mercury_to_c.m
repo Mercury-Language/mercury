@@ -170,8 +170,9 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	;
 		c_gen_indent(Indent),
 		io__write_string("/****\n"),
+		{ pred_info_get_purity(PredInfo, Purity) },
 		mercury_output_pred_type(TVarSet, unqualified(PredName),
-			ArgTypes, no, Context),
+			ArgTypes, no, Purity, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,

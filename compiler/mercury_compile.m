@@ -30,7 +30,7 @@
 
 	% the main compiler passes (in order of execution)
 :- import_module handle_options, prog_io, modules, module_qual, equiv_type.
-:- import_module make_hlds, typecheck, modes.
+:- import_module make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, intermod, trans_opt, bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
@@ -556,9 +556,12 @@ mercury_compile__frontend_pass_2(HLDS0, HLDS, FoundError) -->
 % is det.
 :- mode mercury_compile__frontend_pass_2_by_phases(in, out, out, di, uo) is det.
 
-mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
+mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
+	mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
 		FoundModeError, UnsafeToContinue),
@@ -920,6 +923,24 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__puritycheck(module_info, bool, bool,
+				module_info, io__state, io__state).
+:- mode mercury_compile__puritycheck(in, in, in, out, di, uo) is det.
+
+mercury_compile__puritycheck(HLDS0, Verbose, Stats, HLDS) -->
+	{ module_info_num_errors(HLDS0, NumErrors0) },
+	puritycheck(HLDS0, HLDS),
+	{ module_info_num_errors(HLDS, NumErrors) },
+	( { NumErrors \= NumErrors0 } ->
+		maybe_write_string(Verbose,
+			"% Program contains purity error(s).\n"),
+		io__set_exit_status(1)
+	;
+		maybe_write_string(Verbose,
+			"% Program is purity-correct.\n")
+	),
+	maybe_report_stats(Stats).
 
 :- pred mercury_compile__modecheck(module_info, bool, bool,
 				module_info, bool, bool, io__state, io__state).

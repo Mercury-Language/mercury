@@ -48,8 +48,6 @@
 :- op(1199, fx, (pragma)).
 
 :- op(1199, fx, (type)).
-:- op(1199, fx, (pred)).
-:- op(1199, fx, (func)).
 :- op(1199, fx, (mode)).
 :- op(1199, fx, (inst)).
 :- op(1179, xfy, (--->)).
@@ -63,6 +61,13 @@
 :- op(900, fy, (not)).
 
 :- op(900, xfx, (when)).
+
+:- op(800, fx, (pred)).
+:- op(800, fx, (func)).
+:- op(800, fy, (impure)).
+:- op(800, fy, (semipure)).
+
+
 :- op(740, xfy, (or)).
 :- op(720, xfy, (and)).
 

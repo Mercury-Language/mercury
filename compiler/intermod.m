@@ -848,17 +848,18 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
+	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	(
 		{ PredOrFunc = predicate },
 		mercury_output_pred_type(TVarSet, qualified(Module, Name),
-					ArgTypes, no, Context)
+					ArgTypes, no, Purity, Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
 		mercury_output_func_type(TVarSet,
 			qualified(Module, Name), FuncArgTypes,
-			FuncRetType, no, Context)
+			FuncRetType, no, Purity, Context)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_procids(PredInfo, ProcIds) },

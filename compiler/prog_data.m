@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst).
+:- import_module hlds_data, hlds_pred, (inst), purity.
 :- import_module term_util, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -52,11 +52,11 @@
 	; 	module_defn(varset, module_defn)
 
 	; 	pred(varset, sym_name, list(type_and_mode),
-			maybe(determinism), condition)
+			maybe(determinism), condition, purity)
 		%     VarNames, PredName, ArgTypes, Deterministicness, Cond
 
 	; 	func(varset, sym_name, list(type_and_mode), type_and_mode,
-			maybe(determinism), condition)
+			maybe(determinism), condition, purity)
 		%       VarNames, PredName, ArgTypes, ReturnType,
 		%       Deterministicness, Cond
 
@@ -130,6 +130,9 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+	;	promise_pure(sym_name, arity)
+			% Predname, Arity
+
 	;	termination_info(pred_or_func, sym_name, list(mode),
 			termination)
 			% the list(mode) is the declared argmodes of the
@@ -190,7 +193,7 @@
 	;	equivalent(goal,goal)
 	;	if_then(vars,goal,goal)
 	;	if_then_else(vars,goal,goal,goal)
-	;	call(sym_name, list(term))
+	;	call(sym_name, list(term), purity)
 	;	unify(term, term).
 
 :- type goals		==	list(goal).

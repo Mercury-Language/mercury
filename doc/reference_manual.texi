@@ -2614,11 +2614,11 @@ operational semantics.
 
 There is another operational semantics of Mercury programs called
 the @dfn{strict commutative} operational semantics.  This semantics
-is equivalent to the strict sequential operation semantics except
+is equivalent to the strict sequential operational semantics except
 that there is no requirement that function calls, conjunctions and disjunctions 
-be executed left-to-right; they may be executed in any order.
-(The order may even be different each time a particular goal
-is entered.)
+be executed left-to-right; they may be executed in any order, and may
+even be interleaved.  Furthermore, the order may even be different each
+time a particular goal is entered.
 
 As well as providing the strict sequential operational semantics,
 Mercury implementations may optionally provide additional
@@ -2700,6 +2700,7 @@ There are several uses for @code{pragma} declarations:
 @menu
 * C interface::                 The C interface allows C code to be called
                                 from Mercury code, and vice versa.
+* Impurity::                    Users can write impure Mercury code
 * Inlining::                    Pragmas can be used to suggest or prevent
                                 procedure inlining.
 * Obsolescence::                Library developers can declare old versions
@@ -3348,6 +3349,220 @@ outweigh these costs will depend on your application.
 @c There is probably little need for user code to call this function,
 @c but it might be needed if you're doing certain low-level things
 @c such as implementing your own exception handling.
+
+@node Impurity
+@section Impurity declarations
+
+In order to efficiently implement certain predicates, it is occasionally
+necessary to venture outside pure logic programming.  Other predicates
+cannot be implemented at all within the paradigm of logic programming,
+for example, all solutions predicates.  Such predicates are often
+written using the C interface.  Sometimes, however, it would be more
+convenient, or more efficient, to write such predicates using the
+facilities of Mercury.  For example, it is much more convenient to
+access arguments of compound Mercury terms in Mercury than in C, and the
+ability of the Mercury compiler to specialize code can make higher-order
+predicates written in Mercury significantly more efficient than similar
+C code.
+
+One important aim of Mercury's impurity system is to make the
+distinction between the pure and impure code very clear.  This is done
+by requiring every impure predicate to be so declared, and by requiring
+every call to an impure predicate to be flagged as such.  Predicates
+that are implemented in terms of impure predictes are assumed to be
+impure themselves unless they are explicitly promised to be pure.
+
+Please note that the facilities described here are needed only very
+rarely.  The main intent is for implementing language primitives such as
+the all solutions predicates.  Any use of @samp{impure} or @samp{semipure}
+probably indicates either a weakness in the Mercury standard library, or
+the programmer's lack of familiarity with the standard library.
+Newcomers to Mercury are hence encouraged to @strong{skip this section}.
+
+
+
+@menu
+* Purity levels::       Choosing the right level of purity
+* Impurity semantics::  What impure code means
+* Declaring impurity::  Declaring predicates impure
+* Impure calls::        Marking a call as impure
+* Promising purity::    Promising a predicate is pure
+* Impurity Example::    A simple example using impurity
+@end menu
+
+
+@node Purity levels
+@subsection Choosing the right level of purity
+
+Mercury distinguishes three ``levels'' of purity:
+
+@table @dfn
+@item pure
+Pure predicates and functions always return the same outputs given the
+same inputs.  They do not interact with the ``real'' world (i.e., do any
+input/output) without taking an io__state (@pxref{Types}) as input and
+returning one as output, and do not make any changes to any data
+structure that will not be undone on backtracking (unless the data
+structure would be unreachable on backtracking).  The behavior of other
+predicates is never affected by the invocation of pure predicates, nor
+is the behavior of pure predicates ever affected by the invocation of
+other predicates.
+
+The vast majority of Mercury predicates are pure.  
+
+@item semipure
+Semipure predicates are just like pure predicates, except that their
+behavior may be affected by the invocation of impure predicates.  That
+is, they are sensitive to the state of the computation other than as
+reflected by their input arguments, though they do not affect the state
+themselves.
+
+@item impure
+Impure predicates may do anything, including changing the state of the
+computation.
+
+@end table
+
+
+@node Impurity semantics
+@subsection Semantics
+
+It is important to the proper operation of impure and semipure code, to
+the flexibility of the compiler to optimize pure code, and to the
+semantics of the Mercury language, that a clear distinction be drawn
+between ordinary Mercury code and imperative code written with Mercury
+syntax.  How this distinction is drawn will be explained below; the
+purpose of this section is to explain the semantics of programs with
+impure predicates.
+
+A @emph{declarative} semantics of impure Mercury code would be largely
+useless, because the declarative semantics cannot capture the intent of
+the programmer.  Impure predicates are executed for their side-effects,
+which by definition are not part of their declarative semantics.  Thus
+it is the @emph{operational} semantics of impure predicates that Mercury
+must specify, and Mercury compilers must respect.
+
+The operational semantics of a Mercury predicate which invokes impure
+code is a modified form of the @emph{strict sequential} semantics
+(@pxref{Semantics}).  @emph{Impure} goals may not be reordered relative
+to any other goals; not even ``minimal'' reordering as implied by the
+modes is permitted.  If any such reordering is needed, this is a mode
+error.  However, @emph{pure} and @emph{semipure} goals may be reordered
+as long as they are not moved across an impure goal.  Execution of
+impure goals is strict: they must be executed if they are reached, even
+if it can be determined that that computation cannot lead to successful
+termination.
+
+Semipure goals can be given a ``contextual'' declarative semantics.
+They cannot have any side-effects, so it is expected that, given the
+context in which they are called (relative to any impure goals in the
+program), their declarative semantics fully captures the intent of the
+programmer.  Thus a semipure goal has a perfectly consistent declarative
+semantics, until an impure goal is reached.  After that, it has another
+(possibly different) declarative semantics, until the next impure goal
+is executed, and so on.  Mercury compilers must respect this contextual
+nature of the semantics of semipure goals; within a single context, a
+compiler may treat a semipure goal as if it were pure.
+
+
+@node Declaring impurity
+@subsection Declaring predicate impurity
+
+A predicate is declared to be impure or semipure by preceding the word
+@code{pred} in its @code{pred} declaration with @code{impure}
+or @code{semipure}, respectively.  That is, a declaration of the form:
+
+@example
+:- impure pred @var{Pred}(@var{Arguments...}).
+@end example
+
+@noindent
+or
+
+@example
+:- semipure pred @var{Pred}(@var{Arguments...}).
+@end example
+
+@noindent
+declares the predicate @var{Pred} to be impure or semipure, respectively.
+
+
+@node Impure calls
+@subsection Marking a call as impure
+
+If a predicate is impure or semipure, all calls to it must be preceded
+with the word @code{impure} or @code{semipure}, respectively.  Note
+that only predicate calls need to (and are permitted to) be prefixed
+with @code{impure} or @code{semipure}, compound goals never need this.
+See @ref{Impurity Example} for an example of this.
+
+The requiremment that impure or semipure calls be marked with
+@code{impure} or @code{semipure} allows someone 
+reading the code to tell which goals are not pure, making code which
+relies on side effects somewhat less mysterious.  Furthermore, it means
+that if a call is @emph{not} preceded by @code{impure} or
+@code{semipure}, then the reader can rely on the call having a proper
+declarative semantics, without hidden side-effects.  
+
+
+@node Promising purity
+@subsection Promising a predicate is pure
+
+Some predicates which call impure or semipure predicates are themselves
+pure.  In fact, the main purpose of the Mercury impurity system is to
+allow programmers to write pure predicates using impure ones, while protecting
+the procedural implementation from aggressive compiler optimizations.
+Of course, the Mercury compiler cannot verify that a predicate is pure,
+so it is the programmer's responsibility to ensure this.  If a predicate
+is promised pure and is not, the behavior of the program is undefined.
+
+The programmer may promise that a predicate is pure using the
+@code{promise_pure} pragma:
+
+@example
+:- pragma promise_pure(@var{Name}/@var{Arity}).
+@end example
+
+
+@node Impurity Example
+@subsection An example using impurity
+
+The following example illustrates how a pure predicate may be
+implemented using impure code.  Note that this code is not reentrant,
+and so is not useful as is.  It is meant only as an example.
+
+@example
+:- pragma c_header_code("#include <limits.h>").
+:- pragma c_header_code("Integer max;").
+
+:- impure pred init_max is det.
+:- pragma c_code(init_max,
+        will_not_call_mercury,
+        "max = INT_MIN;").
+
+:- impure pred set_max(int::in) is det.
+:- pragma c_code(set_max(X::in),
+        will_not_call_mercury,
+        "if (X > max) max = X;").
+
+:- semipure pred get_max(int::out) is det.
+:- pragma c_code(get_max(X::out),
+        will_not_call_mercury,
+        "X = max;").
+
+:- pragma promise_pure(max_solution/2).
+:- pred max_solution(pred(int), int).
+:- mode max_solution(pred(out) is multi, out) is det.
+
+max_solution(Generator, Max) :-
+        impure init_max,
+        (   Generator(X),
+            impure set_max(X),
+            fail
+        ;   semipure get_max(Max)
+        ).
+@end example
+
 
 @node Inlining
 @section Inlining

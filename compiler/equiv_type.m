@@ -112,17 +112,20 @@ equiv_type__replace_in_item(type_defn(VarSet0, TypeDefn0, Cond),
 	equiv_type__replace_in_type_defn(TypeDefn0, VarSet0, EqvMap,
 				TypeDefn, VarSet, ContainsCirc).
 
-equiv_type__replace_in_item(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
-		EqvMap, pred(VarSet, PredName, TypesAndModes, Det, Cond), no) :-
+equiv_type__replace_in_item(
+		pred(VarSet0, PredName, TypesAndModes0, Det, Cond, Purity),
+		EqvMap,
+		pred(VarSet, PredName, TypesAndModes, Det, Cond, Purity),
+		no) :-
 	equiv_type__replace_in_tms(TypesAndModes0, VarSet0, EqvMap, 
 					TypesAndModes, VarSet).
 
 equiv_type__replace_in_item(
 			func(VarSet0, PredName, TypesAndModes0, 
-				RetTypeAndMode0, Det, Cond),
+				RetTypeAndMode0, Det, Cond, Purity),
 			EqvMap,
 			func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
-				Det, Cond),
+				Det, Cond, Purity),
 			no) :-
 	equiv_type__replace_in_tms(TypesAndModes0, VarSet0, EqvMap,
 				TypesAndModes, VarSet1),

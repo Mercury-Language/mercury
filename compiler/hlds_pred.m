@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
+:- import_module purity.
 :- import_module bool, list, map, std_util, term, varset.
 :- import_module term_util.
 
@@ -200,6 +201,21 @@
 	;	memo		% Requests that this predicate be evaluated
 				% using memoing.
 				% Used for pragma(memo).
+	;	(impure)	% Requests that no transformation that would
+				% be inappropriate for impure code be
+				% performed on calls to this predicate.  This
+				% includes reordering calls to it relative to
+				% other goals (in both conjunctions and
+				% disjunctions), and removing redundant calls
+				% to it.
+	;	(semipure)	% Requests that no transformation that would
+				% be inappropriate for semipure code be
+				% performed on calls to this predicate.  This
+				% includes removing redundant calls to it on
+				% different sides of an impure goal.
+	;	promised_pure	% Requests that calls to this predicate be
+				% transformed as usual, despite any impure
+				% or semipure markers present.
 
 				% The terminates and does_not_terminate
 				% pragmas are kept as markers to ensure
@@ -348,6 +364,15 @@
 :- pred pred_info_requested_no_inlining(pred_info).
 :- mode pred_info_requested_no_inlining(in) is semidet.
 
+:- pred pred_info_get_purity(pred_info, purity).
+:- mode pred_info_get_purity(in, out) is det.
+
+:- pred pred_info_get_promised_pure(pred_info, bool).
+:- mode pred_info_get_promised_pure(in, out) is det.
+
+:- pred purity_to_markers(purity, pred_markers).
+:- mode purity_to_markers(in, out) is det.
+
 :- pred pred_info_get_is_pred_or_func(pred_info, pred_or_func).
 :- mode pred_info_get_is_pred_or_func(in, out) is det.
 
@@ -367,7 +392,7 @@
 :- pred check_marker(pred_markers, marker).
 :- mode check_marker(in, in) is semidet.
 
-	% a a marker to the set
+	% add a marker to the set
 :- pred add_marker(pred_markers, marker, pred_markers).
 :- mode add_marker(in, in, out) is det.
 
@@ -585,6 +610,29 @@ pred_info_requested_inlining(PredInfo0) :-
 pred_info_requested_no_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
 	check_marker(Markers, no_inline).
+
+pred_info_get_purity(PredInfo0, Purity) :-
+	pred_info_get_markers(PredInfo0, Markers),
+	(   check_marker(Markers, (impure)) ->
+		Purity = (impure)
+	;   check_marker(Markers, (semipure)) ->
+		Purity = (semipure)
+	;
+		Purity = pure
+	).
+
+pred_info_get_promised_pure(PredInfo0, Promised) :-
+	pred_info_get_markers(PredInfo0, Markers),
+	(   check_marker(Markers, promised_pure) ->
+		Promised = yes
+	;
+		Promised = no
+	).
+
+purity_to_markers(pure, []).
+purity_to_markers(semipure, [semipure]).
+purity_to_markers(impure, [impure]).
+
 
 pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, _).

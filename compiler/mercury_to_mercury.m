@@ -14,7 +14,7 @@
 :- module mercury_to_mercury.
 :- interface.
 
-:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst).
+:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
 :- import_module list, io, varset, term.
 
 %	convert_to_mercury(ProgName, OutputFileName, Items)
@@ -23,12 +23,14 @@
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
 :- pred mercury_output_pred_type(varset, sym_name, list(type),
-		maybe(determinism), term__context, io__state, io__state).
-:- mode mercury_output_pred_type(in, in, in, in, in, di, uo) is det.
+		maybe(determinism), purity, term__context,
+		io__state, io__state).
+:- mode mercury_output_pred_type(in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_func_type(varset, sym_name, list(type), type,
-		maybe(determinism), term__context, io__state, io__state).
-:- mode mercury_output_func_type(in, in, in, in, in, in, di, uo) is det.
+		maybe(determinism), purity, term__context,
+		io__state, io__state).
+:- mode mercury_output_func_type(in, in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pred_mode_decl(varset, sym_name, list(mode),
 		maybe(determinism), term__context, io__state, io__state).
@@ -227,16 +229,17 @@ mercury_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_mode_defn(VarSet, ModeDefn, Context).
 
-mercury_output_item(pred(VarSet, PredName, TypesAndModes, Det, _Cond), Context)
-		-->
+mercury_output_item(pred(VarSet, PredName, TypesAndModes, Det, _Cond,
+		Purity), Context) -->
 	maybe_output_line_number(Context),
-	mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context).
+	mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det,
+				 Purity, Context).
 
 mercury_output_item(func(VarSet, PredName, TypesAndModes, RetTypeAndMode, Det,
-		_Cond), Context) -->
+		_Cond, Purity), Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_func_decl(VarSet, PredName, TypesAndModes,
-			RetTypeAndMode, Det, Context).
+			RetTypeAndMode, Det, Purity, Context).
 
 mercury_output_item(pred_mode(VarSet, PredName, Modes, MaybeDet, _Cond),
 			Context) -->
@@ -309,6 +312,10 @@ mercury_output_item(pragma(Pragma), Context) -->
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
+	;
+		{ Pragma = promise_pure(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, predicate,
+					   "promise_pure")
 	;
 		{ Pragma = termination_info(PredOrFunc, PredName, 
 			ModeList, Termination) },
@@ -1061,12 +1068,15 @@ mercury_output_ctor_arg_name_prefix(Name) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_pred_decl(varset, sym_name, list(type_and_mode),
-		maybe(determinism), term__context, io__state, io__state).
-:- mode mercury_output_pred_decl(in, in, in, in, in, di, uo) is det.
+		maybe(determinism), purity, term__context,
+		io__state, io__state).
+:- mode mercury_output_pred_decl(in, in, in, in, in, in, di, uo) is det.
 
-mercury_output_pred_decl(VarSet, PredName, TypesAndModes, MaybeDet, Context) -->
+mercury_output_pred_decl(VarSet, PredName, TypesAndModes, MaybeDet, Purity,
+		Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, Context),
+	mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, Purity,
+				 Context),
 	(
 		{ MaybeModes = yes(Modes) },
 		{ Modes \= [] }
@@ -1077,8 +1087,11 @@ mercury_output_pred_decl(VarSet, PredName, TypesAndModes, MaybeDet, Context) -->
 		[]
 	).
 
-mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, _Context) -->
-	io__write_string(":- pred "),
+mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, Purity,
+		_Context) -->
+	io__write_string(":- "),
+	write_purity_prefix(Purity),
+	io__write_string("pred "),
 	(
 		{ Types = [Type | Rest] }
 	->
@@ -1115,15 +1128,31 @@ mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, _Context) -->
 	),
 	io__write_string(".\n").
 
+
+% this works under the assumptions that all purity names but `pure' are prefix
+% operators, and that we never need `pure' indicators/declarations.
+
+:- pred write_purity_prefix(purity, io__state, io__state).
+:- mode write_purity_prefix(in, di, uo) is det.
+
+write_purity_prefix(Purity) -->
+	(   { Purity = pure } ->
+		[]
+	;
+		write_purity(Purity),
+		io__write_string(" ")
+	).
+
+
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_func_decl(varset, sym_name, list(type_and_mode),
-		type_and_mode, maybe(determinism), term__context,
+		type_and_mode, maybe(determinism), purity, term__context,
 		io__state, io__state).
-:- mode mercury_output_func_decl(in, in, in, in, in, in, di, uo) is det.
+:- mode mercury_output_func_decl(in, in, in, in, in, in, in, di, uo) is det.
 
 mercury_output_func_decl(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
-		MaybeDet, Context) -->
+		MaybeDet, Purity, Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
 	(
@@ -1131,17 +1160,19 @@ mercury_output_func_decl(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 		{ MaybeRetMode = yes(RetMode) }
 	->
 		mercury_output_func_type(VarSet, FuncName, Types, RetType,
-				no, Context),
+				no, Purity, Context),
 		mercury_output_func_mode_decl(VarSet, FuncName, Modes, RetMode,
 				MaybeDet, Context)
 	;
 		mercury_output_func_type(VarSet, FuncName, Types, RetType,
-				MaybeDet, Context)
+				MaybeDet, Purity, Context)
 	).
 
-mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
-		-->
-	io__write_string(":- func "),
+mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, Purity,
+		_Context) -->
+	io__write_string(":- "),
+	write_purity_prefix(Purity),
+	io__write_string("func "),
 	(
 		{ Types = [Type | Rest] }
 	->
@@ -1464,13 +1495,15 @@ mercury_output_goal_2((A;B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal_2(call(Name, Term), VarSet, Indent) -->
+mercury_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
+	write_purity_prefix(Purity),
 	mercury_output_call(Name, Term, VarSet, Indent).
 
 mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	mercury_output_term(A, VarSet, no),
 	io__write_string(" = "),
 	mercury_output_term(B, VarSet, no).
+
 
 :- pred mercury_output_call(sym_name, list(term), varset, int,
 	io__state, io__state).
@@ -1966,6 +1999,7 @@ mercury_unary_prefix_op("end_module").
 mercury_unary_prefix_op("func").
 mercury_unary_prefix_op("if").
 mercury_unary_prefix_op("import_module").
+mercury_unary_prefix_op("impure").
 mercury_unary_prefix_op("insert").
 mercury_unary_prefix_op("inst").
 mercury_unary_prefix_op("lib").
@@ -1980,6 +2014,7 @@ mercury_unary_prefix_op("pragma").
 mercury_unary_prefix_op("pred").
 mercury_unary_prefix_op("pure").
 mercury_unary_prefix_op("rule").	/* NU-Prolog */
+mercury_unary_prefix_op("semipure").
 mercury_unary_prefix_op("sorted").
 mercury_unary_prefix_op("spy").
 mercury_unary_prefix_op("type").

@@ -365,9 +365,11 @@
 :- type hlds_goal_info.
 
 :- type goal_feature
-	--->	constraint.	% This is included if the goal is
+	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
+	    ;	(impure)	% This goal is impure.  See hlds_pred.m.
+	    ;	(semipure).	% This goal is semipure.  See hlds_pred.m.
 
 	% see notes/ALLOCATION for what these alternatives mean
 :- type resume_point	--->	resume_point(set(var), resume_locs)

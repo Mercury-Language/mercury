@@ -322,6 +322,13 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 		ErrorTerm)
 	).
 
+parse_pragma_type(ModuleName, "promise_pure", PragmaTerms,
+				ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "promise_pure",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = promise_pure(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 	_VarSet, Result) :-
     (
@@ -429,6 +436,7 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 		lambda([Name::in, Arity::in, Pragma::out] is det,
 			Pragma = check_termination(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
+
 
 :- pred parse_simple_pragma(module_name, string,
 			pred(sym_name, int, pragma_type),

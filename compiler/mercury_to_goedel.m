@@ -40,7 +40,7 @@
 
 :- implementation.
 :- import_module bool, int, char, std_util, varset, term, require, string.
-:- import_module prog_io, prog_out, prog_util, equiv_type.
+:- import_module prog_io, prog_out, prog_util, equiv_type, purity.
 :- import_module globals, options.
 %-----------------------------------------------------------------------------%
 
@@ -140,16 +140,30 @@ goedel_output_item(inst_defn(VarSet, InstDefn, _Cond), Context) -->
 goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
-goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond), Context)
-		-->
+goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond,
+		Purity), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
+	(   { Purity = pure } ->
+		[]
+	;
+		io__write_string(" /* "),
+		write_purity(Purity),
+		io__write_string(" */ ")
+	),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
 goedel_output_item(func(VarSet, PredName, TypesAndModes, RetTypeAndMode, _Det,
-		_Cond), Context) -->
+		_Cond, Purity), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
+	(   { Purity = pure } ->
+		[]
+	;
+		io__write_string(" /* "),
+		write_purity(Purity),
+		io__write_string(" */ ")
+	),
 	goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
 		Context).
 
@@ -606,7 +620,14 @@ goedel_output_goal_2((A;B), VarSet, Indent) -->
 	io__write_string(")").
 
 % XXX should preserve some of the qualification information?
-goedel_output_goal_2(call(Name, Term), VarSet, Indent) -->
+goedel_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
+	(   { Purity = pure } ->
+		[]
+	;
+		io__write_string("/* "),
+		write_purity(Purity),
+		io__write_string(" */ ")
+	),
 	{ unqualify_name(Name, Name0) },
 	{ term__context_init(Context0) },
 	goedel_output_call(term__functor(term__atom(Name0), Term, Context0), VarSet, Indent).

@@ -174,7 +174,7 @@
 
 :- implementation.
 
-:- import_module mercury_to_mercury, globals, options.
+:- import_module mercury_to_mercury, globals, options, purity, special_pred.
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
 
 :- import_module bool, int, string, list, set, map, std_util, assoc_list.
@@ -238,16 +238,21 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	hlds_out__write_pred_or_func(PredOrFunc),
-	io__write_string(" `"),
-	io__write_string(Module),
-	io__write_string(":"),
-	( { string__append("__", _, Name) } ->
+	(   { special_pred_name_arity(Kind, _, Name, Arity) } ->	
+		{ special_pred_description(Kind, Descr) },
+		io__write_string(Descr),
+		io__write_string(" for type "),
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
-		{ term__context_init(Context) },
-		mercury_output_term(term__functor(term__atom(Name),
-				ArgTypes, Context), TVarSet, no)
+		(   { special_pred_get_type(Name, ArgTypes, Type) } ->
+			mercury_output_term(Type, TVarSet, no)
+		;
+			{ error("special_pred_get_type failed!") }
+		)
 	;
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(" `"),
+		io__write_string(Module),
+		io__write_string(":"),
 		{ PredOrFunc = function ->
 			OrigArity is Arity - 1
 		;
@@ -255,9 +260,9 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		},
 		io__write_string(Name),
 		io__write_string("/"),
-		io__write_int(OrigArity)
-	),
-	io__write_string("'").
+		io__write_int(OrigArity),
+		io__write_string("'")
+	).
 
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId) -->
 	hlds_out__write_pred_id(ModuleInfo, PredId),
@@ -447,8 +452,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ pred_info_get_markers(PredInfo, Markers) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	mercury_output_pred_type(TVarSet, qualified(Module, PredName), ArgTypes,
-		no, Context),
+	mercury_output_pred_type(TVarSet, qualified(Module, PredName),
+				 ArgTypes, no, pure, Context),
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
@@ -504,6 +509,9 @@ hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(memo, "memo").
+hlds_out__marker_name((impure), "impure").
+hlds_out__marker_name((semipure), "semipure").
+hlds_out__marker_name(promised_pure, "promised_pure").
 hlds_out__marker_name(terminates, "terminates").
 hlds_out__marker_name(check_termination, "check_termination").
 hlds_out__marker_name(does_not_terminate, "does_not_terminate").
@@ -811,6 +819,21 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		io__write_string("% store map:\n"),
 		hlds_out__write_var_to_lvals(SMlist, VarSet, AppendVarnums,
 			Indent)
+	;
+		[]
+	),
+	( { string__contains_char(Verbose, 'g') }
+	->	
+		{ goal_info_get_features(GoalInfo, Features) },
+		{ set__to_sorted_list(Features, Flist) },
+		(   { Flist = [] } ->
+			[]
+		;   
+			hlds_out__write_indent(Indent),
+			io__write_string("% Goal features:  "),
+			io__write(Flist),
+			io__write_string("\n")
+		)
 	;
 		[]
 	).

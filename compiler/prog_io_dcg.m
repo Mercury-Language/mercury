@@ -32,7 +32,7 @@
 
 :- implementation.
 
-:- import_module prog_io_goal, prog_util, prog_data.
+:- import_module prog_io_goal, prog_util, prog_data, purity.
 :- import_module int, string, std_util, varset, list.
 
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,7 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 			list__append(Args0,
 				[term__variable(Var0), term__variable(Var)],
 				Args),
-			Goal = call(SymName, Args) - Context
+			Goal = call(SymName, Args, pure) - Context
 		)
 	;
 		% A call to a free variable, or to a number or string.
@@ -115,7 +115,7 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 		% will catch calls to numbers and strings.
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
 		Goal = call(unqualified("call"), [Term, term__variable(Var0),
-				term__variable(Var)]) - Context
+				term__variable(Var)], pure) - Context
 	).
 
 	% parse_dcg_goal_2(Functor, Args, Context, VarSet0, N0, Var0,
@@ -137,6 +137,13 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var,
 		Goal, VarSet, N, Var) :-
 	parse_goal(G, VarSet0, Goal, VarSet).
+parse_dcg_goal_2("impure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
+	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (impure), Goal,
+				   VarSet, N, Var).
+parse_dcg_goal_2("semipure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N,
+		Var) :-
+	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (semipure), Goal,
+				   VarSet, N, Var).
 
 	% Empty list - just unify the input and output DCG args.
 parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
@@ -265,6 +272,25 @@ parse_dcg_goal_2("some", [Vars0, A0], Context,
 		VarSet0, N0, Var0, some(Vars, A) - Context, VarSet, N, Var) :-
 	term__vars(Vars0, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
+
+:- pred parse_dcg_goal_with_purity(term, varset, int, var, purity, goal,
+	varset, int, var).
+:- mode parse_dcg_goal_with_purity(in, in, in, in, in, out, out, out, out)
+	is det.
+
+parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, Purity, Goal, VarSet, N,
+		Var) :-
+	parse_dcg_goal(G, VarSet0, N0, Var0, Goal1, VarSet, N, Var),
+	(   Goal1 = call(Pred, Args, pure) - Context ->
+		Goal = call(Pred, Args, Purity) - Context
+	;
+		% Inappropriate placement of an impurity marker, so we treat
+		% it like a predicate call.  typecheck.m prints out something
+		% descriptive for these errors.
+		Goal1 = _ - Context,
+		purity_name(Purity, PurityString),
+		Goal = call(unqualified(PurityString), [G], pure) - Context
+	).
 
 :- pred append_to_disjunct(goal, goal_expr, term__context, goal).
 :- mode append_to_disjunct(in, in, in, out) is det.

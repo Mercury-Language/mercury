@@ -152,8 +152,10 @@ all             fxy             950
 and             xfy             720
 else            xfy             1170
 end_module      fx              1199
+func            fx              800
 if              fx              1160
 import_module   fx              1199
+impure          fy              800
 inst            fx              1199
 is              xfx             700
 mod             xfx             300
@@ -161,8 +163,9 @@ mode            fx              1199
 module          fx              1199
 not             fy              900
 or              xfy             740
-pred            fx              1180
+pred            fx              800
 rule            fx              1199
+semipure        fy              800
 some            fxy             950
 then            xfx             1150
 type            fx              1180

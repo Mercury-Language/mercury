@@ -211,6 +211,14 @@ in an HLDS goal.
 	  that are used in a variety of different places within the compiler
 	</ul>
 
+<dt> purity analysis
+	
+	<dd>
+	purity.m is responsible for purity checking, as well as
+	defining the <CODE>purity</CODE> type and a few public
+	operations on it.  It also completes the handling of predicate
+	overloading for cases which typecheck.m is unable to handle.
+
 <dt> mode analysis
 
 	<dd>
@@ -224,9 +232,7 @@ in an HLDS goal.
 	  unification goals. It also converts higher-order pred terms
 	  into lambda expressions and module qualifies data constructors.
 	<li> modecheck_call.m is the sub-module which analyses calls.
-	  It also converts function calls into predicate calls, and
-	  does the final step of figuring out which pred_id to use
-	  for a call to an overloaded predicate.
+	  It also converts function calls into predicate calls.
 
 		<p>
 
@@ -735,6 +741,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-11-08 13:12:08 $ by $Author: trd $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-12-09 04:02:08 $ by $Author: pets $@cs.mu.oz.au. <br>
 </body>
 </html>

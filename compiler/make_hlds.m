@@ -61,7 +61,7 @@
 :- import_module make_tags, quantification, (inst).
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, term_util.
+:- import_module fact_table, purity, term_util.
 
 :- import_module string, char, int, set, bintree, list, map, require.
 :- import_module bool, getopt, assoc_list, term, term_io, varset.
@@ -188,15 +188,17 @@ add_item_decl_pass_1(mode_defn(VarSet, ModeDefn, Cond), Context,
 	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context,
 			Status, Module).
 
-add_item_decl_pass_1(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond),
-		Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_1(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond,
+		Purity), Context, Status, Module0, Status, Module) -->
 	module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet,
-		Cond, Context, Status, Module).
+		Cond, Purity, Context, Status, Module).
 
 add_item_decl_pass_1(func(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
-		MaybeDet, Cond), Context, Status, Module0, Status, Module) -->
+		MaybeDet, Cond, Purity), Context, Status, Module0, Status,
+		Module) -->
 	module_add_func(Module0, VarSet, FuncName, TypesAndModes,
-		RetTypeAndMode, MaybeDet, Cond, Context, Status, Module).
+		RetTypeAndMode, MaybeDet, Cond, Purity, Context, Status,
+			Module).
 
 add_item_decl_pass_1(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond),
 		Context, Status, Module0, Status, Module) -->
@@ -382,6 +384,10 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = fact_table(_, _, _) },
 		{ Module = Module0 }
 	;
+		{ Pragma = promise_pure(Name, Arity) },
+		add_pred_marker(Module0, "promise_pure", Name, Arity, Context,
+				promised_pure, [], Module)
+	;
 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
 			Termination) },
 		{ module_info_get_predicate_table(Module0, Preds) },
@@ -461,8 +467,8 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	).
 
 add_item_decl_pass_2(func(_VarSet, FuncName, TypesAndModes, _RetTypeAndMode,
-		_MaybeDet, _Cond), _Context, Status, Module0, Status, Module)
-		-->
+		_MaybeDet, _Cond, _Purity), _Context, Status, Module0, Status,
+		Module) -->
 	%
 	% add default modes for function declarations, if necessary
 	%
@@ -488,7 +494,7 @@ add_item_decl_pass_2(inst_defn(_, _, _), _, Status, Module, Status, Module)
 		--> [].
 add_item_decl_pass_2(mode_defn(_, _, _), _, Status, Module, Status, Module)
 		--> [].
-add_item_decl_pass_2(pred(_, _, _, _, _), _, Status, Module, Status, Module)
+add_item_decl_pass_2(pred(_, _, _, _, _, _), _, Status, Module, Status, Module)
 		--> [].
 add_item_decl_pass_2(pred_mode(_, _, _, _, _), _, Status, Module, Status,
 		Module) --> [].
@@ -537,9 +543,9 @@ add_item_clause(inst_defn(_, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
 add_item_clause(mode_defn(_, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
-add_item_clause(pred(_, _, _, _, _), Status, Status, _,
+add_item_clause(pred(_, _, _, _, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
-add_item_clause(func(_, _, _, _, _, _), Status, Status, _,
+add_item_clause(func(_, _, _, _, _, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
 add_item_clause(pred_mode(_, _, _, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
@@ -656,9 +662,8 @@ add_pred_marker(Module0, PragmaName, Name, Arity, Context, Marker,
 			{ Module = Module1 }
 		)
 	;
-		{ string__append_list(
-			["`:- pragma ", PragmaName, "' declaration"],
-			Description) },
+		{ string__append_list(["`", PragmaName, "' pragma"],
+				      Description) },
 		undefined_pred_or_func_error(Name, Arity, Context,
 			Description),
 		{ module_info_incr_errors(Module0, Module) }
@@ -1058,12 +1063,13 @@ ctors_add([Name - Args | Rest], TypeId, NeedQual, Context, Ctors0, Ctors) -->
 %---------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-		maybe(determinism), condition, term__context, 
+		maybe(determinism), condition, purity, term__context, 
 		item_status, module_info, io__state, io__state).
-:- mode module_add_pred(in, in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode module_add_pred(in, in, in, in, in, in, in, in, in, out, di, uo)
+		is det.
 
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
-		Context, item_status(Status, NeedQual), Module) -->
+		Purity, Context, item_status(Status, NeedQual), Module) -->
 	% Only preds with opt_imported clauses are tagged as opt_imported, so
 	% that the compiler doesn't look for clauses for other preds read in
 	% from optimization interfaces.
@@ -1073,7 +1079,7 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 		DeclStatus = Status
 	},
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	add_new_pred(Module0, VarSet, PredName, Types, Cond, Context,
+	add_new_pred(Module0, VarSet, PredName, Types, Cond, Purity, Context,
 		DeclStatus, NeedQual, predicate, Module1),
 	(
 		{ MaybeModes = yes(Modes) }
@@ -1085,12 +1091,13 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 	).
 
 :- pred module_add_func(module_info, varset, sym_name, list(type_and_mode),
-		type_and_mode, maybe(determinism), condition, term__context,
-		item_status, module_info, io__state, io__state).
-:- mode module_add_func(in, in, in, in, in, in, in, in, in, out, di, uo) is det.
+		type_and_mode, maybe(determinism), condition, purity,
+		term__context, item_status, module_info, io__state, io__state).
+:- mode module_add_func(in, in, in, in, in, in, in, in, in, in, out, di, uo)
+		is det.
 
 module_add_func(Module0, VarSet, FuncName, TypesAndModes, RetTypeAndMode,
-		MaybeDet, Cond, Context,
+		MaybeDet, Cond, Purity, Context,
 		item_status(Status, NeedQual), Module) -->
 	% Only funcs with opt_imported clauses are tagged as opt_imported, so
 	% that the compiler doesn't look for clauses for other preds.
@@ -1102,7 +1109,7 @@ module_add_func(Module0, VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
 	{ list__append(Types, [RetType], Types1) },
-	add_new_pred(Module0, VarSet, FuncName, Types1, Cond, Context,
+	add_new_pred(Module0, VarSet, FuncName, Types1, Cond, Purity, Context,
 		DeclStatus, NeedQual, function, Module1),
 	(
 		{ MaybeModes = yes(Modes) },
@@ -1116,15 +1123,16 @@ module_add_func(Module0, VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 	).
 
 :- pred add_new_pred(module_info, tvarset, sym_name, list(type), condition, 
-		term__context, import_status, need_qualifier, pred_or_func,
-		module_info, io__state, io__state).
-:- mode add_new_pred(in, in, in, in, in, in, in, in, in, out, di, uo) is det.
+		purity, term__context, import_status, need_qualifier,
+		pred_or_func, module_info, io__state, io__state).
+:- mode add_new_pred(in, in, in, in, in, in, in, in, in, in, out, di, uo)
+		is det.
 
 % NB.  Predicates are also added in polymorphism.m, which converts
 % lambda expressions into separate predicates, so any changes may need
 % to be reflected there too.
 
-add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, 
+add_new_pred(Module0, TVarSet, PredName, Types, Cond, Purity, Context, 
 		Status, NeedQual, PredOrFunc, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ list__length(Types, Arity) },
@@ -1139,7 +1147,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context,
 		{ Module1 = Module0 },
 		{ module_info_get_predicate_table(Module1, PredicateTable0) },
 		{ clauses_info_init(Arity, ClausesInfo) },
-		{ init_markers(Markers) },
+		{ purity_to_markers(Purity, Markers) },
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
 				Cond, Context, ClausesInfo, Status, Markers,
 				none, PredOrFunc, PredInfo0) },
@@ -1792,7 +1800,8 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 		->
 			{ pred_info_clauses_info(PredInfo1, Clauses0) },
 			{ pred_info_arg_types(PredInfo1, _TVarSet, ArgTypes) },
-			clauses_info_add_pragma_c_code(Clauses0,
+			{ pred_info_get_purity(PredInfo1, Purity) },
+			clauses_info_add_pragma_c_code(Clauses0, Purity,
 				MayCallMercury, PredId, ProcId, VarSet,
 				PVars, ArgTypes, C_Code, Context, ExtraInfo,
 				Clauses, Info0, Info),
@@ -2415,17 +2424,17 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 % pragma c_code declaration and the head vars of the pred. Also return the
 % hlds_goal.
 
-:- pred clauses_info_add_pragma_c_code(clauses_info, may_call_mercury,
+:- pred clauses_info_add_pragma_c_code(clauses_info, purity, may_call_mercury,
 	pred_id, proc_id, varset, list(pragma_var), list(type),
 	string, term__context,
 	maybe(pair(list(string))), clauses_info,
 	qual_info, qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	out, in, out, di, uo) is det.
+	in, out, in, out, di, uo) is det.
 
-clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
-		PVarSet, PVars, OrigArgTypes, C_Code, Context, ExtraInfo,
-		ClausesInfo, Info0, Info) -->
+clauses_info_add_pragma_c_code(ClausesInfo0, Purity, MayCallMercury, PredId,
+		ModeId, PVarSet, PVars, OrigArgTypes, C_Code, Context,
+		ExtraInfo, ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList),
@@ -2450,7 +2459,9 @@ clauses_info_add_pragma_c_code(ClausesInfo0, MayCallMercury, PredId, ModeId,
 
 		% build the pragma_c_code
 	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	% Put the purity in the goal_info in case this c code is inlined
+	add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
 	HldsGoal0 = pragma_c_code(C_Code, MayCallMercury, PredId, ModeId, Args,
 			Names, OrigArgTypes, ExtraPragmaInfo) - GoalInfo
 	}, 
@@ -2592,8 +2603,8 @@ transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet,
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet, Info0, Info).
 
-transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
-		Info0, Info) -->
+transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
+		VarSet, Info0, Info) -->
 	( 
 		{ Name = unqualified("\\=") },
 		{ Args0 = [LHS, RHS] }
@@ -2604,30 +2615,48 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 	;
 		{ term__apply_substitution_to_list(Args0, Subst, Args) },
 		{ make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1) },
-		{
+		(
 			% check for a higher-order call,
 			% i.e. a call to either call/N or ''/N.
-			( Name = unqualified("call")
+			{ Name = unqualified("call")
 			; Name = unqualified("")
-			),
-			HeadVars = [PredVar | RealHeadVars]
+			},
+			{ HeadVars = [PredVar | RealHeadVars] }
 		->
-			% initialize some fields to junk
-			Types = [],
-			Modes = [],
-			Det = erroneous,
-			Call = higher_order_call(PredVar, RealHeadVars,
-					Types, Modes, Det, predicate)
+			{ % initialize some fields to junk
+			  Types = [],
+			  Modes = [],
+			  Det = erroneous,
+			  Call = higher_order_call(PredVar, RealHeadVars,
+						   Types, Modes, Det,
+						   predicate),
+			  Purity1 = pure
+			},
+			(
+				{ Purity = pure }
+			->
+				[]
+			;
+				prog_out__write_context(Context),
+				io__write_string("Warning: unnecessary `"),
+				write_purity(Purity),
+				io__write_string("' marker.\n"),
+				prog_out__write_context(Context),
+				io__write_string("  Higher-order goals are always pure.\n")
+			)
 		;
 			% initialize some fields to junk
-			invalid_pred_id(PredId),
-			invalid_proc_id(ModeId),
-			MaybeUnifyContext = no,
-			Call = call(PredId, ModeId, HeadVars, not_builtin,
-					MaybeUnifyContext, Name)
-		},
+			{ invalid_pred_id(PredId),
+			  invalid_proc_id(ModeId),
+			  MaybeUnifyContext = no,
+			  Call = call(PredId, ModeId, HeadVars, not_builtin,
+				      MaybeUnifyContext, Name),
+			  Purity1 = Purity
+			}
+		),
 		{ goal_info_init(GoalInfo0) },
-		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+		{ goal_info_set_context(GoalInfo0, Context, GoalInfo1) },
+		{ add_goal_info_purity_feature(GoalInfo1, Purity1, GoalInfo) },
 		{ Goal0 = Call - GoalInfo },
 
 		{ list__length(Args, Arity) },
@@ -2643,6 +2672,7 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	{ term__apply_substitution(B0, Subst, B) },
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
+
 
 %-----------------------------------------------------------------------------
 
@@ -3323,7 +3353,9 @@ undefined_pred_or_func_error(Name, Arity, Context, Description) -->
 	hlds_out__write_pred_call_id(Name/Arity),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  without preceding `pred' or `func' declaration\n").
+	% This used to say `preceding' instead of `corresponding.'
+	% Which is more correct?
+	io__write_string("  without corresponding `pred' or `func' declaration.\n").
 
 :- pred undefined_mode_error(sym_name, int, term__context, string,
 				io__state, io__state).

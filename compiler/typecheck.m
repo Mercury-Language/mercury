@@ -2911,16 +2911,17 @@ write_inference_message(PredInfo) -->
 	{ pred_info_arg_types(PredInfo, VarSet, Types0) },
 	{ strip_builtin_qualifiers_from_type_list(Types0, Types) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_get_purity(PredInfo, Purity) },
 	{ MaybeDet = no },
 	prog_out__write_context(Context),
 	io__write_string("Inferred "),
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_type(VarSet, Name, Types, MaybeDet,
-			Context)
+			Purity, Context)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Types, ArgTypes, RetType) },
 		mercury_output_func_type(VarSet, Name, ArgTypes,
-			RetType, MaybeDet, Context)
+			RetType, MaybeDet, Purity, Context)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3728,6 +3729,22 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 	->
 		report_error_apply_instead_of_pred(TypeCheckInfo)
 	;
+		{ PredName = unqualified(PurityString), Arity = 1,
+		  ( PurityString = "impure" ; PurityString = "semipure" )
+		}
+	->
+		io__write_string("  error: `"),
+		io__write_string(PurityString),
+		io__write_string("' marker in an inappropriate place.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Such markers only belong before predicate calls.\n")
+		;
+			[]
+		)
+	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
 		io__write_string("'.\n")
@@ -3956,6 +3973,8 @@ language_builtin("<=>", 2).
 language_builtin("=>", 2).
 language_builtin("<=", 2).
 language_builtin("call", _).
+language_builtin("impure", 1).
+language_builtin("semipure", 1).
 
 :- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).

@@ -77,15 +77,22 @@
 	;	mode_error_unify_var_lambda(var, inst, inst)
 			% some sort of error in
 			% attempt to unify a variable with lambda expression
-	;	mode_error_conj(list(delayed_goal))
+	;	mode_error_conj(list(delayed_goal), schedule_culprit)
 			% a conjunction contains one or more unscheduleable
-			% goals
+			% goals; schedule_culprit gives the reason why
+			% they couldn't be scheduled.
 	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
 	;	mode_error_undefined_mode_in_lambda.
 			% This is a dummy error - the actual message
 			% is output by module_qual.m.
+
+:- type schedule_culprit
+	--->	goal_itself_was_impure
+	;	goals_followed_by_impure_goal(hlds_goal)
+	;	conj_floundered. % we've reached the end of a conjunction
+				% and there were still delayed goals
 
 :- type final_inst_error
 	--->	too_instantiated
@@ -193,8 +200,8 @@ report_mode_error(mode_error_unify_var_functor(Var, Name, Args, Inst,
 			ArgInsts), ModeInfo) -->
 	report_mode_error_unify_var_functor(ModeInfo, Var, Name, Args, Inst,
 			ArgInsts).
-report_mode_error(mode_error_conj(Errors), ModeInfo) -->
-	report_mode_error_conj(ModeInfo, Errors).
+report_mode_error(mode_error_conj(Errors, Culprit), ModeInfo) -->
+	report_mode_error_conj(ModeInfo, Errors, Culprit).
 report_mode_error(mode_error_no_matching_mode(Vars, Insts), ModeInfo) -->
 	report_mode_error_no_matching_mode(ModeInfo, Vars, Insts).
 report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
@@ -205,16 +212,19 @@ report_mode_error(mode_error_undefined_mode_in_lambda, _ModeInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_conj(mode_info, list(delayed_goal),
+:- pred report_mode_error_conj(mode_info, list(delayed_goal), schedule_culprit,
 				io__state, io__state).
-:- mode report_mode_error_conj(mode_info_no_io, in, di, uo) is det.
+:- mode report_mode_error_conj(mode_info_no_io, in, in, di, uo) is det.
 
-report_mode_error_conj(ModeInfo, Errors) -->
+report_mode_error_conj(ModeInfo, Errors, Culprit) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
+
+	% if there's more than one error, and we have verbose-errors
+	% enabled, report them all
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
+	( { VerboseErrors = yes, Errors = [_, _ | _] } ->
 		mode_info_write_context(ModeInfo),
 		prog_out__write_context(Context),
 		io__write_string("  mode error in conjunction. The next "),
@@ -240,6 +250,28 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	;
 		% There wasn't any error to report!  This can't happen.
 		{ error("report_mode_error_conj") }
+	),
+
+	% if the goal(s) couldn't be scheduled because we couldn't
+	% reorder things past an impure goal, then report that.
+	( { Culprit = conj_floundered },
+		{ true } % we've already reported everything we can
+	; { Culprit = goal_itself_was_impure },
+		prog_out__write_context(Context),
+		io__write_string(
+		"  The goal could not be reordered, because it was impure.\n")
+	; { Culprit = goals_followed_by_impure_goal(ImpureGoal) },
+		prog_out__write_context(Context),
+		io__write_string(
+			"  The goal could not be reordered, because\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  it was followed by an impure goal.\n"),
+		{ ImpureGoal = _ - ImpureGoalInfo },
+		{ goal_info_get_context(ImpureGoalInfo, ImpureGoalContext) },
+		prog_out__write_context(ImpureGoalContext),
+		io__write_string(
+			"  This is the location of the impure goal.\n")
 	).
 
 :- pred find_important_errors(list(delayed_goal), list(delayed_goal),

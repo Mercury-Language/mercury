@@ -131,8 +131,8 @@ collect_mq_info_2(mode_defn(_, ModeDefn, _), Info0, Info) :-
 	add_mode_defn(ModeDefn, Info0, Info).
 collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
-collect_mq_info_2(pred(_,_,_,_,_), Info, Info).
-collect_mq_info_2(func(_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred(_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(func(_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
 collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
@@ -258,16 +258,17 @@ module_qualify_item(module_defn(A, ModuleDefn) - Context,
 		module_defn(A, ModuleDefn) - Context, Info0, Info, Continue) -->
 	{ update_import_status(ModuleDefn, Info0, Info, Continue) }.
 
-module_qualify_item(pred(A, SymName, TypesAndModes0, D, E) - Context,
-		pred(A, SymName, TypesAndModes, D, E) - Context,
+module_qualify_item(pred(A, SymName, TypesAndModes0, D, E, F) - Context,
+		pred(A, SymName, TypesAndModes, D, E, F) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0, pred(SymName - Arity) - Context,
 								Info1) },
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info).
 
-module_qualify_item(func(A,SymName, TypesAndModes0, TypeAndMode0,D,E) - Context,
-		func(A, SymName, TypesAndModes, TypeAndMode, D, E) - Context,
+module_qualify_item(
+		func(A,SymName,TypesAndModes0,TypeAndMode0,D,E,F) - Context,
+		func(A,SymName,TypesAndModes,TypeAndMode,D,E,F) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0, func(SymName - Arity) - Context,
@@ -608,6 +609,8 @@ qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
 qualify_pragma(fact_table(SymName, Arity, FileName),
 	fact_table(SymName, Arity, FileName), Info, Info) --> [].
+qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
+		Info, Info) --> [].
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Termination), 
 		termination_info(PredOrFunc, SymName, ModeList, Termination), 
 		Info0, Info) --> 

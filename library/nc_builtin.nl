@@ -41,8 +41,6 @@
 % :- op(1199, fx, (use_op)).
 
 % :- op(1199, fx, (rule)).
-% :- op(1199, fx, (pred)).
-:- op(1199, fx, (func)).
 
 :- op(1199, fx, (pragma)).
 :- op(1199, fx, (mode)).
@@ -51,6 +49,13 @@
 :- op(1175, xfx, (::)).
 
 :- op(950, fxy, (lambda)).
+
+:- $setOpField((pred), []).			% remove `pred' as an operator
+:- op(800, fx, (pred)).				% and then replace it with
+						% lower precedence.
+:- op(800, fx, (func)).
+:- op(800, fy, (impure)).
+:- op(800, fy, (semipure)).
 
 :- op(400, yfx, (rem)).
 :- op(400, yfx, (div)).

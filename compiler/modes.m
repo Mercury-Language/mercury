@@ -292,7 +292,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
-:- import_module modecheck_unify, modecheck_call, inst_util.
+:- import_module modecheck_unify, modecheck_call, inst_util, purity.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module assoc_list.
 
@@ -901,15 +901,11 @@ modecheck_goal_expr(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
-                GoalInfo0, Goal) -->
-        % do the last step of type-checking
-        =(ModeInfo0),
-        { resolve_pred_overloading(PredId0, Args0, PredName0, PredName,
-                ModeInfo0, PredId) },
-
+modecheck_goal_expr(call(PredId, _, Args0, _, Context, PredName),
+		GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
 	mode_info_set_call_context(call(PredId)),
+	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
@@ -1068,7 +1064,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	mode_info_set_delay_info(DelayInfo1),
 	mode_info_add_goals_live_vars(Goals0),
 
-	modecheck_conj_list_2(Goals0, Goals),
+	modecheck_conj_list_2(Goals0, [], Goals, ImpurityErrors),
 
 	=(ModeInfo3),
 	{ mode_info_get_errors(ModeInfo3, NewErrors) },
@@ -1079,13 +1075,21 @@ modecheck_conj_list(Goals0, Goals) -->
 	{ delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
 	mode_info_set_delay_info(DelayInfo5),
 
+	% we only report impurity errors if there were no other errors
 	( { DelayedGoals = [] } ->
-		[]
+		% XXX perhaps we should report all the impurity errors,
+		% rather than just the first one
+		( { ImpurityErrors = [FirstImpurityError | _Rest] } ->
+			mode_info_add_error(FirstImpurityError)
+	      	;
+			[]
+	      	)	       
 	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
 		mode_info_add_error(Error)
 	;
 		{ get_all_waiting_vars(DelayedGoals, Vars) },
-		mode_info_error(Vars, mode_error_conj(DelayedGoals))
+		mode_info_error(Vars,
+			mode_error_conj(DelayedGoals, conj_floundered))
 	).
 
 mode_info_add_goals_live_vars([]) --> [].
@@ -1100,9 +1104,13 @@ mode_info_remove_goals_live_vars([Goal | Goals]) -->
 	mode_info_remove_live_vars(Vars),
 	mode_info_remove_goals_live_vars(Goals).
 
-:- pred modecheck_conj_list_2(list(hlds_goal), list(hlds_goal),
-				mode_info, mode_info).
-:- mode modecheck_conj_list_2(in, out, mode_info_di, mode_info_uo) is det.
+:- type impurity_errors == list(mode_error_info).
+
+:- pred modecheck_conj_list_2(list(hlds_goal), impurity_errors,
+			list(hlds_goal), impurity_errors,
+			mode_info, mode_info).
+:- mode modecheck_conj_list_2(in, in, out, out, mode_info_di, mode_info_uo)
+	is det.
 
 	% Schedule a conjunction.
 	% If it's empty, then there is nothing to do.
@@ -1111,8 +1119,19 @@ mode_info_remove_goals_live_vars([Goal | Goals]) -->
 	% pending goal (if any), and if not, we delay the goal.  Then we
 	% continue attempting to schedule all the rest of the goals.
 
-modecheck_conj_list_2([], []) --> [].
-modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
+modecheck_conj_list_2([], ImpurityErrors, [], ImpurityErrors) --> [].
+modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
+		Goals, ImpurityErrors) -->
+
+	{ Goal0 = _GoalExpr - GoalInfo0 },
+	( { goal_info_is_impure(GoalInfo0) } ->
+		{ Impure = yes },
+		check_for_impurity_error(Goal0, ImpurityErrors0,
+					 ImpurityErrors1)
+	;
+		{ Impure = no },
+		{ ImpurityErrors1 = ImpurityErrors0 }
+	),
 
 		% Hang onto the original instmap & delay_info
 	mode_info_dcg_get_instmap(InstMap0),
@@ -1131,14 +1150,31 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 		% and delay the goal.
 	=(ModeInfo1),
 	{ mode_info_get_errors(ModeInfo1, Errors) },
-	( { Errors = [ FirstError | _] } ->
+	(   { Errors = [ FirstErrorInfo | _] } ->
 		mode_info_set_errors([]),
 		mode_info_set_instmap(InstMap0),
 		mode_info_add_live_vars(NonLocalVars),
-		{ delay_info__delay_goal(DelayInfo0, FirstError, Goal0,
-					DelayInfo1) }
-	;
-		{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) }
+		{ delay_info__delay_goal(DelayInfo0, FirstErrorInfo,
+					 Goal0, DelayInfo1) },
+		%  delaying an impure goal is an impurity error
+		( { Impure = yes } ->
+			{ FirstErrorInfo = mode_error_info(Vars, _, _, _) },
+			{ ImpureError = mode_error_conj(
+				[delayed_goal(Vars, FirstErrorInfo, Goal0)],
+				goal_itself_was_impure) },
+			=(ModeInfo2),
+			{ mode_info_get_context(ModeInfo2, Context) },
+			{ mode_info_get_mode_context(ModeInfo2, ModeContext) },
+			{ ImpureErrorInfo = mode_error_info( Vars, ImpureError,
+						Context, ModeContext) },
+			{ ImpurityErrors2 = [ImpureErrorInfo |
+						ImpurityErrors1] }
+		;   
+			{ ImpurityErrors2 = ImpurityErrors1 }
+		)
+	;   
+		{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) },
+		{ ImpurityErrors2 = ImpurityErrors1 }
 	),
 
 		% Next, we attempt to wake up any pending goals,
@@ -1156,15 +1192,70 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	mode_info_dcg_get_instmap(InstMap),
 	( { instmap__is_unreachable(InstMap) } ->
 		mode_info_remove_goals_live_vars(Goals1),
-		{ Goals2  = [] }
+		{ Goals2  = [] },
+		{ ImpurityErrors = ImpurityErrors2 }
 	;
-		modecheck_conj_list_2(Goals1, Goals2)
+		modecheck_conj_list_2(Goals1, ImpurityErrors2,
+				      Goals2, ImpurityErrors)
 	),
+
 	( { Errors = [] } ->
+		% we successfully scheduled this goal, so insert
+		% it in the list of successfully scheduled goals
 		{ Goals = [Goal | Goals2] }
 	;
+		% we delayed this goal -- it will be stored in the delay_info
 		{ Goals = Goals2 }
 	).
+
+%  check whether there are any delayed goals (other than headvar unifications)
+%  at the point where we are about to schedule an impure goal.  If so, that is
+%  an error.  Headvar unifications are allowed to be delayed because in the
+%  case of output arguments, they cannot be scheduled until the variable value
+%  is known.  If headvar unifications couldn't be delayed past impure goals,
+%  impure predicates wouldn't be able to have outputs!
+:- pred check_for_impurity_error(hlds_goal, impurity_errors, impurity_errors,
+		mode_info, mode_info).
+:- mode check_for_impurity_error(in, in, out, mode_info_di, mode_info_uo)
+	is det.
+check_for_impurity_error(Goal, ImpurityErrors0, ImpurityErrors) -->
+	=(ModeInfo0),
+	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+	{ delay_info__leave_conj(DelayInfo0, DelayedGoals,
+				 DelayInfo1) },
+	{ delay_info__enter_conj(DelayInfo1, DelayInfo) },
+	{ mode_info_get_module_info(ModeInfo0, ModuleInfo) },
+	{ mode_info_get_predid(ModeInfo0, PredId) },
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
+	{ ClausesInfo = clauses_info(_,_,_,HeadVars,_) },
+	(   { no_non_headvar_unification_goals(DelayedGoals, HeadVars) } ->
+		{ ImpurityErrors = ImpurityErrors0 }
+	;
+		mode_info_set_delay_info(DelayInfo),
+		{ get_all_waiting_vars(DelayedGoals, Vars) },
+		{ ModeError = mode_error_conj(DelayedGoals,
+					goals_followed_by_impure_goal(Goal)) },
+		=(ModeInfo1),
+		{ mode_info_get_context(ModeInfo1, Context) },
+		{ mode_info_get_mode_context(ModeInfo1, ModeContext) },
+		{ ImpurityError = mode_error_info(Vars, ModeError,
+					Context, ModeContext) },
+		{ ImpurityErrors = [ImpurityError | ImpurityErrors0] }
+	).
+
+	
+:- pred no_non_headvar_unification_goals(list(delayed_goal), list(var)).
+:- mode no_non_headvar_unification_goals(in, in) is semidet.
+
+no_non_headvar_unification_goals([], _).
+no_non_headvar_unification_goals([delayed_goal(_,_,Goal-_)|Goals], HeadVars) :-
+	Goal = unify(Var,Rhs,_,_,_),
+	(   member(Var, HeadVars)
+	;   Rhs = var(OtherVar),
+	    member(OtherVar, HeadVars)
+	),
+	no_non_headvar_unification_goals(Goals, HeadVars).
 
 :- pred dcg_set_state(T, T, T).
 :- mode dcg_set_state(in, in, out) is det.
@@ -1325,7 +1416,7 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 	modecheck_set_var_inst(Var0, InitialInst, FinalInst,
 				Var, ExtraGoals0, ExtraGoals1),
 	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
-				ExtraGoals1, Vars, ExtraGoals).
+ 				ExtraGoals1, Vars, ExtraGoals).
 
 :- pred modecheck_set_var_inst(var, inst, inst, var, extra_goals, extra_goals,
 				mode_info, mode_info).
@@ -1554,34 +1645,6 @@ mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
 
 %-----------------------------------------------------------------------------%
-
-:- pred resolve_pred_overloading(pred_id, list(var), sym_name, sym_name,
-                                mode_info, pred_id).
-:- mode resolve_pred_overloading(in, in, in, out, mode_info_ui, out) is det.
-        %
-        % In the case of a call to an overloaded predicate, typecheck.m
-        % does not figure out the correct pred_id.  We must do that here.
-        %
-resolve_pred_overloading(PredId0, Args0, PredName0, PredName,
-                        ModeInfo0, PredId) :-
-        ( invalid_pred_id(PredId0) ->
-                %
-                % Find the set of candidate pred_ids for predicates which
-                % have the specified name and arity
-                %
-                mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-                mode_info_get_predid(ModeInfo0, ThisPredId),
-                module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
-                pred_info_typevarset(PredInfo, TVarSet),
-                mode_info_get_var_types(ModeInfo0, VarTypes0),
-                typecheck__resolve_pred_overloading(ModuleInfo0, Args0,
-                        VarTypes0, TVarSet, PredName0, PredName, PredId)
-        ;
-                PredId = PredId0,
-                PredName = PredName0
-        ).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Given a list of variables, and a list of livenesses,
@@ -1611,6 +1674,7 @@ get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
 
 check_circular_modes(Module0, Module) -->
 	{ Module = Module0 }.
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

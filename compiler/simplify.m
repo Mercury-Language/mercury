@@ -65,7 +65,7 @@
 :- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
-:- import_module code_util, quantification, modes.
+:- import_module code_util, quantification, modes, purity.
 :- import_module bool, list, set, map, require, std_util, term, varset, int.
 
 %-----------------------------------------------------------------------------%
@@ -171,6 +171,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% XXX we should warn about this (if the goal wasn't `fail')
 		%
 		Detism = failure,
+		% ensure goal is pure or semipure
+		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
@@ -194,6 +196,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		simplify_info_get_instmap(Info0, InstMap0),
 		det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta,
 			DetInfo),
+		% ensure goal is pure or semipure
+		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
@@ -503,10 +507,14 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	%
 	% check for duplicate calls to the same procedure
 	%
-	( simplify_do_calls(Info2) ->
+	( simplify_do_calls(Info2),
+	  goal_info_is_pure(GoalInfo0)
+	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
 			Goal1, Info2, Info3)
-	; simplify_do_warn_calls(Info0) ->
+	; simplify_do_warn_calls(Info0),
+	  goal_info_is_pure(GoalInfo0)
+	->	
 		% we need to do the pass, for the warnings, but we ignore
 		% the optimized goal and instead use the original one
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
@@ -772,7 +780,9 @@ simplify__goal_2(some(Vars1, Goal1), SomeInfo, Goal, SomeInfo, Info0, Info) :-
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = pragma_c_code(_, _, PredId, ProcId, Args, _, _, _),
-	( simplify_do_calls(Info0) ->
+	( simplify_do_calls(Info0),
+	  goal_info_is_pure(GoalInfo)
+	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0,
 			GoalInfo, Goal, Info0, Info)
 	;
@@ -1221,6 +1231,8 @@ simplify__disj([Goal0 |Goals0], [Goal | Goals], PostBranchInstMaps0,
 	(
 		simplify_do_warn(Info4),
 		Goal = _ - GoalInfo,
+		% don't warn about impure disjuncts that can't succeed
+		\+ goal_info_is_impure(GoalInfo),
 		goal_info_get_determinism(GoalInfo, Detism),
 		determinism_components(Detism, _, MaxSolns),
 		MaxSolns = at_most_zero

@@ -50,6 +50,9 @@
 :- pred special_pred_get_type(string, list(Type), Type).
 :- mode special_pred_get_type(in, in, out) is semidet.
 
+:- pred special_pred_description(special_pred_id, string).
+:- mode special_pred_description(in, out) is det.
+
 :- implementation.
 
 :- import_module type_util.
@@ -108,5 +111,10 @@ special_pred_get_type("__Index__", Types, T) :-
 	list__reverse(Types, [_, T | _]).
 special_pred_get_type("__Compare__", Types, T) :-
 	list__reverse(Types, [T | _]).
+
+
+special_pred_description(unify, "unification predicate").
+special_pred_description(compare, "comparison predicate").
+special_pred_description(index, "indexing predicate").
 
 %-----------------------------------------------------------------------------%
