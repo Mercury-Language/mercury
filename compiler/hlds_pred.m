@@ -225,18 +225,16 @@
 
 
 	% XXX we should use field names for clause
-:- type clause		--->	clause(
-					list(proc_id),	% modes for which
-							% this clause applies
-							% (empty list means
-							% it applies to all
-							% modes)
-					hlds_goal,	% Body
-					implementation_language,
-							% implementation
-							% language
-					prog_context
-				).
+:- type clause --->
+	clause(
+		applicable_procs	:: list(proc_id),
+					% modes for which this clause applies
+					% (empty list means it applies to all
+					% modes)
+		clause_body		:: hlds_goal,
+		clause_lang		:: implementation_language,
+		clause_context		:: prog_context
+	).
 
 %-----------------------------------------------------------------------------%
 
