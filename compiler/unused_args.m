@@ -57,7 +57,7 @@
 :- import_module options, prog_data, prog_out, quantification, special_pred.
 :- import_module passes_aux, inst_match.
 
-:- import_module bool, char, int, list, map, require.
+:- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string, term, varset. 
 
 		% Information about the dependencies of a variable
@@ -445,9 +445,16 @@ traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 traverse_goal(_, class_method_call(PredVar,_,Args,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
-% handle pragma c_code(...) - pragma_c_code uses all its args
-traverse_goal(_, pragma_c_code(_, _, _, Args, _, _, _), UseInf0, UseInf) :-
-	set_list_vars_used(UseInf0, Args, UseInf).
+% handle pragma c_code(...) -
+% only those arguments which have C names can be used in the C code.
+traverse_goal(_, pragma_c_code(_, _, _, Args, Names, _, _), UseInf0, UseInf) :-
+	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
+	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
+				ArgAndName = Arg - MaybeName,
+				MaybeName = yes(_)
+			)),
+	list__filter_map(ArgIsUsed, ArgsAndNames, UsedArgs),
+	set_list_vars_used(UseInf0, UsedArgs, UseInf).
 
 % cases to handle all the different types of unification
 traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
