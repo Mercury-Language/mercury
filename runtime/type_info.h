@@ -395,6 +395,12 @@
 **
 ** MR_INIT_BASE_TYPE_INFO(
 ** 	mercury_data_group__base_type_info_group_1, group__group_1_0);
+** 
+** MR_INIT_BASE_TYPE_INFO_WITH_PRED(
+** 	mercury_date__base_type_info_void_0, mercury__unused_0_0);
+**
+** This will initialize a base_type_info with a single code address.
+**
 **
 */
 
@@ -408,16 +414,25 @@
 
     #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
     do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
 		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
 		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
 		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,	\
 		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
+    } while (0)
+
+    #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+    do {								\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TYPE_TO_TERM_PRED);		\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_TERM_TO_TYPE_PRED);		\
     } while (0)
 
     #define	MR_INIT_BASE_TYPE_INFO(B, T) \
@@ -441,6 +456,13 @@
 		OFFSET_FOR_COMPARE_PRED);				\
     } while (0)
 
+    #define	MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P)			\
+    do {								\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_UNIFY_PRED);			\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_INDEX_PRED);			\
+	MR_INIT_CODE_ADDR(B, P, OFFSET_FOR_COMPARE_PRED);		\
+    } while (0)
+
     #define	MR_INIT_BASE_TYPE_INFO(B, T) \
     do {	\
 	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
@@ -457,6 +479,9 @@
   #define MR_STATIC_CODE_CONST const
 
   #define MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+	do { } while (0)
+
+  #define MR_INIT_BASE_TYPE_INFO_WITH_PRED(B, P) \
 	do { } while (0)
 
   #define MR_INIT_BASE_TYPE_INFO(B, T) \

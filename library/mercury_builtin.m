@@ -749,6 +749,7 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 
 	/* The void type */
 
+Declare_entry(mercury__unused_0_0);
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
 	Integer f1;
 	Code *f2;
@@ -814,6 +815,8 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___base_type_info_character_0, _character_);
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_string_0, _string_);
+	MR_INIT_BASE_TYPE_INFO_WITH_PRED(
+		mercury_data___base_type_info_void_0, mercury__unused_0_0);
 }
 
 #endif /* SHARED_ONE_OR_TWO_CELL_TYPE_INFO */
