@@ -73,13 +73,23 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
 	;
 		IsEnum = no,
-		max_num_tags(NumTagBits, MaxNumTags),
-		MaxTag is MaxNumTags - 1,
-		split_constructors(Ctors, Constants, Functors),
-		assign_constant_tags(Constants, CtorTags0,
-					CtorTags1, NextTag),
-		assign_simple_tags(Functors, NextTag, MaxTag, CtorTags1,
-					CtorTags)
+		( NumTagBits = 0 ->
+			( Ctors = [_SingleCtor] ->
+				assign_simple_tags(Ctors, 0, 1,
+					CtorTags0, CtorTags)
+			;
+				assign_complicated_tags(Ctors, 0, 0,
+					CtorTags0, CtorTags)
+			)
+		;
+			max_num_tags(NumTagBits, MaxNumTags),
+			MaxTag is MaxNumTags - 1,
+			split_constructors(Ctors, Constants, Functors),
+			assign_constant_tags(Constants, CtorTags0,
+						CtorTags1, NextTag),
+			assign_simple_tags(Functors, NextTag, MaxTag,
+						CtorTags1, CtorTags)
+		)
 	).
 
 :- pred adjust_num_tag_bits(tags_method, int, int).
@@ -108,9 +118,13 @@ assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 
 	% If there's no constants, don't do anything.  Otherwise,
 	% allocate the first tag for the constants, and give
-	% them all complicated tags with the that tag as the
+	% them all complicated tags with that tag as the
 	% primary tag, and different secondary tags starting from
 	% zero.
+	% Note that if there's a single constant, we still give it a
+	% complicated_constant_tag rather than a simple_tag.  That's
+	% because deconstruction of the complicated_constant_tag
+	% is more efficient.
 
 assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 	( Constants = [] ->
