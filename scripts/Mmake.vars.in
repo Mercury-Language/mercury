@@ -56,6 +56,23 @@ else
 ASM_OPT  =
 endif
 
+MERCURY_MAIN_MODULES =
+
+#
+# Files which should be built using `mmc --make' rather than `make'
+# when `--use-mmc-make' is passed on the mmake command line.
+# XXX Once `mmc --make' allows library installation we should add
+# %.depend and %.install to the list below
+#
+ALL_MC_MAKE_FILES = $(MERCURY_MAIN_MODULES:%=%$(EXT_FOR_EXE)) \
+			$(MERCURY_MAIN_MODULES:%=lib%.$A) \
+			$(MERCURY_MAIN_MODULES:%=lib%.so) \
+			$(MERCURY_MAIN_MODULES:%=%.clean) \
+			$(MERCURY_MAIN_MODULES:%=%.realclean) \
+			$(MERCURY_MAIN_MODULES:%=%.depend) \
+			$(MC_MAKE_FILES)
+MC_MAKE_FILES =
+
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 #
@@ -79,6 +96,11 @@ MCFLAGS		=
 EXTRA_MCFLAGS	=
 LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
 
+# Flags for use with `mmc --make'.
+ALL_MC_MAKE_FLAGS = $(ALL_MCFLAGS) $(MC_MAKE_FLAGS) $(EXTRA_MC_MAKE_FLAGS)
+MC_MAKE_FLAGS	=
+EXTRA_MC_MAKE_FLAGS =
+
 MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c
 MCE		= $(MC) --errorcheck-only
@@ -89,6 +111,7 @@ MCSI		= $(MC) --make-short-interface
 MCOI		= $(MC) --make-optimization-interface
 MCTOI		= $(MC) --make-transitive-optimization-interface
 MCOGS		= $(MC) --output-grade-string
+MCM		= $(MC) --make
 
 ALL_MCIFLAGS	= $(MCIFLAGS) $(EXTRA_MCIFLAGS) $(TARGET_MCFLAGS) \
 		  $(LIB_MCFLAGS)
