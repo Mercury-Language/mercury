@@ -7,9 +7,9 @@
 
 :- implementation.
 :- import_module bool, int, list, require, std_util.
-
+:- pragma promise_pure(main/2).
 main -->
-	{ turn_on_origin_debug },
+	{ impure turn_on_origin_debug },
 	{ test(L) },
 	io__write(L),
 	io__write_string(".\n").
@@ -64,11 +64,11 @@ r(A, L, BX) :-
 		error("r: bad input")
 	).
 
-:- pred turn_on_origin_debug is det.
+:- impure pred turn_on_origin_debug is det.
 
 :- pragma foreign_proc("C",
 	turn_on_origin_debug,
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury],
 "
 	extern	int	MR_DD_debug_origin;
 
