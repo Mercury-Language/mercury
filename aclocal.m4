@@ -28,26 +28,22 @@ if test "$HAVE_READLINE_HISTORY_H" = 1; then
 	AC_DEFINE(HAVE_READLINE_HISTORY)
 fi
 
+# check for the libraries that readline depends on
+MERCURY_MSG('looking for termcap or curses (needed by readline)...')
+AC_CHECK_LIB(termcap, tgetent, mercury_cv_termcap_lib=-ltermcap,
+ [AC_CHECK_LIB(curses,  tgetent, mercury_cv_termcap_lib=-lcurses,
+  [AC_CHECK_LIB(ncurses, tgetent, mercury_cv_termcap_lib=-lncurses,
+   mercury_cv_termcap_lib='')])])
+
 # check for the readline library
 AC_CHECK_LIB(readline, readline, mercury_cv_have_readline=yes,
-	mercury_cv_have_readline=no)
-
-# check for the libraries that readline depends on
-if test $mercury_cv_have_readline = yes; then
-	MERCURY_MSG('looking for termcap or curses (needed by readline)...')
-	AC_CHECK_LIB(termcap, tgetent, mercury_cv_termcap_lib=-ltermcap,
-	 [AC_CHECK_LIB(curses,  tgetent, mercury_cv_termcap_lib=-lcurses,
-	  [AC_CHECK_LIB(ncurses, tgetent, mercury_cv_termcap_lib=-lncurses,
-	   mercury_cv_termcap_lib=none)])])
-fi
+	mercury_cv_have_readline=no, $mercury_cv_termcap_lib)
 
 # Now figure out whether we can use readline, and define variables according.
 # Note that on most systems, we don't actually need the header files in
 # order to use readline. (Ain't C grand? ;-).
 
-if test $mercury_cv_have_readline = no ||
-	test $mercury_cv_termcap_lib = none
-then
+if test $mercury_cv_have_readline = no; then
 	TERMCAP_LIBRARY=""
 	READLINE_LIBRARIES=""
 	AC_DEFINE(MR_NO_USE_READLINE)
