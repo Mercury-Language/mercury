@@ -18,12 +18,14 @@ INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
 # Specify the compilation model to use for compiling the compiler
 GRADE			= asm_fast.gc
 
-# Specify the compilation models to install the library for
-LIBGRADES  		= asm_fast.gc asm_fast debug.gc debug fast
+# Specify the additional compilation models to install the library for
+LIBGRADES  		= asm_fast debug.gc debug fast
 
 # Specify the names of various programs
 RANLIB			= :
 SP			= sp
+LINK_SHARED_OBJ		= ld -shared	# for Irix 5
+LINK_SHARED_OBJ		= gcc -shared	# for Solaris
 
 # You should not need to modify anything below here
 
