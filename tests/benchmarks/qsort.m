@@ -21,8 +21,6 @@
 
 :- implementation.
 
-:- import_module printlist.
-
 main --> main3(_).
 
 main1(Out) :-
@@ -59,4 +57,33 @@ partition([H|T], P, Lo, Hi) :-
 	;
 		partition(T, P, Lo, Hi1),
 		Hi = [H|Hi1]
+	).
+
+:- pred print_list(list(int), io__state, io__state).
+:- mode print_list(in, di, uo) is det.
+
+print_list(Xs) -->
+	(
+		{ Xs = [] }
+	->
+		io__write_string("[]\n")
+	;
+		io__write_string("["),
+		print_list_2(Xs),
+		io__write_string("]\n")
+	).
+
+:- pred print_list_2(list(int), io__state, io__state).
+:- mode print_list_2(in, di, uo) is det.
+
+print_list_2([]) --> [].
+print_list_2([X|Xs]) --> 
+	io__write_int(X),
+	(
+		{ Xs = [] }
+	->
+		[]
+	;
+		io__write_string(", "),
+		print_list_2(Xs)
 	).
