@@ -31,11 +31,13 @@ In order to try this system you will need
 	  Mercury still relies upon the Cygwin environment for
 	  development environment tools such as `mmake'.
 
-	- The Mercury distribution -- installed as usual.  You make sure
+	- The Mercury distribution -- installed as usual.  Make sure
 	  the installation is run after the .NET SDK is installed (run
 	  it again if necessary) so that the configuration scripts
 	  detect the installation path of the SDK.  If `configure' finds
-	  `ilasm' then this has been successful.
+	  `ilasm' then this has been successful.  You can install
+	  from the binary distribution, but you will also need the source
+	  distribution to install the libraries for .NET (see below).
 
 	  If you're reading this file from somewhere other than the
 	  Mercury distribution, try the Mercury homepage at
@@ -50,7 +52,9 @@ Microsoft.NET CLR.  Support for building and installation of this grade
 is still somewhat rudimentary.
 
 To run a Mercury program using the ilc grade, you need to build the
-library and runtime.  Run the following commands in a cygwin shell:
+library and runtime in the ilc grade, using the Mercury source distribution.
+After unpacking the Mercury source distribution,
+run the following commands in a Cygwin shell:
 
 	cd mercury
 	autoconf
