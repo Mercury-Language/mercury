@@ -749,6 +749,7 @@
 
 :- import_module require, set, int, string, bool.
 :- import_module construct, deconstruct.
+:- use_module private_builtin. % for the `heap_pointer' type.
 
 % XXX This should not be necessary, but the current compiler is broken in that
 % it puts foreign_proc clauses into deconstruct.opt without also putting the
@@ -1005,7 +1006,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 		(pred(M::out, di, uo) is cc_multi --> P(X, M)),
 		More, Acc0, Acc).
 
-:- type heap_ptr ---> heap_ptr(c_pointer).
+:- type heap_ptr == private_builtin__heap_pointer.
 :- type trail_ptr ---> trail_ptr(c_pointer).
 
 %
@@ -1018,12 +1019,18 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 :- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
 	is det.
 
+:- pragma foreign_decl("C", "
+#if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
+  #define MR_RECLAIM_HP_ON_FAILURE
+#endif
+").
+
 :- pragma foreign_proc("C", 
 	get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
 	[will_not_call_mercury, thread_safe],
 "
 	/* save heap states */
-#ifndef MR_CONSERVATIVE_GC
+#ifdef MR_RECLAIM_HP_ON_FAILURE
  	HeapPtr = (MR_Word) MR_hp;
  	SolutionsHeapPtr = (MR_Word) MR_sol_hp;
 #else
@@ -1110,7 +1117,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	swap_heap_and_solutions_heap,
 	[will_not_call_mercury, thread_safe],
 "{
-#ifndef MR_CONSERVATIVE_GC
+#ifdef MR_RECLAIM_HP_ON_FAILURE
 	MR_MemoryZone *temp_zone;
 	MR_Word *temp_hp;
 
@@ -1148,7 +1155,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 
 #include ""mercury_deep_copy.h""
 
-#ifdef MR_CONSERVATIVE_GC
+#ifndef MR_RECLAIM_HP_ON_FAILURE
   /* for conservative GC, shallow copies suffice */
   #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
   		OldVar, NewVal, TypeInfo_for_T)				\\
@@ -1228,7 +1235,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	reset_solutions_heap(SolutionsHeapPtr::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-#ifndef MR_CONSERVATIVE_GC
+#ifdef MR_RECLAIM_HP_ON_FAILURE
 	MR_sol_hp = (MR_Word *) SolutionsHeapPtr;
 #endif
 ").

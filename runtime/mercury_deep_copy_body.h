@@ -595,7 +595,12 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_HP:
-        MR_fatal_error("Sorry, not implemented: copying saved heap pointer");
+        assert(MR_tag(data) == 0);
+        if (in_range((MR_Word *) data)) {
+            MR_fatal_error("Sorry, not implemented: copying saved heap pointer");
+        } else {
+            new_data = data;
+        }
 
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
     case MR_TYPECTOR_REP_MAXFR:
