@@ -24,6 +24,7 @@ DEBUGGER_PROGS=	\
 	existential_type_classes	\
 	implied_instance		\
 	interpreter			\
+	loopcheck			\
 	mdb_command_test		\
 	multi_parameter			\
 	queens				\
@@ -95,6 +96,10 @@ implied_instance.out: implied_instance implied_instance.inp
 interpreter.out: interpreter interpreter.inp
 	$(MDB) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1
+
+# loopcheck aborts, so we must ignore the exit status
+loopcheck.out: loopcheck loopcheck.inp
+	-$(MDB) ./loopcheck < loopcheck.inp > loopcheck.out 2>&1
 
 multi_parameter.out: multi_parameter multi_parameter.inp
 	$(MDB) ./multi_parameter < multi_parameter.inp \
