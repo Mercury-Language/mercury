@@ -59,6 +59,12 @@
 (defvar gud-find-file nil)
 (put 'gud-find-file 'permanent-local t)
 
+(defvar gud-show-commands nil
+  "Non-nil to show the debugger commands.")
+
+(defvar gud-redirect-io nil
+  "Non-nil if the debugger supports I/O redirection via `--tty FILENAME'.")
+
 (defun gud-marker-filter (&rest args)
   (apply gud-marker-filter args))
 
@@ -75,6 +81,9 @@
 
 (defvar gud-menu-name "Gud"
   "Name of the top-level menu entry for the debugger.")
+
+(defvar gud-buffer-name-prefix "gud"
+  "Prefix used for the name of debugger buffers.")
 
 ;; Keymap definitions for menu bar entries common to all debuggers and
 ;; slots for debugger-dependent ones in sensible places.  (Defined here
@@ -329,7 +338,12 @@ and source-file directory for your debugger."
 ;; The completion list is constructed by the process filter.
 (defvar gud-gdb-complete-list)
 
+;; The buffer for the debugger
 (defvar gud-comint-buffer nil)
+
+;; The buffer for the program being debugged
+;; (if different from gud-comint-buffer)
+(defvar gud-prog-buffer nil)
 
 (defun gud-gdb-complete-command ()
   "Perform completion on the GDB command preceding point.
@@ -1255,7 +1269,9 @@ and source-file directory for your debugger."
 
 ;;;###autoload
 (defun mdb (command-line)
-  "Run mdb (the Mercury debugger) on program FILE in buffer *gud-FILE*.
+  "Run mdb (the Mercury debugger) on program FILE
+with mdb's I/O in buffer *mdb-FILE*,
+and with the program's I/O in buffer *FILE*.
 The directory containing FILE becomes the initial working directory
 and source-file directory for your debugger."
   (interactive
@@ -1272,13 +1288,18 @@ and source-file directory for your debugger."
 ;      (error "The mdb support requires a valid tags table to work."))
 
   (setq gud-menu-name "MDB")
+  (setq gud-buffer-name-prefix "mdb")
   (setq gud-show-commands t)
+  (setq gud-redirect-io t)
 
   (gud-common-init command-line 'gud-mdb-massage-args
 		   'gud-mdb-marker-filter 'gud-mdb-find-file)
 
   (gud-mdb-define-menu-entries)
   (gud-mdb-add-menu-entries)
+  (save-excursion
+    (set-buffer gud-prog-buffer)
+    (gud-mdb-add-menu-entries))
 
   (setq comint-prompt-regexp "^mdb> ")
   (setq paragraph-start comint-prompt-regexp)
@@ -1338,9 +1359,9 @@ and source-file directory for your debugger."
   "Major mode for interacting with an inferior debugger process.
 
    You start it up with one of the commands M-x gdb, M-x sdb, M-x dbx,
-M-x perldb, or M-x xdb.  Each entry point finishes by executing a
+M-x mdb, M-x perldb, or M-x xdb.  Each entry point finishes by executing a
 hook; `gdb-mode-hook', `sdb-mode-hook', `dbx-mode-hook',
-`perldb-mode-hook', or `xdb-mode-hook' respectively.
+`mdb-mode-hook', `perldb-mode-hook', or `xdb-mode-hook' respectively.
 
 After startup, the following commands are available in both the GUD
 interaction buffer and any source buffer GUD visits due to a breakpoint stop
@@ -1451,8 +1472,12 @@ comint mode, which see."
 		    (if (file-name-directory file-subst)
 			(expand-file-name file-subst)
 		      file-subst)))
-	 (filepart (and file-word (concat "-" (file-name-nondirectory file)))))
-    (switch-to-buffer (concat "*gud" filepart "*"))
+	 (base-file (file-name-nondirectory file))
+	 (filepart (and file-word (concat "-" base-file)))
+	 (prog-buf-name (concat gud-buffer-name-prefix filepart))
+	 (debugger-buf nil))
+      
+    (switch-to-buffer (concat "*" gud-buffer-name-prefix filepart "*"))
     ;; Set default-directory to the file's directory.
     (and file-word
 	 ;; Don't set default-directory if no directory was specified.
@@ -1463,15 +1488,29 @@ comint mode, which see."
 	 (file-name-directory file)
 	 (setq default-directory (file-name-directory file)))
     (or (bolp) (newline))
-    (insert "Current directory is " default-directory "\n")
+
+    (if (not gud-redirect-io)
+    	(insert "Current directory is " default-directory "\n"))
     ;; Put the substituted and expanded file name back in its place.
     (let ((w args))
       (while (and w (not (eq (car w) t)))
 	(setq w (cdr w)))
       (if w
 	  (setcar w file)))
-    (apply 'make-comint (concat "gud" filepart) program nil
-	   (funcall massage-args file args)))
+    (if gud-redirect-io
+	;; Create window for I/O, and insert "--tty" option in args
+	(let* ((buf-tty (gud-start-io-window prog-buf-name))
+	       (buf (first buf-tty))
+	       (tty (second buf-tty)))
+	  (setq prog-buf-name base-file)
+	  (setq debugger-buf buf)
+	  (setq args (cons "--tty" (cons tty args)))))
+    (apply 'make-comint prog-buf-name program nil
+	   (funcall massage-args file args))
+    (if gud-redirect-io
+	(setq gud-prog-buffer (concat "*" prog-buf-name "*"))
+	(set-buffer debugger-buf)))
+
   ;; Since comint clobbered the mode, we don't set it until now.
   (gud-mode)
   (make-local-variable 'gud-marker-filter)
@@ -1482,7 +1521,28 @@ comint mode, which see."
   (set-process-filter (get-buffer-process (current-buffer)) 'gud-filter)
   (set-process-sentinel (get-buffer-process (current-buffer)) 'gud-sentinel)
   (gud-set-buffer)
-  )
+)
+
+;;
+;; Emacs doesn't let a single process have two different I/O buffers.
+;; So we need to to create a dummy process for the second buffer.
+;; This dummy process just prints out its tty, so that we can
+;; redirect the I/O from the real process to that tty,
+;; and then loops forever.
+;;
+(defun gud-start-io-window (name)
+  (let (buf tty)
+    (setq buf (make-comint name "/bin/sh" nil
+			  "-c" "tty; while : ; do sleep 32767; done"))
+    (save-excursion
+      (set-buffer buf)
+      (display-buffer buf)
+      (sleep-for 1)
+      (if (string-match "\\(/dev/[^\012]*\\)\012" (buffer-string))
+	  (setq tty
+		(substring (buffer-string) (match-beginning 1) (match-end 1)))
+	(error "Hmm, can't figure out the tty...")))
+    (list buf tty)))
 
 (defun gud-set-buffer ()
   (cond ((eq major-mode 'gud-mode)
@@ -1716,9 +1776,6 @@ Obeying it means displaying in another window the specified file and line."
     (message "Command: %s" msg)
     (sit-for 0)
     (gud-basic-call msg)))
-
-(defvar gud-show-commands nil
-  "Non-nil to show the debugger commands.")
 
 (defun gud-basic-call (command)
   "Invoke the debugger COMMAND displaying source in other window."
