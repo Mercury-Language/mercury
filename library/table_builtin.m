@@ -1038,28 +1038,28 @@ table_mm_fill_answer_block_shortcut(_) :-
 ").
 
 table_mmos_save_inputs :-
-	private_builtin__imp.
+	impure private_builtin__imp.
 
 table_mmos_setup_consumer(_, _, Consumer) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	% Required only to avoid warnings; never executed.
 	private_builtin__unsafe_type_cast(0, Consumer).
 
 table_mmos_get_answer_table(_, TrieNode) :-
-	private_builtin__imp,
+	semipure private_builtin__semip,
 	% Required only to avoid warnings; never executed.
 	private_builtin__unsafe_type_cast(0, TrieNode).
 
 table_mmos_create_answer_block(_, _, AnswerBlock) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	% Required only to avoid warnings; never executed.
 	private_builtin__unsafe_type_cast(0, AnswerBlock).
 
 table_mmos_return_answer(_, _) :-
-	private_builtin__imp.
+	impure private_builtin__imp.
 
 table_mmos_completion(_) :-
-	private_builtin__imp.
+	impure private_builtin__imp.
 
 %-----------------------------------------------------------------------------%
 
