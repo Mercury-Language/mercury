@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,6 +10,7 @@
 #define MERCURY_PROC_ID_H
 
 #include "mercury_types.h"		/* for MR_ConstString etc */
+#include "mercury_tags.h"		/* for MR_DEFINE_BUILTIN_ENUM_CONST */
 
 /*
 ** This type indicates whether a procedure came from a predicate or a function.
@@ -17,7 +18,10 @@
 ** in browser/util.m.
 */
 
-typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
+typedef	enum {
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_PREDICATE),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_FUNCTION)
+} MR_PredFunc;
 
 /*
 ** MR_Proc_Id is a union. The usual alternative identifies ordinary

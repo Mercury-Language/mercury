@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -62,6 +62,7 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
+:- import_module backend_libs__type_class_info.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
 :- import_module hlds__hlds_code_util.
@@ -809,11 +810,11 @@ type_ctor_info__generate_exist_into(ExistTvars, Constraints, ClassTable,
 	list__foldl(
 		find_type_info_index(Constraints, ClassTable, TIsPlain),
 		ConstrainedTvars, LocnMap1, LocnMap),
-	list__length(Constraints, TCIs),
+	TCConstraints = list__map(generate_class_constraint, Constraints),
 	list__map((pred(Tvar::in, Locn::out) is det :-
 		map__lookup(LocnMap, Tvar, Locn)),
 		ExistTvars, ExistLocns),
-	ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCIs, ExistLocns).
+	ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
 
 :- pred find_type_info_index(list(class_constraint)::in, class_table::in,
 	int::in, tvar::in, map(tvar, exist_typeinfo_locn)::in,

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -186,6 +186,15 @@ typedef const void                                      *MR_ReservedAddr;
 #else
   typedef MR_Code                                       *MR_BaseTypeclassInfo;
 #endif
+
+typedef       struct MR_TypeClassDecl_Struct            MR_TypeClassDeclStruct;
+typedef const struct MR_TypeClassDecl_Struct            *MR_TypeClassDecl;
+typedef       struct MR_Instance_Struct                 MR_InstanceStruct;
+typedef const struct MR_Instance_Struct                 *MR_Instance;
+typedef       struct MR_DictId_Struct                   MR_DictIdStruct;
+typedef const struct MR_DictId_Struct                   *MR_DictId;
+typedef       struct MR_Dictionary_Struct               MR_DictionaryStruct;
+typedef const struct MR_Dictionary_Struct               *MR_Dictionary;
 
 typedef struct MR_Closure_Struct                MR_Closure;
 typedef const MR_Closure                        *MR_ClosurePtr;

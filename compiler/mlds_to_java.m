@@ -1840,8 +1840,9 @@ output_type(mlds__cont_type(_)) -->
 	io__write_string("mercury.runtime.MethodPtr").
 output_type(mlds__commit_type) -->
 	io__write_string("mercury.runtime.Commit").
-output_type(mlds__rtti_type(RttiId)) -->
-	{ rtti_id_java_type(RttiId, JavaTypeName, IsArray) },
+output_type(mlds__rtti_type(RttiIdMaybeElement)) -->
+	{ rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName,
+		IsArray) },
 	io__write_string(JavaTypeName),
 	( { IsArray = yes } ->
 		io__write_string("[]")
@@ -1930,8 +1931,9 @@ type_is_array(Type) = IsArray :-
 		IsArray = yes
 	; Type = mercury_type(_, TypeCategory, _) ->
 		IsArray = type_category_is_array(TypeCategory)
-	; Type = mlds__rtti_type(RttiId) ->
-		rtti_id_java_type(RttiId, _JavaTypeName, IsArray)
+	; Type = mlds__rtti_type(RttiIdMaybeElement) ->
+		rtti_id_maybe_element_java_type(RttiIdMaybeElement,
+			_JavaTypeName, IsArray)
 	;
 		IsArray = no
 	).

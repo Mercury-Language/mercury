@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -278,7 +278,7 @@
 	--->	exist_info(
 			exist_num_plain_typeinfos	:: int,
 			exist_num_typeinfos_in_tcis	:: int,
-			exist_num_typeclass_infos	:: int,
+			exist_typeclass_constraints	:: list(tc_constraint),
 			exist_typeinfo_locns		::
 						list(exist_typeinfo_locn)
 		).
@@ -596,6 +596,10 @@
 :- type ctor_rtti_name
 	--->	exist_locns(int)		% functor ordinal
 	;	exist_locn
+	;	exist_tc_constr(int, int, int)	% functor ordinal,
+						% constraint ordinal,
+						% constraint arity
+	;	exist_tc_constrs(int)		% functor ordinal
 	;	exist_info(int)			% functor ordinal
 	;	field_names(int)		% functor ordinal
 	;	field_types(int)		% functor ordinal
@@ -662,7 +666,16 @@
 	% type of that kind.
 :- func var_arity_id_to_rtti_type_ctor(var_arity_ctor_id) = rtti_type_ctor.
 
+:- type rtti_id_maybe_element
+	--->	item_type(rtti_id)
+		% The type is the type of the data structure identified by the
+		% rtti_id.
+	;	element_type(rtti_id).
+		% The type is the type of the elements of the data structure
+		% identified by the rtti_id, which must be an array.
+
 	% Return yes iff the specified entity is an array.
+:- func rtti_id_maybe_element_has_array_type(rtti_id_maybe_element) = bool.
 :- func rtti_id_has_array_type(rtti_id) = bool.
 :- func ctor_rtti_name_has_array_type(ctor_rtti_name) = bool.
 :- func tc_rtti_name_has_array_type(tc_rtti_name) = bool.
@@ -684,6 +697,9 @@
 	% Return the C variable name of the RTTI data structure identified
 	% by the input argument.
 :- pred rtti__id_to_c_identifier(rtti_id::in, string::out) is det.
+
+	% Return the C representation of a pred_or_func indication.
+:- pred rtti__pred_or_func_to_string(pred_or_func::in, string::out) is det.
 
 	% Return the C representation of a secondary tag location.
 :- pred rtti__sectag_locn_to_string(sectag_locn::in, string::out) is det.
@@ -759,6 +775,8 @@
 	%	To declare a variable of the type specified by RttiId,
 	%	put Type before the name of the variable; if IsArray is true,
 	%	also put "[]" after the name.
+:- pred rtti_id_maybe_element_c_type(rtti_id_maybe_element::in, string::out,
+	bool::out) is det.
 :- pred rtti_id_c_type(rtti_id::in, string::out, bool::out) is det.
 :- pred ctor_rtti_name_c_type(ctor_rtti_name::in, string::out, bool::out)
 	is det.
@@ -766,6 +784,8 @@
 	is det.
 
 	% Analogous to rtti_id_c_type.
+:- pred rtti_id_maybe_element_java_type(rtti_id_maybe_element::in, string::out,
+	bool::out) is det.
 :- pred rtti_id_java_type(rtti_id::in, string::out, bool::out) is det.
 :- pred ctor_rtti_name_java_type(ctor_rtti_name::in, string::out, bool::out)
 	is det.
@@ -862,6 +882,12 @@ var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
 	mercury_public_builtin_module(Builtin),
 	Ctor = rtti_type_ctor(Builtin, "tuple", 0).
 
+rtti_id_maybe_element_has_array_type(item_type(RttiId)) =
+	rtti_id_has_array_type(RttiId).
+rtti_id_maybe_element_has_array_type(element_type(RttiId)) = no :-
+	require(unify(rtti_id_has_array_type(RttiId), yes),
+		"rtti_id_maybe_element_has_array_type: base is not array").
+
 rtti_id_has_array_type(ctor_rtti_id(_, RttiName)) =
 	ctor_rtti_name_has_array_type(RttiName).
 rtti_id_has_array_type(tc_rtti_id(TCRttiName)) =
@@ -880,6 +906,8 @@ rtti_id_is_exported(tc_rtti_id(TCRttiName)) =
 
 ctor_rtti_name_is_exported(exist_locns(_))		= no.
 ctor_rtti_name_is_exported(exist_locn)			= no.
+ctor_rtti_name_is_exported(exist_tc_constr(_, _, _))	= no.
+ctor_rtti_name_is_exported(exist_tc_constrs(_))		= no.
 ctor_rtti_name_is_exported(exist_info(_))       	= no.
 ctor_rtti_name_is_exported(field_names(_))      	= no.
 ctor_rtti_name_is_exported(field_types(_))      	= no.
@@ -982,6 +1010,17 @@ rtti__name_to_string(RttiTypeCtor, RttiName, Str) :-
 		RttiName = exist_locn,
 		string__append_list([ModuleName, "__exist_locn_",
 			TypeName, "_", A_str], Str)
+	;
+		RttiName = exist_tc_constr(Ordinal, TCCNum, _),
+		string__int_to_string(Ordinal, O_str),
+		string__int_to_string(TCCNum, N_str),
+		string__append_list([ModuleName, "__exist_tc_constr_",
+			TypeName, "_", A_str, "_", O_str, "_", N_str], Str)
+	;
+		RttiName = exist_tc_constrs(Ordinal),
+		string__int_to_string(Ordinal, O_str),
+		string__append_list([ModuleName, "__exist_tc_constrs_",
+			TypeName, "_", A_str, "_", O_str], Str)
 	;
 		RttiName = exist_info(Ordinal),
 		string__int_to_string(Ordinal, O_str),
@@ -1345,6 +1384,9 @@ type_info_list_to_string(TypeInfoList) =
 
 %-----------------------------------------------------------------------------%
 
+rtti__pred_or_func_to_string(predicate, "MR_PREDICATE").
+rtti__pred_or_func_to_string(function,  "MR_FUNCTION").
+
 rtti__sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
 rtti__sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").
 rtti__sectag_locn_to_string(sectag_remote, "MR_SECTAG_REMOTE").
@@ -1545,6 +1587,8 @@ rtti_id_would_include_code_addr(tc_rtti_id(TCRttiName)) =
 
 ctor_rtti_name_would_include_code_addr(exist_locns(_)) =		no.
 ctor_rtti_name_would_include_code_addr(exist_locn) 	=		no.
+ctor_rtti_name_would_include_code_addr(exist_tc_constr(_, _, _)) =	no.
+ctor_rtti_name_would_include_code_addr(exist_tc_constrs(_)) =		no.
 ctor_rtti_name_would_include_code_addr(exist_info(_)) =			no.
 ctor_rtti_name_would_include_code_addr(field_names(_)) =		no.
 ctor_rtti_name_would_include_code_addr(field_types(_)) =		no.
@@ -1587,7 +1631,7 @@ tc_rtti_name_would_include_code_addr(type_class_instance_constraint(_, _, _, _))
 tc_rtti_name_would_include_code_addr(type_class_instance_constraints(_, _))
 	= no.
 tc_rtti_name_would_include_code_addr(type_class_instance_methods(_, _))
-	= yes.
+	= no.
 
 type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
 type_info_would_incl_code_addr(plain_type_info(_, _)) =	no.
@@ -1598,6 +1642,18 @@ pseudo_type_info_would_incl_code_addr(plain_arity_zero_pseudo_type_info(_))
 pseudo_type_info_would_incl_code_addr(plain_pseudo_type_info(_, _)) = no.
 pseudo_type_info_would_incl_code_addr(var_arity_pseudo_type_info(_, _))	= no.
 pseudo_type_info_would_incl_code_addr(type_var(_)) = no.
+
+rtti_id_maybe_element_c_type(item_type(RttiId), CTypeName, IsArray) :-
+	rtti_id_c_type(RttiId, CTypeName, IsArray).
+rtti_id_maybe_element_c_type(element_type(RttiId), CTypeName, IsArray) :-
+	rtti_id_c_type(RttiId, CTypeName, IsArray0),
+	(
+		IsArray0 = no,
+		error("rtti_id_maybe_element_c_type: base is not array")
+	;
+		IsArray0 = yes,
+		IsArray = no
+	).
 
 rtti_id_c_type(ctor_rtti_id(_, RttiName), CTypeName, IsArray) :-
 	ctor_rtti_name_c_type(RttiName, CTypeName, IsArray).
@@ -1611,6 +1667,18 @@ ctor_rtti_name_c_type(RttiName, CTypeName, IsArray) :-
 tc_rtti_name_c_type(TCRttiName, CTypeName, IsArray) :-
 	tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
 	CTypeName = string__append("MR_", GenTypeName).
+
+rtti_id_maybe_element_java_type(item_type(RttiId), CTypeName, IsArray) :-
+	rtti_id_java_type(RttiId, CTypeName, IsArray).
+rtti_id_maybe_element_java_type(element_type(RttiId), CTypeName, IsArray) :-
+	rtti_id_java_type(RttiId, CTypeName, IsArray0),
+	(
+		IsArray0 = no,
+		error("rtti_id_maybe_element_java_type: base is not array")
+	;
+		IsArray0 = yes,
+		IsArray = no
+	).
 
 rtti_id_java_type(ctor_rtti_id(_, RttiName), JavaTypeName, IsArray) :-
 	ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray).
@@ -1645,7 +1713,10 @@ tc_rtti_name_java_type(_TCRttiName, JavaTypeName, IsArray) :-
 :- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.
 
 ctor_rtti_name_type(exist_locns(_),             "DuExistLocn", yes).
-ctor_rtti_name_type(exist_locn,                 "DuExistLocn", no).
+ctor_rtti_name_type(exist_locn,             	"DuExistLocn", no).
+ctor_rtti_name_type(exist_tc_constr(_, _, N), TypeName, no) :-
+	TypeName = tc_constraint_type_name(N).
+ctor_rtti_name_type(exist_tc_constrs(_),        "TypeClassConstraint", yes).
 ctor_rtti_name_type(exist_info(_),              "DuExistInfo", no).
 ctor_rtti_name_type(field_names(_),             "ConstString", yes).
 ctor_rtti_name_type(field_types(_),             "PseudoTypeInfo", yes).
@@ -1683,22 +1754,25 @@ tc_rtti_name_type(type_class_id(_),		"TypeClassId", no).
 tc_rtti_name_type(type_class_id_var_names(_),	"ConstString", yes).
 tc_rtti_name_type(type_class_id_method_ids(_),	"TypeClassMethod", yes).
 tc_rtti_name_type(type_class_decl(_),		"TypeClassDeclStruct", no).
-tc_rtti_name_type(type_class_decl_supers(_),	"TypeClassConstraint", yes).
 tc_rtti_name_type(type_class_decl_super(_, _, N), TypeName, no) :-
-	string__int_to_string(N, NStr),
-	string__append_list(["TypeClassConstraint_", NStr, "Struct"],
-		TypeName).
+	TypeName = tc_constraint_type_name(N).
+tc_rtti_name_type(type_class_decl_supers(_),	"TypeClassConstraint", yes).
 tc_rtti_name_type(type_class_instance(_, _),	"InstanceStruct", no).
 tc_rtti_name_type(type_class_instance_tc_type_vector(_, _),
 						"PseudoTypeInfo", yes).
 tc_rtti_name_type(type_class_instance_constraint(_, _, _, N), TypeName, no) :-
-	string__int_to_string(N, NStr),
-	string__append_list(["TypeClassConstraint_", NStr, "Struct"],
-		TypeName).
+	TypeName = tc_constraint_type_name(N).
 tc_rtti_name_type(type_class_instance_constraints(_, _),
 						"TypeClassConstraint", yes).
 tc_rtti_name_type(type_class_instance_methods(_, _),
 						"CodePtr", yes).
+
+:- func tc_constraint_type_name(int) = string.
+
+tc_constraint_type_name(N) = TypeName :-
+	string__int_to_string(N, NStr),
+	string__append_list(["TypeClassConstraint_", NStr, "Struct"],
+		TypeName).
 
 :- func type_info_name_type(rtti_type_info) = string.
 

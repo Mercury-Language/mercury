@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -744,7 +744,7 @@
 
 	;	mlds__pseudo_type_info_type
 
-	;	mlds__rtti_type(rtti_id)
+	;	mlds__rtti_type(rtti_id_maybe_element)
 
 		% A type used by the ML code generator for references 
 		% to variables that have yet to be declared.  This occurs 

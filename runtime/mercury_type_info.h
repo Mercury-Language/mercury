@@ -58,7 +58,7 @@
 
 #include "mercury_std.h"    /* for `MR_STRINGIFY', `MR_PASTEn' and MR_CALL */
 #include "mercury_types.h"  /* for `MR_Word' */
-#include "mercury_tags.h"   /* for `MR_CONVERT_C_ENUM_CONSTANT' */
+#include "mercury_tags.h"   /* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
 #include "mercury_hlc_types.h" /* for `MR_Mercury_Type_Info' */
 
 /*---------------------------------------------------------------------------*/
@@ -559,22 +559,6 @@ extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 */
 
 /*
-** For each enumeration constant, we define it using two names;
-** first we define the unqualified name, and then we define
-** another enumeration constant whose name is the unqualified name
-** prefixed with `mercury__private_builtin__' and whose value is
-** the same as that of the unqualified name.
-** The qualified versions are used by the MLDS->C back-end,
-** which generates references to them.
-*/
-
-#define MR_DEFINE_BUILTIN_ENUM_CONST(x) \
-        MR_PASTE2(x, _val),     \
-        x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
-        MR_PASTE2(mercury__private_builtin__,x) = x, \
-        MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
-
-/*
 ** MR_TypeCtorRep specifies the representation scheme for a particular type
 ** constructor.
 **
@@ -702,6 +686,44 @@ extern  MR_ConstString  MR_ctor_rep_name[];
 /*---------------------------------------------------------------------------*/
 
 /*
+** A typeclass constraint asserts the membership of a possibly nonground
+** vector of types in a type class, as one may find constraining a typeclass
+** declaration, an instance declaration, or a predicate/function declaration.
+**
+** Type class constraints for type classes with arity N will be of type
+** MR_TypeClassConstraint_N. Generic code will manipulate them as if they were
+** of type MR_TypeClassConstraint, getting the actual number of arguments from
+** MR_tc_constr_type_class_info->MR_tc_decl_id->MR_tc_id_arity.
+**
+** Note that the arity cannot be zero, so we do not have to worry about
+** zero-size arrays. On the other hand, type classes with more than even two
+** arguments can be expected to be very rare, so having five as a fixed limit
+** should not be a problem. If it is, we can lift the limit by defining
+** MR_TypeClassConstraint_N on demand for all N > 5.
+**
+** We will have to rethink this structure once we start supporting constructor
+** classes.
+*/
+
+#define MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(NAME, ARITY)                  \
+    typedef struct MR_PASTE2(NAME, _Struct) {                               \
+        MR_TypeClassDecl    MR_tc_constr_type_class;                        \
+        MR_PseudoTypeInfo   MR_tc_constr_arg_ptis[ARITY];                   \
+    } MR_PASTE2(NAME, Struct)
+
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_1, 1);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_2, 2);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_3, 3);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_4, 4);
+MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_5, 5);
+
+typedef MR_TypeClassConstraint_5Struct          MR_TypeClassConstraintStruct;
+typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
+
+#define MR_STD_TYPECLASS_CONSTRAINT_ADDR(p) \
+        ((MR_TypeClassConstraint) &((p).MR_tc_constr_type_class_info))
+
+/*
 ** The argument number field gives the offset in the cell (in a form in which
 ** it can be given to the MR_field macro directly) of either of the typeinfo
 ** itself or of the typeclassinfo containing the typeinfo. If the former,
@@ -740,13 +762,19 @@ typedef struct {
 ** The typeinfo for type variable N will be at the offset
 ** N - MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1. (The one is subtracted to convert
 ** from type var numbering, which starts at 1, to array offset numbering).
+**
+** The MR_exist_constraints field points to an array of type class constraints
+** (each of which is a pointer to a type class constraint structure). The array
+** contains MR_exist_tci elements, giving the constraint from which each
+** typeclass_info in the functor is derived.
 */
 
 typedef struct {
-    MR_int_least16_t        MR_exist_typeinfos_plain;
-    MR_int_least16_t        MR_exist_typeinfos_in_tci;
-    MR_int_least16_t        MR_exist_tcis;
-    const MR_DuExistLocn    *MR_exist_typeinfo_locns;
+    MR_int_least16_t                MR_exist_typeinfos_plain;
+    MR_int_least16_t                MR_exist_typeinfos_in_tci;
+    MR_int_least16_t                MR_exist_tcis;
+    const MR_DuExistLocn            *MR_exist_typeinfo_locns;
+    const MR_TypeClassConstraint    *MR_exist_constraints;
 } MR_DuExistInfo;
 
 /*

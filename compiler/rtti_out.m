@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -271,7 +271,7 @@ make_tc_decl_super_id(TCName, Ordinal, NumTypes, RttiId) :-
 
 output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 	Instance = tc_instance(TCName, TCTypes, NumTypeVars, Constraints,
-		MethodProcLabels),
+		_MethodProcLabels),
 	list__foldl2(output_maybe_pseudo_type_info_defn, TCTypes,
 		!DeclSet, !IO),
 	TCTypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data,
@@ -301,21 +301,21 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 			ConstraintIds, !IO),
 		io__write_string("};\n", !IO)
 	),
-	TCInstanceMethodsRttiId = tc_rtti_id(
-		type_class_instance_methods(TCName, TCTypes)),
-	(
-		MethodProcLabels = []
-	;
-		MethodProcLabels = [_ | _],
-		MethodCodeAddrs = list__map(make_code_addr, MethodProcLabels),
-		list__foldl2(output_code_addr_decls, MethodCodeAddrs,
-			!DeclSet, !IO),
-		output_generic_rtti_data_defn_start(TCInstanceMethodsRttiId,
-			!DeclSet, !IO),
-		io__write_string(" = {\n", !IO),
-		list__foldl(output_code_addr_in_list, MethodCodeAddrs, !IO),
-		io__write_string("};\n", !IO)
-	),
+%	TCInstanceMethodsRttiId = tc_rtti_id(
+%		type_class_instance_methods(TCName, TCTypes)),
+%	(
+%		MethodProcLabels = []
+%	;
+%		MethodProcLabels = [_ | _],
+%		MethodCodeAddrs = list__map(make_code_addr, MethodProcLabels),
+%		list__foldl2(output_code_addr_decls, MethodCodeAddrs,
+%			!DeclSet, !IO),
+%		output_generic_rtti_data_defn_start(TCInstanceMethodsRttiId,
+%			!DeclSet, !IO),
+%		io__write_string(" = {\n", !IO),
+%		list__foldl(output_code_addr_in_list, MethodCodeAddrs, !IO),
+%		io__write_string("};\n", !IO)
+%	),
 	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
 	output_rtti_id_decls(TCDeclRttiId, "", "", 0, _, !DeclSet, !IO),
 	TCInstanceRttiId = tc_rtti_id(type_class_instance(TCName, TCTypes)),
@@ -336,15 +336,15 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 		Constraints = [_ | _],
 		output_rtti_id(TCInstanceConstraintsRttiId, !IO)
 	),
-	io__write_string(",\n\t", !IO),
-	(
-		MethodProcLabels = [],
-		io__write_string("NULL", !IO)
-	;
-		MethodProcLabels = [_ | _],
-		io__write_string("&", !IO),
-		output_rtti_id(TCInstanceMethodsRttiId, !IO)
-	),
+%	io__write_string(",\n\t", !IO),
+%	(
+%		MethodProcLabels = [],
+%		io__write_string("NULL", !IO)
+%	;
+%		MethodProcLabels = [_ | _],
+%		io__write_string("&", !IO),
+%		output_rtti_id(TCInstanceMethodsRttiId, !IO)
+%	),
 	io__write_string("\n};\n", !IO).
 
 :- pred make_tc_instance_constraint_id(tc_name::in, list(tc_type)::in,
@@ -373,8 +373,8 @@ output_type_class_constraint(MakeRttiId, Constraint, TCDeclSuperRttiId,
 		!Counter, !DeclSet, !IO) :-
 	Constraint = tc_constraint(TCName, Types),
 	list__length(Types, NumTypes),
-	counter__allocate(Ordinal, !Counter),
-	MakeRttiId(Ordinal, NumTypes, TCDeclSuperRttiId),
+	counter__allocate(TCNum, !Counter),
+	MakeRttiId(TCNum, NumTypes, TCDeclSuperRttiId),
 	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
 	output_generic_rtti_data_decl(TCDeclRttiId, !DeclSet, !IO),
 	list__foldl2(output_maybe_pseudo_type_info_defn, Types, !DeclSet, !IO),
@@ -904,13 +904,43 @@ output_exist_locns_array(RttiTypeCtor, Ordinal, Locns, !DeclSet, !IO) :-
 		io__write_string("};\n", !IO)
 	).
 
+:- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in,
+	int::in, int::in, rtti_id::out) is det.
+
+make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
+	RttiName = exist_tc_constr(Ordinal, TCNum, Arity),
+	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
+
+:- pred output_exist_constraints_data(rtti_type_ctor::in, int::in,
+	list(tc_constraint)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
+output_exist_constraints_data(RttiTypeCtor, Ordinal, Constraints, !DeclSet,
+		!IO) :-
+	list__map_foldl3(output_type_class_constraint(
+		make_exist_tc_constr_id(RttiTypeCtor, Ordinal)), Constraints,
+		ConstraintIds, counter__init(1), _, !DeclSet, !IO),
+	RttiId = ctor_rtti_id(RttiTypeCtor, exist_tc_constrs(Ordinal)),
+	output_generic_rtti_data_defn_start(RttiId, !DeclSet, !IO),
+	io__write_string(" = {\n\t", !IO),
+	output_cast_addr_of_rtti_ids("(MR_TypeClassConstraint) ",
+		ConstraintIds, !IO),
+	io__write_string("\n};\n", !IO).
+
 :- pred output_exist_info(rtti_type_ctor::in, int::in, exist_info::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
 output_exist_info(RttiTypeCtor, Ordinal, ExistInfo, !DeclSet, !IO) :-
-	ExistInfo = exist_info(Plain, InTci, Tci, Locns),
+	ExistInfo = exist_info(Plain, InTci, Constraints, Locns),
 	output_exist_locns_array(RttiTypeCtor, Ordinal, Locns,
 		!DeclSet, !IO),
+	(
+		Constraints = [_ | _],
+		output_exist_constraints_data(RttiTypeCtor, Ordinal,
+			Constraints, !DeclSet, !IO)
+	;
+		Constraints = []
+	),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, exist_info(Ordinal)),
 		!DeclSet, !IO),
@@ -919,9 +949,18 @@ output_exist_info(RttiTypeCtor, Ordinal, ExistInfo, !DeclSet, !IO) :-
 	io__write_string(",\n\t", !IO),
 	io__write_int(InTci, !IO),
 	io__write_string(",\n\t", !IO),
+	list__length(Constraints, Tci),
 	io__write_int(Tci, !IO),
 	io__write_string(",\n\t", !IO),
 	output_ctor_rtti_id(RttiTypeCtor, exist_locns(Ordinal), !IO),
+	io__write_string(",\n\t", !IO),
+	(
+		Constraints = [_ | _],
+		output_ctor_rtti_id(RttiTypeCtor, exist_tc_constrs(Ordinal),
+			!IO)
+	;
+		Constraints = []
+	),
 	io__write_string("\n};\n", !IO).
 
 :- pred output_du_arg_types(rtti_type_ctor::in, int::in,

@@ -1673,7 +1673,8 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
 			% instance decls, even if they are in a different
 			% module
 			%
-			Name = data(rtti(tc_rtti_id(_)))
+			Name = data(rtti(tc_rtti_id(
+				base_typeclass_info(_, _, _))))
 		;
 			% We don't module qualify pragma export names.
 			Name = export(_)
@@ -1903,8 +1904,8 @@ mlds_output_type_prefix(mlds__commit_type, !IO) :-
 	;
 		io__write_string("jmp_buf", !IO)
 	).
-mlds_output_type_prefix(mlds__rtti_type(RttiId), !IO) :-
-	rtti_id_c_type(RttiId, CType, _IsArray),
+mlds_output_type_prefix(mlds__rtti_type(RttiIdMaybeElement), !IO) :-
+	rtti_id_maybe_element_c_type(RttiIdMaybeElement, CType, _IsArray),
 	io__write_string(CType, !IO).
 mlds_output_type_prefix(mlds__unknown_type, !IO) :-
 	error("mlds_to_c.m: prefix has unknown type").
@@ -2058,8 +2059,8 @@ mlds_output_type_suffix(mlds__cont_type(ArgTypes), _, !IO) :-
 		io__write_string(")", !IO)
 	).
 mlds_output_type_suffix(mlds__commit_type, _, !IO).
-mlds_output_type_suffix(mlds__rtti_type(RttiId), ArraySize, !IO) :-
-	( rtti_id_has_array_type(RttiId) = yes ->
+mlds_output_type_suffix(mlds__rtti_type(RttiIdMaybeElement), ArraySize, !IO) :-
+	( rtti_id_maybe_element_has_array_type(RttiIdMaybeElement) = yes ->
 		mlds_output_array_type_suffix(ArraySize, !IO)
 	;
 		true

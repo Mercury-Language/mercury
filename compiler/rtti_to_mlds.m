@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,7 @@
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, string, int, list, assoc_list, map.
-:- import_module std_util, term, require.
+:- import_module std_util, term, counter, require.
 
 rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
 	RealRttiDatas = list__filter(real_rtti_data, RttiDatas),
@@ -70,8 +70,8 @@ mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
 rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 	( RttiData = pseudo_type_info(type_var(_)) ->
 		% These just get represented as integers,
-		% so we don't need to define them.
-		% Also rtti_data_to_name/3 does not handle this case.
+		% so we don't need to define a structure for them;
+		% which is why rtti_data_to_name/3 does not handle this case.
 		MLDS_Defns = []
     	;
 		rtti_data_to_id(RttiData, RttiId),
@@ -126,7 +126,7 @@ rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn) :-
 	% Generate the declaration body,
 	% i.e. the type and the initializer
 	%
-	MLDS_Type = rtti_type(RttiId),
+	MLDS_Type = rtti_type(item_type(RttiId)),
 	DefnBody = mlds__data(MLDS_Type, Initializer, GC_TraceCode),
 	MLDS_Defn = mlds__defn(Name, MLDS_Context, Flags, DefnBody).
 
@@ -173,12 +173,6 @@ gen_init_rtti_data_defn(RttiData, _RttiId, ModuleInfo, Init, ExtraDefns) :-
 		gen_init_boxed_int(N5)
 		| MethodInitializers
 	]).
-gen_init_rtti_data_defn(RttiData, _RttiId, _ModuleInfo, _Init, _SubDefns) :-
-	RttiData = type_class_decl(_), 
-	error("gen_init_rtti_data_defn: type_class_decl NYI").
-gen_init_rtti_data_defn(RttiData, _RttiId, _ModuleInfo, _Init, _SubDefns) :-
-	RttiData = type_class_instance(_), 
-	error("gen_init_rtti_data_defn: type_class_instance NYI").
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	RttiData = type_info(TypeInfo), 
 	gen_type_info_defn(ModuleInfo, TypeInfo, RttiId, Init, SubDefns).
@@ -186,7 +180,13 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	RttiData = pseudo_type_info(PseudoTypeInfo), 
 	gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId,
 		Init, SubDefns).
-
+gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
+	RttiData = type_class_decl(TCDecl), 
+	gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns).
+gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
+	RttiData = type_class_instance(Instance), 
+	gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init,
+		SubDefns).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	RttiData = type_ctor_info(TypeCtorData), 
 	TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
@@ -199,22 +199,24 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	LayoutRttiId = ctor_rtti_id(RttiTypeCtor, type_layout),
 
 	some [!Defns] (
-	    gen_functors_layout_info(ModuleInfo, RttiTypeCtor,
+		gen_functors_layout_info(ModuleInfo, RttiTypeCtor,
 			TypeCtorDetails, FunctorsInfo, LayoutInfo, !:Defns),
 
-	    %
-	    % Note that gen_init_special_pred will by necessity add an extra
-	    % level of indirection to calling the special preds.  However the
-	    % backend compiler should be smart enough to ensure that this is
-	    % inlined away.
-	    %
-	    gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInit, !Defns),
-	    gen_init_special_pred(ModuleInfo, CompareUniv, CompareInit, !Defns),
+		%
+		% Note that gen_init_special_pred will by necessity add an
+		% extra level of indirection to calling the special preds.
+		% However the backend compiler should be smart enough
+		% to ensure that this is inlined away.
+		%
+		gen_init_special_pred(ModuleInfo, UnifyUniv, UnifyInit,
+			!Defns),
+		gen_init_special_pred(ModuleInfo, CompareUniv, CompareInit,
+			!Defns),
 
-	    SubDefns = !.Defns
+		SubDefns = !.Defns
 	),
 
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_int(TypeArity),
 		gen_init_int(Version),
 		gen_init_int(NumPtags),
@@ -226,10 +228,10 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 		% In the C back-end, these two "structs" are actually unions.
 		% We need to use `init_struct' here so that the initializers
 		% get enclosed in curly braces.
-		init_struct(mlds__rtti_type(FunctorsRttiId), [
+		init_struct(mlds__rtti_type(item_type(FunctorsRttiId)), [
 			FunctorsInfo
 		]),
-		init_struct(mlds__rtti_type(LayoutRttiId), [
+		init_struct(mlds__rtti_type(item_type(LayoutRttiId)), [
 			LayoutInfo
 		]),
 		gen_init_int(NumFunctors),
@@ -246,6 +248,170 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred gen_type_class_decl_defn(tc_decl::in, rtti_id::in, module_info::in,
+	mlds__initializer::out, list(mlds__defn)::out) is det.
+
+gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
+	TCDecl = tc_decl(TCId, Version, Supers),
+	TCId = tc_id(TCName, TVarNames, MethodIds),
+	TCName = tc_name(ModuleSymName, ClassName, Arity),
+	module_info_name(ModuleInfo, ModuleName),
+	TVarNamesRttiId = tc_rtti_id(type_class_id_var_names(TCName)),
+	(
+		TVarNames = [],
+		TVarNameDefns = [],
+		TVarNamesInit = gen_init_null_pointer(
+			mlds__rtti_type(item_type(TVarNamesRttiId)))
+	;
+		TVarNames = [_ | _],
+		gen_tc_id_var_names(TVarNamesRttiId, TVarNames, TVarNameDefn),
+		TVarNameDefns = [TVarNameDefn],
+		TVarNamesInit = gen_init_rtti_id(ModuleName, TVarNamesRttiId)
+	),
+	MethodIdsRttiId = tc_rtti_id(type_class_id_method_ids(TCName)),
+	(
+		MethodIds = [],
+		MethodIdDefns = [],
+		MethodIdsInit = gen_init_null_pointer(
+			mlds__rtti_type(item_type(MethodIdsRttiId)))
+	;
+		MethodIds = [_ | _],
+		gen_tc_id_method_ids(MethodIdsRttiId, TCName, MethodIds,
+			MethodIdDefn),
+		MethodIdDefns = [MethodIdDefn],
+		MethodIdsInit = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
+	),
+	TCIdRttiId = tc_rtti_id(type_class_id(TCName)),
+	prog_out__sym_name_to_string(ModuleSymName, ModuleSymNameStr),
+	list__length(TVarNames, NumTVars),
+	list__length(MethodIds, NumMethods),
+	TCIdInit = init_struct(mlds__rtti_type(item_type(TCIdRttiId)), [
+		gen_init_string(ModuleSymNameStr),
+		gen_init_string(ClassName),
+		gen_init_int(Arity),
+		gen_init_int(NumTVars),
+		gen_init_int(NumMethods),
+		TVarNamesInit,
+		MethodIdsInit
+	]),
+	rtti_id_and_init_to_defn(TCIdRttiId, TCIdInit, TCIdDefn),
+	(
+		Supers = [],
+		SuperDefns = [],
+		SupersInit = gen_init_null_pointer(
+			mlds__rtti_type(item_type(MethodIdsRttiId)))
+	;
+		Supers = [_ | _],
+		list__map_foldl2(gen_tc_constraint(ModuleInfo,
+			make_decl_super_id(TCName)), Supers, SuperRttiIds,
+			counter__init(1), _, [], SuperConstrDefns),
+		SuperArrayRttiId = tc_rtti_id(SuperArrayRttiName),
+		ElementType = mlds__rtti_type(element_type(SuperArrayRttiId)),
+		SuperArrayInit = gen_init_array(
+			gen_init_cast_rtti_id(ElementType, ModuleName),
+			SuperRttiIds),
+		SuperArrayRttiName = type_class_decl_supers(TCName),
+		rtti_id_and_init_to_defn(SuperArrayRttiId, SuperArrayInit,
+			SuperDefn),
+		list__append(SuperConstrDefns, [SuperDefn], SuperDefns),
+		SupersInit = gen_init_null_pointer(
+			mlds__rtti_type(item_type(MethodIdsRttiId)))
+	),
+	list__length(Supers, NumSupers),
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
+		gen_init_rtti_id(ModuleName, TCIdRttiId),
+		gen_init_int(Version),
+		gen_init_int(NumSupers),
+		SupersInit
+	]),
+	list__condense([TVarNameDefns, MethodIdDefns, [TCIdDefn], SuperDefns],
+		SubDefns).
+
+:- pred make_decl_super_id(tc_name::in, int::in, int::in, rtti_id::out)
+	is det.
+
+make_decl_super_id(TCName, TCNum, Arity, RttiId) :-
+	TCRttiName = type_class_decl_super(TCName, TCNum, Arity),
+	RttiId = tc_rtti_id(TCRttiName).
+
+:- pred gen_tc_id_var_names(rtti_id::in, list(string)::in, mlds__defn::out)
+	is det.
+
+gen_tc_id_var_names(RttiId, Names, MLDS_Defn) :-
+	Init = gen_init_array(gen_init_string, Names),
+	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn).
+
+:- pred gen_tc_id_method_ids(rtti_id::in, tc_name::in, list(tc_method_id)::in,
+	mlds__defn::out) is det.
+
+gen_tc_id_method_ids(RttiId, TCName, MethodIds, Defn) :-
+	Init = gen_init_array(gen_tc_id_method_id(TCName), MethodIds),
+	rtti_id_and_init_to_defn(RttiId, Init, Defn).
+
+:- func gen_tc_id_method_id(tc_name, tc_method_id) = mlds__initializer.
+
+gen_tc_id_method_id(TCName, MethodId) = Init :-
+	MethodId = tc_method_id(MethodName, MethodArity, PredOrFunc),
+	RttiId = tc_rtti_id(type_class_id_method_ids(TCName)),
+	Init = init_struct(mlds__rtti_type(element_type(RttiId)), [
+		gen_init_string(MethodName),
+		gen_init_int(MethodArity),
+		gen_init_pred_or_func(PredOrFunc)
+	]).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gen_type_class_instance_defn(tc_instance::in, rtti_id::in,
+	module_info::in, mlds__initializer::out, list(mlds__defn)::out) is det.
+
+gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init, SubDefns) :-
+	Instance = tc_instance(TCName, Types, NumTypeVars,
+		InstanceConstraints, _Methods),
+	TCDeclRttiId = tc_rtti_id(type_class_decl(TCName)),
+	list__length(InstanceConstraints, NumInstanceConstraints),
+	InstanceTypesTCRttiName =
+		type_class_instance_tc_type_vector(TCName, Types),
+	InstanceTypesRttiId = tc_rtti_id(InstanceTypesTCRttiName),
+	InstanceConstrsTCRttiName =
+		type_class_instance_constraints(TCName, Types),
+	InstanceConstrsRttiId = tc_rtti_id(InstanceConstrsTCRttiName),
+	module_info_name(ModuleInfo, ModuleName),
+
+	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
+	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, TypesInit,
+		TypesDefns),
+	rtti_id_and_init_to_defn(InstanceTypesRttiId, TypesInit, TypesDefn),
+
+	list__map_foldl2(gen_tc_constraint(ModuleInfo,
+		make_instance_constr_id(TCName, Types)),
+		InstanceConstraints, TCConstrIds, counter__init(1), _,
+		[], TCConstrDefns),
+	ElementType = mlds__rtti_type(element_type(InstanceConstrsRttiId)),
+	InstanceConstrsInit = gen_init_array(
+		gen_init_cast_rtti_id(ElementType, ModuleName),
+		TCConstrIds),
+	rtti_id_and_init_to_defn(InstanceConstrsRttiId, InstanceConstrsInit,
+		InstanceConstrsDefn),
+
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
+		gen_init_rtti_id(ModuleName, TCDeclRttiId),
+		gen_init_int(NumTypeVars),
+		gen_init_int(NumInstanceConstraints),
+		gen_init_rtti_id(ModuleName, InstanceTypesRttiId),
+		gen_init_rtti_id(ModuleName, InstanceConstrsRttiId)
+	]),
+	list__condense([TypesDefns, [TypesDefn], TCConstrDefns,
+		[InstanceConstrsDefn]], SubDefns).
+
+:- pred make_instance_constr_id(tc_name::in, list(tc_type)::in,
+	int::in, int::in, rtti_id::out) is det.
+
+make_instance_constr_id(TCName, Types, TCNum, Arity, RttiId) :-
+	RttiName = type_class_instance_constraint(TCName, Types, TCNum, Arity),
+	RttiId = tc_rtti_id(RttiName).
+
+%-----------------------------------------------------------------------------%
+
 :- pred gen_type_info_defn(module_info::in, rtti_type_info::in, rtti_id::in,
 	mlds__initializer::out, list(mlds__defn)::out) is det.
 
@@ -258,7 +424,7 @@ gen_type_info_defn(ModuleInfo, plain_type_info(RttiTypeCtor, ArgTypes),
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
 	module_info_name(ModuleInfo, ModuleName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_cast_rtti_datas_array(mlds__type_info_type,
 			ModuleName, ArgRttiDatas)
@@ -271,7 +437,7 @@ gen_type_info_defn(ModuleInfo, var_arity_type_info(VarArityId, ArgTypes),
 	SubDefns = list__condense(SubDefnLists),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
 	module_info_name(ModuleInfo, ModuleName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_int(list__length(ArgTypes)),
 		gen_init_cast_rtti_datas_array(mlds__type_info_type,
@@ -290,7 +456,7 @@ gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId, Init, SubDefns) :-
 	SubDefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
 	SubDefns = list__condense(SubDefnLists),
 	module_info_name(ModuleInfo, ModuleName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
 			ModuleName, ArgRttiDatas)
@@ -303,7 +469,7 @@ gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId, Init, SubDefns) :-
 	SubDefns = list__condense(SubDefnLists),
 	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
 	module_info_name(ModuleInfo, ModuleName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
 		gen_init_int(list__length(ArgTypes)),
 		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
@@ -381,12 +547,8 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 	;
 		TypeCtorDetails = eqv(EqvType),
 		TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
-		RealRttiDatas = list__filter(real_rtti_data, [TypeRttiData]),
-		DefnsList = list__map(rtti_data_to_mlds(ModuleInfo),
-			RealRttiDatas),
-		Defns = list__condense(DefnsList),
-		LayoutInit = gen_init_cast_rtti_data(
-			mlds__pseudo_type_info_type, ModuleName, TypeRttiData),
+		gen_pseudo_type_info(ModuleInfo, TypeRttiData, LayoutInit,
+			Defns),
 			% The type is a lie, but a safe one.
 		FunctorInit = gen_init_null_pointer(mlds__generic_type)
 	;
@@ -415,7 +577,7 @@ gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor) = MLDS_Defn :-
 	EnumFunctor = enum_functor(FunctorName, Ordinal),
 	RttiName = enum_functor_desc(Ordinal),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
  		gen_init_string(FunctorName),
  		gen_init_int(Ordinal)
  	]),
@@ -427,20 +589,16 @@ gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor) = MLDS_Defn :-
 gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc)
 		= MLDS_Defns :-
 	NotagFunctorDesc = notag_functor(FunctorName, ArgType, MaybeArgName),
-	module_info_name(ModuleInfo, ModuleName),
 	ArgTypeRttiData = maybe_pseudo_type_info_to_rtti_data(ArgType),
+	gen_pseudo_type_info(ModuleInfo, ArgTypeRttiData, PTIInit, SubDefns),
 	RttiName = notag_functor_desc,
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_string(FunctorName),
-		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
-			ModuleName, ArgTypeRttiData),
+		PTIInit,
 		gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
 	]),
 	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-	RealRttiDatas = list__filter(real_rtti_data, [ArgTypeRttiData]),
-	SubDefnsList = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-	SubDefns = list__condense(SubDefnsList),
 	MLDS_Defns = [MLDS_Defn | SubDefns].
 
 :- func gen_du_functor_desc(module_info, rtti_type_ctor, du_functor)
@@ -464,8 +622,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		ArgInfos = [],
 		ArgTypeDefns = [],
 		ArgTypeInit = gen_init_null_pointer(
-			mlds__rtti_type(
-				ctor_rtti_id(RttiTypeCtor, field_types(0))))
+			mlds__rtti_type(item_type(
+				ctor_rtti_id(RttiTypeCtor, field_types(0)))))
 	),
 	(
 		ArgNames = [_ | _],
@@ -478,8 +636,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		ArgNames = [],
 		ArgNameDefns = [],
 		ArgNameInit = gen_init_null_pointer(
-			mlds__rtti_type(
-				ctor_rtti_id(RttiTypeCtor, field_names(0))))
+			mlds__rtti_type(item_type(
+				ctor_rtti_id(RttiTypeCtor, field_names(0)))))
 	),
 	(
 		MaybeExistInfo = yes(ExistInfo),
@@ -491,8 +649,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 		MaybeExistInfo = no,
 		ExistInfoDefns = [],
 		ExistInfoInit = gen_init_null_pointer(
-			mlds__rtti_type(
-				ctor_rtti_id(RttiTypeCtor, exist_info(0))))
+			mlds__rtti_type(item_type(
+				ctor_rtti_id(RttiTypeCtor, exist_info(0)))))
 	),
 	SubDefns = list__condense([ArgTypeDefns, ArgNameDefns,
 		ExistInfoDefns]),
@@ -515,7 +673,7 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor) = MLDS_Defns :-
 	),
 	RttiName = du_functor_desc(Ordinal),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_string(FunctorName),
 		gen_init_int(Arity),
 		gen_init_int(ContainsVarBitVector),
@@ -537,7 +695,7 @@ gen_res_addr_functor_desc(ModuleInfo, RttiTypeCtor, ResFunctor) = MLDS_Defn :-
 	ResFunctor = reserved_functor(FunctorName, Ordinal, ReservedAddress),
 	RttiName = res_functor_desc(Ordinal),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_string(FunctorName),
 		gen_init_int(Ordinal),
 		gen_init_reserved_address(ModuleInfo, ReservedAddress)
@@ -573,7 +731,7 @@ gen_init_exist_locn(RttiTypeCtor, ExistTypeInfoLocn) = Init :-
 		SlotInTci = -1
 	),
 	RttiId = ctor_rtti_id(RttiTypeCtor, exist_locn),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_int(SlotInCell),
 		gen_init_int(SlotInTci)
 	]).
@@ -586,25 +744,84 @@ gen_exist_locns_array(_ModuleInfo, RttiTypeCtor, Ordinal, Locns) = MLDS_Defn :-
 	RttiName = exist_locns(Ordinal),
 	rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn).
 
+:- pred gen_tc_constraint(module_info::in,
+	pred(int, int, rtti_id)::in(pred(in, in, out) is det),
+	tc_constraint::in, rtti_id::out, counter::in, counter::out,
+	list(mlds__defn)::in, list(mlds__defn)::out) is det.
+
+gen_tc_constraint(ModuleInfo, MakeRttiId, Constraint, RttiId, !Counter,
+		!Defns) :-
+	Constraint = tc_constraint(TCName, Types),
+	list__length(Types, Arity),
+	counter__allocate(TCNum, !Counter),
+	MakeRttiId(TCNum, Arity, RttiId),
+	TCDeclRttiName = type_class_decl(TCName),
+	module_info_name(ModuleInfo, ModuleName),
+	TypeRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Types),
+	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, PTIInits,
+		PTIDefns),
+ 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
+		gen_init_tc_rtti_name(ModuleName, TCDeclRttiName),
+		PTIInits
+ 	]),
+	rtti_id_and_init_to_defn(RttiId, Init, ConstrDefn),
+	list__append(PTIDefns, [ConstrDefn], NewDefns),
+	list__append(!.Defns, NewDefns, !:Defns).
+
+:- pred make_exist_tc_constr_id(rtti_type_ctor::in, int::in, int::in, int::in,
+	rtti_id::out) is det.
+
+make_exist_tc_constr_id(RttiTypeCtor, Ordinal, TCNum, Arity, RttiId) :-
+	RttiName = exist_tc_constr(Ordinal, TCNum, Arity),
+	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName).
+
 :- func gen_exist_info(module_info, rtti_type_ctor, int, exist_info)
 	= list(mlds__defn).
 
 gen_exist_info(ModuleInfo, RttiTypeCtor, Ordinal, ExistInfo) = MLDS_Defns :-
-	ExistInfo = exist_info(Plain, InTci, Tci, Locns),
+	ExistInfo = exist_info(Plain, InTci, Constraints, Locns),
 	module_info_name(ModuleInfo, ModuleName),
 	RttiName = exist_info(Ordinal),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
- 	Init = init_struct(mlds__rtti_type(RttiId), [
+	list__length(Constraints, Tci),
+	(
+		Constraints = [],
+		ConstrInit = gen_init_null_pointer(
+			mlds__rtti_type(item_type(ctor_rtti_id(RttiTypeCtor,
+				exist_tc_constrs(Ordinal))))),
+		ConstrDefns = []
+	;
+		Constraints = [_ | _],
+		ConstrInit = gen_init_rtti_name(ModuleName, RttiTypeCtor,
+			exist_tc_constrs(Ordinal)),
+		list__map_foldl2(gen_tc_constraint(ModuleInfo,
+			make_exist_tc_constr_id(RttiTypeCtor, Ordinal)),
+			Constraints, TCConstrIds, counter__init(1), _,
+			[], TCConstrDefns),
+		TCConstrArrayRttiName = exist_tc_constrs(Ordinal),
+		TCConstrArrayRttiId = ctor_rtti_id(RttiTypeCtor,
+			TCConstrArrayRttiName),
+		ElementType = mlds__rtti_type(
+			element_type(TCConstrArrayRttiId)),
+		TCConstrArrayInit = gen_init_array(
+			gen_init_cast_rtti_id(ElementType, ModuleName),
+			TCConstrIds),
+		rtti_name_and_init_to_defn(RttiTypeCtor, TCConstrArrayRttiName,
+			TCConstrArrayInit, TCConstrArrayDefn),
+		list__append(TCConstrDefns, [TCConstrArrayDefn], ConstrDefns)
+	),
+ 	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
  		gen_init_int(Plain),
  		gen_init_int(InTci),
  		gen_init_int(Tci),
  		gen_init_rtti_name(ModuleName, RttiTypeCtor,
-			exist_locns(Ordinal))
+			exist_locns(Ordinal)),
+		ConstrInit
  	]),
 	rtti_id_and_init_to_defn(RttiId, Init, MLDS_Defn),
-	Sub_Defn = gen_exist_locns_array(ModuleInfo, RttiTypeCtor, Ordinal,
+	LocnsDefn = gen_exist_locns_array(ModuleInfo, RttiTypeCtor, Ordinal,
 		Locns),
-	MLDS_Defns = [MLDS_Defn, Sub_Defn].
+	MLDS_Defns = [MLDS_Defn, LocnsDefn | ConstrDefns].
 
 :- func gen_field_names(module_info, rtti_type_ctor, int, list(maybe(string)))
 	= mlds__defn.
@@ -622,17 +839,11 @@ gen_field_names(_ModuleInfo, RttiTypeCtor, Ordinal, MaybeNames) = MLDS_Defn :-
 	list(rtti_maybe_pseudo_type_info_or_self)) = list(mlds__defn).
 
 gen_field_types(ModuleInfo, RttiTypeCtor, Ordinal, Types) = MLDS_Defns :-
-	module_info_name(ModuleInfo, ModuleName),
 	TypeRttiDatas = list__map(maybe_pseudo_type_info_or_self_to_rtti_data,
 		Types),
-	Init = gen_init_array(
-		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
-		ModuleName), TypeRttiDatas),
+	gen_pseudo_type_info_array(ModuleInfo, TypeRttiDatas, Init, SubDefns),
 	RttiName = field_types(Ordinal),
 	rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Init, MLDS_Defn),
-	RealRttiDatas = list__filter(real_rtti_data, TypeRttiDatas),
-	SubDefnsList = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
-	SubDefns = list__condense(SubDefnsList),
 	MLDS_Defns = [MLDS_Defn | SubDefns].
 
 %-----------------------------------------------------------------------------%
@@ -676,13 +887,15 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 			% reserved tag first.
 		RttiElemName = du_ptag_layout(0),
 		RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
-		PtagInitPrefix = [init_struct(mlds__rtti_type(RttiElemId), [
-			gen_init_int(0),
+		PtagInitPrefix = [
+			init_struct(mlds__rtti_type(item_type(RttiElemId)),
+			[gen_init_int(0),
 			gen_init_builtin_const("MR_SECTAG_VARIABLE"),
 			gen_init_null_pointer(
-				mlds__rtti_type(ctor_rtti_id(RttiTypeCtor,
-					du_stag_ordered_table(0))))
-		])],
+				mlds__rtti_type(item_type(
+					ctor_rtti_id(RttiTypeCtor,
+						du_stag_ordered_table(0)))))]
+		)],
 		FirstPtag = 1
 	; PtagList = [0 - _ | _] ->
 		PtagInitPrefix = [],
@@ -711,7 +924,7 @@ gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor,
 	SectagTable = sectag_table(SectagLocn, NumSharers, _SectagMap),
 	RttiName = du_ptag_layout(Ptag),
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_int(NumSharers),
 		gen_init_sectag_locn(SectagLocn),
 		gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -775,7 +988,7 @@ gen_maybe_res_value_ordered_table(ModuleInfo, RttiTypeCtor, ResFunctors,
 	SubDefns = list__condense([ResDefns, ResAddrDefns, DuDefns]),
 	RttiName = res_value_ordered_table,
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Init = init_struct(mlds__rtti_type(RttiId), [
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
 		gen_init_int(NumNumericResFunctorReps),
 		gen_init_int(NumSymbolicResFunctorReps),
 		ResAddrInit,
@@ -828,7 +1041,7 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
 		MaybeResFunctor) = Init :-
 	RttiName = maybe_res_addr_functor_desc,
 	RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
-	Type = mlds__rtti_type(RttiId),
+	Type = mlds__rtti_type(item_type(RttiId)),
 	(
 		MaybeResFunctor = res_func(ResFunctor),
 		Name = ResFunctor ^ res_name,
@@ -855,16 +1068,20 @@ gen_maybe_res_name_ordered_table_element(ModuleName, RttiTypeCtor,
 
 :- func gen_init_rtti_names_array(module_name, rtti_type_ctor,
 		list(ctor_rtti_name)) = mlds__initializer.
+
 gen_init_rtti_names_array(ModuleName, RttiTypeCtor, RttiNames) =
-	gen_init_array(gen_init_rtti_name(ModuleName, RttiTypeCtor), RttiNames).
+	gen_init_array(gen_init_rtti_name(ModuleName, RttiTypeCtor),
+		RttiNames).
 
 :- func gen_init_rtti_datas_array(module_name, list(rtti_data)) =
 	mlds__initializer.
+
 gen_init_rtti_datas_array(ModuleName, RttiDatas) =
 	gen_init_array(gen_init_rtti_data(ModuleName), RttiDatas).
 
 :- func gen_init_cast_rtti_datas_array(mlds__type, module_name,
-		list(rtti_data)) = mlds__initializer.
+	list(rtti_data)) = mlds__initializer.
+
 gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
 	gen_init_array(gen_init_cast_rtti_data(Type, ModuleName), RttiDatas).
 
@@ -886,9 +1103,9 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 		RttiData = base_typeclass_info(InstanceModuleName, ClassId,
 			InstanceString, _)
 	->
-		SrcType = rtti_type(tc_rtti_id(
+		SrcType = rtti_type(item_type(tc_rtti_id(
 			base_typeclass_info(InstanceModuleName,
-			ClassId, InstanceString))),
+			ClassId, InstanceString)))),
 		MLDS_ModuleName = mercury_module_name_to_mlds(
 			InstanceModuleName),
 		MLDS_DataName = rtti(tc_rtti_id(
@@ -906,6 +1123,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 
 	% currently casts only store the destination type
 :- func gen_cast(mlds__type, mlds__type) = mlds__unary_op.
+
 gen_cast(_SrcType, DestType) = cast(DestType).
 
 	% Generate the MLDS initializer comprising the rtti_name
@@ -918,8 +1136,7 @@ gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given rtti_id
-:- func gen_init_rtti_id(module_name, rtti_id) =
-	mlds__initializer.
+:- func gen_init_rtti_id(module_name, rtti_id) = mlds__initializer.
 
 gen_init_rtti_id(ModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 	gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName).
@@ -948,7 +1165,7 @@ gen_init_tc_rtti_name(ModuleName, TCRttiName) =
 	= mlds__initializer.
 
 gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
-	SrcType = rtti_type(RttiId), 
+	SrcType = rtti_type(item_type(RttiId)), 
 	Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 		gen_rtti_id(ModuleName, RttiId))).
 
@@ -1061,11 +1278,48 @@ mlds_module_name_from_tc_name(TCName) = MLDS_ModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_init_method(module_info, int, rtti_proc_label, mlds__initializer,
-		list(mlds__defn), list(mlds__defn)).
-:- mode gen_init_method(in, in, in, out, in, out) is det.
+:- pred gen_pseudo_type_info(module_info::in, rtti_data::in,
+	mlds__initializer::out, list(mlds__defn)::out) is det.
 
-gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init, !ExtraDefns) :-
+gen_pseudo_type_info(ModuleInfo, PTIRttiData, Init, Defns) :-
+	RealRttiDatas = list__filter(real_rtti_data, [PTIRttiData]),
+	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
+	Defns = list__condense(DefnLists),
+	module_info_name(ModuleInfo, ModuleName),
+	Init = gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
+		ModuleName, PTIRttiData).
+
+:- pred gen_pseudo_type_info_array(module_info::in, list(rtti_data)::in,
+	mlds__initializer::out, list(mlds__defn)::out) is det.
+
+gen_pseudo_type_info_array(ModuleInfo, PTIRttiDatas, Init, Defns) :-
+	RealRttiDatas = list__filter(real_rtti_data, PTIRttiDatas),
+	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
+	Defns = list__condense(DefnLists),
+	module_info_name(ModuleInfo, ModuleName),
+	Init = gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
+		ModuleName, PTIRttiDatas).
+
+:- pred gen_pseudo_type_info_list(module_info::in, list(rtti_data)::in,
+	list(mlds__initializer)::out, list(mlds__defn)::out) is det.
+
+gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Inits, Defns) :-
+	RealRttiDatas = list__filter(real_rtti_data, PTIRttiDatas),
+	DefnLists = list__map(rtti_data_to_mlds(ModuleInfo), RealRttiDatas),
+	Defns = list__condense(DefnLists),
+	module_info_name(ModuleInfo, ModuleName),
+	Inits = list__map(
+		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
+			ModuleName),
+		PTIRttiDatas).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gen_init_method(module_info::in, int::in, rtti_proc_label::in,
+	mlds__initializer::out, list(mlds__defn)::in, list(mlds__defn)::out)
+	is det.
+
+gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
 	%
 	% we can't store the address of the typeclass method directly in
 	% the base_typeclass_info; instead, we need to generate
@@ -1080,11 +1334,11 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init, !ExtraDefns) :-
 	% Hopefully the Mercury HLDS->HLDS inlining and/or
 	% the target code compiler will be able to optimize this...
 	%
-	gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
-			typeclass_info_closure, Init, !ExtraDefns).
+	gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcLabel,
+		typeclass_info_closure, Init, !ExtraDefns).
 
 :- pred gen_init_special_pred(module_info::in, univ::in, mlds__initializer::out,
-		list(mlds__defn)::in, list(mlds__defn)::out) is det.
+	list(mlds__defn)::in, list(mlds__defn)::out) is det.
 
 gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
 	%
@@ -1206,6 +1460,11 @@ real_rtti_data(RttiData) :-
 % The rvals generated are just named constants in
 % the private_builtin module, which the Mercury
 % runtime is expected to define.
+
+:- func gen_init_pred_or_func(pred_or_func) = mlds__initializer.
+
+gen_init_pred_or_func(PredOrFunc) = gen_init_builtin_const(Name) :-
+	rtti__pred_or_func_to_string(PredOrFunc, Name).
 
 :- func gen_init_sectag_locn(sectag_locn) = mlds__initializer.
 

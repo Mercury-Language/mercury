@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -385,6 +385,15 @@ opt_debug__dump_rtti_name(exist_locns(Ordinal), Str) :-
 	string__append("exist_locns_", Ordinal_str, Str).
 opt_debug__dump_rtti_name(exist_locn, Str) :-
 	Str = "exist_loc".
+opt_debug__dump_rtti_name(exist_tc_constr(Ordinal, TCCNum, Arity), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__int_to_string(TCCNum, TCCNum_str),
+	string__int_to_string(Arity, Arity_str),
+	string__append_list(["exist_tc_constr_", Ordinal_str, "_", TCCNum_str,
+		"_", Arity_str], Str).
+opt_debug__dump_rtti_name(exist_tc_constrs(Ordinal), Str) :-
+	string__int_to_string(Ordinal, Ordinal_str),
+	string__append("exist_tc_constrs_", Ordinal_str, Str).
 opt_debug__dump_rtti_name(exist_info(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("exist_info_", Ordinal_str, Str).

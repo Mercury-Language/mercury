@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -500,7 +500,7 @@ defn_is_function(Defn) :-
 defn_is_type_ctor_info(Defn) :-
 	Defn = mlds__defn(_Name, _Context, _Flags, Body),
 	Body = mlds__data(Type, _, _),
-	Type = mlds__rtti_type(RttiId),
+	Type = mlds__rtti_type(item_type(RttiId)),
 	RttiId = ctor_rtti_id(_, RttiName),
 	RttiName = type_ctor_info.
 

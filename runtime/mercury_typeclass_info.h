@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2003 The University of Melbourne.
+** Copyright (C) 2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,53 +85,6 @@ Zoltan.
 #include "mercury_stack_layout.h"   /* for MR_PredFunc */
 
 /*****************************************************************************/
-
-typedef       struct MR_TypeClassDecl_Struct            MR_TypeClassDeclStruct;
-typedef const struct MR_TypeClassDecl_Struct            *MR_TypeClassDecl;
-typedef       struct MR_Instance_Struct                 MR_InstanceStruct;
-typedef const struct MR_Instance_Struct                 *MR_Instance;
-typedef       struct MR_DictId_Struct                   MR_DictIdStruct;
-typedef const struct MR_DictId_Struct                   *MR_DictId;
-typedef       struct MR_Dictionary_Struct               MR_DictionaryStruct;
-typedef const struct MR_Dictionary_Struct               *MR_Dictionary;
-
-/*
-** A typeclass constraint asserts the membership of a possibly nonground
-** vector of types in a type class, as one may find constraining a typeclass
-** declaration, an instance declaration, or a predicate/function declaration.
-**
-** Type class constraints for type classes with arity N will be of type
-** MR_TypeClassConstraint_N. Generic code will manipulate them as if they were
-** of type MR_TypeClassConstraint, getting the actual number of arguments from
-** MR_tc_constr_type_class_info->MR_tc_decl_id->MR_tc_id_arity.
-**
-** Note that the arity cannot be zero, so we do not have to worry about
-** zero-size arrays. On the other hand, type classes with more than even two
-** arguments can be expected to be very rare, so having five as a fixed limit
-** should not be a problem. If it is, we can lift the limit by defining
-** MR_TypeClassConstraint_N on demand for all N > 5.
-**
-** We will have to rethink this structure once we start supporting constructor
-** classes.
-*/
-
-#define MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(NAME, ARITY)                  \
-    typedef struct MR_PASTE2(NAME, _Struct) {                               \
-        MR_TypeClassDecl    MR_tc_constr_type_class_info;                   \
-        MR_PseudoTypeInfo   MR_tc_constr_arg_ptis[ARITY];                   \
-    } MR_PASTE2(NAME, Struct)
-
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_1, 1);
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_2, 2);
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_3, 3);
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_4, 4);
-MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_5, 5);
-
-typedef MR_TypeClassConstraint_5Struct          MR_TypeClassConstraintStruct;
-typedef const MR_TypeClassConstraintStruct      *MR_TypeClassConstraint;
-
-#define MR_STD_TYPECLASS_CONSTRAINT_ADDR(p) \
-        ((MR_TypeClassConstraint) &((p).MR_tc_constr_type_class_info))
 
 /*
 ** We generate one static MR_TypeClassMethod structure for every method in
@@ -279,10 +232,12 @@ struct MR_TypeClassDecl_Struct {
 ** constraints on the instance declaration itself, while the
 ** MR_tc_inst_instance_constraints field gives the constraints themselves.
 **
-** The MR_tc_inst_methods field gives the methods declared by the instance
-** declaration. It points to a vector of code addresses, one for each method;
-** the length of the vector is MR_tc_inst_type_class->MR_tc_decl_id->
-** MR_tc_id_num_methods. The procedures being pointed to may be polymorphic,
+** There will eventually be a MR_tc_inst_methods field, which will give
+** information about the methods declared by the instance declaration.
+** It will point to a vector, with one element for each method;
+** the length of the vector will be MR_tc_inst_type_class->MR_tc_decl_id->
+** MR_tc_id_num_methods. We haven't yet decided what information we will want
+** about each method. Note that the methods may be polymorphic,
 ** for either one of two reasons: the instance declaration may specify
 ** nonground types, and the method may have universally quantified type
 ** variables in its signature in any case.
@@ -294,7 +249,6 @@ struct MR_Instance_Struct {
     const MR_int_least8_t           MR_tc_inst_num_instance_constraints;
     const MR_PseudoTypeInfo         *MR_tc_inst_type_args;
     const MR_TypeClassConstraint    *MR_tc_inst_instance_constraints;
-    const MR_CodePtr                MR_tc_inst_methods;
 };
 
 /*

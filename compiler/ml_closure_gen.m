@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -391,7 +391,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 		Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
 			rtti(RttiId)))),
-		Type = mlds__rtti_type(RttiId)
+		Type = mlds__rtti_type(item_type(RttiId))
 	).
 
 :- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
@@ -430,7 +430,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type,
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 	Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
 		rtti(RttiId)))),
-	Type = mlds__rtti_type(RttiId).
+	Type = mlds__rtti_type(item_type(RttiId)).
 
 :- func arg_maybe_pseudo_type_infos(rtti_pseudo_type_info)
 	= list(rtti_maybe_pseudo_type_info).

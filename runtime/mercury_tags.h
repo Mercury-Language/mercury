@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001, 2003 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 #include <limits.h>		/* for `CHAR_BIT' */
 #include "mercury_conf.h"	/* for `MR_LOW_TAG_BITS' */
 #include "mercury_types.h"	/* for `MR_Word' */
+#include "mercury_std.h"	/* for `MR_PASTE2' */
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
@@ -306,5 +307,22 @@
 	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
 
 #endif
+
+/*
+** For each enumeration constant defined in the runtime (not in Mercury)
+** that we need the compiler to be able to generate, we define it using two
+** names; first we define the unqualified name, and then we define
+** another enumeration constant whose name is the unqualified name
+** prefixed with `mercury__private_builtin__' and whose value is
+** the same as that of the unqualified name.
+** The qualified versions are used by the MLDS->C back-end,
+** which generates references to them.
+*/
+
+#define MR_DEFINE_BUILTIN_ENUM_CONST(x) \
+        MR_PASTE2(x, _val),     \
+        x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
+        MR_PASTE2(mercury__private_builtin__,x) = x, \
+        MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
 
 #endif	/* not MERCURY_TAGS_H */
