@@ -5716,8 +5716,8 @@ warn_singletons_in_goal_2(some(Vars, _, SubGoal), GoalInfo, QuantVars, VarSet,
 		{ quantification__goal_vars(SubGoal, SubGoalVars) },
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
-		warn_singletons(Vars, EmptySet, SubGoalVars, VarSet, Context,
-			PredCallId)
+		warn_singletons(Vars, GoalInfo, EmptySet, SubGoalVars, VarSet,
+			Context, PredCallId)
 	;
 		[]
 	),
@@ -5736,7 +5736,7 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else), GoalInfo,
 		{ set__union(CondVars, ThenVars, CondThenVars) },
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ set__init(EmptySet) },
-		warn_singletons(Vars, EmptySet, CondThenVars, VarSet,
+		warn_singletons(Vars, GoalInfo, EmptySet, CondThenVars, VarSet,
 			Context, PredCallId)
 	;
 		[]
@@ -5751,16 +5751,16 @@ warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
 		GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
+	warn_singletons(Args, GoalInfo, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
 warn_singletons_in_goal_2(generic_call(GenericCall, Args0, _, _),
-			GoalInfo, QuantVars, VarSet, PredCallId, _) -->
+		GoalInfo, QuantVars, VarSet, PredCallId, _) -->
 	{ goal_util__generic_call_vars(GenericCall, Args1) },
 	{ list__append(Args0, Args1, Args) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
+	warn_singletons(Args, GoalInfo, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
 warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
@@ -5818,14 +5818,14 @@ warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId, _)
 		-->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
+	warn_singletons([X, Y], GoalInfo, NonLocals, QuantVars, VarSet,
 		Context, CallPredId).
 
 warn_singletons_in_unify(X, functor(_ConsId, _, Vars), GoalInfo,
 		QuantVars, VarSet, CallPredId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
+	warn_singletons([X | Vars], GoalInfo, NonLocals, QuantVars, VarSet,
 		Context, CallPredId).
 
 warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
@@ -5837,15 +5837,16 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval, _Fix,
 	{ LambdaGoal = _ - LambdaGoalInfo },
 	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
-	warn_singletons(LambdaVars, LambdaNonLocals, QuantVars, VarSet,
-		Context, CallPredId),
+	warn_singletons(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,
+		VarSet, Context, CallPredId),
 
 	%
 	% warn if X (the variable we're unifying the lambda expression with)
 	% is singleton
 	%
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	warn_singletons([X], NonLocals, QuantVars, VarSet, Context, CallPredId),
+	warn_singletons([X], GoalInfo, NonLocals, QuantVars, VarSet, Context,
+		CallPredId),
 
 	%
 	% warn if the lambda-goal contains singletons
@@ -6056,33 +6057,35 @@ get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
 write_string_list([], !IO).
 write_string_list([X | Xs], !IO) :-
 	io__write_string(X, !IO),
-	( Xs = [] ->
-		true
+	(
+		Xs = []
 	;
+		Xs = [_ | _],
 		io__write_string(", ", !IO),
 		write_string_list(Xs, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
-	% warn_singletons(Vars, NonLocals, QuantVars, ...):
+	% warn_singletons(Vars, GoalInfo, NonLocals, QuantVars, ...):
 	% 	Warn if any of the non-underscore variables in Vars don't
 	%	occur in NonLocals and don't have the same name as any variable
 	%	in QuantVars, or if any of the underscore variables
 	%	in Vars do occur in NonLocals.
+	%	Omit the warning if GoalInfo says we should.
 
-:- pred warn_singletons(list(prog_var)::in, set(prog_var)::in,
-	set(prog_var)::in, prog_varset::in, prog_context::in,
-	simple_call_id::in, io::di, io::uo) is det.
+:- pred warn_singletons(list(prog_var)::in, hlds_goal_info::in,
+	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
+	prog_context::in, simple_call_id::in, io::di, io::uo) is det.
 
-warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
-		PredOrFuncCallId) -->
+warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
+		PredOrFuncCallId, !IO) :-
 	% find all the variables in the goal that don't occur outside the
 	% goal (i.e. are singleton), have a variable name that doesn't
 	% start with "_" or "DCG_", and don't have the same name as any
 	% variable in QuantVars (i.e. weren't explicitly quantified).
 
-	{ solutions((pred(Var::out) is nondet :-
+	solutions((pred(Var::out) is nondet :-
 		  	list__member(Var, GoalVars),
 			\+ set__member(Var, NonLocals),
 			varset__search_name(VarSet, Var, Name),
@@ -6092,59 +6095,66 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 				set__member(QuantVar, QuantVars),
 				varset__search_name(VarSet, QuantVar, Name)
 			)
-		), SingletonVars) },
+		), SingletonVars),
 
 	% if there were any such variables, issue a warning
 
-	( { SingletonVars = [] } ->
-		[]
-	;
-		prog_out__write_context(Context),
-		io__write_string("In clause for "),
-		hlds_out__write_simple_call_id(PredOrFuncCallId),
-		io__write_string(":\n"),
-		prog_out__write_context(Context),
-		( { SingletonVars = [_] } ->
-			io__write_string("  warning: variable `"),
-			mercury_output_vars(SingletonVars, VarSet, no),
-			report_warning("' occurs only once in this scope.\n")
+	(
+		(
+			SingletonVars = []
 		;
-			io__write_string("  warning: variables `"),
-			mercury_output_vars(SingletonVars, VarSet, no),
-			report_warning("' occur only once in this scope.\n")
+			goal_info_has_feature(GoalInfo, dont_warn_singleton)
+		)
+	->
+		true
+	;
+		prog_out__write_context(Context, !IO),
+		io__write_string("In clause for ", !IO),
+		hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+		io__write_string(":\n", !IO),
+		prog_out__write_context(Context, !IO),
+		( SingletonVars = [_] ->
+			io__write_string("  warning: variable `", !IO),
+			mercury_output_vars(SingletonVars, VarSet, no, !IO),
+			report_warning("' occurs only once in this scope.\n",
+				!IO)
+		;
+			io__write_string("  warning: variables `", !IO),
+			mercury_output_vars(SingletonVars, VarSet, no, !IO),
+			report_warning("' occur only once in this scope.\n",
+				!IO)
 		)
 	),
 
-	% find all the variables in the goal that do occur outside the
-	% goal (i.e. are not singleton) and have a variable name that starts
-	% with "_".
+	% Find all the variables in the goal that do occur outside the goal
+	% (i.e. are not singleton) and have a variable name that starts
+	% with "_". If there were any such variables, issue a warning.
 
-	{ solutions((pred(Var2::out) is nondet :-
+	solutions((pred(Var2::out) is nondet :-
 		  	list__member(Var2, GoalVars),
 			set__member(Var2, NonLocals),
 			varset__search_name(VarSet, Var2, Name2),
 			string__prefix(Name2, "_")
-		), MultiVars) },
-
-	% if there were any such variables, issue a warning
-
-	( { MultiVars = [] } ->
-		[]
+		), MultiVars),
+	(
+		MultiVars = []
 	;
-		prog_out__write_context(Context),
-		io__write_string("In clause for "),
-		hlds_out__write_simple_call_id(PredOrFuncCallId),
-		io__write_string(":\n"),
-		prog_out__write_context(Context),
-		( { MultiVars = [_] } ->
-			io__write_string("  warning: variable `"),
-			mercury_output_vars(MultiVars, VarSet, no),
+		MultiVars = [_ | _],
+		prog_out__write_context(Context, !IO),
+		io__write_string("In clause for ", !IO),
+		hlds_out__write_simple_call_id(PredOrFuncCallId, !IO),
+		io__write_string(":\n", !IO),
+		prog_out__write_context(Context, !IO),
+		( MultiVars = [_] ->
+			io__write_string("  warning: variable `", !IO),
+			mercury_output_vars(MultiVars, VarSet, no, !IO),
 			report_warning("' occurs more than once " ++
-				"in this scope.\n")
+				"in this scope.\n", !IO)
 		;
-			io__write_string("  warning: variables `"),
-			mercury_output_vars(MultiVars, VarSet, no),
-			report_warning("' occur more than once in this scope.\n")
+			io__write_string("  warning: variables `", !IO),
+			mercury_output_vars(MultiVars, VarSet, no, !IO),
+			report_warning(
+				"' occur more than once in this scope.\n", !IO)
 		)
 	).
 
@@ -9644,20 +9654,24 @@ finish_head_and_body(Context, FinalSVarMap, Head, Body, Goal, SInfo) :-
 	goal_info_init(Context, GoalInfo),
 	goal_to_conj_list(Head, HeadGoals),
 	goal_to_conj_list(Body, BodyGoals),
-	Unifiers = svar_unifiers(Context, FinalSVarMap, SInfo ^ dot),
+	Unifiers = svar_unifiers(yes(dont_warn_singleton), Context,
+		FinalSVarMap, SInfo ^ dot),
 	conj_list_to_goal(HeadGoals ++ BodyGoals ++ Unifiers, GoalInfo, Goal).
 
-:- func svar_unifiers(prog_context, svar_map, svar_map) = hlds_goals.
-
-svar_unifiers(Context, LHSMap, RHSMap) =
-	map__foldl(add_svar_unifier(RHSMap, Context), LHSMap, []).
-
-:- func add_svar_unifier(svar_map, prog_context, svar, prog_var, hlds_goals)
+:- func svar_unifiers(maybe(goal_feature), prog_context, svar_map, svar_map)
 	= hlds_goals.
 
-add_svar_unifier(RHSMap, Context, StateVar, Var, Unifiers0) = Unifiers :-
+svar_unifiers(MaybeFeature, Context, LHSMap, RHSMap) =
+	map__foldl(add_svar_unifier(MaybeFeature, RHSMap, Context), LHSMap,
+		[]).
+
+:- func add_svar_unifier(maybe(goal_feature), svar_map, prog_context,
+	svar, prog_var, hlds_goals) = hlds_goals.
+
+add_svar_unifier(MaybeFeature, RHSMap, Context, StateVar, Var, Unifiers0)
+		= Unifiers :-
 	( RHSVar = RHSMap ^ elem(StateVar) ->
-		Unifier = svar_unification(Context, Var, RHSVar),
+		Unifier = svar_unification(MaybeFeature, Context, Var, RHSVar),
 		Unifiers = [Unifier | Unifiers0]
 	;
 		Unifiers = Unifiers0
@@ -9665,11 +9679,19 @@ add_svar_unifier(RHSMap, Context, StateVar, Var, Unifiers0) = Unifiers :-
 
 %-----------------------------------------------------------------------------%
 
-:- func svar_unification(prog_context, prog_var, prog_var) = hlds_goal.
+:- func svar_unification(maybe(goal_feature), prog_context, prog_var, prog_var)
+	= hlds_goal.
 
-svar_unification(Context, SVar, Var) = Unification :-
+svar_unification(MaybeFeature, Context, SVar, Var) = Unification :-
 	hlds_goal__create_atomic_unification(SVar, var(Var), Context,
-		implicit("state variable"), [], Unification).
+		implicit("state variable"), [], Unification0),
+	(
+		MaybeFeature = no,
+		Unification = Unification0
+	;
+		MaybeFeature = yes(Feature),
+		goal_add_feature(Unification0, Feature, Unification)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -9801,7 +9823,8 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
 	  	% add a new unifier !:X = !.X
 	  	Dot0 = !.SInfoT ^ dot ^ det_elem(StateVar),
 		new_colon_state_var(StateVar, Dot, !VarSet, !SInfoT),
-		!:Thens = [svar_unification(Context, Dot, Dot0) | !.Thens],
+		!:Thens = [svar_unification(yes(dont_warn_singleton), Context,
+			Dot, Dot0) | !.Thens],
 		prepare_for_next_conjunct(set__make_singleton_set(StateVar),
 			!VarSet, !SInfoT)
 	;
@@ -9993,7 +10016,8 @@ add_disj_unifier(Context, SInfo, SInfoX, StateVar, Unifiers) =
 		DotX = SInfoX ^ dot ^ elem(StateVar),
 		Dot \= DotX
 	->
-	  	[svar_unification(Context, Dot, DotX) | Unifiers]
+	  	[svar_unification(yes(dont_warn_singleton), Context, Dot, DotX)
+			| Unifiers]
 	;
 	  	Unifiers
 	).
@@ -10379,8 +10403,7 @@ report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
 	report_error(string__format("\
 cannot use !:%s in this context;", [s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("\
-  however !.%s may be used here.\n", [s(Name)], !IO).
+	io__format("however !.%s may be used here.\n", [s(Name)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -10390,8 +10413,8 @@ cannot use !:%s in this context;", [s(Name)]), !IO),
 report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
 	Name = varset__lookup_name(VarSet, StateVar),
 	prog_out__write_context(Context, !IO),
-	report_error(string__format("\
-state variable !%s%s is not visible in this context.",
+	report_error(string__format(
+		"state variable !%s%s is not visible in this context.",
 		[s(DorC), s(Name)]), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -10402,8 +10425,8 @@ state variable !%s%s is not visible in this context.",
 report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
 	Name = varset__lookup_name(VarSet, StateVar),
 	prog_out__write_context(Context, !IO),
-	report_warning(string__format("\
-Warning: reference to unitialized state variable !.%s.\n",
+	report_warning(string__format(
+		"Warning: reference to unitialized state variable !.%s.\n",
 		[s(Name)]), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -10414,11 +10437,10 @@ Warning: reference to unitialized state variable !.%s.\n",
 report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
 	Name = varset__lookup_name(VarSet, StateVar),
 	prog_out__write_context(Context, !IO),
-	report_error(string__format("\
-!%s cannot be a function result.", [s(Name)]), !IO),
+	report_error(string__format("!%s cannot be a function result.",
+		[s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("\
-  You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
+	io__format("You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
   		!IO).
 
 %-----------------------------------------------------------------------------%
@@ -10429,11 +10451,11 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
 report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
 	Name = varset__lookup_name(VarSet, StateVar),
 	prog_out__write_context(Context, !IO),
-	report_error(string__format("\
-!%s cannot be a lambda argument.", [s(Name)]), !IO),
+	report_error(string__format("!%s cannot be a lambda argument.",
+		[s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("\
-  Perhaps you meant !.%s or !:%s.\n", [s(Name), s(Name)], !IO).
+	io__format("Perhaps you meant !.%s or !:%s.\n",
+		[s(Name), s(Name)], !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
