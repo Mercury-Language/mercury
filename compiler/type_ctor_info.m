@@ -29,10 +29,6 @@
 % runtime/mercury_type_info.h; that file also contains a list of all
 % the files that depend on these data structures.
 %
-% WARNING: if you change this module, you will probably need to also
-% change ml_base_type_info.m, which does the same thing for the MLDS
-% back-end.
-%
 %---------------------------------------------------------------------------%
 
 :- module type_ctor_info.
