@@ -27,11 +27,11 @@ while true; do
 			;;
 		-o|--output)
 			target="$2"
-			shift 2
+			shift; shift
 			;;
 		-m|--mode)
 			compile_mode="$2"
-			shift 2
+			shift; shift
 			;;
 		--)
 			shift

@@ -22,10 +22,10 @@ target=
 while true; do
 	case "$1" in
 		-F)	options="$options $1 $2"
-			shift 2
+			shift; shift
 			;;
 		-o)	target="$2"
-			shift 2
+			shift; shift
 			;;
 		-*)	options="$options $1"
 			shift

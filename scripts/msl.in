@@ -40,7 +40,7 @@ while : ; do
 			;;
 		-o|--output)
 			target=$2
-			shift 2
+			shift; shift
 			;;
 		-s|--save-temp)
 			save_temp=true

@@ -24,9 +24,9 @@ defentry=mercury__io__run_0_0
 while true; do
 	case "$1" in
 	-c|--max-calls)
-		maxcalls="$2"; shift 2;;
+		maxcalls="$2"; shift; shift;;
 	-w|--entry-point)
-		defentry="$2"; shift 2;;
+		defentry="$2"; shift; shift;;
 	--)
 		shift; break;;
 	-*)
