@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,7 @@
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
+		;	inhibit_accumulator_warnings
 		;	halt_at_warn
 		;	halt_at_syntax_errors
 		;	warn_singleton_vars
@@ -404,6 +405,7 @@ option_defaults(Option, Default) :-
 option_defaults_2(warning_option, [
 		% Warning Options
 	inhibit_warnings	-	bool_special,
+	inhibit_accumulator_warnings -	bool(no),
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
 	%
@@ -763,6 +765,7 @@ short_option('?', 			help).
 
 % warning options
 long_option("inhibit-warnings",		inhibit_warnings).
+long_option("inhibit-accumulator-warnings",	inhibit_accumulator_warnings).
 long_option("halt-at-warn",		halt_at_warn).
 long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
@@ -1177,6 +1180,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 		:-
 	bool__not(Inhibit, Enable),
 	override_options([
+			inhibit_accumulator_warnings	-	bool(Inhibit),
 			warn_singleton_vars	-	bool(Enable),
 			warn_overlapping_scopes	-	bool(Enable),
 			warn_det_decls_too_lax	-	bool(Enable),
@@ -1420,6 +1424,9 @@ options_help_warning -->
 		"\tThis option causes the compiler to halt immediately",
 		"\tafter syntax checking and not do any semantic checking",
 		"\tif it finds any syntax errors in the program.",
+		"--inhibit-accumulator-warnings",
+		"\tDon't warn about argument order rearrangement caused",
+		"\tby --introduce-accumulators.",
 		"--no-warn-singleton-variables",
 		"\tDon't warn about variables which only occur once.",
 		"--no-warn-overlapping-scopes",

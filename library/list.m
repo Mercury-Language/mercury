@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,6 +71,16 @@
 %	which means it's inefficient and that the compiler can't deduce
 %	that it is semidet.  Use list__remove_suffix instead.
 % :- mode list__append(out, in, in) is semidet.
+
+	% associativity of append
+:- promise all [A, B, C, ABC]
+	(
+		( some [AB]
+			(list__append(A, B, AB), list__append(AB, C, ABC)) )
+	<=>
+		( some [BC]
+			(list__append(B, C, BC), list__append(A, BC, ABC)) )
+	).
 
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that

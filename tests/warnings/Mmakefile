@@ -4,7 +4,7 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
+ERRORCHECKONLY_PROGS=	\
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
@@ -18,10 +18,16 @@ PROGS=	\
 	unused_args_test \
 	unused_import
 
+COMPILE_PROGS=			\
+	arg_order_rearrangment
+
+PROGS=$(ERRORCHECKONLY_PROGS) $(COMPILE_PROGS)
+
 #-----------------------------------------------------------------------------#
 
 # some files need to be compiled with special options
 
+MCFLAGS-arg_order_rearrangment	= --introduce-accumulators
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
@@ -36,14 +42,15 @@ MCFLAGS-inference_test		= --infer-all
 #-----------------------------------------------------------------------------#
 
 DEPENDS=$(PROGS:%=%.depend)
-ERRS=	$(PROGS:%=%.err)
+ERRS=	$(ERRORCHECKONLY_PROGS:%=%.err)
+CS=	$(COMPILE_PROGS:%=%.c)
 RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
 depend:	$(DEPENDS)
 
-check:	$(ERRS) $(RESS)
+check:	$(ERRS) $(CS) $(RESS)
 
 all:	$(PROGS)
 

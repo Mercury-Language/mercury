@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,6 +58,31 @@
 		prog_vars::in, pair(prog_var)::out) is semidet.
 
 	%
+	% assertion__is_associativity_assertion(Id, MI, Vs, CVs)
+	%
+	% Does the assertion represented by the assertion id, Id,
+	% state the associativity of a pred/func?
+	% We extend the usual definition of associativity to apply to
+	% predicates or functions with more than two arguments as
+	% follows by allowing extra arguments which must be invariant.
+	% If so, this predicate returns (in CVs) the two variables which
+	% can be swapped in order if it was a call to Vs.
+	%
+	% The assertion must be in a form similar to this
+	% 	all [Is,A,B,C,ABC] 
+	% 	(
+	% 	  some [AB] p(Is,A,B,AB), p(Is,AB,C,ABC)
+	% 	<=>
+	% 	  some [BC] p(Is,B,C,BC), p(Is,A,BC,ABC)
+	% 	)
+	% for the predicate to return true (note that the invariant
+	% arguments, Is, can be any where providing they are in
+	% identical locations on both sides of the equivalence).
+	%
+:- pred assertion__is_associativity_assertion(assert_id::in, module_info::in,
+		prog_vars::in, pair(prog_var)::out) is semidet.
+
+	%
 	% assertion__in_interface_check
 	%
 	% Ensure that an assertion which is defined in an interface
@@ -73,7 +98,7 @@
 :- implementation.
 
 :- import_module globals, goal_util, hlds_out, options, prog_out, type_util.
-:- import_module bool, list, map, require, set, std_util.
+:- import_module assoc_list, bool, list, map, require, set, std_util.
 
 :- type subst == map(prog_var, prog_var).
 
@@ -124,6 +149,107 @@ commutative_var_ordering_2(VarP, VarQ, [P|Ps], [Q|Qs], [V|Vs], CallVarB) :-
 		Q = VarP,
 		Ps = Qs
 	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+assertion__is_associativity_assertion(AssertId, Module, CallVars,
+		AssociativeVars) :-
+	assertion__goal(AssertId, Module, Goal - GoalInfo),
+	equivalent(Goal - GoalInfo, P, Q),
+
+	goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
+
+	P = some(_, _, conj(PCalls) - _) - _PGoalInfo,
+	Q = some(_, _, conj(QCalls) - _) - _QGoalInfo,
+
+	AssociativeVars = promise_only_solution(associative(PCalls, QCalls,
+				UniversiallyQuantifiedVars, CallVars)).
+
+
+	% associative(Ps, Qs, Us, R)
+	%
+	% If the assertion was in the form
+	% 	all [Us] (some [] (Ps)) <=> (some [] (Qs))
+	% try and rearrange the order of Ps and Qs so that the assertion
+	% is in the standard from
+	%
+	% 	compose( A, B,  AB),		compose(B,  C,  BC),
+	% 	compose(AB, C, ABC) 	<=>	compose(A, BC, ABC)
+
+:- pred associative(hlds_goals::in, hlds_goals::in, set(prog_var)::in,
+		prog_vars::in, pair(prog_var)::out) is cc_nondet.
+
+associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
+		CallVarA - CallVarB) :-
+	reorder(PCalls, QCalls, LHSCalls, RHSCalls),
+	process_one_side(LHSCalls, UniversiallyQuantifiedVars, AB, PairsL, Vs),
+	process_one_side(RHSCalls, UniversiallyQuantifiedVars, BC, PairsR, _),
+
+		% If you read the predicate documentation, you will note
+		% that for each pair of variables on the left hand side
+		% their is an equivalent pair of variables on the right
+		% hand side.  As the pairs of variables are not
+		% symmetric, the call to list__perm will only succeed
+		% once, if at all.
+	assoc_list__from_corresponding_lists(PairsL, PairsR, Pairs),
+	list__perm(Pairs, [(A - AB) - (B - A), (B - C) - (C - BC),
+			(AB - ABC) - (BC - ABC)]),
+
+	assoc_list__from_corresponding_lists(Vs, CallVars, AssocList),
+	list__filter((pred(X-_Y::in) is semidet :- X = A),
+			AssocList, [_A - CallVarA]),
+	list__filter((pred(X-_Y::in) is semidet :- X = B),
+			AssocList, [_B - CallVarB]).
+
+	% reorder(Ps, Qs, Ls, Rs)
+	%
+	% Given both sides of the equivalence return another possible
+	% ordering.
+
+:- pred reorder(hlds_goals::in, hlds_goals::in,
+		hlds_goals::out, hlds_goals::out) is nondet.
+
+reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
+	list__perm(PCalls, LHSCalls),
+	list__perm(QCalls, RHSCalls).
+reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
+	list__perm(PCalls, RHSCalls),
+	list__perm(QCalls, LHSCalls).
+
+	% process_one_side(Gs, Us, L, Ps)
+	% 
+	% Given the list of goals, Gs, which are one side of a possible
+	% associative equivalence, and the universally quantified
+	% variables, Us, of the goals return L the existentially
+	% quantified variable that links the two calls and Ps the list
+	% of variables which are not invariants.
+	%
+	% ie for app(TypeInfo, X, Y, XY), app(TypeInfo, XY, Z, XYZ)
+	% L <= XY and Ps <= [X - XY, Y - Z, XY - XYZ]
+
+:- pred process_one_side(hlds_goals::in, set(prog_var)::in, prog_var::out,
+		assoc_list(prog_var)::out, prog_vars::out) is semidet.
+
+process_one_side(Goals, UniversiallyQuantifiedVars, LinkingVar, Vars, VarsA) :-
+	Goals = [call(PredId, _, VarsA, _, _, _) - _,
+			call(PredId, _, VarsB, _, _, _) - _],
+
+		% Determine the linking variable, L.
+		% By definition it must be existentially quantified and
+		% a member of both variable lists.
+	CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
+	set__singleton_set(CommonVars `difference` UniversiallyQuantifiedVars,
+			LinkingVar),
+
+		% Filter out all the invariant arguments, and then make
+		% sure that their is only 3 arguments left.
+	assoc_list__from_corresponding_lists(VarsA, VarsB, Vars0),
+	list__filter((pred(X-Y::in) is semidet :- not X = Y), Vars0, Vars),
+	list__length(Vars, number_of_associative_vars).
+
+:- func number_of_associative_vars = int.
+number_of_associative_vars = 3.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

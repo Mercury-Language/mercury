@@ -534,6 +534,16 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   value of the higher-order/type_info/typeclass_info arguments are known
   (higher_order.m)
 
+<li> attempt to introduce accumulators (accumulator.m).  This optimizes
+  procedures whose tail consists of independent associative computations
+  or independant chains of commutative computations into a tail
+  recursive form by the introduction of accumulators.  If lco is turned
+  on it can also transform some procedures so that only construction
+  unifications are after the recursive call.  This pass must come before
+  lco, unused_args (eliminating arguments makes it hard to relate the
+  code back to the assertion) and inlining (can make the associative
+  call disappear).
+
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
 <li> pushing constraints as far left as possible (constraint.m);
@@ -563,14 +573,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
   often unused.
-
-<li> attempt to introduce accumulators (accumulator.m).  This optimizes
-  procedures whose tail consists of independent associative computations
-  or independant chains of commutative computations into a tail
-  recursive form by the introduction of accumulators.  If lco is turned
-  on it can also transform some procedures so that only construction
-  unifications are after the recursive call.  This pass must come before
-  lco.
 
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
@@ -1095,6 +1097,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-12-20 18:08:39 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-01-10 00:43:57 $ by $Author: petdr $@cs.mu.oz.au. <br>
 </body>
 </html>

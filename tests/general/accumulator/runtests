@@ -22,10 +22,6 @@ checkstatus=$?
 cat *.res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
-    # XXX disable these checks until we pass them
-    echo "the tests in the general/accumulator directory are not fully enabled"
-    exit 0
-
     grep -h "% mode.*AccFrom" *hlds*acc* | sed -e 's/number//' \
         | sed -e 's/ of predicate//g' > I.$$
     diff -u INTRODUCED I.$$ > INTRODUCED.diff

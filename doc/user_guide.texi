@@ -2737,6 +2737,11 @@ after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
 
 @sp 1
+@item --inhibit-accumulator-warnings
+Don't warn about argument order rearrangement caused by
+@samp{--introduce-accumulators}.
+
+@sp 1
 @item --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 

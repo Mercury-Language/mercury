@@ -33,10 +33,6 @@ PROGS=		base		\
 		split		\
 		swap
 
-	# XXX
-	# Accumulators aren't introduced for -O5
-	# this is just a temp workaround
-override EXTRA_MCFLAGS =
 MCFLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
 		--intermodule-optimization
 
