@@ -152,6 +152,8 @@ typedef void			Code;	/* code addresses are `void *' */
 
 /* STRING HANDLING */
 
+typedef char *String;
+
 #define string_const(string, len) ((Word)string)
 #define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
