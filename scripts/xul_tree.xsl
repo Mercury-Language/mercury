@@ -135,6 +135,18 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 						<xsl:value-of select="concat($termpath, '/', position())"/>
 					</xsl:if>
 				</xsl:with-param>
+				<xsl:with-param name="fieldtermpath">
+					<xsl:if test="ancestor::*">
+						<xsl:choose>
+						<xsl:when test="@field">
+							<xsl:value-of select="concat($fieldtermpath, '/', @field)"/>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:value-of select="concat($fieldtermpath, '/', position())"/>
+						</xsl:otherwise>
+						</xsl:choose>
+					</xsl:if>
+				</xsl:with-param>
 			</xsl:apply-templates>
 		</xsl:if>
 	</xsl:when>
