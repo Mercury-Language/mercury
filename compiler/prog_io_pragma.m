@@ -211,6 +211,8 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms,
 
 parse_foreign_language(term__functor(term__string(String), _, _), Lang) :-
 	globals__convert_foreign_language(String, Lang).
+parse_foreign_language(term__functor(term__atom(String), _, _), Lang) :-
+	globals__convert_foreign_language(String, Lang).
 
 :- pred parse_backend(term, backend).
 :- mode parse_backend(in, out) is semidet.
