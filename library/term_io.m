@@ -127,8 +127,24 @@ term_io__read_term(Result) -->
 %-----------------------------------------------------------------------------%
 
 	% write a variable to standard output.
-	% use the variable names specified by varset and write _N
-	% for all unnamed variables with N starting at 0.
+	%
+	% There are two ways we could choose to write unnamed variables
+	% (ie `_'):
+	%	Convert the variable to an integer representation and write
+	%	`_N' where N is that integer representation. This has the
+	%	advantage that such variables get printed in a cannonical
+	%	way, so rearranging terms containing such variables will
+	%	not effect the way they are numbered (this includes breaking
+	%	up a term and printing the pieces separately).
+	% or
+	%	Number the unnamed variables from 0 and write `_N' where
+	%	N is the number in the sequence of such variables. This has
+	%	the advantage that such variables can be visually scanned
+	%	rather more easily (for example in error messages).
+	%
+	% An ideal solution would be to provide both, and a flag to choose
+	% between the two. At the moment we provide only the first, though
+	% the infrastructure for the second is present in the code.
 
 term_io__write_variable(Variable, VarSet) -->
 	term_io__write_variable_2(Variable, VarSet, 0, _, _).
@@ -151,7 +167,8 @@ term_io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	;
 		% XXX problems with name clashes
 
-		{ string__int_to_string(N0, Num) },
+		{ term__var_to_int(Id, VarNum) },
+		{ string__int_to_string(VarNum, Num) },
 		{ string__append("_", Num, VarName) },
 		{ varset__name_var(VarSet0, Id, VarName, VarSet) },
 		{ N is N0 + 1 },
