@@ -15,13 +15,16 @@ errors.m:057: Error: circular equivalence type
 errors.m:057:   `errors.indirectly_circular_eqv_type_1/0'.
 errors.m:058: Error: circular equivalence type
 errors.m:058:   `errors.indirectly_circular_eqv_type_2/0'.
-errors.m:028: Error: mode declaration for predicate `errors.mode_declaration_without_pred_declaration/0'
+errors.m:028: Error: mode declaration for predicate
+errors.m:028:   `errors.mode_declaration_without_pred_declaration/0'
 errors.m:028:   without preceding `pred' declaration.
-errors.m:032: Error: mode declaration for predicate `errors.missing_pred_declaration/0'
+errors.m:032: Error: mode declaration for predicate
+errors.m:032:   `errors.missing_pred_declaration/0'
 errors.m:032:   without preceding `pred' declaration.
 errors.m:049: Error: constructor `errors.a/0' for type `errors.type_with_multiply_defined_ctors/0' multiply defined.
 errors.m:049: Error: constructor `errors.f/1' for type `errors.type_with_multiply_defined_ctors/0' multiply defined.
-errors.m:038: Error: clause for predicate `errors.clause_without_pred_or_mode_declaration/0'
+errors.m:038: Error: clause for predicate
+errors.m:038:   `errors.clause_without_pred_or_mode_declaration/0'
 errors.m:038:   without preceding `pred' declaration.
 errors.m:075: In clause for predicate `errors.pred_with_unresolved_polymorphism/0':
 errors.m:075:   warning: variable `Arg' occurs only once in this scope.
