@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,6 +42,7 @@
 #define	REDO_PORT_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 5)
 #define	FAIL_REDOIP_LABEL(pl)		MR_PASTE3(pl, _i, 6)
 #define	FAIL_PORT_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 7)
+#define	PREPARE_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 8)
 
 #if	defined(version_model_non) && \
 		(defined(MR_USE_TRAIL) || defined(MR_DEEP_PROFILING))
@@ -73,6 +74,8 @@ MR_define_entry(proc_label);
 	MR_framevar(1) = MR_r2;
 	MR_deep_non_call(proc_label, proc_static, FIRST_DEEP_SLOT,
 		CALL_PORT_RETURN_LABEL(proc_label));
+	MR_deep_prepare_ho_call(proc_label, FIRST_DEEP_SLOT,
+		PREPARE_RETURN_LABEL(proc_label), 0, MR_framevar(1));
 	MR_r1 = MR_framevar(1);	/* The Goal to call */
 #else
 	MR_r1 = MR_r2;		/* The Goal to call */

@@ -729,7 +729,9 @@
 	MR_enter_instrumentation();
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
-	MR_print_deep_prof_vars(stdout);
+	if (MR_calldebug) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_tail_call"");
+	}
   #endif
 
 	csd = MR_current_call_site_dynamic;

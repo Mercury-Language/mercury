@@ -1419,6 +1419,15 @@ MR_declare_label(mercury__exception__builtin_catch_3_4_i7);
 MR_declare_label(mercury__exception__builtin_catch_3_5_i7);
 #endif
 
+#ifdef	MR_DEEP_PROFILING
+MR_declare_label(mercury__exception__builtin_catch_3_0_i8);
+MR_declare_label(mercury__exception__builtin_catch_3_1_i8);
+MR_declare_label(mercury__exception__builtin_catch_3_2_i8);
+MR_declare_label(mercury__exception__builtin_catch_3_3_i8);
+MR_declare_label(mercury__exception__builtin_catch_3_4_i8);
+MR_declare_label(mercury__exception__builtin_catch_3_5_i8);
+#endif
+
 MR_declare_label(mercury__exception__builtin_throw_1_0_i1);
 
 /*
@@ -1491,6 +1500,15 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 6);
 #ifdef	MR_DEEP_PROFILING
 MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 7);
 MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 7);
+#endif
+
+#ifdef	MR_DEEP_PROFILING
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_0, 8);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_1, 8);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 8);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 8);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 8);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 8);
 #endif
 
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
@@ -1568,6 +1586,15 @@ MR_BEGIN_MODULE(exceptions_module)
 #ifdef	MR_DEEP_PROFILING
 	MR_init_label_sl(mercury__exception__builtin_catch_3_4_i7);
 	MR_init_label_sl(mercury__exception__builtin_catch_3_5_i7);
+#endif
+
+#ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury__exception__builtin_catch_3_0_i8);
+	MR_init_label(mercury__exception__builtin_catch_3_1_i8);
+	MR_init_label(mercury__exception__builtin_catch_3_2_i8);
+	MR_init_label(mercury__exception__builtin_catch_3_3_i8);
+	MR_init_label(mercury__exception__builtin_catch_3_4_i8);
+	MR_init_label(mercury__exception__builtin_catch_3_5_i8);
 #endif
 
 	MR_init_entry_sl(mercury__exception__builtin_throw_1_0);

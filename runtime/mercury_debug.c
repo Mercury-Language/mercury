@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2001 The University of Melbourne.
+** Copyright (C) 1996-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -111,7 +111,7 @@ MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 	}
 
 #ifdef	MR_DEEP_PROFILING
-	MR_print_deep_prof_vars(stdout);
+	MR_print_deep_prof_vars(stdout, "MR_call_msg");
 #endif
 }
 
@@ -127,7 +127,7 @@ MR_tailcall_msg(/* const */ MR_Code *proc)
 	}
 
 #ifdef	MR_DEEP_PROFILING
-	MR_print_deep_prof_vars(stdout);
+	MR_print_deep_prof_vars(stdout, "MR_tailcall_msg");
 #endif
 }
 
@@ -140,7 +140,7 @@ MR_proceed_msg(void)
 	}
 
 #ifdef	MR_DEEP_PROFILING
-	MR_print_deep_prof_vars(stdout);
+	MR_print_deep_prof_vars(stdout, "MR_proceed_msg");
 #endif
 }
 
@@ -236,7 +236,7 @@ MR_printstring(const char *s)
 	if (MR_print_raw_addrs) {
 		printf("string %p %s\n", (const void *) s, s);
 	} else {
-		printf("string %s\n", s, s);
+		printf("string %s\n", s);
 	}
 }
 

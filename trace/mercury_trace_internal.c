@@ -3130,7 +3130,7 @@ MR_trace_cmd_all_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_print_succip_reg(MR_mdb_out, saved_regs);
 		MR_print_r_regs(MR_mdb_out, saved_regs);
 #ifdef	MR_DEEP_PROFILING
-		MR_print_deep_prof_vars(MR_mdb_out);
+		MR_print_deep_prof_vars(MR_mdb_out, "mdb all_regs");
 #endif
 	} else {
 		MR_trace_usage("developer", "all_regs");

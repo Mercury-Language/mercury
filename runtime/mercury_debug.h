@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -135,11 +135,12 @@
 
 #endif /* MR_LOWLEVEL_DEBUG */
 
-#define	MR_print_deep_prof_vars(fp)					     \
+#define	MR_print_deep_prof_vars(fp, msg)				\
 	do {								     \
-		MR_print_deep_prof_var(stdout, "current_call_site_dynamic",  \
+		fprintf(fp, "%s\n", msg);				\
+		MR_print_deep_prof_var(fp, "current_call_site_dynamic", \
 			MR_current_call_site_dynamic);			     \
-		MR_print_deep_prof_var(stdout, "next_call_site_dynamic",     \
+		MR_print_deep_prof_var(fp, "next_call_site_dynamic",	\
 			MR_next_call_site_dynamic);			     \
 	} while (0)
 

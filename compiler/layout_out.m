@@ -1181,16 +1181,18 @@ output_call_site_static_array(RttiProcLabel, CallSites, DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	output_layout_name_storage_type_name(LayoutName, yes),
 	io__write_string(" = {\n"),
-	list__foldl(output_call_site_static, CallSites),
+	list__foldl2(output_call_site_static, CallSites, 0, _),
 	io__write_string("};\n"),
 	{ decl_set_insert(DeclSet0, data_addr(layout_addr(LayoutName)),
 		DeclSet) }.
 
-:- pred output_call_site_static(call_site_static_data::in,
+:- pred output_call_site_static(call_site_static_data::in, int::in, int::out,
 	io__state::di, io__state::uo) is det.
 
-output_call_site_static(CallSiteStatic) -->
-	io__write_string("\t{ "),
+output_call_site_static(CallSiteStatic, Index, Index + 1) -->
+	io__write_string("\t{ /* "),
+	io__write_int(Index),
+	io__write_string(" */ "),
 	(
 		{ CallSiteStatic = normal_call(Callee, TypeSubst,
 			FileName, LineNumber, GoalPath) },
