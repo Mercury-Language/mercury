@@ -8,7 +8,13 @@
 % Main author: fjh
 
 % This module is the Mercury interface to the GCC compiler back-end.
-
+%
+%	``GCC is a software Vietnam.''
+%		-- Simon Peyton-Jones.
+%
+%	``Never get involved in a land war in Asia.''
+%		-- from the movie "The Princess Bride".
+%
 % This module provides a thin wrapper around the C types,
 % constants, and functions defined in gcc/tree.{c,h,def}
 % and gcc/mercury/mercury-gcc.c in the GCC source.
@@ -44,6 +50,7 @@
 :- func char_type_node = gcc__type.
 :- func boolean_type_node = gcc__type.
 :- func ptr_type_node = gcc__type.	% `void *'
+:- func jmpbuf_type_node = gcc__type.	% `__builtin_jmpbuf', i.e. `void *[5]'
 	
 	% Given a type `T', produce a pointer type `T *'.
 :- pred build_pointer_type(gcc__type::in, gcc__type::out,
@@ -58,6 +65,13 @@
 :- func empty_param_types = gcc__param_types.
 :- func cons_param_types(gcc__type, gcc__param_types) = gcc__param_types.
 
+	% Produce a function type, given the return type and
+	% the parameter types.
+:- pred build_function_type(gcc__type::in, gcc__param_types::in,
+		gcc__type::out, io__state::di, io__state::uo) is det.
+
+:- func declared_type(gcc__type_decl) = gcc__type.
+
 %-----------------------------------------------------------------------------%
 %
 % Declarations
@@ -66,11 +80,12 @@
 % A GCC `tree' representing a declaration.
 :- type gcc__decl.
 
+%
+% Stuff for variable declarations
+%
+
 % A GCC `tree' representing a local variable.
 :- type gcc__var_decl.
-
-% A GCC `tree' representing a function parameter.
-:- type gcc__param_decl == gcc__var_decl.
 
 :- type var_name == string.
 
@@ -78,9 +93,20 @@
 :- pred build_extern_var_decl(var_name::in, gcc__type::in, gcc__var_decl::out,
 		io__state::di, io__state::uo) is det.
 
-	% build a local variable declaration
+	% build an initialized global variable definition
+:- pred build_global_var_decl(var_name::in, gcc__type::in, gcc__expr::in,
+		gcc__var_decl::out, io__state::di, io__state::uo) is det.
+
+	% build a local variable definition
 :- pred build_local_var_decl(var_name::in, gcc__type::in, gcc__var_decl::out,
 		io__state::di, io__state::uo) is det.
+
+%
+% Stuff for function declarations
+%
+
+% A GCC `tree' representing a function parameter.
+:- type gcc__param_decl == gcc__var_decl.
 
 	% build a function parameter declaration
 :- type param_name == string.
@@ -105,14 +131,41 @@
 		io__state, io__state).
 :- mode build_function_decl(in, in, in, in, in, out, di, uo) is det.
 
-	% the declaration for GC_malloc()
-:- func alloc_func_decl = gcc__func_decl.
-	
-	% the declaration for strcmp()
-:- func strcmp_func_decl = gcc__func_decl.
+	% Declarations for builtin functions
+:- func alloc_func_decl = gcc__func_decl.	% GC_malloc()
+:- func strcmp_func_decl = gcc__func_decl.	% strcmp()
+:- func hash_string_func_decl = gcc__func_decl.	% MR_hash_string()
+:- func setjmp_func_decl = gcc__func_decl.	% __builtin_setjmp()
+:- func longjmp_func_decl = gcc__func_decl.	% __builtin_longjmp()
 
-	% the declaration for MR_hash_string()
-:- func hash_string_func_decl = gcc__func_decl.
+%
+% Stuff for type declarations
+%
+
+	% A GCC `tree' representing a field declaration
+:- type gcc__field_decl.
+
+	% build a field declaration
+:- type field_name == string.
+:- pred build_field_decl(field_name::in, gcc__type::in, gcc__field_decl::out,
+		io__state::di, io__state::uo) is det.
+
+	% A GCC `tree' representing a list of field declarations
+:- type gcc__field_decls.
+
+:- pred empty_field_list(gcc__field_decls, io__state, io__state).
+:- mode empty_field_list(out, di, uo) is det.
+
+:- pred cons_field_list(gcc__field_decl, gcc__field_decls, gcc__field_decls,
+		io__state, io__state).
+:- mode cons_field_list(in, in, out, di, uo) is det.
+
+:- type gcc__type_decl.
+
+:- type struct_name == string.
+:- pred build_struct_type_decl(gcc__struct_name, gcc__field_decls,
+		gcc__type_decl, io__state, io__state).
+:- mode build_struct_type_decl(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -172,6 +225,10 @@
 :- pred build_int(int, gcc__expr, io__state, io__state).
 :- mode build_int(in, out, di, uo) is det.
 
+	% build an expression for a floating-point constant
+:- pred build_float(float, gcc__expr, io__state, io__state).
+:- mode build_float(in, out, di, uo) is det.
+
 	% build an expression for a Mercury string constant
 :- pred build_string(string, gcc__expr, io__state, io__state).
 :- mode build_string(in, out, di, uo) is det.
@@ -207,6 +264,11 @@
 	% build a pointer dereference expression
 :- pred build_pointer_deref(gcc__expr, gcc__expr, io__state, io__state).
 :- mode build_pointer_deref(in, out, di, uo) is det.
+
+	% build a field extraction expression
+:- pred build_component_ref(gcc__expr, gcc__field_decl, gcc__expr,
+		io__state, io__state).
+:- mode build_component_ref(in, in, out, di, uo) is det.
 
 	% build a type conversion expression
 :- pred convert_type(gcc__expr, gcc__type, gcc__expr, io__state, io__state).
@@ -418,6 +480,7 @@
 #include ""tm_p.h""
 #include ""ggc.h""
 #include ""toplev.h""
+#include ""real.h""
 
 #include ""mercury-gcc.h""
 
@@ -461,6 +524,9 @@
 :- pragma c_code(ptr_type_node = (Type::out), [will_not_call_mercury], "
 	Type = (MR_Word) ptr_type_node;
 ").
+:- pragma c_code(jmpbuf_type_node = (Type::out), [will_not_call_mercury], "
+	Type = (MR_Word) merc_jmpbuf_type_node;
+").
 
 :- pragma c_code(build_pointer_type(Type::in, PtrType::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
@@ -491,9 +557,26 @@
 		merc_cons_param_type_list((tree) Type, (tree) Types0);
 ").
 
+:- pragma c_code(build_function_type(RetType::in, ParamTypes::in,
+	FunctionType::out, _IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	FunctionType = (MR_Word) build_function_type((tree) RetType,
+		(tree) ParamTypes);
+").
+
+:- pragma c_code(declared_type(TypeDecl::in) = (Type::out),
+	[will_not_call_mercury],
+"
+	Type = (MR_Word) TREE_TYPE((tree) TypeDecl);
+").
+
 %-----------------------------------------------------------------------------%
 %
 % Declarations
+%
+
+%
+% Stuff for variable declarations
 %
 
 :- type gcc__var_decl == gcc__tree.
@@ -504,19 +587,31 @@
 	Decl = (MR_Word) merc_build_extern_var_decl(Name, (tree) Type);
 ").
 
+:- pragma c_code(build_global_var_decl(Name::in, Type::in, Init::in, Decl::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	tree decl = merc_build_extern_var_decl(Name, (tree) Type);
+	DECL_INITIAL(decl) = (tree) Init;
+	Decl = (MR_Word) decl;
+").
+
 :- pragma c_code(build_local_var_decl(Name::in, Type::in, Decl::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	Decl = (MR_Word) merc_build_local_var_decl(Name, (tree) Type);
 ").
 
+%
+% Stuff for function declarations
+%
+
+:- type gcc__param_decls == gcc__tree.
+
 :- pragma c_code(build_param_decl(Name::in, Type::in, Decl::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	Decl = (MR_Word) merc_build_param_decl(Name, (tree) Type);
 ").
-
-:- type gcc__param_decls == gcc__tree.
 
 :- pragma c_code(empty_param_decls = (Decl::out), [will_not_call_mercury],
 "
@@ -553,6 +648,53 @@
 	[will_not_call_mercury],
 "
 	Decl = (MR_Word) merc_hash_string_function_node;
+").
+
+:- pragma c_code(setjmp_func_decl = (Decl::out),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_setjmp_function_node;
+").
+
+:- pragma c_code(longjmp_func_decl = (Decl::out),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_longjmp_function_node;
+").
+
+%
+% Stuff for type declarations.
+%
+
+:- type gcc__field_decl == gcc__tree.
+
+:- pragma c_code(build_field_decl(Name::in, Type::in, Decl::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_build_field_decl(Name, (tree) Type);
+").
+
+:- type gcc__field_decls == gcc__tree.
+
+:- pragma c_code(empty_field_list(Decl::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_empty_field_list();
+").
+
+:- pragma c_code(cons_field_list(Decl::in, Decls0::in, Decls::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	Decls = (MR_Word) merc_cons_field_list((tree) Decl, (tree) Decls0);
+").
+
+:- type gcc__type_decl == gcc__tree.
+
+:- pragma c_code(build_struct_type_decl(Name::in, FieldTypes::in, Decl::out,
+	_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	Decl = (MR_Word) merc_build_struct_type_decl(Name, (tree) FieldTypes);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -665,6 +807,24 @@ build_int(Val, IntExpr) -->
 	Expr = (MR_Word) build_int_2(Low, High);
 ").
 
+build_float(Val, Expr) -->
+	build_real(gcc__double_type_node, Val, Expr).
+
+	% build an expression for a floating-point constant
+	% of the specified type.
+:- pred build_real(gcc__type, float, gcc__expr, io__state, io__state).
+:- mode build_real(in, in, out, di, uo) is det.
+
+:- pragma c_code(build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	/* XXX this won't work if cross-compiling */
+	union { double dbl; HOST_WIDE_INT ints[20]; } u;
+	u.dbl = Value;
+	Expr = (MR_Word) build_real((tree) Type,
+		REAL_VALUE_FROM_TARGET_DOUBLE(u.ints));
+").
+
 build_string(String, Expr) -->
 	build_string(string__length(String) + 1, String, Expr).
 
@@ -704,6 +864,15 @@ build_string(String, Expr) -->
 	tree ptr_type = TREE_TYPE (ptr);
 	tree type = TREE_TYPE (ptr_type);
 	DerefExpr = (MR_Word) build1 (INDIRECT_REF, type, ptr);
+").
+
+:- pragma c_code(build_component_ref(ObjectExpr::in, FieldDecl::in, FieldExpr::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	/* XXX should move to mercury-gcc.c */
+	tree field_type = TREE_TYPE ((tree) FieldDecl);
+	FieldExpr = (MR_Word) build (COMPONENT_REF, field_type,
+		(tree) ObjectExpr, (tree) FieldDecl);
 ").
 
 :- pragma c_code(convert_type(Expr::in, Type::in, ResultExpr::out,
