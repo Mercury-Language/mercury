@@ -14,6 +14,8 @@ SOURCES= \
 	agc_unbound_typevars.m \
 	agc_unbound_typevars2.m \
 	agc_unused_in.m \
+	alias_det_unification.m \
+	alias_failure_unification.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
