@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap, (inst), inst_table.
-:- import_module excess, make_hlds, mode_util.
+:- import_module excess, mode_util.
 :- import_module require, map, string, int, term, varset.
 
 	% Traverse the module structure.

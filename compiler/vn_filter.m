@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,6 +146,7 @@ vn_filter__user_instr(c_code(_), _):-
 vn_filter__user_instr(incr_hp(_, _, Rval, _), yes(Rval)).
 vn_filter__user_instr(mark_hp(_), no).
 vn_filter__user_instr(restore_hp(Rval), yes(Rval)).
+vn_filter__user_instr(free_heap(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
 vn_filter__user_instr(reset_ticket(Rval, _Reason), yes(Rval)).
 vn_filter__user_instr(discard_ticket, no).
@@ -205,6 +206,9 @@ vn_filter__replace_in_user_instr(mark_hp(_), _, _, _) :-
 vn_filter__replace_in_user_instr(restore_hp(Rval0), Temp, Defn,
 		restore_hp(Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
+vn_filter__replace_in_user_instr(free_heap(Rval0), Temp, Defn,
+		free_heap(Rval)) :-
+	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(store_ticket(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(reset_ticket(Rval0, Reason), Temp, Defn,
@@ -253,6 +257,7 @@ vn_filter__defining_instr(c_code(_), _):-
 vn_filter__defining_instr(incr_hp(Lval, _, _, _), yes(Lval)).
 vn_filter__defining_instr(mark_hp(Lval), yes(Lval)).
 vn_filter__defining_instr(restore_hp(_), no).
+vn_filter__defining_instr(free_heap(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
 vn_filter__defining_instr(reset_ticket(_, _), no).
 vn_filter__defining_instr(discard_ticket, no).
@@ -309,6 +314,8 @@ vn_filter__replace_in_defining_instr(mark_hp(Lval0), Temp, Defn,
 		mark_hp(Lval)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
 vn_filter__replace_in_defining_instr(restore_hp(_), _, _, _) :-
+	error("non-def instruction in vn_filter__replace_in_defining_instr").
+vn_filter__replace_in_defining_instr(free_heap(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(store_ticket(Lval0), Temp, Defn,
 		store_ticket(Lval)) :-
@@ -388,8 +395,8 @@ vn_filter__replace_in_rval(lval(Lval0), Temp, Defn, Rval) :-
 	).
 vn_filter__replace_in_rval(var(_), _, _, _) :-
 	error("found var in vn_filter__replace_in_rval").
-vn_filter__replace_in_rval(create(Tag, Args, AT, StatDyn, Label, Msg), _, _,
-		create(Tag, Args, AT, StatDyn, Label, Msg)).
+vn_filter__replace_in_rval(create(Tag, Args, AT, StatDyn, Label, Msg, Reuse),
+		_, _, create(Tag, Args, AT, StatDyn, Label, Msg, Reuse)).
 vn_filter__replace_in_rval(mkword(Tag, Rval0), Temp, Defn, mkword(Tag, Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_rval(const(Const), _, _, const(Const)).

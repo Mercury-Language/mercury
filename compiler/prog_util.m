@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,33 @@
 	%
 :- pred match_sym_name(sym_name, sym_name).
 :- mode match_sym_name(in, in) is semidet.
+
+	% remove_sym_name_prefix(SymName0, Prefix, SymName)
+	%    succeeds iff
+	%	SymName and SymName0 have the same module qualifier
+	%	and the unqualified part of SymName0 has the given prefix
+	%	and the unqualified part of SymName is the unqualified
+	%		part of SymName0 with the prefix removed
+:- pred remove_sym_name_prefix(sym_name, string, sym_name).
+:- mode remove_sym_name_prefix(in, in, out) is semidet.
+:- mode remove_sym_name_prefix(out, in, in) is det.
+
+	% remove_sym_name_suffix(SymName0, Suffix, SymName)
+	%    succeeds iff
+	%	SymName and SymName0 have the same module qualifier
+	%	and the unqualified part of SymName0 has the given suffix
+	%	and the unqualified part of SymName is the unqualified
+	%		part of SymName0 with the suffix removed
+:- pred remove_sym_name_suffix(sym_name, string, sym_name).
+:- mode remove_sym_name_suffix(in, in, out) is semidet.
+
+	% add_sym_name_suffix(SymName0, Suffix, SymName)
+	%    succeeds iff
+	%	SymName and SymName0 have the same module qualifier
+	%	and the unqualified part of SymName is the unqualified
+	%		part of SymName0 with the suffix added
+:- pred add_sym_name_suffix(sym_name, string, sym_name).
+:- mode add_sym_name_suffix(in, in, out) is det.
 
 	% insert_module_qualifier(ModuleName, SymName0, SymName):
 	%	prepend the specified ModuleName onto the module
@@ -319,6 +346,26 @@ match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
 match_sym_name(unqualified(Name), unqualified(Name)).
 match_sym_name(unqualified(Name), qualified(_, Name)).
 
+%-----------------------------------------------------------------------------%
+
+remove_sym_name_prefix(qualified(Module, Name0), Prefix,
+		qualified(Module, Name)) :-
+	string__append(Prefix, Name, Name0).
+remove_sym_name_prefix(unqualified(Name0), Prefix, unqualified(Name)) :-
+	string__append(Prefix, Name, Name0).
+
+remove_sym_name_suffix(qualified(Module, Name0), Suffix,
+		qualified(Module, Name)) :-
+	string__remove_suffix(Name0, Suffix, Name).
+remove_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
+	string__remove_suffix(Name0, Suffix, Name).
+
+add_sym_name_suffix(qualified(Module, Name0), Suffix,
+		qualified(Module, Name)) :-
+	string__append(Name0, Suffix, Name).
+add_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
+	string__append(Name0, Suffix, Name).
+	
 %-----------------------------------------------------------------------------%
 
 make_pred_name_with_context(ModuleName, Prefix,

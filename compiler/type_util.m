@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -169,6 +169,12 @@
 	% Aborts if the functor is existentially typed.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
+
+	% Given a type and a cons_id, look up the definitions of that
+	% type and constructor. Aborts if the cons_id is not user-defined.
+:- pred type_util__get_type_and_cons_defn(module_info, (type), cons_id,
+		hlds_type_defn, hlds_cons_defn).
+:- mode type_util__get_type_and_cons_defn(in, in, in, out, out) is det.
 
 	% Given a type and a cons_id, look up the definition of that
 	% constructor; if it is existentially typed, return its definition,
@@ -656,20 +662,13 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 
 type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	(
-		type_to_type_id(VarType, TypeId, TypeArgs),
-		module_info_ctors(ModuleInfo, Ctors),
-		% will fail for builtin cons_ids.
-		map__search(Ctors, ConsId, ConsDefns),
-		CorrectCons = lambda([ConsDefn::in] is semidet, (
-				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
-			)),
-		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(ExistQVars0, _Constraints0, ArgTypes0,
-				_, _)]),
+		type_to_type_id(VarType, _, TypeArgs),
+		type_util__do_get_type_and_cons_defn(ModuleInfo, VarType,
+			ConsId, TypeDefn, ConsDefn),
+		ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0,
+				ArgTypes0, _, _),
 		ArgTypes0 \= []
 	->
-		module_info_types(ModuleInfo, Types),
-		map__lookup(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
 
@@ -690,14 +689,8 @@ type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
 		(type)::in, cons_id::in, hlds_cons_defn::out) is semidet.
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
-	type_to_type_id(VarType, TypeId, _TypeArgs),
-	module_info_ctors(ModuleInfo, Ctors),
-	% will fail for builtin cons_ids.
-	map__search(Ctors, ConsId, ConsDefns),
-	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
-			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
-		)),
-	list__filter(MatchingCons, ConsDefns, [ConsDefn]), 
+	type_to_type_id(VarType, TypeId, _),
+	type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn),
 	ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
 	ExistQVars \= [].
 
@@ -712,10 +705,46 @@ type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+	type_to_type_id(VarType, TypeId, _),
 	construct_type(TypeId, TypeDefnParams, RetType),
 	CtorDefn = ctor_defn(TypeVarSet, ExistQVars, Constraints,
 		ArgTypes, RetType).
 
+type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
+		TypeDefn, ConsDefn) :-
+	(
+		type_util__do_get_type_and_cons_defn(ModuleInfo,
+			Type, ConsId, TypeDefn0, ConsDefn0)
+	->
+		TypeDefn = TypeDefn0,
+		ConsDefn = ConsDefn0
+	;
+		error("type_util__get_type_and_cons_defn")
+	).
+
+:- pred type_util__do_get_type_and_cons_defn(module_info::in,
+		(type)::in, cons_id::in, hlds_type_defn::out,
+		hlds_cons_defn::out) is semidet.
+
+type_util__do_get_type_and_cons_defn(ModuleInfo, VarType, ConsId,
+		TypeDefn, ConsDefn) :-
+	type_to_type_id(VarType, TypeId, _TypeArgs),
+	type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn),
+	module_info_types(ModuleInfo, Types),
+	map__lookup(Types, TypeId, TypeDefn).
+
+:- pred type_util__get_cons_defn(module_info::in, type_id::in, cons_id::in,
+		hlds_cons_defn::out) is semidet.
+
+type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn) :-
+	module_info_ctors(ModuleInfo, Ctors),
+	% will fail for builtin cons_ids.
+	map__search(Ctors, ConsId, ConsDefns),
+	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
+			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+		)),
+	list__filter(MatchingCons, ConsDefns, [ConsDefn]).
+	
 %-----------------------------------------------------------------------------%
 
 	% The checks for type_info and type_ctor_info

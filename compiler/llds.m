@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -292,6 +292,13 @@
 			% The rval must be a marker as returned by mark_hp/1.
 			% The effect is to deallocate all the memory which
 			% was allocated since that call to mark_hp.
+
+	;	free_heap(rval)
+			% Notify the garbage collector that the heap space
+			% associated with the top-level cell of the rval is
+			% no longer needed.
+			% `free' is useless but harmless without conservative
+			% garbage collection.
 
 	;	store_ticket(lval)
 			% Allocate a new "ticket" and store it in the lval.
@@ -720,9 +727,9 @@
 		% stage after code generation.
 
 	;	create(tag, list(maybe(rval)), create_arg_types,
-			static_or_dynamic, int, string)
+			static_or_dynamic, int, string, maybe(rval))
 		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
-		%	LabelNumber, CellKind):
+		%	LabelNumber, CellKind, CellToReuse):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
 		% (if the term is constant) as a static constant.
@@ -749,9 +756,12 @@
 		% we can construct the term at compile-time
 		% and just reference the label.
 		%
-		% The last argument gives the name of the type constructor
+		% The string argument gives the name of the type constructor
 		% of the function symbol of which this is a cell, for use
 		% in memory profiling.
+		%
+		% The maybe(rval) contains the location of a cell to reuse.
+		% This will always be `no' after code generation.
 		%
 		% For the time being, you must leave the argument types
 		% implicit if the cell is to be unique. This is because
@@ -1044,7 +1054,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing

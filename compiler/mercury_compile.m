@@ -36,9 +36,9 @@
 :- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
 :- import_module table_gen.
 :- import_module bytecode_gen, bytecode.
-:- import_module (lambda), termination, higher_order, inlining.
-:- import_module deforest, dnf, unused_args, magic, dead_proc_elim.
-:- import_module accumulator, lco, saved_vars, liveness.
+:- import_module (lambda), termination, higher_order, accumulator, inlining.
+:- import_module deforest, dnf, magic, dead_proc_elim.
+:- import_module unused_args, lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module rl_gen, rl_opt, rl_out.
@@ -413,7 +413,7 @@ mercury_compile(Module) -->
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
-		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
+		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 
 		% magic sets can report errors.
@@ -428,7 +428,7 @@ mercury_compile(Module) -->
 		    ),
 		    ( { AditiOnly = yes } ->
 		    	[]
-		    ; { HighLevelC = yes } ->
+		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50),
 			globals__io_lookup_bool_option(compile_to_c, 
 				CompileToC),
@@ -1009,19 +1009,19 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS32), !,
 	mercury_compile__maybe_dump_hlds(HLDS32, "32", "higher_order"), !,
 
-	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34), !,
+	mercury_compile__maybe_introduce_accumulators(HLDS32,
+			Verbose, Stats, HLDS33), !,
+	mercury_compile__maybe_dump_hlds(HLDS33, "33", "accum"), !,
+
+	mercury_compile__maybe_do_inlining(HLDS33, Verbose, Stats, HLDS34), !,
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"), !,
 
 	mercury_compile__maybe_deforestation(HLDS34, 
 			Verbose, Stats, HLDS36), !,
 	mercury_compile__maybe_dump_hlds(HLDS36, "36", "deforestation"), !,
 
-	mercury_compile__maybe_unused_args(HLDS36, Verbose, Stats, HLDS38), !,
-	mercury_compile__maybe_dump_hlds(HLDS38, "38", "unused_args"), !,
-
-	mercury_compile__maybe_introduce_accumulators(HLDS38,
-			Verbose, Stats, HLDS39), !,
-	mercury_compile__maybe_dump_hlds(HLDS39, "39", "accum"), !,
+	mercury_compile__maybe_unused_args(HLDS36, Verbose, Stats, HLDS39), !,
+	mercury_compile__maybe_dump_hlds(HLDS39, "39", "unused_args"), !,
 
 	mercury_compile__maybe_lco(HLDS39, Verbose, Stats, HLDS40), !,
 	mercury_compile__maybe_dump_hlds(HLDS40, "40", "lco"), !,
@@ -2335,6 +2335,24 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		SplitOpt = ""
 	},
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	( { HighLevelCode = yes } ->
+		{ HighLevelCodeOpt = "-DMR_HIGHLEVEL_CODE " }
+	;
+		{ HighLevelCodeOpt = "" }
+	),
+	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFunctions),
+	( { GCC_NestedFunctions = yes } ->
+		{ NestedFunctionsOpt = "-DMR_USE_GCC_NESTED_FUNCTIONS " }
+	;
+		{ NestedFunctionsOpt = "" }
+	),
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	( { HighLevelData = yes } ->
+		{ HighLevelDataOpt = "-DMR_HIGHLEVEL_DATA " }
+	;
+		{ HighLevelDataOpt = "" }
+	),
 	globals__io_lookup_bool_option(gcc_global_registers, GCC_Regs),
 	( { GCC_Regs = yes } ->
 		globals__io_lookup_string_option(cflags_for_regs,
@@ -2487,6 +2505,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% Also be careful that each option is separated by spaces.
 	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
 		SplitOpt, OptimizeOpt,
+		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,

@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_goal, hlds_module, hlds_pred, instmap, inst_table.
 :- import_module mlds.
 :- import_module llds. % XXX for `code_model'.
 
@@ -103,8 +103,8 @@
 	% Generate the function prototype for a procedure with the
 	% given argument types, modes, and code model.
 	%
-:- func ml_gen_params(module_info, list(string), list(prog_type),
-		list(mode), code_model) = mlds__func_params.
+:- func ml_gen_params(module_info, list(string), list(prog_data__type),
+	list(mode), instmap, inst_table, code_model) = mlds__func_params.
 
 %-----------------------------------------------------------------------------%
 %
@@ -388,6 +388,21 @@
 :- pred ml_gen_info_get_extra_defns(ml_gen_info, mlds__defns).
 :- mode ml_gen_info_get_extra_defns(in, out) is det.
 
+:- pred ml_gen_info_get_instmap(ml_gen_info, instmap).
+:- mode ml_gen_info_get_instmap(in, out) is det.
+
+:- pred ml_gen_info_set_instmap(instmap, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_set_instmap(in, in, out) is det.
+
+	% Apply the instmap_delta in the hlds_goal_info of the hlds_goal
+	% to the instmap_delta of the ml_gen_info.
+:- pred ml_gen_info_update_instmap(hlds_goal,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_update_instmap(in, in, out) is det.
+
+:- pred ml_gen_info_get_inst_table(ml_gen_info, inst_table).
+:- mode ml_gen_info_get_inst_table(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -597,7 +612,7 @@ sorry(What) :-
 % Code for generating function declarations (i.e. mlds__func_params).
 %
 
-	% Generate the function prototype for a given procedure.
+	% Generate the function prototype for a procedure.
 	%
 ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -605,24 +620,25 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_headvars(ProcInfo, HeadVars),
 	pred_info_arg_types(PredInfo, HeadTypes),
-	proc_info_argmodes(ProcInfo, HeadModes),
+	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
+	Modes = argument_modes(InstTable, HeadModes),
+	% The argument modes do not depend on the alias substitutions in
+	% the instmap.
+	instmap__init_reachable(InstMap),
 	FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
-		HeadModes, CodeModel).
+		HeadModes, InstMap, InstTable, CodeModel).
 
-	% Generate the function prototype for a procedure with the
-	% given argument types, modes, and code model.
-	%
-ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
-		FuncParams :-
+ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, InstMap,
+		InstTable, CodeModel) = FuncParams :-
 	( CodeModel = model_semi ->
 		RetTypes = [mlds__bool_type]
 	;
 		RetTypes = []
 	),
-	ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-		FuncArgs0),
+	ml_gen_arg_decls(InstMap, InstTable, ModuleInfo, HeadVarNames,
+		HeadTypes, HeadModes, FuncArgs0),
 	( CodeModel = model_non ->
 		ContType = mlds__cont_type,
 		ContName = data(var("cont")),
@@ -648,11 +664,13 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 	% Given the argument variable names, and corresponding lists of their
 	% types and modes, generate the MLDS argument list declaration.
 	%
-:- pred ml_gen_arg_decls(module_info, list(mlds__var_name), list(prog_type),
+:- pred ml_gen_arg_decls(instmap, inst_table, module_info,
+		list(mlds__var_name), list(prog_type),
 		list(mode), mlds__arguments).
-:- mode ml_gen_arg_decls(in, in, in, in, out) is det.
+:- mode ml_gen_arg_decls(in, in, in, in, in, in, out) is det.
 
-ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
+ml_gen_arg_decls(InstMap, InstTable, ModuleInfo, HeadVars, HeadTypes,
+		HeadModes, FuncArgs) :-
 	(
 		HeadVars = [], HeadTypes = [], HeadModes = []
 	->
@@ -662,12 +680,14 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
 		HeadTypes = [Type | Types],
 		HeadModes = [Mode | Modes]
 	->
-		ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, FuncArgs0),
+		ml_gen_arg_decls(InstMap, InstTable, ModuleInfo,
+			Vars, Types, Modes, FuncArgs0),
 		% exclude types such as io__state, etc.
 		( type_util__is_dummy_argument_type(Type) ->
 			FuncArgs = FuncArgs0
 		;
-			ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg),
+			ml_gen_arg_decl(InstMap, InstTable,
+				ModuleInfo, Var, Type, Mode, FuncArg),
 			FuncArgs = [FuncArg | FuncArgs0]
 		)
 	;
@@ -677,19 +697,50 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
 	% Given an argument variable, and its type and mode,
 	% generate an MLDS argument declaration for it.
 	%
-:- pred ml_gen_arg_decl(module_info, var_name, prog_type, mode,
-			pair(mlds__entity_name, mlds__type)).
-:- mode ml_gen_arg_decl(in, in, in, in, out) is det.
+:- pred ml_gen_arg_decl(instmap, inst_table, module_info, var_name, prog_type,
+			mode, pair(mlds__entity_name, mlds__type)).
+:- mode ml_gen_arg_decl(in, in, in, in, in, in, out) is det.
 
-ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg) :-
+ml_gen_arg_decl(InstMap, InstTable, ModuleInfo, Var, Type, Mode, FuncArg) :-
 	MLDS_Type = mercury_type_to_mlds_type(Type),
-	( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
+	(
+		\+ mode_to_arg_mode(InstMap, InstTable,
+			ModuleInfo, Mode, Type, top_in)
+	->
 		MLDS_ArgType = mlds__ptr_type(MLDS_Type)
 	;
 		MLDS_ArgType = MLDS_Type
 	),
 	Name = data(var(Var)),
 	FuncArg = Name - MLDS_ArgType.
+
+	% Given a list of variables and their corresponding modes,
+	% return a list containing only those variables which have
+	% an output mode.
+	%
+:- func select_output_vars(instmap, inst_table, module_info, list(prog_var),
+		list(mode), map(prog_var, prog_type)) = list(prog_var).
+
+select_output_vars(InstMap, InstTable, ModuleInfo, HeadVars,
+		HeadModes, VarTypes) = OutputVars :-
+	( HeadVars = [], HeadModes = [] ->
+		OutputVars = []
+	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
+		map__lookup(VarTypes, Var, Type),
+		(
+			\+ mode_to_arg_mode(InstMap, InstTable,
+				ModuleInfo, Mode, Type, top_in)
+		->
+			OutputVars1 = select_output_vars(InstMap, InstTable,
+					ModuleInfo, Vars, Modes, VarTypes),
+			OutputVars = [Var | OutputVars1]
+		;
+			OutputVars = select_output_vars(InstMap, InstTable,
+					ModuleInfo, Vars, Modes, VarTypes)
+		)
+	;
+		error("select_output_vars: length mismatch")
+	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1086,7 +1137,9 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 				% constants which should be inserted
 				% before the definition of the function
 				% for the current procedure
-			mlds__defns
+			mlds__defns,
+			instmap,
+			inst_table
 		).
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
@@ -1095,9 +1148,12 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_argmodes(ProcInfo, HeadModes),
-	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
-		VarTypes),
+	proc_info_argmodes(ProcInfo, Modes),
+	Modes = argument_modes(_, HeadModes),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+	proc_info_inst_table(ProcInfo, InstTable),
+	OutputVars = select_output_vars(InstMap, InstTable,
+			ModuleInfo, HeadVars, HeadModes, VarTypes),
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
 	stack__init(SuccContStack),
@@ -1112,26 +1168,34 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			FuncLabelCounter,
 			CommitLabelCounter,
 			SuccContStack,
-			ExtraDefns
+			ExtraDefns,
+			InstMap,
+			InstTable
 		).
 
-ml_gen_info_get_module_info(ml_gen_info(ModuleInfo, _, _, _, _, _, _, _, _, _),
+ml_gen_info_get_module_info(
+	ml_gen_info(ModuleInfo, _, _, _, _, _, _, _, _, _, _, _),
 	ModuleInfo).
 
 ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) :-
 	ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
 	module_info_name(ModuleInfo, ModuleName).
 
-ml_gen_info_get_pred_id(ml_gen_info(_, PredId, _, _, _, _, _, _, _, _), PredId).
+ml_gen_info_get_pred_id(ml_gen_info(_, PredId, _, _, _, _, _, _, _, _, _, _),
+		PredId).
 
-ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _, _, _), ProcId).
+ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _, _, _, _, _),
+		ProcId).
 
-ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _, _, _), VarSet).
+ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _, _, _, _, _),
+		VarSet).
 
-ml_gen_info_get_var_types(ml_gen_info(_, _, _, _, VarTypes, _, _, _, _, _),
+ml_gen_info_get_var_types(
+	ml_gen_info(_, _, _, _, VarTypes, _, _, _, _, _, _, _),
 	VarTypes).
 
-ml_gen_info_get_output_vars(ml_gen_info(_, _, _, _, _, OutputVars, _, _, _, _),
+ml_gen_info_get_output_vars(
+	ml_gen_info(_, _, _, _, _, OutputVars, _, _, _, _, _, _),
 	OutputVars).
 
 ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
@@ -1142,13 +1206,14 @@ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 		UseNestedFuncs) }.
 
 ml_gen_info_new_func_label(Label,
-		ml_gen_info(A, B, C, D, E, F, Label0, H, I, J),
-		ml_gen_info(A, B, C, D, E, F, Label, H, I, J)) :-
+		ml_gen_info(A, B, C, D, E, F, Label0, H, I, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, Label, H, I, J, K, L)) :-
 	Label is Label0 + 1.
 
+
 ml_gen_info_new_commit_label(CommitLabel,
-		ml_gen_info(A, B, C, D, E, F, G, CommitLabel0, I, J),
-		ml_gen_info(A, B, C, D, E, F, G, CommitLabel, I, J)) :-
+		ml_gen_info(A, B, C, D, E, F, G, CommitLabel0, I, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, CommitLabel, I, J, K, L)) :-
 	CommitLabel is CommitLabel0 + 1.
 
 /******
@@ -1157,65 +1222,59 @@ ml_gen_info_new_commit_label(CommitLabel,
 :- mode ml_gen_info_get_success_cont_stack(in, out) is det.
 
 ml_gen_info_get_success_cont_stack(
-	ml_gen_info(_, _, _, _, _, _, _, _, SuccContStack, _), SuccContStack).
+	ml_gen_info(_, _, _, _, _, _, _, _, SuccContStack, _, _, _),
+	SuccContStack).
 
 :- pred ml_gen_info_set_success_cont_stack(stack(success_cont),
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_set_success_cont_stack(in, in, out) is det.
 
 ml_gen_info_set_success_cont_stack(SuccContStack,
-		ml_gen_info(A, B, C, D, E, F, G, H, _, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, SuccContStack, J)).
+		ml_gen_info(A, B, C, D, E, F, G, H, _, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, SuccContStack, J, K, L)).
 ********/
 
 ml_gen_info_push_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J, K, L)) :-
 	stack__push(Stack0, SuccCont, Stack).
 
 ml_gen_info_pop_success_cont(
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack0, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J, K, L)) :-
 	stack__pop_det(Stack0, _SuccCont, Stack).
 
 ml_gen_info_current_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J),
-		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack, J, K, L)) :-
 	stack__top_det(Stack, SuccCont).
 
 ml_gen_info_add_extra_defn(ExtraDefn,
-		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns0),
-		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns0, K, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, I, ExtraDefns, K, L)) :-
 	ExtraDefns = [ExtraDefn | ExtraDefns0].
 
-ml_gen_info_get_extra_defns(ml_gen_info(_, _, _, _, _, _, _, _, _, ExtraDefns),
+ml_gen_info_get_extra_defns(
+	ml_gen_info(_, _, _, _, _, _, _, _, _, ExtraDefns, _, _),
 	ExtraDefns).
 
-%-----------------------------------------------------------------------------%
+ml_gen_info_get_instmap(
+	ml_gen_info(_, _, _, _, _, _, _, _, _, _, InstMap, _),
+	InstMap).
 
-	% Given a list of variables and their corresponding modes,
-	% return a list containing only those variables which have
-	% an output mode.
-	%
-:- func select_output_vars(module_info, list(prog_var), list(mode),
-		map(prog_var, prog_type)) = list(prog_var).
+ml_gen_info_set_instmap(InstMap,
+		ml_gen_info(A, B, C, D, E, F, G, H, I, J, _, L),
+		ml_gen_info(A, B, C, D, E, F, G, H, I, J, InstMap, L)).
 
-select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
-	( HeadVars = [], HeadModes = [] ->
-		OutputVars = []
-	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
-		map__lookup(VarTypes, Var, Type),
-		( \+ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
-			OutputVars1 = select_output_vars(ModuleInfo,
-					Vars, Modes, VarTypes),
-			OutputVars = [Var | OutputVars1]
-		;
-			OutputVars = select_output_vars(ModuleInfo,
-					Vars, Modes, VarTypes)
-		)
-	;
-		error("select_output_vars: length mismatch")
-	).
+ml_gen_info_update_instmap(_ - GoalInfo, Info0, Info) :-
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	ml_gen_info_get_instmap(Info0, InstMap0),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	ml_gen_info_set_instmap(InstMap, Info0, Info).
+
+ml_gen_info_get_inst_table(
+	ml_gen_info(_, _, _, _, _, _, _, _, _, _, _, InstTable),
+	InstTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

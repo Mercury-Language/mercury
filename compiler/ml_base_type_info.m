@@ -28,7 +28,7 @@
 :- mode ml_base_type_info__generate_mlds(in, out) is det.
 
 :- implementation.
-:- import_module base_type_info, ml_code_gen.
+:- import_module base_type_info, ml_code_util.
 
 :- import_module base_typeclass_info.
 :- import_module prog_data, prog_util, prog_out.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -942,7 +942,7 @@ code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	code_util__lvals_in_lval(Lval, Lvals).
 code_util__lvals_in_rval(var(_), []).
-code_util__lvals_in_rval(create(_, _, _, _, _, _), []).
+code_util__lvals_in_rval(create(_, _, _, _, _, _, _), []).
 code_util__lvals_in_rval(mkword(_, Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 code_util__lvals_in_rval(const(_), []).

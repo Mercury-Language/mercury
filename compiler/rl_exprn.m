@@ -52,7 +52,6 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, rl, rl_code, rl_file, prog_data.
-:- import_module inst_table.
 :- import_module list.
 
 	% Generate an expression to compare tuples with the

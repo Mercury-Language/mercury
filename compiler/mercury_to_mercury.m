@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1441,16 +1441,14 @@ mercury_output_remaining_ctor_args(Varset, [N - T | As]) -->
 	mercury_output_term(T, Varset, no),
 	mercury_output_remaining_ctor_args(Varset, As).
 
-:- pred mercury_output_ctor_arg_name_prefix(string, io__state, io__state).
+:- pred mercury_output_ctor_arg_name_prefix(maybe(ctor_field_name),
+		io__state, io__state).
 :- mode mercury_output_ctor_arg_name_prefix(in, di, uo) is det.
 
-mercury_output_ctor_arg_name_prefix(Name) -->
-	( { Name = "" } ->
-		[]
-	;
-		mercury_quote_atom(Name, next_to_graphic_token),
-		io__write_string(": ")
-	).
+mercury_output_ctor_arg_name_prefix(no) --> [].
+mercury_output_ctor_arg_name_prefix(yes(Name)) -->
+	mercury_output_bracketed_sym_name(Name),
+	io__write_string(" :: ").
 
 %-----------------------------------------------------------------------------%
 
@@ -3023,6 +3021,7 @@ mercury_unary_prefix_op("update").
 mercury_unary_prefix_op("useIf").
 mercury_unary_prefix_op("wait").
 mercury_unary_prefix_op("~").
+mercury_unary_prefix_op("^").
 
 :- pred mercury_unary_postfix_op(string).
 :- mode mercury_unary_postfix_op(in) is semidet.

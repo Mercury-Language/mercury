@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,7 +95,7 @@
 
 :- implementation.
 
-:- import_module (assertion), goal_util, globals.
+:- import_module (assertion), error_util, goal_util, globals.
 :- import_module hlds_data, hlds_goal, hlds_out, (inst).
 :- import_module inst_match, instmap, mode_util, options, prog_data, prog_util.
 :- import_module inst_table.
@@ -165,8 +165,16 @@
 			orig_dynvar_map,
 			subst,		% Y0s -> As
 			subst,		% Hs -> As
-			set(prog_var)	% Ys
+			set(prog_var),	% Ys
+			warnings
 		).
+
+:- type warning 
+			% warn that two prog_vars in call to pred_id
+			% at prog_context were swapped.
+	--->	w(prog_context, pred_id, prog_var, prog_var).
+
+:- type warnings == list(warning).
 
 	% is the pred commutative?
 :- type commutative == bool.
@@ -211,7 +219,7 @@ accumulator__process_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 		{ module_info_pred_info(ModuleInfo0, PredId, PredInfo) },
 		{ accumulator__attempt_transform(ProcId, ProcInfo0, PredId,
 				PredInfo, DoLCO, FullyStrict, ModuleInfo0,
-				ProcInfo1, ModuleInfo1) }
+				Warnings, ProcInfo1, ModuleInfo1) }
 	->
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( 
@@ -224,10 +232,81 @@ accumulator__process_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 			[]
 		),
 
-		{ module_info_set_pred_proc_info(ModuleInfo1, PredId,
-				ProcId,  PredInfo, ProcInfo1, ModuleInfo) },
-		{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-				_PredInfo, ProcInfo) }
+		globals__io_lookup_bool_option(inhibit_accumulator_warnings,
+				InhibitWarnings),
+		(
+			( { Warnings = [] } ; { InhibitWarnings = yes } )
+		->
+			{ ModuleInfo = ModuleInfo1 }
+		;
+			{ error_util__describe_one_pred_name(ModuleInfo1,
+					PredId, PredName) },
+			{ pred_info_context(PredInfo, Context) },
+
+			error_util__write_error_pieces(Context, 0,
+					[words("In"), words(PredName)]),
+
+			{ proc_info_varset(ProcInfo, VarSet) },
+			accumulator__warnings(Warnings, VarSet, ModuleInfo1),
+
+			error_util__write_error_pieces(Context, 2, 
+					[
+					words("Please ensure that these"),
+					words("argument rearrangements"),
+					words("do not introduce"),
+					words("performance problems."),
+					words("These warnings can"),
+					words("be suppressed by"),
+					words("`--inhibit-accumulator-warnings'.")
+					]),
+
+			globals__io_lookup_bool_option(verbose_errors,
+					VerboseErrors),
+			(
+				{ VerboseErrors = yes }
+			->
+				error_util__write_error_pieces(Context, 2, 
+					[
+					words("If a predicate has been"),
+					words("declared associative via"),
+					words("a promise declaration,"),
+					words("the compiler will"),
+					words("rearrange the order"),
+					words("of the arguments"),
+					words("in calls to that"),
+					words("predicate, if by so doing"),
+					words("it makes the containing"),
+					words("predicate tail recursive."),
+					words("In such situations, the"),
+					words("compiler will issue"),
+					words("this warning."),
+					words("If this reordering changes the"),
+					words("performance characteristics"),
+					words("of the call to the"),
+					words("predicate, use"),
+					words("`--no-accumulator-introduction'"),
+					words("to turn the optimization"),
+					words("off, or"),
+					words("`--inhibit-accumulator-warnings'"),
+					words("to turn off the warnings.")
+					])
+			;
+				[]
+			),
+
+			globals__io_lookup_bool_option(halt_at_warn,
+					HaltAtWarn),
+			(
+				{ HaltAtWarn = yes }
+			->
+				io__set_exit_status(1),
+				{ module_info_incr_errors(ModuleInfo1,
+						ModuleInfo) }
+			;
+				{ ModuleInfo = ModuleInfo1 }
+			)
+		),
+		{ ProcInfo   = ProcInfo1 }
 	;
 		{ ProcInfo   = ProcInfo0 },
 		{ ModuleInfo = ModuleInfo0 }
@@ -240,10 +319,10 @@ accumulator__process_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	%
 :- pred accumulator__attempt_transform(proc_id::in, proc_info::in,
 		pred_id::in, pred_info::in, bool::in, bool::in, module_info::in,
-		proc_info::out, module_info::out) is semidet.
+		warnings::out, proc_info::out, module_info::out) is semidet.
 
 accumulator__attempt_transform(ProcId, ProcInfo0, PredId, PredInfo0, DoLCO,
-		FullyStrict, ModuleInfo0, ProcInfo, ModuleInfo) :-
+		FullyStrict, ModuleInfo0, Warnings, ProcInfo, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InitialInstMap),
@@ -260,12 +339,39 @@ accumulator__attempt_transform(ProcId, ProcInfo0, PredId, PredInfo0, DoLCO,
 
 	accumulator__transform(GoalType, Base, Rec, Goal, DoLCO, FullyStrict,
 			ModuleInfo1, HeadVars, HstoAs_Subst, NewPredId,
-			NewProcId, NewPredName, OrigGoal, AccGoal),
+			NewProcId, NewPredName, OrigGoal, Warnings, AccGoal),
 
 	accumulator__update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 			ModuleInfo1, ModuleInfo),
 
 	proc_info_set_goal(ProcInfo0, OrigGoal, ProcInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred accumulator__warnings(list(warning)::in, prog_varset::in,
+		module_info::in, io__state::di, io__state::uo) is det.
+
+accumulator__warnings([], _, _) --> [].
+accumulator__warnings([W | Ws], VarSet, ModuleInfo) -->
+	{ accumulator__warning(W, VarSet, ModuleInfo, Context, Format) },
+	error_util__write_error_pieces(Context, 2, Format),
+	accumulator__warnings(Ws, VarSet, ModuleInfo).
+
+:- pred accumulator__warning(warning::in, prog_varset::in, module_info::in,
+		prog_context::out, list(format_component)::out) is det.
+
+accumulator__warning(w(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
+		Context, Formats) :-
+	error_util__describe_one_pred_name(ModuleInfo, PredId, PredStr),
+	varset__lookup_name(VarSet, VarA, VarAStr),
+	varset__lookup_name(VarSet, VarB, VarBStr),
+	Formats = [words("warning: the call to"), words(PredStr),
+			words("has had the location of the variables"),
+			words(VarAStr), words("and"), words(VarBStr),
+			words("swapped to allow accumulator introduction.")
+			].
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -567,9 +673,13 @@ accumulator__new_acc_var([Var | Vars], InstMap, InstKeyTable,
 	map__lookup(VarTypes0, Var, Type),
 	map__det_insert(VarTypes1, NewVar, Type, VarTypes),
 
-	instmap__lookup_var(InstMap, Var, Inst0),
-	inst_expand_fully(InstKeyTable, InstMap, Inst0, Inst),
-
+		% XXX we don't want to use the inst of the var as it can
+		% be more specific than it should be. ie int_const(1)
+		% when it should be any integer.
+		% However this will no longer handle partially
+		% instantiated data structures.
+	% instmap__lookup_var(InstMap, Var, Inst),
+	Inst = ground(shared, no),
 	inst_lists_to_mode_list([Inst], [Inst], Mode),
 	list__append(Mode, Modes0, Modes).
 
@@ -637,11 +747,12 @@ calculate_instmap(Goals, InstMap0, InstMap) :-
 		hlds_goal::in, bool::in, bool::in, module_info::in,
 		prog_vars::in, subst::in, pred_id::in,
 		proc_id::in, sym_name::in,
-		hlds_goal::out, hlds_goal::out) is semidet.
+		hlds_goal::out, warnings::out, hlds_goal::out) is semidet.
 
 accumulator__transform(TopLevel, base(BaseGoalList), recursive(PreDP, DP, R, C),
-		Goal, DoLCO, FullyStrict, ModuleInfo, HeadVars, HstoAs_Subst,
-		NewPredId, NewProcId, NewPredName, OrigGoal, NewGoal) :-
+		Goal, DoLCO, FullyStrict, ModuleInfo, HeadVars,
+		HstoAs_Subst, NewPredId, NewProcId, NewPredName,
+		OrigGoal, Warnings, NewGoal) :-
 
 	accumulator__Ys_descended_from_Y0s(HeadVars, DP, ModuleInfo),
 
@@ -655,8 +766,8 @@ accumulator__transform(TopLevel, base(BaseGoalList), recursive(PreDP, DP, R, C),
 			Y0stoYs_Subst, HstoAs_Subst, NewBaseGoal),
 	accumulator__new_recursive_case(DP, C, R, DoLCO, FullyStrict,
 			ModuleInfo, NewPredId, NewProcId, NewPredName,
-			Vars, HeadVars,
-			Y0stoYs_Subst, HstoAs_Subst, NewRecGoal),
+			Vars, HeadVars, Y0stoYs_Subst, HstoAs_Subst,
+			Warnings, NewRecGoal),
 
 	accumulator__top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
 			NewBaseGoal, NewRecGoal, OrigGoal, NewGoal).
@@ -1102,11 +1213,11 @@ accumulator__new_base_case(Base, C, Y0stoYs_Subst, HstoAs_Subst, Goal) :-
 		a_goal::in, bool::in, bool::in,
 		module_info::in, pred_id::in, proc_id::in,
 		sym_name::in, prog_vars::in, prog_vars::in, subst::in,
-		subst::in, hlds_goal::out) is semidet.
+		subst::in, warnings::out, hlds_goal::out) is semidet.
 
 accumulator__new_recursive_case(DP, C, R0, DoLCO, FullyStrict,
 		ModuleInfo, PredId, ProcId, Name, Hs, HeadVars,
-		Y0stoYs_Subst, HstoAs_Subst, Goal) :-
+		Y0stoYs_Subst, HstoAs_Subst, Warnings, Goal) :-
 	DP = goal(DecomposeProcess, _InstMapBeforeDP, _InstTableDP),
 	C  = goal(Compose, InstMapBeforeCompose, InstTableCompose),
 	R0 = goal(Recursive0, _InstMapBeforeR, _InstTableR),
@@ -1137,6 +1248,7 @@ accumulator__new_recursive_case(DP, C, R0, DoLCO, FullyStrict,
 	),
 
 	assoc_info_Y0stoAs(Y0stoAs_Subst, AssocInfo, _),
+	assoc_info_warnings(Warnings, AssocInfo, _),
 
 	accumulator__rename_prerec_goals(PreRecGoal0, Y0stoAs_Subst,
 			Y0stoYs_Subst, LCO_Subst, HstoAs_Subst, PreRecGoal),
@@ -1378,20 +1490,9 @@ accumulator__check_goal(call(PredId, ProcId, Arg0s, Builtin, Context, Sym)
 	assoc_info_module_info(ModuleInfo),
 	accumulator__call_dynamic_var(Arg0s, DynamicCallVar),
 
-	{ accumulator__is_associative(PredId, ProcId, ModuleInfo, Arg0s, Args,
-		PossibleStaticVars, Commutative) },
-
-	(
-			% Make sure that after rearrangement of the
-			% arguments the new proc will be at least as
-			% efficient as the old pred.
-		{ Commutative = no },
-		assoc_info_static_set(StaticSet),
-		{ accumulator__obey_heuristic(PredId, ModuleInfo,
-				Args, StaticSet) }
-	;
-		{ Commutative = yes }
-	),
+	{ goal_info_get_context(GoalInfo, ProgContext) },
+	accumulator__is_associative(PredId, ProcId, ProgContext, ModuleInfo,
+			Arg0s, Args, PossibleStaticVars, Commutative),
 
 	accumulator__check_previous_calls(DynamicCallVar,
 			PredId, ProcId, Commutative),
@@ -1661,12 +1762,14 @@ accumulator__check_prevcalls(OrigVar, PredId, ProcId, Commutative,
 	% and an indicator of whether or not the predicate is
 	% commutative.
 	%
-:- pred accumulator__is_associative(pred_id::in, proc_id::in, module_info::in,
-		prog_vars::in, prog_vars::out, set(prog_var)::out,
-		commutative::out) is semidet.
+:- pred accumulator__is_associative(pred_id::in, proc_id::in, prog_context::in,
+		module_info::in, prog_vars::in, prog_vars::out,
+		set(prog_var)::out, commutative::out,
+		assoc_info::in, assoc_info::out) is semidet.
 
-accumulator__is_associative(PredId, ProcId, ModuleInfo,
-		Args0, Args, PossibleStaticVars, Commutative):-
+accumulator__is_associative(PredId, ProcId, Context, ModuleInfo,
+		Args0, Args, PossibleStaticVars, Commutative,
+		AssocInfo0, AssocInfo):-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, 
 			PredInfo, ProcInfo),
 
@@ -1689,18 +1792,86 @@ accumulator__is_associative(PredId, ProcId, ModuleInfo,
 			InitialInstMap, FinalInstMap, InstTable, ModuleInfo),
 		Args = Args0,
 		PossibleStaticVars = PossibleStaticVars0,
+		AssocInfo = AssocInfo0,
 		Commutative = yes
 	;
+		associativity_assertion(set__to_sorted_list(Assertions),
+				ModuleInfo, Args0, VarA - VarB),
 
-			% Check if it is associative
+		PossibleStaticVars = set__list_to_set([VarA, VarB]),
+
+			% Swap the order of the arguments
+		list__map((pred(V0::in, V::out) is det :-
+				(
+					V0 = VarA
+				->
+					V = VarB
+				;
+					V0 = VarB
+				->
+					V = VarA
+				;
+					V = V0
+				)
+			), Args0, Args),
+
+		Modes = argument_modes(_, ArgModes),
+		check_modes(Args, PossibleStaticVars, ArgModes, InitialInstMap,
+			FinalInstMap, InstTable, ModuleInfo),
+
+			% Determine what variables can be static
 		pred_info_module(PredInfo, ModuleName),
 		pred_info_name(PredInfo, PredName),
 		pred_info_arity(PredInfo, Arity),
-
-		assoc_fact(ModuleName, PredName, Arity, InitialInstMap, Modes,
-				ModuleInfo, Args0, Args, PossibleStaticVars),
+		(
+			has_heuristic(ModuleName, PredName, Arity)
+		->
+				% If there is a heuristic for that call
+				% then ensure that the call obeys
+				% the heuristic that the static
+				% variables are in certain positions.
+				%
+				% For example, a call to append in the
+				% forward mode will have the following
+				% types of variables: (static, dynamic,
+				% dynamic).  After rearrangment that
+				% order will be (dynamic, static,
+				% dynamic).  Having a dynamic variable
+				% in the first position will probably
+				% take O(N) time to process while having
+				% a static variable will probably take
+				% O(1) time.  Therefore the complexity
+				% of the predicate as a whole will
+				% change, we must ensure that it changes
+				% for the better.
+				%
+			heuristic(ModuleName, PredName, Arity, Args,
+					MustBeStaticVars),
+			assoc_info_static_set(StaticSet, AssocInfo0,
+					AssocInfo),
+			(StaticSet `intersect` MustBeStaticVars) `equal`
+					MustBeStaticVars
+		;
+				% If no heuristic is known, then record
+				% which variables were swapped and warn
+				% the user.
+			assoc_info_add_warning(w(Context, PredId, VarA, VarB),
+					AssocInfo0, AssocInfo)
+		),
 		Commutative = no
 	).
+
+
+:- pred has_heuristic(module_name::in, string::in, arity::in) is semidet.
+
+has_heuristic(unqualified("list"), "append", 3).
+
+:- pred heuristic(module_name::in, string::in, arity::in, prog_vars::in,
+		set(prog_var)::out) is semidet.
+
+heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C], Set) :-
+	set__list_to_set([A], Set).
+
 
 	%
 	% commutativity_assertion
@@ -1726,6 +1897,31 @@ commutativity_assertion([AssertId | AssertIds], ModuleInfo, Args0,
 	;
 		commutativity_assertion(AssertIds, ModuleInfo, Args0,
 				PossibleStaticVars)
+	).
+	
+
+	%
+	% associativity_assertion
+	%
+	% Does there exist one (and only one) associativity assertion for the 
+	% current predicate.
+	% The 'and only one condition' is required because we currently
+	% don't handle the case of predicates which have individual
+	% parts which are associative, because then we don't know which
+	% variable is descended from which.
+	%
+:- pred associativity_assertion(list(assert_id)::in, module_info::in,
+		prog_vars::in, pair(prog_var)::out) is semidet.
+
+associativity_assertion([AssertId | AssertIds], ModuleInfo, Args0, VarAB) :-
+	(
+		assertion__is_associativity_assertion(AssertId, ModuleInfo,
+				Args0, VarAB0)
+	->
+		\+ associativity_assertion(AssertIds, ModuleInfo, Args0, _),
+		VarAB = VarAB0
+	;
+		associativity_assertion(AssertIds, ModuleInfo, Args0, VarAB)
 	).
 	
 
@@ -1822,42 +2018,6 @@ assoc_fact(unqualified("set"), "insert", 3, InstMap,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% 
-	% accumulator__obey_heuristic
-	%
-	% for calls which rearrange the order of variables ensure that
-	% the call obeys the heuristic that the static variables are in 
-	% certain positions.
-	%
-	% For example, a call to append in the forward mode will have
-	% the following types of variables: (static, dynamic, dynamic).
-	% After rearrangment that order will be (dynamic, static, dynamic).
-	% Having a dynamic variable in the first position will probably
-	% take O(N) time to process while having a static variable will 
-	% probably take O(1) time.  Therefore the complexity of the
-	% predicate as a whole will change, we must ensure that it
-	% changes for the better.
-	%
-:- pred accumulator__obey_heuristic(pred_id::in, module_info::in,
-		prog_vars::in, set(prog_var)::in) is semidet.
-
-accumulator__obey_heuristic(Predid, ModuleInfo, Args, StaticSet) :-
-	module_info_pred_info(ModuleInfo, Predid, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
-	heuristic(ModuleName, PredName, Arity, Args, MustBeStaticVars),
-	set__intersect(StaticSet, MustBeStaticVars, Intersection),
-	set__equal(MustBeStaticVars, Intersection).
-
-:- pred heuristic(module_name::in, string::in, arity::in, prog_vars::in,
-		set(prog_var)::out) is semidet.
-
-heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C], Set) :-
-	set__list_to_set([A], Set).
-
-%-----------------------------------------------------------------------------%
-
 :- pred assoc_info_init(module_info::in, prog_vars::in, a_goals::in,
 		a_goals::in, a_goal::in,
 		subst::in, subst::in, assoc_info::out) is det.
@@ -1909,76 +2069,91 @@ assoc_info_init(ModuleInfo, HeadVars, DP, Compose, R, Y0stoYs_Subst,
 		%
 	set__list_to_set(Ys, YsSet),
 
+	ErrorMessages = [],
+
 	AssocInfo = assoc_info(StaticSet, DynamicSet,
 			ModuleInfo, PrevCallMap, OrigDynVarMap,
-			Y0stoAs_Subst, HstoAs_Subst, YsSet).
+			Y0stoAs_Subst, HstoAs_Subst, YsSet,
+			ErrorMessages).
 
 :- pred assoc_info_static_set(set(prog_var)::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_static_set(StaticSet, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(StaticSet, _, _, _, _, _, _, _).
+	AssocInfo = assoc_info(StaticSet, _, _, _, _, _, _, _, _).
 
 :- pred assoc_info_dynamic_set(set(prog_var)::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_dynamic_set(DynamicSet, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, DynamicSet, _, _, _, _, _, _).
+	AssocInfo = assoc_info(_, DynamicSet, _, _, _, _, _, _, _).
 
 :- pred assoc_info_module_info(module_info::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_module_info(ModuleInfo, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, ModuleInfo, _, _, _, _, _).
+	AssocInfo = assoc_info(_, _, ModuleInfo, _, _, _, _, _, _).
 
 :- pred assoc_info_prev_call_map(prev_call_map::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_prev_call_map(PrevCallMap, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, _, PrevCallMap, _, _, _, _).
+	AssocInfo = assoc_info(_, _, _, PrevCallMap, _, _, _, _, _).
 
 :- pred assoc_info_orig_dynvar_map(orig_dynvar_map::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_orig_dynvar_map(OrigDynVarMap, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, _, _, OrigDynVarMap, _, _, _).
+	AssocInfo = assoc_info(_, _, _, _, OrigDynVarMap, _, _, _, _).
 
 :- pred assoc_info_Y0stoAs(subst::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_Y0stoAs(Y0stoAs_Subst, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, _, _, _, Y0stoAs_Subst, _, _).
+	AssocInfo = assoc_info(_, _, _, _, _, Y0stoAs_Subst, _, _, _).
 
 :- pred assoc_info_HstoAs(subst::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_HstoAs(HstoAs_Subst, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, _, _, _, _, HstoAs_Subst, _).
+	AssocInfo = assoc_info(_, _, _, _, _, _, HstoAs_Subst, _, _).
 
 :- pred assoc_info_Ys(set(prog_var)::out,
 		assoc_info::in, assoc_info::out) is det.
 assoc_info_Ys(Ys, AssocInfo, AssocInfo) :-
-	AssocInfo = assoc_info(_, _, _, _, _, _, _, Ys).
+	AssocInfo = assoc_info(_, _, _, _, _, _, _, Ys, _).
+
+:- pred assoc_info_warnings(warnings::out,
+		assoc_info::in, assoc_info::out) is det.
+assoc_info_warnings(Warnings, AssocInfo, AssocInfo) :-
+	AssocInfo = assoc_info(_, _, _, _, _, _, _, _, Warnings).
 
 /*
 :- pred assoc_info_set_static_set(set(prog_var)::in, assoc_info::in,
 		assoc_info::out) is det.
-assoc_info_set_static_set(StaticSet, assoc_info(_, B, C, D, E, F, G, H),
-		assoc_info(StaticSet, B, C, D, E, F, G, H)).
+assoc_info_set_static_set(StaticSet, assoc_info(_, B, C, D, E, F, G, H, I),
+		assoc_info(StaticSet, B, C, D, E, F, G, H, I)).
 */
 
 :- pred assoc_info_set_dynamic_set(set(prog_var)::in, assoc_info::in,
 		assoc_info::out) is det.
-assoc_info_set_dynamic_set(DynamicSet, assoc_info(A, _, C, D, E, F, G, H),
-		assoc_info(A, DynamicSet, C, D, E, F, G, H)).
+assoc_info_set_dynamic_set(DynamicSet, assoc_info(A, _, C, D, E, F, G, H, I),
+		assoc_info(A, DynamicSet, C, D, E, F, G, H, I)).
 
 :- pred assoc_info_set_prev_call_map(prev_call_map::in, assoc_info::in,
 		assoc_info::out) is det.
-assoc_info_set_prev_call_map(PrevCallMap, assoc_info(A, B, C, _, E, F, G, H),
-		assoc_info(A, B, C, PrevCallMap, E, F, G, H)).
+assoc_info_set_prev_call_map(PrevCallMap, assoc_info(A, B, C, _, E, F, G, H, I),
+		assoc_info(A, B, C, PrevCallMap, E, F, G, H, I)).
 
 :- pred assoc_info_set_orig_dynvar_map(orig_dynvar_map::in, assoc_info::in,
 		assoc_info::out) is det.
-assoc_info_set_orig_dynvar_map(OrigDynMap, assoc_info(A, B, C, D, _, F, G, H),
-		assoc_info(A, B, C, D, OrigDynMap, F, G, H)).
+assoc_info_set_orig_dynvar_map(OrigDynMap,
+		assoc_info(A, B, C, D, _, F, G, H, I),
+		assoc_info(A, B, C, D, OrigDynMap, F, G, H, I)).
 
 :- pred assoc_info_set_Y0stoAs(subst::in, assoc_info::in,
 		assoc_info::out) is det.
-assoc_info_set_Y0stoAs(Y0stoAs_Subst, assoc_info(A, B, C, D, E, _, G, H),
-		assoc_info(A, B, C, D, E, Y0stoAs_Subst, G, H)).
+assoc_info_set_Y0stoAs(Y0stoAs_Subst, assoc_info(A, B, C, D, E, _, G, H, I),
+		assoc_info(A, B, C, D, E, Y0stoAs_Subst, G, H, I)).
+
+:- pred assoc_info_add_warning(warning::in, assoc_info::in,
+		assoc_info::out) is det.
+assoc_info_add_warning(Warning,
+		assoc_info(A, B, C, D, E, F, G, H, Warnings),
+		assoc_info(A, B, C, D, E, F, G, H, [Warning | Warnings])).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

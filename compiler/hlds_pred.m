@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2282,6 +2282,85 @@ get_state_args_det(Args0, Args, State0, State) :-
 	;
 		error("hlds_pred__get_state_args_det")
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% Predicates to deal with record syntax.
+
+:- interface.
+
+	% field_extraction_function_args(Args, InputTermArg).
+	% Work out which arguments of a field access correspond to the
+	% field being extracted/set, and which are the container arguments.
+:- pred field_extraction_function_args(list(prog_var), prog_var).
+:- mode field_extraction_function_args(in, out) is det.
+
+	% field_update_function_args(Args, InputTermArg, FieldArg).
+:- pred field_update_function_args(list(prog_var), prog_var, prog_var).
+:- mode field_update_function_args(in, out, out) is det.
+
+	% field_access_function_name(AccessType, FieldName, FuncName).
+	%
+	% From the access type and the name of the field,
+	% construct a function name.
+:- pred field_access_function_name(field_access_type,
+		ctor_field_name, sym_name).
+:- mode field_access_function_name(in, in, out) is det.
+
+	% is_field_access_function_name(ModuleInfo, FuncName, Arity,
+	%	AccessType, FieldName).
+	%
+	% Inverse of the above.
+:- pred is_field_access_function_name(module_info, sym_name, arity,
+		field_access_type, ctor_field_name).
+:- mode is_field_access_function_name(in, in, out, out, out) is semidet.
+
+:- pred pred_info_is_field_access_function(module_info, pred_info).
+:- mode pred_info_is_field_access_function(in, in) is semidet.
+
+:- implementation.
+
+field_extraction_function_args(Args, TermInputArg) :-
+	( Args = [TermInputArg0] ->
+		TermInputArg = TermInputArg0
+	;
+		error("field_extraction_function_args")
+	).
+
+field_update_function_args(Args, TermInputArg, FieldArg) :-
+	( Args = [TermInputArg0, FieldArg0] ->
+		FieldArg = FieldArg0,
+		TermInputArg = TermInputArg0
+	;
+		error("field_update_function_args")
+	).
+
+field_access_function_name(get, FieldName, FieldName).
+field_access_function_name(set, FieldName, FuncName) :-
+	add_sym_name_suffix(FieldName, ":=", FuncName).
+
+is_field_access_function_name(ModuleInfo, FuncName, Arity,
+		AccessType, FieldName) :-
+	( remove_sym_name_suffix(FuncName, ":=", FieldName0) ->
+		Arity = 2,
+		AccessType = set,
+		FieldName = FieldName0
+	;
+		Arity = 1,
+		AccessType = get,
+		FieldName = FuncName
+	),
+	module_info_ctor_field_table(ModuleInfo, CtorFieldTable),
+	map__contains(CtorFieldTable, FieldName).
+
+pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
+	pred_info_get_is_pred_or_func(PredInfo, function),
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, PredArity),
+	adjust_func_arity(function, FuncArity, PredArity),
+	is_field_access_function_name(ModuleInfo, qualified(Module, Name),
+		FuncArity, _, _).
 
 %-----------------------------------------------------------------------------%
 

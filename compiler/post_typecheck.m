@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 
 :- module post_typecheck.
 :- interface.
-:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module hlds_data, hlds_goal, hlds_module, hlds_pred, prog_data.
 :- import_module list, io, bool.
 
 	% check_type_bindings(PredId, PredInfo, ModuleInfo, ReportErrors):
@@ -74,6 +74,15 @@
 :- mode post_typecheck__finish_aditi_builtin(in, in, in, in,
 		in, out, in, out, out, di, uo) is det.
 
+	% Work out whether a var-functor unification is actually a function
+	% call. If so, replace the unification goal with a call.
+	%
+:- pred post_typecheck__resolve_unify_functor(prog_var, cons_id,
+		list(prog_var), unify_mode, unification, unify_context,
+		hlds_goal_info, module_info, pred_info, pred_info, hlds_goal).
+:- mode post_typecheck__resolve_unify_functor(in, in, in, in, in, in,
+		in, in, in, out, out) is det.
+
 	% Do the stuff needed to initialize the pred_infos and proc_infos
 	% so that a pred is ready for running polymorphism and then
 	% mode checking.
@@ -104,11 +113,12 @@
 :- implementation.
 
 :- import_module (assertion), code_util, typecheck, clause_to_proc.
-:- import_module mode_util, inst_match, (inst), inst_table.
+:- import_module mode_util, inst_match, (inst), inst_table, prog_util.
 :- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
 
 :- import_module map, set, assoc_list, bool, std_util, term, require, int.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %			Check for unbound type variables
@@ -576,9 +586,7 @@ check_base_relation(Context, PredInfo, Builtin, CallId) -->
 	% 
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-			PredInfo0, PredInfo1),
-	{ post_typecheck__resolve_func_overloading(PredInfo1, ModuleInfo,
-			PredInfo) }.
+			PredInfo0, PredInfo).
 
 	%
 	% For ill-typed preds, we just need to set the modes up correctly
@@ -762,152 +770,11 @@ report_multiple_aditi_states(PredInfo) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	%
-	% post_typecheck__resolve_func_overloading
-	%
-	% Convert unifications that are function calls into HLDS call
-	% instructions.
-	%
-:- pred post_typecheck__resolve_func_overloading(pred_info::in,
-		module_info::in, pred_info::out) is det.
-
-post_typecheck__resolve_func_overloading(PredInfo0, ModuleInfo, PredInfo) :-
-
-	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	clauses_info_clauses(ClausesInfo0, Clauses0),
-
-	list__map(post_typecheck__resolve_func_overloading_clauses(PredInfo0,
-				ModuleInfo),
-			Clauses0, Clauses),
-
-	clauses_info_set_clauses(ClausesInfo0, Clauses, ClausesInfo),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
-
-:- pred post_typecheck__resolve_func_overloading_clauses(pred_info::in,
-		module_info::in, clause::in, clause::out) is det.
-
-post_typecheck__resolve_func_overloading_clauses(PredInfo, ModuleInfo,
-		Clause0, Clause) :-
-	Clause0 = clause(ProcIds, Goal0, Context),
-	post_typecheck__resolve_data_cons_and_funcs(Goal0, ModuleInfo,
-			PredInfo, Goal),
-	Clause = clause(ProcIds, Goal, Context).
-
-%-----------------------------------------------------------------------------%
-
-	%
-	% post_typecheck__resolve_data_cons_and_funcs
-	%
-	% Traverse the hlds_goal structure transforming the unifications
-	% that are function application into the correct calls.
-	%
-:- pred post_typecheck__resolve_data_cons_and_funcs(hlds_goal::in,
-		module_info::in, pred_info::in,
-		hlds_goal::out) is det.
-
-post_typecheck__resolve_data_cons_and_funcs(
-		unify(XVar, Y, Mode, Unification, UnifyContext) - GoalInfo,
-		ModuleInfo, PredInfo, Goal) :-
-	(
-		Y = functor(ConsId, Args),
-		post_typecheck__resolve_unify_functor(XVar, ConsId,
-				Args, Mode, Unification, UnifyContext,
-				GoalInfo, ModuleInfo, PredInfo, Goal)
-	;
-		Y = lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0),
-		post_typecheck__resolve_data_cons_and_funcs(LambdaGoal0,
-				ModuleInfo, PredInfo, LambdaGoal),
-		NewY = lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal),
-		Goal = unify(XVar, NewY, Mode, Unification, UnifyContext)
-				- GoalInfo
-	;
-		Y = var(_),
-		Goal = unify(XVar, Y, Mode, Unification, UnifyContext)
-				- GoalInfo
-	).
-
-	% Goals which simply traverse the hlds_goal structure.
-post_typecheck__resolve_data_cons_and_funcs(call(A,B,C,D,E,F) - GoalInfo,
-		_, _, call(A,B,C,D,E,F) - GoalInfo).
-post_typecheck__resolve_data_cons_and_funcs(generic_call(A,B,C,D) - GoalInfo,
-		_, _, generic_call(A,B,C,D) - GoalInfo).
-post_typecheck__resolve_data_cons_and_funcs(pragma_c_code(A,B,C,D,E,F,G) -
-		GoalInfo, _, _, pragma_c_code(A,B,C,D,E,F,G) - GoalInfo).
-post_typecheck__resolve_data_cons_and_funcs(conj(Goals0) - GoalInfo,
-		ModuleInfo, PredInfo, conj(Goals) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
-			ModuleInfo, PredInfo, Goals).
-post_typecheck__resolve_data_cons_and_funcs(switch(A,B,Cases0,D) - GoalInfo,
-		ModuleInfo, PredInfo,
-		switch(A,B,Cases,D) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs_cases(Cases0,
-			ModuleInfo, PredInfo, Cases).
-post_typecheck__resolve_data_cons_and_funcs(disj(Goals0,B) - GoalInfo,
-		ModuleInfo, PredInfo, disj(Goals,B) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
-			ModuleInfo, PredInfo, Goals).
-post_typecheck__resolve_data_cons_and_funcs(not(Goal0) - GoalInfo,
-		ModuleInfo, PredInfo, not(Goal) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs(Goal0,
-			ModuleInfo, PredInfo, Goal).
-post_typecheck__resolve_data_cons_and_funcs(some(A,B,Goal0) - GoalInfo,
-		ModuleInfo, PredInfo, some(A,B,Goal) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs(Goal0,
-			ModuleInfo, PredInfo, Goal).
-post_typecheck__resolve_data_cons_and_funcs(par_conj(Goals0,B) - GoalInfo,
-		ModuleInfo, PredInfo, par_conj(Goals,B) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs_list(Goals0,
-			ModuleInfo, PredInfo, Goals).
-post_typecheck__resolve_data_cons_and_funcs(if_then_else(A,If0,Then0,Else0,E)
-		- GoalInfo, ModuleInfo, PredInfo,
-		if_then_else(A,If,Then,Else,E) - GoalInfo) :-
-	post_typecheck__resolve_data_cons_and_funcs(If0, 
-			ModuleInfo, PredInfo, If),
-	post_typecheck__resolve_data_cons_and_funcs(Then0,
-			ModuleInfo, PredInfo, Then),
-	post_typecheck__resolve_data_cons_and_funcs(Else0,
-			ModuleInfo, PredInfo, Else).
-post_typecheck__resolve_data_cons_and_funcs(bi_implication(_, _) - _, _, _, _) :-
-	% these should have been expanded out by now
-	error("post_typecheck__resolve_data_cons_and_funcs: unexpected bi_implication").
-	
-:- pred post_typecheck__resolve_data_cons_and_funcs_list(list(hlds_goal)::in,
-		module_info::in, pred_info::in, list(hlds_goal)::out) is det.
-
-post_typecheck__resolve_data_cons_and_funcs_list([], _, _, []).
-post_typecheck__resolve_data_cons_and_funcs_list([Goal0 | Goal0s],
-		ModuleInfo, PredInfo, [Goal | Goals]) :-
-	post_typecheck__resolve_data_cons_and_funcs(Goal0,
-			ModuleInfo, PredInfo, Goal),
-	post_typecheck__resolve_data_cons_and_funcs_list(Goal0s,
-			ModuleInfo, PredInfo, Goals).
-
-:- pred post_typecheck__resolve_data_cons_and_funcs_cases(list(case)::in,
-		module_info::in, pred_info::in, list(case)::out) is det.
-
-post_typecheck__resolve_data_cons_and_funcs_cases([], _, _, []).
-post_typecheck__resolve_data_cons_and_funcs_cases([Case0 | Case0s],
-		ModuleInfo, PredInfo, [Case | Cases]) :-
-	Case0 = case(ConsId, IMDelta, Goal0),
-	post_typecheck__resolve_data_cons_and_funcs(Goal0,
-			ModuleInfo, PredInfo, Goal),
-	Case = case(ConsId, IMDelta, Goal),
-	post_typecheck__resolve_data_cons_and_funcs_cases(Case0s,
-			ModuleInfo, PredInfo, Cases).
-
-%-----------------------------------------------------------------------------%
-
-:- pred post_typecheck__resolve_unify_functor(prog_var, cons_id, list(prog_var),
-		unify_mode, unification, unify_context, hlds_goal_info,
-		module_info, pred_info, hlds_goal).
-:- mode post_typecheck__resolve_unify_functor(in, in, in, in, in, in,
-		in, in, in, out) is det.
-
 post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		Unification0, UnifyContext, GoalInfo0,
-		ModuleInfo0, PredInfo, Goal) :-
+		ModuleInfo0, PredInfo0, PredInfo, Goal) :-
 
-        pred_info_clauses_info(PredInfo, ClausesInfo),
+        pred_info_clauses_info(PredInfo0, ClausesInfo),
         clauses_info_vartypes(ClausesInfo, VarTypes0),
 
 	map__lookup(VarTypes0, X0, TypeOfX),
@@ -937,6 +804,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			higher_order(FuncVar, function, FullArity),
 			ArgVars, Modes, Det),
 
+		PredInfo = PredInfo0,
 		Goal = HOCall - GoalInfo0
 	;
 		%
@@ -960,7 +828,14 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% a type ambiguity error, but compiler-generated
 		% predicates are not type-checked.)
 		%
-		\+ code_util__compiler_generated(PredInfo),
+		\+ code_util__compiler_generated(PredInfo0),
+
+		%
+		% We don't do this for the clause introduced by the
+		% compiler for a field access function -- that needs
+		% to be expanded into unifications below.
+		%
+		\+ pred_info_is_field_access_function(ModuleInfo0, PredInfo0),
 
 		module_info_get_predicate_table(ModuleInfo0, PredTable),
 		predicate_table_search_func_sym_arity(PredTable,
@@ -970,7 +845,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% argument/return types which subsume the actual
 		% argument/return types of this function call
 
-		pred_info_typevarset(PredInfo, TVarSet),
+		pred_info_typevarset(PredInfo0, TVarSet),
 		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 		list__append(ArgTypes0, [TypeOfX], ArgTypes),
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
@@ -988,15 +863,340 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 
+		PredInfo = PredInfo0,
 		Goal = FuncCall - GoalInfo0
+	;
+		%
+		% Is it a call to an automatically generated field access
+		% function. This test must be after conversion of function
+		% calls into predicate calls above.
+		%
+		ConsId0 = cons(Name, Arity),
+		is_field_access_function_name(ModuleInfo0, Name, Arity,
+			AccessType, FieldName)
+	->
+		post_typecheck__finish_field_access_function(ModuleInfo0,
+			PredInfo0, PredInfo, AccessType, FieldName,
+			UnifyContext, X0, ArgVars0, GoalInfo0, Goal)
 	;
 		%
 		% ordinary construction/deconstruction unifications
 		% we leave alone
 		%
+		PredInfo = PredInfo0,
 		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
 				Unification0, UnifyContext) - GoalInfo0
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% Convert a field access function call into the equivalent unifications
+	% so that later passes do not have to handle them as a special case.
+	% The error messages from mode analysis and determinism analysis
+	% shouldn't be too much worse than if the goals were special cases.
+	%
+:- pred post_typecheck__finish_field_access_function(module_info, pred_info,
+		pred_info, field_access_type, ctor_field_name,
+		unify_context, prog_var, list(prog_var),
+		hlds_goal_info, hlds_goal).
+:- mode post_typecheck__finish_field_access_function(in, in, out, in, in,
+		in, in, in, in, out) is det.
+
+post_typecheck__finish_field_access_function(ModuleInfo, PredInfo0, PredInfo,
+		AccessType, FieldName, UnifyContext,
+		Var, Args, GoalInfo, GoalExpr - GoalInfo) :-
+	(
+		AccessType = get,
+		field_extraction_function_args(Args, TermVar),
+		post_typecheck__translate_get_function(ModuleInfo,
+			PredInfo0, PredInfo, FieldName, UnifyContext,
+			Var, TermVar, GoalInfo, GoalExpr)
+	;
+		AccessType = set,
+		field_update_function_args(Args, TermInputVar, FieldVar),
+		post_typecheck__translate_set_function(ModuleInfo,
+			PredInfo0, PredInfo, FieldName, UnifyContext,
+			FieldVar, TermInputVar, Var,
+			GoalInfo, GoalExpr)
+	).
+
+:- pred post_typecheck__translate_get_function(module_info,
+		pred_info, pred_info, ctor_field_name, unify_context, prog_var,
+		prog_var, hlds_goal_info, hlds_goal_expr).
+:- mode post_typecheck__translate_get_function(in, in, out,
+		in, in, in, in, in, out) is det.
+
+post_typecheck__translate_get_function(ModuleInfo, PredInfo0, PredInfo,
+		FieldName, UnifyContext, FieldVar, TermInputVar,
+		OldGoalInfo, GoalExpr) :-
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	map__lookup(VarTypes0, TermInputVar, TermType),
+	get_constructor_containing_field(ModuleInfo, TermType, FieldName,
+		ConsId, FieldNumber),
+
+	get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId,
+		TermType, ArgTypes, _, PredInfo0, PredInfo1),
+
+	split_list_at_index(FieldNumber, ArgTypes,
+		TypesBeforeField, _, TypesAfterField),
+
+	make_new_vars(TypesBeforeField, VarsBeforeField, PredInfo1, PredInfo2),
+	make_new_vars(TypesAfterField, VarsAfterField, PredInfo2, PredInfo),
+
+	list__append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
+
+	goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
+	create_atomic_unification_with_nonlocals(TermInputVar,
+		functor(ConsId, ArgVars), OldGoalInfo,
+		RestrictNonLocals, [FieldVar, TermInputVar],
+		UnifyContext, FunctorGoal),
+	FunctorGoal = GoalExpr - _.
+
+:- pred post_typecheck__translate_set_function(module_info,
+		pred_info, pred_info, ctor_field_name, unify_context, prog_var,
+		prog_var, prog_var, hlds_goal_info, hlds_goal_expr).
+:- mode post_typecheck__translate_set_function(in, in, out,
+		in, in, in, in, in, in, out) is det.
+
+post_typecheck__translate_set_function(ModuleInfo, PredInfo0, PredInfo,
+		FieldName, UnifyContext, FieldVar, TermInputVar, TermOutputVar,
+		OldGoalInfo, Goal) :-
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	map__lookup(VarTypes0, TermInputVar, TermType),
+
+	get_constructor_containing_field(ModuleInfo, TermType, FieldName,
+		ConsId0, FieldNumber),
+
+	get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId0,
+		TermType, ArgTypes, ExistQVars, PredInfo0, PredInfo1),
+
+	split_list_at_index(FieldNumber, ArgTypes,
+		TypesBeforeField, TermFieldType, TypesAfterField),
+
+	make_new_vars(TypesBeforeField, VarsBeforeField, PredInfo1, PredInfo2),
+	make_new_var(TermFieldType, SingletonFieldVar, PredInfo2, PredInfo3),
+	make_new_vars(TypesAfterField, VarsAfterField, PredInfo3, PredInfo),
+
+	%
+	% Build a goal to deconstruct the input.
+	%
+	list__append(VarsBeforeField, [SingletonFieldVar | VarsAfterField],
+		DeconstructArgs),
+	goal_info_get_nonlocals(OldGoalInfo, OldNonLocals),
+	list__append(VarsBeforeField, VarsAfterField, NonLocalArgs),
+	set__insert_list(OldNonLocals, NonLocalArgs,
+		DeconstructRestrictNonLocals),
+
+	create_atomic_unification_with_nonlocals(TermInputVar,
+		functor(ConsId0, DeconstructArgs), OldGoalInfo,
+		DeconstructRestrictNonLocals, [TermInputVar | DeconstructArgs],
+		UnifyContext, DeconstructGoal),
+
+	%
+	% Build a goal to construct the output.
+	%
+	list__append(VarsBeforeField, [FieldVar | VarsAfterField],
+		ConstructArgs),
+	set__insert_list(OldNonLocals, NonLocalArgs,
+		ConstructRestrictNonLocals),
+
+	% If the cons_id is existentially quantified, add a `new' prefix
+	% so that polymorphism.m adds the appropriate type_infos.
+	( ExistQVars = [] ->
+		ConsId = ConsId0
+	;
+		( ConsId0 = cons(ConsName0, ConsArity) ->
+			remove_new_prefix(ConsName, ConsName0),
+			ConsId = cons(ConsName, ConsArity)	
+		;
+			error(
+		"post_typecheck__translate_set_function: invalid cons_id")
+		)
+	),
+
+	create_atomic_unification_with_nonlocals(TermOutputVar,
+		functor(ConsId, ConstructArgs), OldGoalInfo,
+		ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
+		UnifyContext, ConstructGoal),
+	
+	Conj = conj([DeconstructGoal, ConstructGoal]) - OldGoalInfo,
+
+	% Make mode analysis treat the translated access function
+	% as an atomic goal.
+	Goal = some([], can_remove, Conj).
+
+:- pred get_cons_id_arg_types_adding_existq_tvars(module_info, cons_id,
+		(type), list(type), list(tvar), pred_info, pred_info).
+:- mode get_cons_id_arg_types_adding_existq_tvars(in, in, in,
+		out, out, in, out) is det.
+
+get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId, TermType,
+		ArgTypes, NewExistQVars, PredInfo0, PredInfo) :-
+	%
+	% Split the list of argument types at the named field. 
+	%
+	type_util__get_type_and_cons_defn(ModuleInfo, TermType,
+		ConsId, TypeDefn, ConsDefn),
+	ConsDefn = hlds_cons_defn(ExistQVars, _, ArgTypes0, _, _),
+	( ExistQVars = [] ->
+		ArgTypes1 = ArgTypes0,
+		PredInfo = PredInfo0,
+		NewExistQVars = []
+	;
+		%
+		% Rename apart the existentially quantified type variables.
+		%
+		list__length(ExistQVars, NumExistQVars),
+		pred_info_typevarset(PredInfo0, TVarSet0),
+		varset__new_vars(TVarSet0, NumExistQVars, NewExistQVars,
+			TVarSet),
+		pred_info_set_typevarset(PredInfo0, TVarSet, PredInfo),
+		map__from_corresponding_lists(ExistQVars, NewExistQVars,
+			TVarSubst),
+		term__apply_variable_renaming_to_list(ArgTypes0, TVarSubst,
+			ArgTypes1)
+	),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+	term__term_list_to_var_list(TypeParams, TypeDefnArgs),
+	( type_to_type_id(TermType, _, TypeArgs) ->
+		map__from_corresponding_lists(TypeDefnArgs, TypeArgs, TSubst)
+	;
+		error(
+	"get_cons_id_arg_types_adding_existq_tvars: type_to_type_id failed")
+
+	),
+	term__apply_substitution_to_list(ArgTypes1, TSubst, ArgTypes).
+
+:- pred split_list_at_index(int, list(T), list(T), T, list(T)).
+:- mode split_list_at_index(in, in, out, out, out) is det.
+
+split_list_at_index(Index, List, Before, At, After) :-
+	(
+		list__split_list(Index - 1, List, Before0, AtAndAfter),
+		AtAndAfter = [At0 | After0]
+	->
+		Before = Before0,
+		At = At0,
+		After = After0
+	;
+		error("post_typecheck__split_list_at_index")
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Work out which constructor of the type has an argument with the
+	% given field name.
+:- pred get_constructor_containing_field(module_info, (type), ctor_field_name,
+		cons_id, int).
+:- mode get_constructor_containing_field(in, in, in, out, out) is det.
+
+get_constructor_containing_field(ModuleInfo, TermType, FieldName,
+		ConsId, FieldNumber) :-
+	( type_to_type_id(TermType, TermTypeId0, _) ->
+		TermTypeId = TermTypeId0
+	;
+		error(
+		"get_constructor_containing_field: type_to_type_id failed")
+	),
+	module_info_types(ModuleInfo, Types),
+	map__lookup(Types, TermTypeId, TermTypeDefn),
+	hlds_data__get_type_defn_body(TermTypeDefn, TermTypeBody),
+	( TermTypeBody = du_type(Ctors, _, _, _) ->
+		get_constructor_containing_field_2(Ctors, FieldName, ConsId,
+			FieldNumber)
+	;
+		error("get_constructor_containing_field: not du type")
+	).
+
+:- pred get_constructor_containing_field_2(list(constructor),
+		ctor_field_name, cons_id, int).
+:- mode get_constructor_containing_field_2(in, in, out, out) is det.
+
+get_constructor_containing_field_2([], _, _, _) :-
+	error("get_constructor_containing_field: can't find field").
+get_constructor_containing_field_2([Ctor | Ctors], FieldName,
+		ConsId, FieldNumber) :-
+	Ctor = ctor(_, _, SymName, CtorArgs),
+	(
+		get_constructor_containing_field_3(CtorArgs,
+			FieldName, 1, FieldNumber0)
+	->
+		list__length(CtorArgs, Arity),
+		ConsId = cons(SymName, Arity),
+		FieldNumber = FieldNumber0
+	;
+		get_constructor_containing_field_2(Ctors, FieldName,
+			ConsId, FieldNumber)
+	).
+
+:- pred get_constructor_containing_field_3(list(constructor_arg),
+		ctor_field_name, int, int).
+:- mode get_constructor_containing_field_3(in, in, in, out) is semidet.
+
+get_constructor_containing_field_3([MaybeArgFieldName - _ | CtorArgs],
+		FieldName, FieldNumber0, FieldNumber) :-
+	(
+		MaybeArgFieldName = yes(ArgFieldName),
+		unqualify_name(ArgFieldName, UnqualFieldName),
+		unqualify_name(FieldName, UnqualFieldName)
+	->
+		FieldNumber = FieldNumber0
+	;
+		get_constructor_containing_field_3(CtorArgs, FieldName,
+			FieldNumber0 + 1, FieldNumber)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred create_atomic_unification_with_nonlocals(prog_var, unify_rhs,
+		hlds_goal_info, set(prog_var), list(prog_var),
+		unify_context, hlds_goal).
+:- mode create_atomic_unification_with_nonlocals(in, in,
+		in, in, in, in, out) is det.
+
+create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
+		RestrictNonLocals, VarsList, UnifyContext, Goal) :-
+	goal_info_get_context(OldGoalInfo, Context),
+	UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
+	create_atomic_unification(Var, RHS,
+		Context, UnifyMainContext, UnifySubContext, Goal0),
+	Goal0 = GoalExpr0 - GoalInfo0,
+
+	% Compute the nonlocals of the goal.
+	set__list_to_set(VarsList, NonLocals1),
+	set__intersect(RestrictNonLocals, NonLocals1, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo), 
+	Goal = GoalExpr0 - GoalInfo.
+
+:- pred make_new_vars(list(type), list(prog_var), pred_info, pred_info).
+:- mode make_new_vars(in, out, in, out) is det.
+
+make_new_vars(Types, Vars, PredInfo0, PredInfo) :-
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_varset(ClausesInfo0, VarSet0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	list__length(Types, NumVars),
+	varset__new_vars(VarSet0, NumVars, Vars, VarSet),
+	map__det_insert_from_corresponding_lists(VarTypes0,
+		Vars, Types, VarTypes),
+	clauses_info_set_varset(ClausesInfo0, VarSet, ClausesInfo1),
+	clauses_info_set_vartypes(ClausesInfo1, VarTypes, ClausesInfo),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+
+:- pred make_new_var((type), prog_var, pred_info, pred_info).
+:- mode make_new_var(in, out, in, out) is det.
+
+make_new_var(Type, Var, PredInfo0, PredInfo) :-
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_varset(ClausesInfo0, VarSet0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(VarTypes0, Var, Type, VarTypes),
+	clauses_info_set_varset(ClausesInfo0, VarSet, ClausesInfo1),
+	clauses_info_set_vartypes(ClausesInfo1, VarTypes, ClausesInfo),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

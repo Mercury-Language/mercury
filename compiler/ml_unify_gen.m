@@ -54,6 +54,7 @@
 
 :- import_module hlds_pred, hlds_module, hlds_out, builtin_ops.
 :- import_module ml_call_gen, prog_util, type_util, mode_util.
+:- import_module instmap, inst_table.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 
 :- import_module int, string, list, require, std_util, term, varset.
@@ -355,8 +356,10 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	{ MLDS_ArgTypes0 = list__map(mercury_type_to_mlds_type, ArgTypes) },
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, ModuleInfo,
-		ArgRvals0) },
+	{ ml_gen_info_get_instmap(Info, InstMap) },
+	{ ml_gen_info_get_inst_table(Info, InstTable) },
+	{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, InstMap, InstTable,
+		ModuleInfo, ArgRvals0) },
 
 	%
 	% Compute the rval which holds the number of arguments
@@ -483,7 +486,8 @@ ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		_PredInfo, ProcInfo) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
-	{ proc_info_argmodes(ProcInfo, ProcArgModes) },
+	{ proc_info_argmodes(ProcInfo, ProcModes) },
+	{ ProcModes = argument_modes(InstTable, ProcArgModes) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 	{ proc_info_varset(ProcInfo, ProcVarSet) },
 	{ ProcArity = list__length(ProcHeadVars) },
@@ -520,8 +524,14 @@ ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
 	},
 	{ WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
 		list__length(WrapperHeadVars)) },
-	{ WrapperParams0 = ml_gen_params(ModuleInfo, WrapperHeadVarNames,
-		WrapperBoxedArgTypes, WrapperArgModes, CodeModel) },
+	% The argument modes do not depend on the alias substitutions
+	% in the instmap.
+	{ instmap__init_reachable(InstMap) },
+/*###530 [cc] In clause for predicate `ml_unify_gen:ml_gen_closure_wrapper/10':%%%*/
+/*###530 [cc] error: undefined symbol `ml_gen_params/7'.%%%*/
+	{ WrapperParams0 = ml_gen_params(ModuleInfo,
+		WrapperHeadVarNames, WrapperBoxedArgTypes, WrapperArgModes,
+		InstMap, InstTable, CodeModel) },
 
 	% then insert the `closure_arg' parameter
 	{ ClosureArg = data(var("closure_arg")) - mlds__generic_env_ptr_type },
@@ -663,7 +673,12 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, Lvals) -->
 		ml_qualify_var(Name, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) ->
+		{ ml_gen_info_get_instmap(Info, InstMap) },
+		{ ml_gen_info_get_inst_table(Info, InstTable) },
+		{
+			mode_to_arg_mode(InstMap, InstTable,
+				ModuleInfo, Mode, Type, top_in)
+		->
 			Lval = VarLval
 		;
 			% output arguments are passed by reference,
@@ -736,8 +751,10 @@ ml_gen_new_object(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	{ MLDS_ArgTypes0 = list__map(mercury_type_to_mlds_type, ArgTypes) },
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, ModuleInfo,
-		ArgRvals0) },
+	{ ml_gen_info_get_instmap(Info, InstMap) },
+	{ ml_gen_info_get_inst_table(Info, InstTable) },
+	{ ml_gen_cons_args(ArgLvals, ArgTypes, ArgModes, InstMap, InstTable,
+		ModuleInfo, ArgRvals0) },
 
 	% 
 	% If there is a secondary tag, it goes in the first field
@@ -791,11 +808,15 @@ ml_sizeof_word_rval = SizeofWordRval :-
 	SizeofWordRval = lval(var(qual(MLDS_Module, "SIZEOF_WORD"))).
 
 :- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
-		list(uni_mode), module_info, list(mlds__rval)).
-:- mode ml_gen_cons_args(in, in, in, in, out) is det.
+		list(uni_mode), instmap, inst_table,
+		module_info, list(mlds__rval)).
+:- mode ml_gen_cons_args(in, in, in, in, in, in, out) is det.
 
-ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
-	( ml_gen_cons_args_2(Lvals, Types, Modes, ModuleInfo, Rvals0) ->
+ml_gen_cons_args(Lvals, Types, Modes, InstMap, InstTable, ModuleInfo, Rvals) :-
+	(
+		ml_gen_cons_args_2(Lvals, Types, Modes, InstMap, InstTable,
+			ModuleInfo, Rvals0)
+	->
 		Rvals = Rvals0
 	;
 		error("ml_gen_cons_args: length mismatch")
@@ -809,20 +830,24 @@ ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
 	% null value.  (XXX perhaps we should have a special `null' rval.)
 
 :- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_type),
-		list(uni_mode), module_info, list(mlds__rval)).
-:- mode ml_gen_cons_args_2(in, in, in, in, out) is semidet.
+		list(uni_mode), instmap, inst_table,
+		module_info, list(mlds__rval)).
+:- mode ml_gen_cons_args_2(in, in, in, in, in, in, out) is semidet.
 
-ml_gen_cons_args_2([], [], [], _, []).
+ml_gen_cons_args_2([], [], [], _, _, _, []).
 ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
-			ModuleInfo, [Rval|Rvals]) :-
+			InstMap, InstTable, ModuleInfo, [Rval|Rvals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
-	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
+	(
+		mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
+			(RI -> RF), Type, top_in) ->
 		Rval = lval(Lval)
 	;
 		% XXX perhaps we should have a special `null' rval.
 		Rval = const(int_const(0))
 	),
-	ml_gen_cons_args_2(Lvals, Types, UniModes, ModuleInfo, Rvals).
+	ml_gen_cons_args_2(Lvals, Types, UniModes, InstMap, InstTable,
+		ModuleInfo, Rvals).
 
 %-----------------------------------------------------------------------------%
 
@@ -980,8 +1005,12 @@ ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
 	{ Mode = ((LI - RI) -> (LF - RF)) },
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode) },
-	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode) },
+	{ ml_gen_info_get_instmap(Info, InstMap) },
+	{ ml_gen_info_get_inst_table(Info, InstTable) },
+	{ mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
+		(LI -> LF), ArgType, LeftMode) },
+	{ mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
+		(RI -> RF), ArgType, RightMode) },
 	(
 		% skip dummy argument types, since they will not have
 		% been declared
@@ -1071,7 +1100,7 @@ ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
 			[SetTagTestResult, IfStatement])
 	}.
 
-	% ml_gen_tag_test(Var, ConsId, Defns, Statements, Expression):
+	% ml_gen_tag_test_rval(Var, ConsId, Defns, Statements, Expression):
 	%	Generate code to perform a tag test.
 	%
 	%	The test checks whether Var has the functor specified by

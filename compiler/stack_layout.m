@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 University of Melbourne.
+% Copyright (C) 1997-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -304,9 +304,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
 		stack_layout__get_next_cell_number(ProcVectorCellNum,
 			LayoutInfo3, LayoutInfo4),
+		Reuse = no,
 		ProcLayoutVector = create(0, ProcLayoutArgs,
 			uniform(yes(data_ptr)), must_be_static, 
-			ProcVectorCellNum, "proc_layout_vector"),
+			ProcVectorCellNum, "proc_layout_vector", Reuse),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
 			LineNumbers),
 		( LineNumbers = yes ->
@@ -385,9 +386,10 @@ stack_layout__format_label_tables(LabelTableMap, NumSourceFiles,
 		SourceFileRvals, LayoutInfo0, LayoutInfo1),
 	stack_layout__get_next_cell_number(SourceFileVectorCellNum,
 		LayoutInfo1, LayoutInfo),
+	Reuse = no,
 	SourceFilesVector = create(0, SourceFileRvals,
 		uniform(yes(data_ptr)), must_be_static, 
-		SourceFileVectorCellNum, "source_files_vector").
+		SourceFileVectorCellNum, "source_files_vector", Reuse).
 
 :- pred stack_layout__format_label_table(pair(string, label_table)::in,
 	maybe(rval)::out, stack_layout_info::in, stack_layout_info::out) is det.
@@ -437,16 +439,17 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 	list__map(ProjectLineNos, FlatLineNoList, LineNoRvals),
 	stack_layout__get_next_cell_number(LineNoVectorCellNum,
 		LayoutInfo1, LayoutInfo2),
+	Reuse = no,
 	LineNoVector = create(0, LineNoRvals,
 		uniform(yes(int_least16)), must_be_static, 
-		LineNoVectorCellNum, "line_number_vector"),
+		LineNoVectorCellNum, "line_number_vector", Reuse),
 
 	list__map(ProjectLabels, FlatLineNoList, LabelRvals),
 	stack_layout__get_next_cell_number(LabelsVectorCellNum,
 		LayoutInfo2, LayoutInfo3),
 	LabelsVector = create(0, LabelRvals,
 		uniform(yes(data_ptr)), must_be_static, 
-		LabelsVectorCellNum, "label_vector"),
+		LabelsVectorCellNum, "label_vector", Reuse),
 
 % We do not include the callees vector in the table because it makes references
 % to the proc layouts of procedures from other modules without knowing whether
@@ -468,7 +471,7 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 %		LayoutInfo3, LayoutInfo4),
 %	CalleesVector = create(0, CalleeRvals,
 %		uniform(no), must_be_static, 
-%		CalleesVectorCellNum, "callee_vector"),
+%		CalleesVectorCellNum, "callee_vector", Reuse),
 
 	SourceFileRvals = [
 		yes(const(string_const(FileName))),
@@ -483,7 +486,7 @@ stack_layout__format_label_table(FileName - LineNoMap, yes(SourceFileVector),
 		initial([1 - yes(string), 1 - yes(integer),
 			2 - yes(data_ptr)], none),
 		must_be_static, 
-		SourceFileVectorCellNum, "source_file_vector").
+		SourceFileVectorCellNum, "source_file_vector", Reuse).
 
 :- pred stack_layout__flatten_label_table(
 	assoc_list(int, list(line_no_info))::in,
@@ -969,9 +972,10 @@ stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, CNum0, CNum) :-
 		stack_layout__construct_tvar_rvals(TVarLocnMap,
 			Vector, VectorTypes),
 		CNum is CNum0 + 1,
+		Reuse = no,
 		TypeParamRval = create(0, Vector, VectorTypes,
 			must_be_static, CNum,
-			"stack_layout_type_param_locn_vector")
+			"stack_layout_type_param_locn_vector", Reuse)
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -1164,9 +1168,10 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 			ByteArrayLength - yes(uint_least8)] },
 	{ list__append(AllTypeTypes, LocnArgTypes, ArgTypes) },
 	stack_layout__get_next_cell_number(CNum1),
+	{ Reuse = no },
 	{ TypeLocnVector = create(0, TypeLocnVectorRvals,
 		initial(ArgTypes, none), must_be_static, CNum1,
-		"stack_layout_locn_vector") },
+		"stack_layout_locn_vector", Reuse) },
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
 	( { TraceStackLayout = yes } ->
@@ -1176,7 +1181,7 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 		stack_layout__get_next_cell_number(CNum2),
 		{ NameVector = create(0, VarNumNameRvals,
 			uniform(yes(uint_least16)), must_be_static,
-			CNum2, "stack_layout_num_name_vector") }
+			CNum2, "stack_layout_num_name_vector", Reuse) }
 	;
 		{ NameVector = const(int_const(0)) }
 	).

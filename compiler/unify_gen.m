@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -316,8 +316,9 @@ unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
+	{ Reuse = no },
 	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
+		CellNo, VarTypeMsg, Reuse) },
 	code_info__cache_expression(Var, Expr),
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes,
 		InstMap0, InstMap, InstTable, ModuleInfo, Var, UnsharedTag,
@@ -340,8 +341,9 @@ unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
+	{ Reuse = no },
 	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg) },
+		CellNo, VarTypeMsg, Reuse) },
 	code_info__cache_expression(Var, Expr),
 	unify_gen__aliased_vars_set_location(Args, ArgTypes, Modes, InstMap0,
 		InstMap, InstTable, ModuleInfo, Var, Bits0, 1, Code0),
@@ -552,9 +554,10 @@ unify_gen__generate_construction_2(
 			ClosureLayoutArgTypes, CNum0, CNum) },
 		code_info__set_cell_count(CNum),
 		code_info__get_next_cell_number(ClosureLayoutCellNo),
+		{ Reuse = no },
 		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals,
 			ClosureLayoutArgTypes, must_be_static,
-			ClosureLayoutCellNo, "closure_layout") },
+			ClosureLayoutCellNo, "closure_layout", Reuse) },
 		{ list__length(Args, NumArgs) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
@@ -565,8 +568,9 @@ unify_gen__generate_construction_2(
 			| PredArgs
 		] },
 		code_info__get_next_cell_number(ClosureCellNo),
+		{ Reuse = no },
 		{ Value = create(0, Vector, uniform(no), can_be_either,
-			ClosureCellNo, "closure") },
+			ClosureCellNo, "closure", Reuse) },
 		{ NumExtraProcArgs = 0 },
 		{ SkipFirstArg = no }
 	),

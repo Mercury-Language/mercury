@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,7 +83,7 @@
 :- implementation.
 
 :- import_module hlds_goal, prog_data, inst_table.
-:- import_module hlds_data, make_hlds, globals, options, type_util.
+:- import_module hlds_data, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
 :- import_module list, map, set.

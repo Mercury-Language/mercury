@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -318,6 +318,9 @@ opt_debug__dump_vninstr(vn_mark_hp(Vnlval), Str) :-
 opt_debug__dump_vninstr(vn_restore_hp(Vn), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	string__append_list(["restore_hp(", Vn_str, ")"], Str).
+opt_debug__dump_vninstr(vn_free_heap(Vn), Str) :-
+	opt_debug__dump_vn(Vn, Vn_str),
+	string__append_list(["free_heap(", Vn_str, ")"], Str).
 opt_debug__dump_vninstr(vn_store_ticket(Vnlval), Str) :-
 	opt_debug__dump_vnlval(Vnlval, V_str),
 	string__append_list(["store_ticket(", V_str, ")"], Str).
@@ -634,7 +637,7 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, _, U, L, _), Str) :-
+opt_debug__dump_rval(create(T, MA, _, U, L, _, _), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	(
@@ -919,6 +922,9 @@ opt_debug__dump_instr(mark_hp(Lval), Str) :-
 opt_debug__dump_instr(restore_hp(Rval), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["restore_hp(", R_str, ")"], Str).
+opt_debug__dump_instr(free_heap(Rval), Str) :-
+	opt_debug__dump_rval(Rval, R_str),
+	string__append_list(["free_heap(", R_str, ")"], Str).
 opt_debug__dump_instr(store_ticket(Lval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	string__append_list(["store_ticket(", L_str, ")"], Str).

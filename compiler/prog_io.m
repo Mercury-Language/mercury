@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1613,7 +1613,7 @@ convert_constructor(ModuleName, Term0, Result) :-
 	),
 	parse_implicitly_qualified_term(ModuleName,
 		Term5, Term0, "constructor definition", ok(F, As)),
-	convert_constructor_arg_list(As, Args),
+	convert_constructor_arg_list(ModuleName, As, Args),
 	Result = ctor(ExistQVars, Constraints, F, Args).
 
 %-----------------------------------------------------------------------------%
@@ -2852,22 +2852,25 @@ make_op_specifier(X, sym(X)).
 parse_type(T0, ok(T)) :-
 	term__coerce(T0, T).
 
-:- pred convert_constructor_arg_list(list(term), list(constructor_arg)).
-:- mode convert_constructor_arg_list(in, out) is det.
+:- pred convert_constructor_arg_list(module_name,
+		list(term), list(constructor_arg)).
+:- mode convert_constructor_arg_list(in, in, out) is semidet.
 
-convert_constructor_arg_list([], []).
-convert_constructor_arg_list([Term | Terms], [Arg | Args]) :-
+convert_constructor_arg_list(_, [], []).
+convert_constructor_arg_list(ModuleName, [Term | Terms], [Arg | Args]) :-
 	(
-		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _),
-		NameTerm = term__functor(term__atom(Name), [], _)
+		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _)
 	->
+		parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
+			"field name", NameResult),
+		NameResult = ok(SymName, []),
 		convert_type(TypeTerm, Type),
-		Arg = Name - Type
+		Arg = yes(SymName) - Type
 	;
 		convert_type(Term, Type),
-		Arg = "" - Type
+		Arg = no - Type
 	),
-	convert_constructor_arg_list(Terms, Args).
+	convert_constructor_arg_list(ModuleName, Terms, Args).
 
 :- pred convert_type(term, type).
 :- mode convert_type(in, out) is det.

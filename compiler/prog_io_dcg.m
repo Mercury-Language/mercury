@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -170,6 +170,13 @@ parse_dcg_goal_2(".", [X, Xs], Context, VarSet0, N0, Var0,
 
 	% Call to '='/1 - unify argument with DCG input arg.
 parse_dcg_goal_2("=", [A0], Context, VarSet, N, Var, Goal, VarSet, N, Var) :-
+	term__coerce(A0, A),
+	Goal = unify(A, term__variable(Var)) - Context.
+
+	% Call to ':='/1 - unify argument with DCG output arg.
+parse_dcg_goal_2(":=", [A0], Context, VarSet0, N0, _Var0,
+		Goal, VarSet, N, Var) :-
+	new_dcg_var(VarSet0, N0, VarSet, N, Var),
 	term__coerce(A0, A),
 	Goal = unify(A, term__variable(Var)) - Context.
 

@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -476,7 +476,7 @@ goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
 :- mode goedel_output_func_type(in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
-	{ list__map(lambda([Type::in, Arg::out] is det, (Arg = "" - Type)),
+	{ list__map((pred(Type::in, Arg::out) is det :- Arg = no - Type),
 		Types, Args) },
 	goedel_output_ctors([ctor([], [], FuncName, Args)], RetType, VarSet).
 

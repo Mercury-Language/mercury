@@ -25,7 +25,7 @@
 
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
-:- pred ml_gen_generic_call(generic_call, list(prog_var), list(mode),
+:- pred ml_gen_generic_call(generic_call, list(prog_var), argument_modes,
 		code_model, prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_generic_call(in, in, in, in, in, out, out, in, out) is det.
@@ -68,6 +68,7 @@
 :- import_module hlds_module.
 :- import_module builtin_ops.
 :- import_module type_util, mode_util.
+:- import_module instmap, inst_table.
 
 :- import_module bool, string, std_util, term, varset, require.
 
@@ -80,7 +81,8 @@
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
 	%
-ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
+
+ml_gen_generic_call(GenericCall, ArgVars, Modes, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
 	% allocate some fresh type variables to use as the Mercury types
@@ -98,9 +100,12 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
+	{ ml_gen_info_get_instmap(MLDSGenInfo, InstMap) },
+	{ ml_gen_info_get_inst_table(MLDSGenInfo, InstTable) },
 	{ ArgNames = ml_gen_var_names(VarSet, ArgVars) },
+	{ Modes = argument_modes(_, ArgModes) },
 	{ Params0 = ml_gen_params(ModuleInfo, ArgNames,
-		BoxedArgTypes, ArgModes, CodeModel) },
+		BoxedArgTypes, ArgModes, InstMap, InstTable, CodeModel) },
 
 	%
 	% insert the `closure_arg' parameter
@@ -138,8 +143,8 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	ml_gen_var_list(ArgVars, ArgLvals),
 	ml_variable_types(ArgVars, ActualArgTypes),
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, BoxedArgTypes,
-		ArgModes, Context, InputRvals, OutputLvals, ConvArgDecls,
-		ConvOutputStatements),
+		ArgModes, InstMap, InstTable, Context, InputRvals, OutputLvals,
+		ConvArgDecls, ConvOutputStatements),
 	{ ClosureRval = unop(unbox(ClosureArgType), lval(ClosureLval)) },
 
 	%
@@ -240,16 +245,20 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
 	{ pred_info_arg_types(PredInfo, PredArgTypes) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
 
 	%
 	% Generate code to box/unbox the arguments
 	% and compute the list of properly converted rvals/lvals
 	% to pass as the function call's arguments and return values
 	%
+	{ Modes = argument_modes(InstTable, ArgModes) },
+	% The modes of the arguments do not depend on the argument
+	% substitutions in the instmap.
+	{ instmap__init_reachable(InstMap) },
 	ml_gen_arg_list(ArgNames, ArgLvals, ActualArgTypes, PredArgTypes,
-		ArgModes, Context, InputRvals, OutputLvals, ConvArgDecls,
-		ConvOutputStatements),
+		ArgModes, InstMap, InstTable, Context,
+		InputRvals, OutputLvals, ConvArgDecls, ConvOutputStatements),
 
 	%
 	% Construct a closure to generate the call
@@ -358,14 +367,16 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 % Generate rvals and lvals for the arguments of a procedure call
 %
 :- pred ml_gen_arg_list(list(var_name), list(mlds__lval), list(prog_type),
-		list(prog_type), list(mode), prog_context, list(mlds__rval),
-		list(mlds__lval), mlds__defns, mlds__statements,
+		list(prog_type), list(mode), instmap, inst_table,
+		prog_context, list(mlds__rval), list(mlds__lval),
+		mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_arg_list(in, in, in, in, in, in, out, out, out, out,
+:- mode ml_gen_arg_list(in, in, in, in, in, in, in, in, out, out, out, out,
 		in, out) is det.
 
-ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
-		InputRvals, OutputLvals, ConvDecls, ConvOutputStatements) -->
+ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
+		InstMap, InstTable, Context, InputRvals,
+		OutputLvals, ConvDecls, ConvOutputStatements) -->
 	(
 		{ VarNames = [] },
 		{ VarLvals = [] },
@@ -385,12 +396,14 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
 		{ Modes = [Mode | Modes1] }
 	->
 		ml_gen_arg_list(VarNames1, VarLvals1,
-			CallerTypes1, CalleeTypes1, Modes1, Context,
-			InputRvals1, OutputLvals1,
+			CallerTypes1, CalleeTypes1, Modes1, InstMap, InstTable,
+			Context, InputRvals1, OutputLvals1,
 			ConvDecls1, ConvOutputStatements1),
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-		( { type_util__is_dummy_argument_type(CalleeType) } ->
+		(
+			{ type_util__is_dummy_argument_type(CalleeType) }
+		->
 			%
 			% exclude arguments of type io__state etc.
 			%
@@ -398,7 +411,10 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes, Context,
 			{ OutputLvals = OutputLvals1 },
 			{ ConvDecls = ConvDecls1 },
 			{ ConvOutputStatements = ConvOutputStatements1 }
-		; { mode_to_arg_mode(ModuleInfo, Mode, CalleeType, top_in) } ->
+		;
+			{ mode_to_arg_mode(InstMap, InstTable, ModuleInfo,
+				Mode, CalleeType, top_in) }
+		->
 			%
 			% it's an input argument
 			%
@@ -547,7 +563,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			{ ConvStatements = [AssignStatement] }
 		)
 	).
-	
+
 %-----------------------------------------------------------------------------%
 %
 % Code for builtins

@@ -189,12 +189,20 @@ stored in the io__state, using the type globals defined in globals.m.
 	</ul>
  
 
-<li> reading and writing of optimization interfaces (intermod.m). <br>
+<li> reading and writing of optimization interfaces
+     (intermod.m and trans_opt.m). <br>
 	
 	&lt;module&gt;.opt contains clauses for exported preds suitable for
 	inlining or higher-order specialization. The `.opt' file for the
 	current module is written after type-checking. `.opt' files
 	for imported modules are read here.
+	&lt;module&gt;.opt contains termination analysis information
+	for exported preds (eventually it ought to contain other
+	"transitive" information too, e.g. for optimization, but
+	currently it is only used for termination analysis).
+	`.trans_opt' files for imported modules are read here.
+	The `.trans_opt' file for the current module is written
+	after the end of semantic analysis.
 
 <li> expansion of equivalence types (equiv_type.m) <br>
 
@@ -442,6 +450,13 @@ so that the compiler does the right thing for options such as
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
 
+<dt> stratification checking
+
+	<dd>
+	The module stratify.m implements the `--warn-non-stratification'
+	warning, which is an optional warning that checks for loops
+	through negation.
+
 <dt> simplification (simplify.m)
 
 	<dd>
@@ -524,6 +539,16 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   value of the higher-order/type_info/typeclass_info arguments are known
   (higher_order.m)
 
+<li> attempt to introduce accumulators (accumulator.m).  This optimizes
+  procedures whose tail consists of independent associative computations
+  or independant chains of commutative computations into a tail
+  recursive form by the introduction of accumulators.  If lco is turned
+  on it can also transform some procedures so that only construction
+  unifications are after the recursive call.  This pass must come before
+  lco, unused_args (eliminating arguments makes it hard to relate the
+  code back to the assertion) and inlining (can make the associative
+  call disappear).
+
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
 <li> pushing constraints as far left as possible (constraint.m);
@@ -553,14 +578,6 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
   often unused.
-
-<li> attempt to introduce accumulators (accumulator.m).  This optimizes
-  procedures whose tail consists of independent associative computations
-  or independant chains of commutative computations into a tail
-  recursive form by the introduction of accumulators.  If lco is turned
-  on it can also transform some procedures so that only construction
-  unifications are after the recursive call.  This pass must come before
-  lco.
 
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
@@ -1083,6 +1100,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-12-22 02:39:51 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-01-17 22:56:01 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -240,6 +240,12 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 			Templocs0, Templocs, Params, FlushInstrs),
 		vn_table__set_current_value(vn_hp, Vn, VnTables1, VnTables),
 		Instr = restore_hp(Rval) - "",
+		list__append(FlushInstrs, [Instr], Instrs)
+	;
+		Vn_instr = vn_free_heap(Vn),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
+			Templocs0, Templocs, Params, FlushInstrs),
+		Instr = free_heap(Rval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_store_ticket(Vnlval),
@@ -693,7 +699,9 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 	;
 		Vnrval = vn_create(Tag, MaybeRvals, ArgTypes, StatDyn,
 			Label, Msg),
-		Rval = create(Tag, MaybeRvals, ArgTypes, StatDyn, Label, Msg),
+		Reuse = no,
+		Rval = create(Tag, MaybeRvals, ArgTypes, StatDyn,
+			Label, Msg, Reuse),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = []

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,7 +693,7 @@ opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).
 opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
-opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _, _), Refers) :-
+opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _, _, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
 opt_util__rval_refers_stackvars(mkword(_, Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
@@ -843,6 +843,14 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		)
 	;
 		Uinstr0 = restore_hp(Rval),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = free_heap(Rval),
 		opt_util__rval_refers_stackvars(Rval, Use),
 		( Use = yes ->
 			Need = yes
@@ -1007,6 +1015,7 @@ opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_hp(_, _, _, _), no).
 opt_util__can_instr_branch_away(mark_hp(_), no).
 opt_util__can_instr_branch_away(restore_hp(_), no).
+opt_util__can_instr_branch_away(free_heap(_), no).
 opt_util__can_instr_branch_away(store_ticket(_), no).
 opt_util__can_instr_branch_away(reset_ticket(_, _), no).
 opt_util__can_instr_branch_away(discard_ticket, no).
@@ -1071,6 +1080,7 @@ opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_hp(_, _, _, _), yes).
 opt_util__can_instr_fall_through(mark_hp(_), yes).
 opt_util__can_instr_fall_through(restore_hp(_), yes).
+opt_util__can_instr_fall_through(free_heap(_), yes).
 opt_util__can_instr_fall_through(store_ticket(_), yes).
 opt_util__can_instr_fall_through(reset_ticket(_, _), yes).
 opt_util__can_instr_fall_through(discard_ticket, yes).
@@ -1115,6 +1125,7 @@ opt_util__can_use_livevals(if_val(_, _), yes).
 opt_util__can_use_livevals(incr_hp(_, _, _, _), no).
 opt_util__can_use_livevals(mark_hp(_), no).
 opt_util__can_use_livevals(restore_hp(_), no).
+opt_util__can_use_livevals(free_heap(_), no).
 opt_util__can_use_livevals(store_ticket(_), no).
 opt_util__can_use_livevals(reset_ticket(_, _), no).
 opt_util__can_use_livevals(discard_ticket, no).
@@ -1176,6 +1187,7 @@ opt_util__instr_labels_2(if_val(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(incr_hp(_, _, _, _), [], []).
 opt_util__instr_labels_2(mark_hp(_), [], []).
 opt_util__instr_labels_2(restore_hp(_), [], []).
+opt_util__instr_labels_2(free_heap(_), [], []).
 opt_util__instr_labels_2(store_ticket(_), [], []).
 opt_util__instr_labels_2(reset_ticket(_, _), [], []).
 opt_util__instr_labels_2(discard_ticket, [], []).
@@ -1233,6 +1245,7 @@ opt_util__possible_targets(if_val(_, CodeAddr), Targets) :-
 opt_util__possible_targets(incr_hp(_, _, _, _), []).
 opt_util__possible_targets(mark_hp(_), []).
 opt_util__possible_targets(restore_hp(_), []).
+opt_util__possible_targets(free_heap(_), []).
 opt_util__possible_targets(store_ticket(_), []).
 opt_util__possible_targets(reset_ticket(_, _), []).
 opt_util__possible_targets(discard_ticket, []).
@@ -1280,6 +1293,7 @@ opt_util__instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, Rval, _), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
+opt_util__instr_rvals_and_lvals(free_heap(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(store_ticket(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(reset_ticket(Rval, _Reason), [Rval], []).
 opt_util__instr_rvals_and_lvals(discard_ticket, [], []).
@@ -1417,6 +1431,8 @@ opt_util__count_temps_instr(incr_hp(Lval, _, Rval, _), R0, R, F0, F) :-
 opt_util__count_temps_instr(mark_hp(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
 opt_util__count_temps_instr(restore_hp(Rval), R0, R, F0, F) :-
+	opt_util__count_temps_rval(Rval, R0, R, F0, F).
+opt_util__count_temps_instr(free_heap(Rval), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(store_ticket(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
@@ -1580,7 +1596,7 @@ opt_util__touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
 opt_util__touches_nondet_ctrl_rval(lval(Lval), Touch) :-
 	opt_util__touches_nondet_ctrl_lval(Lval, Touch).
 opt_util__touches_nondet_ctrl_rval(var(_), no).
-opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _, _), no).
+opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _, _, _), no).
 opt_util__touches_nondet_ctrl_rval(mkword(_, Rval), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
 opt_util__touches_nondet_ctrl_rval(const(_), no).
@@ -1662,7 +1678,7 @@ opt_util__rval_free_of_lval(lval(Lval), Forbidden) :-
 	opt_util__rvals_free_of_lval(Rvals, Forbidden).
 opt_util__rval_free_of_lval(var(_), _) :-
 	error("found var in opt_util__rval_free_of_lval").
-opt_util__rval_free_of_lval(create(_, _, _, _, _, _), _).
+opt_util__rval_free_of_lval(create(_, _, _, _, _, _, _), _).
 opt_util__rval_free_of_lval(mkword(_, Rval), Forbidden) :-
 	opt_util__rval_free_of_lval(Rval, Forbidden).
 opt_util__rval_free_of_lval(const(_), _).
@@ -1827,6 +1843,15 @@ opt_util__replace_labels_instr(restore_hp(Rval0), ReplMap, ReplData,
 		ReplData = no,
 		Rval = Rval0
 	).
+opt_util__replace_labels_instr(free_heap(Rval0), ReplMap, ReplData,
+		free_heap(Rval)) :-
+	(
+		ReplData = yes,
+		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)
+	;
+		ReplData = no,
+		Rval = Rval0
+	).
 opt_util__replace_labels_instr(store_ticket(Lval0), ReplMap, ReplData,
 		store_ticket(Lval)) :-
 	(
@@ -1961,8 +1986,9 @@ opt_util__replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
 opt_util__replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
 	opt_util__replace_labels_lval(Lval0, ReplMap, Lval).
 opt_util__replace_labels_rval(var(Var), _, var(Var)).
-opt_util__replace_labels_rval(create(Tag, Rvals, ArgTypes, StatDyn, N, Msg), _,
-		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg)).
+opt_util__replace_labels_rval(
+		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg, Reuse), _,
+		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg, Reuse)).
 opt_util__replace_labels_rval(mkword(Tag, Rval0), ReplMap, mkword(Tag, Rval)) :-
 	opt_util__replace_labels_rval(Rval0, ReplMap, Rval).
 opt_util__replace_labels_rval(const(Const0), ReplMap, const(Const)) :-

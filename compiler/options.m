@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,7 @@
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
+		;	inhibit_accumulator_warnings
 		;	halt_at_warn
 		;	halt_at_syntax_errors
 		;	warn_singleton_vars
@@ -162,7 +163,8 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
-		;	highlevel_c
+		;	highlevel_code
+		;	highlevel_data
 		;	gcc_nested_functions
 		;	unboxed_float
 		;	sync_term_size % in words
@@ -404,6 +406,7 @@ option_defaults(Option, Default) :-
 option_defaults_2(warning_option, [
 		% Warning Options
 	inhibit_warnings	-	bool_special,
+	inhibit_accumulator_warnings -	bool(no),
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
 	%
@@ -553,7 +556,8 @@ option_defaults_2(compilation_model_option, [
 	type_ctor_layout	-	bool(yes),
 	type_ctor_functors	-	bool(yes),
 	rtti_line_numbers	-	bool(yes),
-	highlevel_c		-	bool(no),
+	highlevel_code		-	bool(no),
+	highlevel_data		-	bool(no),
 	gcc_nested_functions	-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -763,6 +767,7 @@ short_option('?', 			help).
 
 % warning options
 long_option("inhibit-warnings",		inhibit_warnings).
+long_option("inhibit-accumulator-warnings",	inhibit_accumulator_warnings).
 long_option("halt-at-warn",		halt_at_warn).
 long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
@@ -908,10 +913,14 @@ long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
 long_option("type-ctor-functors",	type_ctor_functors).
 long_option("rtti-line-numbers",	rtti_line_numbers).
-long_option("highlevel-C",		highlevel_c).
-long_option("highlevel-c",		highlevel_c).
-long_option("high-level-C",		highlevel_c).
-long_option("high-level-c",		highlevel_c).
+long_option("highlevel-code",		highlevel_code).
+long_option("high-level-code",		highlevel_code).
+long_option("highlevel-C",		highlevel_code).
+long_option("highlevel-c",		highlevel_code).
+long_option("high-level-C",		highlevel_code).
+long_option("high-level-c",		highlevel_code).
+long_option("highlevel-data",		highlevel_data).
+long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("unboxed-float",		unboxed_float).
 
@@ -1174,6 +1183,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 		:-
 	bool__not(Inhibit, Enable),
 	override_options([
+			inhibit_accumulator_warnings	-	bool(Inhibit),
 			warn_singleton_vars	-	bool(Enable),
 			warn_overlapping_scopes	-	bool(Enable),
 			warn_det_decls_too_lax	-	bool(Enable),
@@ -1417,6 +1427,9 @@ options_help_warning -->
 		"\tThis option causes the compiler to halt immediately",
 		"\tafter syntax checking and not do any semantic checking",
 		"\tif it finds any syntax errors in the program.",
+		"--inhibit-accumulator-warnings",
+		"\tDon't warn about argument order rearrangement caused",
+		"\tby --introduce-accumulators.",
 		"--no-warn-singleton-variables",
 		"\tDon't warn about variables which only occur once.",
 		"--no-warn-overlapping-scopes",
@@ -1732,8 +1745,8 @@ options_help_compilation_model -->
 		"\tSelect the compilation model. The <grade> should be one of",
 		"\t`none', `reg', `jump', `asm_jump', `fast', `asm_fast',",
 % These grades are not yet implemented.
-% The --high-level-c option is not yet documented.
-%		"\t`ansi', `nest'",
+% The --high-level-code option is not yet documented.
+%		"\t`hl', `hl_nest', `hlc', `hlc_nest'",
 		"\tor one of those with `.gc', `.prof', `.proftime',",
 		"\t`.profcalls', `.tr', `.sa', `.debug', and/or `.pic_reg'",
 		"\tappended (in that order).",
@@ -1745,31 +1758,39 @@ options_help_compilation_model -->
 		"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tglobal register variables extension.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
+% The --high-level-code option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-code' option is enabled.",
 		"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
 		"--no-gcc-non-local-gotos\t(grades: none, reg)",
 		"\tSpecify whether or not to use GNU C's",
 		"\t""labels as values"" extension.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
+% The --high-level-code option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-code' option is enabled.",
 		"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
 		"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tasm extensions for inline assembler labels.",
-% The --high-level-c option is not yet documented.
-%		"\tThis option is ignored if the `--high-level-c' option is enabled.",
-% The --high-level-c option is not yet documented,
+% The --high-level-code option is not yet documented.
+%		"\tThis option is ignored if the `--high-level-code' option is enabled.",
+% The --high-level-code option is not yet documented,
 % because the MLDS back-end is not yet complete enough to be useful.
-%		"--high-level-c\t\t\t(grades: ansi, nest)",
+%		"--high-level-code\t\t\t(grades: hl, hlc, hl_nest, hlc_nest)",
 %		"\tUse an alternative back-end that generates high-level C code",
 %		"\trather than the very low-level C code that is generated by our",
 %		"\toriginal back-end.",
+% The --high-level-data option is not yet documented,
+% because it is not yet implemented
+%		"--high-level-data\t\t\t(grades: hl, hl_nest)",
+%		"\tUse an alternative higher-level data representation.",
+% The --high-level option is not yet documented,
+% because --high-level-data is not yet implemented
+%		"--high-level\t\t\t(grades: hl, hl_nest)",
+%		"\tAn abbreviation for `--high-level-code --high-level-data'.",
 % The --gcc-nested-functions option is not yet documented,
-% because it is not yet implemented.
-%		"--gcc-nested-functions\t\t(grades: nest)",
+% because the MLDS back-end is not yet complete enough to be useful.
+%		"--gcc-nested-functions\t\t(grades: hl_nest, hlc_nest)",
 %		"\tSpecify whether or not to use GNU C's nested functions extension.",
-%		"\tThis option is ignored if the `--high-level-c' option is not enabled.",
+%		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
 		"\t\t\t\t(`.gc' grades use `--gc conservative',",
@@ -1948,10 +1969,10 @@ options_help_code_generation -->
 		"\tshould be allowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
 
-% This option is not yet documented because the `--high-level-c' MLDS backend
+% This option is not yet documented because the `--high-level-code' MLDS backend
 % is still not yet complete.
 %		"--gcc-local-labels",
-%		"\tThis option has no effect unless both the `--high-level-c' option",
+%		"\tThis option has no effect unless both the `--high-level-code' option",
 %		"\tand the `--gcc-nested-functions' options are enabled.",
 %		"\tIf this option is enabled, the Mercury compiler will generate",
 %		"\tC code that uses GNU C's local labels extension to allow",

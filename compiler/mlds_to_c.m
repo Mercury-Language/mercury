@@ -755,8 +755,9 @@ mlds_output_data_name(proc_layout(_ProcLabel)) -->
 	{ error("mlds_to_c.m: NYI: proc_layout") }.
 mlds_output_data_name(internal_layout(_ProcLabel, _FuncSeqNum)) -->
 	{ error("mlds_to_c.m: NYI: internal_layout") }.
-mlds_output_data_name(tabling_pointer(_ProcLabel)) -->
-	{ error("mlds_to_c.m: NYI: tabling_pointer") }.
+mlds_output_data_name(tabling_pointer(ProcLabel)) -->
+	io__write_string("table_for_"),
+	mlds_output_proc_label(ProcLabel).
 
 %-----------------------------------------------------------------------------%
 %

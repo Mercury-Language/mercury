@@ -440,8 +440,8 @@ implicitly_quantify_goal_2(bi_implication(LHS0, RHS0), Context, Goal) -->
 		% we've just duplicated.
 		%
 	{ ReverseImplication0 = not(conj([RHS, NotLHS]) - GI) - GI },
-	{ quantification__goal_vars(ReverseImplication0, GoalVars0) },
-	{ set__difference(GoalVars0, NonLocalVars, RenameVars) },
+	{ quantification__goal_vars(ReverseImplication0, GoalVars) },
+	{ set__difference(GoalVars, NonLocalVars, RenameVars) },
 	quantification__rename_apart(RenameVars, _,
 		ReverseImplication0, ReverseImplication),
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -279,6 +279,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
+		Uinstr0 = free_heap(Rval),
+		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		DontValueNumber = DontValueNumber0
+	;
 		Uinstr0 = store_ticket(Lval),
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
@@ -435,7 +441,7 @@ livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
 	),
 	opt_util__lval_access_rvals(Lval, AccessRvals),
 	livemap__make_live_in_rvals(AccessRvals, Live1, Live).
-livemap__make_live_in_rval(create(_, _, _, _, _, _), Live, Live).
+livemap__make_live_in_rval(create(_, _, _, _, _, _, _), Live, Live).
 	% All terms inside creates in the optimizer must be static.
 livemap__make_live_in_rval(mkword(_, Rval), Live0, Live) :-
 	livemap__make_live_in_rval(Rval, Live0, Live).
