@@ -191,13 +191,22 @@ $(ss_subdir)%.s : $(s_dates_subdir)%.s_date
 $(pic_ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
 	@:
 
+# This variable contains the shell syntax to redirect the output of
+# a compilation command to a file.  Normally the file chosen is *.err.
+# However, you can override this variable to modify that behaviour.
+# Setting this variable to the empty string will cause all errors to
+# go to stdout/stderr.
+# Setting this variable to ">> allerrs 2>&1" will cause errors
+# to be accumulated into a single file.
+ERR_REDIRECT = > $(*F).err 2>&1
+
 $(s_dates_subdir)%.s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
-		$(*F) > $(*F).err 2>&1
+		$(*F) $(ERR_REDIRECT)
 
 $(pic_s_dates_subdir)%.pic_s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
-		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $(*F) > $(*F).err 2>&1
+		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $(*F) $(ERR_REDIRECT)
 
 $(os_subdir)%.$O : $(ss_subdir)%.s
 	$(AS) $< $(OBJFILE_OPT)$@
@@ -227,12 +236,12 @@ $(cs_subdir)%.c : $(c_dates_subdir)%.c_date
 	@:
 
 $(c_dates_subdir)%.c_date : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $(*F) > $(*F).err 2>&1
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $(*F) $(ERR_REDIRECT)
 
 # Aditi-RL back-end
 $(rlos_subdir)%.rlo : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
-		--aditi-only $(*F) > $(*F).err 2>&1
+		--aditi-only $(*F) $(ERR_REDIRECT)
 
 # Java back-end
 
@@ -250,7 +259,7 @@ $(javas_subdir)%.java: $(java_dates_subdir)%.java_date
 
 $(java_dates_subdir)%.java_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
-		--java-only $(*F) > $(*F).err 2>&1
+		--java-only $(*F) $(ERR_REDIRECT)
 
 # .NET back-end
 
@@ -261,7 +270,7 @@ $(ils_subdir)%.il : $(il_dates_subdir)%.il_date
 
 $(il_dates_subdir)%.il_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
-		--il-only $(*F) > $(*F).err 2>&1
+		--il-only $(*F) $(ERR_REDIRECT)
 
 # These rules are only available in *il* backends, because we'd like to avoid
 # processing user code that is in a .cpp file, and we'd like to avoid going via
@@ -292,7 +301,7 @@ endif
 # (Is that a bug in unix? In bash?)
 
 .m.err:
-	$(MCE) $(ALL_MCFLAGS) $(*F) > $@ 2>&1
+	$(MCE) $(ALL_MCFLAGS) $(*F) $(ERR_REDIRECT)
 	@touch $@
 
 endif	# MMAKE_USE_MMC_MAKE == no
