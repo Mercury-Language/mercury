@@ -625,7 +625,7 @@
 	;	framevar(int)	% A nondet stack slot. The reference is
 				% relative to the current value of `curfr'.
 				% These are used in nondet code.
-				% Framevar slot numbers start at 0.
+				% Framevar slot numbers start at 1.
 
 	;	succip(rval)	% The succip slot of the specified
 				% nondet stack frame; holds the code address
