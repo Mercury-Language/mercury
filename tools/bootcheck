@@ -415,7 +415,7 @@ then
 		$LN_S $root/boehm_gc/*.s .
 		$LN_S $root/boehm_gc/include .
 		cp $root/boehm_gc/Mmake* .
-		cp $root/boehm_gc/Makefile .
+		$LN_S $root/boehm_gc/Makefile .
 		cp $root/boehm_gc/NT_MAKEFILE .
 		cp $root/boehm_gc/gc_cpp.cc .
 		$LN_S $root/boehm_gc/machdeps .
