@@ -4886,7 +4886,7 @@ Write out the dependency graph to @var{module}.dependency_graph.
 Dump the HLDS (a high-level intermediate representation) after
 the specified stage number or stage name to
 @file{@var{module}.hlds_dump.@var{num}-@var{name}}.
-Stage numbers range from 1 to 99; not all stage numbers are valid.
+Stage numbers range from 1 to 599; not all stage numbers are valid.
 If a stage number is followed by a plus sign,
 all stages after the given stage will be dumped as well.
 The special stage name @samp{all} causes the dumping of all stages.

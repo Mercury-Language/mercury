@@ -2826,7 +2826,7 @@ options_help_aux_output -->
 		"-d <n>, --dump-hlds <stage number or name>",
 		"\tDump the HLDS (high level intermediate representation) after",
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
-		"\tStage numbers range from 1-99.",
+		"\tStage numbers range from 1-599.",
 		"\tMultiple dump options accumulate.",
 		"--dump-hlds-pred-id <n>",
 		"\tDump the HLDS only of the predicate/function with the given",
