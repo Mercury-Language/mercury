@@ -671,8 +671,14 @@ unset MERCURY_COMPILER
 # installed above, before the tests are run.
 case $HOST in
 	mundook|murlibobo)
+		# XXX currently we don't bother to test hlc.gc.par,
+		#     since that is just the same as hlc.gc
+		#     (threads are not yet supported on Digital Unix --
+		#     see configure.in).
+		# XXX should we test asm_fast.gc.profdeep?
 		GRADES="none none.gc
 			reg reg.gc
+			hlc.gc
 			asm_fast asm_fast.gc
 			asm_fast.prof asm_fast.gc.prof
 			asm_fast.gc.memprof
