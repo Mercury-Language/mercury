@@ -63,7 +63,7 @@ prog_out__write_message(Msg - Term) -->
 	;
 		io__write_string(": "),
 		{ varset__init(VarSet) }, % XXX variable names in error messages
-		io__write_term_nl(VarSet, Term)
+		term_io__write_term_nl(VarSet, Term)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -56,8 +56,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, int, map, require, std_util.
-:- import_module prog_io, mode_util.
+:- import_module string, tree, int, map, require, std_util.
+:- import_module prog_io, mode_util, hlds_out.
 
 :- type uni_val		--->	ref(var)
 			;	lval(lval).
@@ -100,10 +100,15 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	code_info__produce_variable(Var, VarCode, Rval),
+	code_info__variable_to_string(Var, VarName),
+	{ hlds_out__cons_id_to_string(ConsId, ConsIdName) },
+	{ string__append_list(["checking that ", VarName,
+			" has functor ", ConsIdName], Comment) },
+	{ CommentCode = node([comment(Comment) - ""]) },
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) },
 	code_info__generate_test_and_fail(TestRval, TestCode),
-	{ Code = tree(VarCode, TestCode) }.
+	{ Code = tree(VarCode, tree(CommentCode, TestCode)) }.
 
 %---------------------------------------------------------------------------%
 

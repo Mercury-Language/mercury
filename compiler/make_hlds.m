@@ -119,7 +119,7 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		{ Module = Module0 }
 	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
 		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, Module0, Module)
+		module_mark_as_external(Name, Arity, Context, Module0, Module)
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
@@ -154,30 +154,36 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_mark_as_external(sym_name, int, module_info, module_info,
-				io__state, io__state).
-:- mode module_mark_as_external(in, in, in, out, di, uo) is det.
+:- pred module_mark_as_external(sym_name, int, term__context,
+			module_info, module_info, io__state, io__state).
+:- mode module_mark_as_external(in, in, in, in, out, di, uo) is det.
 
-module_mark_as_external(PredName, Arity, Module0, Module) -->
+module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
 		{ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, PredIdList) },
-		{ PredIdList = [PredId] }
+			ModuleName, PName, Arity, PredIdList) }
 	->
-		{ module_info_preds(Module0, Preds0) },
-		{ map__lookup(Preds0, PredId, PredInfo0) },
-		{ pred_info_mark_as_external(PredInfo0, PredInfo) },
-		{ map__set(Preds0, PredId, PredInfo, Preds) },
-		{ module_info_set_preds(Module0, Preds, Module) }
+		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
-		{ Module = Module0 },
-		{ term__context_init(0, Context) },	% XXX
+		{ module_info_incr_errors(Module0, Module) },
 		undefined_pred_error(PredName, Arity, Context,	
 			"`external' declaration")
 	).
+
+:- pred module_mark_preds_as_external(list(pred_id), module_info, module_info).
+:- mode module_mark_preds_as_external(in, in, out) is det.
+
+module_mark_preds_as_external([], Module, Module).
+module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
+	module_info_preds(Module0, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
+	pred_info_mark_as_external(PredInfo0, PredInfo),
+	map__set(Preds0, PredId, PredInfo, Preds),
+	module_info_set_preds(Module0, Preds, Module1),
+	module_mark_preds_as_external(PredIds, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -268,14 +274,14 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		{ T2 = hlds__type_defn(_, _, Body_2, _, _) },
 		{ Body_2 \= abstract_type }
 	->
-		{ Module = Module0 },
 	  	(
 			% then if this definition was abstract, ignore it
 			{ Body = abstract_type }
 		->
-			[]
+			{ Module = Module0 }
 		;
 			% otherwise issue an error message
+			{ module_info_incr_errors(Module0, Module) },
 			multiple_def_error(Name, Arity, "type", Context)
 		)
 	;
@@ -397,7 +403,7 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 		{ module_info_set_predicate_table(Module0, PredicateTable,
 			Module) }
 	;
-		{ Module = Module0 },
+		{ module_info_incr_errors(Module0, Module) },
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 

@@ -806,11 +806,14 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module random.
+	% we allocate pred_ids randomly, not sequentially, so
+	% that the tree remains reasonably balanced.
 
 :- type predicate_table --->
 	predicate_table(
 		pred_table,		% map from pred_id to pred_info
-		pred_id,		% next available pred_id
+		random__supply,		% used to compute the next pred_id
 		list(pred_id),		% the keys of the pred_table -
 					% cached here for efficiency
 		pred_name_index,	% map from pred name to pred_id
@@ -832,7 +835,7 @@ predicate_table_init(PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				N_Index, NA_Index, MNA_Index),
 	map__init(Preds),
-	NextPredId = 0,
+	random__init(0, NextPredId),
 	PredIds = [],
 	map__init(N_Index),
 	map__init(NA_Index),
@@ -902,9 +905,8 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
 
-		% get the next available pred id
-	PredId = NextPredId0,
-	NextPredId is NextPredId0 + 1,
+		% allocate a new pred_id
+	predicate_table_next_pred_id(Preds0, NextPredId0, PredId, NextPredId),
 
 		% insert the pred_id into the name index
 	( map__search(N_Index0, Name, N_PredIdList0) ->
@@ -940,6 +942,25 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				N_Index, NA_Index, MNA_Index).
+
+
+:- pred predicate_table_next_pred_id(map(pred_id, pred_info), random__supply,
+					pred_id, random__supply).
+:- mode predicate_table_next_pred_id(in, in, out, out) is det.
+
+	% get the next available pred id
+predicate_table_next_pred_id(Preds, NextPredId0, PredId, NextPredId) :-
+	random__random(PredId0, NextPredId0, NextPredId1),
+	(
+		\+ map__contains(Preds, PredId0),
+		\+ invalid_pred_id(PredId0)
+	->
+		PredId = PredId0,
+		NextPredId = NextPredId1
+	;
+		predicate_table_next_pred_id(Preds, NextPredId1,
+						PredId, NextPredId)
+	).
 
 invalid_pred_id(-1).
 

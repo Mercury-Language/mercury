@@ -36,27 +36,29 @@
 
 :- implementation.
 
-:- type random__supply		--->	random__supply(
-						int,	% I(j)
-						int,	% a
-						int,	% c
-						int	% m
-					).
+:- type random__supply		==	int.	% I(j)
+
+:- pred random__params(int, int, int).	% a, c, m
+:- mode random__params(out, out, out) is det.
+
+random__params(2416, 374441, 1771875).
 
 random__init(I0, RS) :-
-	RS = random__supply(I0, 2416, 374441, 1771875).
+	RS = I0.
 
 random__random(I, RS0, RS) :-
-	RS0 = random__supply(I0, A, C, M),
+	RS0 = I0,
+	random__params(A, C, M),
 	I1 is I0 * A,
 	I2 is I1 + C,
 	I is I2 mod M,
-	RS = random__supply(I, A, C, M).
+	RS = I.
 
 random__randmax(M1, Rs0, Rs) :-
-	Rs0 = random__supply(I, A, C, M),
+	Rs0 = I,
+	random__params(_A, _C, M),
 	M1 is M - 1,
-	Rs = random__supply(I, A, C, M).
+	Rs = I.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -203,8 +203,7 @@ unify_proc__generate_unification(UnifyProcId, ModuleInfo, Requests0,
 	[
 		label(local(UniLabel)) -
 			"Entry point for out-of-line unification predicate",
-		c_code("abort();") -
-			"Panic - complicated unifies not yet implemented!"
+		c_code("fatal_error(\"sorry, complicated unifications not implemented\");") - "Panic!"
 	]),
 	Requests = Requests0.
 

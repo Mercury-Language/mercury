@@ -896,7 +896,7 @@ output_rval_lval(maxfr) -->
 output_rval_lval(curredoip) -->
 	io__write_string("(int)curredoip").
 output_rval_lval(field(Tag, Lval, FieldNum)) -->
-	io__write_string("field("),
+	io__write_string("(int)field("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval_lval(Lval),

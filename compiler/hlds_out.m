@@ -37,6 +37,9 @@
 :- pred hlds_out__write_cons_id(cons_id, io__state, io__state).
 :- mode hlds_out__write_cons_id(in, di, uo) is det.
 
+:- pred hlds_out__cons_id_to_string(cons_id, string).
+:- mode hlds_out__cons_id_to_string(in, out) is det.
+
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
 
@@ -67,7 +70,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, list, require, std_util, term, term_io, prog_out.
+:- import_module string, map, list, require, std_util, term, term_io, prog_out.
 :- import_module mercury_to_mercury, prog_io, globals, options, set, varset.
 :- import_module prog_util.
 
@@ -75,6 +78,15 @@ hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),
 	io__write_string("/"),
 	io__write_int(Arity).
+
+hlds_out__cons_id_to_string(cons(Name, Arity), String) :-
+	string__int_to_string(Arity, ArityString),
+	string__append_list(["'", Name, "'/", ArityString], String).
+hlds_out__cons_id_to_string(int_const(Int), String) :-
+	string__int_to_string(Int, String).
+hlds_out__cons_id_to_string(string_const(String), S) :-
+	string__append_list(["\"", String, "\""], S).
+hlds_out__cons_id_to_string(float_const(_), "<float>").
 
 hlds_out__write_cons_id(cons(Name, Arity)) -->
 	io__write_string(Name),

@@ -10,27 +10,20 @@
 % Some of the predicates here are actually implemented in non-logical
 % NU-Prolog in term_io.nu.nl.
 %
-% This library is still pretty yucko because it's based on
-% the old dec-10 Prolog I/O (see, seeing, seen, tell, telling, told)
-% instead of the stream-based I/O. 
-% TODO: fix this.
-%
-% XXX:  The prefixes in this module should be changed from io__ to term_io__.
-%
 %-----------------------------------------------------------------------------%
 
 :- module term_io.
 :- interface.
 :- import_module io, int, float, string, list, varset, term, char.
 
-% External interface: imported predicate
+% External interface: exported predicates
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred term_io__op(int, op_type, string, io__state, io__state).
 :- mode term_io__op(in, in, in, di, uo) is det.
 %	term_io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
-%		io__read_term.
+%		term_io__read_term.
 
 :- type op_details ---> op(int, op_type, string).
 :- pred term_io__current_ops(list(op_details), io__state, io__state).
@@ -52,8 +45,8 @@
 :- mode term_io__write_term(in, in, di, uo) is det.
 %		Writes a term to standard output.
 
-:- pred io__write_term_nl(varset, term, io__state, io__state).
-:- mode io__write_term_nl(in, in, di, uo) is det.
+:- pred term_io__write_term_nl(varset, term, io__state, io__state).
+:- mode term_io__write_term_nl(in, in, di, uo) is det.
 %		As above, except it appends a period and new-line.
 
 :- pred term_io__write_constant(const, io__state, io__state).
@@ -91,13 +84,9 @@
 :- implementation.
 :- import_module std_util, require.
 
-/*
-:- external("NU-Prolog", io__op/4).
-:- external("NU-Prolog", io__current_ops/3).
-:- external("NU-Prolog", io__read_term/3).
-:- external("NU-Prolog", io__write_term/4).
-:- external("NU-Prolog", io__write_constant/3).
-*/
+:- external(term_io__op/5).
+:- external(term_io__current_ops/3).
+:- external(term_io__read_term/3).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -107,17 +96,17 @@
 	% for all unnamed variables with N starting at 0.
 
 term_io__write_variable(Variable, VarSet) -->
-	io__write_variable_2(Variable, VarSet, 0, _, _).
+	term_io__write_variable_2(Variable, VarSet, 0, _, _).
 
-:- pred io__write_variable_2(var, varset, int, varset, int,
+:- pred term_io__write_variable_2(var, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_variable_2(in, in, in, out, out, di, uo) is det.
+:- mode term_io__write_variable_2(in, in, in, out, out, di, uo) is det.
 
-io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
+term_io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	(
 		{ varset__lookup_var(VarSet0, Id, Val) }
 	->
-		io__write_term_2(Val, VarSet0, N0, VarSet, N)
+		term_io__write_term_2(Val, VarSet0, N0, VarSet, N)
 	;
 		{ varset__lookup_name(VarSet0, Id, Name) }
 	->
@@ -141,60 +130,62 @@ io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	% for all unnamed variables with N starting at 0.
 
 term_io__write_term(VarSet, Term) -->
-	io__write_term_2(Term, VarSet, 0, _, _).
+	term_io__write_term_2(Term, VarSet, 0, _, _).
 
-:- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
-:- mode io__write_term_2(in, in, in, out, out, di, uo) is det.
+:- pred term_io__write_term_2(term, varset, int, varset, int,
+				io__state, io__state).
+:- mode term_io__write_term_2(in, in, in, out, out, di, uo) is det.
 
-io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
-	io__write_variable_2(Id, VarSet0, N0, VarSet, N).
-io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
+term_io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
+	term_io__write_variable_2(Id, VarSet0, N0, VarSet, N).
+term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
+		-->
 	(
 		{ Functor = term__atom(".") },
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
-		io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
-		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
+		term_io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
 		io__write_char(']')
 	;
 		{ Functor = term__atom("{}") },
 		{ Args = [BracedTerm] }
 	->
 		io__write_string("{ "),
-		io__write_term_2(BracedTerm, VarSet0, N0, VarSet, N),
+		term_io__write_term_2(BracedTerm, VarSet0, N0, VarSet, N),
 		io__write_string(" }")
 	;
 		{ Args = [PrefixArg] },
-		io__unary_prefix_op(Functor, Result),
+		term_io__unary_prefix_op(Functor, Result),
 		{ Result = yes }
 	->
 		io__write_char('('),
 		term_io__write_constant(Functor),
 		io__write_char(' '),
-		io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
+		term_io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
 		io__write_char(')')
 	;
 		{ Args = [PostfixArg] },
-		io__unary_postfix_op(Functor, Result),
+		term_io__unary_postfix_op(Functor, Result),
 		{ Result = yes }
 	->
 		io__write_char('('),
-		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
+		term_io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
 		io__write_char(' '),
 		term_io__write_constant(Functor),
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
-		io__infix_op(Functor, Result),
+		term_io__infix_op(Functor, Result),
 		{ Result = yes }
 	->
 		io__write_char('('),
-		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
+		term_io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
 		term_io__write_constant(Functor),
 		io__write_char(' '),
-		io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
+		term_io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
 		io__write_char(')')
 	;
 		term_io__write_constant(Functor),
@@ -202,8 +193,8 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 			{ Args = [X|Xs] }
 		->
 			io__write_char('('),
-			io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-			io__write_term_args(Xs, VarSet1, N1, VarSet, N),
+			term_io__write_term_2(X, VarSet0, N0, VarSet1, N1),
+			term_io__write_term_args(Xs, VarSet1, N1, VarSet, N),
 			io__write_char(')')
 		;
 			{ N = N0,
@@ -211,22 +202,22 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		)
 	).
 
-:- pred io__write_list_tail(term, varset, int, varset, int,
+:- pred term_io__write_list_tail(term, varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_list_tail(in, in, in, out, out, di, uo) is det.
+:- mode term_io__write_list_tail(in, in, in, out, out, di, uo) is det.
 
-io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
+term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	( 
 		{ Term = term__variable(Id) },
 		{ varset__lookup_var(VarSet0, Id, Val) }
 	->
-		io__write_list_tail(Val, VarSet0, N0, VarSet, N)
+		term_io__write_list_tail(Val, VarSet0, N0, VarSet, N)
 	;
 		{ Term = term__functor(term__atom("."), [ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
-		io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
-		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
+		term_io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
 	;
 		{ Term = term__functor(term__atom("[]"), [], _) }
 	->
@@ -234,36 +225,34 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 		{ N = N0 }
 	;
 		io__write_string(" | "),
-		io__write_term_2(Term, VarSet0, N0, VarSet, N)
+		term_io__write_term_2(Term, VarSet0, N0, VarSet, N)
 	).
 
-:- pred io__infix_op(const, bool, io__state, io__state).
-:- mode io__infix_op(in, out, di, uo) is det.
+:- pred term_io__infix_op(const, bool, io__state, io__state).
+:- mode term_io__infix_op(in, out, di, uo) is det.
 
-:- pred io__unary_prefix_op(const, bool, io__state, io__state).
-:- mode io__unary_prefix_op(in, out, di, uo) is det.
+:- pred term_io__unary_prefix_op(const, bool, io__state, io__state).
+:- mode term_io__unary_prefix_op(in, out, di, uo) is det.
 
-:- pred io__unary_postfix_op(const, bool, io__state, io__state).
-:- mode io__unary_postfix_op(in, out, di, uo) is det.
+:- pred term_io__unary_postfix_op(const, bool, io__state, io__state).
+:- mode term_io__unary_postfix_op(in, out, di, uo) is det.
 
-/*
-:- external("NU-Prolog", io__infix_op/3).
-:- external("NU-Prolog", io__unary_prefix_op/3).
-:- external("NU-Prolog", io__unary_postfix_op/3).
-*/
+:- external(term_io__infix_op/4).
+:- external(term_io__unary_prefix_op/4).
+:- external(term_io__unary_postfix_op/4).
 
 %-----------------------------------------------------------------------------%
 
-:- pred io__write_term_args(list(term), varset, int, varset, int,
+:- pred term_io__write_term_args(list(term), varset, int, varset, int,
 				io__state, io__state).
-:- mode io__write_term_args(in, in, in, out, out, di, uo) is det.
+:- mode term_io__write_term_args(in, in, in, out, out, di, uo) is det.
 
 	% write the remaining arguments
-io__write_term_args([], VarSet, N, VarSet, N) --> [].
-io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
+term_io__write_term_args([], VarSet, N, VarSet, N) --> [].
+term_io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 	io__write_string(", "),
-	io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-	io__write_term_args(Xs, VarSet1, N1, VarSet, N).
+	term_io__write_term_2(X, VarSet0, N0, VarSet1, N1),
+	term_io__write_term_args(Xs, VarSet1, N1, VarSet, N).
 
 %-----------------------------------------------------------------------------%
 
@@ -397,7 +386,7 @@ mercury_quote_special_char('\b', 'b').
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__write_term_nl(VarSet, Term) -->
+term_io__write_term_nl(VarSet, Term) -->
 	term_io__write_term(VarSet, Term),
 	io__write_string(".\n").
 

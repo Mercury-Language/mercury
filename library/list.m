@@ -288,6 +288,8 @@ list__member(Element, List, SubList) :-
 list__length(L, N) :-
 	length(L, N).
 
+:- external(length/2).
+
 /******
 
 Note - it is not possible to write a version of

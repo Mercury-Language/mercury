@@ -213,11 +213,12 @@
 
 :- implementation.
 :- import_module std_util, require.
+:- import_module random.
 
 %-----------------------------------------------------------------------------%
 
 :- type var		==	int.
-:- type var_supply	==	int.
+:- type var_supply	==	random__supply.
 
 %-----------------------------------------------------------------------------%
 
@@ -530,11 +531,18 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 %-----------------------------------------------------------------------------%
 
 	% create a new supply of variables
-term__init_var_supply(0).
+term__init_var_supply(VarSupply) :-
+	random__init(0, VarSupply0),
+		% work-around because implied modes not yet implemented
+	VarSupply = VarSupply0.
 
 	% create a fresh [unique] variable.
-term__create_var(VarSupply0, VarSupply0, VarSupply) :-
-	VarSupply is VarSupply0 + 1.
+	% We number variables randomly, to help ensure that
+	% our trees remain reasonably balanced.
+	% Let's hope that the random number generator has
+	% a long period before it starts repeating itself!
+term__create_var(VarSupply0, Var, VarSupply) :-
+	random__random(Var, VarSupply0, VarSupply).
 
 %-----------------------------------------------------------------------------%
 

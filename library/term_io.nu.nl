@@ -30,7 +30,7 @@ term_io__read_term(Result) -->
 	io__input_stream(Stream),
 	io__stream_name(Stream, StreamName),
 	{ nuprolog ->
-	    io__get_token_list(Tokens0, LineNumber),
+	    term_io__get_token_list(Tokens0, LineNumber),
 	    term__context_init(StreamName, LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
 	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
@@ -103,7 +103,7 @@ convert_tokens([Tok0|Toks0], Toks) :-
 	% (Actually we return the linenumber after the first token
 	% of the term.)
 
-io__get_token_list(Tokens, LineNumber) :-
+term_io__get_token_list(Tokens, LineNumber) :-
 	getToken(Token, Type),
 	currentInput(Stream),
 	lineCount(Stream, LineNumber),
@@ -221,13 +221,13 @@ convert_term_4(name(Name), VarId, VarSet0, VarSet) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-io__current_op(Type, Prec, term__atom(OpName)) :-
+term_io__current_op(Type, Prec, term__atom(OpName)) :-
 	name(Op, OpName),
 	currentOp(Type, Prec, Op).
 
-io__infix_op(Op, Result) -->
+term_io__infix_op(Op, Result) -->
 	{ 
-		io__current_op(_Prec, Type, Op),
+		term_io__current_op(_Prec, Type, Op),
 		(Type = xfx ; Type = xfy ; Type = yfx)
 	->
 		Result = yes
@@ -235,9 +235,9 @@ io__infix_op(Op, Result) -->
 		Result = no
 	}.
 
-io__unary_prefix_op(Op, Result) -->
+term_io__unary_prefix_op(Op, Result) -->
 	{ 
-		io__current_op(_Prec, Type, Op),
+		term_io__current_op(_Prec, Type, Op),
 		(Type = fx ; Type = fy)
 	->
 		Result = yes
@@ -245,9 +245,9 @@ io__unary_prefix_op(Op, Result) -->
 		Result = no
 	}.
 
-io__unary_postfix_op(Op, Result) -->
+term_io__unary_postfix_op(Op, Result) -->
 	{ 
-		io__current_op(_Prec, Type, Op),
+		term_io__current_op(_Prec, Type, Op),
 		(Type = xf ; Type = yf)
 	->
 		Result = yes

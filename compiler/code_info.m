@@ -333,6 +333,8 @@
 						code_info, code_info).
 :- mode code_info__generate_stack_livevals(out, in, out) is det.
 
+:- pred code_info__variable_to_string(var, string, code_info, code_info).
+:- mode code_info__variable_to_string(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2740,16 +2742,19 @@ code_info__slap_code_info(C0, C1, C) :-
 :- mode code_info__make_assignment_comment(in, in, out, in, out) is det.
 
 code_info__make_assignment_comment(Var, _Lval, Comment) -->
+	code_info__variable_to_string(Var, Name),
+	{ string__append("Assigning from ", Name, Comment) }.
+
+code_info__variable_to_string(Var, VarName) -->
 	code_info__get_varset(Varset),
 	(
 		{ varset__lookup_name(Varset, Var, Name) }
 	->
-		{ string__append("Assigning from ", Name, Comment) }
+		{ VarName = Name }
 	;
 		{ term__var_to_int(Var, Int) },
 		{ string__int_to_string(Int, IntString) },
-		{ string__append("Assigning from variable number ", IntString,
-			Comment) }
+		{ string__append("variable number ", IntString, VarName) }
 	).
 
 %---------------------------------------------------------------------------%

@@ -26,8 +26,8 @@
 :- implementation.
 
 /*
-:- external("NU-Prolog", require/2).
-:- external("NU-Prolog", error/1).
+:- external(require/2).
 */
+:- external(error/1).
 
 :- end_module require.
