@@ -192,6 +192,14 @@ term_io__write_term_2(Term, VarSet0, N0, VarSet, N) -->
 	{ ops__max_priority(MaxPriority) },
 	term_io__write_term_3(Term, MaxPriority + 1, VarSet0, N0, VarSet, N).
 
+:- pred term_io__write_arg_term(term, varset, int, varset, int,
+				io__state, io__state).
+:- mode term_io__write_arg_term(in, in, in, out, out, di, uo) is det.
+
+term_io__write_arg_term(Term, VarSet0, N0, VarSet, N) -->
+	{ ArgPriority = 1000 },
+	term_io__write_term_3(Term, ArgPriority - 1, VarSet0, N0, VarSet, N).
+
 :- pred term_io__write_term_3(term, ops__priority, varset, int, varset, int,
 				io__state, io__state).
 :- mode term_io__write_term_3(in, in, in, in, out, out, di, uo) is det.
@@ -206,7 +214,7 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
-		term_io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		term_io__write_arg_term(ListHead, VarSet0, N0, VarSet1, N1),
 		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
 		io__write_char(']')
 	;
@@ -232,7 +240,7 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 	->
 		term_io__write_variable_2(Var, VarSet0, N0, VarSet1, N1),
 		io__write_char('('),
-		term_io__write_term_2(FirstArg, VarSet1, N1, VarSet2, N2),
+		term_io__write_arg_term(FirstArg, VarSet1, N1, VarSet2, N2),
 		term_io__write_term_args(OtherArgs, VarSet2, N2, VarSet, N),
 		io__write_char(')')
 	;
@@ -318,7 +326,7 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 			{ Args = [X|Xs] }
 		->
 			io__write_char('('),
-			term_io__write_term_2(X, VarSet0, N0, VarSet1, N1),
+			term_io__write_arg_term(X, VarSet0, N0, VarSet1, N1),
 			term_io__write_term_args(Xs, VarSet1, N1, VarSet, N),
 			io__write_char(')')
 		;
@@ -358,7 +366,7 @@ term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 		{ Term = term__functor(term__atom("."), [ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
-		term_io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		term_io__write_arg_term(ListHead, VarSet0, N0, VarSet1, N1),
 		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
 	;
 		{ Term = term__functor(term__atom("[]"), [], _) }
@@ -380,7 +388,7 @@ term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 term_io__write_term_args([], VarSet, N, VarSet, N) --> [].
 term_io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 	io__write_string(", "),
-	term_io__write_term_2(X, VarSet0, N0, VarSet1, N1),
+	term_io__write_arg_term(X, VarSet0, N0, VarSet1, N1),
 	term_io__write_term_args(Xs, VarSet1, N1, VarSet, N).
 
 %-----------------------------------------------------------------------------%
