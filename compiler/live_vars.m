@@ -9,6 +9,8 @@
 % each of these variables, and stores this information in the call_info
 % structure in the proc_info.
 
+% TODO: Put variables whose scopes don't overlap into the same stack slot.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.

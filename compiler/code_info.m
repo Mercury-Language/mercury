@@ -97,6 +97,12 @@
 						code_info, code_info).
 :- mode code_info__flush_expression_cache(out, in, out) is det.
 
+		% Produce a value for a variable, flushing
+		% it if necessary
+:- pred code_info__produce_variable(var, code_tree, rval,
+					code_info, code_info).
+:- mode code_info__produce_variable(in, out, out, in, out) is det.
+
 		% Flush a single cached expression
 :- pred code_info__flush_variable(var, code_tree, code_info, code_info).
 :- mode code_info__flush_variable(in, out, in, out) is det.
@@ -613,6 +619,35 @@ code_info__flush_exp_cache_2([Var|Vars], Code) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__produce_variable(Var, Code, Rval) -->
+	code_info__get_variable(Var, VarStat),
+	(
+		{ VarStat = cached(Expr, _Target) },
+		(
+			{ code_info__expr_is_atomic(Expr) }
+		->
+			{ Code0 = empty },
+			{ Rval0 = Expr }
+		;
+			{ Expr = var(ExprVar) }
+		->
+			code_info__produce_variable(ExprVar, Code0, Rval0)
+		;
+			{ fail }
+		)
+	->
+		{ Code = Code0 },
+		{ Rval = Rval0 }
+	;
+		code_info__flush_variable(Var, Code),
+		code_info__get_variable_register(Var, Lval),
+		{ Rval = lval(Lval) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+		% Flush a single cached expression
+
 code_info__flush_variable(Var, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
@@ -641,6 +676,16 @@ code_info__flush_variable(Var, Code) -->
 	;
 		{ Code = empty }
 	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__expr_is_atomic(rval).
+:- mode code_info__expr_is_atomic(in) is semidet.
+
+code_info__expr_is_atomic(iconst(_)).
+code_info__expr_is_atomic(sconst(_)).
+code_info__expr_is_atomic(true).
+code_info__expr_is_atomic(false).
 
 %---------------------------------------------------------------------------%
 
@@ -803,6 +848,11 @@ code_info__generate_expression(unused, _, empty) --> [].
 :- mode code_info__generate_cons_args(in, in, in, in, out, in, out) is det.
 
 :- code_info__generate_cons_args(_, _, _, X, _, _, _) when X. % indexing
+
+	% `Reg' is the register which contains the pointer to the
+	% term whose arguments we are generating.
+	% `Tag' is the tag on that pointer. 
+	% `Field0' is the field number of this field.
 
 code_info__generate_cons_args(_Reg, _Tag, _Field0, [], empty) --> [].
 code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
@@ -1102,7 +1152,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		{ error("Cannot shuffle a reserved register.") }
 	;
 		{ Contents = vars(Vars) },
-		code_info__variables_are_live(Vars)
+		code_info__must_be_swapped(Vars, reg(Reg))
 	->
 			% get a spare register
 			% XXX we should make a more intelligent choice
@@ -1244,6 +1294,10 @@ first_register([L|Ls], R) :-
 	).
 
 %---------------------------------------------------------------------------%
+
+	% This first off tries to find a register containing `Var'.
+	% If there's no register, it will look for any other memory
+	% location containing the variable.
 
 code_info__variable_register(Var, Lval) -->
 	code_info__get_variables(Variables),
@@ -1413,25 +1467,36 @@ code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
 	{ set__member(Var, Liveness) }.
 
-:- pred code_info__variables_are_live(set(var), code_info, code_info).
-:- mode code_info__variables_are_live(in, in, out) is semidet.
+:- pred code_info__must_be_swapped(set(var), lval, code_info, code_info).
+:- mode code_info__must_be_swapped(in, in, in, out) is semidet.
 
-code_info__variables_are_live(Vars) -->
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__variables_are_live_2(VarList).
+	% The contents of a location must be swapped if any
+	% of the variables in it must be swapped.
+	% (NB this is actually overly conservative - we could
+	% avoid swapping unless *all* variables needed to be
+	% swapped, since we know that the variables must all be
+	% aliased since they share the same storage location.)
+	%
+	% It might be a good idea to use quantification and local
+	% nondeterminism rather than an explicit recursive loop.
 
-:- pred code_info__variables_are_live_2(list(var), code_info, code_info).
-:- mode code_info__variables_are_live_2(in, in, out) is semidet.
+code_info__must_be_swapped(Vars, Lval) -->
+	code_info__get_liveness_info(Liveness),
+	code_info__get_variables(Variables),
+	{ code_info__var_must_be_swapped(Vars, Liveness, Variables, Lval) }.
 
-code_info__variables_are_live_2([]) --> { fail }.
-code_info__variables_are_live_2([V|Vs]) -->
-	(
-		code_info__variable_is_live(V)
-	->
-		{ true }
-	;
-		code_info__variables_are_live_2(Vs)
-	).
+:- pred code_info__var_must_be_swapped(set(var), liveness_info,
+					variable_info, lval).
+:- mode code_info__var_must_be_swapped(in, in, in, in) is semidet.
+
+	% A variable must be swapped iff it is live and
+	% it is not stored anywhere else.
+
+code_info__var_must_be_swapped(Vars, Liveness, Variables, ThisLval) :-
+	set__member(V, Vars),
+	set__member(V, Liveness),
+	map__search(Variables, V, evaluated(Lvals)),
+	\+ (set__member(Lval, Lvals), Lval \= ThisLval).
 
 %---------------------------------------------------------------------------%
 

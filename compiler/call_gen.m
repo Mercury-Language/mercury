@@ -251,12 +251,10 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 		{ atom_to_operator(OpStr, Op) },
 		{ Args = [ X, Y ] }
 	->
-		code_info__flush_variable(X, CodeX),
-		code_info__get_variable_register(X, XLval),
-		code_info__flush_variable(Y, CodeY),
-		code_info__get_variable_register(Y, YLval),
+		code_info__produce_variable(X, CodeX, XRval),
+		code_info__produce_variable(Y, CodeY, YRval),
 		code_info__generate_test_and_fail(
-			binop(Op, lval(XLval), lval(YLval)), TestCode),
+			binop(Op, XRval, YRval), TestCode),
 		{ Code = tree(tree(CodeX,CodeY), TestCode) }
 	;
 		{ error("Unknown builtin predicate") }

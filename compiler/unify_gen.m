@@ -86,80 +86,74 @@ unify_gen__generate_assignment(VarA, VarB, empty) -->
 	% strings and floats. XXX handle strings and floats.
 
 unify_gen__generate_test(VarA, VarB, Code) -->
-	code_info__flush_variable(VarA, Code0),
-	code_info__get_variable_register(VarA, RegA),
-	code_info__flush_variable(VarB, Code1),
-	code_info__get_variable_register(VarB, RegB),
+	code_info__produce_variable(VarA, Code0, ValA),
+	code_info__produce_variable(VarB, Code1, ValB),
 	{ CodeA = tree(Code0, Code1) },
 	code_info__generate_test_and_fail(
-			binop(eq, lval(RegA), lval(RegB)), FailCode),
+			binop(eq, ValA, ValB), FailCode),
 	{ Code = tree(CodeA, FailCode) }.
 
 %---------------------------------------------------------------------------%
 
 unify_gen__generate_tag_test(Var, ConsId, Code) -->
-        code_info__flush_variable(Var, VarCode),
-	code_info__get_variable_register(Var, Lval),
+	code_info__produce_variable(Var, VarCode, Rval),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	unify_gen__generate_tag_test_2(Tag, Lval, TestCode),
+	unify_gen__generate_tag_test_2(Tag, Rval, TestCode),
 	{ Code = tree(VarCode, TestCode) }.
 
-:- pred unify_gen__generate_tag_test_2(cons_tag, lval, code_tree,
+:- pred unify_gen__generate_tag_test_2(cons_tag, rval, code_tree,
 							code_info, code_info).
 :- mode unify_gen__generate_tag_test_2(in, in, out, in, out) is det.
 
-unify_gen__generate_tag_test_2(string_constant(String), Lval, TestCode) -->
+unify_gen__generate_tag_test_2(string_constant(String), Rval, TestCode) -->
 	code_info__generate_test_and_fail(
-				binop(streq, lval(Lval), sconst(String)),
+				binop(streq, Rval, sconst(String)),
 								TestCode).
 unify_gen__generate_tag_test_2(float_constant(_String), _, _) -->
 	{ error("Float tests unimplemented") }.
-unify_gen__generate_tag_test_2(int_constant(Int), Lval, TestCode) -->
+unify_gen__generate_tag_test_2(int_constant(Int), Rval, TestCode) -->
 	code_info__generate_test_and_fail(
-				binop(eq,lval(Lval), iconst(Int)),
+				binop(eq,Rval, iconst(Int)),
 								TestCode).
-unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Lval, TestCode) -->
+unify_gen__generate_tag_test_2(simple_tag(SimpleTag), Rval, TestCode) -->
 	code_info__generate_test_and_fail(
-			binop(eq,tag(lval(Lval)), mktag(iconst(SimpleTag))),
+			binop(eq,tag(Rval), mktag(iconst(SimpleTag))),
 								TestCode).
-unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, TestCode) -->
+unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Rval, TestCode) -->
 	code_info__generate_test_and_fail(
-			binop(eq,tag(lval(Lval)), mktag(iconst(Bits))), Test1),
+			binop(eq,tag(Rval), mktag(iconst(Bits))), Test1),
 	code_info__generate_test_and_fail(
-			binop(eq,field(Bits, lval(Lval), 0), iconst(Num)),
-									Test2),
+			binop(eq,field(Bits, Rval, 0), iconst(Num)), Test2),
 	{ TestCode = tree(Test1, Test2) }.
-unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval,
+unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Rval,
 		TestCode) -->
 	code_info__generate_test_and_fail(
-		binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))),
-								TestCode).
+		binop(eq, Rval, mkword(Bits, mkbody(iconst(Num)))), TestCode).
 
 %---------------------------------------------------------------------------%
 
-unify_gen__generate_tag_rval(Var, ConsId, Rval, Code) -->
-        code_info__flush_variable(Var, Code),
-	code_info__get_variable_register(Var, Lval),
+unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
+        code_info__produce_variable(Var, Code, Rval),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ unify_gen__generate_tag_rval_2(Tag, Lval, Rval) }.
+	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) }.
 
-:- pred unify_gen__generate_tag_rval_2(cons_tag, lval, rval).
+:- pred unify_gen__generate_tag_rval_2(cons_tag, rval, rval).
 :- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
 
-unify_gen__generate_tag_rval_2(string_constant(String), Lval, Rval) :-
-	Rval = binop(streq, lval(Lval), sconst(String)).
+unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
+	TestRval = binop(streq, Rval, sconst(String)).
 unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
-	error("Float tests unimplemented").
-unify_gen__generate_tag_rval_2(int_constant(Int), Lval, Rval) :-
-	Rval = binop(eq,lval(Lval), iconst(Int)).
-unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Lval, Rval) :-
-	Rval = binop(eq,tag(lval(Lval)), mktag(iconst(SimpleTag))).
-unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Lval, Rval) :-
-	Rval = binop(and, binop(eq,tag(lval(Lval)), mktag(iconst(Bits))), 
-			binop(eq,field(Bits, lval(Lval), 0), iconst(Num))).
-unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Lval,
-		Rval) :-
-	Rval = binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))).
+	error("Sorry, float tests not implemented").
+unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
+	TestRval = binop(eq, Rval, iconst(Int)).
+unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
+	TestRval = binop(eq,tag(Rval), mktag(iconst(SimpleTag))).
+unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
+	TestRval = binop(and, binop(eq,tag(Rval), mktag(iconst(Bits))), 
+			binop(eq,field(Bits, Rval, 0), iconst(Num))).
+unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
+		TestRval) :-
+	TestRval = binop(eq, Rval, mkword(Bits, mkbody(iconst(Num)))).
 
 %---------------------------------------------------------------------------%
 
@@ -386,8 +380,11 @@ unify_gen__generate_det_sub_unify(L, R, M, Code) -->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
-		{ Code = node([ c_code("abort();") - "Det test???" ]) }
+		% XXX We should perhaps just emit empty code here,
+		% since the unification must be something like `1 = 1'?
 		% { error("Det unifications may not contain tests") }
+		{ Code = node([ c_code("abort();") -
+			"Error - det argument sub-unify is a test???" ]) }
 	;
 			% Input - Output== assignment ->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
@@ -401,7 +398,7 @@ unify_gen__generate_det_sub_unify(L, R, M, Code) -->
 	->
 		unify_gen__generate_sub_assign(L, R, Code)
 	;
-			% Bizzare! [sp?]
+			% Bizzare!
 		{ mode_is_output(ModuleInfo, (LI -> LF)) },
 		{ mode_is_output(ModuleInfo, (RI -> RF)) }
 	->
@@ -466,12 +463,11 @@ unify_gen__generate_sub_assign(lval(Lval), lval(Rval), Code) -->
 	% assignment from a variable to an lvalue - cannot cache
 	% so generate immediately
 unify_gen__generate_sub_assign(lval(Lval), ref(Var), Code) -->
-	code_info__flush_variable(Var, Code0),
-	code_info__get_variable_register(Var, Source),
+	code_info__produce_variable(Var, Code0, Source),
 	{ Code = tree(
 		Code0,
 		node([
-			assign(Lval, lval(Source)) - "Copy value"
+			assign(Lval, Source) - "Copy value"
 		])
 	) }.
 	% assignment to a variable, so cache it.
@@ -502,22 +498,21 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 	% Generate code to evaluate the two arguments of a sub-test
 	% and compare them. XXX strings?
 unify_gen__generate_sub_test(UnivalX, UnivalY, Code) -->
-	unify_gen__evaluate_uni_val(UnivalX, LvalX, CodeX),
-	unify_gen__evaluate_uni_val(UnivalY, LvalY, CodeY),
+	unify_gen__evaluate_uni_val(UnivalX, RvalX, CodeX),
+	unify_gen__evaluate_uni_val(UnivalY, RvalY, CodeY),
 	code_info__generate_test_and_fail(
-		binop(eq, lval(LvalX), lval(LvalY)), TestCode),
+		binop(eq, RvalX, RvalY), TestCode),
 	{ Code = tree(tree(CodeX, CodeY), TestCode) }.
 
-:- pred unify_gen__evaluate_uni_val(uni_val, lval, code_tree,
+:- pred unify_gen__evaluate_uni_val(uni_val, rval, code_tree,
 					code_info, code_info).
 :- mode unify_gen__evaluate_uni_val(in, out, out, in, out) is det.
 
 	% Lvalue - do nothing
-unify_gen__evaluate_uni_val(lval(Lval), Lval, empty) --> [].
+unify_gen__evaluate_uni_val(lval(Lval), lval(Lval), empty) --> [].
 	% Var - cached, so flush it.
-unify_gen__evaluate_uni_val(ref(Var), Lval, Code) -->
-	code_info__flush_variable(Var, Code),
-	code_info__get_variable_register(Var, Lval).
+unify_gen__evaluate_uni_val(ref(Var), Rval, Code) -->
+	code_info__produce_variable(Var, Code, Rval).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

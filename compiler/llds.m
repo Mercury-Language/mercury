@@ -42,6 +42,7 @@
 			;	label(label)
 			;	unilabel(unilabel)	% XXX fixme!
 			;	goto(label)
+		%	;	computed_goto(rval, list(label))
 			;	c_code(string)	% insert arbitrary C code
 			;	if_val(rval, cond_instr)
 			;	incr_sp(int)
