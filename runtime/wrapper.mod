@@ -15,9 +15,9 @@ int		detstack_size =   128;
 int		nondstack_size =  128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
-int		heap_zone_size =       32;
-int		detstack_zone_size =   32;
-int		nondstack_zone_size =  32;
+int		heap_zone_size =       16;
+int		detstack_zone_size =   16;
+int		nondstack_zone_size =  16;
 
 /* primary cache size to optimize for */
 int		pcache_size =    8192;
@@ -270,9 +270,9 @@ static void usage(void)
 	printf("-sh<n> \t\tallocate n kb for the heap\n");
 	printf("-sd<n> \t\tallocate n kb for the det stack\n");
 	printf("-sn<n> \t\tallocate n kb for the nondet stack\n");
-	printf("-zh<n> \t\tset redzone after n kb for the heap\n");
-	printf("-zd<n> \t\tset redzone after n kb for the det stack\n");
-	printf("-zn<n> \t\tset redzone after n kb for the nondet stack\n");
+	printf("-zh<n> \t\tallocate n kb for the heap redzone");
+	printf("-zd<n> \t\tallocate n kb for the det stack redzone");
+	printf("-zn<n> \t\tallocate n kb for the nondet stack redzone");
 	printf("-p<n> \t\tprimary cache size in (k)bytes\n");
 	printf("-r<n> \t\trepeat n times\n");
 	printf("-w<name> \tcall predicate with given name\n");

@@ -173,7 +173,7 @@ void init_memory(void)
 	** and divide it up among the areas.
 	*/
 
-	total_size = heap_size + detstack_size + nondstack_size + 4 * unit;
+	total_size = heap_size + detstack_size + nondstack_size + 5 * unit;
 
 	/*  get mem_size pages aligned on a page boundary */
 	arena = memalign(unit, total_size);
@@ -181,6 +181,18 @@ void init_memory(void)
 	{
 		printf("cannot allocate arena: memalign() failed\n");
 		exit(1);
+	}
+
+	if ((int) arena % unit != 0)
+	{
+		arena = arena + unit - 1;
+		arena = (char *) ((int) arena - (int) arena % unit);
+
+		if ((int) arena % unit != 0)
+		{
+			printf("rounding arena address didn't work\n");
+			exit(1);
+		}
 	}
 
 	saved_regs  = (Word *) (arena + 0 * MAX_RN * sizeof(Word));
