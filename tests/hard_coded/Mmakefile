@@ -182,6 +182,7 @@ ORDINARY_PROGS=	\
 	unused_float_box_test \
 	user_compare \
 	user_defined_equality2 \
+	version_array_test \
 	write \
 	write_reg1 \
 	write_reg2

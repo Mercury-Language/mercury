@@ -460,9 +460,9 @@ resize(N, X, VA, resize(VA, N, X)).
     ML_va_resize(struct ML_va *VA0, MR_Integer N, MR_Word X) {
 
         MR_Integer i;
-        MR_Integer size_VA0 = ML_va_size(VA0);
-        MR_Integer min      = (N <= size_VA0 ? N : size_VA0);
-        struct ML_va *VA       = MR_GC_NEW(struct ML_va);
+        MR_Integer size_VA0  = ML_va_size(VA0);
+        MR_Integer min       = (N <= size_VA0 ? N : size_VA0);
+        struct ML_va *VA     = MR_GC_NEW(struct ML_va);
 
         VA->index            = -1;
         VA->value            = (MR_Word) NULL;
@@ -561,11 +561,10 @@ resize(N, X, VA, resize(VA, N, X)).
             return VA;
         }
 
-        I         = VA->index;
-        X         = VA->value;
-        VA        = ML_va_rewind(VA->rest.next);
-        VA->index = I;
-        VA->value = X;
+        I  = VA->index;
+        X  = VA->value;
+        VA = ML_va_rewind(VA->rest.next);
+        VA->rest.array->elements[I] = X;
 
         return VA;
     }
