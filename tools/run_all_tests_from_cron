@@ -185,7 +185,7 @@ else
 fi
 
 if [ -f $logfile.errs -o -f $logfile.test_errs ]; then
-	if [ ! -f $logfile.errs ]; then
+	if [ -f $logfile.errs ]; then
 		# Failures building the compiler or library should
 		# occur early in the log summary.
 		echo first 10 lines of log file summary:
@@ -193,7 +193,7 @@ if [ -f $logfile.errs -o -f $logfile.test_errs ]; then
 		echo
 		echo
 	fi
-	if [ ! -f $logfile.test_errs ]; then
+	if [ -f $logfile.test_errs ]; then
 		echo first 100 test failures:
 		grep "FAILED TEST" $logfile.test_errs | head - 100
 	fi
