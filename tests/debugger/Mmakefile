@@ -18,7 +18,6 @@ NONRETRY_PROGS = \
 	breakpoints			\
 	browse_pretty			\
 	cmd_quote			\
-	completion			\
 	debugger_regs			\
 	exception_cmd			\
 	exception_value			\
@@ -31,7 +30,6 @@ NONRETRY_PROGS = \
 	loopcheck			\
 	lval_desc_array			\
 	multi_parameter			\
-	nondet_stack			\
 	polymorphic_output		\
 	print_goal			\
 	queens_rep			\
@@ -41,8 +39,15 @@ NONRETRY_PROGS = \
 # This test is currently not useful.
 #	output_term_dep
 
+SENSITIVE_PROGS = \
+	completion			\
+	nondet_stack
+
 SHALLOW_PROGS = \
 	shallow
+
+INTERACTIVE_PROGS = \
+	interactive
 
 # Since the `interactive' test case requires the use of shared libraries,
 # this means it won't work properly if the static libraries are linked
@@ -57,32 +62,62 @@ SHALLOW_PROGS = \
 # ../Mmake.common here,
 
 ifneq ($(origin WORKSPACE),undefined)
-LINK_STATIC = yes
+    LINK_STATIC = yes
 endif
 ifeq ($(origin LINK_STATIC),undefined)
-LINK_STATIC = no
+    LINK_STATIC = no
 endif
-ifeq ($(LINK_STATIC),no)
-	RETRY_PROGS := $(RETRY_PROGS) interactive
+
+ifneq ($(LINK_STATIC),no)
+    INTERACTIVE_PROGS :=
 endif
+
+# Declarative debugging grades don't support trace level shallow,
+# so we execute the tests exercising shallow tracing only in grades
+# other than .decldebug grades.
+ifneq "$(findstring decldebug,$(GRADE))" ""
+    SHALLOW_PROGS :=
+endif
+
+# The sensitive tests are so named because they are sensitive to details
+# of code generation. We therefore execute them only in a minimal set of
+# grades that still ensures good test coverage. For example, the tests
+# in trailing grades without debugging do not test anything that the tests in
+# .debug.tr grades do not.
+
+ifneq "$(findstring prof,$(GRADE))" ""
+    SENSITIVE_PROGS :=
+endif
+ifneq "$(findstring memprof,$(GRADE))" ""
+    SENSITIVE_PROGS :=
+endif
+ifeq "$(findstring debug,$(GRADE))" ""
+    ifneq "$(findstring tr,$(GRADE))" ""
+	SENSITIVE_PROGS :=
+    endif
+endif
+
+ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
+ALL_NONRETRY_PROGS = $(NON_RETRY_PROGS) $(SENSITIVE_PROGS) $(SHALLOW_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*), and the retry command
 # doesn't and will not work in deep profiling grades (profdeep).
 # Also base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 
+ifneq "$(findstring profdeep,$(GRADE))" ""
+    # Eventually, this should be DEBUGGER_PROGS=$(ALL_NONRETRY_PROGS).
+    # However, the code that is required to switch off the profiling
+    # primitives in Mercury code invoked by the debugger (e.g. for
+    # browsing) has not yet been implemented.
+    DEBUGGER_PROGS=
+else
+    DEBUGGER_PROGS=$(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
+endif
+
 ifneq "$(findstring hl,$(GRADE))" ""
     PROGS=
 else
-    ifneq "$(findstring profdeep,$(GRADE))" ""
-	# Eventually, this should be DEBUGGER_PROGS=$(NONRETRY_PROGS).
-	# However, the code that is required to switch off the profiling
-	# primitives in Mercury code invoked by the debugger (e.g. for
-	# browsing) has not yet been implemented.
-    	DEBUGGER_PROGS=
-    else
-    	DEBUGGER_PROGS=$(NONRETRY_PROGS) $(RETRY_PROGS)
-    endif
     ifneq "$(findstring asm_,$(GRADE))" ""
         PROGS=$(DEBUGGER_PROGS)
     else
@@ -95,13 +130,6 @@ else
                 PROGS=$(DEBUGGER_PROGS)
             endif
         endif
-    endif
-
-    # Declarative debugging grades don't support trace level shallow,
-    # so we execute the tests exercising shallow tracing only in grades
-    # other than .decldebug grades.
-    ifeq "$(findstring decldebug,$(GRADE))" ""
-        PROGS := $(PROGS) $(SHALLOW_PROGS)
     endif
 endif
 
