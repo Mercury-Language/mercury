@@ -158,7 +158,9 @@
 % using the `try_commit' and `do_commit' instructions.
 % The comments below show the MLDS try_commit/do_commit version first,
 % but for clarity I've also included sample code using each of the three
-% different techniques.
+% different techniques.  This shows how the MLDS->target back-end can map
+% mlds__commit_type, do_commit and try_commit into target language
+% constructs.
 %
 % Note that if we're using GCC's __builtin_longjmp(),
 % then it is important that the call to __builtin_longjmp() be
@@ -197,7 +199,7 @@
 %		<succeeded = Goal>
 % 	===>
 %		void success() {
-%			throw COMMIT;
+%			throw COMMIT();
 %		}
 %		try {
 %			<Goal && success()>
@@ -206,14 +208,20 @@
 %			succeeded = TRUE;
 %		}
 
+%	The above is using C++ syntax. Here COMMIT is an exception type,
+%	which can be defined trivially (e.g. "class COMMIT {};").
+%	Note that when using catch/throw, we don't need the "ref" argument
+%	at all; the target language's exception handling implementation
+%	keeps track of all the information needed to unwind the stack.
+
 %	model_non in semi context: (using setjmp/longjmp)
 %		<succeeded = Goal>
 % 	===>
-%		jmp_buf buf;
+%		jmp_buf ref;
 %		void success() {
-%			longjmp(buf, 1);
+%			longjmp(ref, 1);
 %		}
-%		if (setjmp(buf)) {
+%		if (setjmp(ref)) {
 %			succeeded = TRUE;
 %		} else {
 %			<Goal && success()>
@@ -266,7 +274,7 @@
 %		<do Goal>
 %	===>
 %		void success() {
-%			throw COMMIT;
+%			throw COMMIT();
 %		}
 %		try {
 %			<Goal && success()>
@@ -275,11 +283,11 @@
 %	model_non in det context (using setjmp/longjmp):
 %		<do Goal>
 % 	===>
-%		jmp_buf buf;
+%		jmp_buf ref;
 %		void success() {
-%			longjmp(buf, 1);
+%			longjmp(ref, 1);
 %		}
-%		if (setjmp(buf) == 0) {
+%		if (setjmp(ref) == 0) {
 %			<Goal && success()>
 %		}
 
