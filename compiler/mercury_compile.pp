@@ -2020,15 +2020,13 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 	).
 
 
-
-%XXX This should probably go in another module - dgj 3/7/95
 :- pred get_c_header_code(c_header_info, list(string)).
 :- mode get_c_header_code(in, out) is det.
 
 get_c_header_code([], []).
-get_c_header_code((Header - _Context0).HeadersAndContexts, Header.Headers):-
+get_c_header_code([Header - _Context | HeadersAndContexts],
+			[Header | Headers]) :-
 	get_c_header_code(HeadersAndContexts, Headers).
-
 
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
