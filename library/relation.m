@@ -109,6 +109,10 @@
 :- pred relation__dfsrev(relation(T), T, list(T)).
 :- mode relation__dfsrev(in, in, out) is det.
 
+	% relation__is_dag(R) is true iff R is a directed acyclic graph.
+:- pred relation__is_dag(relation(T)).
+:- mode relation__is_dag(in) is semidet.
+
 	% relation__components(R, Comp) is true if Comp
 	% is the set of the connected components of R.
 :- pred relation__components(relation(T), set(set(T))).
@@ -366,9 +370,7 @@ relation__dfs(Rel, X, Dfs) :-
 	% order.
 relation__dfsrev(Rel, X, DfsRev) :-
 	set_bbbtree__init(Vis0),
-	stack__init(S0),
-	stack__push(S0, X, S1),
-	relation__dfs_2(Rel, S1, Vis0, [], _, DfsRev).
+	relation__dfs_3([X], Rel, Vis0, [], _, DfsRev).
 
 	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
 	% first sorting of Rel.  Where the nodes are in the
@@ -384,35 +386,108 @@ relation__dfs(Rel, Dfs) :-
 	% order visited.
 :- pred relation__dfsrev(relation(T), list(T)).
 :- mode relation__dfsrev(in, out) is det.
+
 relation__dfsrev(Rel, DfsRev) :-
 	relation__effective_domain(Rel, DomSet),
 	set__to_sorted_list(DomSet, DomList),
-	stack__init(S0),
-	stack__push_list(S0, DomList, S1),
-	set_bbbtree__init(Vis),
-	relation__dfs_2(Rel, S1, Vis, [], _, DfsRev).
+	set_bbbtree__init(Visit),
+	relation__dfs_2(DomList, Rel, Visit, [], DfsRev).
 
 
-:- pred relation__dfs_2(relation(T), stack(T), set_bbbtree(T), list(T), 
+:- pred relation__dfs_2(list(T), relation(T), set_bbbtree(T), list(T), list(T)).
+:- mode relation__dfs_2(in, in, in, in, out) is det.
+
+relation__dfs_2([], _, _, DfsRev, DfsRev).
+relation__dfs_2([Node | Nodes], Rel, Visit0, DfsRev0, DfsRev) :-
+	relation__dfs_3([Node], Rel, Visit0, DfsRev0, Visit, DfsRev1),
+	relation__dfs_2(Nodes, Rel, Visit, DfsRev1, DfsRev).
+	
+
+:- pred relation__dfs_3(list(T), relation(T), set_bbbtree(T), list(T), 
 							set_bbbtree(T),list(T)).
-:- mode relation__dfs_2(in, in, in, in, out, out) is det.
-relation__dfs_2(Rel, S0, VisIn, DfsIn, VisOut, DfsOut) :-
-	( stack__pop(S0, X, S1) ->
-	    ( set_bbbtree__member(X, VisIn) ->
-		relation__dfs_2(Rel, S1, VisIn, DfsIn, VisOut, DfsOut)
-	    ;
-		Dfs1 = [ X | DfsIn ],
-		relation__lookup_from(Rel, X, AdjSet),
-		set__to_sorted_list(AdjSet, AdjList),
-		set_bbbtree__insert(VisIn, X, Vis1),
-		stack__push_list(S1, AdjList, S2),
-		relation__dfs_2(Rel, S2, Vis1, Dfs1, VisOut, DfsOut)
-	    )
+:- mode relation__dfs_3(in, in, in, in, out, out) is det.
+
+relation__dfs_3([], _Rel, Visit, Dfs, Visit, Dfs).
+relation__dfs_3([Node | Nodes], Rel, Visit0, Dfs0, Visit, Dfs) :-
+	(
+		set_bbbtree__member(Node, Visit0)
+	->
+		relation__dfs_3(Nodes, Rel, Visit0, Dfs0, Visit, Dfs)
 	;
-	    DfsOut = DfsIn,
-	    VisOut = VisIn
+		relation__lookup_from(Rel, Node, AdjSet),
+		set__to_sorted_list(AdjSet, AdjList),
+		set_bbbtree__insert(Visit0, Node, Visit1),
+
+			% Go and visit all a nodes children first
+		relation__dfs_3(AdjList, Rel, Visit1, Dfs0, Visit2, Dfs1),
+
+		Dfs2 = [ Node | Dfs1],
+
+			% Go and visit the rest
+		relation__dfs_3(Nodes, Rel, Visit2, Dfs2, Visit, Dfs)
 	).
 
+
+%------------------------------------------------------------------------------%
+
+
+	% relation__is_dag
+	%	Does a DFS on the relation.  It is a directed acylic graph
+	%	if at each node we never visit and already visited node.
+relation__is_dag(R) :-
+	relation__effective_domain(R, DomSet),
+	set__to_sorted_list(DomSet, DomList),
+	set_bbbtree__init(Visit),
+	set_bbbtree__init(AllVisit),
+	relation__is_dag_2(DomList, R, Visit, AllVisit).
+
+:- pred relation__is_dag_2(list(T), relation(T), set_bbbtree(T), set_bbbtree(T)).
+:- mode relation__is_dag_2(in, in, in, in) is semidet.
+
+	% If a node hasn't already been visited check if the DFS from that node
+	% has any cycles in it.
+relation__is_dag_2([], _, _, _).
+relation__is_dag_2([Node | Nodes], Rel, Visit0, AllVisited0) :-
+	(
+		set_bbbtree__member(Node, AllVisited0)
+	->
+		AllVisited = AllVisited0
+	;
+		relation__is_dag_3([Node],Rel, Visit0, AllVisited0, AllVisited)
+	),
+	relation__is_dag_2(Nodes, Rel, Visit0, AllVisited).
+	
+
+:- pred relation__is_dag_3(list(T), relation(T), set_bbbtree(T), set_bbbtree(T),
+								set_bbbtree(T)).
+:- mode relation__is_dag_3(in, in, in, in, out) is semidet.
+
+	% Provided that we never encounter a node that we haven't visited before
+	% during the current DFS, the graph isn't cyclic.
+	% NB It is possible that we have visited a node before while doing a
+	% DFS from another node. 
+	%
+	% ie		2     3
+	%		 \   /
+	%		  \ /
+	%		   1
+	%
+	% 1 will be visited by a DFS from both 2 and 3.
+	%
+relation__is_dag_3([Node | Nodes], Rel, Visited0, AllVisited0, AllVisited) :-
+	not set_bbbtree__member(Node, Visited0),
+	relation__lookup_from(Rel, Node, AdjSet),
+	set__to_sorted_list(AdjSet, AdjList),
+	set_bbbtree__insert(Visited0, Node, Visited),
+	set_bbbtree__insert(AllVisited0, Node, AllVisited1),
+
+		% Go and visit all a nodes children first
+	relation__is_dag_3(AdjList, Rel, Visited, AllVisited1, AllVisited1),
+
+		% Go and visit the rest 
+	relation__is_dag_3(Nodes, Rel, Visited0, AllVisited1, AllVisited).
+
+	
 %------------------------------------------------------------------------------%
 
 	% relation__components takes a relation and returns
@@ -463,7 +538,9 @@ relation__reachable_from(Rel, Set0, Q0, Set) :-
 	%	components
 	%
 	%	Works using the following algorith
-	%		1. Using a DFS number all nodes in the order visited.
+	%		1. Topologically sort the nodes.  Then number the nodes
+	%		   so the highest num is the first node in the 
+	%		   topological sort.
 	%		2. Reverse the relation ie R'
 	%		3. Starting from the highest numbered node do a DFS on
 	%		   R'.  All the nodes visited are a member of the cycle.
@@ -486,9 +563,7 @@ relation__cliques(Rel, Cliques) :-
 relation__cliques_2([], _, _, Cliques, Cliques).
 relation__cliques_2([H | T0], RelInv, Visit0, Cliques0, Cliques) :-
 		% Do a DFS on R'
-	stack__init(S0),
-	stack__push(S0, H, S),
-	relation__dfs_2(RelInv, S, Visit0, [], Visit, StrongComponent),
+	relation__dfs_3([H], RelInv, Visit0, [], Visit, StrongComponent),
 
 		% Insert the cycle into the clique set.
 	set__list_to_set(StrongComponent, StrongComponentSet),
