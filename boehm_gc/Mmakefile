@@ -23,6 +23,8 @@ libgc$(PROF).so: submake
 
 libgc$(PROF).dll: submake
 
+MMAKEFLAGS=
+
 #	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
 #	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
 #	needs the builtin rules. 

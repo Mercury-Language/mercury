@@ -113,6 +113,8 @@ SUBDIRS = typeclasses
 
 #-----------------------------------------------------------------------------#
 
+MMAKEFLAGS =
+
 SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
 			GRADE='$(GRADE)' \
 			EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
