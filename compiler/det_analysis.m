@@ -144,7 +144,7 @@ global_inference_pass(ModuleInfo0, ProcList, Debug, ModuleInfo) -->
 	( { Changed = changed } ->
 		global_inference_pass(ModuleInfo1, ProcList, Debug, ModuleInfo)
 	;
-		% We have arrived a fixpoint. Therefore all the messages we
+		% We have arrived at a fixpoint. Therefore all the messages we
 		% have are based on the final determinisms of all procedures,
 		% which means it is safe to print them.
 		det_report_and_handle_msgs(Msgs, ModuleInfo1, ModuleInfo)
@@ -559,7 +559,7 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	% the SolnContext properly.
 
 	%
-	% First, process the second and subsequent conjuncts
+	% First, process the second and subsequent conjuncts.
 	%
 	update_instmap(Goal0, InstMap0, InstMap1),
 	det_infer_conj(Goals0, InstMap1, SolnContext, DetInfo,
@@ -567,8 +567,12 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	determinism_components(DetismB, CanFailB, MaxSolnsB),
 
 	%
-	% Next, work out whether the first conjunct is in
-	% a first_soln context or not
+	% Next, work out whether the first conjunct is in a first_soln context
+	% or not. We obviously need all its solutions if we need all the
+	% solutions of the conjunction. However, even if we need only the
+	% first solution of the conjunction, we may need to generate more
+	% than one solution of the first conjunct if the later conjuncts
+	% may possibly fail.
 	%
 	( 
 		CanFailB = cannot_fail,
@@ -579,14 +583,14 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 		SolnContextA = all_solns
 	),
 	%
-	% Process the first conjunct
+	% Process the first conjunct.
 	%
 	det_infer_goal(Goal0, InstMap0, SolnContextA, DetInfo,
 			Goal, DetismA, MsgsA),
 	determinism_components(DetismA, CanFailA, MaxSolnsA),
 
 	%
-	% Finally combine the results computed above
+	% Finally combine the results computed above.
 	%
 	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
 	det_conjunction_maxsoln(MaxSolnsA, MaxSolnsB, MaxSolns),
@@ -609,13 +613,7 @@ det_infer_disj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, CanFail0,
 	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo, CanFail2,
 		MaxSolns2, Goals1, Detism, Msgs2),
-	list__append(Msgs1, Msgs2, Msgs3),
-	( MaxSolns1 = at_most_zero ->
-		Goal0 = _ - GoalInfo0,
-		Msgs = [zero_soln_disjunct(GoalInfo0) | Msgs3]
-	;
-		Msgs = Msgs3
-	).
+	list__append(Msgs1, Msgs2, Msgs).
 
 :- pred det_infer_switch(list(case), instmap, soln_context, det_info,
 	can_fail, soln_count, list(case), determinism, list(det_msg)).

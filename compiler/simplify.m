@@ -193,6 +193,9 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		goal_to_conj_list(Else0, ElseList),
+		% XXX Using CondInfo without updating the determinism is a bug.
+		% We should probably update other goal_info fields as well,
+		% e.g. the instmap_delta.
 		List = [not(Cond0) - CondInfo | ElseList],
 		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
 			Goal - _, Msgs1),
