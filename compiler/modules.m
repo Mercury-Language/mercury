@@ -509,11 +509,19 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 		MaybeTransOptDeps) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
+	%
+	% To avoid problems with concurrent updates of `.d' files
+	% during parallel makes, we first create the file with a
+	% temporary name, and then rename it to the desired name
+	% when we've finished.
+	%
+	{ dir__dirname(DependencyFileName, DirName) },
+	io__tmpnam(DirName, "tmp_d", TmpDependencyFileName),
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
 	maybe_write_string(Verbose, DependencyFileName),
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
-	io__open_output(DependencyFileName, Result),
+	io__open_output(TmpDependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
 		{ set__list_to_set(LongDeps0, LongDepsSet0) },
 		{ set__delete(LongDepsSet0, ModuleName, LongDepsSet) },
@@ -661,10 +669,22 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 		]),
 
 		io__close_output(DepStream),
-		maybe_write_string(Verbose, " done.\n")
+		io__remove_file(DependencyFileName, _Result2),
+		io__rename_file(TmpDependencyFileName, DependencyFileName,
+			Result3),
+		( { Result3 = error(Error) } ->
+			{ io__error_message(Error, ErrorMsg) },
+			{ string__append_list(["can't rename file `",
+				TmpDependencyFileName, "' as `",
+				DependencyFileName, "': ", ErrorMsg],
+				Message) },
+			report_error(Message)
+		;
+			maybe_write_string(Verbose, " done.\n")
+		)
 	;
-		{ string__append_list(["can't open file `", DependencyFileName,
-				"' for output."], Message) },
+		{ string__append_list(["can't open file `",
+			TmpDependencyFileName, "' for output."], Message) },
 		report_error(Message)
 	).
 
