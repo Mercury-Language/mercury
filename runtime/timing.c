@@ -23,6 +23,8 @@ You should have received a copy of the GNU General Public License
 along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
+#define USG
+
 #ifdef USG
 #undef FLOAT
 #include <sys/param.h>
@@ -35,6 +37,9 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #ifndef VMS
 #include <sys/time.h>
 #include <sys/resource.h>
+#ifdef sparc
+#include <sys/rusage.h>
+#endif
 #endif
 #endif
 

@@ -22,16 +22,18 @@ typedef void	Code;
 
 /* DEFINITIONS FOR DEBUGGING FLAGS */
 
-#define	GOTOFLAG	0
-#define	CALLFLAG	1
-#define	HEAPFLAG	2
-#define	DETSTACKFLAG	3
-#define	NONDSTACKFLAG	4
-#define	FINALFLAG	5
-#define	DETAILFLAG	6
-#define	MAXFLAG		7
+#define	PROGFLAG	0
+#define	GOTOFLAG	1
+#define	CALLFLAG	2
+#define	HEAPFLAG	3
+#define	DETSTACKFLAG	4
+#define	NONDSTACKFLAG	5
+#define	FINALFLAG	6
+#define	DETAILFLAG	7
+#define	MAXFLAG		8
 /* DETAILFLAG should be the last real flag */
 
+#define	progdebug	debugflag[GOTOFLAG]
 #define	gotodebug	debugflag[GOTOFLAG]
 #define	calldebug	debugflag[CALLFLAG]
 #define	heapdebug	debugflag[HEAPFLAG]
@@ -453,12 +455,14 @@ extern	Word	*nondstackmin;
 #define	debugpop(val, sp) \
 	IF (detstackdebug, (save_registers(), pop_msg(val, sp)))
 
-#define	debugregs(msg)	(save_registers(), printregs(msg))
+#define	debugregs(msg) \
+	IF (progdebug, (save_registers(), printregs(msg)))
 
 #define	debugmkframe() \
 	IF (nondstackdebug, (save_registers(), mkframe_msg()))
 
-#define	debugframe(msg)	(save_registers(), printframe(msg))
+#define	debugframe(msg)	 \
+	IF (progdebug, (save_registers(), printframe(msg)))
 
 #define	debugmkreclaim() \
 	IF (nondstackdebug, (save_registers(), mkreclaim_msg()))
@@ -492,16 +496,16 @@ extern	Word	*nondstackmin;
 	IF (gotodebug, (save_registers(), goto_msg(label))))
 
 #define	debugmsg0(msg) \
-	printf(msg)
+	IF (progdebug, (printf(msg)))
 
 #define	debugmsg1(msg, arg1) \
-	printf(msg, arg1)
+	IF (progdebug, (printf(msg, arg1)))
 
 #define	debugmsg2(msg, arg1, arg2) \
-	printf(msg, arg1, arg2)
+	IF (progdebug, (printf(msg, arg1, arg2)))
 
 #define	debugmsg3(msg, arg1, arg2, arg3) \
-	printf(msg, arg1, arg2, arg3)
+	IF (progdebug, (printf(msg, arg1, arg2, arg3)))
 
 #endif
 
