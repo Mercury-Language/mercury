@@ -61,12 +61,12 @@ clean_local:
 install: install_headers install_lib install_dll
 
 # As well as installing gc.h (and hence gc_pthread_redirects.h and
-# gc_local_alloc.h), we also install gc_inl.h (and hence gc_priv.h,
+# gc_local_alloc.h), we also install gc_inl.h (and hence gc_priv.h, gc_mark.h,
 # gc_hdrs.h, gc_locks.h, and gcconfig.h), for use with `-DINLINE_ALLOC'.
 # If we're using DLLs, we also want libgc_dll.h and libgc_globals.h.
 
 HEADERS=include/gc.h include/gc_pthread_redirects.h include/gc_local_alloc.h \
-	include/gc_inl.h $(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
+	include/gc_inl.h include/gc_mark.h $(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
 PRIVATE_HEADERS=include/private/gc_priv.h include/private/gc_hdrs.h \
 	include/private/gc_locks.h include/private/gcconfig.h
 
