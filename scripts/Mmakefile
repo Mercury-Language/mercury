@@ -64,8 +64,8 @@ install_scripts: $(SCRIPTS)
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS)
-	[ -d $(INSTALL_LIBDIR/mdb) ] || mkdir -p $(INSTALL_LIBDIR/mdb)
-	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR/mdb) 
+	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
 .PHONY: install_nuprolog
 install_nuprolog: $(NUPROLOG_SCRIPTS)
@@ -90,7 +90,7 @@ uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
 	-cd $(INSTALL_BINDIR) && \
 		rm $(SCRIPTS) $(SICSTUS_SCRIPTS) $(NUPROLOG_SCRIPTS)
-	-cd $(INSTALL_LIBDIR/mdb) && rm $(DEBUGGER_SCRIPTS)
+	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 
