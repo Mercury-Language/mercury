@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -196,7 +196,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			arity,
 			int,		% mode number
 			determinism,
-			goal_path_string
+			goal_path_string,
+			line_number
  		)
 	% responses to current_slots for compiler generated event
 	;	current_slots_comp(
@@ -211,7 +212,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			arity,
 			int,		% mode number
 			determinism,
-			goal_path_string
+			goal_path_string,
+			line_number
  		)
 	% responses to current_vars
 	;	current_vars(list(univ), list(string))
@@ -275,24 +277,24 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 %	except the list of arguments.
 
 :- pragma export(output_current_slots_user(in, in, in, in, in, in, in, in, 
-	in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
+	in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
 			
 :- pred output_current_slots_user(event_number, call_number, depth_number, 
 	trace_port_type, pred_or_func, /* declarated module name */ string,
 	/* definition module name */ string, /* pred name */ string, arity, 
-	/* mode num */ int, determinism, goal_path_string, 
+	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
 :- mode output_current_slots_user(in, in, in, in, in, in, in, in, in, in, 
-	in, in, in,di, uo) is det.
+	in, in, in, in, di, uo) is det.
 
 
 output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port, 
 	PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum, 
-	Determinism, Path, OutputStream) -->
+	Determinism, Path, LineNo, OutputStream) -->
 	
 	{ CurrentTraceInfo = current_slots_user(EventNumber, CallNumber, 
 		DepthNumber, Port, PredOrFunc, DeclModuleName, DefModuleName, 
-		PredName, Arity, ModeNum, Determinism, Path) },
+		PredName, Arity, ModeNum, Determinism, Path, LineNo) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).
@@ -302,24 +304,24 @@ output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port,
 %	except the list of arguments.
 
 :- pragma export(output_current_slots_comp(in, in, in, in, in, in, in, 
-	in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
+	in, in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
 			
 :- pred output_current_slots_comp(event_number, call_number, depth_number, 
 	trace_port_type, /* name type */ string, /* module type */ string,
 	/* definition module */ string, /* pred name */ string, arity, 
-	/* mode num */ int, determinism, goal_path_string, 
+	/* mode num */ int, determinism, goal_path_string, line_number,
 	io__output_stream, io__state, io__state).
 :- mode output_current_slots_comp(in, in, in, in, in, in, in, in, in, in, 
-	in, in, in, di, uo) is det.
+	in, in, in, in, di, uo) is det.
 
 
 output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port, 
 	NameType, ModuleType, DefModuleName, PredName, Arity, 
-	ModeNum, Determinism, Path, OutputStream) -->
+	ModeNum, Determinism, Path, LineNo, OutputStream) -->
 	
 	{ CurrentTraceInfo = current_slots_comp(EventNumber, CallNumber, 
 		DepthNumber, Port, NameType, ModuleType, DefModuleName, 
-		PredName, Arity, ModeNum, Determinism, Path) },
+		PredName, Arity, ModeNum, Determinism, Path, LineNo) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).

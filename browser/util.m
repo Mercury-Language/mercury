@@ -44,6 +44,8 @@
 
 :- type goal_path_string == string.
 
+:- type line_number == int.
+
 	% Get user input via the same method used by the internal
 	% debugger.
 :- pred util__trace_getline(string, io__result(string), io__state,

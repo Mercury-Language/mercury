@@ -166,16 +166,16 @@ write("\n**************************************************"),
 	no_trace,
 	write("*** stack: ok.\n").
 
-write("\n**************************************************"),
-	write("\n**** Testing the term browser...\n"),
-	rerun,
-	fget(name = data and port = exit),
-	open("browse.in", read, browse_stream),
-	set_stream(input, browse_stream),
-	browse("HeadVar__1"),
-	close(browse_stream),
-	no_trace,
-	write("*** browser: ok.\n").
+% write("\n**************************************************"),
+% 	write("\n**** Testing the term browser...\n"),
+% 	rerun,
+% 	fget(name = data and port = exit),
+% 	open("browse.in", read, browse_stream),
+% 	set_stream(input, browse_stream),
+% 	browse("HeadVar__1"),
+% 	close(browse_stream),
+% 	no_trace,
+% 	write("*** browser: ok.\n").
 
 write("\n**************************************************"),
 	write("\n**** Testing collect...\n"),

@@ -649,6 +649,9 @@ is_alias_for(det, det).
 is_alias_for(goal_path, goal_path).
 is_alias_for(goal_path, gp).
 
+is_alias_for(line_number, line_number).
+is_alias_for(line_number, ln).
+
 
 % XXX Those ones are not hanled in fget yet.
 is_alias_for(args, arguments).

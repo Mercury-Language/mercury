@@ -42,9 +42,9 @@ print_event_Op :-
 	attribute_display(ChronoFlag, CallFlag, PortFlag, DepthFlag, DeterFlag,
 				PredOrFuncFlag, DeclModuleFlag, DefModuleFlag, 
 				NameFlag, ArityFlag, ModeNumFlag, ArgFlag, 
-				ListVarFlag, TypeFlag, GoalPathFlag),
+				ListVarFlag, TypeFlag, GoalPathFlag, LineNumberFlag),
 	current_attributes(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
-		DefModule, Name, Arity, ModeNum, Deter, GoalPath),
+		DefModule, Name, Arity, ModeNum, Deter, GoalPath, LineNumber),
 	indent_display(IndentFlag, IndentValue, IndentDepth),
 	print_line_attribute(chrono, Chrono, ChronoFlag),
 	write_indent(IndentFlag, IndentValue, IndentDepth, Depth),
@@ -79,7 +79,7 @@ print_event_Op :-
 	print_line_attribute(arity, Arity, ArityFlag),
 	print_line_attribute(mode_number, ModeNum, ModeNumFlag),
 	print_line_attribute(goal_path, GoalPath, GoalPathFlag),
-% 	print_line_number(Port, LineNumber, LineNumberFlag),
+ 	print_line_attribute(line_number, LineNumber, LineNumberFlag),
 	print_line_attribute(listvar, ListVar, ListVarFlag),
 	write_trace('\n')
     ;
@@ -117,7 +117,7 @@ print_displayed_attributes_Op :-
 	attribute_display(ChronoFlag, CallFlag, PortFlag, DepthFlag, DeterFlag,
 				PredOrFuncFlag, DeclModuleFlag, DefModuleFlag, 
 				NameFlag, ArityFlag, ModeNumFlag, ArgFlag, 
-				ListVarFlag, TypeFlag, GoalPathFlag),
+				ListVarFlag, TypeFlag, GoalPathFlag, LineNumFlag),
 	indent_display(IndentFlag, IndentValue, IndentDepth),
 	
 	(ChronoFlag = on -> write_trace("chrono: ") ; true),
@@ -140,7 +140,7 @@ print_displayed_attributes_Op :-
 	print_line_attribute(arity, 	arity,	ArityFlag),
 	print_line_attribute(mode_number, mode_number, ModeNumFlag),
 	print_line_attribute(goal_path, goal_path, GoalPathFlag),
-% 	print_line_number(Port, LineNumber, LineNumberFlag),
+ 	print_line_number(line_number, line_number, LineNumberFlag),
 	write_trace('\n'),
 	print_line_attribute(listvar, listvar, ListVarFlag),
 	!.	
@@ -166,7 +166,7 @@ opium_command(
 print_full_event_Op :-
 	get_parameter(attribute_display, L),
 	set_parameter(attribute_display,  
-		[on, on, on, on, on, on, on, on, on, on, on, on, on, on, on]),
+		[on, on, on, on, on, on, on, on, on, on, on, on, on, on, on, on]),
 	print_event_Op,
 	set_parameter(attribute_display, L).
 
@@ -204,7 +204,7 @@ print_full_displayed_attributes_Op :-
 	print_line_attribute(arity, arity, on),
 	print_line_attribute(mode_number, mode_number, on),
 	print_line_attribute(goal_path, goal_path, on),
-% 	print_line_number(Port, LineNumber, on),
+	print_line_attribute(line_number, line_number, on),
 	write_trace('\n'),
 	!.	
 
@@ -314,8 +314,8 @@ opium_procedure(
 "Displays an attribute of the trace line. `AttributeName' is \
 a member of the following list: [chrono, call, depth, port, proc_type, \
 decl_module, def_module, arity, mode_number, args, deter, goal_path, \
-non_arg_var]. To customize the way arguments are displayed, you should \
-rather modify `write_arg/1'."
+line_number, non_arg_var]. To customize the way arguments are displayed, you \
+should rather modify `write_arg/1'."
 	).
 
 %:- pred write_attribute_Op(atom, atom).
@@ -366,6 +366,11 @@ write_attribute_Op(deter, V) :-
 	write_trace(' ').
 
 write_attribute_Op(goal_path, V) :-
+	write_trace(' '),
+	write_trace(V),
+	write_trace(' ').
+
+write_attribute_Op(line_number, V) :-
 	write_trace(' '),
 	write_trace(V),
 	write_trace(' ').
@@ -1155,7 +1160,7 @@ opium_parameter(
 	arg_list	: [Chrono, Call, Port, Depth, Deter, PredOrFunc, 
 				DeclModule, DefModule, Name, Arity, 
 				ModeNumber, ListArg, ListNonArgVar, Type, 
-				GoalPath /*, LineNumber */ ],
+				GoalPath, LineNumber],
 	arg_type_list	: [is_member([on,off]), is_member([on,off]),
 				is_member([on,off]), is_member([on,off]),
 				is_member([on,off]), is_member([on,off]),
@@ -1163,10 +1168,10 @@ opium_parameter(
 				is_member([on,off]), is_member([on,off]), 
 				is_member([on,off]), is_member([on,off]), 
 				is_member([on,off]), is_member([on,off]),
-				is_member([on,off]) /*,is_member([on,off])*/ ],
+				is_member([on,off]), is_member([on,off])],
 	parameter_type	: single,
 	default		: [on, on, on, on, off, off, off, off, on, off, off, 
-				on, off, off, on /* , on */ ],
+				on, off, off, on, on],
 	commands	: [print_event],
 	message		: 
 "Parameter which contains the flags for the selective display of attributes. \
@@ -1334,180 +1339,192 @@ update_list_display(Keyword, ListDisplay, NewListDisplay) :-
 	(
 		is_alias_for(chrono, Keyword),
 		ListDisplay = [S, O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,
-			O14,O15],
+			O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [NewS, O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(call, Keyword),
 		ListDisplay = [O1, S,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1, NewS,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(port, Keyword),
 		ListDisplay = [O1,O2, S,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2, NewS,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13, O14,O15],
+			O12,O13, O14,O15,O16],
 		!
 	;
 		is_alias_for(depth, Keyword),
 		ListDisplay = [O1,O2,O3, S,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3, NewS,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(det, Keyword),
 		ListDisplay = [O1,O2,O3,O4,S,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,NewS,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(proc_type, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,S,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,NewS,O7,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(decl_module, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,S,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,NewS,O8,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(def_module, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,S,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,NewS,O9,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(name, Keyword),
 		ListDisplay = [O1,O2,O3,O,O5,O6,O7,O8,S,O10,O11,O12,
-			O13,O14,O15],
+			O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O,O5,O6,O7,O8,NewS,O10,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(arity, Keyword),
-		ListDisplay = [O1,O2,O3,O,O5,O6,O7,O8,O9,S,O11,O12,O13,O14,O15],
+		ListDisplay = [O1,O2,O3,O,O5,O6,O7,O8,O9,S,O11,O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O,O5,O6,O7,O8,O9,NewS,O11,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(mode_number, Keyword),
-		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,S,O12,O13,O14,O15],
+		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,S,O12,O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,NewS,
-			O12,O13,O14,O15],
+			O12,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(args, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,S,
-			O13,O14,O15],
+			O13,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,
-			O11,NewS,O13,O14,O15],
+			O11,NewS,O13,O14,O15,O16],
 		!
 	;
 		is_alias_for(local_vars, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,S,O14,O15],
+			O12,S,O14,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,NewS,O14,O15],
+			O12,NewS,O14,O15,O16],
 		!
 	;
 		is_alias_for(arg_types, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,
-			O13,S,O15],
+			O13,S,O15,O16],
 		( S = off ->
 			NewS = on
 		;
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,NewS,O15],
+			O12,O13,NewS,O15,O16],
 		!
 	;
 		is_alias_for(goal_path, Keyword),
 		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,
-			O13,O14,S],
+			O13,O14,S,O16],
 		( S = off ->
 			NewS = on
 		; 
 			NewS = off
 		),
 		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
-			O12,O13,O14,NewS] 
+			O12,O13,O14,NewS,O16],
+		!
+	;
+		is_alias_for(line_number, Keyword),
+		ListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,
+			O13,O14,O15,S],
+		( S = off ->
+			NewS = on
+		; 
+			NewS = off
+		),
+		NewListDisplay = [O1,O2,O3,O4,O5,O6,O7,O8,O9,O10,O11,
+			O12,O13,O14,O15,NewS] 
 	).
 
 

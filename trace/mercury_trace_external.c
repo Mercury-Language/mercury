@@ -173,7 +173,7 @@ static bool	MR_found_match(const MR_Label_Layout *layout,
 			MR_Unsigned depth,
 			/* XXX registers */
 			const char *path, MR_Word search_data);
-static void	MR_output_current_slots(const MR_Label_Layout *layout,
+static void	MR_output_current_slots(const MR_Event_Info *event_info,
 			MR_Trace_Port port, MR_Unsigned seqno,
 			MR_Unsigned depth, const char *path);
 static void	MR_output_current_vars(MR_Word var_list, MR_Word string_list);
@@ -596,7 +596,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_CURRENT_SLOTS\n");
 				}
-				MR_output_current_slots(layout, port, seqno, 
+				MR_output_current_slots(event_info, port, seqno, 
 							depth, path);
 				break;
 
@@ -898,10 +898,38 @@ done:
 }
 
 static void
-MR_output_current_slots(const MR_Label_Layout *layout,
+MR_output_current_slots(const MR_Event_Info *event_info,
 	MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
 	const char *path)
 {
+	const char		*filename;
+	const MR_Label_Layout	*layout = event_info->MR_event_sll;
+	const MR_Label_Layout	*parent_layout;
+	const char		*problem; 
+	int			lineno = 0;
+	MR_Word			*base_sp, *base_curfr;
+
+	
+	if ( port == MR_PORT_CALL || port == MR_PORT_EXIT || 
+	     port == MR_PORT_REDO || port == MR_PORT_FAIL ) 
+	  /* 
+	  ** At external events, we want the line number where the call is made,
+	  ** not the one where the procedure is defined.
+	  */
+	  {
+		base_sp = MR_saved_sp(event_info->MR_saved_regs);
+		base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
+		parent_layout = MR_find_nth_ancestor(layout, 1,
+				      &base_sp, &base_curfr, &problem);
+		if (parent_layout != NULL) {
+			(void) MR_find_context(parent_layout, &filename, &lineno);
+		}
+
+	  } else {
+		(void) MR_find_context(layout, &filename, &lineno);
+	  } ;
+
+
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		MR_TRACE_CALL_MERCURY(
 		    ML_DI_output_current_slots_comp(
@@ -921,6 +949,7 @@ MR_output_current_slots(const MR_Label_Layout *layout,
 			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			(MR_String) (MR_Word) path,
+			lineno,
 			(MR_Word) &MR_debugger_socket_out);
 		    );
 	} else {
@@ -941,6 +970,7 @@ MR_output_current_slots(const MR_Label_Layout *layout,
 			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			(MR_String) (MR_Word) path,
+			lineno,
 			(MR_Word) &MR_debugger_socket_out);
 		    );
 	}
