@@ -312,6 +312,15 @@
 
 :- mode call(pred(in,  in,  in,  in,  di,  out, uo)  is det,     in,  in,  in,  in,  di,  out, uo)  is det.
 
+:- external(call/1).
+:- external(call/2).
+:- external(call/3).
+:- external(call/4).
+:- external(call/5).
+:- external(call/6).
+:- external(call/7).
+:- external(call/8).
+
 % In addition, the following predicate-like constructs are builtin:
 %
 %	:- pred (T = T).
