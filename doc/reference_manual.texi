@@ -5368,9 +5368,9 @@ and @code{string} are mapped to the Common Language Runtime types
 Mercury variables whose type is a type variable will be passed as
 @code{System.Object}.
 Mercury array types are mapped to CLR array types.
-When compiling with @option{--no-high-level-data}, all other Mercury variables
+When compiling with @samp{--no-high-level-data}, all other Mercury variables
 are passed as @code{System.Object[]}.
-When compiling with @option{--high-level-data},
+When compiling with @samp{--high-level-data},
 Mercury variables whose type is a Mercury discriminated union type
 will be passed as a CLR type whose type name is determined from
 the Mercury type name (ignoring any type parameters) followed by
@@ -6841,7 +6841,7 @@ then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
 where @var{reason} will be @samp{MR_undo} if the backtracking was due to
 a goal failing, @samp{MR_exception} if the backtracking was due to
 a goal throwing an exception, or @samp{MR_retry} if the backtracking
-was due to the use of the ``retry'' command in @command{mdb}, the Mercury debugger,
+was due to the use of the ``retry'' command in @samp{mdb}, the Mercury debugger,
 or any similar user request in a debugger.
 The Mercury implementation also ensures that if the current choice point is
 pruned because execution commits to never backtracking to it,

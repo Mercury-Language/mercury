@@ -3482,7 +3482,7 @@ The name of this file must not have dollar signs in it.
 
 On some operating systems,
 Mercury's profiling doesn't work properly with shared libraries.
-The symptom is errors (@samp{map__lookup failed}) or warnings from @command{mprof}.
+The symptom is errors (@samp{map__lookup failed}) or warnings from @samp{mprof}.
 On some systems, the problem occurs because the C implementation
 fails to conform to the semantics specified by the ISO C standard
 for programs that use shared libraries.
