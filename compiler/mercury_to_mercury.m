@@ -156,7 +156,7 @@
 :- mode mercury_output_pragma_type_spec(in(type_spec), in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
-		int, mode_num, list(int), io__state, io__state) is det.
+		int, mode_num, list(int), io__state, io__state).
 :- mode mercury_output_pragma_unused_args(in, in, in, in, in, di, uo) is det.
 
 	% Write an Aditi index specifier.

@@ -1,0 +1,16 @@
+:- module unchanged_pred_nr.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module unchanged_pred_nr_2.
+
+main -->
+	{ unchanged_pred("OK\n", Str) },
+	io__write_string(Str).
+

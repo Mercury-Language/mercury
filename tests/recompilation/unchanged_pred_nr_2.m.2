@@ -1,0 +1,11 @@
+:- module unchanged_pred_nr_2.
+
+:- interface.
+
+:- pred unchanged_pred(string, string) is det.
+:- mode unchanged_pred(in, out) is det.
+
+:- implementation.
+
+unchanged_pred(X, X).
+
