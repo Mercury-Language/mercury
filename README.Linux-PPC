@@ -1,0 +1,133 @@
+Mercury should compile out-of-the-box on Linux for PPC.
+Thanks to Robert A. Abernathy for his help with this port.
+
+However, there are a few things that could be done to "tune" this port.
+Currently the Linux-PPC port does not yet support
+	- gcc global register variables
+	- shared libraries
+	- stack overflow detection
+
+Appended below is some information on how to add support for these.
+Intrepid hackers, read on ;-)
+
+> Robert A. Abernathy wrote:
+> > 
+> > You'll notice that shared libraries aren't supported on this
+> > machine yet.  The LinuxPPC on the machine is an ELF system
+> > and does support shared libs.  Most software I've tried to
+> > port that uses configure doesn't like to see this yet.
+> > I don't know in your case what the test is yet. 
+> > This certainly isn't crucial as far as I'm concerned.
+> > Just figured I'd let you know.
+> 
+> Thanks.
+> 
+> We don't try to auto-configure shared libraries;
+> it's not reliable, since often failures only exhibit
+> themselves on large programs, not simple test cases.
+> 
+> The code to handle shared libraries might be as simple as just
+> patching configure to tell it to assume that they work. 
+> (The way to do this is shown in the patch appended below.)
+> But more likely it will also require a little bit
+> of ABI-dependent code in runtime/goto.h, similar to the existing
+> stuff there for for __alpha or __sparc.
+> 
+> > checking whether we can use gcc labels and global registers... no
+> > checking whether we can use global registers without gcc labels... no
+> 
+> Actually it would probably be much more important to get gcc global
+> registers working; this would give you a big (50-100%) performance
+> boost.  This is also probably very easy.  You probably just need
+> to modify runtime/regs.h to change the line
+> 
+> 	#elif defined(_POWER)
+> 
+> to something that matches some symbol defined by gcc for Power PC,
+> e.g.
+> 
+> 	#elif defined(__powerpc__) || defined(_POWER)
+> 
+> We've already ported to rs6000-ibm-aix, so this architecture
+> has already been tested (RS/6000 is basically the same as PowerPC).
+> It should just be a matter of finding the right #define to enable it.
+> 
+> (Incidentally, if you're trying any of this stuff out, it is generally
+> quickest to start with a freshly untarred source distribution.)
+> 
+> > checking for sys/siginfo.h... no
+> > checking for ucontext.h... no
+> > checking for sys/ucontext.h... no
+> > checking for asm/sigcontext.h... yes
+> ...
+> > checking for `sigaction' field name... sa_handler
+> > checking for working `sigcontext_struct'... no
+> > checking for `siginfo_t'... no
+> 
+> The only other thing missing is stack overflow checking.
+> That requires a way of determining the fault address in a signal
+> handler, and there's no portable way of doing that.
+> We try a bunch of different ways, as shown above.
+> The method that is used on x86-linux is asm/sigcontext.h +
+> sigcontext_struct.  Unfortunately the sigcontext_struct field name
+> we use in this method is hard-coded as `cr2', so it won't work on
+> PPC-Linux.  There may be some way of getting the same information
+> on PPC-Linux.
+> 
+> Anyway, stack overflow checking is a lot less important than
+> the other two.  Global register variables would probably be
+> very easy and very beneficial, so it's very worthwhile.
+> Shared libraries would be useful, but might be a bit of work.
+> Stack overflow checking would be icing on the cake ;-)
+> 
+> Anyway, thanks for all your help, and I hope you enjoy using
+> Mercury.
+> 
+> Cheers,
+> 	Fergus.
+> 
+> -- 
+> Fergus Henderson <fjh@cs.mu.oz.au>   |  "I have always known that the pursuit
+> WWW: <http://www.cs.mu.oz.au/~fjh>   |  of excellence is a lethal habit"
+> PGP: finger fjh@128.250.37.3         |     -- the last words of T. S. Garp.
+> 
+> P.S.  In the very latest beta-release, runtime/regs.h has been
+> renamed as runtime/mercury_regs.h, and similary goto.h is now
+> mercury_goto.h.
+> 
+> Index: regs.h
+> ===================================================================
+> RCS file: /home/staff/zs/imp/mercury/runtime/regs.h,v
+> retrieving revision 1.31
+> diff -u -u -r1.31 regs.h
+> --- regs.h	1997/08/23 22:34:17	1.31
+> +++ regs.h	1997/11/22 17:55:03
+> @@ -70,7 +70,7 @@
+>      #include "machdeps/alpha_regs.h"
+>    #elif defined(__hppa__)
+>      #include "machdeps/pa_regs.h"
+> -  #elif defined(_POWER)
+> +  #elif defined(__powerpc__) || defined(_POWER)
+>      #include "machdeps/rs6000_regs.h"
+>    #else
+>      #error "USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
+> 
+> Index: configure.in
+> ===================================================================
+> RCS file: /home/staff/zs/imp/mercury/configure.in,v
+> retrieving revision 1.117
+> diff -u -u -r1.117 configure.in
+> --- configure.in	1997/11/02 12:41:48	1.117
+> +++ configure.in	1997/11/22 17:37:07
+> @@ -1404,6 +1404,10 @@
+>  		AC_MSG_RESULT(yes)
+>  		EXT_FOR_SHARED_LIB=so
+>  		;;
+> +	powerpc-*-linux|powerpc-*-linux-gnu)
+> +		AC_MSG_RESULT(yes)
+> +		EXT_FOR_SHARED_LIB=so
+> +		;;
+>  	i?86-*-freebsd*)
+>  		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
+>  		AC_MSG_RESULT(yes)
+> 

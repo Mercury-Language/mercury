@@ -1,14 +1,15 @@
-Mercury has only been ported to Linux/x86, not to Linux/Alpha
-Linux/PowerPC, Linux/m68k, etc.  Those other ports should
-not be difficult, but this file documents just the Linux/x86 port.
+This file documents just the Linux/x86 port.  For the Linux/PowerPC
+port, see README.Linux-PPC.  (Ports to Linux on other architecures have
+not yet been attempted, but should not be difficult.)
 
 On Linux with a.out, shared libraries are not supported.
 If you still have an old a.out system, the auto-configuration might
 wrongly assume your Linux system uses ELF; if that happens, you will you
 have to manually edit the EXT_FOR_SHARED_LIB variable in Mmake.common.
 
-If you are using libc6, then you need to apply the patch listed at
-the end of this file.  Just type `patch boehm_gc/os_dep.c < README.Linux'.
+It is possible that on some recent versions of Linux, you may get an
+error when compiling boehm_gc/os_dep.c.  If so, apply the patch below.
+Just type `patch boehm_gc/os_dep.c < README.Linux'.
 
 On Linux with ELF, shared libraries are supported.  However, ELF shared
 libraries require position-independent code, and (partly due to
@@ -46,18 +47,18 @@ and then PIC and non-PIC code could be mixed without any problems.)
 
 --------------------
 
-diff -u -r1.9 os_dep.c
---- os_dep.c	1997/03/06 02:51:19	1.9
-+++ os_dep.c	1997/10/15 10:04:53
-@@ -23,9 +23,11 @@
-     /* for some early 1.3.X releases.  Will hopefully go away soon.	*/
-     /* in some later Linux releases, asm/sigcontext.h may have to	*/
-     /* be included instead.						*/
-+#  if 0
- #   define __KERNEL__
- #   include <asm/signal.h>
- #   undef __KERNEL__
-+#  endif
+--- os_dep.c	Mon Nov 24 17:01:23 1997
++++ new/os_dep.c	Mon Nov 24 17:04:10 1997
+@@ -31,11 +31,11 @@
+       /* This used to be conditional on (LINUX_VERSION_CODE < 0x20100), */
+       /* but that is not the right test, since it is needed for at    */
+       /* least one 2.1.35 (LINUX_VERSION_CODE = 0x20103) release.     */
+       /* For the moment I'll just make it unconditional.  If you get  */
+       /* a compilation error at the line below, just comment it out.  */
+-#     include <asm/sigcontext.h>
++/*** #     include <asm/sigcontext.h> ***/
+ #   endif
  # endif
  # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)
  #   include <sys/types.h>
+ #   if !defined(MSWIN32) && !defined(SUNOS4)

@@ -27,7 +27,12 @@
 #     define __KERNEL__
 #     include <asm/signal.h>
 #     undef __KERNEL__
-#   elif (LINUX_VERSION_CODE < 0x20100)
+#   else
+      /* This used to be conditional on (LINUX_VERSION_CODE < 0x20100), */
+      /* but that is not the right test, since it is needed for at    */
+      /* least one 2.1.35 (LINUX_VERSION_CODE = 0x20103) release.     */
+      /* For the moment I'll just make it unconditional.  If you get  */
+      /* a compilation error at the line below, just comment it out.  */
 #     include <asm/sigcontext.h>
 #   endif
 # endif
