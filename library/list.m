@@ -92,7 +92,8 @@
 	% list__merge_and_remove_dups(L1, L2, L):
 	%	L is the result of merging L1 and L2 and eliminating
 	%	any duplicates.
-	%	L1 and L2 must be sorted.
+	%	L1 and L2 must be sorted and must each not contain any
+	%	duplicates.
 :- pred list__merge_and_remove_dups(list(T), list(T), list(T)).
 :- mode list__merge_and_remove_dups(in, in, out) is det.
 
