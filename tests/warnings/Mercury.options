@@ -40,5 +40,6 @@ MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
 MCFLAGS-pragma_term_conflict = --enable-termination
 MCFLAGS-term_indirect_warning = --check-termination
 MCFLAGS-foreign_term_invalid = --enable-termination
+MCFLAGS-non_term_user_special = --enable-termination
 
 MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
