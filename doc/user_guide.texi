@@ -2384,6 +2384,51 @@ If none of these options is given,
 the default is to affect all formats.
 In the case that the format itself is being set,
 these options are ignored.
+@sp 1
+@item view [-v] [-f] [-w @var{window-cmd}] [-s @var{server-cmd}] [-n @var{server-name}] [-t @var{timeout}]
+@itemx view -c [-v] [-s @var{server-cmd}] [-n @var{server-name}]
+@kindex view (mdb command)
+Opens a new window displaying the source code,
+at the location of the current event.
+As mdb stops at new events,
+the window is updated to track through the source code.
+This requires a version of @samp{vim}
+compiled with the client/server option enabled.
+@sp 1
+The debugger only updates one window at a time.
+If you try to open a new source window when there is already one open,
+this command aborts with an error message.
+@sp 1
+The variant with @samp{-c} (or @samp{--close})
+does not open a new window but instead
+attempts to close a currently open source window.
+The attempt may fail if, for example,
+the user has modified the source file without saving.
+@sp 1
+The option @samp{-v} (or @samp{--verbose})
+prints the underlying system calls before running them,
+and prints any output the calls produced.
+This is useful to find out what is wrong if the server does not start.
+@sp 1
+The option @samp{-f} (or @samp{--force})
+stops the command from aborting if there is already a window open.
+Instead it attempts to close that window first.
+@sp 1
+The option @samp{-w} (or @samp{--window-command}) specifies
+the command to open a new window.
+The default is @samp{xterm -e}.
+@sp 1
+The option @samp{-s} (or @samp{--server-command}) specifies
+the command to start the server.
+The default is @samp{vim}.
+@sp 1
+The option @samp{-n} (or @samp{--server-name}) specifies
+the name of an existing server.
+Instead of starting up a new server,
+mdb will attempt to connect to the existing one.
+@sp 1
+The option @samp{-t} (or @samp{--timeout}) specifies
+the maximum number of seconds to wait for the server to start.
 @end table
 @sp 1
 @node Breakpoint commands

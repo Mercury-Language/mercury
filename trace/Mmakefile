@@ -45,6 +45,7 @@ HDRS		=	\
 			mercury_trace_help.h		\
 			mercury_trace_internal.h	\
 			mercury_trace_readline.h	\
+			mercury_trace_source.h		\
 			mercury_trace_spy.h		\
 			mercury_trace_tables.h		\
 			mercury_trace_util.h		\
@@ -60,6 +61,7 @@ CFILES		= 	\
 			mercury_trace_help.c		\
 			mercury_trace_internal.c	\
 			mercury_trace_readline.c	\
+			mercury_trace_source.c		\
 			mercury_trace_spy.c		\
 			mercury_trace_tables.c		\
 			mercury_trace_util.c		\

@@ -26,7 +26,7 @@ end
 document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
              The browsing commands are `vars', `print', `browse',
-             `stack', `up', `down', `level', and `current'.
+             `stack', `up', `down', `level', `current' and `view'.
 
 end
 document_category 500 breakpoint

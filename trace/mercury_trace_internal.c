@@ -26,6 +26,7 @@
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 #include "mercury_trace_readline.h"
+#include "mercury_trace_source.h"
 
 #include "mdb.browse.h"
 #include "mdb.browser_info.h"
@@ -98,6 +99,11 @@ static	int			MR_scroll_next = 0;
 #ifdef MR_NO_USE_READLINE
 static	bool			MR_echo_commands = FALSE;
 #endif
+
+/*
+** The details of the source server, if any.
+*/
+static	MR_Trace_Source_Server	MR_trace_source_server = { NULL, NULL };
 
 /*
 ** We print confirmation of commands (e.g. new aliases) if this is TRUE.
@@ -178,6 +184,12 @@ static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
 			MR_Unsigned value);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
+static	const char *MR_trace_new_source_window(const char *window_cmd,
+			const char *server_cmd, const char *server_name,
+			int timeout, bool force, bool verbose);
+static	void	MR_trace_maybe_sync_source_window(MR_Event_Info *event_info,
+			bool verbose);
+static	void	MR_trace_maybe_close_source_window(bool verbose);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -206,6 +218,11 @@ static	bool	MR_trace_options_param_set(MR_Word *print_set,
 			MR_Word *verbose_format, MR_Word *pretty_format, 
 			char ***words, int *word_count, const char *cat, 
 			const char *item);
+static	bool	MR_trace_options_view(const char **window_cmd,
+			const char **server_cmd, const char **server_name,
+			int *timeout, bool *force, bool *verbose, bool *close,
+			char ***words, int *word_count, const char *cat,
+			const char*item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -273,6 +290,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	MR_trace_internal_ensure_init();
 
 	MR_trace_event_print_internal_report(event_info);
+	MR_trace_maybe_sync_source_window(event_info, FALSE);
 
 	/*
 	** These globals can be overwritten when we call Mercury code,
@@ -1134,6 +1152,37 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					pretty_format, words[1], words[2]))
 		{
 			MR_trace_usage("browsing", "set");
+		}
+	} else if (streq(words[0], "view")) {
+		const char		*window_cmd = NULL;
+		const char		*server_cmd = NULL;
+		const char		*server_name = NULL;
+		int			timeout = 8;	/* seconds */
+		bool			force = FALSE;
+		bool			verbose = FALSE;
+		bool			close = FALSE;
+		const char		*msg;
+
+		if (! MR_trace_options_view(&window_cmd, &server_cmd,
+				&server_name, &timeout, &force, &verbose,
+				&close, &words, &word_count, "browsing",
+				"view"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count != 1) {
+			MR_trace_usage("browsing", "view");
+		} else if (close) {
+			MR_trace_maybe_close_source_window(verbose);
+		} else {
+			msg = MR_trace_new_source_window(window_cmd,
+					server_cmd, server_name, timeout,
+					force, verbose);
+			if (msg != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", msg);
+			}
+
+			MR_trace_maybe_sync_source_window(event_info, verbose);
 		}
 	} else if (streq(words[0], "break")) {
 		MR_Proc_Spec		spec;
@@ -2235,6 +2284,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			}
 
 			if (confirmed) {
+				MR_trace_maybe_close_source_window(FALSE);
 				exit(EXIT_SUCCESS);
 			}
 		} else {
@@ -2325,6 +2375,132 @@ MR_parse_source_locn(char *word, const char **file, int *line)
 	}
 
 	return FALSE;
+}
+
+/*
+** Implement the `view' command.  First, check if there is a server
+** attached.  If so, either stop it or abort the command, depending
+** on whether '-f' was given.  Then, if a server name was not supplied,
+** start a new server with a unique name (which has been MR_malloc'd),
+** otherwise attach to the server with the supplied name (and make a
+** MR_malloc'd copy of the name).
+*/
+static const char *
+MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
+		const char *server_name, int timeout, bool force, bool verbose)
+{
+	const char	*msg;
+
+	if (MR_trace_source_server.server_name != NULL) {
+		/*
+		** We are already attached to a server.
+		*/
+		if (force) {
+			MR_trace_maybe_close_source_window(verbose);
+		} else {
+			return "error: server already open (use '-f' to force)";
+		}
+	}
+
+	if (server_cmd != NULL) {
+		MR_trace_source_server.server_cmd = MR_copy_string(server_cmd);
+	} else {
+		MR_trace_source_server.server_cmd = NULL;
+	}
+
+	if (server_name == NULL)
+	{
+		msg = MR_trace_source_open_server(&MR_trace_source_server,
+				window_cmd, timeout, verbose);
+	}
+	else
+	{
+		MR_trace_source_server.server_name =
+				MR_copy_string(server_name);
+		msg = MR_trace_source_attach(&MR_trace_source_server, timeout,
+				verbose);
+		if (msg != NULL) {
+			/*
+			** Something went wrong, so we should free the
+			** strings we allocated just above.
+			*/
+			MR_free(MR_trace_source_server.server_name);
+			MR_trace_source_server.server_name = NULL;
+			MR_free(MR_trace_source_server.server_cmd);
+			MR_trace_source_server.server_cmd = NULL;
+		}
+	}
+
+	return msg;
+}
+
+/*
+** If we are attached to a source server, then find the appropriate
+** context and ask the server to point to it, otherwise do nothing.
+*/
+static	void
+MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, bool verbose)
+{
+	const MR_Label_Layout	*parent;
+	const char		*filename;
+	int			lineno;
+	const char		*problem; /* not used */
+	MR_Word			*base_sp, *base_curfr;
+	const char		*msg;
+
+	if (MR_trace_source_server.server_name != NULL) {
+		lineno = 0;
+		filename = "";
+
+		/*
+		** At interface ports we use the parent context if we can.
+		** Otherwise, we use the current context.
+		*/
+		if (MR_port_is_interface(event_info->MR_trace_port)) {
+			base_sp = MR_saved_sp(event_info->MR_saved_regs);
+			base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
+			parent = MR_find_nth_ancestor(event_info->MR_event_sll,
+				1, &base_sp, &base_curfr, &problem);
+			if (parent != NULL) {
+				(void) MR_find_context(parent, &filename,
+					&lineno);
+			}
+		}
+
+		if (filename[0] == '\0') {
+			(void) MR_find_context(event_info->MR_event_sll,
+					&filename, &lineno);
+		}
+
+		msg = MR_trace_source_sync(&MR_trace_source_server, filename,
+				lineno, verbose);
+		if (msg != NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: %s.\n", msg);
+		}
+	}
+}
+
+/*
+** Close a source server, if there is one attached.
+*/
+static	void
+MR_trace_maybe_close_source_window(bool verbose)
+{
+	const char	*msg;
+
+	if (MR_trace_source_server.server_name != NULL) {
+		msg = MR_trace_source_close(&MR_trace_source_server, verbose);
+		if (msg != NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: %s.\n", msg);
+		}
+
+		MR_free(MR_trace_source_server.server_name);
+		MR_trace_source_server.server_name = NULL;
+		MR_free(MR_trace_source_server.server_cmd);
+		MR_trace_source_server.server_cmd = NULL;
+	}
 }
 
 static struct MR_option MR_trace_strict_print_opts[] =
@@ -2766,6 +2942,106 @@ MR_trace_options_param_set(MR_Word *print_set, MR_Word *browse_set,
 
 			case 'A':
 				*print_all_set = mercury_bool_yes;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_view_opts[] =
+{
+	{ "close",		MR_no_argument,		NULL,	'c' },
+	{ "window-command",	MR_required_argument,	NULL,	'w' },
+	{ "server-command",	MR_required_argument,	NULL,	's' },
+	{ "server-name",	MR_required_argument,	NULL,	'n' },
+	{ "timeout",		MR_required_argument,	NULL,	't' },
+	{ "force",		MR_no_argument,		NULL,	'f' },
+	{ "verbose",		MR_no_argument,		NULL,	'v' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static bool
+MR_trace_options_view(const char **window_cmd, const char **server_cmd,
+		const char **server_name, int *timeout, bool *force,
+		bool *verbose, bool *close, char ***words, int *word_count,
+		const char *cat, const char *item)
+{
+	int	c;
+	bool	no_close = FALSE;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "cw:s:n:t:fv",
+			MR_trace_view_opts, NULL)) != EOF)
+	{
+		/*
+		** Option '-c' is mutually incompatible with '-f', '-t',
+		** '-s', '-n' and '-w'.
+		*/
+		switch (c) {
+
+			case 'c':
+				if (no_close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*close = TRUE;
+				break;
+
+			case 'w':
+				if (*close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*window_cmd = MR_optarg;
+				no_close = TRUE;
+				break;
+
+			case 's':
+				if (*close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*server_cmd = MR_optarg;
+				no_close = TRUE;
+				break;
+
+			case 'n':
+				if (*close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*server_name = MR_optarg;
+				no_close = TRUE;
+				break;
+
+			case 't':
+				if (*close ||
+					sscanf(MR_optarg, "%d", timeout) != 1)
+				{
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				no_close = TRUE;
+				break;
+
+			case 'f':
+				if (*close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*force = TRUE;
+				no_close = TRUE;
+				break;
+
+			case 'v':
+				*verbose = TRUE;
 				break;
 
 			default:
@@ -3326,6 +3602,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "browsing", "level" },
 	{ "browsing", "current" },
 	{ "browsing", "set" },
+	{ "browsing", "view" },
 	{ "breakpoint", "break" },
 	{ "breakpoint", "ignore" },
 	{ "breakpoint", "enable" },

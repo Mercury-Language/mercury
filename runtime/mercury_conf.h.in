@@ -146,6 +146,8 @@
 ** The following macros are defined iff the corresponding function or
 ** system call is available:
 **
+** 	HAVE_GETPID		we have the getpid() function.
+** 	HAVE_GETHOSTNAME	we have the gethostname() function.
 **	HAVE_SNPRINTF 		we have the snprintf() function.
 **	HAVE_VSNPRINTF 		we have the vsnprintf() function.
 **	HAVE__VSNPRINTF 	we have the _vsnprintf() function.
@@ -169,6 +171,8 @@
 **				rather than a function, so you should use
 **				#if defined(fileno) || defined(HAVE_FILENO)
 */
+#undef	HAVE_GETPID
+#undef	HAVE_GETHOSTNAME
 #undef	HAVE_SNPRINTF
 #undef	HAVE_VSNPRINTF
 #undef	HAVE__VSNPRINTF

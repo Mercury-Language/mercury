@@ -440,6 +440,7 @@ esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
 AC_HAVE_FUNCS(strerror memmove dup fileno fdopen fstat stat)
 AC_HAVE_FUNCS(snprintf vsnprintf _vsnprintf)
+AC_HAVE_FUNCS(gethostname getpid)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
 if test "$HAVE_UNISTD_H" = 1; then

@@ -1,0 +1,400 @@
+/*
+** Copyright (C) 2001 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** mercury_trace_source.c
+**
+** This file implements routines to open and use a window to display the
+** source code.  Using these requires an X server and a version of
+** vim compiled with '+clientserver'.  If these are not available an
+** error is returned.
+**
+** Main author: Mark Brown
+*/
+
+#include "mercury_imp.h"
+#include "mercury_trace_source.h"
+#include "mercury_trace_internal.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifdef HAVE_UNISTD_H
+  #include <unistd.h>
+#endif
+
+#ifdef HAVE_SYS_TYPES_H
+  #include <sys/types.h>	/* for getpid() */
+#endif
+
+#define MR_DEFAULT_SOURCE_WINDOW_COMMAND	"xterm -e"
+#define MR_DEFAULT_SOURCE_SERVER_COMMAND	"vim"
+
+/*
+** The name used for the server will start with this basename.
+*/
+#define MR_SOURCE_SERVER_BASENAME		"mdb_source_server"
+
+/*
+** This defines the number of chars of the hostname to use to
+** determine a unique server name.
+*/
+#define MR_SERVER_HOSTNAME_CHARS		32
+
+/*
+** The size of the buffer used to construct system calls in.
+*/
+#define MR_SYSCALL_BUFFER_SIZE			512
+
+/*
+** Checks whether $DISPLAY is set to something reasonable.  If so,
+** returns NULL, otherwise returns a warning message.
+*/
+static const char *MR_trace_source_check_display(void);
+
+/*
+** Checks whether the server command is valid.  If so, returns NULL,
+** otherwise returns an error message.
+*/
+static const char *MR_trace_source_check_server_cmd(const char *server_cmd,
+		bool verbose);
+
+/*
+** Checks whether a server with the given name is accessible.  If so,
+** returns NULL, otherwise returns an error message.
+*/
+static const char *MR_trace_source_check_server(const char *server_cmd,
+		const char *server_name, bool verbose);
+
+static int MR_verbose_system_call(const char *system_call, bool verbose);
+
+static const char *
+MR_trace_source_check_display(void)
+{
+	if (getenv("DISPLAY") == NULL) {
+		return "warning: DISPLAY environment variable is not set";
+	} else {
+		return NULL;
+	}
+}
+
+static const char *
+MR_trace_source_check_server_cmd(const char *server_cmd, bool verbose)
+{
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+	int		status;
+
+	/*
+	** Try running the server with '--version', and see if the
+	** output contains the string '+clientserver'.
+	*/
+	sprintf(system_call,
+			"%s --version 2>&1 | fgrep -q '+clientserver' %s",
+			server_cmd, (verbose ? "" : "> /dev/null 2>&1"));
+	status = MR_verbose_system_call(system_call, verbose);
+	if (status == 0) {
+		return NULL;
+	} else {
+		return "error: source server command is not valid";
+	}
+}
+
+static const char *
+MR_trace_source_check_server(const char *server_cmd, const char *server_name,
+		bool verbose)
+{
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+	int		status;
+
+	/*
+	** Try running a server with '--serverlist', and see if the
+	** output contains our server name.  Server names are case
+	** insensitive.
+	*/
+	sprintf(system_call, "%s --serverlist | fgrep -iq '%s' %s",
+			server_cmd, server_name,
+			(verbose ? "" : "> /dev/null 2>&1"));
+	status = MR_verbose_system_call(system_call, verbose);
+	if (status == 0) {
+		return NULL;
+	} else {
+		return "error: source server not found";
+	}
+}
+
+const char *
+MR_trace_source_open_server(MR_Trace_Source_Server *server,
+		const char *window_cmd, int timeout, bool verbose)
+{
+	const char 	*real_window_cmd;
+	const char	*real_server_cmd;
+	char		*name;
+	const char	*msg;
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+	int		status;
+	int		base_len;
+	int		i;
+
+	if (window_cmd != NULL) {
+		real_window_cmd = window_cmd;
+	} else {
+		real_window_cmd = MR_DEFAULT_SOURCE_WINDOW_COMMAND;
+	}
+
+	if (server->server_cmd != NULL) {
+		real_server_cmd = server->server_cmd;
+	} else {
+		real_server_cmd = MR_DEFAULT_SOURCE_SERVER_COMMAND;
+	}
+
+	/*
+	** 1) check that display is set;
+	** 2) check that server is valid;
+	** 3) start a server with a unique name;
+	** 4) wait until the server is found;
+	*/
+
+	msg = MR_trace_source_check_display();
+	if (msg != NULL) {
+		return msg;
+	}
+
+	msg = MR_trace_source_check_server_cmd(real_server_cmd, verbose);
+	if (msg != NULL) {
+		return msg;
+	}
+
+	/*
+	** If possible, we generate a unique name of the form
+	** '<basename>.<hostname>.<pid>', but if the required functions
+	** aren't available, we fall back to appending numbers to the
+	** basename in sequence until one is found that is not being used.
+	** This is quite a slow way of doing things, and there is also a
+	** race condition, but it is difficult to see a better way.  We
+	** should let the server pick a unique name for itself, but
+	** how would you communicate this name back to this process?
+	*/
+	base_len = strlen(MR_SOURCE_SERVER_BASENAME);
+
+#if defined(HAVE_GETPID) && defined(HAVE_GETHOSTNAME)
+	/*
+	** Need to leave enough room for the pid, two '.'s and the
+	** terminating zero.
+	*/
+	name = MR_malloc(base_len + MR_SERVER_HOSTNAME_CHARS + 32);
+	strcpy(name, MR_SOURCE_SERVER_BASENAME);
+
+	/*
+	** Append the '.' and hostname.
+	*/
+	name[base_len] = '.';
+	gethostname(name + base_len + 1, MR_SERVER_HOSTNAME_CHARS);
+	/* Do this just in case gethostname didn't terminate the string: */
+	name[base_len + 1 + MR_SERVER_HOSTNAME_CHARS] = '\0';
+
+	/*
+	** Find the end of the string and append the '.' and pid.
+	*/
+	i = base_len + i + strlen(name + base_len + i);
+	sprintf(name + i, ".%ld", (long) getpid());
+#else
+	i = 0;
+	/*
+	** Need to leave enough room for a '.', the integer and the
+	** terminating zero.
+	*/
+	name = MR_malloc(base_len + 10);
+	do {
+		i++;
+		sprintf(name, "%s.%d", MR_SOURCE_SERVER_BASENAME, i);
+		/*
+		** This should fail if there is no server with this
+		** name.
+		*/
+		msg = MR_trace_source_check_server(real_server_cmd, name,
+				verbose);
+	} while (msg == NULL);
+#endif
+
+	server->server_name = name;
+
+	/*
+	** Start the server in read-only mode, to discourage the user
+	** from trying to edit the source.
+	*/
+	sprintf(system_call, "%s %s -R --servername \"%s\" %s &",
+			real_window_cmd, real_server_cmd, name,
+			(verbose ? "" : "> /dev/null 2>&1"));
+	MR_verbose_system_call(system_call, verbose);
+
+	/*
+	** We need to wait until the source server has registered itself
+	** with the X server.  If we don't, we may execute remote
+	** commands before the server has started up, and this will
+	** result in vim (rather inconveniently) starting its own server
+	** on mdb's terminal.
+	*/
+
+	msg = MR_trace_source_attach(server, timeout, verbose);
+
+	if (msg != NULL) {
+		/*
+		** Something went wrong, so we should free the server
+		** name we allocated just above.
+		*/
+		MR_free(server->server_name);
+		server->server_name = NULL;
+	}
+
+	return msg;
+}
+
+const char *
+MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
+		bool verbose)
+{
+	const char	*real_server_cmd;
+	const char	*msg;
+	int		i;
+
+	if (server->server_cmd != NULL) {
+		real_server_cmd = server->server_cmd;
+	} else {
+		real_server_cmd = MR_DEFAULT_SOURCE_SERVER_COMMAND;
+	}
+
+	msg = MR_trace_source_check_server(real_server_cmd,
+			server->server_name, verbose);
+	if (msg == NULL) {
+		return NULL;
+	}
+
+	for (i = 0; i < timeout; i++) {
+		/*
+		** XXX This is an inaccurate way of keeping time.
+		*/
+		sleep(1);
+
+		msg = MR_trace_source_check_server(real_server_cmd,
+				server->server_name, verbose);
+		if (msg == NULL) {
+			return NULL;
+		}
+	}
+
+	return "timeout: source server not found";
+}
+
+const char *
+MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
+		int lineno, bool verbose)
+{
+	const char	*real_server_cmd;
+	const char	*msg;
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+	int		status;
+
+	if (server->server_cmd != NULL) {
+		real_server_cmd = server->server_cmd;
+	} else {
+		real_server_cmd = MR_DEFAULT_SOURCE_SERVER_COMMAND;
+	}
+
+	msg = MR_trace_source_check_server(real_server_cmd,
+			server->server_name, FALSE);
+	if (msg != NULL) {
+		return msg;
+	}
+
+	/*
+	** Point the source server to the given context.
+	*/
+	sprintf(system_call, "%s --servername \"%s\" --remote '+%d' %s",
+			real_server_cmd, server->server_name, lineno,
+			filename);
+	status = MR_verbose_system_call(system_call, verbose);
+	if (status != 0) {
+		return "warning: source synchronisation failed";
+	}
+
+	/*
+	** Center the current line in the vim window.
+	*/
+	sprintf(system_call, "%s --servername \"%s\" --remote-send 'z.'",
+			real_server_cmd, server->server_name);
+	status = MR_verbose_system_call(system_call, verbose);
+	if (status != 0) {
+		return "warning: source synchronisation failed";
+	}
+
+	return NULL;
+}
+
+const char *
+MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
+{
+	const char	*real_server_cmd;
+	const char	*msg;
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+
+	if (server->server_cmd != NULL) {
+		real_server_cmd = server->server_cmd;
+	} else {
+		real_server_cmd = MR_DEFAULT_SOURCE_SERVER_COMMAND;
+	}
+
+	msg = MR_trace_source_check_server(real_server_cmd,
+			server->server_name, verbose);
+	if (msg != NULL) {
+		return msg;
+	}
+
+	/*
+	** We first send "Ctrl-\ Ctrl-N", which guarantees we get back to
+	** "normal" mode without beeping, followed by ":q\n" which should
+	** quit.  This won't quit if the user has modified the file, which
+	** is just as well.
+	*/
+	sprintf(system_call,
+			"%s --servername \"%s\" --remote-send '\034\016:q\n'",
+			real_server_cmd, server->server_name);
+	/*
+	** Avoid echoing the command even if --verbose is set, because
+	** the control characters may interfere with the terminal.
+	*/
+	system(system_call);
+
+#if 0
+	/*
+	** XXX This doesn't work properly because the server takes some
+	** time to close.  Sometimes the server is still open when we do
+	** the test, and this leads to a false warning.
+	*/
+	/*
+	** We expect the following to fail.  If it doesn't, the server
+	** hasn't closed properly.
+	*/
+	msg = MR_trace_source_check_server(real_server_cmd,
+			server->server_name, verbose);
+	if (msg == NULL) {
+		return "warning: failed to close source server";
+	} else {
+		return NULL;
+	}
+#else
+	return NULL;
+#endif
+}
+
+int MR_verbose_system_call(const char *system_call, bool verbose)
+{
+	if (verbose) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "+ %s\n", system_call);
+	}
+	return system(system_call);
+}
+
