@@ -1038,9 +1038,6 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 {
 	/*
 	** Unification for univ.
-	**
-	** The two inputs are in the registers named by unify_input[12].
-	** The success/failure indication should go in unify_output.
 	*/
 
 	Word	univ1, univ2;
@@ -1083,9 +1080,6 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 {
 	/*
 	** Comparison for univ:
-	**
-	** The two inputs are in the registers named by compare_input[12].
-	** The result should go in compare_output.
 	*/
 
 	Word	univ1, univ2;
@@ -1125,9 +1119,6 @@ Define_entry(mercury____Unify___std_util__type_info_0_0);
 {
 	/*
 	** Unification for type_info.
-	**
-	** The two inputs are in the registers named by unify_input[12].
-	** The success/failure indication should go in unify_output.
 	*/
 	int	comp;
 
@@ -1145,10 +1136,7 @@ Define_entry(mercury____Index___std_util__type_info_0_0);
 Define_entry(mercury____Compare___std_util__type_info_0_0);
 {
 	/*
-	** Comparison for type_info:
-	**
-	** The two inputs are in the registers named by compare_input[12].
-	** The result should go in compare_output.
+	** Comparison for type_info.
 	*/
 	int	comp;
 
