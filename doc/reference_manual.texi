@@ -5372,8 +5372,8 @@ using the ``minimal model'' semantics.
 The current Mercury implementation thus supports three different
 pragmas for tabling, to cover these three cases: @samp{pragma memo}
 does no loop checking, @samp{pragma loop_check} checks for loops
-and reports runtime errors, while @samp{pragma minimal_model}
-computes the ``minimal model'' semantics.
+and throws an exception if a loop is detected, while
+@samp{pragma minimal_model} computes the ``minimal model'' semantics.
 
 @c XXX we should fix this bug...
 @cartouche
