@@ -2,3 +2,10 @@ This directory contains stuff for accessing POSIX.3 stuff directly from
 Mercury. Since I don't actually have a copy of the standard, it's more
 like the stuff that man pages claim is in POSIX.3, and not even all of
 that. :-) conway, 12/10/99
+
+Note that on some systems, it may be necessary to link with additional
+libraries.  This can be done by setting the variable MLLIBS in the Mmakefile,
+e.g.
+
+	MLLIBS = -lsocket -lnsl
+
