@@ -212,12 +212,9 @@
 :- mode map__intersect(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__intersect(pred(in, in, out) is det, in, in, out) is det.
 
-	% Calls map__intersect. Aborts (with the last argument as the message)
-	% if map__intersect fails.
-:- pred map__det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V),
-	string).
-:- mode map__det_intersect(pred(in, in, out) is semidet, in, in, out, in)
-	is det.
+	% Calls map__intersect. Aborts if map__intersect fails.
+:- pred map__det_intersect(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode map__det_intersect(pred(in, in, out) is semidet, in, in, out) is det.
 
 	% Given two maps M1 and M2, create a third map M3 that all the keys
 	% that occur in either M1 and M2. For keys that occur in both M1
@@ -229,10 +226,9 @@
 :- mode map__union(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode map__union(pred(in, in, out) is det, in, in, out) is det.
 
-	% Calls map__union. Aborts (with the last argument as the message)
-	% if map__intersect fails.
-:- pred map__det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V), string).
-:- mode map__det_union(pred(in, in, out) is semidet, in, in, out, in) is det.
+	% Calls map__union. Aborts if map__union fails.
+:- pred map__det_union(pred(V, V, V), map(K, V), map(K, V), map(K, V)).
+:- mode map__det_union(pred(in, in, out) is semidet, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -532,11 +528,11 @@ map__intersect_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
 		)
 	).
 
-map__det_intersect(CommonPred, Map1, Map2, Common, Msg) :-
+map__det_intersect(CommonPred, Map1, Map2, Common) :-
 	( map__intersect(CommonPred, Map1, Map2, CommonPrime) ->
 		Common = CommonPrime
 	;
-		error(Msg)
+		error("map__det_intersect: map__intersect failed")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -590,11 +586,11 @@ map__union_2(AssocList1, AssocList2, CommonPred, Common0, Common) :-
 		)
 	).
 
-map__det_union(CommonPred, Map1, Map2, Union, Msg) :-
+map__det_union(CommonPred, Map1, Map2, Union) :-
 	( map__union(CommonPred, Map1, Map2, UnionPrime) ->
 		Union = UnionPrime
 	;
-		error(Msg)
+		error("map__det_union: map__union failed")
 	).
 
 %-----------------------------------------------------------------------------%
