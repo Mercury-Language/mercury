@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -83,16 +83,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->type_ctor_old_version == MR_RTTI_VERSION__CLEAN_LAYOUT \
-	|| typector->type_ctor_old_version == MR_RTTI_VERSION__VERSION_NO)
-
-/*---------------------------------------------------------------------------*/
-
-#ifdef	MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO
-  #define	MR_TypeCtorInfo_Struct	MR_NewTypeCtorInfo_Struct
-#else
-  #define	MR_TypeCtorInfo_Struct	MR_OldTypeCtorInfo_Struct
-#endif
+    assert(typector->type_ctor_old_version == MR_RTTI_VERSION__VERSION_NO)
 
 /*---------------------------------------------------------------------------*/
 
@@ -332,8 +323,6 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
   #define MR_special_func_type(NAME, ARITY) \
 	MR_PASTE2(MR_, MR_PASTE2(NAME, MR_PASTE2(Func_, ARITY)))
 
-  #ifdef MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO
-
     #define MR_define_type_ctor_info(module, type, arity, type_rep)	      \
 	const struct MR_TypeCtorInfo_Struct				      \
 		MR_type_ctor_info_name(module, type, arity) =		      \
@@ -356,33 +345,6 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 		{ 0 },							      \
 		-1							      \
 	}
-
-  #else	/* MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO */
-
-    #define MR_define_type_ctor_info(module, type, arity, type_rep)	      \
-	const struct MR_TypeCtorInfo_Struct				      \
-		MR_type_ctor_info_name(module, type, arity) =		      \
-	{								      \
-		arity,							      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_unify),				      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_unify),				      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_compare),				      \
-		type_rep,						      \
-		NULL,							      \
-		NULL,							      \
-		MR_STRINGIFY(module),					      \
-		MR_STRINGIFY(type),					      \
-		MR_RTTI_VERSION,					      \
-		{ 0 },							      \
-		{ 0 },							      \
-		-1,							      \
-		-1							      \
-	}
-
-  #endif /* MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO */
 
 #endif /* MR_HIGHLEVEL_CODE */
 
@@ -988,36 +950,19 @@ typedef union {
     ** `:- type' declaration.
     */
 
-struct MR_OldTypeCtorInfo_Struct {
-    MR_Integer          arity;
-    MR_ProcAddr         old_unify_pred;
-    MR_ProcAddr         unify_pred;
-    MR_ProcAddr         compare_pred;
-    MR_TypeCtorRep      type_ctor_rep;
-    MR_ProcAddr         unused1;	/* spare */
-    MR_ProcAddr         unused2;	/* spare */
-    MR_ConstString      type_ctor_module_name;
-    MR_ConstString      type_ctor_name;
-    MR_Integer          type_ctor_old_version;
-    MR_TypeFunctors     type_functors;
-    MR_TypeLayout       type_layout;
-    MR_int_least32_t    type_ctor_num_functors;
-    MR_int_least8_t     type_ctor_num_ptags;		/* if DU */
-};
-
-struct MR_NewTypeCtorInfo_Struct {
+struct MR_TypeCtorInfo_Struct {
     MR_Integer          arity;
     MR_int_least8_t     MR_type_ctor_version;
     MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
-    MR_int_least8_t     MR_type_ctor_new_num_ptags;	/* if DU */
+    MR_int_least8_t     MR_type_ctor_num_ptags;		/* if DU */
     MR_ProcAddr         unify_pred;
     MR_ProcAddr         compare_pred;
-    MR_Integer          MR_type_ctor_old_rep_CAST_ME;	/* will be unused */
+    MR_Integer          MR_type_ctor_old_rep_CAST_ME;	/* unused */
     MR_ProcAddr         MR_unused1;	/* spare */
     MR_ProcAddr         MR_unused2;	/* spare */
     MR_ConstString      type_ctor_module_name;
     MR_ConstString      type_ctor_name;
-    MR_Integer          MR_type_ctor_old_version;	/* will be unused */
+    MR_Integer          MR_type_ctor_old_version;	/* unused */
     MR_TypeFunctors     type_functors;
     MR_TypeLayout       type_layout;
     MR_int_least32_t    type_ctor_num_functors;
@@ -1030,8 +975,7 @@ struct MR_NewTypeCtorInfo_Struct {
 };
 
 #define	MR_type_ctor_rep(type_ctor_info)			\
-		((MR_TypeCtorRep) ((const struct MR_NewTypeCtorInfo_Struct *) \
-			(type_ctor_info))->MR_type_ctor_old_rep_CAST_ME)
+		((MR_TypeCtorRep) ((type_ctor_info))->MR_type_ctor_rep_CAST_ME)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1060,8 +1004,6 @@ struct MR_NewTypeCtorInfo_Struct {
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_TYPE				\
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
-#ifdef	MR_BOOTSTRAP_TYPE_CTOR_VERSION_NO
-
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)	\
     {									\
 	a,								\
@@ -1080,28 +1022,6 @@ struct MR_NewTypeCtorInfo_Struct {
 	{ 0 },								\
 	-1								\
     }
-
-#else
-
-#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)	\
-    {									\
-	a,								\
-	MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),				\
-	MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),				\
-	MR_MAYBE_STATIC_CODE(MR_ENTRY(c)),				\
-	cr,								\
-	NULL,								\
-	NULL,								\
-	MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),	\
-	MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),	\
-	MR_RTTI_VERSION__CLEAN_LAYOUT,					\
-	{ 0 },								\
-	{ 0 },								\
-	-1,								\
-	-1								\
-    }
-
-#endif
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(m, n, a, cr, u, c)	\
 	MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr, u, c)

@@ -194,7 +194,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
-    switch (type_ctor_info->type_ctor_rep) {
+    switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
         {

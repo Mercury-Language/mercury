@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -52,7 +52,7 @@
 ** RTTI version number.
 */
 
-#define MR_GRADE_PART_0	v3_
+#define MR_GRADE_PART_0	v4_
 
 #ifdef MR_HIGHLEVEL_CODE
 

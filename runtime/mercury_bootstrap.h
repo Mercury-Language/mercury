@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,6 +19,14 @@
 ** This stuff is enabled by default,
 ** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
 */
+
+/*
+** The next two #defines are needed for bootstrapping the new type constructor
+** structure.
+*/
+
+#define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
+#define MR_NewTypeCtorInfo_struct  MR_TypeCtorInfo_Struct
 
 #ifndef MR_NO_BACKWARDS_COMPAT
 
