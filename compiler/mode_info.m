@@ -191,6 +191,12 @@
 :- pred mode_info_set_delay_info(delay_info, mode_info, mode_info).
 :- mode mode_info_set_delay_info(in, mode_info_di, mode_info_uo) is det.
 
+:- pred mode_info_get_live_vars(mode_info, list(set(var))).
+:- mode mode_info_get_live_vars(mode_info_ui, out) is det.
+
+:- pred mode_info_set_live_vars(list(set(var)), mode_info, mode_info).
+:- mode mode_info_set_live_vars(in, mode_info_di, mode_info_uo) is det.
+
 :- pred mode_info_get_nondet_live_vars(mode_info, list(set(var))).
 :- mode mode_info_get_nondet_live_vars(mode_info_no_io, out) is det.
 
@@ -598,6 +604,13 @@ mode_info_get_liveness_2([], LiveVars, LiveVars).
 mode_info_get_liveness_2([LiveVarsSet | LiveVarsList], LiveVars0, LiveVars) :-
 	set__union(LiveVars0, LiveVarsSet, LiveVars1),
 	mode_info_get_liveness_2(LiveVarsList, LiveVars1, LiveVars).
+
+mode_info_get_live_vars(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,LiveVarsList,_,_,_),
+		LiveVarsList).
+
+mode_info_set_live_vars(LiveVarsList,
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,_,N,O,P),
+		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,LiveVarsList,N,O,P)).
 
 %-----------------------------------------------------------------------------%
 

@@ -1122,6 +1122,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	{ mode_info_get_errors(ModeInfo0, OldErrors) },
 	mode_info_set_errors([]),
 
+	{ mode_info_get_live_vars(ModeInfo0, LiveVars0) },
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
 	{ delay_info__enter_conj(DelayInfo0, DelayInfo1) },
 	mode_info_set_delay_info(DelayInfo1),
@@ -1138,6 +1139,14 @@ modecheck_conj_list(Goals0, Goals) -->
 	{ delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
 	mode_info_set_delay_info(DelayInfo5),
 
+	( { DelayedGoals \= [] } ->
+		% the variables in the delayed goals should not longer
+		% be considered live (the conjunction itself will
+		% delay, and its nonlocals will be made live)
+		mode_info_set_live_vars(LiveVars0)
+	;
+		[]
+	),
 	% we only report impurity errors if there were no other errors
 	( { DelayedGoals = [] } ->
 		% XXX perhaps we should report all the impurity errors,
@@ -1196,7 +1205,7 @@ modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
 		{ ImpurityErrors1 = ImpurityErrors0 }
 	),
 
-		% Hang onto the original instmap & delay_info
+		% Hang onto the original instmap, delay_info, and live_vars
 	mode_info_dcg_get_instmap(InstMap0),
 	=(ModeInfo0),
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
