@@ -163,7 +163,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		AllModules, ObjModules, CompilationTarget, ObjExtToUse,
 		DepsSuccess, BuildDepsResult, ErrorStream, Succeeded,
 		Info0, Info) -->
-	globals__io_lookup_accumulating_option(link_objects, ExtraObjects0),
+	globals__io_lookup_accumulating_option(link_objects, LinkObjects),
 
 	% Clear the option -- we'll pass the list of files directly.
 	globals__io_set_option(link_objects, accumulating([])),
@@ -188,24 +188,25 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			{ Info1 = Info0 ^ file_timestamps :=
 				map__delete(Info0 ^ file_timestamps,
 				InitObject) },
-			{ ExtraObjects = [InitObject | ExtraObjects0] },
+			{ InitObjects = [InitObject] },
 			{ DepsResult2 = BuildDepsResult }
 		;
 			{ InitObjectResult = no },
 			{ Info1 = Info0 },
 			{ DepsResult2 = error },
-			{ ExtraObjects = ExtraObjects0 }
+			{ InitObjects = [] }
 		)
 	;
 		{ DepsResult2 = BuildDepsResult },
 		{ Info1 = Info0 },
-		{ ExtraObjects = ExtraObjects0 }
+		{ InitObjects = [] }
 	),
 
+	{ ObjectsToCheck = InitObjects ++ LinkObjects },
 	list__map_foldl2(get_file_timestamp([dir__this_directory]),
-		ExtraObjects, ExtraObjectTimestamps, Info1, Info2),
+		ObjectsToCheck, ExtraObjectTimestamps, Info1, Info2),
 	check_dependency_timestamps(OutputFileName, MaybeTimestamp,
-		ExtraObjects, io__write, ExtraObjectTimestamps,
+		ObjectsToCheck, io__write, ExtraObjectTimestamps,
 		ExtraObjectDepsResult),
 
 	{ DepsResult3 = ( DepsSuccess = yes -> DepsResult2 ; error ) },
@@ -251,14 +252,17 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		{ ForeignObjects = list__map(
 			(func(foreign_code_file(_, _, ObjFile)) = ObjFile),
 			list__condense(ExtraForeignFiles)) },
-		{ AllExtraObjects = ExtraObjects ++ ForeignObjects },
 
 		list__map_foldl(
 		    (pred(ObjModule::in, ObjToLink::out, di, uo) is det -->
 			module_name_to_file_name(ObjModule,
 				ObjExtToUse, no, ObjToLink)
 		    ), ObjModules, ObjList),
-		{ AllObjects = AllExtraObjects ++ ObjList },
+
+		% LinkObjects may contain `.a' files which must come
+		% after all the object files on the linker command line.
+		{ AllObjects = InitObjects ++ ObjList ++
+				ForeignObjects ++ LinkObjects },
 
 		(
 			{ CompilationTarget = c },
@@ -298,7 +302,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			{ Info = Info3 }
 		)
 	),
-	globals__io_set_option(link_objects, accumulating(ExtraObjects0)).
+	globals__io_set_option(link_objects, accumulating(LinkObjects)).
 
 :- pred linked_target_cleanup(module_name::in, linked_target_type::in,
 	file_name::in, compilation_target::in, make_info::in, make_info::out,
