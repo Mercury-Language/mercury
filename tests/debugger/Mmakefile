@@ -378,12 +378,12 @@ interactive.out: interactive.out.orig
 	cat interactive.out.orig | \
 		sed \
 		    -e '/mdb> mmc_options/d' \
-		    -e '/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,$$/N' \
-		    -e 's/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,.//' \
-		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,$$/N' \
-		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,.//' \
-		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
-		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
+		    -e '/In file included from .*\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,$$/N' \
+		    -e 's/In file included from .*\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,.//' \
+		    -e '/                 from .*\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,$$/N' \
+		    -e 's/                 from .*\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,.//' \
+		    -e '/                 from .*\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
+		    -e 's/                 from .*\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
 		    -e '/                 from mdb_query.c:[0-9]*:$$/N' \
 		    -e 's/                 from mdb_query.c:[0-9]*:.//' \
 		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/unistd.h:[0-9]*: warning: .cuserid. redefined$$/N' \
@@ -392,10 +392,10 @@ interactive.out: interactive.out.orig
 		    -e 's/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdio.h:[0-9]*: warning: this is the location of the previous definition.//' \
 		    -e '/In file included from \/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdarg.h:[0-9]*,$$/N' \
 		    -e 's/In file included from \/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/stdarg.h:[0-9]*,.//' \
-		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,$$/N' \
-		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,.//' \
-		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
-		    -e 's/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
+		    -e '/                 from .*\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,$$/N' \
+		    -e 's/                 from .*\/lib\/mercury\/inc\/mercury_library_types.h:[0-9]*,.//' \
+		    -e '/                 from .*\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,$$/N' \
+		    -e 's/                 from .*\/lib\/mercury\/inc\/mercury_imp.h:[0-9]*,.//' \
 		    -e '/                 from mdb_query.c:[0-9]*:$$/N' \
 		    -e 's/                 from mdb_query.c:[0-9]*:.//' \
 		    -e '/\/usr\/local\/apps\/gcc-2.95.3\/lib\/gcc-lib\/alpha-dec-osf5.1\/2.95.3\/include\/va-alpha.h:[0-9]*: warning: redefinition of .va_list.$$/N' \
