@@ -147,7 +147,7 @@ io__main_predicate(_) -->
 	{ retractall(io__inhibit_user_main_predicate) },
 	{ assert(io__inhibit_user_main_predicate) },
 	{ retractall(io__exit_on_abort) },
-	{ $mainloop }.
+	{ '$mainloop' }.
 
 :- pred io__call(pred).
 

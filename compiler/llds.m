@@ -165,7 +165,7 @@
 			;	(<<)	% left shift
 			;	(>>)	% right shift
 			;	(&)	% bitwise and
-			;	(|)	% bitwise or
+			;	('|')	% bitwise or
 			;	(^)	% bitwise xor
 			;	and	% logical and
 			;	or	% logical or
@@ -1081,7 +1081,7 @@ llds__binary_op_to_string(/, "/").
 llds__binary_op_to_string(<<, "<<").
 llds__binary_op_to_string(>>, ">>").
 llds__binary_op_to_string(&, "&").
-llds__binary_op_to_string(|, "|").
+llds__binary_op_to_string('|', "|").
 llds__binary_op_to_string(^, "^").
 llds__binary_op_to_string(mod, "%").
 llds__binary_op_to_string(eq, "==").

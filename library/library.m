@@ -20,5 +20,7 @@
 :- import_module set, stack, std_util, string, term, term_io.
 :- import_module varset, store.
 
+:- import_module parser, lexer, ops.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -6,7 +6,7 @@
 % Lexical analysis.  This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.
 %
-% See ISO Prolog 6.4.
+% See ISO Prolog 6.4.  Also see the comments at the top of parser.nl.
 %
 %-----------------------------------------------------------------------------%
 
@@ -461,15 +461,23 @@ lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
 		{ Token = error("unterminated quote") }
-	; { Result = ok(Char0) }, !,
-		( { char__is_octal_digit(Char0) } ->
-			lexer__get_octal_escape(QuoteChar, [Char0 | Chars],
+	; { Result = ok(Char) }, !,
+		( { char__is_octal_digit(Char) } ->
+			lexer__get_octal_escape(QuoteChar, [Char | Chars],
 						OctalChars, Token)
-		; { Char0 = '\\' } ->
+		; { Char = '\\' } ->
 			lexer__finish_octal_escape(QuoteChar, Chars, OctalChars,
 				Token)
 		;
+			/****** 
+				% We don't report this as an error since
+				% we need bug-for-bug compatibility with
+				% NU-Prolog
 			{ Token = error("unterminated octal escape") }
+			******/
+			io__putback_char(Char),
+			lexer__finish_octal_escape(QuoteChar, Chars, OctalChars,
+				Token)
 		)
 	).
 

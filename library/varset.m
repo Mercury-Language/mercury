@@ -54,6 +54,7 @@
 	% lookup the name of a variable, or the variable with a given name.
 :- pred varset__lookup_name(varset, var, string).
 :- mode varset__lookup_name(in, in, out) is semidet.
+:- mode varset__lookup_name(in, out, in) is semidet.
 
 	% bind a value to a variable
 	% (will overwrite any existing binding).
@@ -99,11 +100,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, require.
+:- import_module int, list, map, bimap, std_util, require.
 
 :- type varset		--->	varset(
 					var_supply,
-					map(var, string),
+					bimap(var, string),
 					map(string, int),
 					map(var, term)
 				).
@@ -112,7 +113,7 @@
 
 varset__init(varset(VarSupply, Names, NameCounts, Vals)) :-
 	term__init_var_supply(VarSupply),
-	map__init(Names),
+	bimap__init(Names),
 	map__init(NameCounts),
 	map__init(Vals).
 
@@ -165,11 +166,11 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 	->
 		string__duplicate_char('\'', Count, Primes),
 		string__append(Name, Primes, Name2),
-		map__set(Names0, Id, Name2, Names),
+		bimap__set(Names0, Id, Name2, Names),
 		Count1 is Count + 1,
 		map__set(Counts0, Name, Count1, Counts)
 	;
-		map__set(Names0, Id, Name, Names),
+		bimap__set(Names0, Id, Name, Names),
 		map__set(Counts0, Name, 1, Counts)
 	),
 	VarSet = varset(MaxId, Names, Counts, Vals).
@@ -177,7 +178,7 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 %-----------------------------------------------------------------------------%
 
 varset__lookup_name(varset(_, Names, _, _), Id, Name) :-
-	map__search(Names, Id, Name).
+	bimap__search(Names, Id, Name).
 
 %-----------------------------------------------------------------------------%
 
@@ -234,7 +235,7 @@ varset__merge_subst(VarSet0, varset(MaxId, Names, _Counts, Vals),
 	varset__merge_subst_2(N, MaxId, Names, Vals, VarSet0, Subst0,
 				VarSet, Subst).
 
-:- pred varset__merge_subst_2(var_supply, var_supply, map(var, string),
+:- pred varset__merge_subst_2(var_supply, var_supply, bimap(var, string),
 	map(var, term), varset, substitution, varset, substitution).
 :- mode varset__merge_subst_2(in, in, in, in, in, in, out, out) is det.
 
@@ -246,7 +247,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		varset__new_var(VarSet0, VarId, VarSet1),
 		term__create_var(N, VarN, N1),
 		(
-			map__search(Names, VarN, Name)
+			bimap__search(Names, VarN, Name)
 		->
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
 		;
