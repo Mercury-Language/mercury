@@ -18,6 +18,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 #-----------------------------------------------------------------------------#
 
 DEBUGGER_PROGS=	\
+	all_solutions			\
 	breakpoints			\
 	browse_pretty			\
 	browser_test			\
@@ -77,6 +78,9 @@ else
 endif
 
 #-----------------------------------------------------------------------------#
+
+all_solutions.out: all_solutions all_solutions.inp
+	$(MDB) ./all_solutions < all_solutions.inp > all_solutions.out 2>&1
 
 breakpoints.out: breakpoints breakpoints.inp
 	$(MDB) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1

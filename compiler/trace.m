@@ -575,35 +575,20 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		FillSlotsUptoTrail = FillSlotsUptoRedo
 	),
 	(
-		% This could be done by generating proper LLDS instead of C.
-		% However, in shallow traced code we want to execute this
-		% only when the caller is deep traced, and everything inside
-		% that test must be in C code.
-		MaybeMaxfrLval = yes(MaxfrLval),
-		trace__stackref_to_string(MaxfrLval, MaxfrLvalStr),
-		string__append_list([
-			FillSlotsUptoTrail,
-			"\n\t\t", MaxfrLvalStr, " = (MR_Word) MR_maxfr;"
-		], FillSlotsUptoMaxfr)
-	;
-		MaybeMaxfrLval = no,
-		FillSlotsUptoMaxfr = FillSlotsUptoTrail
-	),
-	(
 		MaybeFromFullSlot = yes(CallFromFullSlot),
 		trace__stackref_to_string(CallFromFullSlot,
 			CallFromFullSlotStr),
 		string__append_list([
 			"\t\t", CallFromFullSlotStr, " = MR_trace_from_full;\n",
 			"\t\tif (MR_trace_from_full) {\n",
-			FillSlotsUptoMaxfr, "\n",
+			FillSlotsUptoTrail, "\n",
 			"\t\t} else {\n",
 			"\t\t\t", CallDepthStr, " = MR_trace_call_depth;\n",
 			"\t\t}"
 		], TraceStmt1)
 	;
 		MaybeFromFullSlot = no,
-		TraceStmt1 = FillSlotsUptoMaxfr
+		TraceStmt1 = FillSlotsUptoTrail
 	),
 	TraceCode1 = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt1)],
@@ -611,20 +596,29 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			- ""
 	]),
 	(
+		MaybeMaxfrLval = yes(MaxfrLval),
+		TraceCode2 = node([
+			assign(MaxfrLval, lval(maxfr)) - "save initial maxfr"
+		])
+	;
+		MaybeMaxfrLval = no,
+		TraceCode2 = empty
+	),
+	(
 		MaybeCallTableLval = yes(CallTableLval),
 		trace__stackref_to_string(CallTableLval, CallTableLvalStr),
 		string__append_list([
 			"\t\t", CallTableLvalStr, " = 0;"
-		], TraceStmt2),
-		TraceCode2 = node([
-			pragma_c([], [pragma_c_raw_code(TraceStmt2)],
+		], TraceStmt3),
+		TraceCode3 = node([
+			pragma_c([], [pragma_c_raw_code(TraceStmt3)],
 				will_not_call_mercury, no, no, no, yes) - ""
 		])
 	;
 		MaybeCallTableLval = no,
-		TraceCode2 = empty
+		TraceCode3 = empty
 	),
-	TraceCode = tree(TraceCode1, TraceCode2)
+	TraceCode = tree(TraceCode1, tree(TraceCode2, TraceCode3))
 	}.
 
 trace__prepare_for_call(TraceCode) -->

@@ -1,4 +1,5 @@
 echo on
+retry 1
 print *
 
 print *
@@ -71,4 +72,9 @@ continue -n
 forward
 continue -n
 continue -n
+delete *
+break main
+continue -n
+retry
+yes
 continue -n -S

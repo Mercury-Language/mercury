@@ -66,10 +66,14 @@ static	MR_Code		*MR_trace_event(MR_Trace_Cmd_Info *cmd,
 				const MR_Stack_Layout_Label *layout,
 				MR_Trace_Port port, MR_Unsigned seqno,
 				MR_Unsigned depth);
-static	bool		MR_is_io_state(MR_PseudoTypeInfo pti);
-static	MR_Unsigned	MR_find_saved_io_counter(
-				const MR_Stack_Layout_Label *call_label,
+static	bool		MR_in_traced_region(
+				const MR_Stack_Layout_Entry *proc_layout,
 				MR_Word *base_sp, MR_Word *base_curfr);
+static	bool		MR_is_io_state(MR_PseudoTypeInfo pti);
+static	bool		MR_find_saved_io_counter(
+				const MR_Stack_Layout_Label *call_label,
+				MR_Word *base_sp, MR_Word *base_curfr,
+				MR_Unsigned *saved_io_counter_ptr);
 static	const MR_Stack_Layout_Label *MR_unwind_stacks_for_retry(
 				const MR_Stack_Layout_Label *top_layout,
 				int ancestor_level, MR_Word **base_sp_ptr,
@@ -467,7 +471,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	bool				succeeded;
 	MR_Word 			*saved_regs;
 	bool				has_io_state;
-	MR_Unsigned			saved_io_state_counter;
+	bool				found_io_action_counter;
+	MR_Unsigned			saved_io_action_counter;
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_Retry_Result			result;
 #endif
@@ -507,6 +512,11 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		goto report_problem;
 	}
 
+	if (! MR_in_traced_region(level_layout, base_sp, base_curfr)) {
+		*problem = "that call is not in a deep traced region";
+		goto report_problem;
+	}
+
 	call_label = level_layout->MR_sle_call_label;
 	input_args = &call_label->MR_sll_var_info;
 	if (input_args->MR_slvs_var_count < 0) {
@@ -526,8 +536,9 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	arg_max = 0;
 
 	has_io_state = FALSE;
+	found_io_action_counter = FALSE;
 		/* just to prevent uninitialized variable warnings */
-	saved_io_state_counter = 0;
+	saved_io_action_counter = 0;
 
 	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
 		arg_value = MR_trace_find_input_arg(return_label_layout,
@@ -537,10 +548,17 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 		if (! succeeded) {
 			if (MR_is_io_state(MR_var_pti(input_args, i))) {
+				/*
+				** Since I/O state input arguments are not
+				** used, we can leave arg_value containing
+				** garbage.
+				*/
+
 				has_io_state = TRUE;
-				saved_io_state_counter =
+				found_io_action_counter =
 					MR_find_saved_io_counter(call_label,
-						base_sp, base_curfr);
+						base_sp, base_curfr,
+						&saved_io_action_counter);
 			} else {
 				*problem = "Cannot perform retry because the "
 					"values of some input arguments "
@@ -571,11 +589,22 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			bool	allow_retry;
 			char	*answer;
 
-			answer = MR_trace_getline(
-				"Retry across I/O operations "
-				"is not always safe.\n"
-				"Are you sure you want to do it? ",
-				in_fp, out_fp);
+			if (found_io_action_counter
+			|| MR_io_tabling_counter == 0)
+			{
+				answer = MR_trace_getline(
+					"Retry across I/O operations "
+					"is not always safe.\n"
+					"Are you sure you want to do it? ",
+					in_fp, out_fp);
+			} else {
+				answer = MR_trace_getline(
+					"Retry across I/O operations "
+					"without saved I/O action numbers "
+					"is not safe.\n"
+					"Are you sure you want to do it? ",
+					in_fp, out_fp);
+			}
 
 			allow_retry = (answer[0] == 'y' || answer[0] == 'Y');
 			MR_free(answer);
@@ -710,8 +739,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		MR_saved_reg(saved_regs, i) = args[i];
 	}
 
-	if (has_io_state) {
-		MR_io_tabling_counter = saved_io_state_counter;
+	if (has_io_state && found_io_action_counter) {
+		MR_io_tabling_counter = saved_io_action_counter;
 	}
 
 	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);
@@ -747,6 +776,29 @@ report_problem:
 }
 
 static bool
+MR_in_traced_region(const MR_Stack_Layout_Entry *proc_layout,
+	MR_Word *base_sp, MR_Word *base_curfr)
+{
+	if (proc_layout->MR_sle_maybe_from_full <= 0) {
+		/* the procedure was deep traced */
+		return TRUE;
+	} else {
+		/* the procedure was shallow traced */
+		MR_Word	from_full;
+
+		if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+			from_full = MR_based_stackvar(base_sp, 
+				proc_layout->MR_sle_maybe_from_full);
+		} else {
+			from_full = MR_based_framevar(base_curfr, 
+				proc_layout->MR_sle_maybe_from_full);
+		}
+
+		return from_full;
+	}
+}
+
+static bool
 MR_is_io_state(MR_PseudoTypeInfo pti)
 {
 	MR_TypeCtorInfo	type_ctor_info;
@@ -761,28 +813,32 @@ MR_is_io_state(MR_PseudoTypeInfo pti)
 		&& streq(type_ctor_info->type_ctor_name, "state"));
 }
 
-static MR_Unsigned
+static bool
 MR_find_saved_io_counter(const MR_Stack_Layout_Label *call_label,
-	MR_Word *base_sp, MR_Word *base_curfr)
+	MR_Word *base_sp, MR_Word *base_curfr,
+	MR_Unsigned *saved_io_counter_ptr)
 {
 	const MR_Stack_Layout_Entry	*level_layout;
 	MR_Unsigned			saved_io_counter;
 
 	level_layout = call_label->MR_sll_entry;
 	if (level_layout->MR_sle_maybe_io_seq <= 0) {
-		MR_fatal_error("MR_trace_retry: "
-			"missing io seq number slot");
+		return FALSE;
+	}
+
+	if (! MR_in_traced_region(level_layout, base_sp, base_curfr)) {
+		return FALSE;
 	}
 
 	if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
-		saved_io_counter = MR_based_stackvar(base_sp,
+		*saved_io_counter_ptr = MR_based_stackvar(base_sp,
 			level_layout->MR_sle_maybe_io_seq);
 	} else {
-		saved_io_counter = MR_based_framevar(base_curfr,
+		*saved_io_counter_ptr = MR_based_framevar(base_curfr,
 			level_layout->MR_sle_maybe_io_seq);
 	}
 
-	return saved_io_counter;
+	return TRUE;
 }
 
 /*
@@ -811,6 +867,15 @@ MR_unwind_stacks_for_retry(const MR_Stack_Layout_Label *top_layout,
 		return NULL;
 	}
 
+#ifdef	MR_DEBUG_RETRY_STACKS
+	MR_print_detstackptr(MR_mdb_out, *sp_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+#endif
+
 	return_label_layout = top_layout;
 	level_layout = top_layout->MR_sll_entry;
 	*problem = MR_undo_updates_of_maxfr(level_layout,
@@ -822,16 +887,37 @@ MR_unwind_stacks_for_retry(const MR_Stack_Layout_Label *top_layout,
 
 	MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
 
+#ifdef	MR_DEBUG_RETRY_STACKS
+	MR_print_detstackptr(MR_mdb_out, *sp_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+#endif
+
 	for (i = 0; i < ancestor_level; i++) {
 		result = MR_stack_walk_step(level_layout, &return_label_layout,
 				sp_ptr, curfr_ptr, problem);
-		if (result != STEP_OK) {
+		if (result != STEP_OK || return_label_layout == NULL) {
 			if (*problem == NULL) {
 				*problem = "not that many ancestors";
+			} else if (streq(*problem, "reached unknown label")) {
+				*problem = "cannot retry "
+					"across non-debuggable region";
 			}
 
 			return NULL;
 		}
+
+#ifdef	MR_DEBUG_RETRY_STACKS
+		MR_print_detstackptr(MR_mdb_out, *sp_ptr);
+		fprintf(MR_mdb_out, "\n");
+		MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+		fprintf(MR_mdb_out, "\n");
+		MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+		fprintf(MR_mdb_out, "\n");
+#endif
 
 		level_layout = return_label_layout->MR_sll_entry;
 		*problem = MR_undo_updates_of_maxfr(level_layout,
@@ -843,6 +929,15 @@ MR_unwind_stacks_for_retry(const MR_Stack_Layout_Label *top_layout,
 
 		MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
 	}
+
+#ifdef	MR_DEBUG_RETRY_STACKS
+	MR_print_detstackptr(MR_mdb_out, *sp_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *curfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+	MR_print_nondstackptr(MR_mdb_out, *maxfr_ptr);
+	fprintf(MR_mdb_out, "\n");
+#endif
 
 	return return_label_layout;
 }

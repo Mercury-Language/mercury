@@ -1388,8 +1388,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			if (0 <= n && n < MR_spy_point_next
 					&& MR_spy_points[n]->spy_exists)
 			{
-				MR_delete_spy_point(n);
+				MR_spy_points[n]->spy_exists = FALSE;
 				MR_print_spy_point(MR_mdb_out, n);
+				MR_delete_spy_point(n);
 			} else {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: break point #%d "
@@ -1403,8 +1404,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			count = 0;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				if (MR_spy_points[i]->spy_exists) {
-					MR_delete_spy_point(i);
+					MR_spy_points[i]->spy_exists = FALSE;
 					MR_print_spy_point(MR_mdb_out, i);
+					MR_delete_spy_point(i);
 					count++;
 				}
 			}
@@ -1422,14 +1424,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			{
 				int	slot;
 
-				/*
-				** MR_delete_spy_point() will clobber
-				** MR_most_recent_spy_point.
-				*/
-
 				slot = MR_most_recent_spy_point;
-				MR_delete_spy_point(slot);
+				MR_spy_points[slot]-> spy_exists = FALSE;
 				MR_print_spy_point(MR_mdb_out, slot);
+				MR_delete_spy_point(slot);
 			} else {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: there is no "

@@ -432,9 +432,6 @@ MR_delete_spy_point(int point_table_slot)
 		MR_most_recent_spy_point = -1;
 	}
 
-	/* this effectively removes the point from the spypoint table */
-	point->spy_exists = FALSE;
-
 	if (point->spy_when == MR_SPY_LINENO) {
 		/* Release the storage acquired by MR_copy_string. */
 		MR_free(point->spy_filename);
