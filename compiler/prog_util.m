@@ -354,7 +354,7 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
 	),
 
 	string__format("%s__%s__%s__%s",
-		[s(Prefix), s(PredIdStr), s(PFS), s(PredName)], Name),
+		[s(Prefix), s(PFS), s(PredName), s(PredIdStr)], Name),
 		SymName = qualified(ModuleName, Name).
 
 :- pred list_to_string(pred(T, string), list(T), string).
