@@ -63,9 +63,8 @@
 	% This consists of the {pre,post}{birth,death} sets and
 	% resume point information.
 
-:- pred detect_liveness_proc(pred_id, proc_id, module_info,
-	proc_info, proc_info, io__state, io__state).
-:- mode detect_liveness_proc(in, in, in, in, out, di, uo) is det.
+:- pred detect_liveness_proc(proc_info, module_info, proc_info).
+:- mode detect_liveness_proc(in, in, out) is det.
 
 	% Return the set of variables live at the start of the procedure.
 
@@ -83,31 +82,25 @@
 :- import_module bool, list, map, set, std_util, term, assoc_list, require.
 :- import_module varset, string.
 
-detect_liveness_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
-	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
-		ModuleInfo),
-	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_variables(ProcInfo0, Varset) },
-	{ proc_info_vartypes(ProcInfo0, VarTypes) },
-	{ live_info_init(ModuleInfo, ProcInfo0, VarTypes, Varset, LiveInfo) },
+detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_variables(ProcInfo0, Varset),
+	proc_info_vartypes(ProcInfo0, VarTypes),
+	live_info_init(ModuleInfo, ProcInfo0, VarTypes, Varset, LiveInfo),
 
-	{ initial_liveness(ProcInfo0, ModuleInfo, Liveness0) },
-	{ detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
-		_, Goal1) },
+	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
+		_, Goal1),
 
-	% hlds_out__write_goal(Goal1, ModuleInfo, Varset, 0, ""),
+	initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
+	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
-	{ initial_deadness(ProcInfo0, ModuleInfo, Deadness0) },
-	{ detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2) },
+	set__init(ResumeVars0),
+	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
+		ResumeVars0, Goal, _),
 
-	% hlds_out__write_goal(Goal2, ModuleInfo, Varset, 0, ""),
-
-	{ set__init(ResumeVars0) },
-	{ detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
-		ResumeVars0, Goal, _) },
-
-	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
-	{ proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo) }.
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
+	proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

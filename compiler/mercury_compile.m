@@ -787,9 +787,15 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ProcInfo3 = ProcInfo2 },
 		{ ModuleInfo3 = ModuleInfo2 }
 	),
-	detect_liveness_proc(PredId, ProcId, ModuleInfo3,
-		ProcInfo3, ProcInfo4),
+	write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
+		ModuleInfo3),
+	{ detect_liveness_proc(ProcInfo3, ModuleInfo3, ProcInfo4) },
+	write_proc_progress_message("% Allocating stack slots in ", PredId,
+		                ProcId, ModuleInfo3),
 	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo3, ProcInfo5) },
+	write_proc_progress_message(
+		"% Allocating storage locations for live vars in ",
+				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
 	{ module_info_get_shapes(ModuleInfo3, Shapes0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
@@ -1306,7 +1312,7 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+	process_all_nonimported_procs(update_proc(detect_liveness_proc),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
@@ -1377,12 +1383,13 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
-	{ base_type_layout__generate_llds(HLDS0, BaseTypeLayouts0) },
+	{ base_type_layout__generate_llds(HLDS0, BaseTypeLayouts) },
 
-	{ llds_common(LLDS0, BaseTypeLayouts0, ModuleName, LLDS1, 
-		BaseTypeLayouts, CommonData) },
-	{ list__append(BaseTypeInfos, BaseTypeLayouts, BaseTypeData) },
-	mercury_compile__chunk_llds(HLDS0, LLDS1, BaseTypeData, CommonData,
+	{ llds_common(LLDS0, BaseTypeLayouts, ModuleName, LLDS1, 
+		StaticData, CommonData) },
+
+	{ list__append(BaseTypeInfos, StaticData, AllData) },
+	mercury_compile__chunk_llds(HLDS0, LLDS1, AllData, CommonData,
 		LLDS2, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
 
