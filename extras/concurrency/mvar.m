@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %---------------------------------------------------------------------------%
@@ -98,8 +98,15 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 %%% :- implementation.
 
 %  This type is implemented in C.
-:- type ref(T) ---> ref(c_pointer).
+:- type ref(T).
+:- pragma foreign_type(c,  ref(T), "MR_Word").
+:- pragma foreign_type(il, ref(T), "class [mvar__csharp_code]ME_Reference").
 
+:- pragma foreign_decl("C#", "
+	public class ME_Reference {
+		public object	val;
+	}
+").
 :- pragma inline(new_ref/1).
 :- pragma c_code(new_ref(Ref::out),
 		[will_not_call_mercury, thread_safe],
@@ -107,6 +114,12 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""mvar:ref/1"");
 	*(MR_Word *) Ref = (MR_Word) NULL;
 ").
+:- pragma foreign_proc("C#", new_ref(Ref::out),
+		[will_not_call_mercury, thread_safe], "
+	Ref = new ME_Reference();
+	Ref.val = null;
+").
+
 
 :- pragma inline(get_ref/2).
 :- pragma c_code(get_ref(Ref::in, X::uo),
@@ -115,12 +128,21 @@ mvar__put(mvar(Full, Empty, Ref), Data) -->
 	X = *(MR_Word *) Ref;
 	*(MR_Word *) Ref = (MR_Word) NULL;
 ").
+:- pragma foreign_proc("C#", get_ref(Ref::in, X::uo),
+		[will_not_call_mercury, thread_safe], "
+	X = Ref.val;
+	Ref.val = null;
+").
 
 :- pragma inline(set_ref/2).
 :- pragma c_code(set_ref(Ref::in, X::in),
 		[will_not_call_mercury, thread_safe],
 "
 	*(MR_Word *) Ref = (MR_Word) X;
+").
+:- pragma foreign_proc("C#", set_ref(Ref::in, X::in),
+		[will_not_call_mercury, thread_safe], "
+	Ref.val = X;
 ").
 
 %-----------------------------------------------------------------------------%
