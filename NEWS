@@ -126,6 +126,9 @@ Changes to the Mercury language:
 
 Changes to the standard library:
 
+* We've added func versions of the remaining preds in int.m that
+  did not already have them.
+
 * We've added new predicates map__foldl2, tree234__foldl2 and
   std_util__aggregate2, and builtin__promise_only_solution_io.
 
