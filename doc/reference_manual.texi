@@ -50,6 +50,9 @@ into another language, under the above conditions for modified versions.
 @author Thomas Conway
 @author Zoltan Somogyi
 @author David Jeffery
+@author Peter Schachte
+@author Simon Taylor
+@author Chris Spiers
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995-1999 The University of Melbourne.
