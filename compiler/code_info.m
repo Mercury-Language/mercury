@@ -209,6 +209,9 @@
 :- pred code_info__unlock_reg(reg, code_info, code_info).
 :- mode code_info__unlock_reg(in, in, out) is det.
 
+:- pred code_info__clear_r1(code_tree, code_info, code_info).
+:- mode code_info__clear_r1(out, in, out) is det.
+
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
 
@@ -848,6 +851,13 @@ code_info__acquire_reg(Reg) -->
 code_info__release_reg(Reg) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__release_reg(Reg, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+%---------------------------------------------------------------------------%
+
+code_info__clear_r1(Code) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__clear_r1(Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%

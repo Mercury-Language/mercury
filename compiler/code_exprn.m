@@ -88,7 +88,7 @@
 :- pred code_exprn__produce_var(var, rval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__produce_var(in, out, out, in, out) is det.
 
-%	code_exprn__produce_var(Var, Rval, Code, ExprnInfo0, ExprnInfo)
+%	code_exprn__produce_var_in_reg(Var, Rval, Code, ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
 %		provide it as an Rval of the form lval(reg(_)).
 
@@ -111,6 +111,7 @@
 
 %	XXX These should be local, or their function should be folded into
 %	acquire/release.
+%	??? Why?  -fjh.
 %
 %	code_exprn__lock_reg(Reg, ExprnInfo, ExprnInfo)
 %		Prevents a register from being reused, even if
@@ -124,6 +125,14 @@
 
 :- pred code_exprn__unlock_reg(reg, exprn_info, exprn_info).
 :- mode code_exprn__unlock_reg(in, in, out) is det.
+
+%	code_exprn__clear_r1(Code)
+%		Produces a code fragment Code to move whatever is in r1
+%		to some other register, if r1 is live.  This is used
+%		prior to semidet pragma c_codes.
+
+:- pred code_exprn__clear_r1(code_tree, exprn_info, exprn_info).
+:- mode code_exprn__clear_r1(out, in, out) is det.
 
 %	code_exprn__get_varlocs(ExprnInfo, Locations)
 %		Returns a map from each variable that occurs in ExprnInfo to
@@ -1273,6 +1282,11 @@ code_exprn__release_arglocs([_ - ArgLoc | ArgLocs]) -->
 	code_exprn__release_arglocs(ArgLocs).
 
 %------------------------------------------------------------------------------%
+
+	% Move whatever is in r1 out of the way.
+
+code_exprn__clear_r1(Code) -->
+	code_exprn__clear_lval_return_shuffle(reg(r(1)), _, Code).
 
 	% Move whatever is in Lval out of the way.
 	% It is possible that the value we want to put into Lval

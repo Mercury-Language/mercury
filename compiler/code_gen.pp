@@ -801,6 +801,10 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 	make_pragma_decls(Args, ArgNameMap, Decls),
 	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
 	( { CodeModel = model_semi } ->
+		code_info__clear_r1(ShuffleR1_Code),
+
+		% c_code goes here
+
 		code_info__get_next_label(SkipLab),
 		code_info__grab_code_info(CodeInfo),
 		code_info__generate_failure(FailCode),
@@ -810,18 +814,21 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 				"Test for success of pragma_c_code"
 			]), tree(FailCode, node([ label(SkipLab) - "" ])))
 		},
+
 		code_info__lock_reg(r(1)),
 		pragma_acquire_regs(OutArgs, Regs),
 		code_info__unlock_reg(r(1))
 	;
+		{ ShuffleR1_Code = empty },
+		% c code goes here
 		{ CheckFailureCode = empty },
 		pragma_acquire_regs(OutArgs, Regs)
 	),
 	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
-	% { goal_info__context(GoalInfo, Context) },
 	{ PragmaCode = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 
 			"Pragma C inclusion"]) },
-	{ Instr = tree(InputVarsCode, tree(PragmaCode, CheckFailureCode)) }.
+	{ Instr = tree(tree(InputVarsCode, ShuffleR1_Code), 
+			tree(PragmaCode, CheckFailureCode)) }.
 
 %---------------------------------------------------------------------------%
 
