@@ -30,21 +30,23 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 
 		/* If that worked, return the string.  */
 		if (n > -1 && n < size) {
-			 break;
+			break;
 		}
 
 		/* Else try again with more space.  */
-		if (n > -1)    /* glibc 2.1 */
-			 /* precisely what is needed */
-			 size = n + 1;
-		else           /* glibc 2.0 */
+		if (n > -1) {	/* glibc 2.1 */
+			size = n + 1; /* precisely what is needed */
+		} else {	/* glibc 2.0 */
 			size *= 2;  /* twice the old size */
+		}
 
 		MR_RESIZE_ARRAY(p, char, size);
 	}
 #else
-		/* It is possible for this buffer to overflow	*/
-		/* and then bad things may happen		*/
+		/* 
+		** It is possible for this buffer to overflow and
+		** then bad things may happen
+		*/
 	char p[40960];
 
 	va_start(ap, fmt);
