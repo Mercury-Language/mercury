@@ -476,6 +476,6 @@ typedef void	Code;
 #include	"aux.h"
 #include	"label.h"
 #include	"memory.h"
-#include	"test_harness.h"
+#include	"wrapper.h"
 
 #endif /* IMP_H */

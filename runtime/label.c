@@ -62,6 +62,11 @@ Label *lookup_label_name(const char *name)
 	return (Label *) lookup_table(entry_name_table, name);
 }
 
+List *get_all_labels(void)
+{
+	return get_all_entries(entry_name_table);
+}
+
 static const void *entry_name(const void *entry)
 {
 	return (const void *) (((const Label *) entry)->e_name);

@@ -26,7 +26,6 @@
 extern	bool	debugflag[];
 
 extern	void	init_engine(void);
-extern	void	init_registers(void);
 extern	void	call_engine(Code *entry_point);
 
 extern	void	special_labels_module(void); /* unnecessary */

@@ -24,7 +24,7 @@
 
 /*
 ** if any of the following change, you must inspect memory.[ch],
-** machdeps/*, as well as all uses of all macros defined here.
+** the headers in machdeps, as well as all uses of all macros defined here.
 */
 
 #define	SI_RN	 0
