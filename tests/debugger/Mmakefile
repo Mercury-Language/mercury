@@ -80,9 +80,18 @@ debugger_regs.out: debugger_regs debugger_regs.inp
 
 # The exception_vars test is supposed to return a non-zero
 # exit status, since it exits by throwing an exception.
+# Likewise for the polymorphic_output test case.
 exception_vars.out: exception_vars exception_vars.inp
 	if $(MDB) ./exception_vars < exception_vars.inp		\
 		> exception_vars.out 2>&1;			\
+	then							\
+		false;						\
+	else							\
+		true;						\
+	fi
+polymorphic_output.out: polymorphic_output polymorphic_output.inp
+	if $(MDB) ./polymorphic_output < polymorphic_output.inp	\
+		> polymorphic_output.out 2>&1;			\
 	then							\
 		false;						\
 	else							\
