@@ -206,7 +206,7 @@ io__current_op(Type, Prec, term__atom(OpName)) :-
 
 io__infix_op(Op, Result) -->
 	{ 
-		io__current_op(Prec, Type, Op),
+		io__current_op(_Prec, Type, Op),
 		(Type = xfx ; Type = xfy ; Type = yfx)
 	->
 		Result = yes
@@ -214,9 +214,9 @@ io__infix_op(Op, Result) -->
 		Result = no
 	}.
 
-io__unary_prefix_op(Op) -->
+io__unary_prefix_op(Op, Result) -->
 	{ 
-		io__current_op(Prec, Type, Op),
+		io__current_op(_Prec, Type, Op),
 		(Type = fx ; Type = fy)
 	->
 		Result = yes
@@ -224,9 +224,9 @@ io__unary_prefix_op(Op) -->
 		Result = no
 	}.
 
-io__unary_postfix_op(Op) -->
+io__unary_postfix_op(Op, Result) -->
 	{ 
-		io__current_op(Prec, Type, Op),
+		io__current_op(_Prec, Type, Op),
 		(Type = xf ; Type = yf)
 	->
 		Result = yes
