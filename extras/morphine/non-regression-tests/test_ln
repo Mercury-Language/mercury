@@ -9,7 +9,7 @@
 
 initialize([]). 
 
-filter(Event, L, [line_number(Event)|L], continue).
+filter(Event, L, [line_number(Event)|L]).
 
  
 post_process(List, Int) :-

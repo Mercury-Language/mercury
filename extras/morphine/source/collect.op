@@ -267,7 +267,7 @@ compile_collect_Op :-
 	sh("rm -f collect.so  collect.o"),
 	current_grade(Grade),
 	concat_string([
-		"mmc --grade ", 
+		"mmc --no-warn-det-decls-too-lax --grade ", 
 		Grade,
 		" -O6",
 		" -c --pic-reg collect.m"], Command1), 

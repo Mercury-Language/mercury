@@ -18,7 +18,7 @@
 
 initialize(ct("user"/0, set__init)).
 
-filter(Event, Acc0, Acc, continue) :-
+filter(Event, Acc0, Acc) :-
 	Port = port(Event),
 	( 
 		(Port = call ; Port = exit ; Port = fail ; Port = redo)

@@ -20,7 +20,7 @@
 initialize(ct(Stack, set__init)) :-
 	stack__push(stack__init, "user"/0, Stack).
 
-filter(Event, Acc0, Acc, continue) :-
+filter(Event, Acc0, Acc) :-
 	Port = port(Event),
 	Acc0 = ct(Stack0, Graph0),
 	( 

@@ -77,7 +77,7 @@ initialize(ct(CallStack, "", GpDetStack, GpNonDetStack, GoalSuccTable, [],
 	map__det_insert(GoalSuccTable0, 0, [], GoalSuccTable),
 	map__init(ProofTable).
 
-filter(Event, Acc0, Acc, continue) :-
+filter(Event, Acc0, Acc) :-
 	Acc0 = ct(CallStack0, GoalPath0, GpDetStack0, GpNonDetStack0, 
 		GoalSuccT0, AllSolList0, ProofT0),
 	Port = port(Event),

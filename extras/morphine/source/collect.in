@@ -192,24 +192,19 @@ line_number(Event) = LineNumber :-
 	Event = event(_, _, _, _, _, _, _, _, _, _, _, _, _, LineNumber).
 
 
-% Type of the fourth argument of filter/4 which tells whether to stop collecting
-% or not.
-:- type stop_or_continue --->
-		stop
-	;	continue.
 
 filter(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, DeclModuleName,
 		DefModuleName, PredName, Arity, ModeNum, Arguments, Determinism, 
 		Path, LN, AccIn, AccOut, Char) :- 
-	filter(event(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
+	( if filter(event(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
 		DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
-		Arguments, Determinism, Path, LN), AccIn, AccOut, StopOrContinue),
-	(
-		StopOrContinue = continue,
-		Char = 'n'
-	;
-		StopOrContinue = stop,
-		Char = 'y'
+		Arguments, Determinism, Path, LN), AccIn, AccOut0)
+	then
+		Char = 'n',
+		AccOut = AccOut0
+	else
+		Char = 'y',
+		AccOut = AccIn
 	).
 
 % This predicate retrieves the type of the collecting variable.
@@ -230,6 +225,6 @@ send_collect_result(Result, OutputStream) -->
 	collected(collected_type).
 
 
-:- pred filter(event, accumulator_type, accumulator_type, stop_or_continue).
-:- mode filter(in, acc_in, acc_out, out) is det.
-:- pragma inline(filter/4).
+:- pred filter(event, accumulator_type, accumulator_type).
+:- mode filter(in, acc_in, acc_out) is semidet.
+:- pragma inline(filter/3).
