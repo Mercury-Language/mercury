@@ -117,15 +117,23 @@
 :- type ml_answer_table_node == ml_table.
 :- type ml_answer_slot == ml_table.
 :- type ml_answer_block == ml_table.
-:- type ml_table == c_pointer.
-
-	% N.B. interface continued below
+:- type ml_table.
 
 :- implementation.
 
-% This equivalence should be private. However, polymorphism gets an
-% internal error when compiling tests/tabling/boyer.m if it is.
-% :- type ml_table == c_pointer.
+% At the moment, tabling is supported only by the LLDS and MLDS C backends,
+% so in definitions of ml_table and ml_answer_list, only the C definition
+% is useful. The Mercury and IL definitions are placeholders only, required
+% to make this module compile cleanly on the Java and .NET backends
+% respectively.
+
+:- type ml_table --->	ml_table(c_pointer).
+:- pragma foreign_type("C", ml_table, "MR_TrieNode").
+:- pragma foreign_type(il,  ml_table, "class [mscorlib]System.Object").
+
+:- type ml_answer_list --->	ml_answer_list(c_pointer).
+:- pragma foreign_type("C", ml_answer_list, "MR_AnswerList").
+:- pragma foreign_type(il,  ml_answer_list, "class [mscorlib]System.Object").
 
 %-----------------------------------------------------------------------------%
 
@@ -185,7 +193,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -205,7 +213,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -224,7 +232,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -243,7 +251,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -262,7 +270,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -281,7 +289,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -297,7 +305,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -313,7 +321,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -329,7 +337,7 @@
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -526,7 +534,7 @@ table_simple_mark_as_inactive(_) :-
 		if (MR_io_tabling_start < MR_io_tabling_counter 
 			&& MR_io_tabling_counter <= MR_io_tabling_end)
 		{
-			T = (MR_Word) &MR_io_tabling_pointer;
+			T = &MR_io_tabling_pointer;
 			Counter = (MR_Word) old_counter;
 			Start = MR_io_tabling_start;
 			if (MR_io_tabling_counter > MR_io_tabling_counter_hwm)
@@ -556,12 +564,13 @@ table_simple_mark_as_inactive(_) :-
 	}
 ").
 
-:- pragma foreign_proc("C", table_io_has_occurred(T::in),
+:- pragma foreign_proc("C",
+	table_io_has_occurred(T::in),
 	[will_not_call_mercury],
 "
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -654,7 +663,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	% Mark a table as being active.
 :- impure pred table_nondet_mark_as_active(ml_subgoal_table_node::in) is det.
 
-	% Return the table of answers already return to the given nondet
+	% Return the table of answers already returned to the given nondet
 	% table.
 :- impure pred table_nondet_get_ans_table(ml_subgoal_table_node::in,
 	ml_table::out) is det.
@@ -690,11 +699,14 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
 #ifdef	MR_THREAD_SAFE
-#error ""Sorry, not yet implemented: mixing minimal model tabling and threads""
+#error ""Sorry, not yet implemented: minimal model tabling with threads""
+#endif
+#ifdef	MR_HIGHLEVEL_CODE
+#error ""Sorry, not yet implemented: minimal model tabling with high level code""
 #endif
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T0;
+	table = T0;
 
 	/*
 	** Initialize the subgoal if this is the first time we see it.
@@ -724,8 +736,10 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
-			printf(""setting up table %p -> %p, answer slot %p\\n"",
-				table, subgoal, subgoal->answer_list_tail);
+			printf(""setting up table %p -> %p, "",
+				table, subgoal);
+			printf(""answer slot %p\\n"",
+				subgoal->answer_list_tail);
 		}
 
 		if (MR_maxfr != MR_curfr) {
@@ -759,7 +773,7 @@ table_nondet_setup(_, _) :-
 
 /*
 
-XXX :- external stops us from using this
+XXX :- external stops us from using these two definitions
 
 :- pragma foreign_proc("MC++",
 	table_nondet_suspend(_A::in, _B::out), [will_not_call_mercury, promise_pure],
@@ -784,9 +798,10 @@ XXX :- external stops us from using this
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
-	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_COMPLETE);
+	SUCCESS_INDICATOR =
+		(table->MR_subgoal->status == MR_SUBGOAL_COMPLETE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -799,9 +814,10 @@ XXX :- external stops us from using this
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
-	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_ACTIVE);
+	SUCCESS_INDICATOR =
+		(table->MR_subgoal->status == MR_SUBGOAL_ACTIVE);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -814,7 +830,7 @@ XXX :- external stops us from using this
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 	MR_push_generator(MR_curfr, table);
 	MR_register_generator_ptr(table);
@@ -831,9 +847,9 @@ XXX :- external stops us from using this
 #ifdef	MR_USE_MINIMAL_MODEL
 	MR_TrieNode	table;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
-	AT = (MR_Word) &(table->MR_subgoal->answer_table);
+	AT = (MR_TrieNode) &(table->MR_subgoal->answer_table);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -849,7 +865,7 @@ XXX :- external stops us from using this
 	MR_TrieNode	table;
 	MR_bool		is_new_answer;
 
-	table = (MR_TrieNode) T;
+	table = T;
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -875,7 +891,7 @@ XXX :- external stops us from using this
 	MR_Subgoal		*subgoal;
 	MR_AnswerListNode	*answer_node;
 
-	table = (MR_TrieNode) T;
+	table = T;
 	subgoal = table->MR_subgoal;
 	subgoal->num_ans++;
 
@@ -923,7 +939,7 @@ table_multi_return_all_ans(TrieNode, Answer) :-
 		error("table_multi_return_all_ans: no first answer")
 	).
 
-:- semipure pred table_nondet_return_all_ans_2(c_pointer::in,
+:- semipure pred table_nondet_return_all_ans_2(ml_answer_list::in,
 	ml_answer_block::out) is nondet.
 
 table_nondet_return_all_ans_2(CurNode0, Answer) :-
@@ -934,45 +950,47 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 		semipure table_nondet_return_all_ans_2(CurNode1, Answer)
 	).
 
-:- semipure pred pickup_answer_list(ml_subgoal_table_node::in, c_pointer::out)
-	is det.
+:- semipure pred pickup_answer_list(ml_subgoal_table_node::in,
+	ml_answer_list::out) is det.
 
-:- pragma foreign_proc("C", pickup_answer_list(T::in, CurNode::out),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	pickup_answer_list(T::in, CurNode::out),
+	[will_not_call_mercury],
+"
 #ifdef MR_USE_MINIMAL_MODEL
-		MR_TrieNode	table;
+	MR_TrieNode	table;
 
-		table = (MR_TrieNode) T;
-	CurNode = (MR_Word) table->MR_subgoal->answer_list;
+	table = T;
+	CurNode = table->MR_subgoal->answer_list;
 
   #ifdef MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf(""restoring all answers in %p -> %p\\n"",
-				table, table->MR_subgoal);
-		}
+	if (MR_tabledebug) {
+		printf(""restoring all answers in %p -> %p\\n"",
+			table, table->MR_subgoal);
+	}
   #endif
+#else
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
-:- semipure pred return_next_answer(c_pointer::in, ml_answer_block::out,
-	c_pointer::out) is semidet.
+:- semipure pred return_next_answer(ml_answer_list::in, ml_answer_block::out,
+	ml_answer_list::out) is semidet.
 
 :- pragma foreign_proc("C",
 	return_next_answer(CurNode0::in, AnswerBlock::out, CurNode::out),
-	[will_not_call_mercury], "
+	[will_not_call_mercury],
+"
 #ifdef MR_USE_MINIMAL_MODEL
-	MR_AnswerList	cur_node0;
-
-	cur_node0 = (MR_AnswerList *) CurNode0;
-	if (cur_node0 == NULL) {
+	if (CurNode0 == NULL) {
 		SUCCESS_INDICATOR = MR_FALSE;
-		} else {
-		AnswerBlock = (MR_Word) &cur_node0->answer_data;
-		CurNode = (MR_Word) cur_node0->next_answer;
+	} else {
+		AnswerBlock = &CurNode0->answer_data;
+		CurNode = CurNode0->next_answer;
 		SUCCESS_INDICATOR = MR_TRUE;
-		}
+	}
 #else
-		MR_fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -1159,102 +1177,68 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 
 ").
 
-:- pragma foreign_proc("C", table_lookup_insert_int(T0::in, I::in, T::out),
+:- pragma foreign_proc("C",
+	table_lookup_insert_int(T0::in, I::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_INT(table, table0, (MR_Integer) I);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_INT(T, T0, (MR_Integer) I);
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_start_int(T0::in, S::in, I::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_START_INT(table, table0,
+	MR_DEBUG_NEW_TABLE_START_INT(T, T0,
 		(MR_Integer) S, (MR_Integer) I);
-	T = (MR_Word) table;
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_char(T0::in, C::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_CHAR(table, table0, (MR_Integer) C);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_CHAR(T, T0, (MR_Integer) C);
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_string(T0::in, S::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_STRING(table, table0, (MR_String) S);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_STRING(T, T0, (MR_String) S);
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_float(T0::in, F::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_FLOAT(table, table0, F);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_FLOAT(T, T0, F);
 ").
 
 :- pragma foreign_proc("C", 
 	table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_ENUM(table, table0, R, V);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_ENUM(T, T0, R, V);
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_user(T0::in, V::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_ANY(T, T0, (MR_TypeInfo) TypeInfo_for_T, V);
 ").
 
 :- pragma foreign_proc("C",
 	table_lookup_insert_poly(T0::in, V::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0, table;
-
-	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
-	T = (MR_Word) table;
+	MR_DEBUG_NEW_TABLE_ANY(T, T0, (MR_TypeInfo) TypeInfo_for_T, V);
 ").
 
 :- pragma foreign_proc("C",
 	table_save_int_ans(T::in, Offset::in, I::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, I,
+	MR_TABLE_SAVE_ANSWER(T, Offset, I,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, int, 0));
 ").
 
@@ -1262,10 +1246,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_save_char_ans(T::in, Offset::in, C::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, C,
+	MR_TABLE_SAVE_ANSWER(T, Offset, C,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, character, 0));
 ").
 
@@ -1273,10 +1254,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_save_string_ans(T::in, Offset::in, S::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
+	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) S,
 		&MR_TYPE_CTOR_INFO_NAME(builtin, string, 0));
 ").
 
@@ -1284,14 +1262,11 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_save_float_ans(T::in, Offset::in, F::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
 #ifdef MR_HIGHLEVEL_CODE
-	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) MR_box_float(F),
+	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) MR_box_float(F),
 		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #else
-	MR_TABLE_SAVE_ANSWER(table, Offset, MR_float_to_word(F),
+	MR_TABLE_SAVE_ANSWER(T, Offset, MR_float_to_word(F),
 		&MR_TYPE_CTOR_INFO_NAME(builtin, float, 0));
 #endif
 ").
@@ -1300,10 +1275,7 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_save_io_state_ans(T::in, Offset::in, S::ui),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
+	MR_TABLE_SAVE_ANSWER(T, Offset, (MR_Word) S,
 		&MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 ").
 
@@ -1311,53 +1283,38 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_save_any_ans(T::in, Offset::in, V::in),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, V, TypeInfo_for_T);
+	MR_TABLE_SAVE_ANSWER(T, Offset, V, TypeInfo_for_T);
 ").
 
 :- pragma foreign_proc("C",
 	table_restore_int_ans(T::in, Offset::in, I::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	I = (MR_Integer) MR_TABLE_GET_ANSWER(table, Offset);
+	I = (MR_Integer) MR_TABLE_GET_ANSWER(T, Offset);
 ").
 
 :- pragma foreign_proc("C",
 	table_restore_char_ans(T::in, Offset::in, C::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	C = (MR_Char) MR_TABLE_GET_ANSWER(table, Offset);
+	C = (MR_Char) MR_TABLE_GET_ANSWER(T, Offset);
 ").
 
 :- pragma foreign_proc("C",
 	table_restore_string_ans(T::in, Offset::in, S::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	S = (MR_String) MR_TABLE_GET_ANSWER(table, Offset);
+	S = (MR_String) MR_TABLE_GET_ANSWER(T, Offset);
 ").
 
 :- pragma foreign_proc("C",
 	table_restore_float_ans(T::in, Offset::in, F::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
 #ifdef MR_HIGHLEVEL_CODE
-	F = MR_unbox_float(MR_TABLE_GET_ANSWER(table, Offset));
+	F = MR_unbox_float(MR_TABLE_GET_ANSWER(T, Offset));
 #else
-	F = MR_word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
+	F = MR_word_to_float(MR_TABLE_GET_ANSWER(T, Offset));
 #endif
 ").
 
@@ -1365,30 +1322,21 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
 	table_restore_io_state_ans(T::in, Offset::in, V::uo),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	V = (MR_Word) MR_TABLE_GET_ANSWER(table, Offset);
+	V = (MR_Word) MR_TABLE_GET_ANSWER(T, Offset);
 ").
 
 :- pragma foreign_proc("C",
 	table_restore_any_ans(T::in, Offset::in, V::out),
 	[will_not_call_mercury, promise_semipure],
 "
-	MR_TrieNode	table;
-
-	table = (MR_TrieNode) T;
-	V = (MR_Word) MR_TABLE_GET_ANSWER(table, Offset);
+	V = (MR_Word) MR_TABLE_GET_ANSWER(T, Offset);
 ").
 
 :- pragma foreign_proc("C",
 	table_create_ans_block(T0::in, Size::in, T::out),
 	[will_not_call_mercury],
 "
-	MR_TrieNode	table0;
-
-	table0 = (MR_TrieNode) T0;
-	MR_TABLE_CREATE_ANSWER_BLOCK(table0, Size);
+	MR_TABLE_CREATE_ANSWER_BLOCK(T0, Size);
 	T = T0;
 ").
 
@@ -1399,7 +1347,6 @@ table_loopcheck_error(Message) :-
 	table_report_statistics, [will_not_call_mercury], "
 	MR_table_report_statistics(stderr);
 ").
-
 
 table_lookup_insert_int(_, _, _) :-
 	% This version is only used for back-ends for which there is no
