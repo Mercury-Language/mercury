@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,7 +87,8 @@ rl_block_opt__setup_input_relation(Relation) -->
 	% Add an instruction to the DAG for the block.
 :- pred rl_block_opt__build_dag(rl_instruction::in, dag::in, dag::out) is det.
 
-rl_block_opt__build_dag(join(Output, Input1, Input2, Type, Exprn) - _) -->
+rl_block_opt__build_dag(
+		join(Output, Input1, Input2, Type, Exprn, _, _) - _) -->
 	rl_block_opt__lookup_relation(Input1, Input1Node),
 	rl_block_opt__lookup_relation(Input2, Input2Node),
 	rl_block_opt__add_dag_node([Output], [Input1Node, Input2Node],
@@ -875,7 +876,7 @@ rl_block_opt__find_output_project_nodes_2([UsingNode | UsingNodes],
 		% generated tuple into the output if the input is non-empty
 		\+ (
 			OutputGoals = [OutputGoal],
-			rl__goal_is_independent_of_input(one, OutputGoal, _)
+			rl__goal_is_independent_of_input(one, OutputGoal)
 		),
 		\+ (
 			list__member(OtherOutputProjn, OutputProjns0),
@@ -1340,11 +1341,22 @@ rl_block_opt__get_ref_instrs(RelationId, OutputList, RefInstrs) :-
 	list(rl_instruction)::out, dag::in, dag::out) is det.		
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
-		join(Input1Loc, Input2Loc, Type, Exprn),
-		[join(Output, Input1, Input2, Type, Exprn) - ""]) -->
+		join(Input1Loc, Input2Loc, JoinType, Exprn), [JoinInstr]) -->
+
+	{ rl__is_semi_join(JoinType, Exprn, SemiJoinInfo) },
+
+	dag_get_rl_opt_info(RLOptInfo),
+	{ rl_opt_info_get_module_info(ModuleInfo, RLOptInfo, _) },
+
+	{ rl__is_trivial_join(ModuleInfo, JoinType, Exprn, SemiJoinInfo,
+		TrivialJoinInfo) },
+
 	rl_block_opt__get_relation_id(NodeRels, Input1Loc, Input1),
 	rl_block_opt__get_relation_id(NodeRels, Input2Loc, Input2),
-	{ rl_block_opt__one_output(NodeOutputs, Output) }.
+	{ rl_block_opt__one_output(NodeOutputs, Output) },
+	{ JoinInstr = join(Output, Input1, Input2, JoinType, Exprn,
+			SemiJoinInfo, TrivialJoinInfo) - "" }.
+
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 		subtract(Input1Loc, Input2Loc, Type, Exprn),

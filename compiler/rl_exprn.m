@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,21 +54,51 @@
 :- import_module hlds_module, hlds_pred, rl, rl_code, rl_file, prog_data.
 :- import_module list.
 
+	% rl_exprn__generate_compare_exprn(ModuleInfo, SortSpec,
+	% 	InputSchema, CompareCodes).
+	%
 	% Generate an expression to compare tuples with the
 	% given schema on the given attributes.
 :- pred rl_exprn__generate_compare_exprn(module_info::in, sort_spec::in,
 	list(type)::in, list(bytecode)::out) is det.
 
+	% rl_exprn__generate_sort_merge_compare_exprn(ModuleInfo, Attrs1,
+	% 	Schema1, Attrs2, Schema2, CompareCodes).
+	%
+	% Generate an expression to compare the join attributes in
+	% a sort-merge equi-join.
+:- pred rl_exprn__generate_sort_merge_compare_exprn(module_info::in,
+	sort_spec::in, list(type)::in, sort_spec::in, list(type)::in,
+	list(bytecode)::out) is det.
+
+	% rl_exprn__generate_key_range(ModuleInfo, KeyRange, ExprnCode,
+	% 	NumParams, LowerBoundSchema, UpperBoundSchema,
+	%	MaxTermDepth, ExprnVarTypes).
+	%
 	% Generate an expression to produce the upper and lower
 	% bounds for a B-tree access.
 :- pred rl_exprn__generate_key_range(module_info::in, key_range::in,
 	list(bytecode)::out, int::out, list(type)::out, list(type)::out,
 	int::out, list(type)::out) is det.
+	
+	% rl_exprn__generate_hash_function(ModuleInfo, HashAttrs,
+	%	InputSchema, ExprnCode).
+	%
+	% Generate an expression to compute a hash value for the given
+	% attributes of a tuple.
+:- pred rl_exprn__generate_hash_function(module_info::in, list(int)::in,
+	list(type)::in, list(bytecode)::out) is det.
 
+	% rl_exprn__generate(ModuleInfo, Goal, ExprnCode, NumParams,
+	%	ExprnMode, ExprnVarTypes).
+	%
 	% Generate an expression for a join/project/subtract condition.
 :- pred rl_exprn__generate(module_info::in, rl_goal::in, list(bytecode)::out,
 	int::out, exprn_mode::out, list(type)::out) is det.
 
+	% rl_exprn__aggregate(ModuleInfo, InitAccPred, UpdateAccPred,
+	% 	GrpByType, NonGrpByType, AccType, ExprnCode, Decls).	
+	%
 	% Given the closures used to create the initial accumulator for each
 	% group and update the accumulator for each tuple, create
 	% an expression to evaluate the aggregate.
@@ -97,17 +127,38 @@
 rl_exprn__generate_compare_exprn(_ModuleInfo, Spec, Schema, Code) :-
 	(
 		Spec = attributes(Attrs0),
-		list__map(
-			(pred((Attr0 - Dir)::in, (Attr - Dir)::out) is det :-
-				rl_exprn__adjust_arg_number(Attr0, Attr)
-			),
-			Attrs0, Attrs),
-		list__foldl(rl_exprn__generate_compare_instrs(Schema),
-				Attrs, empty, CompareCode)
+
+		% We're comparing corresponding attributes from each tuple.
+		assoc_list__from_corresponding_lists(Attrs0, Attrs0,
+			CompareAttrs)
 	;
 		Spec = sort_var(_),
 		error("rl_exprn__generate_compare_exprn: unbound sort_var")
 	),
+	rl_exprn__do_generate_compare_exprn(Schema, CompareAttrs, Code).
+
+rl_exprn__generate_sort_merge_compare_exprn(_ModuleInfo, Spec1, Schema1,
+		Spec2, _Schema2, Code) :-
+
+	(
+		Spec1 = attributes(Attrs1),
+		Spec2 = attributes(Attrs2)
+	->
+		assoc_list__from_corresponding_lists(Attrs1, Attrs2,
+			CompareAttrs)
+	;
+		error(
+	"rl_exprn__generate_sort_merge_compare_exprn: unbound sort_var")
+	),
+	rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code).
+
+:- pred rl_exprn__do_generate_compare_exprn(list(type)::in, 
+	assoc_list(pair(int, sort_dir))::in, list(bytecode)::out) is det.
+
+rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
+
+	list__foldl(rl_exprn__generate_compare_instrs(Schema1),
+		CompareAttrs, empty, CompareCode),
 
 	ExprnCode = 
 		tree(node([rl_PROC_expr_frag(2)]),
@@ -123,16 +174,23 @@ rl_exprn__generate_compare_exprn(_ModuleInfo, Spec, Schema, Code) :-
 	list__condense(Instrs0, Code).
 
 :- pred rl_exprn__generate_compare_instrs(list(type)::in,
-	pair(int, sort_dir)::in, byte_tree::in, byte_tree::out) is det.
+	pair(pair(int, sort_dir))::in, byte_tree::in, byte_tree::out) is det.
 
-rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
-	list__index0_det(Types, Attr, Type),
+rl_exprn__generate_compare_instrs(Types1, (Attr1a - Dir1) - (Attr2a - Dir2),
+		Code0, Code) :-
+	require(unify(Dir1, Dir2),
+	    "rl_exprn__generate_compare_instrs: sort directions not equal"),
+
+	rl_exprn__adjust_arg_number(Attr1a, Attr1),
+	rl_exprn__adjust_arg_number(Attr2a, Attr2),
+
+	list__index0_det(Types1, Attr1, Type),
 	rl_exprn__type_to_aditi_type(Type, AType),
 	rl_exprn__compare_bytecode(AType, CompareByteCode),
-	rl_exprn__get_input_field_code(one, AType, Attr, FieldCode1),
-	rl_exprn__get_input_field_code(two, AType, Attr, FieldCode2),
+	rl_exprn__get_input_field_code(one, AType, Attr1, FieldCode1),
+	rl_exprn__get_input_field_code(two, AType, Attr2, FieldCode2),
 	(
-		Dir = ascending,
+		Dir1 = ascending,
 		CompareAttr = node([
 				FieldCode1,
 				FieldCode2,
@@ -140,7 +198,7 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 				rl_EXP_return_if_nez
 			])
 	;
-		Dir = descending,
+		Dir1 = descending,
 		CompareAttr = node([
 				FieldCode2,
 				FieldCode1,
@@ -149,6 +207,55 @@ rl_exprn__generate_compare_instrs(Types, Attr - Dir, Code0, Code) :-
 			])
 	),
 	Code = tree(Code0, CompareAttr).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+rl_exprn__generate_hash_function(_ModuleInfo, Attrs0, Schema, Code) :-
+	list__map(rl_exprn__adjust_arg_number, Attrs0, Attrs),
+	IsFirst = yes,
+	rl_exprn__generate_hash_function_2(Attrs, Schema, IsFirst,
+		empty, HashCode),
+	ExprnCode =
+		tree(node([rl_PROC_expr_frag(2)]),
+		tree(HashCode,
+		node([rl_EXP_hash_result, rl_PROC_expr_end])
+	)),
+
+	tree__flatten(ExprnCode, Instrs0),
+	list__condense(Instrs0, Code).
+
+:- pred rl_exprn__generate_hash_function_2(list(int)::in, list(type)::in,
+		bool::in, byte_tree::in, byte_tree::out) is det.
+
+rl_exprn__generate_hash_function_2([], _, _, Code, Code).
+rl_exprn__generate_hash_function_2([Attr | Attrs], Schema,
+		IsFirst, Code0, Code) :-
+	list__index0_det(Schema, Attr, Type),
+	rl_exprn__type_to_aditi_type(Type, AType),
+	rl_exprn__hash_bytecode(AType, HashCode),
+	rl_exprn__get_input_field_code(one, AType, Attr, FieldCode),
+	( IsFirst = no ->
+		CombineCode = node([rl_EXP_hash_combine])
+	;
+		CombineCode = empty
+	),
+
+	Code1 =
+		tree(Code0,
+		tree(node([FieldCode, HashCode]),
+		CombineCode
+	)),
+	IsFirst1 = no,
+	rl_exprn__generate_hash_function_2(Attrs, Schema, IsFirst1,
+		Code1, Code).
+
+:- pred rl_exprn__hash_bytecode(aditi_type::in, bytecode::out) is det.
+
+rl_exprn__hash_bytecode(int, rl_EXP_int_hash).
+rl_exprn__hash_bytecode(string, rl_EXP_str_hash).
+rl_exprn__hash_bytecode(float, rl_EXP_flt_hash).
+rl_exprn__hash_bytecode(term(_), rl_EXP_term_hash).
 
 %-----------------------------------------------------------------------------%
 

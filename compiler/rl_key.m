@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,6 +40,11 @@
 :- pred rl_key__get_join_key_ranges(module_info::in, map(prog_var, type)::in,
 		list(prog_var)::in, list(prog_var)::in, index_spec::in,
 		list(rl_var_bounds)::in, list(key_range)::out) is semidet.
+
+	% Succeed if a join is an equi-join, returning the list
+	% of arguments in each tuple which must be equivalent.
+:- pred rl_key__is_equijoin(rl_goal_inputs::in, list(rl_var_bounds)::in,
+		list(int)::out, list(int)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -361,6 +366,93 @@ key_term_less_or_equal(ModuleInfo, UpperLower1, functor(ConsId1, _, Args1),
 			ConsId1, ConsId2, ConsId),
 		ConsId = ConsId1
 	).	
+
+%-----------------------------------------------------------------------------%
+
+rl_key__is_equijoin(two_inputs(Args1, Args2), [VarBound0 | VarBounds],
+		Attrs1, Attrs2) :-
+	%
+	% For each attribute of the first tuple, work out which
+	% attributes of the second must be equal for the join
+	% condition to succeed.
+	% XXX we don't yet handle cases such as p(X, Y), p(X + 10, Z).
+	%
+	rl_key__restrict_bounds_to_arg_vars(Args1, Args2,
+			VarBound0, EqArgs0),
+	list__foldl(rl_key__intersect_branch_eq_args, VarBounds,
+		EqArgs0, EqArgs),
+	EqArgs \= [],
+
+	%
+	% For each attribute of the first tuple, choose one attribute
+	% of the second which must be equal.
+	%
+	list__map(rl_key__var_and_eq_args_to_attr_pair(Args1, Args2),
+		EqArgs, AttrPairs),
+	assoc_list__keys(AttrPairs, Attrs1),
+	assoc_list__values(AttrPairs, Attrs2).
+
+:- pred rl_key__var_and_eq_args_to_attr_pair(list(prog_var)::in,
+		list(prog_var)::in, pair(prog_var, set(prog_var))::in,
+		pair(int)::out) is det.
+
+rl_key__var_and_eq_args_to_attr_pair(Args1, Args2, Arg1 - EqArgs2,
+		AttrPair) :-
+	(
+		list__nth_member_search(Args1, Arg1, Attr1),
+		set__to_sorted_list(EqArgs2, EqArgsList2),
+		EqArgsList2 = [Arg2 | _],
+		list__nth_member_search(Args2, Arg2, Attr2)
+	->
+		AttrPair = Attr1 - Attr2
+	;	
+		error("rl_key__var_and_eq_args_to_attr_pair")
+	).	
+
+:- pred rl_key__intersect_branch_eq_args(rl_var_bounds::in,
+		assoc_list(prog_var, set(prog_var))::in,
+		assoc_list(prog_var, set(prog_var))::out) is semidet.
+
+rl_key__intersect_branch_eq_args(Bounds, EqArgs0, EqArgs) :-
+	list__filter_map(rl_key__intersect_eq_args(Bounds), EqArgs0, EqArgs),
+	EqArgs \= [].
+
+:- pred rl_key__intersect_eq_args(rl_var_bounds::in,
+		pair(prog_var, set(prog_var))::in,
+		pair(prog_var, set(prog_var))::out) is semidet.
+
+rl_key__intersect_eq_args(Bounds, Var - EqVars0, Var - EqVars) :-
+	map__search(Bounds, Var, VarBounds),
+	rl_key__extract_bounds_eq_vars(VarBounds, BoundsEqArgs),
+	set__intersect(EqVars0, BoundsEqArgs, EqVars),
+	\+ set__empty(EqVars).
+
+:- pred rl_key__restrict_bounds_to_arg_vars(list(prog_var)::in,
+		list(prog_var)::in, rl_var_bounds::in,
+		assoc_list(prog_var, set(prog_var))::out) is det.
+
+rl_key__restrict_bounds_to_arg_vars(Args, ArgsOfOtherTuple,
+		Bounds0, ArgsAndEqOtherArgs) :-
+	set__list_to_set(ArgsOfOtherTuple, ArgsOfOtherTupleSet),
+	list__filter_map(
+		(pred(Arg::in, ArgAndEqOtherArgs::out) is semidet :-
+			map__search(Bounds0, Arg, ArgBounds),
+
+			rl_key__extract_bounds_eq_vars(ArgBounds,
+				BoundsEqArgs),
+			set__intersect(BoundsEqArgs, ArgsOfOtherTupleSet,
+				EqOtherArgs),
+			\+ set__empty(EqOtherArgs),
+			ArgAndEqOtherArgs = Arg - EqOtherArgs
+		), Args, ArgsAndEqOtherArgs).
+
+:- pred rl_key__extract_bounds_eq_vars(pair(key_term)::in,
+		set(prog_var)::out) is det.
+
+rl_key__extract_bounds_eq_vars(LBound - UBound, BoundsEqArgs) :-
+	LBound = _ - LessThanOrEqVars,
+	UBound = _ - GreaterThanOrEqVars,
+	set__intersect(LessThanOrEqVars, GreaterThanOrEqVars, BoundsEqArgs).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,7 +126,9 @@
 			relation_id,		% input 1
 			relation_id,		% input 2
 			join_type,
-			rl_goal			% join condition
+			rl_goal,		% join condition
+			maybe(semi_join_info),
+			maybe(trivial_join_info)
 		)
 	;
 		subtract(	% output = input 1 - input 2
@@ -306,6 +308,12 @@
 :- type join_type
 	--->	nested_loop
 	;	sort_merge(sort_spec, sort_spec)
+	;	hash(list(int), list(int))
+				% Hash join, used for joins where
+				% the condition tests equality of
+				% one or more attributes of the input
+				% relations.
+				% Attribute numbers start at 1.
 	;	index(index_spec, key_range)
 				% The second relation is indexed.
 				% Each tuple in the first relation
@@ -314,19 +322,57 @@
 				% builds the lower and upper bounds
 				% on the key range from the input
 				% tuple from the first relation.
-	;	cross
-	;	semi		% The output tuple is copied from the
-				% first input tuple. An output projection
-				% must be done as a separate operation.
 	.
 
+
+	% A semi-join does not do a projection on the output - it
+	% just returns one of the input tuples.
+:- type semi_join_info == tuple_num.
+
+	% For some joins the join condition does not depend on
+	% one of the input tuples. This commonly happens for joins
+	% with a zero-arity input relation at the start of a procedure.
+	%
+	% Output = join(Input1, Input2, Cond), where Cond does
+	% not depend on Input2, can be generated as:
+	%
+	% if (empty(Input2)) {
+	%	Output = project(Input1, Cond)
+	% else {
+	%	init(Output)
+	% }
+	%
+	% If the join is a semi-join with a deterministic
+	% condition, the project is not necessary.
+	%
+	% We don't just do this optimization in the intermediate RL
+	% because it introduces extra branching which can interfere
+	% with other optimizations (e.g. rl_block_opt.m, rl_stream.m).
+:- type trivial_join_info
+	---> trivial_join_info(
+		tuple_num,	% which tuple does the join depend on
+		maybe(project_type)
+				% the type of projection to use,
+				% if one is needed
+	).
+
+	% All subtracts are done using the semi-subtract operator.
+	% There is no advantage in including any post projection
+	% in the operation because the projection cannot use any
+	% of the intermediate results of the test -- the projection
+	% is only done if the test fails for all negated tuples.
 :- type subtract_type
-	--->	nested_loop
-	;	semi		% The output tuple is copied from the
-				% first input tuple. An output projection
-				% must be done as a separate operation.
-	;	sort_merge(sort_spec, sort_spec)
-	;	index(index_spec, key_range)
+	--->	semi_nested_loop
+	;	semi_sort_merge(sort_spec, sort_spec)
+				% Hash join, used for joins where
+				% the condition tests equality of
+				% one or more attributes of the input
+				% relations.
+				% Attribute numbers start at 1.
+	;	semi_hash(list(int), list(int))
+	;	semi_index(index_spec, key_range)
+				% The negated (second) input relation
+				% is indexed.
 	.
 
 :- type difference_type
@@ -372,18 +418,18 @@
 	% hlds_goal form.
 :- type rl_goal
 	---> rl_goal(
-		maybe(pred_proc_id),	
+		pred_proc_id :: maybe(pred_proc_id),	
 				% Predicate from which the expression was
 				% taken - used to avoid unnecessarily merging 
 				% varsets. Should be `no' if the varset
 				% contains vars from multiple procs.
-		prog_varset,
-		map(prog_var, type),
-		instmap,	% instmap before goal
-		rl_goal_inputs,
-		rl_goal_outputs,
-		list(hlds_goal),
-		list(rl_var_bounds)
+		varset :: prog_varset,
+		vartypes :: map(prog_var, type),
+		instmap:: instmap,	% instmap before goal
+		inputs :: rl_goal_inputs,
+		outputs :: rl_goal_outputs,
+		goal :: list(hlds_goal),
+		bounds :: list(rl_var_bounds)
 	).
 
 :- type rl_goal_inputs
@@ -406,6 +452,11 @@
         .
 
 :- type rl_var_bounds == map(prog_var, pair(key_term)).
+
+:- type tuple_num
+	--->	one
+	;	two
+	.
 
 %-----------------------------------------------------------------------------%
 
@@ -437,29 +488,53 @@
 	% Get a list of all attributes for a given schema.
 :- pred rl__attr_list(list(T)::in, list(int)::out) is det.
 
+:- pred rl__is_semi_join(join_type::in, rl_goal::in,
+		maybe(semi_join_info)::out) is det.
+
+:- pred rl__is_trivial_join(module_info::in, join_type::in, rl_goal::in,
+	maybe(semi_join_info)::in, maybe(trivial_join_info)::out) is det.
+
 	% Succeed if the goal contain any of the variables corresponding
 	% to the attributes of the given input tuple.
 :- pred rl__goal_is_independent_of_input(tuple_num::in,
-		rl_goal::in, rl_goal::out) is semidet.
+		rl_goal::in) is semidet.
+
+	% Remove the specified input tuple from the goal, aborting
+	% if the goal is not independent of that input tuple.
+:- pred rl__remove_goal_input(tuple_num::in, rl_goal::in, rl_goal::out) is det.
+
+:- pred rl__swap_join_type_inputs(join_type::in, join_type::out) is det.
 
 	% Swap the inputs of a goal such as a join condition which
-	% as two input relations.
+	% has two input relations.
 :- pred rl__swap_goal_inputs(rl_goal::in, rl_goal::out) is det.
+	
+	% Remove the output tuple from a goal, converting a join
+	% into a semi-join. 
+:- pred rl__strip_goal_outputs(rl_goal::in, rl_goal::out) is det.
 
 	% Succeed if the goal produces an output tuple.
 :- pred rl__goal_produces_tuple(rl_goal::in) is semidet.
 
-:- type tuple_num
-	--->	one
-	;	two
-	.
+	% Succeed if a project/select with the given condition
+	% can be removed without changing the semantics of the
+	% program.
+:- pred rl__goal_can_be_removed(module_info::in,
+		list(hlds_goal)::in) is semidet.
+
+	% If the goal has an output tuple, check whether the
+	% output tuple is the same as one of the input tuples.
+	% If the operator is a join, the semi-join operator can be used.
+:- pred rl__goal_returns_input_tuple(rl_goal::in, tuple_num::out) is semidet.
+
+:- pred rl__swap_tuple_num(tuple_num::in, tuple_num::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 	% Find out the name of the RL procedure corresponding
 	% to the given Mercury procedure.
-:- pred rl__get_entry_proc_name(module_info, pred_proc_id, rl_proc_name).
-:- mode rl__get_entry_proc_name(in, in, out) is det.
+:- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
+		rl_proc_name::out) is det.
 
 	% Work out the name for a permanent relation.
 :- pred rl__permanent_relation_name(module_info::in,
@@ -507,7 +582,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_util, globals, llds_out, options, prog_out.
+:- import_module code_util, code_aux, globals, llds_out, options, prog_out.
 :- import_module prog_util, type_util.
 :- import_module bool, int, require, string.
 
@@ -525,7 +600,8 @@ rl__default_temporary_state(ModuleInfo, TmpState) :-
 
 %-----------------------------------------------------------------------------%
 
-rl__instr_relations(join(output_rel(Output, _), Input1, Input2, _, _) - _, 
+rl__instr_relations(
+		join(output_rel(Output, _), Input1, Input2, _, _, _, _) - _, 
 		[Input1, Input2], [Output]).
 rl__instr_relations(subtract(output_rel(Output, _),
 		Input1, Input2, _, _) - _, [Input1, Input2], [Output]).
@@ -615,9 +691,112 @@ rl__attr_list_2(Index, [_ | Types], [Index | Attrs]) :-
 
 %-----------------------------------------------------------------------------%
 
-rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, MaybeOutputs, Goals, H),
-	rl__select_input_args(InputNo, Inputs0, Inputs, InputArgs),
+rl__is_semi_join(JoinType, Exprn, SemiJoinInfo) :-
+	(
+		rl__goal_returns_input_tuple(Exprn, SemiTupleNum),
+
+		% XXX sort-merge semi-joins are
+		% not yet implemented in Aditi.
+		JoinType \= sort_merge(_, _),
+
+		%
+		% An indexed semi-join where the tuple from the
+		% indexed relation is returned is not
+		% strictly a semi-join. A semi-join is normally
+		% guaranteed to return each tuple only once, but
+		% the indexed tuples may match against multiple
+		% tuples in the non-indexed relation.
+		%
+		( JoinType = index(_, _) => SemiTupleNum = one )
+	->
+		SemiJoinInfo = yes(SemiTupleNum)
+	;
+		SemiJoinInfo = no
+	).
+
+rl__is_trivial_join(ModuleInfo, JoinType, Cond,
+		SemiJoinInfo, TrivialJoinInfo) :-
+	(
+		join_type_to_project_type(JoinType, yes(ProjectType))
+	->
+		( rl__goal_is_independent_of_input(one, Cond) ->
+			rl__make_trivial_join_info(ModuleInfo, ProjectType,
+				Cond, two, SemiJoinInfo, TrivialJoinInfo)
+		; rl__goal_is_independent_of_input(two, Cond) ->
+			rl__make_trivial_join_info(ModuleInfo, ProjectType,
+				Cond, one, SemiJoinInfo, TrivialJoinInfo)
+		;
+			TrivialJoinInfo = no
+		)
+	;
+		TrivialJoinInfo = no
+	).
+
+:- pred rl__make_trivial_join_info(module_info::in, project_type::in,
+		rl_goal::in, tuple_num::in, maybe(semi_join_info)::in,
+		maybe(trivial_join_info)::out) is det.
+
+rl__make_trivial_join_info(ModuleInfo, ProjectType,
+		Cond, TupleNum, SemiJoin, TrivialJoinInfo) :-
+	Goals = Cond ^ goal,
+
+	(
+		%
+		% A projection is not needed for semi-joins with
+		% deterministic conditions.
+		% 
+		SemiJoin = yes(_),
+		rl__goal_can_be_removed(ModuleInfo, Goals)
+	->
+		MaybeProjectType = no
+	;
+		MaybeProjectType = yes(ProjectType)
+	),
+
+	TrivialJoinInfo = yes(trivial_join_info(TupleNum, MaybeProjectType)).
+
+rl__goal_can_be_removed(ModuleInfo, Goals) :-
+	goal_list_determinism(Goals, Detism),
+	determinism_components(Detism, cannot_fail, MaxSoln),
+	MaxSoln \= at_most_zero,
+
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
+
+	(
+		FullyStrict = no
+	;
+		all [Goal] (	
+			list__member(Goal, Goals)
+		=>
+			code_aux__goal_cannot_loop(ModuleInfo, Goal)
+		)
+	).
+
+:- pred join_type_to_project_type(join_type::in,
+		maybe(project_type)::out) is det.
+
+join_type_to_project_type(nested_loop, yes(filter)).
+join_type_to_project_type(index(IndexSpec, KeyRange),
+		yes(index(IndexSpec, KeyRange))).
+	%
+	% Introducing sort-merge and hash joins means that there is a
+	% connection between the arguments of the two input tuples, so
+	% the join cannot be turned into a projection.
+	%
+join_type_to_project_type(sort_merge(_, _), no).
+join_type_to_project_type(hash(_, _), no).
+
+rl__remove_goal_input(InputNo, RLGoal0, RLGoal) :-
+	require(rl__goal_is_independent_of_input(InputNo, RLGoal0),
+		"rl__remove_goal_input: not independent"),
+	rl__select_input_args(InputNo, RLGoal0 ^ inputs, Inputs, _),
+	RLGoal = RLGoal0 ^ inputs := Inputs.
+
+rl__goal_is_independent_of_input(InputNo, RLGoal) :-
+	rl__select_input_args(InputNo, RLGoal ^ inputs, _, InputArgs),
+	MaybeOutputs = RLGoal ^ outputs,
+	Goals = RLGoal ^ goal,
 	set__list_to_set(InputArgs, InputArgSet),
 	\+ (
 		MaybeOutputs = yes(Outputs),
@@ -631,8 +810,7 @@ rl__goal_is_independent_of_input(InputNo, RLGoal0, RLGoal) :-
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__intersect(NonLocals, InputArgSet, Intersection),
 		\+ set__empty(Intersection)  
-	),
-	RLGoal = rl_goal(A, B, C, D, Inputs, MaybeOutputs, Goals, H).
+	).
 
 :- pred rl__select_input_args(tuple_num::in, rl_goal_inputs::in,
 		rl_goal_inputs::out, list(prog_var)::out) is det.
@@ -647,17 +825,44 @@ rl__select_input_args(one, two_inputs(Args, Args2),
 rl__select_input_args(two, two_inputs(Args1, Args),
 		one_input(Args1), Args).
 
+rl__swap_join_type_inputs(nested_loop, nested_loop).
+rl__swap_join_type_inputs(sort_merge(A, B), sort_merge(B, A)).
+rl__swap_join_type_inputs(hash(A, B), hash(B, A)).
+rl__swap_join_type_inputs(index(_, _), _) :-
+	error("rl__swap_join_type_inputs: can't swap inputs of index join"). 
+
 rl__swap_goal_inputs(RLGoal0, RLGoal) :-
-	RLGoal0 = rl_goal(A, B, C, D, Inputs0, F, G, H),
+	Inputs0 = RLGoal0 ^ inputs,
 	( Inputs0 = two_inputs(Inputs1, Inputs2) ->
-		RLGoal = rl_goal(A, B, C, D, two_inputs(Inputs2, Inputs1),
-			F, G, H)
+		RLGoal = RLGoal0 ^ inputs := two_inputs(Inputs2, Inputs1)
 	;
 		error("rl__swap_inputs: goal does not have two inputs to swap")
 	).
 
+rl__strip_goal_outputs(RLGoal0, RLGoal0 ^ outputs := no).
+
 rl__goal_produces_tuple(RLGoal) :-
-	RLGoal = rl_goal(_, _, _, _, _, yes(_), _, _).
+	RLGoal ^ outputs = yes(_).
+
+rl__goal_returns_input_tuple(RLGoal, TupleReturned) :-
+	Inputs = RLGoal ^ inputs,
+	yes(OutputVars) = RLGoal ^ outputs,
+	(
+		Inputs = two_inputs(InputVars1, InputVars2),
+		( InputVars1 = OutputVars ->
+			TupleReturned = one
+		; InputVars2 = OutputVars ->
+			TupleReturned  = two
+		;
+			fail
+		)
+	;
+		Inputs = one_input(OutputVars),
+		TupleReturned = one
+	).
+
+rl__swap_tuple_num(one, two).
+rl__swap_tuple_num(two, one).
 
 %-----------------------------------------------------------------------------%
 

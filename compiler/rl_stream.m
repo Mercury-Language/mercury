@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,7 +364,8 @@ rl_stream__add_alias(Rel1, Rel2, Info0, Info) :-
 :- pred rl_stream__must_materialise_rels(rl_instruction, list(relation_id)).
 :- mode rl_stream__must_materialise_rels(in, out) is det.
 
-rl_stream__must_materialise_rels(join(Output, _, _, _, _) - _, Materialise) :-
+rl_stream__must_materialise_rels(join(Output, _, _, _, _, _, _) - _,
+		Materialise) :-
 	rl_stream__output_is_indexed(Output, Materialise).	
 rl_stream__must_materialise_rels(subtract(Output, _, _, _, _) - _,
 		Materialise) :-
