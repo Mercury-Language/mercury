@@ -9,6 +9,9 @@
 # This file is automatically processed by `autoconf' to produce the
 # `configure' script.
 #
+# IMPORTANT NOTE: any changes here will usually also require changes in
+# bindist/bindist.configure.in or bindist/bindist.build_vars.in.
+#
 #-----------------------------------------------------------------------------#
 #
 # Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
