@@ -442,7 +442,7 @@ attempt_set_proc_const_2([Type | Types], [Mode | Modes], Module) :-
 		% User_type could be a type_info, which should be called
 		% size 0.  This is not a big problem, as most type_infos
 		% are input.  
-		TypeCategory \= user_type(_), 
+		TypeCategory \= user_type, 
 		% This could be changed, by looking up the polymorphic type, 
 		% and seeing if it is recursive, or could it?
 		TypeCategory \= polymorphic_type, 
