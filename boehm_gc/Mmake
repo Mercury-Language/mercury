@@ -5,7 +5,7 @@
 MAIN_TARGET=libgc
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
