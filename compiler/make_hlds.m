@@ -7694,7 +7694,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 
 	% XXX this should be modified to use nondet pragma c_code.
 	{ default_attributes(Attrs0) },
-	{ set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs) },
+	{ set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs1) },
+	{ set_thread_safe(Attrs1, thread_safe, Attrs) },
 	module_add_pragma_c_code(Attrs, SymName, PredOrFunc, 
 		PragmaVars, VarSet, ordinary(C_ProcCode, no),
 		Status, Context, Module0, Module1, Info0, Info),
