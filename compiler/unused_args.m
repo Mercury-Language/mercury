@@ -363,6 +363,7 @@ traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 		set_list_vars_used(UseInf0, Args, UseInf)
 	).
 	
+	% These should be transformed into calls by polymorphism.m.
 traverse_goal(_, unify(_, _, _, complicated_unify(_, _, _), _),
 		UseInf, UseInf) :-
     error("unused_args should come after making out of line compl unify pred").
@@ -581,10 +582,10 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
 	% created for the optimized version
 :- type proc_call_info == map(pred_proc_id, new_proc_info). 
 
-	% new pred_id, proc_id, and the indices in the argument vector
-	% of the arguments that have been removed.
+	% new pred_id, proc_id, name, and the indices in the argument
+	% vector of the arguments that have been removed.
 :- type new_proc_info --->
-		call_info(pred_id, proc_id, list(int)).
+		call_info(pred_id, proc_id, sym_name, list(int)).
 
 
 		% Create a new predicate for each procedure which has unused
@@ -612,7 +613,7 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 		ProcCallInfo1 = ProcCallInfo0
 	;
 		make_new_pred_info(ModuleInfo0, PredInfo0, UnusedArgs,
-							ProcId, NewPredInfo0),
+						ProcId, NewPredInfo0),
 		pred_info_procedures(NewPredInfo0, NewProcs0),
 		next_mode_id(NewProcs0, no, NewProcId),
 
@@ -625,11 +626,14 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 		module_info_get_predicate_table(ModuleInfo0, PredTable0),
 		predicate_table_insert(PredTable0, NewPredInfo, NewPredId,
 								PredTable1),
-
+	
+		pred_info_module(NewPredInfo, PredModule),
+		pred_info_name(NewPredInfo, PredName),
+		PredSymName = qualified(PredModule, PredName),
 			% add the new proc to the proc_call_info map
 		map__det_insert(ProcCallInfo0, proc(PredId, ProcId),
-			call_info(NewPredId, NewProcId, UnusedArgs),
-			ProcCallInfo1),
+		    call_info(NewPredId, NewProcId, PredSymName, UnusedArgs),
+		    ProcCallInfo1),
 
 		predicate_table_get_preds(PredTable1, Preds0),
 		pred_info_procedures(PredInfo0, Procs0),
@@ -674,9 +678,10 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 					proc_id::in, pred_info::out) is det.
 
 make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
-	pred_info_module(PredInfo0, Module),
+	pred_info_module(PredInfo0, PredModule),
 	pred_info_name(PredInfo0, Name0),
 	string__int_to_string(ProcId, Id),
+	module_info_name(ModuleInfo, ModuleName),
 	pred_info_arg_types(PredInfo0, Tvars, ArgTypes0),
 		% create a unique new pred name using the old proc_id
 	(
@@ -695,15 +700,22 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 					Name0, "'."], Message),
 			error(Message)
 		),
-	        type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-                type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
+		type_util__type_id_module(ModuleInfo, TypeId, TypeModule),
+		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
+		type_util__type_id_arity(ModuleInfo, TypeId, TypeArity),
 		string__int_to_string(TypeArity, TypeAr),
-		string__append_list([Name0, "_", TypeName, "_", TypeAr], Name1)
-        ;
-
+		string__append_list(
+			[Name0, "_", TypeModule, "_", TypeName, "_", TypeAr],
+			Name1)
+	;
 		Name1 = Name0
 	),
-	string__append_list([Name1, "__ua", Id], Name),
+	( ModuleName = PredModule ->
+		NamePrefix = ""
+	;
+		string__append(PredModule, "__", NamePrefix)
+	),
+	string__append_list([NamePrefix, Name1, "__ua", Id], Name),
 	pred_info_arity(PredInfo0, Arity),
 	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_elements(ArgTypes0, 1, UnusedArgs, ArgTypes),
@@ -719,7 +731,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 	pred_info_get_goal_type(PredInfo0, GoalType),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
-	pred_info_init(Module, qualified(Module, Name), Arity, Tvars,
+	pred_info_init(ModuleName, qualified(ModuleName, Name), Arity, Tvars,
 		ArgTypes, true, Context, ClausesInfo, local, Inline,
 		GoalType, predicate, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
@@ -806,7 +818,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 	(
 			% work out which proc we should be fixing up
 		map__search(ProcCallInfo, proc(OldPredId, OldProcId),
-				call_info(NewPredId, NewProcId, UnusedArgs0))
+			call_info(NewPredId, NewProcId, _, UnusedArgs0))
 	->
 		UnusedArgs = UnusedArgs0,
 		PredId = NewPredId,
@@ -910,21 +922,23 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 				Changed, SubGoal0, SubGoal).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, ProcCallInfo, Changed,
-        	call(PredId0, ProcId0, ArgVars0, B, C, D, E) - GoalInfo, 
-        	call(PredId, ProcId, ArgVars, B, C, D, E) - GoalInfo) :-
+		call(PredId0, ProcId0, ArgVars0, B, C, Name0, E) - GoalInfo, 
+		call(PredId, ProcId, ArgVars, B, C, Name, E) - GoalInfo) :-
 	(
 		map__search(ProcCallInfo, proc(PredId0, ProcId0),
-				call_info(NewPredId, NewProcId, UnusedArgs))
+			call_info(NewPredId, NewProcId, NewName, UnusedArgs))
 	->
 		Changed = yes,
 		remove_listof_elements(ArgVars0, 1, UnusedArgs, ArgVars),
 		PredId = NewPredId,
-		ProcId = NewProcId
+		ProcId = NewProcId,
+		Name = NewName
 	;
 		Changed = no,
 		PredId = PredId0,
 		ProcId = ProcId0,
-		ArgVars = ArgVars0
+		ArgVars = ArgVars0,
+		Name = Name0
 	). 
 
 fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
@@ -942,11 +956,11 @@ fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-        GoalExpr = higher_order_call(_, _, _, _, _, _).
+	GoalExpr = higher_order_call(_, _, _, _, _, _).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-        GoalExpr = pragma_c_code(_, _, _, _, _, _).
+	GoalExpr = pragma_c_code(_, _, _, _, _, _).
 
 
 	% Remove useless unifications from a list of conjuncts.
@@ -1051,6 +1065,7 @@ fixup_unify(ModuleInfo, UnusedVars, Changed,
 		Changed = no
 	).
 
+	% These should be transformed into calls by polymorphism.m.
 fixup_unify(_, _, _, complicated_unify(_, _, _), _) :-
 		error("unused_args:fixup_goal : complicated unify").
 
@@ -1198,7 +1213,7 @@ create_warning_info(ModuleInfo, UnusedArgInfo, [proc(PredId, ProcId) | Rest],
 			proc_info_headvars(Proc, HeadVars),
 			list__length(HeadVars, NumHeadVars),
 
-	       		% Strip off the extra type_info arguments inserted at
+			% Strip off the extra type_info arguments inserted at
 			% the front by polymorphism.m
 			pred_info_arity(PredInfo, Arity),
 			NumToDrop is NumHeadVars - Arity,
@@ -1222,7 +1237,7 @@ create_warning_info(ModuleInfo, UnusedArgInfo, Rest, Warnings1, Warnings).
 
 
 	% adjust warning message for the presence of type_infos.
-:- pred adjust_unused_args(int::in, list(int)::in,  list(int)::out) is det.
+:- pred adjust_unused_args(int::in, list(int)::in, list(int)::out) is det.
 
 adjust_unused_args(_, [], []).
 adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
