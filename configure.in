@@ -39,7 +39,7 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	exit
 fi
 #-----------------------------------------------------------------------------#
-AC_CONFIG_HEADER(runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h)
+AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 AC_CANONICAL_HOST
 FULLARCH="$host"
@@ -1579,46 +1579,6 @@ case $EXT_FOR_PIC_OBJECTS in
 		# and `.o' files, then we should not remove the generated `.c'
 		# files in the library directory after building the `.o' files.
 		LIBRARY_RM_C=:
-		;;
-esac
-#-----------------------------------------------------------------------------#
-# The boehm_gc system doesn't use autoconf, but for cases like this,
-# it should.
-# Linux with libc6 souldn't use asm/sigcontext.h, but some versions of the
-# kernel with libc5 need it.
-case "$host" in
-	*-*-linux|*-*-linux-gnu)
-		AC_MSG_CHECKING(whether we need asm/sigcontext.h)
-		AC_CACHE_VAL(mercury_linux_need_asm_sigcontext,
-		AC_TRY_RUN([
-			#include <asm/sigcontext.h>
-			#include <signal.h> 
-			#include <linux/version.h>
-			#if (LINUX_VERSION_CODE >= 0x20100)
-				typedef struct sigcontext xxx;
-			#else
-				typedef struct sigcontext_struct xxx;
-			#endif
-			typedef void (* REAL_SIG_PF)(int, xxx);
-
-			int main() {
-				REAL_SIG_PF handler;
-				xxx foo;
-				if (0) {
-					handler(0, foo);
-				}
-				exit(0);
-			}], [mercury_linux_need_asm_sigcontext=yes],
-			[mercury_linux_need_asm_sigcontext=no], 
-			[mercury_linux_need_asm_sigcontext=no])
-		)
-		AC_MSG_RESULT($mercury_linux_need_asm_sigcontext)
-		if test $mercury_linux_need_asm_sigcontext = "yes"; then
-			AC_DEFINE(MERCURY_LINUX_NEED_ASM_SIGCONTEXT)
-		fi
-		;;
-	*)
-		mercury_linux_use_asm_signcontext=no
 		;;
 esac
 

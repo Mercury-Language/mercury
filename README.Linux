@@ -9,13 +9,6 @@ If you still have an old a.out system, the auto-configuration might
 wrongly assume your Linux system uses ELF; if that happens, you will you
 have to manually edit the EXT_FOR_SHARED_LIB variable in Mmake.common.
 
-There are some incompatibilities in different kernel versions and libc
-versions to do with the handling of signals. We had added some
-autoconfiguration code to try to detect which header files need to be
-included, but if you have trouble compiling boehm_gc/os_dep.c, try
-applying the patch below (and send us a bug report if you can).
-Just type `patch boehm_gc/os_dep.c < README.Linux'.
-
 On Linux with ELF, shared libraries are supported.  However, ELF shared
 libraries require position-independent code, and (partly due to
 limitations in our current compilation technology, but partly due to
