@@ -50,8 +50,12 @@ SP			= @SP@
 
 # Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
+# `.dll' if it supports DLLs,
 # or as `a' if it doesn't.
 EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
+
+# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs
+USE_DLLS		= @USE_DLLS@
 
 # Specify any special flags to pass to the C compiler when creating objects
 # for a shared library (e.g. -fpic or -fPIC for gcc).

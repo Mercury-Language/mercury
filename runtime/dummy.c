@@ -5,6 +5,7 @@
 */
 
 #include "dummy.h"
+#include "imp.h"	/* we need libmer_globals.h for Windows DLLs */
 
 /*
 ** This dummy function is in a file of its own to ensure

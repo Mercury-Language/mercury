@@ -15,6 +15,10 @@
 
 #define	HASHDEBUG
 
+#ifdef __CYGWIN32__
+  #include	"libmer_dll.h"
+#endif
+
 #include	<stdio.h>
 #include	"std.h"
 #include	"dlist.h"

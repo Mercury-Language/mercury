@@ -5,6 +5,7 @@
 # and changed the rule for libgc.so to use the $(LINK_SHARED_LIB) macro
 # defined in ../Mmake.common.
 # I've change the definitions of CC, AS, and CFLAGS.
+# I've also added support for DLLs on gnu-win32
 #	- fjh.
 #-----------------------------------------------------------------------------#
 
@@ -38,7 +39,7 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 # CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DSILENT \
 # 	  -DATOMIC_UNCOLLECTABLE
 CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING \
-	$(CFLAGS_FOR_PIC) $(EXTRA_CFLAGS)
+	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled.
 # We need $(CFLAGS_FOR_PIC) because we might be building a shared library.
@@ -180,14 +181,14 @@ pcr: PCR-Makefile gc_private.h gc_hdrs.h gc.h config.h mach_dep.o $(SRCS)
 	make -f PCR-Makefile
 
 $(OBJS) test.o dyn_load.o dyn_load_sunos53.o: $(srcdir)/gc_priv.h $(srcdir)/gc_hdrs.h $(srcdir)/gc.h \
-    $(srcdir)/config.h $(srcdir)/gc_typed.h Makefile
+    $(srcdir)/config.h $(srcdir)/gc_typed.h $(LIBGC_DLL_H) Makefile
 # The dependency on Makefile is needed.  Changing
 # options such as -DSILENT affects the size of GC_arrays,
 # invalidating all .o files that rely on gc_priv.h
 
 mark.o typd_mlc.o finalize.o: $(srcdir)/gc_mark.h
 
-libgc$(PROF).a: gc.a
+libgc$(PROF)$(DLL_DEF_LIB).a: gc.a
 	rm -f libgc$(PROF).a
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
 	cp gc.a libgc$(PROF).a
@@ -386,3 +387,28 @@ user_namespace: $(SRCS)
 		sed s/_GC_/GC_/g < $$file > tmp; \
 		cp tmp $$file; \
 		done
+
+#-----------------------------------------------------------------------------#
+# support for DLLs using gnu-win32
+#-----------------------------------------------------------------------------#
+ifeq ($(USE_DLLS),yes)
+
+LIBGC_DLL_H = libgc_dll.h 
+LIBGC_GLOBALS_H = libgc_globals.h 
+
+DLL_CFLAGS = -DGC_DEFINE_DLL
+
+.PHONY: dll
+dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h
+
+test_dll.o: test.c libgc_dll.h libgc_globals.h
+	$(CC) $(CFLAGS) -UGC_DEFINE_DLL -c test.c -o test_dll.o
+
+test_dll: test_dll.o libgc.a libgc.dll
+	$(CC) test_dll.o -L$(ABSDIR) -lgc -o test_dll
+
+SYM_PREFIX-libgc=GC
+include ../Makefile.DLLs
+
+endif
+#-----------------------------------------------------------------------------#

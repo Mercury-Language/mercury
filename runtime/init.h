@@ -12,6 +12,14 @@
 #ifndef	INIT_H
 #define	INIT_H
 
+/*
+** The following must come before any definitions of global variables.
+** This is necessary to support DLLs on Windows.
+*/
+#if defined(__CYGWIN32__)
+  #include "libmer_dll.h"
+#endif
+
 #include "goto.h"		/* for Declare_entry */
 #include "mercury_types.h"	/* for `Code *' */
 #include "wrapper.h"		/* for do_init_modules() */

@@ -16,6 +16,7 @@
 
 #include	"label.h"
 
+#include	"imp.h"		/* we need libmer_globals.h for Windows DLLs */
 #include	"table.h"	/* for `Table' */
 #include	"prof.h"	/* for prof_output_addr_decls() */
 #include	"engine.h"	/* for `progdebug' */

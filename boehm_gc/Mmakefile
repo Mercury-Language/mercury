@@ -20,6 +20,8 @@ libgc$(PROF).a: submake
 
 libgc$(PROF).so: submake
 
+libgc$(PROF).dll: submake
+
 #	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
 #	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
 #	needs the builtin rules. 
@@ -47,9 +49,19 @@ install: install_headers install_lib
 # As well as installing gc.h, we also install gc_inl.h (and hence
 # private/gc_priv.h, private/gc_hdrs.h, and private/config.h),
 # for use with `-DINLINE_ALLOC'.
+# If we're using DLLs, we also want libgc_dll.h and libgc_globals.h.
 
-HEADERS=gc.h include/gc_inl.h
+HEADERS=gc.h include/gc_inl.h $(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
 PRIVATE_HEADERS=gc_priv.h gc_hdrs.h config.h
+
+ifeq ($(USE_DLLS),yes)
+
+LIBGC_DLL_H = libgc_dll.h 
+LIBGC_GLOBALS_H = libgc_globals.h 
+
+endif
+#-----------------------------------------------------------------------------#
+
 
 .PHONY: install_headers
 install_headers:

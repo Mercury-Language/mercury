@@ -29,6 +29,9 @@
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef __CYGWIN32__
+  #include "libmer_dll.h"
+#endif
 #include "regs.h"	/* must come first, due to global register vars */
 #include "conf.h"	/* must come second */
 

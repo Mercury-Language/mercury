@@ -25,6 +25,10 @@
  * Everything else is best ignored unless you encounter performance
  * problems.
  */
+
+/*
+ * I added support for Windows DLLs using gnu-win32.  -fjh.
+ */
  
 #ifndef _GC_H
 
@@ -32,6 +36,9 @@
 # define __GC
 # include <stddef.h>
 
+#if defined(__CYGWIN32__)
+#include "libgc_dll.h"
+#endif
 
 #if defined(_MSC_VER) && defined(_DLL)
 #ifdef GC_BUILD
@@ -615,7 +622,6 @@ GC_API void (*GC_is_visible_print_proc)
 # define pthread_create GC_pthread_create
 # define pthread_sigmask GC_pthread_sigmask
 # define pthread_join GC_pthread_join
-
 #endif /* IRIX_THREADS */
 
 #if defined(SOLARIS_THREADS) || defined(IRIX_THREADS)
@@ -638,6 +644,16 @@ GC_PTR GC_malloc_many(size_t lb);
 #   define GC_INIT() { extern end, etext; \
 		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
+/*
+ * Similarly GC_INIT() is also required for gnu-win32 DLLs.
+ * I don't know any other method for figuring out the start and
+ * end of the main program's global data from inside a DLL.
+ */
+#elif defined(__CYGWIN32__) && defined(GC_USE_DLL)
+#   define GC_INIT() { \
+		extern int _bss_start__, _data_end__; \
+		GC_add_roots((void *)&_bss_start__, (void *)&_data_end__); \
+    }
 #else
 #   define GC_INIT()
 #endif

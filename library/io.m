@@ -2111,6 +2111,7 @@ Declare_entry(mercury__io__init_state_2_0);
    The handwritten code below is almost equivalent to
 
 	io__run :-
+		gc_init,
 		initial_external_state(IO0),
 		program_entry_point(IO0, IO),
 		final_io_state(IO).
@@ -2129,6 +2130,9 @@ BEGIN_MODULE(io_run_module)
 	init_label(mercury__io__run_0_0_i2);
 BEGIN_CODE
 Define_entry(mercury__io__run_0_0);
+
+	GC_INIT();
+
         mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
 	noprof_call(ENTRY(mercury__io__init_state_2_0),

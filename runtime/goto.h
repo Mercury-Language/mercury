@@ -40,7 +40,7 @@
 
 #define paste(a,b) a##b
 #define stringify(string) #string
-#define entry(label) paste(entry_,label)
+#define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
 
 #ifdef SPLIT_C_FILES
@@ -188,7 +188,7 @@
   */
   #ifdef __ELF__
     #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type entry_" stringify(label) ",@function\n"
+	"	.type _entry_" stringify(label) ",@function\n"
   #endif
 
 #elif defined (__sparc)
@@ -249,7 +249,7 @@
   ** Hence the `.type' directive below.
   */
   #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
-	"	.type entry_" stringify(label) ",#function\n"
+	"	.type _entry_" stringify(label) ",#function\n"
 
 #endif
 
@@ -290,7 +290,7 @@
 */
 #ifndef INLINE_ASM_GLOBALIZE_LABEL
 #define INLINE_ASM_GLOBALIZE_LABEL(label) \
-	"	.globl entry_" stringify(label) "\n"
+	"	.globl _entry_" stringify(label) "\n"
 #endif
 
 /*
@@ -308,7 +308,7 @@
 */
 #ifndef INLINE_ASM_ENTRY_LABEL
 #define INLINE_ASM_ENTRY_LABEL(label)	\
-	"entry_" stringify(label) ":\n"
+	"_entry_" stringify(label) ":\n"
 #endif
 
 /*
@@ -433,9 +433,9 @@
 
   #if defined(USE_ASM_LABELS)
     #define Declare_entry(label)	\
-	extern void label(void) __asm__("entry_" stringify(label))
+	extern void label(void) __asm__("_entry_" stringify(label))
     #define Declare_static(label)	\
-	static void label(void) __asm__("entry_" stringify(label))
+	static void label(void) __asm__("_entry_" stringify(label))
     #define Define_extern_entry(label)	Declare_entry(label)
     #define Define_entry(label)		\
 		ASM_ENTRY(label)	\

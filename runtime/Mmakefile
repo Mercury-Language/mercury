@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc -g \
-		  $(EXTRA_CFLAGS)
+		  $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi $(CFLAGS)
 MOD2C		= $(SCRIPTS_DIR)/mod2c
@@ -22,14 +22,19 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 #-----------------------------------------------------------------------------#
 
 #		  keep this list in alphabetical order, please
-HDRS		= misc.h calls.h conf.h context.h \
+HDRS		= calls.h conf.h context.h \
 		  deep_copy.h dlist.h debug.h dummy.h \
 		  engine.h getopt.h goto.h heap.h imp.h init.h label.h \
 		  memory.h mercury_float.h mercury_string.h mercury_trail.h \
-		  mercury_types.h \
+		  mercury_types.h misc.h \
 		  overflow.h prof.h prof_mem.h regorder.h regs.h \
 		  spinlock.h std.h stacks.h \
-		  table.h tags.h timing.h type_info.h wrapper.h
+		  table.h tags.h timing.h type_info.h wrapper.h \
+		  $(LIBMER_DLL_H)
+# Note that `libmer_globals.h' cannot be part of $(HDR),
+# since it depends on libmer_def.a, and $(OBJ) : $(HDR) would create a
+# circular dependency.
+
 
 MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h \
@@ -48,6 +53,29 @@ OBJS		= $(MOD_OS) $(ORIG_OS)
 # 		  memory.o table.o timing.o
 PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 
+LDFLAGS		= -L$(BOEHM_GC_DIR)
+LDLIBS		= \
+		` case "$(GRADE)" in 					\
+		    *.gc.prof)	echo "-lgc_prof" ;;			\
+		    *.gc)	echo "-lgc" ;;				\
+		  esac							\
+		`
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLs
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS	= -Dlibmer_DEFINE_DLL
+
+LIBMER_DLL_H	 = libmer_dll.h
+LIBMER_GLOBALS_H = libmer_globals.h
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+endif
+
 #-----------------------------------------------------------------------------#
 
 $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
@@ -55,9 +83,10 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib
-lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init
+lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init \
+	$(LIBMER_DLL_H) $(LIBMER_GLOBALS_H)
 
-libmer.a: $(OBJS)
+libmer$(DLL_DEF_LIB).a: $(OBJS)
 	rm -f libmer.a
 	ar cr libmer.a $(OBJS)
 	$(RANLIB) libmer.a
@@ -65,12 +94,7 @@ libmer.a: $(OBJS)
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
 		$(SHLIB_RPATH_OPT)$(INSTALL_MERC_GC_LIB_DIR) 		\
-		-L$(BOEHM_GC_DIR)					\
-		` case "$(GRADE)" in 					\
-		    *.gc.prof)	echo "-lgc_prof" ;;			\
-		    *.gc)	echo "-lgc" ;;				\
-		  esac							\
-		`							\
+		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
 runtime.init: $(MOD_CS)
@@ -106,10 +130,10 @@ check_headers:
 install: install_headers install_init install_lib
 
 .PHONY: install_headers
-install_headers: $(HDRS) $(MACHHDRS)
+install_headers: $(HDRS) $(MACHHDRS) $(LIBMER_GLOBALS_H)
 	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
-	cp `vpath_find $(HDRS)` $(INSTALL_INC_DIR)
+	cp `vpath_find $(HDRS) $(LIBMER_GLOBALS_H)` $(INSTALL_INC_DIR)
 	chmod u+w $(INSTALL_INC_DIR)/conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 

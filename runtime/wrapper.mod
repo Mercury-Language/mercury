@@ -148,13 +148,23 @@ mercury_runtime_main(int argc, char **argv)
 #ifdef CONSERVATIVE_GC
 	GC_quiet = TRUE;
 
+	/*
+	** Call GC_INIT() to tell the garbage collector about this DLL.
+	** (This is necessary to support Windows DLLs using gnu-win32.)
+	*/
+	GC_INIT();
+
+	/*
+	** call the init_gc() function defined in <foo>_init.c,
+	** which calls GC_INIT() to tell the GC about the main program.
+	** (This is to work around a Solaris 2.X (X <= 4) linker bug,
+	** and also to support Windows DLLs using gnu-win32.)
+	*/
+	(*address_of_init_gc)();
+
 	/* double-check that the garbage collector knows about
 	   global variables in shared libraries */
 	GC_is_visible(fake_reg);
-
-	/* call the init_gc() function defined in <foo>_init.c - */
-	/* this is to work around a Solaris 2.X (X <= 4) linker bug */
-	(*address_of_init_gc)();
 
 	/* The following code is necessary to tell the conservative */
 	/* garbage collector that we are using tagged pointers */

@@ -84,7 +84,7 @@ main(int argc, char **argv)
 
 static void 
 demangle(char *name) {
-	static const char entry[]   = "entry_";
+	static const char entry[]   = "_entry_";
 	static const char mercury[] = "mercury__";
 	static const char func_prefix[] = "fn__"; /* added for functions */
 	static const char unify[]   = "__Unify___";
@@ -126,13 +126,15 @@ demangle(char *name) {
 
 	/*
 	** skip any leading underscore inserted by the C compiler
+	** (but don't skip it if it came from the `_entry_' prefix)
 	*/
-	if (*start == '_') start++;
+	if (*start == '_' && strncmp(start, entry, strlen(entry)) != 0) {
+		start++;
+	}
 
 	/*
-	** skip the `entry_' prefix, if any
+	** skip the `_entry_' prefix, if any
 	*/
-
 	strip_prefix(&start, entry);
 
 	/*

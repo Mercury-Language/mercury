@@ -56,9 +56,29 @@ MCS	=	MERCURY_INT_DIR=. \
 		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
 		--intermodule-optimization
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
+MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
+		$(DLL_CFLAGS) $(EXTRA_CFLAGS)
+LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
+LDLIBS	=	-lmer							\
+		` case "$(GRADE)" in 					\
+		    *.gc.prof)	echo "-lgc_prof" ;;			\
+		    *.gc)	echo "-lgc" ;;				\
+		  esac							\
+		`
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS = -Dlibmercury_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -140,7 +160,7 @@ cs: $(library.cs)
 libmercury : tree234.o
 libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) libmercury.init
 
-libmercury.a : $(library.os)
+libmercury$(DLL_DEF_LIB).a : $(library.os)
 	rm -f libmercury.a
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
@@ -151,13 +171,7 @@ RPATH_2=$(SHLIB_RPATH_SEP)$(INSTALL_MERC_GC_LIB_DIR)
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)		\
 		$(RPATH_1)$(RPATH_2)					\
-		-L$(RUNTIME_DIR) -lmer 					\
-		-L$(BOEHM_GC_DIR)					\
-		` case "$(GRADE)" in					\
-			*.gc.prof) echo "-lgc_prof" ;;			\
-			*.gc) echo "-lgc" ;;				\
-		  esac							\
-		`							\
+		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
 libmercury.init: library.dep

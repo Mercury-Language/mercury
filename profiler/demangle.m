@@ -43,11 +43,14 @@ demangle(MangledName, Name) :-
 :- pred demangle_from_asm(string, string).
 :- mode demangle_from_asm(in, out) is semidet.
 demangle_from_asm -->
-	% skip any leading underscore inserted by the C compiler
-	maybe_remove_prefix("_"),
-
-	% skip the `entry_' prefix, if any
-	maybe_remove_prefix("entry_"),
+	% skip any leading underscore inserted by the C compiler,
+	% and skip the `_entry_' prefix, if any.
+	( remove_prefix("_entry_") ->
+		[]
+	;
+		maybe_remove_prefix("_"),
+		maybe_remove_prefix("_entry_")
+	),
 
 	demangle_from_c.
 

@@ -19,6 +19,14 @@
 #ifndef IMP_H
 #define IMP_H
 
+/*
+** The following must come before any definitions of global variables.
+** This is necessary to support DLLs on Windows.
+*/
+#ifdef __CYGWIN32__
+  #include "libmer_dll.h"
+#endif
+
 #include	"regs.h"	/* must come before system headers */
 
 #include	"conf.h"
