@@ -2003,6 +2003,13 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	MR_r4 = exception;	/* This is our one input argument */
 
 	/*
+	** The handler is effectively being called from try/2 or one of
+	** its variants.  Since this caller is in the standard library,
+	** it won't be deep traced.
+	*/
+	MR_trace_from_full = MR_FALSE;
+
+	/*
 	** If the catch was semidet, we need to set the success indicator
 	** MR_r1 to MR_TRUE and return the result in MR_r2; otherwise, we return
 	** the result in MR_r1, which is where mercury__do_call_closure puts
