@@ -219,11 +219,11 @@ set_ordlist__equal(Set, Set).
 
 set_ordlist__empty([]).
 
-set_ordlist__subset(Set, Subset) :-
+set_ordlist__subset(Subset, Set) :-
 	set_ordlist__intersect(Set, Subset, Subset).
 
-set_ordlist__superset(S0, S1) :-
-	set_ordlist__subset(S1, S0).
+set_ordlist__superset(Superset, Set) :-
+	set_ordlist__subset(Set, Superset).
 
 set_ordlist__member(E, S) :-
 	list__member(E, S).
