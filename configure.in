@@ -468,9 +468,12 @@ if test $mercury_cv_sigcontext_struct_2arg = no; then
 			exit(1);
 		}
 	}], [mercury_cv_sigcontext_struct_3arg=yes], [true], [true]))
+	AC_MSG_RESULT($mercury_cv_sigcontext_struct_3arg)
 else
 	mercury_cv_sigcontext_struct_3arg=no
 fi
+
+mercury_cv_sigcontext_struct=no
 
 if test $mercury_cv_sigcontext_struct_2arg = yes; then
 	mercury_cv_sigcontext_struct=yes
