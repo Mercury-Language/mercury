@@ -26,17 +26,18 @@
 
 jumpopt__main(Instrs0, Instrs, Mod) :-
 	map__init(Instrmap0),
+	map__init(Lvalmap0),
 	map__init(Procmap0),
 	map__init(Sdprocmap0),
 	map__init(Succmap0),
-	jumpopt__build_maps(Instrs0, Instrmap0, Instrmap,
+	jumpopt__build_maps(Instrs0, Instrmap0, Instrmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap),
 	% opt_debug__print_instrmap(Instrmap),
 	% opt_debug__print_tailmap(Procmap),
 	% opt_debug__print_tailmap(Sdprocmap),
 	% opt_debug__print_tailmap(Succmap),
 	jumpopt__instr_list(Instrs0, comment(""),
-		Instrmap, Procmap, Sdprocmap, Succmap, Instrs, Mod).
+		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs, Mod).
 
 %-----------------------------------------------------------------------------%
 
@@ -46,42 +47,50 @@ jumpopt__main(Instrs0, Instrs, Mod) :-
 	% gives the code sequence between the label and the proceed/succeed.
 
 :- pred jumpopt__build_maps(list(instruction), instrmap, instrmap,
-	tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
-:- mode jumpopt__build_maps(in, di, uo, di, uo, di, uo, di, uo) is det.
+	lvalmap, lvalmap, tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
+:- mode jumpopt__build_maps(in, di, uo, di, uo, di, uo, di, uo, di, uo) is det.
 
-jumpopt__build_maps([], Instrmap, Instrmap, Procmap, Procmap,
-	Sdprocmap, Sdprocmap, Succmap, Succmap).
-jumpopt__build_maps([Instr - _Comment|Instrs], Instrmap0, Instrmap,
+jumpopt__build_maps([], Instrmap, Instrmap, Lvalmap, Lvalmap,
+		Procmap, Procmap, Sdprocmap, Sdprocmap, Succmap, Succmap).
+jumpopt__build_maps([Instr0 | Instrs0], Instrmap0, Instrmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap) :-
-	( Instr = label(Label) ->
-		opt_util__skip_comments_livevals(Instrs, Instrs1),
-		( Instrs1 = [Nextinstr | _] ->
-			map__set(Instrmap0, Label, Nextinstr, Instrmap1)
+	Instr0 = Uinstr0 - _,
+	( Uinstr0 = label(Label) ->
+		opt_util__skip_comments(Instrs0, Instrs1),
+		( Instrs1 = [Instr1 | _], Instr1 = livevals(_) - _ ->
+			map__set(Lvalmap0, Label, yes(Instr1), Lvalmap1)
 		;
-			Instrmap1 = Instrmap0
+			map__set(Lvalmap0, Label, no, Lvalmap1)
 		),
-		( opt_util__is_proceed_next(Instrs, Between1) ->
+		opt_util__skip_comments_livevals(Instrs0, Instrs2),
+		( Instrs2 = [Instr2 | _] ->
+			map__set(Instrmap0, Label, Instr2, Instrmap1)
+		;
+			error("label followed directly by end of procedure")
+		),
+		( opt_util__is_proceed_next(Instrs2, Between1) ->
 			map__set(Procmap0, Label, Between1, Procmap1)
 		;
 			Procmap1 = Procmap0
 		),
-		( opt_util__is_sdproceed_next(Instrs, Between2) ->
+		( opt_util__is_sdproceed_next(Instrs2, Between2) ->
 			map__set(Sdprocmap0, Label, Between2, Sdprocmap1)
 		;
 			Sdprocmap1 = Sdprocmap0
 		),
-		( opt_util__is_succeed_next(Instrs, Between3) ->
+		( opt_util__is_succeed_next(Instrs2, Between3) ->
 			map__set(Succmap0, Label, Between3, Succmap1)
 		;
 			Succmap1 = Succmap0
 		)
 	;
 		Instrmap1 = Instrmap0,
+		Lvalmap1 = Lvalmap0,
 		Procmap1 = Procmap0,
 		Sdprocmap1 = Sdprocmap0,
 		Succmap1 = Succmap0
 	),
-	jumpopt__build_maps(Instrs, Instrmap1, Instrmap,
+	jumpopt__build_maps(Instrs0, Instrmap1, Instrmap, Lvalmap1, Lvalmap,
 		Procmap1, Procmap, Sdprocmap1, Sdprocmap, Succmap1, Succmap).
 
 %-----------------------------------------------------------------------------%
@@ -102,13 +111,13 @@ jumpopt__build_maps([Instr - _Comment|Instrs], Instrmap0, Instrmap,
 	% labels in the label list.
 
 :- pred jumpopt__instr_list(list(instruction), instr,
-	instrmap, tailmap, tailmap, tailmap, list(instruction), bool).
-:- mode jumpopt__instr_list(in, in, in, in, in, in, out, out) is det.
+	instrmap, lvalmap, tailmap, tailmap, tailmap, list(instruction), bool).
+:- mode jumpopt__instr_list(in, in, in, in, in, in, in, out, out) is det.
 
 jumpopt__instr_list([], _Previnstr,
-		_Instrmap, _Procmap, _Sdprocmap, _Succmap, [], no).
+		_Instrmap, _Lvalmap, _Procmap, _Sdprocmap, _Succmap, [], no).
 jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
-		Instrmap, Procmap, Sdprocmap, Succmap, Instrs, Mod) :-
+		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs, Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
@@ -174,17 +183,22 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 			opt_util__can_instr_fall_through(Udestinstr,
 				Canfallthrough),
 			( Canfallthrough = no ->
-				Newinstrs = [Udestinstr - Shorted],
+				Newinstrs0 = [Udestinstr - Shorted],
 				Mod0 = yes
 			;
 				( TargetLabel = Destlabel ->
-					Newinstrs = [Instr0],
+					Newinstrs0 = [Instr0],
 					Mod0 = no
 				;
-					Newinstrs = [goto(label(Destlabel),
+					Newinstrs0 = [goto(label(Destlabel),
 						label(Destlabel)) - Shorted],
 					Mod0 = yes
 				)
+			),
+			( map__search(Lvalmap, Destlabel, yes(Lvalinstr)) ->
+				Newinstrs = [Lvalinstr | Newinstrs0]
+			;
+				Newinstrs = Newinstrs0
 			)
 		;
 			% error("target label not in instrmap")
@@ -210,7 +224,7 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 		Newprevinstr = Uinstr0
 	),
 	jumpopt__instr_list(Instrs0, Newprevinstr,
-		Instrmap, Procmap, Sdprocmap, Succmap, Instrs1, Mod1),
+		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs1, Mod1),
 	list__append(Newinstrs, Instrs1, Instrs),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no

@@ -12,6 +12,7 @@
 :- import_module llds, list, int, string, std_util.
 
 :- type instrmap == map(label, instruction).
+:- type lvalmap == map(label, maybe(instruction)).
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
@@ -369,16 +370,11 @@ opt_util__is_proceed_next(Instrs0, InstrsBetween) :-
 		Instrs5 = Instrs3
 	),
 	Instrs5 = [Instr5 | Instrs6],
-	( Instr5 = livevals(_) - _ ->
-		Instr5use = Instr5,
-		opt_util__skip_comments_labels(Instrs6, Instrs7)
-	;
-		Instr5use = comment("no livevals") - "",
-		Instrs7 = Instrs5
-	),
+	Instr5 = livevals(_) - _,
+	opt_util__skip_comments_labels(Instrs6, Instrs7),
 	Instrs7 = [Instr7 | _],
 	Instr7 = goto(succip, _) - _,
-	InstrsBetween = [Instr1use, Instr3use, Instr5use].
+	InstrsBetween = [Instr1use, Instr3use, Instr5].
 
 opt_util__is_sdproceed_next(Instrs0, InstrsBetween) :-
 	opt_util__is_sdproceed_next_sf(Instrs0, InstrsBetween, _).
@@ -412,30 +408,20 @@ opt_util__is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
 	),
 	opt_util__skip_comments_labels(Instrs6, Instrs7),
 	Instrs7 = [Instr7 | Instrs8],
-	( Instr7 = livevals(_) - _ ->
-		Instr7use = Instr7,
-		opt_util__skip_comments_labels(Instrs8, Instrs9)
-	;
-		Instr7use = comment("no livevals") - "",
-		Instrs9 = Instrs7
-	),
+	Instr7 = livevals(_) - _,
+	opt_util__skip_comments_labels(Instrs8, Instrs9),
 	Instrs9 = [Instr9 | _],
 	Instr9 = goto(succip, _) - _,
-	InstrsBetween = [Instr1use, Instr3use, Instr5, Instr7use].
+	InstrsBetween = [Instr1use, Instr3use, Instr5, Instr7].
 
 opt_util__is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	( Instr1 = livevals(_) - _ ->
-		Instr1use = Instr1,
-		opt_util__skip_comments_labels(Instrs2, Instrs3)
-	;
-		Instr1use = comment("no livevals") - "",
-		Instrs3 = Instrs1
-	),
+	Instr1 = livevals(_) - _,
+	opt_util__skip_comments_labels(Instrs2, Instrs3),
 	Instrs3 = [Instr3 | _],
 	Instr3 = goto(do_succeed(_), _) - _,
-	InstrsBetweenIncl = [Instr1use, Instr3].
+	InstrsBetweenIncl = [Instr1, Instr3].
 
 	% When we return Between, we are implicitly assuming that
 	% the other continuation' instruction sequence is the same
