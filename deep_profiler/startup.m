@@ -25,7 +25,6 @@
 
 :- implementation.
 
-:- import_module unsafe.
 :- import_module profile, read_profile, callgraph.
 :- import_module measurements, array_util.
 :- import_module std_util, int, string, array, assoc_list, set, map, require.
