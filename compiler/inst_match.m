@@ -545,9 +545,9 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 	( map__search(MergeInstTable0, ThisInstPair, Result) ->
 		ModuleInfo = ModuleInfo0,
 		( Result = known(MergedInst) ->
-			Inst = MergedInst
+			Inst0 = MergedInst
 		;
-			Inst = defined_inst(merge_inst(InstA, InstB))
+			Inst0 = defined_inst(merge_inst(InstA, InstB))
 		)
 	;
 			% insert ThisInstPair into the table with value
@@ -559,16 +559,22 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
 
 			% merge the insts
-		inst_merge_2(InstA, InstB, ModuleInfo1, Inst, ModuleInfo2),
+		inst_merge_2(InstA, InstB, ModuleInfo1, Inst0, ModuleInfo2),
 
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-		map__set(MergeInstTable2, ThisInstPair, known(Inst),
+		map__set(MergeInstTable2, ThisInstPair, known(Inst0),
 			MergeInstTable3),
 		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
 			InstTable3),
 		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
+	),
+		% avoid expanding recursive insts where possible
+	( Inst0 = bound(_, _) ->
+		Inst = defined_inst(merge_inst(InstA, InstB))
+	;		
+		Inst = Inst0
 	).
 
 :- pred inst_merge_2(inst, inst, module_info, inst, module_info).
@@ -709,10 +715,10 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 	inst_table_get_unify_insts(InstTable0, UnifyInsts0),
 	( map__search(UnifyInsts0, ThisInstPair, Result) ->
 		( Result = known(UnifyInst, UnifyDet) ->
-			Inst = UnifyInst,
+			Inst0 = UnifyInst,
 			Det = UnifyDet
 		;
-			Inst = defined_inst(ThisInstPair),
+			Inst0 = defined_inst(ThisInstPair),
 				% It's ok to assume that the unification is
 				% deterministic here, because the only time that
 				% this will happen is when we get to the
@@ -732,14 +738,20 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 		inst_expand(ModuleInfo0, InstA, InstA2),
 		inst_expand(ModuleInfo0, InstB, InstB2),
 		abstractly_unify_inst_2(Live, InstA2, InstB2, UnifyIsReal,
-			ModuleInfo1, Inst, Det, ModuleInfo2),
+			ModuleInfo1, Inst0, Det, ModuleInfo2),
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-		map__set(UnifyInsts2, ThisInstPair, known(Inst, Det),
+		map__set(UnifyInsts2, ThisInstPair, known(Inst0, Det),
 			UnifyInsts),
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	),
+		% avoid expanding recursive insts where possible
+	( Inst0 = bound(_, _) ->
+		Inst = defined_inst(ThisInstPair)
+	;		
+		Inst = Inst0
 	).
 
 :- pred abstractly_unify_inst_2(is_live, inst, inst, unify_is_real, module_info,
@@ -1180,10 +1192,10 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 	(
 		map__search(GroundInsts0, GroundInstKey, Result)
 	->
-		( Result = known(GroundInst) ->
-			Inst = GroundInst
+		( Result = known(GroundInst0) ->
+			GroundInst = GroundInst0
 		;
-			Inst = defined_inst(GroundInstKey)
+			GroundInst = defined_inst(GroundInstKey)
 		),
 		ModuleInfo = ModuleInfo0
 	;
@@ -1199,17 +1211,24 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 		inst_lookup(ModuleInfo1, InstName, Inst0),
 		inst_expand(ModuleInfo1, Inst0, Inst1),
 		make_ground_inst(Inst1, IsLive, Uniq, Real, ModuleInfo1,
-				Inst, ModuleInfo2),
+				GroundInst, ModuleInfo2),
 
 		% now that we have determined the resulting Inst, store
-		% the appropriate value `known(Inst)' in the ground_inst
+		% the appropriate value `known(GroundInst)' in the ground_inst
 		% table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_ground_insts(InstTable2, GroundInsts2),
-		map__set(GroundInsts2, GroundInstKey, known(Inst), GroundInsts),
+		map__set(GroundInsts2, GroundInstKey, known(GroundInst),
+			GroundInsts),
 		inst_table_set_ground_insts(InstTable2, GroundInsts,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	),
+		% avoid expanding recursive insts where possible
+	( GroundInst = bound(_, _) ->
+		Inst = defined_inst(GroundInstKey)
+	;		
+		Inst = GroundInst
 	).
 
 :- pred make_ground_bound_inst_list(list(bound_inst), is_live, uniqueness,
@@ -1284,10 +1303,10 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 	(
 		map__search(SharedInsts0, InstName, Result)
 	->
-		( Result = known(SharedInst) ->
-			Inst = SharedInst
+		( Result = known(SharedInst0) ->
+			SharedInst = SharedInst0
 		;
-			Inst = defined_inst(InstName)
+			SharedInst = defined_inst(InstName)
 		),
 		ModuleInfo = ModuleInfo0
 	;
@@ -1302,17 +1321,24 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% it's expansion
 		inst_lookup(ModuleInfo1, InstName, Inst0),
 		inst_expand(ModuleInfo1, Inst0, Inst1),
-		make_shared_inst(Inst1, ModuleInfo1, Inst, ModuleInfo2),
+		make_shared_inst(Inst1, ModuleInfo1, SharedInst, ModuleInfo2),
 
 		% now that we have determined the resulting Inst, store
-		% the appropriate value `known(Inst)' in the shared_inst
+		% the appropriate value `known(SharedInst)' in the shared_inst
 		% table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_shared_insts(InstTable2, SharedInsts2),
-		map__set(SharedInsts2, InstName, known(Inst), SharedInsts),
+		map__set(SharedInsts2, InstName, known(SharedInst),
+			SharedInsts),
 		inst_table_set_shared_insts(InstTable2, SharedInsts,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	),
+		% avoid expanding recursive insts where possible
+	( SharedInst = bound(_, _) ->
+		Inst = defined_inst(InstName)
+	;		
+		Inst = SharedInst
 	).
 
 :- pred make_shared(uniqueness, uniqueness).
@@ -1366,10 +1392,10 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 	(
 		map__search(NondetLiveInsts0, InstName, Result)
 	->
-		( Result = known(NondetLiveInst) ->
-			Inst = NondetLiveInst
+		( Result = known(NondetLiveInst0) ->
+			NondetLiveInst = NondetLiveInst0
 		;
-			Inst = defined_inst(InstName)
+			NondetLiveInst = defined_inst(InstName)
 		),
 		ModuleInfo = ModuleInfo0
 	;
@@ -1384,18 +1410,25 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% it's expansion
 		inst_lookup(ModuleInfo1, InstName, Inst0),
 		inst_expand(ModuleInfo1, Inst0, Inst1),
-		make_mostly_uniq_inst(Inst1, ModuleInfo1, Inst, ModuleInfo2),
+		make_mostly_uniq_inst(Inst1, ModuleInfo1, NondetLiveInst,
+			ModuleInfo2),
 
 		% now that we have determined the resulting Inst, store
-		% the appropriate value `known(Inst)' in the mostly_uniq_inst
-		% table
+		% the appropriate value `known(NondetLiveInst)' in the
+		% mostly_uniq_inst table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-		map__set(NondetLiveInsts2, InstName, known(Inst),
+		map__set(NondetLiveInsts2, InstName, known(NondetLiveInst),
 			NondetLiveInsts),
 		inst_table_set_mostly_uniq_insts(InstTable2, NondetLiveInsts,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	),
+		% avoid expanding recursive insts where possible
+	( NondetLiveInst = bound(_, _) ->
+		Inst = defined_inst(InstName)
+	;		
+		Inst = NondetLiveInst
 	).
 
 :- pred make_mostly_uniq(uniqueness, uniqueness).
