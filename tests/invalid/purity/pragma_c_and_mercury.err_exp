@@ -1,0 +1,4 @@
+pragma_c_and_mercury.m:010: In predicate `pragma_c_and_mercury:c_int_unify/2':
+pragma_c_and_mercury.m:010:   purity error: predicate is impure.
+pragma_c_and_mercury.m:010:   It must be declared `impure' or promised pure.
+For more information, try recompiling with `-E'.

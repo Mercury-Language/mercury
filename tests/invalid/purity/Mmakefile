@@ -14,6 +14,9 @@ PROGS= \
 	purity_nonsense \
 	purity_type_error
 
+# XXX the pragma_c_and_mercury test is not enabled, 
+#     since currently we fail it in grades `il' and `java'
+
 TESTS=$(PROGS)
 SUBDIRS=
 TESTS_DIR=../..
@@ -23,7 +26,8 @@ include $(TESTS_DIR)/Mmake.common
 # because the errors get detected when creating the `.opt' file rather
 # than when compiling the main module.  So we disable intermodule optimization
 # for these tests.
-override EXTRA_MCFLAGS += --no-intermodule-optimization
+override EXTRA_MCFLAGS += \
+	--no-intermodule-optimization --no-automatic-intermodule-optimization
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
