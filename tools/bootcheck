@@ -60,7 +60,7 @@ Options:
 	--no-check-namespace
 		Don't build the check_namespace targets in the runtime
 		and trace directories.
-	-t, --no-test-suite
+	-t-, --no-test-suite
 		By default, bootcheck will also run the test quite.
 		This option prevents that.
 	-2, --keep-stage-2
