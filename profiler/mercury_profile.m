@@ -11,8 +11,9 @@
 % Main author: petdr.
 %
 % Notes:
-%	Process's the *.out and *.prof files to produce an output similar to
-%	GPROF
+%	Process's the Prof.* and the *.prof files to produce an output very
+%	similar to 'gprof'
+%
 %	Based on the profiling scheme described in XXX
 %
 %-----------------------------------------------------------------------------%
@@ -100,7 +101,7 @@ usage -->
         io__write_string(StdErr, "Copyright (C) 1995 University of Melbourne\n"),
         io__write_string(StdErr, "Usage: "),
         io__write_string(StdErr, ProgName),
-        io__write_string(StdErr, " [<options>]\n"),
+        io__write_string(StdErr, " [<options>] [<files ...>]\n"),
         io__write_string(StdErr, "Use `"),
         io__write_string(StdErr, ProgName),
         io__write_string(StdErr, " --help' for more information.\n").
@@ -112,7 +113,12 @@ long_usage -->
         io__write_string("Copyright (C) 1995 University of Melbourne\n"),
         io__write_string("Usage: "),
         io__write_string(ProgName),
-        io__write_string(" [<options>]\n"),
+        io__write_string(" [<options>] [<files ...>]\n"),
+
+	io__write_string("Files:\n"),
+	io__write_string("\tFiles that contain the static call graph, need one for every module \n"),
+	io__write_string("\tin the program\n\n"),
+
         io__write_string("Options:\n"),
         options_help.
 
@@ -126,6 +132,8 @@ long_usage -->
 main_2(yes(ErrorMessage), _) -->
         usage_error(ErrorMessage).
 main_2(no, Args) -->
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, StdOut),
         globals__io_lookup_bool_option(help, Help),
         (
                 { Help = yes }
@@ -154,6 +162,7 @@ main_2(no, Args) -->
 		generate_output__main(Prof, IndexMap, OutputProf),
 		maybe_write_string(Verbose, " done\n"),
 
+		io__set_output_stream(StdOut, _),
 		output__main(OutputProf, IndexMap)
         ).
 

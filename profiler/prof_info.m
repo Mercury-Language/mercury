@@ -34,6 +34,8 @@
 :- type prof --->
 		prof(
 			int,			% Hertz of the system clock
+			int,			% No. of clock ticks between 
+						% each prof signal.
 			int,			% Total count's of the profile
 						% run
 			addrdecl,		% Map between label name and
@@ -191,14 +193,15 @@ get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
 
 % *** Access prof predicates *** %
 
-prof_get_addrdeclmap(prof(_, _, AddrDeclMap, _), AddrDeclMap).
+prof_get_addrdeclmap(prof(_, _, _, AddrDeclMap, _), AddrDeclMap).
 
-prof_get_profnodemap(prof(_, _, _, ProfNodeMap), ProfNodeMap).
+prof_get_profnodemap(prof(_, _, _, _, ProfNodeMap), ProfNodeMap).
 
 
 % *** Update prof predicates *** %
 
-prof_set_profnodemap(ProfNodeMap, prof(A, B, C, _), prof(A, B, C, ProfNodeMap)).
+prof_set_profnodemap(ProfNodeMap, prof(A, B, C, D, _), 
+						prof(A, B, C, D, ProfNodeMap)).
 
 
 % *** Initialise predicates *** %

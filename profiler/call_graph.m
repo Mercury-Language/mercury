@@ -1,4 +1,3 @@
-
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -42,6 +41,10 @@
 call_graph__main(Args, StaticCallGraph0, StaticCallGraph) -->
 	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+
+	% We can only build the static call graph if the *.prof files are 
+	% available.  NB The dynamic call graph is built as it is read in
+	% in process_addr_pair_file
 	(
 		{ Dynamic = yes } 
 	->

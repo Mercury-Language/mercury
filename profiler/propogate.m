@@ -36,9 +36,6 @@
 :- import_module require, std_util.
 
 
-% XXX What does this code do about predicate's which are never called.
-%     It shouldn't add their parent's to the parent list.
-
 % propogate_counts:
 %	Propogate's count's around the call_graph.  Starts from the end of the
 %	list, which is the leaves of the call graph.

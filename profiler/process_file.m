@@ -35,8 +35,8 @@
 
 :- import_module read.
 :- import_module globals, options.
-:- import_module int, require, std_util.
-:- import_module map.
+:- import_module int, require, std_util, string.
+:- import_module list, map.
 
 
 process_file__main(Prof, DynamicCallGraph) -->
@@ -44,12 +44,12 @@ process_file__main(Prof, DynamicCallGraph) -->
         maybe_write_string(VVerbose, "\n\t% Processing addrdecl.out..."),
         process_addr_decl(AddrDeclMap, ProfNodeMap0),
         maybe_write_string(VVerbose, " done.\n\t% Processing addr.out..."),
-        process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, TotalCounts),
+        process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,TotalCounts),
         maybe_write_string(VVerbose, " done.\n\t% Processing addrpair.out..."),
         process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
         maybe_write_string(VVerbose, " done.\n"),
 
-        { Prof = prof(Hertz, TotalCounts, AddrDeclMap, ProfNodeMap) }.
+        {Prof = prof(Hertz, ClockTicks, TotalCounts, AddrDeclMap, ProfNodeMap)}.
 
 
 %-----------------------------------------------------------------------------%
@@ -101,7 +101,7 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 		->
 			{ ProfNodeMap2 = ProfNodeMap1 }
 		;
-			{ map__lookup(ProfNodeMap0, LabelAddr, ProfNode0) },
+			lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
 			{ prof_node_concat_to_name_list(LabelName, ProfNode0,
 								NewProfNode) },
 			{ map__det_update(ProfNodeMap0, LabelAddr, NewProfNode,
@@ -123,17 +123,18 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 % 	Read's in the addr.out file and store's all the count's in the 
 % 	prof_node structure.  Also sum's the total count's at the same time.
 %
-:- pred process_addr(prof_node_map, prof_node_map, int, int, 
+:- pred process_addr(prof_node_map, prof_node_map, int, int, int,
 							io__state, io__state).
-:- mode process_addr(in, out, out, out, di, uo) is det.
+:- mode process_addr(in, out, out, out, out, di, uo) is det.
 
-process_addr(ProfNodeMap0, ProfNodeMap, Hertz, TotalCounts) -->
+process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
 	globals__io_lookup_string_option(countfile, CountFile),
 	io__see(CountFile, Result),
 	(
 		{ Result = ok }
 	->
 		read_int(Hertz),
+		read_int(ClockTicks),
 		process_addr_2(0, ProfNodeMap0, TotalCounts, ProfNodeMap),
 		io__seen
 	;
@@ -152,7 +153,7 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 		read_int(Count),
 
 		% Add to initial counts.
-		{ map__lookup(ProfNodeMap0, LabelAddr, ProfNode0) },
+		lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
 		{ prof_node_get_initial_counts(ProfNode0, InitCount0) },
 		{ InitCount is InitCount0 + Count },
 		{ prof_node_set_initial_counts(InitCount, ProfNode0, ProfNode) },
@@ -208,8 +209,8 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		read_int(Count),
 
 		% Get child and parent information
-		{ map__lookup(ProfNodeMap0, CallerAddr, CallerProfNode0) },
-		{ map__lookup(ProfNodeMap0, CalleeAddr, CalleeProfNode0) },
+		lookup_addr(ProfNodeMap0, CallerAddr, CallerProfNode0),
+		lookup_addr(ProfNodeMap0, CalleeAddr, CalleeProfNode0),
 		{ prof_node_get_pred_name(CallerProfNode0, CallerName) },
 		{ prof_node_get_pred_name(CalleeProfNode0, CalleeName) },
 
@@ -256,3 +257,19 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 
 
 %-----------------------------------------------------------------------------%
+
+% Utility functions so as to replace the lookup functions 
+
+:- pred lookup_addr(prof_node_map, int, prof_node, io__state, io__state).
+:- mode lookup_addr(in, in, out, di, uo) is det.
+
+lookup_addr(ProfNodeMap, Addr, ProfNode) -->
+	(
+		{ map__search(ProfNodeMap, Addr, ProfNode0) }
+	->
+		{ ProfNode = ProfNode0 }
+	;
+		{ string__format("\nKey = %d\n", [ i(Addr) ], String) },
+		io__write_string(String),
+		{ error("map__lookup: key not found\n") }
+	).

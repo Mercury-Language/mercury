@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module int, io.
 
 :- pred maybe_read_label_addr(maybe(int), io__state, io__state).
 :- mode	maybe_read_label_addr(out, di, uo) is det.
@@ -76,7 +76,8 @@ maybe_read_label_addr(MaybeLabelAddr) -->
 maybe_read_label_name(MaybeLabelName) -->
 	io__read_word(WordResult),
 	(
-		{ WordResult = ok(CharList) },
+		{ WordResult = ok(CharList0) },
+		{ label_demangle(CharList0, CharList) },
 		{ string__from_char_list(CharList, LabelName) },
 		{ MaybeLabelName = yes(LabelName) }
 	;
@@ -119,7 +120,8 @@ read_label_addr(LabelAddr) -->
 read_label_name(LabelName) -->
 	io__read_word(WordResult),
 	(
-		{ WordResult = ok(CharList) },
+		{ WordResult = ok(CharList0) },
+		{ label_demangle(CharList0, CharList) },
 		{ string__from_char_list(CharList, LabelName) }
 	;
 		{ WordResult = eof },
@@ -144,7 +146,9 @@ read_int(Count) -->
 		->
 			{ Count = Count0 }
 		;
-			{ error("read_int: Not an integer\n") }
+			io__write_string("\nInteger = "),
+			io__write_string(CountStr),
+			{ error("\nread_int: Not an integer\n") }
 		)
 	;
 		{ WordResult = eof },
@@ -157,3 +161,39 @@ read_int(Count) -->
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred label_demangle(list(char), list(char)).
+:- mode label_demangle(in, out) is det.
+
+label_demangle(CharList0, CharList) :-
+	(
+		CharList0 = ['m','e','r','c','u','r','y','_','_' | CharList1]
+	->
+		demangle_arity_and_mode(CharList1, CharList)
+	;
+		CharList = CharList0
+	).
+
+
+:- pred demangle_arity_and_mode(list(char), list(char)).
+:- mode demangle_arity_and_mode(in, out) is det.
+
+demangle_arity_and_mode(CharList0, CharList) :-
+	list__reverse(CharList0, CharList1),
+	CharList2 = [')' | CharList1],
+	replace(CharList2, '_', '(', CharList3),
+	replace(CharList3, '_', '/', CharList4),
+	list__reverse(CharList4, CharList).
+
+
+:- pred replace(list(char), char, char, list(char)).
+:- mode replace(in, in, in, out) is det.
+
+replace(L0, D, R, L) :-
+	(
+		list__replace_first(L0, D, R, L1)
+	->
+		L = L1
+	;
+		error("demangle_label: ill formed label\n")
+	).

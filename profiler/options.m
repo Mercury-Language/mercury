@@ -52,7 +52,6 @@
 		--->	verbose
 		;	very_verbose
 	% Profiler options
-		;	clockticks
 		;	dynamic_cg
 		;	countfile
 		;	pairfile
@@ -87,7 +86,6 @@ option_defaults_2(verbosity_option, [
 ]).
 option_defaults_2(profiler_option, [
 		% General profiler options
-	clockticks		-	int(5),
 	dynamic_cg			-	bool(no),
 	countfile		-	string("Prof.Counts"),
 	pairfile		-	string("Prof.CallPair"),
@@ -100,7 +98,6 @@ option_defaults_2(miscellaneous_option, [
 
 
 	% please keep this in alphabetic order
-short_option('c',			clockticks).
 short_option('C',			countfile).
 short_option('d',			dynamic_cg).
 short_option('D',			declfile).
@@ -110,7 +107,6 @@ short_option('v', 			verbose).
 short_option('V', 			very_verbose).
 
 long_option("call-pair-file",		pairfile).
-long_option("clock-ticks",		clockticks).
 long_option("count-file",		countfile).
 long_option("declaration-file",		declfile).
 long_option("help",			help).
@@ -122,6 +118,17 @@ long_option("very-verbose",		very_verbose).
 options_help -->
 	io__write_string("\t-h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
+
+	io__write_string("\nProfiler Options:\n"),
+	io__write_string("\t-d, --use-dynamic\n"),
+	io__write_string("\t\tBuild the call graph dynamically.\n"),
+	io__write_string("\t-C, --count-file\n"),
+	io__write_string("\t\tName of the count file. Usually `Prof.Counts'\n"),
+	io__write_string("\t-D, --declaration-file\n"),
+	io__write_string("\t\tName of the declaration file. Usually `Prof.Decl'\n"),
+	io__write_string("\t-P, --call-pair-file\n"),
+	io__write_string("\t\tName of the call-pair file. Usually `Prof.CallPair'\n"),
+
 
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),

@@ -1,0 +1,60 @@
+PROFILING
+
+1. BUILDING PROFILED APPLICATIONS
+
+To build an application with profiling turned on you need to make sure
+the followin conditions hold about the library files (boehm_gc, runtime
+and library).
+
+The runtime and library libraries must be built with profiling enabled.
+To do this add the line 
+	PROFFLAGS       =       -DPROFILE_TIME -DPROFILE_CALLS
+to the Mmake.params file.
+
+Then rebuild the libraries from scratch.  A non-guaranteed quicker way to 
+do this is just to delete all the object files which causes a recompilation
+of all the c code with the correct flags enabled.
+
+For the boehm_gc library you must ensure that in the makefile the CFLAGS line
+is similar to the one below.
+	CFLAGS = -DSILENT # -DNO_SIGNALS
+The -DNO_SIGNALS must be commented out as this ensures that no profiling
+signals can wreck a malloc.  Then rebuild the library.
+
+
+
+
+2. DISPALYING THE PROFILE
+
+The profile generated is actually a statistical approximation of the real
+profile.  Hence there a few steps that should be taken to ensure 
+meaningful results.
+
+One is to compile all the modules in a program with the --profiling option.
+This generate's a file called <module_name>.prof.  This file contains the
+static call graph of the particular module that is in a form easy for
+the profiler to use.  
+
+The advantage of using the static call graph over the dynamic call graph
+which is inherent in the data collected is due to the presence of cycles.
+Cycles are groups of procedure's that can eventually call themselves again.
+Due to the way the profiler propogate's time through the call graph more
+meaningful result's will be obtained if you can guarantee the same cycle's
+will be present in the call graph no matter which run of the program you
+are profiling.
+
+Then just type 
+	mprof *.prof
+
+NB. If you don't have all of the prof file's inculding the library ones.
+    just type mprof and that will generate the dynamic graph.
+
+
+NB. Also at the moment you also have to delete the line 
+	0	1
+    from the file Prof.Counts.  Problem soon to be rectified.
+
+
+3. FILES GENERATED
+
+

@@ -23,17 +23,32 @@
 
 :- interface.
 
-:- import_module float, int, list,  string.
+:- import_module float, int, list,  map, string.
 
 
 %-----------------------------------------------------------------------------%
 
+	% XXX Need's to be explained more clearly.
+:- type output --->
+		output(
+			map(string, output_prof),	% Map which contains all
+							% the info which is 
+							% required to generate
+							% the output.
+			list(string),			% list of label name's
+							% used to lookup map.
+							% list sorted so that
+							% it is in the correct
+							% order for call.
+			list(string)			% same except for flat
+		).
+
 :- type output_prof --->
 		output_prof(
 			string,			% predicate name
-			int,			% index number
 			float,			% %time in current predicate and
 						% descendant's
+			float,			% %time in current predicate
 			float,			% self: time spent in current
 						% predicate
 			float,			% descendants: time spent in 
