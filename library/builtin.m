@@ -479,14 +479,14 @@ MR_define_entry(mercury__copy_2_1);
 {
 	MR_Word value, copy, type_info;
 
-	type_info = r1;
-	value = r2;
+	type_info = MR_r1;
+	value = MR_r2;
 
 	MR_save_transient_registers();
 	copy = MR_deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
 	MR_restore_transient_registers();
 
-	r1 = copy;
+	MR_r1 = copy;
 	MR_proceed();
 }
 MR_END_MODULE
@@ -539,12 +539,12 @@ MR_define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** the io__state contains a map(io__stream, filename).
 	** However, it might not be correct in general...
 	*/
-	r1 = (r1 == r2);
+	MR_r1 = (MR_r1 == MR_r2);
 	MR_proceed();
 
 MR_define_entry(mercury____Compare___builtin__c_pointer_0_0);
-	r1 = (r1 == r2 ? MR_COMPARE_EQUAL :
-			  r1 < r2 ? MR_COMPARE_LESS :
+	MR_r1 = (MR_r1 == MR_r2 ? MR_COMPARE_EQUAL :
+			  MR_r1 < MR_r2 ? MR_COMPARE_LESS :
 			  MR_COMPARE_GREATER);
 	MR_proceed();
 
