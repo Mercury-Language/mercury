@@ -388,7 +388,7 @@
 
 throw(Exception) :-
 	type_to_univ(Exception, Univ),
-	builtin_throw(Univ).
+	throw_impl(Univ).
 
 throw(Exception) = _ :-
 	throw(Exception).
@@ -434,24 +434,24 @@ try(Goal, Result) :-
 	try(Detism, Goal, Result).
 
 try(det, Goal, Result) :-
-	builtin_catch((pred(R::out) is det :-
+	catch_impl((pred(R::out) is det :-
 				wrap_success_or_failure(Goal, R)),
 		wrap_exception, Result0),
 	cc_multi_equal(Result0, Result).
 try(semidet, Goal, Result) :-
-	builtin_catch((pred(R::out) is det :-
+	catch_impl((pred(R::out) is det :-
 				wrap_success_or_failure(Goal, R)),
 		wrap_exception, Result0),
 	cc_multi_equal(Result0, Result).
 try(cc_multi, Goal, Result) :-
 
-	builtin_catch(
+	catch_impl(
 		(pred(R::out) is cc_multi :-
 				wrap_success_or_failure(Goal, R)
 				),
 		wrap_exception, Result).
 try(cc_nondet, Goal, Result) :-
-	builtin_catch((pred(R::out) is cc_multi :-
+	catch_impl((pred(R::out) is cc_multi :-
 				wrap_success_or_failure(Goal, R)),
 		wrap_exception, Result).
 
@@ -600,32 +600,69 @@ wrap_exception(Exception, exception(Exception)).
 throw_string(Msg) :-
 	throw(Msg).
 
-:- pred builtin_throw(univ).
-:- mode builtin_throw(in) is erroneous.
+:- pred throw_impl(univ).
+:- mode throw_impl(in) is erroneous.
 
 :- type handler(T) == pred(univ, T).
 :- inst handler == (pred(in, out) is det).
 
 %
-% builtin_catch/3 is actually impure.  But we don't declare it as impure,
+% catch_impl/3 is actually impure.  But we don't declare it as impure,
 % because the code for try_all/3 takes its address (to pass to
 % unsorted_solutions/2), and Mercury does not (yet?) support
 % impure higher-order pred terms.
 %
+:- pragma promise_pure(catch_impl/3).
 :- /* impure */
-   pred builtin_catch(pred(T), handler(T), T).
-:- mode builtin_catch(pred(out) is det,       in(handler), out) is det.
-:- mode builtin_catch(pred(out) is semidet,   in(handler), out) is semidet.
-:- mode builtin_catch(pred(out) is cc_multi,  in(handler), out) is cc_multi.
-:- mode builtin_catch(pred(out) is cc_nondet, in(handler), out) is cc_nondet.
-:- mode builtin_catch(pred(out) is multi,     in(handler), out) is multi.
-:- mode builtin_catch(pred(out) is nondet,    in(handler), out) is nondet.
+   pred catch_impl(pred(T), handler(T), T).
+:- mode catch_impl(pred(out) is det,       in(handler), out) is det.
+:- mode catch_impl(pred(out) is semidet,   in(handler), out) is semidet.
+:- mode catch_impl(pred(out) is cc_multi,  in(handler), out) is cc_multi.
+:- mode catch_impl(pred(out) is cc_nondet, in(handler), out) is cc_nondet.
+:- mode catch_impl(pred(out) is multi,     in(handler), out) is multi.
+:- mode catch_impl(pred(out) is nondet,    in(handler), out) is nondet.
+
+% by default we call the external implementation, but specific backends
+% can provide their own definition using foreign_proc.
+
+throw_impl(Univ::in) :-
+	builtin_throw(Univ).
+
+
+catch_impl(Pred::(pred(out) is det), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
+catch_impl(Pred::(pred(out) is semidet), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
+catch_impl(Pred::(pred(out) is cc_multi), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
+catch_impl(Pred::(pred(out) is cc_nondet), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
+catch_impl(Pred::(pred(out) is multi), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
+catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
+	builtin_catch(Pred, Handler, T).
 
 % builtin_throw and builtin_catch are implemented below using
 % hand-coded low-level C code.
+%
+:- pred builtin_throw(univ).
+:- mode builtin_throw(in) is erroneous.
+
+
+:- /* impure */
+   pred builtin_catch(pred(T), handler(T), T).
+:- mode builtin_catch(pred(out) is det, in(handler), out) is det.
+:- mode builtin_catch(pred(out) is semidet, in(handler), out) is semidet.
+:- mode builtin_catch(pred(out) is cc_multi, in(handler), out) is cc_multi.
+:- mode builtin_catch(pred(out) is cc_nondet, in(handler), out) is cc_nondet.
+:- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
+:- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
+
+	
 
 :- external(builtin_throw/1).
 :- external(builtin_catch/3).
+
 
 %-----------------------------------------------------------------------------%
 %
@@ -803,7 +840,7 @@ mercury__exception__builtin_catch_3_p_5(MR_Mercury_Type_Info type_info,
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_goal_det(MR_Mercury_Type_Info type_info,
+ML_call_goal_det_handcoded(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result)
 {
 	typedef void MR_CALL DetFuncType(void *, MR_Box *);
@@ -813,7 +850,7 @@ ML_call_goal_det(MR_Mercury_Type_Info type_info,
 }
 
 static bool
-ML_call_goal_semi(MR_Mercury_Type_Info type_info,
+ML_call_goal_semi_handcoded(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result)
 {
 	typedef bool MR_CALL SemidetFuncType(void *, MR_Box *);
@@ -823,7 +860,7 @@ ML_call_goal_semi(MR_Mercury_Type_Info type_info,
 }
 
 static void
-ML_call_goal_non(MR_Mercury_Type_Info type_info,
+ML_call_goal_non_handcoded(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result, MR_CONT_PARAMS)
 {
 	typedef void MR_CALL NondetFuncType(void *, MR_Box *,
@@ -888,7 +925,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 #endif
 
 	if (setjmp(this_handler.handler) == 0) {
-		ML_call_goal_det(type_info, pred, output);
+		ML_call_goal_det_handcoded(type_info, pred, output);
 		ML_exception_handler = this_handler.prev;
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
@@ -916,7 +953,8 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 #endif
 
 	if (setjmp(this_handler.handler) == 0) {
-		bool result = ML_call_goal_semi(type_info, pred, output);
+		bool result = ML_call_goal_semi_handcoded(type_info, pred,
+			output);
 		ML_exception_handler = this_handler.prev;
 		return result;
 	} else {
@@ -969,7 +1007,8 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif
 
 	if (setjmp(this_handler.handler) == 0) {
-		ML_call_goal_non(type_info, pred, output, success_cont);
+		ML_call_goal_non_handcoded(type_info, pred, output,
+			success_cont);
 		ML_exception_handler = this_handler.prev;
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
@@ -1031,7 +1070,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif
 
 	if (setjmp(locals.this_handler.handler) == 0) {
-		ML_call_goal_non(type_info, pred, output,
+		ML_call_goal_non_handcoded(type_info, pred, output,
 			ML_catch_success_cont, &locals);
 		/*
 		** If we reach here, it means that
@@ -1067,75 +1106,84 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif /* MR_HIGHLEVEL_CODE */
 ").
 
+
+	% For the .NET backend we override throw_impl as it is easier to 
+	% implement these things using foreign_proc.
+
+:- pragma foreign_proc("C#", throw_impl(T::in), [will_not_call_mercury], "
+	throw new mercury.runtime.Exception(T);
+").
+
+
+:- pragma foreign_proc("C#", 
+	catch_impl(Pred::pred(out) is det,
+		Handler::in(handler), T::out), [will_not_call_mercury], "
+	try {
+		mercury.exception.mercury_code.ML_call_goal_det(
+			TypeInfo_for_T, Pred, ref T);
+	}
+	catch (mercury.runtime.Exception ex) {
+		mercury.exception.mercury_code.ML_call_handler_det(
+			TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
+	}
+").
+:- pragma foreign_proc("C#", 
+	catch_impl(Pred::pred(out) is cc_multi,
+		Handler::in(handler), T::out), [will_not_call_mercury], "
+	try {
+		mercury.exception.mercury_code.ML_call_goal_det(
+			TypeInfo_for_T, Pred, ref T);
+	}
+	catch (mercury.runtime.Exception ex) {
+		mercury.exception.mercury_code.ML_call_handler_det(
+			TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
+	}
+").
 /*
 
-XXX :- external stops us from using this
+	% We can't implement these until we implement semidet procedures 
+	% for the C# interface.
 
-:- pragma foreign_proc("MC++", builtin_throw(_T::in), [will_not_call_mercury], "
-        mercury_exception *ex;
-
-        // XXX should look for string objects and set them as the message
-
-        if (false) {
-            ex = new mercury_exception;
-        } else {
-            ex = new mercury_exception(""hello"");
-        }
-
-        throw ex; 
+:- pragma foreign_proc("C#", 
+	catch_impl(Pred::pred(out) is semidet,
+		Handler::in(handler), T::out), [will_not_call_mercury], "
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is det,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+:- pragma foreign_proc("C#", 
+	catch_impl(Pred::pred(out) is cc_nondet,
+		Handler::in(handler), T::out), [will_not_call_mercury], "
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is semidet,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is cc_multi,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is cc_nondet,
-		_Handler::in(handler), _T::out), [will_not_call_mercury], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is multi,
+
+
+	% We can't implement these because nondet C# foreign_proc for C#
+	% is not possible.
+
+:- pragma foreign_proc("C#", 
+	catch_impl(_Pred::pred(out) is multi,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], 
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
 	common_code("
-		mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	")
 ).
-:- pragma foreign_proc("MC++", 
-	builtin_catch(_Pred::pred(out) is nondet,
+:- pragma foreign_proc("C#", 
+	catch_impl(_Pred::pred(out) is nondet,
 		_Handler::in(handler), _T::out), [will_not_call_mercury], 
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
 	common_code("
-		mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	")
 ).
-
 */
 
 
-/*********
-This causes problems because the LLDS back-end
-does not let you export code with determinism `nondet'.
-Instead we hand-code it... see below.
-Hand-coding it also avoids the casting needed to use MR_Word
-(which `pragma export' procedures use for polymorphically
-typed arguments) rather than MR_Box.
+
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
@@ -1153,11 +1201,22 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 :- pragma export(call_goal(pred(out) is det,     out), "ML_call_goal_det").
 :- pragma export(call_goal(pred(out) is semidet, out), "ML_call_goal_semidet").
+
+% This causes problems because the LLDS back-end
+% does not let you export code with determinism `nondet'.
+% Instead for C backends we hand-code it... see below.
+% Hand-coding it also avoids the casting needed to use MR_Word
+% (which `pragma export' procedures use for polymorphically
+% typed arguments) rather than MR_Box.
+%
+% XXX for .NET backend we don't yet implement nondet exception handling.
+
 % :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
 
 :- pragma export(call_handler(pred(in, out) is det,     in, out),
 	"ML_call_handler_det").
 
+/*
 *******/
 
 %-----------------------------------------------------------------------------%

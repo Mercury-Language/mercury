@@ -995,7 +995,10 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 		il_info_add_init_instructions(runtime_initialization_instrs),
 		^ has_main := yes,
 
-		il_info_get_next_block_id(TryBlockId),
+		il_info_get_next_block_id(InnerTryBlockId),
+		il_info_get_next_block_id(OuterTryBlockId),
+		il_info_get_next_block_id(InnerCatchBlockId),
+		il_info_get_next_block_id(OuterCatchBlockId),
 		il_info_make_next_label(DoneLabel),
 
 			% Replace all the returns with leave instructions;
@@ -1011,21 +1014,73 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 				I
 			)
 		)},
+
+		{ UnivMercuryType = term__functor(term__atom("univ"), [], 
+			context("", 0)) },
+		{ UnivMLDSType = mercury_type(UnivMercuryType, user_type) },
+		{ UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType) },
+
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
 
-		{ ExceptionClassName = structured_name(assembly("mscorlib"),
+		{ MercuryExceptionClassName = 
+			mercury_runtime_name(["Exception"]) },
+		
+		{ ExceptionClassName = structured_name(il_system_assembly_name,
 				["System", "Exception"], []) },
+
+		{ FieldRef = make_fieldref(UnivType, MercuryExceptionClassName,
+			"mercury_exception") },
 
 		{ ConsoleWriteName = class_member_name(
 				structured_name(il_system_assembly_name,
 					["System", "Console"], []),
 				id("Write")) },
+
+		{ UncaughtExceptionName = class_member_name(
+			mercury_library_wrapper_class_name(["exception"]),
+				id("ML_report_uncaught_exception")) },
+
 		{ WriteString = methoddef(call_conv(no, default),
 					void, ConsoleWriteName,
 					[il_string_type]) },
+		{ WriteUncaughtException = methoddef(call_conv(no, default),
+					void, UncaughtExceptionName,
+					[UnivType]) },
 		{ WriteObject = methoddef(call_conv(no, default),
 					void, ConsoleWriteName,
 					[il_generic_type]) },
+
+
+			% A code block to catch any exception at all.
+	
+		{ CatchAnyException = tree__list([
+			instr_node(start_block(
+				catch(ExceptionClassName),
+				OuterCatchBlockId)),
+			instr_node(ldstr("\nUncaught system exception: \n")),
+			instr_node(call(WriteString)),
+			instr_node(call(WriteObject)),
+			instr_node(leave(label_target(DoneLabel))),
+			instr_node(end_block(catch(ExceptionClassName),
+				OuterCatchBlockId))
+			])
+		},
+
+			% Code to catch Mercury exceptions.
+		{ CatchUserException = tree__list([
+			instr_node(start_block(
+				catch(MercuryExceptionClassName),
+				InnerCatchBlockId)),
+			instr_node(ldfld(FieldRef)),
+
+			instr_node(call(WriteUncaughtException)),
+
+			instr_node(leave(label_target(DoneLabel))),
+			instr_node(end_block(
+				catch(MercuryExceptionClassName),
+				InnerCatchBlockId))
+			])
+		},
 
 			% Wrap an exception handler around the main
 			% code.  This allows us to debug programs
@@ -1033,21 +1088,46 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			% how you wish to debug.  Pressing the cancel
 			% button on this window is a bit difficult
 			% remotely.
+			%
+			% Inside this exception handler, we catch any 
+			% exceptions and print them.
+			%
+			% We nest the Mercury exception handler so that any
+			% exceptions thrown in ML_report_uncaught_exception
+			% will be caught by the outer (more general) exception
+			% handler.
+			%
+			% try {
+			%	try {
+			%		... main instructions ...
+			%	}
+			%	catch (mercury.runtime.Exception me) {
+			%		ML_report_uncaught_exception(me);
+			%	}
+			% } 
+			% catch (System.Exception e) {
+			%	System.Console.Write(e);
+			% }
+
 		{ InstrsTree = tree__list([
-				instr_node(start_block(try, TryBlockId)),
+
+					% outer try block
+				instr_node(start_block(try, OuterTryBlockId)),
+
+					% inner try block
+				instr_node(start_block(try, InnerTryBlockId)),
 				tree__map(RenameNode, InstrsTree2),
 				instr_node(leave(label_target(DoneLabel))),
-				instr_node(end_block(try, TryBlockId)),
+				instr_node(end_block(try, InnerTryBlockId)),
+				
+					% inner catch block
+				CatchUserException,
 
-				instr_node(start_block(
-						catch(ExceptionClassName),
-						TryBlockId)),
-				instr_node(ldstr("\nException Caught: \n")),
-				instr_node(call(WriteString)),
-				instr_node(call(WriteObject)),
 				instr_node(leave(label_target(DoneLabel))),
-				instr_node(end_block(catch(ExceptionClassName),
-						TryBlockId)),
+				instr_node(end_block(try, OuterTryBlockId)),
+
+					% outer catch block
+				CatchAnyException,
 
 				instr_node(label(DoneLabel)),
 				instr_node(ret)
@@ -3700,10 +3780,18 @@ il_commit_class_name = mercury_runtime_name(["Commit"]).
 
 %-----------------------------------------------------------------------------
 
-	% qualifiy a name with "[mercury]mercury."
+	% qualify a name with "[mercury]mercury."
 :- func mercury_library_name(ilds__namespace_qual_name) = ilds__class_name.
 mercury_library_name(Name) = 
 	structured_name(assembly("mercury"), ["mercury" | Name], []).
+
+	% qualify a name with "[mercury]mercury." and add the wrapper class
+	% name on the end.
+:- func mercury_library_wrapper_class_name(ilds__namespace_qual_name) = 
+		ilds__class_name.
+mercury_library_wrapper_class_name(Name) = 
+	structured_name(assembly("mercury"),
+		["mercury" | Name] ++ [wrapper_class_name], []).
 
 %-----------------------------------------------------------------------------
 

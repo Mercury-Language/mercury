@@ -198,11 +198,21 @@
 :- func math__tanh(float) = float.
 :- mode math__tanh(in) = out is det.
 
+	% A domain error exception, indicates that the inputs to a function
+	% were outside the domain of the function.  The string indicates
+	% where the error occured.
+	%
+	% NOTE: not all backends will throw an exception in such an event, 
+	% they may abort instead.  It is also possible to switch domain
+	% checking off.
+	
+:- type domain_error ---> domain_error(string).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module float.
+:- import_module float, exception.
 
 % These operations are mostly implemented using the C interface.
 
@@ -223,7 +233,9 @@
 	#define	ML_FLOAT_PI		3.1415926535897932384
 	#define	ML_FLOAT_LN2		0.69314718055994530941
 
+/*
 	void ML_math_domain_error(const char *where);
+*/
 
 "). % end pragma foreign_decl
 
@@ -233,6 +245,8 @@
 	// For pi and e we use the constants defined in System.Math.
 
 	public static double ML_FLOAT_LN2 = 0.69314718055994530941;
+	
+
 ").
 
 :- pragma foreign_code("C", "
@@ -259,18 +273,12 @@
 
 "). % end pragma foreign_code
 
-:- pragma foreign_code("C#", "
 
-/*
-** Handle domain errors.
-*/
-static void
-ML_math_domain_error(string where)
-{
-	throw new mercury.runtime.Exception(where);
-}
+:- pred throw_math_domain_error(string::in) is erroneous.
 
-"). % end pragma foreign_code
+throw_math_domain_error(S) :- throw(domain_error(S)).
+
+:- pragma export(throw_math_domain_error(in), "ML_throw_math_domain_error").
 
 %
 % Mathematical constants from math.m
@@ -366,11 +374,12 @@ math__truncate(X) = (X < 0.0 -> math__ceiling(X) ; math__floor(X)).
 	SquareRoot = sqrt(X);
 ").
 :- pragma foreign_proc("C#", math__sqrt(X::in) = (SquareRoot::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else
 	if (X < 0.0) {
-		ML_math_domain_error(""math__sqrt"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__sqrt"");
 	}
 #endif
 	SquareRoot = System.Math.Sqrt(X);
@@ -448,16 +457,18 @@ math__solve_quadratic(A, B, C) = Roots :-
 ").
 
 :- pragma foreign_proc("C#", math__pow(X::in, Y::in) = (Res::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 	Res = System.Math.Pow(X, Y);
 #else
 	if (X < 0.0) {
-		ML_math_domain_error(""math__pow"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__pow"");
 	}
 	if (X == 0.0) {
 		if (Y <= 0.0) {
-			ML_math_domain_error(""math__pow"");
+			mercury.math.mercury_code.ML_throw_math_domain_error(
+				""math__pow"");
 		}
 		Res = 0.0;
 	} else {
@@ -497,11 +508,12 @@ math__solve_quadratic(A, B, C) = Roots :-
 	Log = log(X);
 ").
 :- pragma foreign_proc("C#", math__ln(X::in) = (Log::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else 
 	if (X <= 0.0) {
-		ML_math_domain_error(""math__ln"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__ln"");
 	}
 #endif
 	Log = System.Math.Log(X);
@@ -524,11 +536,12 @@ math__solve_quadratic(A, B, C) = Roots :-
 	Log10 = log10(X);
 ").
 :- pragma foreign_proc("C#", math__log10(X::in) = (Log10::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else
 	if (X <= 0.0) {
-		ML_math_domain_error(""math__log10"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__log10"");
 	}
 #endif
 	Log10 = System.Math.Log10(X);
@@ -551,11 +564,12 @@ math__solve_quadratic(A, B, C) = Roots :-
 	Log2 = log(X) / ML_FLOAT_LN2;
 ").
 :- pragma foreign_proc("C#", math__log2(X::in) = (Log2::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else
 	if (X <= 0.0) {
-		ML_math_domain_error(""math__log2"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__log2"");
 	}
 #endif
 	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
@@ -583,14 +597,16 @@ math__solve_quadratic(A, B, C) = Roots :-
 	Log = log(X)/log(B);
 ").
 :- pragma foreign_proc("C#", math__log(B::in, X::in) = (Log::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else 
 	if (X <= 0.0 || B <= 0.0) {
-		ML_math_domain_error(""math__log"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__log"");
 	}
 	if (B == 1.0) {
-		ML_math_domain_error(""math__log"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__log"");
 	}
 #endif
 	Log = System.Math.Log(X,B);
@@ -651,11 +667,12 @@ math__solve_quadratic(A, B, C) = Roots :-
 	ASin = asin(X);
 ").
 :- pragma foreign_proc("C#", math__asin(X::in) = (ASin::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else
 	if (X < -1.0 || X > 1.0) {
-		ML_math_domain_error(""math__asin"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__asin"");
 	}
 #endif
 	ASin = System.Math.Asin(X);
@@ -678,11 +695,12 @@ math__solve_quadratic(A, B, C) = Roots :-
 	ACos = acos(X);
 ").
 :- pragma foreign_proc("C#", math__acos(X::in) = (ACos::out),
-		[will_not_call_mercury, thread_safe], "
+		[thread_safe], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 #else
 	if (X < -1.0 || X > 1.0) {
-		ML_math_domain_error(""math__acos"");
+		mercury.math.mercury_code.ML_throw_math_domain_error(
+			""math__acos"");
 	}
 #endif
 	ACos = System.Math.Acos(X);

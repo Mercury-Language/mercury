@@ -25,16 +25,29 @@ namespace mercury {
 
 namespace runtime {
 
-	// XXX Exception support is utterly incomplete.
+	// A user exception -- really just a wrapper for the exception
+	// data.
+
 __gc public class Exception : public System::Exception
 {
 public:
-	// XXX there should be a Mercury object here.
-    Exception(MR_String Msg) : System::Exception(Msg)
-    { 
-	// XXX this should set the exception message
-    }
+   Exception(MR_Word data) 
+   {
+   	mercury_exception = data;	
+   }
+   MR_Word mercury_exception;
 };
+
+__gc public class SystemException : public System::Exception
+{
+public:
+	SystemException(MR_String Msg) : System::Exception(Msg)
+	{	
+		// the parent constructor sets the error message that
+		// will be printed.
+	}
+};
+
 
 __gc public class LowLevelData
 {
@@ -75,14 +88,14 @@ __gc public class Errors {
     {
         MR_String msg;
         msg = System::String::Concat("Sorry, unimplemented: ", s);
-        throw new mercury::runtime::Exception(msg);
+        throw new mercury::runtime::SystemException(msg);
     }
 
     static void fatal_error(MR_String s)
     {
         MR_String msg;
         msg = System::String::Concat("Fatal error: ", s);
-        throw new mercury::runtime::Exception(msg);
+        throw new mercury::runtime::SystemException(msg);
     }
 };
 
