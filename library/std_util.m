@@ -592,6 +592,12 @@
 	% or tabling.
 :- pred get_functor_info(univ::in, functor_tag_info::out) is semidet.
 
+	% dynamic_cast(X, Y) succeeds with Y = X iff X has the same
+	% ground type as Y (so this may succeed if Y is of type
+	% list(int), say, but not if Y is of type list(T)).
+	%
+:- pred dynamic_cast(T1::in, T2::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -3980,3 +3986,11 @@ solutions_set(P) = S :- solutions_set(P, S).
 aggregate(P, F, Acc0) = Acc :-
 	aggregate(P, (pred(X::in, A0::in, A::out) is det :- A = F(X, A0)),
 		Acc0, Acc).
+
+%------------------------------------------------------------------------------%
+
+dynamic_cast(X, Y) :-
+	univ_to_type(univ(X), Y).
+
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
