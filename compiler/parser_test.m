@@ -1,3 +1,7 @@
+
+% This file contains some test cases for the parser,
+% together with a simple Prolog test harness.
+
 run_tests :-
 	max_test(Max),
 	between(1, Max, TestNum),
@@ -5,7 +9,6 @@ run_tests :-
 	format("Test ~d (~s) ~a.\n", [TestNum, Name, Result]),
 	fail.
 run_tests.
-
 
 test(TestNum, Name, String, Term, ExpectedTerm, Result) :-
 	get_test(TestNum, Name, String, ExpectedTerm),
