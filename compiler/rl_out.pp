@@ -20,9 +20,9 @@
 
 :- interface.
 
-:- import_module rl, rl_file, hlds_module, tree.
+:- import_module rl, rl_file, hlds_module.
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
-:- import_module rl_code.
+:- import_module rl_code, tree.
 #else
 #endif
 
@@ -98,22 +98,34 @@ rl_out__generate_schema_file_2(ModuleInfo, PredId) -->
 		{ Module = PredModule },
 		{ check_marker(Markers, base_relation) }
 	->
-		{ pred_info_procids(PredInfo, ProcIds) },
-		list__foldl(rl_out__generate_schema_file_3(ModuleInfo, PredId),
-			ProcIds)	
+		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
+			Owner, ModuleName, PredName, PredArity0,
+			RelName, RelSchema) },
+		{ string__int_to_string(PredArity0, PredArity) },
+		io__write_strings([ModuleName, ":", PredName, "/", PredArity,
+			"\t", Owner, "/", ModuleName, "/", RelName,
+			"\t", RelSchema, "\n"])
 	;	
 		[]
 	).
 
-:- pred rl_out__generate_schema_file_3(module_info::in, pred_id::in,
-		proc_id::in, io__state::di, io__state::uo) is det.
+:- pred rl_out__get_perm_rel_info(module_info::in, pred_id::in,
+		string::out, string::out, string::out, int::out,
+		string::out, string::out) is det.
 
-rl_out__generate_schema_file_3(ModuleInfo, PredId, ProcId) -->
-	{ rl_out__get_perm_rel_info(ModuleInfo, proc(PredId, ProcId),
-		Owner, ModuleName, PredName, PredArity0, RelName, RelSchema) },
-	{ string__int_to_string(PredArity0, PredArity) },
-	io__write_strings([ModuleName, ":", PredName, "/", PredArity, "\t",
-		Owner, "/", ModuleName, "/", RelName, "\t", RelSchema, "\n"]).
+rl_out__get_perm_rel_info(ModuleInfo, PredId, Owner, PredModule,
+		PredName, PredArity, RelName, SchemaString) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_name(PredInfo, PredName),
+	pred_info_module(PredInfo, PredModule0),
+	prog_out__sym_name_to_string(PredModule0, PredModule),
+	pred_info_get_aditi_owner(PredInfo, Owner),
+	pred_info_arity(PredInfo, PredArity),
+	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
+	pred_info_arg_types(PredInfo, ArgTypes0),
+	magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
+	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
+
 
 %-----------------------------------------------------------------------------%
 
@@ -145,7 +157,50 @@ rl_out__generate_derived_schema(ModuleInfo, Proc) -->
 	;
 		[]
 	).
-	
+
+:- pred rl_out__get_proc_schema(module_info::in, relation_info_map::in,
+		list(relation_id)::in, string::out) is det.
+
+rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :- 
+	list__map(
+		(pred(Arg::in, ArgSchema::out) is det :-
+			map__lookup(Relations, Arg, ArgInfo),
+			ArgInfo = relation_info(_, ArgSchema, _, _)
+		), Args, ArgSchemas),
+	rl__schemas_to_strings(ModuleInfo, ArgSchemas,
+		TypeDecls, ArgSchemaStrings),
+	list__map_foldl(
+		(pred(ArgSchemaString::in, ArgSchemaDecl::out,
+				Index::in, (Index + 1)::out) is det :-
+			ArgPrefix = "__arg_",
+			string__int_to_string(Index, ArgString),
+			string__append_list(
+				[":", ArgPrefix, ArgString, "=",
+				ArgPrefix, ArgString, "(",
+				ArgSchemaString, ") "],
+				ArgSchemaDecl)
+		), ArgSchemaStrings, ArgSchemaDeclList, 1, _),
+	rl_out__get_proc_schema_2(1, Args, "", SchemaString0),
+	list__condense([[TypeDecls | ArgSchemaDeclList], ["("],
+		[SchemaString0, ")"]], SchemaStrings),
+	string__append_list(SchemaStrings, SchemaString).
+
+:- pred rl_out__get_proc_schema_2(int::in, list(T)::in,
+		string::in, string::out) is det.
+
+rl_out__get_proc_schema_2(_, [], SchemaList, SchemaList). 
+rl_out__get_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
+	ArgPrefix = "__arg_",
+	( Args = [] ->
+		Comma = ""
+	;
+		Comma = ","
+	),
+	string__int_to_string(ArgNo, ArgString),
+	string__append_list([SchemaList0, ":T", ArgPrefix, ArgString, Comma],
+		SchemaList1),
+	rl_out__get_proc_schema_2(ArgNo + 1, Args, SchemaList1, SchemaList).
+
 %-----------------------------------------------------------------------------%
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in,
@@ -284,9 +339,12 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	),
 	maybe_write_string(Verbose, "done\n").
 #else
-rl_out__generate_rl_bytecode(_, _, _) -->
-	{ error(
-	"rl_out.pp: `--aditi' requires `INCLUDE_ADITI_OUTPUT'") }.
+rl_out__generate_rl_bytecode(_, _, MaybeRLFile) -->
+	{ semidet_succeed ->
+		error("rl_out.pp: `--aditi' requires `INCLUDE_ADITI_OUTPUT'")
+	;
+		MaybeRLFile = no
+	}.
 #endif
 	
 #if INCLUDE_ADITI_OUTPUT
@@ -429,11 +487,11 @@ rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
 	{ map__lookup(Relations, RelationId, RelInfo) },
 	{ RelInfo = relation_info(RelType, _Schema, _Index, _) },
 	(
-		{ RelType = permanent(PredProcId) }
+		{ RelType = permanent(proc(PredId, _)) }
 	->
 		rl_out_info_get_module_info(ModuleInfo),
 
-		{ rl_out__get_perm_rel_info(ModuleInfo, PredProcId,
+		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
 			Owner, PredModule, _, _, RelName, SchemaString) },
 
 		rl_out_info_assign_const(string(Owner), OwnerConst), 
@@ -458,24 +516,6 @@ rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
 		{ Codes1 = Codes0 }
 	),
 	rl_out__collect_permanent_rels(Rels, Codes1, Codes).
-
-:- pred rl_out__get_perm_rel_info(module_info::in, pred_proc_id::in,
-		string::out, string::out, string::out, int::out,
-		string::out, string::out) is det.
-
-rl_out__get_perm_rel_info(ModuleInfo, PredProcId, Owner, PredModule,
-		PredName, PredArity, RelName, SchemaString) :-
-	PredProcId = proc(PredId, _),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName),
-	pred_info_module(PredInfo, PredModule0),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
-	pred_info_get_aditi_owner(PredInfo, Owner),
-	pred_info_arity(PredInfo, PredArity),
-	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
-	pred_info_arg_types(PredInfo, ArgTypes0),
-	magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
-	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
 
 %-----------------------------------------------------------------------------%
 
@@ -502,50 +542,6 @@ rl_out__generate_proc_schema(Args, SchemaOffset) -->
 	rl_out_info_get_relations(Relations),
 	{ rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) },
 	rl_out_info_assign_const(string(SchemaString), SchemaOffset).
-
-:- pred rl_out__get_proc_schema(module_info::in, relation_info_map::in,
-		list(relation_id)::in, string::out) is det.
-
-rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :- 
-	list__map(
-		(pred(Arg::in, ArgSchema::out) is det :-
-			map__lookup(Relations, Arg, ArgInfo),
-			ArgInfo = relation_info(_, ArgSchema, _, _)
-		), Args, ArgSchemas),
-	rl__schemas_to_strings(ModuleInfo, ArgSchemas,
-		TypeDecls, ArgSchemaStrings),
-	list__map_foldl(
-		(pred(ArgSchemaString::in, ArgSchemaDecl::out,
-				Index::in, (Index + 1)::out) is det :-
-			ArgPrefix = "__arg_",
-			string__int_to_string(Index, ArgString),
-			string__append_list(
-				[":", ArgPrefix, ArgString, "=",
-				ArgPrefix, ArgString, "(",
-				ArgSchemaString, ") "],
-				ArgSchemaDecl)
-		), ArgSchemaStrings, ArgSchemaDeclList, 1, _),
-	rl_out__generate_proc_schema_2(1, Args, "", SchemaString0),
-	list__condense([[TypeDecls | ArgSchemaDeclList], ["("],
-		[SchemaString0, ")"]], SchemaStrings),
-	string__append_list(SchemaStrings, SchemaString).
-
-:- pred rl_out__generate_proc_schema_2(int::in, list(T)::in,
-		string::in, string::out) is det.
-
-rl_out__generate_proc_schema_2(_, [], SchemaList, SchemaList). 
-rl_out__generate_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
-	ArgPrefix = "__arg_",
-	( Args = [] ->
-		Comma = ""
-	;
-		Comma = ","
-	),
-	string__int_to_string(ArgNo, ArgString),
-	string__append_list([SchemaList0, ":T", ArgPrefix, ArgString, Comma],
-		SchemaList1),
-	rl_out__generate_proc_schema_2(ArgNo + 1,
-		Args, SchemaList1, SchemaList).
 
 %-----------------------------------------------------------------------------%
 
