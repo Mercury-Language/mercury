@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module hlds_module.
+:- import_module hlds_module, prog_data.
 :- import_module io, list, term.
 
 	% From the module_info, get a list of functions, each of which allows

@@ -170,7 +170,7 @@
 :- import_module passes_aux, clause_to_proc.
 
 :- import_module int, list, map, set, string, require, std_util, tree234.
-:- import_module varset, term, term_io.
+:- import_module assoc_list, varset, term, term_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -907,44 +907,26 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 		% non-polymorphic predicate)
 		( PredIdList = [PredId0] ->
 			
+			PredId = PredId0,
 			predicate_table_get_preds(PredicateTable, Preds),
-			map__lookup(Preds, PredId0, PredInfo),
-			pred_info_import_status(PredInfo, CalledStatus),
-			typecheck_info_get_pred_import_status(TypeCheckInfo1,
-						CallingStatus),
-			( 
-				% Only opt_imported preds can look at
-				% declarations from .opt files.
-				(
-				  CalledStatus \= opt_decl
-				; CallingStatus = opt_imported
-				) 
-			->
-				PredId = PredId0,
-				pred_info_arg_types(PredInfo, PredTypeVarSet,
-							PredArgTypes),
+			map__lookup(Preds, PredId, PredInfo),
+			pred_info_arg_types(PredInfo, PredTypeVarSet,
+						PredArgTypes),
 
-					% rename apart the type variables in 
-					% called predicate's arg types and then
-					% unify the types of the call arguments
-					% with the called predicates' arg types
-					% (optimize for the common case of
-					% a non-polymorphic predicate)
-				( varset__is_empty(PredTypeVarSet) ->
-				    typecheck_var_has_type_list(Args,
-					PredArgTypes, 0, TypeCheckInfo1,
-					TypeCheckInfo)
-				;
-				    typecheck_var_has_polymorphic_type_list(
-					Args, PredTypeVarSet, PredArgTypes,
-					TypeCheckInfo1, TypeCheckInfo)
-				)
+				% rename apart the type variables in 
+				% called predicate's arg types and then
+				% unify the types of the call arguments
+				% with the called predicates' arg types
+				% (optimize for the common case of
+				% a non-polymorphic predicate)
+			( varset__is_empty(PredTypeVarSet) ->
+			    typecheck_var_has_type_list(Args,
+				PredArgTypes, 0, TypeCheckInfo1,
+				TypeCheckInfo)
 			;
-				invalid_pred_id(PredId),
-				report_pred_call_error(TypeCheckInfo1, 
-					ModuleInfo, PredicateTable, 
-					PredCallId, TypeCheckInfo)
-				
+			    typecheck_var_has_polymorphic_type_list(
+				Args, PredTypeVarSet, PredArgTypes,
+				TypeCheckInfo1, TypeCheckInfo)
 			)
 		;
 			typecheck_info_get_pred_import_status(TypeCheckInfo1,
@@ -981,9 +963,8 @@ report_pred_call_error(TypeCheckInfo1, _ModuleInfo, PredicateTable,
 	typecheck_info_get_io_state(TypeCheckInfo1, IOState0),
 	(
 		predicate_table_search_pred_sym(PredicateTable,
-			PredName, OtherIds0),
+			PredName, OtherIds),
 		predicate_table_get_preds(PredicateTable, Preds),
-		typecheck_filter_optdecls(Preds, OtherIds0, OtherIds),
 		OtherIds \= []
 	->
 		typecheck_find_arities(Preds, OtherIds, Arities),
@@ -991,9 +972,7 @@ report_pred_call_error(TypeCheckInfo1, _ModuleInfo, PredicateTable,
 			Arities, IOState0, IOState)
 	;
 		predicate_table_search_func_sym(PredicateTable,
-			PredName, OtherIds0),
-		predicate_table_get_preds(PredicateTable, Preds),
-		typecheck_filter_optdecls(Preds, OtherIds0, OtherIds),
+			PredName, OtherIds),
 		OtherIds \= []
 	->
 		report_error_func_instead_of_pred(TypeCheckInfo1, PredCallId,
@@ -1013,20 +992,6 @@ typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity),
 	typecheck_find_arities(Preds, PredIds, Arities).
-
-	% Since .opt files are guaranteed to be type correct, and only
-	% preds defined in .opt files can "see" predicates declared in
-	% .opt files, filter out the opt_decl preds when working out
-	% a type error message.
-:- pred typecheck_filter_optdecls(pred_table, list(pred_id), list(pred_id)).
-:- mode typecheck_filter_optdecls(in, in, out) is det.
-
-typecheck_filter_optdecls(Preds, PredIds0, PredIds) :-
-	FilterOptDecls = lambda([PredId::in] is semidet, (
-			map__lookup(Preds, PredId, PredInfo),
-			\+ pred_info_import_status(PredInfo, opt_decl)
-		)),
-	list__filter(FilterOptDecls, PredIds0, PredIds).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id), list(var),
 				import_status, typecheck_info, typecheck_info).
@@ -1063,20 +1028,9 @@ get_overloaded_pred_arg_types([], _Preds, _CallingPredStatus,
 get_overloaded_pred_arg_types([PredId | PredIds], Preds, CallingPredStatus,
 		TypeAssignSet0, ArgsTypeAssignSet0, ArgsTypeAssignSet) :-
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_import_status(PredInfo, Status),
-	(
-		% Only opt_imported preds can look at
-		% declarations from .opt files.
-		( CallingPredStatus = opt_imported
-		; Status \= opt_decl
-		)
-	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
-		rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
-				ArgsTypeAssignSet0, ArgsTypeAssignSet1)
-	;
-		ArgsTypeAssignSet1 = ArgsTypeAssignSet0
-	),
+	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+	rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
+		ArgsTypeAssignSet0, ArgsTypeAssignSet1),
 	get_overloaded_pred_arg_types(PredIds, Preds, CallingPredStatus,
 		TypeAssignSet0, ArgsTypeAssignSet1, ArgsTypeAssignSet).
 
@@ -1119,7 +1073,6 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		% module qualified, so they should not be considered
 		% when resolving overloading.
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		\+ pred_info_import_status(PredInfo, opt_decl),
 
 		%
 		% lookup the argument types of the candidate predicate
@@ -2148,76 +2101,62 @@ make_pred_cons_info_list(TypeCheckInfo, [PredId|PredIds], PredTable, Arity,
 		module_info, list(cons_type_info), list(cons_type_info)).
 :- mode make_pred_cons_info(typecheck_info_ui, in, in, in, in, in, out) is det.
 
-make_pred_cons_info(TypeCheckInfo, PredId, PredTable, FuncArity,
+make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 		_ModuleInfo, L0, L) :-
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
-	pred_info_import_status(PredInfo, CalledStatus),
-	typecheck_info_get_pred_import_status(TypeCheckInfo, CallingStatus),
 	(
-		% Only opt_imported preds can look at the declarations of
-		% predicates from .opt files.
-		( CalledStatus \= opt_decl
-		; CallingStatus = opt_imported
-		)
+		IsPredOrFunc = predicate,
+		PredArity >= FuncArity
 	->
+		pred_info_arg_types(PredInfo, PredTypeVarSet,
+					CompleteArgTypes),
 		(
-			IsPredOrFunc = predicate,
-			PredArity >= FuncArity
+			list__split_list(FuncArity, CompleteArgTypes,
+				ArgTypes, PredTypeParams)
 		->
-			pred_info_arg_types(PredInfo, PredTypeVarSet,
-						CompleteArgTypes),
-			(
-				list__split_list(FuncArity, CompleteArgTypes,
-					ArgTypes, PredTypeParams)
-			->
+			term__context_init("<builtin>", 0, Context),
+			PredType = term__functor(term__atom("pred"),
+					PredTypeParams, Context),
+			ConsInfo = cons_type_info(PredTypeVarSet,
+					PredType, ArgTypes),
+			L = [ConsInfo | L0]
+		;
+			error("make_pred_cons_info: split_list failed")
+		)
+	;
+		IsPredOrFunc = function,
+		PredAsFuncArity is PredArity - 1,
+		PredAsFuncArity >= FuncArity
+	->
+		pred_info_arg_types(PredInfo, PredTypeVarSet,
+					CompleteArgTypes),
+		(
+			list__split_list(FuncArity, CompleteArgTypes,
+				FuncArgTypes, FuncTypeParams),
+			list__length(FuncTypeParams, NumParams0),
+			NumParams1 is NumParams0 - 1,
+			list__split_list(NumParams1, FuncTypeParams,
+			    FuncArgTypeParams, [FuncReturnTypeParam])
+		->
+			( FuncArgTypeParams = [] ->
+				FuncType = FuncReturnTypeParam
+			;
 				term__context_init("<builtin>", 0, Context),
-				PredType = term__functor(term__atom("pred"),
-						PredTypeParams, Context),
-				ConsInfo = cons_type_info(PredTypeVarSet,
-						PredType, ArgTypes),
-				L = [ConsInfo | L0]
-			;
-				error("make_pred_cons_info: split_list failed")
-			)
+				FuncType = term__functor(
+					term__atom("="), [
+					term__functor(term__atom("func"),
+						FuncArgTypeParams,
+						Context),
+					FuncReturnTypeParam
+					], Context)
+			),
+			ConsInfo = cons_type_info(PredTypeVarSet,
+					FuncType, FuncArgTypes),
+			L = [ConsInfo | L0]
 		;
-			IsPredOrFunc = function,
-			PredAsFuncArity is PredArity - 1,
-			PredAsFuncArity >= FuncArity
-		->
-			pred_info_arg_types(PredInfo, PredTypeVarSet,
-						CompleteArgTypes),
-			(
-				list__split_list(FuncArity, CompleteArgTypes,
-					FuncArgTypes, FuncTypeParams),
-				list__length(FuncTypeParams, NumParams0),
-				NumParams1 is NumParams0 - 1,
-				list__split_list(NumParams1, FuncTypeParams,
-				    FuncArgTypeParams, [FuncReturnTypeParam])
-			->
-				( FuncArgTypeParams = [] ->
-					FuncType = FuncReturnTypeParam
-				;
-					term__context_init("<builtin>", 0,
-							Context),
-					FuncType = term__functor(
-							term__atom("="), [
-							term__functor(
-							term__atom("func"),
-							FuncArgTypeParams,
-							Context),
-							FuncReturnTypeParam
-						], Context)
-				),
-				ConsInfo = cons_type_info(PredTypeVarSet,
-						FuncType, FuncArgTypes),
-				L = [ConsInfo | L0]
-			;
-				error("make_pred_cons_info: split_list or remove_suffix failed")
-			)
-		;
-			L = L0
+			error("make_pred_cons_info: split_list or remove_suffix failed")
 		)
 	;
 		L = L0
@@ -2764,28 +2703,17 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 :- convert_cons_defn_list(_, L, _) when L.	% NU-Prolog indexing.
 
 convert_cons_defn_list(_TypeCheckInfo, [], []).
-convert_cons_defn_list(TypeCheckInfo, [X|Xs], Ys) :-
-	( convert_cons_defn(TypeCheckInfo, X, Y0) ->
-		Y = Y0,
-		convert_cons_defn_list(TypeCheckInfo, Xs, Ys1),
-		Ys = [Y | Ys1]
-	;
-		convert_cons_defn_list(TypeCheckInfo, Xs, Ys)
-	).
+convert_cons_defn_list(TypeCheckInfo, [X|Xs], [Y|Ys]) :-
+	convert_cons_defn(TypeCheckInfo, X, Y),
+	convert_cons_defn_list(TypeCheckInfo, Xs, Ys).
 
 :- pred convert_cons_defn(typecheck_info, hlds_cons_defn, cons_type_info).
-:- mode convert_cons_defn(typecheck_info_ui, in, out) is semidet.
+:- mode convert_cons_defn(typecheck_info_ui, in, out) is det.
 
 convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	HLDS_ConsDefn = hlds_cons_defn(ArgTypes, TypeId, Context),
 	typecheck_info_get_types(TypeCheckInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
-	typecheck_info_get_pred_import_status(TypeCheckInfo, PredStatus),
-	hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
-	% Don't match constructors in local preds that shouldn't be visible.
-	( PredStatus = opt_imported
-	; TypeStatus \= opt_imported, TypeStatus \= abstract_imported
-	),
 	hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
 	construct_type(TypeId, ConsTypeParams, Context, ConsType),

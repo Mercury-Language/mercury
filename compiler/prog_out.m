@@ -32,11 +32,14 @@
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
 :- mode prog_out__write_module_spec(in, di, uo) is det.
 
+:- pred prog_out__write_module_list(list(module_name), io__state, io__state).
+:- mode prog_out__write_module_list(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, list, varset, std_util, term_io.
+:- import_module require, string, list, varset, std_util, term_io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -103,6 +106,18 @@ prog_out__write_sym_name(unqualified(Name)) -->
 
 prog_out__write_module_spec(ModuleSpec) -->
 	io__write_string(ModuleSpec).
+
+%-----------------------------------------------------------------------------%
+
+prog_out__write_module_list([Import1, Import2, Import3 | Imports]) --> 
+	io__write_strings(["`", Import1, "', "]),
+	write_module_list([Import2, Import3 | Imports]).
+prog_out__write_module_list([Import1, Import2]) -->
+	io__write_strings(["`", Import1, "' and `", Import2 ,"'"]).
+prog_out__write_module_list([Import]) -->
+	io__write_strings(["`", Import, "'"]).
+prog_out__write_module_list([]) -->
+	{ error("prog_out__write_module_list") }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1489,8 +1489,6 @@ hlds_out__write_import_status(abstract_imported) -->
 	io__write_string("abstract_imported").
 hlds_out__write_import_status(opt_imported) -->
 	io__write_string("opt_imported").
-hlds_out__write_import_status(opt_decl) -->
-	io__write_string("opt_decl").
 hlds_out__write_import_status(pseudo_imported) -->
 	io__write_string("pseudo_imported").
 

@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
 :- import_module instmap.
-:- import_module set, list.
+:- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
 

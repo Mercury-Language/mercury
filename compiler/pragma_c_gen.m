@@ -23,7 +23,7 @@
 
 :- import_module hlds_goal, hlds_pred, prog_data.
 :- import_module llds, code_info.
-:- import_module list, std_util.
+:- import_module list, std_util, term.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in, string::in,
 	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,

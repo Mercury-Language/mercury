@@ -101,7 +101,7 @@
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module hlds_data, hlds_pred, prog_util, globals, options.
 :- import_module bool, int, string, std_util, parser, term_io, dir, require.
-:- import_module term.
+:- import_module varset, term.
 
 %-----------------------------------------------------------------------------%
 

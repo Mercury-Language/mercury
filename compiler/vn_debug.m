@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module atsort, vn_type, vn_table, livemap.
-:- import_module bool, list, io.
+:- import_module assoc_list, bool, list, io.
 
 :- pred vn_debug__tuple_msg(maybe(bool), list(instruction), vn_ctrl_tuple,
 	io__state, io__state).

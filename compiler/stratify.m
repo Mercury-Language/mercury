@@ -56,7 +56,7 @@
 :- import_module hlds_module, type_util, mode_util, prog_data, passes_aux.
 :- import_module prog_out, globals, options.
 
-:- import_module map, list, set, bool, std_util, relation, require.
+:- import_module assoc_list, map, list, set, bool, std_util, relation, require.
 
 
 

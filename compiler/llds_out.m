@@ -83,7 +83,7 @@
 :- import_module export.
 :- import_module exprn_aux, prog_data, prog_out, hlds_pred, mercury_to_mercury.
 :- import_module bool, int, list, char, string, set, std_util, term, varset.
-:- import_module require, globals, options.
+:- import_module assoc_list, require, globals, options.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%

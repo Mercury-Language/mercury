@@ -34,8 +34,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred.
-:- import_module list, set, term.
+:- import_module hlds_goal, hlds_pred, prog_data.
+:- import_module list, set, term, varset.
 
 :- pred implicitly_quantify_clause_body(list(var),
 		hlds_goal, varset, map(var, type),

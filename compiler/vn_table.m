@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type.
-:- import_module list, map.
+:- import_module assoc_list, list, map.
 
 :- type vn_tables.
 

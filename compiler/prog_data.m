@@ -18,8 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_pred.
-:- import_module list, varset, term, std_util.
+:- import_module hlds_data, hlds_pred.
+:- import_module bool, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -354,14 +354,23 @@
 			;	interface
 			;	implementation
 			;	imported
-				% this is used internally by the compiler,
+				% This is used internally by the compiler,
 				% to identify declarations which originally
-				% came from some other module
+				% came from some other module imported with 
+				% a `:- import_module' declaration.
+			;	used
+				% This is used internally by the compiler,
+				% to identify declarations which originally
+				% came from some other module and for which
+				% all uses must be module qualified. This
+				% applies to items from modules imported using
+				% `:- use_module', and items from `.opt'
+				% and `.int2' files.
 			;	external(sym_name_specifier)
-				% this is used internally by the compiler,
-				% to identify items which originally
-				% came from a .opt file
 			;	opt_imported
+				% This is used internally by the compiler,
+				% to identify items which originally
+				% came from a .opt file.
 			;	end_module(module_name)
 			;	export(sym_list)
 			;	import(sym_list)
@@ -408,5 +417,11 @@
 :- type module_specifier ==	string.
 :- type module_name 	== 	string.
 :- type arity		==	int.
+
+	% Describes whether an item can be used without an 
+	% explicit module qualifier.
+:- type need_qualifier
+	--->	must_be_qualified
+	;	may_be_unqualified.
 
 %-----------------------------------------------------------------------------%

@@ -28,7 +28,7 @@
 :- import_module hlds_module, hlds_data.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
-:- import_module string.
+:- import_module string, term.
 
 %---------------------------------------------------------------------------%
 

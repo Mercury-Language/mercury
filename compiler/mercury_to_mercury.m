@@ -350,6 +350,10 @@ mercury_output_module_defn(_VarSet, Module, _Context) -->
 		io__write_string(":- import_module "),
 		mercury_write_module_spec_list(ImportedModules),
 		io__write_string(".\n")
+	; { Module = use(module(UsedModules)) } ->
+		io__write_string(":- use_module "),
+		mercury_write_module_spec_list(UsedModules),
+		io__write_string(".\n")
 	; { Module = interface } ->
 		io__write_string(":- interface.\n")
 	; { Module = implementation } ->

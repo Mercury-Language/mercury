@@ -37,8 +37,8 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
-:- import_module mode_util.
-:- import_module bool, list, set, map, std_util, varset.
+:- import_module mode_util, prog_data.
+:- import_module bool, list, set, map, std_util, term, varset.
 
 %-----------------------------------------------------------------------------%
 

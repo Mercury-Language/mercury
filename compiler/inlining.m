@@ -97,7 +97,7 @@
 
 :- import_module hlds_pred, hlds_goal, globals, options, llds.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
-:- import_module passes_aux, code_aux, quantification, det_analysis.
+:- import_module passes_aux, code_aux, quantification, det_analysis, prog_data.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util.
 :- import_module term, varset, require, hlds_data, dependency_graph.

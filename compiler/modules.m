@@ -107,12 +107,14 @@
 :- pred generate_dependencies(string, io__state, io__state).
 :- mode generate_dependencies(in, di, uo) is det.
 
-	% Given a module (well, a list of items),
-	% determine all the modules that it depends upon
-	% (both interface dependencies and also implementation dependencies).
-
-:- pred get_dependencies(item_list, list(string)).
-:- mode get_dependencies(in, out) is det.
+	% get_dependencies(Items, ImportDeps, UseDeps).
+	%	Get the list of modules that a list of items depends on.
+	%	ImportDeps is the list of modules imported using
+	% 	`:- import_module', UseDeps is the list of modules imported
+	%	using `:- use_module'.
+	%
+:- pred get_dependencies(item_list, list(string), list(string)).
+:- mode get_dependencies(in, out, out) is det.
 
 	% Do the importing of the interface files of imported modules.
 
@@ -155,30 +157,42 @@ make_interface(ModuleName, Items0) -->
 	{ get_interface(Items0, yes, InterfaceItems0) },
 	{ term__context_init(Context) },
 	{ varset__init(Varset) },
-	{ get_dependencies(InterfaceItems0, InterfaceDeps) },
+	{ get_dependencies(InterfaceItems0, 
+		InterfaceImportDeps, InterfaceUseDeps) },
 	{ list__append(InterfaceItems0,
 			[module_defn(Varset, imported) - Context],
-			InterfaceItems0a) },
-	{ Module0 = module_imports(ModuleName, [], [], InterfaceItems0a, no) },
+			InterfaceItems1) },
+	{ Module1 = module_imports(ModuleName, [], [], InterfaceItems1, no) },
 		% Get the .int3s that the current .int depends on.
-	process_module_short_interfaces(["mercury_builtin" | InterfaceDeps],
-					".int3", Module0, Module),
-	{ Module = module_imports(_, _, _, InterfaceItems1, Error) },
+	process_module_short_interfaces(
+			["mercury_builtin" | InterfaceImportDeps],
+			".int3", Module1, Module2),
+	{ Module2 = module_imports(_, Direct2, Indirect2,
+			InterfaceItems2, Error2) },
+	{ list__append(InterfaceItems2,
+			[module_defn(Varset, used) - Context],
+			InterfaceItems3) },
+	{ Module3 = module_imports(ModuleName, Direct2, Indirect2,
+			InterfaceItems3, Error2) },
+	process_module_short_interfaces(InterfaceUseDeps,
+			".int3", Module3, Module4),
+
+	{ Module4 = module_imports(_, _, _, InterfaceItems4, Error) },
 	( { Error = yes } ->
 		io__write_strings(["Error reading short interface files.\n",
 				ModuleName, ".int and ",
 				ModuleName, ".int2 not written.\n"])
 	;
 			% Qualify all items.
-		module_qual__module_qualify_items(InterfaceItems1,
-				InterfaceItems2, ModuleName, yes, _, _, _),
+		module_qual__module_qualify_items(InterfaceItems4,
+				InterfaceItems5, ModuleName, yes, _, _, _, _),
 		io__get_exit_status(Status),
 		( { Status \= 0 } ->
 			io__write_strings([ModuleName, ".int not written.\n"])
 		;
-			{ strip_imported_items(InterfaceItems2, [],
-							InterfaceItems3) },
-			check_for_clauses_in_interface(InterfaceItems3,
+			{ strip_imported_items(InterfaceItems5, [],
+							InterfaceItems6) },
+			check_for_clauses_in_interface(InterfaceItems6,
 							InterfaceItems),
 			check_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
@@ -198,7 +212,7 @@ make_short_interface(ModuleName, Items0) -->
 	check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
 	{ get_short_interface(InterfaceItems, ShortInterfaceItems0) },
 	module_qual__module_qualify_items(ShortInterfaceItems0,
-			ShortInterfaceItems, ModuleName, no, _, _, _),
+			ShortInterfaceItems, ModuleName, no, _, _, _, _),
 	write_interface_file(ModuleName, ".int3", ShortInterfaceItems),
 	touch_interface_datestamp(ModuleName, ".date3").
 
@@ -209,9 +223,9 @@ make_short_interface(ModuleName, Items0) -->
 strip_imported_items([], Items0, Items) :-
 	list__reverse(Items0, Items). 
 strip_imported_items([Item - Context | Rest], Items0, Items) :-
-	(
-		Item = module_defn(_, imported)
-	->
+	( Item = module_defn(_, imported) ->
+		list__reverse(Items0, Items)
+	; Item = module_defn(_, used) ->
 		list__reverse(Items0, Items)
 	;
 		strip_imported_items(Rest, [Item - Context | Items0], Items)
@@ -364,20 +378,72 @@ touch_interface_datestamp(ModuleName, Ext) -->
 %-----------------------------------------------------------------------------%
 
 grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
-	{ get_dependencies(Items0, ImportedModules) },
+	{ get_dependencies(Items0, ImportedModules, UsedModules0) },
+
+	{ set__list_to_set(ImportedModules, ImportedSet) },
+	{ set__list_to_set(UsedModules0, UsedSet) },
+
+	{ set__intersect(ImportedSet, UsedSet, BothSet) },
+
+	% Report errors for modules imported using both :- use_module
+	% and :- import_module. Remove the import_module declaration.
+	{ string__append(ModuleName, ".m", FileName) },
+	{ term__context_init(FileName, 0, Context) },
+	( { set__empty(BothSet) } ->
+		{ UsedModules = UsedModules0 }
+	;
+		prog_out__write_context(Context),
+		io__write_string("Warning:"),
+		{ set__to_sorted_list(BothSet, BothList) },
+		( { BothList = [_] } ->
+			io__write_string(" module "),
+			prog_out__write_module_list(BothList),
+			io__write_string(" is ")
+		;
+			io__write_string(" modules "),
+			prog_out__write_module_list(BothList),
+			io__write_string(" are ")
+		),
+		io__write_string("imported using both\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `:- import_module' and `:- use_module' declarations.\n"),
+
+		% Treat the modules with both types of import as if they 
+		% were imported using :- import_module.
+		{ list__delete_elems(UsedModules0, BothList,
+			UsedModules) },
+		globals__io_lookup_bool_option(halt_at_warn, Halt),
+		( { Halt = yes } ->
+			io__set_exit_status(1)
+		;
+			[]
+		)
+	),
+
 	{ get_fact_table_dependencies(Items0, FactDeps) },
 
-		% we add a pseudo-declaration `:- imported' at the end
-		% of the item list, so that make_hlds knows which items
-		% are imported and which are defined in the main module
+		% we add a pseudo-declarations `:- imported' at the end
+		% of the item list. Uses of the items with declarations 
+		% following this do not need module qualifiers.
 	{ varset__init(VarSet) },
-	{ term__context_init(ModuleName, 0, Context) },
 	{ list__append(Items0,
 		[module_defn(VarSet, imported) - Context], Items1) },
 	{ dir__basename(ModuleName, BaseModuleName) },
-	{ Module0 = module_imports(BaseModuleName, [], [], Items1, no) },
+	{ Module1 = module_imports(BaseModuleName, [], [], Items1, no) },
+
 	process_module_interfaces(["mercury_builtin" | ImportedModules], 
-		[], Module0, Module),
+		[], Module1, Module2),
+	{ Module2 = module_imports(_, Direct2, Indirect2, Items2, Error2) },
+
+		% we add a pseudo-declarations `:- used' at the end
+		% of the item list. Uses of the items with declarations 
+		% following this must be module qualified.
+	{ list__append(Items2,
+		[module_defn(VarSet, used) - Context], Items3) },
+	{ Module3 = module_imports(BaseModuleName, Direct2, Indirect2, 
+		Items3, Error2) },
+	process_module_interfaces(UsedModules, [], Module3, Module),
+
 	{ Module = module_imports(_, _, _, _, Error) }.
 
 %-----------------------------------------------------------------------------%
@@ -1091,9 +1157,13 @@ read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps,
 	;
 		{ Items = Items0 }
 	),
-	{ get_dependencies(Items, ImplementationDeps0) },
+	{ get_dependencies(Items, ImplImportDeps, ImplUseDeps) },
+	{ list__append(ImplImportDeps, ImplUseDeps, ImplementationDeps0) },
 	{ get_interface(Items, no, InterfaceItems) },
-	{ get_dependencies(InterfaceItems, InterfaceDeps0) },
+	{ get_dependencies(InterfaceItems, InterfaceImportDeps,
+		InterfaceUseDeps) },
+	{ list__append(InterfaceImportDeps, InterfaceUseDeps, 
+		InterfaceDeps0) },
 	{ InterfaceDeps = ["mercury_builtin" | InterfaceDeps0] },
 	{ ImplementationDeps = ["mercury_builtin" | ImplementationDeps0] },
 	{ get_fact_table_dependencies(Items, FactTableDeps) }.
@@ -1214,7 +1284,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 
-		{ get_dependencies(Items1, IndirectImports1) },
+		{ get_dependencies(Items1, IndirectImports1, IndirectUses1) },
 		( { Error1 = fatal } ->
 			{ DirectImports1 = DirectImports0 }
 		;
@@ -1222,10 +1292,12 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		),
 		{ list__append(IndirectImports0, IndirectImports1,
 			IndirectImports2) },
+		{ list__append(IndirectImports2, IndirectUses1,
+			IndirectImports3) },
 		{ list__append(Items0, Items1, Items2) },
 		{ Module1 = module_imports(ModuleName, DirectImports1, 
 					OldIndirectImports, Items2, Error2) },
-		process_module_interfaces(Imports, IndirectImports2,
+		process_module_interfaces(Imports, IndirectImports3,
 				Module1, Module)
 	).
 
@@ -1236,7 +1308,21 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 :- mode process_module_short_interfaces(in, in, out, di, uo) is det.
 
 process_module_short_interfaces(Imports, Module0, Module) -->
-	process_module_short_interfaces(Imports, ".int2", Module0, Module).
+	{ Module0 = module_imports(ModuleName, DirectImports0,
+		IndirectImports0, Items0, Error0) },
+
+		% Treat indirectly imported items as if they were imported 
+		% using `:- use_module', since all uses of them in the `.int'
+		% files must be module qualified.
+	{ varset__init(Varset) },
+	{ term__context_init(Context) },
+	{ list__append(Items0, [module_defn(Varset, used) - Context], 
+		Items1) },
+
+	{ Module1 = module_imports(ModuleName, DirectImports0,
+		IndirectImports0, Items1, Error0) },
+
+	process_module_short_interfaces(Imports, ".int2", Module1, Module).
 
 
 :- pred process_module_short_interfaces(list(string), string, 
@@ -1277,7 +1363,7 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 
-		{ get_dependencies(Items1, Imports1) },
+		{ get_dependencies(Items1, Imports1, _Uses1) },
 		{ list__append(Imports, Imports1, Imports2) },
 		{ list__append(Items0, Items1, Items2) },
 		{ IndirectImports1 = [Import | IndirectImports0] },
@@ -1288,22 +1374,31 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 
 %-----------------------------------------------------------------------------%
 
-get_dependencies(Items, Deps) :-
-	get_dependencies_2(Items, [], Deps).
+get_dependencies(Items, ImportDeps, UseDeps) :-
+	get_dependencies_2(Items, [], ImportDeps, [], UseDeps).
 
-:- pred get_dependencies_2(item_list, list(string), list(string)).
-:- mode get_dependencies_2(in, in, out) is det.
+:- pred get_dependencies_2(item_list, list(string), list(string), 
+		list(string), list(string)).
+:- mode get_dependencies_2(in, in, out, in, out) is det.
 
-get_dependencies_2([], Deps, Deps).
-get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
+get_dependencies_2([], ImportDeps, ImportDeps, UseDeps, UseDeps).
+get_dependencies_2([Item - _Context | Items], ImportDeps0, ImportDeps,
+		UseDeps0, UseDeps) :-
 	( 
 		Item = module_defn(_VarSet, import(module(Modules)))
 	->
-		list__append(Deps0, Modules, Deps1)
+		list__append(ImportDeps0, Modules, ImportDeps1),
+		UseDeps1 = UseDeps0
 	;
-		Deps1 = Deps0
+		Item = module_defn(_VarSet, use(module(Modules)))
+	->
+		list__append(UseDeps0, Modules, UseDeps1),
+		ImportDeps1 = ImportDeps0
+	;
+		ImportDeps1 = ImportDeps0,
+		UseDeps1 = UseDeps0
 	),
-	get_dependencies_2(Items, Deps1, Deps).
+	get_dependencies_2(Items, ImportDeps1, ImportDeps, UseDeps1, UseDeps).
 
 %-----------------------------------------------------------------------------%
 	% get the fact table dependencies for a module
@@ -1351,16 +1446,22 @@ get_interface_2([Item - Context | Rest], InInterface0,
 	( Item = module_defn(_, interface) ->
 		Items1 = Items0,
 		InInterface1 = yes
-	; Item = module_defn(_, imported) ->
+	; 
+		Item = module_defn(_, Defn),
+		( Defn = imported
+		; Defn = used
+		)
+	->
 		% module_qual.m needs the :- imported declaration.
-		( IncludeImported = yes ->
-			InInterface1 = yes,
+		( IncludeImported = yes, InInterface0 = yes ->
 			Items1 = [Item - Context | Items0]
 		;
-			InInterface1 = no,
 			Items1 = Items0
-		)
-	; Item = module_defn(_, implementation) ->
+		),
+		InInterface1 = InInterface0
+	;
+		Item = module_defn(_, implementation) 
+	->
 		Items1 = Items0,
 		InInterface1 = no
 	;
@@ -1409,6 +1510,10 @@ get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
 			Items, Imports, NeedsImports) :-
 	ItemAndContext = Item0 - Context,
 	( Item0 = module_defn(_, import(_)) ->
+		Items1 = Items0,
+		Imports1 = [ItemAndContext | Imports0],
+		NeedsImports1 = NeedsImports0
+	; Item0 = module_defn(_, use(_)) ->
 		Items1 = Items0,
 		Imports1 = [ItemAndContext | Imports0],
 		NeedsImports1 = NeedsImports0

@@ -43,7 +43,7 @@
 :- implementation.
 
 :- import_module hlds_goal, goal_util.
-:- import_module varset, list, bool, map, set, std_util.
+:- import_module varset, list, bool, map, set, std_util, term.
 
 %-----------------------------------------------------------------------------%
 

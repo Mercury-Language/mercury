@@ -18,7 +18,7 @@
 
 :- module options.
 :- interface.
-:- import_module io, getopt.
+:- import_module char, io, getopt.
 
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.

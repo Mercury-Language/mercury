@@ -51,8 +51,8 @@
 
 :- implementation.
 
-:- import_module llds.
-:- import_module map, list, assoc_list, std_util.
+:- import_module llds, prog_data.
+:- import_module map, list, assoc_list, std_util, term.
 
 	% The continuation_info data structure 
 

@@ -21,6 +21,7 @@
 :- interface.
 
 :- import_module hlds_goal, mode_info, modes.
+:- import_module term.
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,

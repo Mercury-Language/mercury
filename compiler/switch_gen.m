@@ -43,6 +43,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, code_info.
+:- import_module term.
 
 :- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
 	store_map, hlds_goal_info, code_tree, code_info, code_info).

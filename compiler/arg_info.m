@@ -22,7 +22,7 @@
 
 :- module arg_info.
 :- interface. 
-:- import_module hlds_module, llds, globals.
+:- import_module hlds_module, llds, globals, prog_data.
 
 :- pred generate_arg_info(module_info, args_method, module_info).
 :- mode generate_arg_info(in, in, out) is det.

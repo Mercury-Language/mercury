@@ -39,7 +39,7 @@
 :- import_module follow_vars, liveness, hlds_goal, llds.
 :- import_module options, globals, goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module bool, int, require.
+:- import_module bool, int, require, term.
 
 %-----------------------------------------------------------------------------%
 

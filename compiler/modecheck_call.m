@@ -22,6 +22,7 @@
 :- interface.
 
 :- import_module hlds_goal, mode_info.
+:- import_module term.
 
 :- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
 				pair(list(hlds_goal)), mode_info, mode_info).

@@ -26,8 +26,8 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, hlds_data, code_gen.
-:- import_module options, globals, type_util, std_util.
-:- import_module bool, map, tree, int, require.
+:- import_module options, globals, type_util, prog_data.
+:- import_module assoc_list, bool, map, tree, int, require, std_util, term.
 
 % where is the secondary tag (if any) for this primary tag value
 :- type stag_loc	--->	none ; local ; remote.

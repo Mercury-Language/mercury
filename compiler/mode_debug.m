@@ -34,8 +34,9 @@
 
 :- implementation.
 :- import_module globals, std_util, list, assoc_list, io, bool, map.
+:- import_module term, varset.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
-:- import_module hlds_goal, instmap.
+:- import_module hlds_goal, instmap, prog_data.
 
 %-----------------------------------------------------------------------------%
 

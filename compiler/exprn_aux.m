@@ -9,7 +9,7 @@
 :- interface.
 
 :- import_module llds, options.
-:- import_module list, std_util, bool, assoc_list.
+:- import_module list, std_util, bool, assoc_list, term.
 
 :- type exprn_opts
 	--->	nlg_asm_sgt_ubf(

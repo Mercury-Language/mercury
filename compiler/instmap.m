@@ -18,8 +18,8 @@
 :- module instmap.
 
 :- interface.
-:- import_module prog_data, mode_info.
-:- import_module set.
+:- import_module hlds_module, prog_data, mode_info.
+:- import_module set, term.
 
 :- type instmap.
 :- type instmap_delta.

@@ -354,11 +354,20 @@ intermod__traverse_goal(
 	intermod_info_get_tvarset(TVarSet),
 	( { invalid_pred_id(PredId0) } ->
 		{ typecheck__resolve_pred_overloading(ModuleInfo, Args,
-			VarTypes, TVarSet, PredName0, PredName, PredId) }
+			VarTypes, TVarSet, PredName0, PredName1, PredId) }
 	;
 		{ PredId = PredId0 },
-		{ PredName = PredName0 }
+		{ PredName1 = PredName0 }
 	),	
+	(
+		{ PredName1 = qualified(_, _) },
+		{ PredName = PredName1 }
+	;
+		{ PredName1 = unqualified(Name) },
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_module(PredInfo, PredModule) },
+		{ PredName = qualified(PredModule, Name) }
+	),
 	(
 		% We don't need to export complicated unification
 		% pred declarations, since they will be recreated when 
@@ -702,7 +711,7 @@ intermod__write_intermod_info(IntermodInfo) -->
 	mercury_output_bracketed_constant(term__atom(ModName)),
 	io__write_string(".\n"),
 	( { Modules \= [] } ->
-		io__write_string(":- import_module "),
+		io__write_string(":- use_module "),
 		intermod__write_modules(Modules)
 	;
 		[]
@@ -1202,7 +1211,8 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ list__sort_and_remove_dups(DirectImports0, DirectImports1) },
 	read_optimization_interfaces(DirectImports1, [],
 		OptItems, no, OptError),
-	{ get_dependencies(OptItems, NewDeps0) },
+	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
+	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
 	{ set__delete_list(NewDepsSet0, [ModuleName | DirectImports1],
 						NewDepsSet) },

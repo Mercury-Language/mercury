@@ -53,7 +53,7 @@
 :- import_module passes_aux, inst_match.
 
 :- import_module bool, char, int, list, map, require.
-:- import_module set, std_util, string, varset. 
+:- import_module set, std_util, string, term, varset. 
 
 		% Information about the dependencies of a variable
 		% that is not known to be used.

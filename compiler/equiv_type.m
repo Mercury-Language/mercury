@@ -37,7 +37,7 @@
 
 :- implementation.
 :- import_module bool, require, std_util, map, term, varset.
-:- import_module type_util, prog_util, prog_out.
+:- import_module hlds_data, type_util, prog_data, prog_util, prog_out.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

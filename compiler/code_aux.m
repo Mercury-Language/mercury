@@ -52,7 +52,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, llds_out, type_util.
+:- import_module hlds_module, llds, llds_out, type_util.
 :- import_module bool, string, set, term, std_util, assoc_list, require.
 :- import_module list, map.
 

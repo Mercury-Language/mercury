@@ -257,27 +257,27 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
-	{ ModuleImports0 = module_imports(Module, LongDeps,
-					ShortDeps, Items0, _) },
+	{ ModuleImports0 = module_imports(Module, LongDeps, ShortDeps, _, _) },
 	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps), !,
-	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
-					Stats, _, UndefTypes0, UndefModes0), !,
-		% Items from optimization interfaces are needed before
-		% equivalence types are expanded, but after module
-		% qualification.
-	{ ModuleImports1 = module_imports(Module, LongDeps, ShortDeps,
-							Items1, no) },
+
 		% Errors in .opt files result in software errors.
-	mercury_compile__maybe_grab_optfiles(ModuleImports1, Verbose,
-					 ModuleImports2, IntermodError), !,
-	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
+	mercury_compile__maybe_grab_optfiles(ModuleImports0, Verbose,
+				 ModuleImports1, IntermodError), !,
+
+	{ ModuleImports1 = module_imports(_, _, _, Items1, _) },
+	mercury_compile__module_qualify_items(Items1, Items2, Module, Verbose,
+				Stats, MQInfo, _, UndefTypes0, UndefModes0), !,
+
 	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
-					Items, CircularTypes, EqvMap), !,
+				Items, CircularTypes, EqvMap), !,
 	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
-	mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
-				HLDS0, UndefTypes2, UndefModes2, FoundError), !,
+
+	mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, 
+			Stats, HLDS0, UndefTypes2, UndefModes2, FoundError), !,
+
 	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
+
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"), !,
 
 	% Only stop on syntax errors in .opt files.
@@ -288,16 +288,16 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 	).
 
 :- pred mercury_compile__module_qualify_items(item_list, item_list, string,
-		bool, bool, int, bool, bool, io__state, io__state).
+		bool, bool, mq_info, int, bool, bool, io__state, io__state).
 :- mode mercury_compile__module_qualify_items(in, out, in, in, in, out, out,
-			out, di, uo) is det. 
+			out, out, di, uo) is det. 
 
-mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, Stats,
-			NumErrors, UndefTypes, UndefModes) -->
+mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, 
+			Stats, MQInfo, NumErrors, UndefTypes, UndefModes) -->
 	maybe_write_string(Verbose, "% Module qualifying items...\n"),
 	maybe_flush_output(Verbose),
 	module_qual__module_qualify_items(Items0, Items, ModuleName, yes,
-				NumErrors, UndefTypes, UndefModes),
+				MQInfo, NumErrors, UndefTypes, UndefModes),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
@@ -332,16 +332,16 @@ mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
-:- pred mercury_compile__make_hlds(module_name, item_list, eqv_map, bool, bool,
-	module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__make_hlds(in, in, in, in, in,
+:- pred mercury_compile__make_hlds(module_name, item_list, mq_info, eqv_map, 
+	bool, bool, module_info, bool, bool, bool, io__state, io__state).
+:- mode mercury_compile__make_hlds(in, in, in, in, in, in,
 	out, out, out, out, di, uo) is det.
 
-mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
+mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 		HLDS, UndefTypes, UndefModes, FoundSemanticError) -->
 	maybe_write_string(Verbose, "% Converting parse tree to hlds...\n"),
 	{ Prog = module(Module, Items) },
-	parse_tree_to_hlds(Prog, EqvMap, HLDS, UndefTypes, UndefModes),
+	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
 		{ FoundSemanticError = yes },

@@ -12,7 +12,7 @@
 
 :- interface.
 
-:- import_module hlds_data, prog_data, instmap.
+:- import_module hlds_data, hlds_pred, llds, prog_data, instmap.
 :- import_module list, assoc_list, set, map, std_util.
 
 	% Here is how goals are represented

@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, hlds_module, prog_data, instmap.
-:- import_module bool, list, map, std_util, varset.
+:- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
+:- import_module bool, list, map, std_util, term, varset.
 
 :- implementation.
 
@@ -79,6 +79,13 @@
 :- type pred_proc_id	--->	proc(pred_id, proc_id).
 :- type pred_proc_list	==	list(pred_proc_id).
 
+	% The clauses_info structure contains the clauses for a predicate
+	% after conversion from the item_list by make_hlds.m.
+	% Typechecking is performed on the clauses info, then the clauses
+	% are copied to create the proc_info for each procedure.
+	% After mode analysis the clauses and the procedure goals are not
+	% guaranteed to be the same, and the clauses are only kept so that
+	% the optimized goal can be compared with the original in HLDS dumps.
 :- type clauses_info	--->	clauses_info(
 					varset,		% variable names
 					map(var, type), % variable types from
@@ -125,17 +132,12 @@
 	% The type `import_status' describes whether an entity (a predicate,
 	% type, inst, or mode) is local to the current module, exported from
 	% the current module, or imported from some other module.
-	% Only predicates can have status opt_decl, pseudo_exported
-	% or pseudo_imported.
+	% Only predicates can have status pseudo_exported or pseudo_imported.
 	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
-	;	opt_decl	% predicate declared in an optimization
-				% interface -  this is needed to identify 
-				% predicates that must be ignored when
-				% processing local predicates
 	;	opt_imported	% defined in the optimization 
 				% interface of another module
 	;	abstract_imported % describes a type with only an abstract
@@ -444,7 +446,7 @@ pred_info_procids(PredInfo, ProcIds) :-
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ( ImportStatus = imported ; ImportStatus = opt_decl ) ->
+	( ImportStatus = imported ->
 		ProcIds = []
 	; ImportStatus = pseudo_imported ->
 		pred_info_procids(PredInfo, ProcIds0),
@@ -504,14 +506,7 @@ pred_info_import_status(PredInfo, ImportStatus) :-
 				_).
 
 pred_info_is_imported(PredInfo) :-
-	pred_info_import_status(PredInfo, ImportStatus),
-	(
-		ImportStatus = imported
-	;
-		% opt_decl is equivalent to imported, except only 
-		% opt_imported preds can call an opt_decl pred.
-		ImportStatus = opt_decl
-	).
+	pred_info_import_status(PredInfo, imported).
 
 pred_info_is_pseudo_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),

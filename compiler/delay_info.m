@@ -20,7 +20,8 @@
 
 :- interface.
 
-:- import_module mode_errors.
+:- import_module hlds_goal, mode_errors.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
