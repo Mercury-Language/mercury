@@ -9,6 +9,7 @@ SUBDIRS = \
 	hard_coded \
 	invalid \
 	misc_tests \
+	recompilation \
 	tabling \
 	term \
 	valid \
