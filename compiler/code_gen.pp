@@ -264,6 +264,7 @@ generate_category_code_2(deterministic, Goal, Instrs, Used) -->
 		{ Used = no }
 	;
 		code_gen__generate_det_goal(Goal, Instr1),
+		code_info__get_instmap(InstMap),
 		% generate the prolog for the clause, which for deterministic
 		% procedures creates a label, increments the
 		% stack pointer to reserve space for local variables and
@@ -275,7 +276,13 @@ generate_category_code_2(deterministic, Goal, Instrs, Used) -->
 		% are output parameters which are known from goal_info,
 		% and decrement the stack pointer to free local variables,
 		% and restore the succip.
-		code_gen__generate_det_epilog(Instr2),
+		(
+			{ InstMap \= unreachable }
+		->
+			code_gen__generate_det_epilog(Instr2)
+		;
+			{ Instr2 = empty }
+		),
 		% combine the prolog, body and epilog
 		{ Instrs = tree(Instr0, tree(Instr1,Instr2)) }
 	).
