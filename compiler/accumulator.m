@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2004 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -245,12 +245,12 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 		->
 			true
 		;
-			describe_one_pred_name(!.ModuleInfo,
-				should_module_qualify, PredId, PredName),
+			PredPieces = describe_one_pred_name(!.ModuleInfo,
+				should_module_qualify, PredId),
 			pred_info_context(PredInfo, Context),
 
 			error_util__write_error_pieces(Context, 0,
-				[words("In"), words(PredName)], !IO),
+				[words("In") | PredPieces], !IO),
 
 			proc_info_varset(!.ProcInfo, VarSet),
 			output_warnings(Warnings, VarSet, !.ModuleInfo, !IO),
@@ -332,16 +332,16 @@ output_warnings([W | Ws], VarSet, ModuleInfo, !IO) :-
 
 output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
 		Context, Formats) :-
-	describe_one_pred_name(ModuleInfo, should_module_qualify, PredId,
-		PredStr),
+	PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId),
 
 	varset__lookup_name(VarSet, VarA, VarAStr0),
 	varset__lookup_name(VarSet, VarB, VarBStr0),
 	VarAStr = string__append_list(["`", VarAStr0, "'"]),
 	VarBStr = string__append_list(["`", VarBStr0, "'"]),
 
-	Formats = [words("warning: the call to"), words(PredStr),
-		words("has had the location of the variables"),
+	Formats = [words("warning: the call to")] ++ PredPieces ++
+		[words("has had the location of the variables"),
 		words(VarAStr), words("and"), words(VarBStr),
 		words("swapped to allow accumulator introduction.")
 		].

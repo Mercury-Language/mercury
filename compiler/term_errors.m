@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,17 +161,15 @@ indirect_error(does_not_term_pragma(_)).
 term_errors__report_term_errors(SCC, Errors, Module, !IO) :-
 	get_context_from_scc(SCC, Module, Context),
 	( SCC = [PPId] ->
-		Pieces0 = [words("Termination of")],
-		describe_one_proc_name(Module, should_module_qualify, PPId,
-			PredName),
-		list__append(Pieces0, [fixed(PredName)], Pieces1),
+		Pieces1 = [words("Termination of")] ++
+			describe_one_proc_name(Module, should_module_qualify,
+				PPId),
 		Single = yes(PPId)
 	;
-		Pieces0 = [words("Termination of the "),
-			words("mutually recursive procedures")],
-		describe_several_proc_names(Module, should_module_qualify, SCC,
-			ProcNamePieces),
-		list__append(Pieces0, ProcNamePieces, Pieces1),
+		Pieces1 = [words("Termination of the "),
+			words("mutually recursive procedures")] ++
+			describe_several_proc_names(Module,
+				should_module_qualify, SCC),
 		Single = no
 	),
 	(
@@ -203,17 +201,15 @@ term_errors__report_term_errors(SCC, Errors, Module, !IO) :-
 term_errors__report_arg_size_errors(SCC, Errors, Module, !IO) :-
 	get_context_from_scc(SCC, Module, Context),
 	( SCC = [PPId] ->
-		Pieces0 = [words("Termination constant of")],
-		describe_one_proc_name(Module, should_module_qualify, PPId,
-			ProcName),
-		list__append(Pieces0, [fixed(ProcName)], Pieces1),
+		Pieces1 = [words("Termination constant of")] ++
+			describe_one_proc_name(Module, should_module_qualify,
+				PPId),
 		Single = yes(PPId)
 	;
-		Pieces0 = [words("Termination constants"),
-			words("of the mutually recursive procedures")],
-		describe_several_proc_names(Module, should_module_qualify, SCC,
-			ProcNamePieces),
-		list__append(Pieces0, ProcNamePieces, Pieces1),
+		Pieces1 = [words("Termination constants"),
+			words("of the mutually recursive procedures")] ++
+			describe_several_proc_names(Module,
+				should_module_qualify, SCC),
 		Single = no
 	),
 	Piece2 = words("set to infinity for the following"),
@@ -296,37 +292,35 @@ term_errors__description(inf_call(CallerPPId, CalleePPId),
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = words("It")
+		Pieces1 = [words("It")]
 	;
 		Single = no,
-		describe_one_proc_name(Module, should_module_qualify,
-			CallerPPId, ProcName),
-		Piece1 = fixed(ProcName)
+		Pieces1 = describe_one_proc_name(Module, should_module_qualify,
+			CallerPPId)
 	),
 	Piece2 = words("calls"),
-	describe_one_proc_name(Module, should_module_qualify, CalleePPId,
-		CalleePiece),
+	CalleePieces = describe_one_proc_name(Module, should_module_qualify,
+		CalleePPId),
 	Pieces3 = [words("with an unbounded increase"),
 		words("in the size of the input arguments.")],
-	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
+	Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ Pieces3.
 
 term_errors__description(can_loop_proc_called(CallerPPId, CalleePPId),
 		Single, Module, Pieces, no) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = words("It")
+		Pieces1 = [words("It")]
 	;
 		Single = no,
-		describe_one_proc_name(Module, should_module_qualify,
-			CallerPPId, ProcName),
-		Piece1 = fixed(ProcName)
+		Pieces1 = describe_one_proc_name(Module, should_module_qualify,
+			CallerPPId)
 	),
 	Piece2 = words("calls"),
-	describe_one_proc_name(Module, should_module_qualify,
-		CalleePPId, CalleePiece),
-	Pieces3 = [words("which could not be proven to terminate.")],
-	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
+	CalleePieces = describe_one_proc_name(Module, should_module_qualify,
+		CalleePPId),
+	Piece3 = words("which could not be proven to terminate."),
+	Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
 term_errors__description(imported_pred, _, _, Pieces, no) :-
 	Pieces = [words("It contains one or more"),
@@ -338,36 +332,34 @@ term_errors__description(horder_args(CallerPPId, CalleePPId), Single, Module,
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = words("It")
+		Pieces1 = [words("It")]
 	;
 		Single = no,
-		describe_one_proc_name(Module, should_module_qualify,
-			CallerPPId, ProcName),
-		Piece1 = fixed(ProcName)
+		Pieces1 = describe_one_proc_name(Module, should_module_qualify,
+			CallerPPId)
 	),
 	Piece2 = words("calls"),
-	describe_one_proc_name(Module, should_module_qualify,
-		CalleePPId, CalleePiece),
-	Pieces3 = [words("with one or more higher order arguments.")],
-	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
+	CalleePieces = describe_one_proc_name(Module, should_module_qualify,
+		CalleePPId),
+	Piece3 = words("with one or more higher order arguments."),
+	Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
 term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
 		Single, Module, Pieces, yes(CalleePPId)) :-
 	(
 		Single = yes(PPId),
 		require(unify(PPId, CallerPPId), "caller outside this SCC"),
-		Piece1 = words("It")
+		Pieces1 = [words("It")]
 	;
 		Single = no,
-		describe_one_proc_name(Module, should_module_qualify,
-			CallerPPId, ProcName),
-		Piece1 = fixed(ProcName)
+		Pieces1 = describe_one_proc_name(Module, should_module_qualify,
+			CallerPPId)
 	),
 	Piece2 = words("calls"),
-	describe_one_proc_name(Module, should_module_qualify,
-		CalleePPId, CalleePiece),
-	Pieces3 = [words("which has a termination constant of infinity.")],
-	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
+	CalleePieces = describe_one_proc_name(Module, should_module_qualify,
+		CalleePPId),
+	Piece3 = words("which has a termination constant of infinity."),
+	Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
 
 term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		Single, Module, Pieces, no) :-
@@ -379,18 +371,18 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		;
 			% XXX this should never happen (but it does)
 			% error("not_subset outside this SCC"),
-			describe_one_proc_name(Module, should_module_qualify,
-				ProcPPId, PPIdPiece),
+			PPIdPieces = describe_one_proc_name(Module,
+				should_module_qualify, ProcPPId),
 			Pieces1 = [words("The set of"),
-				words("output supplier variables of"),
-				fixed(PPIdPiece)]
+				words("output supplier variables of") |
+				PPIdPieces]
 		)
 	;
 		Single = no,
-		describe_one_proc_name(Module, should_module_qualify,
-			ProcPPId, PPIdPiece),
-		Pieces1 = [words("The set of output supplier variables of"),
-			fixed(PPIdPiece)]
+		PPIdPieces = describe_one_proc_name(Module,
+			should_module_qualify, ProcPPId),
+		Pieces1 = [words("The set of output supplier variables of") |
+			PPIdPieces]
 	),
 	ProcPPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
@@ -408,17 +400,16 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 
 term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	( CallSites = [DirectCall] ->
-		describe_one_call_site(Module, should_module_qualify,
-			DirectCall, Site),
-		Pieces = [words("At the recursive call to"),
-			fixed(Site),
-			words("the arguments are"),
+		SitePieces = describe_one_call_site(Module,
+			should_module_qualify, DirectCall),
+		Pieces = [words("At the recursive call to") | SitePieces] ++
+			[words("the arguments are"),
 			words("not guaranteed to decrease in size.")]
 	;
 		Pieces1 = [words("In the recursive cycle"),
 			words("through the calls to")],
-		describe_several_call_sites(Module, should_module_qualify,
-			CallSites, SitePieces),
+		SitePieces = describe_several_call_sites(Module,
+			should_module_qualify, CallSites),
 		Pieces2 = [words("the arguments are"),
 			words("not guaranteed to decrease in size.")],
 		list__condense([Pieces1, SitePieces, Pieces2], Pieces)
@@ -449,15 +440,13 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		PPId = proc(SCCPredId, _),
 		require(unify(PredId, SCCPredId),
 			"does not terminate pragma outside this SCC"),
-		Piece2 = words("it.")
+		Pieces2 = [words("it.")]
 	;
 		Single = no,
-		describe_one_pred_name(Module, should_module_qualify,
-			PredId, Piece2Nodot),
-		string__append(Piece2Nodot, ".", Piece2Str),
-		Piece2 = fixed(Piece2Str)
+		Pieces2 = describe_one_pred_name(Module, should_module_qualify,
+			PredId) ++ [suffix(".")]
 	),
-	list__append(Pieces1, [Piece2], Pieces).
+	list__append(Pieces1, Pieces2, Pieces).
 
 term_errors__description(inconsistent_annotations, _, _, Pieces, no) :-
 	Pieces = [words("The termination pragmas are inconsistent.")].

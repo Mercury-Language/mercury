@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,34 +30,34 @@
 	--->	should_module_qualify
 	;	should_not_module_qualify.
 
-:- pred describe_one_pred_name(module_info::in, should_module_qualify::in,
-	pred_id::in, string::out) is det.
+:- func describe_one_pred_name(module_info, should_module_qualify, pred_id)
+	= list(format_component).
 
-:- pred describe_one_pred_name_mode(module_info::in, should_module_qualify::in,
-	pred_id::in, inst_varset::in, list(mode)::in, string::out) is det.
+:- func describe_one_pred_name_mode(module_info, should_module_qualify,
+	pred_id, inst_varset, list(mode)) = list(format_component).
 
-:- pred describe_several_pred_names(module_info::in, should_module_qualify::in,
-	list(pred_id)::in, list(format_component)::out) is det.
+:- func describe_several_pred_names(module_info, should_module_qualify,
+	list(pred_id)) = list(format_component).
 
-:- pred describe_one_proc_name(module_info::in, should_module_qualify::in,
-	pred_proc_id::in, string::out) is det.
+:- func describe_one_proc_name(module_info, should_module_qualify,
+	pred_proc_id) = list(format_component).
 
-:- pred describe_one_proc_name_mode(module_info::in, should_module_qualify::in,
-	pred_proc_id::in, string::out) is det.
+:- func describe_one_proc_name_mode(module_info, should_module_qualify,
+	pred_proc_id) = list(format_component).
 
-:- pred describe_several_proc_names(module_info::in, should_module_qualify::in,
-	list(pred_proc_id)::in, list(format_component)::out) is det.
+:- func describe_several_proc_names(module_info, should_module_qualify,
+	list(pred_proc_id)) = list(format_component).
 
-:- pred describe_one_call_site(module_info::in, should_module_qualify::in,
-	pair(pred_proc_id, prog_context)::in, string::out) is det.
+:- func describe_one_call_site(module_info, should_module_qualify,
+	pair(pred_proc_id, prog_context)) = list(format_component).
 
-:- pred describe_several_call_sites(module_info::in, should_module_qualify::in,
-	assoc_list(pred_proc_id, prog_context)::in,
-	list(format_component)::out) is det.
+:- func describe_several_call_sites(module_info, should_module_qualify,
+	assoc_list(pred_proc_id, prog_context)) = list(format_component).
 
 :- implementation.
 
 :- import_module check_hlds__mode_util.
+:- import_module hlds__special_pred.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
@@ -70,33 +70,45 @@
 	% The code of this predicate duplicates the functionality of
 	% hlds_out__write_pred_id. Changes here should be made there as well.
 
-describe_one_pred_name(Module, ShouldModuleQualify, PredId, Piece) :-
+describe_one_pred_name(Module, ShouldModuleQualify, PredId) = Pieces :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
 	Arity = pred_info_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	PredOrFuncPart = pred_or_func_to_string(PredOrFunc),
+	PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
 	adjust_func_arity(PredOrFunc, OrigArity, Arity),
-	(
-		pred_info_get_goal_type(PredInfo, promise(PromiseType))
-	->
-		Piece = "`" ++ promise_to_string(PromiseType)
-			++ "' declaration"
+	pred_info_get_markers(PredInfo, Markers),
+	pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial),
+	( MaybeSpecial = yes(SpecialId - TypeCtor) ->
+		special_pred_description(SpecialId, Descr),
+		TypeCtor = TypeSymName - TypeArity,
+		( TypeArity = 0 ->
+			Pieces = [words(Descr), words("for type"),
+				sym_name(TypeSymName)]
+		;
+			Pieces = [words(Descr), words("for type constructor"),
+				sym_name(TypeSymName)]
+		)
+	; check_marker(Markers, class_instance_method) ->
+		Pieces = [words("type class method implementation")]
+	; pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
+		Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
+			words("declaration")]
 	;
 		string__int_to_string(OrigArity, ArityPart),
 		string__append_list([
-			PredOrFuncPart,
-			" `",
+			"`",
 			module_qualification(ModuleName, ShouldModuleQualify),
 			PredName,
 			"/",
 			ArityPart,
-			"'"], Piece)
+			"'"], SpecStr),
+		Pieces = [words(PredOrFuncStr), fixed(SpecStr)]
 	).
 
 describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
-		ArgModes0, Piece) :-
+		ArgModes0) = Pieces :-
 	module_info_pred_info(Module, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
@@ -129,54 +141,48 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
 		module_qualification(ModuleName, ShouldModuleQualify),
 		PredName,
 		ArgModesPart,
-		"'"], Piece).
+		"'"], Descr),
+	Pieces = [words(Descr)].
 
-describe_several_pred_names(Module, ShouldModuleQualify, PredId, Pieces) :-
-	list__map(describe_one_pred_name(Module, ShouldModuleQualify),
-		PredId, Pieces0),
-	list_to_pieces(Pieces0, Pieces).
+describe_several_pred_names(Module, ShouldModuleQualify, PredIds) = Pieces :-
+	PiecesList = list__map(
+		describe_one_pred_name(Module, ShouldModuleQualify), PredIds),
+	Pieces = component_lists_to_pieces(PiecesList).
 
-describe_one_proc_name(Module, ShouldModuleQualify, proc(PredId, ProcId),
-		Piece) :-
-	describe_one_pred_name(Module, ShouldModuleQualify, PredId, PredPiece),
+describe_one_proc_name(Module, ShouldModuleQualify, proc(PredId, ProcId))
+		= Pieces :-
+	PredPieces = describe_one_pred_name(Module, ShouldModuleQualify,
+		PredId),
 	proc_id_to_int(ProcId, ProcIdInt),
-	string__int_to_string(ProcIdInt, ProcIdPart),
-	string__append_list([
-		PredPiece,
-		" mode ",
-		ProcIdPart
-		], Piece).
+	string__int_to_string(ProcIdInt, ProcIdStr),
+	Pieces = PredPieces ++ [words("mode"), words(ProcIdStr)].
 
-describe_one_proc_name_mode(Module, ShouldModuleQualify, proc(PredId, ProcId),
-		Piece) :-
+describe_one_proc_name_mode(Module, ShouldModuleQualify, proc(PredId, ProcId))
+		= Pieces :-
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	proc_info_inst_varset(ProcInfo, InstVarSet),
-	describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId,
-		InstVarSet, ArgModes, Piece).
+	Pieces = describe_one_pred_name_mode(Module, ShouldModuleQualify,
+		PredId, InstVarSet, ArgModes).
 
-describe_several_proc_names(Module, ShouldModuleQualify, PPIds, Pieces) :-
-	list__map(describe_one_proc_name(Module, ShouldModuleQualify),
-		PPIds, Pieces0),
-	list_to_pieces(Pieces0, Pieces).
+describe_several_proc_names(Module, ShouldModuleQualify, PPIds) = Pieces :-
+	PiecesList = list__map(
+		describe_one_proc_name(Module, ShouldModuleQualify), PPIds),
+	Pieces = component_lists_to_pieces(PiecesList).
 
-describe_one_call_site(Module, ShouldModuleQualify, PPId - Context, Piece) :-
-	describe_one_proc_name(Module, ShouldModuleQualify, PPId, ProcName),
+describe_one_call_site(Module, ShouldModuleQualify, PPId - Context) = Pieces :-
+	ProcNamePieces = describe_one_proc_name(Module, ShouldModuleQualify,
+		PPId),
 	term__context_file(Context, FileName),
 	term__context_line(Context, LineNumber),
-	string__int_to_string(LineNumber, LineNumberPart),
-	string__append_list([
-		ProcName,
-		" at ",
-		FileName,
-		":",
-		LineNumberPart
-		], Piece).
+	string__int_to_string(LineNumber, LineNumberStr),
+	Pieces = ProcNamePieces ++
+		[words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].
 
-describe_several_call_sites(Module, ShouldModuleQualify, Sites, Pieces) :-
-	list__map(describe_one_call_site(Module, ShouldModuleQualify),
-		Sites, Pieces0),
-	list_to_pieces(Pieces0, Pieces).
+describe_several_call_sites(Module, ShouldModuleQualify, Sites) = Pieces :-
+	PiecesList = list__map(
+		describe_one_call_site(Module, ShouldModuleQualify), Sites),
+	Pieces = component_lists_to_pieces(PiecesList).
 
 :- func module_qualification(module_name, should_module_qualify) = string.
 

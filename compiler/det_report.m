@@ -280,7 +280,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
 			VerboseErrors = yes,
 			solutions(get_valid_dets(EvalMethod), Detisms),
 			DetismStrs = list__map(determinism_to_string, Detisms),
-			list_to_pieces(DetismStrs, DetismPieces),
+			DetismPieces = list_to_pieces(DetismStrs),
 			write_error_pieces_not_first_line(Context, 0,
 				[words("The pragma requested is only valid"),
 				words("for the following determinism(s):") |
@@ -370,23 +370,24 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
 		% ... then it is an error.
 		proc_info_context(ProcInfo, FuncContext),
 		proc_info_inst_varset(ProcInfo, InstVarSet),
-		describe_one_pred_name_mode(!.ModuleInfo,
+		PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
 			should_not_module_qualify, PredId, InstVarSet,
-			PredArgModes, PredModeDesc),
-		Pieces = [words("Error: invalid determinism for"),
-			fixed(PredModeDesc ++ ":"), nl,
-			words("the primary mode of a function cannot be `" ++
-				mercury_det_to_string(InferredDetism) ++
+			PredArgModes),
+		Pieces = [words("Error: invalid determinism for")]
+			++ PredModePieces ++ [suffix(":"), nl,
+			words("the primary mode of a function cannot be"),
+			words("`" ++ mercury_det_to_string(InferredDetism) ++
 				"'.")],
 		write_error_pieces(FuncContext, 0, Pieces, !IO),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
 			!IO),
-		( VerboseErrors = yes ->
+		(
+			VerboseErrors = yes,
 			ExtMsg = func_primary_mode_det_msg,
 			write_error_pieces_not_first_line(FuncContext, 0,
 				[words(ExtMsg)], !IO)
 		;
-			true
+			VerboseErrors = no
 		),
 		module_info_incr_errors(!ModuleInfo)
 	;
@@ -426,9 +427,9 @@ report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
 	record_warning(!IO),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_context(ProcInfo, Context),
-	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
-		proc(PredId, ProcId), Desc),
-	Pieces = [words("In " ++ Desc ++ ":"), nl,
+	ProcPieces = describe_one_proc_name_mode(ModuleInfo,
+		should_not_module_qualify, proc(PredId, ProcId)),
+	Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
 		words(Message), nl,
 		words("Declared `"
 			++ determinism_to_string(DeclaredDetism)
@@ -1160,10 +1161,10 @@ det_report_msg(det_goal_has_no_outputs(Context), _, !IO) :-
 	),
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(warn_obsolete(PredId, Context), ModuleInfo, !IO) :-
-	describe_one_pred_name(ModuleInfo, should_module_qualify, PredId,
-		PredDesc),
-	Pieces = [words("Warning: call to obsolete "),
-		fixed(PredDesc ++ ".")],
+	PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId),
+	Pieces = [words("Warning: call to obsolete")] ++ PredPieces
+		++ [suffix(".")],
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(warn_infinite_recursion(Context), _ModuleInfo, !IO) :-
 	% it would be better if we supplied more information than just
@@ -1296,12 +1297,11 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
 		ModuleInfo, !IO) :-
 	goal_info_get_context(GoalInfo, Context),
-	describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId,
-		PredDesc),
+	PredPieces = describe_one_pred_name(ModuleInfo,
+		should_not_module_qualify, PredId),
 	DetStr = mercury_det_to_string(Detism),
-	Pieces = [words("Error: call to"),
-		fixed(PredDesc),
-		words("with determinism `" ++ DetStr ++ "'"),
+	Pieces = [words("Error: call to")] ++ PredPieces ++
+		[words("with determinism `" ++ DetStr ++ "'"),
 		words("occurs in a context which requires all solutions.")],
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
@@ -1314,11 +1314,11 @@ det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 			PredId, ProcId), ModuleInfo, !IO) :-
-	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
-		proc(PredId, ProcId), Desc),
+	PredPieces = describe_one_proc_name_mode(ModuleInfo,
+		should_not_module_qualify, proc(PredId, ProcId)),
 	goal_info_get_context(GoalInfo, Context),
 	write_error_pieces(Context, 0,
-		[words("In " ++ Desc ++ ":"), nl,
+		[words("In")] ++ PredPieces ++ [suffix(":"), nl,
 		words("Determinism error in lambda expression."), nl,
 		words("Declared `"
 			++ determinism_to_string(DeclaredDetism)
@@ -1359,18 +1359,18 @@ det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),
 		ModuleInfo, !IO) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_context(ProcInfo, Context),
-	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
-		proc(PredId, ProcId), Desc),
-	Pieces = [words("In " ++ Desc ++ ":"), nl,
+	ProcPieces = describe_one_proc_name_mode(ModuleInfo,
+		should_not_module_qualify, proc(PredId, ProcId)),
+	Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
 		words("error: `:- pragma c_code(...)' for a procedure"),
 		words("without a determinism declaration.")],
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(has_io_state_but_not_det(PredId, ProcId), ModuleInfo, !IO) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_context(ProcInfo, Context),
-	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
-		proc(PredId, ProcId), Desc),
-	Pieces = [words("In " ++ Desc ++ ":"), nl,
+	ProcPieces = describe_one_proc_name_mode(ModuleInfo,
+		should_not_module_qualify, proc(PredId, ProcId)),
+	Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
 		words("error: invalid determinism for a predicate"),
 		words("with I/O state arguments.")],
 	write_error_pieces(Context, 0, Pieces, !IO),
@@ -1388,14 +1388,14 @@ det_report_msg(will_not_throw_with_erroneous(PredId, ProcId), ModuleInfo,
 		!IO) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_context(ProcInfo, Context),
-	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
-		proc(PredId, ProcId), Desc),
-	Pieces = [words(Desc ++ "has determinism erroneous but also has"),
-		  words("foreign clauses that have a"),
-		  fixed("`will_not_throw_exception'"),
-		  words("attribute.  This attribute cannot be applied"),
-		  words("to erroneous procedures.")
-		],
+	ProcPieces = describe_one_proc_name_mode(ModuleInfo,
+		should_not_module_qualify, proc(PredId, ProcId)),
+	Pieces = ProcPieces ++
+		[words("has determinism erroneous but also has"),
+		words("foreign clauses that have a"),
+		fixed("`will_not_throw_exception' attribute."),
+		words("This attribute cannot be applied"),
+		words("to erroneous procedures.")],
 	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(export_model_non_proc(PredId, ProcId, Detism), ModuleInfo,
 		!IO) :-
@@ -1435,9 +1435,9 @@ get_exported_proc_context([ Proc | Procs], PredId, ProcId, Context) :-
 det_report_seen_call_id(ModuleInfo, SeenCall) = Pieces :-
 	(
 		SeenCall = seen_call(PredId, _),
-		describe_one_pred_name(ModuleInfo, should_module_qualify,
-			PredId, PredDesc),
-		Pieces = [words("call to"), fixed(PredDesc)]
+		PredPieces = describe_one_pred_name(ModuleInfo,
+			should_module_qualify, PredId),
+		Pieces = [words("call to") | PredPieces]
 	;
 		SeenCall = higher_order_call,
 		Pieces = [words("higher-order call")]

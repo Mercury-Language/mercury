@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2361,18 +2361,18 @@ output_pragma_output(Output, !IO) :-
 :- pred output_reset_trail_reason(reset_trail_reason::in, io::di, io::uo)
 	is det.
 
-output_reset_trail_reason(undo) -->
-	io__write_string("MR_undo").
-output_reset_trail_reason(commit) -->
-	io__write_string("MR_commit").
-output_reset_trail_reason(solve) -->
-	io__write_string("MR_solve").
-output_reset_trail_reason(exception) -->
-	io__write_string("MR_exception").
-output_reset_trail_reason(retry) -->
-	io__write_string("MR_retry").
-output_reset_trail_reason(gc) -->
-	io__write_string("MR_gc").
+output_reset_trail_reason(undo, !IO) :-
+	io__write_string("MR_undo", !IO).
+output_reset_trail_reason(commit, !IO) :-
+	io__write_string("MR_commit", !IO).
+output_reset_trail_reason(solve, !IO) :-
+	io__write_string("MR_solve", !IO).
+output_reset_trail_reason(exception, !IO) :-
+	io__write_string("MR_exception", !IO).
+output_reset_trail_reason(retry, !IO) :-
+	io__write_string("MR_retry", !IO).
+output_reset_trail_reason(gc, !IO) :-
+	io__write_string("MR_gc", !IO).
 
 :- pred output_livevals(list(lval)::in, io::di, io::uo) is det.
 
@@ -2452,36 +2452,45 @@ output_layout_locn(Locn, !IO) :-
 
 :- pred output_live_value_type(live_value_type::in, io::di, io::uo) is det.
 
-output_live_value_type(succip) --> io__write_string("type succip").
-output_live_value_type(curfr) --> io__write_string("type curfr").
-output_live_value_type(maxfr) --> io__write_string("type maxfr").
-output_live_value_type(redofr) --> io__write_string("type redofr").
-output_live_value_type(redoip) --> io__write_string("type redoip").
-output_live_value_type(hp) --> io__write_string("type hp").
-output_live_value_type(trail_ptr) --> io__write_string("type trail_ptr").
-output_live_value_type(ticket) --> io__write_string("type ticket").
-output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(Var, Name, Type, LldsInst)) -->
-	io__write_string("var("),
-	{ term__var_to_int(Var, VarInt) },
-	io__write_int(VarInt),
-	io__write_string(", "),
-	io__write_string(Name),
-	io__write_string(", "),
+output_live_value_type(succip, !IO) :-
+	io__write_string("type succip", !IO).
+output_live_value_type(curfr, !IO) :-
+	io__write_string("type curfr", !IO).
+output_live_value_type(maxfr, !IO) :-
+	io__write_string("type maxfr", !IO).
+output_live_value_type(redofr, !IO) :-
+	io__write_string("type redofr", !IO).
+output_live_value_type(redoip, !IO) :-
+	io__write_string("type redoip", !IO).
+output_live_value_type(hp, !IO) :-
+	io__write_string("type hp", !IO).
+output_live_value_type(trail_ptr, !IO) :-
+	io__write_string("type trail_ptr", !IO).
+output_live_value_type(ticket, !IO) :-
+	io__write_string("type ticket", !IO).
+output_live_value_type(unwanted, !IO) :-
+	io__write_string("unwanted", !IO).
+output_live_value_type(var(Var, Name, Type, LldsInst), !IO) :-
+	io__write_string("var(", !IO),
+	term__var_to_int(Var, VarInt),
+	io__write_int(VarInt, !IO),
+	io__write_string(", ", !IO),
+	io__write_string(Name, !IO),
+	io__write_string(", ", !IO),
 		% XXX Fake type varset
-	{ varset__init(NewTVarset) },
-	mercury_output_term(Type, NewTVarset, no),
-	io__write_string(", "),
+	varset__init(NewTVarset),
+	mercury_output_term(Type, NewTVarset, no, !IO),
+	io__write_string(", ", !IO),
 	(
-		{ LldsInst = ground },
-		io__write_string("ground")
+		LldsInst = ground,
+		io__write_string("ground", !IO)
 	;
-		{ LldsInst = partial(Inst) },
+		LldsInst = partial(Inst),
 			% XXX Fake inst varset
-		{ varset__init(NewIVarset) },
-		mercury_output_inst(Inst, NewIVarset)
+		varset__init(NewIVarset),
+		mercury_output_inst(Inst, NewIVarset, !IO)
 	),
-	io__write_string(")").
+	io__write_string(")", !IO).
 
 :- pred output_temp_decls(int::in, string::in, io::di, io::uo) is det.
 
@@ -2861,20 +2870,20 @@ data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
-output_decl_id(common_type(ModuleName, TypeNum)) -->
-	output_common_cell_type_name(ModuleName, TypeNum).
-output_decl_id(data_addr(DataAddr)) -->
-	output_data_addr(DataAddr).
-output_decl_id(code_addr(_CodeAddress)) -->
-	{ error("output_decl_id: code_addr unexpected") }.
-output_decl_id(float_label(_Label)) -->
-	{ error("output_decl_id: float_label unexpected") }.
-output_decl_id(pragma_c_struct(_Name)) -->
-	{ error("output_decl_id: pragma_c_struct unexpected") }.
-output_decl_id(type_info_like_struct(_Name)) -->
-	{ error("output_decl_id: type_info_like_struct unexpected") }.
-output_decl_id(typeclass_constraint_struct(_Name)) -->
-	{ error("output_decl_id: class_constraint_struct unexpected") }.
+output_decl_id(common_type(ModuleName, TypeNum), !IO) :-
+	output_common_cell_type_name(ModuleName, TypeNum, !IO).
+output_decl_id(data_addr(DataAddr), !IO) :-
+	output_data_addr(DataAddr, !IO).
+output_decl_id(code_addr(_CodeAddress), !IO) :-
+	error("output_decl_id: code_addr unexpected").
+output_decl_id(float_label(_Label), !IO) :-
+	error("output_decl_id: float_label unexpected").
+output_decl_id(pragma_c_struct(_Name), !IO) :-
+	error("output_decl_id: pragma_c_struct unexpected").
+output_decl_id(type_info_like_struct(_Name), !IO) :-
+	error("output_decl_id: type_info_like_struct unexpected").
+output_decl_id(typeclass_constraint_struct(_Name), !IO) :-
+	error("output_decl_id: class_constraint_struct unexpected").
 
 :- pred output_cons_arg_types(list(llds_type)::in, string::in, int::in,
 	io::di, io::uo) is det.
@@ -2943,20 +2952,34 @@ output_llds_type_cast(LLDSType, !IO) :-
 
 :- pred output_llds_type(llds_type::in, io::di, io::uo) is det.
 
-output_llds_type(int_least8)   --> io__write_string("MR_int_least8_t").
-output_llds_type(uint_least8)  --> io__write_string("MR_uint_least8_t").
-output_llds_type(int_least16)  --> io__write_string("MR_int_least16_t").
-output_llds_type(uint_least16) --> io__write_string("MR_uint_least16_t").
-output_llds_type(int_least32)  --> io__write_string("MR_int_least32_t").
-output_llds_type(uint_least32) --> io__write_string("MR_uint_least32_t").
-output_llds_type(bool)         --> io__write_string("MR_Integer").
-output_llds_type(integer)      --> io__write_string("MR_Integer").
-output_llds_type(unsigned)     --> io__write_string("MR_Unsigned").
-output_llds_type(float)        --> io__write_string("MR_Float").
-output_llds_type(word)         --> io__write_string("MR_Word").
-output_llds_type(string)       --> io__write_string("MR_String").
-output_llds_type(data_ptr)     --> io__write_string("MR_Word *").
-output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
+output_llds_type(int_least8, !IO) :-
+	io__write_string("MR_int_least8_t", !IO).
+output_llds_type(uint_least8, !IO) :-
+	io__write_string("MR_uint_least8_t", !IO).
+output_llds_type(int_least16, !IO) :-
+	io__write_string("MR_int_least16_t", !IO).
+output_llds_type(uint_least16, !IO) :-
+	io__write_string("MR_uint_least16_t", !IO).
+output_llds_type(int_least32, !IO) :-
+	io__write_string("MR_int_least32_t", !IO).
+output_llds_type(uint_least32, !IO) :-
+	io__write_string("MR_uint_least32_t", !IO).
+output_llds_type(bool, !IO) :-
+	io__write_string("MR_Integer", !IO).
+output_llds_type(integer, !IO) :-
+	io__write_string("MR_Integer", !IO).
+output_llds_type(unsigned, !IO) :-
+	io__write_string("MR_Unsigned", !IO).
+output_llds_type(float, !IO) :-
+	io__write_string("MR_Float", !IO).
+output_llds_type(word, !IO) :-
+	io__write_string("MR_Word", !IO).
+output_llds_type(string, !IO) :-
+	io__write_string("MR_String", !IO).
+output_llds_type(data_ptr, !IO) :-
+	io__write_string("MR_Word *", !IO).
+output_llds_type(code_ptr, !IO) :-
+	io__write_string("MR_Code *", !IO).
 
 	% Output the arguments, each on its own line prefixing with Indent,
 	% and with a cast appropriate to its type if necessary.
@@ -4524,9 +4547,9 @@ output_rval(mem_addr(MemRef), !IO) :-
 
 :- pred output_unary_op(unary_op::in, io::di, io::uo) is det.
 
-output_unary_op(Op) -->
-	{ c_util__unary_prefix_op(Op, OpString) },
-	io__write_string(OpString).
+output_unary_op(Op, !IO) :-
+	c_util__unary_prefix_op(Op, OpString),
+	io__write_string(OpString, !IO).
 
 :- pred output_rval_const(rval_const::in, io::di, io::uo) is det.
 
@@ -4673,104 +4696,106 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
 
 :- pred output_lval_as_word(lval::in, io::di, io::uo) is det.
 
-output_lval_as_word(Lval) -->
-	{ llds__lval_type(Lval, ActualType) },
-	( { types_match(word, ActualType) } ->
-		output_lval(Lval)
-	; { ActualType = float } ->
+output_lval_as_word(Lval, !IO) :-
+	llds__lval_type(Lval, ActualType),
+	( types_match(word, ActualType) ->
+		output_lval(Lval, !IO)
+	; ActualType = float ->
 		% sanity check -- if this happens, the llds is ill-typed
-		{ error("output_lval_as_word: got float") }
+		error("output_lval_as_word: got float")
 	;
-		io__write_string("MR_LVALUE_CAST(MR_Word,"),
-		output_lval(Lval),
-		io__write_string(")")
+		io__write_string("MR_LVALUE_CAST(MR_Word,", !IO),
+		output_lval(Lval, !IO),
+		io__write_string(")", !IO)
 	).
 
 :- pred output_lval(lval::in, io::di, io::uo) is det.
 
-output_lval(reg(Type, Num)) -->
-	output_reg(Type, Num).
-output_lval(stackvar(N)) -->
-	{ N =< 0 ->
+output_lval(reg(Type, Num), !IO) :-
+	output_reg(Type, Num, !IO).
+output_lval(stackvar(N), !IO) :-
+	( N =< 0 ->
 		error("stack var out of range")
 	;
 		true
-	},
-	io__write_string("MR_sv("),
-	io__write_int(N),
-	io__write_string(")").
-output_lval(framevar(N)) -->
-	{ N =< 0 ->
+	),
+	io__write_string("MR_sv(", !IO),
+	io__write_int(N, !IO),
+	io__write_string(")", !IO).
+output_lval(framevar(N), !IO) :-
+	( N =< 0 ->
 		error("frame var out of range")
 	;
 		true
-	},
-	io__write_string("MR_fv("),
-	io__write_int(N),
-	io__write_string(")").
-output_lval(succip) -->
-	io__write_string("MR_succip").
-output_lval(sp) -->
-	io__write_string("MR_sp").
-output_lval(hp) -->
-	io__write_string("MR_hp").
-output_lval(maxfr) -->
-	io__write_string("MR_maxfr").
-output_lval(curfr) -->
-	io__write_string("MR_curfr").
-output_lval(succfr(Rval)) -->
-	io__write_string("MR_succfr_slot("),
-	output_rval(Rval),
-	io__write_string(")").
-output_lval(prevfr(Rval)) -->
-	io__write_string("MR_prevfr_slot("),
-	output_rval(Rval),
-	io__write_string(")").
-output_lval(redofr(Rval)) -->
-	io__write_string("MR_redofr_slot("),
-	output_rval(Rval),
-	io__write_string(")").
-output_lval(redoip(Rval)) -->
-	io__write_string("MR_redoip_slot("),
-	output_rval(Rval),
-	io__write_string(")").
-output_lval(succip(Rval)) -->
-	io__write_string("MR_succip_slot("),
-	output_rval(Rval),
-	io__write_string(")").
-output_lval(field(MaybeTag, Rval, FieldNumRval)) -->
-	( { MaybeTag = yes(Tag) } ->
-		io__write_string("MR_tfield("),
-		io__write_int(Tag),
-		io__write_string(", ")
-	;
-		io__write_string("MR_mask_field(")
 	),
-	output_rval(Rval),
-	io__write_string(", "),
-	( { FieldNumRval = const(int_const(FieldNum)) } ->
-		% Avoid emitting the (MR_Integer) cast.
-		io__write_int(FieldNum)
-	;
-		output_rval(FieldNumRval)
-	),
-	io__write_string(")").
-output_lval(lvar(_)) -->
-	{ error("Illegal to output an lvar") }.
-output_lval(temp(Type, Num)) -->
+	io__write_string("MR_fv(", !IO),
+	io__write_int(N, !IO),
+	io__write_string(")", !IO).
+output_lval(succip, !IO) :-
+	io__write_string("MR_succip", !IO).
+output_lval(sp, !IO) :-
+	io__write_string("MR_sp", !IO).
+output_lval(hp, !IO) :-
+	io__write_string("MR_hp", !IO).
+output_lval(maxfr, !IO) :-
+	io__write_string("MR_maxfr", !IO).
+output_lval(curfr, !IO) :-
+	io__write_string("MR_curfr", !IO).
+output_lval(succfr(Rval), !IO) :-
+	io__write_string("MR_succfr_slot(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval(prevfr(Rval), !IO) :-
+	io__write_string("MR_prevfr_slot(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval(redofr(Rval), !IO) :-
+	io__write_string("MR_redofr_slot(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval(redoip(Rval), !IO) :-
+	io__write_string("MR_redoip_slot(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval(succip(Rval), !IO) :-
+	io__write_string("MR_succip_slot(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
+output_lval(field(MaybeTag, Rval, FieldNumRval), !IO) :-
 	(
-		{ Type = r },
-		io__write_string("MR_tempr"),
-		io__write_int(Num)
+		MaybeTag = yes(Tag),
+		io__write_string("MR_tfield(", !IO),
+		io__write_int(Tag, !IO),
+		io__write_string(", ", !IO)
 	;
-		{ Type = f },
-		io__write_string("MR_tempf"),
-		io__write_int(Num)
+		MaybeTag = no,
+		io__write_string("MR_mask_field(", !IO)
+	),
+	output_rval(Rval, !IO),
+	io__write_string(", ", !IO),
+	( FieldNumRval = const(int_const(FieldNum)) ->
+		% Avoid emitting the (MR_Integer) cast.
+		io__write_int(FieldNum, !IO)
+	;
+		output_rval(FieldNumRval, !IO)
+	),
+	io__write_string(")", !IO).
+output_lval(lvar(_), !IO) :-
+	error("Illegal to output an lvar").
+output_lval(temp(Type, Num), !IO) :-
+	(
+		Type = r,
+		io__write_string("MR_tempr", !IO),
+		io__write_int(Num, !IO)
+	;
+		Type = f,
+		io__write_string("MR_tempf", !IO),
+		io__write_int(Num, !IO)
 	).
-output_lval(mem_ref(Rval)) -->
-	io__write_string("XXX("),
-	output_rval(Rval),
-	io__write_string(")").
+output_lval(mem_ref(Rval), !IO) :-
+	io__write_string("XXX(", !IO),
+	output_rval(Rval, !IO),
+	io__write_string(")", !IO).
 
 :- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo) is det.
 

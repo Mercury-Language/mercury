@@ -1,7 +1,11 @@
-multimode_missing_impure.m:025: In predicate `multimode_missing_impure.test1/1':
+multimode_missing_impure.m:025: In predicate
+multimode_missing_impure.m:025:   `multimode_missing_impure.test1/1':
 multimode_missing_impure.m:025:   purity error: predicate is impure.
-multimode_missing_impure.m:025:   It must be declared `impure' or promised pure.
-multimode_missing_impure.m:034: In predicate `multimode_missing_impure.test2/2':
+multimode_missing_impure.m:025:   It must be declared `impure' or promised
+multimode_missing_impure.m:025:   pure.
+multimode_missing_impure.m:034: In predicate
+multimode_missing_impure.m:034:   `multimode_missing_impure.test2/2':
 multimode_missing_impure.m:034:   purity error: predicate is impure.
-multimode_missing_impure.m:034:   It must be declared `impure' or promised pure.
+multimode_missing_impure.m:034:   It must be declared `impure' or promised
+multimode_missing_impure.m:034:   pure.
 For more information, try recompiling with `-E'.

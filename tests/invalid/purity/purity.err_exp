@@ -1,15 +1,15 @@
 purity.m:035: In predicate `purity.w1/0':
-purity.m:035:   warning: declared `impure' but actually pure.
+purity.m:035:   warning: declared impure but actually pure.
 purity.m:039: In predicate `purity.w2/0':
-purity.m:039:   warning: declared `semipure' but actually pure.
+purity.m:039:   warning: declared semipure but actually pure.
 purity.m:043: In predicate `purity.w3/0':
-purity.m:043:   warning: declared `impure' but actually semipure.
+purity.m:043:   warning: declared impure but actually semipure.
 purity.m:047: In predicate `purity.w4/0':
 purity.m:047:   warning: unnecessary `promise_pure' pragma.
 purity.m:052: In predicate `purity.w5/0':
-purity.m:052:   warning: declared `impure' but promised pure.
+purity.m:052:   warning: declared impure but promised pure.
 purity.m:057: In predicate `purity.w6/0':
-purity.m:057:   warning: declared `semipure' but promised pure.
+purity.m:057:   warning: declared semipure but promised pure.
 purity.m:066: In predicate `purity.e1/0':
 purity.m:066:   purity error: predicate is impure.
 purity.m:066:   It must be declared `impure' or promised pure.
@@ -25,16 +25,16 @@ purity.m:085: In call to semipure predicate `purity.semi/0':
 purity.m:085:   purity error: call must be preceded by `semipure' indicator.
 purity.m:119: In call to impure predicate `purity.imp1/1':
 purity.m:119:   purity error: call must be preceded by `impure' indicator.
-purity.m:119: Purity error in closure: closure body is impure,
-purity.m:119:   but closure was not declared `impure.'
+purity.m:119: Purity error in closure: closure body is impure, but closure was
+purity.m:119:   not declared impure.
 purity.m:125: In call to semipure predicate `purity.semi/1':
 purity.m:125:   purity error: call must be preceded by `semipure' indicator.
-purity.m:125: Purity error in closure: closure body is semipure,
-purity.m:125:   but closure was not declared `semipure.'
-purity.m:100: In unification predicate for type purity.e8:
+purity.m:125: Purity error in closure: closure body is semipure, but closure
+purity.m:125:   was not declared semipure.
+purity.m:100: In unification predicate for type `purity.e8':
 purity.m:100:   purity error: predicate is impure.
 purity.m:100:   It must be pure.
-purity.m:108: In unification predicate for type purity.e9:
+purity.m:108: In unification predicate for type `purity.e9':
 purity.m:108:   purity error: predicate is semipure.
 purity.m:108:   It must be pure.
 purity.m:090: In clause for `e6':

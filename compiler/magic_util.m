@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 University of Melbourne.
+% Copyright (C) 1998-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1752,100 +1752,95 @@ magic_info_set_bad_types(Types, Info0, Info0 ^ bad_types := Types).
 	.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
-magic_util__report_errors(Errors, ModuleInfo, Verbose) -->
-	list__foldl(magic_util__report_error(ModuleInfo, Verbose), Errors).
+magic_util__report_errors(Errors, ModuleInfo, Verbose, !IO) :-
+	list__foldl(magic_util__report_error(ModuleInfo, Verbose),
+		Errors, !IO).
 
 :- pred magic_util__report_error(module_info::in, bool::in, magic_error::in,
 	io::di, io::uo) is det.
 
-magic_util__report_error(ModuleInfo, Verbose,
-		argument_error(Error, Arg, proc(PredId, _)) - Context) -->
+magic_util__report_error(ModuleInfo, Verbose, MagicError - Context, !IO) :-
+	MagicError = argument_error(Error, Arg, proc(PredId, _)),
+	PredNamePieces = describe_one_pred_name(ModuleInfo,
+		should_module_qualify, PredId),
+	InPieces = [words("In Aditi") | PredNamePieces] ++ [suffix(":"), nl],
+	magic_util__error_arg_id_piece(Arg, ArgPiece),
+	magic_util__report_argument_error(Context, Error, ArgPiece, Verbose,
+		ReportPieces),
+	write_error_pieces(Context, 0, InPieces ++ ReportPieces, !IO).
 
-	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
-		PredId, PredName) },
-	{ string__append_list(["In Aditi ", PredName, ":"], PredNamePiece) },
-	{ magic_util__error_arg_id_piece(Arg, ArgPiece) },
-	{ magic_util__report_argument_error(Context, Error, ArgPiece,
-		Verbose, SecondPart) },
-	write_error_pieces(Context, 0, [fixed(PredNamePiece), nl | SecondPart]).
+magic_util__report_error(ModuleInfo, _Verbose, MagicError - Context, !IO) :-
+	MagicError = nonspecific_polymorphism(proc(PredId, _), _),
+	PredNamePieces = describe_one_pred_name(ModuleInfo,
+		should_module_qualify, PredId),
+	Pieces = [words("In") | PredNamePieces] ++ [suffix(":"), nl,
+		words("the code uses polymorphism or type-classes"),
+		words("which are not supported by Aditi.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
-magic_util__report_error(ModuleInfo, _Verbose,
-		nonspecific_polymorphism(proc(PredId, _), _) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
-		PredId, PredName) },
-	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
-	{ SecondPart = [words("the code uses polymorphism or type-classes"),
-			words("which are not supported by Aditi.")] },
-	write_error_pieces(Context, 0, [fixed(PredNamePiece), nl | SecondPart]).
+magic_util__report_error(ModuleInfo, _Verbose, MagicError - Context, !IO) :-
+	MagicError = curried_argument(proc(PredId, _)),
+	PredNamePieces = describe_one_pred_name(ModuleInfo,
+		should_module_qualify, PredId),
+	Pieces = [words("In") | PredNamePieces] ++ [suffix(":"), nl,
+		words("sorry, curried closure arguments are not"),
+		words("implemented for Aditi procedures."),
+		words("Construct them within the closure instead.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
-magic_util__report_error(ModuleInfo, _Verbose,
-		curried_argument(proc(PredId, _)) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
-		PredId, PredName) },
-	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
-	{ SecondPart = [words("sorry, curried closure arguments are not"),
-			words("implemented for Aditi procedures."),
-			words("Construct them within the closure instead.")] },
-	write_error_pieces(Context, 0, [fixed(PredNamePiece), nl | SecondPart]).
-
-magic_util__report_error(ModuleInfo, _Verbose,
-		non_removeable_aditi_state(proc(PredId, _), VarSet, Vars)
-			- Context) -->
-	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
-		PredId, PredName) },
-	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
-	{ Vars = [_] ->
+magic_util__report_error(ModuleInfo, _Verbose, MagicError - Context, !IO) :-
+	MagicError = non_removeable_aditi_state(proc(PredId, _), VarSet, Vars),
+	PredNamePieces = describe_one_pred_name(ModuleInfo,
+		should_module_qualify, PredId),
+	InPieces = [words("In") | PredNamePieces] ++ [suffix(":"), nl],
+	( Vars = [_] ->
 		VarPiece = words("variable"),
-		StatePiece = words("is a non-removable `aditi:state'.")
+		StatePiece = words("is a non-removable `aditi.state'.")
 	;
 		VarPiece = words("variables"),
-		StatePiece = words("are non-removable `aditi:state's.")
-	},
-	{ list__map(varset__lookup_name(VarSet), Vars, VarNames) },
-	{ error_util__list_to_pieces(VarNames, VarNamePieces) },
-	{ list__condense([[fixed(PredNamePiece), nl, VarPiece],
-		VarNamePieces, [StatePiece]], Pieces) },
-	write_error_pieces(Context, 0, Pieces).
+		StatePiece = words("are non-removable `aditi.state's.")
+	),
+	list__map(varset__lookup_name(VarSet), Vars, VarNames),
+	VarNamePieces = error_util__list_to_pieces(VarNames),
+	Pieces = InPieces ++ [VarPiece] ++ VarNamePieces ++ [StatePiece],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
-magic_util__report_error(ModuleInfo, Verbose,
-		context_error(Error, proc(PredId, _ProcId)) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
-		PredId, PredName) },
-	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
-	{ SecondPart = [words("with `:- pragma context(...)' declaration:"),
-		nl, words("error: recursive rule is not linear.\n")] },
-	{ magic_util__report_linearity_error(ModuleInfo,
-		Context, Verbose, Error, LinearityPieces) },
-	{ list__append([fixed(PredNamePiece), nl | SecondPart],
-		LinearityPieces, Pieces) },
-	write_error_pieces(Context, 0, Pieces).
+magic_util__report_error(ModuleInfo, Verbose, MagicError - Context, !IO) :-
+	MagicError = context_error(Error, proc(PredId, _ProcId)),
+	PredNamePieces = describe_one_pred_name(ModuleInfo,
+		should_module_qualify, PredId),
+	magic_util__report_linearity_error(ModuleInfo,
+		Context, Verbose, Error, LinearityPieces),
+	Pieces = [words("In") | PredNamePieces] ++ [suffix(":"), nl,
+		words("with `:- pragma context(...)' declaration:"), nl,
+		words("error: recursive rule is not linear.")]
+		++ LinearityPieces,
+	write_error_pieces(Context, 0, Pieces, !IO).
 
-magic_util__report_error(ModuleInfo, _Verbose,
-		mutually_recursive_context(PredProcId,
-			OtherPredProcIds) - Context) -->
-	{ describe_one_proc_name(ModuleInfo, should_module_qualify,
-		PredProcId, ProcPiece) },
-	{ describe_several_proc_names(ModuleInfo, should_module_qualify,
-		OtherPredProcIds, OtherProcPieces) },
-	{ list__condense(
-		[[words("Error: procedure"), words(ProcPiece), words("with a"),
-		fixed("`:- pragma context(...)"),
-		words("declaration is mutually recursive with")],
-		OtherProcPieces, [words(".")]], Pieces) },
-	write_error_pieces(Context, 0, Pieces).
+magic_util__report_error(ModuleInfo, _Verbose, MagicError - Context, !IO) :-
+	MagicError = mutually_recursive_context(PredProcId, OtherPredProcIds),
+	ProcPieces = describe_one_proc_name(ModuleInfo,
+		should_module_qualify, PredProcId),
+	OtherProcPieces = describe_several_proc_names(ModuleInfo,
+		should_module_qualify, OtherPredProcIds),
+	Pieces = [words("Error: procedure")] ++ ProcPieces ++
+		[words("with a"), fixed("`:- pragma context(...)'"),
+		words("declaration is mutually recursive with")]
+		++ OtherProcPieces ++ [suffix(".")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
-magic_util__report_error(ModuleInfo, _Verbose,
-		mixed_scc(PredProcIds) - Context) -->
-	{ describe_several_proc_names(ModuleInfo, should_module_qualify,
-		PredProcIds, SCCPieces) },
-	{ list__condense([
-		[words("In the strongly connected component consisting of")],
-		SCCPieces,
+magic_util__report_error(ModuleInfo, _Verbose, MagicError - Context, !IO) :-
+	MagicError = mixed_scc(PredProcIds),
+	SCCPieces = describe_several_proc_names(ModuleInfo,
+		should_module_qualify, PredProcIds),
+	Pieces = [words("In the strongly connected component consisting of")]
+		++ SCCPieces ++
 		[words("some, but not all procedures are marked"),
-		words("for Aditi compilation.")]], Pieces) },
-	write_error_pieces(Context, 0, Pieces).
+		words("for Aditi compilation.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred magic_util__error_arg_id_piece(magic_arg_id::in,
 	format_component::out) is det.

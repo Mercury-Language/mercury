@@ -1,4 +1,5 @@
-impure_func_t2.m:016: In call to impure function `impure_func_t2.get_counter/0':
+impure_func_t2.m:016: In call to impure function
+impure_func_t2.m:016:   `impure_func_t2.get_counter/0':
 impure_func_t2.m:016:   purity error: call must be in an explicit unification
 impure_func_t2.m:016:   which is preceded by `impure' indicator.
 For more information, try recompiling with `-E'.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 University of Melbourne.
+% Copyright (C) 1998-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,6 +47,7 @@
 % to specify which constructor to use.
 %
 %-----------------------------------------------------------------------------%
+
 :- module aditi_backend__rl_exprn.
 
 :- interface.
@@ -1571,12 +1572,13 @@ rl_exprn__is_builtin(_PredId, ProcId, PredInfo) :-
 	).
 
 :- pred rl_exprn__call_not_implemented_error(prog_context::in, module_info::in,
-		pred_id::in, proc_id::in, string::in) is erroneous.
+	pred_id::in, proc_id::in, string::in) is erroneous.
 
 rl_exprn__call_not_implemented_error(Context,
 		ModuleInfo, PredId, ProcId, ErrorDescr) :-
-	describe_one_proc_name(ModuleInfo, should_module_qualify,
-		proc(PredId, ProcId), ProcName),
+	ProcNamePieces = describe_one_proc_name(ModuleInfo,
+		should_module_qualify, proc(PredId, ProcId)),
+	ProcName = error_pieces_to_string(ProcNamePieces),
 	prog_out__context_to_string(Context, ContextStr),
 	string__append_list(
 		[

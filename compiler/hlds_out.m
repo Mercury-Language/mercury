@@ -60,11 +60,9 @@
 	% hlds_out__write_pred_id/4 writes out a message such as
 	%	predicate `foo:bar/3'
 	% or	function `foo:myfoo/5'
-	% unless the predicate is a special (unify, compare or index)
-	% predicate, in which case mercury_output_term is used to print out
-	% the predicate's name and argument types (since for such predicates,
-	% the module, name and arity are not sufficient to identify the
-	% predicate).
+	% except in some special cases where the predicate name is mangled
+	% and we can print a more meaningful identification of the predicate
+	% in question.
 
 :- pred hlds_out__write_pred_id(module_info::in, pred_id::in, io::di, io::uo)
 	is det.
@@ -377,7 +375,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
 		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
 		io__write_string("`" ++ prog_out__promise_to_string(PromiseType)
-					++ "' declaration", !IO)
+			++ "' declaration", !IO)
 	;
 		hlds_out__write_simple_call_id(PredOrFunc,
 			qualified(Module, Name), Arity, !IO)
@@ -835,7 +833,7 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable, !IO) :-
 	pred_id::in, io::di, io::uo) is det.
 
 hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
-        globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
 	globals__io_lookup_int_option(dump_hlds_pred_id, DumpPredId, !IO),
 	pred_id_to_int(PredId, PredIdInt),
 	map__lookup(PredTable, PredId, PredInfo),
@@ -1168,9 +1166,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% Modes for which this clause applies: ",
 			!IO),
-		list__map((pred(Mode :: in, ModeInt :: out) is det :-
-				proc_id_to_int(Mode, ModeInt)
-			), Modes, ModeInts),
+		ModeInts = list__map(proc_id_to_int, Modes),
 		hlds_out__write_intlist(ModeInts, !IO),
 		io__write_string("\n", !IO)
 	;
@@ -1828,7 +1824,7 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 				VarType = no
 			),
 			CallUnifyContext = call_unify_context(Var,
-					RHS, _UnifyContext),
+				RHS, _UnifyContext),
 			hlds_out__write_indent(Indent, !IO),
 			io__write_string("% unify context: ", !IO),
 			mercury_output_var(Var, VarSet, AppendVarNums, !IO),
@@ -2564,7 +2560,7 @@ hlds_out__write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, EvalMethod, _,
 	;
 		true
 	),
-        globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+	globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
 	( string__contains_char(Verbose, 'n') ->
 		( NonLocals \= [] ->
 			hlds_out__write_indent(Indent1, !IO),
@@ -2938,11 +2934,16 @@ hlds_out__import_status_to_string(exported_to_submodules) =
 :- pred hlds_out__write_type_list(list(type)::in, tvarset::in, bool::in,
 	io::di, io::uo) is det.
 
-hlds_out__write_type_list(Types, TypeVarSet, AppendVarNums) -->
-	list__foldl((pred(Type::in, di, uo) is det -->
-		mercury_output_term(Type, TypeVarSet, AppendVarNums),
-		io__write_string(", ")),
-		Types).
+hlds_out__write_type_list(Types, TypeVarSet, AppendVarNums, !IO) :-
+	list__foldl(output_term_and_comma(TypeVarSet, AppendVarNums),
+		Types, !IO).
+
+:- pred output_term_and_comma(tvarset::in, bool::in, (type)::in,
+	io::di, io::uo) is det.
+
+output_term_and_comma(TypeVarSet, AppendVarNums, Type, !IO) :-
+	mercury_output_term(Type, TypeVarSet, AppendVarNums, !IO),
+	io__write_string(", ", !IO).
 
 :- pred hlds_out__write_var_types(int::in, prog_varset::in, bool::in,
 	vartypes::in, tvarset::in, io::di, io::uo) is det.
@@ -3170,8 +3171,7 @@ hlds_out__write_type_params_2(TVarSet, [P | Ps], !IO) :-
 	io::di, io::uo) is det.
 
 hlds_out__write_type_body(Indent, TVarSet, du_type(Ctors, Tags, Enum,
-			MaybeUserEqComp, ReservedTag, Foreign),
-		!IO) :-
+		MaybeUserEqComp, ReservedTag, Foreign), !IO) :-
 	io__write_string(" --->\n", !IO),
 	(
 		Enum = yes,
@@ -3216,7 +3216,6 @@ hlds_out__write_type_body(_Indent, TVarSet,
 	mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
 		MaybeUserEqComp, !IO),
 	io__write_string(".\n", !IO).
-
 
 :- pred hlds_out__write_constructors(int::in, tvarset::in,
 	list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
@@ -3738,49 +3737,6 @@ hlds_out__write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 			Indent1, ".\n", !IO)
 	).
 
-% :- pred hlds_out__write_varnames(int::in, map(var, string)::in,
-%	io::di, io::uo) is det.
-%
-% hlds_out__write_varnames(Indent, VarNames) -->
-%	{ map__to_assoc_list(VarNames, VarNameList) },
-%	(
-%		{ VarNameList = [] }
-%	->
-%		hlds_out__write_indent(Indent),
-%		io__write_string("[]\n")
-%	;
-%		hlds_out__write_indent(Indent),
-%		io__write_string("[\n"),
-%		{Indent1 = Indent + 1},
-%		hlds_out__write_varnames_2(Indent1, VarNameList),
-%		hlds_out__write_indent(Indent),
-%		io__write_string("]\n")
-%	).
-%
-% :- pred hlds_out__write_varnames_2(int::in, list(pair(var, string))::in,
-%	io::di, io::uo) is det.
-%
-% hlds_out__write_varnames_2(Indent, VarNameList0) -->
-%	(
-%		{ VarNameList0 = [VarId - Name|VarNameList] }
-%	->
-%		{ Indent1 = Indent + 1 },
-%		hlds_out__write_indent(Indent1),
-%		{ term__var_to_int(VarId, VarNum) },
-%		io__write_int(VarNum),
-%		io__write_string(" - "),
-%		io__write_string(Name),
-%		io__write_string("\n"),
-%		( { VarNameList = [] } ->
-%			[]
-%		;
-%			io__write_string(",\n"),
-%			hlds_out__write_varnames_2(Indent, VarNameList)
-%		)
-%	;
-%		{ error("This cannot happen") }
-%	).
-
 hlds_out__write_determinism(Detism, !IO) :-
 	io__write_string(hlds_out__determinism_to_string(Detism), !IO).
 
@@ -3900,7 +3856,7 @@ mode_to_term(Context, (InstA -> InstB)) = Term :-
 	;
 		construct_qualified_term(unqualified(">>"),
 			[inst_to_term(InstA, Context),
-			 inst_to_term(InstB, Context)],
+			inst_to_term(InstB, Context)],
 			Context, Term)
 	).
 mode_to_term(Context, user_defined_mode(Name, Args)) = Term :-
@@ -3933,7 +3889,7 @@ inst_to_term(bound(Uniq, BoundInsts), Context) = Term :-
 inst_to_term(ground(Uniq, GroundInstInfo), Context) = Term :-
 	(
 		GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
-				Modes, Det)),
+			Modes, Det)),
 		/* XXX we ignore Uniq */
 		(
 			PredOrFunc = predicate,
@@ -3992,32 +3948,32 @@ inst_name_to_term(mostly_uniq_inst(InstName), Context) = Term :-
 inst_name_to_term(unify_inst(Liveness, InstA, InstB, Real), Context) = Term :-
 	construct_qualified_term(unqualified("$unify"),
 		[make_atom((Liveness = live -> "live" ; "dead"), Context)] ++
-		 list__map(map_inst_to_term(Context), [InstA, InstB]) ++
+		list__map(map_inst_to_term(Context), [InstA, InstB]) ++
 		[make_atom((Real = real_unify -> "real" ; "fake"), Context)],
 		Context, Term).
 inst_name_to_term(ground_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
 	construct_qualified_term(unqualified("$ground"),
 		[inst_name_to_term(InstName, Context),
-		 make_atom((IsLive = live -> "live" ; "dead"), Context),
-		 make_atom(inst_uniqueness(Uniq, "shared"), Context),
-		 make_atom((Real = real_unify -> "real" ; "fake"), Context)],
+		make_atom((IsLive = live -> "live" ; "dead"), Context),
+		make_atom(inst_uniqueness(Uniq, "shared"), Context),
+		make_atom((Real = real_unify -> "real" ; "fake"), Context)],
 		Context, Term).
 inst_name_to_term(any_inst(InstName, IsLive, Uniq, Real), Context) = Term :-
 	construct_qualified_term(unqualified("$any"),
 		[inst_name_to_term(InstName, Context),
-		 make_atom((IsLive = live -> "live" ; "dead"), Context),
-		 make_atom(inst_uniqueness(Uniq, "shared"), Context),
-		 make_atom((Real = real_unify -> "real" ; "fake"), Context)],
+		make_atom((IsLive = live -> "live" ; "dead"), Context),
+		make_atom(inst_uniqueness(Uniq, "shared"), Context),
+		make_atom((Real = real_unify -> "real" ; "fake"), Context)],
 		Context, Term).
 inst_name_to_term(typed_ground(Uniq, Type), Context) = Term :-
 	construct_qualified_term(unqualified("$typed_ground"),
 		[make_atom(inst_uniqueness(Uniq, "shared"), Context),
-		 term__coerce(Type)],
+		term__coerce(Type)],
 		Context, Term).
 inst_name_to_term(typed_inst(Type, InstName), Context) = Term :-
 	construct_qualified_term(unqualified("$typed_inst"),
 		[term__coerce(Type),
-		 inst_name_to_term(InstName, Context)],
+		inst_name_to_term(InstName, Context)],
 		Context, Term).
 
 :- func any_inst_uniqueness(uniqueness) = string.
@@ -4041,15 +3997,18 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 bound_insts_to_term([], _) = _ :-
 	error("bound_insts_to_term([])").
 bound_insts_to_term([functor(ConsId, Args) | BoundInsts], Context) = Term :-
-	( cons_id_and_args_to_term(ConsId,
-		list__map(map_inst_to_term(Context), Args), FirstTerm)
+	(
+		cons_id_and_args_to_term(ConsId,
+			list__map(map_inst_to_term(Context), Args), FirstTerm)
 	->
-		( BoundInsts = [] ->
+		(
+			BoundInsts = [],
 			Term = FirstTerm
 		;
+			BoundInsts = [_ | _],
 			construct_qualified_term(unqualified(";"),
 				[FirstTerm,
-				 bound_insts_to_term(BoundInsts, Context)],
+				bound_insts_to_term(BoundInsts, Context)],
 				Context, Term)
 		)
 	;
@@ -4073,8 +4032,8 @@ det_to_string(nondet) = "nondet".
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_uni_mode_list(UniModes, VarSet) -->
-	mercury_format_uni_mode_list(UniModes, VarSet).
+mercury_output_uni_mode_list(UniModes, VarSet, !IO) :-
+	mercury_format_uni_mode_list(UniModes, VarSet, !IO).
 
 mercury_uni_mode_list_to_string(UniModes, VarSet) = String :-
 	mercury_format_uni_mode_list(UniModes, VarSet, "", String).
@@ -4082,18 +4041,20 @@ mercury_uni_mode_list_to_string(UniModes, VarSet) = String :-
 :- pred mercury_format_uni_mode_list(list(uni_mode)::in, inst_varset::in,
 	U::di, U::uo) is det <= output(U).
 
-mercury_format_uni_mode_list([], _VarSet) --> [].
-mercury_format_uni_mode_list([Mode | Modes], VarSet) -->
-	mercury_format_uni_mode(Mode, VarSet),
-	( { Modes = [] } ->
-		[]
+mercury_format_uni_mode_list([], _VarSet, !IO).
+mercury_format_uni_mode_list([Mode | Modes], VarSet, !IO) :-
+	mercury_format_uni_mode(Mode, VarSet, !IO),
+	(
+		Modes = [],
+		true
 	;
-		add_string(", "),
-		mercury_format_uni_mode_list(Modes, VarSet)
+		Modes = [_ | _],
+		add_string(", ", !IO),
+		mercury_format_uni_mode_list(Modes, VarSet, !IO)
 	).
 
-mercury_output_uni_mode(UniMode, VarSet) -->
-	mercury_format_uni_mode(UniMode, VarSet).
+mercury_output_uni_mode(UniMode, VarSet, !IO) :-
+	mercury_format_uni_mode(UniMode, VarSet, !IO).
 
 mercury_uni_mode_to_string(UniMode, VarSet) = String :-
 	mercury_format_uni_mode(UniMode, VarSet, "", String).
@@ -4101,10 +4062,10 @@ mercury_uni_mode_to_string(UniMode, VarSet) = String :-
 :- pred mercury_format_uni_mode(uni_mode::in, inst_varset::in,
 	U::di, U::uo) is det <= output(U).
 
-mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
-	mercury_format_mode((InstA1 -> InstA2), simple_inst_info(VarSet)),
-	add_string(" = "),
-	mercury_format_mode((InstB1 -> InstB2), simple_inst_info(VarSet)).
+mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet, !IO) :-
+	mercury_format_mode((InstA1 -> InstA2), simple_inst_info(VarSet), !IO),
+	add_string(" = ", !IO),
+	mercury_format_mode((InstB1 -> InstB2), simple_inst_info(VarSet), !IO).
 
 :- instance inst_info(expanded_inst_info) where [
 	func(instvarset/1) is eii_varset,
@@ -4124,23 +4085,22 @@ mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
 :- pred mercury_format_expanded_defined_inst(inst_name::in,
 	expanded_inst_info::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo) -->
-	( { set__member(InstName, ExpandedInstInfo ^ eii_expansions) } ->
-		add_string("...")
-	; { InstName = user_inst(_, _) } ->
+mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo, !S) :-
+	( set__member(InstName, ExpandedInstInfo ^ eii_expansions) ->
+		add_string("...", !S)
+	; InstName = user_inst(_, _) ->
 		% don't expand user-defined insts, just output them as is
 		% (we do expand any compiler-defined insts that occur
 		% in the arguments of the user-defined inst, however)
-		mercury_format_inst_name(InstName, ExpandedInstInfo)
-        ;
-                { inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName,
-			Inst) },
-                { set__insert(ExpandedInstInfo ^ eii_expansions, InstName,
-			Expansions) },
+		mercury_format_inst_name(InstName, ExpandedInstInfo, !S)
+	;
+		inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName,
+			Inst),
+		set__insert(ExpandedInstInfo ^ eii_expansions, InstName,
+			Expansions),
 		mercury_format_inst(Inst,
-			ExpandedInstInfo ^ eii_expansions := Expansions)
+			ExpandedInstInfo ^ eii_expansions := Expansions, !S)
 	).
-
 
 mercury_output_expanded_inst(Inst, VarSet, ModuleInfo, !IO) :-
 	set__init(Expansions),

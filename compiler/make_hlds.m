@@ -2523,7 +2523,7 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
 				error_util__describe_sym_name_and_arity(
 					SymName / Arity)),
 			Expansions),
-		error_util__list_to_pieces(Pieces0, Pieces1),
+		Pieces1 = error_util__list_to_pieces(Pieces0),
 		Pieces = append_punctuation(
 			[words("Error: circular equivalence"),
 				fixed(Kinds) | Pieces1], '.'),

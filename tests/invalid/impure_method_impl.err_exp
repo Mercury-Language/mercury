@@ -1,10 +1,14 @@
-impure_method_impl.m:017: In call to impure predicate `impure_method_impl.foo_m2/2':
-impure_method_impl.m:017:   purity error: call must be preceded by `impure' indicator.
+impure_method_impl.m:017: In call to impure predicate
+impure_method_impl.m:017:   `impure_method_impl.foo_m2/2':
+impure_method_impl.m:017:   purity error: call must be preceded by `impure'
+impure_method_impl.m:017:   indicator.
 impure_method_impl.m:017: In type class method implementation:
 impure_method_impl.m:017:   purity error: predicate is impure.
 impure_method_impl.m:017:   It must be declared `impure' or promised semipure.
-impure_method_impl.m:016: In call to semipure predicate `impure_method_impl.foo_m1/2':
-impure_method_impl.m:016:   purity error: call must be preceded by `semipure' indicator.
+impure_method_impl.m:016: In call to semipure predicate
+impure_method_impl.m:016:   `impure_method_impl.foo_m1/2':
+impure_method_impl.m:016:   purity error: call must be preceded by `semipure'
+impure_method_impl.m:016:   indicator.
 impure_method_impl.m:016: In type class method implementation:
 impure_method_impl.m:016:   purity error: predicate is semipure.
 impure_method_impl.m:016:   It must be declared `semipure' or promised pure.

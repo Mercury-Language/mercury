@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -190,15 +190,16 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 				proc_info_set_maybe_termination_info(
 					yes(can_loop([TermErr])), ProcInfo0,
 					ProcInfo),
-				describe_one_proc_name(!.Module,
-					should_module_qualify, PPId, ProcName),
+				ProcNamePieces =
+					describe_one_proc_name(!.Module,
+						should_module_qualify, PPId),
 				Piece1 = words("has a `pragma terminates'"),
 				Piece2 = words("declaration but also has the"),
 				Piece3 = words("`does_not_terminate' foreign"),
 				Piece4 = words("code attribute set."),
-				Components = [words("Warning:"),
-					fixed(ProcName), Piece1, Piece2,
-					Piece3, Piece4],
+				Components = [words("Warning:")] ++
+					ProcNamePieces ++
+					[Piece1, Piece2, Piece3, Piece4],
 				error_util__report_warning(Context, 0,
 					Components, !IO)
 			;
@@ -215,14 +216,15 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 			    proc_info_set_maybe_termination_info(
 			        yes(can_loop(TermErrs)),
 			        ProcInfo0, ProcInfo),
-			    describe_one_proc_name(!.Module,
-				    should_module_qualify, PPId, ProcName),
+			    ProcNamePieces = describe_one_proc_name(!.Module,
+				    should_module_qualify, PPId),
 			    Piece1 = words("has a `pragma does_not_terminate'"),
 			    Piece2 = words("declaration but also has the"),
 			    Piece3 = words("`terminates' foreign code"),
 			    Piece4 = words("attribute set."),
-			    Components = [words("Warning:"), fixed(ProcName),
-				Piece1, Piece2, Piece3, Piece4],
+			    Components = [words("Warning:")] ++
+			    	ProcNamePieces ++
+				[Piece1, Piece2, Piece3, Piece4],
 			    error_util__report_warning(Context, 0, Components,
 			        !IO)
 			;
@@ -301,13 +303,13 @@ check_scc_pragmas_are_consistent(SCC, !Module, !IO) :-
 
 			PredIds = list__map((func(proc(PredId, _)) = PredId),
 				SCCTerminationKnown),
-			describe_several_pred_names(!.Module,
-				should_module_qualify, PredIds, PredNames),
+			PredNamesPieces = describe_several_pred_names(!.Module,
+				should_module_qualify, PredIds),
 			Piece1 = words(
 				"are mutually recursive but some of their"),
 			Piece2 = words(
 				"termination pragmas are inconsistent."),
-			Components = [words("Warning:")] ++ PredNames ++
+			Components = [words("Warning:")] ++ PredNamesPieces ++
 				[Piece1, Piece2],
 			error_util__report_warning(Context, 0, Components, !IO)
 		)

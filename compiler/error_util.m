@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,6 +43,11 @@
 	--->	fixed(string)	% This string should appear in the output
 				% in one piece, as it is.
 
+	;	suffix(string)	% This string should appear in the output
+				% in one pieces, as it is, appended directly
+				% after the previous format_component, without
+				% any intervening space.
+
 	;	words(string)	% This string contains words separated by
 				% white space. The words should appear in
 				% the output in the given order, but the
@@ -56,10 +61,9 @@
 	;	nl.		% Insert a line break if there has been text
 				% output since the last line break.
 
-	% Convert a list of strings into a list of format_components,
-	% suitable for displaying as an error message.
-:- pred list_to_pieces(list(string)::in,
-	list(format_component)::out) is det.
+	% Convert a list of strings into a list of format_components
+	% separated by commas, with the last two elements separated by `and'.
+:- func list_to_pieces(list(string)) = list(format_component).
 
 	% Convert a list of lists of format_components into a list of
 	% format_components separated by commas, with the last two
@@ -98,6 +102,8 @@
 
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
+
+:- func error_pieces_to_string(list(format_component)) = string.
 
 :- func describe_sym_name(sym_name) = string.
 
@@ -162,14 +168,11 @@
 
 :- import_module io, list, term, char, string, int, require.
 
-list_to_pieces([], []).
-list_to_pieces([Elem], [words(Elem)]).
-list_to_pieces([Elem1, Elem2],
-		[fixed(Elem1), words("and"), fixed(Elem2)]).
-list_to_pieces([Elem1, Elem2, Elem3 | Elems], Pieces) :-
-	string__append(Elem1, ",", Piece1),
-	list_to_pieces([Elem2, Elem3 | Elems], Pieces1),
-	Pieces = [fixed(Piece1) | Pieces1].
+list_to_pieces([]) = [].
+list_to_pieces([Elem]) = [words(Elem)].
+list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
+list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
+	[fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
 component_lists_to_pieces([]) = [].
 component_lists_to_pieces([Components]) = Components.
@@ -302,58 +305,127 @@ write_line_rest([Word | Words], !IO) :-
 	io__write_string(Word, !IO),
 	write_line_rest(Words, !IO).
 
+error_pieces_to_string([]) = "".
+error_pieces_to_string([Component | Components]) = Str :-
+	TailStr = error_pieces_to_string(Components),
+	(
+		Component = fixed(Word),
+		( TailStr = "" ->
+			Str = Word
+		;
+			Str = Word ++ " " ++ TailStr
+		)
+	;
+		Component = suffix(Word),
+		Str = Word ++ TailStr
+	;
+		Component = words(Words),
+		( TailStr = "" ->
+			Str = Words
+		;
+			Str = Words ++ " " ++ TailStr
+		)
+	;
+		Component = sym_name(SymName),
+		Word = sym_name_to_word(SymName),
+		( TailStr = "" ->
+			Str = Word
+		;
+			Str = Word ++ " " ++ TailStr
+		)
+	;
+		Component = nl,
+		Str = "\n" ++ TailStr
+	).
+
 %----------------------------------------------------------------------------%
 
+:- type word
+	--->	word(string)
+	;	suffix_word(string).
+
 :- pred convert_components_to_word_list(list(format_component)::in,
-	list(string)::in, list(list(string))::in, list(list(string))::out)
+	list(word)::in, list(list(string))::in, list(list(string))::out)
 	is det.
 
-convert_components_to_word_list([], Words0, Paras0, Paras) :-
-	list__reverse(Words0, Words),
-	list__reverse([Words | Paras0], Paras).
-convert_components_to_word_list([Component | Components], Words0,
+convert_components_to_word_list([], RevWords0, Paras0, Paras) :-
+	Strings = rev_words_to_strings(RevWords0),
+	list__reverse([Strings | Paras0], Paras).
+convert_components_to_word_list([Component | Components], RevWords0,
 		Paras0, Paras) :-
 	(
 		Component = fixed(Word),
-		Words1 = [Word | Words0],
+		RevWords1 = [word(Word) | RevWords0],
+		Paras1 = Paras0
+	;
+		Component = suffix(Word),
+		RevWords1 = [suffix_word(Word) | RevWords0],
 		Paras1 = Paras0
 	;
 		Component = words(WordsStr),
-		break_into_words(WordsStr, Words0, Words1),
+		break_into_words(WordsStr, RevWords0, RevWords1),
 		Paras1 = Paras0
 	;
 		Component = sym_name(SymName),
-		Words1 = [sym_name_to_word(SymName) | Words0],
+		RevWords1 = [word(sym_name_to_word(SymName)) | RevWords0],
 		Paras1 = Paras0
 	;
 		Component = nl,
-		list__reverse(Words0, Words),
-		Paras1 = [Words | Paras0],
-		Words1 = []
+		Strings = rev_words_to_strings(RevWords0),
+		Paras1 = [Strings | Paras0],
+		RevWords1 = []
 	),
-	convert_components_to_word_list(Components, Words1, Paras1, Paras).
+	convert_components_to_word_list(Components, RevWords1, Paras1, Paras).
+
+:- func rev_words_to_strings(list(word)) = list(string).
+
+rev_words_to_strings(RevWords) =
+	list__reverse(rev_words_to_rev_strings(RevWords)).
+
+:- func rev_words_to_rev_strings(list(word)) = list(string).
+
+rev_words_to_rev_strings([]) = [].
+rev_words_to_rev_strings([Word | Words]) = Strings :-
+	(
+		Word = word(String),
+		Strings = [String | rev_words_to_rev_strings(Words)]
+	;
+		Word = suffix_word(Suffix),
+		(
+			Words = [],
+			Strings = [Suffix]
+		;
+			Words = [word(String) | Tail],
+			Strings = [String ++ Suffix |
+				rev_words_to_rev_strings(Tail)]
+		;
+			Words = [suffix_word(MoreSuffix) | Tail],
+			Strings = rev_words_to_rev_strings(
+				[suffix_word(MoreSuffix ++ Suffix) | Tail])
+		)
+	).
 
 :- func sym_name_to_word(sym_name) = string.
 
 sym_name_to_word(SymName) = "`" ++ SymStr ++ "'" :-
 	sym_name_to_string(SymName, SymStr).
 
-:- pred break_into_words(string::in, list(string)::in, list(string)::out)
-	is det.
+:- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
 
 break_into_words(String, Words0, Words) :-
 	break_into_words_from(String, 0, Words0, Words).
 
-:- pred break_into_words_from(string::in, int::in, list(string)::in,
-	list(string)::out) is det.
+:- pred break_into_words_from(string::in, int::in, list(word)::in,
+	list(word)::out) is det.
 
 break_into_words_from(String, Cur, Words0, Words) :-
 	( find_word_start(String, Cur, Start) ->
 		find_word_end(String, Start, End),
 		Length = End - Start + 1,
-		string__substring(String, Start, Length, Word),
+		string__substring(String, Start, Length, WordStr),
 		Next = End + 1,
-		break_into_words_from(String, Next, [Word | Words0], Words)
+		break_into_words_from(String, Next,
+			[word(WordStr) | Words0], Words)
 	;
 		Words = Words0
 	).
@@ -482,6 +554,9 @@ append_punctuation([Piece0], Punc) = [Piece] :-
 	;
 		Piece0 = fixed(String),
 		Piece = fixed(string__append(String, char_to_string(Punc)))
+	;
+		Piece0 = suffix(Suffix),
+		Piece = suffix(string__append(Suffix, char_to_string(Punc)))
 	;
 		Piece0 = sym_name(SymName),
 		String = sym_name_to_word(SymName),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -532,10 +532,9 @@ report_undefined_variables_2([_|Rest] @ UndefVars, !IO) :-
 		io__get_line_number(LineNumber, !IO),
 		Context = term__context_init(FileName, LineNumber),
 
-		error_util__list_to_pieces(
+		VarList = error_util__list_to_pieces(
 			list__map((func(Var) = "`" ++ Var ++ "'"),
-				list__sort_and_remove_dups(UndefVars)),
-			VarList),
+				list__sort_and_remove_dups(UndefVars))),
 		( Rest = [], Word = "variable", IsOrAre = "is"
 		; Rest = [_ | _], Word = "variables", IsOrAre = "are"
 		),

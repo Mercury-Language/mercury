@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -317,8 +317,7 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 			ErrorMsgStart),
 		BogusInstanceMethodNames = list__map(format_method_name,
 			BogusInstanceMethods),
-		error_util__list_to_pieces(BogusInstanceMethodNames,
-			ErrorMsgBody0),
+		ErrorMsgBody0 = list_to_pieces(BogusInstanceMethodNames),
 		ErrorMsgBody = list__append(ErrorMsgBody0, [words(".")]),
 		NewError = Context - [words(ErrorMsgStart) | ErrorMsgBody],
 		!:Errors = [NewError | !.Errors]

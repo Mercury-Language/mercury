@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -362,8 +362,9 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		;
 			true
 		),
-		describe_one_pred_name(!.ModuleInfo, should_module_qualify,
-			PredId, PredName),
+		PredPieces = describe_one_pred_name(!.ModuleInfo,
+			should_module_qualify, PredId),
+		PredName = error_pieces_to_string(PredPieces),
 		generate_stub_clause(PredName, !PredInfo, !.ModuleInfo,
 			StubClause, VarSet0, VarSet),
 		Clauses1 = [StubClause],
@@ -4601,7 +4602,8 @@ write_inference_message(PredInfo, !IO) :-
 	prog_out__write_context(Context, !IO),
 	io__write_string("Inferred ", !IO),
 	AppendVarNums = no,
-	(	PredOrFunc = predicate,
+	(
+		PredOrFunc = predicate,
 		mercury_output_pred_type(VarSet, ExistQVars, Name, Types,
 			MaybeDet, Purity, ClassContext, Context, AppendVarNums,
 			!IO)
@@ -4619,11 +4621,10 @@ write_inference_message(PredInfo, !IO) :-
 
 report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
 	pred_info_context(PredInfo, Context),
-	describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId,
-		PredName0),
-	string__append(PredName0, ".", PredName),
-	ErrorMsg = [ words(MessageKind ++ ": no clauses for "),
-		fixed(PredName) ],
+	PredPieces = describe_one_pred_name(ModuleInfo,	
+		should_not_module_qualify, PredId),
+	ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
+		[suffix(".")],
 	error_util__write_error_pieces(Context, 0, ErrorMsg, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -4637,13 +4638,15 @@ report_warning_too_much_overloading(Info, !IO) :-
 	SmallWarning = [fixed(Preamble),
 		words("warning: highly ambiguous overloading.") ],
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-	( VerboseErrors = yes ->
+	(
+		VerboseErrors = yes,
 		VerboseWarning = [
 			words("This may cause type-checking to be very"),
 			words("slow. It may also make your code"),
 			words("difficult to understand.") ],
 		list__append(SmallWarning, VerboseWarning, Warning)
 	;
+		VerboseErrors = no,
 		Warning = SmallWarning
 	),
 	error_util__report_warning(Context, 0, Warning, !IO).
@@ -5668,8 +5671,7 @@ get_unimported_parent(ModuleQualifier, ModuleInfo, UnimportedParent) :-
 report_unimported_parents(Context, UnimportedParents, !IO) :-
 	UnimportedParentDescs = list__map(error_util__describe_sym_name,
 		UnimportedParents),
-	error_util__list_to_pieces(UnimportedParentDescs,
-		AllUnimportedParents),
+	AllUnimportedParents = list_to_pieces(UnimportedParentDescs),
 	error_util__write_error_pieces(Context, 2,
 		( AllUnimportedParents = [_] ->
 			[words("(the possible parent module ")]
@@ -6086,9 +6088,10 @@ write_context_and_pred_id(Info, !IO) :-
 
 make_pred_id_preamble(Info, Preamble) :-
 	typecheck_info_get_module_info(Info, Module),
-	typecheck_info_get_predid(Info, PredID),
-	describe_one_pred_name(Module, should_not_module_qualify, PredID,
-		PredName),
+	typecheck_info_get_predid(Info, PredId),
+	PredPieces = describe_one_pred_name(Module, should_not_module_qualify,
+		PredId),
+	PredName = error_pieces_to_string(PredPieces),
 	Preamble = "In clause for " ++ PredName ++ ":".
 
 %-----------------------------------------------------------------------------%
