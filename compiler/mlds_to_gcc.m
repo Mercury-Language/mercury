@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ mlds_to_gcc__compile_to_asm(MLDS) -->
 	% Handle output of any foreign code (C, Ada, Fortran, etc.)
 	% to appropriate files.
 	%
-	{ list__filter(defn_contains_foreign_code, Defns0,
+	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
 		ForeignDefns, Defns) },
 	(
 		{ ForeignCode = mlds__foreign_code([], [], []) },
@@ -3145,30 +3145,6 @@ gen_context(MLDS_Context) -->
 'MR_int_least32_t'	= gcc__int32_type_node.
 'MR_int_least64_t'	= gcc__int64_type_node.
 'MR_intptr_t'		= gcc__intptr_type_node.
-
-%-----------------------------------------------------------------------------%
-%
-% Utility predicates.
-%
-
-:- pred defn_contains_foreign_code(mlds__defn).
-:- mode defn_contains_foreign_code(in) is semidet.
-
-defn_contains_foreign_code(Defn) :-
-	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = function(_, _, yes(FunctionBody)),
-	statement_contains_statement(FunctionBody, Statement),
-	Statement = mlds__statement(Stmt, _),
-	Stmt = atomic(target_code(TargetLang, _)),
-	TargetLang \= lang_asm.
-
-	% XXX This should be moved to ml_util.m
-:- pred defn_is_type(mlds__defn).
-:- mode defn_is_type(in) is semidet.
-
-defn_is_type(Defn) :-
-	Defn = mlds__defn(Name, _Context, _Flags, _Body),
-	Name = type(_, _).
 
 %-----------------------------------------------------------------------------%
 

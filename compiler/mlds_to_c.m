@@ -150,44 +150,6 @@ mlds_output_hdr_file(Indent, MLDS) -->
 	mlds_output_init_fn_decls(MLDS_ModuleName), io__nl,
 	mlds_output_hdr_end(Indent, ModuleName).
 
-:- pred defn_is_public(mlds__defn).
-:- mode defn_is_public(in) is semidet.
-
-defn_is_public(Defn) :-
-	Defn = mlds__defn(_Name, _Context, Flags, _Body),
-	access(Flags) \= private.
-
-:- pred defn_is_type(mlds__defn).
-:- mode defn_is_type(in) is semidet.
-
-defn_is_type(Defn) :-
-	Defn = mlds__defn(Name, _Context, _Flags, _Body),
-	Name = type(_, _).
-
-:- pred defn_is_function(mlds__defn).
-:- mode defn_is_function(in) is semidet.
-
-defn_is_function(Defn) :-
-	Defn = mlds__defn(Name, _Context, _Flags, _Body),
-	Name = function(_, _, _, _).
-
-:- pred defn_is_type_ctor_info(mlds__defn).
-:- mode defn_is_type_ctor_info(in) is semidet.
-
-defn_is_type_ctor_info(Defn) :-
-	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
-	Type = mlds__rtti_type(RttiName),
-	RttiName = type_ctor_info.
-
-:- pred defn_is_commit_type_var(mlds__defn).
-:- mode defn_is_commit_type_var(in) is semidet.
-
-defn_is_commit_type_var(Defn) :-
-	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
-	Type = mlds__commit_type.
-
 :- pred mlds_output_hdr_imports(indent, mlds__imports, io__state, io__state).
 :- mode mlds_output_hdr_imports(in, in, di, uo) is det.
 
