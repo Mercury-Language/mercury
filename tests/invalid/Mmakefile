@@ -74,7 +74,7 @@ ERRS=		$(SOURCES:%.m=%.err)
 ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
 %.err: %.m
-	if $(MC) $(MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
 	then false; else true; fi
 
 # Some tests have more than one possible valid output, so

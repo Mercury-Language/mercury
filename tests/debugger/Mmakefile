@@ -13,8 +13,8 @@ DEBUGGER_PROGS=	\
 	interpreter	\
 	queens
 
-MCFLAGS = --trace all $(EXTRA_MCFLAGS)
-EXTRA_C2INITFLAGS = -i
+MCFLAGS = --trace all
+C2INITFLAGS = -i
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).

@@ -20,8 +20,6 @@ PROGS=	\
 
 # some files need to be compiled with special options
 
-MCFLAGS = $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
-
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
