@@ -705,7 +705,7 @@ case "$host" in
 	sparc-*)
 		# NUM_REAL_REGS=10
 		# but succip, sp, hp, maxfr, and curfr are real regs,
-		% so subtract 5
+		# so subtract 5
 		NUM_REAL_R_REGS=5
 		;;
 	*)
