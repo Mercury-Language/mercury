@@ -257,16 +257,12 @@
 **				     addresses and layouts (label names are
 **				     quite big, so prefer not to include them
 **				     unless they are necessary).
-**
-** XXX I am not sure whether MR_INSERT_INTERNAL_LABEL_NAMES needs to be
-** enabled for PROFILE_CALLS - zs.
 */
 
 #ifdef MR_INSERT_INTERNAL_LABEL_NAMES
   #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(PROFILE_CALLS) || defined(MR_LOWLEVEL_DEBUG) \
-		|| defined(MR_DEBUG_AGC_SCHEDULING)
+#if defined(MR_LOWLEVEL_DEBUG) || defined(MR_DEBUG_AGC_SCHEDULING)
   #define MR_INSERT_INTERNAL_LABEL_NAMES
 #endif
 
