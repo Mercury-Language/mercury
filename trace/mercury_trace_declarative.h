@@ -10,8 +10,9 @@
 /*
 ** This file defines the MR_Edt_Node data type, which stores nodes
 ** of an Evaluation Dependency Tree (EDT), used for declarative
-** debugging.  It also defines an interface to the back end of the
-** declarative debugger from the internal debugger.
+** debugging.  This is the underlying implementation of mercury_edt,
+** which is an instance of the evaluation_tree typeclass.  These
+** are defined in browser/declarative_debugger.m.
 */
 
 #include "mercury_imp.h"
@@ -24,8 +25,16 @@
 ** represented nodes.
 **
 ** Implicit nodes are similar to explicit nodes, but they do not
-** store their children.  The children can be created by re-executing
-** the events in the stored range and collecting a new EDT.
+** store their children.  They do, however, store enough information
+** to allow execution to be resumed at that point, so children can
+** be created by re-executing the events in the stored range and
+** collecting a new EDT.  XXX this is not yet implemented, though.
+**
+** In the future there will also be nodes to handle:
+** 	- missing answer analysis
+** 	- calls to solutions/2 and related predicates
+** 	- exceptions
+** and possibly other things as well.
 */
 
 typedef enum {

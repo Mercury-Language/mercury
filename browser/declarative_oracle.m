@@ -14,21 +14,36 @@
 
 :- module declarative_oracle.
 :- interface.
-:- import_module bool, io.
+:- import_module io.
 :- import_module declarative_debugger.
+
+	%
+	% The oracle database.  This is threaded around the declarative
+	% debugger, but currently stores no information.
+	%
+:- type oracle_data.
 
 	%
 	% Query the oracle about the program being debugged.  The first
 	% argument is a node in the evaluation tree, the second argument
-	% is its validity in the intended interpreation.
+	% is its validity in the intended interpretation.
 	%
-:- pred query_oracle(edt_node, bool, io__state, io__state).
-:- mode query_oracle(in, out, di, uo) is det.
+:- pred query_oracle(edt_node, edt_truth, oracle_data, oracle_data,
+		io__state, io__state).
+:- mode query_oracle(in, out, in, out, di, uo) is det.
+
+	%
+	% Produce a new oracle state.
+	%
+:- pred oracle_data_init(oracle_data).
+:- mode oracle_data_init(out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, char, require.
+:- import_module bool, list, char, require, std_util.
+
+:- type oracle_data == unit.
 
 :- type debugger_command
 	--->	yes
@@ -36,27 +51,32 @@
 	;	browse
 	;	tree
 	;	help
-	;	unknown.
+	;	illegal_command.
 
 
-query_oracle(Node, Valid) -->
-	write_node(Node),
+oracle_data_init(unit).
+
+
+query_oracle(Node, Valid, Oracle0, Oracle) -->
+	query_user(Node),
 	io__flush_output,
 	get_command(Answer),
 	(
 		{ Answer = yes },
-		{ Valid = yes }
+		{ Valid = yes },
+		{ Oracle = Oracle0 }
 	;
 		{ Answer = no },
-		{ Valid = no }
+		{ Valid = no },
+		{ Oracle = Oracle0 }
 	;
 		{ Answer = browse },
 		io__write_string("Sorry, not implemented.\n"),
-		query_oracle(Node, Valid)
+		query_oracle(Node, Valid, Oracle0, Oracle)
 	;
 		{ Answer = tree },
 		io__write_string("Sorry, not implemented.\n"),
-		query_oracle(Node, Valid)
+		query_oracle(Node, Valid, Oracle0, Oracle)
 	;
 		{ Answer = help },
 		io__write_strings([
@@ -68,19 +88,19 @@ query_oracle(Node, Valid) -->
 %			"\tt\tprint the evaluation tree (not yet)\n",
 			"\th, ?\tthis help message\n"
 		]),
-		query_oracle(Node, Valid)
+		query_oracle(Node, Valid, Oracle0, Oracle)
 	;
-		{ Answer = unknown },
+		{ Answer = illegal_command },
 		io__write_string("Unknown command, 'h' for help.\n"),
-		query_oracle(Node, Valid)
+		query_oracle(Node, Valid, Oracle0, Oracle)
 	).
 
 
-:- pred write_node(edt_node, io__state, io__state).
-:- mode write_node(in, di, uo) is det.
+:- pred query_user(edt_node, io__state, io__state).
+:- mode query_user(in, di, uo) is det.
 
-write_node(wrong_answer(Name, Args)) -->
-	write_atom(Name, Args),
+query_user(Node) -->
+	write_node(Node),
 	io__nl,
 	io__write_string("Valid? ").
 
@@ -98,11 +118,11 @@ get_command(Command) -->
 		->
 			Command = Command0
 		;
-			Command = unknown
+			Command = illegal_command
 		)
 	;
 		% XXX this should definitely be handled better.
-		error("I/O error or EOF.\n")
+		Command = illegal_command
 	}.
 
 

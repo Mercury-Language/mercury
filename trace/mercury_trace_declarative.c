@@ -13,6 +13,18 @@
 ** Tree (EDT).  Once built, the EDT is passed to the front end where it can
 ** be analysed to find bugs.  The front end is implemented in
 ** browse/declarative_debugger.m.
+**
+** The interface between the front and back ends is via the
+** evaluation_tree typeclass, which is documented in
+** browse/declarative_debugger.m.  It would be possible to replace
+** the front end or the back end with an alternative implementation
+** which also conforms to the typeclass constraints.  For example:
+** 	- An alternative back end could generate the same EDT
+** 	  structure in a different way, such as via program
+** 	  transformation.
+** 	- An alternative front end could graphically display the
+** 	  generated EDTs as part of a visualization tool rather
+** 	  than analyzing them for bugs.
 */
 
 #include "mercury_imp.h"
@@ -132,7 +144,8 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 		** out events with a depth outside the range given by
 		** MR_edt_{min,max}_depth.  These events are either
 		** irrelevant, or else implicitly represented in the
-		** structure being built.
+		** structure being built.  See comment in
+		** trace/mercury_trace_declarative.h.
 		*/
 		return NULL;
 	}
