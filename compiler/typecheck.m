@@ -1558,7 +1558,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	% and the types of its arguments.
 	% (Optimize the common case of a non-polymorphic type)
 
-	( ConsType0 = term__functor(_, [], _) ->
+	( varset__is_empty(ConsTypeVarSet) ->
 		ConsType = ConsType0,
 		ArgTypes = ArgTypes0,
 		TypeAssign = TypeAssign0
