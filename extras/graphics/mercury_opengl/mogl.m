@@ -431,8 +431,7 @@
 % Per-fragment operations.
 %
 
-/*
-:- pred scissor(int, int, int, int, io__state, io__state).
+:- pred scissor(int, int, int, int, io, io).
 :- mode scissor(in, in, in, in, di, uo) is det.
 
 :- type test_func
@@ -443,13 +442,12 @@
 		;	equal
 		;	gequal
 		;	greater
-		;	notequal
-		.
+		;	not_equal.
 
-:- pred alpha_func(test_func, float, io__state, io__state).
+:- pred alpha_func(test_func, float, io, io).
 :- mode alpha_func(in, in, di, uo) is det.
 
-:- pred stencil_func(test_func, float, int, io__state, io__state).
+:- pred stencil_func(test_func, float, int, io, io).
 :- mode stencil_func(in, in, in, di, uo) is det.
 
 :- type stencil_op
@@ -458,13 +456,12 @@
 		;	replace
 		;	incr
 		;	decr
-		;	invert
-		.
+		;	invert.
 
-:- pred stencil_op(stencil_op, stencil_op, stencil_op, io__state, io__state).
+:- pred stencil_op(stencil_op, stencil_op, stencil_op, io, io).
 :- mode stencil_op(in, in, in, di, uo) is det.
 
-:- pred depth_func(test_func, io__state, io__state).
+:- pred depth_func(test_func, io, io).
 :- mode depth_func(in, di, uo) is det.
 
 :- type	blend_src
@@ -476,8 +473,7 @@
 		;	one_minus_src_alpha
 		;	dst_alpha
 		;	one_minus_dst_alpha
-		;	src_alpha_saturate
-		.
+		;	src_alpha_saturate.
 
 :- type blend_dst
 		--->	zero
@@ -487,19 +483,18 @@
 		;	src_alpha
 		;	one_minus_src_alpha
 		;	dst_alpha
-		;	one_minus_dst_alpha
-		.
+		;	one_minus_dst_alpha.
 
-:- pred blend_func(blend_src, blend_dst, io__state, io__state).
+:- pred blend_func(blend_src, blend_dst, io, io).
 :- mode blend_func(in, in, di, uo) is det.
 
-:- type logical_operation
+:- type logical_op
 		--->	clear
 		;	(and)
 		;	and_reverse
 		;	copy
 		;	and_inverted
-		;	noop
+		;	no_op
 		;	xor
 		;	(or)
 		;	nor
@@ -509,9 +504,10 @@
 		;	copy_inverted
 		;	or_inverted
 		;	nand
-		;	set
-		.
-*/
+		;	set.
+
+:- pred logical_op(logical_op, io, io).
+:- mode logical_op(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -592,30 +588,25 @@
 % Selection.
 %
 
-/*
-
-:- pred init_names(io__state, io__state).
+:- pred init_names(io, io).
 :- mode init_names(di, uo) is det.
 
-:- pred pop_name(io__state, io__state).
+:- pred pop_name(io, io).
 :- mode pop_name(di, uo) is det.
 
-:- pred push_name(int, io__state, io__state).
+:- pred push_name(int, io, io).
 :- mode push_name(in, di, uo) is det.
 
-:- pred load_name(int, io__state, io__state).
+:- pred load_name(int, io, io).
 :- mode load_name(in, di, uo) is det.
 
 :- type render_mode
 		--->	render
 		;	select
-		;	feedback
-		.
+		;	feedback.
 
-:- pred render_mode(render_mode, int, io__state, io__state).
+:- pred render_mode(render_mode, int, io, io).
 :- mode render_mode(in, out, di, uo) is det.
-
-*/
 
 %------------------------------------------------------------------------------%
 %
@@ -736,10 +727,9 @@ get_error(Err, !IO) :-
 		GL_STACK_UNDERFLOW,
 		GL_OUT_OF_MEMORY
 	};
-	GLenum	err;
-	Integer i;
-
-	Err = 0;
+	
+	GLenum err;
+	MR_Integer i;
 
 	err = glGetError();
 
@@ -2136,89 +2126,243 @@ fog(fog_end(End), !IO)  :-
 % Per-fragment operations.
 %
 
-/*
+:- pragma foreign_proc("C", 
+	scissor(X::in, Y::in, Width::in, Height::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glScissor((GLint)X, (GLint)Y, (GLsizei)Width, (GLsizei)Height);
+	IO = IO0;
+").
 
-:- pred scissor(int, int, int, int, io__state, io__state).
-:- mode scissor(in, in, in, in, di, uo) is det.
+:- func test_func_to_int(test_func) = int.
 
-:- type test_func
-		--->	never
-		;	always
-		;	less
-		;	lequal
-		;	equal
-		;	gequal
-		;	greater
-		;	notequal
-		.
+test_func_to_int(never)     = 0.
+test_func_to_int(always)    = 1.
+test_func_to_int(less)      = 2.
+test_func_to_int(lequal)    = 3. 
+test_func_to_int(equal)     = 4.
+test_func_to_int(gequal)    = 5.
+test_func_to_int(greater)   = 6.
+test_func_to_int(not_equal) = 7.
 
-:- pred alpha_func(test_func, float, io__state, io__state).
-:- mode alpha_func(in, in, di, uo) is det.
+:- pragma foreign_decl("C", "
+	extern const GLenum comparison_mode_flags[];
+").
 
-:- pred stencil_func(test_func, float, int, io__state, io__state).
-:- mode stencil_func(in, in, in, di, uo) is det.
+:- pragma foreign_code("C", "
+	const GLenum comparison_mode_flags[] = {
+		GL_NEVER,
+		GL_ALWAYS,
+		GL_LESS,
+		GL_LEQUAL,
+		GL_EQUAL,
+		GL_GEQUAL,
+		GL_GREATER,
+		GL_NOTEQUAL
+	};
+").
 
-:- type stencil_op
-		--->	keep
-		;	zero
-		;	replace
-		;	incr
-		;	decr
-		;	invert
-		.
+alpha_func(TestFunc, Ref, !IO) :-
+	alpha_func_2(test_func_to_int(TestFunc), Ref, !IO).
 
-:- pred stencil_op(stencil_op, stencil_op, stencil_op, io__state, io__state).
-:- mode stencil_op(in, in, in, di, uo) is det.
+:- pred alpha_func_2(int::in, float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	alpha_func_2(TestFunc::in, Ref::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glAlphaFunc(comparison_mode_flags[TestFunc], (GLclampf)Ref);
+	IO = IO0;
 
-:- pred depth_func(test_func, io__state, io__state).
-:- mode depth_func(in, di, uo) is det.
+").
 
-:- type	blend_src
-		--->	zero
-		;	one
-		;	dst_color
-		;	one_minus_dst_color
-		;	src_alpha
-		;	one_minus_src_alpha
-		;	dst_alpha
-		;	one_minus_dst_alpha
-		;	src_alpha_saturate
-		.
+stencil_func(TestFunc, Ref, Mask, !IO) :-
+	stencil_func_2(test_func_to_int(TestFunc), Ref, Mask, !IO).
 
-:- type blend_dst
-		--->	zero
-		;	one
-		;	src_color
-		;	one_minus_src_color
-		;	src_alpha
-		;	one_minus_src_alpha
-		;	dst_alpha
-		;	one_minus_dst_alpha
-		.
+:- pred stencil_func_2(int::in, float::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	stencil_func_2(TestFunc::in, Ref::in, Mask::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glStencilFunc(comparison_mode_flags[TestFunc], (GLint)Ref,
+		(GLuint)Mask);
+	IO = IO0;
+").
 
-:- pred blend_func(blend_src, blend_dst, io__state, io__state).
-:- mode blend_func(in, in, di, uo) is det.
+:- func stencil_op_to_int(stencil_op) = int.
 
-:- type logical_operation
-		--->	clear
-		;	(and)
-		;	and_reverse
-		;	copy
-		;	and_inverted
-		;	noop
-		;	xor
-		;	(or)
-		;	nor
-		;	equiv
-		;	invert
-		;	or_reverse
-		;	copy_inverted
-		;	or_inverted
-		;	nand
-		;	set
-		.
+stencil_op_to_int(keep)    = 0.
+stencil_op_to_int(zero)    = 1.
+stencil_op_to_int(replace) = 2.
+stencil_op_to_int(incr)    = 3.
+stencil_op_to_int(decr)    = 4. 
+stencil_op_to_int(invert)  = 5.
+	
+:- pragma foreign_decl("C", "
+	extern const GLenum stencil_op_mode_flags[];
+").
 
-*/
+:- pragma foreign_code("C", "
+	const GLenum stencil_op_mode_flags[] = {
+		GL_KEEP,
+		GL_ZERO,
+		GL_REPLACE,
+		GL_INCR,
+		GL_DECR,
+		GL_INVERT
+	};
+").
+
+stencil_op(Fail, ZFail, ZPass, !IO) :-
+	stencil_op_2(stencil_op_to_int(Fail), stencil_op_to_int(ZFail),
+		stencil_op_to_int(ZPass), !IO).
+
+:- pred stencil_op_2(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	stencil_op_2(Fail::in, ZFail::in, ZPass::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glStencilOp(stencil_op_mode_flags[Fail], stencil_op_mode_flags[ZFail],
+		stencil_op_mode_flags[ZPass]);
+	IO = IO0;
+").
+
+depth_func(TestFunc, !IO) :-
+	depth_func_2(test_func_to_int(TestFunc), !IO).
+
+:- pred depth_func_2(int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	depth_func_2(Func::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glDepthFunc(comparison_mode_flags[Func]);
+	IO = IO0;
+").
+
+:- func blend_src_to_int(blend_src) = int.
+
+blend_src_to_int(zero) = 0.
+blend_src_to_int(one)  = 1.
+blend_src_to_int(dst_color) = 2.
+blend_src_to_int(one_minus_dst_color) = 3.
+blend_src_to_int(src_alpha) = 4.
+blend_src_to_int(one_minus_src_alpha) = 5.
+blend_src_to_int(dst_alpha) = 6.
+blend_src_to_int(one_minus_dst_alpha) = 7.
+blend_src_to_int(src_alpha_saturate) = 8.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum blend_src_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum blend_src_flags[] = {
+		GL_ZERO,
+		GL_ONE,
+		GL_DST_COLOR,
+		GL_ONE_MINUS_DST_COLOR,
+		GL_SRC_ALPHA,
+		GL_ONE_MINUS_SRC_ALPHA,
+		GL_DST_ALPHA,
+		GL_ONE_MINUS_DST_ALPHA,
+		GL_SRC_ALPHA_SATURATE
+	};
+").
+
+:- func blend_dst_to_int(blend_dst) = int.
+
+blend_dst_to_int(zero) = 0.
+blend_dst_to_int(one)  = 1.
+blend_dst_to_int(src_color) = 2.
+blend_dst_to_int(one_minus_src_color) = 3.
+blend_dst_to_int(src_alpha) = 4.
+blend_dst_to_int(one_minus_src_alpha) = 5.
+blend_dst_to_int(dst_alpha) = 6.
+blend_dst_to_int(one_minus_dst_alpha) = 7.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum blend_dst_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum blend_dst_flags[] = {
+		GL_ZERO,
+		GL_ONE,
+		GL_SRC_COLOR,
+		GL_ONE_MINUS_SRC_COLOR,
+		GL_SRC_ALPHA,
+		GL_ONE_MINUS_SRC_ALPHA,
+		GL_DST_ALPHA,
+		GL_ONE_MINUS_DST_ALPHA
+	};
+").
+
+blend_func(Src, Dst, !IO) :-
+	blend_func_2(blend_src_to_int(Src), blend_dst_to_int(Dst), !IO).
+
+:- pred blend_func_2(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	blend_func_2(Src::in, Dst::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glBlendFunc(blend_src_flags[Src], blend_dst_flags[Dst]);
+	IO = IO0;
+").
+
+:- func logical_op_to_int(logical_op) = int.
+
+logical_op_to_int(clear) = 0.
+logical_op_to_int((and)) = 1.
+logical_op_to_int(and_reverse) = 2.
+logical_op_to_int(copy) = 3.
+logical_op_to_int(and_inverted) = 4.
+logical_op_to_int(no_op) = 5.
+logical_op_to_int(xor) = 6.
+logical_op_to_int((or)) = 7.
+logical_op_to_int(nor) = 8.
+logical_op_to_int(equiv) = 9.
+logical_op_to_int(invert) = 10.
+logical_op_to_int(or_reverse) = 11.
+logical_op_to_int(copy_inverted) = 12.
+logical_op_to_int(or_inverted) = 13.
+logical_op_to_int(nand) = 14.
+logical_op_to_int(set) = 15.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum logical_op_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum logical_op_flags[] = {
+		GL_CLEAR,
+		GL_AND,
+		GL_AND_REVERSE,
+		GL_COPY,
+		GL_AND_INVERTED,
+		GL_NOOP,
+		GL_XOR,
+		GL_OR,
+		GL_NOR,
+		GL_EQUIV,
+		GL_INVERT,
+		GL_OR_REVERSE,
+		GL_COPY_INVERTED,
+		GL_OR_INVERTED,
+		GL_NAND,
+		GL_SET
+	};
+").
+
+logical_op(Op, !IO) :-
+	logical_op_2(logical_op_to_int(Op), !IO).
+
+:- pred logical_op_2(int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	logical_op_2(Op::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glLogicOp(logical_op_flags[Op]);
+	IO = IO0;
+").
 
 %------------------------------------------------------------------------------%
 %
@@ -2447,30 +2591,67 @@ accum(Op, Param, !IO) :-
 % Selection.
 %
 
-/*
+:- pragma foreign_proc("C",
+	init_names(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glInitNames();
+	IO = IO0;
+").
 
-:- pred init_names(io__state, io__state).
-:- mode init_names(di, uo) is det.
+:- pragma foreign_proc("C",
+	pop_name(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPopName();
+	IO = IO0;
+").
 
-:- pred pop_name(io__state, io__state).
-:- mode pop_name(di, uo) is det.
+:- pragma foreign_proc("C",
+	push_name(Name::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glPushName((GLuint)Name);
+	IO = IO0;
+").
 
-:- pred push_name(int, io__state, io__state).
-:- mode push_name(in, di, uo) is det.
+:- pragma foreign_proc("C",
+	load_name(Name::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glLoadName((GLuint)Name);
+	IO = IO0;
+").
 
-:- pred load_name(int, io__state, io__state).
-:- mode load_name(in, di, uo) is det.
+:- func render_mode_to_int(render_mode) = int.
 
-:- type render_mode
-		--->	render
-		;	select
-		;	feedback
-		.
+render_mode_to_int(render)   = 0.
+render_mode_to_int(select)   = 1.
+render_mode_to_int(feedback) = 2.
 
-:- pred render_mode(render_mode, int, io__state, io__state).
-:- mode render_mode(in, out, di, uo) is det.
+:- pragma foreign_decl("C", "
+	extern const GLenum render_mode_flags[];
+").
 
-*/
+:- pragma foreign_code("C", "
+	const GLenum render_mode_flags[] = {
+		GL_RENDER,
+		GL_SELECT,
+		GL_FEEDBACK
+	};
+").
+
+render_mode(Mode, Output, !IO) :-
+	render_mode_2(render_mode_to_int(Mode), Output, !IO).
+
+:- pred render_mode_2(int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	render_mode_2(Mode::in, Output::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	Output = (MR_Integer) glRenderMode(render_mode_flags[Mode]);
+	IO = IO0;
+").
 
 %------------------------------------------------------------------------------%
 %

@@ -29,6 +29,9 @@
 :- pred perspective(float, float, float, float, io, io).
 :- mode perspective(in, in, in, in, di, uo) is det.
 
+:- pred ortho_2d(float, float, float, float, io, io).
+:- mode ortho_2d(in, in, in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Quadric functions
@@ -117,6 +120,16 @@
 "
 	gluPerspective((GLdouble) Fovy, (GLdouble) Asp,
 		(GLdouble) N, (GLdouble) F);
+	IO = IO0;
+").
+
+
+:- pragma foreign_proc("C",
+	ortho_2d(Left::in, Right::in, Bottom::in, Top::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	gluOrtho2D((GLdouble) Left, (GLdouble) Right, (GLdouble) Bottom, 
+		(GLdouble) Top);
 	IO = IO0;
 ").
 
