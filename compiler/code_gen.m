@@ -282,9 +282,10 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		code_info__get_layout_info(InternalMap, CodeInfo, _),
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
+		proc_info_varset(ProcInfo, VarSet),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
 			MaybeSuccipSlot, MaybeTraceCallLabel, MaxTraceReg,
-			TraceSlotInfo, ForceProcId, InternalMap),
+			TraceSlotInfo, ForceProcId, VarSet, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)
 	;

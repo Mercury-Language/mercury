@@ -89,6 +89,8 @@
 					% to be present, even if the option
 					% procid_stack_layout is not set?
 			need_proc_id	:: bool,
+					% The names of all the variables.
+			varset		:: prog_varset,
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
 			internal_map	:: proc_label_layout_info
@@ -298,7 +300,7 @@
 :- implementation.
 
 :- import_module hlds_goal, code_util, type_util, inst_match, options.
-:- import_module string, require, varset, term.
+:- import_module string, require, term, varset.
 
 %-----------------------------------------------------------------------------%
 

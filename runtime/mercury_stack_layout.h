@@ -221,23 +221,6 @@ typedef	struct MR_Type_Param_Locns_Struct {
 } MR_Type_Param_Locns;
 
 /*
-** This structure describes the name of a live value, if it has any.
-**
-** The MR_var_num field is zero if the live value is not a variable;
-** if it is, it gives the HLDS number of the variable.
-**
-** The MR_var_name_offset field gives the offset, within the string
-** table of the module containing the layout structure, of the name
-** of the variable. If the variable has no name, or if the live value
-** is not a variable, the offset will be zero.
-*/
-
-typedef	struct MR_Var_Name_Struct {
-	MR_uint_least16_t	MR_var_num;
-	MR_uint_least16_t	MR_var_name_offset;
-} MR_Var_Name;
-
-/*
 ** This data structure describes the variables live at a given point.
 ** The count of live variables is encoded; it gives separately the counts
 ** of variables that have short and long location descriptions, or it may
@@ -248,8 +231,8 @@ typedef	struct MR_Var_Name_Struct {
 ** The last three fields are meaningful only if the MR_has_valid_var_count
 ** macro returns true.
 **
-** The names array pointer may be NULL, in which case no information about
-** variable names is available.
+** The var nums array pointer may be NULL, in which case no information about
+** variable numbers is available.
 **
 ** The type parameters array may also be NULL, but this means that there are
 ** no type parameters in the types of the variables live at this point.
@@ -258,9 +241,9 @@ typedef	struct MR_Var_Name_Struct {
 */
 
 typedef	struct MR_Stack_Layout_Vars_Struct {
-	MR_Integer			MR_slvs_var_count;
+	MR_Integer		MR_slvs_var_count;
 	void			*MR_slvs_locns_types;
-	MR_Var_Name		*MR_slvs_names;
+	MR_uint_least16_t	*MR_slvs_var_nums;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
@@ -289,17 +272,6 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_short_desc_var_locn(slvs, i)					    \
 		(((MR_uint_least8_t *)					    \
 			MR_end_of_long_desc_var_locns(slvs))[(i)])
-
-#define	MR_name_if_present(module_layout, vars, i)			    \
-		(((vars)->MR_slvs_names == NULL) ? "" :			    \
-		((module_layout)->MR_ml_string_table +			    \
-			(vars)->MR_slvs_names[(i)].MR_var_name_offset))
-
-#define	MR_name_if_present_from_label(label_layout, i)			    \
-		MR_name_if_present(					    \
-			(label_layout)->MR_sll_entry->MR_sle_module_layout, \
-			&((label_layout)->MR_sll_var_info),		    \
-			(i))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -381,6 +353,9 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 				*MR_sle_call_label;
 	struct MR_Module_Layout_Struct
 				*MR_sle_module_layout;
+	MR_Word			MR_sle_proc_rep;
+	MR_int_least16_t	*MR_sle_used_var_names;
+	MR_int_least16_t	MR_sle_max_var_num;
 	MR_int_least16_t	MR_sle_max_r_num;
 	MR_int_least8_t		MR_sle_maybe_from_full;
 	MR_int_least8_t		MR_sle_maybe_trail;
@@ -578,20 +553,20 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 */
 
 typedef struct MR_Module_File_Layout_Struct {
-	MR_String			MR_mfl_filename;
-	MR_Integer			MR_mfl_label_count;
+	MR_String		MR_mfl_filename;
+	MR_Integer		MR_mfl_label_count;
 	/* the following fields point to arrays of size MR_mfl_label_count */
 	MR_int_least16_t	*MR_mfl_label_lineno;
 	MR_Stack_Layout_Label	**MR_mfl_label_layout;
 } MR_Module_File_Layout;
 
 typedef	struct MR_Module_Layout_Struct {
-	MR_String			MR_ml_name;
-	MR_Integer			MR_ml_string_table_size;
+	MR_String		MR_ml_name;
+	MR_Integer		MR_ml_string_table_size;
 	char			*MR_ml_string_table;
-	MR_Integer			MR_ml_proc_count;
+	MR_Integer		MR_ml_proc_count;
 	MR_Stack_Layout_Entry	**MR_ml_procs;
-	MR_Integer			MR_ml_filename_count;
+	MR_Integer		MR_ml_filename_count;
 	MR_Module_File_Layout	**MR_ml_module_file_layout;
 } MR_Module_Layout;
 
