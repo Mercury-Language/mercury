@@ -1280,10 +1280,22 @@ free_up_lval_with_copy(Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
 	;
 		get_spare_reg(!.VLI, Target),
 		record_copy(Lval, Target, !VLI),
-		Code = node([
-			assign(Target, lval(Lval))
-				- "Freeing up the source lval"
-		])
+		(
+			( Lval = stackvar(N)
+			; Lval = framevar(N)
+			),
+			N < 0
+		->
+			% We must not copy from invalid lvals. The value we
+			% would copy is a dummy in any case, so Target won't
+			% be any more valid if we assigned Lval to it.
+			Code = empty
+		;
+			Code = node([
+				assign(Target, lval(Lval))
+					- "Freeing up the source lval"
+			])
+		)
 	).
 
 % Find a variable in the given list that is currently stored directly in Lval

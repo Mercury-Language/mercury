@@ -81,14 +81,14 @@ non  26: ordinary, 12 words
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10
  succip: label wrapper_not_reached
  succfr: non   4
 mdb> stack_regs
-sp = det  14
+sp = det  13
 curfr = non 135
 maxfr = non 135
 mdb> nondet_stack -d
@@ -183,7 +183,7 @@ non  26: ordinary, 12 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10
@@ -303,14 +303,14 @@ non  26: ordinary, 12 words
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10
  succip: label wrapper_not_reached
  succfr: non   4
 mdb> stack_regs
-sp = det  21
+sp = det  20
 curfr = non  26
 maxfr = non 217
 mdb> nondet_stack -d
@@ -472,7 +472,7 @@ non  26: ordinary, 12 words, pred nondet_stack.queen/2-0 (nondet) <c3;>
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10
@@ -491,7 +491,7 @@ non 284: ordinary, 12 words
 non 272: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non 268: temp
  redoip: label UNKNOWN
  redofr: non  26
@@ -630,14 +630,14 @@ non  26: ordinary, 12 words
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10
  succip: label wrapper_not_reached
  succfr: non   4
 mdb> stack_regs
-sp = det  14
+sp = det  13
 curfr = non 284
 maxfr = non 284
 mdb> nondet_stack -d
@@ -651,7 +651,7 @@ non 284: ordinary, 12 words, pred nondet_stack.test/2-0 (nondet) <>
 non 272: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non 268: temp
  redoip: label UNKNOWN
  redofr: non  26
@@ -851,7 +851,7 @@ non  26: ordinary, 12 words, pred nondet_stack.queen/2-0 (nondet) <c2;>
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
- detfr:  det  14
+ detfr:  det  13
 non  10: ordinary, 6 words
  redoip: label global_fail
  redofr: non  10

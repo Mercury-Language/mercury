@@ -865,9 +865,30 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 	;
 		Tag = no_tag,
 		( Args = [Arg], Modes = [Mode] ->
-			Type = code_info__variable_type(!.CI, Arg),
-			unify_gen__generate_sub_unify(ref(Var), ref(Arg),
-				Mode, Type, Code, !CI)
+			VarType = code_info__variable_type(!.CI, Var),
+			( is_dummy_argument_type(VarType) ->
+				% We must handle this case specially. If we
+				% didn't, the generated code would copy the
+				% reference to the Var's current location,
+				% which may be stackvar(N) or framevar(N) for
+				% negative N, to be the location of Arg, and
+				% since Arg may not be a dummy type, it would
+				% actually use that location. This can happen
+				% in the unify/compare routines for e.g.
+				% io__state.
+
+				( variable_is_forward_live(!.CI, Arg) ->
+					code_info__assign_const_to_var(Arg,
+						const(int_const(0)), !CI)
+				;
+					true
+				),
+				Code = empty
+			;
+				ArgType = code_info__variable_type(!.CI, Arg),
+				unify_gen__generate_sub_unify(ref(Var),
+					ref(Arg), Mode, ArgType, Code, !CI)
+			)
 		;
 			error("unify_gen__generate_det_deconstruction: " ++
 				"no_tag: arity != 1")
@@ -1021,9 +1042,7 @@ unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code, !CI) :-
 	code_info__produce_variable(Var, SourceCode, Source, !CI),
 	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
 		MaterializeCode, !CI),
-	(
-		NewLval = lval(Lval)
-	->
+	( NewLval = lval(Lval) ->
 		Code = tree(
 			tree(SourceCode, MaterializeCode),
 			node([

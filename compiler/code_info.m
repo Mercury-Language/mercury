@@ -3322,7 +3322,8 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
 		Detism = erroneous,
 		OptNoReturnCalls = yes
 	->
-		StackVarLocs = []
+		RealStackVarLocs = [],
+		DummyStackVarLocs = []
 	;
 		code_info__compute_forward_live_var_saves(!.CI, OutVarSet,
 			ForwardVarLocs),
@@ -3344,17 +3345,39 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
 				StackVarLocs)
 		;
 			StackVarLocs = ForwardVarLocs
-		)
+		),
+		VarTypes = code_info__get_var_types(!.CI),
+		list__filter(valid_stack_slot(VarTypes),
+			StackVarLocs, RealStackVarLocs, DummyStackVarLocs)
 	),
-
 	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
 	code_info__var_arg_info_to_lval(InArgInfos, InArgLocs),
-	list__append(StackVarLocs, InArgLocs, AllLocs),
-	var_locn__place_vars(AllLocs, Code,
+	list__append(RealStackVarLocs, InArgLocs, AllRealLocs),
+	var_locn__place_vars(DummyStackVarLocs ++ AllRealLocs, Code,
 		VarLocnInfo0, VarLocnInfo),
 	code_info__set_var_locn_info(VarLocnInfo, !CI),
-	assoc_list__values(AllLocs, LiveLocList),
+	assoc_list__values(AllRealLocs, LiveLocList),
 	set__list_to_set(LiveLocList, LiveLocs).
+
+:- pred valid_stack_slot(vartypes::in, pair(prog_var, lval)::in) is semidet.
+
+valid_stack_slot(VarTypes, Var - Lval) :-
+	map__lookup(VarTypes, Var, Type),
+	( is_dummy_argument_type(Type) ->
+		fail
+	;
+		(
+			( Lval = stackvar(N)
+			; Lval = framevar(N)
+			),
+			N < 0
+		->
+			error("valid_stack_slot: nondummy var " ++
+				"in dummy stack slot")
+		;
+			true
+		)
+	).
 
 :- pred code_info__setup_call_args(assoc_list(prog_var, arg_info)::in,
 	call_direction::in, set(lval)::out, code_tree::out,
@@ -3498,7 +3521,10 @@ code_info__generate_call_vn_livevals(CI, InputArgLocs, OutputArgs, LiveVals) :-
 	set(prog_var)::in, set(lval)::out) is det.
 
 code_info__generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
-	code_info__get_known_variables(CI, KnownVarList),
+	code_info__get_known_variables(CI, KnownVarList0),
+	VarTypes = code_info__get_var_types(CI),
+	list__filter(var_is_of_dummy_type(VarTypes), KnownVarList0,
+		_, KnownVarList),
 	set__list_to_set(KnownVarList, KnownVars),
 	set__difference(KnownVars, OutputArgs, LiveVars),
 	set__to_sorted_list(LiveVars, LiveVarList),
@@ -3538,7 +3564,9 @@ code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
 code_info__generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
 		OkToDeleteAny, LiveLvalues) :-
 	code_info__variable_locations(CI, VarLocs),
-	code_info__get_known_variables(CI, Vars),
+	code_info__get_known_variables(CI, Vars0),
+	VarTypes = code_info__get_var_types(CI),
+	list__filter(var_is_of_dummy_type(VarTypes), Vars0, _, Vars),
 	code_info__get_active_temps_data(CI, Temps),
 	code_info__get_proc_info(CI, ProcInfo),
 	code_info__get_globals(CI, Globals),
@@ -3552,8 +3580,7 @@ code_info__generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
 
 code_info__generate_resume_layout(Label, ResumeMap, !CI) :-
 	code_info__get_globals(!.CI, Globals),
-	globals__lookup_bool_option(Globals, agc_stack_layout,
-		AgcStackLayout),
+	globals__lookup_bool_option(Globals, agc_stack_layout, AgcStackLayout),
 	( AgcStackLayout = yes ->
 		code_info__get_active_temps_data(!.CI, Temps),
 		code_info__get_instmap(!.CI, InstMap),

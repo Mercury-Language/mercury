@@ -699,6 +699,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		[]
 	),
 
+	globals__io_lookup_int_option(debug_opt_pred_id, DebugOptPredId),
+	( { DebugOptPredId > 0 } ->
+		globals__io_set_option(debug_opt, bool(yes))
+	;
+		[]
+	),
+
 	globals__io_lookup_int_option(dump_hlds_pred_id, DumpHLDSPredId),
 	( { DumpHLDSPredId >= 0 } ->
 		globals__io_lookup_string_option(dump_hlds_options,

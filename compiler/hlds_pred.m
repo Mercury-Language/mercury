@@ -1992,6 +1992,9 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 	% becasue the debugger ignores unnamed variables.
 :- pred ensure_all_headvars_are_named(proc_info::in, proc_info::out) is det.
 
+	% Test whether the variable is of a dummy type, based on the vartypes.
+:- pred var_is_of_dummy_type(vartypes::in, prog_var::in) is semidet.
+
 :- implementation.
 :- import_module check_hlds__mode_errors.
 
@@ -2639,6 +2642,10 @@ ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
 		varset__name_var(!.VarSet, Var, Name, !:VarSet)
 	),
 	ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
+
+var_is_of_dummy_type(VarTypes, Var) :-
+	map__lookup(VarTypes, Var, Type),
+	is_dummy_argument_type(Type).
 
 %-----------------------------------------------------------------------------%
 

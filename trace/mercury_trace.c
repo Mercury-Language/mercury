@@ -75,6 +75,7 @@ static  MR_Code     *MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 static  MR_bool     MR_in_traced_region(const MR_Proc_Layout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_is_io_state(MR_PseudoTypeInfo pti);
+static  MR_bool     MR_is_dummy_type(MR_PseudoTypeInfo pti);
 static  MR_bool     MR_find_saved_io_counter(const MR_Label_Layout *call_label,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Unsigned *saved_io_counter_ptr);
@@ -537,6 +538,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     base_maxfr = MR_saved_maxfr(saved_regs);
     return_label_layout = MR_unwind_stacks_for_retry(top_layout,
         ancestor_level, &base_sp, &base_curfr, &base_maxfr, problem);
+
 #ifdef  MR_DEBUG_RETRY
     MR_print_stack_regs(stdout, saved_regs);
 #endif
@@ -544,7 +546,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     if (return_label_layout == NULL) {
         if (*problem == NULL) {
             *problem = "MR_unwind_stacks_for_retry failed "
-                    "without reporting a problem";
+                "without reporting a problem";
         }
 
         goto report_problem;
@@ -588,22 +590,24 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
             saved_regs, base_sp, base_curfr,
             call_label->MR_sll_var_nums[i], &succeeded);
 
-        if (! succeeded) {
-            if (MR_is_io_state(MR_var_pti(call_label, i))) {
-                /*
-                ** Since I/O state input arguments are not used,
-                ** we can leave arg_value containing garbage.
-                */
+        if (MR_is_io_state(MR_var_pti(call_label, i))) {
+            has_io_state = MR_TRUE;
+            found_io_action_counter = MR_find_saved_io_counter(
+                call_label, base_sp, base_curfr,
+                &saved_io_action_counter);
+        }
 
-                has_io_state = MR_TRUE;
-                found_io_action_counter = MR_find_saved_io_counter(
-                        call_label, base_sp, base_curfr,
-                        &saved_io_action_counter);
-            } else {
+        if (! succeeded) {
+            if (! MR_is_dummy_type(MR_var_pti(call_label, i))) {
                 *problem = "Cannot perform retry because the "
                     "values of some input arguments are missing.";
                 goto report_problem;
             }
+
+            /*
+            ** Since values of dummy types are not actually used,
+            ** we can leave arg_value containing garbage.
+            */
         }
 
         if (i < MR_long_desc_var_count(call_label)) {
@@ -665,10 +669,16 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
                     fprintf(out_fp,
                         "Retry across I/O operations is not always safe.\n");
                     answer = MR_trace_getline(
-                            "Are you sure you want to do it? ", in_fp, out_fp);
+                        "Are you sure you want to do it? ", in_fp, out_fp);
 
-                    allow_retry = (answer[0] == 'y' || answer[0] == 'Y');
-                    MR_free(answer);
+                    if (answer == NULL) {
+                        /* the user has pressed EOF */
+                        allow_retry = MR_FALSE;
+                    } else {
+                        allow_retry = (answer[0] == 'y' || answer[0] == 'Y');
+                        MR_free(answer);
+                    }
+
                     if (! allow_retry) {
                         *problem = "Retry aborted.";
                         goto report_problem;
@@ -900,15 +910,47 @@ static MR_bool
 MR_is_io_state(MR_PseudoTypeInfo pti)
 {
     MR_TypeCtorInfo type_ctor_info;
+    MR_ConstString  module;
+    MR_ConstString  type;
 
     if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
         return MR_FALSE;
     }
 
     type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+    module = MR_type_ctor_module_name(type_ctor_info);
+    type = MR_type_ctor_name(type_ctor_info);
 
-    return (MR_streq(MR_type_ctor_module_name(type_ctor_info), "io")
-        && MR_streq(MR_type_ctor_name(type_ctor_info), "state"));
+    return (MR_streq(module, "io") && MR_streq(type, "state"));
+}
+
+static MR_bool
+MR_is_dummy_type(MR_PseudoTypeInfo pti)
+{
+    MR_TypeCtorInfo type_ctor_info;
+    MR_ConstString  module;
+    MR_ConstString  type;
+
+    if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
+        return MR_FALSE;
+    }
+
+    type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+    module = MR_type_ctor_module_name(type_ctor_info);
+    type = MR_type_ctor_name(type_ctor_info);
+
+    /*
+    ** These tests should be kept in sync with is_dummy_argument_type_2
+    ** in compiler/type_util.m.
+    */
+
+    if (MR_streq(module, "io") && MR_streq(type, "state")) {
+            return MR_TRUE;
+    } else if (MR_streq(module, "store") && MR_streq(type, "state")) {
+            return MR_TRUE;
+    }
+
+    return MR_FALSE;
 }
 
 static MR_bool

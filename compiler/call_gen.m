@@ -211,15 +211,6 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
 	code_info__get_next_label(ReturnLabel, !CI),
 	goal_info_get_context(GoalInfo, Context),
 	goal_info_get_goal_path(GoalInfo, GoalPath),
-	CallCode = node([
-		livevals(LiveVals)
-			- "",
-		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
-			Context, GoalPath, CallModel)
-			- "Setup and call",
-		label(ReturnLabel)
-			- "Continuation label"
-	]),
 
 		% Figure out what variables will be live at the return point,
 		% and where, for use in the accurate garbage collector, and
@@ -232,6 +223,16 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
 		% after the call.
 	call_gen__handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
 		ReturnInstMap, ReturnLiveLvalues, !CI),
+
+	CallCode = node([
+		livevals(LiveVals)
+			- "",
+		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
+			Context, GoalPath, CallModel)
+			- "Setup and call",
+		label(ReturnLabel)
+			- "Continuation label"
+	]),
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.

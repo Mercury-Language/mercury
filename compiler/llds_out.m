@@ -4613,7 +4613,7 @@ output_lval_as_word(Lval) -->
 output_lval(reg(Type, Num)) -->
 	output_reg(Type, Num).
 output_lval(stackvar(N)) -->
-	{ (N < 0) ->
+	{ N =< 0 ->
 		error("stack var out of range")
 	;
 		true
@@ -4622,7 +4622,7 @@ output_lval(stackvar(N)) -->
 	io__write_int(N),
 	io__write_string(")").
 output_lval(framevar(N)) -->
-	{ (N =< 0) ->
+	{ N =< 0 ->
 		error("frame var out of range")
 	;
 		true

@@ -854,6 +854,9 @@ type_util__is_dummy_argument_type(Type) :-
 :- pred type_util__is_dummy_argument_type_2(string::in, string::in, arity::in)
 	is semidet.
 
+% The list of dummy types should be kept in sync with MR_is_dummy_type
+% in trace/mercury_trace.c.
+%
 % XXX should we include aditi:state/0 in this list?
 type_util__is_dummy_argument_type_2("io", "state", 0).    % io:state/0
 type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.

@@ -24,7 +24,7 @@ finish
 retry 1
 finish
 stack
-retry 1
+retry -f 1
 break det_with_cut_2
 continue -a
 delete *

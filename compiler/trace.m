@@ -127,9 +127,9 @@
 	% except those that can be totally clobbered during the evaluation
 	% of the procedure (those partially clobbered may still be of interest,
 	% although to handle them properly we need to record insts in stack
-	% layouts).
+	% layouts), and those of dummy types.
 :- pred trace__fail_vars(module_info::in, proc_info::in,
-		set(prog_var)::out) is det.
+	set(prog_var)::out) is det.
 
 	% Figure out whether we need a slot for storing the value of maxfr
 	% on entry, and record the result in the proc info.
@@ -247,10 +247,11 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	mode_list_get_final_insts(Modes, ModuleInfo, Insts),
 	(
 		trace__build_fail_vars(HeadVars, Insts, ArgInfos,
-			ModuleInfo, FailVarsList)
+			ModuleInfo, VarTypes, FailVarsList)
 	->
 		set__list_to_set(FailVarsList, FailVars)
 	;
@@ -943,16 +944,20 @@ trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
 %-----------------------------------------------------------------------------%
 
 :- pred trace__build_fail_vars(list(prog_var)::in, list(inst)::in,
-	list(arg_info)::in, module_info::in, list(prog_var)::out) is semidet.
+	list(arg_info)::in, module_info::in, vartypes::in,
+	list(prog_var)::out) is semidet.
 
-trace__build_fail_vars([], [], [], _, []).
+trace__build_fail_vars([], [], [], _, _, []).
 trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
-		ModuleInfo, FailVars) :-
-	trace__build_fail_vars(Vars, Insts, Infos, ModuleInfo, FailVars0),
+		ModuleInfo, VarTypes, FailVars) :-
+	trace__build_fail_vars(Vars, Insts, Infos, ModuleInfo, VarTypes,
+		FailVars0),
 	Info = arg_info(_Loc, ArgMode),
 	(
 		ArgMode = top_in,
-		\+ inst_is_clobbered(ModuleInfo, Inst)
+		\+ inst_is_clobbered(ModuleInfo, Inst),
+		map__lookup(VarTypes, Var, Type),
+		\+ is_dummy_argument_type(Type)
 	->
 		FailVars = [Var | FailVars0]
 	;

@@ -64,7 +64,7 @@ mdb> finish
 mdb> stack
    0       pred retry.det_with_cut/2-0 (det)
    1       pred retry.main/2-0 (det)
-mdb> retry 1
+mdb> retry -f 1
       E1:     C1  1 CALL pred retry.main/2-0 (det)
 mdb> break det_with_cut_2
  0: + stop  interface pred retry.det_with_cut_2/2-0 (det)
