@@ -378,13 +378,15 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				PredId, ModuleInfo, IOState0, IOState1)
 		),
 		bool(Inferring), % dummy pred call to avoid type ambiguity
-		
+
 		typecheck_info_init(IOState1, ModuleInfo, PredId,
 				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
 				Status, TypeCheckInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeCheckInfo1, TypeCheckInfo2),
-		typecheck_info_get_final_info(TypeCheckInfo2, TypeVarSet, 
+		typecheck_check_for_ambiguity(whole_pred,
+				TypeCheckInfo2, TypeCheckInfo3),
+		typecheck_info_get_final_info(TypeCheckInfo3, TypeVarSet, 
 				VarTypes1),
 		map__optimize(VarTypes1, VarTypes),
 		ClausesInfo = clauses_info(VarSet, VarTypes0, VarTypes,
@@ -451,8 +453,7 @@ typecheck_clause_list([Clause0|Clauses0], HeadVars, ArgTypes,
 	%
 	% It would be more natural to use non-determinism to write
 	% this code, and perhaps even more efficient.
-	% But doing it nondeterministically would make bootstrapping more
-	% difficult, and most importantly would make good error
+	% But doing it nondeterministically would make good error
 	% messages very difficult.
 
 	% we should perhaps do manual garbage collection here
@@ -471,27 +472,74 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	typecheck_var_has_type_list(HeadVars, ArgTypes, 0),
 	typecheck_goal(Body0, Body),
 	{ Clause = clause(Modes, Body, Context) },
-		% check for type ambiguities
 	typecheck_info_set_context(Context),
-	typecheck_finish_clause.
+	typecheck_check_for_ambiguity(clause_only(HeadVars)).
 
 %-----------------------------------------------------------------------------%
 
-	% If there are still multiple type assignments for the clause,
+	% typecheck_check_for_ambiguity/3:
+	% If there are multiple type assignments,
 	% then we issue an error message here.
 
-:- pred typecheck_finish_clause(typecheck_info, typecheck_info).
-:- mode typecheck_finish_clause(typecheck_info_di, typecheck_info_uo) is det.
+	%
+	% If stuff-to-check = whole_pred, report an error for any ambiguity.
+	% But if stuff-to-check = clause_only(HeadVars), then only report
+	% errors for type ambiguities that don't involve the head vars,
+	% because we may be able to resolve a type ambiguity for a head var
+	% in one clause by looking at later clauses.
+	% (Ambiguities in the head variables can only arise if we are
+	% inferring the type for this pred.)
+	% 
+:- type stuff_to_check
+	--->	clause_only(list(var))	
+	;	whole_pred.
 
-typecheck_finish_clause(TypeCheckInfo0, TypeCheckInfo) :-
+:- pred typecheck_check_for_ambiguity(stuff_to_check,
+				typecheck_info, typecheck_info).
+:- mode typecheck_check_for_ambiguity(in,
+				typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_check_for_ambiguity(StuffToCheck, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet),
 	( TypeAssignSet = [_TypeAssign] ->
 		TypeCheckInfo = TypeCheckInfo0
 	; TypeAssignSet = [TypeAssign1, TypeAssign2 | _] ->
-			% we only report an ambiguity error if
-			% there weren't any other errors in the clause
+		%
+		% we only report an ambiguity error if
+		% (a) we haven't encountered any other errors
+		% and if StuffToCheck = clause_only(_),
+		% also (b) the ambiguity occurs only in the body,
+		% rather than in the head variables (and hence
+		% can't be resolved by looking at later clauses).
+		%
 		typecheck_info_get_found_error(TypeCheckInfo0, FoundError),
-		( FoundError = no ->
+		(
+			FoundError = no,
+			(
+			    StuffToCheck = whole_pred
+			;
+			    StuffToCheck = clause_only(HeadVars),
+			    %
+			    % only report an error if the headvar types
+			    % are identical (which means that the ambiguity
+			    % must have occurred in the body)
+			    %
+			    type_assign_get_var_types(TypeAssign1, VarTypes1),
+			    type_assign_get_var_types(TypeAssign2, VarTypes2),
+			    type_assign_get_type_bindings(TypeAssign1,
+					TypeBindings1),
+			    type_assign_get_type_bindings(TypeAssign2,
+					TypeBindings2),
+			    map__apply_to_list(HeadVars, VarTypes1, HeadTypes1),
+			    map__apply_to_list(HeadVars, VarTypes2, HeadTypes2),
+			    term__apply_rec_substitution_to_list(HeadTypes1,
+					TypeBindings1, FinalHeadTypes1),
+			    term__apply_rec_substitution_to_list(HeadTypes2,
+					TypeBindings2, FinalHeadTypes2),
+			    identical_up_to_renaming(
+					FinalHeadTypes1, FinalHeadTypes2)
+			)
+		->
 			typecheck_info_set_found_error(TypeCheckInfo0, yes, 
 				TypeCheckInfo1),
 			typecheck_info_get_io_state(TypeCheckInfo1, IOState0),
