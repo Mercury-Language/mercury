@@ -142,9 +142,14 @@ compile_times=false
 write_out_profile_data=false
 type_stats=""
 
-if test -d .KEEP_OBJS
+if test -e .KEEP_OBJS
 then
 	keep_objs=true
+fi
+
+if test -f .BOOT_GRADE
+then
+	grade=`cat .BOOT_GRADE`
 fi
 
 # If you change these, you will also need to change scripts/ml.in,
