@@ -563,6 +563,7 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".clean_sicstus"
 		; Ext = ".realclean"
 		; Ext = ".depend"
+		; Ext = ".install_ints"
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
@@ -2567,6 +2568,20 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
 
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	{ Intermod = yes ->
+		string__append_list(["$(", MakeVarName, ".opts) "],
+				MaybeOptsVar)
+	;
+		MaybeOptsVar = ""
+	},
+	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
+	{ TransOpt = yes ->
+		string__append_list(["$(", MakeVarName, ".trans_opts) "],
+				MaybeTransOptsVar)
+	;
+		MaybeTransOptsVar = ""
+	},
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
 	module_name_to_lib_file_name("lib", ModuleName, ".a", yes, LibFileName),
 	module_name_to_lib_file_name("lib", ModuleName, ".so", yes,
@@ -2580,7 +2595,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		MaybeSharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".ints) ",
 		"$(", MakeVarName, ".int3s) ",
-		"$(", MakeVarName, ".opts) ",
+		MaybeOptsVar, MaybeTransOptsVar,
 		InitFileName, "\n\n"
 	]),
 
@@ -2643,6 +2658,41 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
 		"\t$(MSL) --debug $(ALL_MSLFLAGS) -o ", SicstusDebugExeFileName,
 			" $(", MakeVarName, ".qls)\n\n"
+	]),
+
+	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
+				LibInstallIntsTargetName),
+	{ InstallIntsRuleBody =
+"		for file in $$files; do \\
+			target=$(INSTALL_INT_DIR)/`basename $$file`; \\
+			if cmp -s $$file $$target; then \\
+				echo \"$$target unchanged\"; \\
+			else \\
+				echo \"installing $$target\"; \\
+				cp $$file $$target; \\
+			fi; \\
+		done
+		# The following is needed to support the `--use-subdirs' option
+		# We try using `ln -s', but if that fails, then we just use `cp'.
+		for ext in int int2 int3 opt trans_opt; do \\
+			dir=$${ext}s; \\
+			rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \\
+				mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \\
+				cp $(INSTALL_INT_DIR)/*.$$ext \\
+					$(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			} || exit 1; \\
+		done\n\n" },
+
+	io__write_strings(DepStream, [
+		".PHONY : ", LibInstallIntsTargetName, "\n",
+		LibInstallIntsTargetName, " : $(", MakeVarName, ".ints) $(",
+			MakeVarName, ".int3s) ", MaybeOptsVar,
+			MaybeTransOptsVar, "install_lib_dirs\n",
+		"\tfiles=""$(", MakeVarName, ".ints) $(", MakeVarName,
+			".int3s) ", MaybeOptsVar, MaybeTransOptsVar,
+			"""; \\\n",
+		InstallIntsRuleBody
 	]),
 
 	module_name_to_file_name(SourceModuleName, ".check", no,

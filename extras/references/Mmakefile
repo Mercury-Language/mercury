@@ -1,10 +1,20 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 GRADEFLAGS += --use-trail
+
+# Install in an "extras" subdirectory of the main installation tree
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+LIBGRADES = asm_fast.tr asm_fast.gc.tr.debug
+
+MAIN_TARGET = libglobal
+
+# In case the user of the library wants to do intermodule optimisation
+MCFLAGS += --intermodule-optimisation
+MCFLAGS += --transitive-intermodule-optimisation
 
 depend: global.depend
 	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" depend
@@ -13,6 +23,8 @@ depend: global.depend
 check: libglobal
 	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" check
 	cd tests && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" check
+
+install: libglobal.install
 
 clean: clean_subdirs
 

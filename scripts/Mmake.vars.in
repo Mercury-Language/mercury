@@ -188,6 +188,11 @@ ALL_RANLIBFLAGS	= $(RANLIBFLAGS) $(EXTRA_RANLIBFLAGS) $(TARGET_RANLIBFLAGS)
 RANLIBFLAGS	=
 EXTRA_RANLIBFLAGS =
 
+# List of grades to install for a library
+ALL_LIBGRADES	= $(TARGET_LIBGRADES) $(EXTRA_TARGET_LIBGRADES)
+LIBGRADES	=
+EXTRA_LIBGRADES	=
+
 # $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
 # (We use `.pic_o' as the extension for `.o' files that must have
 # position-independent code.)
@@ -305,6 +310,17 @@ TARGET_EXTRA_LIBRARIES = \
 maybe-target-EXTRA_LIBRARIES- = $(EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))
 maybe-target-EXTRA_LIBRARIES-undefined =
 
+TARGET_LIBGRADES = \
+  $(maybe-base-LIBGRADES-$(findstring undefined,$(origin LIBGRADES-$*)))
+maybe-base-LIBGRADES- = $(LIBGRADES-$*)
+maybe-base-LIBGRADES-undefined = $(LIBGRADES) $(EXTRA_LIBGRADES)
+
+EXTRA_TARGET_LIBGRADES = \
+  $(maybe-base-EXTRA_LIBGRADES-$(findstring undefined,\
+		$(origin EXTRA_LIBGRADES-$*)))
+maybe-base-EXTRA_LIBGRADES- = $(EXTRA_LIBGRADES-$*)
+maybe-base-EXTRA_LIBGRADES-undefined =
+
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.
 TARGET_MNCFLAGS	=
@@ -322,6 +338,9 @@ TARGET_MSPFLAGS	=
 #
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+# If you change any of these, you may need to update
+# `mercury_cleanup_install'.
 
 SUBDIR=Mercury/
 
@@ -382,5 +401,68 @@ endif
 MAIN_TARGET =
 
 default_target: main_target
+
+#-----------------------------------------------------------------------------#
+
+# Specify the locations for installing things.
+# These directories can all be modified independantly.
+# In particular, you might want to find a better place for the DVI and
+# HTML files.
+
+# FINAL_INSTALL_PREFIX describes the directory that the installation
+# will finally end up in.  When building the Mercury compiler, it
+# should only be set by the configure script.  Other
+# FINAL_INSTALL_* variables have a similar meaning.
+#
+# If you want to install to a different directory temporarily (e.g.
+# to build a package, or if you don't have the permissions to install
+# to a final directory), override INSTALL_PREFIX on the command-line.
+# If you have previously configured to the directory you want to
+# finally install to, you will then be able to move the files safely,
+# since any hard-coded paths will be set to their final destination
+# already (note that the installation in the temporary directory may
+# not work until moved into its final destination).
+# e.g.
+#      configure --prefix /usr
+#      make INSTALL_PREFIX=/some/temporary/directory/usr
+
+# If you don't intend to install to a temporary directory, rather than
+# overriding INSTALL_PREFIX you should reconfigure using the configure
+# script, since there are some hardcoded paths created by the configure
+# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
+# be updated simply by overriding INSTALL_PREFIX.
+
+INSTALL_PREFIX		= @prefix@
+FINAL_INSTALL_PREFIX	= @prefix@
+INSTALL_BINDIR		= $(INSTALL_PREFIX)/bin
+INSTALL_LIBDIR		= $(INSTALL_PREFIX)/lib/mercury
+FINAL_INSTALL_LIBDIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury
+INSTALL_INFO_DIR	= $(INSTALL_PREFIX)/info
+INSTALL_DVI_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_TEXT_DIR	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_PS_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/man
+INSTALL_HTML_DIR	= $(INSTALL_PREFIX)/lib/mercury/html
+INSTALL_MDB_DOC_DIR	= $(INSTALL_PREFIX)/lib/mercury/mdb
+INSTALL_ELISP_DIR	= $(INSTALL_PREFIX)/lib/mercury/elisp
+
+# You should not need to override anything below here
+
+INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
+INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
+INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
+INSTALL_MMAKE_DIR	= $(INSTALL_LIBDIR)/mmake
+FULLARCH		= @FULLARCH@
+INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
+INSTALL_MERC_GRADELESS_LIB_DIR = $(INSTALL_LIBDIR)/lib/$(FULLARCH)
+FINAL_INSTALL_MERC_GRADELESS_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
+INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
+FINAL_INSTALL_MERC_LIB_DIR = \
+		$(FINAL_INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
+
+#-----------------------------------------------------------------------------#
+
+# Specify the additional compilation models to install by default
+LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#

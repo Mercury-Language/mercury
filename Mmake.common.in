@@ -21,55 +21,11 @@ include $(MERCURY_DIR)/VERSION
 
 #-----------------------------------------------------------------------------#
 
-# Specify the locations for installing things.
-# These directories can all be modified independantly.
-# In particular, you might want to find a better place for the DVI and
-# HTML files.
-
-# FINAL_INSTALL_PREFIX describes the directory that the installation
-# will finally end up in. It should only be set by the configure 
-# script.  Other FINAL_INSTALL_* variables have a similar meaning.
-#
-# If you want to install to a different directory temporarily (e.g.
-# to build a package, or if you don't have the permissions to install
-# to a final directory), override INSTALL_PREFIX on the command-line.
-# If you have previously configured to the directory you want to
-# finally install to, you will then be able to move the files safely,
-# since any hard-coded paths will be set to their final destination
-# already (note that the installation in the temporary directory may
-# not work until moved into its final destination).
-# e.g.
-#      configure --prefix /usr
-#      make INSTALL_PREFIX=/some/temporary/directory/usr
-
-# If you don't intend to install to a temporary directory, rather than
-# overriding INSTALL_PREFIX you should reconfigure using the configure
-# script, since there are some hardcoded paths created by the configure
-# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
-# be updated simply by overriding INSTALL_PREFIX.
-
-INSTALL_PREFIX		= @prefix@
-FINAL_INSTALL_PREFIX	= @prefix@
-INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
-INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
-FINAL_INSTALL_LIBDIR 	= $(FINAL_INSTALL_PREFIX)/lib/mercury
-INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
-INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
-INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
-INSTALL_MDB_DOC_DIR 	= $(INSTALL_PREFIX)/lib/mercury/mdb
-INSTALL_ELISP_DIR 	= $(INSTALL_PREFIX)/lib/mercury/elisp
-
 # Specify the Mercury compiler to use for bootstrapping
 MC			= @BOOTSTRAP_MC@
 
 # Specify the compilation model to use for compiling the compiler
 GRADE			= @GRADE@
-
-# Specify the additional compilation models to install the library for
-LIBGRADES  		= @LIBGRADES@
 
 # Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
 EXT_FOR_EXE	= @EXT_FOR_EXE@
@@ -136,16 +92,8 @@ SHARED_LIBS		= @SHARED_LIBS@
 
 #-----------------------------------------------------------------------------#
 
-INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
-INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
-INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
-INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
-FULLARCH		= @FULLARCH@
-INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
-INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
-FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
-INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
-FINAL_INSTALL_MERC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
+FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 
 SCRIPTS_DIR = $(MERCURY_DIR)/scripts
 RUNTIME_DIR = $(MERCURY_DIR)/runtime
