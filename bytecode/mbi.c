@@ -3,8 +3,13 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.c,v 1.4 1997-03-25 02:11:01 aet Exp $
+** $Id: mbi.c,v 1.5 1997-04-24 05:30:54 aet Exp $
 */
+
+	/*
+	** Interface to Mercury runtime must be included first.
+	*/
+#include	<imp.h>	
 
 /* Imports */
 #include	<stdlib.h>
@@ -18,14 +23,12 @@
 
 
 /* Exports */
-int
-heapsize	= 0;
 
 
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mbi.c,v 1.4 1997-03-25 02:11:01 aet Exp $";
+rcs_id[]	= "$Id: mbi.c,v 1.5 1997-04-24 05:30:54 aet Exp $";
 
 static void
 usage(void);
@@ -49,31 +52,17 @@ main(int argc, char* argv[])
 	opterr = 0;
 
 	/* Read options */
-	while ((c = getopt(argc,argv,"h:s:")) != EOF)
+	while ((c = getopt(argc,argv,"h")) != EOF)
 	{
-		int	stacksize;
-		int	heapsize;
-
 		switch (c) 
 		{
 		case 'h':
-			/* XXX: Do something with heapsize option */
-			heapsize = atoi(optarg);
-			if (heapsize <= 0)
-			{
-				usage();
-			}
-			break;
-		case 's':
-			/* XXX: Do something with stacksize option */
-			stacksize = atoi(optarg);
-			if (stacksize <= 0)
-			{
-				usage();
-			}
+			usage();
+			exit(EXIT_SUCCESS);
 			break;
 		default:
 			usage();
+			exit(EXIT_FAILURE);
 			break;
 		}
 	}
@@ -136,9 +125,8 @@ main(int argc, char* argv[])
 void
 usage()
 {
-	fprintf(stderr, "Usage: %s [-h heapsize] [-s stacksize] "
-		"<bytecode files>\n", program_name
+	fprintf(stderr, "Usage: %s [-h] files\n", program_name
 	);
-	exit(EXIT_FAILURE);
+	return;
 }
 

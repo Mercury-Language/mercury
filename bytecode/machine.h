@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: machine.h,v 1.2 1997-03-25 02:10:23 aet Exp $
+** $Id: machine.h,v 1.3 1997-04-24 05:30:52 aet Exp $
 */
 
 #if	! defined(MACHINE_H)
@@ -16,20 +16,20 @@
 #define	MAX_CODE	10000
 
 /*
- *	XXX: Currently we store full bloated bytecodes in the
- *	code area (text segment). This is extremely inefficient.
- *	We should alter design a stripped-down streamlined `machine
- *	code' that is a minimalist bytecode with all symbolic information
- *	stripped out and and placed in tables (`data segment'), and all 
- *	labels replaced with offsets into the text segment
- */
+**	XXX: Currently we store full bloated bytecodes in the
+**	code area (text segment). This is extremely inefficient.
+**	We should alter design a stripped-down streamlined `machine
+**	code' that is a minimalist bytecode with all symbolic information
+**	stripped out and and placed in tables (`data segment'), and all 
+**	labels replaced with offsets into the text segment
+*/
 
 /*
- * An Address is an index into code, heap, or stack area.
- * This should be identical to a pointer since we will need
- * to use the same heap as the compiled Mercury when we interface
- * with compiled code.
- */
+** An Address is an index into code, heap, or stack area.
+** This should be identical to a pointer since we will need
+** to use the same heap as the compiled Mercury when we interface
+** with compiled code.
+*/
 typedef Word
 	Address;
 

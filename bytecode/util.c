@@ -4,7 +4,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.c,v 1.4 1997-03-25 03:10:19 aet Exp $
+** $Id: util.c,v 1.5 1997-04-24 05:31:41 aet Exp $
 */
 
 
@@ -20,12 +20,12 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: util.c,v 1.4 1997-03-25 03:10:19 aet Exp $";
+rcs_id[]	= "$Id: util.c,v 1.5 1997-04-24 05:31:41 aet Exp $";
 
 /* Implementation */
 
 void 
-util_error(char *fmt, ...)
+util_error(const char *fmt, ...)
 {
         va_list arg_p;
 
@@ -34,11 +34,13 @@ util_error(char *fmt, ...)
         vfprintf(stderr, fmt, arg_p);
         va_end(argp);
         fprintf(stderr, "\n");
+	
+	return;
 }
 
 
 void
-fatal(char* message)
+fatal(const char* message)
 {
 	util_error(message);
 	fprintf(stderr, "NOTE: The program is aborting. "
@@ -49,9 +51,9 @@ fatal(char* message)
 }
 
 /*
- * XXX: Don't use this. We should be using only mem_malloc rather than
- * malloc directly.
- */
+** XXX: Don't use this. We should be using only mem_malloc rather than
+** malloc directly.
+*/
 #if	0
 char*
 strdup(char* str)

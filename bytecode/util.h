@@ -4,7 +4,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.h,v 1.6 1997-03-25 03:53:19 aet Exp $
+** $Id: util.h,v 1.7 1997-04-24 05:31:48 aet Exp $
 */
 
 
@@ -61,10 +61,10 @@ void
 util_init(void);
 
 void
-util_error(char *fmt, ...);
+util_error(const char *fmt, ...);
 
 void
-fatal(char* message);
+fatal(const char* message);
 
 /*
  * Don't use strdup. See comment in util.c

@@ -3,42 +3,47 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: bytecode.h,v 1.8 1997-03-25 02:08:53 aet Exp $
+** $Id: bytecode.h,v 1.9 1997-04-24 05:30:38 aet Exp $
 */
 
 #if	! defined(BYTECODE_H)
 #define	BYTECODE_H
 
+#include	<conf.h>
+#include	<mercury_types.h>
+#include	<mercury_float.h>
+#include	<gc.h>
+
 /*
  * XXX: We should make bytecode portable from platform to platform.
  *
- * Hence we assume the following:
- *	sizeof(byte) = 1
- *	sizeof(short) = 2
- *	sizeof(int) = 4
- *	sizeof(long) = 8
- *	sizeof(float) = 4 (IEEE)	// We don't really need float.
- *	sizeof(double) = 8 (IEEE)
+ * We require the following:
+ *	sizeof(Byte) = 1
+ *	sizeof(Short16) = 2 (2's complement)
+ *	sizeof(Integer64) = 8 (2's complement)
+ *	sizeof(Word64) = 8
+ *	sizeof(Float64) = 8 (IEEE)	// We don't really need float.
+ * Each of the above is big-endian in the bytecode file.
+ * That is, we read the byte at the big end first.
  *
  * We should have platform-dependent #defines to ensure that each of
  * these types has identical size on all platforms.
- * We also need to specify a consistent byteorder, say bigendian,
- * MSB first in bytecode file.
  */
+
 typedef unsigned char
 	Byte;
-typedef int
-	Word;
-typedef int
-	Int;
-typedef	short
+
+typedef short
 	Short;
-typedef long
-	Long;
-typedef float
-	Float;
-typedef double
-	Double;
+
+
+
+/*
+XXX: Do we need this?
+typedef Integer64
+	Word64;
+*/
+
 typedef char*
 	CString;
 
@@ -83,7 +88,7 @@ typedef struct Op_arg {
 	Byte	id;
 	union {
 		Short	var;
-		Int	int_const;
+		Integer int_const;
 		Float	float_const;
 	} opt;
 } Op_arg;
@@ -121,7 +126,7 @@ typedef struct Cons_id {
 			Short		arity;
 			Tag		tag;
 		} cons;
-		Int 		int_const;	
+		Integer		int_const;	
 		CString		string_const;
 		Float		float_const;
 		struct {

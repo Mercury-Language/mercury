@@ -4,7 +4,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: static_data.h,v 1.2 1997-03-25 03:09:15 aet Exp $
+** $Id: static_data.h,v 1.3 1997-04-24 05:31:25 aet Exp $
 */
 
 

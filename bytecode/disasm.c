@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.c,v 1.10 1997-03-25 02:09:28 aet Exp $
+** $Id: disasm.c,v 1.11 1997-04-24 05:30:42 aet Exp $
 */
 
 /* Imports */
@@ -21,7 +21,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.10 1997-03-25 02:09:28 aet Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.11 1997-04-24 05:30:42 aet Exp $";
 
 static void
 print_bytecode(Bytecode bytecode);
@@ -38,16 +38,16 @@ print_var_dir(Var_dir var_dir);
 static void
 print_op_arg(Op_arg op_arg);
 
-static CString
+static const char*
 bytecode_to_name(Byte bytecode_id);
 
-static CString
+static const char*
 determinism_to_name(Byte determinism_id);
 
-static CString
+static const char*
 binop_to_name(Byte binop);
 
-static CString
+static const char*
 unop_to_name(Byte unop);
 
 static CString
@@ -56,8 +56,8 @@ quote_cstring(CString str);
 /* Implementation */
 
 /*
- * We emulate Zoltan's .bytedebug file format.
- */
+** We emulate Zoltan's .bytedebug file format.
+*/
 void
 disassemble(FILE* fp)
 {
@@ -70,10 +70,10 @@ disassemble(FILE* fp)
 	{
 		printf("bytecode_version %d\n", bytecode_version_number);
 		/* XXX: We should check the version number is 
-		 * what we expect. Should use major and minor version
-		 * numbers? Should use a magic number?
-		 * Should have the module name in the bytecode.
-		 */
+		** what we expect. Should use major and minor version
+		** numbers? Should use a magic number?
+		** Should have the module name in the bytecode.
+		*/
 	}
 	else
 	{
@@ -84,9 +84,9 @@ disassemble(FILE* fp)
 	{
 		print_bytecode(bytecode);
 		/* 
-		 * XXX: should free any heap data in the bytecode here
-		 * Wait till we know what's happening with GC.
-		 */
+		** XXX: should free any heap data in the bytecode here
+		** Wait till we know what's happening with GC.
+		*/
 		fflush(stdout);
 	} 
 } /* disassemble */
@@ -95,7 +95,6 @@ disassemble(FILE* fp)
 static void
 print_bytecode(Bytecode bc)
 {
-	/* XXX: nuke the extraneous printed shit */
 	printf("%s", bytecode_to_name(bc.id));
 
 	switch (bc.id)
@@ -430,7 +429,20 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_INT_CONST:
 		{
-			printf("int_const %d", cons_id.opt.int_const);
+			/*
+			** (This comment is labelled "CAST COMMENT".
+			** If you remove this comment, also
+			** remove references to it in this file.
+			** Search for "CAST COMMENT".)
+			**
+			** XXX: The cast to `long' in the following code
+			** is needed to remove a warning. `int_const' has
+			** type `Integer', but Integer may be typedef'ed
+			** to `int', `long', `long long' or whatever.
+			** The correct solution may be to define a
+			** format string for Integer in conf.h.
+			*/
+			printf("int_const %ld", (long) cons_id.opt.int_const);
 		}
 		break;
 	case CONSID_STRING_CONST:
@@ -441,8 +453,7 @@ print_cons_id(Cons_id cons_id)
 		break;
 	case CONSID_FLOAT_CONST:
 		{
-			/* XXX: What's Float defined to be??? */
-			printf("float_const %f", cons_id.opt.float_const);
+			printf("float_const %.15g", cons_id.opt.float_const);
 		}
 		break;
 	case CONSID_PRED_CONST:
@@ -502,16 +513,22 @@ print_tag(Tag tag)
 		break;
 	case TAG_COMPLICATED:
 		{
-			printf("%s %d %d", "complicated_tag", 
+			/*
+			** See comment labelled "CAST COMMENT".
+			*/
+			printf("%s %d %ld", "complicated_tag", 
 				tag.opt.pair.primary, 
-				tag.opt.pair.secondary);
+				(long) tag.opt.pair.secondary);
 		}
 		break;
 	case TAG_COMPLICATED_CONSTANT:
 		{
-			printf("%s %d %d", "complicated_constant_tag", 
+			/*
+			** See comment labelled "CAST COMMENT".
+			*/
+			printf("%s %d %ld", "complicated_constant_tag", 
 				tag.opt.pair.primary, 
-				tag.opt.pair.secondary);
+				(long) tag.opt.pair.secondary);
 		}
 		break;
 	case TAG_ENUM:
@@ -554,7 +571,10 @@ print_op_arg(Op_arg op_arg)
 		break;
 	case ARG_INT_CONST:
 		{
-			printf("int %d", op_arg.opt.int_const);
+			/*
+			** See comment labelled "CAST COMMENT".
+			*/
+			printf("int %ld", (long) op_arg.opt.int_const);
 		}
 		break;
 	case ARG_FLOAT_CONST:
@@ -574,9 +594,9 @@ print_op_arg(Op_arg op_arg)
 
 
 /*
- *	XXX: Currently we depend on the order of elements in the table.
- */
-static CString
+**	XXX: Currently we depend on the order of elements in the table.
+*/
+static const char*
 bytecode_table[] =
 	{
 	"enter_pred",
@@ -621,7 +641,7 @@ bytecode_table[] =
 	"not_supported"
 	};
 
-static CString
+static const char*
 bytecode_to_name(Byte bytecode_id)
 {
 	if (bytecode_id >= sizeof(bytecode_table) / sizeof(CString))
@@ -635,9 +655,9 @@ bytecode_to_name(Byte bytecode_id)
 }
 
 /*
- *	XXX: Currently we depend on the order of elements in the table.
- */
-static CString
+**	XXX: Currently we depend on the order of elements in the table.
+*/
+static const char*
 determinism_table[] =
 	{
 	"det",
@@ -651,9 +671,9 @@ determinism_table[] =
 	};
 
 /*
- * Return a const string
- */
-static CString
+** Return a const string
+*/
+static const char*
 determinism_to_name(Byte determinism_id)
 {
 	if (determinism_id >= sizeof(determinism_table) / sizeof(CString))
@@ -667,9 +687,9 @@ determinism_to_name(Byte determinism_id)
 }
 
 /*
- *	XXX: Currently we depend on the order of elements in the table.
- */
-static CString
+**	XXX: Currently we depend on the order of elements in the table.
+*/
+static const char*
 binop_table[] = {
 	"+",
 	"-",
@@ -708,7 +728,7 @@ binop_table[] = {
 	"float_ge"
 };
 
-static CString
+static const char*
 binop_to_name(Byte binop)
 {
 	/* bounds check */
@@ -723,9 +743,9 @@ binop_to_name(Byte binop)
 } /* binop_to_name */
 
 /*
- *	XXX: Currently we depend on the order of elements in the table.
- */
-static CString
+**	XXX: Currently we depend on the order of elements in the table.
+*/
+static const char*
 unop_table[] = {
 	"mktag",
 	"tag",
@@ -739,7 +759,7 @@ unop_table[] = {
 	"not"
 };
 
-static CString
+static const char*
 unop_to_name(Byte unop)
 {
 	/* bounds check */
@@ -755,11 +775,11 @@ unop_to_name(Byte unop)
 
 
 /*
- * Return a quoted C String.
- * Allocs a string, which caller must free.
- * Uses a highwater-marked static string buffer.
- * XXX: put in util module?
- */
+** Return a quoted C String.
+** Allocs a string, which caller must free.
+** Uses a highwater-marked static string buffer.
+** XXX: put in util module?
+*/
 static CString
 quote_cstring(CString str)
 {
@@ -771,7 +791,7 @@ quote_cstring(CString str)
 	/* Allocate initial static string */
 	if (NULL == str_s)
 	{
-		str_s = mem_malloc(sizeof(char) * str_size_s);
+		str_s = malloc(sizeof(char) * str_size_s);
 	}
 
 	i = j = 0;
@@ -781,17 +801,17 @@ quote_cstring(CString str)
 		if (i+2 > str_size_s)
 		{
 			str_size_s *= 2; /* Double buffer size */
-			str_s = mem_realloc(str_s, str_size_s * sizeof(char));
+			str_s = realloc(str_s, str_size_s * sizeof(char));
 			assert(str_s != NULL); /* XXX */
 		}
 
 		/*
-		 * XXX: According to K&R 2nd ed, page 194, string literals
-		 * may not contain newline or double-quote; they must be
-		 * quoted. (And of course the backslash must also be
-		 * quoted. There is no mention of other limitations
-		 * on what characters may be within a string literal.
-		 */
+		** According to K&R 2nd ed, page 194, string literals
+		** may not contain newline or double-quote; they must be
+		** quoted. (And of course the backslash must also be
+		** quoted. There is no mention of other limitations
+		** on what characters may be within a string literal.
+		*/
 		switch(str[i])
 		{
 		/* following two cases are identical */
@@ -817,7 +837,7 @@ quote_cstring(CString str)
 				CString		ret_str;
 
 				str_s[j] = '\0';
-				ret_str = mem_malloc((strlen(str_s) + 1) 
+				ret_str = malloc((strlen(str_s) + 1) 
 					* sizeof(char));
 				strcpy(ret_str, str_s);
 				return ret_str;

@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mdis.c,v 1.3 1997-03-25 02:14:35 aet Exp $
+** $Id: mdis.c,v 1.4 1997-04-24 05:31:01 aet Exp $
 */
 
 /* Imports */
@@ -18,7 +18,7 @@
 #include	<mdis.h>
 
 static char
-rcs_id[]	= "$Id: mdis.c,v 1.3 1997-03-25 02:14:35 aet Exp $";
+rcs_id[]	= "$Id: mdis.c,v 1.4 1997-04-24 05:31:01 aet Exp $";
 
 /* Local declarations */
 static void
