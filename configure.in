@@ -2126,7 +2126,7 @@ if test "$BOOTSTRAP_MC" != "" ; then
     done
     if test "$to_delete" = "" ; then
         if test "$to_keep" != "" ; then
-            MERCURY_MSG("no, they are compatible with autoconfigured settings")
+            MERCURY_MSG("no - they are compatible with autoconfigured settings")
         else
             MERCURY_MSG("there are no existing Mercury-generated C files")
         fi
