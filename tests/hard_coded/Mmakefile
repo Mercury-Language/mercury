@@ -78,6 +78,7 @@ ORDINARY_PROGS=	\
 	integer_test \
 	intermod_c_code \
 	intermod_multimode_main \
+	intermod_type_qual \
 	join_list \
 	merge_and_remove_dups \
 	minint_bug \
@@ -234,6 +235,8 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-intermod_type_qual =	--intermodule-optimization
+MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
 MCFLAGS-intermod_multimode =	--intermodule-optimization
 MCFLAGS-intermod_multimode_main = --intermodule-optimization
 MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,13 +237,22 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 	{ map__lookup(PredTable0, PredId, PredInfo0) },
 	{ module_info_type_spec_info(ModuleInfo0, TypeSpecInfo) },
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
+	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 	(
+		%
+		% XXX hlds_out__write_clause needs to be changed to
+		% output explicit type qualifications to avoid type
+		% ambiguity errors in clauses written to `.opt' files.
+		%
+		{ clauses_info_explicit_vartypes(ClausesInfo0,
+			ExplicitVarTypes) },
+		{ map__is_empty(ExplicitVarTypes) },
+
 		{ intermod__should_be_processed(ProcessLocalPreds, PredId,
 			PredInfo0, TypeSpecForcePreds, InlineThreshold,
 			HigherOrderSizeLimit, Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
-		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 		{ pred_info_typevarset(PredInfo0, TVarSet) },
 		{ clauses_info_vartypes(ClausesInfo0, VarTypes) },
 		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
