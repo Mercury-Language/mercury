@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -134,9 +134,9 @@
 ** `element' will be clobbered.
 **
 ** The number of the elements in the array is given by the `next' parameter.
-** The `COMPARE' parameter should be an expression which compares
+** The `COMPARE' parameter should be an expression of type int which compares
 ** the value at the index specified by the current value of `element'
-** with the desired value, and returns <0, 0, or >0 according to whether
+** with the desired value, and returns <0, 0, or >0 according to whether 
 ** it is less than, equal to, or greater than the desired value.
 **
 ** The name of the array to be searched is not explicitly a parameter;
@@ -184,7 +184,7 @@
 ** The `next' parameter holds the number of elements in the array;
 ** it is incremented by this macro. The macro returns the index of the slot
 ** at which the new item should be inserted in the `element' parameter.
-** The `COMPARE' parameter should be an expression which compares
+** The `COMPARE' parameter should be an expression of type int which compares
 ** the item at the index specified by the current value of `element' with
 ** the item being inserted, and returns <0, 0, or >0 according to whether
 ** it is less than, equal to, or greater than the item being inserted.
