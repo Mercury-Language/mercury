@@ -1799,47 +1799,47 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	( { CodeModel = model_det } ->
 		{ Starting_C_Code = list__condense([
-				[raw_target_code("{\n")],
-				ArgDeclsList,
-				[raw_target_code("\n")],
-				AssignInputsList,
-				[raw_target_code(ObtainLock),
-				raw_target_code("\t\t{\n"),
-				user_target_code(C_Code, yes(Context)),
-				raw_target_code("\n\t\t;}\n"),
-				raw_target_code(ReleaseLock)],
-				AssignOutputsList
+			[raw_target_code("{\n")],
+			ArgDeclsList,
+			[raw_target_code("\n")],
+			AssignInputsList,
+			[raw_target_code(ObtainLock),
+			raw_target_code("\t\t{\n"),
+			user_target_code(C_Code, yes(Context)),
+			raw_target_code("\n\t\t;}\n"),
+			raw_target_code(ReleaseLock)],
+			AssignOutputsList
 		]) },
 		{ Ending_C_Code = [raw_target_code("}\n")] }
 	; { CodeModel = model_semi } ->
 		ml_success_lval(SucceededLval),
 		{ Starting_C_Code = list__condense([
-				[raw_target_code("{\n")],
-				ArgDeclsList,
-				[raw_target_code("\tbool SUCCESS_INDICATOR;\n"),
-				raw_target_code("\n")],
-				AssignInputsList,
-				[raw_target_code(ObtainLock),
-				raw_target_code("\t\t{\n"),
-				user_target_code(C_Code, yes(Context)),
-				raw_target_code("\n\t\t;}\n"),
-				raw_target_code(ReleaseLock),
-				raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
-				AssignOutputsList
+			[raw_target_code("{\n")],
+			ArgDeclsList,
+			[raw_target_code("\tbool SUCCESS_INDICATOR;\n"),
+			raw_target_code("\n")],
+			AssignInputsList,
+			[raw_target_code(ObtainLock),
+			raw_target_code("\t\t{\n"),
+			user_target_code(C_Code, yes(Context)),
+			raw_target_code("\n\t\t;}\n"),
+			raw_target_code(ReleaseLock),
+			raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
+			AssignOutputsList
 		]) },
 		{ Ending_C_Code = [
-				raw_target_code("\t}\n"),
-				target_code_output(SucceededLval),
-				raw_target_code(" = SUCCESS_INDICATOR;\n"),
-				raw_target_code("}\n")
+			raw_target_code("\t}\n"),
+			target_code_output(SucceededLval),
+			raw_target_code(" = SUCCESS_INDICATOR;\n"),
+			raw_target_code("}\n")
 		] }
 	;
 		{ error("ml_gen_ordinary_pragma_c_code: unexpected code model") }
 	),
 	{ Starting_C_Code_Stmt = target_code(lang_C, Starting_C_Code) },
 	{ Ending_C_Code_Stmt = target_code(lang_C, Ending_C_Code) },
-	{ Starting_C_Code_Statement = mlds__statement(atomic(Starting_C_Code_Stmt),
-		mlds__make_context(Context)) },
+	{ Starting_C_Code_Statement = mlds__statement(
+		atomic(Starting_C_Code_Stmt), mlds__make_context(Context)) },
 	{ Ending_C_Code_Statement = mlds__statement(atomic(Ending_C_Code_Stmt),
 		mlds__make_context(Context)) },
 	{ MLDS_Statements = list__condense([
@@ -2002,12 +2002,30 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			ml_gen_box_or_unbox_rval(VarType, OrigType,
 				lval(VarLval), ArgRval)
 		),
-		{ type_util__var(VarType, _) ->
-			Cast = "(MR_Word) "
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData) },
+		{ HighLevelData = yes ->
+			% In general, the types used for the C interface
+			% are not the same as the types used by
+			% --high-level-data, so we always use a cast here.
+			% (Strictly speaking the cast is not needed for
+			% a few cases like `int', but it doesn't do any harm.)
+			export__type_to_type_string(OrigType, TypeString),
+			string__format("(%s)", [s(TypeString)], Cast)
 		;
-			Cast = ""
+			% For --no-high-level-data, we only need to use
+			% a cast is for polymorphic types, which are
+			% `Word' in the C interface but `MR_Box' in the
+			% MLDS back-end.
+			( type_util__var(OrigType, _) ->
+				Cast = "(MR_Word) "
+			;
+				Cast = ""
+			)
 		},
-		{ string__format("\t%s = %s\n", [s(ArgName), s(Cast)],
+		{ string__format("\t%s = %s\n",
+			[s(ArgName), s(Cast)],
 			AssignToArgName) },
 		{ AssignInput = [
 			raw_target_code(AssignToArgName),
@@ -2058,15 +2076,38 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		ml_gen_var(Var, VarLval),
 		ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval, ArgName,
 			Context, ArgLval, ConvDecls, ConvStatements),
-		{ type_util__var(VarType, _) ->
-			Cast = "(MR_Box) "
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, highlevel_data,
+			HighLevelData) },
+		{ HighLevelData = yes ->
+			% In general, the types used for the C interface
+			% are not the same as the types used by
+			% --high-level-data, so we always use a cast here.
+			% (Strictly speaking the cast is not needed for
+			% a few cases like `int', but it doesn't do any harm.)
+			% Note that we can't easily obtain the type string
+			% for the RHS of the assignment, so instead we
+			% cast the LHS.
+			export__type_to_type_string(OrigType, TypeString),
+			string__format("*(%s *)&", [s(TypeString)], LHS_Cast),
+			RHS_Cast = ""
 		;
-			Cast = ""
+			% For --no-high-level-data, we only need to use
+			% a cast is for polymorphic types, which are
+			% `Word' in the C interface but `MR_Box' in the
+			% MLDS back-end.
+			( type_util__var(VarType, _) ->
+				RHS_Cast = "(MR_Box) "
+			;
+				RHS_Cast = ""
+			),
+			LHS_Cast = ""
 		},
-		{ string__format(" = %s%s;\n", [s(Cast), s(ArgName)],
+		{ string__format(" = %s%s;\n", [s(RHS_Cast), s(ArgName)],
 			AssignFromArgName) },
+		{ string__format("\t%s", [s(LHS_Cast)], AssignTo) },
 		{ AssignOutput = [
-			raw_target_code("\t"),
+			raw_target_code(AssignTo),
 			target_code_output(ArgLval),
 			raw_target_code(AssignFromArgName)
 		] }
