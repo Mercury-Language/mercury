@@ -1182,28 +1182,40 @@ code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 	).
 
 %---------------------------------------------------------------------------%
+% Add the succip to the livevals before and after calls.
+% Traverses the list of instructions looking for livevals, calls and
+% call closures, adding succip in the stackvar number given as an
+% argument.
 
 :- pred code_gen__add_saved_succip(list(instruction), int, list(instruction)).
 :- mode code_gen__add_saved_succip(in, in, out) is det.
 
-code_gen__add_saved_succip([], _N, []).
-code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
+code_gen__add_saved_succip([], _StackLoc, []).
+code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc, 
+		[Instrn - Comment| Instrns]) :-
 	(
-		I0 = livevals(L0),
-		Is0 \= [goto(succip) - _|_]
+		Instrn0 = livevals(LiveVals0),
+		Instrns0 \= [goto(succip) - _|_]
 		% XXX we should also test for tailcalls
 		% once we start generating them directly
 	->
-		set__insert(L0, stackvar(N), L1),
-		I = livevals(L1)
+		set__insert(LiveVals0, stackvar(StackLoc), LiveVals1),
+		Instrn = livevals(LiveVals1)
         ;
-		I0 = call(T, R, LV0, CM)
+		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
-		I = call(T, R, [live_lvalue(stackvar(N), succip)|LV0], CM)
+		Instrn  = call(Target, ReturnLabel, 
+			[live_lvalue(stackvar(StackLoc), succip) | LiveVals0], 
+			CM)
 	;
-		I = I0
+		Instrn0 = call_closure(CodeModel, ReturnLabel, LiveVals0)
+	->
+		Instrn  = call_closure(CodeModel, ReturnLabel, 
+			[live_lvalue(stackvar(StackLoc), succip) | LiveVals0])
+	;
+		Instrn = Instrn0
 	),
-	code_gen__add_saved_succip(Is0, N, Is).
+	code_gen__add_saved_succip(Instrns0, StackLoc, Instrns).
 
 %---------------------------------------------------------------------------%
 
