@@ -219,7 +219,7 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	ForeignLangs = IlInfo ^ file_foreign_langs,
 
 	ClassName = mlds_module_name_to_class_name(ModuleName),
-	ClassName = structured_name(_, NamespaceName),
+	ClassName = structured_name(_, NamespaceName, _),
 
 		% Make this module an assembly unless it is in the standard
 		% library.  Standard library modules all go in the one
@@ -525,7 +525,7 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags0, class(ClassDefn)),
 		% when that assembly is created by al.exe.
 		% This occurs for nondet environment classes in the
 		% mercury std library.
-	( ClassName = structured_name(assembly("mercury"), _) ->
+	( ClassName = structured_name(assembly("mercury"), _, _) ->
 		Flags = set_access(Flags0, public)
 	;
 		Flags = Flags0
@@ -582,7 +582,8 @@ generate_parent_and_extends(DataRep, Kind, Inherits) = Parent - Extends :-
 	).
 
 class_name(Module, Name)
-	= append_class_name(mlds_module_name_to_class_name(Module), [Name]).
+	= append_toplevel_class_name(mlds_module_name_to_class_name(Module),
+		Name).
 
 :- func sym_name_to_list(sym_name) = list(string).
 
@@ -738,7 +739,7 @@ interface_id_to_class_name(_) = Result :-
 	( semidet_succeed ->
 		sorry(this_file, "interface_id_to_class_name NYI")
 	;
-		Result = structured_name(assembly("XXX"), [])
+		Result = structured_name(assembly("XXX"), [], [])
 		
 	).
 
@@ -966,10 +967,11 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
 
 		{ ExceptionClassName = structured_name(assembly("mscorlib"),
-				["System", "Exception"]) },
+				["System", "Exception"], []) },
 
-		{ ConsoleWriteName = class_member_name(structured_name(
-				il_system_assembly_name, ["System", "Console"]),
+		{ ConsoleWriteName = class_member_name(
+				structured_name(il_system_assembly_name,
+					["System", "Console"], []),
 				id("Write")) },
 		{ WriteString = methoddef(call_conv(no, default),
 					void, ConsoleWriteName,
@@ -1617,7 +1619,7 @@ atomic_statement_to_il(delete_object(Target), Instrs) -->
 	get_load_store_lval_instrs(Target, LoadInstrs, StoreInstrs),
 	{ Instrs = tree__list([LoadInstrs, instr_node(ldnull), StoreInstrs]) }.
 
-atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
+atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, MaybeCtorName,
 		Args, ArgTypes), Instrs) -->
 	DataRep =^ il_data_rep,
 	( 
@@ -1641,7 +1643,17 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 			%	call ClassName::.ctor
 			%	... store to memory reference ...
 			%
-		{ ClassName = mlds_type_to_ilds_class_name(DataRep, Type) },
+		{ ClassName0 = mlds_type_to_ilds_class_name(DataRep, Type) },
+		( { MaybeCtorName = yes(QualifiedCtorName) } ->
+			{ QualifiedCtorName = qual(_,
+				ctor_id(CtorName, CtorArity)) },
+			{ CtorType = entity_name_to_ilds_id(
+				type(CtorName, CtorArity)) },
+		 	{ ClassName = append_nested_class_name(ClassName0,
+				[CtorType]) }
+		;
+		 	{ ClassName = ClassName0 }
+		),
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
@@ -2651,9 +2663,8 @@ mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
 mlds_class_name_to_ilds_class_name(
 		qual(MldsModuleName, MldsClassName0), Arity) = IldsClassName :-
 	MldsClassName = string__format("%s_%d", [s(MldsClassName0), i(Arity)]),
-	IldsClassName = append_class_name(
-		mlds_module_name_to_class_name(MldsModuleName),
-		[MldsClassName]).
+	IldsClassName = append_toplevel_class_name(
+		mlds_module_name_to_class_name(MldsModuleName), MldsClassName).
 
 mlds_type_to_ilds_class_name(DataRep, MldsType) = 
 	get_ilds_type_class_name(mlds_type_to_ilds_type(DataRep, MldsType)).
@@ -2989,7 +3000,7 @@ mlds_to_il__sym_name_to_string_2(unqualified(Name), _) -->
 :- func mlds_module_name_to_class_name(mlds_module_name) = ilds__class_name.
 
 mlds_module_name_to_class_name(MldsModuleName) = 
-		structured_name(AssemblyName, ClassName) :-
+		structured_name(AssemblyName, ClassName, []) :-
 	SymName = mlds_module_name_to_sym_name(MldsModuleName),
 	sym_name_to_class_name(SymName, ClassName),
 	AssemblyName = mlds_module_name_to_assembly_name(MldsModuleName).
@@ -3443,29 +3454,21 @@ il_commit_class_name = mercury_runtime_name(["Commit"]).
 	% qualifiy a name with "[mercury]mercury."
 :- func mercury_library_name(ilds__namespace_qual_name) = ilds__class_name.
 mercury_library_name(Name) = 
-	append_class_name(mercury_library_namespace_name, Name).
-
-:- func mercury_library_namespace_name = ilds__class_name.
-mercury_library_namespace_name
-	= structured_name(assembly("mercury"), ["mercury"]).
+	structured_name(assembly("mercury"), ["mercury" | Name], []).
 
 %-----------------------------------------------------------------------------
 
 	% qualifiy a name with "[mercury]mercury.runtime."
 :- func mercury_runtime_name(ilds__namespace_qual_name) = ilds__class_name.
 mercury_runtime_name(Name) = 
-	append_class_name(mercury_runtime_class_name, Name).
-
-:- func mercury_runtime_class_name = ilds__class_name.
-mercury_runtime_class_name
-	= structured_name(assembly("mercury"), ["mercury", "runtime"]).
+	structured_name(assembly("mercury"), ["mercury", "runtime" | Name], []).
 
 %-----------------------------------------------------------------------------
 
 	% qualifiy a name with "[mscorlib]System."
 :- func il_system_name(ilds__namespace_qual_name) = ilds__class_name.
 il_system_name(Name) = structured_name(il_system_assembly_name, 
-		[il_system_namespace_name | Name]).
+		[il_system_namespace_name | Name], []).
 
 :- func il_system_assembly_name = assembly_name.
 il_system_assembly_name = assembly("mscorlib").
@@ -3623,7 +3626,7 @@ runtime_initialization_instrs = [
 :- func runtime_init_module_name = ilds__class_name.
 runtime_init_module_name = 
 	structured_name(assembly("mercury"),
-		["mercury", "private_builtin__cpp_code", wrapper_class_name]).
+		["mercury", "private_builtin__cpp_code", wrapper_class_name], []).
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").

@@ -1420,17 +1420,14 @@ output_string_constant(String) -->
 	ilasm_info::in, ilasm_info::out, io__state::di, io__state::uo) is det.
 output_class_member_name(class_member_name(StructuredName, MemberName),
 		Info0, Info) -->
-	( { StructuredName = structured_name(_, [_ | _]) } ->
-		output_structured_name(StructuredName, Info0, Info),
-		io__write_string("::")
-	;
-		{ Info = Info0 }
-	),
+	output_structured_name(StructuredName, Info0, Info),
+	io__write_string("::"),
 	output_member_name(MemberName).
 
 :- pred output_structured_name(structured_name::in, ilasm_info::in,
 	ilasm_info::out, io__state::di, io__state::uo) is det.
-output_structured_name(structured_name(Asm, DottedName), Info, Info) -->
+output_structured_name(structured_name(Asm, DottedName, NestedClasses),
+		Info, Info) -->
 	( { Asm = assembly(Assembly) },
 		maybe_output_quoted_assembly_name(Assembly, Info)
 	; { Asm = module(Module, Assembly) },
@@ -1444,7 +1441,9 @@ output_structured_name(structured_name(Asm, DottedName), Info, Info) -->
 			maybe_output_quoted_assembly_name(Assembly, Info)
 		)
 	),
-	output_dotted_name(DottedName).
+	output_dotted_name(DottedName),
+	output_nested_class_quals(NestedClasses).
+
 
 :- pred maybe_output_quoted_assembly_name(ilds__id::in, ilasm_info::in,
 		io__state::di, io__state::uo) is det.
@@ -1461,6 +1460,14 @@ maybe_output_quoted_assembly_name(Assembly, Info) -->
 	io__state::di, io__state::uo) is det.
 output_dotted_name(Name) -->
 	io__write_list(Name, ".", output_id).
+
+:- pred output_nested_class_quals(nested_class_name::in,
+	io__state::di, io__state::uo) is det.
+output_nested_class_quals(Name) -->
+	list__foldl(
+		(pred(Id::in, di, uo) is det -->
+			io__write_char('/'), output_id(Id)),
+		Name).
 
 :- pred output_id(ilds__id::in, io__state::di, io__state::uo) is det.
 output_id(Id) -->

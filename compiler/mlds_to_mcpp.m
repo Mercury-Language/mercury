@@ -614,8 +614,9 @@ write_il_simple_type_as_managed_cpp_type('*'(Type)) -->
 
 :- pred write_managed_cpp_class_name(structured_name::in, io__state::di,
 	io__state::uo) is det.
-write_managed_cpp_class_name(structured_name(_Assembly, DottedName)) -->
-	io__write_list(DottedName, "::", io__write_string).
+write_managed_cpp_class_name(structured_name(_Assembly, DottedName,
+		NestedClasses)) -->
+	io__write_list(DottedName ++ NestedClasses, "::", io__write_string).
 
 :- pred write_il_type_as_managed_cpp_type(ilds__type::in,
 	io__state::di, io__state::uo) is det.

@@ -61,7 +61,18 @@
 	% in the same assembly. 
 
 :- type structured_name ---> 
-		structured_name(assembly_name, namespace_qual_name).
+		structured_name(
+			assembly_name,		% the name of the assembly
+			namespace_qual_name,	% the name of the top-level class
+						% (i.e. the namespace name
+						% and the outermost class name),
+						% or just the namespace name,
+						% if this structured_name is
+						% a namespace
+			nested_class_name).	% the name of the nested class
+						% within the top-level class,
+						% or the empty list if it is
+						% not a nested class
 
 	% If we are referencing a sub-module, then we need to record two
 	% names.  One is the sub-module name, which is used for
@@ -77,11 +88,22 @@
 	;	assembly(ilds__id).
 
 :- type namespace_qual_name == list(ilds__id). 
+:- type nested_class_name == list(ilds__id).
 
 	
-	% A namespace qualified class name is a structured name.
-	% [Foo]Foo::Bar::Baz is structured_name("Foo", ["Foo", "Bar", "Baz"])
+	% An assembly- and namespace-qualified class name is a structured name.
+	% E.g. the ILASM name [Foo]Bar1.Bar2.Baz1/Baz2/Quux is
+	% structured_name("Foo", ["Bar1", "Bar2", "Baz1"], ["Baz2", "Quux"]).
+	% "[Foo]" is the assembly qualifier,
+	% "Bar1.Bar2." is the namespace qualiifer,
+	% "Baz1/Baz2/" is a class qualifier,
+	% and "Quux" is the name of the nested class.
 :- type class_name == structured_name.
+
+	% A assembly-qualified namespace name is a structured name.
+	% E.g. the ILASM name [Foo]Bar1.Bar2 is
+	% structured_name("Foo", ["Bar1", "Bar2"], []).
+:- type namespace_name == structured_name.
 
 	% A member of a class 
 :- type class_member_name
@@ -344,31 +366,39 @@
 
 	% Get the non-namespace portion of a class name.
 
-:- func get_class_suffix(ilds__class_name) = ilds__id.
+:- func get_class_suffix(ilds__class_name) = list(ilds__id).
 
-	% Add an extra identifier to the end of an IL class name, e.g.
+	% Add an extra identifier to the end of an IL namespace name, e.g.
 	% append Foo to [mercury]mercury.runtime to make
 	% [mercury]mercury.runtime.Foo
 
-:- func append_class_name(ilds__class_name, ilds__namespace_qual_name) =
+:- func append_toplevel_class_name(ilds__namespace_name, ilds__id) =
+	ilds__class_name.
+
+	% Add an extra identifier to the end of an IL class name, e.g.
+	% append Bar to [mercury]mercury.runtime.Foo to make
+	% [mercury]mercury.runtime.Foo.Bar
+
+:- func append_nested_class_name(ilds__class_name, ilds__nested_class_name) =
 	ilds__class_name.
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, require.
 :- import_module error_util.
 
-get_class_suffix(structured_name(_, FullName)) = SuffixName :-
+get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
+		= SuffixName :-
 	( 
-		list__last(FullName, Last)
+		list__last(OuterClassFullName, Last)
 	->
-		SuffixName = Last
+		SuffixName = [Last | NestedClass]
 	;
 			% This class has no name whatsoever.
 		unexpected(this_file, "get_class_namespace: class has no name")
 	).
 
-get_class_namespace(structured_name(_, FullName)) = NamespaceName :-
+get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
 	( 
 		list__last(FullName, Last),
 		list__remove_suffix(FullName, [Last], NamespaceName0)
@@ -379,9 +409,16 @@ get_class_namespace(structured_name(_, FullName)) = NamespaceName :-
 		unexpected(this_file, "get_class_namespace: class has no name")
 	).
 
-append_class_name(structured_name(Assembly, ClassName), ExtraClass) =
-		structured_name(Assembly, NewClassName) :-
-	list__append(ClassName, ExtraClass, NewClassName).
+append_toplevel_class_name(structured_name(Assembly, Namespace, NestedClass),
+		Class) = structured_name(Assembly, ClassName, []) :-
+	require(unify(NestedClass, []),
+		"append_toplevel_class_name: namespace name has nested class?"),
+	list__append(Namespace, [Class], ClassName).
+
+append_nested_class_name(StructuredName0, ExtraNestedClasses) = StructuredName :-
+	StructuredName0 = structured_name(Assembly, Class, NestedClasses),
+	StructuredName = structured_name(Assembly, Class,
+				NestedClasses ++ ExtraNestedClasses).
 
 calculate_max_stack(Instrs) = 
 	calculate_max_stack_2(Instrs, 0, 0).
