@@ -2125,10 +2125,11 @@ io__file_modification_time_2(_, _, _, _) -->
 	io__alloc_buffer(Size::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MR_incr_hp_atomic_msg(Buffer,
+	MR_maybe_record_allocation(
 		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
+	Buffer = MR_GC_NEW_ARRAY(MR_Char, Size);
 }").
 
 io__alloc_buffer(Size, buffer(Array)) :-
@@ -2173,7 +2174,7 @@ io__alloc_buffer(Size, buffer(Array)) :-
 	}
 #endif
 
-	Buffer = (MR_Word) buffer;
+	Buffer = buffer;
 }").
 
 io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
@@ -2220,7 +2221,7 @@ io__buffer_to_string(buffer(Array), from_char_list(List)) :-
 
 	items_read = MR_READ(*f, buffer + Pos0, Size - Pos0);
 
-	Buffer = (MR_Word) buffer;
+	Buffer = buffer;
 	Pos = Pos0 + items_read;
 	MR_update_io(IO0, IO);
 }").
