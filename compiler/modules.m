@@ -698,7 +698,17 @@ make_private_interface(SourceFileName, ModuleName, Items0) -->
 				% Write out the `.int0' file.
 				%
 			{ strip_imported_items(Items2, [], Items3) },
-			{ strip_clauses_from_interface(Items3, Items) },
+			{ strip_clauses_from_interface(Items3, Items4) },
+			{ list__map(
+			    (pred(Item0::in, Item::out) is det :-
+				Item0 = Item1 - Context,
+				( make_abstract_instance(Item1, Item2) ->
+					Item = Item2 - Context
+				;
+					Item = Item0
+				)
+			    ), Items4, Items) },
+				
 			write_interface_file(ModuleName, ".int0", Items),
 			touch_interface_datestamp(ModuleName, ".date0")
 		)
@@ -3956,7 +3966,8 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 	% and `:- implementation'. If IncludeImported is yes, also
 	% include all items after a `:- imported'. This is useful for
 	% making the .int file.
-
+	% The bodies of instance definitions are removed because
+	% the instance methods have not yet been module qualified.
 :- pred get_interface(item_list, bool, item_list).
 :- mode get_interface(in, in, out) is det.
 
@@ -3993,7 +4004,12 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		InInterface1 = no
 	;
 		( InInterface0 = yes ->
-			Items1 = [Item - Context | Items0]
+			( make_abstract_instance(Item, Item1) ->
+				ItemToWrite = Item1
+			;
+				ItemToWrite = Item
+			),
+			Items1 = [ItemToWrite - Context | Items0]
 		;
 			Items1 = Items0
 		),
@@ -4077,10 +4093,19 @@ make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond),
 make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
 
-	% Given a module (well, a list of items), extract the interface
-	% part of that module, i.e. all the items between `:- interface'
-	% and `:- implementation'. If IncludeImported is yes, also
-	% include all items after a `:- imported'. This is useful for
-	% making the .int file.
+	% All instance declarations must be written
+	% to `.int' files as abstract instance
+	% declarations because the method names
+	% have not yet been module qualified.
+	% This could cause the wrong predicate to be
+	% used if calls to the method are specialized.
+:- pred make_abstract_instance(item, item).
+:- mode make_abstract_instance(in, out) is semidet.
+
+make_abstract_instance(Item, Item1) :-
+	Item = instance(Constraints, Class, ClassTypes, Body0, TVarSet),
+	Body0 = concrete(_),
+	Body = abstract,
+	Item1 = instance(Constraints, Class, ClassTypes, Body, TVarSet).
 
 %-----------------------------------------------------------------------------%
