@@ -67,7 +67,7 @@ postprocess_options(ok(OptionTable0), Error) -->
 			( 
 				{ Tags_Method0 = string(Tags_Method_String) },
 				{ convert_tags_method(Tags_Method_String,
-					Tags_Method1) }
+					Tags_Method) }
 			->
 				% work around for NU-Prolog problems
 				( { map__search(OptionTable0, heap_space,
@@ -77,12 +77,6 @@ postprocess_options(ok(OptionTable0), Error) -->
 				;
 					[]
 				),
-				% --gc conservative implies --tags none
-				{ GC_Method = conservative ->
-					Tags_Method = none
-				;
-					Tags_Method = Tags_Method1
-				},
 				globals__io_init(OptionTable, GC_Method,
 					Tags_Method),
 				% --gc conservative implies --no-reclaim-heap-*
