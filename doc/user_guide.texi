@@ -127,21 +127,24 @@ Each Mercury source file must contain a single Mercury module
 whose name should be the same as the filename without
 the @samp{.m} extension.
 
-Files ending in @file{.int} and @file{.int2} are interface files;
+Files ending in @file{.int}, @file{.int2} and @file{.int3} are interface files;
 these are generated automatically by the compiler,
-using the @samp{--make-interface} option.
+using the @samp{--make-interface} option. Files ending in @file{.opt} are 
+interface files used in inter-module optimization.
+
 (The @file{.int} files are for direct dependencies,
 while the @file{.int2} files are a shorter version
 used for indirect dependencies.)
 
 Since the interface of a module changes less often than its implementation,
-the @file{.int} and @file{.int2} files will remain unchanged
+the @file{.int}, @file{.int2} and @file{.int3} files will remain unchanged
 on many compilations.
 To avoid unnecessary recompilations of the clients of the module,
-the timestamps on the @file{.int} and @file{.int2} files
+the timestamps on the @file{.int}, @file{.int2} and @file{.int3} files
 are updated only if their contents change.
-A @file{.date} file associated with the module is used as a date stamp;
-it is used when deciding whether the interface files need to be regenerated.
+@file{.date}, @file{.date3} and @file{.optdate} files associated with the
+module are used as date stamps;
+they are used when deciding whether the interface files need to be regenerated.
 
 Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
@@ -564,10 +567,17 @@ Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 @samp{.no}, @samp{.ql}, @samp{.err}, and @samp{.err2} files
 belonging to the named @var{main-module} or its imported modules.
 
+@item @var{main-module}.change_clean
+Removes files that need updating if changing garbage collection method or
+starting to use inter-module optimization.
+Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
+@samp{.dep} and executable files belonging to the named @var{main-module}
+or its imported modules.
+
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
-removes the @samp{.date}, @samp{.int}, @samp{.int2},
+removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}}, 
@@ -936,6 +946,11 @@ exported predicates, modes or types.
 @sp 1
 @item --warn-unused-args
 Warn about predicate arguments which are not used.
+
+@sp 1
+@item --warn-interface-imports
+Warn about modules imported in the interface which are not
+used in the interface.
 @end table
 
 @node Verbosity options
@@ -1008,6 +1023,12 @@ and all of its dependencies to @file{@var{module}.dep}.
 @itemx --make-interface
 Write the module interface to @file{@var{module}.int}.
 Also write the short interface to @file{@var{module}.int2}.
+
+@sp 1
+@item --make-short-interface
+Write the unqualified version of the short interface to
+@file{@var{module}.int3}.
+
 
 @sp 1
 @item -G
@@ -1387,6 +1408,10 @@ Inline a procedure if its size
 multiplied by the number of times it is called,
 is below the given threshold.
 
+@item --intermodule-optimization
+Perform inlining and higher-order specialization of the code for predicates
+imported from other modules.
+
 @sp 1
 @item --no-common-struct
 Disable optimization of common term structures.
@@ -1600,12 +1625,6 @@ Don't enable the C compiler's optimizations.
 @node Miscellaneous options
 @section Miscellaneous options
 @table @code
-@item -b @var{builtin}
-@itemx --builtin-module @var{builtin}
-Use @var{builtin} instead of @samp{mercury_builtin} as the
-module which always gets automatically imported.
-
-@sp 1
 @item -I @var{dir}
 @itemx --search-directory @var{dir}
 Append @var{dir} to the list of directories to be searched for 
@@ -1680,7 +1699,7 @@ Directory for the Mercury C header files (@file{*.h}).
 @sp 1
 @item MERCURY_INT_DIR
 Directory for the Mercury library interface
-files (@file{*.int} and @file{*.int2}).
+files (@file{*.int}, @file{*.int2}, @file{*.int3} and @file{*.opt}).
 
 @sp 1
 @item MERCURY_NC_BUILTIN

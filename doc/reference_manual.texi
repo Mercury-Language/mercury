@@ -2197,6 +2197,16 @@ also be in the interface section.  If the imported entities are only
 used in the implementation section, the @code{import_module}
 declaration should be in the implementation section.
 
+Declarations, predicate calls, types, modes and insts
+can be explicitly module qualified using the `:' operator,
+i.e. @code{module:name}. This is useful both for readability and
+for resolving name conflicts.
+
+Certain optimizations require information or source code for predicates
+defined in other modules to be as effective as possible. At the moment,
+inlining and higher-order specialization are the only optimizations that
+the Mercury compiler can perform across module boundaries.
+
 One module must export a predicate @samp{main}, which
 must be declared as either
 
@@ -2272,10 +2282,11 @@ The Mercury standard library has a standard naming convention in which
 every entity exported by a module is prefixed by the module name and
 two underscores.  We have found this convention improves the
 readability and maintainability of our code, and so we recommend that
-you follow it in your code too.  (Later versions of Mercury may provide
-explicit linguistic support for module qualifiers using an infix `:'
-operator, i.e. `module:name'; this would allow you to omit the prefix
-in places where it does not improve readability.)
+you follow it in your code too. (Eventually, these names will be converted
+to names of the form @code{module:name}; this will allow you to omit the
+prefix in places where it does not improve readability. A tool for the
+automatic conversion of existing programs will be provided when this change
+occurs.)
 
 @node Semantics
 @chapter Semantics
