@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,10 @@ main_2(no, OptionArgs, Args, Link) -->
 		io__set_output_stream(OldOutputStream, _)
 	; { OutputGrade = yes } ->
 		globals__io_get_globals(Globals),
-		{ compute_grade(Globals, Grade) },
+		% When Mmake asks for the grade, it really wants
+		% the directory component to use. This is consistent
+		% with scripts/canonical_grade.
+		{ grade_directory_component(Globals, Grade) },
 		io__stdout_stream(Stdout),
 		io__write_string(Stdout, Grade),
 		io__write_string(Stdout, "\n")
