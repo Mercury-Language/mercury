@@ -27,7 +27,7 @@
 :- mode string__append(in, in, out) is det.
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
-:- mode string__append(out, out, in) is nondet.
+:- mode string__append(out, out, in) is multidet.
 %	Append two strings together.
 %
 %       The following mode is semidet in the sense that it doesn't
