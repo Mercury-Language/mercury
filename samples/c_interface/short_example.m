@@ -7,16 +7,19 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- pred puts(string::in, io__state::di, io__state::uo) is det.
+:- pred puts(string::in, io::di, io::uo) is det.
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pragma c_code(non_recursive, puts(S::in, Old_IO::di, New_IO::uo),
-	"puts(S); New_IO = Old_IO; "
-).
+:- pragma foreign_proc("C",
+	puts(S::in, Old_IO::di, New_IO::uo),
+	[promise_pure, will_not_call_mercury],
+"
+	puts(S); New_IO = Old_IO;
+").
 
-main --> puts("Hello, world\n").
+main(!IO) :- puts("Hello, world\n", !IO).
