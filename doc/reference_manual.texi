@@ -4117,6 +4117,7 @@ which is now mode-correct, executing that, and so on.
 (There is no interleaving of different individual conjuncts or function calls,
 however; the sub-goals are reordered, not split and interleaved.)
 Function application is strict, not lazy.
+@c XXX should document the operational semantics of switches and if-then-elses
 
 Mercury implementations are required to provide a method of processing
 Mercury programs which is equivalent to the strict sequential
@@ -4848,7 +4849,8 @@ between C functions which are called from Mercury.  For example:
 :- implementation.
 
 % Our C structure is implemented as a c_pointer.
-:- type complicated_c_structure == c_pointer.
+:- type complicated_c_structure --->
+        complicated_c_structure(c_pointer).
 
 :- pragma c_header_code("
         extern struct foo *init_struct(void);
