@@ -314,6 +314,7 @@ loopcheck.out: loopcheck loopcheck.inp
 	then							\
 		sed -e '/EXCP/s/).*/)/'				\
 		    -e 's/require.m:[0-9]*/require.m:NNNN/g'	\
+		    -e 's/label with no stack layout info/unknown label/' \
 			< loopcheck.tmp > loopcheck.out 2>&1;	\
 		rm loopcheck.tmp;				\
 		false;						\
