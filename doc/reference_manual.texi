@@ -5009,7 +5009,10 @@ items.
 @node Data passing conventions
 @section Data passing conventions
 
-Each backend will have its own conventions for passing data.
+For each backend,
+we explain how to map a Mercury type to a type on the backend.
+We also map the Mercury parameter passing convention
+to the backend parameter passing convention.
 
 @menu
 * C backend	:: Data passing convention for the C backend.
@@ -5044,6 +5047,27 @@ and to treat each such type as an abstract data type.  This is good style
 and it will also minimize any compatibility problems if and when we do change
 this.)
 
+Mercury arguments declared with input modes are passed by value to the
+C function.
+For output arguments,
+the Mercury implementation will pass to the C function an address in
+which to store the result. 
+If the Mercury procedure can fail,
+then its C function should return a truth value of type
+@samp{MR_Integer} indicating success or failure:
+non-zero indicates success, and zero indicates failure.
+If the Mercury procedure is a Mercury function that cannot fail,
+and the function result has an output mode,
+then the C function should return the Mercury function result value.
+Otherwise the function result is appended as an extra argument.
+Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+passed at all;
+that's because these types represent mutable state,
+and in C modifications to mutable state are done via side effects,
+rather than argument passing.
+
+@c XXX foreign type should be documented here.
+
 @c For the Managed C++ interface, the types are mapped slightly differently:
 @c Mercury variables which are polymorphically typed
 @c have type @samp{MR_Box} rather than @samp{MR_Word}.
@@ -5077,6 +5101,25 @@ Mercury variables are passed as @code{System.Object[]}.
 This mapping is subject to change and you should try to avoid writing
 code that relies heavily upon a particular representation of Mercury
 terms.
+
+Mercury arguments declared with input modes are passed by value to the
+IL function.
+For output arguments,
+the Mercury implementation will pass to the IL function a reference to
+the location in which to store the result. 
+If the Mercury procedure can fail,
+then its IL function should return a truth value of type
+@samp{System.Bool} indicating success or failure:
+@code{true} indicates success, and @code{false} indicates failure.
+If the Mercury procedure is a Mercury function that cannot fail,
+and the function result has an output mode,
+then the IL function should return the Mercury function result value.
+Otherwise the function result is appended as an extra argument.
+Arguments of type @samp{io__state} or @samp{store__store(_)} are not
+passed at all;
+that's because these types represent mutable state, and in IL
+modifications to mutable state are done via side effects,
+rather than argument passing.
 
 @c XXX foreign type should be documented here.
 
@@ -5562,22 +5605,8 @@ as the Mercury function @samp{cos/1}:
 @end example
 
 The interface to the C function for a given Mercury procedure is
-determined as follows.  Mercury types are converted to C types
-according to the rules in @ref{Passing data to and from C}.
-Mercury arguments declared with input modes are passed by value to the
-C function.  For output arguments, the Mercury implementation will pass
-to the C function an address in which to store the result. 
-If the Mercury procedure can fail, then its C function should return a
-truth value of type @samp{MR_Integer} indicating success or failure:
-non-zero indicates success, and zero indicates failure.
-If the Mercury procedure is a Mercury function that cannot fail, and
-the function result has an output mode, then the C function should
-return the Mercury function result value.
-Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io__state} or @samp{store__store(_)} are not
-passed at all; that's because these types represent mutable state, and
-in C modifications to mutable state are done via side effects, rather
-than argument passing.
+determined as follows.  Mercury types are converted to C types and
+passed according to the rules in @ref{Passing data to and from C}.
 
 If you use @samp{pragma import} for a polymorphically typed Mercury procedure,
 the compiler will prepend one @samp{type_info} argument to the parameters
