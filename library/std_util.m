@@ -1341,8 +1341,10 @@ sys_init_type_desc_module_init(void)
 void
 sys_init_type_desc_module_init_type_tables(void)
 {
+#ifndef	MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
 		&mercury_data_std_util__type_ctor_info_type_desc_0);
+#endif
 }
 
 #ifdef	MR_DEEP_PROFILING

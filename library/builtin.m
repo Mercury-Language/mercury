@@ -398,6 +398,7 @@ sys_init_builtin_types_module_init(void)
 void
 sys_init_builtin_types_module_init_type_tables(void)
 {
+#ifndef	MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
 		&mercury_data___type_ctor_info_int_0);
 	MR_register_type_ctor_info(
@@ -414,6 +415,7 @@ sys_init_builtin_types_module_init_type_tables(void)
 		&mercury_data___type_ctor_info_tuple_0);
 	MR_register_type_ctor_info(
 		&mercury_data___type_ctor_info_void_0);
+#endif
 }
 
 #ifdef	MR_DEEP_PROFILING
@@ -988,16 +990,6 @@ mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info,
 /* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void);
 
-/*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
-*/
-void
-sys_init_copy_module(void)
-{
-	/* no initialization needed */
-}
-
 #else /* ! MR_HIGHLEVEL_CODE */
 
 #ifdef	MR_DEEP_PROFILING
@@ -1086,6 +1078,8 @@ MR_define_entry(mercury__copy_2_1);
 #undef	copy_body
 MR_END_MODULE
 
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 /* Ensure that the initialization code for the above module gets run. */
 
 /*
@@ -1104,7 +1098,9 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc copy_module;
 void
 sys_init_copy_module_init(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	copy_module();
+#endif
 }
 
 void
@@ -1123,7 +1119,6 @@ sys_init_copy_module_write_out_proc_statics(FILE *fp)
 }
 #endif
 
-#endif /* ! MR_HIGHLEVEL_CODE */
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1220,18 +1215,22 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc c_pointer_module;
 void
 sys_init_c_pointer_module_init(void)
 {
+#ifndef	MR_HIGHLEVEL_CODE
 	c_pointer_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_builtin__type_ctor_info_c_pointer_0,
 		builtin__c_pointer_0_0);
+#endif
 }
 
 void
 sys_init_c_pointer_module_init_type_tables(void)
 {
+#ifndef	MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
 		&mercury_data_builtin__type_ctor_info_c_pointer_0);
+#endif
 }
 
 #ifdef	MR_DEEP_PROFILING

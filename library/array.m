@@ -425,16 +425,8 @@ MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
 /* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_array_module_builtins(void);
-
-/*
-** This empty initialization function is needed just to
-** match the one that we use for LLDS grades.
-*/
-void
-sys_init_array_module_builtins(void)
-{
-	/* no initialization needed */
-}
+void sys_init_array_module_builtins_init(void);
+void sys_init_array_module_builtins_init_type_tables(void);
 
 bool MR_CALL
 mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
@@ -572,20 +564,26 @@ void sys_init_array_module_builtins_write_out_proc_statics(FILE *fp);
 
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
 
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 void
 sys_init_array_module_builtins_init(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	array_module_builtins();
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_array__type_ctor_info_array_1,
 		array__array_1_0);
+#endif
 }
 
 void
 sys_init_array_module_builtins_init_type_tables(void)
 {
+#ifndef MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
 		&mercury_data_array__type_ctor_info_array_1);
+#endif
 }
 
 #ifdef	MR_DEEP_PROFILING
@@ -598,8 +596,6 @@ sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 		&MR_proc_static_compiler_name(array, __Compare__, array, 1, 0));
 }
 #endif
-
-#endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
 

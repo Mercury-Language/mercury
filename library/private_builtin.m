@@ -482,6 +482,7 @@ sys_init_type_info_module_init(void)
 void
 sys_init_type_info_module_init_type_tables(void)
 {
+#ifndef	MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
 	  &mercury_data_private_builtin__type_ctor_info_type_ctor_info_1);
 	MR_register_type_ctor_info(
@@ -490,6 +491,7 @@ sys_init_type_info_module_init_type_tables(void)
 	  &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1);
 	MR_register_type_ctor_info(
 	  &mercury_data_private_builtin__type_ctor_info_typeclass_info_1);
+#endif
 }
 
 #ifdef	MR_DEEP_PROFILING
