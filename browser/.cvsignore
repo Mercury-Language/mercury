@@ -2,6 +2,7 @@
 *.err
 help.h
 debugger_interface.h
+declarative_debugger.h
 browse.h
 interactive_query.h
 mer_browser.init
