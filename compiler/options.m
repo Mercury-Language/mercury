@@ -74,6 +74,7 @@
 		;	make_optimization_interface
 		;	make_transitive_opt_interface
 		;	generate_dependencies
+		;	generate_module_order
 		;	convert_to_mercury
 		;	convert_to_goedel
 		;	typecheck_only
@@ -301,6 +302,7 @@ option_defaults_2(verbosity_option, [
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
 	generate_dependencies	-	bool(no),
+	generate_module_order 	-	bool(no),
 	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
 	make_optimization_interface -	bool(no),
@@ -578,6 +580,7 @@ long_option("debug-vn",			debug_vn).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
+long_option("generate-module-order",	generate_module_order).
 long_option("make-short-interface",	make_short_interface).
 long_option("make-short-int",		make_short_interface).
 long_option("make-interface",		make_interface).
@@ -1144,6 +1147,11 @@ options_help_output -->
 	io__write_string("\t-M, --generate-dependencies\n"),
 	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
+	io__write_string("\t--generate-module-order\n"),
+	io__write_string("\t\tOutput the strongly connected components of the module\n"),
+	io__write_string("\t\tdependency graph in top-down order to `<module>.order'.\n"),
+	io__write_string("\t\tImplies --generate-dependencies.\n"),
+
 	io__write_string("\t-i, --make-int, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int',\n"),
 	io__write_string("\t\tand write the short interface to `<module>.int2'\n"),

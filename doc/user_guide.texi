@@ -1292,6 +1292,11 @@ an executable.
 Output ``Make''-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 
+@item --generate-module-order
+Output the strongly connected components of the module 
+dependency graph in top-down order to @file{@var{module}.order}.
+Implies @samp{--generate-dependencies}.
+
 @sp 1
 @item -i
 @itemx --make-int

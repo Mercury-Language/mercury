@@ -303,6 +303,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	option_implies(make_optimization_interface, optimize_unused_args,
 		bool(no)),
 
+	% The information needed for generating the module ordering
+	% is only available while generating the dependencies.
+	option_implies(generate_module_order, generate_dependencies,
+		bool(yes)),
+
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
 	% .opt files.

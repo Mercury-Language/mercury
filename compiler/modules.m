@@ -147,7 +147,7 @@
 :- import_module passes_aux, prog_out, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, intermod, module_qual.
 :- import_module bool, string, set, map, term, varset, dir, std_util, library.
-
+:- import_module assoc_list, relation.
 
 	% Read in the .int3 files that the current module depends on,
 	% and use these to qualify all items in the interface as much as
@@ -610,6 +610,7 @@ generate_dependencies(Module) -->
 	% check whether we couldn't read the main `.m' file
 	%
 	{ map__lookup(DepsMap, Module, deps(_, Error, _, _, _)) },
+	globals__io_lookup_bool_option(verbose, Verbose),
 	( { Error = fatal } ->
 	    { string__append_list(["fatal error reading module `",
 				Module, "'."], Message) },
@@ -619,21 +620,53 @@ generate_dependencies(Module) -->
 	    % now, write the `.dep' file
 	    %
 	    { string__append(Module, ".dep", DepFileName) },
-	    globals__io_lookup_bool_option(verbose, Verbose),
 	    maybe_write_string(Verbose, "% Creating auto-dependency file `"),
 	    maybe_write_string(Verbose, DepFileName),
 	    maybe_write_string(Verbose, "'...\n"),
-	    io__open_output(DepFileName, Result),
-	    ( { Result = ok(DepStream) } ->
+	    io__open_output(DepFileName, DepResult),
+	    ( { DepResult = ok(DepStream) } ->
 		generate_dep_file(Module, DepsMap, DepStream),
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, "% done\n")
 	    ;
 		{ string__append_list(["can't open file `", DepFileName,
-				"' for output."], Message) },
-		report_error(Message)
+				"' for output."], DepMessage) },
+		report_error(DepMessage)
+	    ),
+	    globals__io_lookup_bool_option(generate_module_order, Order),
+	    ( { Order = yes } ->
+	  	{ string__append(Module, ".order", OrdFileName) },
+		maybe_write_string(Verbose, "% Creating module order file `"),
+		maybe_write_string(Verbose, OrdFileName),
+		maybe_write_string(Verbose, "'...\n"),
+		io__open_output(OrdFileName, OrdResult),
+		( { OrdResult = ok(OrdStream) } ->
+		    { relation__init(DepsRel0) },
+		    { map__to_assoc_list(DepsMap, DepsList) },
+		    { deps_map_to_deps_rel(DepsList, DepsMap, 
+				DepsRel0, DepsRel) },
+		    { relation__atsort(DepsRel, DepsOrdering) },
+		    io__write_list(OrdStream, DepsOrdering, "\n\n", 
+		    		write_module_scc(OrdStream)),
+		    io__close_output(OrdStream),
+		    maybe_write_string(Verbose, "% done\n")
+		;
+		    { string__append_list(["can't open file `", 
+				OrdFileName, "' for output."], OrdMessage) },
+		    report_error(OrdMessage)
+		)
+	    ;
+		[]
 	    )
 	).
+
+:- pred write_module_scc(io__output_stream::in, set(module_name)::in,
+		io__state::di, io__state::uo) is det.
+
+write_module_scc(Stream, SCC0) -->
+	{ set__to_sorted_list(SCC0, SCC) },
+	io__write_list(Stream, SCC, "\n", io__write_string).
+
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
@@ -647,6 +680,9 @@ generate_dependencies(Module) -->
 		list(string),	% implementation dependencies
 		list(string)	% fact table dependencies
 	).
+
+	% (Module1 deps_rel Module2) means Module1 is imported by Module2.
+:- type deps_rel == relation(string).
 
 % This is the predicate which creates the above data structure.
 
@@ -686,6 +722,30 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% Recursively process the remaining modules
 	generate_deps_map(Modules2, DepsMap3, DepsMap).
 
+
+	% Construct a dependency relation of all the modules in the program.
+:- pred deps_map_to_deps_rel(assoc_list(string, deps), deps_map,
+		deps_rel, deps_rel).
+:- mode deps_map_to_deps_rel(in, in, in, out) is det.
+
+deps_map_to_deps_rel([], _, Rel, Rel).
+deps_map_to_deps_rel([Module - Deps | DepsList], DepsMap, Rel0, Rel) :-
+	Deps = deps(_, ModuleError, IntDeps, ImplDeps, _),
+	( ModuleError \= fatal ->
+		relation__add_element(Rel0, Module, ModuleRelKey, Rel1),
+		AddDeps =
+		    lambda([Dep::in, Relation0::in, Relation::out] is det, (
+			relation__add_element(Relation0, Dep,
+				DepRelKey, Relation1),
+			relation__add(Relation1, DepRelKey,
+				ModuleRelKey, Relation)
+		    )),
+		list__foldl(AddDeps, IntDeps, Rel1, Rel2),
+		list__foldl(AddDeps, ImplDeps, Rel2, Rel3)
+	;
+		Rel3 = Rel0
+	),
+	deps_map_to_deps_rel(DepsList, DepsMap, Rel3, Rel).
 
 % Write out the `.dep' file, using the information collected in the
 % deps_map data structure.
