@@ -1490,6 +1490,47 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, AppendVarnums,
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, AppendVarnums,
 		VarTypes, TypeVarSet).
 
+:- pred hlds_out__write_typeinfo_varmap(int, bool, map(tvar, var), varset, 
+	tvarset, io__state, io__state).
+:- mode hlds_out__write_typeinfo_varmap(in, in, in, in, in, di, uo) is det.
+
+hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap, VarSet,
+		TVarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% type_info varmap:\n"),
+	{ map__keys(TypeInfoMap, TypeVars) },
+	hlds_out__write_typeinfo_varmap_2(TypeVars, Indent, AppendVarnums, 
+		TypeInfoMap, VarSet, TVarSet).
+
+:- pred hlds_out__write_typeinfo_varmap_2(list(tvar), int, bool, 
+	map(tvar, var), varset, tvarset, io__state, io__state).
+:- mode hlds_out__write_typeinfo_varmap_2(in, in, in, in, in, in, di, uo) 
+	is det.
+
+hlds_out__write_typeinfo_varmap_2([], _, _, _, _, _) --> [].
+hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarnums,
+		TypeInfoMap, VarSet, TVarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+
+	mercury_output_var(TVar, TVarSet, AppendVarnums),
+	io__write_string(" (number "),
+	{ term__var_to_int(TVar, TVarNum) },
+	io__write_int(TVarNum),
+	io__write_string(")"),
+
+	io__write_string(" -> "),
+	{ map__lookup(TypeInfoMap, TVar, Var) },
+	mercury_output_var(Var, VarSet, AppendVarnums),
+	io__write_string(" (number "),
+	{ term__var_to_int(Var, VarNum) },
+	io__write_int(VarNum),
+	io__write_string(")"),
+	io__write_string("\n"),
+
+	hlds_out__write_typeinfo_varmap_2(TVars, Indent, AppendVarnums,
+		TypeInfoMap, VarSet, TVarSet).
+
 :- pred hlds_out__write_stack_slots(int, stack_slots, varset, bool,
 	io__state, io__state).
 :- mode hlds_out__write_stack_slots(in, in, in, in, di, uo) is det.
@@ -1743,6 +1784,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_argmodes(Proc, HeadModes) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
+	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -1757,6 +1799,8 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 
 	hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
 		VarTypes, TVarSet),
+	hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap,
+		VarSet, TVarSet),
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
