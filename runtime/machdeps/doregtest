@@ -8,7 +8,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-if ../gnuc "-DREG=\"$1\"" regtest.c -o /tmp/regtest$$ -lm &&
+if ../../scripts/mgnuc "-DREG=\"$1\"" regtest.c -o /tmp/regtest$$ -lm &&
    [ -x /tmp/regtest$$ ] && /tmp/regtest$$
 then
 	true
