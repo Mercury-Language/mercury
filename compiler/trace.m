@@ -103,38 +103,29 @@ trace__generate_event_code(Port, TraceInfo, TraceCode) -->
 	predicate_arity(ModuleInfo, PredId, Arity),
 	string__int_to_string(Arity, ArityStr),
 	Quote = """",
+	Comma = ", ",
 	trace__port_to_string(Port, PortStr),
 	trace__code_model_to_string(CodeModel, CodeModelStr),
 	proc_id_to_int(ProcId, ProcInt),
 	ModeNum is ProcInt mod 10000,
 	string__int_to_string(ModeNum, ModeNumStr),
 	( trace__port_path(Port, Path) ->
-		trace__path_to_string(Path, PathStr),
-		string__append_list([
-			"MR_trace_path(",
-			PortStr, ", ",
-			CodeModelStr, ", ",
-			CallNumStr, ", ",
-			CallDepthStr, ", ",
-			Quote, ModuleName, Quote, ", ",
-			Quote, PredName, Quote, ", ",
-			ArityStr, ", ",
-			ModeNumStr, ", ",
-			Quote, PathStr, Quote, ");\n"],
-			TraceStmt)
+		trace__path_to_string(Path, PathStr)
 	;
-		string__append_list([
-			"MR_trace(",
-			PortStr, ", ",
-			CodeModelStr, ", ",
-			CallNumStr, ", ",
-			CallDepthStr, ", ",
-			Quote, ModuleName, Quote, ", ",
-			Quote, PredName, Quote, ", ",
-			ArityStr, ", ",
-			ModeNumStr, ");\n"],
-			TraceStmt)
+		PathStr = ""
 	),
+	string__append_list([
+		"MR_trace(",
+		PortStr, Comma,
+		CodeModelStr, Comma,
+		CallNumStr, Comma,
+		CallDepthStr, Comma,
+		Quote, ModuleName, Quote, Comma,
+		Quote, PredName, Quote, Comma,
+		ArityStr, Comma,
+		ModeNumStr, Comma,
+		Quote, PathStr, Quote, ");\n"],
+		TraceStmt),
 	TraceCode = node([c_code(TraceStmt) - ""])
 	}.
 

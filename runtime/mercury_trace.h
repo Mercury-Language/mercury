@@ -40,16 +40,6 @@ extern	void	MR_trace(
 	const char *,		/* module name */
 	const char *,		/* predicate name */
 	int,			/* predicate arity */
-	int);			/* mode number within predicate */
-
-extern	void	MR_trace_path(
-	MR_trace_port,
-	MR_trace_code_model,
-	int,			/* call sequence number */
-	int,			/* call depth */
-	const char *,		/* module name */
-	const char *,		/* predicate name */
-	int,			/* predicate arity */
 	int,			/* mode number within predicate */
 	const char *);		/* path to event goal within procedure */
 
