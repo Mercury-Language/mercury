@@ -126,10 +126,12 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	{ module_info_pred_proc_info(ModuleInfo, 
 		PredId, ProcId, _, ProcInfo) },
 	{ proc_info_varset(ProcInfo, VarSet) },
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ instmap__restrict(InstMap, NonLocals, InstMap1) },
-	hlds_out__write_instmap(InstMap1, VarSet, yes, 1),
+	hlds_out__write_instmap(InstMap1, VarSet, yes, 1, InstTable),
 	io__nl,
-	hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, no, 1, ""),
+	hlds_out__write_goal(Goal - GoalInfo, InstTable, ModuleInfo, VarSet,
+		no, 1, ""),
 	io__nl,
 	io__write_string("Parents: "),
 	{ set__to_sorted_list(Parents, ParentsList) },
@@ -139,7 +141,7 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	( { WriteUnfoldedGoal = yes } ->
 		{ proc_info_goal(ProcInfo, ProcGoal) },
 		io__write_string("Unfolded goal\n"),
-		hlds_out__write_goal(ProcGoal, 
+		hlds_out__write_goal(ProcGoal, InstTable,
 			ModuleInfo, VarSet, no, 1, ""),
 		io__nl
 	;
@@ -152,7 +154,9 @@ pd_debug__write_instmap -->
 	pd_info_get_instmap(InstMap),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_varset(ProcInfo, VarSet) },
-	pd_debug__do_io(hlds_out__write_instmap(InstMap, VarSet, yes, 1)).
+	{ proc_info_inst_table(ProcInfo, InstTable) },
+	pd_debug__do_io(hlds_out__write_instmap(InstMap, VarSet, yes, 1,
+		InstTable)).
 
 %-----------------------------------------------------------------------------%
 
@@ -176,6 +180,7 @@ pd_debug__output_goal(Msg, Goal - GoalInfo) -->
 	( { DoOutput = yes } ->
 		pd_info_get_proc_info(ProcInfo),
 		{ proc_info_varset(ProcInfo, VarSet) },
+		{ proc_info_inst_table(ProcInfo, InstTable) },
 		pd_info_get_instmap(InstMap),
 		pd_info_get_io_state(IO0),
 		pd_info_get_module_info(ModuleInfo),
@@ -183,9 +188,10 @@ pd_debug__output_goal(Msg, Goal - GoalInfo) -->
 		io__write_string(Msg, IO0, IO1),
 		goal_util__goal_vars(Goal - GoalInfo, Vars),
 		instmap__restrict(InstMap, Vars, InstMap1),
-		hlds_out__write_instmap(InstMap1, VarSet, yes, 1, IO1, IO2),
+		hlds_out__write_instmap(InstMap1, VarSet, yes, 1, InstTable,
+			IO1, IO2),
 		io__nl(IO2, IO3),
-		hlds_out__write_goal(Goal - GoalInfo, ModuleInfo,
+		hlds_out__write_goal(Goal - GoalInfo, InstTable, ModuleInfo,
 			VarSet, yes, 1, "", IO3, IO4),
 		io__nl(IO4, IO5),
 		io__flush_output(IO5, IO)

@@ -283,7 +283,7 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 		% Transform deterministic procedures.
 		%
 :- pred table_gen__create_new_det_goal(eval_method, hlds_goal, pred_info, 
-		module_info, list(var), list(mode), map(var, type), 
+		module_info, list(var), argument_modes, map(var, type), 
 		map(var, type), varset, varset, hlds_goal).
 :- mode table_gen__create_new_det_goal(in, in, in, in, in, in, in, out, in, 
 		out, out) is det.
@@ -291,8 +291,9 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredInfo, Module, 
 		HeadVars, HeadVarModes, VarTypes0, VarTypes, VarSet0, 
 		VarSet, Goal) :-
-	get_input_output_vars(HeadVars, HeadVarModes, Module, InputVars, 
-		OutputVars),
+	HeadVarModes = argument_modes(ArgInstTable, ArgModes),
+	get_input_output_vars(HeadVars, ArgModes, ArgInstTable, Module,
+		InputVars, OutputVars),
 
 	generate_det_lookup_goal(InputVars, Module, VarTypes0, VarTypes1, 
 		VarSet0, VarSet1, TableVar, LookUpGoal),
@@ -371,7 +372,7 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredInfo, Module,
 		% Transform semi deterministic procedures
 		%
 :- pred table_gen__create_new_semi_goal(eval_method, hlds_goal, pred_info, 
-		module_info, list(var), list(mode), map(var, type), 
+		module_info, list(var), argument_modes, map(var, type), 
 		map(var, type), varset, varset, hlds_goal).
 :- mode table_gen__create_new_semi_goal(in, in, in, in, in, in, in, out, in, 
 		out, out) is det.
@@ -379,8 +380,9 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredInfo, Module,
 table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredInfo, Module, 
 		HeadVars, HeadVarModes, VarTypes0, VarTypes, VarSet0, 
 		VarSet, Goal) :-
-	get_input_output_vars(HeadVars, HeadVarModes, Module, InputVars, 
-		OutputVars),
+	HeadVarModes = argument_modes(ArgInstTable, ArgModes),
+	get_input_output_vars(HeadVars, ArgModes, ArgInstTable, Module,
+		InputVars, OutputVars),
 
 	generate_det_lookup_goal(InputVars, Module, VarTypes0, VarTypes1, 
 		VarSet0, VarSet1, TableVar, LookUpGoal),
@@ -514,7 +516,7 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredInfo, Module,
 		% Transform non deterministic procedures
 		%
 :- pred table_gen__create_new_non_goal(eval_method, hlds_goal, pred_info, 
-		module_info, list(var), list(mode), map(var, type), 
+		module_info, list(var), argument_modes, map(var, type), 
 		map(var, type), varset, varset, hlds_goal).
 :- mode table_gen__create_new_non_goal(in, in, in, in, in, in, in, out, in, 
 		out, out) is det.
@@ -522,8 +524,9 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredInfo, Module,
 table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredInfo, Module, 
 		HeadVars, HeadVarModes, VarTypes0, VarTypes, VarSet0, 
 		VarSet, Goal) :-
-	get_input_output_vars(HeadVars, HeadVarModes, Module, InputVars, 
-		OutputVars),
+	HeadVarModes = argument_modes(ArgInstTable, ArgModes),
+	get_input_output_vars(HeadVars, ArgModes, ArgInstTable, Module,
+		InputVars, OutputVars),
 
 	generate_non_lookup_goal(InputVars, Module, VarTypes0, VarTypes1, 
 		VarSet0, VarSet1, TableVar, LookUpGoal),
@@ -654,8 +657,10 @@ generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, Module,
 	TableVarMode = (free -> TableVarInst), 
 	get_table_var_type(TableVarType),
 	
+	inst_table_init(InstTable),
 	GoalEx = pragma_c_code(will_not_call_mercury, PredId, ProcId,
-			[TableVar], [yes("MC_table_var" - TableVarMode)], 
+			[TableVar], pragma_c_code_arg_info(InstTable, 
+				[yes("MC_table_var" - TableVarMode)]), 
 			[TableVarType], ordinary( 
 "	{
 		static Word MR_table = 0;
@@ -1240,25 +1245,28 @@ get_table_var_type(Type) :-
 		"c_pointer") - 0, [], Type).	
 
 
-:- pred get_input_output_vars(list(var), list(mode), module_info, list(var),
-		list(var)).
-:- mode get_input_output_vars(in, in, in, out, out) is det.
+:- pred get_input_output_vars(list(var), list(mode), inst_table, module_info,
+		list(var), list(var)).
+:- mode get_input_output_vars(in, in, in, in, out, out) is det.
 
-get_input_output_vars([], [], _, [], []).
-get_input_output_vars([_|_], [], _, _, _) :-
+get_input_output_vars([], [], _, _, [], []).
+get_input_output_vars([_|_], [], _, _, _, _) :-
 	error("get_input_output_vars: lists not same length").
-get_input_output_vars([], [_|_], _, _, _) :-
+get_input_output_vars([], [_|_], _, _, _, _) :-
 	error("get_input_output_vars: lists not same length").
-get_input_output_vars([Var|RestV], [Mode|RestM], Module, InVars, OutVars) :-
+get_input_output_vars([Var|RestV], [Mode|RestM], InstTable, Module, InVars,
+		OutVars) :-
 	(
-		mode_is_fully_input(Module, Mode)
+		mode_is_fully_input(InstTable, Module, Mode)
 	->
-		get_input_output_vars(RestV, RestM, Module, InVars0, OutVars),
+		get_input_output_vars(RestV, RestM, InstTable, Module,
+			InVars0, OutVars),
 		InVars = [Var|InVars0]
 	;
-		mode_is_fully_output(Module, Mode)
+		mode_is_fully_output(InstTable, Module, Mode)
 	->
-		get_input_output_vars(RestV, RestM, Module, InVars, OutVars0),
+		get_input_output_vars(RestV, RestM, InstTable, Module,
+			InVars, OutVars0),
 		OutVars = [Var|OutVars0]
 	;
 		error(

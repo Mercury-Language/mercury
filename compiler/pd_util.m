@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module pd_info, hlds_goal, hlds_module, hlds_pred, mode_errors.
-:- import_module prog_data, simplify, (inst).
+:- import_module prog_data, simplify, (inst), hlds_data.
 :- import_module bool, list, map, set, std_util, term.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.
@@ -80,16 +80,17 @@
 	%	check that this doesn't introduce mode errors, since
 	% 	the information that was removed may actually have been
 	%	necessary for mode correctness.
-:- pred inst_MSG(inst, inst, module_info, inst).
-:- mode inst_MSG(in, in, in, out) is semidet.
+:- pred inst_MSG(inst, inst, inst_table, module_info, inst).
+:- mode inst_MSG(in, in, in, in, out) is semidet.
 
 
 	% Produce an estimate of the size of an inst, based on the 
 	% number of nodes in the inst. The inst is expanded down
 	% to the first repeat of an already expanded inst_name.
-:- pred pd_util__inst_size(module_info::in, (inst)::in, int::out) is det.
-:- pred pd_util__inst_list_size(module_info::in, list(inst)::in,
+:- pred pd_util__inst_size(inst_table::in, module_info::in, (inst)::in,
 		int::out) is det.
+:- pred pd_util__inst_list_size(inst_table::in, module_info::in,
+		list(inst)::in, int::out) is det.
 
 	% pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, NewGoal,
 	% 		OldToNewRenaming)
@@ -149,10 +150,11 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	pd_info_get_module_info(ModuleInfo0),
 	{ module_info_globals(ModuleInfo0, Globals) },
 	pd_info_get_pred_proc_id(proc(PredId, ProcId)),
-	{ det_info_init(ModuleInfo0, PredId, ProcId,
+	pd_info_get_proc_info(ProcInfo0),
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
+	{ det_info_init(ModuleInfo0, PredId, ProcId, InstTable0,
 		Globals, DetInfo0) },
 	pd_info_get_instmap(InstMap0),
-	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
@@ -167,9 +169,12 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	{ simplify_info_get_varset(SimplifyInfo, VarSet) },
 	{ simplify_info_get_var_types(SimplifyInfo, VarTypes) },
 	{ simplify_info_get_cost_delta(SimplifyInfo, CostDelta) },
+	{ simplify_info_get_det_info(SimplifyInfo, DetInfo) },
+	{ det_info_get_inst_table(DetInfo, InstTable) },
 	pd_info_get_proc_info(ProcInfo1),
 	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) },
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
+	{ proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 	pd_info_incr_cost_delta(CostDelta),
 	pd_info_set_module_info(ModuleInfo).
@@ -200,7 +205,8 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	% procedures, since that could cause a less efficient version to
 	% be chosen.
 	{ HowToCheck = check_unique_modes(may_not_change_called_proc) },
-	{ mode_info_init(IO0, ModuleInfo1, PredId, ProcId, Context,
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
+	{ mode_info_init(IO0, ModuleInfo1, InstTable0, PredId, ProcId, Context,
 		LiveVars, InstMap0, HowToCheck, ModeInfo0) },
 
 	{ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1) },
@@ -219,12 +225,14 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	{ mode_info_get_io_state(ModeInfo, IO) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_var_types(ModeInfo, VarTypes) },
+	{ mode_info_get_inst_table(ModeInfo, InstTable) },
 	pd_info_set_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo1) },
 	pd_info_set_pred_info(PredInfo),
 	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) },
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
+	{ proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 	pd_info_set_io_state(IO).
 
@@ -240,26 +248,29 @@ pd_util__get_goal_live_vars(_ - GoalInfo, Vars) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
 	{ set__init(Vars0) },
-	{ get_goal_live_vars_2(ModuleInfo, NonLocalsList, InstMap,
+	pd_info_get_proc_info(ProcInfo),
+	{ proc_info_inst_table(ProcInfo, InstTable) },
+	{ get_goal_live_vars_2(InstTable, ModuleInfo, NonLocalsList, InstMap,
 		InstMapDelta, Vars0, Vars) }.
 
-:- pred pd_util__get_goal_live_vars_2(module_info::in, list(var)::in,
-	instmap::in, instmap_delta::in, set(var)::in, set(var)::out) is det.
+:- pred pd_util__get_goal_live_vars_2(inst_table::in, module_info::in,
+	list(var)::in, instmap::in, instmap_delta::in, set(var)::in,
+	set(var)::out) is det.
 
-pd_util__get_goal_live_vars_2(_, [], _, _, Vars, Vars).
-pd_util__get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals], 
+pd_util__get_goal_live_vars_2(_, _, [], _, _, Vars, Vars).
+pd_util__get_goal_live_vars_2(InstTable, ModuleInfo, [NonLocal | NonLocals], 
 		InstMap, InstMapDelta, Vars0, Vars) :-
 	( instmap_delta_search_var(InstMapDelta, NonLocal, FinalInst0) ->
 		FinalInst = FinalInst0
 	;
 		instmap__lookup_var(InstMap, NonLocal, FinalInst)
 	),
-	( inst_is_clobbered(ModuleInfo, FinalInst) ->
+	( inst_is_clobbered(FinalInst, InstTable, ModuleInfo) ->
 		Vars1 = Vars0
 	;
 		set__insert(Vars0, NonLocal, Vars1)
 	),
-	pd_util__get_goal_live_vars_2(ModuleInfo, NonLocals, 
+	pd_util__get_goal_live_vars_2(InstTable, ModuleInfo, NonLocals, 
 		InstMap, InstMapDelta, Vars1, Vars).
 
 %-----------------------------------------------------------------------------%
@@ -300,13 +311,15 @@ pd_util__convert_branch_info_2([ArgNo - Branches | ArgInfos], Args,
 pd_util__get_branch_vars_proc(PredProcId, ProcInfo, 
 		Info0, Info, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo, Goal),
+	proc_info_inst_table(ProcInfo, InstTable),
 	instmap__init_reachable(InstMap0),
 	map__init(Vars0),
 	set__init(LeftVars0),
 	goal_to_conj_list(Goal, GoalList),
 	(
-		pd_util__get_branch_vars_goal_2(ModuleInfo0, GoalList, no, 
-			InstMap0, LeftVars0, LeftVars, Vars0, Vars)
+		pd_util__get_branch_vars_goal_2(InstTable, ModuleInfo0,
+			GoalList, no, InstMap0, LeftVars0, LeftVars,
+			Vars0, Vars)
 	->
 		proc_info_headvars(ProcInfo, HeadVars),
 		map__init(ThisProcArgMap0),
@@ -321,14 +334,15 @@ pd_util__get_branch_vars_proc(PredProcId, ProcInfo,
 
 			% Look for opportunities for deforestation in 
 			% the sub-branches of the top-level goal.
-		pd_util__get_sub_branch_vars_goal(ModuleInfo0, Info1,
+		pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, Info1,
 			GoalList, InstMap0, Vars, AllVars, ModuleInfo),
 		pd_util__get_extra_info_headvars(HeadVars, 1, LeftVars0,
 			AllVars, ThisProcArgMap0, ThisProcArgMap, 
 			ThisProcLeftArgs0, _),
 
-		proc_info_argmodes(ProcInfo, ArgModes),
-		pd_util__get_opaque_args(ModuleInfo, 1, ArgModes, 
+		proc_info_argmodes(ProcInfo, 
+			argument_modes(ArgInstTable, ArgModes)),
+		pd_util__get_opaque_args(ArgInstTable, ModuleInfo, 1, ArgModes, 
 			ThisProcArgMap, OpaqueArgs0, OpaqueArgs),
 
 		BranchInfo = pd_branch_info(ThisProcArgMap, ThisProcLeftArgs,
@@ -343,14 +357,15 @@ pd_util__get_branch_vars_proc(PredProcId, ProcInfo,
 	% such as io__states. If a later goal in a conjunction depends
 	% on one of these, it is unlikely that the deforestation will
 	% be able to successfully fold to give a recursive definition.
-:- pred pd_util__get_opaque_args(module_info::in, int::in, list(mode)::in,
-		branch_info_map(int)::in, set(int)::in, set(int)::out) is det.
+:- pred pd_util__get_opaque_args(inst_table::in, module_info::in, int::in,
+		list(mode)::in, branch_info_map(int)::in, set(int)::in,
+		set(int)::out) is det.
 
-pd_util__get_opaque_args(_, _, [], _, OpaqueArgs, OpaqueArgs).
-pd_util__get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
+pd_util__get_opaque_args(_, _, _, [], _, OpaqueArgs, OpaqueArgs).
+pd_util__get_opaque_args(InstTable, ModuleInfo, ArgNo, [ArgMode | ArgModes],
 		ExtraInfoArgs, OpaqueArgs0, OpaqueArgs) :-
 	( 
-		mode_is_output(ModuleInfo, ArgMode),
+		mode_is_output(InstTable, ModuleInfo, ArgMode),
 		\+ map__contains(ExtraInfoArgs, ArgNo)
 	->
 		set__insert(OpaqueArgs0, ArgNo, OpaqueArgs1)
@@ -358,7 +373,7 @@ pd_util__get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
 		OpaqueArgs1 = OpaqueArgs0
 	),
 	NextArg is ArgNo + 1,
-	pd_util__get_opaque_args(ModuleInfo, NextArg, ArgModes,
+	pd_util__get_opaque_args(InstTable, ModuleInfo, NextArg, ArgModes,
 		ExtraInfoArgs, OpaqueArgs1, OpaqueArgs).
 
 	% From the information about variables for which we have extra
@@ -395,14 +410,18 @@ pd_util__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 	pd_info_get_module_info(ModuleInfo0),
 	pd_info_get_instmap(InstMap0),
 	pd_info_get_proc_arg_info(ProcArgInfo),
+	pd_info_get_proc_info(ProcInfo),
+	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ set__init(LeftVars0) },
 	{ map__init(Vars0) },
 	(
-		{ pd_util__get_branch_vars_goal_2(ModuleInfo0, [Goal], no, 
-			InstMap0, LeftVars0, LeftVars, Vars0, Vars1) }
+		{ pd_util__get_branch_vars_goal_2(InstTable, ModuleInfo0,
+			[Goal], no, InstMap0, LeftVars0, LeftVars,
+			Vars0, Vars1) }
 	->
-		{ pd_util__get_sub_branch_vars_goal(ModuleInfo0, ProcArgInfo, 
-			[Goal], InstMap0, Vars1, Vars, ModuleInfo) },
+		{ pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0,
+			ProcArgInfo, [Goal], InstMap0, Vars1, Vars,
+			ModuleInfo) },
 		pd_info_set_module_info(ModuleInfo),
 
 			% OpaqueVars is only filled in for calls.
@@ -414,13 +433,14 @@ pd_util__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 		{ MaybeBranchInfo = no }
 	).
 
-:- pred pd_util__get_branch_vars_goal_2(module_info::in, list(hlds_goal)::in, 
-	bool::in, instmap::in, set(var)::in, set(var)::out,
+:- pred pd_util__get_branch_vars_goal_2(inst_table::in, module_info::in,
+	list(hlds_goal)::in, bool::in, instmap::in, set(var)::in, set(var)::out,
 	pd_var_info::in, pd_var_info::out) is semidet.
 
-pd_util__get_branch_vars_goal_2(_, [], yes, _, LeftVars, LeftVars, Vars, Vars).
-pd_util__get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], FoundBranch0,
-		InstMap0, LeftVars0, LeftVars, Vars0, Vars) :-
+pd_util__get_branch_vars_goal_2(_, _, [], yes, _, LeftVars, LeftVars,
+		Vars, Vars).
+pd_util__get_branch_vars_goal_2(InstTable, ModuleInfo, [Goal | Goals],
+		FoundBranch0, InstMap0, LeftVars0, LeftVars, Vars0, Vars) :-
 	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
@@ -429,8 +449,8 @@ pd_util__get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], FoundBranch0,
 		% since deforestation of goals with more than one is
 		% likely to be less productive.
 		FoundBranch0 = no,
-		pd_util__get_branch_vars(ModuleInfo, Goal, InstMapDeltas, 
-			InstMap, 1, Vars0, Vars1),
+		pd_util__get_branch_vars(InstTable, ModuleInfo, Goal,
+			InstMapDeltas, InstMap, 1, Vars0, Vars1),
 		pd_util__get_left_vars(Goal, LeftVars0, LeftVars1),
 		FoundBranch = yes
 	;
@@ -440,8 +460,8 @@ pd_util__get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], FoundBranch0,
 		Vars1 = Vars0,
 		LeftVars1 = LeftVars0
 	),
-	pd_util__get_branch_vars_goal_2(ModuleInfo, Goals, FoundBranch, 
-		InstMap, LeftVars1, LeftVars, Vars1, Vars).
+	pd_util__get_branch_vars_goal_2(InstTable, ModuleInfo, Goals,
+		FoundBranch, InstMap, LeftVars1, LeftVars, Vars1, Vars).
 
 :- pred pd_util__get_branch_instmap_deltas(hlds_goal::in, 
 		list(instmap_delta)::out) is semidet.
@@ -456,8 +476,10 @@ pd_util__get_branch_instmap_deltas(switch(_, _, Cases, _) - _,
 		InstMapDeltas) :-
 	GetCaseInstMapDelta =
 		lambda([Case::in, InstMapDelta::out] is det, (
-			Case = case(_, _ - CaseInfo),
-			goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
+			Case = case(_, CaseIMD, _ - CaseInfo),
+			goal_info_get_instmap_delta(CaseInfo, GoalIMD),
+			instmap_delta_apply_instmap_delta(CaseIMD, GoalIMD,
+				InstMapDelta) % AAA is this right?
 		)),
 	list__map(GetCaseInstMapDelta, Cases, InstMapDeltas).
 pd_util__get_branch_instmap_deltas(disj(Disjuncts, _) - _, InstMapDeltas) :-
@@ -482,23 +504,24 @@ pd_util__get_left_vars(Goal, Vars0, Vars) :-
 		Vars = Vars0
 	).
 
-:- pred pd_util__get_branch_vars(module_info::in, hlds_goal::in, 
-		list(instmap_delta)::in, instmap::in, int::in, 
+:- pred pd_util__get_branch_vars(inst_table::in, module_info::in,
+		hlds_goal::in, list(instmap_delta)::in, instmap::in, int::in, 
 		pd_var_info::in, pd_var_info::out) is semidet.
 		
-pd_util__get_branch_vars(_, _, [], _, _, Extra, Extra).
-pd_util__get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas], 
-		InstMap, BranchNo, ExtraVars0, ExtraVars) :-
+pd_util__get_branch_vars(_, _, _, [], _, _, Extra, Extra).
+pd_util__get_branch_vars(InstTable, ModuleInfo, Goal,
+		[InstMapDelta | InstMapDeltas], InstMap, BranchNo,
+		ExtraVars0, ExtraVars) :-
 	AddExtraInfoVars = 
 	    lambda([ChangedVar::in, Vars0::in, Vars::out] is det, (
 		(
 			instmap__lookup_var(InstMap, ChangedVar, VarInst),
 			instmap_delta_search_var(InstMapDelta, 
 				ChangedVar, DeltaVarInst),
-		    	inst_is_bound_to_functors(ModuleInfo, 
-				DeltaVarInst, [_]),
-		    	\+ inst_is_bound_to_functors(ModuleInfo, 
-				VarInst, [_])
+		    	inst_is_bound_to_functors(DeltaVarInst, InstTable,
+		    		ModuleInfo, [_]),
+		    	\+ inst_is_bound_to_functors(VarInst, InstTable,
+		    		ModuleInfo, [_])
 	    	->
 			( map__search(Vars0, ChangedVar, Set0) ->
 				set__insert(Set0, BranchNo, Set)
@@ -527,82 +550,84 @@ pd_util__get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 		ExtraVars2 = ExtraVars1
 	),
 	NextBranch is BranchNo + 1,
-	pd_util__get_branch_vars(ModuleInfo, Goal, InstMapDeltas, InstMap, 
-		NextBranch, ExtraVars2, ExtraVars).
+	pd_util__get_branch_vars(InstTable, ModuleInfo, Goal, InstMapDeltas,
+		InstMap, NextBranch, ExtraVars2, ExtraVars).
 
 	% Look at the goals in the branches for extra information.
-:- pred pd_util__get_sub_branch_vars_goal(module_info::in, pd_arg_info::in,
-		list(hlds_goal)::in, instmap::in, branch_info_map(var)::in, 
-		branch_info_map(var)::out, module_info::out) is det.
+:- pred pd_util__get_sub_branch_vars_goal(inst_table::in, module_info::in,
+		pd_arg_info::in, list(hlds_goal)::in, instmap::in,
+		branch_info_map(var)::in, branch_info_map(var)::out,
+		module_info::out) is det.
 
-pd_util__get_sub_branch_vars_goal(Module, _, [], _, Vars, Vars, Module).
-pd_util__get_sub_branch_vars_goal(ModuleInfo0, ProcArgInfo, [Goal | GoalList], 
-		InstMap0, Vars0, SubVars, ModuleInfo) :-
+pd_util__get_sub_branch_vars_goal(_, Module, _, [], _, Vars, Vars, Module).
+pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, ProcArgInfo,
+		[Goal | GoalList], InstMap0, Vars0, SubVars, ModuleInfo) :-
 	Goal = GoalExpr - GoalInfo,
 	( GoalExpr = if_then_else(_, Cond, Then, Else, _) ->
 		Cond = _ - CondInfo,
 		goal_info_get_instmap_delta(CondInfo, CondDelta),
 		instmap__apply_instmap_delta(InstMap0, CondDelta, InstMap1),
 		goal_to_conj_list(Then, ThenList),
-		pd_util__examine_branch(ModuleInfo0, ProcArgInfo, 1, ThenList,
-			InstMap1, Vars0, Vars1),
+		pd_util__examine_branch(InstTable, ModuleInfo0, ProcArgInfo,
+			1, ThenList, InstMap1, Vars0, Vars1),
 		goal_to_conj_list(Else, ElseList),
-		pd_util__examine_branch(ModuleInfo0, ProcArgInfo, 2, ElseList,
-			InstMap0, Vars1, Vars2),
+		pd_util__examine_branch(InstTable, ModuleInfo0, ProcArgInfo,
+			2, ElseList, InstMap0, Vars1, Vars2),
 		ModuleInfo1 = ModuleInfo0
 	; GoalExpr = disj(Goals, _) ->
-		pd_util__examine_branch_list(ModuleInfo0, ProcArgInfo, 
-			1, Goals, InstMap0, Vars0, Vars2),
+		pd_util__examine_branch_list(InstTable, ModuleInfo0,
+			ProcArgInfo, 1, Goals, InstMap0, Vars0, Vars2),
 		ModuleInfo1 = ModuleInfo0
 	; GoalExpr = switch(Var, _, Cases, _) ->
-		pd_util__examine_case_list(ModuleInfo0, ProcArgInfo, 1, Var,
-			Cases, InstMap0, Vars0, Vars2, ModuleInfo1)
+		pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo,
+			1, Var, Cases, InstMap0, Vars0, Vars2, ModuleInfo1)
 	;
 		ModuleInfo1 = ModuleInfo0,
 		Vars2 = Vars0
 	),
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-	pd_util__get_sub_branch_vars_goal(ModuleInfo1, ProcArgInfo, GoalList,
-		InstMap, Vars2, SubVars, ModuleInfo).
+	pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo1, ProcArgInfo,
+		GoalList, InstMap, Vars2, SubVars, ModuleInfo).
 
-:- pred pd_util__examine_branch_list(module_info::in, pd_arg_info::in, int::in,
-	list(hlds_goal)::in, instmap::in, branch_info_map(var)::in, 
-	branch_info_map(var)::out) is det.
+:- pred pd_util__examine_branch_list(inst_table::in, module_info::in,
+	pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
+	branch_info_map(var)::in, branch_info_map(var)::out) is det.
 
-pd_util__examine_branch_list(_, _, _, [], _, Vars, Vars).
-pd_util__examine_branch_list(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
-		InstMap, Vars0, Vars) :-
+pd_util__examine_branch_list(_, _, _, _, [], _, Vars, Vars).
+pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
+		[Goal | Goals], InstMap, Vars0, Vars) :-
 	goal_to_conj_list(Goal, GoalList),
-	pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo, GoalList,
-		InstMap, Vars0, Vars1),
+	pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
+		GoalList, InstMap, Vars0, Vars1),
 	NextBranch is BranchNo + 1,
-	pd_util__examine_branch_list(ModuleInfo, ProcArgInfo, NextBranch,
-		Goals, InstMap, Vars1, Vars).
+	pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo,
+		NextBranch, Goals, InstMap, Vars1, Vars).
 
-:- pred pd_util__examine_case_list(module_info::in, pd_arg_info::in, int::in,
-	var::in, list(case)::in, instmap::in, branch_info_map(var)::in, 
-	branch_info_map(var)::out, module_info::out) is det.
+:- pred pd_util__examine_case_list(inst_table::in, module_info::in,
+	pd_arg_info::in, int::in, var::in, list(case)::in, instmap::in,
+	branch_info_map(var)::in, branch_info_map(var)::out, module_info::out)
+	is det.
 
-pd_util__examine_case_list(Module, _, _, _, [], _, Vars, Vars, Module).
-pd_util__examine_case_list(ModuleInfo0, ProcArgInfo, BranchNo, Var,
-		[case(ConsId, Goal) | Goals], InstMap, 
+pd_util__examine_case_list(_, Module, _, _, _, [], _, Vars, Vars, Module).
+pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo, BranchNo, Var,
+		[case(_ConsId, CaseIMD, Goal) | Goals], InstMap, 
 		Vars0, Vars, ModuleInfo) :-
-	instmap__bind_var_to_functor(Var, ConsId, InstMap, InstMap1, 
-		ModuleInfo0, ModuleInfo1),
+	ModuleInfo1 = ModuleInfo0,
+	instmap__apply_instmap_delta(InstMap, CaseIMD, InstMap1),
 	goal_to_conj_list(Goal, GoalList),
-	pd_util__examine_branch(ModuleInfo1, ProcArgInfo, BranchNo, GoalList,
-		InstMap1, Vars0, Vars1),
+	pd_util__examine_branch(InstTable, ModuleInfo1, ProcArgInfo, BranchNo,
+		GoalList, InstMap1, Vars0, Vars1),
 	NextBranch is BranchNo + 1,
-	pd_util__examine_case_list(ModuleInfo1, ProcArgInfo, NextBranch,
-		Var, Goals, InstMap, Vars1, Vars, ModuleInfo).
+	pd_util__examine_case_list(InstTable, ModuleInfo1, ProcArgInfo,
+		NextBranch, Var, Goals, InstMap, Vars1, Vars, ModuleInfo).
 
-:- pred pd_util__examine_branch(module_info::in, pd_arg_info::in, int::in,
-		list(hlds_goal)::in, instmap::in, branch_info_map(var)::in,
-		branch_info_map(var)::out) is det.
+:- pred pd_util__examine_branch(inst_table::in, module_info::in,
+		pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
+		branch_info_map(var)::in, branch_info_map(var)::out) is det.
 
-pd_util__examine_branch(_, _, _, [], _, Vars, Vars).
-pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo, 
+pd_util__examine_branch(_, _, _, _, [], _, Vars, Vars).
+pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo, 
 		[Goal | Goals], InstMap, Vars0, Vars) :-
 	( Goal = call(PredId, ProcId, Args, _, _, _) - _ ->
 		( 
@@ -620,8 +645,8 @@ pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
 	; 
 		set__init(LeftVars0),
 		map__init(Vars1),
-		pd_util__get_branch_vars_goal_2(ModuleInfo, [Goal], no, 
-			InstMap, LeftVars0, _, Vars1, Vars2)
+		pd_util__get_branch_vars_goal_2(InstTable, ModuleInfo, [Goal],
+			no, InstMap, LeftVars0, _, Vars1, Vars2)
 	->
 		map__keys(Vars2, ExtraVars2),
 		combine_vars(Vars0, BranchNo, ExtraVars2, Vars3)
@@ -631,7 +656,7 @@ pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
 	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
-	pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
+	pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 		Goals, InstMap1, Vars3, Vars).
 
 :- pred combine_vars(branch_info_map(var)::in, int::in, list(var)::in,
@@ -663,8 +688,15 @@ pd_util__requantify_goal(Goal0, NonLocals, Goal) -->
 pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	pd_info_get_module_info(ModuleInfo0),
 	pd_info_get_instmap(InstMap),
-	{ recompute_instmap_delta(yes, Goal0, Goal, InstMap, 
-		ModuleInfo0, ModuleInfo) },
+	pd_info_get_proc_info(ProcInfo0),
+	{ proc_info_headvars(ProcInfo0, ArgVars) },
+	{ proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives) },
+	{ proc_info_vartypes(ProcInfo0, VarTypes) },
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
+	{ recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal0, Goal,
+		InstMap, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
+	{ proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo) },
+	pd_info_set_proc_info(ProcInfo),
 	pd_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -678,47 +710,50 @@ pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	%	When in doubt, fail. This will only result in less 
 	% 	optimization, not loss of correctness.
 
-inst_MSG(InstA, InstB, ModuleInfo, Inst) :-
+inst_MSG(InstA, InstB, InstTable, ModuleInfo, Inst) :-
 	( InstA = InstB ->
 		Inst = InstA
 	;
-		inst_expand(ModuleInfo, InstA, InstA2),
-		inst_expand(ModuleInfo, InstB, InstB2),
+		inst_expand(InstTable, ModuleInfo, InstA, InstA2),
+		inst_expand(InstTable, ModuleInfo, InstB, InstB2),
 		( InstB2 = not_reached ->
 			Inst = InstA2
 		;
-			inst_MSG_2(InstA2, InstB2, ModuleInfo, Inst)
+			inst_MSG_2(InstA2, InstB2, InstTable, ModuleInfo, Inst)
 		)
 	).
 
-:- pred inst_MSG_2(inst, inst, module_info, inst).
-:- mode inst_MSG_2(in, in, in, out) is semidet.
+:- pred inst_MSG_2(inst, inst, inst_table, module_info, inst).
+:- mode inst_MSG_2(in, in, in, in, out) is semidet.
 
-inst_MSG_2(any(_), any(Uniq), _, any(Uniq)).
-inst_MSG_2(free, free, _M, free).
+inst_MSG_2(any(_), any(Uniq), _IT, _M, any(Uniq)).
+inst_MSG_2(free, free, _IT, _M, free).
 
-inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), ModuleInfo, Inst) :-
-	bound_inst_list_MSG(ListA, ListB, ModuleInfo, UniqB, ListB, Inst).
-inst_MSG_2(bound(_, _), ground(UniqB, InfoB), _, ground(UniqB, InfoB)).
+inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), InstTable, ModuleInfo, Inst) :-
+	bound_inst_list_MSG(ListA, ListB, InstTable, ModuleInfo, UniqB, ListB,
+		Inst).
+inst_MSG_2(bound(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)).
 
 	% fail here, since the increasing inst size could 
 	% cause termination problems for deforestation.
-inst_MSG_2(ground(_, _), bound(_UniqB, _ListB), _, _) :- fail.
-inst_MSG_2(ground(_, _), ground(UniqB, InfoB), _, ground(UniqB, InfoB)). 
+inst_MSG_2(ground(_, _), bound(_UniqB, _ListB), _, _, _) :- fail.
+inst_MSG_2(ground(_, _), ground(UniqB, InfoB), _, _, ground(UniqB, InfoB)). 
 inst_MSG_2(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo, abstract_inst(Name, Args)) :-
-	inst_list_MSG(ArgsA, ArgsB, ModuleInfo, Args).
-inst_MSG_2(not_reached, Inst, _, Inst).
+		InstTable, ModuleInfo, abstract_inst(Name, Args)) :-
+	inst_list_MSG(ArgsA, ArgsB, InstTable, ModuleInfo, Args).
+inst_MSG_2(not_reached, Inst, _, _, Inst).
 
-:- pred inst_list_MSG(list(inst), list(inst), module_info, list(inst)).
-:- mode inst_list_MSG(in, in, in, out) is semidet.
+:- pred inst_list_MSG(list(inst), list(inst), inst_table, module_info,
+		list(inst)).
+:- mode inst_list_MSG(in, in, in, in, out) is semidet.
 
-inst_list_MSG([], [], _ModuleInfo, []).
-inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, [Arg | Args]) :-
-	inst_MSG(ArgA, ArgB, ModuleInfo, Arg),
-	inst_list_MSG(ArgsA, ArgsB, ModuleInfo, Args).
+inst_list_MSG([], [], _InstTable, _ModuleInfo, []).
+inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], InstTable, ModuleInfo,
+		[Arg | Args]) :-
+	inst_MSG(ArgA, ArgB, InstTable, ModuleInfo, Arg),
+	inst_list_MSG(ArgsA, ArgsB, InstTable, ModuleInfo, Args).
 
-	% bound_inst_list_MSG(Xs, Ys, ModuleInfo, Zs):
+	% bound_inst_list_MSG(Xs, Ys, InstTable, ModuleInfo, Zs):
 	% The two input lists Xs and Ys must already be sorted.
 	% If any of the functors in Xs are not in Ys or vice
 	% versa, the final inst is ground, unless either of the insts
@@ -728,10 +763,10 @@ inst_list_MSG([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo, [Arg | Args]) :-
 	% Otherwise, the take the msg of the argument insts.
 
 :- pred bound_inst_list_MSG(list(bound_inst), list(bound_inst),
-		module_info, uniqueness, list(bound_inst), inst).
-:- mode bound_inst_list_MSG(in, in, in, in, in, out) is semidet.
+		inst_table, module_info, uniqueness, list(bound_inst), inst).
+:- mode bound_inst_list_MSG(in, in, in, in, in, in, out) is semidet.
 
-bound_inst_list_MSG(Xs, Ys, ModuleInfo, Uniq, List, Inst) :-
+bound_inst_list_MSG(Xs, Ys, InstTable, ModuleInfo, Uniq, List, Inst) :-
 	(
 		Xs = [],
 		Ys = []
@@ -743,9 +778,10 @@ bound_inst_list_MSG(Xs, Ys, ModuleInfo, Uniq, List, Inst) :-
 		X = functor(ConsId, ArgsX),
 		Y = functor(ConsId, ArgsY)
 	->
-		inst_list_MSG(ArgsX, ArgsY, ModuleInfo, Args),
+		inst_list_MSG(ArgsX, ArgsY, InstTable, ModuleInfo, Args),
 		Z = functor(ConsId, Args),
-		bound_inst_list_MSG(Xs1, Ys1, ModuleInfo, Uniq, List, Inst1),
+		bound_inst_list_MSG(Xs1, Ys1, InstTable, ModuleInfo, Uniq,
+			List, Inst1),
 		( Inst1 = bound(Uniq, Zs) ->
 			Inst = bound(Uniq, [Z | Zs])
 		;
@@ -755,67 +791,80 @@ bound_inst_list_MSG(Xs, Ys, ModuleInfo, Uniq, List, Inst) :-
 		% Check that it's OK to round off the uniqueness information.
 		( 
 			Uniq = shared,
-			inst_is_ground(ModuleInfo, bound(shared, List)),
-			inst_is_not_partly_unique(ModuleInfo, 
-				bound(shared, List))
+			inst_is_ground(bound(shared, List), InstTable,
+				ModuleInfo),
+			inst_is_not_partly_unique(bound(shared, List),
+				InstTable, ModuleInfo)
 		;
 			Uniq = unique,
-			inst_is_unique(ModuleInfo, bound(unique, List))
+			inst_is_unique(bound(unique, List), InstTable,
+				ModuleInfo)
 		),		
 		Inst = ground(Uniq, no)
 	).
 
 %-----------------------------------------------------------------------------%
 
-pd_util__inst_size(ModuleInfo, Inst, Size) :-
+pd_util__inst_size(InstTable, ModuleInfo, Inst, Size) :-
 	set__init(Expansions),
-	pd_util__inst_size_2(ModuleInfo, Inst, Expansions, Size).
+	pd_util__inst_size_2(InstTable, ModuleInfo, Inst, Expansions, Size).
 
-:- pred pd_util__inst_size_2(module_info::in, (inst)::in,
+:- pred pd_util__inst_size_2(inst_table::in, module_info::in, (inst)::in,
 		set(inst_name)::in, int::out) is det.
 
-pd_util__inst_size_2(_, not_reached, _, 0).
-pd_util__inst_size_2(_, any(_), _, 0).
-pd_util__inst_size_2(_, free, _, 0).
-pd_util__inst_size_2(_, free(_), _, 0).
-pd_util__inst_size_2(_, ground(_, _), _, 0).
-pd_util__inst_size_2(_, inst_var(_), _, 0).
-pd_util__inst_size_2(_, abstract_inst(_, _), _, 0).
-pd_util__inst_size_2(ModuleInfo, defined_inst(InstName), Expansions0, Size) :-
+pd_util__inst_size_2(_, _, not_reached, _, 0).
+pd_util__inst_size_2(_, _, any(_), _, 0).
+pd_util__inst_size_2(_, _, free, _, 0).
+pd_util__inst_size_2(_, _, free(_), _, 0).
+pd_util__inst_size_2(_, _, ground(_, _), _, 0).
+pd_util__inst_size_2(_, _, inst_var(_), _, 0).
+pd_util__inst_size_2(_, _, abstract_inst(_, _), _, 0).
+pd_util__inst_size_2(InstTable, ModuleInfo, defined_inst(InstName),
+		Expansions0, Size) :-
 	( set__member(InstName, Expansions0) ->
 		Size = 1
 	;
 		set__insert(Expansions0, InstName, Expansions),
-		inst_lookup(ModuleInfo, InstName, Inst),
-		pd_util__inst_size_2(ModuleInfo, Inst, Expansions, Size)
+		inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+		pd_util__inst_size_2(InstTable, ModuleInfo, Inst, Expansions,
+			Size)
 	).
-pd_util__inst_size_2(ModuleInfo, bound(_, Functors), Expansions, Size) :-
-	pd_util__bound_inst_size(ModuleInfo, Functors, Expansions, 1, Size).
+pd_util__inst_size_2(InstTable, ModuleInfo, bound(_, Functors), Expansions,
+		Size) :-
+	pd_util__bound_inst_size(InstTable, ModuleInfo, Functors, Expansions,
+		1, Size).
+pd_util__inst_size_2(InstTable, ModuleInfo, alias(IK), Expansions, Size) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	inst_key_table_lookup(IKT, IK, Inst),
+	pd_util__inst_size_2(InstTable, ModuleInfo, Inst, Expansions, Size).
 
-:- pred pd_util__bound_inst_size(module_info::in, list(bound_inst)::in,
-		set(inst_name)::in, int::in, int::out) is det.
+:- pred pd_util__bound_inst_size(inst_table::in, module_info::in,
+	list(bound_inst)::in, set(inst_name)::in, int::in, int::out) is det.
 		
-pd_util__bound_inst_size(_, [], _, Size, Size).
-pd_util__bound_inst_size(ModuleInfo, [functor(_, ArgInsts) | Insts],
+pd_util__bound_inst_size(_, _, [], _, Size, Size).
+pd_util__bound_inst_size(InstTable, ModuleInfo, [functor(_, ArgInsts) | Insts],
 		Expansions, Size0, Size) :-
-	pd_util__inst_list_size(ModuleInfo, ArgInsts,
+	pd_util__inst_list_size(InstTable, ModuleInfo, ArgInsts,
 		Expansions, Size0, Size1),
 	Size2 is Size1 + 1,
-	pd_util__bound_inst_size(ModuleInfo, Insts, Expansions, Size2, Size).
+	pd_util__bound_inst_size(InstTable, ModuleInfo, Insts, Expansions,
+		Size2, Size).
 
-pd_util__inst_list_size(ModuleInfo, Insts, Size) :-
+pd_util__inst_list_size(InstTable, ModuleInfo, Insts, Size) :-
 	set__init(Expansions),
-	pd_util__inst_list_size(ModuleInfo, Insts, Expansions, 0, Size).
+	pd_util__inst_list_size(InstTable, ModuleInfo, Insts, Expansions, 0,
+		Size).
 
-:- pred pd_util__inst_list_size(module_info::in, list(inst)::in,
-		set(inst_name)::in, int::in, int::out) is det.
+:- pred pd_util__inst_list_size(inst_table::in, module_info::in,
+		list(inst)::in, set(inst_name)::in, int::in, int::out) is det.
 
-pd_util__inst_list_size(_, [], _, Size, Size).
-pd_util__inst_list_size(ModuleInfo, [Inst | Insts],
+pd_util__inst_list_size(_, _, [], _, Size, Size).
+pd_util__inst_list_size(InstTable, ModuleInfo, [Inst | Insts],
 		Expansions, Size0, Size) :-
-	pd_util__inst_size_2(ModuleInfo, Inst, Expansions, Size1),
+	pd_util__inst_size_2(InstTable, ModuleInfo, Inst, Expansions, Size1),
 	Size2 is Size0 + Size1,
-	pd_util__inst_list_size(ModuleInfo, Insts, Expansions, Size2, Size).
+	pd_util__inst_list_size(InstTable, ModuleInfo, Insts, Expansions,
+		Size2, Size).
 
 %-----------------------------------------------------------------------------%
 
