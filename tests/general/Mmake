@@ -8,7 +8,7 @@ include ../Mmake
 
 PROGS=	arithmetic disj_disj interpreter \
 	nasty_nondet nondet_disj nondet_ite petdr1 \
-	partition string_test string_test_2
+	string__format_test string_test string_test_2 univ
 
 # float_test doesn't work because io__write_float
 # prints a different number of digits in the C / NU-Prolog implementations.
