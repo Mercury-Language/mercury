@@ -1187,7 +1187,10 @@ output_addr_of_ctor_rtti_names(RttiTypeCtor, [RttiName | RttiNames], !IO) :-
 :- pred output_cast_addr_of_rtti_datas(string::in, list(rtti_data)::in,
 	io__state::di, io__state::uo) is det.
 
-output_cast_addr_of_rtti_datas(_, [], !IO).
+output_cast_addr_of_rtti_datas(_, [], !IO) :-
+	io__write_string(
+	  "\t/* Dummy entry, since ISO C forbids zero-sized arrays */\n", !IO),
+	io__write_string("\t0\n", !IO).
 output_cast_addr_of_rtti_datas(Cast, [RttiData | RttiDatas], !IO) :-
 	io__write_string("\t", !IO),
 	io__write_list([RttiData | RttiDatas], ",\n\t",
