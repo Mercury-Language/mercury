@@ -336,8 +336,6 @@ lower bounds other than zero are not supported
 
 :- pragma foreign_decl("C", "
 #ifdef MR_HIGHLEVEL_CODE
-  #include ""mercury_goto.h""	/* for MR_init_entry */
-
   bool MR_CALL mercury__array__do_unify__array_1_0(
   	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y);
   bool MR_CALL mercury__array____Unify____array_1_0(
@@ -355,11 +353,17 @@ lower bounds other than zero are not supported
 
 MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
+/* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_array_module_builtins(void);
-void sys_init_array_module_builtins(void) {
-	MR_init_entry(mercury__array____Unify____array_1_0);
-	MR_init_entry(mercury__array____Compare____array_1_0);
-	return;
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_array_module_builtins(void)
+{
+	/* no initialization needed */
 }
 
 bool MR_CALL

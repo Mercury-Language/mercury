@@ -1105,8 +1105,20 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 :- pragma c_code("
 #ifdef MR_HIGHLEVEL_CODE
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
 void mercury_sys_init_exceptions(void);
-void mercury_sys_init_exceptions(void) { return; }
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+mercury_sys_init_exceptions(void)
+{
+	/* no initialization needed */
+}
+
 #else
 
 /*
