@@ -164,6 +164,13 @@ ML_report_stats(void)
 			eng->context.nondetstack_zone->min) / 1024.0
 	);
 
+#ifdef CONSERVATIVE_GC
+	{ char local_var;
+	  fprintf(stderr, "" C Stack: %.3fk,"",
+		labs(&local_var - (char *) GC_stackbottom) / 1024.0);
+	}
+#endif
+
 #ifdef MR_USE_TRAIL
 	fprintf(stderr,
 		"" Trail: %.3fk,"",
