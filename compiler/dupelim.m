@@ -71,8 +71,8 @@
 	% OtherLabels must be nonempty.
 :- type cluster		--->	cluster(label, list(label)).
 
-dupelim_main(Instrs0, ProcLabel, C0, C, Instrs) :-
-	create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
+dupelim_main(Instrs0, ProcLabel, !C, Instrs) :-
+	create_basic_blocks(Instrs0, Comments, ProcLabel, !C,
 		LabelSeq0, BlockMap0),
 	map__init(StdMap0),
 	set__init(Fixed0),
@@ -103,21 +103,21 @@ dupelim_main(Instrs0, ProcLabel, C0, C, Instrs) :-
 :- pred dupelim__build_maps(list(label)::in, block_map::in,
 	std_map::in, std_map::out, set(label)::in, set(label)::out) is det.
 
-dupelim__build_maps([], _, StdMap, StdMap, Fixed, Fixed).
-dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
-		Fixed0, Fixed) :-
+dupelim__build_maps([], _, !StdMap, !Fixed).
+dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 	map__lookup(BlockMap, Label, BlockInfo),
 	BlockInfo = block_info(_, _, Instrs, _, MaybeFallThrough),
 	standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
-	( map__search(StdMap0, StdInstrs, Cluster) ->
-		map__det_update(StdMap0, StdInstrs, [Label | Cluster], StdMap1)
+	( map__search(!.StdMap, StdInstrs, Cluster) ->
+		map__det_update(!.StdMap, StdInstrs, [Label | Cluster],
+			!:StdMap)
 	;
-		map__det_insert(StdMap0, StdInstrs, [Label], StdMap1)
+		map__det_insert(!.StdMap, StdInstrs, [Label], !:StdMap)
 	),
 	( MaybeFallThrough = yes(FallIntoLabel) ->
-		set__insert(Fixed0, FallIntoLabel, Fixed1)
+		set__insert(!.Fixed, FallIntoLabel, !:Fixed)
 	;
-		Fixed1 = Fixed0
+		true
 	),
 	AddPragmaReferredLabels =
 		(pred(Instr::in, FoldFixed0::in, FoldFixed::out) is det :-
@@ -147,10 +147,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 			FoldFixed = FoldFixed0
 		)
 	),
-	list__foldl(AddPragmaReferredLabels, Instrs,
-		Fixed1, Fixed2),
-	dupelim__build_maps(Labels, BlockMap, StdMap1, StdMap,
-		Fixed2, Fixed).
+	list__foldl(AddPragmaReferredLabels, Instrs, !Fixed),
+	dupelim__build_maps(Labels, BlockMap, !StdMap, !Fixed).
 
 % For each set of labels that start basic blocks with identical standard forms,
 % find_clusters finds out whether we can eliminate some of those blocks;
@@ -168,8 +166,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 :- pred find_clusters(list(list(label))::in, set(label)::in,
 	list(cluster)::in, list(cluster)::out) is det.
 
-find_clusters([], _, Clusters, Clusters).
-find_clusters([Labels | LabelsList], Fixed, Clusters0, Clusters) :-
+find_clusters([], _, !Clusters).
+find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
 	(
 		Labels = [_, _ | _],
 			% The rest of the condition is relatively expensive,
@@ -187,11 +185,11 @@ find_clusters([Labels | LabelsList], Fixed, Clusters0, Clusters) :-
 		;
 			Cluster = cluster(FirstNonFixed, OtherNonFixed)
 		),
-		Clusters1 = [Cluster | Clusters0]
+		!:Clusters = [Cluster | !.Clusters]
 	;
-		Clusters1 = Clusters0
+		true
 	),
-	find_clusters(LabelsList, Fixed, Clusters1, Clusters).
+	find_clusters(LabelsList, Fixed, !Clusters).
 
 %-----------------------------------------------------------------------------%
 
@@ -205,23 +203,20 @@ find_clusters([Labels | LabelsList], Fixed, Clusters0, Clusters) :-
 	block_map::in, block_map::out,
 	map(label, label)::in, map(label, label)::out) is det.
 
-process_clusters([], LabelSeq, LabelSeq, BlockMap, BlockMap,
-		ReplMap, ReplMap).
-process_clusters([Cluster | Clusters], LabelSeq0, LabelSeq,
-		BlockMap0, BlockMap, ReplMap0, ReplMap) :-
+process_clusters([], !LabelSeq, !BlockMap, !ReplMap).
+process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
 	Cluster = cluster(Exemplar, ElimLabels),
-	map__lookup(BlockMap0, Exemplar, ExemplarInfo0),
+	map__lookup(!.BlockMap, Exemplar, ExemplarInfo0),
 	ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
 		ExSideLabels, ExMaybeFallThrough),
 	require(unify(Exemplar, ExLabel), "exemplar label mismatch"),
 	process_elim_labels(ElimLabels, ExInstrs0, ExMaybeFallThrough,
-		LabelSeq0, LabelSeq1, BlockMap0, Exemplar, ReplMap0, ReplMap1,
+		!LabelSeq, !.BlockMap, Exemplar, !ReplMap,
 		UnifiedInstrs, UnifiedMaybeFallThrough),
 	ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
 		ExSideLabels, UnifiedMaybeFallThrough),
-	map__det_update(BlockMap0, Exemplar, ExemplarInfo, BlockMap1),
-	process_clusters(Clusters, LabelSeq1, LabelSeq, BlockMap1, BlockMap,
-		ReplMap1, ReplMap).
+	map__det_update(!.BlockMap, Exemplar, ExemplarInfo, !:BlockMap),
+	process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
 % Given the current form of a basic block (instructions and fallthrough),
 % compute its most specific generalization with the basic blocks headed
@@ -238,11 +233,11 @@ process_clusters([Cluster | Clusters], LabelSeq0, LabelSeq,
 	label::in, map(label, label)::in, map(label, label)::out,
 	list(instruction)::out, maybe(label)::out) is det.
 
-process_elim_labels([], Instrs, MaybeFT, LabelSeq, LabelSeq, _,
-		_, ReplMap, ReplMap, Instrs, MaybeFT).
+process_elim_labels([], Instrs, MaybeFT, !LabelSeq, _,
+		_, !ReplMap, Instrs, MaybeFT).
 process_elim_labels([ElimLabel | ElimLabels], Instrs0, MaybeFallThrough0,
-		LabelSeq0, LabelSeq, BlockMap, Exemplar, ReplMap0, ReplMap,
-		Instrs, MaybeFallThrough) :-
+		!LabelSeq, BlockMap, Exemplar, !ReplMap, Instrs,
+		MaybeFallThrough) :-
 	map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
 	ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
 		_, ElimMaybeFallThrough),
@@ -252,11 +247,11 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, MaybeFallThrough0,
 			ElimInstrs, ElimMaybeFallThrough,
 			Instrs1, MaybeFallThrough1)
 	->
-		list__delete_all(LabelSeq0, ElimLabel, LabelSeq1),
-		map__det_insert(ReplMap0, ElimLabel, Exemplar, ReplMap1),
+		list__delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
+		map__det_insert(!.ReplMap, ElimLabel, Exemplar, !:ReplMap),
 		process_elim_labels(ElimLabels, Instrs1, MaybeFallThrough1,
-			LabelSeq1, LabelSeq, BlockMap,
-			Exemplar, ReplMap1, ReplMap, Instrs, MaybeFallThrough)
+			!LabelSeq, BlockMap, Exemplar, !ReplMap, Instrs,
+			MaybeFallThrough)
 	;
 		error("blocks with same standard form don't antiunify")
 	).

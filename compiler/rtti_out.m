@@ -115,7 +115,7 @@ output_base_typeclass_info_defn(InstanceModuleName, ClassId, InstanceString,
 		base_typeclass_info(N1, N2, N3, N4, N5, Methods),
 		!DeclSet, !IO) :-
 	CodeAddrs = list__map(make_code_addr, Methods),
-	output_code_addrs_decls(CodeAddrs, "", "", 0, _, !DeclSet, !IO),
+	list__foldl2(output_code_addr_decls, CodeAddrs, !DeclSet, !IO),
 	io__write_string("\n", !IO),
 	RttiId = tc_rtti_id(base_typeclass_info(InstanceModuleName,
 		ClassId, InstanceString)),
@@ -308,7 +308,7 @@ output_type_class_instance_defn(Instance, !DeclSet, !IO) :-
 	;
 		MethodProcLabels = [_ | _],
 		MethodCodeAddrs = list__map(make_code_addr, MethodProcLabels),
-		output_code_addrs_decls(MethodCodeAddrs, "", "", 0, _,
+		list__foldl2(output_code_addr_decls, MethodCodeAddrs,
 			!DeclSet, !IO),
 		output_generic_rtti_data_defn_start(TCInstanceMethodsRttiId,
 			!DeclSet, !IO),
@@ -555,7 +555,7 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
 	det_univ_to_type(CompareUniv, CompareProcLabel),
 	CompareCodeAddr = make_code_addr(CompareProcLabel),
 	CodeAddrs = [UnifyCodeAddr, CompareCodeAddr],
-	output_code_addrs_decls(CodeAddrs, "", "", 0, _, !DeclSet, !IO),
+	list__foldl2(output_code_addr_decls, CodeAddrs, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, type_ctor_info),
 		!DeclSet, !IO),
@@ -1448,39 +1448,38 @@ output_init_method_pointers(FieldNum, [Arg|Args], ClassId, InstanceStr, !IO) :-
 	string::in, string::in, int::in, int::out, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
-output_rtti_datas_decls([], _, _, N, N, !DeclSet, !IO).
+output_rtti_datas_decls([], _, _, !N, !DeclSet, !IO).
 output_rtti_datas_decls([RttiData | RttiDatas], FirstIndent, LaterIndent,
-		N0, N, !DeclSet, !IO) :-
+		!N, !DeclSet, !IO) :-
 	output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
-		N0, N1, !DeclSet, !IO),
+		!N, !DeclSet, !IO),
 	output_rtti_datas_decls(RttiDatas, FirstIndent, LaterIndent,
-		N1, N, !DeclSet, !IO).
+		!N, !DeclSet, !IO).
 
 :- pred output_rtti_data_decls(rtti_data::in,
 	string::in, string::in, int::in, int::out, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
 output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
-		N0, N, !DeclSet, !IO) :-
+		!N, !DeclSet, !IO) :-
 	( RttiData = pseudo_type_info(type_var(_)) ->
 		% These just get represented as integers,
 		% so we don't need to declare them.
 		% Also rtti_data_to_name/3 does not handle this case.
-		N = N0
+		true
 	;
 		rtti_data_to_id(RttiData, RttiId),
 		output_rtti_id_decls(RttiId, FirstIndent, LaterIndent,
-			N0, N, !DeclSet, !IO)
+			!N, !DeclSet, !IO)
 	).
 
 :- pred output_rtti_id_decls(rtti_id::in, string::in, string::in,
 	int::in, int::out, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
-output_rtti_id_decls(RttiId, FirstIndent, LaterIndent,
-		N0, N1, !DeclSet, !IO) :-
+output_rtti_id_decls(RttiId, FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
 	output_data_addr_decls(rtti_addr(RttiId), FirstIndent, LaterIndent,
-		N0, N1, !DeclSet, !IO).
+		!N, !DeclSet, !IO).
 
 :- pred output_cast_addr_of_rtti_ids(string::in, list(rtti_id)::in,
 	io__state::di, io__state::uo) is det.
@@ -1671,6 +1670,7 @@ rtti_id_linkage(RttiId, Linkage) :-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "rtti_out.m".
 
 %-----------------------------------------------------------------------------%

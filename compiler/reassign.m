@@ -351,15 +351,12 @@ no_implicit_alias_target(framevar(_)).
 :- pred clobber_dependents(lval::in, known_contents::in, known_contents::out,
 	dependent_lval_map::in, dependent_lval_map::out) is det.
 
-clobber_dependents(Target, KnownContentsMap0, KnownContentsMap,
-		DepLvalMap0, DepLvalMap) :-
-	( map__search(DepLvalMap0, Target, DepLvals) ->
-		set__fold(clobber_dependent, DepLvals,
-			KnownContentsMap0, KnownContentsMap1),
-		map__delete(DepLvalMap0, Target, DepLvalMap1)
+clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
+	( map__search(!.DepLvalMap, Target, DepLvals) ->
+		set__fold(clobber_dependent, DepLvals, !KnownContentsMap),
+		map__delete(!.DepLvalMap, Target, !:DepLvalMap)
 	;
-		KnownContentsMap1 = KnownContentsMap0,
-		DepLvalMap1 = DepLvalMap0
+		true
 	),
 		% LLDS code can refer to arbitrary locations on the stack
 		% or in the heap with mem_ref lvals. Since we don't keep track
@@ -373,11 +370,10 @@ clobber_dependents(Target, KnownContentsMap0, KnownContentsMap,
 		list__member(SubLval, SubLvals),
 		SubLval = mem_ref(_)
 	->
-		KnownContentsMap = map__init,
-		DepLvalMap = map__init
+		!:KnownContentsMap = map__init,
+		!:DepLvalMap = map__init
 	;
-		KnownContentsMap = KnownContentsMap1,
-		DepLvalMap = DepLvalMap1
+		true
 	).
 
 :- pred clobber_dependent(lval::in, known_contents::in, known_contents::out)
@@ -390,26 +386,21 @@ clobber_dependent(Dependent, KnownContentsMap0, KnownContentsMap) :-
 	known_contents::in, known_contents::out,
 	dependent_lval_map::in, dependent_lval_map::out) is det.
 
-record_known(TargetLval, SourceRval, KnownContentsMap0, KnownContentsMap,
-		DepLvalMap0, DepLvalMap) :-
+record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
 	code_util__lvals_in_rval(SourceRval, SourceSubLvals),
 	( list__member(TargetLval, SourceSubLvals) ->
-			% The act of assigning to TargetLval has modified
-			% the value of SourceRval, so we can't eliminate
-			% any copy of this assignment or its converse.
-		KnownContentsMap = KnownContentsMap0,
-		DepLvalMap = DepLvalMap0
+		% The act of assigning to TargetLval has modified
+		% the value of SourceRval, so we can't eliminate
+		% any copy of this assignment or its converse.
+		true
 	;
 		record_known_lval_rval(TargetLval, SourceRval,
-			KnownContentsMap0, KnownContentsMap1,
-			DepLvalMap0, DepLvalMap1),
+			!KnownContentsMap, !DepLvalMap),
 		( SourceRval = lval(SourceLval) ->
 			record_known_lval_rval(SourceLval, lval(TargetLval),
-				KnownContentsMap1, KnownContentsMap,
-				DepLvalMap1, DepLvalMap)
+				!KnownContentsMap, !DepLvalMap)
 		;
-			KnownContentsMap = KnownContentsMap1,
-			DepLvalMap = DepLvalMap1
+			true
 		)
 	).
 
@@ -417,10 +408,9 @@ record_known(TargetLval, SourceRval, KnownContentsMap0, KnownContentsMap,
 	known_contents::in, known_contents::out,
 	dependent_lval_map::in, dependent_lval_map::out) is det.
 
-record_known_lval_rval(TargetLval, SourceRval,
-		KnownContentsMap0, KnownContentsMap,
-		DepLvalMap0, DepLvalMap) :-
-	( map__search(KnownContentsMap0, TargetLval, OldRval) ->
+record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
+		!DepLvalMap) :-
+	( map__search(!.KnownContentsMap, TargetLval, OldRval) ->
 		% TargetLval no longer depends on the lvals in OldRval;
 		% it depends on the lvals in SourceRval instead. If any lvals
 		% occur in both, we delete TargetLval from their entries here
@@ -429,37 +419,36 @@ record_known_lval_rval(TargetLval, SourceRval,
 		% TargetLval still depends on the lvals inside it.
 		code_util__lvals_in_rval(OldRval, OldSubLvals),
 		list__foldl(make_not_dependent(TargetLval), OldSubLvals,
-			DepLvalMap0, DepLvalMap1)
+			!DepLvalMap)
 	;
-		DepLvalMap1 = DepLvalMap0
+		true
 	),
 	code_util__lvals_in_lval(TargetLval, TargetSubLvals),
 	code_util__lvals_in_rval(SourceRval, SourceSubLvals),
 	list__append(TargetSubLvals, SourceSubLvals, AllSubLvals),
-	list__foldl(make_dependent(TargetLval), AllSubLvals,
-		DepLvalMap1, DepLvalMap),
-	map__set(KnownContentsMap0, TargetLval, SourceRval,
-		KnownContentsMap).
+	list__foldl(make_dependent(TargetLval), AllSubLvals, !DepLvalMap),
+	map__set(!.KnownContentsMap, TargetLval, SourceRval,
+		!:KnownContentsMap).
 
 :- pred make_not_dependent(lval::in, lval::in,
 	dependent_lval_map::in, dependent_lval_map::out) is det.
 
-make_not_dependent(Target, SubLval, DepLvalMap0, DepLvalMap) :-
-	( map__search(DepLvalMap0, SubLval, DepLvals0) ->
+make_not_dependent(Target, SubLval, !DepLvalMap) :-
+	( map__search(!.DepLvalMap, SubLval, DepLvals0) ->
 		set__delete(DepLvals0, Target, DepLvals),
-		map__det_update(DepLvalMap0, SubLval, DepLvals, DepLvalMap)
+		map__det_update(!.DepLvalMap, SubLval, DepLvals, !:DepLvalMap)
 	;
-		DepLvalMap = DepLvalMap0
+		true
 	).
 
 :- pred make_dependent(lval::in, lval::in,
 	dependent_lval_map::in, dependent_lval_map::out) is det.
 
-make_dependent(Target, SubLval, DepLvalMap0, DepLvalMap) :-
-	( map__search(DepLvalMap0, SubLval, DepLvals0) ->
+make_dependent(Target, SubLval, !DepLvalMap) :-
+	( map__search(!.DepLvalMap, SubLval, DepLvals0) ->
 		set__insert(DepLvals0, Target, DepLvals),
-		map__det_update(DepLvalMap0, SubLval, DepLvals, DepLvalMap)
+		map__det_update(!.DepLvalMap, SubLval, DepLvals, !:DepLvalMap)
 	;
 		DepLvals = set__make_singleton_set(Target),
-		map__det_insert(DepLvalMap0, SubLval, DepLvals, DepLvalMap)
+		map__det_insert(!.DepLvalMap, SubLval, DepLvals, !:DepLvalMap)
 	).

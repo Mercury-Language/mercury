@@ -61,9 +61,9 @@ livemap__build(Instrs, MaybeLivemap) :-
 
 livemap__build_2(Backinstrs, Livemap0, MaybeLivemap) :-
 	set__init(Livevals0),
-	livemap__build_livemap(Backinstrs, Livevals0, no, DontValueNumber,
+	livemap__build_livemap(Backinstrs, Livevals0, no, ContainsUserCode,
 		Livemap0, Livemap1),
-	( DontValueNumber = yes ->
+	( ContainsUserCode = yes ->
 		MaybeLivemap = no
 	; livemap__equal_livemaps(Livemap0, Livemap1) ->
 		MaybeLivemap = yes(Livemap1)
@@ -104,30 +104,22 @@ livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
 :- pred livemap__build_livemap(list(instruction)::in, lvalset::in,
 	bool::in, bool::out, livemap::in, livemap::out) is det.
 
-livemap__build_livemap([], _, DontValueNumber, DontValueNumber,
-		Livemap, Livemap).
+livemap__build_livemap([], _, !ContainsUserCode, !Livemap).
 livemap__build_livemap([Instr0 | Instrs0], Livevals0,
-		DontValueNumber0, DontValueNumber, Livemap0, Livemap) :-
+		!ContainsUserCode, !Livemap) :-
 	livemap__build_livemap_instr(Instr0, Instrs0, Instrs1,
-		Livevals0, Livevals1, DontValueNumber0, DontValueNumber1,
-		Livemap0, Livemap1),
-	livemap__build_livemap(Instrs1, Livevals1,
-		DontValueNumber1, DontValueNumber, Livemap1, Livemap).
+		Livevals0, Livevals1, !ContainsUserCode, !Livemap),
+	livemap__build_livemap(Instrs1, Livevals1, !ContainsUserCode, !Livemap).
 
 :- pred livemap__build_livemap_instr(instruction::in, list(instruction)::in,
 	list(instruction)::out, lvalset::in, lvalset::out,
 	bool::in, bool::out, livemap::in, livemap::out) is det.
 
-livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
-		Livevals0, Livevals, DontValueNumber0, DontValueNumber,
-		Livemap0, Livemap) :-
+livemap__build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
+		!Livemap) :-
 	Instr0 = Uinstr0 - _,
 	(
-		Uinstr0 = comment(_),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = comment(_)
 	;
 		Uinstr0 = livevals(_),
 		error("livevals found in backward scan in build_livemap")
@@ -144,73 +136,52 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		% appears on the right hand side as well as the left, then we
 		% want make_live to put it back into the liveval set.
 
-		set__delete(Livevals0, Lval, Livevals1),
+		set__delete(!.Livevals, Lval, !:Livevals),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals([Rval | Rvals], Livevals1,
-			Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals([Rval | Rvals], !Livevals)
 	;
 		Uinstr0 = call(_, _, _, _, _, _),
-		livemap__look_for_livevals(Instrs0, Instrs,
-			Livevals0, Livevals, "call", yes, _),
-		Livemap = Livemap0,
-		DontValueNumber = DontValueNumber0
+		livemap__look_for_livevals(!Instrs, !Livevals, "call", yes, _)
 	;
-		Uinstr0 = mkframe(_, _),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = mkframe(_, _)
 	;
 		Uinstr0 = label(Label),
-		map__set(Livemap0, Label, Livevals0, Livemap),
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		map__set(!.Livemap, Label, !.Livevals, !:Livemap)
 	;
 		Uinstr0 = goto(CodeAddr),
 		opt_util__livevals_addr(CodeAddr, LivevalsNeeded),
-		livemap__look_for_livevals(Instrs0, Instrs,
-			Livevals0, Livevals1, "goto", LivevalsNeeded, Found),
+		livemap__look_for_livevals(!Instrs, !Livevals, "goto",
+			LivevalsNeeded, Found),
 		( Found = yes ->
-			Livevals3 = Livevals1
+			true
 		; CodeAddr = label(Label) ->
-			set__init(Livevals2),
-			livemap__insert_label_livevals([Label],
-				Livemap0, Livevals2, Livevals3)
+			livemap__insert_label_livevals([Label], !.Livemap,
+				set__init, !:Livevals)
 		;
 			( CodeAddr = do_redo
 			; CodeAddr = do_fail
 			; CodeAddr = do_not_reached
 			)
 		->
-			Livevals3 = Livevals1
+			true
 		;
 			error("unknown label type in build_livemap")
 		),
 		livemap__special_code_addr(CodeAddr, MaybeSpecial),
 		( MaybeSpecial = yes(Special) ->
-			set__insert(Livevals3, Special, Livevals)
+			set__insert(!.Livevals, Special, !:Livevals)
 		;
-			Livevals = Livevals3
-		),
-		Livemap = Livemap0,
-		DontValueNumber = DontValueNumber0
+			true
+		)
 	;
 		Uinstr0 = computed_goto(Rval, Labels),
-		set__init(Livevals1),
-		livemap__make_live_in_rvals([Rval], Livevals1, Livevals2),
-		livemap__insert_label_livevals(Labels, Livemap0,
-			Livevals2, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals([Rval], set__init, !:Livevals),
+		livemap__insert_label_livevals(Labels, !.Livemap, !Livevals)
 	;
 		Uinstr0 = if_val(Rval, CodeAddr),
-		livemap__look_for_livevals(Instrs0, Instrs,
-			Livevals0, Livevals1, "if_val", no, Found),
+		Livevals0 = !.Livevals,
+		livemap__look_for_livevals(!Instrs, !Livevals, "if_val",
+			no, Found),
 		(
 			Found = yes,
 			% This if_val was put here by middle_rec.
@@ -219,26 +190,23 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			% since they will be needed at CodeAddr.
 			% The locations in Livevals0 may be needed
 			% in the fall-through continuation.
-			set__union(Livevals0, Livevals1, Livevals3)
+			set__union(Livevals0, !Livevals)
 		;
 			Found = no,
-			livemap__make_live_in_rvals([Rval],
-				Livevals1, Livevals2),
+			livemap__make_live_in_rvals([Rval], !Livevals),
 			( CodeAddr = label(Label) ->
 				livemap__insert_label_livevals([Label],
-					Livemap0, Livevals2, Livevals3)
+					!.Livemap, !Livevals)
 			;	
-				Livevals3 = Livevals2
+				true
 			)
 		),
 		livemap__special_code_addr(CodeAddr, MaybeSpecial),
 		( MaybeSpecial = yes(Special) ->
-			set__insert(Livevals3, Special, Livevals)
+			set__insert(!.Livevals, Special, !:Livevals)
 		;
-			Livevals = Livevals3
-		),
-		Livemap = Livemap0,
-		DontValueNumber = DontValueNumber0
+			true
+		)
 	;
 		Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 
@@ -249,200 +217,120 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		% to lval, but the two should never have any variables in
 		% common. This is why doing the deletion first works.
 
-		set__delete(Livevals0, Lval, Livevals1),
+		set__delete(!.Livevals, Lval, !:Livevals),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals([Rval | Rvals],
-			Livevals1, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals([Rval | Rvals], !Livevals)
 	;
 		Uinstr0 = mark_hp(Lval),
-		set__delete(Livevals0, Lval, Livevals1),
+		set__delete(!.Livevals, Lval, !:Livevals),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals(Rvals, !Livevals)
 	;
 		Uinstr0 = restore_hp(Rval),
-		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals([Rval], !Livevals)
 	;
 		Uinstr0 = free_heap(Rval),
-		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals([Rval], !Livevals)
 	;
 		Uinstr0 = store_ticket(Lval),
-		set__delete(Livevals0, Lval, Livevals1),
+		set__delete(!.Livevals, Lval, !:Livevals),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals(Rvals, !Livevals)
 	;
 		Uinstr0 = reset_ticket(Rval, _Reason),
-		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rval(Rval, !Livevals)
 	;
-		Uinstr0 = discard_ticket,
-		Livevals = Livevals0,
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = discard_ticket
 	;
-		Uinstr0 = prune_ticket,
-		Livevals = Livevals0,
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = prune_ticket
 	;
 		Uinstr0 = mark_ticket_stack(Lval),
-		set__delete(Livevals0, Lval, Livevals1),
+		set__delete(!.Livevals, Lval, !:Livevals),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rvals(Rvals, !Livevals)
 	;
 		Uinstr0 = prune_tickets_to(Rval),
-		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
-		Livemap = Livemap0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		livemap__make_live_in_rval(Rval, !Livevals)
 	;
-		Uinstr0 = incr_sp(_, _),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = incr_sp(_, _)
 	;
-		Uinstr0 = decr_sp(_),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = decr_sp(_)
 	;
-		Uinstr0 = init_sync_term(_, _),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = DontValueNumber0
+		Uinstr0 = init_sync_term(_, _)
 	;
-		% XXX Value numbering doesn't handle fork [yet] so
-		% set DontValueNumber to yes.
-		Uinstr0 = fork(_, _, _),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = yes
+		Uinstr0 = fork(_, _, _)
 	;
-		% XXX Value numbering doesn't handle join_and_terminate [yet] so
-		% set DontValueNumber to yes.
-		Uinstr0 = join_and_terminate(_),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = yes
+		Uinstr0 = join_and_terminate(_)
 	;
-		% XXX Value numbering doesn't handle join_and_continue [yet] so
-		% set DontValueNumber to yes.
-		Uinstr0 = join_and_continue(_, _),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = yes
+		Uinstr0 = join_and_continue(_, _)
 	;
 		Uinstr0 = c_code(_, LiveLvalInfo),
 		livemap__build_live_lval_info(LiveLvalInfo,
-			Livevals0, Livevals,
-			DontValueNumber0, DontValueNumber),
-		Livemap = Livemap0,
-		Instrs = Instrs0
+			!Livevals, !ContainsUserCode)
 	;
 		Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _),
 		livemap__build_livemap_pragma_components(Components,
-			Livevals0, Livevals,
-			DontValueNumber0, DontValueNumber),
-		Livemap = Livemap0,
-		Instrs = Instrs0
+			!Livevals, !ContainsUserCode)
 	).
 
 :- pred livemap__build_livemap_pragma_components(list(pragma_c_component)::in,
 	lvalset::in, lvalset::out, bool::in, bool::out) is det.
 
-livemap__build_livemap_pragma_components([], Livevals, Livevals,
-		DontValueNumber, DontValueNumber).
+livemap__build_livemap_pragma_components([], !Livevals, !ContainsUserCode).
 livemap__build_livemap_pragma_components([Component | Components],
-		Livevals0, Livevals, DontValueNumber0, DontValueNumber) :-
+		!Livevals, !ContainsUserCode) :-
 	(
 		Component = pragma_c_inputs(Inputs),
 		livemap__build_livemap_pragma_inputs(Inputs,
-			Livevals0, Livevals1),
-		DontValueNumber1 = DontValueNumber0
+			!Livevals)
 	;
-		Component = pragma_c_outputs(_),
-		Livevals1 = Livevals0,
-		DontValueNumber1 = DontValueNumber0
+		Component = pragma_c_outputs(_)
 	;
 		Component = pragma_c_user_code(_, _),
-		Livevals1 = Livevals0,
-		DontValueNumber1 = yes
+		!:ContainsUserCode = yes
 	;
 		Component = pragma_c_raw_code(_, LiveLvalInfo),
 		livemap__build_live_lval_info(LiveLvalInfo,
-			Livevals0, Livevals1,
-			DontValueNumber0, DontValueNumber1)
+			!Livevals, !ContainsUserCode)
 	;
-		Component = pragma_c_fail_to(_),
-		Livevals1 = Livevals0,
-		DontValueNumber1 = DontValueNumber0
+		Component = pragma_c_fail_to(_)
 	;
-		Component = pragma_c_noop,
-		Livevals1 = Livevals0,
-		DontValueNumber1 = DontValueNumber0
+		Component = pragma_c_noop
 	),
 	livemap__build_livemap_pragma_components(Components,
-		Livevals1, Livevals, DontValueNumber1, DontValueNumber).
+		!Livevals, !ContainsUserCode).
 
 :- pred livemap__build_live_lval_info(c_code_live_lvals::in,
 	lvalset::in, lvalset::out, bool::in, bool::out) is det.
 
-livemap__build_live_lval_info(no_live_lvals_info,
-		Livevals, Livevals, _, yes).
-livemap__build_live_lval_info(live_lvals_info(LiveLvalSet),
-		Livevals0, Livevals, DontValueNumber, DontValueNumber) :-
+livemap__build_live_lval_info(no_live_lvals_info, !Livevals, _, yes).
+livemap__build_live_lval_info(live_lvals_info(LiveLvalSet), !Livevals,
+		!DontValueNumber) :-
 	set__to_sorted_list(LiveLvalSet, LiveLvals),
-	livemap__insert_proper_livevals(LiveLvals, Livevals0, Livevals).
+	livemap__insert_proper_livevals(LiveLvals, !Livevals).
 
 :- pred livemap__build_livemap_pragma_inputs(list(pragma_c_input)::in,
 	lvalset::in, lvalset::out) is det.
 
-livemap__build_livemap_pragma_inputs([], Livevals, Livevals).
-livemap__build_livemap_pragma_inputs([Input | Inputs], Livevals0, Livevals) :-
+livemap__build_livemap_pragma_inputs([], !Livevals).
+livemap__build_livemap_pragma_inputs([Input | Inputs], !Livevals) :-
 	Input = pragma_c_input(_, _, Rval, _),
 	( Rval = lval(Lval) ->
-		livemap__insert_proper_liveval(Lval, Livevals0, Livevals1)
+		livemap__insert_proper_liveval(Lval, !Livevals)
 	;
-		Livevals1 = Livevals0
+		true
 	),
-	livemap__build_livemap_pragma_inputs(Inputs, Livevals1, Livevals).
+	livemap__build_livemap_pragma_inputs(Inputs, !Livevals).
 
 :- pred livemap__look_for_livevals(list(instruction)::in,
 	list(instruction)::out, lvalset::in, lvalset::out, string::in,
 	bool::in, bool::out) is det.
 
-livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
+livemap__look_for_livevals(Instrs0, Instrs, !Livevals,
 		Site, Compulsory, Found) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	( Instrs1 = [livevals(Livevals1) - _ | Instrs2] ->
-		livemap__filter_livevals(Livevals1, Livevals),
+		livemap__filter_livevals(Livevals1, !:Livevals),
 		Instrs = Instrs2,
 		Found = yes
 	; Compulsory = yes ->
@@ -450,7 +338,6 @@ livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 		error(Msg)
 	;
 		Instrs = Instrs1,
-		Livevals = Livevals0,
 		Found = no
 	).
 
@@ -476,10 +363,10 @@ livemap__special_code_addr(do_not_reached, no).
 :- pred livemap__make_live_in_rvals(list(rval)::in, lvalset::in, lvalset::out)
 	is det.
 
-livemap__make_live_in_rvals([], Live, Live).
-livemap__make_live_in_rvals([Rval | Rvals], Live0, Live) :-
-	livemap__make_live_in_rval(Rval, Live0, Live1),
-	livemap__make_live_in_rvals(Rvals, Live1, Live).
+livemap__make_live_in_rvals([], !Live).
+livemap__make_live_in_rvals([Rval | Rvals], !Live) :-
+	livemap__make_live_in_rval(Rval, !Live),
+	livemap__make_live_in_rvals(Rvals, !Live).
 
 	% Set all lvals found in this rval to live, with the exception of
 	% fields, since they are treated specially (the later stages consider
@@ -487,35 +374,35 @@ livemap__make_live_in_rvals([Rval | Rvals], Live0, Live) :-
 
 :- pred livemap__make_live_in_rval(rval::in, lvalset::in, lvalset::out) is det.
 
-livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
+livemap__make_live_in_rval(lval(Lval), !Live) :-
 	% XXX maybe we should treat mem_refs the same way as field refs
 	( Lval = field(_, _, _) ->
-		Live1 = Live0
+		true
 	;
-		set__insert(Live0, Lval, Live1)
+		set__insert(!.Live, Lval, !:Live)
 	),
 	opt_util__lval_access_rvals(Lval, AccessRvals),
-	livemap__make_live_in_rvals(AccessRvals, Live1, Live).
-livemap__make_live_in_rval(mkword(_, Rval), Live0, Live) :-
-	livemap__make_live_in_rval(Rval, Live0, Live).
-livemap__make_live_in_rval(const(_), Live, Live).
-livemap__make_live_in_rval(unop(_, Rval), Live0, Live) :-
-	livemap__make_live_in_rval(Rval, Live0, Live).
-livemap__make_live_in_rval(binop(_, Rval1, Rval2), Live0, Live) :-
-	livemap__make_live_in_rval(Rval1, Live0, Live1),
-	livemap__make_live_in_rval(Rval2, Live1, Live).
+	livemap__make_live_in_rvals(AccessRvals, !Live).
+livemap__make_live_in_rval(mkword(_, Rval), !Live) :-
+	livemap__make_live_in_rval(Rval, !Live).
+livemap__make_live_in_rval(const(_), !Live).
+livemap__make_live_in_rval(unop(_, Rval), !Live) :-
+	livemap__make_live_in_rval(Rval, !Live).
+livemap__make_live_in_rval(binop(_, Rval1, Rval2), !Live) :-
+	livemap__make_live_in_rval(Rval1, !Live),
+	livemap__make_live_in_rval(Rval2, !Live).
 livemap__make_live_in_rval(var(_), _, _) :-
 	error("var rval should not propagate to the optimizer").
-livemap__make_live_in_rval(mem_addr(MemRef), Live0, Live) :-
-	livemap__make_live_in_mem_ref(MemRef, Live0, Live).
+livemap__make_live_in_rval(mem_addr(MemRef), !Live) :-
+	livemap__make_live_in_mem_ref(MemRef, !Live).
 
 :- pred livemap__make_live_in_mem_ref(mem_ref::in, lvalset::in, lvalset::out)
 	is det.
 
-livemap__make_live_in_mem_ref(stackvar_ref(_), Live, Live).
-livemap__make_live_in_mem_ref(framevar_ref(_), Live, Live).
-livemap__make_live_in_mem_ref(heap_ref(Rval, _, _), Live0, Live) :-
-	livemap__make_live_in_rval(Rval, Live0, Live).
+livemap__make_live_in_mem_ref(stackvar_ref(_), !Live).
+livemap__make_live_in_mem_ref(framevar_ref(_), !Live).
+livemap__make_live_in_mem_ref(heap_ref(Rval, _, _), !Live) :-
+	livemap__make_live_in_rval(Rval, !Live).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -530,35 +417,34 @@ livemap__filter_livevals(Livevals0, Livevals) :-
 :- pred livemap__insert_label_livevals(list(label)::in, livemap::in,
 	lvalset::in, lvalset::out) is det.
 
-livemap__insert_label_livevals([], _, Livevals, Livevals).
-livemap__insert_label_livevals([Label | Labels], Livemap, Livevals0, Livevals)
-		:-
+livemap__insert_label_livevals([], _, !Livevals).
+livemap__insert_label_livevals([Label | Labels], Livemap, !Livevals) :-
 	( map__search(Livemap, Label, LabelLivevals) ->
 		set__to_sorted_list(LabelLivevals, Livelist),
-		livemap__insert_proper_livevals(Livelist, Livevals0, Livevals1)
+		livemap__insert_proper_livevals(Livelist, !Livevals)
 	;
-		Livevals1 = Livevals0
+		true
 	),
-	livemap__insert_label_livevals(Labels, Livemap, Livevals1, Livevals).
+	livemap__insert_label_livevals(Labels, Livemap, !Livevals).
 
 :- pred livemap__insert_proper_livevals(list(lval)::in, lvalset::in,
 	lvalset::out) is det.
 
-livemap__insert_proper_livevals([], Livevals, Livevals).
-livemap__insert_proper_livevals([Live | Livelist], Livevals0, Livevals) :-
-	livemap__insert_proper_liveval(Live, Livevals0, Livevals1),
-	livemap__insert_proper_livevals(Livelist, Livevals1, Livevals).
+livemap__insert_proper_livevals([], !Livevals).
+livemap__insert_proper_livevals([Live | Livelist], !Livevals) :-
+	livemap__insert_proper_liveval(Live, !Livevals),
+	livemap__insert_proper_livevals(Livelist, !Livevals).
 
 	% Don't insert references to locations on the heap.
 
 :- pred livemap__insert_proper_liveval(lval::in, lvalset::in, lvalset::out)
 	is det.
 
-livemap__insert_proper_liveval(Live, Livevals0, Livevals) :-
+livemap__insert_proper_liveval(Live, !Livevals) :-
 	( Live = field(_, _, _) ->
-		Livevals = Livevals0
+		true
 	;
-		set__insert(Livevals0, Live, Livevals)
+		set__insert(!.Livevals, Live, !:Livevals)
 	).
 
 %-----------------------------------------------------------------------------%

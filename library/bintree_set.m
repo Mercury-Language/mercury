@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
@@ -54,8 +54,10 @@
 
 	% `bintree_set__init(Set)' is true iff `Set' is an empty set.
 
-:- pred bintree_set__init(bintree_set(_T)).
+:- pred bintree_set__init(bintree_set(T)).
 :- mode bintree_set__init(uo) is det.
+
+:- func bintree_set__init = bintree_set(T).
 
 :- pred bintree_set__singleton_set(bintree_set(T), T).
 :- mode bintree_set__singleton_set(out, in) is det.
@@ -287,6 +289,9 @@ bintree_set__intersect(S0, S1, S) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
 
+bintree_set__init = BT :-
+	bintree_set__init(BT).
+
 bintree_set__list_to_set(Xs) = BT :-
 	bintree_set__list_to_set(Xs, BT).
 
@@ -313,5 +318,3 @@ bintree_set__union(BT1, BT2) = BT3 :-
 
 bintree_set__intersect(BT1, BT2) = BT3 :-
 	bintree_set__intersect(BT1, BT2, BT3).
-
-

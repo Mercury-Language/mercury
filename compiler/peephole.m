@@ -21,9 +21,8 @@
 
 	% Peephole optimize a list of instructions.
 
-:- pred peephole__optimize(gc_method, list(instruction), list(instruction),
-		bool).
-:- mode peephole__optimize(in, in, out, out) is det.
+:- pred peephole__optimize(gc_method::in, list(instruction)::in,
+	list(instruction)::out, bool::out) is det.
 
 :- implementation.
 
@@ -48,9 +47,9 @@ peephole__optimize(GC_Method, Instrs0, Instrs, Mod) :-
 	peephole__invalid_opts(GC_Method, InvalidPatterns),
 	peephole__optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
 
-:- pred peephole__optimize_2(list(pattern), list(instruction),
-		list(instruction), bool).
-:- mode peephole__optimize_2(in, in, out, out) is det.
+:- pred peephole__optimize_2(list(pattern)::in, list(instruction)::in,
+		list(instruction)::out, bool::out) is det.
+
 peephole__optimize_2(_, [], [], no).
 peephole__optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
 		Instrs, Mod) :-
@@ -66,9 +65,8 @@ peephole__optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
 	% Try to optimize the beginning of the given instruction sequence.
 	% If successful, try it again.
 
-:- pred peephole__opt_instr(instr, string, list(pattern),
-	list(instruction), list(instruction), bool).
-:- mode peephole__opt_instr(in, in, in, in, out, out) is det.
+:- pred peephole__opt_instr(instr::in, string::in, list(pattern)::in,
+	list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 	(
@@ -96,14 +94,14 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 :- pred peephole__build_jump_label_map(list(label)::in, int::in,
 	map(label, list(int))::in, map(label, list(int))::out) is det.
 
-peephole__build_jump_label_map([], _, LabelMap, LabelMap).
-peephole__build_jump_label_map([Label | Labels], Val, LabelMap0, LabelMap) :-
-	( map__search(LabelMap0, Label, Vals0) ->
-		map__det_update(LabelMap0, Label, [Val | Vals0], LabelMap1)
+peephole__build_jump_label_map([], _, !LabelMap).
+peephole__build_jump_label_map([Label | Labels], Val, !LabelMap) :-
+	( map__search(!.LabelMap, Label, Vals0) ->
+		map__det_update(!.LabelMap, Label, [Val | Vals0], !:LabelMap)
 	;
-		map__det_insert(LabelMap0, Label, [Val], LabelMap1)
+		map__det_insert(!.LabelMap, Label, [Val], !:LabelMap)
 	),
-	peephole__build_jump_label_map(Labels, Val + 1, LabelMap1, LabelMap).
+	peephole__build_jump_label_map(Labels, Val + 1, !LabelMap).
 
 	% If one of the two labels has only one associated value, return it and
 	% the associated value as the first two output arguments, and the
@@ -131,9 +129,8 @@ peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
 
 	% Look for code patterns that can be optimized, and optimize them.
 
-:- pred peephole__match(instr, string, list(pattern),
-		list(instruction), list(instruction)).
-:- mode peephole__match(in, in, in, in, out) is semidet.
+:- pred peephole__match(instr::in, string::in, list(pattern)::in,
+	list(instruction)::in, list(instruction)::out) is semidet.
 
 	% A `computed_goto' with all branches pointing to the same
 	% label can be replaced with an unconditional goto.
@@ -221,8 +218,8 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 	%	mkframe(NFI, label)	=>	mkframe(NFI, label)
 	%	if_val(test, redo)		if_val(test, label)
 	%
-	% These two patterns are mutually exclusive because if_val is not
-	% straight-line code.
+	% These two classes of patterns are mutually exclusive because if_val
+	% is not straight-line code.
 
 peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 		Instrs0, Instrs) :-
@@ -305,7 +302,7 @@ peephole__match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
 	%	assign(redoip(Fr), Redoip1) =>	assign(redoip(Fr), Redoip2)
 	%	<straightline instrs>		<straightline instrs>
 	%	assign(redoip(Fr), Redoip2)
-
+	%
 	% If an assignment of do_fail to the redoip slot of the current frame
 	% is followed by straight-line instructions except possibly for if_val
 	% with do_fail or do_redo as target, until a goto to do_succeed(no),
@@ -353,9 +350,7 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
 
 peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 	\+ list__member(incr_sp, InvalidPatterns),
-	(
-		opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain)
-	->
+	( opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
 		list__append(Between, Remain, Instrs)
 	;
 		fail
@@ -366,13 +361,10 @@ peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 	% Given a GC method, return the list of invalid peephole
 	% optimizations.
 
-:- pred peephole__invalid_opts(gc_method, list(pattern)).
-:- mode peephole__invalid_opts(in, out) is det.
+:- pred peephole__invalid_opts(gc_method::in, list(pattern)::out) is det.
 
 peephole__invalid_opts(GC_Method, InvalidPatterns) :-
-	(
-		GC_Method = accurate
-	->
+	( GC_Method = accurate ->
 		InvalidPatterns = [incr_sp]
 	;
 		InvalidPatterns = []

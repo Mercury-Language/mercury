@@ -83,31 +83,29 @@
 %-----------------------------------------------------------------------------%
 
 use_local_vars__main(Instrs0, Instrs, ProcLabel, NumRealRRegs, AccessThreshold,
-		C0, C) :-
-	create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C1,
+		!C) :-
+	create_basic_blocks(Instrs0, Comments, ProcLabel, !C,
 		LabelSeq, BlockMap0),
 	flatten_basic_blocks(LabelSeq, BlockMap0, TentativeInstrs),
 	livemap__build(TentativeInstrs, MaybeLiveMap),
 	(
 		% Instrs0 must have contained C code which cannot be analyzed
 		MaybeLiveMap = no,
-		Instrs = Instrs0,
-		C = C0
+		Instrs = Instrs0
 	;
 		MaybeLiveMap = yes(LiveMap),
 		list__foldl(use_local_vars_block(LiveMap, NumRealRRegs,
 			AccessThreshold), LabelSeq, BlockMap0, BlockMap),
 		flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
-		list__append(Comments, Instrs1, Instrs),
-		C = C1
+		list__append(Comments, Instrs1, Instrs)
 	).
 
 :- pred use_local_vars_block(livemap::in, int::in, int::in, label::in,
 	block_map::in, block_map::out) is det.
 
 use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
-		BlockMap0, BlockMap) :-
-	map__lookup(BlockMap0, Label, BlockInfo0),
+		!BlockMap) :-
+	map__lookup(!.BlockMap, Label, BlockInfo0),
 	BlockInfo0 = block_info(BlockLabel, LabelInstr, RestInstrs0,
 		JumpLabels, MaybeFallThrough),
 	( can_branch_to_unknown_label(RestInstrs0) ->
@@ -131,11 +129,11 @@ use_local_vars_block(LiveMap, NumRealRRegs, AccessThreshold, Label,
 		TempCounter0, TempCounter, NumRealRRegs, AccessThreshold,
 		MaybeEndLiveLvals),
 	( TempCounter = TempCounter0 ->
-		BlockMap = BlockMap0
+		true
 	;
 		BlockInfo = block_info(BlockLabel, LabelInstr,
 			RestInstrs, JumpLabels, MaybeFallThrough),
-		map__det_update(BlockMap0, Label, BlockInfo, BlockMap)
+		map__det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
 	).
 
 :- pred can_branch_to_unknown_label(list(instruction)::in) is semidet.
@@ -160,9 +158,9 @@ some_code_addr_is_not_label([CodeAddr | CodeAddrs]) :-
 :- pred find_live_lvals_at_end_labels(livemap::in, label::in,
 	lvalset::in, lvalset::out) is det.
 
-find_live_lvals_at_end_labels(LiveMap, Label, LiveLvals0, LiveLvals) :-
+find_live_lvals_at_end_labels(LiveMap, Label, !LiveLvals) :-
 	( map__search(LiveMap, Label, LabelLiveLvals) ->
-		set__union(LiveLvals0, LabelLiveLvals, LiveLvals)
+		set__union(LabelLiveLvals, !LiveLvals)
 	; Label = local(_, _) ->
 		error("find_live_lvals_at_end_labels: local label not found")
 	;
@@ -170,17 +168,17 @@ find_live_lvals_at_end_labels(LiveMap, Label, LiveLvals0, LiveLvals) :-
 		% which must be preceded by livevals instructions. The
 		% variables live at the label will be included when we process
 		% the livevals instruction.
-		LiveLvals = LiveLvals0
+		true
 	).
 
 :- pred find_live_lvals_in_annotations(instruction::in,
 	lvalset::in, lvalset::out) is det.
 
-find_live_lvals_in_annotations(Uinstr - _, LiveLvals0, LiveLvals) :-
+find_live_lvals_in_annotations(Uinstr - _, !LiveLvals) :-
 	( Uinstr = livevals(InstrLiveLvals) ->
-		set__union(LiveLvals0, InstrLiveLvals, LiveLvals)
+		set__union(InstrLiveLvals, !LiveLvals)
 	;
-		LiveLvals = LiveLvals0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -189,17 +187,14 @@ find_live_lvals_in_annotations(Uinstr - _, LiveLvals0, LiveLvals) :-
 	counter::in, counter::out, int::in, int::in, maybe(lvalset)::in)
 	is det.
 
-use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
+use_local_vars_instrs(!RestInstrs, !TempCounter,
 		NumRealRRegs, AccessThreshold, MaybeEndLiveLvals) :-
-	opt_assign(RestInstrs0, RestInstrs1,
-		TempCounter0, TempCounter1, NumRealRRegs, MaybeEndLiveLvals),
+	opt_assign(!RestInstrs, !TempCounter, NumRealRRegs, MaybeEndLiveLvals),
 	( AccessThreshold >= 1 ->
-		opt_access(RestInstrs1, RestInstrs,
-			TempCounter1, TempCounter, NumRealRRegs, set__init,
-			AccessThreshold)
+		opt_access(!RestInstrs, !TempCounter, NumRealRRegs,
+			set__init, AccessThreshold)
 	;
-		RestInstrs = RestInstrs1,
-		TempCounter = TempCounter1
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -207,9 +202,9 @@ use_local_vars_instrs(RestInstrs0, RestInstrs, TempCounter0, TempCounter,
 :- pred opt_assign(list(instruction)::in, list(instruction)::out,
 	counter::in, counter::out, int::in, maybe(lvalset)::in) is det.
 
-opt_assign([], [], TempCounter, TempCounter, _, _).
-opt_assign([Instr0 | TailInstrs0], Instrs,
-		TempCounter0, TempCounter, NumRealRRegs, MaybeEndLiveLvals) :-
+opt_assign([], [], !TempCounter, _, _).
+opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
+		MaybeEndLiveLvals) :-
 	Instr0 = Uinstr0 - _Comment0,
 	(
 		( Uinstr0 = assign(ToLval, _FromRval)
@@ -217,7 +212,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs,
 		),
 		base_lval_worth_replacing(NumRealRRegs, ToLval)
 	->
-		counter__allocate(TempNum, TempCounter0, TempCounter1),
+		counter__allocate(TempNum, !TempCounter),
 		NewLval = temp(r, TempNum),
 		(
 			ToLval = reg(_, _),
@@ -229,8 +224,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs,
 			list__map_foldl(exprn_aux__substitute_lval_in_instr(
 				ToLval, NewLval),
 				TailInstrs0, TailInstrs1, 0, _),
-			opt_assign(TailInstrs1, TailInstrs,
-				TempCounter1, TempCounter,
+			opt_assign(TailInstrs1, TailInstrs, !TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr | TailInstrs]
 		;
@@ -241,19 +235,16 @@ opt_assign([Instr0 | TailInstrs0], Instrs,
 			substitute_lval_in_defn(ToLval, NewLval,
 				Instr0, Instr),
 			CopyInstr = assign(ToLval, lval(NewLval)) - "",
-			opt_assign(TailInstrs1, TailInstrs,
-				TempCounter1, TempCounter,
+			opt_assign(TailInstrs1, TailInstrs, !TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr, CopyInstr | TailInstrs]
 		;
-			opt_assign(TailInstrs0, TailInstrs,
-				TempCounter0, TempCounter,
+			opt_assign(TailInstrs0, TailInstrs, !TempCounter,
 				NumRealRRegs, MaybeEndLiveLvals),
 			Instrs = [Instr0 | TailInstrs]
 		)
 	;
-		opt_assign(TailInstrs0, TailInstrs,
-			TempCounter0, TempCounter,
+		opt_assign(TailInstrs0, TailInstrs, !TempCounter,
 			NumRealRRegs, MaybeEndLiveLvals),
 		Instrs = [Instr0 | TailInstrs]
 	).
@@ -263,10 +254,9 @@ opt_assign([Instr0 | TailInstrs0], Instrs,
 :- pred opt_access(list(instruction)::in, list(instruction)::out,
 	counter::in, counter::out, int::in, lvalset::in, int::in) is det.
 
-opt_access([], [], TempCounter, TempCounter, _, _, _).
-opt_access([Instr0 | TailInstrs0], Instrs,
-		TempCounter0, TempCounter, NumRealRRegs, AlreadyTried0,
-		AccessThreshold) :-
+opt_access([], [], !TempCounter, _, _, _).
+opt_access([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
+		AlreadyTried0, AccessThreshold) :-
 	Instr0 = Uinstr0 - _Comment0,
 	(
 		Uinstr0 = assign(ToLval, FromRval),
@@ -279,7 +269,7 @@ opt_access([Instr0 | TailInstrs0], Instrs,
 			SubLvals, ReplaceableSubLvals),
 		ReplaceableSubLvals = [ChosenLval | ChooseableRvals]
 	->
-		counter__allocate(TempNum, TempCounter0, TempCounter1),
+		counter__allocate(TempNum, !TempCounter),
 		TempLval = temp(r, TempNum),
 		lvals_in_lval(ChosenLval, SubChosenLvals),
 		require(unify(SubChosenLvals, []),
@@ -291,21 +281,19 @@ opt_access([Instr0 | TailInstrs0], Instrs,
 			TempAssign = assign(TempLval, lval(ChosenLval))
 				- "factor out common sub lval",
 			Instrs2 = [TempAssign | Instrs1],
-			opt_access(Instrs2, Instrs, TempCounter1, TempCounter,
+			opt_access(Instrs2, Instrs, !TempCounter,
 				NumRealRRegs, AlreadyTried1, AccessThreshold)
 		; ChooseableRvals = [_ | _] ->
 			opt_access([Instr0 | TailInstrs0], Instrs,
-				TempCounter0, TempCounter,
-				NumRealRRegs, AlreadyTried1, AccessThreshold)
+				!TempCounter, NumRealRRegs, AlreadyTried1,
+				AccessThreshold)
 		;
-			opt_access(TailInstrs0, TailInstrs,
-				TempCounter0, TempCounter,
+			opt_access(TailInstrs0, TailInstrs, !TempCounter,
 				NumRealRRegs, set__init, AccessThreshold),
 			Instrs = [Instr0 | TailInstrs]
 		)
 	;
-		opt_access(TailInstrs0, TailInstrs,
-			TempCounter0, TempCounter,
+		opt_access(TailInstrs0, TailInstrs, !TempCounter,
 			NumRealRRegs, set__init, AccessThreshold),
 		Instrs = [Instr0 | TailInstrs]
 	).
@@ -397,168 +385,104 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
 	list(instruction)::in, list(instruction)::out, int::in, int::out)
 	is det.
 
-substitute_lval_in_instr_until_defn(_, _, [], [], N, N).
+substitute_lval_in_instr_until_defn(_, _, [], [], !N).
 substitute_lval_in_instr_until_defn(OldLval, NewLval,
-		[Instr0 | Instrs0], [Instr | Instrs], N0, N) :-
-	Instr0 = Uinstr0 - _,
+		[Instr0 | Instrs0], [Instr | Instrs], !N) :-
+	substitute_lval_in_instr_until_defn_2(OldLval, NewLval,
+		Instr0, Instr, Instrs0, Instrs, !N).
+
+:- pred substitute_lval_in_instr_until_defn_2(lval::in, lval::in,
+	instruction::in, instruction::out,
+	list(instruction)::in, list(instruction)::out,
+	int::in, int::out) is det.
+
+substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
+	!.Instr = Uinstr0 - _,
 	(
 		Uinstr0 = comment(_),
-		Instr = Instr0,
 		substitute_lval_in_instr_until_defn(OldLval, NewLval,
-			Instrs0, Instrs, N0, N)
+			!Instrs, !N)
 	;
-		Uinstr0 = livevals(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = livevals(_)
 	;
 		Uinstr0 = block(_, _, _),
 		error("substitute_lval_in_instr_until_defn: found block")
 	;
 		Uinstr0 = assign(Lval, _),
 		( Lval = OldLval ->
-				% If we alter any lval that occurs in OldLval,
-				% we must stop the substitutions. At the
-				% moment, the only lval OldLval contains is
-				% itself.
-			Instr = Instr0,
-			Instrs = Instrs0,
-			N = N0
+			% If we alter any lval that occurs in OldLval,
+			% we must stop the substitutions. At the
+			% moment, the only lval OldLval contains is
+			% itself.
+			true
 		;
 			exprn_aux__substitute_lval_in_instr(OldLval, NewLval,
-				Instr0, Instr, N0, N1),
+				!Instr, !N),
 			substitute_lval_in_instr_until_defn(OldLval, NewLval,
-				Instrs0, Instrs, N1, N)
+				!Instrs, !N)
 		)
 	;
-		Uinstr0 = call(_, _, _, _, _, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = call(_, _, _, _, _, _)
 	;
-		Uinstr0 = mkframe(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = mkframe(_, _)
 	;
-		Uinstr0 = label(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = label(_)
 	;
-		Uinstr0 = goto(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = goto(_)
 	;
 		Uinstr0 = computed_goto(_, _),
 		exprn_aux__substitute_lval_in_instr(OldLval, NewLval,
-			Instr0, Instr, N0, N),
-		Instrs = Instrs0
+			!Instr, !N)
 	;
 		Uinstr0 = if_val(_, _),
 		exprn_aux__substitute_lval_in_instr(OldLval, NewLval,
-			Instr0, Instr, N0, N),
-		Instrs = Instrs0
+			!Instr, !N)
 	;
 		Uinstr0 = incr_hp(Lval, _, _, _, _),
 		( Lval = OldLval ->
-				% If we alter any lval that occurs in OldLval,
-				% we must stop the substitutions. At the
-				% moment, the only lval OldLval contains is
-				% itself.
-			Instr = Instr0,
-			Instrs = Instrs0,
-			N = N0
+			% If we alter any lval that occurs in OldLval,
+			% we must stop the substitutions. At the
+			% moment, the only lval OldLval contains is
+			% itself.
+			true
 		;
 			exprn_aux__substitute_lval_in_instr(OldLval, NewLval,
-				Instr0, Instr, N0, N1),
+				!Instr, !N),
 			substitute_lval_in_instr_until_defn(OldLval, NewLval,
-				Instrs0, Instrs, N1, N)
+				!Instrs, !N)
 		)
 	;
-		Uinstr0 = mark_hp(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = mark_hp(_)
 	;
-		Uinstr0 = restore_hp(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = restore_hp(_)
 	;
-		Uinstr0 = free_heap(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = free_heap(_)
 	;
-		Uinstr0 = store_ticket(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = store_ticket(_)
 	;
-		Uinstr0 = reset_ticket(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = reset_ticket(_, _)
 	;
-		Uinstr0 = discard_ticket,
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = discard_ticket
 	;
-		Uinstr0 = prune_ticket,
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = prune_ticket
 	;
-		Uinstr0 = mark_ticket_stack(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = mark_ticket_stack(_)
 	;
-		Uinstr0 = prune_tickets_to(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = prune_tickets_to(_)
 	;
-		Uinstr0 = incr_sp(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = incr_sp(_, _)
 	;
-		Uinstr0 = decr_sp(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = decr_sp(_)
 	;
-		Uinstr0 = init_sync_term(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = init_sync_term(_, _)
 	;
-		Uinstr0 = fork(_, _, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = fork(_, _, _)
 	;
-		Uinstr0 = join_and_terminate(_),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = join_and_terminate(_)
 	;
-		Uinstr0 = join_and_continue(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = join_and_continue(_, _)
 	;
-		Uinstr0 = c_code(_, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = c_code(_, _)
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _),
-		Instr = Instr0,
-		Instrs = Instrs0,
-		N = N0
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _)
 	).

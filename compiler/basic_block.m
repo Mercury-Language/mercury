@@ -55,14 +55,11 @@
 :- import_module ll_backend__opt_util.
 :- import_module bool, int, require.
 
-create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
-		LabelSeq, BlockMap) :-
+create_basic_blocks(Instrs0, Comments, ProcLabel, !C, LabelSeq, BlockMap) :-
 	opt_util__get_prologue(Instrs0, LabelInstr, Comments,
 		AfterLabelInstrs),
 	Instrs1 = [LabelInstr | AfterLabelInstrs],
-	map__init(BlockMap0),
-	build_block_map(Instrs1, LabelSeq, BlockMap0, BlockMap,
-		ProcLabel, C0, C).
+	build_block_map(Instrs1, LabelSeq, ProcLabel, map__init, BlockMap, !C).
 
 	% Add labels to the given instruction sequence so that
 	% every basic block has labels around it.
@@ -70,27 +67,25 @@ create_basic_blocks(Instrs0, Comments, ProcLabel, C0, C,
 %-----------------------------------------------------------------------------%
 
 :- pred build_block_map(list(instruction)::in, list(label)::out,
-	block_map::in, block_map::out, proc_label::in,
+	proc_label::in, block_map::in, block_map::out,
 	counter::in, counter::out) is det.
 
-build_block_map([], [], BlockMap, BlockMap, _, C, C).
-build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, BlockMap0, BlockMap,
-		ProcLabel, C0, C) :-
+build_block_map([], [], _, !BlockMap, !C).
+build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel,
+		!BlockMap, !C) :-
 	( OrigInstr0 = label(OrigLabel) - _ ->
 		Label = OrigLabel,
 		LabelInstr = OrigInstr0,
-		RestInstrs = OrigInstrs0,
-		C1 = C0
+		RestInstrs = OrigInstrs0
 	;
-		counter__allocate(N, C0, C1),
+		counter__allocate(N, !C),
 		Label = local(N, ProcLabel),
 		LabelInstr = label(Label) - "",
 		RestInstrs = [OrigInstr0 | OrigInstrs0]
 	),
 	( 
 		take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
-		build_block_map(Instrs1, LabelSeq0,
-			BlockMap0, BlockMap1, ProcLabel, C1, C),
+		build_block_map(Instrs1, LabelSeq0, ProcLabel, !BlockMap, !C),
 		( list__last(BlockInstrs, LastInstr) ->
 			LastInstr = LastUinstr - _,
 			opt_util__possible_targets(LastUinstr, SideLabels),
@@ -104,12 +99,11 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, BlockMap0, BlockMap,
 			)
 		;
 			SideLabels = [],
-			get_fallthrough_from_seq(LabelSeq0,
-				MaybeFallThrough)
+			get_fallthrough_from_seq(LabelSeq0, MaybeFallThrough)
 		),
 		BlockInfo = block_info(Label, LabelInstr, BlockInstrs,
 			SideLabels, MaybeFallThrough),
-		map__det_insert(BlockMap1, Label, BlockInfo, BlockMap),
+		map__det_insert(!.BlockMap, Label, BlockInfo, !:BlockMap),
 		LabelSeq = [Label | LabelSeq0]
 	).
 
