@@ -49,28 +49,27 @@ main -->
 			HelloPred
 		),
 
-		{ Add3Proc = mercury_proc(function, unqualified("hello"),
-					"add3", 3, 0) },
-		dl__mercury_sym(Handle, Add3Proc, MaybeAdd3),
+		{ Add3IntProc = mercury_proc(function, unqualified("hello"),
+					"add3int", 3, 0) },
+		dl__mercury_sym(Handle, Add3IntProc, MaybeAdd3Int),
 		(
-			{ MaybeAdd3 = error(Msg2) },
+			{ MaybeAdd3Int = error(Msg2) },
 			print("dlsym failed: "), print(Msg2), nl
 		;
-			{ MaybeAdd3 = ok(Add3Func0) },
+			{ MaybeAdd3Int = ok(Add3IntFunc0) },
 			%
 			% Cast the higher-order term that we obtained
 			% to the correct higher-order inst.
 			%
-			{ wrapper(Add3Func) =
-				inst_cast_add3(wrapper(Add3Func0)) },
+			{ wrapper(Add3IntFunc) =
+				inst_cast_add3int(wrapper(Add3IntFunc0)) },
 			%
 			% Call the procedure whose address
 			% we just obtained.
 			%
-			{ Sum = Add3Func(1.0, 2.0, 3.0) },
-			io__format("1.0 + 2.0 + 3.0 = %f\n", [f(Sum)])
+			{ SumInt = Add3IntFunc(1, 2, 3) },
+			io__format("1 + 2 + 3 = %d\n", [i(SumInt)])
 		),
-
 
 		%
 		% unload the object code in the libhello.so file
@@ -99,17 +98,17 @@ main -->
 :- pragma c_code(inst_cast(X::in) = (Y::out(io_pred)),
 	[will_not_call_mercury, thread_safe], "Y = X").
 
-% Likewise for `add3'.
+% Likewise for `add3int'.
 % Note that for arguments of function type, the function type
 % normally gets automatically propagated into the inst.
 % We use a wrapper type to avoid that.
 
-:- type add3 == (func(float, float, float) = float).
-:- type add3_wrapper ---> wrapper(add3).
-:- inst add3_wrapper ---> wrapper(func(in, in, in) = out is det).
+:- type add3int == (func(int, int, int) = int).
+:- type add3int_wrapper ---> wrapper(add3int).
+:- inst add3int_wrapper ---> wrapper(func(in, in, in) = out is det).
 
-:- func inst_cast_add3(add3_wrapper) = add3_wrapper.
-:- mode inst_cast_add3(in) = out(add3_wrapper) is det.
-:- pragma c_code(inst_cast_add3(X::in) = (Y::out(add3_wrapper)),
+:- func inst_cast_add3int(add3int_wrapper) = add3int_wrapper.
+:- mode inst_cast_add3int(in) = out(add3int_wrapper) is det.
+:- pragma c_code(inst_cast_add3int(X::in) = (Y::out(add3int_wrapper)),
 	[will_not_call_mercury, thread_safe], "Y = X").
 

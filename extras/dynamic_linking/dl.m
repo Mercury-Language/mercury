@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,12 +119,30 @@ open(FileName, Mode, Scope, Result) -->
 			int
 		).
 
-:- type closure
-	--->	closure(
+	% closures for the LLDS backend
+:- type ll_closure
+	--->	ll_closure(
 			closure_layout,
-			c_pointer,
-			int
+			c_pointer,	% the address of the procedure to call
+			int		% the number of curried arguments;
+					% always zero, for closures created
+					% by dl.m
 		).
+
+	% closures for the --high-level-code (MLDS) backend
+:- type hl_closure
+	--->	hl_closure(
+			closure_layout,
+			c_pointer,	% the wrapper function;
+					% this gets passed the closure
+					% as an argument
+			int,		% the number of curried arguments;
+					% always one, for closures created
+					% by dl.m
+			c_pointer	% the real function, which gets
+					% called by the wrapper function
+		).
+
 
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
@@ -140,14 +158,98 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		%
 		% convert the procedure address to a closure
 		%
-		NumCurriedInputArgs = 0,
-		ClosureLayout = closure_layout(0, "unknown", "unknown",
-			"unknown", -1, -1, -1),
-		Closure = closure(ClosureLayout, Address, NumCurriedInputArgs),
-		private_builtin__unsafe_type_cast(Closure, Value),
+		( high_level_code ->
+			NumCurriedInputArgs = 1,
+			ClosureLayout = closure_layout(0, "unknown", "unknown",
+				"unknown", -1, -1, -1),
+			HL_Closure = hl_closure(ClosureLayout,
+				dl__generic_closure_wrapper,
+				NumCurriedInputArgs, Address),
+			private_builtin__unsafe_type_cast(HL_Closure, Value)
+		;
+			NumCurriedInputArgs = 0,
+			ClosureLayout = closure_layout(0, "unknown", "unknown",
+				"unknown", -1, -1, -1),
+			LL_Closure = ll_closure(ClosureLayout, Address,
+				NumCurriedInputArgs),
+			private_builtin__unsafe_type_cast(LL_Closure, Value)
+		),
 		Result = ok(Value)
 	}.
+
+:- pragma c_header_code("
+extern MR_Box MR_CALL ML_DL_generic_closure_wrapper(void *closure,
+	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
+	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
+	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
+	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20);
+").
+
+:- pragma c_code("
+
+/*
+** For the --high-level-code grades, the closure will be passed
+** as an argument to the wrapper procedure.  The wrapper procedure
+** then extracts any needed curried arguments from the closure,
+** and calls the real procedure.  Normally the wrapper procedure
+** knows which real procedure it will call, but for dl.m we use
+** a generic wrapper procedure, and treat the real procedure
+** as a curried argument of the generic wrapper.  That is always
+** the only curried argument, so all the wrapper needs to do
+** is to extract the procedure address from the closure, and
+** then call it, passing the same arguments that it was passed,
+** except for the closure itself.
+**
+** XXX Using a single generic wrapper procedure is a nasty hack. 
+** We play fast and loose with the C type system here.  In reality
+** this will get called with different return type, different
+** argument types, and with fewer than 20 arguments.  Likewise, the
+** procedure that it calls may actually have different arity, return type
+** and argument types than we pass.  So we really ought to have lots of
+** different wrapper procedures, for each different return type, number
+** of arguments, and even for each different set of argument types.
+** Doing it right might require run-time code generation!
+** But with traditional C calling conventions, using a single wrapper
+** like this will work anyway, at least for arguments whose type is the
+** same size as MR_Box.  It fails for arguments of type `char' or `float'.
+**
+** XXX This will also fail for calling conventions where the callee pops the
+** arguments.  To handle that right, we'd need different wrappers for
+** each different number of arguments.  (Doing that would also be slightly
+** more efficient, so it may worth doing...)
+**
+** There are also a couple of libraries called `ffcall' and `libffi'
+** which we might be able use to do this in a more portable manner.
+*/
+MR_Box MR_CALL
+ML_DL_generic_closure_wrapper(void *closure,
+	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
+	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
+	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
+	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20)
+{
+	typedef MR_Box MR_CALL FuncType(
+		MR_Box a1, MR_Box a2, MR_Box a3, MR_Box a4, MR_Box a5,
+		MR_Box a6, MR_Box a7, MR_Box a8, MR_Box a9, MR_Box a10,
+		MR_Box a11, MR_Box a12, MR_Box a13, MR_Box a14, MR_Box a15,
+		MR_Box a16, MR_Box a17, MR_Box a18, MR_Box a19, MR_Box a20);
+	FuncType *proc = (FuncType *)
+		MR_field(MR_mktag(0), closure, (MR_Integer) 3);
+	return (*proc)(arg1, arg2, arg3, arg4, arg5,
+		arg6, arg7, arg8, arg9, arg10,
+		arg11, arg12, arg13, arg14, arg15,
+		arg16, arg17, arg18, arg19, arg20);
+}
+
+").
 	 
+:- func dl__generic_closure_wrapper = c_pointer.
+:- pragma c_code(dl__generic_closure_wrapper = (WrapperFuncAddr::out),
+	[thread_safe, will_not_call_mercury],
+"
+	WrapperFuncAddr = (MR_Word) &ML_DL_generic_closure_wrapper;
+").
+
 %
 % Check that the result type matches the information
 % in the procedure specification.
@@ -209,14 +311,15 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 % to the appropriate argument type, and then call the function
 % with the unboxed argument types.  Generating those on-the-fly
 % here would be tricky!  Instead, we only try to handle the cases
-% where wrappers are normally not needed, i.e. arguments with
+% where we can use a single generic wrapper, i.e. arguments with
 % types other than `char' or `float'.  All other argument types
 % are word-sized, and will hopefully be passed in the same way
 % by the C compiler.
 %
 % This procedure checks, for the MLDS back-end, that you're
 % not using it on a procedure with argument types `char' or
-% `float'.
+% `float', and that the procedure doesn't have more arguments
+% than the generic wrapper can handle.
 %
 % XXX this doesn't catch the case of no_tag types that
 % end up being equivalent to `float' or `char'.
@@ -237,6 +340,16 @@ check_type_is_supported(_Result, Value, Proc0, Proc) :-
 		type_ctor_module_name(ArgTypeCtor) = "builtin"
 	->
 		error("sorry, not implemented: dl__mercury_sym for procedure with argument type `float' or `char'")
+	;
+		high_level_code,
+		% The generic wrapper only works for procedures with up to
+		% 20 arguments.
+		% For nondet procedures, two of the arguments get used up
+		% for the continuation function and the environment pointer,
+		% so we can only support 18 other arguments.
+		type_ctor_arity(type_ctor(type_of(Value))) > 18
+	->
+		error("sorry, not implemented: dl__mercury_sym for procedure with more than 18 arguments")
 	;
 		Proc = Proc0
 	).
