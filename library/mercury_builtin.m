@@ -299,7 +299,7 @@ builtin_index_float(_, -1).
 builtin_compare_float(R, F1, F2) :-
 	( F1 < F2 ->
 		R = (<)
-	; F1 < F2 ->
+	; F1 > F2 ->
 		R = (>)
 	;
 		R = (=)
