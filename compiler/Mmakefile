@@ -40,6 +40,13 @@ GCC_MAIN_LIBS =
 GCC_BACKEND_LIBS =
 endif
 
+# Ensure that we rebuild the GCC libbackend.a, etc., if it is out-of-date
+.PHONY: force
+force: ;
+
+$(GCC_MAIN_LIBS): force
+	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
+
 MCFLAGS +=	-I $(BROWSER_DIR)
 MLOBJS :=	../main.$O $(MLOBJS)
 ALL_MLLIBS =	$(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
