@@ -35,6 +35,8 @@
 
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.
+% Changes here may also require changes in compiler/polymorphism.m,
+% compiler/higher_order.m and runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
@@ -89,12 +91,17 @@
 :- type type_info(T) ---> type_info(base_type_info(T) /*, ... */).
 :- type base_type_info(T) ---> base_type_info(int /*, ... */).
 
+	% The type variable in these types isn't really a type variable,
+	% it's a place for polymorphism.m to put a representation of the
+	% class constraint about which the typeclass_info carries information.
+	%
 	% Note that, since these types look to the compiler as though they
 	% are candidates to become no_tag types, special code is required in
 	% type_util:type_is_no_tag_type/3.
 
-:- type typeclass_info ---> typeclass_info(base_typeclass_info /*, ... */). 
-:- type base_typeclass_info ---> typeclass_info(int /*, ... */). 
+:- type typeclass_info(T) ---> typeclass_info(base_typeclass_info(T)
+						/*, ... */). 
+:- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */). 
 
 	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)  
 	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
@@ -102,13 +109,14 @@
 	% 
 	% Note: Index must be equal to the number of the desired type_info 
 	% plus the number of superclasses for this class.
-:- pred type_info_from_typeclass_info(typeclass_info, int, type_info(T)).
+:- pred type_info_from_typeclass_info(typeclass_info(_), int, type_info(T)).
 :- mode type_info_from_typeclass_info(in, in, out) is det.
 
 	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)  
 	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
 	% superclass of the class.
-:- pred superclass_from_typeclass_info(typeclass_info, int, typeclass_info).
+:- pred superclass_from_typeclass_info(typeclass_info(_),
+		int, typeclass_info(_)).
 :- mode superclass_from_typeclass_info(in, in, out) is det.
 
 	% the builtin < operator on ints, used in the code generated
@@ -123,6 +131,7 @@
 :- mode builtin_int_gt(in, in) is semidet.
 :- external(builtin_int_gt/2).
 
+%-----------------------------------------------------------------------------%
 %
 % The following predicates are used in code transformed by the table_gen pass
 % of the compiler. The predicates fall into three categories :

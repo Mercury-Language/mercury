@@ -262,7 +262,7 @@ Define_entry(do_call_semidet_class_method);
 	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) =
+			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
@@ -301,7 +301,7 @@ Define_entry(do_call_nondet_class_method);
 	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
 			/* copy to the left, from the left */
 		for (i = 1; i <= num_in_args; i++) {
-			virtual_reg(i) =
+			virtual_reg(i + num_arg_typeclass_infos) =
 				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
 		}
 	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {

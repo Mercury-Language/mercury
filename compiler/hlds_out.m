@@ -217,7 +217,7 @@ hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
 hlds_out__cons_id_to_string(code_addr_const(_, _), "<code_addr>").
 hlds_out__cons_id_to_string(base_type_info_const(_, _, _), "<base_type_info>").
-hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _), 
+hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _), 
 	"<base_typeclass_info>").
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
@@ -238,7 +238,7 @@ hlds_out__write_cons_id(code_addr_const(_PredId, _ProcId)) -->
 	io__write_string("<code_addr>").
 hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
 	io__write_string("<base_type_info>").
-hlds_out__write_cons_id(base_typeclass_info_const(_, _, _)) -->
+hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
 
 	% The code of this predicate duplicates the functionality of
@@ -530,7 +530,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		( { map__is_empty(Proofs) } ->
 			[]
 		;
-			hlds_out__write_constraint_proofs(Indent, VarSet,
+			hlds_out__write_constraint_proofs(Indent, TVarSet,
 				Proofs),
 			io__write_string("\n")
 		)
@@ -1532,7 +1532,7 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string(")")
 	;
 		{ ConsId = base_typeclass_info_const(Module,
-			class_id(Name, Arity), Instance) },
+			class_id(Name, Arity), _, Instance) },
 		io__write_string("base_typeclass_info("""),
 		prog_out__write_sym_name(Module),
 		io__write_string(""", """),
@@ -1810,6 +1810,31 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarnums,
 
 	hlds_out__write_typeinfo_varmap_2(TVars, Indent, AppendVarnums,
 		TypeInfoMap, VarSet, TVarSet).
+
+:- pred hlds_out__write_typeclass_info_varmap(int, bool,
+	map(class_constraint, var), varset, tvarset, io__state, io__state).
+:- mode hlds_out__write_typeclass_info_varmap(in, in,
+	in, in, in, di, uo) is det.
+
+hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
+		TypeClassInfoVarMap, VarSet, TVarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% typeclass_info varmap:\n"),
+	map__foldl(hlds_out__write_typeclass_info_varmap_2(Indent,
+		AppendVarnums, VarSet, TVarSet), TypeClassInfoVarMap).
+
+:- pred hlds_out__write_typeclass_info_varmap_2(int, bool,
+	varset, tvarset, class_constraint, var, io__state, io__state).
+:- mode hlds_out__write_typeclass_info_varmap_2(in, in,
+	in, in, in, in, di, uo) is det.
+
+hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
+		Constraint, Var) -->
+	hlds_out__write_indent(Indent),
+	mercury_output_constraint(TVarSet, Constraint),
+	io__write_string(" -> "),
+	mercury_output_var(Var, VarSet, AppendVarnums),
+	io__nl.
 
 :- pred hlds_out__write_stack_slots(int, stack_slots, varset, bool,
 	io__state, io__state).
@@ -2269,6 +2294,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
 	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
+	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
 	{ proc_info_args_method(Proc, ArgsMethod) },
 	{ Indent1 is Indent + 1 },
 
@@ -2303,6 +2329,8 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		VarTypes, TVarSet),
 	hlds_out__write_typeinfo_varmap(Indent, AppendVarnums, TypeInfoMap,
 		VarSet, TVarSet),
+	hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
+		TypeClassInfoMap, VarSet, TVarSet),
 
 	io__write_string("% args method: "),
 	hlds_out__write_args_method(ArgsMethod),

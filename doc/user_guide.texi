@@ -2455,13 +2455,25 @@ generate more efficient code for polymorphic predicates.
 @sp 1
 @item --intermod-unused-args
 Perform unused argument removal across module boundaries.
-This option implies `--optimize-unused-args' and
-`--intermodule-optimization'.
+This option implies @samp{--optimize-unused-args} and
+@samp{--intermodule-optimization}.
 
 @sp 1
 @item --optimize-higher-order
 Specialize calls to higher-order predicates where
 the higher-order arguments are known.
+
+@sp 1
+@item --type-specialization
+Specialize calls to polymorphic predicates where
+the polymorphic types are known.
+
+@sp 1
+@item --higher-order-size-limit
+Set the maximum goal size of specialized versions created by
+@samp{--optimize-higher-order} and @samp{--type-specialization}.
+Goal size is measured as the number of calls, unifications
+and branched goals.
 
 @sp 1
 @item --optimize-constant-propagation

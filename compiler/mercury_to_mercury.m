@@ -1034,7 +1034,8 @@ mercury_output_cons_id(base_type_info_const(Module, Type, Arity), _) -->
 	{ string__int_to_string(Arity, ArityString) },
 	io__write_strings(["<base_type_info for ",
 		ModuleString, ":", Type, "/", ArityString, ">"]).
-mercury_output_cons_id(base_typeclass_info_const(Module, Class, InstanceString),
+mercury_output_cons_id(
+		base_typeclass_info_const(Module, Class, _, InstanceString),
 		_) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	io__write_string("<base_typeclass_info for "),
@@ -1461,7 +1462,7 @@ mercury_output_constraint(VarSet, constraint(Name, Types)) -->
 :- mode output_type(in, in, di, uo) is det.
 
 output_type(VarSet, Type) -->
-	mercury_output_term(Type, VarSet, no).
+	mercury_output_term(Type, VarSet, yes).
 
 %-----------------------------------------------------------------------------%
 

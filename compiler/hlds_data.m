@@ -36,12 +36,15 @@
 				% whereas a code_addr_const is just an address.
 			;	base_type_info_const(module_name, string, int)
 				% module name, type name, type arity
-			;	base_typeclass_info_const(module_name, class_id,
-					string)
-				% name of module containing instance
-				% declaration, class name and arity, a string
-				% encoding the type names and arities of
-				% arguments to the instance declaration
+			;	base_typeclass_info_const(module_name,
+					class_id, int, string)
+				% module name of instace declaration
+				% (not filled in so that link errors result
+				% from overlapping instances),
+				% class name and arity,
+				% class instance, a string encoding the type
+				% names and arities of the arguments to the
+				% instance declaration 
 			.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
@@ -122,7 +125,7 @@ cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
 cons_id_arity(base_type_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_type_info_const").
-cons_id_arity(base_typeclass_info_const(_, _, _), _) :-
+cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 
 make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).

@@ -739,7 +739,9 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
 	{ proc_info_typeclass_info_varmap(ProcInfo, TCVarMap) },
-	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, 
+	% XXX handle the extra typeinfo arguments for
+	% --typeinfo-liveness properly.
+	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
 		VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId) },
 	pd_info_set_module_info(ModuleInfo).

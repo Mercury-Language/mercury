@@ -10,6 +10,7 @@ TYPECLASS_PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
 	existential_type_classes \
+	extra_typeinfo \
 	ho_map \
 	implied_instance \
 	implied_instance_poly \
@@ -54,7 +55,8 @@ endif
 #       typeclass_test_5.m (this is really a WISHLIST item)
 #
 
-
+MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
+				--typeinfo-liveness
 MCFLAGS-inference_test = --infer-all
 MCFLAGS-inference_test_2 = --infer-all
 MCFLAGS-existential_type_classes = --infer-all

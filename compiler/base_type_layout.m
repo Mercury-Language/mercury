@@ -1086,8 +1086,21 @@ base_type_layout__generate_pseudo_type_info(Type, yes(Rval), LayoutInfo0,
 
 base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 	(
-		type_to_type_id(Type, TypeId, TypeArgs)
+		type_to_type_id(Type, TypeId, TypeArgs0)
 	->
+		(
+			% The argument to typeclass_info types is not
+			% a type - it encodes the class constraint.
+			mercury_private_builtin_module(PrivateBuiltin),
+			TypeId = qualified(PrivateBuiltin, TName) - _,
+			( TName = "typeclass_info"
+			; TName = "base_typeclass_info"	
+			)
+		->
+			TypeArgs = []
+		;
+			TypeArgs = TypeArgs0
+		),
 		( 
 			% For higher order types: they all refer to the
 			% defined pred_0 base_type_info, have an extra

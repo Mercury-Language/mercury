@@ -157,15 +157,26 @@
 						 map(var, type)).
 :- mode apply_rec_substitution_to_type_map(in, in, out) is det.
 
-	% Update a map from tvar to type_info_locn, using the type substititon
-	% to rename tvars and a variable substition to rename vars.
+	% Update a map from tvar to type_info_locn, using the type renaming
+	% and substitution to rename tvars and a variable substitution to
+	% rename vars. The type renaming is applied before the type
+	% substitution.
 	%
 	% If tvar maps to a another type variable, we keep the new
 	% variable, if it maps to a type, we remove it from the map.
 
 :- pred apply_substitutions_to_var_map(map(tvar, type_info_locn), tsubst,
-	map(var, var), map(tvar, type_info_locn)).
-:- mode apply_substitutions_to_var_map(in, in, in, out) is det.
+	map(tvar, type), map(var, var), map(tvar, type_info_locn)).
+:- mode apply_substitutions_to_var_map(in, in, in, in, out) is det.
+
+	% Update a map from class_constraint to var, using the type renaming
+	% and substitution to rename tvars and a variable substition to
+	% rename vars. The type renaming is applied before the type
+	% substitution.
+
+:- pred apply_substitutions_to_typeclass_var_map(map(class_constraint, var),
+	tsubst, map(tvar, type), map(var, var), map(class_constraint, var)).
+:- mode apply_substitutions_to_typeclass_var_map(in, in, in, in, out) is det.
 
 :- pred apply_rec_subst_to_constraints(substitution, class_constraints,
 	class_constraints).
@@ -247,36 +258,24 @@ type_id_is_hand_defined(qualified(PrivateBuiltin, "base_type_info") - 1) :-
 	% Given a type, determine what sort of type it is.
 
 classify_type(VarType, ModuleInfo, Type) :-
-	(
-		VarType = term__variable(_)
-	->
+	( type_to_type_id(VarType, TypeId, _) ->
+		( TypeId = unqualified("character") - 0 ->
+			Type = char_type
+		; TypeId = unqualified("int") - 0 ->
+			Type = int_type
+		; TypeId = unqualified("float") - 0 ->
+			Type = float_type
+		; TypeId = unqualified("string") - 0 ->
+			Type = str_type
+		; type_id_is_higher_order(TypeId, _) ->
+			Type = pred_type
+		; type_id_is_enumeration(TypeId, ModuleInfo) ->
+			Type = enum_type
+		;
+			Type = user_type
+		)
+	;
 		Type = polymorphic_type
-	;
-		VarType = term__functor(term__atom("character"), [], _)
-	->
-		Type = char_type
-	;
-		VarType = term__functor(term__atom("int"), [], _)
-	->
-		Type = int_type
-	;
-		VarType = term__functor(term__atom("float"), [], _)
-	->
-		Type = float_type
-	;
-		VarType = term__functor(term__atom("string"), [], _)
-	->
-		Type = str_type
-	;
-		type_is_higher_order(VarType, _, _)
-	->
-		Type = pred_type
-	;
-		type_is_enumeration(VarType, ModuleInfo)
-	->
-		Type = enum_type
-	;
-		Type = user_type
 	).
 
 type_is_higher_order(Type, PredOrFunc, PredArgTypes) :-
@@ -304,11 +303,10 @@ type_id_is_higher_order(SymName - Arity, PredOrFunc) :-
 		PredOrFunc = function
 	).
 
-:- pred type_is_enumeration(type, module_info).
-:- mode type_is_enumeration(in, in) is semidet.
+:- pred type_id_is_enumeration(type_id, module_info).
+:- mode type_id_is_enumeration(in, in) is semidet.
 
-type_is_enumeration(Type, ModuleInfo) :-
-	type_to_type_id(Type, TypeId, _),
+type_id_is_enumeration(TypeId, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__search(TypeDefnTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -317,6 +315,14 @@ type_is_enumeration(Type, ModuleInfo) :-
 
 type_to_type_id(Type, SymName - Arity, Args) :-
 	sym_name_and_args(Type, SymName, Args1),
+
+	% `private_builtin:constraint' is introduced by polymorphism, and
+	% should only appear as the argument of a `typeclass:info/1' type.
+	% It behaves sort of like a type variable, so according to the
+	% specification of `type_to_type_id', it should cause failure.
+	% There isn't a definition in the type table.
+	mercury_private_builtin_module(PrivateBuiltin),
+	SymName \= qualified(PrivateBuiltin, "constraint"),
 
 	% higher order types may have representations where
 	% their arguments don't directly correspond to the
@@ -702,54 +708,99 @@ apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
 
 %-----------------------------------------------------------------------------%
 
-apply_substitutions_to_var_map(VarMap0, TSubst, Subst, VarMap) :-
+apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
 	% optimize the common case of empty substitutions
-	( map__is_empty(Subst), map__is_empty(TSubst) ->
+	(
+		map__is_empty(Subst),
+		map__is_empty(TSubst),
+		map__is_empty(TRenaming)
+	->
 		VarMap = VarMap0
 	;
 		map__keys(VarMap0, TVars),
 		map__init(NewVarMap),
-		apply_substitutions_to_var_map_2(TVars, VarMap0, TSubst,
-			Subst, NewVarMap, VarMap)
+		apply_substitutions_to_var_map_2(TVars, VarMap0,
+			TRenaming, TSubst, Subst, NewVarMap, VarMap)
 	).
 
 
 :- pred apply_substitutions_to_var_map_2(list(var)::in, map(tvar,
-		type_info_locn)::in, tsubst::in, map(var, var)::in, 
-		map(tvar, type_info_locn)::in, 
+		type_info_locn)::in, tsubst::in, map(tvar, type)::in,
+		map(var, var)::in, map(tvar, type_info_locn)::in, 
 		map(tvar, type_info_locn)::out) is det.
 
-apply_substitutions_to_var_map_2([], _VarMap0, _, _, NewVarMap, NewVarMap).
-apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TSubst, Subst, 
-		NewVarMap0, NewVarMap) :-
+apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, NewVarMap, NewVarMap).
+apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
+		TSubst, VarSubst, NewVarMap0, NewVarMap) :-
 	map__lookup(VarMap0, TVar, Locn),
 	type_info_locn_var(Locn, Var),
-
-		% find the new tvar, if there is one, otherwise just
-		% create the old var as a type variable.
-	( map__search(TSubst, TVar, NewTerm0) ->
-		NewTerm = NewTerm0 
-	; 
-		type_util__var(NewTerm, TVar)
-	),
-
+	
 		% find the new var, if there is one
-	( map__search(Subst, Var, NewVar0) ->
+	( map__search(VarSubst, Var, NewVar0) ->
 		NewVar = NewVar0
 	;
 		NewVar = Var
 	),
 	type_info_locn_set_var(Locn, NewVar, NewLocn),
 
+		% find the new tvar, if there is one, otherwise just
+		% create the old var as a type variable.
+	(
+		map__search(TRenaming, TVar, NewTVar0)
+	->
+		( NewTVar0 = term__variable(NewTVar1) ->
+			NewTVar2 = NewTVar1
+		;
+			% varset__merge_subst only returns var->var mappings,
+			% never var->term.
+			error(
+			"apply_substitution_to_var_map_2: weird type renaming")
+		)
+	; 
+		% The variable wasn't renamed.
+		NewTVar2 = TVar
+	),
+
+	term__apply_rec_substitution(term__variable(NewTVar2),
+		TSubst, NewType),
+
 		% if the tvar is still a variable, insert it into the
 		% map with the new var.
-	( type_util__var(NewTerm, NewTVar) ->
-		map__det_insert(NewVarMap0, NewTVar, NewLocn, NewVarMap1)
+	( type_util__var(NewType, NewTVar) ->
+		% Don't abort if two old type variables
+		% map to the same new type variable.
+		map__set(NewVarMap0, NewTVar, NewLocn, NewVarMap1)
 	;
 		NewVarMap1 = NewVarMap0
 	),
-	apply_substitutions_to_var_map_2(TVars, VarMap0, TSubst, Subst, 
-		NewVarMap1, NewVarMap).
+	apply_substitutions_to_var_map_2(TVars, VarMap0, TRenaming,
+		TSubst, VarSubst, NewVarMap1, NewVarMap).
+
+%-----------------------------------------------------------------------------%
+
+apply_substitutions_to_typeclass_var_map(VarMap0,
+		TRenaming, TSubst, Subst, VarMap) :-
+	map__to_assoc_list(VarMap0, VarAL0),
+	list__map(apply_substitutions_to_typeclass_var_map_2(TRenaming,
+		TSubst, Subst), VarAL0, VarAL),
+	map__from_assoc_list(VarAL, VarMap).
+
+:- pred apply_substitutions_to_typeclass_var_map_2(tsubst, map(tvar, type),
+		map(var, var), pair(class_constraint, var),
+		pair(class_constraint, var)).
+:- mode apply_substitutions_to_typeclass_var_map_2(in, in,
+		in, in, out) is det.
+	
+apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
+		Constraint0 - Var0, Constraint - Var) :-
+	apply_subst_to_constraint(TRenaming, Constraint0, Constraint1),
+	apply_rec_subst_to_constraint(TSubst, Constraint1, Constraint),
+
+	( map__search(VarRenaming, Var0, Var1) ->
+		Var = Var1
+	;
+		Var = Var0
+	).
 
 %-----------------------------------------------------------------------------%
 

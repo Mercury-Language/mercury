@@ -69,7 +69,7 @@
 
 	%
 	% goal_util__extra_nonlocal_typeinfos(TypeInfoMap, TypeClassInfoMap,
-	%		VarTypes, ExistQVars, Goal, NonLocalTypeInfos):
+	%		VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
 	% compute which type-info and type-class-info variables
 	% may need to be non-local to a goal.
 	%
@@ -89,7 +89,7 @@
 	%
 :- pred goal_util__extra_nonlocal_typeinfos(map(tvar, type_info_locn),
 		map(class_constraint, var), map(var, type), existq_tvars,
-		hlds_goal, set(var)).
+		set(var), set(var)).
 :- mode goal_util__extra_nonlocal_typeinfos(in, in, in, in, in, out) is det.
 
 	% See whether the goal is a branched structure.
@@ -539,9 +539,7 @@ goal_util__rhs_goal_vars(
 %-----------------------------------------------------------------------------%
 
 goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
-		ExistQVars, Goal0, NonLocalTypeInfos) :-
-	Goal0 = _ - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		ExistQVars, NonLocals, NonLocalTypeInfos) :-
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	map__apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
 	term__vars_list(NonLocalsTypes, NonLocalTypeVars),

@@ -273,8 +273,10 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 	% XXX existentially typed lambda expressions are not yet supported
 	% (see the documentation at top of this file)
 	ExistQVars = [],
+	LambdaGoal = _ - LambdaGoalInfo,
+	goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
 	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
-		ExistQVars, LambdaGoal, ExtraTypeInfos),
+		ExistQVars, LambdaNonLocals, ExtraTypeInfos),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,

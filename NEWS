@@ -364,6 +364,13 @@ Changes to the Mercury implementation:
   over data structures. Deforestation is enabled at optimization level
   `-O3' or higher, or by using the `--deforestation' option.
 
+* The compiler can now perform type specialization.
+
+  Type specialization removes the overhead of polymorphic code, including
+  code which uses typeclasses. The disadvantage is increased code size.
+  Currently we do not perform inter-module type specialization.
+  Type specialization is enabled by using the `--type-specialization' option.
+
 * We've added support for "transitive" inter-module analysis.
 
   With the previous support for inter-module optimization, when
