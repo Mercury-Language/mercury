@@ -180,7 +180,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
     MR_CLASS_INIT_END(m, MR_PASTE5(__, type_ctor_info_, n, _, a), MR_PASTE4(type_ctor_init_, n, _, a))
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(m, n, a, cr, u, c)	\
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr, u, c)
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(m, n, a, cr)		\
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, n, a, cr,		\
@@ -188,7 +188,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 	MR_PASTE7(mercury::, m, ::do_compare__, n, _, a, _0))  
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(n, a, cr)       \
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , n, a, cr,  \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, n, a, cr,  \
 	mercury__unused_0_0,					\
 	mercury__unused_0_0)
 
