@@ -591,10 +591,13 @@ Convert to Mercury. Output to file @file{@var{module}.ugly}
 This option acts as a Mercury ugly-printer.
 As with -M, it disables type-checking, etc.
 
-@c XXX
 @item --no-modecheck
-Don't invoke the mode analysis pass of the compiler.
+Don't invoke the mode analysis and later passes of the compiler.
 Just check the syntax and type-correctness of the code.
+When converting Prolog code to Mercury,
+it can be useful to get the types right first
+and worry about modes second;
+this option supports that approach.
 
 @item -d @var{stage}
 @itemx --dump-hlds @var{stage}

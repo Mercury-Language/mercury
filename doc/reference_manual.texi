@@ -458,44 +458,47 @@ p(A1, ..., AN, V_in, V_Out)
 @node Implicit quantification, Elimination of double negation, DCG-goals, Syntax
 @section Implicit quantification
 
-The rule for implicit quantification in Mercury is not the same
-as the usual one in mathematical logic.  In Mercury variables
-that do not occur in the head of a clause
-are implicitly existentially quantified around their closest
-enclosing scope (in a sense to be made precise in the following
-paragraphs).  This allows most existential quantifiers to be omitted,
+The rule for implicit quantification in Mercury
+is not the same as the usual one in mathematical logic.
+In Mercury variables that do not occur in the head of a clause
+are implicitly existentially quantified around their closest enclosing scope
+(in a sense to be made precise in the following paragraphs).
+This allows most existential quantifiers to be omitted,
 and leads to more concise code.
 
-An occurrence of a variable is @dfn{in a negated context} if it is
-inside a negation, inside a universal quantification, in the condition
-of an if-then-else, or in an inequality.
+An occurrence of a variable is @dfn{in a negated context}
+if it is in a negation,
+in a universal quantification,
+in the condition of an if-then-else,
+or in an inequality.
 
-Two goals are @dfn{parallel} if they are different disjuncts
-of the same disjunction, or if one is the ``else'' part of an
-if-then-else and the other goal is either the ``then'' part
-or the condition of the if-then-else.
+Two goals are @dfn{parallel}
+if they are different disjuncts of the same disjunction,
+or if one is the ``else'' part of an if-then-else
+and the other goal is either the ``then'' part or the condition
+of the if-then-else.
 
 If a variable occurs in a negated context
-and does not occur outside of that negated context
-other than in parallel goals (and in the case of a variable in the
-condition of an if-then-else, other than in the ``then'' part of the
-if-then-else), then that variable is implicitly existentially
-quantified inside the negation.
+and does not occur outside of that negated context other than in parallel goals
+(and in the case of a variable in the condition of an if-then-else,
+other than in the ``then'' part of the if-then-else),
+then that variable is implicitly existentially quantified inside the negation.
 
 @node Elimination of double negation,, Implicit quantification, Syntax
 @section Elimination of double negation
 
-The treatment of inequality, universal quantification, implication, and
-logical equivalence as abbreviations can cause the introduction of
-double negations which could make otherwise well-formed code
-mode-incorrect.  To avoid this problem, the language specifies that
-double negations are removed after syntax analysis, before mode
-analysis is performed.
+The treatment of inequality, universal quantification,
+implication, and logical equivalence as abbreviations
+can cause the introduction of double negations
+which could make otherwise well-formed code mode-incorrect.
+To avoid this problem, the language specifies that
+double negations are removed after syntax analysis,
+before mode analysis is performed.
 
 @node Types, Modes, Syntax, Top
 @chapter Types
 
-The type system is based on a polymorphic many-sorted logic.
+The type system is based on polymorphic many-sorted logic.
 
 Certain special types are builtin, or are defined in the Mercury library:
 
@@ -513,15 +516,16 @@ in Mercury --- so don't use these yet.
 The type @code{univ} is defined in the standard library module @code{std_util},
 along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
 With those predicates, any type can be converted to the universal type
-and back again.  The universal type is useful for situations where you need
-heterogeneous collections.
+and back again.
+The universal type is useful for situations
+where you need heterogeneous collections.
 
 @item The ``state-of-the-world'' type: @code{io__state}.
-The type @code{io__state} is define in the standard library module
-@code{io}, and represents the state of the world.  Predicates which
-perform I/O are passed the old state of the world and produce a new
-state of the world.  In this way, we can give a declarative semantics to
-code that performs I/O.
+The type @code{io__state} is defined in the standard library module @code{io},
+and represents the state of the world.
+Predicates which perform I/O are passed the old state of the world
+and produce a new state of the world.
+In this way, we can give a declarative semantics to code that performs I/O.
 
 @end table
 
@@ -531,146 +535,170 @@ There are several categories of derived types:
 @itemize
 @item
 Discriminated unions: these encompass both enumeration and
-record types in other languages.  A derived type is defined
-using @samp{:- type @var{type} ---> @var{body}}. 
-(Note there are @emph{three} dashes in that arrow.  It should
-not be confused with the two-dash arrow used for DCGs or the
-one-dash arrow used for if-then-else.)
-If the @var{type} term is a functor of arity zero, it names
-a monomorphic type.  Otherwise, it names a polymorphic type;
+record types in other languages.
+A derived type is defined using @samp{:- type @var{type} ---> @var{body}}. 
+(Note there are @emph{three} dashes in that arrow.
+It should not be confused with the two-dash arrow used for DCGs
+or the one-dash arrow used for if-then-else.)
+If the @var{type} term is a functor of arity zero,
+it names a monomorphic type.
+Otherwise, it names a polymorphic type;
 the arguments of the functor must be distinct type variables.
-The @var{body} term is as
-sequence of constructor definitions separated by semi-colons.
+The @var{body} term is defined as
+a sequence of constructor definitions separated by semi-colons.
 Each constructor definition is a functor whose arguments (if any) are types.
-Type definitions must be @dfn{transparent}: all type variables
-occuring in the @var{body} must also occur in the @var{type}.
+Type definitions must be @dfn{transparent}:
+all type variables occuring in the @var{body}
+must also occur in the @var{type}.
 
 Here are some examples:
 
 @example
-        :- type fruit
-                --->    apple
-                ;       orange
-                ;       banana
-                ;       pear.
+:- type fruit
+	--->    apple
+	;       orange
+	;       banana
+	;       pear.
 
-        :- type strange
-                --->    foo(int)
-                ;       bar(string).
+:- type strange
+	--->    foo(int)
+	;       bar(string).
 
-        :- type employee
-                --->    employee(
-                               string,               % name
-                               int,                  % age
-                               string                % department
-                        ).
+:- type employee
+	--->    employee(
+		       string,               % name
+		       int,                  % age
+		       string                % department
+		).
 
-        :- type tree
-                --->    empty
-                ;       leaf(int)
-                ;       branch(tree, tree).
+:- type tree
+	--->    empty
+	;       leaf(int)
+	;       branch(tree, tree).
 
-        :- type list(T)
-                --->    []
-                ;       [T | list(T)].
+:- type list(T)
+	--->    []
+	;       [T | list(T)].
 
-        :- type pair(T1, T2)
-                --->    T1 - T2.
+:- type pair(T1, T2)
+	--->    T1 - T2.
 @end example
 
-If the body of a discriminated union type definition contains a term whose
-top-level functor is @code{';'/2}, the semi-colon is normally assumed to be a
-separator.  This makes it difficult to define a type whose constructors
-include @code{';'/2}.  To allow this, curly braces can be used to quote
-the semi-colon.  It is then also necessary to quote curly braces.
+If the body of a discriminated union type definition
+contains a term whose top-level functor is @code{';'/2},
+the semi-colon is normally assumed to be a separator.
+This makes it difficult to define a type
+whose constructors include @code{';'/2}.
+To allow this, curly braces can be used to quote the semi-colon.
+It is then also necessary to quote curly braces.
 The following example illustrates this:
 
 @example
-        :- type tricky
-                --->    @{ int ; int @}
-                ;       @{ @{ int @} @}.
+:- type tricky
+	--->    @{ int ; int @}
+	;       @{ @{ int @} @}.
 @end example
+
+Each discriminated union type definition introduces a distinct type.
+Mercury considers two discriminated union types that have the same bodies
+to be distinct types (name equivalence).
+Having two types of any kind with the same name in the program is an error.
+(We hope to relax this in the future.)
 
 @item
-Equivalence types: these are type abbreviations.  They are defined
-using `==' as follows.  They may be polymorphic.
+Equivalence types: these are type abbreviations.
+They are defined using `==' as follows.
+They may be polymorphic.
 
 @example
-        :- type money == int.
-        :- type assoc_list(KeyType, ValueType)
-                == list(pair(KeyType, ValueType)).
+:- type money == int.
+:- type assoc_list(KeyType, ValueType)
+	== list(pair(KeyType, ValueType)).
 @end example
 
-Like discriminated union type definitions, equivalence type definitions must
-be transparent.
+Like discriminated union type definitions,
+equivalence type definitions must be transparent.
+
+Mercury treats an equivalence type
+as an abbreviation for the type on the right hand side of the definition;
+the two are equivalent in all respects
+in scopes where the equivalence type is visible.
 
 @item
 Abstract types: these are types whose implementation is hidden.
 The type declarations
 
 @example
-        :- type t1.
-        :- type t2(T1, T2).
+:- type t1.
+:- type t2(T1, T2).
 @end example
 
 @noindent
 declare types @code{t1/0} and @code{t/2} to be abstract types.
 Such declarations are only useful in the interface section of a module.
-This means that the type names will be exported, but the constructors
-(functors) for these types will not be exported.
+This means that the type names will be exported,
+but the constructors (functors) for these types will not be exported.
+The implementation section of a module
+must have give the definition of all the abstract types
+named in the interface section of the module.
 
 @end itemize
 
 Constructors may be overloaded among different types:
 there may be any number of constructors with a given name and arity,
 so long as they all have different types.
-However, there must be only one constructor with a given name, arity, and type.
-(There is no particularly good reason for this restriction; it might be
-dropped sometime in the future.)
+However, there must be only one constructor
+with a given name, arity, and result type.
+(There is no particularly good reason for this restriction;
+in the future we may allow several such functors
+as long as they have different argument types.)
 Note that excessive overloading of constructors can slow down type checking
-and can make the program confusing for human readers, so overloading
-should not be over-used.
+and can make the program confusing for human readers,
+so overloading should not be over-used.
 
-The argument types of each predicate must be explicitly declared
-with a @samp{:- pred} declaration.  These declarations may be
-polymorphic.  For example:
+The argument types of each predicate
+must be explicitly declared with a @samp{:- pred} declaration.
+These declarations may be polymorphic.
+For example:
 
 @example
-        :- pred list__member(T, list(T)).
+:- pred list__member(T, list(T)).
 @end example
 
-Predicates may not be overloaded: there must only be one predicate
-with a given name and arity in each program.
+Predicates may not be overloaded:
+there must only be one predicate with a given name and arity in each program.
 (This restriction will hopefully be relaxed in the future.)
 
-The compiler infers the types of variables and overloaded
-constructors.  A @dfn{type assignment} is an assignment of a type to
-each variables and constructor in a clause.  A type assignment is
-@dfn{valid} if it satisfies the following conditions.  Each constructor
-in a clause must have been declared in at least one type declaration.
-The type assigned to each constructor must match one of the type
-declarations for that constructor, and the types assigned to the arguments
-of that constructor must match the argument types specified in that
-type declaration.  The type assigned to each predicate
-argument much match the type specified in the @samp{:- pred}
-declaration for that predicate.  The type assigned to each head
-argument in a clause must exactly match the type specified in the
-corresponding @samp{:- pred} declaration.
-(Here ``match'' means to be an instance of, i.e. to be identical to for some
-substitution of the type parameters, and ``exactly match'' means
-to be identical up to renaming of type parameters.)
+The compiler infers the types of variables and overloaded constructors.
+A @dfn{type assignment} is an assignment of a type
+to every variable and constructor in a clause.
+A type assignment is @dfn{valid} if it satisfies the following conditions.
+Each constructor in a clause
+must have been declared in at least one visible type declaration.
+The type assigned to each constructor
+must match one of the type declarations for that constructor,
+and the types assigned to the arguments of that constructor
+must match the argument types specified in that type declaration.
+The type assigned to each predicate argument much match
+the type specified in the @samp{:- pred} declaration for that predicate.
+The type assigned to each head argument in a clause must exactly match
+the type specified in the corresponding @samp{:- pred} declaration.
+(Here ``match'' means to be an instance of,
+i.e. to be identical to for some substitution of the type parameters,
+and ``exactly match'' means to be identical up to renaming of type parameters.)
 
-One type assignment @var{A} is said to be @dfn{more general} than
-another type assignment @var{B} if there is a binding of the type
-parameters in A that makes it identical (up to renaming of
-parameters) to B.  If there is more than one valid type assignment,
+One type assignment @var{A} is said to be
+@dfn{more general} than another type assignment @var{B}
+if there is a binding of the type parameters in A
+that makes it identical (up to renaming of parameters) to B.
+If there is more than one valid type assignment,
 the compiler must choose the most general one.
-If there are two valid type assignments which are not identical up to
-renaming and neither of which is more general than the other, then there
-is a type ambiguity, and compiler must report an error.
-A clause is @dfn{type-correct} if there is a unique (up to renaming)
-most general valid type assignment.  Every clause in a Mercury program
-must be type-correct.
+If there are two valid type assignments which are not identical up to renaming
+and neither of which is more general than the other,
+then there is a type ambiguity, and compiler must report an error.
+A clause is @dfn{type-correct}
+if there is a unique (up to renaming) most general valid type assignment.
+Every clause in a Mercury program must be type-correct.
 
 @node Modes, Determinism, Types, Top
 @chapter Modes
@@ -712,16 +740,14 @@ is a function symbol.
 @end itemize
 
 When an instantiatedness tree tells us that a variable is bound,
-there may be several alternative function symbols to which it could be
-bound.
-The instantiatedness tree does not tell us which of these it
-is bound to; instead for each possible function symbol it tells us
-exactly which arguments of the function symbol will be free and which
-will be bound.  The same principle applies recursively to
-these bound arguments.
+there may be several alternative function symbols to which it could be bound.
+The instantiatedness tree does not tell us which of these it is bound to;
+instead for each possible function symbol it tells us exactly
+which arguments of the function symbol will be free and which will be bound.
+The same principle applies recursively to these bound arguments.
 
-Mercury's mode system allows users to declare names for instantiatedness
-trees using declarations such as
+Mercury's mode system allows users
+to declare names for instantiatedness trees using declarations such as
 
 @example
 :- inst listskel ---> bound( [] ; [free | listskel] ).
@@ -763,10 +789,10 @@ corresponding to the standard notions of inputs and outputs:
 
 These two modes are enough for most predicates.
 Nevertheless, Mercury's mode system is sufficiently
-expressive to handle more complex data-flow patterns, including those
-involving partially instantiated data structures.  
-[NOTE: The current implementation does not handle partially
-instantiated data yet!]
+expressive to handle more complex data-flow patterns,
+including those involving partially instantiated data structures.  
+(The current implementation does not handle
+partially instantiated data structures yet.)
 
 For example, consider an
 interface to a database that associates data with keys, and provides
@@ -791,9 +817,9 @@ For example, given the mode names defined by
 
 @example
 :- mode out_listskel ::
-   free -> listskel.
+        free -> listskel.
 :- mode in_listskel ::
-   listskel -> listskel.
+        listskel -> listskel.
 @end example
 
 the (type and) mode declarations of the predicates length and append
@@ -818,12 +844,14 @@ declaration can be combined:
 
 A predicate mode declaration is an assertion by the programmer
 that for all possible argument terms for the predicate
-that are approximated by the initial instantiatedness trees
-of the mode declaration and all of whose free variables are distinct,
+that are approximated (in our technical sense)
+by the initial instantiatedness trees of the mode declaration
+and all of whose free variables are distinct,
 if the predicate succeeds then
 the resulting binding of those argument terms
 will in turn be approximated
-by the final instantiatedness trees of the mode declaration.
+by the final instantiatedness trees of the mode declaration,
+with all free variables again being distinct.
 We refer to such assertions as @dfn{mode declaration constraints}.
 These assertions are checked by the compiler,
 which rejects programs if it cannot prove
@@ -889,51 +917,42 @@ The mode analysis algorithm annotates each call with the mode used.
 @node Determinism, Modules, Modes, Top
 @chapter Determinism
 
-@subsection Determinism categories
+@section Determinism categories
 
-For each mode of a predicate, we categorise that mode according to
-whether it can succeed more than once, and whether or not it can
-fail.
+For each mode of a predicate,
+we categorise that mode according to how many times it can succeed,
+and whether or not it can fail before producing its first solution.
 
 @itemize
 @item
 If all calls to a particular mode of a predicate
-have no more than one solution, and they do not fail,
-then that mode of the predicate is @dfn{deterministic}
-(@code{det}).
+have exactly one solution,
+then that mode of the predicate is @dfn{deterministic} (@code{det}).
 
 @item
-If all calls to a particular mode of a predicate have no more than one
-solution but may fail, then that mode of the predicate is
-@dfn{semideterministic} (@code{semidet}).
+If all calls to a particular mode of a predicate
+either have no solutions or have one solution,
+then that mode of the predicate is @dfn{semideterministic} (@code{semidet}).
 
 @item
-If all calls to a particular mode of a predicate do not fail, but may
-have more than one solution, then that mode of the predicate is
-@dfn{multideterministic} (@code{multidet}).
-[@strong{Warning}: the current implementation treats @code{multidet}
-as an alias for @code{nondet}.  We will implement @code{multidet} properly
-sometime in the near future.]
+If all calls to a particular mode of a predicate
+have at least one solution but may have more,
+then that mode of the predicate is @dfn{multisolution} (@code{multi}).
 
 @item
-If some calls to a particular mode of a predicate
-have no solution but other calls may have more than one solution,
+If some calls to a particular mode of a predicate have no solution
+but other calls may have more than one solution,
 then that mode of the predicate is @dfn{nondeterministic} (@code{nondet}).
-@end itemize
-
-It's also necessary to consider the case where predicates neither
-fail nor succeed, such as when they loop forever, or when they 
-lead to a run-time error.
-
-@itemize
-@item
-If all calls to a particular mode of a predicate neither fail nor
-succeed, then that mode of the predicate is @dfn{erroneous}.
 
 @item
-If all calls to a particular mode of a predicate never succeed,
-but may fail, that mode of the predicate is @dfn{failure}.
+If all calls to a particular mode of a predicate
+fail without producing a solution,
+then that mode of the predicate has a determinism of @code{failure}.
 
+@item
+If all calls to a particular mode of a predicate
+lead to a runtime error, i.e. neither succeed nor fail,
+then that mode of the predicate has a determinism of @code{erroneous}.
 @end itemize
 
 To summarize:
@@ -941,25 +960,27 @@ To summarize:
 @example
                 Maximum number of solutions
 Can fail?       0               1               > 1
-no              erroneous       det             multidet
+no              erroneous       det             multi
 yes             failure         semidet         nondet
 @end example
 
-The determinism of each mode of a predicate is indicated by
-an annotation on the mode declaration.  For example:
+The determinism of each mode of a predicate
+is indicated by an annotation on the mode declaration.
+For example:
 
 @example
 :- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out) is det.
-:- mode append(out, out, in) is multidet.
+:- mode append(out, out, in) is multi.
 :- mode append(in, in, in) is semidet.
 @end example
 
 If the mode of the predicate is given in the @code{:- pred} declaration
 rather than in a separate @code{:- mode} declaration,
 then the determinism annotation goes on the @code{:- pred} declaration.
-In particular, this is necessary if the predicate does not have any
-argument variables.  For example:
+In particular, this is necessary
+if the predicate does not have any argument variables.
+For example:
 
 @example
 :- pred loop(int::in) is erroneous.
@@ -972,49 +993,42 @@ p.
 q :- fail.
 @end example
 
-@subsection Determinism checking and inference.
-
-The determinism categories form a lattice, as specified by
-the following ordering:
+The determinism categories form this lattice:
 
 @example
              erroneous
               /     \
           failure   det
              \     /   \
-             semidet    multidet
+             semidet    multi
                   \     /
                    nondet
 @end example
 
-@center erroneous > failure
+The higher up this lattice a determinism category is,
+the more the compiler knows about the number of solutions
+of predicates of that determinism.
 
-@center erroneous > det
+@section Determinism checking and inference.
 
-@center failure > semidet
-
-@center det > semidet
-
-@center semidet > nondet
-
-@center det > multidet
-
-@center multidet > nondet
-
-The determinism of goals is inferred from the determinism
-of their component parts, according to the rules below.
+The determinism of goals
+is inferred from the determinism of their component parts,
+according to the rules below.
 The inferred determinism of a procedure is just the inferred
 determinism of the procedure's body.
 
-For procedures that are local to a module, the determinism annotations
-may be omitted; in that case, their determinism will be inferred.
-(To be precise, the determinism of procedures without a determinism
-annotation is defined as the least fixpoint of the transformation
-which, given an initial assignment of determinism to such procedures,
-applies those rules to infer a new such assignment.)
+For procedures that are local to a module,
+the determinism annotations may be omitted;
+in that case, their determinism will be inferred.
+(To be precise, the determinism of procedures without a determinism annotation
+is defined as the least fixpoint of the transformation which,
+given an initial assignment
+of the determinism @code{det} to all such procedures,
+applies those rules to infer
+a new determinism assignment for those procedures.)
 
-For procedures that are exported from their containing module,
-it is an error to omit the determinism annotation.
+It is an error to omit the determinism annotation
+for procedures that are exported from their containing module.
 
 If a determinism annotation is supplied for a predicate,
 the declared determinism is compared against the inferred determinism.
@@ -1023,37 +1037,59 @@ inferred determinism (in the partial ordering above), it is an error.
 If the declared determinism is less than the inferred determinism,
 it is not an error, but the implementation may issue a warning.
 
-The determinism category of each goal is inferred according to the
-following rules.  However, if the inferred category was @code{nondet}
-or @code{multidet} but the goal does not have any output variables,
+The determinism category of each goal
+is inferred according to the following rules.
+These rules work with the two components of determinism category:
+the maximum number of solutions of the goal (0, 1, or more)
+and whether the goal can fail without producing a solution.
+
+XXX
+However, if the inferred category was @code{nondet}
+or @code{multi} but the goal does not have any output variables,
 the inferred category is replaced with @code{semidet} or @code{det}
-respectively; the compiler will implicitly prune away any duplicate
-solutions.
+respectively;
+the compiler will implicitly prune away any duplicate solutions.
 
 @table @asis
 @item Calls
-The determinism category of a call is the determinism of the particular
-mode of the called predicate (as determined by mode analysis).
+The determinism category of a call is the determinism
+declared or inferred for the called mode of the called predicate.
 
 @item Unifications
-The determinism of a unification is either @code{det}, @code{semidet},
-or @code{failure}, depending on its mode.
+The determinism of a unification
+is either @code{det}, @code{semidet}, or @code{failure},
+depending on its mode.
+
+XXX examples
 
 @item Conjunctions
 The determinism of the empty conjunction (the goal @samp{true})
 is @code{det}.
-
-The determinism of @samp{(@var{A}, @var{B})} is defined as
-follows.  If the determinism of @var{A} is @code{erroneous} or
-@code{failure}, then the determinism of the conjunction is also
-@code{erroneous} or @code{failure}, respectively.  Otherwise
-the determinism of the conjunction is the minimum (meet) of the
-determinism of the conjuncts.
-@comment XXX meet? should that be join?
+The conjunction @samp{(@var{A}, @var{B})} can fail
+if either @var{A} or @var{B} can fail.
+The conjunction can succeed at most zero times
+if either @var{A} or @var{B} can succeed at most zero times.
+The conjunction can succeed more than once
+if either @var{A} or @var{B} can succeed more than once
+and both @var{A} and @var{B} can succeed at least once.
+(If e.g. @var{A} can succeed at most zero times,
+then even if @var{B} can succeed many times
+the maximum number of solutions of the conjunction is still zero.)
+Otherwise, i.e. if both @var{A} and @var{B} succeed at most once,
+the conjunction can succeed at most once.
 
 @item Disjunctions
 The determinism of the empty disjunction (the goal @samp{fail})
 is @code{failure}.
+The disjunction @samp{(@var{A}, @var{B})} can fail
+if both @var{A} or @var{B} can fail.
+The disjunction can succeed at most zero times
+if both @var{A} or @var{B} can succeed at most zero times.
+The disjunction can succeed more than once
+if either @var{A} or @var{B} can succeed more than once.
+Otherwise, i.e. if one of @var{A} and @var{B} can succeed at most once
+and the other can succeed at most zero times,
+then the disjunction can succeed at most once.
 
 The determinism of a non-empty disjunction is defined in terms of
 its @dfn{local determinism} and the determinism of the disjuncts.
@@ -1077,7 +1113,7 @@ input variable; otherwise, it is @code{semidet}.
 If the disjunction is not a switch, but one of the disjuncts is
 @code{det} or @code{erroneous} or some subset of the disjuncts form a
 @code{det} or @code{erroneous} switch, then the determinism of the
-disjunction is @code{multidet}.
+disjunction is @code{multi}.
 
 @item If-then-else
 
@@ -1143,14 +1179,14 @@ reduced debugging time.)
 
 @subsection Interfacing nondeterministic code with the real world
 
-Normally, attempting to call a @samp{nondet} or @samp{multidet} mode
+Normally, attempting to call a @samp{nondet} or @samp{multi} mode
 of a predicate from a predicate declared as @samp{semidet} or @samp{det}
 will cause a determinism error.  So how can we call nondeterministic
 code from deterministic code?  There are several alternative possibilities.
 
 If you just want to see if a nondeterministic goal is satisfiable or not,
 without needing to know what variable bindings it produces, then there is
-no problem - implicit pruning means that a @samp{nondet} or @samp{multidet}
+no problem - implicit pruning means that a @samp{nondet} or @samp{multi}
 goal is considered @samp{semidet} or @samp{det} respectively if it does
 not have any non-local output variables.
 
@@ -1160,7 +1196,7 @@ want?  If you want all of them, you need to use the predicate
 @code{solutions/2} in the standard library module @samp{std_util}.
 
 If you just want one solution and don't care which, the calling predicate
-should be declared @samp{nondet} or @samp{multidet}; the nondeterminism
+should be declared @samp{nondet} or @samp{multi}; the nondeterminism
 should be propagated up to the point at which it can be pruned.
 In Mercury, pruning can be achieved in several ways.
 
@@ -1170,7 +1206,7 @@ Any potential duplicate solutions will be implicitly pruned away.
 
 Secondly, the implementation will only seek a single solution to
 @samp{main/2}, so alternative solutions to @samp{main/2} (and
-hence also to @samp{nondet} or @samp{multidet} predicates
+hence also to @samp{nondet} or @samp{multi} predicates
 called directly or indirectly from @samp{main/2}) are implicitly pruned
 away.  This is one way to achieve "don't care" nondeterminism in Mercury.
 
@@ -1248,7 +1284,7 @@ must be declared as either
 or
 
 @example
-:- pred main(io__state::di, io__state::uo) is multidet.
+:- pred main(io__state::di, io__state::uo) is multi.
 @end example
 
 @noindent
@@ -1327,7 +1363,7 @@ program is specified by this theory.  Mercury implementations must be
 sound: the answers they compute must be true in every model of the theory.
 
 Execution of a legal Mercury program begins with the predicate @samp{main/2}.
-Only one solution is sought, even if @samp{main/2} is multidet.
+Only one solution is sought, even if @samp{main/2} is multi.
 
 @contents
 @bye
