@@ -917,7 +917,7 @@ mercury__string__first_char_3_4:
 :- mode int__to_float(in, out) is det.
 */
 mercury__int__to_float_2_0:
-	{ r2 = float_to_word( (Float) r1 );
+	{ r2 = float_to_word( (Float) (Integer) r1 );
 	  proceed();
 	}
 
