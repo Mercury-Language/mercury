@@ -300,6 +300,18 @@
 :- pred >(int, int).
 :- mode >(in, in) is semidet.
 
+	% the builtin < operator on ints, used in the code generated
+	% for compare/3 preds
+:- pred builtin_int_lt(int, int).
+:- mode builtin_int_lt(in, in) is semidet.
+:- external(builtin_int_lt/2).
+
+	% the builtin > operator on ints, used in the code generated
+	% for compare/3 preds
+:- pred builtin_int_gt(int, int).
+:- mode builtin_int_gt(in, in) is semidet.
+:- external(builtin_int_gt/2).
+
 % The types term and const should be defined in term.m, but we define them here
 % since they're need for implementation of term_to_type/2 and type_to_term/2.
 
