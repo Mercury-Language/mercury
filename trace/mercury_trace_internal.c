@@ -447,6 +447,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_debug_vars;
 static	MR_TraceCmdFunc	MR_trace_cmd_table_io;
 static	MR_TraceCmdFunc	MR_trace_cmd_proc_stats;
 static	MR_TraceCmdFunc	MR_trace_cmd_label_stats;
+static	MR_TraceCmdFunc	MR_trace_cmd_var_name_stats;
 static	MR_TraceCmdFunc	MR_trace_cmd_proc_body;
 static	MR_TraceCmdFunc	MR_trace_cmd_print_optionals;
 static	MR_TraceCmdFunc	MR_trace_cmd_unhide_events;
@@ -3779,6 +3780,34 @@ MR_trace_cmd_label_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_var_name_stats(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	if (word_count == 1) {
+		MR_var_name_stats(MR_mdb_out);
+	} else if (word_count == 2) {
+		FILE	*fp;
+
+		fp = fopen(words[1], "w");
+		if (fp == NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
+				"mdb: error opening `%s': %s.\n",
+				words[1], strerror(errno));
+			return KEEP_INTERACTING;
+		}
+
+		MR_var_name_stats(fp);
+		(void) fclose(fp);
+	} else {
+		MR_trace_usage("developer", "var_name_stats");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_print_optionals(char **words, int word_count,
 	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 	MR_Event_Details *event_details, MR_Code **jumpaddr)
@@ -6989,6 +7018,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "developer", "proc_stats", MR_trace_cmd_proc_stats,
 		NULL, MR_trace_filename_completer },
 	{ "developer", "label_stats", MR_trace_cmd_label_stats,
+		NULL, MR_trace_filename_completer },
+	{ "developer", "var_name_stats", MR_trace_cmd_var_name_stats,
 		NULL, MR_trace_filename_completer },
 	{ "developer", "print_optionals", MR_trace_cmd_print_optionals,
 		MR_trace_on_off_args, MR_trace_null_completer },

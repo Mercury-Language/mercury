@@ -164,6 +164,14 @@ extern	void	MR_proc_layout_stats(FILE *fp);
 
 extern	void	MR_label_layout_stats(FILE *fp);
 
+/*
+** MR_var_name_stats(fp):
+**	Prints statistics about the space occupied by the variable names
+**	in the layout structures of the program.
+*/
+
+extern	void	MR_var_name_stats(FILE *fp);
+
 /* A Readline completer for module names. */
 extern  MR_Completer_List *MR_trace_module_completer(const char *, size_t);
 

@@ -1007,7 +1007,9 @@ MR_label_layout_stats(FILE *fp)
 	const MR_Module_Layout		*module_layout;
 	const MR_Module_File_Layout	*file_layout;
 	const MR_Label_Layout		*label_layout;
-	int				module_num, file_num, label_num;
+	int				module_num;
+	int				file_num;
+	int				label_num;
 	MR_Trace_Port			port;
 	int				total;
 	int				histogram[MR_PORT_NUM_PORTS];
@@ -1052,4 +1054,76 @@ MR_label_layout_stats(FILE *fp)
 			((float) 100 * histogram[port]) / total);
 	}
 	fprintf(fp, "%s %10d\n", "all ", total);
+}
+
+void
+MR_var_name_stats(FILE *fp)
+{
+	const MR_Module_Layout		*module_layout;
+	const MR_Proc_Layout		*proc_layout;
+	const MR_uint_least32_t		*var_names;
+	int				module_num;
+	int				proc_num;
+	int				var_num;
+	int				num_var_nums;
+	int				total_string_table_bytes;
+	int				total_var_num_table_entries;
+	int				total_used_var_num_table_entries;
+	int				total_unused_var_num_table_entries;
+	int				total_num_procs;
+
+	total_string_table_bytes = 0;
+	total_var_num_table_entries = 0;
+	total_used_var_num_table_entries = 0;
+	total_num_procs = 0;
+
+	for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+		module_layout = MR_module_infos[module_num];
+
+		total_string_table_bytes +=
+			module_layout->MR_ml_string_table_size;
+
+		for (proc_num = 0;
+			proc_num < module_layout->MR_ml_proc_count;
+			proc_num++)
+		{
+			proc_layout = module_layout->MR_ml_procs[proc_num];
+			total_num_procs += 1;
+
+			if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
+				continue;
+			}
+
+			var_names = proc_layout->MR_sle_used_var_names;
+			num_var_nums =
+				proc_layout->MR_sle_max_named_var_num + 1;
+
+			total_var_num_table_entries += num_var_nums;
+			for (var_num = 0; var_num < num_var_nums; var_num++) {
+				if (var_names[var_num] != 0) {
+					total_used_var_num_table_entries++;
+				}
+			}
+		}
+	}
+
+	fprintf(fp, "%d modules, %d bytes in string tables, average %.2f\n",
+		MR_module_info_next, total_string_table_bytes,
+		(float) total_string_table_bytes / MR_module_info_next);
+	fprintf(fp, "%d procedures, %d var numbers, average %.2f\n",
+		total_num_procs, total_var_num_table_entries,
+		(float) total_var_num_table_entries / total_num_procs);
+	fprintf(fp, "%d procedures, %d used var numbers, average %.2f\n",
+		total_num_procs, total_used_var_num_table_entries,
+		(float) total_used_var_num_table_entries / total_num_procs);
+	fprintf(fp, "%d var numbers, %d used, average %.2f%%\n",
+		total_var_num_table_entries,
+		total_used_var_num_table_entries,
+		(float) 100 * total_used_var_num_table_entries /
+			total_var_num_table_entries);
+	total_unused_var_num_table_entries =
+		total_var_num_table_entries - total_used_var_num_table_entries;
+	fprintf(fp, "%d unused var numbers, %d bytes\n",
+		total_unused_var_num_table_entries,
+		4 * total_unused_var_num_table_entries);
 }

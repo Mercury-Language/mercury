@@ -53,6 +53,7 @@
 :- implementation.
 
 :- import_module backend_libs__rtti.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
@@ -73,7 +74,7 @@
 :- import_module parse_tree__prog_util.
 
 :- import_module std_util, bool, char, string, int, require.
-:- import_module map, term, set, varset.
+:- import_module map, term, set, counter, varset.
 
 %---------------------------------------------------------------------------%
 
@@ -102,7 +103,7 @@ stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 	LayoutInfo0 = stack_layout_info(ModuleInfo0,
 		AgcLayout, TraceLayout, ProcIdLayout,
 		StaticCodeAddr, [], [], [], LayoutLabels0, [],
-		StringTable0, LabelTables0, map__init, StaticCellInfo0),
+		StringTable0, LabelTables0, StaticCellInfo0),
 	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
 	stack_layout__lookup_string_in_table("<too many variables>", _,
 		LayoutInfo1, LayoutInfo2),
@@ -292,7 +293,8 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 		VarSet, VarTypes, InternalMap, MaybeTableIoDecl, IsBeingTraced,
 		NeedsAllNames) },
 	{ map__to_assoc_list(InternalMap, Internals) },
-	stack_layout__set_cur_proc_named_vars(map__init),
+	{ compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
+		VarNumMap) },
 
 	{ code_util__extract_proc_label_from_label(EntryLabel, ProcLabel) },
 	stack_layout__get_procid_stack_layout(ProcIdLayout0),
@@ -323,9 +325,8 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 
 	{ ProcLayoutName = proc_layout(ProcLabel, Kind) },
 
-	list__foldl2(stack_layout__construct_internal_layout(ProcLayoutName),
-		Internals, [], InternalLayouts),
-	stack_layout__get_cur_proc_named_vars(NamedVars),
+	list__map_foldl(stack_layout__construct_internal_layout(ProcLayoutName,
+		VarNumMap), Internals, InternalLayouts),
 	stack_layout__get_label_tables(LabelTables0),
 	{ list__foldl(stack_layout__update_label_table, InternalLayouts,
 		LabelTables0, LabelTables) },
@@ -333,8 +334,8 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel,
 		ProcLabel, Detism, StackSlots, SuccipLoc, EvalMethod,
 		MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal, InstMap,
-		TraceSlotInfo, VarSet, VarTypes, NamedVars, MaybeTableIoDecl,
-		Kind, NeedsAllNames).
+		TraceSlotInfo, VarSet, VarTypes, MaybeTableIoDecl,
+		Kind, NeedsAllNames, VarNumMap).
 
 %---------------------------------------------------------------------------%
 
@@ -436,15 +437,15 @@ stack_layout__context_is_valid(Context) :-
 	proc_label::in, determinism::in, int::in, maybe(int)::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
 	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, map(int, string)::in, maybe(proc_table_info)::in,
-	proc_layout_kind::in, bool::in, stack_layout_info::in,
-	stack_layout_info::out) is det.
+	vartypes::in, maybe(proc_table_info)::in,
+	proc_layout_kind::in, bool::in, var_num_map::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		Detism, StackSlots, MaybeSuccipLoc, EvalMethod, MaybeCallLabel,
 		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, UsedVarNames, MaybeTableInfo, Kind,
-		NeedsAllNames) -->
+		VarSet, VarTypes, MaybeTableInfo, Kind,
+		NeedsAllNames, VarNumMap) -->
 	{
 		MaybeSuccipLoc = yes(Location)
 	->
@@ -503,8 +504,8 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		{ Kind = proc_layout_exec_trace(_) },
 		stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod,
 			MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
-			InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNames,
-			MaybeTableInfo, NeedsAllNames, ExecTrace),
+			InstMap, TraceSlotInfo, VarSet, VarTypes,
+			MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace),
 		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
 	),
 
@@ -528,17 +529,17 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
 	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, map(int, string)::in, maybe(proc_table_info)::in,
-	bool::in, proc_layout_exec_trace::out,
+	vartypes::in, maybe(proc_table_info)::in, bool::in,
+	var_num_map::in, proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, UsedVarNameMap, MaybeTableInfo,
-		NeedsAllNames, ExecTrace, !Info) :-
-	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
+		_VarSet, VarTypes, MaybeTableInfo, NeedsAllNames, VarNumMap,
+		ExecTrace, !Info) :-
+	stack_layout__construct_var_name_vector(VarNumMap,
 		NeedsAllNames, MaxVarNum, VarNameVector, !Info),
-	list__map(term__var_to_int, HeadVars, HeadVarNumVector),
+	list__map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
 	(
 		MaybeGoal = no,
 		MaybeProcRepRval = no
@@ -585,28 +586,36 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
 		MaybeCallTableSlot).
 
-:- pred stack_layout__construct_var_name_vector(prog_varset::in,
-	map(int, string)::in, bool::in, int::out, list(int)::out,
+:- pred stack_layout__construct_var_name_vector(var_num_map::in,
+	bool::in, int::out, list(int)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, NeedsAllNames,
-		Count, Offsets, !Info) :-
+stack_layout__construct_var_name_vector(VarNumMap, NeedsAllNames, MaxVarNum,
+		Offsets, !Info) :-
+	map__values(VarNumMap, VarNames0),
 	(
 		NeedsAllNames = yes,
-		varset__var_name_list(VarSet, VarNameList),
-		list__map(stack_layout__convert_var_name_to_int,
-			VarNameList, VarNames)
+		VarNames = VarNames0
 	;
 		NeedsAllNames = no,
-		map__to_assoc_list(UsedVarNameMap, VarNames)
+		list__filter(var_has_name, VarNames0, VarNames)
 	),
-	( VarNames = [FirstVar - _ | _] ->
-		stack_layout__construct_var_name_rvals(VarNames, 1,
-			FirstVar, Count, Offsets, !Info)
+	list__sort(VarNames, SortedVarNames),
+	( SortedVarNames = [FirstVarNum - _ | _] ->
+		MaxVarNum0 = FirstVarNum,
+		stack_layout__construct_var_name_rvals(SortedVarNames, 1,
+			MaxVarNum0, MaxVarNum, Offsets, !Info)
 	;
-		Count = 0,
+			% Since variable numbers start at 1, MaxVarNum = 0
+			% implies an empty array.
+		MaxVarNum = 0,
 		Offsets = []
 	).
+
+:- pred var_has_name(pair(int, string)::in) is semidet.
+
+var_has_name(_VarNum - VarName) :-
+	VarName \= "".
 
 :- pred stack_layout__construct_var_name_rvals(assoc_list(int, string)::in,
 	int::in, int::in, int::out, list(int)::out,
@@ -628,17 +637,116 @@ stack_layout__construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
 
 %---------------------------------------------------------------------------%
 
+% A var_num_map maps each variable that occurs in any of a procedure's layout
+% structures to a number that uniquely identifies that variable, and to its
+% name.
+%
+% The integer returned by term__var_to_int are a dense set when we consider
+% all the original variables of a procedure. However, it can become less dense
+% when an optimization removes all references to a variable, and becomes less
+% dense still when we consider only variables that occur in a layout structure.
+% This is why we allocate our own id numbers.
+
+:- type var_num_map	== map(prog_var, pair(int, string)).
+
+:- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
+	assoc_list(label, internal_layout_info)::in, maybe(hlds_goal)::in,
+	var_num_map::out) is det.
+
+compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal, VarNumMap) :-
+	VarNumMap0 = map__init,
+	Counter0 = counter__init(1),	% to match term__var_supply_init
+	(
+		MaybeGoal = yes(Goal),
+		goal_util__goal_vars(Goal, GoalVarSet),
+		set__to_sorted_list(GoalVarSet, GoalVars),
+		list__foldl2(add_var_to_var_number_map(VarSet), GoalVars,
+			VarNumMap0, VarNumMap1, Counter0, Counter1)
+	;
+		MaybeGoal = no,
+		VarNumMap1 = VarNumMap0,
+		Counter1 = Counter0
+	),
+	list__foldl2(add_var_to_var_number_map(VarSet), HeadVars,
+		VarNumMap1, VarNumMap2, Counter1, Counter2),
+	list__foldl2(internal_var_number_map, Internals, VarNumMap2, VarNumMap,
+		Counter2, _Counter).
+
+:- pred internal_var_number_map(pair(label, internal_layout_info)::in,
+	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+internal_var_number_map(_Label - Internal, !VarNumMap, !Counter) :-
+	Internal = internal_layout_info(MaybeTrace, MaybeResume, MaybeReturn),
+	(
+		MaybeTrace = yes(Trace),
+		Trace = trace_port_layout_info(_, _, _, _, TraceLayout),
+		label_layout_var_number_map(TraceLayout, !VarNumMap, !Counter)
+	;
+		MaybeTrace = no
+	),
+	(
+		MaybeResume = yes(ResumeLayout),
+		label_layout_var_number_map(ResumeLayout, !VarNumMap, !Counter)
+	;
+		MaybeResume = no
+	),
+	(
+		MaybeReturn = yes(Return),
+		Return = return_layout_info(_, ReturnLayout),
+		label_layout_var_number_map(ReturnLayout, !VarNumMap, !Counter)
+	;
+		MaybeReturn = no
+	).
+
+:- pred label_layout_var_number_map(layout_label_info::in,
+	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
+	LabelLayout = layout_label_info(VarInfoSet, _),
+	VarInfos = set__to_sorted_list(VarInfoSet),
+	FindVar = (pred(VarInfo::in, Var - Name::out) is semidet :-
+		VarInfo = var_info(_, LiveValueType),
+		LiveValueType = var(Var, Name, _, _)
+	),
+	list__filter_map(FindVar, VarInfos, VarsNames),
+	list__foldl2(add_named_var_to_var_number_map, VarsNames,
+		!VarNumMap, !Counter).
+
+:- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
+	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
+	( varset__search_name(VarSet, Var, VarName) ->
+		Name = VarName
+	;
+		Name = ""
+	),
+	add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter).
+
+:- pred add_named_var_to_var_number_map(pair(prog_var, string)::in,
+	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
+
+add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
+	( map__search(!.VarNumMap, Var, _) ->
+		% Name shouldn't differ from the name recorded in !.VarNumMap.
+		true
+	;
+		counter__allocate(VarNum, !Counter),
+		map__det_insert(!.VarNumMap, Var, VarNum - Name, !:VarNumMap)
+	).
+
+%---------------------------------------------------------------------------%
+
 	% Construct the layout describing a single internal label
 	% for accurate GC and/or execution tracing.
 
 :- pred stack_layout__construct_internal_layout(layout_name::in,
-	pair(label, internal_layout_info)::in,
-	list({label, label_vars, internal_layout_info})::in,
-	list({label, label_vars, internal_layout_info})::out,
+	var_num_map::in, pair(label, internal_layout_info)::in,
+	{label, label_vars, internal_layout_info}::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
-		!LabelLayouts, !Info) :-
+stack_layout__construct_internal_layout(ProcLayoutName, VarNumMap,
+		Label - Internal, LabelLayout, !Info) :-
 	Internal = internal_layout_info(Trace, Resume, Return),
 	(
 		Trace = no,
@@ -752,9 +860,9 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 			TypeVarMap0),
 		map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap,
 			TypeVarMap),
-		stack_layout__construct_livelval_rvals(LiveVarSet, TypeVarMap,
-			EncodedLength, LiveValRval, NamesRval, TypeParamRval,
-			!Info),
+		stack_layout__construct_livelval_rvals(LiveVarSet, VarNumMap,
+			TypeVarMap, EncodedLength, LiveValRval, NamesRval,
+			TypeParamRval, !Info),
 		VarInfo = label_var_info(EncodedLength, LiveValRval, NamesRval,
 			TypeParamRval),
 		MaybeVarInfo = yes(VarInfo),
@@ -767,19 +875,20 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 	LayoutName = label_layout(Label, LabelVars),
 	stack_layout__add_internal_layout_data(CData, Label, LayoutName,
 		!Info),
-	!:LabelLayouts = [{Label, LabelVars, Internal} | !.LabelLayouts].
+	LabelLayout = {Label, LabelVars, Internal}.
 
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__construct_livelval_rvals(set(var_info)::in,
-	map(tvar, set(layout_locn))::in, int::out, rval::out, rval::out,
-	rval::out, stack_layout_info::in, stack_layout_info::out) is det.
+	var_num_map::in, map(tvar, set(layout_locn))::in, int::out,
+	rval::out, rval::out, rval::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, EncodedLength,
-		LiveValRval, NamesRval, TypeParamRval, !Info) :-
+stack_layout__construct_livelval_rvals(LiveLvalSet, VarNumMap, TVarLocnMap,
+		EncodedLength, LiveValRval, NamesRval, TypeParamRval, !Info) :-
 	set__to_sorted_list(LiveLvalSet, LiveLvals),
 	stack_layout__sort_livevals(LiveLvals, SortedLiveLvals),
-	stack_layout__construct_liveval_arrays(SortedLiveLvals,
+	stack_layout__construct_liveval_arrays(SortedLiveLvals, VarNumMap,
 		EncodedLength, LiveValRval, NamesRval, !Info),
 	StaticCellInfo0 = !.Info ^ static_cell_info,
 	stack_layout__construct_tvar_vector(TVarLocnMap,
@@ -936,13 +1045,13 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	% and a corresponding vector of variable names.
 
 :- pred stack_layout__construct_liveval_arrays(list(var_info)::in,
-	int::out, rval::out, rval::out,
+	var_num_map::in, int::out, rval::out, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
+stack_layout__construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 		TypeLocnVector, NumVector, !Info) :-
 	int__pow(2, stack_layout__short_count_bits, BytesLimit),
-	stack_layout__construct_liveval_array_infos(VarInfos,
+	stack_layout__construct_liveval_array_infos(VarInfos, VarNumMap,
 		0, BytesLimit, IntArrayInfo, ByteArrayInfo, !Info),
 
 	list__length(IntArrayInfo, IntArrayLength),
@@ -1000,17 +1109,18 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 associate_type(LldsType, Rval, Rval - LldsType).
 
 :- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
-	int::in, int::in,
+	var_num_map::in, int::in, int::in,
 	list(liveval_array_info)::out, list(liveval_array_info)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_array_infos([], _, _, [], [], !Info).
-stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
+stack_layout__construct_liveval_array_infos([], _, _, _, [], [], !Info).
+stack_layout__construct_liveval_array_infos([VarInfo | VarInfos], VarNumMap,
 		BytesSoFar, BytesLimit, IntVars, ByteVars, !Info) :-
 	VarInfo = var_info(Locn, LiveValueType),
 	stack_layout__represent_live_value_type(LiveValueType, TypeRval,
 		TypeRvalType, !Info),
-	stack_layout__construct_liveval_num_rval(VarInfo, VarNumRval, !Info),
+	stack_layout__construct_liveval_num_rval(VarNumMap, VarInfo,
+		VarNumRval, !Info),
 	(
 		BytesSoFar < BytesLimit,
 		stack_layout__represent_locn_as_byte(Locn, LocnByteRval)
@@ -1018,48 +1128,37 @@ stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
 		Var = live_array_info(LocnByteRval, TypeRval, TypeRvalType,
 			VarNumRval),
 		stack_layout__construct_liveval_array_infos(VarInfos,
-			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0, !Info),
+			VarNumMap, BytesSoFar + 1, BytesLimit,
+			IntVars, ByteVars0, !Info),
 		ByteVars = [Var | ByteVars0]
 	;
 		stack_layout__represent_locn_as_int_rval(Locn, LocnRval),
 		Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
 			VarNumRval),
 		stack_layout__construct_liveval_array_infos(VarInfos,
-			BytesSoFar, BytesLimit, IntVars0, ByteVars, !Info),
+			VarNumMap, BytesSoFar, BytesLimit,
+			IntVars0, ByteVars, !Info),
 		IntVars = [Var | IntVars0]
 	).
 
-:- pred stack_layout__construct_liveval_num_rval(var_info::in, rval::out,
+:- pred stack_layout__construct_liveval_num_rval(var_num_map::in,
+	var_info::in, rval::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_num_rval(var_info(_, LiveValueType),
+stack_layout__construct_liveval_num_rval(VarNumMap, var_info(_, LiveValueType),
 		VarNumRval, !Info) :-
-	( LiveValueType = var(Var, Name, _, _) ->
-		stack_layout__convert_var_to_int(Var, VarNum),
-		VarNumRval = const(int_const(VarNum)),
-		stack_layout__get_cur_proc_named_vars(NamedVars0, !Info),
-		( map__insert(NamedVars0, VarNum, Name, NamedVars) ->
-			stack_layout__set_cur_proc_named_vars(NamedVars,
-				!Info)
-		;
-			% The variable has been put into the map already at
-			% another label.
-			true
-		)
+	( LiveValueType = var(Var, _, _, _) ->
+		stack_layout__convert_var_to_int(VarNumMap, Var, VarNum),
+		VarNumRval = const(int_const(VarNum))
 	;
 		VarNumRval = const(int_const(0))
 	).
 
-:- pred stack_layout__convert_var_name_to_int(pair(prog_var, string)::in,
-	pair(int, string)::out) is det.
+:- pred stack_layout__convert_var_to_int(var_num_map::in, prog_var::in,
+	int::out) is det.
 
-stack_layout__convert_var_name_to_int(Var - Name, VarNum - Name) :-
-	stack_layout__convert_var_to_int(Var, VarNum).
-
-:- pred stack_layout__convert_var_to_int(prog_var::in, int::out) is det.
-
-stack_layout__convert_var_to_int(Var, VarNum) :-
-	term__var_to_int(Var, VarNum0),
+stack_layout__convert_var_to_int(VarNumMap, Var, VarNum) :-
+	map__lookup(VarNumMap, Var, VarNum0 - _),
 		% The variable number has to fit into two bytes.
 		% We reserve the largest such number (Limit)
 		% to mean that the variable number is too large
@@ -1531,12 +1630,6 @@ stack_layout__represent_determinism(Detism, Code) :-
 					   % contributes labels to this module
 					   % to a table describing those
 					   % labels.
-		cur_proc_named_vars	:: map(int, string),
-					   % Maps the number of each variable
-					   % in the current procedure whose
-					   % name is of interest in an internal
-					   % label's layout structure to the
-					   % name of that variable.
 		static_cell_info	:: static_cell_info
 	).
 
@@ -1573,9 +1666,6 @@ stack_layout__represent_determinism(Detism, Code) :-
 :- pred stack_layout__get_label_tables(map(string, label_table)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_cur_proc_named_vars(map(int, string)::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
 :- pred stack_layout__get_static_cell_info(static_cell_info::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1590,7 +1680,6 @@ stack_layout__get_internal_layout_data(LI ^ internal_layouts, LI, LI).
 stack_layout__get_label_set(LI ^ label_set, LI, LI).
 stack_layout__get_string_table(LI ^ string_table, LI, LI).
 stack_layout__get_label_tables(LI ^ label_tables, LI, LI).
-stack_layout__get_cur_proc_named_vars(LI ^ cur_proc_named_vars, LI, LI).
 stack_layout__get_static_cell_info(LI ^ static_cell_info, LI, LI).
 
 :- pred stack_layout__add_table_data(layout_data::in,
@@ -1637,16 +1726,11 @@ stack_layout__add_internal_layout_data(InternalLayout, Label, LayoutName,
 :- pred stack_layout__set_label_tables(map(string, label_table)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__set_cur_proc_named_vars(map(int, string)::in,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
 :- pred stack_layout__set_static_cell_info(static_cell_info::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__set_string_table(ST, LI0, LI0 ^ string_table := ST).
 stack_layout__set_label_tables(LT, LI0, LI0 ^ label_tables := LT).
-stack_layout__set_cur_proc_named_vars(NV, LI0,
-	LI0 ^ cur_proc_named_vars := NV).
 stack_layout__set_static_cell_info(SCI, LI0,
 	LI0 ^ static_cell_info := SCI).
 

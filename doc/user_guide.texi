@@ -3315,6 +3315,16 @@ Prints statistics about label layout structures in the program.
 Prints statistics about label layout structures in the program
 to the file @var{filename}.
 @sp 1
+@item var_name_stats
+@kindex var_name_stats (mdb command)
+Prints statistics about the memory requirements of variable names
+in the layout structures in the program.
+@sp 1
+@item var_name_stats @var{filename}
+Prints statistics about the memory requirements of variable names
+in the layout structures in the program
+to the file @var{filename}.
+@sp 1
 @item print_optionals
 @kindex print_optionals (mdb command)
 Reports whether optionally-printed values such as typeinfos
