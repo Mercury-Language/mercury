@@ -741,7 +741,7 @@ report_multiply_defined(ErrorContext - Context, Id, IdType, MatchIds) -->
 	write_id(Id),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  The possible matches are:\n"),
+	io__write_string("  The possible matches are:"),
 	write_match_list(Context, MatchIds),
 	io__write_string(".\n").
 
@@ -785,6 +785,7 @@ id_type_to_string(inst_id, "inst").
 
 write_match_list(_, []) --> [].
 write_match_list(Context, [Match | Matches]) -->
+	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("    "),
 	write_id(Match),
