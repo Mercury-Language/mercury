@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 %
 % The job of this module is to delete dead predicates, procedures 
-% and base_gen_info structures from the HLDS.
+% and type_ctor_gen_info structures from the HLDS.
 %
 % It also computes the usage counts that inlining.m uses for the
 % `--inline-single-use' option.
