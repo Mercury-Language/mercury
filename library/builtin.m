@@ -415,6 +415,9 @@ call_rtti_generic_unify(X, Y) :-
 call_rtti_generic_compare(Res, X, Y) :-
 	rtti_implementation__generic_compare(Res, X, Y).
 
+:- pragma foreign_decl("MC++", "
+#using ""builtin__csharp_code.dll""
+").
 :- pragma foreign_code("MC++", "
 
 static void compare_3(MR_TypeInfo TypeInfo_for_T,
@@ -425,36 +428,34 @@ static void compare_3(MR_TypeInfo TypeInfo_for_T,
 			TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m1(MR_TypeInfo TypeInfo_for_T,
+static void compare_3_m1(MR_TypeInfo TypeInfo_for_T,
 		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m2(MR_TypeInfo TypeInfo_for_T,
+static void compare_3_m2(MR_TypeInfo TypeInfo_for_T,
 		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
+static void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
 		MR_Ref(MR_ComparisonResult) Res, 
 		MR_Box X, MR_Box Y) 
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
 
-void copy_2(MR_TypeInfo TypeInfo_for_T,
+static void copy_2(MR_TypeInfo TypeInfo_for_T,
 		MR_Box X, MR_Ref(MR_Box) Y) 
 {
-	// XXX this needs to be implemented -- just using Clone() won't work
-	// because it often does shallow copies.
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+        *Y = mercury::builtin__csharp_code::mercury_code::deep_copy(X);
 }
 
-void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
+static void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 		MR_Box X, MR_Ref(MR_Box) Y) 
 {
 	copy_2(TypeInfo_for_T, X, Y);
@@ -462,6 +463,60 @@ void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 
 ").
 
+:- pragma foreign_code("C#", "
+public static object deep_copy(object o)
+{
+	System.Type t = o.GetType();
+
+	if (t.IsValueType) {
+		return o;
+	} else if (t == typeof(string)) {
+		// XXX For some reason we need to handle strings specially.
+		// It is probably something to do with the fact that they
+		// are a builtin type.
+		string s;
+		s = (string) o;
+		return s;
+	} else {
+		object n;
+
+		// This will do a bitwise shallow copy of the object.
+		n = t.InvokeMember(""MemberwiseClone"",
+			System.Reflection.BindingFlags.Instance |
+			System.Reflection.BindingFlags.NonPublic |
+			System.Reflection.BindingFlags.InvokeMethod,
+			null, o, new object[] {});
+
+		// Set each of the fields to point to a deep copy of the
+		// field.
+		deep_copy_fields(t.GetFields(
+				System.Reflection.BindingFlags.Public |
+				System.Reflection.BindingFlags.Instance),
+				n, o);
+
+		// XXX This requires that mercury.dll have
+		// System.Security.Permissions.ReflectionPermission
+		// so that the non-public fields are accessible.
+		deep_copy_fields(t.GetFields(
+				System.Reflection.BindingFlags.NonPublic |
+				System.Reflection.BindingFlags.Instance),
+				n, o);
+
+		return n;
+	}
+}
+
+public static void deep_copy_fields(
+		System.Reflection.FieldInfo[] fields, object dest, object src)
+{
+        // XXX We don't handle init-only fields, but I can't think of a way.
+        foreach (System.Reflection.FieldInfo f in fields)
+        {
+            f.SetValue(dest, deep_copy(f.GetValue(src)));
+        }
+}
+
+").
 
 :- pragma foreign_code("MC++", "
 
