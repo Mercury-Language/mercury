@@ -2899,15 +2899,6 @@ if the program was built in a parallel grade.
 @c Repeats execution of the entry point procedure @var{num} times,
 @c to enable accurate timing.
 
-@sp 1
-@item -s @var{area} @var{size}
-Sets the size of one of the runtime system's memory areas.
-@var{area} must be one of @samp{h} (standing for heap),
-@samp{d} (standing for deterministic stack),
-@samp{n} (standing for nondeterministic stack)
-and, in grades with trailing, @samp{t} (standing for trail).
-@var{size} specifies the size of that area, in kilobytes.
-
 @c @item -t
 @c Tells the runtime system to measure the time taken by
 @c the (required number of repetitions of) the program,
@@ -2938,10 +2929,37 @@ so on Windows you must explicitly specify @samp{-Tr}.
 @c @item -x
 @c Tells the Boehm collector not to perform any garbage collection.
 
-@c @item -z @var{area} @var{size}
-@c Sets the size of the redzone on one of the runtime system's memory areas.
-@c The @var{area} and @var{size} parameters have the same meaning
-@c as they do for the @samp{-s} option.
+@sp 1
+@item --heap-size=@var{size}
+Sets the size of the heap to @var{size} kilobytes.
+
+@sp 1
+@item --detstack-size=@var{size}
+Sets the size of the det stack to @var{size} kilobytes.
+
+@sp 1
+@item --nondetstack-size=@var{size}
+Sets the size of the nondet stack to @var{size} kilobytes.
+
+@sp 1
+@item --trail-size=@var{size}
+Sets the size of the trail to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --heap-redzone-size=@var{size}
+@c Sets the size of the redzone on the heap to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --detstack-redzone-size=@var{size}
+@c Sets the size of the redzone on the det stack to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --nondetstack-redzone-size=@var{size}
+@c Sets the size of the redzone on the nondet stack to @var{size} kilobytes.
+
+@c @sp 1
+@c @item --trail-redzone-size=@var{size}
+@c Sets the size of the redzone on the trail to @var{size} kilobytes.
 
 @end table
 

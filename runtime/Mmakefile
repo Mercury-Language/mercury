@@ -105,6 +105,8 @@ CFILES		= 	\
 			mercury_dummy.c		\
 			mercury_engine.c	\
 			mercury_float.c		\
+			mercury_getopt.c	\
+			mercury_getopt1.c	\
 			mercury_grade.c		\
 			mercury_heap_profile.c	\
 			mercury_ho_call.c	\

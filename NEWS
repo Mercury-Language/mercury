@@ -462,3 +462,4 @@ Changes to the Mercury implementation:
 
 * XXX remove the X debugger command
 
+* We've made the MERCURY_OPTIONS environment variable somewhat easier to use.

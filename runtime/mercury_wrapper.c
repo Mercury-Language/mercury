@@ -33,8 +33,8 @@ ENDINIT
 #include	<stdio.h>
 #include	<string.h>
 
-#include	"mercury_timing.h"
 #include	"mercury_getopt.h"
+#include	"mercury_timing.h"
 #include	"mercury_init.h"
 #include	"mercury_dummy.h"
 #include	"mercury_trace.h"
@@ -46,34 +46,33 @@ ENDINIT
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef MR_DEBUG_AGC
-  size_t		heap_size =      	128;
+  size_t		heap_size =       128;
 #else
-  size_t		heap_size =		4096;
+  size_t		heap_size =	 4096;
 #endif
-size_t		detstack_size =  	2048;
-size_t		nondstack_size =  	128;
-size_t		solutions_heap_size =	1024;
-size_t		global_heap_size =	1024;
-size_t		trail_size =		128;
-size_t		debug_heap_size =	4096;
+size_t		detstack_size =  	 2048;
+size_t		nondstack_size =  	  128;
+size_t		solutions_heap_size =	 1024;
+size_t		global_heap_size =	 1024;
+size_t		trail_size =		  128;
+size_t		debug_heap_size =	 4096;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef NATIVE_GC
-  size_t		heap_zone_size =	96;
+  size_t		heap_zone_size =   96;
 #else
-  size_t		heap_zone_size =	16;
+  size_t		heap_zone_size =   16;
 #endif
-size_t		detstack_zone_size =	16;
-size_t		nondstack_zone_size =	16;
+size_t		detstack_zone_size =	   16;
+size_t		nondstack_zone_size =	   16;
 size_t		solutions_heap_zone_size = 16;
-size_t		global_heap_zone_size =	16;
-size_t		trail_zone_size =	16;
-size_t		debug_heap_zone_size =	16;
+size_t		global_heap_zone_size =	   16;
+size_t		trail_zone_size =	   16;
+size_t		debug_heap_zone_size =	   16;
 
-/* primary cache size to optimize for, in kilobytes */
-/* (but we later multiply by 1024 to convert to bytes) */
-size_t		pcache_size =    8192;
+/* primary cache size to optimize for, in bytes */
+size_t		pcache_size =	         8192;
 
 /* other options */
 
@@ -431,11 +430,11 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 } /* end make_argv() */
 
 
-/**  
- **  process_args() is a function that sets some global variables from the
- **  command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
- **  `progname' is program name.
- **/
+/*  
+**  process_args() is a function that sets some global variables from the
+**  command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
+**  `progname' is program name.
+*/
 
 static void
 process_args( int argc, char ** argv)
@@ -446,10 +445,10 @@ process_args( int argc, char ** argv)
 }
 
 
-/**
- **  process_environment_options() is a function to parse the MERCURY_OPTIONS
- **  environment variable.  
- **/ 
+/*
+**  process_environment_options() is a function to parse the MERCURY_OPTIONS
+**  environment variable.  
+*/ 
 
 static void
 process_environment_options(void)
@@ -458,19 +457,23 @@ process_environment_options(void)
 
 	options = getenv("MERCURY_OPTIONS");
 	if (options != NULL) {
-		char	*arg_str, **argv;
-		char	*dummy_command_line;
-		int	argc;
-		int	c;
+		const char	*cmd;
+		char		*arg_str, **argv;
+		char		*dummy_command_line;
+		int		argc;
+		int		c;
 
 		/*
-		   getopt() expects the options to start in argv[1],
-		   not argv[0], so we need to insert a dummy program
-		   name (we use "x") at the start of the options before
-		   passing them to make_argv() and then to getopt().
+		** getopt() expects the options to start in argv[1],
+		** not argv[0], so we need to insert a dummy program
+		** name (we use "mercury_runtime") at the start of the
+		** options before passing them to make_argv() and then
+		** to getopt().
 		*/
-		dummy_command_line = make_many(char, strlen(options) + 3);
-		strcpy(dummy_command_line, "x ");
+		cmd = "mercury_runtime ";
+		dummy_command_line = make_many(char,
+					strlen(options) + strlen(cmd) + 1);
+		strcpy(dummy_command_line, cmd);
 		strcat(dummy_command_line, options);
 		
 		make_argv(dummy_command_line, &arg_str, &argv, &argc);
@@ -481,19 +484,98 @@ process_environment_options(void)
 		oldmem(arg_str);
 		oldmem(argv);
 	}
-
 }
+
+enum MR_long_option {
+	MR_HEAP_SIZE,
+	MR_DETSTACK_SIZE,
+	MR_NONDETSTACK_SIZE,
+	MR_TRAIL_SIZE,
+	MR_HEAP_REDZONE_SIZE,
+	MR_DETSTACK_REDZONE_SIZE,
+	MR_NONDETSTACK_REDZONE_SIZE,
+	MR_TRAIL_REDZONE_SIZE
+};
+
+struct MR_option MR_long_opts[] = {
+	{ "heap-size", 			1, 0, MR_HEAP_SIZE },
+	{ "detstack-size", 		1, 0, MR_DETSTACK_SIZE },
+	{ "nondetstack-size", 		1, 0, MR_NONDETSTACK_SIZE },
+	{ "trail-size", 		1, 0, MR_TRAIL_SIZE },
+	{ "heap-redzone-size", 		1, 0, MR_HEAP_REDZONE_SIZE },
+	{ "detstack-redzone-size", 	1, 0, MR_DETSTACK_REDZONE_SIZE },
+	{ "nondetstack-redzone-size", 	1, 0, MR_NONDETSTACK_REDZONE_SIZE },
+	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
+};
 
 static void
 process_options(int argc, char **argv)
 {
-	unsigned long size;
-	int c;
+	unsigned long	size;
+	int		c;
+	int		long_index;
 
-	while ((c = getopt(argc, argv, "acC:d:D:P:pr:s:tT:xz:")) != EOF)
+	while ((c = MR_getopt_long(argc, argv, "acC:d:D:P:pr:tT:x",
+		MR_long_opts, &long_index)) != EOF)
 	{
 		switch (c)
 		{
+
+		case MR_HEAP_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			heap_size = size;
+			break;
+
+		case MR_DETSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			detstack_size = size;
+			break;
+
+		case MR_NONDETSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			nondstack_size = size;
+			break;
+
+		case MR_TRAIL_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			trail_size = size;
+			break;
+
+		case MR_HEAP_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			heap_zone_size = size;
+			break;
+
+		case MR_DETSTACK_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			detstack_zone_size = size;
+			break;
+
+		case MR_NONDETSTACK_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			nondstack_zone_size = size;
+			break;
+
+		case MR_TRAIL_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			trail_zone_size = size;
+			break;
 
 		case 'a':
 			benchmark_all_solns = TRUE;
@@ -504,7 +586,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'C':
-			if (sscanf(optarg, "%lu", &size) != 1)
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
 				usage();
 
 			pcache_size = size * 1024;
@@ -512,35 +594,35 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'd':	
-			if (streq(optarg, "b"))
+			if (streq(MR_optarg, "b"))
 				nondstackdebug = TRUE;
-			else if (streq(optarg, "c"))
+			else if (streq(MR_optarg, "c"))
 				calldebug    = TRUE;
-			else if (streq(optarg, "d"))
+			else if (streq(MR_optarg, "d"))
 				detaildebug  = TRUE;
-			else if (streq(optarg, "g"))
+			else if (streq(MR_optarg, "g"))
 				gotodebug    = TRUE;
-			else if (streq(optarg, "G"))
+			else if (streq(MR_optarg, "G"))
 #ifdef CONSERVATIVE_GC
 			GC_quiet = FALSE;
 #else
-			fatal_error("-dG: GC not enabled");
+			; /* ignore inapplicable option */
 #endif
-			else if (streq(optarg, "s"))
+			else if (streq(MR_optarg, "s"))
 				detstackdebug   = TRUE;
-			else if (streq(optarg, "h"))
+			else if (streq(MR_optarg, "h"))
 				heapdebug    = TRUE;
-			else if (streq(optarg, "f"))
+			else if (streq(MR_optarg, "f"))
 				finaldebug   = TRUE;
-			else if (streq(optarg, "p"))
+			else if (streq(MR_optarg, "p"))
 				progdebug   = TRUE;
-			else if (streq(optarg, "m"))
+			else if (streq(MR_optarg, "m"))
 				memdebug    = TRUE;
-			else if (streq(optarg, "r"))
+			else if (streq(MR_optarg, "r"))
 				sregdebug    = TRUE;
-			else if (streq(optarg, "t"))
+			else if (streq(MR_optarg, "t"))
 				tracedebug   = TRUE;
-			else if (streq(optarg, "a")) {
+			else if (streq(MR_optarg, "a")) {
 				calldebug      = TRUE;
 				nondstackdebug = TRUE;
 				detstackdebug  = TRUE;
@@ -562,10 +644,10 @@ process_options(int argc, char **argv)
 		case 'D':
 			MR_trace_enabled = TRUE;
 
-			if (streq(optarg, "i"))
+			if (streq(MR_optarg, "i"))
 				MR_trace_handler = MR_TRACE_INTERNAL;
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
-			else if (streq(optarg, "e"))
+			else if (streq(MR_optarg, "e"))
 				MR_trace_handler = MR_TRACE_EXTERNAL;
 #endif
 
@@ -580,7 +662,7 @@ process_options(int argc, char **argv)
 
 		case 'P':
 #ifdef	MR_THREAD_SAFE
-			if (sscanf(optarg, "%u", &MR_num_threads) != 1)
+			if (sscanf(MR_optarg, "%u", &MR_num_threads) != 1)
 				usage();
 
 			if (MR_num_threads < 1)
@@ -590,26 +672,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'r':	
-			if (sscanf(optarg, "%d", &repeats) != 1)
-				usage();
-
-			break;
-
-		case 's':
-			if (sscanf(optarg+1, "%lu", &size) != 1)
-				usage();
-
-			if (optarg[0] == 'h')
-				heap_size = size;
-			else if (optarg[0] == 'd')
-				detstack_size = size;
-			else if (optarg[0] == 'n')
-				nondstack_size = size;
-#ifdef MR_USE_TRAIL
-			else if (optarg[0] == 't')
-				trail_size = size;
-#endif
-			else
+			if (sscanf(MR_optarg, "%d", &repeats) != 1)
 				usage();
 
 			break;
@@ -627,11 +690,11 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'T':
-			if (streq(optarg, "r")) {
+			if (streq(MR_optarg, "r")) {
 				MR_time_profile_method = MR_profile_real_time;
-			} else if (streq(optarg, "v")) {
+			} else if (streq(MR_optarg, "v")) {
 				MR_time_profile_method = MR_profile_user_time;
-			} else if (streq(optarg, "p")) {
+			} else if (streq(MR_optarg, "p")) {
 				MR_time_profile_method =
 					MR_profile_user_plus_system_time;
 			} else {
@@ -646,30 +709,22 @@ process_options(int argc, char **argv)
 
 			break;
 
-		case 'z':
-			if (sscanf(optarg+1, "%lu", &size) != 1)
-				usage();
-
-			if (optarg[0] == 'h')
-				heap_zone_size = size;
-			else if (optarg[0] == 'd')
-				detstack_zone_size = size;
-			else if (optarg[0] == 'n')
-				nondstack_zone_size = size;
-#ifdef MR_USE_TRAIL
-			else if (optarg[0] == 't')
-				trail_zone_size = size;
-#endif
-			else
-				usage();
-
-			break;
-
 		default:	
 			usage();
 
 		} /* end switch */
 	} /* end while */
+
+	if (MR_optind != argc) {
+		printf("The MERCURY_OPTIONS environment variable contains "
+			"the word `%s'\n"
+			"which is not an option. Please refer to the "
+			"Environment Variables section\n"
+			"of the Mercury user's guide for details.\n",
+			argv[MR_optind]);
+		fflush(stdout);
+		exit(1);
+	}
 } /* end process_options() */
 
 static void 
