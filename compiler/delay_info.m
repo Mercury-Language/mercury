@@ -27,28 +27,54 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Sanity-check the delay_info structure.
+	%
 :- pred delay_info__check_invariant(delay_info).
 :- mode delay_info__check_invariant(in) is det.
 
+	% Initialize the delay_info structure.
+	%
 :- pred delay_info__init(delay_info).
 :- mode delay_info__init(out) is det.
 
+	% Tell the delay_info structure that we've entered a new conjunction.
+	%
 :- pred delay_info__enter_conj(delay_info, delay_info).
 :- mode delay_info__enter_conj(in, out) is det.
 
+	% Tell the delay_info structure that we've left a conjunction.
+	% This predicate returns a list of the delayed goals from that
+	% conjunction, i.e. goals which could not be scheduled.
+	%
 :- pred delay_info__leave_conj(delay_info, list(delayed_goal), delay_info).
 :- mode delay_info__leave_conj(in, out, out) is det.
 
+	% Insert a new delayed goal into the delay_info structure.
+	%
 :- pred delay_info__delay_goal(delay_info, mode_error_info,
 				hlds__goal, delay_info).
 :- mode delay_info__delay_goal(in, in, in, out) is det.
 
+	% Mark a list of variables as having been bound.
+	% This may allow a previously delayed goal to change status
+	% from "delayed" to "pending".
+	% (This predicate just calls delay_info__bind_var in a loop.)
+	%
 :- pred delay_info__bind_var_list(list(var), delay_info, delay_info).
 :- mode delay_info__bind_var_list(in, in, out) is det.
 
+	% Mark a variable as having been bound.
+	% This may allow a previously delayed goal to change status
+	% from "delayed" to "pending".
+	%
 :- pred delay_info__bind_var(delay_info, var, delay_info).
 :- mode delay_info__bind_var(in, in, out) is det.
 
+	% Check if there are any "pending" goals, and if so,
+	% select one to wake up, remove it from the delay_info,
+	% and return it.  If there are no pending goals, this
+	% predicate will fail.
+	%
 :- pred delay_info__wakeup_goal(delay_info, hlds__goal, delay_info).
 :- mode delay_info__wakeup_goal(in, out, out) is semidet.
 
