@@ -1093,9 +1093,9 @@ copy_file(Source, Destination, Res) -->
 			{ DestRes = ok(OutputStream) },
 			% XXX Depending on file size it may be
 			% faster to call the system's cp command.
-			io__binary_input_stream_foldl_io(
+			io__binary_input_stream_foldl_io(InputStream,
 				(pred(Char::in, di, uo) is det -->
-					io__write_byte(Char)
+					io__write_byte(OutputStream, Char)
 				),
 				Res),
 			io__close_binary_input(InputStream),
