@@ -143,7 +143,7 @@
 	   hash = 0;					\
 	   while(((MR_ConstString)(s))[len]) {		\
 		hash ^= (hash << 5);			\
-		hash ^= ((MR_ConstString)(s))[len];	\
+		hash ^= (MR_UnsignedChar) ((MR_ConstString)(s))[len];	\
 		len++;					\
 	   }						\
 	   hash ^= len;					\
