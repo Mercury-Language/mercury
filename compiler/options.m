@@ -64,7 +64,10 @@
 			;	cflags
 			;	link
 			;	gcc_non_local_gotos
-			;	gcc_global_registers.
+			;	gcc_global_registers
+			;	debug
+			;	optimize
+			;	grade.
 
 :- implementation.
 
@@ -105,7 +108,10 @@ option_defaults([
 	cflags			-	string(""),
 	link			-	bool(no),
 	gcc_non_local_gotos	-	bool(no),
-	gcc_global_registers	-	bool(no)
+	gcc_global_registers	-	bool(no),
+	debug			-	bool(no),
+	optimize		-	bool(no),
+	grade			-	string("")
 ]).
 
 short_option('v', 			verbose).
@@ -129,7 +135,11 @@ short_option('T', 			debug_types).
 short_option('N', 			debug_modes).
 short_option('M', 			generate_dependencies).
 short_option('c', 			compile).
+short_option('O', 			optimize).
 
+long_option("grade",			grade).
+long_option("optimize",			optimize).
+long_option("debug",			debug).
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
 long_option("verbose-error-messages",	verbose_errors).
@@ -229,14 +239,24 @@ options_help -->
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
 	io__write_string("\t-g, --generate-code\n"),
 	io__write_string("\t\tGenerate .mod code in `<module>.mod'.\n"),
+	io__write_string("\t--compile-to-C\n"),
+	io__write_string("\t\tConvert the generated .mod file to a .c file.\n"),
+	io__write_string("\t--compile\n"),
+	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
+	io__write_string("\t--link (*** NOT YET IMPLEMENTED ***)\n"),
+	io__write_string("\t\tLink the named modules to produce an executable.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
-	io__write_string("\nCode generation options (**MOSTLY NOT YET IMPLEMENTED**)\n"),
-	io__write_string("\t--follow-code\n"),
-	io__write_string("\t\tMigrate builtin goals into branched goals\n"),
-	io__write_string("\t--follow-vars\n"),
-	io__write_string("\t\tOptimise the assignment of registers in branched goals\n"),
+	io__write_string("\nCode generation options\n"),
+	io__write_string("\t--gc {none, conservative, accurate}\n"),
+	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
+	io__write_string("\t\tSpecify which method of garbage collection to use.\n"),
+	io__write_string("\t\t[Currently only `none' is implemented.]\n"),
+	io__write_string("\t--no-follow-code\n"),
+	io__write_string("\t\tDon't migrate builtin goals into branched goals\n"),
+	io__write_string("\t--no-follow-vars\n"),
+	io__write_string("\t\tDon't optimise the assignment of registers in branched goals\n"),
 	io__write_string("\t--no-reclaim-heap-on-nondet-failure\n"),
 	io__write_string("\t\tDon't reclaim heap on backtracking in nondet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-semidet-failure\n"),
@@ -245,24 +265,19 @@ options_help -->
 	io__write_string("\t\tUse GNU C's global register variables extension.\n"),
 	io__write_string("\t--gcc-non-local-gotos\n"),
 	io__write_string("\t\tUse GNU C's \"labels as values\" extension.\n"),
-	io__write_string("\t--gc {none, conservative, accurate}\n"),
-	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
-	io__write_string("\t\tSpecify which method of garbage collection to use.\n"),
 	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
 	io__write_string("\t--num-tag-bits <n>\n"),
 	io__write_string("\t\tUse <n> tag bits (used with `--tags high').\n"),
-	io__write_string("\t--compile-to-C\n"),
-	io__write_string("\t\tConvert the generated .mod file to a .c file.\n"),
-	io__write_string("\t--compile\n"),
-	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
+	io__write_string("\t--debug\n"),
+	io__write_string("\t\tEnable debugging.\n"),
+	io__write_string("\t--optimize\n"),
+	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
-	io__write_string("\t--link\n"),
-	io__write_string("\t\tLink the named modules to produce an executable.\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	io__write_string("\t-H <n>, --heap-space <n>\n"),
