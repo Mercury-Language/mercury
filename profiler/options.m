@@ -22,6 +22,7 @@
 		;	very_verbose
 	% Profiler options
 		;	dynamic_cg
+		;	call_graph
 		;	countfile
 		;	pairfile
 		;	declfile
@@ -58,6 +59,7 @@ option_default(very_verbose,	bool(no)).
 
 	% General profiler options
 option_default(dynamic_cg,	bool(no)).
+option_default(call_graph,	bool(no)).
 option_default(countfile,	string("Prof.Counts")).
 option_default(pairfile,	string("Prof.CallPair")).
 option_default(declfile,	string("Prof.Decl")).
@@ -68,6 +70,7 @@ option_default(help,		bool(no)).
 
 	% please keep this in alphabetic order
 short_option('C',			countfile).
+short_option('c',			call_graph).
 short_option('d',			dynamic_cg).
 short_option('D',			declfile).
 short_option('h', 			help).
@@ -76,6 +79,7 @@ short_option('v', 			verbose).
 short_option('V', 			very_verbose).
 
 long_option("call-pair-file",		pairfile).
+long_option("call-graph",		call_graph).
 long_option("count-file",		countfile).
 long_option("declaration-file",		declfile).
 long_option("help",			help).
@@ -89,6 +93,8 @@ options_help -->
 	io__write_string("\t\tPrint this usage message.\n"),
 
 	io__write_string("\nProfiler Options:\n"),
+	io__write_string("\t-c, --call-graph\n"),
+	io__write_string("\t\tInclude the call graph profile\n"),
 	io__write_string("\t-d, --use-dynamic\n"),
 	io__write_string("\t\tBuild the call graph dynamically.\n"),
 	io__write_string("\t-C, --count-file\n"),

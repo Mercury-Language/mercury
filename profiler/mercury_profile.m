@@ -138,6 +138,7 @@ main_2(yes(ErrorMessage), _) -->
 main_2(no, Args) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, StdOut),
+	globals__io_lookup_bool_option(call_graph, CallGraphOpt),
         globals__io_lookup_bool_option(help, Help),
         (
                 { Help = yes }
@@ -150,24 +151,31 @@ main_2(no, Args) -->
 		process_file__main(Prof0, CallGraph0),
 		maybe_write_string(Verbose, " done\n"),
 		
-		maybe_write_string(Verbose, "% Building call graph..."),
-		call_graph__main(Args, CallGraph0, CallGraph),
-		maybe_write_string(Verbose, " done\n"),
+		(
+			{ CallGraphOpt = yes }
+		->
+			maybe_write_string(Verbose, "% Building call graph..."),
+			call_graph__main(Args, CallGraph0, CallGraph),
+			maybe_write_string(Verbose, " done\n"),
 
-		maybe_write_string(Verbose, "% Topologically sorting call graph..."),
-		{ relation__atsort(CallGraph, Cliques) },
-		maybe_write_string(Verbose, " done\n"),
+			maybe_write_string(Verbose, "% Topologically sorting call graph..."),
+			{ relation__atsort(CallGraph, Cliques) },
+			maybe_write_string(Verbose, " done\n"),
 
-		maybe_write_string(Verbose, "% Propagating counts..."),
-		propagate__counts(Cliques, Prof0, Prof),
-		maybe_write_string(Verbose, " done\n"),
+			maybe_write_string(Verbose, "% Propagating counts..."),
+			propagate__counts(Cliques, Prof0, Prof),
+			maybe_write_string(Verbose, " done\n")
+		;
+			{ Prof = Prof0 }
+		),
 		
 		maybe_write_string(Verbose, "% Generating output..."),
 		generate_output__main(Prof, IndexMap, OutputProf),
 		maybe_write_string(Verbose, " done\n"),
 
 		io__set_output_stream(StdOut, _),
-		output__main(OutputProf, IndexMap)
+		output__main(OutputProf, IndexMap),
+		io__told
         ).
 
 

@@ -39,9 +39,10 @@
 % propagate_counts:
 %	Propagates counts around the call_graph.  Starts from the end of the
 %	list, which is the leaves of the call graph.
+%	NB. Ignore the first Clique as don't need to propogate its counts.
 %
 propagate__counts([], Prof, Prof) --> [].
-propagate__counts([_Clique | Cliques], Prof0, Prof) -->
+propagate__counts([ _C | Cliques], Prof0, Prof) -->
 	{ prof_get_addrdeclmap(Prof0, AddrDeclMap) },
 	{ prof_get_profnodemap(Prof0, ProfNodeMap0) },
 

@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module output_prof_info.
-:- import_module float, int, io, list, map, std_util, string.
+:- import_module output_prof_info, options.
+:- import_module bool, float, globals, int, io, list, map, std_util, string.
 
 :- pred output__main(output, map(string, int), io__state, io__state).
 :- mode output__main(in, in, di, uo) is det.
@@ -33,8 +33,15 @@
 
 output__main(Output, IndexMap) -->
 	{ Output = output(InfoMap, CallList, FlatList) },
-	output__call_graph_headers,
-	output_call_graph(CallList, InfoMap, IndexMap),
+	globals__io_lookup_bool_option(call_graph, CallGraphOpt),
+	(
+		{ CallGraphOpt = yes } 
+	->
+		output__call_graph_headers,
+		output_call_graph(CallList, InfoMap, IndexMap)
+	;
+		{ true }
+	),
 	output__flat_headers,
 	output__flat_profile(FlatList, 0.0, InfoMap, IndexMap),
 	output_alphabet_headers,
