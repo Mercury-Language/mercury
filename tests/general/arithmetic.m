@@ -27,7 +27,7 @@ test(X, Y) -->
 		RightShift is X >> Y,
 		BitAnd is X /\ Y,
 		BitOr is X \/ Y,
-		BitXor is X ^ Y,
+		BitXor is X `xor` Y,
 		BitNeg is \ X
 	},
 	write_message("X: ", X),
@@ -41,7 +41,7 @@ test(X, Y) -->
 	write_message("X >> Y: ", RightShift),
 	write_message("X /\\ Y: ", BitAnd),
 	write_message("X \\/ Y: ", BitOr),
-	write_message("X ^ Y: ", BitXor),
+	write_message("X `xor` Y: ", BitXor),
 	write_message("\\ X: ", BitNeg).
 
 :- pred write_message(string, int, io__state, io__state).
