@@ -74,7 +74,7 @@
 :- type proc_info	--->	procedure(
 					category,
 					varset,		% variable names
-					varset,		% variable types
+					map(var, type),	% variable types
 					list(var),	% head vars
 					list(mode), % modes of args
 					hlds__goal,	% Body
