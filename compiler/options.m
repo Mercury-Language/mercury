@@ -254,7 +254,7 @@ option_defaults_2(optimization_option, [
 	tag_switch_size		-	int(8),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	common_struct		-	bool(no),
+	common_struct		-	bool(yes),
 	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(1),
 	constraint_propagation	-	bool(no)
