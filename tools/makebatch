@@ -153,6 +153,11 @@ do
 	fi
 
 	cp Mmake.stage.params batch/$batch.params.$visn
+	if $needgrade
+	then
+		echo "GRADE = $grade" >> batch/$batch.params.$visn
+	fi
+
 	echo starting bootcheck of version $visn
 	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects $compile_times > batch/$batch.out.$visn 2>&1
 	then
