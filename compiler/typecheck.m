@@ -1535,7 +1535,7 @@ find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
 	->
 		[]
 	;
-		is_builtin_pred_type(TypeId)
+		{ is_builtin_pred_type(TypeId) }
 	->
 		[]
 	;
