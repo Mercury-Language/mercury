@@ -1,5 +1,5 @@
 /*
-INIT mercury_sys_init_context
+INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
@@ -159,11 +159,6 @@ flounder(void)
 {
 	fatal_error("computation floundered");
 }
-
-/*
-INIT mercury_scheduler_wrapper
-ENDINIT
-*/
 
 BEGIN_MODULE(scheduler_module)
 	init_entry(do_runnext);
