@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,6 +172,16 @@
 %	then the UnivTypeClassInfos (for universally quantified constraints)
 %	then the ExistTypeClassInfos (for existentially quantified constraints)
 %	and finally the original arguments of the predicate.
+%
+% The convention for class method implementations is slightly different
+% to match the order that the type_infos and typeclass_infos are passed
+% in by do_call_class_method (in runtime/mercury_ho_call.c):
+%
+%	First the type_infos for the unconstrained type variables in
+% 		the instance declaration
+%	then the typeclass_infos for the class constraints on the
+%		instance declaration
+% 	then the remainder of the type_infos and typeclass_infos as above.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -666,12 +676,95 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo, ClausesInfo,
 polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 		HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
 		ExistHeadTypeClassInfoVars, PolyInfo0, PolyInfo) :-
+	pred_info_get_maybe_instance_method_constraints(PredInfo,
+		MaybeInstanceMethodConstraints),
+	(
+		MaybeInstanceMethodConstraints = no,
+		pred_info_get_class_context(PredInfo, ClassContext),
+		ExtraHeadVars0 = [],
+		ExtraArgModes0 = [],
+		InstanceUnconstrainedTVars = [],
+		InstanceUnconstrainedTypeInfoVars = [],
+		polymorphism__setup_headvars_2(PredInfo, ClassContext,
+			ExtraHeadVars0, ExtraArgModes0,
+			InstanceUnconstrainedTVars,
+			InstanceUnconstrainedTypeInfoVars, HeadVars0, HeadVars,
+			ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
+			ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
+			PolyInfo0, PolyInfo)
+	;
+		MaybeInstanceMethodConstraints =
+			yes(InstanceMethodConstraints),	
+		polymorphism__setup_headvars_instance_method(PredInfo,
+			InstanceMethodConstraints, HeadVars0, HeadVars,
+			ExtraArgModes, HeadTypeVars, UnconstrainedTVars,
+			ExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
+			PolyInfo0, PolyInfo)
+	).
+
+	%
+	% For class method implementations, do_call_class_method
+	% takes the type-infos and typeclass-infos from the
+	% typeclass-info and pastes them onto the front of
+	% the argument list. We need to match that order here.
+	%
+:- pred polymorphism__setup_headvars_instance_method(pred_info,
+		instance_method_constraints, list(prog_var), list(prog_var),
+		list(mode), list(tvar), list(tvar), list(prog_var),
+		list(prog_var), poly_info, poly_info).
+:- mode polymorphism__setup_headvars_instance_method(in, in, in, out, out, out,
+		out, out, out, in, out) is det.
+
+polymorphism__setup_headvars_instance_method(PredInfo,
+		InstanceMethodConstraints, HeadVars0, HeadVars, ExtraArgModes,
+		HeadTypeVars, UnconstrainedTVars, ExtraHeadTypeInfoVars,
+		ExistHeadTypeClassInfoVars, PolyInfo0, PolyInfo) :-
+
+	InstanceMethodConstraints = instance_method_constraints(_,
+		InstanceTypes, InstanceConstraints, ClassContext),
+
+	term__vars_list(InstanceTypes, InstanceTVars),
+	get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
+		UnconstrainedInstanceTVars),
+	pred_info_arg_types(PredInfo, ArgTypeVarSet, _, _),
+	polymorphism__make_head_vars(UnconstrainedInstanceTVars,
+		ArgTypeVarSet, UnconstrainedInstanceTypeInfoVars,
+		PolyInfo0, PolyInfo1),
+	polymorphism__make_typeclass_info_head_vars(InstanceConstraints,
+		InstanceHeadTypeClassInfoVars, PolyInfo1, PolyInfo2),
+	poly_info_get_typeclass_info_map(PolyInfo2, TCVarMap0),
+	map__det_insert_from_corresponding_lists(TCVarMap0, 
+		InstanceConstraints, InstanceHeadTypeClassInfoVars, TCVarMap),
+	poly_info_set_typeclass_info_map(TCVarMap, PolyInfo2, PolyInfo3),
+	list__append(UnconstrainedInstanceTypeInfoVars,
+		InstanceHeadTypeClassInfoVars, ExtraHeadVars0),
+	in_mode(InMode),
+	list__duplicate(list__length(ExtraHeadVars0), InMode, ExtraArgModes0),
+	polymorphism__setup_headvars_2(PredInfo, ClassContext,
+		ExtraHeadVars0, ExtraArgModes0, UnconstrainedInstanceTVars,
+		UnconstrainedInstanceTypeInfoVars, HeadVars0, HeadVars,
+		ExtraArgModes, HeadTypeVars,
+		UnconstrainedTVars, ExtraHeadTypeInfoVars,
+		ExistHeadTypeClassInfoVars, PolyInfo3, PolyInfo).
+
+:- pred polymorphism__setup_headvars_2(pred_info, class_constraints,
+		list(prog_var), list(mode), list(tvar), list(prog_var),
+		list(prog_var), list(prog_var), list(mode), list(tvar),
+		list(tvar), list(prog_var), list(prog_var),
+		poly_info, poly_info).
+:- mode polymorphism__setup_headvars_2(in, in, in, in, in, in, in,
+		out, out, out, out, out, out, in, out) is det.
+
+polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
+		ExtraArgModes0, UnconstrainedInstanceTVars,
+		UnconstrainedInstanceTypeInfoVars, HeadVars0,
+		HeadVars, ExtraArgModes, HeadTypeVars, AllUnconstrainedTVars,
+		AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
+		PolyInfo0, PolyInfo) :-
 	%
 	% grab the appropriate fields from the pred_info
 	%
 	pred_info_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
-	pred_info_get_class_context(PredInfo, ClassContext),
-
 
 	%
 	% Insert extra head variables to hold the address of the
@@ -703,7 +796,12 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 		UnconstrainedTVars0),
 	list__delete_elems(UnconstrainedTVars0, ExistConstrainedTVars, 
 		UnconstrainedTVars1),
-	list__remove_dups(UnconstrainedTVars1, UnconstrainedTVars), 
+
+	% Type-infos for the unconstrained instance tvars have already
+	% been introduced by polymorphism__setup_headvars_instance_method.
+	list__delete_elems(UnconstrainedTVars1, UnconstrainedInstanceTVars,
+		UnconstrainedTVars2),
+	list__remove_dups(UnconstrainedTVars2, UnconstrainedTVars), 
 
 	( ExistQVars = [] ->
 		% optimize common case
@@ -720,15 +818,25 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 			ArgTypeVarSet, ExistHeadTypeInfoVars,
 			PolyInfo2, PolyInfo3)
 	),
-	polymorphism__make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
-		UnivHeadTypeInfoVars, PolyInfo3, PolyInfo4),
+
+	polymorphism__make_head_vars(UnconstrainedUnivTVars,
+		ArgTypeVarSet, UnivHeadTypeInfoVars, PolyInfo3, PolyInfo4),
 	list__append(UnivHeadTypeInfoVars, ExistHeadTypeInfoVars,
 		ExtraHeadTypeInfoVars),
 
-		% First the type_infos, then the typeclass_infos, 
-		% but we have to do it in reverse because we're appending...
+	list__append(UnconstrainedInstanceTypeInfoVars, ExtraHeadTypeInfoVars,
+		AllExtraHeadTypeInfoVars),
+	list__condense([UnconstrainedInstanceTVars, UnconstrainedUnivTVars,
+		UnconstrainedExistTVars], AllUnconstrainedTVars),
+
+		% First the type_infos and typeclass_infos from
+		% the typeclass_info if this is an instance method
+		% implementation, then the type_infos, then the
+		% typeclass_infos, but we have to do it in reverse
+		% because we're appending...
 	list__append(ExtraHeadTypeClassInfoVars, HeadVars0, HeadVars1),
-	list__append(ExtraHeadTypeInfoVars, HeadVars1, HeadVars),
+	list__append(ExtraHeadTypeInfoVars, HeadVars1, HeadVars2),
+	list__append(ExtraHeadVars0, HeadVars2, HeadVars),
 
 	%
 	% Figure out the modes of the introduced type_info and
@@ -744,7 +852,7 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 	list__duplicate(NumUnconstrainedExistTVars, Out, ExistTypeInfoModes),
 	list__duplicate(NumUnivClassInfoVars, In, UnivTypeClassInfoModes),
 	list__duplicate(NumExistClassInfoVars, Out, ExistTypeClassInfoModes),
-	list__condense([UnivTypeInfoModes, ExistTypeInfoModes,
+	list__condense([ExtraArgModes0, UnivTypeInfoModes, ExistTypeInfoModes,
 		UnivTypeClassInfoModes, ExistTypeClassInfoModes],
 		ExtraArgModes),
 		
@@ -764,12 +872,20 @@ polymorphism__setup_headvars(PredInfo, HeadVars0, HeadVars, ExtraArgModes,
 	map__det_insert_from_corresponding_lists(TypeInfoMap4,
 		UnconstrainedExistTVars, ExistTypeLocns, TypeInfoMap5),
 
-	poly_info_set_type_info_map(TypeInfoMap5, PolyInfo4, PolyInfo5),
+	list__map(ToLocn, UnconstrainedInstanceTypeInfoVars,
+		UnconstrainedInstanceTypeLocns),
+	map__det_insert_from_corresponding_lists(TypeInfoMap5,
+		UnconstrainedInstanceTVars, UnconstrainedInstanceTypeLocns,
+		TypeInfoMap6),
+
+	poly_info_set_type_info_map(TypeInfoMap6, PolyInfo4, PolyInfo5),
 
 	% Make a map of the locations of the typeclass_infos
-	map__from_corresponding_lists(UnivConstraints,
-			UnivHeadTypeClassInfoVars, TypeClassInfoMap),
-	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo5, PolyInfo).
+	poly_info_get_typeclass_info_map(PolyInfo5, TypeClassInfoMap0),
+	map__det_insert_from_corresponding_lists(TypeClassInfoMap0,
+		UnivConstraints, UnivHeadTypeClassInfoVars, TypeClassInfoMap),
+	poly_info_set_typeclass_info_map(TypeClassInfoMap,
+		PolyInfo5, PolyInfo).
 
 
 % XXX the following code ought to be rewritten to handle

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -527,6 +527,8 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		; % Inferring = no
 			pred_info_set_head_type_params(PredInfo5,
 				HeadTypeParams2, PredInfo6),
+			pred_info_get_maybe_instance_method_constraints(
+				PredInfo6, MaybeInstanceMethodConstraints0),
 
 			%
 			% leave the original argtypes etc., but 
@@ -544,7 +546,9 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				% optimize common case
 				ExistQVars1 = [],
 				ArgTypes1 = ArgTypes0,
-				PredConstraints1 = PredConstraints
+				PredConstraints1 = PredConstraints,
+				MaybeInstanceMethodConstraints1 = 
+					MaybeInstanceMethodConstraints0
 			;
 				apply_var_renaming_to_var_list(ExistQVars0,
 					ExistTypeRenaming, ExistQVars1),
@@ -553,7 +557,11 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 					ArgTypes1),
 				apply_variable_renaming_to_constraints(
 					ExistTypeRenaming,
-					PredConstraints, PredConstraints1)
+					PredConstraints, PredConstraints1),
+				rename_instance_method_constraints(
+					ExistTypeRenaming,
+					MaybeInstanceMethodConstraints0,
+					MaybeInstanceMethodConstraints1)
 			),
 
 			% rename them all to match the new typevarset
@@ -563,12 +571,18 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				TVarRenaming, RenamedOldArgTypes),
 			apply_variable_renaming_to_constraints(TVarRenaming,
 				PredConstraints1, RenamedOldConstraints),
+			rename_instance_method_constraints(TVarRenaming,
+				MaybeInstanceMethodConstraints1,
+				MaybeInstanceMethodConstraints),
 
 			% save the results in the pred_info
 			pred_info_set_arg_types(PredInfo6, TypeVarSet,
 				ExistQVars, RenamedOldArgTypes, PredInfo7),
 			pred_info_set_class_context(PredInfo7,
-				RenamedOldConstraints, PredInfo),
+				RenamedOldConstraints, PredInfo8),
+			pred_info_set_maybe_instance_method_constraints(
+				PredInfo8, MaybeInstanceMethodConstraints,
+				PredInfo),
 
 			Changed = no
 		),
@@ -580,6 +594,27 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 % is_bool/1 is used to avoid a type ambiguity
 :- pred is_bool(bool::in) is det.
 is_bool(_).
+
+:- pred rename_instance_method_constraints(map(tvar, tvar),
+		maybe(instance_method_constraints),
+		maybe(instance_method_constraints)).
+:- mode rename_instance_method_constraints(in, in, out) is det.
+
+rename_instance_method_constraints(_, no, no).
+rename_instance_method_constraints(Renaming,
+		yes(Constraints0), yes(Constraints)) :-
+	Constraints0 = instance_method_constraints(ClassId,
+		InstanceTypes0, InstanceConstraints0,
+		ClassMethodClassContext0),
+	term__apply_variable_renaming_to_list(InstanceTypes0,
+		Renaming, InstanceTypes),
+	apply_variable_renaming_to_constraint_list(Renaming,
+		InstanceConstraints0, InstanceConstraints),
+	apply_variable_renaming_to_constraints(Renaming,
+		ClassMethodClassContext0, ClassMethodClassContext),
+	Constraints = instance_method_constraints(ClassId,
+		InstanceTypes, InstanceConstraints,
+		ClassMethodClassContext).
 
 	%
 	% infer which of the head variable
