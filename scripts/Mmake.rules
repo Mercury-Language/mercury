@@ -50,17 +50,17 @@ main_target: $(MAIN_TARGET)
 	
 
 .nl.date:
-	$(MC) --make-interface $(MCFLAGS) $(MCINTFLAGS) $<
+	$(MCI) $(MCFLAGS) $(MCIFLAGS) $<
 
 .nl.garb:
-	$(MCG) --garbage-collection accurate $(MCFLAGS) $<
+	$(MCG) --garbage-collection accurate $(MCGFLAGS) $<
 
 .nl.ugly:
 	$(MC) --convert-to-mercury $(MCFLAGS) $<
 
 .nl.depend:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
-	$(MC) --generate-dependencies $(MCFLAGS) $<
+	$(MCD) $(MCDFLAGS) $<
 	@-chmod -w $*.dep
 
 .dep.doit:
@@ -74,7 +74,7 @@ main_target: $(MAIN_TARGET)
 
 .nl.mod:
 	rm -f $*.mod
-	$(MCG) -s $(GRADE) $(MCFLAGS) $< > $*.err2 2>&1
+	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
 
 .mod.c:
 	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
