@@ -1861,6 +1861,34 @@ that test the switched-on variable against the same function symbol.
 A switch can succeed at most zero times
 only if all arms of the switch can succeed at most zero times.
 
+Only unifications may occur before the test of the switched-on variable
+in each disjunct. Tests of the switched-on variable may occur within
+existential quantification goals.
+
+The following example is a switch.
+
+@example
+(
+        Out = 1, L = []
+;
+        some [H, T] (
+                L = [H|T],
+                nonempty(H, T, Out)
+        )
+)
+@end example
+
+The following example is not a switch because the call in the first
+disjunct occurs before the test of the switched-on variable.
+
+@example
+(
+        empty(Out), L = []
+;
+        L = [H|T], nonempty(H, T, Out)
+)
+@end example
+
 @item Disjunctions
 The determinism of the empty disjunction (the goal @samp{fail})
 is @code{failure}.

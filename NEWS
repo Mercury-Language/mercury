@@ -97,6 +97,22 @@ New library packages in the Mercury extras distribution:
 Changes to the Mercury implementation:
 **************************************
 
+* We've fixed a bug in switch detection.
+
+  This change may break some code written for Mercury 0.8. Some
+  disjunctions which Mercury 0.8 found to have determinism `det'
+  now have determinism `nondet'.
+
+  Mercury 0.8 (but not Mercury 0.7) allowed switches where a unification
+  to test the switched-on variable against a function symbol occurred after
+  the first call in the disjunct. Doing this may remove infinite loops,
+  violating the strict sequential semantics (see the "Semantics" chapter
+  of the Mercury Language Reference Manual).
+
+  To fix switches for which determinism errors are now reported simply
+  reorder the goals in each disjunct so that only unifications occur
+  before the test of the switched-on variable.
+
 * The Mercury debugger (mdb) now includes support for interactive queries.
 
   See the "Interactive query commands" subsection of the "Debugger commands"

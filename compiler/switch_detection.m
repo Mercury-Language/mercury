@@ -508,7 +508,7 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 		Substitution = Substitution0,
 		Result = Result0,
 		Info = Info0,
-		Continue = yes
+		Continue = no
 	).
 
 :- pred conj_find_bind_var(prog_var, process_unify(Result, Info), 

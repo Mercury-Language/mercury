@@ -35,6 +35,7 @@ SOURCES= \
 	multisoln_func.m \
 	nested_impl_in_int.m \
 	no_exports.m \
+	not_a_switch.m \
 	nullary_ho_func_error.m \
 	occurs.m \
 	partial_implied_mode.m \
