@@ -784,7 +784,7 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
 output_comp_gen_c_data(trace_call_info(Label, Path, MaxRegInUse, Port),
 		DeclSet0, DeclSet) -->
-	io__write_string("static MR_Trace_Call_Info\nmercury_data__tci__"),
+	io__write_string("static const MR_Trace_Call_Info\nmercury_data__tci__"),
 	output_label(Label),
 	io__write_string(" = {\n\t(const MR_Stack_Layout_Label *)\n"),
 	io__write_string("\t&mercury_data__layout__"),
