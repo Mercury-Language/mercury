@@ -2398,7 +2398,7 @@ mlds_to_il__generate_extern_assembly(Imports, Decls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
 		ClassName = mlds_module_name_to_class_name(Import),
 		ClassName = [TopLevel | _],
-		Decl = extern_assembly(TopLevel)
+		Decl = extern_assembly(TopLevel, [])
 	),
 	list__filter_map(Gen, Imports, Decls0),
 	list__sort_and_remove_dups(Decls0, Decls).

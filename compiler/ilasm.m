@@ -72,8 +72,9 @@
 
 
 		% .assembly extern
-		% declares an assembly name
-	;	extern_assembly(ilds__id)
+		% declares an assembly name, and possibly its strong
+		% name/version number.
+	;	extern_assembly(ilds__id, list(assembly_decl))
 
 		% .assembly
 		% defines an assembly
@@ -85,6 +86,11 @@
 			% (see library/pprint.m for limitations).
 	;	some [T] comment_thing(T)
 	;	comment(string).
+
+:- type assembly_decl 
+	--->	version(int, int, int, int)	% version number
+	;	hash(list(int8))		% hash 
+	;	public_key_token(list(int8)).	% public key token
 
 	% a method definition is just a list of body decls.
 :- type method_defn == list(method_body_decl).
@@ -313,10 +319,13 @@ ilasm__output_decl(comment(CommentStr)) -->
 		[]
 	).
 
-ilasm__output_decl(extern_assembly(AsmName)) --> 
+ilasm__output_decl(extern_assembly(AsmName, AssemblyDecls)) --> 
 	io__write_string(".assembly extern "),
 	output_id(AsmName),
-	io__write_string(" { }").
+	io__write_string("{\n"),
+	io__write_list(AssemblyDecls, "\n\t", output_assembly_decl),
+	io__write_string("\n}\n").
+
 
 ilasm__output_decl(assembly(AsmName)) --> 
 	io__write_string(".assembly "),
@@ -1337,6 +1346,22 @@ output_data_item(bytearray(Bytes)) -->
 	io__write_string("bytearray("),
 	io__write_list(Bytes, " ", output_hexbyte),
 	io__write_string(")").
+
+:- pred ilasm__output_assembly_decl(assembly_decl::in, 
+	io__state::di, io__state::uo) is det.
+
+ilasm__output_assembly_decl(version(A, B, C, D)) -->
+	io__format(".ver %d:%d:%d:%d", [i(A), i(B), i(C), i(D)]).
+ilasm__output_assembly_decl(public_key_token(Token)) -->
+	io__write_string(".publickeytoken = ( "),
+	io__write_list(Token, " ", output_hexbyte),
+	io__write_string(" ) ").
+ilasm__output_assembly_decl(hash(Hash)) -->
+	io__write_string(".hash = ( "),
+	io__write_list(Hash, " ", output_hexbyte),
+	io__write_string(" ) ").
+
+
 
 :- pred output_float64(float64::in, io__state::di, io__state::uo) is det.
 output_float64(float64(Float)) -->
