@@ -438,13 +438,25 @@ builtin_compare_pred(Res, _Pred1, _Pred2) :-
 		Res = (<)
 	).
 
-builtin_term_to_type_pred(_Term, _Pred) :-
+builtin_term_to_type_pred(_Term, Pred) :-
 	% suppress determinism warning
 	semidet_succeed,
-	error("attempted conversion of a term to a higher-order predicate").
+	( semidet_succeed ->
+		error("attempted conversion of a term to a higher-order predicate")
+	;
+		% the following is never executed
+		Pred = semidet_succeed
+	).
 
-builtin_type_to_term_pred(_Pred, _Term) :-
-	error("attempted conversion of a higher-order predicate to a term").
+builtin_type_to_term_pred(_Pred, Term) :-
+	% suppress determinism warning
+	( semidet_succeed ->
+		error("attempted comparison of higher-order predicate terms")
+	;
+		% the following is never executed
+		term__context_init(Context),
+		Term = term__functor(term__atom(""), [], Context)
+	).
 
 :- pragma(c_header_code, "#include ""type_info.h""").
 
