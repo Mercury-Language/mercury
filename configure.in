@@ -436,7 +436,7 @@ case "$host" in
 		ac_cv_func_mprotect=no ;;
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
-AC_HAVE_FUNCS(strerror memmove dup fileno fdopen fstat stat)
+AC_HAVE_FUNCS(strerror memmove dup fileno fdopen fstat stat isatty)
 AC_HAVE_FUNCS(snprintf vsnprintf _vsnprintf)
 AC_HAVE_FUNCS(gethostname getpid)
 #-----------------------------------------------------------------------------#

@@ -170,6 +170,7 @@
 **				Note that fileno() may be a macro
 **				rather than a function, so you should use
 **				#if defined(fileno) || defined(HAVE_FILENO)
+**	HAVE_ISATTY 		we have the isatty() function.
 */
 #undef	HAVE_GETPID
 #undef	HAVE_GETHOSTNAME
@@ -192,6 +193,7 @@
 #undef	HAVE_FSTAT
 #undef	HAVE_FDOPEN
 #undef	HAVE_FILENO
+#undef	HAVE_ISATTY
 
 /*
 ** RETSIGTYPE: the return type of signal handlers.
