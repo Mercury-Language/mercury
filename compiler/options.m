@@ -590,7 +590,7 @@ option_defaults_2(code_gen_option, [
 	low_level_debug		-	bool(no),
 	trad_passes		-	bool(yes),
 	polymorphism		-	bool(yes),
-	lazy_code		-	bool(yes),
+	lazy_code		-	bool(no),
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
@@ -1425,6 +1425,7 @@ opt_level(3, _, [
 % and increases the inlining thresholds
 
 opt_level(4, _, [
+	lazy_code		-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	inline_simple_threshold	-	int(8),
 	inline_compound_threshold -	int(20)

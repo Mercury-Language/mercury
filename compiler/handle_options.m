@@ -388,6 +388,9 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 			% we don't have to discover this fact anew
 			% for each procedure.
 		globals__io_set_option(optimize_value_number, bool(no)),
+			% Without value numbering, the eager code generator
+			% generates better code than the lazy code generator.
+		globals__io_set_option(lazy_code, bool(no)),
 			% The following options cause the info required
 			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
