@@ -20,10 +20,10 @@
 #define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
 
-#define MR_ENTRY_LAYOUT(label)		(const MR_Stack_Layout_Entry *) (MR_Word) \
-				&(paste(mercury_data__layout__,label))
-#define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (MR_Word) \
-				&(paste(mercury_data__layout__,label))
+#define MR_ENTRY_LAYOUT(label)	  (const MR_Stack_Layout_Entry *) (MR_Word) \
+					&(paste(mercury_data__layout__,label))
+#define MR_INTERNAL_LAYOUT(label) (const MR_Stack_Layout_Label *) (MR_Word) \
+					&(paste(mercury_data__layout__,label))
 
 #define MR_init_entry(label)	init_entry(label)
 
