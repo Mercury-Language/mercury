@@ -113,6 +113,9 @@ install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
 # prevent GNU make from removing these intermediate files
 dont_remove: engine.c wrapper.c call.c solutions.c
 
+# prevent Mmake from removing C files
+RM_C=:
+
 #-----------------------------------------------------------------------------#
 
 clean: clean_o clean_mod_c
