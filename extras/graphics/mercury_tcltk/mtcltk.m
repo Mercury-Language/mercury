@@ -138,7 +138,7 @@ int *tclDummyMathPtr = (int *) matherr;
     argc = 0;
     for(l = Args; l != list_empty(); l = list_tail(l))
 	argc++;
-    incr_hp(LVAL_CAST(argv), argc + 1);
+    incr_hp(LVALUE_CAST(Word, argv), argc + 1);
 
     for(i = 0, l = Args; l != list_empty(); l = list_tail(l), i++)
 	argv[i] = (char *) list_head(l);
@@ -184,8 +184,6 @@ int
 Tcl_AppInit(Tcl_Interp *interp)
 {
     static char tk_str[] = ""Tk"";
-    static char tcl_rcFileName_str[] = ""tcl_rcFileName"";
-    static char gwarsrc_str[] = ""~/.gwarsrc"";
 
     if (Tcl_Init(interp) == TCL_ERROR) {
 	return TCL_ERROR;
@@ -196,8 +194,6 @@ Tcl_AppInit(Tcl_Interp *interp)
     Tcl_StaticPackage(interp, tk_str, Tk_Init, (Tcl_PackageInitProc *) NULL);
 
     mtcltk_call_mercury_initializer(mtcltk_mercury_initializer, (Word)interp);
-
-    Tcl_SetVar(interp, tcl_rcFileName_str, gwarsrc_str, TCL_GLOBAL_ONLY);
 
     return TCL_OK;
 }
