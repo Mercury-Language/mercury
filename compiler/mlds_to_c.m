@@ -423,8 +423,7 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 			{ Signature = mlds__func_params(Parameters,
 				_RetTypes) },
 			{ assoc_list__values(Parameters, ParamTypes) },
-			list__foldl(mlds_output_type_forward_decls(Indent),
-				ParamTypes)
+			mlds_output_type_forward_decls(Indent, ParamTypes)
 		;
 			[]
 		),
@@ -440,20 +439,32 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 			[]
 		),
 		mlds_output_decl_flags(Flags),
-		mlds_output_decl_body(Indent, qual(ModuleName, Name), DefnBody)
+		mlds_output_decl_body(Indent, qual(ModuleName, Name), Context,
+			DefnBody)
 	).
 
-:- pred mlds_output_type_forward_decls(indent, mlds__type,
+:- pred mlds_output_type_forward_decls(indent, list(mlds__type),
 		io__state, io__state).
 :- mode mlds_output_type_forward_decls(in, in, di, uo) is det.
 
-mlds_output_type_forward_decls(Indent, Type) -->
+mlds_output_type_forward_decls(Indent, ParamTypes) -->
 	%
 	% Output forward declarations for all struct types
-	% that are contained in the specified type.
+	% that are contained in the parameter types.
 	%
-	aggregate(mlds_type_contains_type(Type),
+	aggregate(mlds_type_list_contains_type(ParamTypes),
 		mlds_output_type_forward_decl(Indent)).
+
+	% mlds_type_list_contains_type(Types, SubType):
+	%	True iff the type SubType occurs (directly or indirectly)
+	%	in the specified list of Types.
+	%
+:- pred mlds_type_list_contains_type(list(mlds__type), mlds__type).
+:- mode mlds_type_list_contains_type(in, out) is nondet.
+
+mlds_type_list_contains_type(Types, SubType) :-
+	list__member(Type, Types),
+	mlds_type_contains_type(Type, SubType).
 
 	% mlds_type_contains_type(Type, SubType):
 	%	True iff the type Type contains the type SubType.
@@ -512,10 +523,10 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 			DefnBody).
 
 :- pred mlds_output_decl_body(indent, mlds__qualified_entity_name,
-		mlds__entity_defn, io__state, io__state).
-:- mode mlds_output_decl_body(in, in, in, di, uo) is det.
+		mlds__context, mlds__entity_defn, io__state, io__state).
+:- mode mlds_output_decl_body(in, in, in, in, di, uo) is det.
 
-mlds_output_decl_body(Indent, Name, DefnBody) -->
+mlds_output_decl_body(Indent, Name, Context, DefnBody) -->
 	(
 		{ DefnBody = mlds__data(Type, _Initializer) },
 		mlds_output_data_decl(Name, Type)
@@ -523,7 +534,7 @@ mlds_output_decl_body(Indent, Name, DefnBody) -->
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			_MaybeBody) },
 		mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id),
-		mlds_output_func_decl(Indent, Name, Signature)
+		mlds_output_func_decl(Indent, Name, Context, Signature)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
 		mlds_output_class_decl(Indent, Name, ClassDefn)
@@ -788,7 +799,7 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 :- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
 
 mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
-	mlds_output_func_decl(Indent, Name, Signature),
+	mlds_output_func_decl(Indent, Name, Context, Signature),
 	(
 		{ MaybeBody = no },
 		io__write_string(";\n")
@@ -858,11 +869,11 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		io__write_string("}\n")	% end the function
 	).
 
-:- pred mlds_output_func_decl(indent, qualified_entity_name, func_params, 
-			io__state, io__state).
-:- mode mlds_output_func_decl(in, in, in, di, uo) is det.
+:- pred mlds_output_func_decl(indent, qualified_entity_name, mlds__context,
+		func_params, io__state, io__state).
+:- mode mlds_output_func_decl(in, in, in, in, di, uo) is det.
 
-mlds_output_func_decl(Indent, Name, Signature) -->
+mlds_output_func_decl(Indent, Name, Context, Signature) -->
 	{ Signature = mlds__func_params(Parameters, RetTypes) },
 	( { RetTypes = [] } ->
 		io__write_string("void")
@@ -873,32 +884,35 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 	),
 	io__write_char(' '),
 	mlds_output_fully_qualified_name(Name),
-	mlds_output_params(Indent, Name, Parameters),
+	mlds_output_params(Indent, Name, Context, Parameters),
 	( { RetTypes = [RetType2] } ->
 		mlds_output_type_suffix(RetType2)
 	;
 		[]
 	).
 
-:- pred mlds_output_params(indent, qualified_entity_name, mlds__arguments,
-		io__state, io__state).
-:- mode mlds_output_params(in, in, in, di, uo) is det.
+:- pred mlds_output_params(indent, qualified_entity_name, mlds__context,
+		mlds__arguments, io__state, io__state).
+:- mode mlds_output_params(in, in, in, in, di, uo) is det.
 
-mlds_output_params(Indent, FuncName, Parameters) -->
+mlds_output_params(Indent, FuncName, Context, Parameters) -->
 	io__write_char('('),
 	( { Parameters = [] } ->
 		io__write_string("void")
 	;
-		io__write_list(Parameters, ", ",
-			mlds_output_param(Indent, FuncName))
+		io__nl,
+		io__write_list(Parameters, ",\n",
+			mlds_output_param(Indent + 1, FuncName, Context))
 	),
 	io__write_char(')').
 
-:- pred mlds_output_param(indent, qualified_entity_name,
+:- pred mlds_output_param(indent, qualified_entity_name, mlds__context,
 		pair(mlds__entity_name, mlds__type), io__state, io__state).
-:- mode mlds_output_param(in, in, in, di, uo) is det.
+:- mode mlds_output_param(in, in, in, in, di, uo) is det.
 
-mlds_output_param(_Indent, qual(ModuleName, _FuncName), Name - Type) -->
+mlds_output_param(Indent, qual(ModuleName, _FuncName), Context,
+		Name - Type) -->
+	mlds_indent(Context, Indent),
 	mlds_output_data_decl(qual(ModuleName, Name), Type).
 
 :- pred mlds_output_func_type_prefix(func_params, io__state, io__state).
@@ -1786,7 +1800,8 @@ mlds_output_assign_args(Indent, ModuleName, Context,
 			Initializer, Context) },
 		mlds_output_defn(Indent, ModuleName, TempDefn),
 
-		mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args),
+		mlds_output_assign_args(Indent, ModuleName, Context, Rest,
+			Args),
 
 		mlds_indent(Context, Indent),
 		mlds_output_fully_qualified_name(qual(ModuleName, Name)),
@@ -1850,7 +1865,7 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 		MaybeCtorName, Args, ArgTypes) },
 	mlds_indent(Indent),
 	io__write_string("{\n"),
-	mlds_indent(Indent + 1),
+	mlds_indent(Context, Indent + 1),
 	mlds_output_lval(Target),
 	io__write_string(" = "),
 	( { MaybeTag = yes(Tag0) } ->
@@ -1897,7 +1912,7 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 	io__write_string(";\n"),
 	mlds_output_init_args(Args, ArgTypes, Context, 0, Target, Tag,
 		Indent + 1),
-	mlds_indent(Indent),
+	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
 mlds_output_atomic_stmt(Indent, mark_hp(Lval), _) -->

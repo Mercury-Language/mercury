@@ -315,9 +315,10 @@ ml_gen_constant(int_constant(Int), _, const(int_const(Int))) --> [].
 
 ml_gen_constant(float_constant(Float), _, const(float_const(Float))) --> [].
 
-ml_gen_constant(shared_local_tag(Bits1, Num1), _, Rval) -->
-	{ Rval = mkword(Bits1,
-		unop(std_unop(mkbody), const(int_const(Num1)))) }.
+ml_gen_constant(shared_local_tag(Bits1, Num1), VarType, Rval) -->
+	ml_gen_type(VarType, MLDS_Type),
+	{ Rval = unop(cast(MLDS_Type), mkword(Bits1,
+		unop(std_unop(mkbody), const(int_const(Num1))))) }.
 
 ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 		VarType, Rval) -->
@@ -1396,9 +1397,10 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	ml_gen_var(Var, VarLval),
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
+	ml_gen_type(Type, MLDS_Type),
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ TagTestExpression = ml_gen_tag_test_rval(Tag, Type, ModuleInfo,
+	{ TagTestExpression = ml_gen_tag_test_rval(Tag, MLDS_Type, ModuleInfo,
 		lval(VarLval)) },
 	{ TagTestDecls = [] },
 	{ TagTestStatements = [] }.
@@ -1408,7 +1410,7 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	%	true if VarRval has the specified Tag and false otherwise.
 	%	VarType is the type of VarRval. 
 	%
-:- func ml_gen_tag_test_rval(cons_tag, prog_type, module_info, mlds__rval)
+:- func ml_gen_tag_test_rval(cons_tag, mlds__type, module_info, mlds__rval)
 	= mlds__rval.
 
 ml_gen_tag_test_rval(string_constant(String), _, _, Rval) =
@@ -1437,7 +1439,7 @@ ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 	binop(eq, unop(std_unop(tag), Rval),
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
-ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), VarType,
+ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), MLDS_VarType,
 		ModuleInfo, Rval) = TagTest :-
 	SecondaryTagTest = binop(eq,
 		% Note: with the current low-level data representation,
@@ -1447,8 +1449,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), VarType,
 		unop(unbox(mlds__native_int_type),
 			lval(field(yes(PrimaryTag), Rval,
 			offset(const(int_const(0))),
-			mlds__generic_type, 
-			mercury_type_to_mlds_type(ModuleInfo, VarType)))),
+			mlds__generic_type, MLDS_VarType))),
 		const(int_const(SecondaryTag))),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -1461,7 +1462,8 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTag, SecondaryTag), VarType,
 			unop(std_unop(mktag), const(int_const(PrimaryTag)))), 
 		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
 	).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), _, _, Rval) =
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), MLDS_VarType, _, Rval) =
 	binop(eq, Rval,
-		  mkword(Bits, unop(std_unop(mkbody), const(int_const(Num))))).
+		  unop(cast(MLDS_VarType), mkword(Bits,
+		  	unop(std_unop(mkbody), const(int_const(Num)))))).
 

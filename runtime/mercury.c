@@ -10,9 +10,14 @@
 ** (For the low-level C code, see mercury_imp.h.)
 */
 
+#ifndef MR_HIGHLEVEL_CODE
+  #include "mercury_imp.h"
+#endif
+
 #include "mercury.h"
 #include "mercury_type_info.h"	/* for MR_TYPECTOR_REP* */
 #include "mercury_misc.h"	/* for MR_fatal_error() */
+#include "mercury_heap.h"	/* for create[1-3]() prototypes */
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -31,23 +36,28 @@ MR_Word mercury__private_builtin__dummy_var;
 /* Types for the wrapper versions of type-specific unify/compare procedures. */
 
 typedef bool MR_UnifyFunc_0(MR_Box, MR_Box);
-typedef bool MR_UnifyFunc_1(MR_Word, MR_Box, MR_Box);
-typedef bool MR_UnifyFunc_2(MR_Word, MR_Word, MR_Box, MR_Box);
-typedef bool MR_UnifyFunc_3(MR_Word, MR_Word, MR_Word, MR_Box, MR_Box);
-typedef bool MR_UnifyFunc_4(MR_Word, MR_Word, MR_Word, MR_Word,
+typedef bool MR_UnifyFunc_1(MR_Type_Info, MR_Box, MR_Box);
+typedef bool MR_UnifyFunc_2(MR_Type_Info, MR_Type_Info, MR_Box, MR_Box);
+typedef bool MR_UnifyFunc_3(MR_Type_Info, MR_Type_Info, MR_Type_Info,
 			    MR_Box, MR_Box);
-typedef bool MR_UnifyFunc_5(MR_Word, MR_Word, MR_Word, MR_Word, MR_Word,
-			    MR_Box, MR_Box);
+typedef bool MR_UnifyFunc_4(MR_Type_Info, MR_Type_Info, MR_Type_Info,
+			    MR_Type_Info, MR_Box, MR_Box);
+typedef bool MR_UnifyFunc_5(MR_Type_Info, MR_Type_Info, MR_Type_Info,
+			    MR_Type_Info, MR_Type_Info, MR_Box, MR_Box);
 
-typedef void MR_CompareFunc_0(MR_Word *, MR_Box, MR_Box);
-typedef void MR_CompareFunc_1(MR_Word, MR_Word *, MR_Box, MR_Box);
-typedef void MR_CompareFunc_2(MR_Word, MR_Word, MR_Word *, MR_Box, MR_Box);
-typedef void MR_CompareFunc_3(MR_Word, MR_Word, MR_Word,
-			      MR_Word *, MR_Box, MR_Box);
-typedef void MR_CompareFunc_4(MR_Word, MR_Word, MR_Word, MR_Word,
-			      MR_Word *, MR_Box, MR_Box);
-typedef void MR_CompareFunc_5(MR_Word, MR_Word, MR_Word, MR_Word, MR_Word,
-			      MR_Word *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_0(MR_Comparison_Result *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_1(MR_Type_Info,
+			      MR_Comparison_Result *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_2(MR_Type_Info, MR_Type_Info,
+			      MR_Comparison_Result *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_3(MR_Type_Info, MR_Type_Info, MR_Type_Info,
+			      MR_Comparison_Result *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_4(MR_Type_Info, MR_Type_Info, MR_Type_Info,
+			      MR_Type_Info,
+			      MR_Comparison_Result *, MR_Box, MR_Box);
+typedef void MR_CompareFunc_5(MR_Type_Info, MR_Type_Info, MR_Type_Info,
+			      MR_Type_Info, MR_Type_Info,
+			      MR_Comparison_Result *, MR_Box, MR_Box);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -185,13 +195,13 @@ MR_define_type_ctor_info(private_builtin, typeclass_info, 1,
 */
 
 bool
-mercury__builtin__unify_2_p_0(MR_Word ti, MR_Box x, MR_Box y)
+mercury__builtin__unify_2_p_0(MR_Type_Info ti, MR_Box x, MR_Box y)
 {
 	MR_TypeInfo		type_info;
 	MR_TypeCtorInfo		type_ctor_info;
 	int			arity;
 	MR_TypeInfoParams	params;
-	MR_Word			*args;
+	MR_Type_Info		*args;
 
 	type_info = (MR_TypeInfo) ti;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -202,7 +212,7 @@ mercury__builtin__unify_2_p_0(MR_Word ti, MR_Box x, MR_Box y)
 		arity = type_ctor_info->arity;
 		params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	}
-	args = (MR_Word *) params;
+	args = (MR_Type_Info *) params;
 
 	switch(arity) {
 		/*
@@ -232,13 +242,14 @@ mercury__builtin__unify_2_p_0(MR_Word ti, MR_Box x, MR_Box y)
 }
 
 void
-mercury__builtin__compare_3_p_0(MR_Word ti, MR_Word *res, MR_Box x, MR_Box y)
+mercury__builtin__compare_3_p_0(MR_Type_Info ti, MR_Comparison_Result *res,
+	MR_Box x, MR_Box y)
 {
 	MR_TypeInfo		type_info;
 	MR_TypeCtorInfo		type_ctor_info;
 	int			arity;
 	MR_TypeInfoParams	params;
-	MR_Word			*args;
+	MR_Type_Info		*args;
 
 	type_info = (MR_TypeInfo) ti;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -249,7 +260,7 @@ mercury__builtin__compare_3_p_0(MR_Word ti, MR_Word *res, MR_Box x, MR_Box y)
 		arity = type_ctor_info->arity;
 		params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	}
-	args = (MR_Word *) params;
+	args = (MR_Type_Info *) params;
 
 	switch(arity) {
 		/*
@@ -285,21 +296,21 @@ mercury__builtin__compare_3_p_0(MR_Word ti, MR_Word *res, MR_Box x, MR_Box y)
 
 void
 mercury__builtin__compare_3_p_1(
-	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *res, MR_Box x, MR_Box y)
 {
 	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
 void
 mercury__builtin__compare_3_p_2(
-	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *res, MR_Box x, MR_Box y)
 {
 	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
 void
 mercury__builtin__compare_3_p_3(
-	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *res, MR_Box x, MR_Box y)
 {
 	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
@@ -349,71 +360,73 @@ mercury__builtin____Unify____character_0_0(MR_Char x, MR_Char y)
 }
 
 bool
-mercury__builtin____Unify____void_0_0(MR_Word x, MR_Word y)
+mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y)
 {
 	MR_fatal_error("called unify for type `void'");
 }
 
 bool
-mercury__builtin____Unify____c_pointer_0_0(MR_Word x, MR_Word y)
+mercury__builtin____Unify____c_pointer_0_0(MR_C_Pointer x, MR_C_Pointer y)
 {
 	return (void *) x == (void *) y;
 }
 
 bool
-mercury__builtin____Unify____func_0_0(MR_Word x, MR_Word y)
+mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y)
 {
 	MR_fatal_error("called unify for `func' type");
 }
 
 bool
-mercury__builtin____Unify____pred_0_0(MR_Word x, MR_Word y)
+mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y)
 {
 	MR_fatal_error("called unify for `pred' type");
 }
 
 bool
-mercury__array____Unify____array_1_0(MR_Word type_info, MR_Word x, MR_Word y)
+mercury__array____Unify____array_1_0(MR_Type_Info type_info,
+	MR_Array x, MR_Array y)
 {
 	SORRY("unify for array");
 }
 
 bool
-mercury__std_util____Unify____univ_0_0(MR_Word x, MR_Word y)
+mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y)
 {
 	SORRY("unify for univ");
 }
 
 bool
-mercury__std_util____Unify____type_desc_0_0(MR_Word x, MR_Word y)
+mercury__std_util____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
 {
 	SORRY("unify for type_desc");
 }
 
 bool
 mercury__private_builtin____Unify____type_ctor_info_1_0(
-	MR_Word type_info, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Type_Ctor_Info x, MR_Type_Ctor_Info y)
 {
 	SORRY("unify for type_ctor_info");
 }
 
 bool
 mercury__private_builtin____Unify____type_info_1_0(
-	MR_Word type_info, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Type_Info x, MR_Type_Info y)
 {
 	SORRY("unify for type_info");
 }
 
 bool
 mercury__private_builtin____Unify____typeclass_info_1_0(
-	MR_Word type_info, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_TypeClass_Info x, MR_TypeClass_Info y)
 {
 	SORRY("unify for typeclass_info");
 }
 
 bool
 mercury__private_builtin____Unify____base_typeclass_info_1_0(
-	MR_Word type_info, MR_Word x, MR_Word y)
+	MR_Type_Info type_info,
+	MR_Base_TypeClass_Info x, MR_Base_TypeClass_Info y)
 {
 	SORRY("unify for base_typeclass_info");
 }
@@ -425,7 +438,7 @@ mercury__private_builtin____Unify____base_typeclass_info_1_0(
 
 void
 mercury__builtin____Compare____int_0_0(
-	MR_Word *result, MR_Integer x, MR_Integer y)
+	MR_Comparison_Result *result, MR_Integer x, MR_Integer y)
 {
 	*result = (x > y ? MR_COMPARE_GREATER :
 		  x == y ? MR_COMPARE_EQUAL :
@@ -433,7 +446,7 @@ mercury__builtin____Compare____int_0_0(
 }
 
 void
-mercury__builtin____Compare____string_0_0(MR_Word *result,
+mercury__builtin____Compare____string_0_0(MR_Comparison_Result *result,
 	MR_String x, MR_String y)
 {
 	int res = strcmp(x, y);
@@ -444,7 +457,7 @@ mercury__builtin____Compare____string_0_0(MR_Word *result,
 
 void
 mercury__builtin____Compare____float_0_0(
-	MR_Word *result, MR_Float x, MR_Float y)
+	MR_Comparison_Result *result, MR_Float x, MR_Float y)
 {
 	/* XXX what should this function do when x and y are both NaNs? */
 	*result = (x > y ? MR_COMPARE_GREATER :
@@ -456,7 +469,7 @@ mercury__builtin____Compare____float_0_0(
 
 void
 mercury__builtin____Compare____character_0_0(
-	MR_Word *result, MR_Char x, MR_Char y)
+	MR_Comparison_Result *result, MR_Char x, MR_Char y)
 {
 	*result = (x > y ? MR_COMPARE_GREATER :
 		  x == y ? MR_COMPARE_EQUAL :
@@ -464,14 +477,15 @@ mercury__builtin____Compare____character_0_0(
 }
 
 void
-mercury__builtin____Compare____void_0_0(MR_Word *result, MR_Word x, MR_Word y)
+mercury__builtin____Compare____void_0_0(MR_Comparison_Result *result,
+	MR_Void x, MR_Void y)
 {
 	MR_fatal_error("called compare/3 for type `void'");
 }
 
 void
 mercury__builtin____Compare____c_pointer_0_0(
-	MR_Word *result, MR_Word x, MR_Word y)
+	MR_Comparison_Result *result, MR_C_Pointer x, MR_C_Pointer y)
 {
 	*result = 
 		( (void *) x == (void *) y ? MR_COMPARE_EQUAL
@@ -481,61 +495,68 @@ mercury__builtin____Compare____c_pointer_0_0(
 }
 
 void
-mercury__builtin____Compare____func_0_0(MR_Word *result, MR_Word x, MR_Word y)
+mercury__builtin____Compare____func_0_0(MR_Comparison_Result *result,
+	MR_Func x, MR_Func y)
 {
 	MR_fatal_error("called compare/3 for `func' type");
 }
 
 void
-mercury__builtin____Compare____pred_0_0(MR_Word *result, MR_Word x, MR_Word y)
+mercury__builtin____Compare____pred_0_0(MR_Comparison_Result *result,
+	MR_Pred x, MR_Pred y)
 {
 	MR_fatal_error("called compare/3 for `pred' type");
 }
 
 void
 mercury__array____Compare____array_1_0(
-	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Array x, MR_Array y)
 {
 	SORRY("compare for array");
 }
 
 void
-mercury__std_util____Compare____univ_0_0(MR_Word *result, MR_Word x, MR_Word y)
+mercury__std_util____Compare____univ_0_0(MR_Comparison_Result *result,
+	MR_Univ x, MR_Univ y)
 {
 	SORRY("compare for univ");
 }
 
 void
 mercury__std_util____Compare____type_desc_0_0(
-	MR_Word *result, MR_Word x, MR_Word y)
+	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y)
 {
 	SORRY("compare for type_desc");
 }
 
 void
 mercury__private_builtin____Compare____type_ctor_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Type_Ctor_Info x, MR_Type_Ctor_Info y)
 {
 	SORRY("compare for type_ctor_info");
 }
 
 void
 mercury__private_builtin____Compare____type_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Comparison_Result *result, MR_Type_Info x, MR_Type_Info y)
 {
 	SORRY("compare for type_info");
 }
 
 void
 mercury__private_builtin____Compare____typeclass_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_TypeClass_Info x, MR_TypeClass_Info y)
 {
 	SORRY("compare for typeclass_info");
 }
 
 void
 mercury__private_builtin____Compare____base_typeclass_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Word x, MR_Word y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Base_TypeClass_Info x, MR_Base_TypeClass_Info y)
 {
 	SORRY("compare for base_typeclass_info");
 }
@@ -584,7 +605,7 @@ static bool
 mercury__builtin__do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
 {
 	return mercury__builtin____Unify____c_pointer_0_0(
-		(MR_Word) x, (MR_Word) y);
+		(MR_C_Pointer) x, (MR_C_Pointer) y);
 }
 
 static bool
@@ -600,56 +621,57 @@ mercury__builtin__do_unify__pred_0_0(MR_Box x, MR_Box y)
 }
 
 static bool
-mercury__array__do_unify__array_1_0(MR_Word type_info, MR_Box x, MR_Box y)
+mercury__array__do_unify__array_1_0(MR_Type_Info type_info, MR_Box x, MR_Box y)
 {
 	return mercury__array____Unify____array_1_0(
-		type_info, (MR_Word) x, (MR_Word) y);
+		type_info, (MR_Array) x, (MR_Array) y);
 }
 
 static bool
 mercury__std_util__do_unify__univ_0_0(MR_Box x, MR_Box y)
 {
 	return mercury__std_util____Unify____univ_0_0(
-		(MR_Word) x, (MR_Word) y);
+		(MR_Univ) x, (MR_Univ) y);
 }
 
 static bool
 mercury__std_util__do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
 	return mercury__std_util____Unify____type_desc_0_0(
-		(MR_Word) x, (MR_Word) y);
+		(MR_Type_Desc) x, (MR_Type_Desc) y);
 }
 
 static bool
 mercury__private_builtin__do_unify__type_ctor_info_1_0(
-	MR_Word type_info, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Box x, MR_Box y)
 {
 	return mercury__private_builtin____Unify____type_ctor_info_1_0(
-		type_info, (MR_Word) x, (MR_Word) y);
+		type_info, (MR_Type_Ctor_Info) x, (MR_Type_Ctor_Info) y);
 }
 
 static bool
 mercury__private_builtin__do_unify__type_info_1_0(
-	MR_Word type_info, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Box x, MR_Box y)
 {
 	return mercury__private_builtin____Unify____type_info_1_0(
-		type_info, (MR_Word) x, (MR_Word) y);
+		type_info, (MR_Type_Info) x, (MR_Type_Info) y);
 }
 
 static bool
 mercury__private_builtin__do_unify__typeclass_info_1_0(
-	MR_Word type_info, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Box x, MR_Box y)
 {
 	return mercury__private_builtin____Unify____typeclass_info_1_0(
-		type_info, (MR_Word) x, (MR_Word) y);
+		type_info, (MR_TypeClass_Info) x, (MR_TypeClass_Info) y);
 }
 
 static bool
 mercury__private_builtin__do_unify__base_typeclass_info_1_0(
-	MR_Word type_info, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Box x, MR_Box y)
 {
 	return mercury__private_builtin____Unify____base_typeclass_info_1_0(
-		type_info, (MR_Word) x, (MR_Word) y);
+		type_info,
+		(MR_Base_TypeClass_Info) x, (MR_Base_TypeClass_Info) y);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -659,21 +681,24 @@ mercury__private_builtin__do_unify__base_typeclass_info_1_0(
 */
 
 static void
-mercury__builtin__do_compare__int_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__int_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____int_0_0(result,
 		(Integer) x, (Integer) y);
 }
 
 static void
-mercury__builtin__do_compare__string_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__string_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____string_0_0(result,
 		(MR_String) x, (MR_String) y);
 }
 
 static void
-mercury__builtin__do_compare__float_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__float_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____float_0_0(result,
 		MR_unbox_float(x), MR_unbox_float(y));
@@ -681,91 +706,103 @@ mercury__builtin__do_compare__float_0_0(MR_Word *result, MR_Box x, MR_Box y)
 
 static void
 mercury__builtin__do_compare__character_0_0(
-	MR_Word *result, MR_Box x, MR_Box y)
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____character_0_0(
 		result, (MR_Char) (MR_Word) x, (MR_Char) (MR_Word) y);
 }
 
 static void
-mercury__builtin__do_compare__void_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__void_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called compare/3 for type `void'");
 }
 
 static void
 mercury__builtin__do_compare__c_pointer_0_0(
-	MR_Word *result, MR_Box x, MR_Box y)
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____c_pointer_0_0(
-		result, (MR_Word) x, (MR_Word) y);
+		result, (MR_C_Pointer) x, (MR_C_Pointer) y);
 }
 
 static void
-mercury__builtin__do_compare__func_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__func_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called compare/3 for func type");
 }
 
 static void
-mercury__builtin__do_compare__pred_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__builtin__do_compare__pred_0_0(MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called compare/3 for pred type");
 }
 
 static void
 mercury__array__do_compare__array_1_0(
-	MR_Word type_info, MR_Word *result, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	mercury__array____Compare____array_1_0(
-		type_info, result, (MR_Word) x, (MR_Word) y);
+		type_info, result, (MR_Array) x, (MR_Array) y);
 }
 
 static void
-mercury__std_util__do_compare__univ_0_0(MR_Word *result, MR_Box x, MR_Box y)
+mercury__std_util__do_compare__univ_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__std_util____Compare____univ_0_0(
-		result, (MR_Word) x, (MR_Word) y);
+		result, (MR_Univ) x, (MR_Univ) y);
 }
 
 static void
 mercury__std_util__do_compare__type_desc_0_0(
-	MR_Word *result, MR_Box x, MR_Box y)
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__std_util____Compare____type_desc_0_0(
-		result, (MR_Word) x, (MR_Word) y);
+		result, (MR_Type_Desc) x, (MR_Type_Desc) y);
 }
 
 static void
 mercury__private_builtin__do_compare__type_ctor_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	mercury__private_builtin____Compare____type_ctor_info_1_0(
-		type_info, result, (MR_Word) x, (MR_Word) y);
+		type_info, result,
+		(MR_Type_Ctor_Info) x, (MR_Type_Ctor_Info) y);
 }
 
 static void
 mercury__private_builtin__do_compare__type_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	mercury__private_builtin____Compare____type_info_1_0(
-		type_info, result, (MR_Word) x, (MR_Word) y);
+		type_info, result, (MR_Type_Info) x, (MR_Type_Info) y);
 }
 
 static void
 mercury__private_builtin__do_compare__typeclass_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	mercury__private_builtin____Compare____typeclass_info_1_0(
-		type_info, result, (MR_Word) x, (MR_Word) y);
+		type_info, result,
+		(MR_TypeClass_Info) x, (MR_TypeClass_Info) y);
 }
 
 static void
 mercury__private_builtin__do_compare__base_typeclass_info_1_0(
-	MR_Word type_info, MR_Word *result, MR_Box x, MR_Box y)
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	mercury__private_builtin____Compare____base_typeclass_info_1_0(
-		type_info, result, (MR_Word) x, (MR_Word) y);
+		type_info, result,
+		(MR_Base_TypeClass_Info) x, (MR_Base_TypeClass_Info) y);
 }
 
 /*---------------------------------------------------------------------------*/
