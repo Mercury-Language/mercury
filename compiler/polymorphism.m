@@ -3170,7 +3170,7 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs],
 				LocnMap0::in, LocnMap::out] is det,
 		(
 			IndexedTypeVar = TheTypeVar - Location,
-			map__det_insert(LocnMap0, TheTypeVar,
+			map__set(LocnMap0, TheTypeVar,
 				typeclass_info(Var, Location), LocnMap)
 		)),
 	list__foldl(MakeEntry, NewClassTypeVars, TypeInfoMap0, TypeInfoMap1),
