@@ -1368,11 +1368,13 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
 
 	% Stage number assignments:
 	%
-	%	 1 to 25	front end pass
-	%	26 to 50	middle pass
-	%	51 to 99	back end pass
+	%	  1 to  99	front end pass
+	%	100 to 299	middle pass
+	%	300 to 399	LLDS back end pass
+	%	400 to 499	MLDS back end pass
+	%	500 to 599	bytecode back end pass
 	%
-	% The initial arrangement has the stage numbers increasing by three
+	% The initial arrangement has the stage numbers increasing by five
 	% so that new stages can be slotted in without too much trouble.
 
 :- pred compile(file_name::in, module_name::in, list(module_name)::in,
@@ -1738,7 +1740,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1,
 	bool__or(UndefTypes1, UndefTypes2, UndefTypes),
 	bool__or(UndefModes0, UndefModes2, UndefModes),
 
-	mercury_compile__maybe_dump_hlds(HLDS0, "01", "initial", !IO),
+	mercury_compile__maybe_dump_hlds(HLDS0, 1, "initial", !IO),
 
 	( DontWriteDFile = yes ->
 		true
@@ -1949,7 +1951,7 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 		"% Checking typeclass instances...\n", !IO),
 	check_typeclass__check_instance_decls(QualInfo0, QualInfo, !HLDS,
 		FoundTypeclassError, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "02", "typeclass", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 5, "typeclass", !IO),
 	make_hlds__set_module_recompilation_info(QualInfo, !HLDS),
 
 	globals__lookup_bool_option(Globals, intermodule_optimization,
@@ -1971,8 +1973,8 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 			"% Eliminating dead predicates... ", !IO),
 		dead_pred_elim(!HLDS),
 		maybe_write_string(Verbose, "done.\n", !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "02b",
-			"dead_pred_elim", !IO)
+		mercury_compile__maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim",
+			!IO)
 	;
 		true
 	),
@@ -1991,7 +1993,7 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 		maybe_write_string(Verbose,
 			"% Program is type-correct.\n", !IO)
 	),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "03", "typecheck", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 15, "typecheck", !IO),
 
 	%
 	% We can't continue after an undefined inst/mode
@@ -2021,7 +2023,7 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 		%
 		mercury_compile__puritycheck(Verbose, Stats, !HLDS,
 			FoundTypeError, FoundPostTypecheckError, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "04", "puritycheck",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 20, "puritycheck",
 			!IO),
 
 		%
@@ -2167,7 +2169,7 @@ mercury_compile__output_trans_opt_file(HLDS25, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 	mercury_compile__maybe_termination(Verbose, Stats, HLDS25, HLDS28, !IO),
-	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination", !IO),
+	mercury_compile__maybe_dump_hlds(HLDS28, 25, "termination", !IO),
 	trans_opt__write_optfile(HLDS28, !IO).
 
 :- pred mercury_compile__frontend_pass_by_phases(module_info::in,
@@ -2178,40 +2180,40 @@ mercury_compile__frontend_pass_by_phases(!HLDS, FoundError, !IO) :-
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 
 	mercury_compile__maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "05", "polymorphism", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 30, "polymorphism", !IO),
 
 	mercury_compile__modecheck(Verbose, Stats, !HLDS,
 		FoundModeError, UnsafeToContinue, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "06", "modecheck", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 35, "modecheck", !IO),
 
 	( UnsafeToContinue = yes ->
 		FoundError = yes
 	;
 		mercury_compile__detect_switches(Verbose, Stats, !HLDS, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "07",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 40,
 			"switch_detect", !IO),
 
 		mercury_compile__detect_cse(Verbose, Stats, !HLDS, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "08", "cse", !IO),
+		mercury_compile__maybe_dump_hlds(!.HLDS, 45, "cse", !IO),
 
 		mercury_compile__check_determinism(Verbose, Stats, !HLDS,
 			FoundDetError, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "09", "determinism",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 50, "determinism",
 			!IO),
 
 		mercury_compile__check_unique_modes(Verbose, Stats, !HLDS,
 			FoundUniqError, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "10", "unique_modes",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 55, "unique_modes",
 			!IO),
 
 		mercury_compile__check_stratification(Verbose, Stats, !HLDS,
 			FoundStratError, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "11",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 60,
 			"stratification", !IO),
 
 		mercury_compile__simplify(yes, no, Verbose, Stats,
 			process_all_nonimported_procs, !HLDS, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "12", "simplify",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 65, "simplify",
 			!IO),
 
 		%
@@ -2233,7 +2235,7 @@ mercury_compile__frontend_pass_by_phases(!HLDS, FoundError, !IO) :-
 			FoundError = yes
 		)
 	),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "20", "front_end", !IO).
+	mercury_compile__maybe_dump_hlds(!.HLDS, 99, "front_end", !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2246,13 +2248,13 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 
 	mercury_compile__tabling(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "25", "tabling", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 105, "tabling", !IO),
 
 	mercury_compile__process_lambdas(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "26", "lambda", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 110, "lambda", !IO),
 
 	mercury_compile__expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "27", "equiv_types", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 115, "equiv_types", !IO),
 
 	%
 	% Uncomment the following code to check that unique mode analysis
@@ -2272,10 +2274,10 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	% ),
 
 	mercury_compile__maybe_termination(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "28", "termination", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 120, "termination", !IO),
 
 	mercury_compile__maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "29", "type_ctor_infos", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !IO),
 
 	% warn_dead_procs must come after type_ctor_infos, so that it
 	% handles unification & comparison procedures correctly,
@@ -2283,75 +2285,75 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	% specialization and inlining, which can make the original code
 	% for a procedure dead by inlining/specializing all uses of it.
 	mercury_compile__maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "30", "warn_dead_procs", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 130, "warn_dead_procs", !IO),
 
 	mercury_compile__maybe_bytecodes(!.HLDS, ModuleName, Verbose, Stats,
 		!IO),
 	% stage number 31 is used by mercury_compile__maybe_bytecodes
 
 	mercury_compile__maybe_higher_order(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "32", "higher_order", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 135, "higher_order", !IO),
 
 	mercury_compile__maybe_introduce_accumulators(Verbose, Stats, !HLDS,
 		!IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "33", "accum", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 140, "accum", !IO),
 
 	mercury_compile__maybe_do_inlining(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "34", "inlining", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 145, "inlining", !IO),
 
-	% Hoisting loop invariants first invokes pass 35, "mark_static".
-	% "mark_static" is also run at stage 60.
+	% Hoisting loop invariants first invokes pass 148, "mark_static".
+	% "mark_static" is also run at stage 420.
 	%
 	mercury_compile__maybe_loop_inv(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "36", "loop_inv", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 150, "loop_inv", !IO),
 
 	mercury_compile__maybe_deforestation(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "37", "deforestation", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 155, "deforestation", !IO),
 
 	mercury_compile__maybe_delay_construct(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "38", "delay_construct", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 160, "delay_construct", !IO),
 
 	mercury_compile__maybe_unused_args(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "40", "unused_args", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 165, "unused_args", !IO),
 
 	mercury_compile__maybe_unneeded_code(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "41", "unneeded_code", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 170, "unneeded_code", !IO),
 
 	mercury_compile__maybe_lco(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "43", "lco", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 175, "lco", !IO),
 
 	mercury_compile__maybe_transform_aditi_builtins(Verbose, Stats, !HLDS,
 		!IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "44", "aditi_builtins", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 180, "aditi_builtins", !IO),
 
 	% DNF transformations should be after inlining.
 	mercury_compile__maybe_transform_dnf(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "45", "dnf", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 185, "dnf", !IO),
 
 	% Magic sets should be the last thing done to Aditi procedures
 	% before RL code generation, and must come immediately after DNF.
 	% Note that if this pass is done, it will also invokes dead_proc_elim
 	% (XXX which means dead_proc_elim may get done twice).
 	mercury_compile__maybe_magic(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "46", "magic", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 190, "magic", !IO),
 
 	mercury_compile__maybe_eliminate_dead_procs(Verbose, Stats, !HLDS,
 		!IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "47", "dead_procs", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 195, "dead_procs", !IO),
 
 	% The term size profiling transformation should be after all
 	% transformations that construct terms of non-zero size. (Deep
 	% profiling does not construct non-zero size terms.)
 	mercury_compile__maybe_term_size_prof(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "48", "term_size_prof", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 200, "term_size_prof", !IO),
 
 	% Deep profiling transformation should be done late in the piece
 	% since it munges the code a fair amount and introduces strange
 	% disjunctions that might confuse other hlds->hlds transformations.
 	mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "49", "deep_profiling", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 205, "deep_profiling", !IO),
 
-	mercury_compile__maybe_dump_hlds(!.HLDS, "50", "middle_pass", !IO).
+	mercury_compile__maybe_dump_hlds(!.HLDS, 299, "middle_pass", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2434,7 +2436,7 @@ mercury_compile__backend_pass(!HLDS, GlobalData, LLDS, !IO) :-
 	% so it must be done in one phase immediately before code generation
 
 	mercury_compile__map_args_to_regs(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "51", "args_to_regs", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 305, "args_to_regs", !IO),
 
 	globals__io_lookup_bool_option(trad_passes, TradPasses, !IO),
 	(
@@ -2458,29 +2460,29 @@ mercury_compile__backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !IO) :-
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 
 	mercury_compile__maybe_saved_vars(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "53", "saved_vars_const", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 310, "saved_vars_const", !IO),
 
 	mercury_compile__maybe_stack_opt(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "55", "saved_vars_cell", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 315, "saved_vars_cell", !IO),
 
 	mercury_compile__maybe_followcode(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "57", "followcode", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 320, "followcode", !IO),
 
 	mercury_compile__simplify(no, yes, Verbose, Stats,
 		process_all_nonimported_nonaditi_procs, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "59", "simplify2", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 325, "simplify2", !IO),
 
 	mercury_compile__compute_liveness(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "61", "liveness", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 330, "liveness", !IO),
 
 	mercury_compile__compute_stack_vars(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "65", "stackvars", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 335, "stackvars", !IO),
 
 	mercury_compile__allocate_store_map(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "68", "store_map", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 340, "store_map", !IO),
 
 	mercury_compile__maybe_goal_paths(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "90", "precodegen", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 345, "precodegen", !IO),
 
 	mercury_compile__generate_code(!.HLDS, Verbose, Stats,
 		!GlobalData, LLDS1, !IO),
@@ -3119,7 +3121,7 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !IO) :-
 	( GenBytecode = yes ->
 		mercury_compile__map_args_to_regs(Verbose, Stats, HLDS0, HLDS1,
 			!IO),
-		mercury_compile__maybe_dump_hlds(HLDS1, "31",
+		mercury_compile__maybe_dump_hlds(HLDS1, 505,
 			"bytecode_args_to_regs", !IO),
 		maybe_write_string(Verbose,
 			"% Generating bytecodes...\n", !IO),
@@ -3292,7 +3294,7 @@ mercury_compile__maybe_loop_inv(Verbose, Stats, !HLDS, !IO) :-
 			%
 		mercury_compile__maybe_mark_static_terms(Verbose, Stats,
 			!HLDS, !IO),
-		mercury_compile__maybe_dump_hlds(!.HLDS, "35", "mark_static",
+		mercury_compile__maybe_dump_hlds(!.HLDS, 148, "mark_static",
 			!IO),
 
 		maybe_write_string(Verbose,
@@ -3975,16 +3977,16 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 
 	mercury_compile__simplify(no, yes, Verbose, Stats,
 		process_all_nonimported_nonaditi_procs, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "53", "simplify2", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 405, "simplify2", !IO),
 
 	mercury_compile__maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "55", "add_trail_ops", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 410, "add_trail_ops", !IO),
 
 	mercury_compile__maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "57", "add_heap_ops", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 415, "add_heap_ops", !IO),
 
 	mercury_compile__maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "60", "mark_static", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 420, "mark_static", !IO),
 
 	% We need to do map_args_to_regs, even though that module is meant
 	% for the LLDS back-end, because with the MLDS back-end the arg_infos
@@ -3992,21 +3994,21 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 	% which is used by ml_unify_gen.m when outputting closure layout
 	% structs.
 	mercury_compile__map_args_to_regs(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "70", "args_to_regs", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 425, "args_to_regs", !IO),
 
-	mercury_compile__maybe_dump_hlds(!.HLDS, "99", "final", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 499, "final", !IO),
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
 	ml_code_gen(!.HLDS, MLDS0, !IO),
 	maybe_write_string(Verbose, "% done.\n", !IO),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS0, "0", "initial", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS0, 0, "initial", !IO),
 
 	maybe_write_string(Verbose, "% Generating RTTI data...\n", !IO),
 	mercury_compile__mlds_gen_rtti_data(!.HLDS, MLDS0, MLDS10),
 	maybe_write_string(Verbose, "% done.\n", !IO),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS10, "10", "rtti", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS10, 10, "rtti", !IO),
 
 	% Detection of tail calls needs to occur before the
 	% chain_gc_stack_frame pass of ml_elim_nested,
@@ -4023,7 +4025,7 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 		MLDS10 = MLDS20
 	),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS20, 20, "tailcalls", !IO),
 
 	% Warning about non-tail calls needs to come after detection
 	% of tail calls
@@ -4066,7 +4068,7 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 		MLDS25 = MLDS20
 	),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS25, "25", "optimize1", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS25, 25, "optimize1", !IO),
 
 	%
 	% Note that we call ml_elim_nested twice --
@@ -4090,7 +4092,7 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 		MLDS30 = MLDS25
 	),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS30, "30", "gc_frames", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS30, 30, "gc_frames", !IO),
 
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs, !IO),
 	( NestedFuncs = no ->
@@ -4102,7 +4104,7 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 		MLDS35 = MLDS30
 	),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS35, "35", "nested_funcs", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS35, 35, "nested_funcs", !IO),
 
 	% run the ml_optimize pass again after ml_elim_nested,
 	% to do optimize_initializations.  (It may also help pick
@@ -4117,10 +4119,10 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 		MLDS40 = MLDS35
 	),
 	maybe_report_stats(Stats, !IO),
-	mercury_compile__maybe_dump_mlds(MLDS40, "40", "optimize2", !IO),
+	mercury_compile__maybe_dump_mlds(MLDS40, 40, "optimize2", !IO),
 
 	MLDS = MLDS40,
-	mercury_compile__maybe_dump_mlds(MLDS, "99", "final", !IO).
+	mercury_compile__maybe_dump_mlds(MLDS, 99, "final", !IO).
 
 :- pred mercury_compile__mlds_gen_rtti_data(module_info::in,
 	mlds::in, mlds::out) is det.
@@ -4196,46 +4198,57 @@ mercury_compile__mlds_to_il_assembler(MLDS, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__maybe_dump_hlds(module_info::in, string::in,
-	string::in, io::di, io::uo) is det.
+:- pred mercury_compile__maybe_dump_hlds(module_info::in, int::in, string::in,
+	io::di, io::uo) is det.
 
 mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName, !IO) :-
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages, !IO),
-	( should_dump_stage(StageNum, StageName, DumpStages) ->
+	StageNumStr = stage_num_str(StageNum),
+	( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
 		module_info_name(HLDS, ModuleName),
 		module_name_to_file_name(ModuleName, ".hlds_dump", yes,
 			BaseFileName, !IO),
 		string__append_list(
-			[BaseFileName, ".", StageNum, "-", StageName],
+			[BaseFileName, ".", StageNumStr, "-", StageName],
 			DumpFile),
 		mercury_compile__dump_hlds(DumpFile, HLDS, !IO)
 	;
 		true
 	).
 
-:- pred should_dump_stage(string::in, string::in, list(string)::in) is semidet.
+:- func stage_num_str(int) = string.
 
-should_dump_stage(StageNum, StageName, DumpStages) :-
+stage_num_str(StageNum) = StageNumStr :-
+	int_to_string(StageNum, StageNumStr0),
+	( string__length(StageNumStr0, 1) ->
+		StageNumStr = "00" ++ StageNumStr0
+	; string__length(StageNumStr0, 2) ->
+		StageNumStr = "0" ++ StageNumStr0
+	;
+		StageNumStr = StageNumStr0
+	).
+
+:- pred should_dump_stage(int::in, string::in, string::in, list(string)::in)
+	is semidet.
+
+should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
+	list__member(DumpStage, DumpStages),
 	(
-		list__member(StageNum, DumpStages)
+		StageName = DumpStage
 	;
-		string__append("0", StrippedStageNum, StageNum),
-		list__member(StrippedStageNum, DumpStages)
+		"all" = DumpStage
 	;
-		list__member(StageName, DumpStages)
+		(
+			DumpStage = StageNumStr
+		;
+			string__append("0", DumpStage, StageNumStr)
+		;
+			string__append("00", DumpStage, StageNumStr)
+		)
 	;
-		list__member("all", DumpStages)
-	;
-		list__member(DumpStage, DumpStages),
 		string__append(From, "+", DumpStage),
 		string__to_int(From, FromInt),
-		(
-			string__append("0", StrippedStageNum, StageNum),
-			string__to_int(StrippedStageNum, StageInt)
-		;
-			string__to_int(StageNum, StageInt)
-		),
-		StageInt >= FromInt
+		StageNum >= FromInt
 	).
 
 :- pred mercury_compile__dump_hlds(string::in, module_info::in,
@@ -4263,7 +4276,7 @@ mercury_compile__dump_hlds(DumpFile, HLDS, !IO) :-
 		report_error(ErrorMessage, !IO)
 	).
 
-:- pred mercury_compile__maybe_dump_mlds(mlds::in, string::in, string::in,
+:- pred mercury_compile__maybe_dump_mlds(mlds::in, int::in, string::in,
 	io::di, io::uo) is det.
 
 mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
@@ -4271,24 +4284,30 @@ mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
 	globals__io_lookup_accumulating_option(dump_mlds, DumpStages, !IO),
 	globals__io_lookup_accumulating_option(verbose_dump_mlds,
 		VerboseDumpStages, !IO),
-	( should_dump_stage(StageNum, StageName, DumpStages) ->
+	StageNumStr = stage_num_str(StageNum),
+	(
+		should_dump_stage(StageNum, StageNumStr, StageName, DumpStages)
+	->
 		maybe_write_string(Verbose, "% Dumping out MLDS as C...\n",
 			!IO),
 		maybe_flush_output(Verbose, !IO),
-		string__append_list(["_dump.", StageNum, "-", StageName],
+		string__append_list(["_dump.", StageNumStr, "-", StageName],
 			DumpSuffix),
 		mlds_to_c__output_mlds(MLDS, no, DumpSuffix, !IO),
 		maybe_write_string(Verbose, "% done.\n", !IO)
 	;
 		true
 	),
-	( should_dump_stage(StageNum, StageName, VerboseDumpStages) ->
+	(
+		should_dump_stage(StageNum, StageNumStr, StageName,
+			VerboseDumpStages)
+	->
 		maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
 		ModuleName = mlds__get_module_name(MLDS),
 		module_name_to_file_name(ModuleName, ".mlds_dump", yes,
 			BaseFileName, !IO),
 		string__append_list(
-			[BaseFileName, ".", StageNum, "-", StageName],
+			[BaseFileName, ".", StageNumStr, "-", StageName],
 			DumpFile),
 		mercury_compile__dump_mlds(DumpFile, MLDS, !IO),
 		maybe_write_string(Verbose, "% done.\n", !IO)
