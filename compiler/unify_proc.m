@@ -130,6 +130,7 @@
 :- import_module modes, mode_util, inst_match, instmap, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module recompilation.
+:- import_module goal_util.
 
 :- import_module tree, map, set, queue, int, string, require, assoc_list.
 
@@ -755,12 +756,8 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			Clauses)
 	;
 		{ TypeBody = foreign_type(_, _, _) },
-			% XXX Is this the correct thing to do?
-			% I assume at code gen time I could examine the types
-			% of the unification and output different code because
-			% they are foreign types.
-		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
-			Goal) },
+		unify_proc__build_call("nyi_foreign_type_unify", [H1, H2],
+				Context, Goal),
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
@@ -898,12 +895,9 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 			Clauses)
 	;
 		{ TypeBody = foreign_type(_, _, _) },
-		% XXX
-		% I think we should delay handling this for foreign types until
-		% code gen time.
-		{ ArgVars = [Res, H1, H2] },
-		unify_proc__build_call("compare", ArgVars, Context, Goal),
-		unify_proc__quantify_clauses_body(ArgVars, Goal, Context,
+		unify_proc__build_call("nyi_foreign_type_compare",
+				[Res, H1, H2], Context, Goal),
+		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
 			Clauses)
 	;
 		{ TypeBody = uu_type(_) },

@@ -1430,6 +1430,9 @@ do_compare__heap_pointer_0_0(
 
 	% N.B. interface continued below.
 
+:- pred nyi_foreign_type_unify(T::in, T::in) is semidet.
+:- pred nyi_foreign_type_compare(comparison_result::uo, T::in, T::in) is det.
+
 :- implementation.
 
 % unsafe_type_cast is a builtin; the compiler generates inline code for it
@@ -1440,6 +1443,20 @@ unused :-
 	;
 		% the following is never executed
 		true
+	).
+
+nyi_foreign_type_unify(_, _) :-
+	( semidet_succeed ->
+		sorry("unify for foreign types")
+	;
+		semidet_succeed
+	).
+
+nyi_foreign_type_compare(Result, _, _) :-
+	( semidet_succeed ->
+		sorry("compare for foreign types")
+	;
+		Result = (=)
 	).
 
 %-----------------------------------------------------------------------------%
