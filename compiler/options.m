@@ -19,7 +19,7 @@
 		
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(list(pair(option, option_data))::output) is det.
+:- pred option_defaults(list(pair(option, option_data))::out) is det.
 
 :- pred options__lookup_bool_option(option_table, option, bool).
 :- mode options__lookup_bool_option(in, in, out) is det.
@@ -98,18 +98,47 @@
 
 :- implementation.
 
-option_defaults([
+	% I've split up option_defaults into several different clauses
+	% purely in order to reduce compilation time/memory usage.
+
+:- type option_category
+	--->	warning_option
+	;	verbosity_option
+	;	output_option
+	;	code_gen_option
+	;	optimization_option
+	;	miscellaneous_option.
+
+option_defaults(OptionDefaults) :-
+	option_defaults_2(warning_option, WarningOptions),
+	option_defaults_2(verbosity_option, VerbosityOptions),
+	option_defaults_2(output_option, OutputOptions),
+	option_defaults_2(code_gen_option, CodeGenOptions),
+	option_defaults_2(optimization_option, OptimizationOptions),
+	option_defaults_2(miscellaneous_option, MiscellaneousOptions),
+	list__condense([WarningOptions, VerbosityOptions, OutputOptions,
+		CodeGenOptions, MiscellaneousOptions, OptimizationOptions],
+		OptionDefaults).
+
+:- pred option_defaults_2(option_category::in,
+			list(pair(option, option_data))::out) is det.
+
+option_defaults_2(warning_option, [
 		% Warning Options
 	warn_singleton_vars	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
-	warn_det_decls_too_lax	-	bool(yes),
+	warn_det_decls_too_lax	-	bool(yes)
+]).
+option_defaults_2(verbosity_option, [
 		% Verbosity Options
 	verbose			-	bool(no),
 	very_verbose		-	bool(no),
 	verbose_errors		-	bool(no),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
-	debug_modes		- 	bool(no),
+	debug_modes		- 	bool(no)
+]).
+option_defaults_2(output_option, [
 		% Output Options
 	generate_dependencies	-	bool(no),
 	make_interface		-	bool(no),
@@ -120,7 +149,9 @@ option_defaults([
 	verbose_dump_hlds	-	bool(no),
 	generate_code		-	bool(no),
 	line_numbers		-	bool(no),
-	mod_comments		-	bool(yes),
+	mod_comments		-	bool(yes)
+]).
+option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
 	follow_code		-	bool(yes),
@@ -137,7 +168,9 @@ option_defaults([
 	c_include_directory	-	string(""),
 	link			-	bool(no),
 	gcc_non_local_gotos	-	bool(no),
-	gcc_global_registers	-	bool(no),
+	gcc_global_registers	-	bool(no)
+]).
+option_defaults_2(optimization_option, [
 		% Optimization options
 	debug			-	bool(no),
 	optimize		-	bool(no),
@@ -148,7 +181,9 @@ option_defaults([
 	peephole_label_elim	-	bool(yes),
 	peephole_value_number	-	bool(no),
 	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes),
+	smart_indexing		-	bool(yes)
+]).
+option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
