@@ -92,8 +92,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <h2> C interface </h2>
 
 <ul>
-<li> document `pragma import' and nondet C code interface
-
 <li> exporting things for manipulating Mercury types from C
 
 <li> better support for types defined in C
@@ -122,7 +120,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> allow explicit type qualifications `X : Type'
 	[already done, but need to change module qualifier op to `.' first]
 
-<li> improve support for existential types
+<li> allow std_util:construct/4 to work for existential types
 
 <li> remove limitation that higher-order terms are monomorphic.
      i.e. allow universal quantifiers at the top level of
@@ -156,8 +154,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> handle abstract insts in the same way abstract types are handled
      (a research issue - is this possible at all?)
 
-<li> implement `willbe(Inst)' insts?
-	  [will be done by conway]
+<li> implement `willbe(Inst)' insts, for parallelism
 
 <li> mode segments & high-level transformation of circularly moded programs.
 </ul>
@@ -290,21 +287,15 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <ul>
 <li> coroutining and parallel versions of Mercury
-	[being worked on by conway]
 
 <li> implement streams (need coroutining at least)
 
 <li> implement a very fast turn-around bytecode compiler/interpreter/debugger,
      similar to Gofer
-     [not-so-fast bytecode compiler done,
-     bytecode interpreter/debugger being worked on by aet]
-
-<li> implement a new backend which compiles to high-level C that can
-     be debugged at the Mercury source code level using gdb
-	[a small start has been made by fjh]
+     [not-so-fast bytecode compiler done, but bytecode interpreter
+     not implemented]
 
 <li> implement "accurate" garbage collection
-	[being worked on by trd]
 
 <li> implement parallel garbage collection
 
@@ -348,6 +339,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-03-24 05:32:21 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-12-11 16:36:47 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
