@@ -269,7 +269,9 @@ report_error(ErrorMessage) -->
 usage -->
 	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
- 	io__write_string(StdErr, "Mercury compiler version 0.2.5\n"),
+ 	io__write_string(StdErr, "Mercury Compiler, version 0.3\n"),
+ 	io__write_string(StdErr,
+			"Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] <module>\n"),
@@ -280,7 +282,8 @@ usage -->
 :- pred long_usage(io__state::di, io__state::uo) is det.
 long_usage -->
 	io__progname_base("mercury_compile", ProgName),
- 	io__write_string("Mercury compiler version 0.2.5\n"),
+ 	io__write_string("Mercury Compiler, version 0.3\n"),
+ 	io__write_string("Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
 	io__write_string(" [<options>] <module>\n"),
