@@ -135,6 +135,9 @@ disj_gen__generate_non_disj(Goals0, Code) -->
 disj_gen__generate_non_disj_2([], _EndLab, _MRedoIp, _EndCode) -->
 	{ error("disj_gen__generate_non_disj_2") }.
 disj_gen__generate_non_disj_2([Goal|Goals], EndLab, MRedoIp, DisjCode) -->
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals,
+			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	(
 		{ Goals = [_|_] }
 	->
@@ -157,9 +160,6 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, MRedoIp, DisjCode) -->
 				"Jump to end of disj",
 			label(ContLab0) - "Start of next disjunct"
 		]) },
-		code_info__get_globals(Globals),
-		{ globals__lookup_bool_option(Globals,
-				reclaim_heap_on_nondet_failure, ReclaimHeap) },
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__slap_code_info(CodeInfo),
 		code_info__remake_with_call_info,
@@ -168,7 +168,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, MRedoIp, DisjCode) -->
 			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, MRedoIp, RestCode)
 	;
-		code_info__pop_stack(PopCode),
+		code_info__maybe_pop_stack(ReclaimHeap, PopCode),
 		(
 			{ MRedoIp = no }
 		->
