@@ -1517,13 +1517,8 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	*/
 
 
-#ifdef COMPACT_ARGS
 	r1 = (Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
 		answer_data;
-#else
-	r2 = (Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
-		answer_data;
-#endif
 
 	MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
 		&(MR_cur_leader->resume_info->cur_consumer_answer_list->

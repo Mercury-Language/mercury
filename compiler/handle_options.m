@@ -124,76 +124,66 @@ postprocess_options(ok(OptionTable), Error) -->
             { TagsMethod0 = string(TagsMethodStr) },
             { convert_tags_method(TagsMethodStr, TagsMethod) }
         ->
-            { map__lookup(OptionTable, args, ArgsMethod0) },
+            { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
             (
-                { ArgsMethod0 = string(ArgsMethodStr) },
-                { convert_args_method(ArgsMethodStr, ArgsMethod) }
+                { PrologDialect0 = string(PrologDialectStr) },
+                { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
             ->
-                { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
+                { map__lookup(OptionTable,
+                    fact_table_hash_percent_full, PercentFull) },
                 (
-                    { PrologDialect0 = string(PrologDialectStr) },
-                    { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
+                    { PercentFull = int(Percent) },
+                    { Percent >= 1 },
+                    { Percent =< 100 }
                 ->
-                    { map__lookup(OptionTable,
-                        fact_table_hash_percent_full, PercentFull) },
+                    { map__lookup(OptionTable, termination_norm,
+                        TermNorm0) },
                     (
-                        { PercentFull = int(Percent) },
-                        { Percent >= 1 },
-                        { Percent =< 100 }
+                        { TermNorm0 = string(TermNormStr) },
+                        { convert_termination_norm(TermNormStr, TermNorm) }
                     ->
-                        { map__lookup(OptionTable, termination_norm,
-                            TermNorm0) },
+                        { map__lookup(OptionTable, trace, Trace) },
+                        { map__lookup(OptionTable, require_tracing,
+                            RequireTracingOpt) },
                         (
-                            { TermNorm0 = string(TermNormStr) },
-                            { convert_termination_norm(TermNormStr, TermNorm) }
+                            { Trace = string(TraceStr) },
+                            { RequireTracingOpt = bool(RequireTracing) },
+                            { convert_trace_level(TraceStr, RequireTracing,
+                                TraceLevel) }
                         ->
-                            { map__lookup(OptionTable, trace, Trace) },
-                            { map__lookup(OptionTable, require_tracing,
-                                RequireTracingOpt) },
+                            { map__lookup(OptionTable, dump_hlds_alias,
+                                DumpAliasOption) },
                             (
-                                { Trace = string(TraceStr) },
-                                { RequireTracingOpt = bool(RequireTracing) },
-                                { convert_trace_level(TraceStr, RequireTracing,
-                                    TraceLevel) }
+                                { DumpAliasOption = string(DumpAlias) },
+                                { DumpAlias = "" }
                             ->
-                                { map__lookup(OptionTable, dump_hlds_alias,
-                                    DumpAliasOption) },
-                                (
-                                    { DumpAliasOption = string(DumpAlias) },
-                                    { DumpAlias = "" }
-                                ->
-                                    postprocess_options_2(OptionTable,
-                                        GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel,
-					Error)
-                                ;
-                                    { DumpAliasOption = string(DumpAlias) },
-                                    { convert_dump_alias(DumpAlias,
-                                        DumpOptions) }
-                                ->
-                                    { map__set(OptionTable, dump_hlds_options,
-                                        string(DumpOptions), NewOptionTable) },
-                                    postprocess_options_2(NewOptionTable,
-                                        GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel,
-					Error)
-                                ;
-                                    { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
-                                )
+                                postprocess_options_2(OptionTable,
+                                    GC_Method, TagsMethod, PrologDialect,
+				    TermNorm, TraceLevel, Error)
                             ;
-                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
+                                { DumpAliasOption = string(DumpAlias) },
+                                { convert_dump_alias(DumpAlias,
+                                    DumpOptions) }
+                            ->
+                                { map__set(OptionTable, dump_hlds_options,
+                                    string(DumpOptions), NewOptionTable) },
+                                postprocess_options_2(NewOptionTable,
+                                    GC_Method, TagsMethod, PrologDialect,
+				    TermNorm, TraceLevel, Error)
+                            ;
+                                { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                             )
                         ;
-                            { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+                            { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
                         )
                     ;
-                        { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
+                        { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
                     )
                 ;
-                    { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
+                    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
                 )
             ;
-                { Error = yes("Invalid args option (must be `simple' or `compact')") }
+                { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
             )
         ;
             { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
@@ -203,14 +193,14 @@ postprocess_options(ok(OptionTable), Error) -->
     ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method,
-	args_method, prolog_dialect, termination_norm, trace_level,
-	maybe(string), io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, out, di, uo) is det.
+	prolog_dialect, termination_norm, trace_level, maybe(string),
+	io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, out, di, uo) is det.
 
-postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm, TraceLevel, Error) -->
+postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
+		TermNorm, TraceLevel, Error) -->
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
-	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
+	globals__io_init(OptionTable1, GC_Method, TagsMethod,
 		PrologDialect, TermNorm, TraceLevel),
 
 	% --gc conservative implies --no-reclaim-heap-*

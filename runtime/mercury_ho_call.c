@@ -17,9 +17,6 @@ ENDINIT
 ** provided by the higher-order call may be input or output, and may appear
 ** in any order.
 **
-** The procedure whose address is contained in the closure must use the
-** `compact' argument convention.
-**
 ** The input arguments to do_call_*_closure are the closure in r1,
 ** the number of additional input arguments in r2, the number of output
 ** arguments to expect in r3, and the additional input arguments themselves
@@ -84,27 +81,6 @@ Define_extern_entry(mercury__compare_3_2);
 Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 
-#ifdef	COMPACT_ARGS
-  /*
-  ** With compact args, all these methods just do some data shuffling
-  ** and then a tailcall. They never have stack frames, and therefore
-  ** do not participate in stack traces.
-  */
-#else
-  /*
-  ** With simple args, some of these procedures make proper calls,
-  ** and thus have stack frames.
-  */
-  MR_MAKE_PROC_LAYOUT(mercury__index_2_0,
-	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, "builtin", "index", 2, 0);
-  MR_MAKE_INTERNAL_LAYOUT(mercury__index_2_0, 1);
-  MR_MAKE_PROC_LAYOUT(mercury__compare_3_0,
-	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, "builtin", "compare", 3, 0);
-  MR_MAKE_INTERNAL_LAYOUT(mercury__compare_3_0, 1);
-#endif
-
 BEGIN_MODULE(call_module)
 	init_entry_ai(do_call_det_closure);
 	init_entry_ai(do_call_semidet_closure);
@@ -120,15 +96,8 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(mercury__do_call_class_method);
 
 	init_entry_ai(mercury__unify_2_0);
-#ifdef	COMPACT_ARGS
 	init_entry_ai(mercury__index_2_0);
 	init_entry_ai(mercury__compare_3_0);
-#else
-	init_entry_sl(mercury__index_2_0);
-	init_label_sl(mercury__index_2_0_i1);
-	init_entry_sl(mercury__compare_3_0);
-	init_label_sl(mercury__compare_3_0_i1);
-#endif
 	init_entry_ai(mercury__compare_3_1);
 	init_entry_ai(mercury__compare_3_2);
 	init_entry_ai(mercury__compare_3_3);
@@ -281,17 +250,8 @@ Define_entry(mercury__do_call_class_method);
 ** mercury__unify_2_0 is called as `unify(TypeInfo, X, Y)'
 ** in the mode `unify(in, in, in) is semidet'.
 **
-** With the simple parameter passing convention, the inputs are in the
-** registers r2, r3 and r4. With the compact parameter passing convention,
-** the inputs are in the registers r1, r2 and r3.
-**
-** The only output is the success/failure indication,
-** which goes in r1 with both calling conventions.
-**
 ** We call the type-specific unification routine as
 ** `UnifyPred(...ArgTypeInfos..., X, Y)' is semidet, with all arguments input.
-** Again r1 will hold the success/failure continuation; the input arguments
-** start either in r1 or r2 depending on the argument passing convention.
 */
 
 Define_entry(mercury__unify_2_0);
@@ -303,35 +263,35 @@ Define_entry(mercury__unify_2_0);
 	Word	x, y;
 	int	i;
 
+	Word	type_info;
 	Word	type_ctor_info;
 
-	x = mercury__unify__x;
-	y = mercury__unify__y;
+	type_info = r1;
+	x = r2;
+	y = r3;
 
-	type_ctor_info = field(0, mercury__unify__typeinfo, 0);
+	type_ctor_info = field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		unify_pred = (Code *) field(0, mercury__unify__typeinfo,
-				OFFSET_FOR_UNIFY_PRED);
+		unify_pred = (Code *) field(0, type_info,
+					OFFSET_FOR_UNIFY_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
 		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
 		unify_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_UNIFY_PRED);
-		args_base = mercury__unify__typeinfo;
+		args_base = type_info;
 	}
 
 	save_registers();
 
 	/* we call `UnifyPred(...ArgTypeInfos..., X, Y)' */
-	/* virtual_reg(1) will hold the success/failure indication */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i + mercury__unify__offset) =
-			field(0, args_base, i);
+		virtual_reg(i) = field(0, args_base, i);
 	}
-	virtual_reg(type_arity + mercury__unify__offset + 1) = x;
-	virtual_reg(type_arity + mercury__unify__offset + 2) = y;
+	virtual_reg(type_arity + 1) = x;
+	virtual_reg(type_arity + 2) = y;
 
 	restore_registers();
 
@@ -342,18 +302,10 @@ Define_entry(mercury__unify_2_0);
 ** mercury__index_2_0 is called as `index(TypeInfo, X, Index)'
 ** in the mode `index(in, in, out) is det'.
 **
-** With both parameter passing conventions, the inputs are in r1 and r2.
-** With the simple parameter passing convention, the output is in r3;
-** with the compact parameter passing convention, the output is in r1.
-**
 ** We call the type-specific index routine as
 ** `IndexPred(...ArgTypeInfos..., X, Index)' is det.
-** The ArgTypeInfo and X arguments are input, and are passed in r1, r2, ... rN
-** with both conventions. The Index argument is output; it is returned in
-** r1 with the compact convention and rN+1 with the simple convention.
-**
-** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the simple convention, we can't.
+** The ArgTypeInfo and X arguments are input, while the Index argument
+** is output.
 */
 
 Define_entry(mercury__index_2_0);
@@ -365,20 +317,23 @@ Define_entry(mercury__index_2_0);
 	Word	x;
 	int	i;
 
+	Word	type_info;
 	Word	type_ctor_info;
 
+	type_info = r1;
 	x = r2;
-	type_ctor_info = field(0, r1, 0);
+	type_ctor_info = field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
+		index_pred = (Code *) field(0, type_info,
+					OFFSET_FOR_INDEX_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
 		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
 		index_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_INDEX_PRED);
-		args_base = r1;
+		args_base = type_info;
 	}
 
 	save_registers();
@@ -391,23 +346,7 @@ Define_entry(mercury__index_2_0);
 
 	restore_registers();
 
-#ifdef	COMPACT_ARGS
 	tailcall(index_pred, LABEL(mercury__index_2_0));
-#else
-	incr_sp_push_msg(2, "mercury__index_2_0");
-	MR_stackvar(2) = (Word) MR_succip;
-	MR_stackvar(1) = type_arity;
-	call(index_pred, LABEL(mercury__index_2_0_i1), 
-		LABEL(mercury__index_2_0));
-}
-Define_label(mercury__index_2_0_i1);
-{
-	MR_succip = (Code *) MR_stackvar(2);
-	save_registers();
-	r3 = virtual_reg(MR_stackvar(1) + 2);
-	decr_sp_pop_msg(2);
-	proceed();
-#endif
 }
 
 /*
@@ -416,23 +355,11 @@ Define_label(mercury__index_2_0_i1);
 **
 ** (The additional entry points replace either or both "in"s with "ui"s.)
 **
-** With the simple parameter passing convention, the inputs are in r1,
-** r3 and r4, while the output is in r2.
-**
-** With the compact parameter passing convention, the inputs are in r1,
-** r2 and r3, while the output is in r1.
-**
 ** We call the type-specific compare routine as
 ** `ComparePred(...ArgTypeInfos..., Result, X, Y)' is det.
-** The ArgTypeInfo arguments are input, and are passed in r1, r2, ... rN
-** with both conventions. The X and Y arguments are also input, but are passed
-** in different registers (rN+2 and rN+3 with the simple convention and rN+1
-** and rN+2 with the compact convention). The Index argument is output; it is
-** returned in ** r1 with the compact convention and rN+1 with the simple
-** convention.
-**
-** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the simple convention, we can't.
+** The ArgTypeInfo arguments are input, and are passed in r1, r2, ... rN.
+** The X and Y arguments are also input, and are passed in rN+1 and rN+2.
+** The Index argument is output.
 */
 
 Define_entry(mercury__compare_3_0);
@@ -462,23 +389,25 @@ Define_entry(mercury__compare_3_3);
 	Word	x, y;
 	int	i;
 
+	Word	type_info;
 	Word	type_ctor_info;
 
-	x = mercury__compare__x;
-	y = mercury__compare__y;
+	type_info = r1;
+	x = r2;
+	y = r3;
 
-	type_ctor_info = field(0, mercury__compare__typeinfo, 0);
+	type_ctor_info = field(0, type_info, 0);
 	if (type_ctor_info == 0) {
 		type_arity = 0;
-		compare_pred = (Code *) field(0, mercury__compare__typeinfo,
-				OFFSET_FOR_COMPARE_PRED);
+		compare_pred = (Code *) field(0, type_info,
+						OFFSET_FOR_COMPARE_PRED);
 		/* args_base will not be needed */
 		args_base = 0; /* just to supress a gcc warning */
 	} else {
 		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
 		compare_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_COMPARE_PRED);
-		args_base = mercury__compare__typeinfo;
+		args_base = type_info;
 	}
 
 	save_registers();
@@ -487,30 +416,15 @@ Define_entry(mercury__compare_3_3);
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i) = field(0, args_base, i);
 	}
-	virtual_reg(type_arity + mercury__compare__offset + 1) = x;
-	virtual_reg(type_arity + mercury__compare__offset + 2) = y;
+	virtual_reg(type_arity + 1) = x;
+	virtual_reg(type_arity + 2) = y;
 
 	restore_registers();
 
-#ifdef	COMPACT_ARGS
 	tailcall(compare_pred, LABEL(mercury__compare_3_3));
-#else
-	incr_sp_push_msg(2, "mercury__index_2_0");
-	MR_stackvar(2) = (Word) MR_succip;
-	MR_stackvar(1) = type_arity;
-	call(compare_pred, LABEL(mercury__compare_3_0_i1),
-		LABEL(mercury__compare_3_3));
-}
-Define_label(mercury__compare_3_0_i1);
-{
-	MR_succip = (Code *) MR_stackvar(2);
-	save_registers();
-	r2 = virtual_reg(MR_stackvar(1) + 1);
-	decr_sp_pop_msg(2);
-	proceed();
-#endif
 }
 END_MODULE
+
 void mercury_sys_init_call(void); /* suppress gcc warning */
 void mercury_sys_init_call(void) {
 	call_module();

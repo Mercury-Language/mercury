@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -399,7 +399,8 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, _, InstMap0, PredName,
 		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, Markers, Owner, ModuleInfo0, ModuleInfo, PredProcId),
+		VarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
 %-----------------------------------------------------------------------------%

@@ -33,7 +33,6 @@ Options:
 	-g, --c-debug
 	--no-c-optimize
 	--use-trail
-	--args {simple, compact}
 	--pic-reg
 	--inline-alloc
 	--split-c-files
@@ -284,11 +283,6 @@ case $thread_safe in
 		*)		THREAD_OPTS="" ;;
 	esac ;;
 	false)		THREAD_OPTS="" ;;
-esac
-
-case $args_method in
-	simple)		ARG_OPTS="" ;;
-	compact)	ARG_OPTS="-DCOMPACT_ARGS" ;;
 esac
 
 case $pic_reg in

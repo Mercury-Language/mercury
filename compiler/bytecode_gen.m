@@ -281,10 +281,7 @@ bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 		ByteInfo, Code) :-
 	determinism_to_code_model(Detism, CodeModel),
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
-	module_info_globals(ModuleInfo, Globals),
-	arg_info__ho_call_args_method(Globals, ArgsMethod),
-	make_arg_infos(ArgsMethod, ArgTypes, ArgModes, CodeModel, ModuleInfo,
-		ArgInfo),
+	make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
 	call_gen__partition_args(ArgVarsInfos, InVars, OutVars),

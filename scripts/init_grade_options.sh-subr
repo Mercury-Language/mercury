@@ -22,7 +22,6 @@ profile_calls=false
 profile_memory=false
 use_trail=false
 use_minimal_model=false
-args_method=compact
 stack_trace=false
 require_tracing=false
 low_level_debug=false

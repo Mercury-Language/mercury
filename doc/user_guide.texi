@@ -3028,20 +3028,6 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--args @{simple, compact@}}
-@item @code{--arg-convention @{simple, compact@}}
-(This option is not intended for general use.)@*
-Use the specified argument passing convention
-in the generated low-level C code.
-With the @samp{simple} convention,
-the @var{n}th argument is passed in or out using register r@var{n}.
-With the @samp{compact} convention,
-the @var{n}th input argument is passed using register r@var{n}
-and the @var{n}th output argument is returned using register r@var{n}.
-The @samp{compact} convention, which is the default,
-generally leads to more efficient code.
-
-@sp 1
 @item @code{--no-type-layout}
 (This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.

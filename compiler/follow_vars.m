@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,10 +173,7 @@ find_follow_vars_in_goal_2(
 			IsPredOrFunc),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
-	module_info_globals(ModuleInfo, Globals),
-	arg_info__ho_call_args_method(Globals, ArgsMethod),
-	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
-		ArgInfo),
+	make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 	% XXX These follow-vars aren't correct since the desired positions for
@@ -190,15 +187,7 @@ find_follow_vars_in_goal_2(
 			Det),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
-	( ArgsMethod = compact ->
-		true
-	;
-		error("Sorry, typeclasses with simple args_method not yet implemented")
-	),
-	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
-		ArgInfo),
+	make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 find_follow_vars_in_goal_2(call(A,B,C,D,E,F), ModuleInfo,

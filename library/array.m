@@ -303,7 +303,7 @@ Define_entry(mercury____Unify___array__array_1_0);
 		ENTRY(mercury____Unify___array__array_1_0));
 
 Define_entry(mercury____Index___array__array_1_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___array__array_1_0);

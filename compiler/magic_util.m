@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1081,7 +1081,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ hlds_pred__define_new_pred(SuppGoal, SuppCall, SuppArgs, ExtraArgs,
 		InstMap, NewPredName, TVarSet, VarTypes, ClassConstraints,
 		TVarMap, TCVarMap, VarSet, Markers, Owner,
-		ModuleInfo0, ModuleInfo, _) },
+		address_is_not_taken, ModuleInfo0, ModuleInfo, _) },
 	{ ExtraArgs = [] ->
 		true
 	;

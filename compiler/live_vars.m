@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -258,12 +258,8 @@ build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
 	% by the call, plus all the variables that may be needed
 	% at an enclosing resumption point.
 
-	% To figure out which variables are output, we use the arg_info;
-	% but it shouldn't matter which arg convention we're using,
-	% so we can just pass convention `simple' to make_arg_infos.
-
 	determinism_to_code_model(Det, CallModel),
-	make_arg_infos(simple, Types, Modes, CallModel, ModuleInfo, ArgInfos),
+	make_arg_infos(Types, Modes, CallModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),
@@ -297,12 +293,8 @@ build_live_sets_in_goal_2(class_method_call(_, _, ArgVars, Types, Modes, Det),
 	% by the call, plus all the variables that may be needed
 	% at an enclosing resumption point.
 
-	% To figure out which variables are output, we use the arg_info;
-	% but it shouldn't matter which arg convention we're using,
-	% so we can just pass convention `simple' to make_arg_infos.
-
 	determinism_to_code_model(Det, CallModel),
-	make_arg_infos(simple, Types, Modes, CallModel, ModuleInfo, ArgInfos),
+	make_arg_infos(Types, Modes, CallModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
 	set__difference(Liveness, OutVars, InputLiveness),
 	set__union(InputLiveness, ResumeVars0, StackVars0),

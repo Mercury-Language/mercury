@@ -2445,7 +2445,6 @@ delete_temporary_file(FileName) -->
 fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID, 
 		ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode) -->
 	fact_table_size(FactTableSize),
-	{ proc_info_args_method(ProcInfo, ArgsMethod) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ proc_info_interface_determinism(ProcInfo, Determinism) },
 	{ fact_table_mode_type(ArgModes, ModuleInfo, ModeType) },
@@ -2455,7 +2454,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		Determinism = multidet
 	->
 		generate_multidet_code(Identifier, PragmaVars, ProcID,
-			ArgTypes, ArgsMethod, ModuleInfo, FactTableSize,
+			ArgTypes, ModuleInfo, FactTableSize,
 			ProcCode, ExtraCode)
 	;
 		ModeType = all_out,
@@ -2483,15 +2482,15 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcID = PrimaryProcID
 	->
 		generate_primary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, ModuleInfo,
-			FactTableSize, ProcCode, ExtraCode)
+			ProcID, ArgTypes, ModuleInfo, FactTableSize,
+			ProcCode, ExtraCode)
 	;
 		ModeType = in_out,
 		Determinism = nondet,
 		ProcID \= PrimaryProcID
 	->
 		generate_secondary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, ModuleInfo, FactTableSize,
+			ProcID, ArgTypes, ModuleInfo, FactTableSize,
 			ProcCode, ExtraCode)
 	;
 		% There is a determinism error in this procedure which will be 
@@ -2511,10 +2510,10 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 
 	% XXX this should be changed to use the new model_non pragma c_code
 :- pred generate_multidet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, module_info, int, string, string).
-:- mode generate_multidet_code(in, in, in, in, in, in, in, out, out) is det.
+		list(type), module_info, int, string, string).
+:- mode generate_multidet_code(in, in, in, in, in, in, out, out) is det.
 
-generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes, ArgsMethod,
+generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes,
 	    ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
@@ -2562,7 +2561,7 @@ void sys_init_%s_module(void) {
 	string__append_list(["mercury__", PredName, "_fact_table_num_facts"],
 		NumFactsVar),
 	list__length(PragmaVars, Arity), 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod,
+	generate_argument_vars_code(PragmaVars, ArgTypes,
 		ModuleInfo, ArgDeclCode, _InputCode, OutputCode, _, _, _),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
 		FactTableSize, FactLookupCode),
@@ -3023,12 +3022,12 @@ generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 	% XXX this should change to use the new model_non pragma c_code when
 	% it has been implemented.
 :- pred generate_primary_nondet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, module_info, int, string, string).
-:- mode generate_primary_nondet_code(in, in, in, in, in, in, in, out, out)
+		list(type), module_info, int, string, string).
+:- mode generate_primary_nondet_code(in, in, in, in, in, in, out, out)
 		is det.
 
 generate_primary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-		ArgsMethod, ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+		ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
 
@@ -3098,7 +3097,7 @@ void sys_init_%s_module(void) {
 
 	",
 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod, 
+	generate_argument_vars_code(PragmaVars, ArgTypes,
 		ModuleInfo, ArgDeclCode, InputCode, OutputCode, SaveRegsCode,
 		GetRegsCode, NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),
@@ -3153,18 +3152,16 @@ void sys_init_%s_module(void) {
 
 	% generate code to create argument variables and assign them to 
 	% registers
-:- pred generate_argument_vars_code(list(pragma_var), list(type), args_method,
+:- pred generate_argument_vars_code(list(pragma_var), list(type),
 		module_info, string, string, string, string, string, int).
-:- mode generate_argument_vars_code(in, in, in, in, out, out, out, out, out,
+:- mode generate_argument_vars_code(in, in, in, out, out, out, out, out,
 		out) is det.
 
-generate_argument_vars_code(PragmaVars, Types, ArgsMethod, ModuleInfo,
-		DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode,
-		NumInputArgs) :-
+generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
+		OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
 	list__map(lambda([X::in, Y::out] is det, X = pragma_var(_,_,Y)),
 		PragmaVars, Modes),
-	make_arg_infos(ArgsMethod, Types, Modes, model_non, ModuleInfo,
-		ArgInfos),
+	make_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
 	generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, DeclCode,
 		InputCode, OutputCode, SaveRegsCode, GetRegsCode, 1,
 		NumInputArgs).
@@ -3325,12 +3322,12 @@ generate_test_condition_code(FactTableName, [PragmaVar|PragmaVars],
 	% XXX this should change to use the new model_non pragma c_code when
 	% it has been implemented.
 :- pred generate_secondary_nondet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, module_info, int, string, string).
-:- mode generate_secondary_nondet_code(in, in, in, in, in, in, in, out, out)
+		list(type), module_info, int, string, string).
+:- mode generate_secondary_nondet_code(in, in, in, in, in, in, out, out)
 		is det.
 
 generate_secondary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-		ArgsMethod, ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+		ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
 
@@ -3417,7 +3414,7 @@ void sys_init_%s_module(void) {
 
 	",
 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod, 
+	generate_argument_vars_code(PragmaVars, ArgTypes,
 		ModuleInfo, ArgDeclCode, InputCode, OutputCode, _SaveRegsCode,
 		_GetRegsCode, _NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),

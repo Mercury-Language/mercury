@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -745,7 +745,8 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	% --typeinfo-liveness properly.
 	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, Markers, Owner, ModuleInfo0, ModuleInfo, PredProcId) },
+		VarSet, Markers, Owner, address_is_not_taken,
+		ModuleInfo0, ModuleInfo, PredProcId) },
 	pd_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%

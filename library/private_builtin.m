@@ -458,16 +458,17 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	** The two inputs are in the registers named by unify_input[12].
 	** The success/failure indication should go in unify_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	unify_output = (comp == COMPARE_EQUAL);
+	r1 = (comp == COMPARE_EQUAL);
 	proceed();
 }
 
 Define_entry(mercury____Index___private_builtin__type_info_1_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___private_builtin__type_info_1_0);
@@ -478,11 +479,12 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	** The two inputs are in the registers named by compare_input[12].
 	** The result should go in compare_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(compare_input1, compare_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	compare_output = comp;
+	r1 = comp;
 	proceed();
 }
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
@@ -490,7 +492,7 @@ Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 	fatal_error(""attempt to unify typeclass_info"");
 }
 Define_entry(mercury____Index___private_builtin__typeclass_info_1_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);

@@ -176,10 +176,7 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		Modes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_globals(ModuleInfo, Globals) },
-	{ arg_info__ho_call_args_method(Globals, ArgsMethod) },
-	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
-		ArgInfos) },
+	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
 	{ call_gen__partition_args(ArgsInfos, InVars, OutVars) },
 	{ set__list_to_set(OutVars, OutArgs) },
@@ -276,17 +273,9 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		Types, Modes, Det, GoalInfo, Code) -->
 	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
 
-	{ globals__get_args_method(Globals, ArgsMethod) },
-	( { ArgsMethod = compact } ->
-		[]
-	;
-		{ error("Sorry, typeclasses with simple args_method not yet implemented") }
-	),
-	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
-		ArgInfo) },
+	{ make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfo) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
 	{ set__list_to_set(OutVars, OutArgs) },

@@ -541,17 +541,9 @@ BEGIN_CODE
 ** the address of the respective deep copy routines).
 **
 ** The type_info structures will be in r1 and r2, the closures will be in
-** r3 and r4, and the 'initial value' will be in r5, with both calling
-** conventions. The output should go either in r6 (for the normal parameter
-** convention) or r1 (for the compact parameter convention).
+** r3 and r4, and the 'initial value' will be in r5.
 */
  
-#ifdef	COMPACT_ARGS
-  #define builtin_aggregate_output	r1
-#else
-  #define builtin_aggregate_output	r6
-#endif
-
 #ifdef PROFILE_CALLS
   #define fallthru(target, caller) { tailcall((target), (caller)); }
 #else
@@ -779,7 +771,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 		    MR_ENGINE(solutions_heap_zone)->top);
 	restore_transient_registers();
 
-	builtin_aggregate_output = copied_collection;
+	r1 = copied_collection;
 
  	/* reset solutions heap to where it was before call to solutions  */
  	MR_sol_hp = (Word *) saved_solhp_fv;
@@ -893,7 +885,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 #endif
 
 	/* return the collection and discard the frame we made */
-	builtin_aggregate_output = sofar_fv;
+	r1 = sofar_fv;
  	succeed_discard();
  
 #undef num_framevars
@@ -905,7 +897,6 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 
 END_MODULE
 
-#undef builtin_aggregate_output
 #undef swap_heap_and_solutions_heap
 
 /* Ensure that the initialization code for the above module gets run. */
@@ -1037,8 +1028,10 @@ det_univ_to_type(Univ, X) :-
 	% The variable `TypeInfo_for_T' used in the C code
 	% is the compiler-introduced type-info variable.
 :- pragma c_code(type_to_univ(Type::out, Univ::in), will_not_call_mercury, "{
-	Word univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	int comp;
+	Word	univ_type_info;
+	int	comp;
+
+	univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
 	save_transient_registers();
 	comp = MR_compare_type_info(univ_type_info, TypeInfo_for_T);
 	restore_transient_registers();
@@ -1101,18 +1094,6 @@ mercury_data_std_util__type_ctor_functors_type_info_0_struct {
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
-
-#ifndef	COMPACT_ARGS
-
-Declare_label(mercury____Compare___std_util__univ_0_0_i1);
-
-MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
-	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
-	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
-
-#endif
-
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
@@ -1120,18 +1101,10 @@ Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
 BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__univ_0_0);
 	init_entry(mercury____Index___std_util__univ_0_0);
-#ifdef	COMPACT_ARGS
 	init_entry(mercury____Compare___std_util__univ_0_0);
-#else
-	init_entry_sl(mercury____Compare___std_util__univ_0_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury____Compare___std_util__univ_0_0);
-	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
-#endif
-
 	init_entry(mercury____Unify___std_util__type_info_0_0);
 	init_entry(mercury____Index___std_util__type_info_0_0);
 	init_entry(mercury____Compare___std_util__type_info_0_0);
-
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
 {
@@ -1142,12 +1115,12 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	** The success/failure indication should go in unify_output.
 	*/
 
-	Word univ1, univ2;
-	Word typeinfo1, typeinfo2;
-	int comp;
+	Word	univ1, univ2;
+	Word	typeinfo1, typeinfo2;
+	int	comp;
 
-	univ1 = unify_input1;
-	univ2 = unify_input2;
+	univ1 = r1;
+	univ2 = r2;
 
 	/* First check the type_infos compare equal */
 	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
@@ -1156,7 +1129,7 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
 	if (comp != COMPARE_EQUAL) {
-		unify_output = FALSE;
+		r1 = FALSE;
 		proceed();
 	}
 
@@ -1164,9 +1137,9 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 	** Then invoke the generic unification predicate on the
 	** unwrapped args
 	*/
-	mercury__unify__x = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	mercury__unify__y = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
-	mercury__unify__typeinfo = typeinfo1;
+	r1 = typeinfo1;
+	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
 		Declare_entry(mercury__unify_2_0);
 		tailcall(ENTRY(mercury__unify_2_0),
@@ -1175,7 +1148,7 @@ Define_entry(mercury____Unify___std_util__univ_0_0);
 }
 
 Define_entry(mercury____Index___std_util__univ_0_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___std_util__univ_0_0);
@@ -1187,12 +1160,12 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	** The result should go in compare_output.
 	*/
 
-	Word univ1, univ2;
-	Word typeinfo1, typeinfo2;
-	int comp;
+	Word	univ1, univ2;
+	Word	typeinfo1, typeinfo2;
+	int	comp;
 
-	univ1 = compare_input1;
-	univ2 = compare_input2;
+	univ1 = r1;
+	univ2 = r2;
 
 	/* First compare the type_infos */
 	typeinfo1 = field(mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
@@ -1201,7 +1174,7 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	comp = MR_compare_type_info(typeinfo1, typeinfo2);
 	restore_transient_registers();
 	if (comp != COMPARE_EQUAL) {
-		compare_output = comp;
+		r1 = comp;
 		proceed();
 	}
 
@@ -1210,38 +1183,14 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 	** predicate on the unwrapped args.
 	*/
 
-#ifdef	COMPACT_ARGS
 	r1 = typeinfo1;
-	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	r2 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
+	r3 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
 	{
 		Declare_entry(mercury__compare_3_0);
 		tailcall(ENTRY(mercury__compare_3_0),
 			LABEL(mercury____Compare___std_util__univ_0_0));
 	}
-#else
-	r1 = typeinfo1;
-	r4 = field(mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
-	r3 = field(mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	incr_sp_push_msg(1, ""mercury____Compare___std_util__univ_0_0"");
-	MR_stackvar(1) = MR_succip;
-	{
-		Declare_entry(mercury__compare_3_0);
-		call(ENTRY(mercury__compare_3_0),
-			LABEL(mercury____Compare___std_util__univ_0_0_i1),
-			LABEL(mercury____Compare___std_util__univ_0_0));
-	}
-}
-Define_label(mercury____Compare___std_util__univ_0_0_i1);
-{
-	update_prof_current_proc(
-		LABEL(mercury____Compare___std_util__univ_0_0));
-
-	/* shuffle the return value into the right register */
-	r1 = r2;
-	MR_succip = MR_stackvar(1);
-	proceed();
-#endif
 }
 
 Define_entry(mercury____Unify___std_util__type_info_0_0);
@@ -1252,16 +1201,17 @@ Define_entry(mercury____Unify___std_util__type_info_0_0);
 	** The two inputs are in the registers named by unify_input[12].
 	** The success/failure indication should go in unify_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	unify_output = (comp == COMPARE_EQUAL);
+	r1 = (comp == COMPARE_EQUAL);
 	proceed();
 }
 
 Define_entry(mercury____Index___std_util__type_info_0_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___std_util__type_info_0_0);
@@ -1272,11 +1222,12 @@ Define_entry(mercury____Compare___std_util__type_info_0_0);
 	** The two inputs are in the registers named by compare_input[12].
 	** The result should go in compare_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	compare_output = comp;
+	r1 = comp;
 	proceed();
 }
 

@@ -78,50 +78,6 @@ typedef	Word	MR_PseudoTypeInfo;
 #define COMPARE_LESS 1
 #define COMPARE_GREATER 2
 
-#ifdef  COMPACT_ARGS
-#define	mercury__unify__typeinfo	r1
-#define	mercury__unify__x		r2
-#define	mercury__unify__y		r3
-#define	mercury__unify__offset		0
-#define	mercury__compare__typeinfo	r1
-#define	mercury__compare__x		r2
-#define	mercury__compare__y		r3
-#define	mercury__compare__offset	0
-#define	mercury__term_to_type__typeinfo	r1
-#define	mercury__term_to_type__term	r2
-#define	mercury__term_to_type__x	r4
-#define	mercury__term_to_type__offset	1
-#define unify_input1    r1
-#define unify_input2    r2
-#define unify_output    r1
-#define compare_input1  r1
-#define compare_input2  r2
-#define compare_output  r1
-#define index_input     r1
-#define index_output    r1
-#else
-#define	mercury__unify__typeinfo	r2
-#define	mercury__unify__x		r3
-#define	mercury__unify__y		r4
-#define	mercury__unify__offset		1
-#define	mercury__compare__typeinfo	r1
-#define	mercury__compare__x		r3
-#define	mercury__compare__y		r4
-#define	mercury__compare__offset	1
-#define	mercury__term_to_type__typeinfo	r2
-#define	mercury__term_to_type__term	r3
-#define	mercury__term_to_type__x	r4
-#define	mercury__term_to_type__offset	1
-#define unify_input1    r2
-#define unify_input2    r3
-#define unify_output    r1
-#define compare_input1  r2
-#define compare_input2  r3
-#define compare_output  r1
-#define index_input     r1
-#define index_output    r2
-#endif
-
 /*---------------------------------------------------------------------------*/
 
 /*

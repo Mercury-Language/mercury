@@ -532,15 +532,14 @@ produce_auxiliary_procs(ClassVars,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
 
-	globals__get_args_method(Globals, ArgsMethod),
-
 		% Add procs with the expected modes and determinisms
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
 			OldPredInfo::in, NewPredInfo::out] is det,
 	(
 		ModeAndDet = Modes - Det,
 		add_new_proc(OldPredInfo, PredArity, Modes, yes(Modes), no,
-			yes(Det), Context, ArgsMethod, NewPredInfo, NewProcId)
+			yes(Det), Context, address_is_taken,
+			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
 		PredInfo0, PredInfo1),

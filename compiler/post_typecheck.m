@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,7 +326,7 @@ post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 	% declarations are module qualified.
 	% 
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo1, PredInfo) -->
-	{ maybe_add_default_mode(ModuleInfo, PredInfo1, PredInfo2, _) },
+	{ maybe_add_default_mode(PredInfo1, PredInfo2, _) },
 	{ copy_clauses_to_procs(PredInfo2, PredInfo3) },
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 			PredInfo3, PredInfo).
@@ -338,7 +338,7 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo1, PredInfo) -->
 	%
 post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
-	{ maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo1, _) },
+	{ maybe_add_default_mode(PredInfo0, PredInfo1, _) },
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 		PredInfo1, PredInfo).
 

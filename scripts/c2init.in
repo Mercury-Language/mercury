@@ -61,7 +61,6 @@ Options:
 	--profile-memory
 	--debug
 	--use-trail
-	--args {simple, compact}
 	--pic-reg
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide.

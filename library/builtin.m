@@ -899,12 +899,7 @@ Define_entry(mercury__copy_2_1);
 	copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
 	restore_transient_registers();
 
-#ifdef	COMPACT_ARGS
 	r1 = copy;
-#else
-	r3 = copy;
-#endif
-
 	proceed();
 }
 END_MODULE
@@ -972,16 +967,16 @@ Define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** the io__state contains a map(io__stream, filename).
 	** However, it might not be correct in general...
 	*/
-	unify_output = (unify_input1 == unify_input2);
+	r1 = (r1 == r2);
 	proceed();
 
 Define_entry(mercury____Index___builtin__c_pointer_0_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___builtin__c_pointer_0_0);
-	compare_output = (compare_input1 == compare_input2 ? COMPARE_EQUAL :
-			  compare_input1 < compare_input2 ? COMPARE_LESS :
+	r1 = (r1 == r2 ? COMPARE_EQUAL :
+			  r1 < r2 ? COMPARE_LESS :
 			  COMPARE_GREATER);
 	proceed();
 
