@@ -769,28 +769,6 @@ table_nondet_setup(_, _) :-
 :- external(table_nondet_suspend/2).
 :- external(table_nondet_resume/1).
 
-/*
-
-XXX :- external stops us from using these two definitions
-
-:- pragma foreign_proc("MC++",
-	table_nondet_suspend(_A::in, _B::out), [will_not_call_mercury, promise_pure],
-	local_vars(""),
-	first_code(""),
-	retry_code(""),
-	common_code("
-		mercury::runtime::Errors::SORRY(
-			S""foreign code for this function"");
-	")
-).
-
-:- pragma foreign_proc("MC++",
-	table_nondet_resume(_A::in), [will_not_call_mercury, promise_pure], "
-	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
-").
-
-*/
-
 :- pragma foreign_proc("C",
 	table_nondet_is_complete(Subgoal::in),
 	[will_not_call_mercury],

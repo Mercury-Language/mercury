@@ -549,13 +549,13 @@ very_unsafe_perform_io(Goal, Result) :-
 :- impure pred make_io_state(io__state::uo) is det.
 :- pragma foreign_proc("C", make_io_state(_IO::uo),
 		[will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("MC++", make_io_state(_IO::uo),
+:- pragma foreign_proc("C#", make_io_state(_IO::uo),
 		[will_not_call_mercury, thread_safe], "").
 
 :- impure pred consume_io_state(io__state::di) is det.
 :- pragma foreign_proc("C", consume_io_state(_IO::di),
 		[will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("MC++", consume_io_state(_IO::di),
+:- pragma foreign_proc("C#", consume_io_state(_IO::di),
 		[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
@@ -1186,17 +1186,16 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	% For the .NET backend we override throw_impl as it is easier to 
 	% implement these things using foreign_proc.
 
-:- pragma foreign_decl("MC++", "
+:- pragma foreign_decl("C#", "
 namespace mercury {
 	namespace runtime {
-		__gc public class Exception : public System::Exception
+		public class Exception : System.Exception
 		{
-		public:
-		   Exception(MR_Univ data) 
+		   public Exception(object[] data) 
 		   {
 			mercury_exception = data;	
 		   }
-		   MR_Univ mercury_exception;
+		   public object[] mercury_exception;
 		};
 	}
 }

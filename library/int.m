@@ -343,12 +343,12 @@ X rem Y = Rem :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++", domain_checks,
+:- pragma foreign_proc("C#", domain_checks,
 		[thread_safe, promise_pure], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false;
 #else
-	SUCCESS_INDICATOR = MR_TRUE;
+	SUCCESS_INDICATOR = true;
 #endif
 ").
 
@@ -509,11 +509,11 @@ is(X, X).
 "
 	FloatVal = IntVal;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	int__to_float(IntVal::in, FloatVal::out),
 	[will_not_call_mercury, promise_pure],
 "
-	FloatVal = (MR_Float) IntVal;
+	FloatVal = (double) IntVal;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -522,16 +522,6 @@ is(X, X).
 	#include <limits.h>
 
 	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
-").
-
-:- pragma foreign_decl("MC++", "
-	#include <limits.h>
-
-	// XXX this should work, but it would be nice to have a more robust
-	// technique that used the fact we map to System.Int32 in the compiler.
-
-	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
-
 ").
 
 :- pragma foreign_proc("C",
@@ -586,25 +576,26 @@ is(X, X).
 	Rem = Int % ML_BITS_PER_INT;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	int__max_int(Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = System::Int32::MaxValue;
+	Max = System.Int32.MaxValue;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	int__min_int(Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Min = System::Int32::MinValue;
+	Min = System.Int32.MinValue;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	int__bits_per_int(Bits::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Bits = ML_BITS_PER_INT;
+	// XXX we are using int32 in the compiler.
+	Bits = 32;
 ").
 
 int__quot_bits_per_int(Int::in) = (Result::out) :-

@@ -257,14 +257,14 @@ X / Y = Z :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	domain_checks,
 	[thread_safe, promise_pure],
 "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false;
 #else
-	SUCCESS_INDICATOR = MR_TRUE;
+	SUCCESS_INDICATOR = true;
 #endif
 ").
 

@@ -720,50 +720,50 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 	% We override the above definitions in the .NET backend.
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_3(Pred::in, X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_3(Pred, X, Y);
+		mercury.runtime.GenericCall.semidet_call_3(Pred, X, Y);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_4(Pred::in, A::in, X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_4(Pred, A, X, Y);
+		mercury.runtime.GenericCall.semidet_call_4(Pred, A, X, Y);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_5(Pred, A, B, X, Y);
+		mercury.runtime.GenericCall.semidet_call_5(Pred, A, B, X, Y);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_6(Pred, A, B, C,
+		mercury.runtime.GenericCall.semidet_call_6(Pred, A, B, C,
 			X, Y);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_7(Pred, A, B, C, D,
+		mercury.runtime.GenericCall.semidet_call_7(Pred, A, B, C, D,
 			X, Y);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
 		X::in, Y::in), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
-		mercury::runtime::GenericCall::semidet_call_8(Pred, A, B, C, D,
+		mercury.runtime.GenericCall.semidet_call_8(Pred, A, B, C, D,
 			E, X, Y);
 ").
 
@@ -1348,14 +1348,14 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 
 :- pred high_level_data is semidet.
 :- pragma promise_pure(high_level_data/0).
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	high_level_data,
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_HIGHLEVEL_DATA
-	SUCCESS_INDICATOR = MR_TRUE;
+#if MR_HIGHLEVEL_DATA
+	SUCCESS_INDICATOR = true;
 #else
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false;
 #endif
 ").
 high_level_data :-
@@ -1672,7 +1672,7 @@ get_type_ctor_info(_) = _ :-
 
 same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	same_pointer_value_untyped(T1::in, T2::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -2245,11 +2245,11 @@ unsafe_make_enum(_) = _ :-
 "
 	SUCCESS_INDICATOR = ((void *)S == NULL);
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	null(S::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	SUCCESS_INDICATOR = (S == 0);
+	SUCCESS_INDICATOR = (S == null);
 ").
 null(_) :-
 	% This version is only used for back-ends for which there is no
@@ -2265,7 +2265,7 @@ null(_) :-
 "
 	T = (MR_Word) NULL;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	null = (T::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "

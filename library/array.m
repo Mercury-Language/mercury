@@ -456,14 +456,14 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #endif
 ").		
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	bounds_checks,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #if ML_OMIT_ARRAY_BOUNDS_CHECKS
-	SUCCESS_INDICATOR = MR_FALSE;
+	SUCCESS_INDICATOR = false;
 #else
-	SUCCESS_INDICATOR = MR_TRUE;
+	SUCCESS_INDICATOR = true;
 #endif
 ").		
 

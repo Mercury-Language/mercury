@@ -164,10 +164,10 @@ builtin_compare_string(R, S1, S2) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 	"Res = strcmp(S1, S2);").
 
-:- pragma foreign_proc("MC++", builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_proc("C#", builtin_strcmp(Res::out, S1::in, S2::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Res = System::String::Compare(S1, S2);
+	Res = System.String.Compare(S1, S2);
 ").
 :- pragma foreign_proc("Java", builtin_strcmp(Res::out, S1::in, S2::in),
 	[will_not_call_mercury, promise_pure, thread_safe],

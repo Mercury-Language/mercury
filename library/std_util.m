@@ -1115,15 +1115,15 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 }").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	swap_heap_and_solutions_heap,
 	[will_not_call_mercury, thread_safe],
 "
-	/*
-	** For the .NET back-end, we use the system heap, rather
-	** than defining our own heaps.  So we don't need to
-	** worry about swapping them.  Hence do nothing here.
-	*/
+	//
+	// For the .NET back-end, we use the system heap, rather
+	// than defining our own heaps.  So we don't need to
+	// worry about swapping them.  Hence do nothing here.
+	//
 ").
 
 %
@@ -1184,24 +1184,24 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	/*
-	** For the IL back-end, we don't do heap reclamation on failure,
-	** so we don't need to worry about making deep copies here.
-	** Shallow copies will suffice.
-	*/
+	//
+	// For the IL back-end, we don't do heap reclamation on failure,
+	// so we don't need to worry about making deep copies here.
+	// Shallow copies will suffice.
+	//
 	NewVal = OldVal;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	NewVal = OldVal;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
@@ -1225,14 +1225,14 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	reset_solutions_heap(_SolutionsHeapPtr::in),
 	[will_not_call_mercury, thread_safe],
 "
-	/*
-	** For the IL back-end, we don't have a separate `solutions heap'.
-	** Hence this operation is a NOP.
-	*/
+	//
+	// For the IL back-end, we don't have a separate `solutions heap'.
+	// Hence this operation is a NOP.
+	//
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1407,19 +1407,19 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 	[will_not_call_mercury, thread_safe, promise_pure],
 	"Y = X;").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	semidet_succeed, 
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = MR_TRUE;").
-:- pragma foreign_proc("MC++",
+	"SUCCESS_INDICATOR = true;").
+:- pragma foreign_proc("C#",
 	semidet_fail, 
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = MR_FALSE;").
-:- pragma foreign_proc("MC++",
+	"SUCCESS_INDICATOR = false;").
+:- pragma foreign_proc("C#",
 	cc_multi_equal(X::in, Y::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 	"Y = X;").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	cc_multi_equal(X::di, Y::uo),
 	[will_not_call_mercury, thread_safe, promise_pure],
 	"Y = X;").

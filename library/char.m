@@ -455,25 +455,25 @@ char__lower_upper('z', 'Z').
 	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	char__to_int(Character::in, Int::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Int = Character;
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	char__to_int(Character::in, Int::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	char__to_int(Character::out, Int::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Character = Int;
+	Character = (char) Int;
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
