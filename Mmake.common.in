@@ -148,7 +148,7 @@ TRACE_LIB_NAME = mer_trace
 BROWSER_LIB_NAME = mer_browser
 
 # Options to pass to the Mercury compiler
-MCFLAGS	= --no-infer-all --halt-at-warn
+MCFLAGS	= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule
