@@ -6,7 +6,7 @@
 
 package mercury.runtime;
 
-public class TypeCtorInfo_Struct {
+public class TypeCtorInfo_Struct extends PseudoTypeInfo {
     
 	public int                              arity;
 	public int                              type_ctor_version;
@@ -25,8 +25,10 @@ public class TypeCtorInfo_Struct {
 			int type_arity, int version, int num_ptags, int rep,
 			Object unify_proc, Object compare_proc, 
 			String module, String name,
-			Object[] name_ordered_functor_descs,
-			Object[] value_ordered_functor_descs,
+			// mercury.runtime.TypeFunctors
+			java.lang.Object name_ordered_functor_descs,
+			// mercury.runtime.TypeLayout
+			java.lang.Object value_ordered_functor_descs,
 			int num_functors, int flags)
 	{
 		arity = type_arity;
@@ -37,11 +39,10 @@ public class TypeCtorInfo_Struct {
 		compare_pred = (mercury.runtime.MethodPtr) compare_proc;
 		type_ctor_module_name = module;
 		type_ctor_name = name;
-		// XXX type mismatch
-		//type_functors = (mercury.runtime.TypeFunctors)
-		//	name_ordered_functor_descs;
-		//type_layout = (mercury.runtime.TypeLayout)
-		//	name_ordered_functor_descs;
+		type_functors = (mercury.runtime.TypeFunctors)
+			name_ordered_functor_descs;
+		type_layout = (mercury.runtime.TypeLayout)
+			name_ordered_functor_descs;
 		type_ctor_flags = flags;
 	}
 }

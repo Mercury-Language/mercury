@@ -8,8 +8,8 @@ package mercury.runtime;
 
 public class VA_PseudoTypeInfo_Struct2 extends PseudoTypeInfo {
 	public VA_PseudoTypeInfo_Struct2(
-			int arity,
 			TypeCtorInfo_Struct type_ctor_info,
+			int arity,
 			Object[] args) {
 		// XXX stub only
 	}
