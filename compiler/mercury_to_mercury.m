@@ -155,9 +155,9 @@ mercury_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_clause(VarSet, PredName, Args, Body, Context).
 
-mercury_output_item(pragma_verbatim(C_HeaderString), Context) -->
+mercury_output_item(pragma_c_header(C_HeaderString), Context) -->
 	maybe_output_line_number(Context),
-	mercury_output_pragma_verbatim(C_HeaderString).
+	mercury_output_pragma_c_header(C_HeaderString).
 
 mercury_output_item(nothing, _) --> [].
 
@@ -750,10 +750,10 @@ mercury_output_some(Vars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_pragma_verbatim(string, io__state, io__state).
-:- mode mercury_output_pragma_verbatim(in, di, uo) is det.
+:- pred mercury_output_pragma_c_header(string, io__state, io__state).
+:- mode mercury_output_pragma_c_header(in, di, uo) is det.
 
-mercury_output_pragma_verbatim(C_HeaderString) -->
+mercury_output_pragma_c_header(C_HeaderString) -->
 	io__write_string(":- pragma("),
 	io__write_string("\""),
 	io__write_string(C_HeaderString),
