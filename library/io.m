@@ -117,11 +117,11 @@
 %		The term read had better be of the right type!
 %		This is a hack!
 
-:- pred io__ignore_whitespace(io__result(list(char)), io__state, io__state).
+:- pred io__ignore_whitespace(io__res, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
 %		Discards all the whitespace from the current stream.
 
-:- pred io__ignore_whitespace(io__input_stream, io__result(list(char)),
+:- pred io__ignore_whitespace(io__input_stream, io__res,
 				io__state, io__state).
 :- mode io__ignore_whitespace(in, out, di, uo) is det.
 %		Discards all the whitespace from the specified stream.
@@ -582,6 +582,20 @@ io__read_word(Result) -->
 	io__read_word(Stream, Result).
 	
 io__read_word(Stream, Result) -->
+	io__ignore_whitespace(Stream, WSResult),
+	(
+		{ WSResult = error(Error) },
+		{ Result = error(Error) }
+	;
+		{ WSResult = ok },
+		io__read_word_2(Stream, Result)
+	).
+
+:- pred io__read_word_2(io__input_stream, io__result(list(char)),
+				io__state, io__state).
+:- mode	io__read_word_2(in, out, di, uo) is det.
+
+io__read_word_2(Stream, Result) -->
 	io__read_char(Stream, CharResult),
 	(
 		{ CharResult = error(Error) },
@@ -597,7 +611,7 @@ io__read_word(Stream, Result) -->
 			io__putback_char(Stream, Char),
 			{ Result = ok([]) }
 		;
-			io__read_word(Stream, Result0),
+			io__read_word_2(Stream, Result0),
 			(
 				{ Result0 = ok(Chars) },
 				{ Result = ok([Char | Chars]) }
@@ -657,7 +671,7 @@ io__ignore_whitespace(Stream, Result) -->
 		{ Result = error(Error) }
 	;
 		{ CharResult = eof },
-		{ Result = eof }
+		{ Result = ok }
 	;
 		{ CharResult = ok(Char) },
 		(
@@ -665,18 +679,15 @@ io__ignore_whitespace(Stream, Result) -->
 		->
 			io__ignore_whitespace(Stream, Result0),
 			(
-				{ Result0 = ok(Chars) },
-				{ Result = ok([Char | Chars]) }
+				{ Result0 = ok },
+				{ Result = ok }
 			;
 				{ Result0 = error(_) },
 				{ Result = Result0 }
-			;
-				{ Result0 = eof },
-				{ Result = ok([Char]) }
 			)
 		;
 			io__putback_char(Stream, Char),
-			{ Result = ok([]) }
+			{ Result = ok }
 		)	
 	).
 
