@@ -79,9 +79,16 @@
 :- mode prog_io__read_module(in, in, out, out, out, di, uo) is det.
 
 	% Convert a single term into a goal.
-
+	%
 :- pred parse_goal(term, varset, goal, varset).
 :- mode parse_goal(in, in, out, out) is det.
+
+	% Convert a term, possibly starting with `some [Vars]', into
+	% a list of variables and a goal. (If the term doesn't start
+	% with `some [Vars]', we return an empty list of variables.)
+	% 
+:- pred parse_some_vars_goal(term, varset, vars, goal, varset).
+:- mode parse_some_vars_goal(in, in, out, out, out) is det.
 
 	% parse_lambda_expression/3 converts the first argument to a lambda/2
 	% expression into a list of variables, a list of their corresponding
@@ -100,7 +107,7 @@
 	% of their corresponding modes, and a determinism.  This is just
 	% a variant on parse_lambda_expression with a different syntax:
 	% 	`(pred(Var1::Mode1, ..., VarN::ModeN) is Det :- Goal)'.
-
+	%
 :- pred parse_pred_expression(term, list(term), list(mode), determinism).
 :- mode parse_pred_expression(in, out, out, out) is semidet.
 
@@ -647,8 +654,6 @@ parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V):-
 	%
 parse_goal_2("is", [A,B], V, unify(A,B), V).
 
-:- pred parse_some_vars_goal(term, varset, vars, goal, varset).
-:- mode parse_some_vars_goal(in, in, out, out, out) is det.
 parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 	( 
 		A0 = term__functor(term__atom("some"), [Vars0,A1], _Context)
