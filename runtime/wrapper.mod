@@ -277,6 +277,7 @@ static void process_options(int argc, char **argv)
 					which = which_label->e_addr;
 				}
 
+				do_init_modules();
 				break;
 
 		case 'x':
