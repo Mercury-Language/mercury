@@ -432,6 +432,8 @@ then
 		cd runtime
 		$LN_S $root/runtime/*.h .
 		$LN_S $root/runtime/*.c .
+		$LN_S $root/runtime/*.cpp .
+		$LN_S $root/runtime/mercury_il.il .
 		$LN_S $root/runtime/*.in .
 		cp $root/runtime/Mmake* .
 		$LN_S $root/runtime/machdeps .
