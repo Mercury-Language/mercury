@@ -102,7 +102,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC conftest </dev/null >&AC_FD_CC 2>&1 &&
+	 	 $BOOTSTRAP_MC --high-level-code conftest \
+		 	</dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)

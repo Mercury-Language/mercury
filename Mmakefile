@@ -349,6 +349,13 @@ install_grades: scripts
 			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
 	        case "$$grade" in \
@@ -360,18 +367,19 @@ install_grades: scripts
 		        ;; \
 	        esac; \
 	        ( cd boehm_gc && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade PROF=$$prof \
+		  	install_lib ) && \
 		( cd runtime && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd library && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_hdrs && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_hdrs && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd browser && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd trace && \
-		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
+		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd library && rm -f *.dep *.h *.c *.o *.pic_o *.a *.so \
@@ -402,9 +410,16 @@ install_split_library: scripts dep_library
 	mkdir tmp_dir && \
 	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
 		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
+	#
+	# Use the newly installed compiler to build the libraries
+	# in various different grades.  We need to override MC=mmc
+	# so that we use the mmc from the scripts directory, which
+	# runs the newly installed compiler, rather than using the
+	# bootstrap compiler.
+	#
 	for grade in $(GRADE) $(LIBGRADES); do \
-	        $(SUBDIR_MMAKE) GRADE=$$grade depend && \
-	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
+	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
 	        rm -rf *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
 			Mercury/cs/*.c Mercury/os/*.o; \
