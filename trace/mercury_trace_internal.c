@@ -2745,6 +2745,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "developer", "stack_regs" },
 	{ "developer", "all_regs" },
 	{ "misc", "source" },
+	{ "misc", "save" },
 	{ "misc", "quit" },
 	/* End of doc/mdb_command_list. */
 	{ NULL, "NUMBER" },

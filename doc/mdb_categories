@@ -61,6 +61,6 @@ developer  - Commands that are intended to be of use only to developers
 end
 document_category 1000 misc
 misc       - Commands that do not fit into other categories.
-             The misc commands are `source' and `quit'.
+             The misc commands are `source', `save' and `quit'.
 
 end
