@@ -15,6 +15,7 @@ main -->
 
 :- pred my_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma import(my_write_string(in, di, uo), may_call_mercury, "write_str").
+:- pragma import(my_write_string(in, di, uo),
+	[may_call_mercury, thread_safe], "write_str").
 
 :- pragma export(io__write_string(in, di, uo), "write_str").

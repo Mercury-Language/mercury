@@ -49,7 +49,7 @@ main -->
 :- pragma import(foo(in, out, in, out, in, out, di, uo), "cfoo").
 :- pragma import(bar(in, out) = out, will_not_call_mercury, "cbar").
 :- pragma export(bar(in, out) = out, "mbar").
-:- pragma import(bar2(in, out) = out, may_call_mercury, "mbar").
+:- pragma import(bar2(in, out) = out, [may_call_mercury, thread_safe], "mbar").
 :- pragma import(baz(in, out) = out, "cbaz").
 :- pragma import(quux(in, out), may_call_mercury, "cquux").
 
