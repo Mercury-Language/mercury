@@ -235,7 +235,8 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             /* note: we treat no_tag types just like equivalences */
 
             if ((Word) entry_value < TYPELAYOUT_MAX_VARINT) {
-                deep_copy(data, (Word *) type_info[(Word) entry_value],
+                new_data = deep_copy(data,
+		    (Word *) type_info[(Word) entry_value],
                     lower_limit, upper_limit);
             } else {
                 new_type_info = make_type_info(type_info, 
