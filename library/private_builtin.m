@@ -1111,9 +1111,7 @@ trailed_nondet_pragma_foreign_code :-
 	% The `di' mode on the argument is overly conservative -- only
 	% the top-level cell is clobbered. This is handled correctly by
 	% mode_util__recompute_instmap_delta.
-	% XXX Why isn't this marked as `impure'?
-:- pred free_heap(_T).
-:- mode free_heap(di) is det.
+:- impure pred free_heap(T::di) is det.
 
 	% gc_trace/1 is used for accurate garbage collection in the
 	% the MLDS->C backend.  It takes as parameters a pointer to
