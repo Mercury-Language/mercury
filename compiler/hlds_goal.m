@@ -349,11 +349,17 @@
 				% maybe the set of variables that are
 				% live when forward execution resumes
 				% on the failure of some subgoal of this
-				% goal. For
+				% goal. For goals inside
 				% negations, it is just the set of
 				% variables live after the negation.
-				% For ite's it is the set of variables
+				% For conditions of ite's it is the
+				% set of variables
 				% live after the condition.
+				% (XXX For disjunctions in det or semidet
+				% disjunctions, it should perhaps be the set of
+				% variables live at the start of the next
+				% disjunction.  But we don't handle them
+				% yet.)
 				% These are the only kinds of goal that
 				% use this field.
 				% (Computed by store_alloc.m.)
