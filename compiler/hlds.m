@@ -1541,7 +1541,7 @@ goal_info_set_store_map(GoalInfo0, H, GoalInfo) :-
 %-----------------------------------------------------------------------------%
 
 	% Convert a goal to a list of conjuncts.
-	% If the goal is a conjuntion, then return it's conjuncts,
+	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
 
 goal_to_conj_list(Goal, ConjList) :-
@@ -1552,7 +1552,7 @@ goal_to_conj_list(Goal, ConjList) :-
 	).
 
 	% Convert a goal to a list of disjuncts.
-	% If the goal is a conjuntion, then return it's conjuncts,
+	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
 
 goal_to_disj_list(Goal, DisjList) :-
