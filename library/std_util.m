@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1048,6 +1048,21 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
+:- pragma foreign_proc("Java",
+	get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
+	[will_not_call_mercury, thread_safe],
+"
+	/*
+	** Java has a builtin garbage collector,
+	** so we don't have to worry here about heap reclamation on failure.
+	*/
+	HeapPtr = null;
+	SolutionsHeapPtr = null;
+
+	/* XXX No trailing for the Java back-end. */
+	TrailPtr = null;
+").
+
 :- impure pred check_for_floundering(trail_ptr::in) is det.
 
 :- pragma foreign_proc("C", 
@@ -1068,6 +1083,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	mercury.runtime.Errors.SORRY(
 		""foreign code for check_for_floundering"");
 #endif
+").
+
+:- pragma foreign_proc("Java",
+	check_for_floundering(_TrailPtr::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 %
@@ -1092,6 +1114,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	mercury.runtime.Errors.SORRY(
 		""foreign code for discard_trail_ticket"");
 #endif
+").
+
+:- pragma foreign_proc("Java",
+	discard_trail_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
 ").
 
 %
@@ -1125,6 +1154,16 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	// than defining our own heaps.  So we don't need to
 	// worry about swapping them.  Hence do nothing here.
 	//
+").
+
+:- pragma foreign_proc("Java",
+	swap_heap_and_solutions_heap,
+	[will_not_call_mercury, thread_safe],
+"
+	/*
+	** For the Java back-end, as for the .NET back-end, we don't define
+	** our own heaps.  So take no action here.
+	*/
 ").
 
 %
@@ -1209,6 +1248,31 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	NewVal = OldVal;
 ").
 
+:- pragma foreign_proc("Java",
+	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	/*
+	** For the Java back-end, as for the .NET implementation,
+	** we don't do heap reclamation on failure,
+	** so we don't need to worry about making deep copies here.
+	** Shallow copies will suffice.
+	*/
+	NewVal = OldVal;
+").
+:- pragma foreign_proc("Java", 
+	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	NewVal = OldVal;
+").
+:- pragma foreign_proc("Java",
+	partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	NewVal = OldVal;
+").
+
 %
 % reset_solutions_heap(SolutionsHeapPtr):
 %	Reset the solutions heap pointer to the specified value,
@@ -1234,6 +1298,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	// For the IL back-end, we don't have a separate `solutions heap'.
 	// Hence this operation is a NOP.
 	//
+").
+
+:- pragma foreign_proc("Java", 
+	reset_solutions_heap(_SolutionsHeapPtr::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* As above, we take no action. */
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1272,6 +1343,8 @@ XXX `ui' modes don't work yet
 :- type mutvar(T) ---> mutvar(private_builtin.ref(T)).
 
 :- pragma inline(new_mutvar/2).
+:- pragma inline(get_mutvar/2).
+:- pragma inline(set_mutvar/2).
 
 :- pragma foreign_proc("C",
 	new_mutvar(X::in, Ref::out),
@@ -1292,16 +1365,12 @@ XXX `ui' modes don't work yet
 	* (MR_Word *) Ref = X;
 ").
 
-:- pragma inline(get_mutvar/2).
-
 :- pragma foreign_proc("C",
 	get_mutvar(Ref::in, X::uo),
 	[will_not_call_mercury, thread_safe],
 "
 	X = * (MR_Word *) Ref;
 ").
-
-:- pragma inline(set_mutvar/2).
 
 :- pragma foreign_proc("C",
 	set_mutvar(Ref::in, X::in),
@@ -1325,8 +1394,6 @@ XXX `ui' modes don't work yet
 	Ref[0] = X;
 ").
 
-:- pragma inline(get_mutvar/2).
-
 :- pragma foreign_proc("C#",
 	get_mutvar(Ref::in, X::uo),
 	[will_not_call_mercury, thread_safe],
@@ -1334,9 +1401,38 @@ XXX `ui' modes don't work yet
 	X = Ref[0];
 ").
 
-:- pragma inline(set_mutvar/2).
-
 :- pragma foreign_proc("C#",
+	set_mutvar(Ref::in, X::in),
+	[will_not_call_mercury, thread_safe],
+"
+	Ref[0] = X;
+").
+
+:- pragma foreign_type(java, mutvar(T), "java.lang.Object[]").
+
+:- pragma foreign_proc("Java",
+	new_mutvar(X::in, Ref::out),
+	[will_not_call_mercury, thread_safe],
+"
+	Ref = new java.lang.Object[1];
+	Ref[0] = X;
+").
+:- pragma foreign_proc("Java",
+	new_mutvar(X::di, Ref::uo),
+	[will_not_call_mercury, thread_safe],
+"
+	Ref = new java.lang.Object[1];
+	Ref[0] = X;
+").
+
+:- pragma foreign_proc("Java",
+	get_mutvar(Ref::in, X::uo),
+	[will_not_call_mercury, thread_safe],
+"
+	X = Ref[0];
+").
+
+:- pragma foreign_proc("Java",
 	set_mutvar(Ref::in, X::in),
 	[will_not_call_mercury, thread_safe],
 "
