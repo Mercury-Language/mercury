@@ -60,7 +60,8 @@
 		;	par_conj_not_det(determinism, pred_id, proc_id,
 				hlds_goal_info, list(hlds_goal))
 		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
-		;	has_io_state_but_not_det(pred_id, proc_id).
+		;	has_io_state_but_not_det(pred_id, proc_id)
+		;	will_not_throw_with_erroneous(pred_id, proc_id).	
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -1059,6 +1060,7 @@ det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
 det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
 det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
 det_msg_get_type(has_io_state_but_not_det(_, _), error).
+det_msg_get_type(will_not_throw_with_erroneous(_, _), error).
 
 det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
 det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
@@ -1082,6 +1084,7 @@ det_msg_is_any_mode_msg(error_in_lambda(_, _, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(par_conj_not_det(_, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
+det_msg_is_any_mode_msg(will_not_throw_with_erroneous(_, _), any_mode).
 
 :- pred det_report_msg(det_msg::in, module_info::in, io::di, io::uo) is det.
 
@@ -1378,6 +1381,19 @@ det_report_msg(has_io_state_but_not_det(PredId, ProcId), ModuleInfo, !IO) :-
 	;
 		VerboseErrors = no
 	).
+det_report_msg(will_not_throw_with_erroneous(PredId, ProcId), ModuleInfo,
+		!IO) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_context(ProcInfo, Context),
+	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Desc),
+	Pieces = [words(Desc ++ "has determinism erroneous but also has"),
+		  words("foreign clauses that have a"),
+		  fixed("`will_not_throw_exception'"),
+		  words("attribute.  This attribute cannot be applied"),
+		  words("to erroneous procedures.")
+		],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -59,6 +59,7 @@ SINGLEMODULE= \
 	det_errors \
 	duplicate_modes \
 	duplicate_module_test \
+	erroneous_throw_promise \
 	errors \
 	errors1 \
 	errors2 \

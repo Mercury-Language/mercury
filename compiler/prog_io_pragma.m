@@ -1385,6 +1385,7 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	;	aliasing
 	;	max_stack_size(int)
 	;	terminates(terminates)
+	;	will_not_throw_exception
 	;	ordinary_despite_detism.
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
@@ -1466,6 +1467,8 @@ process_attribute(purity(Pure), !Attrs) :-
 	set_purity(Pure, !Attrs).
 process_attribute(terminates(Terminates), !Attrs) :-
 	set_terminates(Terminates, !Attrs).
+process_attribute(will_not_throw_exception, !Attrs) :-
+	set_may_throw_exception(will_not_throw_exception, !Attrs).
 process_attribute(max_stack_size(Size), !Attrs) :-
 	add_extra_attribute(max_stack_size(Size), !Attrs).
 process_attribute(ordinary_despite_detism, !Attrs) :-
@@ -1531,11 +1534,14 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 		Flag = purity(Purity)
 	; parse_terminates(Term, Terminates) ->
 		Flag = terminates(Terminates)
+	; parse_no_exception_promise(Term) ->
+		Flag = will_not_throw_exception 
 	; parse_ordinary_despite_detism(Term) ->
 		Flag = ordinary_despite_detism
 	;
 		fail
 	).
+
 
 :- pred parse_may_call_mercury(term::in, may_call_mercury::out) is semidet.
 
@@ -1601,6 +1607,11 @@ parse_terminates(term__functor(term__atom("terminates"), [], _),
 		terminates).
 parse_terminates(term__functor(term__atom("does_not_terminate"), [], _),
 		does_not_terminate).
+
+:- pred parse_no_exception_promise(term::in) is semidet.
+
+parse_no_exception_promise(term.functor(
+	term.atom("will_not_throw_exception"), [], _)).
 
 :- pred parse_ordinary_despite_detism(term::in) is semidet.
 

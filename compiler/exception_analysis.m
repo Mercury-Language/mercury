@@ -326,15 +326,22 @@ check_goal_for_exceptions_2(SCC, Module, VarTypes, not(Goal), !Result) :-
 check_goal_for_exceptions_2(SCC, Module, VarTypes, some(_, _, Goal),
 		!Result) :-
 	check_goal_for_exceptions(SCC, Module, VarTypes, Goal, !Result).
-
-	% XXX We could provide  annotations for foreign procs here.
-	% Currently we only consider foreign_procs that do not call Mercury
-	% as not throwing exceptions.
 check_goal_for_exceptions_2(_, _, _,
 		foreign_proc(Attributes, _, _, _, _, _), !Result) :-
-	( if 	may_call_mercury(Attributes) = may_call_mercury
-	  then	!:Result = !.Result ^ status := may_throw(user_exception)
-	  else	true
+	( may_call_mercury(Attributes) = may_call_mercury -> 
+		may_throw_exception(Attributes) = MayThrowException,
+		%
+		% We do not need to deal with erroneous predicates
+		% here because they will have already been processed.
+		%
+		( MayThrowException = default_exception_behaviour ->
+			!:Result = !.Result ^ status := 
+				may_throw(user_exception)
+		;
+			true
+		)	
+	;
+		true
 	).
 check_goal_for_exceptions_2(_, _, _, shorthand(_), _, _) :-
 	unexpected(this_file,
@@ -445,7 +452,7 @@ check_vars(Module, VarTypes, Vars, !Result) :-
 % and none of them may throw an exception (of either sort).
 %
 % In order to determine the status of such a SCC we also need to take the
-% affect of the recursive calls into account.  This is because calls to a
+% effect of the recursive calls into account.  This is because calls to a
 % conditional procedure from a procedure that is mutually recursive to it may 
 % introduce types that could cause a type_exception to be thrown.  
 %

@@ -52,6 +52,7 @@ syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
 syn keyword mercuryCInterface   tabled_for_io
 syn keyword mercuryCInterface   can_pass_as_mercury_type stable
+syn keyword mercuryCInterface   will_not_throw_exception
 syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         

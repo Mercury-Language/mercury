@@ -65,6 +65,7 @@ TERM_PROGS= \
 	pl8_4_2 \
 	pragma_non_term \
 	pragma_term \
+	promise_will_not_throw \
 	queens \
 	quicksort \
 	select \

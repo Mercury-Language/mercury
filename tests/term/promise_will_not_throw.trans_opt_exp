@@ -1,0 +1,9 @@
+:- module promise_will_not_throw.
+:- pragma termination_info(promise_will_not_throw.foo((builtin.in), (builtin.out)), infinite, can_loop).
+:- pragma termination_info(promise_will_not_throw.bar((builtin.in), (builtin.out)), infinite, can_loop).
+:- pragma termination_info(promise_will_not_throw.baz((builtin.in), (builtin.out)), infinite, cannot_loop).
+:- pragma termination_info(promise_will_not_throw.quux((builtin.in), (builtin.out)), infinite, cannot_loop).
+:- pragma exceptions(predicate, (promise_will_not_throw.foo), 2, 0, will_not_throw).
+:- pragma exceptions(predicate, (promise_will_not_throw.bar), 2, 0, may_throw(user_exception)).
+:- pragma exceptions(predicate, (promise_will_not_throw.baz), 2, 0, will_not_throw).
+:- pragma exceptions(predicate, (promise_will_not_throw.quux), 2, 0, will_not_throw).

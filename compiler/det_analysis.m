@@ -747,6 +747,14 @@ det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	( MaybeDetism = yes(Detism0) ->
 		determinism_components(Detism0, CanFail, NumSolns0),
+		( 
+			may_throw_exception(Attributes) = will_not_throw_exception,
+			Detism0 = erroneous
+		->
+			Msgs0 = [will_not_throw_with_erroneous(PredId, ProcId)]
+		;
+			Msgs0 = []	
+		),  
 		( PragmaCode = nondet(_, _, _, _, _, _, _, _, _) ->
 			% pragma C codes of this form
 			% can have more than one solution
@@ -759,10 +767,10 @@ det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 			SolnContext \= first_soln
 		->
 			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-					PredId, ProcId)],
+					PredId, ProcId) | Msgs0 ],
 			NumSolns = at_most_many
 		;
-			Msgs = [],
+			Msgs = Msgs0,
 			NumSolns = NumSolns1
 		),
 		determinism_components(Detism, CanFail, NumSolns)

@@ -53,6 +53,7 @@ MCFLAGS-pl8_4_1=--term-norm=simple
 MCFLAGS-pl8_4_2=--term-norm=simple
 MCFLAGS-pragma_non_term=--term-norm=simple
 MCFLAGS-pragma_term=--term-norm=simple
+MCFLAGS-promise_will_not_throw=--analyse-exceptions
 MCFLAGS-queens=--term-norm=simple
 MCFLAGS-quicksort=--term-norm=simple
 MCFLAGS-select=--term-norm=simple
