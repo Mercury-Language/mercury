@@ -152,6 +152,7 @@ MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn
+MCFLAGS-overloading = 		--no-intermodule-optimization
 MCFLAGS-sub_c = 		--verbose-error-messages
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-test_nested =		--no-intermodule-optimization
