@@ -33,8 +33,13 @@ include ../Mmake.common
 ABI_FLAG= 
 # CC=cc $(ABI_FLAG)
 
-# Mercury-specific definition of CC:
-CC=MERCURY_C_INCL_DIR=. ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
+# Mercury-specific definition of CC.
+# Note that we need to use "env FOO=bar ..." here, rather than just
+# "FOO=bar ...", since $(CC) needs to be a program, not a shell script,
+# because it is invoked via if_not_there, and if_not_there.c uses execvp()
+# rather than system().
+# ("env" is a standard Unix program, which normally lives in /usr/bin).
+CC=env MERCURY_C_INCL_DIR=. ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
 
 CXX=g++ $(ABI_FLAG)
 # Needed only for "make c++", which adds the c++ interface
