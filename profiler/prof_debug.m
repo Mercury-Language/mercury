@@ -19,15 +19,21 @@
 :- interface.
 
 :- import_module io.
-:- import_module set, list, string.
+:- import_module assoc_list, set, list, string, std_util.
 
 :- pred output_cliques(list(set(string)), io__state, io__state).
 :- mode output_cliques(in, di, uo) is det.
+
+:- pred output_propagate_info(set(string), assoc_list(string, int), 
+							io__state, io__state).
+:- mode output_propagate_info(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module writeln.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,6 +47,32 @@ output_cliques([C | Cs]) -->
 	print_list(M),
 	output_cliques(Cs).
 
+output_propagate_info(Clique, Parents) -->
+        io__write_string("************************\n"),
+        io__write_string("Clique\n"),
+        print_set(Clique),
+        io__write_string("\nParents\n"),
+        print_assoc_list(Parents).
+
+
+:- pred print_set(set(string), io__state, io__state).
+:- mode	print_set(in, di, uo) is det.
+
+print_set(Set) -->
+	{ set__to_sorted_list(Set, List) },
+	print_list(List).
+
+
+:- pred print_assoc_list(assoc_list(string,int), io__state, io__state).
+:- mode	print_assoc_list(in, di, uo) is det.
+
+print_assoc_list([]) --> [].
+print_assoc_list([ A - B | Xs]) -->
+	io__write_string(A),
+	io__write_string("\t-\t"),
+	io__write_int(B),
+	io__write_string("\n"),
+	print_assoc_list(Xs).
 
 :- pred print_list(list(string), io__state, io__state).
 :- mode	print_list(in, di, uo) is det.

@@ -44,6 +44,8 @@ process_file__main(Prof, DynamicCallGraph) -->
 	globals__io_lookup_string_option(declfile, DeclFile),
 	globals__io_lookup_string_option(countfile, CountFile),
 	globals__io_lookup_string_option(pairfile, PairFile),
+	globals__io_lookup_string_option(libraryfile, LibFile),
+	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 
         maybe_write_string(VVerbose, "\n\t% Processing "),
 	maybe_write_string(VVerbose, DeclFile),
@@ -64,7 +66,21 @@ process_file__main(Prof, DynamicCallGraph) -->
 
         maybe_write_string(VVerbose, " done.\n"),
 
-        {Prof = prof(Hertz, ClockTicks, TotalCounts, AddrDeclMap, ProfNodeMap)}.
+	{ map__init(CycleMap) },
+        { prof__set_entire(Hertz, ClockTicks, TotalCounts, AddrDeclMap, 
+						ProfNodeMap, CycleMap, Prof) },
+	
+	(
+		{ Dynamic = no }
+	->
+		maybe_write_string(VVerbose, " done.\n\t% Processing "),
+		maybe_write_string(VVerbose, LibFile),
+		maybe_write_string(VVerbose, "..."),
+
+		process_library_callgraph(_, _)
+	;
+		{ true }
+	).
 
 
 %-----------------------------------------------------------------------------%
@@ -263,8 +279,9 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		{ prof_node_get_pred_name(CalleeProfNode0, CalleeName) },
 
 		% Insert child information
-		{ prof_node_concat_to_child(pred_info(CalleeName, Count),
-					CallerProfNode0, CallerProfNode) },
+
+		{ prof_node_concat_to_child(CalleeName, Count, CallerProfNode0,
+							CallerProfNode) },
 		{map__set(ProfNodeMap0, CallerAddr, CallerProfNode, PNodeMap1)},
 
 		% Update the total calls field if not self recursive
@@ -275,7 +292,7 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 			TotalCalls is TotalCalls0 + Count,
 			prof_node_set_total_calls(TotalCalls, CalleeProfNode0,
 							CalleeProfNode1),
-			prof_node_concat_to_parent(pred_info(CallerName, Count),
+			prof_node_concat_to_parent(CallerName, Count,
 					CalleeProfNode1, CalleeProfNode)
 		;
 			prof_node_set_self_calls(Count, CalleeProfNode0, 
@@ -303,6 +320,55 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		{ ProfNodeMap = ProfNodeMap0 }
 	).
 
+
+%-----------------------------------------------------------------------------%
+
+% process_library_callgraph:
+%	XXX
+%
+:- pred process_library_callgraph(list(string), map(string, unit), 
+							io__state, io__state).
+:- mode process_library_callgraph(out, out, di, uo) is det.
+
+process_library_callgraph(LibraryATSort, LibPredMap) -->
+	globals__io_lookup_string_option(libraryfile, LibFile),
+	{ map__init(LibPredMap0) },
+	io__see(LibFile, Result),
+	(
+		{ Result = ok },
+		process_library_callgraph_2([], LibraryATSort, LibPredMap0, 
+								LibPredMap),
+		io__seen
+	;
+		{ Result = error(Error) },
+                { io__error_message(Error, ErrorMsg) },
+                io__stderr_stream(StdErr),
+                io__write_strings(StdErr, ["mprof: error opening pair file `",
+                        LibFile, "': ", ErrorMsg, "\n"]),
+		{ LibraryATSort = [] },
+		{ LibPredMap = LibPredMap0 }
+	).
+
+:- pred process_library_callgraph_2(list(string), list(string), 
+		map(string, unit), map(string, unit), io__state, io__state).
+:- mode process_library_callgraph_2(in, out, in, out, di, uo) is det.
+
+process_library_callgraph_2(LibATSort0, LibATSort, LibPredMap0, LibPredMap) -->
+	maybe_read_label_name(MaybeLabelName),
+	(
+		{ MaybeLabelName = yes(LabelName) },
+
+		{ map__det_insert(LibPredMap0, LabelName, unit, LibPredMap1) },
+		{ LibATSort1 = [ LabelName | LibATSort0 ] },
+
+		process_library_callgraph_2(LibATSort1, LibATSort, LibPredMap1,
+								LibPredMap)
+	;
+		{ MaybeLabelName = no },
+
+		{ LibPredMap = LibPredMap0 },
+		{ LibATSort = LibATSort0 }
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module bool, float, list, std_util.
+:- import_module bool, float, list, require, std_util.
 :- import_module globals, options, generate_output.
 
 output__main(Output, IndexMap) -->
@@ -149,20 +149,28 @@ output_call_graph([LabelName | LNs], InfoMap, IndexMap) -->
 :- mode output_formatted_prof_node(in, in, in, di, uo) is det.
 
 output_formatted_prof_node(ProfNode, Index, IndexMap) -->
-	{ ProfNode = output_prof(	Name,		Percentage,
-					_,		Self,
-					Descendant,	TotalCalls,
-					SelfCalls,	ParentList,
-					ChildList
-				)
-	},
+	(
+		{ ProfNode = output_prof(	Name,		CycleNum,
+						Percentage,
+						_,		Self,
+						Descendant,	TotalCalls,
+						SelfCalls,	ParentList,
+						ChildList,	CycleParentList,
+						CycleChildList
+					)
+		}
+	;
+		{ ProfNode = output_cycle_prof(_, _, _, _, _, _, _, _, _) },
+		{ error("output_formatted_prof_node: Cannot have output_cycle_prof\n") }
+	),
 
 	% Set up all the output strings.
 	{
+	output__construct_name(Name, CycleNum, FullName),
 	string__int_to_string(Index, IndexStr0),
 	string__append_list(["[", IndexStr0, "] "], IndexStr),
 	string__format("%40d             %s [%d]\n", 
-			[i(SelfCalls),s(Name),i(Index)], SelfCallsString),
+			[i(SelfCalls),s(FullName),i(Index)], SelfCallsString),
 	string__format("%-6s %5.1f %7.2f %11.2f %7d", [s(IndexStr), 
 			f(Percentage) , f(Self), f(Descendant), i(TotalCalls)],
 			InitMiddleStr)
@@ -176,7 +184,17 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 		[]
 	),
 
-	output_formatted_parent_list(ParentList, IndexMap, TotalCalls),
+	(	
+		{ CycleParentList = [] },
+		{ ParentList = [] }
+	->
+		{ string__format("%67s", [s("<spontaneous>\n")], String) }, 
+		io__write_string(String)
+	;
+		output_formatted_cycle_parent_list(CycleParentList, IndexMap),
+		output_formatted_parent_list(ParentList, IndexMap, TotalCalls)
+	),
+
 
 	% Output the info about the current predicate.
 	io__write_string(InitMiddleStr),
@@ -189,12 +207,13 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 		{ string__format("%-7d", [i(SelfCalls)], Str) },
 		io__write_string(Str)
 	),
-	io__write_string(Name),
+	io__write_string(FullName),
 	io__write_string(" "),
 	io__write_string(IndexStr),
 	io__write_string("\n"),
 
 	output_formatted_child_list(ChildList, IndexMap),
+	output_formatted_cycle_child_list(CycleChildList, IndexMap),
 
 	(
 		{ SelfCalls \= 0 }
@@ -205,37 +224,71 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 	).
 	
 
-% output_formatted_parent_list:
-%	Outputs the parent list of the current predicate also looks for the
-%	special case where the parent list is empty and hence the function
-%	spontaneously came into existance.
+% output_formatted_cycle_parent_list
+%	outputs the parents of a predicate that are in the same cycle.
 %
+:- pred output_formatted_cycle_parent_list(list(parent), map(string, int),
+                                                        io__state, io__state).
+:- mode output_formatted_cycle_parent_list(in, in, di, uo) is det.
+
+output_formatted_cycle_parent_list([], _) --> [].
+output_formatted_cycle_parent_list([Parent | Parents], IndexMap) -->
+	{ Parent = parent(LabelName,	CycleNum,	_Self,
+		 	  _Descendant,	Calls
+			 ),
+
+	output__construct_name(LabelName, CycleNum, Name),
+	string__format("%40d             %s [%d]\n", 
+			[i(Calls),s(Name),i(Index)], Output),
+	map__lookup(IndexMap, LabelName, Index)
+	},
+	io__write_string(Output),
+	output_formatted_cycle_parent_list(Parents, IndexMap).	
+	
+
+% output_formatted_parent_list:
+%	Outputs the parent list of the current predicate 
+
 :- pred output_formatted_parent_list(list(parent), map(string, int), int, 
 							io__state, io__state).
 :- mode output_formatted_parent_list(in, in, in, di, uo) is det.
 
-output_formatted_parent_list([], _, _) --> 
-	{ string__format("%67s", [s("<spontaneous>\n")], String) }, 
-	io__write_string(String).
+output_formatted_parent_list([], _, _) --> [].
 output_formatted_parent_list([Parent | Parents], IndexMap, TotalCalls) -->
-	output_formatted_parent_list_2([Parent|Parents], IndexMap, TotalCalls).
-
-:- pred output_formatted_parent_list_2(list(parent), map(string, int), int, 
-							io__state, io__state).
-:- mode output_formatted_parent_list_2(in, in, in, di, uo) is det.
-
-output_formatted_parent_list_2([], _, _) --> [].
-output_formatted_parent_list_2([Parent | Parents], IndexMap, TotalCalls) -->
-	{ Parent = parent(LabelName,	_,		Self,
+	{ Parent = parent(LabelName,	CycleNum,	Self,
 		 	  Descendant,	Calls
 			 ),
+	output__construct_name(LabelName, CycleNum, Name),
 	string__format("%20.2f %11.2f %7d/%-11d %s [%d]\n", [f(Self),
 				f(Descendant), i(Calls), i(TotalCalls), 
-				s(LabelName), i(Index)], Output),
+				s(Name), i(Index)], Output),
 	map__lookup(IndexMap, LabelName, Index)
 	},
 	io__write_string(Output),
-	output_formatted_parent_list_2(Parents, IndexMap, TotalCalls).	
+	output_formatted_parent_list(Parents, IndexMap, TotalCalls).	
+	
+
+% output_formatted_cycle_child_list
+%	outputs the childs of a predicate that are in the same cycle.
+%
+:- pred output_formatted_cycle_child_list(list(child), map(string, int),
+                                                        io__state, io__state).
+:- mode output_formatted_cycle_child_list(in, in, di, uo) is det.
+
+output_formatted_cycle_child_list([], _) --> [].
+output_formatted_cycle_child_list([Child | Childs], IndexMap) -->
+	{ Child = child(LabelName,	CycleNum,	_Self,
+		 	  _Descendant,	Calls, _
+			 ),
+
+	output__construct_name(LabelName, CycleNum, Name),
+	string__format("%40d             %s [%d]\n", 
+			[i(Calls),s(Name),i(Index)], Output),
+	map__lookup(IndexMap, LabelName, Index)
+	},
+	io__write_string(Output),
+	output_formatted_cycle_child_list(Childs, IndexMap).	
+	
 
 % output_formatted_child_list:
 %	outputs the child list of the current predicate.
@@ -246,12 +299,13 @@ output_formatted_parent_list_2([Parent | Parents], IndexMap, TotalCalls) -->
 
 output_formatted_child_list([], _) --> [].
 output_formatted_child_list([Child | Children], IndexMap) -->
-	{ Child = child(  LabelName,	_,		Self,
+	{ Child = child(  LabelName,	CycleNum,	Self,
 		 	  Descendant,	Calls, 		TotalCalls
 			 ),
+	output__construct_name(LabelName, CycleNum, Name),
 	string__format("%20.2f %11.2f %7d/%-11d %s [%d]\n", [f(Self),
 				f(Descendant), i(Calls), i(TotalCalls), 
-				s(LabelName), i(Index)], Output),
+				s(Name), i(Index)], Output),
 	map__lookup(IndexMap, LabelName, Index)
 	},
 	io__write_string(Output),
@@ -296,13 +350,20 @@ output__flat_profile([], _, _, _) --> [].
 output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	{ map__lookup(InfoMap, LabelName, ProfNode) },
 	{ map__lookup(IndexMap, LabelName, Index) },
-	{ ProfNode = output_prof(	Name,		_DescPercentage,
-					Percentage,	Self,
-					Descendant,	TotalCalls,
-					_SelfCalls,	_ParentList,
-					_ChildList
-				)
-	},
+	(
+		{ ProfNode = output_prof(	Name,		CycleNum,
+						_Percentage,
+						Percentage,	Self,
+						Descendant,	TotalCalls,
+						_SelfCalls,	_ParentList,
+						_ChildList,     _,
+						_
+					)
+		}
+	;
+		{ ProfNode = output_cycle_prof(_, _, _, _, _, _, _, _, _) },
+		{ error("output_flat_profile: Cannot have output_cycle_prof\n")}
+	),
 
 	{
 	int__to_float(TotalCalls, FloatTotalCalls),
@@ -313,13 +374,14 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	builtin_float_times(1000.0, Self1, SelfMs),
 	builtin_float_times(1000.0, Desc1, DescMs),
 
+	output__construct_name(Name, CycleNum, FullName),
 	string__int_to_string(Index, IndexStr0),
 	string__append_list(["[", IndexStr0, "] "], IndexStr),
 	string__format("%5.1f %10.2f %8.2f %8d %8.2f %8.2f %s %s\n",
 				[ f(Percentage),	f(CumTime),
 				  f(Self),		i(TotalCalls),
 				  f(SelfMs),		f(DescMs),
-				  s(Name),		s(IndexStr)
+				  s(FullName),		s(IndexStr)
 				],
 				String)
 	},
@@ -362,3 +424,18 @@ output_alphabet_listing_3([Name - Index | T]) -->
 	io__write_string(String),
 	output_alphabet_listing_2(T).
 
+% output__construct_name
+%	Constructs an output name with an optional cycle number if required.
+%
+:- pred output__construct_name(string, int, string).
+:- mode output__construct_name(in, in, out) is det.
+
+output__construct_name(Name, CycleNum, FullName) :-
+	(
+		CycleNum = 0
+	->
+		FullName = Name
+	;
+		string__int_to_string(CycleNum, CycleStr),
+		string__append_list([Name, "  <cycle ", CycleStr, ">"], FullName)
+	).

@@ -38,6 +38,7 @@
 :- import_module bool, list, std_util, string, library.
 :- import_module options, getopt, globals.
 :- import_module relation.
+:- import_module prof_debug.
 
 %-----------------------------------------------------------------------------%
 
@@ -158,12 +159,8 @@ main_2(no, Args) -->
 			call_graph__main(Args, CallGraph0, CallGraph),
 			maybe_write_string(Verbose, " done\n"),
 
-			maybe_write_string(Verbose, "% Topologically sorting call graph..."),
-			{ relation__atsort(CallGraph, Cliques) },
-			maybe_write_string(Verbose, " done\n"),
-
 			maybe_write_string(Verbose, "% Propagating counts..."),
-			propagate__counts(Cliques, Prof0, Prof),
+			propagate__counts(CallGraph, Prof0, Prof),
 			maybe_write_string(Verbose, " done\n")
 		;
 			{ Prof = Prof0 }
@@ -175,6 +172,7 @@ main_2(no, Args) -->
 
 		io__set_output_stream(StdOut, _),
 		output__main(OutputProf, IndexMap),
+		io__write_char('\n'),
 		io__told
         ).
 

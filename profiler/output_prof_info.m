@@ -46,6 +46,7 @@
 :- type output_prof --->
 		output_prof(
 			string,			% predicate name
+			int,			% cycle number
 			float,			% %time in current predicate and
 						% descendants
 			float,			% %time in current predicate
@@ -59,14 +60,35 @@
 						% self recursive calls
 			int,			% number of times predicate 
 						% calls itself.
-			list(parent),		
-			list(child)
+			list(parent),		% parents of predicate
+			list(child),		% children of predicate
+			list(parent),		% parents and children who are
+			list(child)		% members of the same cycle.
+		)
+	;
+		output_cycle_prof(
+			string,			% predicate name
+			int,			% cycle number
+			float,			% %time in current predicate and
+						% descendants
+			float,			% self: time spent in current
+						% predicate
+			float,			% descendants: time spent in 
+						% current predicate and 
+						% descendants
+			int,			% called: number of times 
+						% predicate is called excluding
+						% self recursive calls
+			int,			% number of times predicate 
+						% calls itself.
+			list(parent),		% parents of predicate
+			list(child)		% children of predicate
 		).
 
 :- type parent --->
 		parent(
 			string,			% parent name
-			int,			% index number
+			int,			% cycle number
 			float,			% the number of seconds of 
 						% current predicate's self time
 						% which is due to calls from
@@ -79,7 +101,7 @@
 :- type child --->
 		child(
 			string,			% child name
-			int,			% index number
+			int,			% cycle number
 			float,			% the number of seconds of 
 						% child's self time
 						% which is due to calls from

@@ -26,6 +26,7 @@
 		;	countfile
 		;	pairfile
 		;	declfile
+		;	libraryfile
 	% Miscellaneous Options
 		;	help.
 
@@ -63,6 +64,7 @@ option_default(call_graph,	bool(no)).
 option_default(countfile,	string("Prof.Counts")).
 option_default(pairfile,	string("Prof.CallPair")).
 option_default(declfile,	string("Prof.Decl")).
+option_default(libraryfile,	string("")).
 
 	% Miscellaneous Options
 option_default(help,		bool(no)).
@@ -74,6 +76,7 @@ short_option('c',			call_graph).
 short_option('d',			dynamic_cg).
 short_option('D',			declfile).
 short_option('h', 			help).
+short_option('L', 			libraryfile).
 short_option('P',			pairfile).
 short_option('v', 			verbose).
 short_option('V', 			very_verbose).
@@ -83,6 +86,7 @@ long_option("call-graph",		call_graph).
 long_option("count-file",		countfile).
 long_option("declaration-file",		declfile).
 long_option("help",			help).
+long_option("library-callgraph",	help).
 long_option("use-dynamic",		dynamic_cg).
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -103,6 +107,8 @@ options_help -->
 	io__write_string("\t\tName of the declaration file. Usually `Prof.Decl'.\n"),
 	io__write_string("\t-P, --call-pair-file\n"),
 	io__write_string("\t\tName of the call-pair file. Usually `Prof.CallPair'.\n"),
+	io__write_string("\t-L, --library-callgraph\n"),
+	io__write_string("\t\tName of the file which contains the callgraph for the library modules.\n"),
 
 
 	io__write_string("\nVerbosity Options:\n"),

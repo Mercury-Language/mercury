@@ -41,7 +41,8 @@ main -->
 	{ relation__init(CallGraph0) },
 	build_call_graph(Files, CallGraph0, CallGraph),
 	{ relation__atsort(CallGraph, Cliques) },
-	print_cliques(Cliques).
+	{ list__reverse(Cliques, RevCliques) },
+	print_cliques(RevCliques).
 
 
 %-----------------------------------------------------------------------------%
