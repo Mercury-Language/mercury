@@ -240,6 +240,11 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 		module_info_pred_info(Module0, CalledPredId, PredInfo),
 		pred_info_import_status(PredInfo, ImportStatus),
 		ImportStatus \= imported,
+
+		% XXX Instead of disallowing opt_imported predicates, it
+		% would be possible to make a local copy of the
+		% predicate and call that.  I'm not sure if this is
+		% worth doing, though.
 		ImportStatus \= opt_imported,
 
 		% XXX - Also, we currently only allow one reference per
