@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2001 The University of Melbourne. 
+# Copyright (C) 1996-2002 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -214,10 +214,12 @@ top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
+PARSE_ML_OPTIONS=$top/scripts/parse_ml_options.sh-subr
 CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+AC_SUBST_FILE(PARSE_ML_OPTIONS)
 AC_SUBST_FILE(CANONICAL_GRADE)
 
 #-----------------------------------------------------------------------------#
