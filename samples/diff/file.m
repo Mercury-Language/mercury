@@ -77,7 +77,7 @@ file__read_stream2(Stream, LinesIn, LinesOut, File) -->
 	    { LinesOut = LinesIn },
 	    { array__init(1, LinesOut, "", File) }
 	; { Res = ok(Line) },
-	    { LinesIn1 is LinesIn+1 },
+	    { LinesIn1 is LinesIn + 1 },
 	    { string__from_char_list(Line, Line1) },
 	    file__read_stream2(Stream, LinesIn1, LinesOut, File1),
 	    { array__set(File1, LinesIn1, Line1, File) }

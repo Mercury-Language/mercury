@@ -4,15 +4,20 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: diff.m
+% Main author: bromage
+
+% Something very similar to the standard diff utility.  Sort of.  :-)
+
 % On the still-to-do list:
-%	- Add command-line options.  Probably -d, -i and -w.
+%	- Add command-line options.  Probably:
+%		--ignore-all-space
+%		--ignore-blank-lines
+%		--ignore-case
+%		--rcs
 %	  What others are easy and don't break up the code?
-%
-%	- Some real error messages rather than calls to error/1.
-%	  (Happy now, Fergus?)
 
 :- module diff.
-% Main author: bromage
 
 :- interface.
 :- import_module io.
@@ -87,7 +92,7 @@ main_2(no, [Fname1 | Rest]) -->
 	    	),
 		% Now do the diff.
 		( { Contents1 = ok(File1), Contents2 = ok(File2) } ->
-		    lcss__show_diff(File1, File2)
+		    diff__do_diff(File1, File2)
 		; { Contents1 = error(Msg) } ->
 		    usage_io_error(Msg)
 		; { Contents2 = error(Msg) } ->
@@ -99,6 +104,17 @@ main_2(no, [Fname1 | Rest]) -->
 	; { Rest = [] },
 	    usage_error("missing operand")
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% diff__do_diff takes the files plus all the command
+	% line options (all zero of them) and determines what
+	% to do with them.
+:- pred diff__do_diff(file, file, io__state, io__state).
+:- mode diff__do_diff(in, in, di, uo) is det.
+diff__do_diff(File1, File2) -->
+	{ lcss__find_diff(File1, File2, Diff) },
+	lcss__display_diff(File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
