@@ -22,6 +22,11 @@
 :- import_module hlds_goal, hlds_data, llds, code_info, code_util.
 :- import_module list.
 
+:- type test_sense --->
+		branch_on_success
+	;	branch_on_failure
+	.
+
 	% Generate code for an assignment unification.
 	% (currently implemented as a cached assignment).
 :- pred unify_gen__generate_assignment(var, var, code_tree,
@@ -46,9 +51,9 @@
 :- pred unify_gen__generate_test(var, var, code_tree, code_info, code_info).
 :- mode unify_gen__generate_test(in, in, out, in, out) is det.
 
-:- pred unify_gen__generate_tag_test(var, cons_id, label, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_tag_test(in, in, out, out, in, out) is det.
+:- pred unify_gen__generate_tag_test(var, cons_id, test_sense, label,
+	code_tree, code_info, code_info).
+:- mode unify_gen__generate_tag_test(in, in, in, out, out, in, out) is det.
 
 :- pred unify_gen__generate_tag_rval(var, cons_id, rval, code_tree,
 	code_info, code_info).
@@ -108,7 +113,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 
 %---------------------------------------------------------------------------%
 
-unify_gen__generate_tag_test(Var, ConsId, ElseLab, Code) -->
+unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 	code_info__produce_variable(Var, VarCode, Rval),
 	(
 		{ ConsId = cons(_, Arity) },
@@ -160,7 +165,13 @@ unify_gen__generate_tag_test(Var, ConsId, ElseLab, Code) -->
 		{ code_util__neg_rval(NegTestRval, TestRval) }
 	),
 	code_info__get_next_label(ElseLab),
-	{ code_util__neg_rval(TestRval, TheRval) },
+	(
+		{ Sense = branch_on_success },
+		{ TheRval = TestRval }
+	;
+		{ Sense = branch_on_failure },
+		{ code_util__neg_rval(TestRval, TheRval) }
+	),
 	{ TestCode = node([
 		if_val(TheRval, label(ElseLab)) - "tag test"
 	]) },
@@ -538,20 +549,15 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	% followed by a deterministic deconstruction.
 
 unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
-	unify_gen__generate_tag_test(Var, Tag, ElseLab, CodeA),
-	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, CodeB),
-	code_info__get_next_label(SkipLab),
+	unify_gen__generate_tag_test(Var, Tag, branch_on_success,
+		SuccLab, TagTestCode),
 	code_info__grab_code_info(CodeInfo),
 	code_info__generate_failure(FailCode),
 	code_info__slap_code_info(CodeInfo), % XXX
-	{ CodeC = tree(
-		node([
-			goto(label(SkipLab)) - "branch over failure",
-			label(ElseLab) - "failure continuation of tag test"
-		]),
-		tree(FailCode,node([ label(SkipLab) - "" ]))
-	) },
-	{ Code = tree(CodeA, tree(CodeB, CodeC)) }.
+	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes,
+		DeconsCode),
+	{ GluedCode = tree(FailCode, node([ label(SuccLab) - "" ])) },
+	{ Code = tree(TagTestCode, tree(GluedCode, DeconsCode)) }.
 
 %---------------------------------------------------------------------------%
 

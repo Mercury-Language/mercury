@@ -243,7 +243,8 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 		{ Cases = [Case1, Case2] }
 	->
 		{ Case1 = case(_, _, Cons1, Goal1) },
-		unify_gen__generate_tag_test(Var, Cons1, NextLab, TestCode),
+		unify_gen__generate_tag_test(Var, Cons1, branch_on_failure,
+			NextLab, TestCode),
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_goal(CodeModel, Goal1, Case1Code),
 
@@ -301,7 +302,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
-		unify_gen__generate_tag_test(Var, Cons, NextLab, TestCode),
+		unify_gen__generate_tag_test(Var, Cons, branch_on_failure,
+			NextLab, TestCode),
 		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) - "skip to the end of the switch",

@@ -121,10 +121,10 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 
 	code_aux__pre_goal_update(SwitchGoalInfo, no),
 
-	unify_gen__generate_tag_test(Var, BaseConsId, BaseLabel, NegTestCode),
-	{ tree__flatten(NegTestCode, NegTestListList) },
-	{ list__condense(NegTestListList, NegTestList) },
-	{ code_util__negate_the_test(NegTestList, EntryTestList) },
+	unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
+		BaseLabel, EntryTestCode),
+	{ tree__flatten(EntryTestCode, EntryTestListList) },
+	{ list__condense(EntryTestListList, EntryTestList) },
 
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_forced_goal(model_det, Base, BaseCodeFrag),
