@@ -237,32 +237,32 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         /* fall through */
 
         case MR_TYPECTOR_REP_RESERVED_ADDR:
-        {
-        int i;
-                MR_Word data;
-        MR_ReservedAddrTypeLayout ra_layout;
+			{
+				int i;
+				MR_Word data;
+				MR_ReservedAddrTypeLayout ra_layout;
 
-        ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
-        data = *data_word_ptr;
+				ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
+				data = *data_word_ptr;
 
-        /*
-        ** First check if this value is one of
-        ** the numeric reserved addresses.
-        */
-        if ((MR_Unsigned) data <
-            (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-        {
-            handle_functor_name(ra_layout->MR_ra_constants[data]->
-                    MR_ra_functor_name);
-            handle_zero_arity_args();
-            break;
-        }
+				/*
+				** First check if this value is one of
+				** the numeric reserved addresses.
+				*/
+				if ((MR_Unsigned) data <
+					(MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+				{
+					handle_functor_name(ra_layout->MR_ra_constants[data]->
+							MR_ra_functor_name);
+					handle_zero_arity_args();
+					break;
+				}
 
-        /*
-        ** Next check if this value is one of the
-        ** the symbolic reserved addresses.
-        */
-        for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
+				/*
+				** Next check if this value is one of the
+				** the symbolic reserved addresses.
+				*/
+				for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                     if (data == (MR_Word) ra_layout->
                             MR_ra_res_symbolic_addrs[i])
                     {
@@ -270,35 +270,35 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
                         handle_functor_name(ra_layout->
                             MR_ra_constants[offset]->MR_ra_functor_name);
-                handle_zero_arity_args();
-                /* "break" here would just exit the "for" loop */
-                return;
-            }
-        }
-            
-        /*
-        ** Otherwise, it is not one of the reserved addresses,
-        ** so handle it like a normal DU type.
-        */
-        du_type_layout = ra_layout->MR_ra_other_functors;
-        goto du_type;
-        }
+						handle_zero_arity_args();
+						/* "break" here would just exit the "for" loop */
+						return;
+					}
+				}
+
+				/*
+				** Otherwise, it is not one of the reserved addresses,
+				** so handle it like a normal DU type.
+				*/
+				du_type_layout = ra_layout->MR_ra_other_functors;
+				goto du_type;
+			}
 
         case MR_TYPECTOR_REP_DU_USEREQ:
             expand_info->non_canonical_type = TRUE;
             /* fall through */
 
         case MR_TYPECTOR_REP_DU:
-        du_type_layout = type_ctor_info->type_layout.layout_du;
-        /* fall through */
+			du_type_layout = type_ctor_info->type_layout.layout_du;
+			/* fall through */
 
-    /*
-    ** This label handles both the DU case and the second half of the
-    ** RESERVED_ADDR case.  `du_type_layout' must be set before
-    ** this code is entered.
-    */
-    du_type:
-            {
+			/*
+			** This label handles both the DU case and the second half of the
+			** RESERVED_ADDR case.  `du_type_layout' must be set before
+			** this code is entered.
+			*/
+		du_type:
+			{
                 const MR_DuPtagLayout   *ptag_layout;
                 const MR_DuFunctorDesc  *functor_desc;
                 const MR_DuExistInfo    *exist_info;
@@ -330,19 +330,20 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                         break;
                     case MR_SECTAG_VARIABLE:
-                handle_functor_name("<<variable>>");
-                handle_zero_arity_args();
-                /*
-                ** XXX We should do something like the
-                ** following, since deconstructing a value
-                ** that might be a variable should be
-                ** cc_multi rather than det. However, there
-                ** is no such version of deconstruct yet,
-                ** so we'll leave it out.
-                */
-            /*expand_info->non_canonical_type = TRUE;*/
-                return;
-                }
+						handle_functor_name("<<variable>>");
+						handle_zero_arity_args();
+
+						/*
+						** XXX We should do something like the
+						** following, since deconstructing a value
+						** that might be a variable should be
+						** cc_multi rather than det. However, there
+						** is no such version of deconstruct yet,
+						** so we'll leave it out.
+						*/
+						/*expand_info->non_canonical_type = TRUE;*/
+						return;
+				}
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
                 expand_info->arity = functor_desc->MR_du_functor_orig_arity;
@@ -365,6 +366,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #endif    /* EXPAND_APPLY_LIMIT */
                 {
                     int i;
+
                     expand_info->EXPAND_ARGS_FIELD.num_extra_args = extra_args;
                     expand_info->EXPAND_ARGS_FIELD.arg_values = arg_vector;
                     expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
@@ -436,7 +438,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_NOTAG:
             expand_info->arity = 1;
             handle_functor_name(type_ctor_info->type_layout.layout_notag
-                    ->MR_notag_functor_name);
+				->MR_notag_functor_name);
 
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
