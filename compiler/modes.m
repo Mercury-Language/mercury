@@ -610,6 +610,25 @@ modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName, Follow),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
+modecheck_goal_2(higher_order_call(PredVar, Args0, _, _, _, Follow),
+		GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order call"),
+	{ list__length(Args0, Arity) },
+	{ Arity1 is Arity + 1 },
+	mode_info_set_call_context(call(unqualified("call")/Arity1)),
+	=(ModeInfo0),
+
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
+	modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
+		ExtraGoals),
+
+	=(ModeInfo),
+	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det, Follow) },
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
+				InstMap0, ModeInfo, Goal) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "higher-order call").
+
 modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "unify"),
@@ -1073,6 +1092,65 @@ instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred modecheck_higher_order_call(var, list(var),
+				list(type), list(mode), determinism, list(var),
+				pair(list(hlds__goal)), mode_info, mode_info).
+:- mode modecheck_higher_order_call(in, in, out, out, out, out, out,
+				mode_info_di, mode_info_uo) is det.
+
+modecheck_higher_order_call(PredVar, Args0, Types, Modes, Det, Args,
+		ExtraGoals, ModeInfo0, ModeInfo) :-
+
+	mode_info_get_types_of_vars(ModeInfo0, Args0, Types),
+
+	%
+	% First, check that `PredVar' has a higher-order pred inst
+	% (of the appropriate arity)
+	%
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	instmap_lookup_var(InstMap0, PredVar, PredVarInst0),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	inst_expand(ModuleInfo0, PredVarInst0, PredVarInst),
+	list__length(Args0, Arity),
+	(
+		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
+		PredInstInfo = pred_inst_info(Modes0, Det0),
+		list__length(Modes0, Arity)
+	->
+		Modes = Modes0,
+		Det = Det0,
+		%
+		% Next, check that `Args0' have insts which match the expected
+		% initial insts, and set their new final insts (introducing
+		% extra unifications for implied modes, if necessary).
+		%
+	/*********************
+		% propagate type info into modes
+		propagate_type_info_mode_list(Types, ModuleInfo0, Modes1,
+			Modes),
+	*********************/
+		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
+		modecheck_var_has_inst_list(Args0, InitialInsts, 0,
+					ModeInfo0, ModeInfo1),
+		mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
+			Args, ExtraGoals, ModeInfo1, ModeInfo2),
+		( determinism_components(Det, _, at_most_zero) ->
+			mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
+		;
+			ModeInfo = ModeInfo2
+		)
+	;
+		set__singleton_set(WaitingVars, PredVar),
+		mode_info_error(WaitingVars, mode_error_higher_order_pred_var(
+				PredVar, PredVarInst, Arity),
+				ModeInfo0, ModeInfo),
+		Modes = [],
+		Det = erroneous,
+		Args = Args0,
+		ExtraGoals = [] - []
+	).
 
 :- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
 				pair(list(hlds__goal)), mode_info, mode_info).

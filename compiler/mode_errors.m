@@ -39,6 +39,10 @@
 	--->	mode_error_disj(merge_context, merge_errors)
 			% different arms of a disjunction result in
 			% different insts for some non-local variables
+	;	mode_error_higher_order_pred_var(var, inst, arity)
+			% the predicate variable in a higher-order predicate
+			% call didn't have a higher-order predicate inst
+			% of the appropriate arity
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
@@ -129,6 +133,9 @@
 
 report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
+report_mode_error(mode_error_higher_order_pred_var(Var, Inst, Arity),
+		ModeInfo) -->
+	report_mode_error_higher_order_pred_var(ModeInfo, Var, Inst, Arity).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
@@ -354,6 +361,27 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 		{ error("report_mode_error_no_matching_mode: invalid context") }
 	),
 	io__write_string("'.\n").
+
+:- pred report_mode_error_higher_order_pred_var(mode_info, var, inst, arity,
+					io__state, io__state).
+:- mode report_mode_error_higher_order_pred_var(mode_info_ui, in, in, in,
+					di, uo) is det.
+
+report_mode_error_higher_order_pred_var(ModeInfo, Var, VarInst, Arity) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: variable `"),
+	mercury_output_var(Var, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(VarInst, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  expecting higher-order pred inst (of arity "),
+	io__write_int(Arity),
+	io__write_string(").\n").
 
 :- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
 					io__state, io__state).

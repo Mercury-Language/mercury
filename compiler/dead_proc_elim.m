@@ -224,6 +224,8 @@ dead_proc_elim__traverse_expr(if_then_else(_, Cond, Then, Else, _),
 		Needed1, Needed2),
 	dead_proc_elim__traverse_goal(Else, CurrProc, Queue2, Queue,
 		Needed2, Needed).
+dead_proc_elim__traverse_expr(higher_order_call(_,_,_,_,_,_), _,
+		Queue, Queue, Needed, Needed).
 dead_proc_elim__traverse_expr(call(PredId, ProcId, _,_,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),

@@ -37,7 +37,11 @@
 
 	% Determine whether a goal might allocate some heap space,
 	% i.e. whether it contains any construction unifications
-	% or predicate calls.
+	% or predicate calls.  BEWARE that this predicate is only
+	% an approximation, used to decide whether or not to try to
+	% reclaim the heap space; currently it fails even for some
+	% goals which do allocate heap space, such as construction
+	% of boxed constants.
 
 :- pred code_util__goal_may_allocate_heap(hlds__goal).
 :- mode code_util__goal_may_allocate_heap(in) is semidet.
@@ -161,10 +165,6 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 	->
 		hlds__is_builtin_make_builtin(yes, yes, IsBuiltin)
 	;
-		PredName = "call"
-	->
-		hlds__is_builtin_make_builtin(yes, no, IsBuiltin)
-	;
 		hlds__is_builtin_make_builtin(no, no, IsBuiltin)
 	).
 
@@ -174,7 +174,6 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 code_util__builtin(ModuleName, PredName, Arity) :-
 	( code_util__builtin_binop(ModuleName, PredName, Arity, _)
 	; code_util__builtin_unop(ModuleName, PredName, Arity, _)
-	; ModuleName = "mercury_builtin", PredName = "call"
 	).
 
 code_util__builtin_binop("int", "builtin_plus", 3, (+)).
@@ -252,6 +251,7 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 :- pred code_util__goal_may_allocate_heap_2(hlds__goal_expr).
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
+code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _, _)).
 code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _, _)) :-
 	\+ hlds__is_builtin_is_inline(Builtin).
 code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-

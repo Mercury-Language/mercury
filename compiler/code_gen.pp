@@ -702,6 +702,11 @@ code_gen__generate_det_goal_2(disj(_Goals, _FV), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
 	code_gen__generate_negation_general(model_det, Goal, Instr).
+code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
+		Modes, Det, _Follow),
+		_CodeInfo, Instr) -->
+	call_gen__generate_higher_order_call(model_det, PredVar, Args,
+		Types, Modes, Det, Instr).
 code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Instr) -->
@@ -991,6 +996,10 @@ code_gen__generate_semi_goal_2(disj(Goals, FV), GoalInfo, Code) -->
 	).
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(Goal, Code).
+code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
+		Det, _Follow), _CodeInfo, Code) -->
+	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
+		Types, Modes, Det, Code).
 code_gen__generate_semi_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->
@@ -1176,6 +1185,11 @@ code_gen__generate_non_goal_2(disj(Goals, FV), GoalInfo, Code) -->
 	).
 code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
+code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
+		Det, _Follow),
+		_CodeInfo, Code) -->
+	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
+		Modes, Det, Code).
 code_gen__generate_non_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->

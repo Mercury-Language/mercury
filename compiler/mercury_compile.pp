@@ -686,7 +686,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ detect_liveness_proc(ProcInfo2, ModuleInfo1, ProcInfo3) },
 	globals__io_lookup_bool_option(follow_vars, FollowVars),
 	( { FollowVars = yes } ->
-		{ find_follow_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4) }
+		find_follow_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4)
 	;
 		{ ProcInfo4 = ProcInfo3 }
 	),
@@ -1094,7 +1094,7 @@ mercury_compile__maybe_compute_followvars(HLDS0, HLDS) -->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Computing followvars..."),
 		maybe_flush_output(Verbose),
-		{ find_follow_vars(HLDS0, HLDS) },
+		find_follow_vars(HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n")
 	;
 		{ HLDS = HLDS0 }

@@ -31,7 +31,8 @@
 
 :- implementation.
 
-:- import_module hlds_goal, mode_util, graph_colour.
+:- import_module arg_info, hlds_goal, hlds_data, mode_util.
+:- import_module globals, graph_colour.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 
@@ -217,6 +218,25 @@ detect_live_vars_in_goal_2(some(_Vs, Goal0), _NondetLives, Liveness0, LiveSets0,
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, Liveness, LiveSets).
 
+detect_live_vars_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
+		Det, _Follow),
+		NondetLives, Liveness, LiveSets0,
+		_CodeModel, ModuleInfo, Liveness, LiveSets) :-
+	% The variables which need to be saved onto the stack
+	% before the call are all the variables that are live
+	% after the call, except for the output arguments produced
+	% by the call, plus all the variables that are nondet
+	% live at the call.
+	% To figure out which variables are output, we use the arg_info;
+	% but it shouldn't matter which arg convention we're using,
+	% so we can just pass convention `simple' to make_arg_infos.
+	determinism_to_code_model(Det, CodeModel),
+	make_arg_infos(simple, Types, Modes, CodeModel, ModuleInfo, ArgInfos),
+	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
+	set__difference(Liveness, OutVars, LiveVars0),
+	set__union(LiveVars0, NondetLives, LiveVars),
+	set__insert(LiveSets0, LiveVars, LiveSets).
+
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, _, _, _),
 		NondetLives, Liveness, LiveSets0,
@@ -384,6 +404,12 @@ find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars) :-
 	pred_info_procedures(PredInfo, Procs),
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_arg_info(ProcInfo, ArgInfo),
+	find_output_vars_from_arg_info(ArgVars, ArgInfo, OutVars).
+
+:- pred find_output_vars_from_arg_info(list(var), list(arg_info), set(var)).
+:- mode find_output_vars_from_arg_info(in, in, out) is det.
+
+find_output_vars_from_arg_info(ArgVars, ArgInfo, OutVars) :-
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgPairs),
 	set__init(OutVars0),
 	find_output_vars_2(ArgPairs, OutVars0, OutVars).

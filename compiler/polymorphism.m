@@ -105,15 +105,8 @@ polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName),
-	% The builtin predicates call/N don't need a type_info
-	( PredName = "call" ->
-		ModuleInfo = ModuleInfo0
-	;
-		pred_info_procids(PredInfo, ProcIds),
-		polymorphism__process_procs(PredId, ProcIds, ModuleInfo0,
-			ModuleInfo)
-	).
+	pred_info_procids(PredInfo, ProcIds),
+	polymorphism__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
 					module_info, module_info).
@@ -228,24 +221,14 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 			ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
-	pred_info_name(PredInfo0, PredName),
-	% The builtin predicates call/N don't need a type_info
-	( PredName = "call" ->
-		VarTypes = VarTypes1,
-		VarSet = VarSet1,
-		TypeVarSet = TypeVarSet0,
-		Goal = Goal0,
-		ModuleInfo = ModuleInfo0
-	;
-		% process any polymorphic calls inside the goal
-		map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
-					TypeInfoMap),
-		Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
-					TypeInfoMap, ModuleInfo0),
-		polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
-		polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
-		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, ModuleInfo)
-	),
+	% process any polymorphic calls inside the goal
+	map__from_corresponding_lists(HeadTypeVars, ExtraHeadVars,
+				TypeInfoMap),
+	Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
+				TypeInfoMap, ModuleInfo0),
+	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
+	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
+	Info = poly_info(VarSet, VarTypes, TypeVarSet, _, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
@@ -266,18 +249,21 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 					hlds__goal, poly_info, poly_info).
 :- mode polymorphism__process_goal_2(in, in, out, in, out) is det.
 
+	% We don't need to add type-infos for higher-order calls,
+	% since the type-infos are added when the closures are
+	% constructed, not when they are called.  (Or at least I
+	% think we don't... -fjh.)
+polymorphism__process_goal_2( higher_order_call(A, B, C, D, E, F),
+		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo)
+		--> [].
+
 polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		Builtin, Context, Name0, Follow), GoalInfo, Goal) -->
-	% The builtin predicates call/N don't need a type_info
-	( { Name0 = unqualified("call") } ->
-	    { Goal = call(PredId0, ProcId0, ArgVars0, Builtin, Context,
-				Name0, Follow) - GoalInfo }
-	;
-	    % Check for a call to a special predicate like compare/3
-	    % for which the type is known at compile-time.
-	    % Replace such calls with calls to the particular version
-	    % for that type.
-	    (
+	% Check for a call to a special predicate like compare/3
+	% for which the type is known at compile-time.
+	% Replace such calls with calls to the particular version
+	% for that type.
+	(
 		{ Name0 = unqualified(PredName0) },
 		{ list__length(ArgVars0, Arity) },
 		{ special_pred_name_arity(SpecialPredId, PredName0, 
@@ -290,27 +276,26 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		% if they're not implemented
 		{ special_pred_list(SpecialPredIds) },
 		{ list__member(SpecialPredId, SpecialPredIds) }
-	    ->
+	->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
 			ModuleInfo, SpecificPredName, PredId, ProcId) },
 		{ Name = unqualified(SpecificPredName) }
-	    ;
+	;
 		{ PredId = PredId0 },
 		{ ProcId = ProcId0 },
 		{ Name = Name0 }
-	    ),
+	),
 
-	    polymorphism__process_call(PredId, ProcId, ArgVars0, 
-	    		ArgVars, ExtraVars, ExtraGoals),
-	    { goal_info_get_nonlocals(GoalInfo, NonLocals0) },
-	    { set__insert_list(NonLocals0, ExtraVars, NonLocals) },
-	    { goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
-	    { Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
-	    		Follow) - CallGoalInfo },
-	    { list__append(ExtraGoals, [Call], GoalList) },
-	    { conj_list_to_goal(GoalList, GoalInfo, Goal) }
-	).
+	polymorphism__process_call(PredId, ProcId, ArgVars0, 
+		ArgVars, ExtraVars, ExtraGoals),
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
+	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
+	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
+	{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
+		Follow) - CallGoalInfo },
+	{ list__append(ExtraGoals, [Call], GoalList) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 				GoalInfo, Goal) -->

@@ -130,6 +130,9 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, FV), _, InstMap0, DetInfo,
 		switch(Var, SwitchCanFail, Cases, FV), Msgs) :-
 	simplify__switch(Cases0, InstMap0, DetInfo, Cases, Msgs).
 
+simplify__goal_2(higher_order_call(A, B, C, D, E, F), _, _, _,
+		 higher_order_call(A, B, C, D, E, F), []).
+
 simplify__goal_2(call(A, B, C, D, E, F, G), _, _, _,
 		 call(A, B, C, D, E, F, G), []).
 

@@ -194,6 +194,11 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, Follow0, _NondetLives,
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
 					Goal, Liveness, Follow).
 
+store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _Follow0,
+		_NondetLives, _ModuleInfo, higher_order_call(A, B, C, D, E, F),
+		Liveness, Follow) :-
+	Follow = F.
+
 store_alloc_in_goal_2(call(A, B, C, D, E, F, G), Liveness, _Follow0,
 		_NondetLives, _ModuleInfo, call(A, B, C, D, E, F, G),
 		Liveness, Follow) :-

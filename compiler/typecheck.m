@@ -85,8 +85,6 @@
 %
 %	we should handle equivalence types here
 %
-%	we should handle overloading of predicates
-%
 %	we should allow type inference for non-exported predicates
 %
 %-----------------------------------------------------------------------------%
@@ -517,6 +515,10 @@ typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name, Follow),
 		call(PredId, Mode, Args, Builtin, Context, Name, Follow)) -->
 	checkpoint("call"),
 	typecheck_call_pred(Name, Args, PredId).
+typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E, F),
+		higher_order_call(PredVar, Args, C, D, E, F)) -->
+	checkpoint("higher-order call"),
+	typecheck_higher_order_call(PredVar, Args).
 typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),
@@ -541,16 +543,43 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred typecheck_higher_order_call(var, list(var), type_info, type_info).
+:- mode typecheck_higher_order_call(in, in, type_info_di, type_info_uo) is det.
+
+typecheck_higher_order_call(PredVar, Args) -->
+	{ list__length(Args, Arity) },
+	{ higher_order_pred_type(Arity, TypeVarSet, PredVarType, ArgTypes) },
+	{ Arity1 is Arity + 1 },
+	{ PredCallId = unqualified("call")/Arity1 },
+	type_info_set_called_predid(PredCallId),
+	typecheck_var_has_polymorphic_type_list([PredVar|Args], TypeVarSet,
+		[PredVarType|ArgTypes]).
+
+:- pred higher_order_pred_type(int, tvarset, type, list(type)).
+:- mode higher_order_pred_type(in, out, out, out) is det.
+
+	% higher_order_pred_type(N, TypeVarSet, PredType, ArgTypes):
+	% Given an arity N, let TypeVarSet = {T1, T2, ..., TN},
+	% PredType = `pred(T1, T2, ..., TN)', and
+	% ArgTypes = [T1, T2, ..., TN].
+
+higher_order_pred_type(Arity, TypeVarSet, PredType, ArgTypes) :-
+	varset__init(TypeVarSet0),
+	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
+	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
+	term__context_init(Context),
+	PredType = term__functor(term__atom("pred"), ArgTypes, Context).
+
+%-----------------------------------------------------------------------------%
+
 :- pred typecheck_call_pred(sym_name, list(var), pred_id, type_info,
 				type_info).
 :- mode typecheck_call_pred(in, in, out, type_info_di, type_info_uo) is det.
 
-	% WISHLIST - we should handle overloading of predicates
-
 typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 	list__length(Args, Arity),
 	PredCallId = PredName/Arity,
-	type_info_set_called_predid(TypeInfo0, PredCallId, TypeInfo1),
+	type_info_set_called_predid(PredCallId, TypeInfo0, TypeInfo1),
 
 		% look up the called predicate's arg types
 	type_info_get_module_info(TypeInfo1, ModuleInfo),
@@ -582,7 +611,7 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 			;
 				typecheck_var_has_polymorphic_type_list(
 					Args, PredTypeVarSet, PredArgTypes,
-				TypeInfo1, TypeInfo)
+					TypeInfo1, TypeInfo)
 			)
 		;
 			typecheck_call_overloaded_pred(PredIdList, Args,
@@ -675,17 +704,17 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds,
 	% the expected types.
 
 :- pred typecheck_var_has_polymorphic_type_list(list(var), tvarset, list(type),
-					type_info, type_info).
+		type_info, type_info).
 :- mode typecheck_var_has_polymorphic_type_list(in, in, in,
 					type_info_di, type_info_uo) is det.
 
 typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredArgTypes,
-					TypeInfo0, TypeInfo) :-
+		TypeInfo0, TypeInfo) :-
 	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
 	rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
 				[], ArgsTypeAssignSet),
-	typecheck_var_has_arg_type_list(Args, 0,
-				ArgsTypeAssignSet, TypeInfo0, TypeInfo).
+	typecheck_var_has_arg_type_list(Args, 0, ArgsTypeAssignSet,
+				TypeInfo0, TypeInfo).
 
 :- pred rename_apart(type_assign_set, tvarset, list(type),
                         args_type_assign_set, args_type_assign_set).
@@ -1830,10 +1859,10 @@ type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_set_called_predid(type_info, pred_call_id, type_info).
-:- mode type_info_set_called_predid(type_info_di, in, type_info_uo) is det.
+:- pred type_info_set_called_predid(pred_call_id, type_info, type_info).
+:- mode type_info_set_called_predid(in, type_info_di, type_info_uo) is det.
 
-type_info_set_called_predid(type_info(A,B,_,D,E,F,G,H,I,J,K,L), PredCallId,
+type_info_set_called_predid(PredCallId, type_info(A,B,_,D,E,F,G,H,I,J,K,L),
 			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%

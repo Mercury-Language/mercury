@@ -14,11 +14,12 @@
 %  To disable the warnings use --no-warn-unused-args
 %  To disable the optimisation use --no-optimize-unused-args
 %
-%  An argument is used if it
-%	- it is in a predicate external to the current module
-%	- it or any of its aliases are used to instantiate an output variable
-%	- it is involved in a simple test, switch or a semidet deconstruction 
-%	- it is an argument to another predicate in this module which is used.
+%  An argument is considered used if it (or any of its aliases) are
+%	- used in a call to a predicate external to the current module
+%	- used in a higher-order call
+%	- used to instantiate an output variable
+%	- involved in a simple test, switch or a semidet deconstruction 
+%	- used as an argument to another predicate in this module which is used.
 %
 %  The first step is to determine which arguments of which predicates are
 %	used locally to their predicate. For each unused argument, a set of
@@ -294,6 +295,10 @@ traverse_goal(ModuleInfo, not(Goal - _), UseInf0, UseInf) :-
 traverse_goal(ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
 	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf).
 
+
+% we assume that higher-order predicate calls use all variables involved
+traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
+	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
 traverse_goal(_, pragma_c_code(_, _, _, Args, _), UseInf0, UseInf) :-
@@ -938,6 +943,10 @@ fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
 		GoalExpr = conj([]),
 		Changed = yes
 	).
+
+fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
+        GoalExpr = higher_order_call(_, _, _, _, _, _).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-

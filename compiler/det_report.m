@@ -30,6 +30,8 @@
 		;	negated_goal_cannot_succeed(hlds__goal_info)
 		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
 				pred_id, proc_id)
+		;	higher_order_cc_pred_in_wrong_context(hlds__goal_info,
+				determinism)
 		;	error_in_lambda(
 				determinism, determinism, % declared, inferred
 				hlds__goal, hlds__goal_info, pred_id, proc_id).
@@ -364,6 +366,47 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
 		det_report_call_context(Context, CallContext, DetInfo,
 			PredId, ModeId),
 		io__write_string("has unknown determinism problem;\n"),
+		prog_out__write_context(Context),
+		io__write_string("  desired determinism is "),
+		hlds_out__write_determinism(Desired),
+		io__write_string(", while actual determinism is "),
+		hlds_out__write_determinism(Actual),
+		io__write_string(".\n")
+	).
+
+det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
+		Desired, Actual, _, _MiscInfo, yes) -->
+	{ goal_info_context(GoalInfo, Context) },
+	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
+	{ determinism_components(Actual, ActualCanFail, ActualSolns) },
+	{ compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail) },
+	( { CmpCanFail = tighter } ->
+		prog_out__write_context(Context),
+		io__write_string("  Higher-order predicate call can fail.\n"),
+		{ Diagnosed1 = yes }
+	;
+		{ Diagnosed1 = no }
+	),
+	{ compare_solncounts(DesiredSolns, ActualSolns, CmpSolns) },
+	( { CmpSolns = tighter } ->
+		prog_out__write_context(Context),
+		io__write_string("  Higher-order predicate call can succeed"),
+		( { DesiredSolns = at_most_one } ->
+			io__write_string(" more than once\n.")
+		;
+			io__write_string(".\n")
+		),
+		{ Diagnosed2 = yes }
+	;
+		{ Diagnosed2 = no }
+	),
+	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
+	(
+		{ Diagnosed = yes }
+	;
+		{ Diagnosed = no },
+		prog_out__write_context(Context),
+		io__write_string("  Higher-order predicate call has unknown determinism problem;\n"),
 		prog_out__write_context(Context),
 		io__write_string("  desired determinism is "),
 		hlds_out__write_determinism(Desired),
@@ -737,6 +780,16 @@ det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, ModeId),
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: call to predicate with determinism `"),
+	mercury_output_det(Detism),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string("  occurs in a context which requires all solutions.\n"),
+	io__set_exit_status(1).
+det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
+		_ModuleInfo) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Error: higher-order call to predicate with determinism `"),
 	mercury_output_det(Detism),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),

@@ -1475,6 +1475,13 @@ warn_singletons_in_goal_2(call(_, _, Args, _, _, _, _),
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
+warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _, _),
+			GoalInfo, QuantVars, VarSet, PredCallId) -->
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ goal_info_context(GoalInfo, Context) },
+	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
+		PredCallId).
+
 warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
@@ -1935,61 +1942,47 @@ transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet).
 
-transform_goal_2(call(Name, Goals0), Context, VarSet0, Subst, Goal, VarSet) :-
-
-	(
-		Name = qualified(ModuleName, PredName)
-	;
-		Name = unqualified(PredName),
-		ModuleName = ""
-	),
+transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet) :-
 	( 
-		PredName = "\\=",
-		Goals0 = [LHS,RHS]
+		Name = unqualified("\\="),
+		Args0 = [LHS, RHS]
 	->
 			% `LHS \= RHS' is defined as `not (RHS = RHS)'
 		transform_goal_2(not(unify(LHS, RHS) - Context), Context,
 				VarSet0, Subst, Goal, VarSet)
 	;
-		% fill unused slots with any old junk 
-		ModeId = 0,
-		hlds__is_builtin_make_builtin(no, no, Builtin),
-
-		term__context_init(Context0),
-		term__apply_substitution(term__functor(term__atom(PredName), 
-				Goals0, Context0), Subst, Goal1),
-		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
-			( ModuleName = "" ->
-				SymName = unqualified(PredName0)
-			;
-				SymName = qualified(ModuleName, PredName0)
-			),
-			Args = Args0
-		;
-			% If the called term is not an atom, then it is
-			% either a variable, or something stupid like a number.
-			% In the first case, we want to transform it to a call
-			% to builtin:call/1, and in the latter case, we
-			% want to report an error.
-			% In either case, we transform it to a call to call/1.
-			% The error in the latter case will be caught by the
-			% type-checker.
-			SymName = qualified("mercury_builtin", "call"),
-			Args = [Goal1]
-		),
-		list__length(Args, Arity),
-		PredCallId = SymName/Arity,
+		term__apply_substitution_to_list(Args0, Subst, Args),
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
-		invalid_pred_id(PredId),
-		map__init(Follow),
+		(
+			Name = unqualified("call"),
+			HeadVars = [PredVar | RealHeadVars]
+		->
+			% initialize some fields to junk
+			map__init(Follow),
+			Types = [],
+			Modes = [],
+			Det = erroneous,
+			Call = higher_order_call(PredVar, RealHeadVars,
+					Types, Modes, Det, Follow)
+		;
+			% initialize some fields to junk
+			invalid_pred_id(PredId),
+			ModeId = 0,
+			hlds__is_builtin_make_builtin(no, no, Builtin),
+			MaybeUnifyContext = no,
+			map__init(Follow),
+			Call = call(PredId, ModeId, HeadVars, Builtin,
+					MaybeUnifyContext, Name, Follow)
+		),
 		goal_info_init(GoalInfo0),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo),
-		Goal2 = call(PredId, ModeId, HeadVars, Builtin, no,
-							SymName, Follow) -
-				GoalInfo,
+		Goal0 = Call - GoalInfo,
+
+		list__length(Args, Arity),
+		PredCallId = Name/Arity,
 		insert_arg_unifications(HeadVars, Args,
 			Context, call(PredCallId),
-			Goal2, VarSet1, Goal, VarSet)
+			Goal0, VarSet1, Goal, VarSet)
 	).
 
 transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet) :-

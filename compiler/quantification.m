@@ -263,6 +263,16 @@ implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F, G), _,
 	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
+implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
+		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
+	quantification__get_outside(OutsideVars),
+	{ set__list_to_set([PredVar|ArgVars], GoalVars) },
+	quantification__get_seen(SeenVars0),
+	{ set__union(SeenVars0, GoalVars, SeenVars) },
+	quantification__set_seen(SeenVars),
+	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
+	quantification__set_nonlocals(NonLocals).
+
 implicitly_quantify_goal_2(unify(A, B0, X, Y, Z), Context,
 		unify(A, B, X, Y, Z)) -->
 	quantification__get_outside(OutsideVars),
@@ -482,6 +492,9 @@ goal_vars(Goal - _GoalInfo, Set) :-
 goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
 	set__insert(Set0, A, Set1),
 	quantification__unify_rhs_vars(B, Set1, Set).
+
+goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _), Set0, Set) :-
+	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
 goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).

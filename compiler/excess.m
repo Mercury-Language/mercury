@@ -157,6 +157,10 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 					   SubGoal, ElimVars),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
+		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
+		Goal = GoalExpr0 - GoalInfo0,
+		ElimVars = ElimVars0
+	;
 		GoalExpr0 = call(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0

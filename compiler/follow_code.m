@@ -140,6 +140,9 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
+move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E,F),
+			higher_order_call(A,B,C,D,E,F), _, R, R).
+
 move_follow_code_in_goal_2(call(A,B,C,D,E,F,G), call(A,B,C,D,E,F,G), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
@@ -342,8 +345,11 @@ move_follow_code_is_builtin(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
 :- pred move_follow_code_is_call(hlds__goal).
 :- mode move_follow_code_is_call(in) is semidet.
 
+move_follow_code_is_call(unify(_,_,_,Unification, _) - _GoalInfo) :-
+	Unification = complicated_unify(_, _, _).
 move_follow_code_is_call(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
 	\+ hlds__is_builtin_is_inline(Builtin).
+move_follow_code_is_call(higher_order_call(_,_,_,_,_,_) - _GoalInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

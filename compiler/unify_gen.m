@@ -282,13 +282,25 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ list__length(Args, NumArgs) },
+/******
+%
+% We used to handle
+%	P = call(P0, ...)
+% [which can't occur in the source code, but could arise from a
+% source code construct like
+%	P = lambda([A, B, C], call(P0, ..., A, B, C))
+% ] as a special case, by generating special code to construct the
+% new closure from the old closure.
+% Now that we treat higher-order predicate calls
+% as a different type of hlds__goal, this isn't necessary
+% any more.  It might still be worth doing as an optimization,
+% but I've left it commented out for now.  It probably doesn;t
+% happen very often.  To fix it, the condition of the
+% if-then-else would have to be changed to check whether the
+% body of the (lambda) predicate was a higher-order call.
+%
 	{ pred_info_name(PredInfo, PredName) },
 	( { PredName = "call", Args = [CallPred | CallArgs] } ->
-		%
-		% We need to handle
-		%	P = call(P0, ...)
-		% as a special case.
-		%
 		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
 		code_info__acquire_reg(LoopCounter),
@@ -341,6 +353,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosureReg) }
 	;
+********/
 		{ Code = empty },
 		{ pred_info_procedures(PredInfo, Procs) },
 		{ map__lookup(Procs, ProcId, ProcInfo) },
@@ -351,8 +364,10 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
 			yes(const(address_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, LabelCount) }
+		{ Value = create(0, Vector, LabelCount) },
+/******
 	),
+******/
 	code_info__cache_expression(Var, Value).
 
 :- pred unify_gen__generate_extra_closure_args(list(var), lval, lval,

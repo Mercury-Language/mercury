@@ -706,6 +706,11 @@ hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent) -->
 		io__write_string("fail")
 	).
 
+hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, _Follow),
+					_ModuleInfo, VarSet, _Indent) -->
+		% XXX we should print more info here
+	hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars], VarSet).
+
 hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here

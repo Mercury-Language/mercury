@@ -94,7 +94,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, det_util.
+:- import_module hlds_goal, prog_data, det_util.
 :- import_module bool, list, map, set, std_util, require.
 
 :- import_module det_report, mode_util, globals, options, passes_aux.
@@ -446,6 +446,18 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
 	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
 		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
 				PredId, ModeId)]
+	;
+		Msgs = []
+	).
+
+det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det, Follow),
+		GoalInfo, _InstMap0, SolnContext,
+		_MiscInfo, _NonLocalVars, _DeltaInstMap,
+		higher_order_call(PredVar, ArgVars, Types, Modes, Det, Follow),
+		Det, Msgs) :-
+	determinism_components(Det, _, NumSolns),
+	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)]
 	;
 		Msgs = []
 	).

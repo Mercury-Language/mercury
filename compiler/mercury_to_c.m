@@ -623,6 +623,8 @@ c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 		c_gen_failure(Indent, CGenInfo0, CGenInfo)
 	).
 
+c_gen_goal_2(higher_order_call(_, _, _, _, _, _), _, _, _) -->
+	{ error("mercury_to_c: higher_order_call not implemented") }.
 c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName, _Follow),
 					Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_module_info(CGenInfo0, ModuleInfo) },

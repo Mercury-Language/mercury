@@ -177,6 +177,12 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	constraint__checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
+		higher_order_call(A, B, C, D, E, F),
+		higher_order_call(A, B, C, D, E, F)) -->
+	constraint__checkpoint(enter, "higher-order call"),
+	constraint__checkpoint(exit, "higher-order call").
+
+constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow),
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow)) -->
 	constraint__checkpoint(enter, "call"),

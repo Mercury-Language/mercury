@@ -196,6 +196,9 @@ dependency_graph__add_arcs_in_goal_2(some(_Vars, Goal), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
+dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _, _),
+		_Caller, DepGraph, DepGraph).
+
 dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _, _),
 			Caller, DepGraph0, DepGraph) :-
 	(

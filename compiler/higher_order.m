@@ -271,6 +271,11 @@ traverse_goal(switch(Var, CanFail, Cases0, FV) - Info,
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
+	{ Goal0 = higher_order_call(_,_,_,_,_,_) - _ }, 
+	maybe_specialize_higher_order_call(Goal0, Goal, PredProcId, Changed).
+
+		% check whether this call could be specialized
+traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 	{ Goal0 = call(_,_,_,_,_,_,_) - _ }, 
 	maybe_specialize_call(Goal0, Goal, PredProcId, Changed).
 
@@ -508,8 +513,54 @@ check_unify(complicated_unify(_, _, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
 
 
+		% Process a higher-order call to see if it could possibly
+		% be specialized.
+:- pred maybe_specialize_higher_order_call( hlds__goal::in, hlds__goal::out,
+		pred_proc_id::in, bool::out, higher_order_info::in,
+		higher_order_info::out) is det.
+
+maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
+		PredProcId, Changed, Info0, Info) :-
+	Info0 = info(PredVars, Requests0, NewPreds, Module),
+	( Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes, _Det,
+				FollowVars0) ->
+		PredVar = PredVar0,
+		Args = Args0,
+		FollowVars = FollowVars0
+	;
+		error("higher_order.m: higher_order_call expected")
+	),
+		
+	% We can trivially specialize calls to call/N.
+	(
+		map__search(PredVars, PredVar,
+		    yes(PredId, ProcId, CurriedArgs))
+	->
+		module_info_pred_info(Module, PredId, PredInfo),
+		pred_info_module(PredInfo, ModuleName),
+		pred_info_name(PredInfo, PredName),
+		code_util__is_builtin(Module, PredId,
+					ProcId, IsBuiltin),
+		list__append(CurriedArgs, Args, AllArgs),
+		MaybeContext = no,
+		Goal1 = call(PredId, ProcId, AllArgs,
+			IsBuiltin, MaybeContext,
+			qualified(ModuleName, PredName),
+			FollowVars),
+		maybe_specialize_call(Goal1 - GoalInfo,
+			Goal - _, PredProcId, _, Info0,
+			info(_, Requests, _, _)),
+		Changed = yes
+	;
+		% non-specializable call to call/N
+		Goal = Goal0,
+		Changed = no,
+		Requests = Requests0
+	),
+	Info = info(PredVars, Requests, NewPreds, Module).
+
 		% Process a call to see if it could possibly be specialized.
-:- pred maybe_specialize_call(hlds__goal::in, hlds__goal::out,
+:- pred maybe_specialize_call( hlds__goal::in, hlds__goal::out,
 		pred_proc_id::in, bool::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
@@ -517,101 +568,59 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
 	(
-		Goal0 = call(CalledPred, CalledProc, Args0, IsBuiltin,
-					MaybeContext, SymName0, FollowVars)
+		Goal0 = call(_, _, _, _, _, _, _)
 	->
-		(
-			% We can trivially specialize calls to call/N.
-			(
-				SymName0 = qualified("mercury_builtin", "call")
-			;
-				SymName0 = unqualified("call")
-			)
-		->
-			(
-				Args0 = [PredVar0 | Args1]
-			->
-				PredVar = PredVar0,
-				Args = Args1
-			;
-				error("call/0?!")
-			),
-			(
-				map__search(PredVars, PredVar,
-				    yes(PredId, ProcId, CurriedArgs))
-			->
-				module_info_pred_info(Module, PredId, PredInfo),
-				pred_info_module(PredInfo, ModuleName2),
-				pred_info_name(PredInfo, PredName2),
-				code_util__is_builtin(Module, PredId,
-							ProcId, IsBuiltin2),
-				list__append(CurriedArgs, Args, AllArgs),
-				Goal1 = call(PredId, ProcId, AllArgs,
-					IsBuiltin2, MaybeContext,
-					qualified(ModuleName2, PredName2),
-					FollowVars),
-				maybe_specialize_call(Goal1 - GoalInfo,
-					Goal - _, PredProcId, _, Info0,
-					info(_, Requests, _, _)),
-				Changed = yes
-			;
-				% non-specializable call to call/N
-				Goal = Goal0,
-				Changed = no,
-				Requests = Requests0
-			)
-		;
-
-			find_higher_order_args(Args0, PredVars, 1,
-					[], HigherOrderArgs, Args0, Args1),
-			(
-		 		HigherOrderArgs = []
-			->
-				Requests = Requests0,
-				Changed = no,
-				Goal = Goal0
-			;
-				% Check to see if any of the specialized
-				% versions of the called pred apply here.
-				map__search(NewPreds,
-					proc(CalledPred, CalledProc),
-					NewPredSet),
-				solutions(lambda([X::out] is nondet, (
-					set__member(X, NewPredSet),
-					X = new_pred(_,_,_, HigherOrderArgs)
-					)), Matches),
-				(
-					Matches = [Match],
-					Match = new_pred(NewCalledPred,
-							NewCalledProc, NewName,
-							_HOArgs)
-				;
-					Matches = [_,_|_],
-					error("multiple specializations")
-				)
-			->
-				remove_listof_higher_order_args(Args1, 1,
-						HigherOrderArgs, Args2),
-				Goal = call(NewCalledPred, NewCalledProc,
-						Args2, IsBuiltin, MaybeContext,
-						NewName, FollowVars),
-				Changed = yes,
-				Requests = Requests0
-			;
-				% There is a known higher order variable in the
-				% call, so we put in a request for a specialized
-				% version of the pred.
-				Goal = Goal0,
-				Request = request(PredProcId,
-						proc(CalledPred, CalledProc),
-						HigherOrderArgs), 
-				set__insert(Requests0, Request, Requests),
-				Changed = yes
-			)
-		)
+		Goal0 = call(CalledPred, CalledProc, Args0, IsBuiltin,
+					MaybeContext, _SymName0, FollowVars)
 	;
-		error("maybe_specialize_call called with a non-call goal")
-	),		
+		error("higher_order.m: call expected")
+	),
+	find_higher_order_args(Args0, PredVars, 1,
+			[], HigherOrderArgs, Args0, Args1),
+	(
+		HigherOrderArgs = []
+	->
+		Requests = Requests0,
+		Changed = no,
+		Goal = Goal0
+	;
+		% Check to see if any of the specialized
+		% versions of the called pred apply here.
+		map__search(NewPreds,
+			proc(CalledPred, CalledProc),
+			NewPredSet),
+		solutions(lambda([X::out] is nondet, (
+			set__member(X, NewPredSet),
+			X = new_pred(_,_,_, HigherOrderArgs)
+			)), Matches),
+		(
+			Matches = [Match],
+			Match = new_pred(NewCalledPred,
+					NewCalledProc, NewName,
+					_HOArgs)
+		;
+			Matches = [_,_|_],
+			error("multiple specializations")
+		)
+	->
+		remove_listof_higher_order_args(Args1, 1,
+				HigherOrderArgs, Args2),
+		Goal = call(NewCalledPred, NewCalledProc,
+				Args2, IsBuiltin, MaybeContext,
+				NewName, FollowVars),
+		Changed = yes,
+		Requests = Requests0
+	;
+		% There is a known higher order variable in the
+		% call, so we put in a request for a specialized
+		% version of the pred.
+		Goal = Goal0,
+		Request = request(PredProcId,
+				proc(CalledPred, CalledProc),
+				HigherOrderArgs), 
+		set__insert(Requests0, Request, Requests),
+		Changed = yes
+	),
 	Info = info(PredVars, Requests, NewPreds, Module).
 
 	% Returns a list of the higher-order arguments in a call that have

@@ -1174,6 +1174,10 @@ recompute_instmap_delta_2(some(Vars, Goal0), some(Vars, Goal), InstMapDelta) -->
 	% calls and unifies shouldn't occur, since atomic goals are
 	% handled directly in recompute_instmap_delta
 
+recompute_instmap_delta_2(higher_order_call(_, _, _, _, _, _), _, _) -->
+	{ error("recompute_instmap_delta: recomputing for atomic goal (higher-order call)")
+	}.
+
 recompute_instmap_delta_2(call(_, _, _, _, _, _, _), _, _) -->
 	{ error("recompute_instmap_delta: recomputing for atomic goal (call)")
 	}.

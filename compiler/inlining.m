@@ -309,6 +309,10 @@ inlining__inlining_in_goal_2(
 		VarTypes = VarTypes0
 	).
 
+inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E, F),
+		Varset, VarTypes,
+		_, _, _, higher_order_call(A, B, C, D, E, F), Varset, VarTypes).
+
 inlining__inlining_in_goal_2(unify(A, B, C, D, E), Varset, VarTypes,
 		_, _, _, unify(A, B, C, D, E), Varset, VarTypes).
 

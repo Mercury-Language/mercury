@@ -20,9 +20,9 @@
 % called predicate (e.g. if a predicate is overloaded with both
 % `ui' and `in' modes)?
 
-% XXX NOT YET FINISHED!
-% The code to actually calculate the set
-% of nondet live variables is currently a rather crude approximation.
+% XXX we currently make the conservative assumption that
+% any non-local variable in a disjunction or nondet call
+% is nondet-live - and stays nondet-live.
 
 %-----------------------------------------------------------------------------%
 
@@ -501,6 +501,23 @@ unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	unique_modes__check_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
+unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
+		Follow), _GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order call"),
+	{ list__length(Args, Arity) },
+	{ Arity1 is Arity + 1 },
+	mode_info_set_call_context(call(unqualified("call")/Arity1)),
+	{ determinism_components(Det, _, at_most_zero) ->
+		NeverSucceeds = yes
+	;
+		NeverSucceeds = no
+	},
+	{ determinism_to_code_model(Det, CodeModel) },
+	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
+	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det, Follow) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "higher-order call").
+
 unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
 		PredName, Follow), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
@@ -556,16 +573,29 @@ unique_modes__check_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args,
 			mode_info, mode_info).
 :- mode unique_modes__check_call(in, in, in, mode_info_di, mode_info_uo) is det.
 
-	% to check a call, we just look up the required initial insts
-	% for the arguments of the call, and then check for each
-	% argument if the variable is nondet-live and the required initial
-	% inst was unique.
-
 unique_modes__check_call(PredId, ProcId, ArgVars, 
 		ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
+	proc_info_interface_code_model(ProcInfo, CodeModel),
+	mode_info_never_succeeds(ModeInfo0, PredId, ProcId, NeverSucceeds),
+	unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel,
+				NeverSucceeds, ModeInfo0, ModeInfo).
+
+	% to check a call, we just look up the required initial insts
+	% for the arguments of the call, and then check for each
+	% argument if the variable is nondet-live and the required initial
+	% inst was unique.
+
+:- pred unique_modes__check_call_modes(list(var), list(mode), code_model, bool,
+			mode_info, mode_info).
+:- mode unique_modes__check_call_modes(in, in, in, in,
+			mode_info_di, mode_info_uo) is det.
+
+unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel, NeverSucceeds,
+			ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 /*********************
 	% propagate type info into modes
 	mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
@@ -587,8 +617,7 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 		% all the handling of implied modes
 		error("unique_modes.m: call to implied mode?")
 	),
-	mode_info_never_succeeds(ModeInfo2, PredId, ProcId, Result),
-	( Result = yes ->
+	( NeverSucceeds = yes ->
 		mode_info_set_instmap(unreachable, ModeInfo2, ModeInfo)
 	;
 		%
@@ -596,7 +625,6 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 		% If so, mark all the currently nondet-live variables
 		% whose inst is `unique' as instead being only `mostly_unique'.
 		%
-		proc_info_interface_code_model(ProcInfo, CodeModel),
 		( CodeModel = model_non ->
 			make_all_nondet_live_vars_mostly_uniq(ModeInfo2,
 				ModeInfo)
