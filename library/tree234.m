@@ -47,6 +47,7 @@
 :- pred tree234__update(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__update(in, in, in, out) is semidet.
 
+	% count the number of elements in a tree
 :- pred tree234__count(tree234(K, V), int).
 :- mode tree234__count(in, out) is det.
 
@@ -698,6 +699,7 @@ tree234__tree234_to_assoc_list(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), L) 
 
 %------------------------------------------------------------------------------%
 
+	% count the number of elements in a tree
 tree234__count(empty, 0).
 tree234__count(two(_, _, T0, T1), N) :-
 	tree234__count(T0, N0),
@@ -707,13 +709,13 @@ tree234__count(three(_, _, _, _, T0, T1, T2), N) :-
 	tree234__count(T0, N0),
 	tree234__count(T1, N1),
 	tree234__count(T2, N2),
-	N is 1 + N0 + N1 + N2.
+	N is 2 + N0 + N1 + N2.
 tree234__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
 	tree234__count(T0, N0),
 	tree234__count(T1, N1),
 	tree234__count(T2, N2),
 	tree234__count(T3, N3),
-	N is 1 + N0 + N1 + N2 + N3.
+	N is 3 + N0 + N1 + N2 + N3.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
