@@ -1,0 +1,470 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/css" href="http://www.cs.mu.oz.au/a_css.css"?>
+<!DOCTYPE Array--array-46array-40write_xml-46mytype-41 [
+
+<!-- Builtin Mercury types -->
+
+<!ELEMENT String (#PCDATA)>
+<!ATTLIST String field CDATA #IMPLIED>
+<!ELEMENT Char (#PCDATA)>
+<!ATTLIST Char field CDATA #IMPLIED>
+<!ELEMENT Int (#PCDATA)>
+<!ATTLIST Int field CDATA #IMPLIED>
+<!ELEMENT Float (#PCDATA)>
+<!ATTLIST Float field CDATA #IMPLIED>
+
+<!-- Elements for functors of type "array.array(write_xml.mytype)" -->
+
+<!ELEMENT Array--array-46array-40write_xml-46mytype-41 ((Tag_List--write_xml-46mytype|Tag_String--write_xml-46mytype|Tag_Tag-45--write_xml-46mytype|a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype|a_map--write_xml-46mytype|a_pred--write_xml-46mytype|a_tuple--write_xml-46mytype|ctor--write_xml-46mytype|foreign--write_xml-46mytype|hello--write_xml-46mytype|pointer--write_xml-46mytype|t--write_xml-46mytype)*)>
+<!ATTLIST Array--array-46array-40write_xml-46mytype-41 field CDATA #IMPLIED>
+<!ATTLIST Array--array-46array-40write_xml-46mytype-41 typename CDATA #IMPLIED>
+<!ATTLIST Array--array-46array-40write_xml-46mytype-41 functor CDATA #FIXED "&lt;&lt;array&gt;&gt;">
+
+<!-- Elements for functors of type "write_xml.mytype" -->
+
+<!ELEMENT Tag_List--write_xml-46mytype (Nil--list-46list-40write_xml-46listPart-41|List--list-46list-40write_xml-46listPart-41)>
+<!ATTLIST Tag_List--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST Tag_List--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST Tag_List--write_xml-46mytype functor CDATA #FIXED "List">
+
+<!ELEMENT Tag_String--write_xml-46mytype (String)>
+<!ATTLIST Tag_String--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST Tag_String--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST Tag_String--write_xml-46mytype functor CDATA #FIXED "String">
+
+<!ELEMENT Tag_Tag-45--write_xml-46mytype (Int)>
+<!ATTLIST Tag_Tag-45--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST Tag_Tag-45--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST Tag_Tag-45--write_xml-46mytype functor CDATA #FIXED "Tag-">
+
+<!ELEMENT a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype (Int)>
+<!ATTLIST a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype functor CDATA #FIXED "a &lt;!@#$%^&amp;*()&gt; functor name!!!">
+
+<!ELEMENT a_map--write_xml-46mytype (empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41)>
+<!ATTLIST a_map--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST a_map--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST a_map--write_xml-46mytype functor CDATA #FIXED "a_map">
+
+<!ELEMENT a_pred--write_xml-46mytype (Unrecognized)>
+<!ATTLIST a_pred--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST a_pred--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST a_pred--write_xml-46mytype functor CDATA #FIXED "a_pred">
+
+<!ELEMENT a_tuple--write_xml-46mytype (Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125)>
+<!ATTLIST a_tuple--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST a_tuple--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST a_tuple--write_xml-46mytype functor CDATA #FIXED "a_tuple">
+
+<!ELEMENT ctor--write_xml-46mytype (Unrecognized)>
+<!ATTLIST ctor--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST ctor--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST ctor--write_xml-46mytype functor CDATA #FIXED "ctor">
+
+<!ELEMENT foreign--write_xml-46mytype (Unrecognized)>
+<!ATTLIST foreign--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST foreign--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST foreign--write_xml-46mytype functor CDATA #FIXED "foreign">
+
+<!ELEMENT hello--write_xml-46mytype (String,Int,Char,Float,(no--bool-46bool|yes--bool-46bool))>
+<!ATTLIST hello--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST hello--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST hello--write_xml-46mytype functor CDATA #FIXED "hello">
+
+<!ELEMENT pointer--write_xml-46mytype (Unrecognized)>
+<!ATTLIST pointer--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST pointer--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST pointer--write_xml-46mytype functor CDATA #FIXED "pointer">
+
+<!ELEMENT t--write_xml-46mytype (Unrecognized)>
+<!ATTLIST t--write_xml-46mytype field CDATA #IMPLIED>
+<!ATTLIST t--write_xml-46mytype typename CDATA #IMPLIED>
+<!ATTLIST t--write_xml-46mytype functor CDATA #FIXED "t">
+
+<!-- Elements for functors of type "list.list(write_xml.listPart)" -->
+
+<!ELEMENT Nil--list-46list-40write_xml-46listPart-41 EMPTY>
+<!ATTLIST Nil--list-46list-40write_xml-46listPart-41 field CDATA #IMPLIED>
+<!ATTLIST Nil--list-46list-40write_xml-46listPart-41 typename CDATA #IMPLIED>
+<!ATTLIST Nil--list-46list-40write_xml-46listPart-41 functor CDATA #FIXED "[]">
+
+<!ELEMENT List--list-46list-40write_xml-46listPart-41 ((listPart--write_xml-46listPart|nothing--write_xml-46listPart),(Nil--list-46list-40write_xml-46listPart-41|List--list-46list-40write_xml-46listPart-41))>
+<!ATTLIST List--list-46list-40write_xml-46listPart-41 field CDATA #IMPLIED>
+<!ATTLIST List--list-46list-40write_xml-46listPart-41 typename CDATA #IMPLIED>
+<!ATTLIST List--list-46list-40write_xml-46listPart-41 functor CDATA #FIXED "[|]">
+
+<!-- Elements for functors of type "write_xml.listPart" -->
+
+<!ELEMENT listPart--write_xml-46listPart (Int)>
+<!ATTLIST listPart--write_xml-46listPart field CDATA #IMPLIED>
+<!ATTLIST listPart--write_xml-46listPart typename CDATA #IMPLIED>
+<!ATTLIST listPart--write_xml-46listPart functor CDATA #FIXED "listPart">
+
+<!ELEMENT nothing--write_xml-46listPart EMPTY>
+<!ATTLIST nothing--write_xml-46listPart field CDATA #IMPLIED>
+<!ATTLIST nothing--write_xml-46listPart typename CDATA #IMPLIED>
+<!ATTLIST nothing--write_xml-46listPart functor CDATA #FIXED "nothing">
+
+<!-- Elements for functors of type "tree234.tree234(int, string)" -->
+
+<!ELEMENT empty--tree234-46tree234-40int-44-32string-41 EMPTY>
+<!ATTLIST empty--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST empty--tree234-46tree234-40int-44-32string-41 typename CDATA #IMPLIED>
+<!ATTLIST empty--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "empty">
+
+<!ELEMENT four--tree234-46tree234-40int-44-32string-41 (Int,String,Int,String,Int,String,(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST four--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST four--tree234-46tree234-40int-44-32string-41 typename CDATA #IMPLIED>
+<!ATTLIST four--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "four">
+
+<!ELEMENT three--tree234-46tree234-40int-44-32string-41 (Int,String,Int,String,(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST three--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST three--tree234-46tree234-40int-44-32string-41 typename CDATA #IMPLIED>
+<!ATTLIST three--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "three">
+
+<!ELEMENT two--tree234-46tree234-40int-44-32string-41 (Int,String,(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41),(empty--tree234-46tree234-40int-44-32string-41|four--tree234-46tree234-40int-44-32string-41|three--tree234-46tree234-40int-44-32string-41|two--tree234-46tree234-40int-44-32string-41))>
+<!ATTLIST two--tree234-46tree234-40int-44-32string-41 field CDATA #IMPLIED>
+<!ATTLIST two--tree234-46tree234-40int-44-32string-41 typename CDATA #IMPLIED>
+<!ATTLIST two--tree234-46tree234-40int-44-32string-41 functor CDATA #FIXED "two">
+
+<!-- Elements for functors of type "{string, int, {character, float}}" -->
+
+<!ELEMENT Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 (String,Int,Tuple--Tag_-123character-44-32float-125)>
+<!ATTLIST Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 field CDATA #IMPLIED>
+<!ATTLIST Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 typename CDATA #IMPLIED>
+<!ATTLIST Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 functor CDATA #FIXED "{}">
+
+<!-- Elements for functors of type "{character, float}" -->
+
+<!ELEMENT Tuple--Tag_-123character-44-32float-125 (Char,Float)>
+<!ATTLIST Tuple--Tag_-123character-44-32float-125 field CDATA #IMPLIED>
+<!ATTLIST Tuple--Tag_-123character-44-32float-125 typename CDATA #IMPLIED>
+<!ATTLIST Tuple--Tag_-123character-44-32float-125 functor CDATA #FIXED "{}">
+
+<!-- Elements for functors of type "bool.bool" -->
+
+<!ELEMENT no--bool-46bool EMPTY>
+<!ATTLIST no--bool-46bool field CDATA #IMPLIED>
+<!ATTLIST no--bool-46bool typename CDATA #IMPLIED>
+<!ATTLIST no--bool-46bool functor CDATA #FIXED "no">
+
+<!ELEMENT yes--bool-46bool EMPTY>
+<!ATTLIST yes--bool-46bool field CDATA #IMPLIED>
+<!ATTLIST yes--bool-46bool typename CDATA #IMPLIED>
+<!ATTLIST yes--bool-46bool functor CDATA #FIXED "yes">
+
+<!-- The following types have been assigned to the `Unrecognised' element:
+	c_pointer
+	pred(int)
+	type_desc.type_ctor_desc
+	type_desc.type_desc
+	write_xml.ftype
+-->
+
+<!ELEMENT Unrecognized ANY>
+<!ATTLIST Unrecognized functor CDATA #REQUIRED>
+<!ATTLIST Unrecognized field CDATA #IMPLIED>
+<!ATTLIST Unrecognized typename CDATA #IMPLIED>
+
+]>
+<Array--array-46array-40write_xml-46mytype-41 functor="&lt;&lt;array&gt;&gt;" typename="array.array(write_xml.mytype)">
+	<Tag_Tag-45--write_xml-46mytype functor="Tag-" typename="write_xml.mytype">
+		<Int>44</Int>
+	</Tag_Tag-45--write_xml-46mytype>
+	<Tag_String--write_xml-46mytype functor="String" typename="write_xml.mytype">
+		<String>a string</String>
+	</Tag_String--write_xml-46mytype>
+	<hello--write_xml-46mytype functor="hello" typename="write_xml.mytype">
+		<String field="field1">this 
+
+is a &lt;string&gt;&amp;</String>
+		<Int field="Field&lt;2&gt;">-123</Int>
+		<Char>&lt;</Char>
+		<Float field="another field">1.12300000000000</Float>
+		<yes--bool-46bool functor="yes" typename="bool.bool" />
+	</hello--write_xml-46mytype>
+	<a_tuple--write_xml-46mytype functor="a_tuple" typename="write_xml.mytype">
+		<Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 functor="{}" typename="{string, int, {character, float}}">
+			<String>some more stuf</String>
+			<Int>123456</Int>
+			<Tuple--Tag_-123character-44-32float-125 functor="{}" typename="{character, float}">
+				<Char>a</Char>
+				<Float>1.23553225220000e-97</Float>
+			</Tuple--Tag_-123character-44-32float-125>
+		</Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125>
+	</a_tuple--write_xml-46mytype>
+	<Tag_List--write_xml-46mytype functor="List" typename="write_xml.mytype">
+		<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+			<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+				<Int>1</Int>
+			</listPart--write_xml-46listPart>
+			<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+				<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+					<Int>2</Int>
+				</listPart--write_xml-46listPart>
+				<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+					<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+					<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+						<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+							<Int>4</Int>
+						</listPart--write_xml-46listPart>
+						<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+							<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+							<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+								<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+									<Int>6</Int>
+								</listPart--write_xml-46listPart>
+								<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+									<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+										<Int>7</Int>
+									</listPart--write_xml-46listPart>
+									<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+										<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+											<Int>8</Int>
+										</listPart--write_xml-46listPart>
+										<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+											<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+											<Nil--list-46list-40write_xml-46listPart-41 functor="[]" typename="list.list(write_xml.listPart)" />
+										</List--list-46list-40write_xml-46listPart-41>
+									</List--list-46list-40write_xml-46listPart-41>
+								</List--list-46list-40write_xml-46listPart-41>
+							</List--list-46list-40write_xml-46listPart-41>
+						</List--list-46list-40write_xml-46listPart-41>
+					</List--list-46list-40write_xml-46listPart-41>
+				</List--list-46list-40write_xml-46listPart-41>
+			</List--list-46list-40write_xml-46listPart-41>
+		</List--list-46list-40write_xml-46listPart-41>
+	</Tag_List--write_xml-46mytype>
+	<a_map--write_xml-46mytype functor="a_map" typename="write_xml.mytype">
+		<four--tree234-46tree234-40int-44-32string-41 functor="four" typename="tree234.tree234(int, string)">
+			<Int>2</Int>
+			<String>hello1</String>
+			<Int>4</Int>
+			<String>hello3</String>
+			<Int>6</Int>
+			<String>hello5</String>
+			<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+				<Int>1</Int>
+				<String>hello</String>
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+			</two--tree234-46tree234-40int-44-32string-41>
+			<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+				<Int>3</Int>
+				<String>hello2</String>
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+			</two--tree234-46tree234-40int-44-32string-41>
+			<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+				<Int>5</Int>
+				<String>hello4</String>
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+			</two--tree234-46tree234-40int-44-32string-41>
+			<three--tree234-46tree234-40int-44-32string-41 functor="three" typename="tree234.tree234(int, string)">
+				<Int>7</Int>
+				<String>hello6</String>
+				<Int>8</Int>
+				<String>hello7</String>
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+				<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+			</three--tree234-46tree234-40int-44-32string-41>
+		</four--tree234-46tree234-40int-44-32string-41>
+	</a_map--write_xml-46mytype>
+	<a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype functor="a &lt;!@#$%^&amp;*()&gt; functor name!!!" typename="write_xml.mytype">
+		<Int>999</Int>
+	</a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype>
+	<a_pred--write_xml-46mytype functor="a_pred" typename="write_xml.mytype">
+		<Unrecognized functor="p" typename="pred(int)">
+			<Int>1</Int>
+			<Int>2</Int>
+			<hello--write_xml-46mytype functor="hello" typename="write_xml.mytype">
+				<String field="field1">a string</String>
+				<Int field="Field&lt;2&gt;">1</Int>
+				<Char>c</Char>
+				<Float field="another field">-1.00000000000000e-15</Float>
+				<yes--bool-46bool functor="yes" typename="bool.bool" />
+			</hello--write_xml-46mytype>
+		</Unrecognized>
+	</a_pred--write_xml-46mytype>
+	<t--write_xml-46mytype functor="t" typename="write_xml.mytype">
+		<Unrecognized functor="tree234" typename="type_desc.type_desc">
+			<Unrecognized functor="int" typename="type_desc.type_desc" />
+			<Unrecognized functor="string" typename="type_desc.type_desc" />
+		</Unrecognized>
+	</t--write_xml-46mytype>
+	<ctor--write_xml-46mytype functor="ctor" typename="write_xml.mytype">
+		<Unrecognized functor="tree234.tree234/2" typename="type_desc.type_ctor_desc" />
+	</ctor--write_xml-46mytype>
+	<foreign--write_xml-46mytype functor="foreign" typename="write_xml.mytype">
+		<Unrecognized functor="&lt;&lt;foreign&gt;&gt;" typename="write_xml.ftype" />
+	</foreign--write_xml-46mytype>
+	<pointer--write_xml-46mytype functor="pointer" typename="write_xml.mytype">
+		<Unrecognized functor="&lt;&lt;c_pointer&gt;&gt;" typename="c_pointer" />
+	</pointer--write_xml-46mytype>
+</Array--array-46array-40write_xml-46mytype-41>
+ok
+
+<?xml version="1.0"?>
+<!DOCTYPE List--list-46list-40write_xml-46mytype-41 PUBLIC "test" "test.dtd">
+<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+	<Tag_Tag-45--write_xml-46mytype functor="Tag-" typename="write_xml.mytype">
+		<Int>44</Int>
+	</Tag_Tag-45--write_xml-46mytype>
+	<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+		<Tag_String--write_xml-46mytype functor="String" typename="write_xml.mytype">
+			<String>a string</String>
+		</Tag_String--write_xml-46mytype>
+		<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+			<hello--write_xml-46mytype functor="hello" typename="write_xml.mytype">
+				<String field="field1">this 
+
+is a &lt;string&gt;&amp;</String>
+				<Int field="Field&lt;2&gt;">-123</Int>
+				<Char>&lt;</Char>
+				<Float field="another field">1.12300000000000</Float>
+				<yes--bool-46bool functor="yes" typename="bool.bool" />
+			</hello--write_xml-46mytype>
+			<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+				<a_tuple--write_xml-46mytype functor="a_tuple" typename="write_xml.mytype">
+					<Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125 functor="{}" typename="{string, int, {character, float}}">
+						<String>some more stuf</String>
+						<Int>123456</Int>
+						<Tuple--Tag_-123character-44-32float-125 functor="{}" typename="{character, float}">
+							<Char>a</Char>
+							<Float>1.23553225220000e-97</Float>
+						</Tuple--Tag_-123character-44-32float-125>
+					</Tuple--Tag_-123string-44-32int-44-32-123character-44-32float-125-125>
+				</a_tuple--write_xml-46mytype>
+				<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+					<Tag_List--write_xml-46mytype functor="List" typename="write_xml.mytype">
+						<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+							<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+								<Int>1</Int>
+							</listPart--write_xml-46listPart>
+							<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+								<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+									<Int>2</Int>
+								</listPart--write_xml-46listPart>
+								<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+									<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+									<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+										<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+											<Int>4</Int>
+										</listPart--write_xml-46listPart>
+										<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+											<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+											<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+												<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+													<Int>6</Int>
+												</listPart--write_xml-46listPart>
+												<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+													<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+														<Int>7</Int>
+													</listPart--write_xml-46listPart>
+													<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+														<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+															<Int>8</Int>
+														</listPart--write_xml-46listPart>
+														<List--list-46list-40write_xml-46listPart-41 functor="[|]" typename="list.list(write_xml.listPart)">
+															<nothing--write_xml-46listPart functor="nothing" typename="write_xml.listPart" />
+															<Nil--list-46list-40write_xml-46listPart-41 functor="[]" typename="list.list(write_xml.listPart)" />
+														</List--list-46list-40write_xml-46listPart-41>
+													</List--list-46list-40write_xml-46listPart-41>
+												</List--list-46list-40write_xml-46listPart-41>
+											</List--list-46list-40write_xml-46listPart-41>
+										</List--list-46list-40write_xml-46listPart-41>
+									</List--list-46list-40write_xml-46listPart-41>
+								</List--list-46list-40write_xml-46listPart-41>
+							</List--list-46list-40write_xml-46listPart-41>
+						</List--list-46list-40write_xml-46listPart-41>
+					</Tag_List--write_xml-46mytype>
+					<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+						<a_map--write_xml-46mytype functor="a_map" typename="write_xml.mytype">
+							<four--tree234-46tree234-40int-44-32string-41 functor="four" typename="tree234.tree234(int, string)">
+								<Int>2</Int>
+								<String>hello1</String>
+								<Int>4</Int>
+								<String>hello3</String>
+								<Int>6</Int>
+								<String>hello5</String>
+								<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+									<Int>1</Int>
+									<String>hello</String>
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+								</two--tree234-46tree234-40int-44-32string-41>
+								<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+									<Int>3</Int>
+									<String>hello2</String>
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+								</two--tree234-46tree234-40int-44-32string-41>
+								<two--tree234-46tree234-40int-44-32string-41 functor="two" typename="tree234.tree234(int, string)">
+									<Int>5</Int>
+									<String>hello4</String>
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+								</two--tree234-46tree234-40int-44-32string-41>
+								<three--tree234-46tree234-40int-44-32string-41 functor="three" typename="tree234.tree234(int, string)">
+									<Int>7</Int>
+									<String>hello6</String>
+									<Int>8</Int>
+									<String>hello7</String>
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+									<empty--tree234-46tree234-40int-44-32string-41 functor="empty" typename="tree234.tree234(int, string)" />
+								</three--tree234-46tree234-40int-44-32string-41>
+							</four--tree234-46tree234-40int-44-32string-41>
+						</a_map--write_xml-46mytype>
+						<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+							<a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype functor="a &lt;!@#$%^&amp;*()&gt; functor name!!!" typename="write_xml.mytype">
+								<Int>999</Int>
+							</a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--write_xml-46mytype>
+							<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+								<a_pred--write_xml-46mytype functor="a_pred" typename="write_xml.mytype">
+									<Unrecognized functor="&lt;&lt;predicate&gt;&gt;" typename="pred(int)" />
+								</a_pred--write_xml-46mytype>
+								<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+									<t--write_xml-46mytype functor="t" typename="write_xml.mytype">
+										<Unrecognized functor="tree234" typename="type_desc.type_desc">
+											<Unrecognized functor="int" typename="type_desc.type_desc" />
+											<Unrecognized functor="string" typename="type_desc.type_desc" />
+										</Unrecognized>
+									</t--write_xml-46mytype>
+									<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+										<ctor--write_xml-46mytype functor="ctor" typename="write_xml.mytype">
+											<Unrecognized functor="tree234.tree234/2" typename="type_desc.type_ctor_desc" />
+										</ctor--write_xml-46mytype>
+										<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+											<foreign--write_xml-46mytype functor="foreign" typename="write_xml.mytype">
+												<Unrecognized functor="&lt;&lt;foreign&gt;&gt;" typename="write_xml.ftype" />
+											</foreign--write_xml-46mytype>
+											<List--list-46list-40write_xml-46mytype-41 functor="[|]" typename="list.list(write_xml.mytype)">
+												<pointer--write_xml-46mytype functor="pointer" typename="write_xml.mytype">
+													<Unrecognized functor="&lt;&lt;c_pointer&gt;&gt;" typename="c_pointer" />
+												</pointer--write_xml-46mytype>
+												<Nil--list-46list-40write_xml-46mytype-41 functor="[]" typename="list.list(write_xml.mytype)" />
+											</List--list-46list-40write_xml-46mytype-41>
+										</List--list-46list-40write_xml-46mytype-41>
+									</List--list-46list-40write_xml-46mytype-41>
+								</List--list-46list-40write_xml-46mytype-41>
+							</List--list-46list-40write_xml-46mytype-41>
+						</List--list-46list-40write_xml-46mytype-41>
+					</List--list-46list-40write_xml-46mytype-41>
+				</List--list-46list-40write_xml-46mytype-41>
+			</List--list-46list-40write_xml-46mytype-41>
+		</List--list-46list-40write_xml-46mytype-41>
+	</List--list-46list-40write_xml-46mytype-41>
+</List--list-46list-40write_xml-46mytype-41>
+ok
+
+<?xml version="1.0"?>
+<listPart--write_xml-46listPart functor="listPart" typename="write_xml.listPart">
+	<Int>666</Int>
+</listPart--write_xml-46listPart>
+ok
+
+multiple_functors_for_root

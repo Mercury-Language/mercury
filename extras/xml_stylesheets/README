@@ -1,0 +1,17 @@
+This directory contains some example stylesheets for use with the term_to_xml
+library module.
+
+You can apply a stylesheet to an XML document using the program xsltproc
+(available from http://xmlsoft.org/XSLT) or any other XSLT tool.  You can also
+include a reference to the stylesheet in the XML document and have your browser
+apply the stylesheet, although this only works with some browsers.
+
+mercury_term.xsl
+	Stylesheet to convert an XML document generated with 
+	term_to_xml.write_xml_doc/6 back to a Mercury term suitable for reading
+	with io.read/3.
+
+xul_tree.xsl
+	Stylesheet to convert an XML document generated with 
+	term_to_xml.write_xml_doc/6 to a XUL tree structure suitable for
+	browsing with Mozilla or Firefox.

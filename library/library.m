@@ -98,6 +98,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+:- import_module term_to_xml.
 :- import_module time.
 :- import_module tree234.
 :- import_module type_desc.
@@ -216,6 +217,7 @@ mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
 mercury_std_library_module("term_size_prof_builtin").
+mercury_std_library_module("term_to_xml").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
