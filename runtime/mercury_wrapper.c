@@ -49,6 +49,7 @@ size_t		heap_size =      	4096;
 size_t		detstack_size =  	2048;
 size_t		nondstack_size =  	128;
 size_t		solutions_heap_size =	1024;
+size_t		global_heap_size =	1024;
 size_t		trail_size =		128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
@@ -57,6 +58,7 @@ size_t		heap_zone_size =	16;
 size_t		detstack_zone_size =	16;
 size_t		nondstack_zone_size =	16;
 size_t		solutions_heap_zone_size = 16;
+size_t		global_heap_zone_size =	16;
 size_t		trail_zone_size =	16;
 
 /* primary cache size to optimize for, in kilobytes */
@@ -893,6 +895,18 @@ print_register_usage_counts(void)
 				break;
 			case MR_TICKET_COUNTER_RN:
 				printf("MR_ticket_counter");
+				break;
+			case MR_SOL_HP_RN:
+				printf("MR_sol_hp");
+				break;
+			case MR_MIN_HP_REC:
+				printf("MR_min_hp_rec");
+				break;
+			case MR_MIN_SOL_HP_REC:
+				printf("MR_min_sol_hp_rec");
+				break;
+			case MR_GLOBAL_HP_RN:
+				printf("MR_global_hp");
 				break;
 			default:
 				printf("UNKNOWN%d", i);

@@ -84,6 +84,11 @@ init_engine(MercuryEngine *eng)
 			solutions_heap_size, next_offset(),
 			solutions_heap_zone_size, default_handler);
 	eng->e_sol_hp = eng->solutions_heap_zone->min;
+
+	eng->global_heap_zone = create_zone("global_heap", 1,
+			global_heap_size, next_offset(),
+			global_heap_zone_size, default_handler);
+	eng->e_global_hp = eng->global_heap_zone->min;
 #endif
 
 #ifdef MR_LOWLEVEL_DEBUG

@@ -11,7 +11,8 @@
 
 #include "mercury_types.h"	/* for `Word' */
 
-/* Deep Copy:
+/*
+** Deep Copy:
 **
 ** 	Copy a data item, completely.
 **
@@ -68,5 +69,43 @@
 
 Word deep_copy(Word data, Word *type_info, Word *lower_limit, 
 	Word *upper_limit);
+
+/*
+** MR_make_permanent:
+**
+**	Returns a copy of term that can be accessed safely even after
+**	Mercury execution has backtracked past the point at which the
+**	term was allocated.
+**
+**	Note that in conservative GC grades nothing needs to be done, and
+**	hence the term is just returned.
+**
+**	When not using a conservative GC grade, save_transient_registers()
+**	and restore_transient_registers() need to be used around this
+**	function.
+*/
+
+#define MR_make_permanent(term, type_info)			\
+	MR_make_long_lived((term), (type_info), NULL)
+
+/*
+** MR_make_long_lived:
+**
+**	This is the same as MR_make_permanent, except that if limit is an
+**	address on the heap, parts of term that are "older" than limit will
+**	not be copied.  This is useful when you know that the permanent copy
+**	of term will not be accessed after the heap pointer has backtracked
+**	beyond limit.  Naturally, this always occurs when the permanent term
+**	is to be stored in *limit.
+**
+**	I'd like to describe the limit argument without referring to the
+**	"heap," but don't see how to.
+*/
+
+#ifdef CONSERVATIVE_GC
+  #define MR_make_long_lived(term, type_info, lower_limit) (term)
+#else
+  Word MR_make_long_lived(Word term, Word *type_info, Word *lower_limit);
+#endif
 
 #endif /* not MERCURY_DEEP_COPY_H */

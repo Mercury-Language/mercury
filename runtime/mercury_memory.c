@@ -142,12 +142,16 @@ init_memory(void)
 	heap_size	    = 0;
 	solutions_heap_zone_size = 0;
 	solutions_heap_size = 0;
+	global_heap_zone_size = 0;
+	global_heap_size    = 0;
 #else
 	heap_zone_size      = round_up(heap_zone_size * 1024, unit);
 	heap_size           = round_up(heap_size * 1024, unit);
 	solutions_heap_zone_size = round_up(solutions_heap_zone_size * 1024, 
 		unit);
 	solutions_heap_size = round_up(solutions_heap_size * 1024, unit);
+	global_heap_zone_size = round_up(global_heap_zone_size * 1024, unit);
+	global_heap_size    = round_up(global_heap_size * 1024, unit);
 #endif
 
 	detstack_size       = round_up(detstack_size * 1024, unit);
@@ -174,6 +178,9 @@ init_memory(void)
 	}
 	if (solutions_heap_zone_size >= solutions_heap_size) {
 		solutions_heap_zone_size = unit;
+	}
+	if (global_heap_zone_size >= global_heap_size) {
+		global_heap_zone_size = unit;
 	}
 #endif
 

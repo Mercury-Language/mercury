@@ -69,6 +69,11 @@
 
 #define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
 
+/*
+** If you modify the following block, make sure that you update
+** the definitions of MR_NUM_SPECIAL_REG, MR_MAX_SPECIAL_REG_MR,
+** and MR_saved_*.
+*/
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr2))
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr6))
 #define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr1))
@@ -78,16 +83,18 @@
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(39)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
 			count_usage(MR_MIN_HP_REC, mr40))
+#define MR_global_hp	LVALUE_CAST(Word *,	\
+			count_usage(MR_GLOBAL_HP_RN, mr(41)))
 
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 
 /* the number of special, non rN registers */
-#define MR_NUM_SPECIAL_REG	10
+#define MR_NUM_SPECIAL_REG	12
 
 /* the maximum mrN number of special, non rN registers */
-#define	MR_MAX_SPECIAL_REG_MR	40
+#define	MR_MAX_SPECIAL_REG_MR	41
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -103,6 +110,7 @@
 #define MR_saved_sol_hp(save_area)	LVALUE_CAST(Word *, save_area[38])
 #define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[39])
 #define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[40])
+#define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[41])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	3, \
@@ -188,15 +196,17 @@
 #define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(38)))
 #define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
 			count_usage(MR_MIN_HP_REC, mr39))
+#define MR_global_hp	LVALUE_CAST(Word *,	\
+			count_usage(MR_GLOBAL_HP_RN, mr(40)))
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 
 /* the number of special, non rN registers */
-#define MR_NUM_SPECIAL_REG	10
+#define MR_NUM_SPECIAL_REG	11
 
 /* the maximum mrN number of special, non rN registers */
-#define	MR_MAX_SPECIAL_REG_MR	39
+#define	MR_MAX_SPECIAL_REG_MR	40
 
 /*
 ** The MR_saved_foo macros are like MR_foo except that
@@ -212,6 +222,7 @@
 #define MR_saved_sol_hp(save_area)	LVALUE_CAST(Word *, save_area[37])
 #define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[38])
 #define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[39])
+#define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[40])
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \

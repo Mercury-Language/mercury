@@ -80,6 +80,7 @@ extern	size_t		detstack_size;
 extern	size_t		nondstack_size;
 extern	size_t		solutions_heap_size;
 extern	size_t		trail_size;
+extern	size_t		global_heap_size;
 
 /* sizes of the red zones */
 extern	size_t		heap_zone_size;
@@ -87,6 +88,7 @@ extern	size_t		detstack_zone_size;
 extern	size_t		nondstack_zone_size;
 extern	size_t		solutions_heap_zone_size;
 extern	size_t		trail_zone_size;
+extern	size_t		global_heap_zone_size;
 
 /* size of the primary cache */
 extern	size_t		pcache_size;

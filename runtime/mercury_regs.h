@@ -205,6 +205,7 @@
 #define MR_virtual_sol_hp 		MR_saved_sol_hp(MR_fake_reg)
 #define MR_virtual_min_hp_rec 		MR_saved_min_hp_rec(MR_fake_reg)
 #define MR_virtual_min_sol_hp_rec 	MR_saved_min_sol_hp_rec(MR_fake_reg)
+#define MR_virtual_global_hp 		MR_saved_global_hp(MR_fake_reg)
 
 /*
 ** get_reg() and set_reg() provide a different way of addressing
@@ -238,6 +239,7 @@ extern	Word	set_reg(int, Word);
 #define	MR_SOL_HP_RN		(MR_ORD_RN + 7)
 #define	MR_MIN_HP_REC		(MR_ORD_RN + 8)
 #define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
-#define MAX_RN			(MR_ORD_RN + 10)
+#define	MR_GLOBAL_HP_RN		(MR_ORD_RN + 10)
+#define	MAX_RN			(MR_ORD_RN + 11)
 
 #endif /* not MERCURY_REGS_H */

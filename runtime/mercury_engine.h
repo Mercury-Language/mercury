@@ -164,6 +164,8 @@ typedef struct MR_mercury_engine_struct {
 		/* The heap pointer for this engine */
 	Word		*e_sol_hp;
 		/* The solutions heap pointer for this engine */
+	Word		*e_global_hp;
+		/* The global heap pointer for this engine */
 #endif
 	MR_Context	*this_context;
 		/*
@@ -197,6 +199,7 @@ typedef struct MR_mercury_engine_struct {
 #ifndef	CONSERVATIVE_GC
 	MemoryZone	*heap_zone;
 	MemoryZone	*solutions_heap_zone;
+	MemoryZone	*global_heap_zone;
 #endif
 #ifndef	SPEED
 	MemoryZone	*dumpstack_zone;
@@ -250,13 +253,24 @@ typedef struct MR_mercury_engine_struct {
   	do {								\
 		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
 		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
+		IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
 	} while (0)
 
 #define save_engine_regs(eng)						\
   	do {								\
 		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
 		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
+		IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
 	} while (0)
+
+/*
+** Macros for easy access to heap zones
+*/
+#ifndef	CONSERVATIVE_GC
+  #define MR_heap_zone			MR_ENGINE(heap_zone)
+  #define MR_solutions_heap_zone	MR_ENGINE(solutions_heap_zone)
+  #define MR_global_heap_zone		MR_ENGINE(global_heap_zone)
+#endif
 
 /*
 ** Functions for creating/destroying a MercuryEngine.
