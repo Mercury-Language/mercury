@@ -92,6 +92,9 @@
 
 :- type maybe(T) ---> no ; yes(T).
 
+:- type maybe_error ---> ok ; error(string).
+:- type maybe_error(T) ---> ok(T) ; error(string).
+
 %-----------------------------------------------------------------------------%
 
 % The "unit" type - stores no information at all.
