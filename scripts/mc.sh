@@ -10,6 +10,11 @@
 INTDIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
 DEPDIR=${MERCURY_DEP_DIR:-@LIBDIR@/deps}
 C_INCL=${MERCURY_C_INCL_DIR:-@LIBDIR@/inc}
-MC=${MERCURY_COMPILER:-@LIBDIR@/bin/@FULLARCH@/mercury_compile}
+MC=${MERCURY_COMPILER:-"@LIBDIR@/bin/@FULLARCH@/mercury_compile --"}
 
-exec $MC -- -I "$INTDIR" -I "$DEPDIR" --c-include-directory "$C_INCL" "$@"
+# this is a temporary hack so I can get some idea of who is actually
+# using Mercury
+{ date; echo "$@"; echo; } >> /tmp/.mc_log.$USER
+chmod go+r /tmp/.mc_log.$USER
+
+exec $MC -I "$INTDIR" -I "$DEPDIR" --c-include-directory "$C_INCL" "$@"
