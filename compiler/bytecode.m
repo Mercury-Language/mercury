@@ -21,8 +21,8 @@
 
 :- type byte_code	--->	enter_pred(byte_pred_id, int)
 			;	endof_pred
-			;	enter_proc(byte_proc_id, determinism, int,
-					list(byte_var_info))
+			;	enter_proc(byte_proc_id, determinism,
+					int, int, list(byte_var_info))
 			;	endof_proc
 			;	label(byte_label_id)
 			;	enter_disjunction(byte_label_id)
@@ -33,14 +33,15 @@
 			;	endof_switch
 			;	enter_switch_arm(byte_cons_id, byte_label_id)
 			;	endof_switch_arm(byte_label_id)
-			;	enter_if(byte_label_id, byte_label_id)
-			;	enter_then
-			;	endof_then
+			;	enter_if(byte_label_id, byte_label_id,
+					byte_temp)
+			;	enter_then(byte_temp)
+			;	endof_then(byte_label_id)
 			;	endof_if
 			;	enter_negation(byte_label_id)
 			;	endof_negation
-			;	enter_commit
-			;	endof_commit
+			;	enter_commit(byte_temp)
+			;	endof_commit(byte_temp)
 			;	assign(byte_var, byte_var)
 			;	test(byte_var, byte_var)
 			;	construct(byte_var, byte_cons_id,
@@ -62,6 +63,8 @@
 			;	builtin_unop(unary_op, byte_arg, byte_var)
 			;	builtin_bintest(binary_op, byte_arg, byte_arg)
 			;	builtin_untest(unary_op, byte_arg)
+			;	semidet_succeed
+			;	semidet_success_check
 			;	fail
 			;	context(int)
 			;	not_supported
@@ -103,6 +106,7 @@
 :- type byte_proc_id	==	int.
 :- type byte_label_id	==	int.
 :- type byte_var	==	int.
+:- type byte_temp	==	int.
 
 :- pred output_bytecode_file(string::in, list(byte_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -119,7 +123,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(7).
+bytecode__version(8).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -188,10 +192,11 @@ output_args(enter_pred(PredId, ProcCount)) -->
 	output_pred_id(PredId),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism, LabelCount, Vars)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
 	output_proc_id(ProcId),
 	output_determinism(Detism),
 	output_length(LabelCount),
+	output_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	output_length(VarCount),
 	output_var_infos(Vars).
@@ -214,17 +219,22 @@ output_args(enter_switch_arm(ConsId, LabelId)) -->
 	output_label_id(LabelId).
 output_args(endof_switch_arm(LabelId)) -->
 	output_label_id(LabelId).
-output_args(enter_if(ElseLabelId, FollowLabelId)) -->
+output_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
 	output_label_id(ElseLabelId),
+	output_label_id(FollowLabelId),
+	output_temp(FramePtrTemp).
+output_args(enter_then(FramePtrTemp)) -->
+	output_temp(FramePtrTemp).
+output_args(endof_then(FollowLabelId)) -->
 	output_label_id(FollowLabelId).
-output_args(enter_then) --> [].
-output_args(endof_then) --> [].
 output_args(endof_if) --> [].
 output_args(enter_negation(LabelId)) -->
 	output_label_id(LabelId).
 output_args(endof_negation) --> [].
-output_args(enter_commit) --> [].
-output_args(endof_commit) --> [].
+output_args(enter_commit(Temp)) -->
+	output_temp(Temp).
+output_args(endof_commit(Temp)) -->
+	output_temp(Temp).
 output_args(assign(Var1, Var2)) -->
 	output_var(Var1),
 	output_var(Var2).
@@ -287,6 +297,8 @@ output_args(builtin_bintest(Binop, Var1, Var2)) -->
 output_args(builtin_untest(Unop, Var1)) -->
 	output_unop(Unop),
 	output_arg(Var1).
+output_args(semidet_succeed) --> [].
+output_args(semidet_success_check) --> [].
 output_args(fail) --> [].
 output_args(context(Line)) -->
 	output_two_byte(Line).
@@ -299,10 +311,11 @@ debug_args(enter_pred(PredId, ProcsCount)) -->
 	debug_pred_id(PredId),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
-debug_args(enter_proc(ProcId, Detism, LabelCount, Vars)) -->
+debug_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
 	debug_proc_id(ProcId),
 	debug_determinism(Detism),
 	debug_length(LabelCount),
+	debug_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	debug_length(VarCount),
 	debug_var_infos(Vars).
@@ -325,17 +338,22 @@ debug_args(enter_switch_arm(ConsId, LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(endof_switch_arm(LabelId)) -->
 	debug_label_id(LabelId).
-debug_args(enter_if(ElseLabelId, FollowLabelId)) -->
+debug_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
 	debug_label_id(ElseLabelId),
+	debug_label_id(FollowLabelId),
+	debug_temp(FramePtrTemp).
+debug_args(enter_then(FramePtrTemp)) -->
+	debug_temp(FramePtrTemp).
+debug_args(endof_then(FollowLabelId)) -->
 	debug_label_id(FollowLabelId).
-debug_args(enter_then) --> [].
-debug_args(endof_then) --> [].
 debug_args(endof_if) --> [].
 debug_args(enter_negation(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(endof_negation) --> [].
-debug_args(enter_commit) --> [].
-debug_args(endof_commit) --> [].
+debug_args(enter_commit(Temp)) -->
+	debug_temp(Temp).
+debug_args(endof_commit(Temp)) -->
+	debug_temp(Temp).
 debug_args(assign(Var1, Var2)) -->
 	debug_var(Var1),
 	debug_var(Var2).
@@ -398,6 +416,8 @@ debug_args(builtin_bintest(Binop, Var1, Var2)) -->
 debug_args(builtin_untest(Unop, Var1)) -->
 	debug_unop(Unop),
 	debug_arg(Var1).
+debug_args(semidet_succeed) --> [].
+debug_args(semidet_success_check) --> [].
 debug_args(fail) --> [].
 debug_args(context(Line)) -->
 	debug_int(Line).
@@ -538,6 +558,20 @@ debug_vars([]) --> [].
 debug_vars([Var | Vars]) -->
 	debug_var(Var),
 	debug_vars(Vars).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_temp(byte_temp, io__state, io__state).
+:- mode output_temp(in, di, uo) is det.
+
+output_temp(Var) -->
+	output_two_byte(Var).
+
+:- pred debug_temp(byte_temp, io__state, io__state).
+:- mode debug_temp(in, di, uo) is det.
+
+debug_temp(Var) -->
+	debug_int(Var).
 
 %---------------------------------------------------------------------------%
 
@@ -790,7 +824,7 @@ debug_unop(Unop) -->
 
 byte_code(enter_pred(_, _),			 0).
 byte_code(endof_pred,				 1).
-byte_code(enter_proc(_, _, _, _),		 2).
+byte_code(enter_proc(_, _, _, _, _),		 2).
 byte_code(endof_proc,				 3).
 byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
@@ -801,14 +835,14 @@ byte_code(enter_switch(_, _),			 9).
 byte_code(endof_switch,				10).
 byte_code(enter_switch_arm(_, _),		11).
 byte_code(endof_switch_arm(_),			12).
-byte_code(enter_if(_, _),			13).
-byte_code(enter_then,				14).
-byte_code(endof_then,				15).
+byte_code(enter_if(_, _, _),			13).
+byte_code(enter_then(_),			14).
+byte_code(endof_then(_),			15).
 byte_code(endof_if,				16).
 byte_code(enter_negation(_),			17).
 byte_code(endof_negation,			18).
-byte_code(enter_commit,				19).
-byte_code(endof_commit,				20).
+byte_code(enter_commit(_),			19).
+byte_code(endof_commit(_),			20).
 byte_code(assign(_, _),				21).
 byte_code(test(_, _),				22).
 byte_code(construct(_, _, _),			23).
@@ -823,16 +857,18 @@ byte_code(builtin_binop(_, _, _, _),		31).
 byte_code(builtin_unop(_, _, _),		32).
 byte_code(builtin_bintest(_, _, _),		33).
 byte_code(builtin_untest(_, _),			34).
-byte_code(fail,					35).
-byte_code(context(_),				36).
-byte_code(not_supported,			37).
+byte_code(semidet_succeed,			35).
+byte_code(semidet_success_check,		36).
+byte_code(fail,					37).
+byte_code(context(_),				38).
+byte_code(not_supported,			39).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
 
 byte_debug(enter_pred(_, _),			"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
-byte_debug(enter_proc(_, _, _, _),		"enter_proc").
+byte_debug(enter_proc(_, _, _, _, _),		"enter_proc").
 byte_debug(endof_proc,				"endof_proc").
 byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").
@@ -843,14 +879,14 @@ byte_debug(enter_switch(_, _),			"enter_switch").
 byte_debug(endof_switch,			"endof_switch").
 byte_debug(enter_switch_arm(_, _),		"enter_switch_arm").
 byte_debug(endof_switch_arm(_),			"endof_switch_arm").
-byte_debug(enter_if(_, _),			"enter_if").
-byte_debug(enter_then,				"enter_then").
-byte_debug(endof_then,				"endof_then").
+byte_debug(enter_if(_, _, _),			"enter_if").
+byte_debug(enter_then(_),			"enter_then").
+byte_debug(endof_then(_),			"endof_then").
 byte_debug(endof_if,				"endof_if").
 byte_debug(enter_negation(_),			"enter_negation").
 byte_debug(endof_negation,			"enter_negation").
-byte_debug(enter_commit,			"enter_commit").
-byte_debug(endof_commit,			"enter_commit").
+byte_debug(enter_commit(_),			"enter_commit").
+byte_debug(endof_commit(_),			"enter_commit").
 byte_debug(assign(_, _),			"assign").
 byte_debug(test(_, _),				"test").
 byte_debug(construct(_, _, _),			"construct").
@@ -865,6 +901,8 @@ byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
 byte_debug(builtin_bintest(_, _, _),		"builtin_bintest").
 byte_debug(builtin_untest(_, _),		"builtin_untest").
+byte_debug(semidet_succeed,			"semidet_succeed").
+byte_debug(semidet_success_check,		"semidet_success_check").
 byte_debug(fail,				"fail").
 byte_debug(context(_),				"context").
 byte_debug(not_supported,			"not_supported").
@@ -895,6 +933,7 @@ determinism_debug(failure,	"failure").
 
 :- pred binop_code(binary_op, int).
 :- mode binop_code(in, out) is det.
+:- mode binop_code(out, in) is semidet.	% enforce non-duplication of bytecodes
 
 binop_code((+),			 0).
 binop_code((-),			 1).
@@ -910,27 +949,27 @@ binop_code((and),		10).
 binop_code((or),		11).
 binop_code(eq,			12).
 binop_code(ne,			13).
-binop_code(array_index,		13).
-binop_code(str_eq,		14).
-binop_code(str_ne,		15).
-binop_code(str_lt,		16).
-binop_code(str_gt,		17).
-binop_code(str_le,		18).
-binop_code(str_ge,		19).
-binop_code((<),			20).
-binop_code((>),			21).
-binop_code((<=),		22).
-binop_code((>=),		23).
-binop_code(float_plus,		24).
-binop_code(float_minus,		25).
-binop_code(float_times,		26).
-binop_code(float_divide,	27).
-binop_code(float_eq,		28).
-binop_code(float_ne,		29).
-binop_code(float_lt,		30).
-binop_code(float_gt,		31).
-binop_code(float_le,		32).
-binop_code(float_ge,		33).
+binop_code(array_index,		14).
+binop_code(str_eq,		15).
+binop_code(str_ne,		16).
+binop_code(str_lt,		17).
+binop_code(str_gt,		18).
+binop_code(str_le,		19).
+binop_code(str_ge,		20).
+binop_code((<),			21).
+binop_code((>),			22).
+binop_code((<=),		23).
+binop_code((>=),		24).
+binop_code(float_plus,		25).
+binop_code(float_minus,		26).
+binop_code(float_times,		27).
+binop_code(float_divide,	28).
+binop_code(float_eq,		29).
+binop_code(float_ne,		30).
+binop_code(float_lt,		31).
+binop_code(float_gt,		32).
+binop_code(float_le,		33).
+binop_code(float_ge,		34).
 
 :- pred binop_debug(binary_op, string).
 :- mode binop_debug(in, out) is det.
