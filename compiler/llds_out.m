@@ -2160,24 +2160,35 @@ get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-get_proc_label(special_proc(Module, PredName, TypeModule, TypeName0, TypeArity,
+get_proc_label(special_proc(Module, PredName, TypeModule, TypeName, TypeArity,
 				ModeNum0), ProcLabelString) :-
+	% figure out the LabelName
 	DummyArity = -1,	% not used by get_label_name.
 	get_label_name("", predicate, "", PredName, DummyArity, LabelName),
+
+	% figure out the ModeNumString
 	string__int_to_string(TypeArity, TypeArityString),
 	proc_id_to_int(ModeNum0, ModeInt),
 	ModeNum is ModeInt mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
-	% Handle locally produced unification preds for imported types.
-	( Module \= TypeModule ->
-		string__append(Module, "__", ExtraModule)
-	;
-		ExtraModule = ""
-	),
-	llds_out__maybe_qualify_name(TypeModule, TypeName0, TypeName1),
-	string__append(ExtraModule, TypeName1, TypeName2),
-	llds_out__name_mangle(TypeName2, TypeName),
-	string__append_list( [LabelName, "_", TypeName, 
+
+	% mangle all the relevent names
+	llds_out__name_mangle(Module, MangledModule),
+	llds_out__name_mangle(TypeModule, MangledTypeModule),
+	llds_out__name_mangle(TypeName, MangledTypeName),
+
+	% Module-qualify the type name.
+	% To handle locally produced unification preds for imported types,
+	% we need to qualify it with both the module name of the
+	% type, and also (if it is different) the module name of the
+	% current module.
+	llds_out__maybe_qualify_name(MangledTypeModule, MangledTypeName,
+		QualifiedMangledTypeName),
+	llds_out__maybe_qualify_name(MangledModule, QualifiedMangledTypeName,
+		FullyQualifiedMangledTypeName),
+
+	% join it all together
+	string__append_list( [LabelName, "_", FullyQualifiedMangledTypeName, 
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
