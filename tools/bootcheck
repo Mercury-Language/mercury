@@ -889,18 +889,18 @@ then
 	cp $root/analysis/Mmake* $root/analysis/Mercury.options .
 	$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
 	cd $root/$stage3dir
-	$LN_S $root/boehm_gc .
-	$LN_S $root/java .
-	$LN_S $root/mps_gc .
+	$LN_S $root/$stage2dir/boehm_gc .
+	$LN_S $root/$stage2dir/java .
+	$LN_S $root/$stage2dir/mps_gc .
 	$LN_S $root/bindist .
 	$LN_S $root/doc .
-	$LN_S $root/runtime .
-	$LN_S $root/trace .
+	$LN_S $root/$stage2dir/runtime .
+	$LN_S $root/$stage2dir/trace .
 	$LN_S $root/scripts .
 	$LN_S $root/tools .
 	$LN_S $root/util .
-	$LN_S $root/profiler .
-	$LN_S $root/deep_profiler .
+	$LN_S $root/$stage2dir/profiler .
+	$LN_S $root/$stage2dir/deep_profiler .
 	$LN_S $root/conf* .
 	$LN_S $root/aclocal.m4 .
 	$LN_S $root/VERSION .
