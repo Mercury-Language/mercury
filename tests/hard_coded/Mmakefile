@@ -264,10 +264,11 @@ else
 endif
 
 # string_hash tests features of the Mercury C runtime.
-ifeq "$(filter il% java%,$(GRADE))" ""
-	C_ONLY_PROGS=string_hash
+# It requires too much memory to be used in non-GC grades.
+ifeq "$(filter il% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
+	C_AND_GC_ONLY_PROGS=string_hash
 else
-	C_ONLY_PROGS=
+	C_AND_GC_ONLY_PROGS=
 endif	
 
 # Static linking doesn't work on Solaris in debug grades
@@ -280,7 +281,7 @@ endif
 
 PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
 	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS) \
-	$(C_ONLY_PROGS) $(STATIC_LINK_PROGS) $(CHAR_REP_PROGS)
+	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) $(CHAR_REP_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
