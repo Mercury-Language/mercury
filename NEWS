@@ -4,7 +4,7 @@ NEWS since Mercury release 0.10.1:
 Changes to the Mercury language:
 
 * If a higher-order function term has inst 'ground' it is now assumed to have
-  the standard higher-order function inst 'func(in, .., in) = out is det'.  
+  the standard higher-order function inst 'func(in, .., in) = out is det'.
   This makes higher-order functional programming much easier, particularly when
   passing functions to polymorphic predicates.
 
@@ -92,7 +92,7 @@ Changes to the Mercury standard library:
   `ops__init_op_table' has been renamed `ops__init_mercury_op_table'.
   `ops__max_priority' is now a function taking an operator table argument.
 
-* The predicates and functions in int.m, float, math.m and array.m now 
+* The predicates and functions in int.m, float, math.m and array.m now
   generate exceptions rather than program aborts on domain errors and
   out-of-bounds array accesses. There are new functions
   `float__unchecked_quotient/2', `int__unchecked_quotient/2' and
@@ -109,7 +109,7 @@ Changes to the Mercury standard library:
   if they are passed to procedures with mode `di', so any attempt
   to update a constant string will cause a crash. Fixing this properly
   will be a lot of work, so for now we have just removed the modes.
- 
+
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
 
@@ -128,9 +128,13 @@ Changes to the Mercury standard library:
   `std_util__map_maybe/2' to apply a predicate or a function to
   a value stored in a term of type `std_util__maybe'.
 
-* We've added two predicates, named_argument and det_named_argument, to
-  std_util.m. These are analogous to argument and det_argument, but specify
-  the desired argument by its name, not its position.
+* We've added added several new predicates for deconstructing terms to
+  std_util.m. `named_argument' and `det_named_argument' are analogous
+  to `argument' and `det_argument' respectively, but specify the desired
+  argument by its name, not its position. We have also added committed choice
+  version of all the predicates that deconstruct terms. These differ from the
+  existing versions in that they do not abort when called upon to deconstruct
+  non-canonical terms, such as values of types with user-defined equality.
 
 * We've added a predicate version of `set__fold'.
 
@@ -154,7 +158,7 @@ Changes to the Mercury implementation:
 
 * You can now navigate terms in the debugger by argument name as well as by
   argument number.
-  
+
 * The Mercury compiler can now perform smart recompilation, enabled by the
   `--smart-recompilation' option. With smart recompilation, when the
   interface of a module changes, only modules which use the changed
@@ -292,7 +296,7 @@ Changes to the Mercury language:
   in `Foo(Args)', we now allow Foo to be any term, not just
   a variable.
 
-* The syntax for defining insts and modes has been changed to be 
+* The syntax for defining insts and modes has been changed to be
   more uniform.  For example, the old syntax
 
   	:- inst myfree = free.
@@ -422,7 +426,7 @@ Changes to the Mercury implementation:
   C code that does not require the use of GNU C extensions such as
   global register variables or non-local gotos.  It is also simpler
   and more portable than the old back-end.
-  
+
   The main drawback of the new back-end is that for tail calls it only
   optimizes direct tail recursion; loops written using tail calls
   between two or more mutually recursive procedures are not guaranteed
@@ -477,7 +481,7 @@ Changes to the Mercury implementation:
   implemented for this new port.
 
   This is still work in progress.
-  
+
   For more details, see the README.DotNet file, and
   <http://www.cs.mu.oz.au/research/mercury/dotnet.html>.
 

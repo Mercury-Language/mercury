@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -562,7 +562,11 @@
 	% non-canonical representation, i.e. one for which there is a
 	% user-defined equality predicate.)
 	%
+	% Functor_cc succeeds even if the first argument is of a
+	% non-canonical type.
+	%
 :- pred functor(T::in, string::out, int::out) is det.
+:- pred functor_cc(T::in, string::out, int::out) is det.
 
 	% arg(Data, ArgumentIndex) = Argument
 	% argument(Data, ArgumentIndex) = ArgumentUniv
@@ -579,8 +583,13 @@
 	% representation, i.e. one for which there is a user-defined
 	% equality predicate.)
 	%
+	% arg_cc and argument_cc succeed even if the first argument is
+	% of a non-canonical type.
+	%
 :- func arg(T::in, int::in) = (ArgT::out) is semidet.
+:- pred arg_cc(T::in, int::in, ArgT::out) is cc_nondet.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
+:- pred argument_cc(T::in, int::in, univ::out) is cc_nondet.
 
 	% named_argument(Data, ArgumentName) = ArgumentUniv
 	%
@@ -588,7 +597,11 @@
 	% its name rather than its position. If Data has no argument with that
 	% name, named_argument fails.
 	%
+	% named_argument_cc succeeds even if the first argument is
+	% of a non-canonical type.
+	%
 :- func named_argument(T::in, string::in) = (univ::out) is semidet.
+:- pred named_argument_cc(T::in, string::in, univ::out) is cc_nondet.
 
 	% det_arg(Data, ArgumentIndex) = Argument
 	% det_argument(Data, ArgumentIndex) = ArgumentUniv
@@ -597,8 +610,13 @@
 	% for cases where arg/2 or argument/2 would fail,
 	% det_arg/2 or det_argument/2 will abort.
 	%
+	% det_arg_cc and det_argument_cc succeed even if the first argument is
+	% of a non-canonical type.
+	%
 :- func det_arg(T::in, int::in) = (ArgT::out) is det.
+:- pred det_arg_cc(T::in, int::in, ArgT::out) is cc_multi.
 :- func det_argument(T::in, int::in) = (univ::out) is det.
+:- pred det_argument_cc(T::in, int::in, univ::out) is cc_multi.
 
 	% det_named_argument(Data, ArgumentName) = ArgumentUniv
 	%
@@ -606,6 +624,7 @@
 	% named_argument/2 would fail, det_named_argument/2 will abort.
 	%
 :- func det_named_argument(T::in, string::in) = (univ::out) is det.
+:- pred det_named_argument_cc(T::in, string::in, univ::out) is cc_multi.
 
 	% deconstruct(Data, Functor, Arity, Arguments)
 	%
@@ -625,7 +644,12 @@
 	% pass it a large array, you should probably use limited_deconstruct
 	% instead.
 	%
+	% deconstruct_cc succeeds even if the first argument is
+	% of a non-canonical type.
+	%
 :- pred deconstruct(T::in, string::out, int::out, list(univ)::out) is det.
+:- pred deconstruct_cc(T::in, string::out, int::out, list(univ)::out)
+    is cc_multi.
 
 	% limited_deconstruct(Data, MaxArity, Functor, Arity, Arguments)
 	%
@@ -633,8 +657,13 @@
 	% greater than MaxArity, limited_deconstruct fails. This is useful in
 	% avoiding bad performance in cases where Data may be a large array.
 	%
+	% limited_deconstruct_cc succeeds even if the first argument is
+	% of a non-canonical type.
+	%
 :- pred limited_deconstruct(T::in, int::in, string::out,
 	int::out, list(univ)::out) is semidet.
+:- pred limited_deconstruct_cc(T::in, int::in, string::out,
+    int::out, list(univ)::out) is cc_nondet.
 
 :- implementation.
 :- interface.
@@ -1015,8 +1044,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
   	do {								\\
 		MR_save_transient_hp();					\\
 		NewVal = MR_deep_copy(&OldVal, (MR_TypeInfo) TypeInfo_for_T,\\
-				(const MR_Word *) SolutionsHeapPtr,	\\
-				MR_ENGINE(MR_eng_solutions_heap_zone)->top);\\
+			(const MR_Word *) SolutionsHeapPtr,		\\
+			MR_ENGINE(MR_eng_solutions_heap_zone)->top);    \\
 		MR_restore_transient_hp();				\\
 	} while (0)
 #endif
@@ -1024,26 +1053,29 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 ").
 
 :- pragma foreign_proc("C",
-	partial_deep_copy(SolutionsHeapPtr::in,
-		OldVal::in, NewVal::out), will_not_call_mercury,
+    partial_deep_copy(SolutionsHeapPtr::in, OldVal::in, NewVal::out),
+    [will_not_call_mercury],
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
+
 :- pragma foreign_proc("C", 
-	partial_deep_copy(SolutionsHeapPtr::in,
-		OldVal::mdi, NewVal::muo), will_not_call_mercury,
+    partial_deep_copy(SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
+    [will_not_call_mercury],
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
-:- pragma foreign_proc("C", partial_deep_copy(SolutionsHeapPtr::in,
-		OldVal::di, NewVal::uo), will_not_call_mercury,
+
+:- pragma foreign_proc("C",
+    partial_deep_copy(SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
+    [will_not_call_mercury],
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 
 :- pragma foreign_proc("MC++",
-	partial_deep_copy(_SolutionsHeapPtr::in,
-		OldVal::in, NewVal::out), will_not_call_mercury,
+    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
+    [will_not_call_mercury],
 "
 	/*
 	** For the IL back-end, we don't do heap reclamation on failure,
@@ -1053,13 +1085,14 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	NewVal = OldVal;
 ").
 :- pragma foreign_proc("MC++", 
-	partial_deep_copy(_SolutionsHeapPtr::in,
-		OldVal::mdi, NewVal::muo), will_not_call_mercury,
+    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
+    [will_not_call_mercury],
 "
 	NewVal = OldVal;
 ").
-:- pragma foreign_proc("MC++", partial_deep_copy(_SolutionsHeapPtr::in,
-		OldVal::di, NewVal::uo), will_not_call_mercury,
+:- pragma foreign_proc("MC++",
+    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
+    [will_not_call_mercury],
 "
 	NewVal = OldVal;
 ").
@@ -1072,8 +1105,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 %
 :- impure pred reset_solutions_heap(heap_ptr::in) is det.
 :- pragma foreign_proc("C", 
-	reset_solutions_heap(SolutionsHeapPtr::in),
-	will_not_call_mercury,
+    reset_solutions_heap(SolutionsHeapPtr::in),
+    [will_not_call_mercury],
 "
 #ifndef CONSERVATIVE_GC
 	MR_sol_hp = (MR_Word *) SolutionsHeapPtr;
@@ -1082,7 +1115,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 
 :- pragma foreign_proc("MC++", 
 	reset_solutions_heap(_SolutionsHeapPtr::in),
-	will_not_call_mercury,
+    [will_not_call_mercury],
 "
 	/*
 	** For the IL back-end, we don't have a separate `solutions heap'.
@@ -1444,7 +1477,8 @@ sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
 	"ML_call_rtti_compare_type_infos").
 
 :- pred call_rtti_compare_type_infos(comparison_result::out, 
-	rtti_implementation__type_info::in, rtti_implementation__type_info::in) is det.
+    rtti_implementation__type_info::in, rtti_implementation__type_info::in)
+	is det.
 
 :- use_module rtti_implementation.
 
@@ -2167,17 +2201,15 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
             MR_save_transient_registers();
             TypeInfoList = ML_type_params_vector_to_list(Arity,
                     MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
-	    ArgNameList = MR_list_empty();
-            MR_restore_transient_registers();
+            ArgNameList = MR_list_empty();
+                MR_restore_transient_registers();
         } else {
             MR_save_transient_registers();
             TypeInfoList = ML_pseudo_type_info_vector_to_type_info_list(
-                arity,
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                arity, MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 construct_info.arg_pseudo_type_infos);
-	    ArgNameList = ML_arg_name_vector_to_list(
-		arity,
-		construct_info.arg_names);
+            ArgNameList = ML_arg_name_vector_to_list(
+                arity, construct_info.arg_names);
             MR_restore_transient_registers();
         }
     }
@@ -2424,8 +2456,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                     arg_list = ArgList;
                     for (i = 0; i < arity; i++) {
                         MR_field(MR_mktag(0), new_data, i) =
-                                MR_field(MR_UNIV_TAG, 
-				    MR_list_head(arg_list),
+                            MR_field(MR_UNIV_TAG, MR_list_head(arg_list),
                                     MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
@@ -3073,444 +3104,8 @@ ML_get_num_functors(MR_TypeInfo type_info)
 
 :- pragma foreign_decl("C", "
 
-    #include <stdio.h>
-	#include ""mercury_library_types.h""		/* for MR_ArrayType */
-
-#ifdef MR_DEEP_PROFILING
-    #include ""mercury_deep_profiling.h""
-#endif
-
-/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
-#ifndef	ML_EXPAND_INFO_GUARD
-#define	ML_EXPAND_INFO_GUARD
-
-typedef struct {
-    int                     num_extra_args;
-    MR_Word                 *arg_values;
-    MR_TypeInfo             *arg_type_infos;
-    bool                    can_free_arg_type_infos;
-} ML_Expand_Args_Fields;
-
-typedef struct {
-    bool                    non_canonical_type;
-    int                     arity;
-    MR_ConstString          functor;
-    ML_Expand_Args_Fields   args;
-} ML_Expand_Functor_Args_Info;
-
-typedef struct {
-    bool                    non_canonical_type;
-    int                     arity;
-    MR_ConstString          functor;
-    ML_Expand_Args_Fields   args;
-    bool                    limit_reached;
-} ML_Expand_Functor_Args_Limit_Info;
-
-typedef struct {
-    bool                    non_canonical_type;
-    int                     arity;
-    MR_ConstString          functor_only;
-} ML_Expand_Functor_Only_Info;
-
-typedef struct {
-    bool                    non_canonical_type;
-    int                     arity;
-    ML_Expand_Args_Fields   args_only;
-} ML_Expand_Args_Only_Info;
-
-typedef struct {
-    bool                    non_canonical_type;
-    int                     arity;
-    bool                    chosen_index_exists;
-    MR_Word                 *chosen_value_ptr;
-    MR_TypeInfo             chosen_type_info;
-} ML_Expand_Chosen_Arg_Only_Info;
-
-    /* Prototypes */
-
-extern  void    ML_expand_functor_args(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr,
-                    ML_Expand_Functor_Args_Info *expand_info);
-
-extern  void    ML_expand_functor_args_limit(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr, int max_arity,
-                    ML_Expand_Functor_Args_Limit_Info *expand_info);
-
-extern  void    ML_expand_functor_only(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr,
-                    ML_Expand_Functor_Only_Info *expand_info);
-
-extern  void    ML_expand_args_only(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr,
-                    ML_Expand_Args_Only_Info *expand_info);
-
-extern  void    ML_expand_chosen_arg_only(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr, int chosen,
-                    ML_Expand_Chosen_Arg_Only_Info *expand_info);
-
-extern  void    ML_expand_named_arg_only(MR_TypeInfo type_info,
-                    MR_Word *data_word_ptr, MR_ConstString chosen_name,
-                    ML_Expand_Chosen_Arg_Only_Info *expand_info);
-
-    /*
-    ** NB. ML_arg() is also used by arg_ref and new_arg_ref
-    ** in store.m, in trace/mercury_trace_vars.m, and in
-    ** extras/trailed_update/tr_store.m.
-    */
-extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
-                    MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
-
-extern  bool    ML_named_arg(MR_TypeInfo type_info, MR_Word *term,
-                    MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
-                    MR_Word **argument_ptr);
-
-    /*
-    ** NB. ML_named_arg_num() is used in mercury_trace_vars.c.
-    */
-extern  bool    ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
-                    const char *arg_name, int *arg_num_ptr);
-
-/*
-** The following macros factor out the common parts of the various
-** deconstruction predicates.
-*/
-
-    /*
-    ** Check for attempts to deconstruct a non-canonical type.
-    ** Such deconstructions must be cc_multi, which is why we treat
-    ** violations of this as runtime errors in det deconstruction
-    ** predicates.
-    ** (There ought to be cc_multi versions of those predicates.)
-    */
-#define ML_abort_if_type_is_noncanonical(ei, predname)              \
-    do {                                                            \
-        if ((ei).non_canonical_type) {                              \
-            MR_fatal_error(""called "" predname "" for a type ""    \
-                ""with a user-defined equality predicate"");        \
-        }                                                           \
-    } while (0)
-
-#endif
-
-#define ML_deconstruct_get_functor(ei, functor_field, var)          \
-    do {                                                            \
-        MR_make_aligned_string(MR_LVALUE_CAST(MR_ConstString, var), \
-            (ei).functor_field);                                    \
-    } while (0)
-
-#define ML_deconstruct_get_arity(ei, var)                           \
-    do {                                                            \
-        var = (ei).arity;                                           \
-    } while (0)
-
-#define ML_deconstruct_get_arg_list(ei, args_field, var)            \
-    do {                                                            \
-        int     i;                                                  \
-                                                                    \
-        var = MR_list_empty_msg(MR_PROC_LABEL);                     \
-        i = (ei).arity;                                             \
-                                                                    \
-        while (--i >= 0) {                                          \
-            MR_Word arg;                                            \
-                                                                    \
-                /* Create an argument on the heap */                \
-            MR_new_univ_on_hp(arg,                                  \
-                (ei).args_field.arg_type_infos[i],                  \
-                (ei).args_field.arg_values[i +                      \
-                    (ei).args_field.num_extra_args]);               \
-                                                                    \
-                /* Join the argument to the front of the list */    \
-            var = MR_list_cons_msg(arg, var, MR_PROC_LABEL);        \
-        }                                                           \
-    } while (0)
-
-    /*
-    ** Free any arg_type_infos allocated by the ML_expand variant.
-    ** Should be called after we have used them for the last time.
-    */
-#define ML_deconstruct_free_allocated_arg_type_infos(ei, args_field)\
-    do {                                                            \
-        if ((ei).args_field.can_free_arg_type_infos) {              \
-            MR_GC_free((ei).args_field.arg_type_infos);             \
-        }                                                           \
-    } while (0)
-
-").
-
-:- pragma foreign_code("C", "
-
-#define EXPAND_FUNCTION_NAME        ML_expand_functor_args
-#define EXPAND_TYPE_NAME            ML_Expand_Functor_Args_Info
-#define EXPAND_FUNCTOR_FIELD        functor
-#define EXPAND_ARGS_FIELD           args
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_FUNCTOR_FIELD
-#undef  EXPAND_ARGS_FIELD
-
-#define EXPAND_FUNCTION_NAME        ML_expand_functor_args_limit
-#define EXPAND_TYPE_NAME            ML_Expand_Functor_Args_Limit_Info
-#define EXPAND_FUNCTOR_FIELD        functor
-#define EXPAND_ARGS_FIELD           args
-#define EXPAND_APPLY_LIMIT
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_FUNCTOR_FIELD
-#undef  EXPAND_ARGS_FIELD
-#undef  EXPAND_APPLY_LIMIT
-
-#define EXPAND_FUNCTION_NAME        ML_expand_functor_only
-#define EXPAND_TYPE_NAME            ML_Expand_Functor_Only_Info
-#define EXPAND_FUNCTOR_FIELD        functor_only
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_FUNCTOR_FIELD
-
-#define EXPAND_FUNCTION_NAME        ML_expand_args_only
-#define EXPAND_TYPE_NAME            ML_Expand_Args_Only_Info
-#define EXPAND_ARGS_FIELD           args_only
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_ARGS_FIELD
-
-#define EXPAND_FUNCTION_NAME        ML_expand_chosen_arg_only
-#define EXPAND_TYPE_NAME            ML_Expand_Chosen_Arg_Only_Info
-#define EXPAND_CHOSEN_ARG
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_CHOSEN_ARG
-
-#define EXPAND_FUNCTION_NAME        ML_expand_named_arg_only
-#define EXPAND_TYPE_NAME            ML_Expand_Chosen_Arg_Only_Info
-#define EXPAND_NAMED_ARG
-#include ""mercury_ml_expand_body.h""
-#undef  EXPAND_FUNCTION_NAME
-#undef  EXPAND_TYPE_NAME
-#undef  EXPAND_NAMED_ARG
-
-/*
-** ML_arg() is a subroutine used to implement arg/2, argument/2,
-** and also store__arg_ref/5 in store.m.
-** It takes the address of a term, its type, and an argument index.
-** If the selected argument exists, it succeeds and returns the address
-** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
-
-bool
-ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
-    MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr)
-{
-    ML_Expand_Chosen_Arg_Only_Info	expand_info;
-
-    ML_expand_chosen_arg_only(type_info, term_ptr, arg_index, &expand_info);
-    ML_abort_if_type_is_noncanonical(expand_info, ""argument/2"");
-
-        /* Check range */
-    if (expand_info.chosen_index_exists) {
-        *arg_type_info_ptr = expand_info.chosen_type_info;
-        *arg_ptr = expand_info.chosen_value_ptr;
-		return TRUE;
-    }
-
-    return FALSE;
-}
-
-/*
-** ML_named_arg() is a subroutine used to implement named_arg/2.
-** It takes the address of a term, its type, and an argument name.
-** If an argument with that name exists, it succeeds and returns the address
-** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
-
-bool
-ML_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
-    MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr)
-{
-    ML_Expand_Chosen_Arg_Only_Info	expand_info;
-
-    ML_expand_named_arg_only(type_info, term_ptr, arg_name, &expand_info);
-    ML_abort_if_type_is_noncanonical(expand_info, ""named_argument/2"");
-
-        /* Check range */
-    if (expand_info.chosen_index_exists) {
-        *arg_type_info_ptr = expand_info.chosen_type_info;
-        *arg_ptr = expand_info.chosen_value_ptr;
-		return TRUE;
-    }
-
-    return FALSE;
-}
-
-/*
-** ML_named_arg_num() takes the address of a term, its type, and an argument
-** name. If the given term has an argument with the given name, it succeeds and
-** returns the argument number (counted starting from 0) of the argument;
-** if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
-
-bool
-ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
-    const char *arg_name, int *arg_num_ptr)
-{
-    MR_TypeCtorInfo             type_ctor_info;
-    MR_DuTypeLayout       	du_type_layout;
-    const MR_DuPtagLayout       *ptag_layout;
-    const MR_DuFunctorDesc      *functor_desc;
-    const MR_NotagFunctorDesc   *notag_functor_desc;
-    MR_Word                     data;
-    int                         ptag;
-    MR_Word                     sectag;
-    MR_TypeInfo                 eqv_type_info;
-    int                         i;
-
-    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-
-    switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-	    {
-		MR_ReservedAddrTypeLayout ra_layout;
-		
-	    	ra_layout = type_ctor_info->type_layout.layout_reserved_addr;
-		data = *term_ptr;
-		
-		/*
-		** First check if this value is one of
-		** the numeric reserved addresses.
-		*/
-		if ((MR_Unsigned) data <
-		    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
-		{
-		    /*
-		    ** If so, it must be a constant, and constants never have
-		    ** any arguments.
-		    */
-		    return FALSE;
-		}
-
-		/*
-		** Next check if this value is one of the
-		** the symbolic reserved addresses.
-		*/
-		for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-		    if (data ==
-		    	(MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i])
-		    {
-			return FALSE;
-		    }
-		}
-		    
-		/*
-		** Otherwise, it is not one of the reserved addresses,
-		** so handle it like a normal DU type.
-		*/
-		du_type_layout = ra_layout->MR_ra_other_functors;
-		goto du_type;
-	    }
-
-
-        case MR_TYPECTOR_REP_DU_USEREQ:
-        case MR_TYPECTOR_REP_DU:
-            data = *term_ptr;
-	    du_type_layout = type_ctor_info->type_layout.layout_du;
-	    /* fall through */
-
-	/*
-	** This label handles both the DU case and the second half of the
-	** RESERVED_ADDR case.  `du_type_layout' and `data' must both be
-	** set before this code is entered.
-	*/
-	du_type:
-            ptag = MR_tag(data);
-            ptag_layout = &du_type_layout[ptag];
-
-            switch (ptag_layout->MR_sectag_locn) {
-                case MR_SECTAG_NONE:
-                    functor_desc = ptag_layout->MR_sectag_alternatives[0];
-                    break;
-                case MR_SECTAG_LOCAL:
-                    sectag = MR_unmkbody(data);
-                    functor_desc =
-                        ptag_layout->MR_sectag_alternatives[sectag];
-                    break;
-                case MR_SECTAG_REMOTE:
-                    sectag = MR_field(ptag, data, 0);
-                    functor_desc =
-                        ptag_layout->MR_sectag_alternatives[sectag];
-                    break;
-                case MR_SECTAG_VARIABLE:
-		    MR_fatal_error(""ML_named_arg_num(): unexpected variable"");
-            }
-
-            if (functor_desc->MR_du_functor_arg_names == NULL) {
-                return FALSE;
-            }
-
-            for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
-                if (functor_desc->MR_du_functor_arg_names[i] != NULL
-                && streq(arg_name, functor_desc->MR_du_functor_arg_names[i]))
-                {
-                    *arg_num_ptr = i;
-                    return TRUE;
-                }
-            }
-
-            return FALSE;
-
-        case MR_TYPECTOR_REP_EQUIV:
-            eqv_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-                type_ctor_info->type_layout.layout_equiv);
-            return ML_named_arg_num(eqv_type_info, term_ptr, arg_name,
-                arg_num_ptr);
-
-        case MR_TYPECTOR_REP_EQUIV_GROUND:
-            eqv_type_info = MR_pseudo_type_info_is_ground(
-                type_ctor_info->type_layout.layout_equiv);
-            return ML_named_arg_num(eqv_type_info, term_ptr, arg_name,
-                arg_num_ptr);
-
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-            /*
-            ** The current version of the RTTI gives all such equivalence types
-            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
-            */
-            MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
-            break;
-
-        case MR_TYPECTOR_REP_NOTAG:
-        case MR_TYPECTOR_REP_NOTAG_USEREQ:
-        case MR_TYPECTOR_REP_NOTAG_GROUND:
-        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            notag_functor_desc = type_ctor_info->type_functors.functors_notag;
-
-            if (notag_functor_desc->MR_notag_functor_arg_name != NULL
-            && streq(arg_name, notag_functor_desc->MR_notag_functor_arg_name))
-            {
-                *arg_num_ptr = 0;
-                return TRUE;
-            }
-
-            return FALSE;
-
-        default:
-            return FALSE;
-    }
-}
+#include ""mercury_deconstruct.h""
+#include ""mercury_deconstruct_macros.h""
 
 ").
 
@@ -3518,21 +3113,40 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     % Code for functor, arg and deconstruct.
 
-:- pragma foreign_proc("C", functor(Term::in, Functor::out, Arity::out),
-    will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	functor(Term::in, Functor::out, Arity::out),
+	[will_not_call_mercury], "
 {
-    MR_TypeInfo     			type_info;
-    ML_Expand_Functor_Only_Info	expand_info;
+#define	PREDNAME			""functor/3""
+#define	TYPEINFO_ARG			TypeInfo_for_T
+#define	TERM_ARG			Term
+#define	FUNCTOR_ARG			Functor
+#define	ARITY_ARG			Arity
+#include ""mercury_ml_functor_body.h""
+#undef	PREDNAME
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
+}").
 
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
-
-    MR_save_transient_registers();
-    ML_expand_functor_only(type_info, &Term, &expand_info);
-    MR_restore_transient_registers();
-
-    ML_abort_if_type_is_noncanonical(expand_info, ""functor/3"");
-    ML_deconstruct_get_functor(expand_info, functor_only, Functor);
-    ML_deconstruct_get_arity(expand_info, Arity);
+:- pragma foreign_proc("C",
+	functor_cc(Term::in, Functor::out, Arity::out),
+	will_not_call_mercury, "
+{
+#define	PREDNAME			""functor_cc/3""
+#define	ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG			TypeInfo_for_T
+#define	TERM_ARG			Term
+#define	FUNCTOR_ARG			Functor
+#define	ARITY_ARG			Arity
+#include ""mercury_ml_functor_body.h""
+#undef	PREDNAME
+#undef	ALLOW_NONCANONICAL
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
 }").
 
 /*
@@ -3540,88 +3154,233 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 ** changes to store__arg_ref in store.m.
 */
 
-:- pragma foreign_proc("C", arg(Term::in, ArgumentIndex::in) = (Argument::out),
-        will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	arg(Term::in, ArgumentIndex::in) = (Argument::out),
+        [will_not_call_mercury], "
 {
-    MR_TypeInfo type_info;
-    MR_TypeInfo exp_arg_type_info;
-    MR_TypeInfo arg_type_info;
-    MR_Word     *argument_ptr;
-    bool        success;
-    int         comparison_result;
+#define	PREDNAME 		""arg/2""
+#define	NONCANON_HANDLING	MR_ABORT_ON_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		ArgumentIndex
+#define	SELECTED_ARG		Argument
+#define	EXPECTED_TYPE_INFO	TypeInfo_for_ArgT
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
+#undef	EXPECTED_TYPE_INFO
+}").
 
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
-    exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
-
-    MR_save_transient_registers();
-    success = ML_arg(type_info, &Term, ArgumentIndex,
-        &arg_type_info, &argument_ptr);
-
-    if (success) {
-        /* compare the actual type of the argument with its expected type */
-        comparison_result = MR_compare_type_info(arg_type_info,
-            exp_arg_type_info);
-        success = (comparison_result == MR_COMPARE_EQUAL);
-
-        if (success) {
-            Argument = *argument_ptr;
-        }
-    }
-
-    MR_restore_transient_registers();
-    SUCCESS_INDICATOR = success;
+:- pragma foreign_proc("C",
+	arg_cc(Term::in, ArgumentIndex::in, Argument::out),
+        [will_not_call_mercury], "
+{
+#define	PREDNAME 		""arg/2""
+#define	NONCANON_HANDLING	MR_ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		ArgumentIndex
+#define	SELECTED_ARG		Argument
+#define	EXPECTED_TYPE_INFO	TypeInfo_for_ArgT
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
+#undef	EXPECTED_TYPE_INFO
 }").
 
 :- pragma foreign_proc("C",
 	argument(Term::in, ArgumentIndex::in) = (ArgumentUniv::out),
-        will_not_call_mercury, "
+        [will_not_call_mercury], "
 {
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-    MR_Word     *argument_ptr;
-    bool        success;
-
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
-
-    MR_save_transient_registers();
-    success = ML_arg(type_info, &Term, ArgumentIndex,
-        &arg_type_info, &argument_ptr);
-    MR_restore_transient_registers();
-
-    if (success) {
-        /* Allocate enough room for a univ */
-        MR_new_univ_on_hp(ArgumentUniv, arg_type_info, *argument_ptr);
-    }
-
-    SUCCESS_INDICATOR = success;
+#define	PREDNAME 		""argument/2""
+#define	NONCANON_HANDLING	MR_FAIL_ON_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		ArgumentIndex
+#define	SELECTED_ARG		ArgumentUniv
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
 }").
 
 :- pragma foreign_proc("C",
-    named_argument(Term::in, ArgumentName::in) = (ArgumentUniv::out),
-    [will_not_call_mercury], "
+	argument_cc(Term::in, ArgumentIndex::in, ArgumentUniv::out),
+        [will_not_call_mercury], "
 {
-    MR_TypeInfo type_info;
-    MR_TypeInfo arg_type_info;
-    MR_Word     *argument_ptr;
-    bool        success;
+#define	PREDNAME 		""argument_cc/3""
+#define	NONCANON_HANDLING	MR_ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		ArgumentIndex
+#define	SELECTED_ARG		ArgumentUniv
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
+}").
 
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
+:- pragma foreign_proc("C",
+	named_argument(Term::in, ArgumentName::in) = (ArgumentUniv::out),
+	[will_not_call_mercury], "
+{
+#define	PREDNAME 		""named_argument/2""
+#define	NONCANON_HANDLING	MR_FAIL_ON_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		(MR_ConstString) ArgumentName
+#define	SELECTED_ARG		ArgumentUniv
+#define	SELECT_BY_NAME
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
+#undef	SELECT_BY_NAME
+}").
 
-    MR_save_transient_registers();
-    success = ML_named_arg(type_info, &Term, (MR_ConstString) ArgumentName,
-        &arg_type_info, &argument_ptr);
-    MR_restore_transient_registers();
+:- pragma foreign_proc("C",
+	named_argument_cc(Term::in, ArgumentName::in, ArgumentUniv::out),
+	[will_not_call_mercury], "
+{
+#define	PREDNAME 		""named_argument_cc/3""
+#define	NONCANON_HANDLING	MR_ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	SELECTOR_ARG		(MR_ConstString) ArgumentName
+#define	SELECTED_ARG		ArgumentUniv
+#define	SELECT_BY_NAME
+#include ""mercury_ml_arg_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	SELECTOR_ARG
+#undef	SELECTED_ARG
+#undef	SELECT_BY_NAME
+}").
 
-    if (success) {
-        /* Allocate enough room for a univ */
-        MR_new_univ_on_hp(ArgumentUniv, arg_type_info, *argument_ptr);
-    }
+:- pragma foreign_proc("C", 
+	deconstruct(Term::in, Functor::out, Arity::out, Arguments::out),
+	[will_not_call_mercury],
+"{
+#define	PREDNAME		""deconstruct/4""
+#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Info
+#define	EXPAND_INFO_CALL	MR_expand_functor_args
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	FUNCTOR_ARG		Functor
+#define	ARITY_ARG		Arity
+#define	ARGUMENTS_ARG		Arguments
+#include ""mercury_ml_deconstruct_body.h""
+#undef	PREDNAME
+#undef	EXPAND_INFO_TYPE
+#undef	EXPAND_INFO_CALL
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
+#undef	ARGUMENTS_ARG
+}").
 
-    SUCCESS_INDICATOR = success;
+:- pragma foreign_proc("C", 
+	deconstruct_cc(Term::in, Functor::out, Arity::out, Arguments::out),
+	[will_not_call_mercury],
+"{
+#define	PREDNAME		""deconstruct_cc/4""
+#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Info
+#define	EXPAND_INFO_CALL	MR_expand_functor_args
+#define	ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	FUNCTOR_ARG		Functor
+#define	ARITY_ARG		Arity
+#define	ARGUMENTS_ARG		Arguments
+#include ""mercury_ml_deconstruct_body.h""
+#undef	PREDNAME
+#undef	NONCANON_HANDLING
+#undef	EXPAND_INFO_TYPE
+#undef	EXPAND_INFO_CALL
+#undef	ALLOW_NONCANONICAL
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
+#undef	ARGUMENTS_ARG
+}").
+
+:- pragma foreign_proc("C", 
+	limited_deconstruct(Term::in, MaxArity::in, Functor::out,
+		Arity::out, Arguments::out),
+	[will_not_call_mercury],
+" {
+#define	PREDNAME		""limited_deconstruct/5""
+#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Limit_Info
+#define	EXPAND_INFO_CALL	MR_expand_functor_args_limit
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	MAX_ARITY_ARG		MaxArity
+#define	FUNCTOR_ARG		Functor
+#define	ARITY_ARG		Arity
+#define	ARGUMENTS_ARG		Arguments
+#include ""mercury_ml_deconstruct_body.h""
+#undef	PREDNAME
+#undef	EXPAND_INFO_TYPE
+#undef	EXPAND_INFO_CALL
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	MAX_ARITY_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
+#undef	ARGUMENTS_ARG
+}").
+
+:- pragma foreign_proc("C", 
+	limited_deconstruct_cc(Term::in, MaxArity::in, Functor::out,
+		Arity::out, Arguments::out),
+	[will_not_call_mercury],
+" {
+#define	PREDNAME		""limited_deconstruct_cc/5""
+#define	EXPAND_INFO_TYPE	MR_Expand_Functor_Args_Limit_Info
+#define	EXPAND_INFO_CALL	MR_expand_functor_args_limit
+#define	ALLOW_NONCANONICAL
+#define	TYPEINFO_ARG		TypeInfo_for_T
+#define	TERM_ARG		Term
+#define	MAX_ARITY_ARG		MaxArity
+#define	FUNCTOR_ARG		Functor
+#define	ARITY_ARG		Arity
+#define	ARGUMENTS_ARG		Arguments
+#include ""mercury_ml_deconstruct_body.h""
+#undef	PREDNAME
+#undef	EXPAND_INFO_TYPE
+#undef	EXPAND_INFO_CALL
+#undef	ALLOW_NONCANONICAL
+#undef	TYPEINFO_ARG
+#undef	TERM_ARG
+#undef	MAX_ARITY_ARG
+#undef	FUNCTOR_ARG
+#undef	ARITY_ARG
+#undef	ARGUMENTS_ARG
 }").
 
 :- pragma foreign_proc("MC++", functor(_Term::in, _Functor::out, _Arity::out),
-    will_not_call_mercury, "
+	[will_not_call_mercury], "
 {
 	mercury::runtime::Errors::SORRY(""foreign code for functor"");
 }").
@@ -3633,18 +3392,36 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
 :- pragma foreign_proc("C#", 
 	arg(_Term::in, _ArgumentIndex::in) = (_Argument::out),
-        will_not_call_mercury, "
+        [will_not_call_mercury], "
 {
 	mercury.runtime.Errors.SORRY(""foreign code for arg"");
 	// XXX this is required to keep the C# compiler quiet
 	SUCCESS_INDICATOR = false;
 }").
 
+:- pragma foreign_proc("C#", 
+	arg_cc(_Term::in, _ArgumentIndex::in, _Argument::out),
+        [will_not_call_mercury], "
+{
+	mercury.runtime.Errors.SORRY(""foreign code for arg_cc"");
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
+}").
+
 :- pragma foreign_proc("C#",
 	argument(_Term::in, _ArgumentIndex::in) = (_ArgumentUniv::out),
-        will_not_call_mercury, "
+        [will_not_call_mercury], "
 {
 	mercury.runtime.Errors.SORRY(""foreign code for argument"");
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
+}").
+
+:- pragma foreign_proc("C#",
+	argument_cc(_Term::in, _ArgumentIndex::in, _ArgumentUniv::out),
+        [will_not_call_mercury], "
+{
+	mercury.runtime.Errors.SORRY(""foreign code for argument_cc"");
 	// XXX this is required to keep the C# compiler quiet
 	SUCCESS_INDICATOR = false;
 }").
@@ -3653,7 +3430,16 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         named_argument(_Term::in, _ArgumentName::in) = (_ArgumentUniv::out),
         [will_not_call_mercury], "
 {
-	mercury.runtime.Errors.SORRY(""foreign code for argument"");
+	mercury.runtime.Errors.SORRY(""foreign code for named_argument"");
+	// XXX this is required to keep the C# compiler quiet
+	SUCCESS_INDICATOR = false;
+}").
+
+:- pragma foreign_proc("C#",
+        named_argument_cc(_Term::in, _ArgumentName::in, _ArgumentUniv::out),
+        [will_not_call_mercury], "
+{
+	mercury.runtime.Errors.SORRY(""foreign code for named_argument_cc"");
 	// XXX this is required to keep the C# compiler quiet
 	SUCCESS_INDICATOR = false;
 }").
@@ -3663,9 +3449,20 @@ det_arg(Type, ArgumentIndex) = Argument :-
         Argument = Argument0
     ;
         ( argument(Type, ArgumentIndex) = _ArgumentUniv ->
-            error("det_arg: argument number out of range")
-        ;
             error("det_arg: argument had wrong type")
+        ;
+            error("det_arg: argument number out of range")
+        )
+    ).
+
+det_arg_cc(Type, ArgumentIndex, Argument) :-
+    ( arg_cc(Type, ArgumentIndex, Argument0) ->
+        Argument = Argument0
+    ;
+        ( argument_cc(Type, ArgumentIndex, _ArgumentUniv) ->
+            error("det_arg_cc: argument had wrong type")
+        ;
+            error("det_arg_cc: argument number out of range")
         )
     ).
 
@@ -3676,6 +3473,13 @@ det_argument(Type, ArgumentIndex) = Argument :-
         error("det_argument: argument out of range")
     ).
 
+det_argument_cc(Type, ArgumentIndex, Argument) :-
+    ( argument_cc(Type, ArgumentIndex, Argument0) ->
+        Argument = Argument0
+    ;
+        error("det_argument_cc: argument out of range")
+    ).
+
 det_named_argument(Type, ArgumentName) = Argument :-
     ( named_argument(Type, ArgumentName) = Argument0 ->
         Argument = Argument0
@@ -3683,52 +3487,12 @@ det_named_argument(Type, ArgumentName) = Argument :-
         error("det_named_argument: no argument with that name")
     ).
 
-:- pragma foreign_proc("C", 
-	deconstruct(Term::in, Functor::out, Arity::out,
-        Arguments::out), will_not_call_mercury, "
-{
-    ML_Expand_Functor_Args_Info	expand_info;
-    MR_TypeInfo         		type_info;
-
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
-
-    MR_save_transient_registers();
-    ML_expand_functor_args(type_info, &Term, &expand_info);
-    MR_restore_transient_registers();
-
-    ML_abort_if_type_is_noncanonical(expand_info, ""deconstruct/4"");
-    ML_deconstruct_get_functor(expand_info, functor, Functor);
-    ML_deconstruct_get_arity(expand_info, Arity);
-    ML_deconstruct_get_arg_list(expand_info, args, Arguments);
-    ML_deconstruct_free_allocated_arg_type_infos(expand_info, args);
-}").
-
-:- pragma foreign_proc("C", 
-	limited_deconstruct(Term::in, MaxArity::in, Functor::out, Arity::out,
-        Arguments::out), will_not_call_mercury, "
-{
-    ML_Expand_Functor_Args_Limit_Info	expand_info;
-    MR_TypeInfo         				type_info;
-
-    type_info = (MR_TypeInfo) TypeInfo_for_T;
-
-    MR_save_transient_registers();
-    ML_expand_functor_args_limit(type_info, &Term, MaxArity, &expand_info);
-    MR_restore_transient_registers();
-
-    ML_abort_if_type_is_noncanonical(expand_info, ""limited_deconstruct/5"");
-
-    if (expand_info.limit_reached) {
-        SUCCESS_INDICATOR = FALSE;
-    } else {
-        SUCCESS_INDICATOR = TRUE;
-
-        ML_deconstruct_get_functor(expand_info, functor, Functor);
-        ML_deconstruct_get_arity(expand_info, Arity);
-        ML_deconstruct_get_arg_list(expand_info, args, Arguments);
-        ML_deconstruct_free_allocated_arg_type_infos(expand_info, args);
-    }
-}").
+det_named_argument_cc(Type, ArgumentName, Argument) :-
+    ( named_argument_cc(Type, ArgumentName, Argument0) ->
+        Argument = Argument0
+    ;
+        error("det_named_argument_cc: no argument with that name")
+    ).
 
 deconstruct(Term::in, Functor::out, Arity::out, Arguments::out) :-
 	rtti_implementation__deconstruct(Term, Functor, Arity, Arguments).

@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** vim:ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,10 +10,10 @@
 /*
 ** mercury_ml_expand_body.h
 **
-** This file is included several times in library/std_util.m. Each inclusion
-** defines the body of one of several variants of the old ML_expand function,
-** which, given a data word and its type_info, returned its functor, arity,
-** argument vector and a type_info vector describing its arguments.
+** This file is included several times in runtime/mercury_deconstruct.c. Each
+** inclusion defines the body of one of several variants of the old ML_expand
+** function, which, given a data word and its type_info, returned its functor,
+** arity, argument vector and a type_info vector describing its arguments.
 ** One variant still does all that. The others perform different subsets of
 ** this task. The reason for having those specialized variants is that
 ** executing the full task can be extremely time consuming, especially when

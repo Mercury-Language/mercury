@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,6 +16,7 @@
 #include "mercury_array_macros.h"
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
+#include "mercury_deconstruct.h"
 #include "mercury_stack_layout.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
@@ -864,14 +865,6 @@ MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
 		MR_BROWSE_DEFAULT_FORMAT);
 }
 
-/* ML_arg() is defined in std_util.m */
-extern	bool 	ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
-			MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr);
-/* ML_named_arg_num() is defined in std_util.m */
-extern	bool 	ML_named_arg_num(MR_TypeInfo term_type_info, MR_Word *term,
-			const char *arg_name, int *arg_num_ptr);
-
-
 static char *
 MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 	MR_Browser browser, MR_Browse_Caller_Type caller,
@@ -901,7 +894,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 					path++;
 				}
 
-				/* ML_arg numbers fields from 0, not 1 */
+				/* MR_arg numbers fields from 0, not 1 */
 				--arg_num;
 			} else {
 				/* we have a field name */
@@ -914,7 +907,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 				saved_char = *path;
 				*path = '\0';
 
-				if (! ML_named_arg_num(typeinfo, value,
+				if (! MR_named_arg_num(typeinfo, value,
 					old_path, &arg_num))
 				{
 					*path = saved_char;
@@ -929,8 +922,8 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 				path++; /* step over / or ^ */
 			}
 
-			if (ML_arg(typeinfo, value, arg_num,
-				&new_typeinfo, &new_value))
+			if (MR_arg(typeinfo, value, arg_num, &new_typeinfo,
+				&new_value, TRUE, "debugger"))
 			{
 				typeinfo = new_typeinfo;
 				value = new_value;

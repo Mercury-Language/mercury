@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2001 The University of Melbourne.
+# Copyright (C) 1998-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -42,6 +42,8 @@ HDRS		=	\
 			mercury_conf_param.h	\
 			mercury_context.h	\
 			mercury_debug.h		\
+			mercury_deconstruct.h	\
+			mercury_deconstruct_macros.h \
 			mercury_deep_copy.h	\
 			mercury_deep_profiling.h \
 			mercury_deep_profiling_hand.h \
@@ -95,21 +97,24 @@ HDRS		=	\
 			$(LIB_DLL_H)
 
 # The headers in $(BODY_HDRS) contain code schemes included multiple times
-# in one source file each. Their dependencies must be explicitly listed.
+# in one or more source files. Their dependencies must be explicitly listed.
 # They do not have to be syntactically well-formed.
 
 BODY_HDRS	=	\
 			mercury_deep_call_port_body.h	\
-			mercury_deep_copy_body.h \
+			mercury_deep_copy_body.h	\
 			mercury_deep_leave_port_body.h	\
 			mercury_deep_rec_depth_actions.h \
-			mercury_deep_rec_depth_body.h \
+			mercury_deep_rec_depth_body.h	\
 			mercury_deep_redo_port_body.h	\
 			mercury_exception_catch_body.h	\
 			mercury_hand_compare_body.h	\
 			mercury_hand_unify_body.h	\
 			mercury_make_type_info_body.h	\
-			mercury_ml_expand_body.h \
+			mercury_ml_arg_body.h		\
+			mercury_ml_deconstruct_body.h	\
+			mercury_ml_expand_body.h	\
+			mercury_ml_functor_body.h	\
 			mercury_unify_compare_body.h
 
 # Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
@@ -136,6 +141,7 @@ CFILES		= 	\
 			mercury_bootstrap.c	\
 			mercury_context.c	\
 			mercury_debug.c		\
+			mercury_deconstruct.c	\
 			mercury_deep_copy.c	\
 			mercury_deep_profiling.c \
 			mercury_dlist.c		\

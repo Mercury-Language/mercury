@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2000,2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,9 +202,7 @@ ref_functor(Ref, Functor, Arity) -->
 	{ functor(Val, Functor, Arity) }.
 
 :- pragma c_header_code("
-	/* ML_arg() is defined in std_util.m */
-extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
-		    MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
+#include ""mercury_deconstruct.h""
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
@@ -215,8 +213,8 @@ extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 
 	MR_save_transient_registers();
 
-	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
-			&arg_type_info, &arg_ref))
+	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
+		&arg_type_info, &arg_ref, FALSE, ""arg_ref/5""))
 	{
 		MR_fatal_error(""tr_store__arg_ref: ""
 			""argument number out of range"");
@@ -242,8 +240,8 @@ extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 
 	MR_save_transient_registers();
 
-	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
-			&arg_type_info, &arg_ref))
+	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
+		&arg_type_info, &arg_ref, FALSE, ""new_arg_ref/5""))
 	{
 		MR_fatal_error(""tr_store__new_arg_ref: ""
 			""argument number out of range"");
