@@ -35,6 +35,7 @@
 :- import_module integer, rational.
 :- import_module exception, gc.
 :- import_module time.
+:- import_module pprint.
 
 % library__version must be implemented using pragma c_code,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
