@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
 	{ proc_info_inst_table(ProcInfo0, InstTable0) },
-	{ recompute_instmap_delta(no, Goal2, Goal, InstMap0, 
+	{ recompute_instmap_delta(VarTypes, Goal2, Goal, InstMap0, 
 		InstTable0, InstTable, ModuleInfo0, ModuleInfo) },
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),

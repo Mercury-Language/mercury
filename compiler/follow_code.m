@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
 		proc_info_inst_table(ProcInfo0, InstTable0),
-		recompute_instmap_delta(no, Goal2, Goal, InstMap0,
+		recompute_instmap_delta(VarTypes, Goal2, Goal, InstMap0,
 			InstTable0, InstTable, ModuleInfo0, ModuleInfo),
 		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
 		proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),

@@ -16,7 +16,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module (inst), instmap.
-:- import_module bool, list.
+:- import_module list.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -117,7 +117,7 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
-:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, instmap,
+:- pred recompute_instmap_delta(map(var, type), hlds_goal, hlds_goal, instmap,
 		inst_table, inst_table, module_info, module_info).
 :- mode recompute_instmap_delta(in, in, out, in, in, out, in, out) is det.
 
@@ -197,8 +197,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, int, map, set, term, std_util, assoc_list.
-:- import_module prog_util, type_util, mode_info.
+:- import_module require, int, map, set, term, std_util, assoc_list, bool.
+:- import_module prog_util, type_util, mode_info, unify_proc.
 :- import_module inst_match, inst_util.
 
 %-----------------------------------------------------------------------------%
@@ -1252,16 +1252,47 @@ mode_id_to_int(_ - X, X).
 
 :- type recompute_info --->
 		recompute_info(
-			bool,		% Recompute atomic?
+			map(var, type),
 			module_info,
 			inst_table
 		).
 
-recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, Instmap, InstTable0, InstTable,
+:- pred recompute_info_get_vartypes(recompute_info, map(var, type)).
+:- mode recompute_info_get_vartypes(in, out) is det.
+
+recompute_info_get_vartypes(recompute_info(VarTypes, _, _), VarTypes).
+
+:- pred recompute_info_get_module_info(recompute_info, module_info).
+:- mode recompute_info_get_module_info(in, out) is det.
+
+recompute_info_get_module_info(recompute_info(_, ModuleInfo, _), ModuleInfo).
+
+:- pred recompute_info_set_module_info(recompute_info, module_info,
+		recompute_info).
+:- mode recompute_info_set_module_info(in, in, out) is det.
+
+recompute_info_set_module_info(recompute_info(A, _, C), ModuleInfo,
+		recompute_info(A, ModuleInfo, C)).
+
+:- pred recompute_info_get_inst_table(recompute_info, inst_table).
+:- mode recompute_info_get_inst_table(in, out) is det.
+
+recompute_info_get_inst_table(recompute_info(_, _, InstTable), InstTable).
+
+:- pred recompute_info_set_inst_table(recompute_info, inst_table,
+		recompute_info).
+:- mode recompute_info_set_inst_table(in, in, out) is det.
+
+recompute_info_set_inst_table(recompute_info(A, B, _), InstTable,
+		recompute_info(A, B, InstTable)).
+
+%-----------------------------------------------------------------------------%
+
+recompute_instmap_delta(VarTypes, Goal0, Goal, Instmap, InstTable0, InstTable,
 		M0, M) :-
-	RI0 = recompute_info(RecomputeAtomic, M0, InstTable0),
+	RI0 = recompute_info(VarTypes, M0, InstTable0),
 	recompute_instmap_delta_2(Goal0, Goal, Instmap, RI0, RI),
-	RI  = recompute_info(_RecomputeAtomic, M, InstTable).
+	RI  = recompute_info(_, M, InstTable).
 
 :- pred recompute_instmap_delta_2(hlds_goal, hlds_goal, instmap,
 		recompute_info, recompute_info).
@@ -1276,17 +1307,6 @@ recompute_instmap_delta_2(Goal0, Goal, InstMap0) -->
 
 recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 		InstMap0, InstMap, InstMapDelta, RI0, RI) :-
-/************
-		% YYY Is there any situation where we can get away with
-		%     not recomputing atomics?
-		{ RecomputeAtomic = no },
-		{ goal_is_atomic(Goal0) }
-	->
-		{ Goal = Goal0 },
-		{ GoalInfo = GoalInfo0 },
-		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) } 
-	;
-************/
 	recompute_instmap_delta_3(Goal0, GoalInfo0, Goal, InstMap0,
 			InstMapDelta0, RI0, RI1),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
@@ -1297,13 +1317,13 @@ recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 		% Optimisation: Remove any inst_keys which are not
 		% visible from outside this goal from the inst_key_table
 		% backward mapping.
-	RI1 = recompute_info(Atomic, ModuleInfo, InstTable0),
+	recompute_info_get_inst_table(RI1, InstTable1),
 	instmap__get_inst_keys(InstMap, InstKeys),
-	inst_table_get_inst_key_table(InstTable0, IKT0),
-	inst_key_table_project(IKT0, InstKeys, IKT),
-	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+	inst_table_get_inst_key_table(InstTable1, IKT1),
+	inst_key_table_project(IKT1, InstKeys, IKT),
+	inst_table_set_inst_key_table(InstTable1, IKT, InstTable),
 	instmap_sanity_check(InstMap, InstTable),	% YYY Just in case
-	RI = recompute_info(Atomic, ModuleInfo, InstTable).
+	recompute_info_set_inst_table(RI1, InstTable, RI).
 
 :- pred recompute_instmap_delta_3(hlds_goal_expr, hlds_goal_info,
 		hlds_goal_expr, instmap, instmap_delta,
@@ -1341,10 +1361,12 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	instmap_delta_apply_instmap_delta(InstMapDelta1, InstMapDelta2,
 		InstMapDelta4),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	RI3 = recompute_info(Atomic, M0, InstTable0),
+	recompute_info_get_module_info(RI3, M3),
+	recompute_info_get_inst_table(RI3, InstTable3),
 	merge_instmap_delta(InstMap0, NonLocals, InstMapDelta3,
-		InstMapDelta4, InstMapDelta, InstTable0, InstTable, M0, M),
-	RI = recompute_info(Atomic, M, InstTable).
+		InstMapDelta4, InstMapDelta, InstTable3, InstTable, M3, M),
+	recompute_info_set_module_info(RI3, M, RI4),
+	recompute_info_set_inst_table(RI4, InstTable, RI).
 
 recompute_instmap_delta_3(some(Vars, Goal0), _, some(Vars, Goal),
 		InstMap, InstMapDelta) -->
@@ -1353,11 +1375,11 @@ recompute_instmap_delta_3(some(Vars, Goal0), _, some(Vars, Goal),
 recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), _,
 		higher_order_call(A, Vars, B, Modes, C, D),
 		InstMap0, InstMapDelta, RI0, RI) :-
-	RI0 = recompute_info(Atomic, ModuleInfo, InstTable0),
+	recompute_info_get_inst_table(RI0, InstTable0),
 	Modes = argument_modes(ArgInstTable, ArgModes0),
 	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
 	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
-	RI1 = recompute_info(Atomic, ModuleInfo, InstTable),
+	recompute_info_set_inst_table(RI0, InstTable, RI1),
 	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap,
 		RI1, RI),
 	instmap__vars(InstMap, NonLocals),
@@ -1414,10 +1436,12 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals],
 			RI0, RI1),
 	recompute_instmap_delta_disj(Goals0, Goals,
 			InstMap, NonLocals, InstMapDelta1, RI1, RI2),
-	RI2 = recompute_info(Atomic, M0, InstTable0),
+	recompute_info_get_module_info(RI2, M2),
+	recompute_info_get_inst_table(RI2, InstTable2),
 	merge_instmap_delta(InstMap, NonLocals, InstMapDelta0,
-		InstMapDelta1, InstMapDelta, InstTable0, InstTable, M0, M),
-	RI  = recompute_info(Atomic, M, InstTable).
+		InstMapDelta1, InstMapDelta, InstTable2, InstTable, M2, M),
+	recompute_info_set_module_info(RI2, M, RI3),
+	recompute_info_set_inst_table(RI3, InstTable, RI).
 
 %-----------------------------------------------------------------------------%
 
@@ -1430,19 +1454,23 @@ recompute_instmap_delta_cases(_, [], [], _, _, InstMapDelta, RI, RI) :-
 recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 		InstMap0, NonLocals, InstMapDelta, RI0, RI) :-
 	Case0 = case(Functor, Goal0),
-	RI0 = recompute_info(Atomic0, M0, InstTable0),
+	recompute_info_get_module_info(RI0, M0),
+	recompute_info_get_inst_table(RI0, InstTable0),
 	instmap_bind_var_to_functor(Var, Functor, InstMap0, InstMap1,
 		InstTable0, InstTable1, M0, M1),
-	RI3 = recompute_info(Atomic0, M1, InstTable1),
-	recompute_instmap_delta_2(Goal0, Goal, InstMap1, InstMap, _, RI3, RI4),
+	recompute_info_set_module_info(RI0, M1, RI1),
+	recompute_info_set_inst_table(RI1, InstTable1, RI2),
+	recompute_instmap_delta_2(Goal0, Goal, InstMap1, InstMap, _, RI2, RI3),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta1),
 	Case = case(Functor, Goal),
 	recompute_instmap_delta_cases(Var, Cases0, Cases,
-		InstMap0, NonLocals, InstMapDelta2, RI4, RI5),
-	RI5 = recompute_info(Atomic5, M5, InstTable5),
+		InstMap0, NonLocals, InstMapDelta2, RI3, RI4),
+	recompute_info_get_module_info(RI4, M4),
+	recompute_info_get_inst_table(RI4, InstTable4),
 	merge_instmap_delta(InstMap0, NonLocals, InstMapDelta1,
-		InstMapDelta2, InstMapDelta, InstTable5, InstTable, M5, M),
-	RI  = recompute_info(Atomic5, M, InstTable).
+		InstMapDelta2, InstMapDelta, InstTable4, InstTable, M4, M),
+	recompute_info_set_module_info(RI4, M, RI5),
+	recompute_info_set_inst_table(RI5, InstTable, RI).
 
 %-----------------------------------------------------------------------------%
 
@@ -1452,17 +1480,19 @@ recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 
 recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		InstMapDelta, RI0, RI) :-
-	RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+	recompute_info_get_module_info(RI0, ModuleInfo0),
+	recompute_info_get_inst_table(RI0, InstTable0),
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo),
 	proc_info_interface_determinism(ProcInfo, Detism),
 	( determinism_components(Detism, _, at_most_zero) ->
 		instmap_delta_init_unreachable(InstMapDelta),
 		RI = RI0
 	;
-		proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes0)),
+		proc_info_argmodes(ProcInfo,
+			argument_modes(ArgInstTable, ArgModes0)),
 		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
 		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
-		RI1 = recompute_info(Atomic, ModuleInfo0, InstTable),
+		recompute_info_set_inst_table(RI0, InstTable, RI1),
 		recompute_instmap_delta_call_2(Args, InstMap0,
 			ArgModes, InstMap, RI1, RI),
 		instmap__vars(InstMap, NonLocals),
@@ -1483,23 +1513,25 @@ recompute_instmap_delta_call_2([], _, [_|_], _, _, _) :-
 recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		InstMap, RI0, RI) :-
 	% This is similar to modecheck_set_var_inst.
-	RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+	recompute_info_get_module_info(RI0, ModuleInfo0),
+	recompute_info_get_inst_table(RI0, InstTable0),
 	( instmap__is_reachable(InstMap0) ->
 		instmap__lookup_var(InstMap0, Arg, ArgInst0),
 		mode_get_insts(ModuleInfo0, Mode, _, FinalInst),
 		(
 			map__init(Sub0),
 			abstractly_unify_inst(dead, ArgInst0, FinalInst,
-				fake_unify, InstTable0, ModuleInfo0, Sub0, UnifyInst,
-				_, InstTable1, ModuleInfo1, Sub)
+				fake_unify, InstTable0, ModuleInfo0, Sub0,
+				UnifyInst, _, InstTable1, ModuleInfo1, Sub)
 		->
 			ModuleInfo = ModuleInfo1,
 			instmap__set(InstMap0, Arg, UnifyInst, InstMap1),
 			apply_inst_key_sub(Sub, InstMap1, InstMap2,
 				InstTable1, InstTable),
-			RI1 = recompute_info(Atomic, ModuleInfo, InstTable),
+			recompute_info_set_module_info(RI0, ModuleInfo, RI1),
+			recompute_info_set_inst_table(RI1, InstTable, RI2),
 			recompute_instmap_delta_call_2(Args, InstMap2,
-				Modes, InstMap, RI1, RI)
+				Modes, InstMap, RI2, RI)
 		;
 			error("recompute_instmap_delta_call_2: unify_inst failed")
 		)
@@ -1507,9 +1539,6 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		instmap__init_unreachable(InstMap),
 		RI = RI0
 	).
-
-:- pred breakpoint is det.
-breakpoint.
 
 :- pred recompute_instmap_delta_unify(var, unify_rhs, unification, unification,
 	unify_mode, unify_mode, hlds_goal_info, instmap, instmap_delta,
@@ -1540,7 +1569,9 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		%	  whatever defined the variable will have given
 		%	  it an alias.
 
-		RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+		recompute_info_get_module_info(RI0, ModuleInfo0),
+		recompute_info_get_inst_table(RI0, InstTable0),
+
 		inst_table_get_inst_key_table(InstTable0, IKT0),
 		make_var_aliases(Vars, InstMap0, InstMap1, IKT0, IKT1),
 		inst_table_set_inst_key_table(InstTable0, IKT1, InstTable1),
@@ -1607,27 +1638,31 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		compute_instmap_delta(InstMap0, InstMap, NonLocals,
 			InstMapDelta),
-		RI = recompute_info(Atomic, ModuleInfo, InstTable)
+
+		recompute_info_set_module_info(RI0, ModuleInfo, RI1),
+		recompute_info_set_inst_table(RI1, InstTable, RI)
+
 	; UnifyRhs0 = lambda_goal(PredOrFunc, Vars, LambdaModes, LambdaDet,
 			_, Goal0),
-		breakpoint,
 
 		% var-lambda unification
 
 		% First, compute the instmap_delta of the goal.
 
 		% Set the head modes of the lambda.
-		RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+		recompute_info_get_module_info(RI0, ModuleInfo0),
+		recompute_info_get_inst_table(RI0, InstTable0),
 
 		instmap__pre_lambda_update(ModuleInfo0, Vars, LambdaModes,
 			IMDelta, InstTable0, InstTable1, InstMap0, InstMap1),
 
 		% Analyse the lambda goal
 
-		RI1 = recompute_info(Atomic, ModuleInfo0, InstTable1),
+		recompute_info_set_inst_table(RI0, InstTable1, RI1),
 		recompute_instmap_delta_2(Goal0, Goal, InstMap1,
 			_, _, RI1, RI2),
-		RI2 = recompute_info(_, ModuleInfo2, InstTable2),
+		recompute_info_get_module_info(RI2, ModuleInfo2),
+		recompute_info_get_inst_table(RI2, InstTable2),
 
 		instmap__lookup_var(InstMap0, Var, InstOfX),
 
@@ -1638,8 +1673,8 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		(
 			map__init(Sub0),
 			abstractly_unify_inst(dead, InstOfX, InstOfY,
-				real_unify, InstTable2, ModuleInfo2, Sub0, UnifyInst0,
-				_Det, InstTable3, ModuleInfo3, Sub)
+				real_unify, InstTable2, ModuleInfo2, Sub0,
+				UnifyInst0, _Det, InstTable3, ModuleInfo3, Sub)
 		->
 			apply_inst_key_sub(Sub, InstMap1, InstMap2, InstTable3, InstTable),
 			UnifyInst0 = UnifyInst,
@@ -1670,7 +1705,9 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		;
 			error("recompute_instmap_delta_unify: bad var-lambda unification")
 		),
-		RI = recompute_info(Atomic, ModuleInfo, InstTable)
+
+		recompute_info_set_module_info(RI2, ModuleInfo, RI3),
+		recompute_info_set_inst_table(RI3, InstTable, RI)
 
 	; UnifyRhs0 = var(VarY),
 
@@ -1683,7 +1720,9 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		% We will then set both VarX and VarY to the new
 		% alias.
 
-		RI0 = recompute_info(Atomic, ModuleInfo0, InstTable0),
+		recompute_info_get_module_info(RI0, ModuleInfo0),
+		recompute_info_get_inst_table(RI0, InstTable0),
+
 		inst_table_get_inst_key_table(InstTable0, IKT0),
 		make_var_alias(Var, InstMap0, InstMap1, IKT0, IKT1),
 		inst_table_set_inst_key_table(InstTable0, IKT1, InstTable1),
@@ -1694,12 +1733,13 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 			map__init(Sub0),
 			abstractly_unify_inst(dead, InitialInstX, InitialInstY,
 				real_unify, InstTable1, ModuleInfo0, Sub0, UnifyInst0,
-				_Det, InstTable2, ModuleInfo, Sub1)
+				_Det, InstTable2, ModuleInfo1, Sub1)
 		->
 			apply_inst_key_sub(Sub1, InstMap1, InstMap2,
-				InstTable2, InstTable),
+				InstTable2, InstTable3),
 			UnifyInst = UnifyInst0,
-			RI = recompute_info(Atomic, ModuleInfo, InstTable)
+			InstTable = InstTable3,
+			ModuleInfo2 = ModuleInfo1
 		;
 			error("recompute_instmap_delta_unify: var-var unify failed")
 		),
@@ -1714,19 +1754,34 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 			; Unification0 = simple_test(_, _)
 			)
 		->
-			Unification = Unification0
+			Unification = Unification0,
+			ModuleInfo = ModuleInfo2
 		;
 			Unification0 = complicated_unify(_, CanFail)
 		->
 			ComplUniMode = ((InitialInstX - InitialInstY) ->
 						(UnifyInst - UnifyInst)),
-			Unification = complicated_unify(ComplUniMode, CanFail)
+			Unification = complicated_unify(ComplUniMode, CanFail),
+			goal_info_get_context(GoalInfo, Context),
+			goal_info_get_determinism(GoalInfo, Det),
+			recompute_info_get_vartypes(RI0, VarTypes),
+			map__lookup(VarTypes, Var, Type),
+			( type_to_type_id(Type, TypeId, _) ->
+				unify_proc__request_unify(TypeId - ComplUniMode,
+					Det, Context, InstTable, ModuleInfo2,
+					ModuleInfo)
+			;
+				ModuleInfo = ModuleInfo2
+			)
 		;
 			error("recompute_instmap_delta_unify: bad var-var unification")
 		),
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		compute_instmap_delta(InstMap0, InstMap, NonLocals,
-			InstMapDelta)
+			InstMapDelta),
+
+		recompute_info_set_module_info(RI0, ModuleInfo, RI1),
+		recompute_info_set_inst_table(RI1, InstTable, RI)
 	).
 
 %-----------------------------------------------------------------------------%

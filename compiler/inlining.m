@@ -362,7 +362,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
 			Instmap0),
 		proc_info_inst_table(ProcInfo0, InstTable0),
-		recompute_instmap_delta(yes, Goal1, Goal, Instmap0,
+		recompute_instmap_delta(VarTypes, Goal1, Goal, Instmap0,
 			InstTable0, InstTable, ModuleInfo0, ModuleInfo1),
 		proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1)
 	; DidInlining = no,

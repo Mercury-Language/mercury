@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,10 +237,14 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			POF, PredName, ModuleInfo, InstTable).
 
+:- pred breakpoint is det.
+breakpoint.
+
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
 		TVarSet, TVarMap, InstTable, ModuleInfo0, Functor,
 		Unification, ModuleInfo) :-
+	breakpoint,
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
 	->

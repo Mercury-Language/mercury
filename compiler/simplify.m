@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,19 +147,14 @@ simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 	proc_info_set_vartypes(Proc2, VarTypes, Proc3),
 	( simplify_info_requantify(Info1) ->
 		requantify_proc(Proc3, Proc4),
-		( simplify_info_recompute_atomic(Info1) ->
-			RecomputeAtomic = yes
-		;
-			RecomputeAtomic = no
-		),
 		proc_info_goal(Proc4, Goal2),
 		simplify_info_get_inst_table(Info1, InstTable1),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		proc_info_get_initial_instmap(Proc4, ModuleInfo1, InstMap0),
 		% hlds_out__write_goal(Goal2, ModuleInfo1, VarSet, yes,
 		% 	2, ".", State0, State),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			InstMap0, InstTable1, InstTable, ModuleInfo1, ModuleInfo),
+		recompute_instmap_delta(VarTypes, Goal2, Goal3, InstMap0,
+			InstTable1, InstTable, ModuleInfo1, ModuleInfo),
 		simplify_info_set_module_info(Info1, ModuleInfo, Info2),
 		simplify_info_set_inst_table(Info2, InstTable, Info),
 		proc_info_set_inst_table(Proc4, InstTable, Proc5),

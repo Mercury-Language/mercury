@@ -1857,45 +1857,66 @@ inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
 	inst_table_get_all_tables(NewInstTable, NewUnifyInstTable,
 	        NewMergeInstTable, NewGroundInstTable, NewAnyInstTable,
 	        NewSharedInstTable, NewMostlyUniqInstTable, NewIKT),
-	inst_key_table_create_sub(IKT0, NewIKT, Sub0, IKT),
+	inst_key_table_create_sub(IKT0, NewIKT, Sub, IKT),
 
 	maybe_inst_det_table_apply_sub(UnifyInstTable0, NewUnifyInstTable,
-		UnifyInstTable, Sub0),
+		UnifyInstTable, Sub),
 
-	Sub1 = Sub0,
-	( map__is_empty(NewMergeInstTable) ->
-		MergeInstTable = MergeInstTable0,
-		Sub2 = Sub1
-	;
-		error("NYI: inst_table_create_sub (merge_inst_table)")
-	),
-	( map__is_empty(NewGroundInstTable) ->
-		GroundInstTable = GroundInstTable0,
-		Sub3 = Sub2
-	;
-		error("NYI: inst_table_create_sub (ground_inst_table)")
-	),
+	merge_inst_table_apply_sub(MergeInstTable0, NewMergeInstTable,
+		MergeInstTable, Sub),
+
+	maybe_inst_det_table_apply_sub(GroundInstTable0, NewGroundInstTable,
+		GroundInstTable, Sub),
+
 	( map__is_empty(NewAnyInstTable) ->
-		AnyInstTable = AnyInstTable0,
-		Sub4 = Sub3
+		AnyInstTable = AnyInstTable0
 	;
 		error("NYI: inst_table_create_sub (any_inst_table)")
 	),
 	( map__is_empty(NewSharedInstTable) ->
-		SharedInstTable = SharedInstTable0,
-		Sub5 = Sub4
+		SharedInstTable = SharedInstTable0
 	;
 		error("NYI: inst_table_create_sub (shared_inst_table)")
 	),
 	( map__is_empty(NewMostlyUniqInstTable) ->
-		MostlyUniqInstTable = MostlyUniqInstTable0,
-		Sub = Sub5
+		MostlyUniqInstTable = MostlyUniqInstTable0
 	;
 		error("NYI: inst_table_create_sub (mostly_uniq_inst_table)")
 	),
 	inst_table_set_all_tables(InstTable0, UnifyInstTable,
 	        MergeInstTable, GroundInstTable, AnyInstTable,
 	        SharedInstTable, MostlyUniqInstTable, IKT, InstTable).
+
+:- pred maybe_inst_table_apply_sub(map(inst_name, maybe_inst),
+		map(inst_name, maybe_inst), map(inst_name, maybe_inst),
+		inst_key_sub).
+:- mode maybe_inst_table_apply_sub(in, in, out, in) is det.
+
+maybe_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
+	( map__is_empty(Table0) ->
+		% Optimise common case
+		Table = Table0
+	;
+		map__to_assoc_list(NewTable, NewTableAL),
+		maybe_inst_table_apply_sub_2(NewTableAL, Table0, Table, Sub)
+	).
+
+:- pred maybe_inst_table_apply_sub_2(assoc_list(inst_name, maybe_inst),
+		map(inst_name, maybe_inst), map(inst_name, maybe_inst),
+		inst_key_sub).
+:- mode maybe_inst_table_apply_sub_2(in, in, out, in) is det.
+
+maybe_inst_table_apply_sub_2([], Table, Table, _).
+maybe_inst_table_apply_sub_2([InstName0 - Inst0 | Rest], Table0, Table, Sub) :-
+	inst_name_apply_sub(Sub, InstName0, InstName),
+	( Inst0 = unknown,
+		Inst = unknown
+	; Inst0 = known(I0),
+		inst_apply_sub(Sub, I0, I),
+		Inst = known(I)
+	),
+	map__set(Table0, InstName, Inst, Table1),
+	maybe_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
 
 :- pred maybe_inst_det_table_apply_sub(map(inst_name, maybe_inst_det),
 		map(inst_name, maybe_inst_det), map(inst_name, maybe_inst_det),
@@ -1927,8 +1948,39 @@ maybe_inst_det_table_apply_sub_2([InstName0 - InstDet0 | Rest], Table0, Table,
 		inst_apply_sub(Sub, Inst0, Inst),
 		InstDet = known(Inst, Det)
 	),
-	map__det_insert(Table0, InstName, InstDet, Table1),
+	map__set(Table0, InstName, InstDet, Table1),
 	maybe_inst_det_table_apply_sub_2(Rest, Table1, Table, Sub).
+
+:- pred merge_inst_table_apply_sub(merge_inst_table, merge_inst_table,
+		merge_inst_table, inst_key_sub).
+:- mode merge_inst_table_apply_sub(in, in, out, in) is det.
+
+merge_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
+	( map__is_empty(Table0) ->
+		% Optimise common case
+		Table = Table0
+	;
+		map__to_assoc_list(NewTable, NewTableAL),
+		merge_inst_table_apply_sub_2(NewTableAL, Table0, Table, Sub)
+	).
+
+:- pred merge_inst_table_apply_sub_2(assoc_list(pair(inst), maybe_inst),
+		merge_inst_table, merge_inst_table, inst_key_sub).
+:- mode merge_inst_table_apply_sub_2(in, in, out, in) is det.
+
+merge_inst_table_apply_sub_2([], Table, Table, _).
+merge_inst_table_apply_sub_2([(IA0 - IB0) - Inst0 | Rest], Table0, Table, 
+		Sub) :-
+	inst_apply_sub(Sub, IA0, IA),
+	inst_apply_sub(Sub, IB0, IB),
+	( Inst0 = unknown,
+		Inst = unknown
+	; Inst0 = known(I0),
+		inst_apply_sub(Sub, I0, I),
+		Inst = known(I)
+	),
+	map__set(Table0, IA - IB, Inst, Table1),
+	merge_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
 
 :- pred inst_name_apply_sub(inst_key_sub, inst_name, inst_name).
 :- mode inst_name_apply_sub(in, in, out) is det.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1085,8 +1085,13 @@ proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo) :-
 proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O,
 				P, Q),
-	ProcInfo = procedure(A, B, C, D, ArgModes, F, G, H, I,
-				J, K, L, M, N, O, P, Q).
+	ArgModes = argument_modes(_, Modes),
+	( list__same_length(D, Modes) ->
+		ProcInfo = procedure(A, B, C, D, ArgModes, F, G, H, I,
+				J, K, L, M, N, O, P, Q)
+	;
+		error("proc_info_set_argmodes")
+	).
 
 proc_info_set_maybe_arglives(ProcInfo0, ArgLives, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O,
