@@ -940,7 +940,7 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 {
 	MR_PredFunc			pred_or_func;
 	MR_ConstString			name;
-	MR_Word				arity;
+	int				arity;
 	MR_Word				atom;
 	int				hv;   /* any head variable */
 	int				num_added_args;
@@ -1301,13 +1301,13 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				&MR_trace_front_end_state
 			);
 		bug_found = MR_DD_diagnoser_bug_found(response,
-				(MR_Word *) &bug_event);
+				(MR_Integer *) &bug_event);
 		symptom_found = MR_DD_diagnoser_symptom_found(response,
-				(MR_Word *) &symptom_event);
+				(MR_Integer *) &symptom_event);
 		no_bug_found = MR_DD_diagnoser_no_bug_found(response);
 		require_subtree = MR_DD_diagnoser_require_subtree(response,
-				(MR_Word *) &final_event,
-				(MR_Word *) &topmost_seqno);
+				(MR_Integer *) &final_event,
+				(MR_Integer *) &topmost_seqno);
 	);
 
 	MR_trace_call_seqno = event_details->MR_call_seqno;
@@ -1430,7 +1430,7 @@ MR_trace_node_seqno(MR_Trace_Node node)
 	MR_TRACE_CALL_MERCURY(
 		if (!MR_DD_trace_node_seqno(MR_trace_node_store,
 					(MR_Word) node,
-					(MR_Word *) &seqno))
+					(MR_Integer *) &seqno))
 		{
 			MR_fatal_error("MR_trace_node_seqno: "
 				"not an interface event");
