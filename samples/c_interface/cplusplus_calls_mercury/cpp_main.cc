@@ -1,4 +1,4 @@
-#include "imp.h"	/* must come first */
+#include "mercury_imp.h"	/* must come first */
 #include "mercury_lib.h"	/* must come first */
 
 #include <stdio.h>
