@@ -153,7 +153,7 @@ CHMOD=go+w
 # Installation targets
 
 .PHONY: install
-install: install_mercury
+install: install_mercury $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 
 .PHONY: install_all
 install_all: install_mercury install_nuprolog install_sicstus

@@ -1,0 +1,37 @@
+/*
+** Copyright (C) 1995 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+/*
+** @configure_input@
+*/
+/*
+**	Various configuration parameters. Their meanings are:
+**
+**	HAVE_SYSCONF		the machine has the sysconf() syscall.
+**	HAVE_GETPAGESIZE	the machine has the getpagesize() syscall.
+**	HAVE_MEMALIGN		the machine has the memalign() libcall.
+**	HAVE_MPROTECT		the machine has the mprotect() syscall.
+**	RETSIGTYPE		the return type of signal handlers.
+**	HAVE_SIGINFO		signal handlers are given siginfo arguments.
+**	HAVE_UCONTEXT		signal handlers are given ucontext arguments
+**				and we need ucontext.h to get access.
+**	PC_INDEX		index of PC in ucontexts.
+**	HAVE_SIGACTION		the machine has the sigaction() syscall.
+**	SIGACTION_FIELD		the name of the field in the sigaction struct
+**				(either sa_handler or sa_sigaction).
+**	HAVE_CWD_DECL		<unistd.h> contains a declaration for cwd()
+*/
+
+#undef	HAVE_SYSCONF
+#undef	HAVE_GETPAGESIZE
+#undef	HAVE_MEMALIGN
+#undef	HAVE_MPROTECT
+#undef	RETSIGTYPE
+#undef	HAVE_SIGINFO
+#undef	HAVE_UCONTEXT
+#undef	PC_INDEX
+#undef	HAVE_SIGACTION
+#undef	SIGACTION_FIELD
+#undef	HAVE_CWD_DECL
