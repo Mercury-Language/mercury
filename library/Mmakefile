@@ -203,22 +203,14 @@ lib_std: mercury.dll
 # We have to hardcode the names of the runtime DLL files.
 RUNTIME_DLLS=mercury_mcpp.dll mercury_il.dll
 
-# Turn this on if you wish to enable .NET debugging.
-# But see the comments below about the install_debug_library target.
-DEBUG_MS_ILASMFLAGS=
-#DEBUG_MS_ILASMFLAGS=/debug
-#DEBUG_MS_CLFLAGS=/Zi
-#DEBUG_MS_CSCFLAGS=/debug
-
 	# -AI sets the assembly search path (just like -I for assemblies)
-MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` $(DEBUG_MS_CLFLAGS)
+MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)`
 # For some reason, using /clr:noAssembly results in a link error when
 # building io__cpp_code.dll, because it doesn't link in the native library
 # needed for putenv().  So we need to use /link /noassembly instead.
 # MS_CL_NOASM=:noAssembly
 MS_CL_LIBS=/link /noassembly
-MS_CSCFLAGS=/t:module $(DEBUG_MS_CSCFLAGS)
-MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
+MS_CSCFLAGS=/t:module
 
 # If you do generate a new strong name, you had better update
 # compiler/mlds_to_il.m to generate references to it.  It is also hard-coded
@@ -396,15 +388,6 @@ install_debug_library:
 	$(MMAKE) $(MMAKEFLAGS) munge_dll_debug_info
 	$(MMAKE) $(MMAKEFLAGS) install_library
 
-.PHONY: munge_dll_debug_info
-munge_dll_debug_info:
-	for file in *csharp_code.dll; do \
-		ildasm /out:$$file.ild $$file; \
-		sed  's/01 00 00 01/01 00 01 01/' $$file.ild \
-			> $$file.ild.munged; \
-		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
-	done
-
 # The GAC is the global assembly cache, which is the system managed
 # place to put .NET assemblies.
 # gacutil installs (and uninstalls) DLLs from the GAC.
@@ -472,5 +455,14 @@ install_split_library:
 	exit 1
 
 endif
+
+.PHONY: munge_dll_debug_info
+munge_dll_debug_info:
+	for file in *csharp_code.dll; do \
+		ildasm /out:$$file.ild $$file; \
+		sed  's/01 00 00 01/01 00 01 01/' $$file.ild \
+			> $$file.ild.munged; \
+		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
+	done
 
 #-----------------------------------------------------------------------------#
