@@ -4,11 +4,11 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: static_data.h,v 1.3 1997-04-24 05:31:25 aet Exp $
+** $Id: static_data.h,v 1.4 1997-04-26 03:16:15 fjh Exp $
 */
 
 
-#if	! defined(STATIC_DATA_H)
+#ifndef STATIC_DATA_H
 #define	STATIC_DATA_H
 
 /*

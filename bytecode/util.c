@@ -4,7 +4,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.c,v 1.5 1997-04-24 05:31:41 aet Exp $
+** $Id: util.c,v 1.6 1997-04-26 03:16:17 fjh Exp $
 */
 
 
@@ -14,13 +14,13 @@
 #include	<string.h>
 #include	<stdarg.h>
 
-#include	<util.h>
+#include	"util.h"
 
 
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: util.c,v 1.5 1997-04-24 05:31:41 aet Exp $";
+rcs_id[]	= "$Id: util.c,v 1.6 1997-04-26 03:16:17 fjh Exp $";
 
 /* Implementation */
 
@@ -34,8 +34,6 @@ util_error(const char *fmt, ...)
         vfprintf(stderr, fmt, arg_p);
         va_end(argp);
         fprintf(stderr, "\n");
-	
-	return;
 }
 
 
@@ -63,7 +61,7 @@ strdup(char* str)
 
 	size = strlen(str) + 1;
 	str2 = malloc(size); /* XXX: use mem_malloc */
-	for (c_p=str2; *str != '\0'; str++, c_p++)
+	for (c_p = str2; *str != '\0'; str++, c_p++)
 	{
 		*c_p = *str;
 	}

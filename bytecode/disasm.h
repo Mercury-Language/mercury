@@ -3,10 +3,10 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.h,v 1.4 1997-04-24 05:30:46 aet Exp $
+** $Id: disasm.h,v 1.5 1997-04-26 03:16:07 fjh Exp $
 */
 
-#if	! defined(DISASM_H)
+#ifndef DISASM_H
 #define	DISASM_H
 
 

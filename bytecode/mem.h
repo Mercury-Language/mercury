@@ -3,10 +3,10 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mem.h,v 1.3 1997-04-24 05:31:14 aet Exp $
+** $Id: mem.h,v 1.4 1997-04-26 03:16:14 fjh Exp $
 */
 
-#if	! defined(MEMALLOC_H)
+#ifndef MEMALLOC_H
 #define	MEMALLOC_H
 
 void*

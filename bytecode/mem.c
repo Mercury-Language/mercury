@@ -1,10 +1,9 @@
-
 /*
 ** Copyright (C) 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mem.c,v 1.3 1997-04-24 05:31:09 aet Exp $
+** $Id: mem.c,v 1.4 1997-04-26 03:16:13 fjh Exp $
 */
 
 /* Imports */
@@ -12,15 +11,15 @@
 #include	<stdio.h>
 #include	<string.h>
 
-#include	<util.h>
-#include	<mem.h>
+#include	"util.h"
+#include	"mem.h"
 
 /* Exported definitions */
 
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mem.c,v 1.3 1997-04-24 05:31:09 aet Exp $";
+rcs_id[]	= "$Id: mem.c,v 1.4 1997-04-26 03:16:13 fjh Exp $";
 
 /* 
  * Make sure the size of guard_bytes is a multiple of 8 to ensure we 

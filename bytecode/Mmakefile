@@ -32,12 +32,15 @@ HDRS		= bytecode.h disasm.h getopt.h mbi.h mem.h machine.h \
 ORIG_CS		= bytecode.c disasm.c machine.c mbi.c mdis.c mem.c \
 		  static_data.c template.c util.c
 OBJS		= $(ORIG_CS:.c=.o)
+PIC_OBJS	= $(OBJS:.o=.pic_o)
 
 LIBS		= -lmer -lgc
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
+# XXX if we're using makedepend, this line shouldn't be needed
+
+$(OBJS) $(PIC_OBJS): $(HDRS)
 
 #-----------------------------------------------------------------------------#
 
@@ -45,11 +48,15 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
 
 all: mdis mbi
 
-mdis: bytecode.o disasm.o mdis.o mem.o util.o
-	$(MGNUC) $(CFLAGS) -o mdis $^ $(LIBPATH) $(LIBS)
+MDIS_OBJS = bytecode.o disasm.o mdis.o mem.o util.o
+mdis: $(MDIS_OBJS)
+	$(MGNUC) $(CFLAGS) -o mdis $(MDIS_OBJS) $(LIBPATH) $(LIBS)
 
-mbi: bytecode.o mbi.o mem.o util.o
-	$(MGNUC) $(CFLAGS) -o mbi $^ $(LIBPATH) $(LIBS)
+MBI_OBJS = bytecode.o mbi.o mem.o util.o
+mbi: $(MBI_OBJS)
+	$(MGNUC) $(CFLAGS) -o mbi $(MBI_OBJS) $(LIBPATH) $(LIBS)
+
+#-----------------------------------------------------------------------------#
 
 tags: $(ORIG_CS)
 	ctags $(ORIG_CS)

@@ -3,10 +3,10 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: machine.h,v 1.3 1997-04-24 05:30:52 aet Exp $
+** $Id: machine.h,v 1.4 1997-04-26 03:16:08 fjh Exp $
 */
 
-#if	! defined(MACHINE_H)
+#ifndef MACHINE_H
 #define	MACHINE_H
 
 #define	MAX_REGISTERS	40

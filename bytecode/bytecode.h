@@ -3,16 +3,16 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: bytecode.h,v 1.9 1997-04-24 05:30:38 aet Exp $
+** $Id: bytecode.h,v 1.10 1997-04-26 03:16:04 fjh Exp $
 */
 
-#if	! defined(BYTECODE_H)
+#ifndef BYTECODE_H
 #define	BYTECODE_H
 
-#include	<conf.h>
-#include	<mercury_types.h>
-#include	<mercury_float.h>
-#include	<gc.h>
+#include	"conf.h"
+#include	"mercury_types.h"
+#include	"mercury_float.h"
+#include	"gc.h"
 
 /*
  * XXX: We should make bytecode portable from platform to platform.

@@ -4,11 +4,11 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.h,v 1.7 1997-04-24 05:31:48 aet Exp $
+** $Id: util.h,v 1.8 1997-04-26 03:16:18 fjh Exp $
 */
 
 
-#if	! defined(UTIL_H)
+#ifndef UTIL_H
 #define	UTIL_H
 
 typedef int
@@ -30,13 +30,13 @@ typedef unsigned int
  * XXX: For some bizzare reason TRUE and FALSE are often defined by the C
  * libraries! Are they defined in pure POSIX or pure ANSI?
  */
-#if	! defined(TRUE)
+#ifndef TRUE
 #define	TRUE	1
-#endif	/* ! TRUE */
+#endif
 
-#if	! defined(FALSE)
+#ifndef FALSE
 #define	FALSE	0
-#endif	/* ! FALSE */
+#endif
 
 #define	INT_SIZE	(sizeof(int))
 #define	FLOAT_SIZE	(sizeof(float))

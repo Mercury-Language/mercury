@@ -4,11 +4,11 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: template.h,v 1.4 1997-04-24 05:31:36 aet Exp $
+** $Id: template.h,v 1.5 1997-04-26 03:16:16 fjh Exp $
 */
 
 
-#if	! defined(TEMPLATE_H)
+#ifndef TEMPLATE_H
 #define	TEMPLATE_H
 
 

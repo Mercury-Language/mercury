@@ -3,23 +3,24 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.c,v 1.5 1997-04-24 05:30:54 aet Exp $
+** $Id: mbi.c,v 1.6 1997-04-26 03:16:09 fjh Exp $
 */
+
+/* Imports */
 
 	/*
 	** Interface to Mercury runtime must be included first.
 	*/
-#include	<imp.h>	
+#include	"imp.h"
 
-/* Imports */
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<unistd.h>
 #include	<getopt.h>
 
-#include	<util.h>
-#include	<mem.h>
-#include	<mbi.h>
+#include	"util.h"
+#include	"mem.h"
+#include	"mbi.h"
 
 
 /* Exports */
@@ -28,7 +29,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mbi.c,v 1.5 1997-04-24 05:30:54 aet Exp $";
+rcs_id[]	= "$Id: mbi.c,v 1.6 1997-04-26 03:16:09 fjh Exp $";
 
 static void
 usage(void);
@@ -40,7 +41,7 @@ program_name	= NULL;
 
 #if	! defined(UNIT_TESTING)
 
-void
+int
 main(int argc, char* argv[])
 {
 	int	c;
@@ -52,37 +53,31 @@ main(int argc, char* argv[])
 	opterr = 0;
 
 	/* Read options */
-	while ((c = getopt(argc,argv,"h")) != EOF)
-	{
-		switch (c) 
-		{
-		case 'h':
-			usage();
-			exit(EXIT_SUCCESS);
-			break;
-		default:
-			usage();
-			exit(EXIT_FAILURE);
-			break;
+	while ((c = getopt(argc,argv,"h")) != EOF) {
+		switch (c) {
+			case 'h':
+				usage();
+				exit(EXIT_SUCCESS);
+				break;
+			default:
+				usage();
+				exit(EXIT_FAILURE);
+				break;
 		}
 	}
 
 	/* We _must_ have a file argument */
-	if (optind == argc)
-	{
+	if (optind == argc) {
 		usage();
-	}
-	else /* Process each bytecode file in order */
-	{
+	} else {
+		/* Process each bytecode file in order */
 		int 	i;
 		char	*filename;
 		FILE	*fp;
 
-		for (i=optind; i < argc; i++)
-		{
+		for (i = optind; i < argc; i++) {
 			filename = argv[i];
-			if ((fp = fopen(filename, "r")) != NULL)
-			{
+			if ((fp = fopen(filename, "r")) != NULL) {
 #if 0
 				if (is bytecode file) /* file ext = .mb */
 				{
@@ -94,39 +89,32 @@ main(int argc, char* argv[])
 				{
 					do a dlopen and add to list
 					of shlibs.
-				}
-				else
-				{
+				} else {
 					error: wrong file extension
 				}
 				
 #endif /* 0 */
-			}
-			else
-			{
+			} else {
 				/* XXX: Give better error message */
 				util_error("can not open file \"%s\"",
 					filename);
 			}
-		} /* for */
+		} /* end for */
 
 		/*
 		 * XXX: Now start the bytecode interpreter
 		 * Fire up the read-eval-print loop?
 		 */
 
-	} /* else */
+	} /* end else */
 
 	exit(EXIT_SUCCESS);
-} /* main */
+} /* end main() */
 
 #endif	/* ! UNIT_TESTING */
 
-void
-usage()
+static void
+usage(void)
 {
-	fprintf(stderr, "Usage: %s [-h] files\n", program_name
-	);
-	return;
+	fprintf(stderr, "Usage: %s [-h] files\n", program_name);
 }
-

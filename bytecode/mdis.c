@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mdis.c,v 1.4 1997-04-24 05:31:01 aet Exp $
+** $Id: mdis.c,v 1.5 1997-04-26 03:16:11 fjh Exp $
 */
 
 /* Imports */
@@ -18,7 +18,7 @@
 #include	<mdis.h>
 
 static char
-rcs_id[]	= "$Id: mdis.c,v 1.4 1997-04-24 05:31:01 aet Exp $";
+rcs_id[]	= "$Id: mdis.c,v 1.5 1997-04-26 03:16:11 fjh Exp $";
 
 /* Local declarations */
 static void
@@ -31,7 +31,7 @@ program_name	= NULL;
 
 #if	! defined(UNIT_TESTING)
 
-void
+int
 main(int argc, char* argv[])
 {
 	int	c;
@@ -43,58 +43,47 @@ main(int argc, char* argv[])
 	opterr = 0;
 
 	/* Read options */
-	while ((c = getopt(argc,argv,"h")) != EOF)
-	{
-		switch (c) 
-		{
-		case 'h':
-			usage();
-			exit(EXIT_SUCCESS);
-			break;
-		default:
-			usage();
-			exit(EXIT_FAILURE);
-			break;
+	while ((c = getopt(argc,argv,"h")) != EOF) {
+		switch (c) {
+			case 'h':
+				usage();
+				exit(EXIT_SUCCESS);
+				break;
+			default:
+				usage();
+				exit(EXIT_FAILURE);
+				break;
 		}
 	}
 
 	/* If no arguments, then assume bytecode stream is on stdin */
-	if (optind == argc)
-	{
+	if (optind == argc) {
 		disassemble(stdin);
-	}
-	else /* Process each bytecode file in order */
-	{
+	} else {
+		/* Process each bytecode file in order */
 		int 	i;
 		char	*filename;
 		FILE	*fp;
 
-		for (i=optind; i < argc; i++)
-		{
+		for (i = optind; i < argc; i++) {
 			filename = argv[i];
-			if ((fp = fopen(filename, "r")) != NULL)
-			{
+			if ((fp = fopen(filename, "r")) != NULL) {
 				disassemble(fp);
-			}
-			else
-			{
+			} else {
 				/* XXX: Give better error message */
 				util_error("can not open bytecode file \"%s\"",
 					filename);
 			}
 		}
-	} /* else */
+	} /* end else */
 
 	exit(EXIT_SUCCESS);
-} /* main */
+} /* end main() */
 
 #endif	/* UNIT_TESTING */
 
-void
-usage()
+static void
+usage(void)
 {
-	fprintf(stderr, "usage: %s [-h] [files]\n",
-		program_name);
-	return;
+	fprintf(stderr, "usage: %s [-h] [files]\n", program_name);
 }
-
