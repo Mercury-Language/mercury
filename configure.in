@@ -77,7 +77,7 @@ AC_SUBST(GNU_MAKE)
 INSTALL_SICSTUS=
 SP=
 echo "looking for SICStus Prolog..."
-AC_PROGRAMS_CHECK(SP,sp prolog)
+AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
 if test "$SP" != ""; then
 	case "`echo 'prolog_flag(version, V, V), write(V), nl, halt.' |
 			$SP 2>&1`" in
@@ -680,6 +680,40 @@ fi
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $DEFAULT_GRADE / /" `
 echo "using \`LIBGRADES=$LIBGRADES' as the set of library grades to install"
 AC_SUBST(LIBGRADES)
+#-----------------------------------------------------------------------------#
+
+#
+# Determine how many of the r registers (r1, r2, ...) are real registers.
+#
+
+case "$host" in
+	i?86-*)
+		# NUM_REAL_REGS=3
+		# but succip and sp are real regs, so subtract 2
+		NUM_REAL_R_REGS=1
+		;;
+	alpha-*)
+		# NUM_REAL_REGS=7
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=4
+		;;
+	mips-*)
+		# NUM_REAL_REGS=8
+		# but succip, sp, and hp are real regs, so subtract 3
+		NUM_REAL_R_REGS=5
+		;;
+	sparc-*)
+		# NUM_REAL_REGS=10
+		# but succip, sp, hp, maxfr, and curfr are real regs,
+		% so subtract 5
+		NUM_REAL_R_REGS=5
+		;;
+	*)
+		NUM_REAL_R_REGS=0
+		;;
+esac
+AC_SUBST(NUM_REAL_R_REGS)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
