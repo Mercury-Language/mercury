@@ -17,3 +17,5 @@ mercury_compile
 mercury_compile.dep
 mercury_compile.dv
 Mercury
+*.ilk
+*.pdb

@@ -22,4 +22,6 @@ mer_std.init
 library.dep
 library.dv
 Mercury
+*.ilk
+*.pdb
 libmer_std.lib
