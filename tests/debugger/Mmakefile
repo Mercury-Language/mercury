@@ -67,8 +67,11 @@ endif
 breakpoints.out: breakpoints breakpoints.inp
 	$(MDB) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 browser_test.out: browser_test browser_test.inp
-	$(MDB) ./browser_test < browser_test.inp > browser_test.out 2>&1
+	$(MDB) ./browser_test < browser_test.inp 2>&1 | \
+		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browser_test.out 2>&1
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
@@ -84,10 +87,12 @@ exception_vars.out: exception_vars exception_vars.inp
 		true;						\
 	fi
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
-	$(MDB) ./existential_type_classes < existential_type_classes.inp \
-		> existential_type_classes.out 2>&1
+	$(MDB) ./existential_type_classes < existential_type_classes.inp 2>&1 | \
+		sed 's/string.m:[0-9]*/string.m:NNNN/g' > existential_type_classes.out
 
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \
@@ -101,9 +106,11 @@ interpreter.out: interpreter interpreter.inp
 loopcheck.out: loopcheck loopcheck.inp
 	-$(MDB) ./loopcheck < loopcheck.inp > loopcheck.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 multi_parameter.out: multi_parameter multi_parameter.inp
-	$(MDB) ./multi_parameter < multi_parameter.inp \
-		> multi_parameter.out 2>&1
+	$(MDB) ./multi_parameter < multi_parameter.inp 2>&1 | \
+		sed 's/char.m:[0-9]*/char.m:NNNN/g' > multi_parameter.out
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1

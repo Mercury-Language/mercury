@@ -55,9 +55,9 @@ mdb> P
 mdb> continue -a
       13:      9  5 CALL existential_type_classes.m:47 (from existential_type_classes.m:25)
                          pred existential_type_classes:string_foo/2-0 (det)
-      14:     10  6 CALL string.m:1692 (from existential_type_classes.m:47)
+      14:     10  6 CALL string.m:NNNN (from existential_type_classes.m:47)
                          pred string:length/2-0 (det)
-      15:     10  6 EXIT string.m:1692 (from existential_type_classes.m:47)
+      15:     10  6 EXIT string.m:NNNN (from existential_type_classes.m:47)
                          pred string:length/2-0 (det)
       16:      9  5 EXIT existential_type_classes.m:47 (from existential_type_classes.m:25)
                          pred existential_type_classes:string_foo/2-0 (det)
