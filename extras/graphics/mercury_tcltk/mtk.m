@@ -241,7 +241,6 @@
 	;	highlight_background(ground)
 	;	highlight_color(ground)
 	;	highlight_thickness(ground)
-	;	height(ground)
 	;	multiple_select(ground)
 	;	relief(ground)
 	;	select_background(ground)
