@@ -85,6 +85,17 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 			union_deps(target_dependencies(Globals, FileType)),
 			ModulesToCheck, DepsSuccess, set__init,
 			DepFiles0, Info4, Info5),
+		{ TargetFile = _ - private_interface ->
+			% Avoid circular dependencies (the `.int0' files
+			% for the nested sub-modules depend on this module's
+			% `.int0' file).
+			DepFilesToMake = set__to_sorted_list(
+				set__delete_list(DepFiles0, 
+				make_dependency_list(ModulesToCheck,
+					private_interface)))
+		;
+			DepFilesToMake = set__to_sorted_list(DepFiles0)
+		},
 		{ DepFiles = set__to_sorted_list(DepFiles0) },
 
 		debug_msg(
@@ -118,10 +129,10 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 			{ DepsResult = error }
 		;
 			foldl2_maybe_stop_at_error(KeepGoing,
-				make_module_target, DepFiles,
+				make_module_target, DepFilesToMake,
 				_, Info8, Info9),
 			check_dependencies(TargetFileName,
-				MaybeOldestTimestamp, DepFiles,
+				MaybeOldestTimestamp, DepFilesToMake,
 				DepsResult0, Info9, Info10),
 			{ DepsResult =
 				( DepsSuccess = yes -> DepsResult0 ; error ) }
