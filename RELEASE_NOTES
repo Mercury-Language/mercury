@@ -180,7 +180,7 @@ encountered already; if not, send us mail at <mercury-bugs@cs.mu.oz.au>.
 
 The current distribution uses gcc as the compiler. We require gcc
 version 2.6.3 or higher, due to a bug in some earlier versions of gcc.
-You will also need GNU make.
+You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution contains:
 
