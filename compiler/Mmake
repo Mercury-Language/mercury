@@ -41,9 +41,9 @@ COMPILER_OBJS = $(mercury_compile.nos)
 .PHONY: depend
 depend : mercury_compile.depend
 
-# we need to make sure the .pp files get converted to .nl before
+# we need to make sure the .pp files get converted to .m before
 # we do the make depend
-mercury_compile.depend: mercury_compile.nl optimize.nl code_gen.nl
+mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
 
 .PHONY: all
 all : mercury_compile
