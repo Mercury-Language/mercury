@@ -28,8 +28,8 @@ then
     rm -f I.$$
 
     if [ -s INTRODUCED.diff ]; then
-        echo "the tests in the general/accumulator directory failed"
-        echo "as some predicates didn't have accumulators introduced"
+        echo "** the tests in the general/accumulator directory failed"
+        echo "** as some predicates didn't have accumulators introduced"
         echo "mmakeopts=$mmakeopts"
 	    echo "the predicates are:"
         cat INTRODUCED.diff
