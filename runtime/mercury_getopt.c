@@ -696,7 +696,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 		MR_optarg = nameend + 1;
 	      else
 		{
-		  if (MR_opterr)
+		  if (MR_opterr) {
 		   if (argv[MR_optind - 1][1] == '-')
 		    /* --MR_option */
 		    fprintf (stderr,
@@ -707,6 +707,7 @@ MR__getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 		    fprintf (stderr,
 		     _("%s: option `%c%s' doesn't allow an argument\n"),
 		     argv[0], argv[MR_optind - 1][0], pfound->name);
+		  }
 
 		  MR_nextchar += strlen (MR_nextchar);
 
