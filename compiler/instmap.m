@@ -550,7 +550,7 @@ bind_inst_to_functor(Type, ConsId, Inst0, Inst, ModuleInfo0, ModuleInfo) :-
 	list__duplicate(Arity, free, ArgInsts),
 	(
 		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts, 
-			ArgLives, real_unify, ModuleInfo0, Inst1, _Det,
+			ArgLives, real_unify, Type, ModuleInfo0, Inst1, _Det,
 			ModuleInfo1)
 	->
 		ModuleInfo = ModuleInfo1,

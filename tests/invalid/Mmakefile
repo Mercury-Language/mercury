@@ -31,6 +31,7 @@ MULTIMODULE_PROGS= \
 
 SINGLEMODULE_PROGS= \
 	any_mode \
+	any_should_not_match_bound \
 	assert_in_interface \
 	bigtest \
 	bind_in_negated \

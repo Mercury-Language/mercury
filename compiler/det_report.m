@@ -575,7 +575,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
 				TypeDefn) },
 			{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-			{ TypeBody = du_type(_, ConsTable, _, _, _, _) }
+			{ ConsTable = TypeBody ^ du_type_cons_tag_values }
 		->
 			{ map__keys(ConsTable, ConsIds) },
 			{ det_diagnose_missing_consids(ConsIds, Cases,

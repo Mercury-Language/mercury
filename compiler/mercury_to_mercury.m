@@ -1732,14 +1732,15 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo) -->
 		type_defn, prog_context, io__state, io__state).
 :- mode mercury_output_type_defn(in, in, in, in, in, di, uo) is det.
 
-mercury_output_type_defn(VarSet, Name, Args, abstract_type, Context) -->
-	io__write_string(":- type "),
+mercury_output_type_defn(VarSet, Name, Args, abstract_type(IsSolverType),
+		Context) -->
+	mercury_output_begin_type_decl(IsSolverType),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no, next_to_graphic_token),
 	io__write_string(".\n").
 
 mercury_output_type_defn(VarSet, Name, Args, eqv_type(Body), Context) -->
-	io__write_string(":- type "),
+	mercury_output_begin_type_decl(non_solver_type),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no),
 	io__write_string(" == "),
@@ -1747,8 +1748,8 @@ mercury_output_type_defn(VarSet, Name, Args, eqv_type(Body), Context) -->
 	io__write_string(".\n").
 
 mercury_output_type_defn(VarSet, Name, Args,
-		du_type(Ctors, MaybeEqCompare), Context) -->
-	io__write_string(":- type "),
+		du_type(Ctors, IsSolverType, MaybeEqCompare), Context) -->
+	mercury_output_begin_type_decl(IsSolverType),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no),
 	io__write_string("\n\t--->\t"),
@@ -1760,6 +1761,14 @@ mercury_output_type_defn(VarSet, Name, Args,
 	),
 	mercury_output_equality_compare_preds(MaybeEqCompare),
 	io__write_string("\n\t.\n").
+
+:- pred mercury_output_begin_type_decl(is_solver_type, io__state, io__state).
+:- mode mercury_output_begin_type_decl(in, di, uo) is det.
+
+mercury_output_begin_type_decl(solver_type) -->
+	io__write_string(":- solver type ").
+mercury_output_begin_type_decl(non_solver_type) -->
+	io__write_string(":- type ").
 
 :- pred mercury_output_equality_compare_preds(maybe(unify_compare)::in,
 		io__state::di, io__state::uo) is det.

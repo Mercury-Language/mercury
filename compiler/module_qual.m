@@ -644,8 +644,9 @@ update_import_status(include_module(_), Info0, Info, yes) :-
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
 	mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_type_defn(du_type(Ctors0, MaybeEqualityPred0),
-		du_type(Ctors, MaybeEqualityPred), Info0, Info) -->
+qualify_type_defn(du_type(Ctors0, IsSolverType, MaybeEqualityPred0),
+		du_type(Ctors, IsSolverType, MaybeEqualityPred),
+		Info0, Info) -->
 	qualify_constructors(Ctors0, Ctors, Info0, Info),
 
 	% User-defined equality pred names will be converted into
@@ -655,7 +656,8 @@ qualify_type_defn(du_type(Ctors0, MaybeEqualityPred0),
 	{ MaybeEqualityPred = MaybeEqualityPred0 }.
 qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info) -->
 	qualify_type(Type0, Type, Info0, Info).	
-qualify_type_defn(abstract_type, abstract_type, Info, Info) --> [].
+qualify_type_defn(abstract_type(IsSolverType), abstract_type(IsSolverType),
+		Info, Info) --> [].
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.

@@ -2922,7 +2922,16 @@ hlds_out__write_types_2(Indent, [TypeCtor - TypeDefn | Types]) -->
 	),
 
 	hlds_out__write_indent(Indent),
-	io__write_string(":- type "),
+	(
+		{ TypeBody ^ du_type_is_solver_type = solver_type
+		; TypeBody = abstract_type(solver_type)
+		; TypeBody = foreign_type(_, solver_type)
+		}
+	->
+		io__write_string(":- solver type ")
+	;
+		io__write_string(":- type ")
+	),
 	hlds_out__write_type_name(TypeCtor),
 	hlds_out__write_type_params(TVarSet, TypeParams),
 	{ Indent1 = Indent + 1 },
@@ -2967,7 +2976,7 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 
 hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
-		MaybeEqualityPred, ReservedTag, Foreign)) -->
+		MaybeEqualityPred, ReservedTag, _IsSolverType, Foreign)) -->
 	io__write_string(" --->\n"),
 	( { Enum = yes } ->
 		hlds_out__write_indent(Indent),
@@ -3020,10 +3029,10 @@ hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 	term_io__write_term(Tvarset, Type),
 	io__write_string(".\n").
 
-hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
+hlds_out__write_type_body(_Indent, _Tvarset, abstract_type(_IsSolverType)) -->
 	io__write_string(".\n").
 
-hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_)) -->
+hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _)) -->
 	% XXX
 	io__write_string(" == $foreign_type.\n").
 

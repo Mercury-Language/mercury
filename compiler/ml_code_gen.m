@@ -895,7 +895,7 @@ foreign_type_required_imports(il, TypeDefn) = Imports :-
 	hlds_data__get_type_defn_body(TypeDefn, Body),
 	(
 		Body = foreign_type(foreign_type_body(MaybeIL,
-			_MaybeC, _MaybeJava))
+			_MaybeC, _MaybeJava), _)
 	->
 		( MaybeIL = yes(il(_, Location, _) - _) ->
 			Name = il_assembly_name(mercury_module_name_to_mlds(

@@ -55,10 +55,10 @@ in the general case.
 	% Compute the inst that results from abstractly unifying two variables.
 
 :- pred abstractly_unify_inst_functor(is_live, inst, cons_id, list(inst),
-				list(is_live), unify_is_real, module_info,
-				inst, determinism, module_info).
-:- mode abstractly_unify_inst_functor(in, in, in, in, in, in, in, out, out, out)
-	is semidet.
+		list(is_live), unify_is_real, (type), module_info,
+		inst, determinism, module_info).
+:- mode abstractly_unify_inst_functor(in, in, in, in, in, in, in, in,
+		out, out, out) is semidet.
 
 	% Compute the inst that results from abstractly unifying
 	% a variable with a functor.
@@ -484,11 +484,12 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, Real, ModuleInfo0,
 	% with a functor.
 
 abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives,
-		Real, ModuleInfo0, Inst, Det, ModuleInfo) :-
+		Real, Type, ModuleInfo0, Inst, Det, ModuleInfo) :-
 	inst_expand(ModuleInfo0, InstA, InstA2),
 	( InstA2 = constrained_inst_vars(InstVars, InstA3) ->
 		abstractly_unify_inst_functor(Live, InstA3, ConsId, ArgInsts,
-			ArgLives, Real, ModuleInfo0, Inst0, Det, ModuleInfo),
+			ArgLives, Real, Type, ModuleInfo0, Inst0, Det,
+			ModuleInfo),
 		(
 			inst_matches_final(Inst0, InstA3, ModuleInfo)
 		->
@@ -514,35 +515,43 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives,
 		)
 	;
 		abstractly_unify_inst_functor_2(Live, InstA2, ConsId, ArgInsts,
-			ArgLives, Real, ModuleInfo0, Inst, Det, ModuleInfo)
+			ArgLives, Real, Type, ModuleInfo0, Inst, Det,
+			ModuleInfo)
 	).
 
 :- pred abstractly_unify_inst_functor_2(is_live, inst, cons_id, list(inst),
-			list(is_live), unify_is_real, module_info,
+			list(is_live), unify_is_real, (type), module_info,
 			inst, determinism, module_info).
-:- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, in,
+:- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, in, in,
 			out, out, out) is semidet.
 
-	% XXX need to handle `any' insts
-
-abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, M,
+abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, _, M,
 			not_reached, erroneous, M).
 
 abstractly_unify_inst_functor_2(live, free, ConsId, Args0, ArgLives, _Real,
-			ModuleInfo0,
+			_, ModuleInfo0,
 			bound(unique, [functor(ConsId, Args)]), det,
 			ModuleInfo) :-
 	inst_list_is_ground_or_any_or_dead(Args0, ArgLives, ModuleInfo0),
 	maybe_make_shared_inst_list(Args0, ArgLives, ModuleInfo0,
 			Args, ModuleInfo).
 
+abstractly_unify_inst_functor_2(live, any(Uniq), ConsId, ArgInsts,
+		ArgLives, Real, Type, ModuleInfo0, Inst, Det, ModuleInfo) :-
+	% We only allow `any' to unify with a functor if we know that
+	% the type is not a solver type.
+	\+ type_util__is_solver_type(ModuleInfo0, Type),
+	make_any_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real,
+		ModuleInfo0, AnyArgInsts, Det, ModuleInfo),
+	Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
+
 abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), ConsId, Args,
-			ArgLives, Real, M0, bound(Uniq, List), Det, M) :-
+			ArgLives, Real, _, M0, bound(Uniq, List), Det, M) :-
 	abstractly_unify_bound_inst_list_lives(ListX, ConsId, Args, ArgLives,
 					Real, M0, List, Det, M).
 
 abstractly_unify_inst_functor_2(live, ground(Uniq, _), ConsId, ArgInsts,
-		ArgLives, Real, M0, Inst, Det, M) :-
+		ArgLives, Real, _, M0, Inst, Det, M) :-
 	make_ground_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real, M0,
 		GroundArgInsts, Det, M),
 	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
@@ -551,20 +560,27 @@ abstractly_unify_inst_functor_2(live, ground(Uniq, _), ConsId, ArgInsts,
 %		_, _) :-
 %       fail.
 
-abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, M,
+abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, _, M,
 					not_reached, erroneous, M).
 
-abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, M,
-			bound(unique, [functor(ConsId, Args)]), det, M).
+abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, _,
+			M, bound(unique, [functor(ConsId, Args)]), det, M).
+
+abstractly_unify_inst_functor_2(dead, any(Uniq), ConsId, ArgInsts,
+		_ArgLives, Real, Type, ModuleInfo0, Inst, Det, ModuleInfo) :-
+	\+ type_util__is_solver_type(ModuleInfo0, Type),
+	make_any_inst_list(ArgInsts, dead, Uniq, Real, ModuleInfo0,
+		AnyArgInsts, Det, ModuleInfo),
+	Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
 
 abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), ConsId, Args,
-			_ArgLives, Real, M0, bound(Uniq, List), Det, M) :-
+			_ArgLives, Real, _, M0, bound(Uniq, List), Det, M) :-
 	ListY = [functor(ConsId, Args)],
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, Real, M0,
 		List, Det, M).
 
 abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
-		_ArgLives, Real, M0, Inst, Det, M) :-
+		_ArgLives, Real, _, M0, Inst, Det, M) :-
 	make_ground_inst_list(ArgInsts, dead, Uniq, Real, M0,
 		GroundArgInsts, Det, M),
 	Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
@@ -1090,6 +1106,26 @@ make_any_inst_list([Inst0 | Insts0], Live, Uniq, Real, ModuleInfo0,
 		Inst, Det1, ModuleInfo1),
 	make_any_inst_list(Insts0, Live, Uniq, Real, ModuleInfo1,
 		Insts, Det2, ModuleInfo),
+	det_par_conjunction_detism(Det1, Det2, Det).
+
+:- pred make_any_inst_list_lives(list(inst), is_live, list(is_live),
+			uniqueness, unify_is_real,
+			module_info, list(inst), determinism, module_info).
+:- mode make_any_inst_list_lives(in, in, in, in, in, in, out, out, out)
+				is semidet.
+
+make_any_inst_list_lives([], _, _, _, _, ModuleInfo, [], det, ModuleInfo).
+make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
+		Uniq, Real, ModuleInfo0, [Inst | Insts], Det, ModuleInfo) :-
+	( Live = live, ArgLive = live ->
+		BothLive = live
+	;
+		BothLive = dead
+	),
+	make_any_inst(Inst0, BothLive, Uniq, Real, ModuleInfo0,
+		Inst, Det1, ModuleInfo1),
+	make_any_inst_list_lives(Insts0, Live, ArgLives, Uniq, Real,
+		ModuleInfo1, Insts, Det2, ModuleInfo),
 	det_par_conjunction_detism(Det1, Det2, Det).
 
 %-----------------------------------------------------------------------------%

@@ -79,6 +79,14 @@
 :- pred type_body_has_user_defined_equality_pred(module_info::in,
 		hlds_type_body::in, unify_compare::out) is semidet.
 
+	% Succeed if the inst `any' can be considered `bound' for this type.
+:- pred type_util__is_solver_type(module_info, (type)).
+:- mode type_util__is_solver_type(in, in) is semidet.
+
+:- pred type_body_is_solver_type(module_info, hlds_type_body).
+:- mode type_body_is_solver_type(in, in) is semidet.
+
+
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
 	% there is no need to actually pass them, and so when
@@ -563,7 +571,8 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
 	; Name = "typeclass_info"
 	; Name = "base_typeclass_info"
 	),
-	\+ ( Body = du_type(_, _, _, _, _, yes(_)) ; Body = foreign_type(_) ).
+	\+ ( Body = du_type(_, _, _, _, _, _, yes(_))
+		; Body = foreign_type(_, _) ).
 
 is_introduced_type_info_type(Type) :-
 	sym_name_and_args(Type, TypeName, _),
@@ -732,9 +741,37 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
 	(
 		TypeBody ^ du_type_usereq = yes(UserEqComp)
 	;
-		TypeBody = foreign_type(ForeignTypeBody),
+		TypeBody = foreign_type(ForeignTypeBody, _),
 		UserEqComp = foreign_type_body_has_user_defined_equality_pred(
 				ModuleInfo, ForeignTypeBody)
+	).
+
+type_util__is_solver_type(ModuleInfo, Type) :-
+	module_info_types(ModuleInfo, TypeTable),
+	( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
+		map__search(TypeTable, TypeCtor, TypeDefn),
+			% Type table search will fail for builtin types such as
+			% `int/0'.  Such types are not solver types so
+			% type_util__is_solver_type fails too.
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		type_body_is_solver_type(ModuleInfo, TypeBody)
+	;
+		% type_to_ctor_and_args will fail for type variables.  In that
+		% case we assume that the type may be a solver type.
+		true
+	).
+
+	% Return the `is_solver_type' field for the type body.
+type_body_is_solver_type(ModuleInfo, TypeBody) :-
+	(
+		TypeBody ^ du_type_is_solver_type = solver_type
+	;
+		TypeBody = eqv_type(Type),
+		type_util__is_solver_type(ModuleInfo, Type)
+	; 
+		TypeBody = foreign_type(_, solver_type)
+	;
+		TypeBody = abstract_type(solver_type)
 	).
 
 	% Certain types, e.g. io__state and store__store(S),

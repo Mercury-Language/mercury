@@ -203,6 +203,17 @@
 	;	erroneous
 	;	failure.
 
+	% The `is_solver_type' type specifies whether a type is a "solver" type,
+	% for which `any' insts are interpreted as "don't know", or a non-solver
+	% type for which `any' is the same as `bound(...)'.
+:- type is_solver_type
+	--->	non_solver_type
+			% The inst `any' is always `bound' for this type.
+	;	solver_type.
+			% The inst `any' is not always `bound' for this type
+			% (i.e. the type was declared with
+			% `:- solver type ...').
+
 :- type item_warning
 	--->	item_warning(
 			maybe(option),	% Option controlling whether the
@@ -307,7 +318,6 @@
 
 	;	reserve_tag(sym_name, arity)
 			% Typename, Arity
-
 
 	%
 	% Aditi pragmas
@@ -900,9 +910,9 @@
 % type_defn/3 is defined above as a constructor for item/0
 
 :- type type_defn	
-	--->	du_type(list(constructor), maybe(unify_compare))
+	--->	du_type(list(constructor), is_solver_type, maybe(unify_compare))
 	;	eqv_type(type)
-	;	abstract_type.
+	;	abstract_type(is_solver_type).
 
 :- type constructor	
 	--->	ctor(

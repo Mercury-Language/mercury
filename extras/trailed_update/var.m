@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2002 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 :- import_module io, std_util.
 
 	% A `var(T)' is a Prolog-style variable that holds a value of type T.
-:- type var(T).
+:- solver type var(T).
 
 	% `init(Var)' can be used to initialize
 	% the inst of a variable to `any'.
@@ -166,7 +166,7 @@
 	% representations simply because that name is "traditional".
 	% (Note that the representation can be printed out, if you call
 	% io__write(Var), so this is not entirely hidden from the user.)
-:- type var(T) ---> '$VAR'(var_rep(T))
+:- solver type var(T) ---> '$VAR'(var_rep(T))
 	where equality is (==).
 
 :- type var_rep(T)

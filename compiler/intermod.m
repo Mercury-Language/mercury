@@ -1034,7 +1034,7 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 	    hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
 	    (
 		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
-			ReservedTag, MaybeForeign0)
+			ReservedTag, IsSolverType, MaybeForeign0)
 	    ->
 		intermod__resolve_unify_compare_overloading(ModuleInfo,
 			TypeCtor, MaybeUserEqComp0, MaybeUserEqComp,
@@ -1051,15 +1051,15 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 			Info3 = Info2
 		),
 		TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
-				ReservedTag, MaybeForeign),
+				ReservedTag, IsSolverType, MaybeForeign),
 		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
 	    ;	
-		TypeBody0 = foreign_type(ForeignTypeBody0)
+		TypeBody0 = foreign_type(ForeignTypeBody0, IsSolverType)
 	    ->
 		intermod__resolve_foreign_type_body_overloading(ModuleInfo,
 			TypeCtor, ForeignTypeBody0, ForeignTypeBody,
 			Info1, Info3),
-		TypeBody = foreign_type(ForeignTypeBody),
+		TypeBody = foreign_type(ForeignTypeBody, IsSolverType),
 		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
 	    ;
 		Info3 = Info1,
@@ -1291,24 +1291,26 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	{ TypeCtor = Name - Arity },
 	(
-		{ Body = du_type(Ctors, _, _, MaybeEqualityPred, _, _) },
-		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
+		{ Ctors = Body ^ du_type_ctors },
+		{ IsSolverType = Body ^ du_type_is_solver_type },
+		{ MaybeEqualityPred = Body ^ du_type_usereq },
+		{ TypeBody = du_type(Ctors, IsSolverType, MaybeEqualityPred) }
 	;
 		{ Body = eqv_type(EqvType) },
 		{ TypeBody = eqv_type(EqvType) }
 	;
-		{ Body = abstract_type },
-		{ TypeBody = abstract_type }
+		{ Body = abstract_type(IsSolverType) },
+		{ TypeBody = abstract_type(IsSolverType) }
 	;
-		{ Body = foreign_type(_) },
-		{ TypeBody = abstract_type }
+		{ Body = foreign_type(_, IsSolverType) },
+		{ TypeBody = abstract_type(IsSolverType) }
 	),
 	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
 		Context),
 
 	(
-		{ Body = foreign_type(ForeignTypeBody)
-		; Body = du_type(_, _, _, _, _, yes(ForeignTypeBody))
+		{ Body = foreign_type(ForeignTypeBody, _)
+		; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
 		},
 		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC,
 				MaybeJava) }
@@ -1342,7 +1344,7 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		[]
 	),
 	(
-		{ Body = du_type(_, _, _, _, ReservedTag, _) },
+		{ ReservedTag = Body ^ du_type_reserved_tag },
 		{ ReservedTag = yes }
 	->
 		mercury_output_item(pragma(reserve_tag(Name, Arity)),

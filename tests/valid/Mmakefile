@@ -52,6 +52,7 @@ IL_PROGS = \
 
 OTHER_PROGS= \
 	any_inst_merge \
+	any_matches_bound \
 	common_struct_bug \
 	compl_unify_bug \
 	complicated_unify \

@@ -202,7 +202,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	% polymorphism__process_generated_pred can't handle calls to
 	% polymorphic procedures after the initial polymorphism pass.
 	%
-	Body \= foreign_type(_),
+	Body \= foreign_type(_, _),
 
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always
@@ -214,14 +214,14 @@ special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 		type_body_has_user_defined_equality_pred(ModuleInfo, Body,
 			unify_compare(_, _))
 	;
-		Body = du_type(Ctors, _, _, _, _, _),
+		Ctors = Body ^ du_type_ctors,
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQTVars, _, _, _),
 		ExistQTVars \= []
 	).
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
-	Body \= abstract_type,
+	Body \= abstract_type(_),
 	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
 	\+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
 		abstract_noncanonical_type).

@@ -177,7 +177,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 		code_info__lookup_type_defn(Type, TypeDefn),
 		{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 		{
-			TypeBody = du_type(_, ConsTable, _, _, _, _)
+			ConsTable = TypeBody ^ du_type_cons_tag_values
 		->
 			map__to_assoc_list(ConsTable, ConsList),
 			(

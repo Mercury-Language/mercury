@@ -1130,10 +1130,10 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
 		type_ctor::in, type_defn::in, recompilation_check_info::in,
 		recompilation_check_info::out) is det.
 
-check_type_defn_ambiguity_with_functor(_, _, abstract_type) --> [].
+check_type_defn_ambiguity_with_functor(_, _, abstract_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(_, _, eqv_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(NeedQualifier,
-			TypeCtor, du_type(Ctors, _)) -->
+			TypeCtor, du_type(Ctors, _, _)) -->
 	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
 		Ctors).
 

@@ -1353,7 +1353,9 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			map__lookup(TypeDefnTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			(
-				TypeBody = du_type(Ctors, _, yes, no, _, _)
+				Ctors = TypeBody ^ du_type_ctors,
+				TypeBody ^ du_type_is_enum = yes,
+				TypeBody ^ du_type_usereq = no
 			->
 				list__length(Ctors, EnumRange)
 			;

@@ -1008,16 +1008,19 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual), 
 		ForeignType, TVarSet, Name, Args,
 		UserEqComp, Module0, Module) -->
+	{ IsSolverType = non_solver_type },
 	{ ForeignType = il(ILForeignType),
 		Body = foreign_type(
 			foreign_type_body(yes(ILForeignType - UserEqComp),
-			no, no))
+			no, no), IsSolverType)
 	; ForeignType = c(CForeignType),
 		Body = foreign_type(foreign_type_body(no,
-				yes(CForeignType - UserEqComp), no))
+				yes(CForeignType - UserEqComp), no),
+				IsSolverType)
 	; ForeignType = java(JavaForeignType),
 		Body = foreign_type(foreign_type_body(no, no,
-				yes(JavaForeignType - UserEqComp)))
+				yes(JavaForeignType - UserEqComp)),
+				IsSolverType)
 	},
 	{ Cond = true },
 
@@ -1031,7 +1034,7 @@ add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual),
 		{ hlds_data__get_type_defn_status(OldDefn, OldStatus) },
 		{ hlds_data__get_type_defn_body(OldDefn, OldBody) },
 		(
-			{ OldBody = abstract_type },
+			{ OldBody = abstract_type(_) },
 			{ status_is_exported_to_non_submodules(OldStatus,
 				no) },
 			{ status_is_exported_to_non_submodules(ImportStatus,
@@ -1109,7 +1112,8 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context,
 
 		;
 			{ TypeBody0 = du_type(Body, _CtorTags0, _IsEnum0,
-				EqualityPred, ReservedTag0, IsForeign) }
+				EqualityPred, ReservedTag0, IsSolverType,
+				IsForeign) }
 		->
 			(
 				{ ReservedTag0 = yes },
@@ -1140,7 +1144,8 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context,
 			{ assign_constructor_tags(Body, TypeCtor, ReservedTag,
 				Globals, CtorTags, IsEnum) },
 			{ TypeBody = du_type(Body, CtorTags, IsEnum,
-				EqualityPred, ReservedTag, IsForeign) },
+				EqualityPred, ReservedTag, IsSolverType,
+				IsForeign) },
 			{ hlds_data__set_type_defn_body(TypeDefn0, TypeBody,
 				TypeDefn) },
 			{ map__set(Types0, TypeCtor, TypeDefn, Types) },
@@ -2228,16 +2233,16 @@ module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, Cond, Context,
 :- mode module_add_type_defn_2(in, in, in, in, in,
 		in, in, in, out, di, uo) is det.
 
-module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
+module_add_type_defn_2(Module0, TVarSet, Name, Args, Body0, _Cond, Context,
 		item_status(Status0, NeedQual), Module) -->
 	{ module_info_types(Module0, Types0) },
 	{ list__length(Args, Arity) },
 	{ TypeCtor = Name - Arity },
 	{
 		(
-			Body = abstract_type
+			Body0 = abstract_type(_)
 		;
-			Body = du_type(_, _, _, _, _, _),
+			Body0 = du_type(_, _, _, _, _, _, _),
 			string__suffix(term__context_file(Context), ".int2")
 			% If the type definition comes from a .int2 file then
 			% we need to treat it as abstract.  The constructors
@@ -2249,18 +2254,40 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 	;
 		Status1 = Status0
 	},
-	{ 
+	( 
 		% the type is exported if *any* occurrence is exported,
 		% even a previous abstract occurrence
-		map__search(Types0, TypeCtor, OldDefn)
+		{ map__search(Types0, TypeCtor, OldDefn0) }
 	->
-		hlds_data__get_type_defn_status(OldDefn, OldStatus),
-		combine_status(Status1, OldStatus, Status),
-		MaybeOldDefn = yes(OldDefn)
+		{ hlds_data__get_type_defn_status(OldDefn0, OldStatus) },
+		{ combine_status(Status1, OldStatus, Status) },
+		{ hlds_data__get_type_defn_body(OldDefn0, OldBody0) },
+		{ combine_is_solver_type(OldBody0, OldBody, Body0, Body) },
+		( { is_solver_type_is_inconsistent(OldBody, Body) } ->
+			% The existing definition has an is_solver_type
+			% annotation which is different to the current
+			% definition.
+			{ module_info_incr_errors(Module0, Module1) },
+			{ Pieces0 = [words("In definition of type"),
+				fixed(describe_sym_name_and_arity(
+					Name / Arity) ++ ":"), nl,
+				words("error: all definitions of a type must"),
+				words("have consistent `solver'"),
+				words("annotations")] },
+			error_util__write_error_pieces(Context, 0, Pieces0),
+			{ MaybeOldDefn = no }
+		;
+			{ hlds_data__set_type_defn_body(OldDefn0, OldBody,
+				OldDefn) },
+			{ MaybeOldDefn = yes(OldDefn) },
+			{ Module1 = Module0 }
+		)
 	;
-		MaybeOldDefn = no,
-		Status = Status1 
-	},
+		{ MaybeOldDefn = no },
+		{ Status = Status1 },
+		{ Body = Body0 },
+		{ Module1 = Module0 }
+	),
 	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status,
 		NeedQual, Context, T) },
 	(
@@ -2273,7 +2300,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		{ hlds_data__get_type_defn_status(T2, OrigStatus) },
 		{ hlds_data__get_type_defn_need_qualifier(T2,
 			OrigNeedQual) },
-		{ Body_2 \= abstract_type }
+		{ Body_2 \= abstract_type(_) }
 	->
 		globals__io_get_target(Target),
 		globals__io_lookup_bool_option(make_optimization_interface,
@@ -2281,18 +2308,18 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 	  	(
 			% then if this definition was abstract, ignore it
 			% (but update the status of the old defn if necessary)
-			{ Body = abstract_type }
+			{ Body = abstract_type(_) }
 		->
 			{
 				Status = OrigStatus
 			->
-				Module = Module0
+				Module = Module1
 			;
 				hlds_data__set_type_defn(TVarSet_2, Params_2,
 					Body_2, Status, OrigNeedQual,
 					OrigContext, T3),
 				map__det_update(Types0, TypeCtor, T3, Types),
-				module_info_set_types(Module0, Types, Module)
+				module_info_set_types(Module1, Types, Module)
 			}
 		;
 			{ merge_foreign_type_bodies(Target, MakeOptInt,
@@ -2307,10 +2334,10 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 					Context, T3) },
 				{ map__det_update(Types0,
 					TypeCtor, T3, Types) },
-				{ module_info_set_types(Module0,
+				{ module_info_set_types(Module1,
 					Types, Module) }
 			;
-				{ module_info_incr_errors(Module0, Module) },
+				{ module_info_incr_errors(Module1, Module) },
 				{ Pieces = [words("In definition of type"),
 					fixed(describe_sym_name_and_arity(
 						Name / Arity) ++ ":"), nl,
@@ -2325,15 +2352,15 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			% definition wasn't read while reading .opt files. 
 			{ Status = opt_imported }
 		->
-			{ Module = Module0 }
+			{ Module = Module1 }
 		;
-			{ module_info_incr_errors(Module0, Module) },
+			{ module_info_incr_errors(Module1, Module) },
 			multiple_def_error(Status, Name, Arity, "type", Context,
 				OrigContext, _)
 		)
 	;
 		{ map__set(Types0, TypeCtor, T, Types) },
-		{ module_info_set_types(Module0, Types, Module) },
+		{ module_info_set_types(Module1, Types, Module) },
 		(
 			% XXX we can't handle abstract exported
 			% polymorphic equivalence types with monomorphic
@@ -2370,6 +2397,50 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		)
 	).
 
+	% We do not have syntax for adding `solver' annotations to
+	% `:- pragma foreign_type' declarations, so foreign_type bodies
+	% default to having an is_solver_type field of `non_solver_type'.
+	% If another declaration for the type has a `solver' annotation then
+	% we must update the foreign_type body to reflect this.
+:- pred combine_is_solver_type(hlds_type_body::in, hlds_type_body::out,
+		hlds_type_body::in, hlds_type_body::out) is det.
+
+combine_is_solver_type(OldBody0, OldBody, Body0, Body) :-
+	(
+		OldBody0 = foreign_type(OldForeignTypeBody, non_solver_type),
+		maybe_get_body_is_solver_type(Body0, solver_type)
+	->
+		OldBody = foreign_type(OldForeignTypeBody, solver_type),
+		Body = Body0
+	;
+		maybe_get_body_is_solver_type(OldBody0, solver_type),
+		Body0 = foreign_type(ForeignTypeBody, non_solver_type)
+	->
+		OldBody = OldBody0,
+		Body = foreign_type(ForeignTypeBody, solver_type)
+	;
+		OldBody = OldBody0,
+		Body = Body0
+	).
+
+	% Succeed iff the two type bodies have inconsistent is_solver_type
+	% annotations.
+:- pred is_solver_type_is_inconsistent(hlds_type_body::in, hlds_type_body::in)
+		is semidet.
+
+is_solver_type_is_inconsistent(OldBody, Body) :-
+	maybe_get_body_is_solver_type(OldBody, OldIsSolverType),
+	maybe_get_body_is_solver_type(Body, IsSolverType),
+	OldIsSolverType \= IsSolverType.
+
+:- pred maybe_get_body_is_solver_type(hlds_type_body::in, is_solver_type::out)
+		is semidet.
+
+maybe_get_body_is_solver_type(Body, Body ^ du_type_is_solver_type).
+maybe_get_body_is_solver_type(abstract_type(IsSolverType), IsSolverType).
+maybe_get_body_is_solver_type(foreign_type(_, IsSolverType), IsSolverType).
+
+
 	% check_foreign_type_visibility(OldStatus, NewDefnStatus).
 	%
 	% Check that the visibility of the new definition for
@@ -2404,7 +2475,8 @@ process_type_defn(TypeCtor, TypeDefn, {FoundError0, Module0},
 	{ hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual) },
 
 	(
-		{ Body = du_type(ConsList, _, _, _, ReservedTag, _) },
+		{ ConsList = Body ^ du_type_ctors },
+		{ ReservedTag = Body ^ du_type_reserved_tag },
 		{ module_info_ctors(Module0, Ctors0) },
 		{ module_info_get_partial_qualifier_info(Module0, PQInfo) },
 		check_for_errors(
@@ -2432,7 +2504,7 @@ process_type_defn(TypeCtor, TypeDefn, {FoundError0, Module0},
 			Module2 = Module1
 		}
 	;
-		{ Body = abstract_type },
+		{ Body = abstract_type(_) },
 		{ FoundError1 = no },
 		{ Module2 = Module0 }
 	;
@@ -2440,7 +2512,7 @@ process_type_defn(TypeCtor, TypeDefn, {FoundError0, Module0},
 		{ FoundError1 = no },
 		{ Module2 = Module0 }
 	;
-		{ Body = foreign_type(ForeignTypeBody) },
+		{ Body = foreign_type(ForeignTypeBody, _) },
 		check_foreign_type(TypeCtor, ForeignTypeBody,
 			Context, FoundError1, Module0, Module2)
 	),
@@ -2560,8 +2632,8 @@ generating_code(bool__not(NotGeneratingCode)) -->
 	% if we are making the optimization interface so that it gets
 	% output in the .opt file.
 merge_foreign_type_bodies(Target, MakeOptInterface,
-		foreign_type(ForeignTypeBody0),
-		Body1 @ du_type(_, _, _, _, _, MaybeForeignTypeBody1), Body) :-
+		foreign_type(ForeignTypeBody0, IsSolverType), Body1, Body) :-
+	MaybeForeignTypeBody1 = Body1 ^ du_type_is_foreign_type,
 	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
 	; MaybeForeignTypeBody1 = no,
 		ForeignTypeBody1 = foreign_type_body(no, no, no)
@@ -2572,16 +2644,17 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
 		have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
 		MakeOptInterface = no
 	->
-		Body = foreign_type(ForeignTypeBody)
+		Body = foreign_type(ForeignTypeBody, IsSolverType)
 	;
 		Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
 	).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-		Body0 @ du_type(_, _, _, _, _, _),
-		Body1 @ foreign_type(_), Body) :-
+		Body0 @ du_type(_, _, _, _, _, _, _),
+		Body1 @ foreign_type(_, _), Body) :-
 	merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
-merge_foreign_type_bodies(_, _, foreign_type(Body0), foreign_type(Body1),
-		foreign_type(Body)) :-
+merge_foreign_type_bodies(_, _, foreign_type(Body0, _IsSolverType0),
+		foreign_type(Body1, IsSolverType),
+		foreign_type(Body, IsSolverType)) :-
 	merge_foreign_type_bodies_2(Body0, Body1, Body).
 
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
@@ -2687,21 +2760,22 @@ combine_status_abstract_imported(Status2, Status) :-
 :- pred convert_type_defn(type_defn, type_ctor, globals, hlds_type_body).
 :- mode convert_type_defn(in, in, in, out) is det.
 
-convert_type_defn(du_type(Body, EqualityPred), TypeCtor, Globals,
+convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
 		du_type(Body, CtorTags, IsEnum, EqualityPred,
-			ReservedTagPragma, IsForeign)) :-
+			ReservedTagPragma, IsSolverType, IsForeign)) :-
 	% Initially, when we first see the `:- type' definition,
 	% we assign the constructor tags assuming that there is no
 	% `:- pragma reserve_tag' declaration for this type.
 	% (If it turns out that there was one, then we will recompute the
-	% constructor tags by callling assign_constructor_tags again,
+	% constructor tags by calling assign_constructor_tags again,
 	% with ReservedTagPragma = yes, when processing the pragma.)
 	ReservedTagPragma = no,
 	assign_constructor_tags(Body, TypeCtor, ReservedTagPragma, Globals,
 		CtorTags, IsEnum),
 	IsForeign = no.
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
-convert_type_defn(abstract_type, _, _, abstract_type).
+convert_type_defn(abstract_type(IsSolverType), _, _,
+		abstract_type(IsSolverType)).
 
 :- pred ctors_add(list(constructor), type_ctor, tvarset, need_qualifier,
 		partial_qualifier_info, prog_context, import_status,
@@ -3711,10 +3785,9 @@ add_special_preds(Module0, TVarSet, Type, TypeCtor, Body, Context, Status,
 			status_defined_in_this_module(Status, yes)
 		->
 			(
-				Body = du_type(Ctors, _, IsEnum, _,
-						UserDefinedEquality, _),
-				IsEnum = no,
-				UserDefinedEquality = no,
+				Ctors = Body ^ du_type_ctors,
+				Body ^ du_type_is_enum = no,
+				Body ^ du_type_usereq = no,
 				module_info_globals(Module0, Globals),
 				globals__lookup_int_option(Globals,
 					compare_specialization, CompareSpec),
@@ -3787,7 +3860,7 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeCtor, TypeBody,
 			Module = Module0
 		;
 			SpecialPredId = compare,
-			( TypeBody = du_type(_, _, _, yes(_), _, _) ->
+			( TypeBody ^ du_type_usereq = yes(_) ->
 					% The compiler generated comparison
 					% procedure prints an error message,
 					% since comparisons of types with
@@ -3828,7 +3901,7 @@ add_special_pred_for_real(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
 	->
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
-		TypeBody = du_type(_, _, _, yes(_), _, _),
+		TypeBody ^ du_type_usereq = yes(_),
 		pred_info_import_status(PredInfo0, OldStatus),
 		OldStatus = pseudo_imported,
 		status_is_imported(Status, no)
@@ -3934,7 +4007,7 @@ add_special_pred_decl_for_real(SpecialPredId, Module0, TVarSet, Type, TypeCtor,
 	import_status::out) is det.
 
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
-	( TypeBody = du_type(_, _, _, yes(_), _, _) ->
+	( TypeBody ^ du_type_usereq = yes(_) ->
 			% If the type has user-defined equality,
 			% then we create a real unify predicate
 			% for it, whose body calls the user-specified

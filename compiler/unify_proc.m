@@ -294,7 +294,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 				TypeName = qualified(TypeModuleName, _),
 				module_info_name(ModuleInfo1, ModuleName),
 				ModuleName = TypeModuleName,
-				TypeBody = abstract_type
+				TypeBody = abstract_type(_)
 			; 
 				type_ctor_has_hand_defined_rtti(TypeCtor,
 					TypeBody)
@@ -569,11 +569,12 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		map__from_assoc_list([ConsId - single_functor],
 			ConsTagValues),
 		TypeBody = du_type([Ctor], ConsTagValues, IsEnum,
-			UnifyPred, ReservedTag, IsForeign),
+			UnifyPred, ReservedTag, IsSolverType, IsForeign),
 		UnifyPred = no,
 		IsEnum = no,
 		IsForeign = no,
 		ReservedTag = no,
+		IsSolverType = non_solver_type,
 		construct_type(TypeCtor, TupleArgTypes, Type),
 
 		term__context_init(Context)
@@ -741,7 +742,8 @@ unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
 		UserEqCompare, H1, H2, Context, Clauses)
     ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		{ Ctors = TypeBody ^ du_type_ctors },
+		{ IsEnum = TypeBody ^ du_type_is_enum },
 		( { IsEnum = yes } ->
 			%
 			% Enumerations are atomic types, so modecheck_unify.m
@@ -761,14 +763,14 @@ unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
 		generate_unify_clauses_eqv_type(EqvType, H1, H2,
 				Context, Clauses)
 	;
-		{ TypeBody = foreign_type(_) },
+		{ TypeBody = foreign_type(_, _) },
 		% If no user defined equality predicate is given,
 		% we treat foreign_type as if they were an equivalent
 		% to the builtin type c_pointer.
 		generate_unify_clauses_eqv_type(c_pointer_type,
 				H1, H2, Context, Clauses)
 	;
-		{ TypeBody = abstract_type },
+		{ TypeBody = abstract_type(_) },
 		{ error("trying to create unify proc for abstract type") }
 	)
     ).
@@ -878,7 +880,8 @@ unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
 	{ error("trying to create index proc for non-canonical type") }
     ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		{ Ctors = TypeBody ^ du_type_ctors },
+		{ IsEnum = TypeBody ^ du_type_is_enum },
 		( { IsEnum = yes } ->
 			%
 			% For enum types, the generated comparison predicate
@@ -903,10 +906,10 @@ unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
 		% invoked.
 		{ error("trying to create index proc for eqv type") }
 	;
-		{ TypeBody = foreign_type(_) },
+		{ TypeBody = foreign_type(_, _) },
 		{ error("trying to create index proc for a foreign type") }
 	;
-		{ TypeBody = abstract_type },
+		{ TypeBody = abstract_type(_) },
 		{ error("trying to create index proc for abstract type") }
 	)
     ).
@@ -926,7 +929,8 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 		Res, H1, H2, Context, Clauses)
     ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		{ Ctors = TypeBody ^ du_type_ctors },
+		{ IsEnum = TypeBody ^ du_type_is_enum },
 		( { IsEnum = yes } ->
 			{ IntType = int_type },
 			unify_proc__make_fresh_named_var_from_type(IntType,
@@ -957,11 +961,11 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 		generate_compare_clauses_eqv_type(EqvType,
 				Res, H1, H2, Context, Clauses)
 	;
-		{ TypeBody = foreign_type(_) },
+		{ TypeBody = foreign_type(_, _) },
 		generate_compare_clauses_eqv_type(c_pointer_type,
 				Res, H1, H2, Context, Clauses)
 	;
-		{ TypeBody = abstract_type },
+		{ TypeBody = abstract_type(_) },
 		{ error("trying to create compare proc for abstract type") }
 	)
     ).

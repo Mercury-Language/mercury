@@ -327,13 +327,17 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 					% pragma for this type?
 			du_type_reserved_tag	:: bool,
 
+					% should the `any' inst be considered
+					% `bound' for this type?
+			du_type_is_solver_type	:: is_solver_type,
+
 					% are there `:- pragma foreign' type
 					% declarations for this type?
 			du_type_is_foreign_type	:: maybe(foreign_type_body)
 		)
 	;	eqv_type(type)
-	;	foreign_type(foreign_type_body)
-	;	abstract_type.
+	;	foreign_type(foreign_type_body, is_solver_type)
+	;	abstract_type(is_solver_type).
 
 :- type foreign_type_body
 	---> foreign_type_body(

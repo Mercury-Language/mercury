@@ -1218,7 +1218,8 @@ get_maybe_foreign_type_name(Type, MaybeForeignType) -->
 		type_to_ctor_and_args(Type, TypeId, _SubTypes),
 		map__search(Types, TypeId, Defn),
 		hlds_data__get_type_defn_body(Defn, Body),
-		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
+		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC,
+			_MaybeJava), _)
 	->
 		( MaybeC = yes(c(Name) - _),
 			MaybeForeignType = yes(Name)

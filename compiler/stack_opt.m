@@ -1091,7 +1091,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal) -->
 			{ module_info_types(ModuleInfo, TypeTable) },
 			{ map__lookup(TypeTable, TypeCtor, TypeDefn) },
 			{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-			{ TypeBody = du_type(_, ConsTable, _, _, _, _) }
+			{ ConsTable = TypeBody ^ du_type_cons_tag_values }
 		->
 			{ map__lookup(ConsTable, ConsId, ConsTag) },
 			{ ConsTag = no_tag ->

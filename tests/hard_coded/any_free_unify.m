@@ -14,7 +14,9 @@ main -->
 	{ test_any_free_unify([], Result1) },
 	io__print(Result1), io__nl.
 
-:- pred test_any_free_unify(list(int), bool).
+:- solver type foo ---> bar ; baz.
+
+:- pred test_any_free_unify(list(foo), bool).
 :- mode test_any_free_unify(in(list_skel(any)), out) is det.
 
 % In the unification in the condition of the if-then-else, the variable

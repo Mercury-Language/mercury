@@ -253,16 +253,16 @@ recompilation__version__gather_items_2(ItemAndContext) -->
 		{ Item = type_defn(VarSet, Name, Args, Body, Cond) }
 	->
 		(
-			{ Body = abstract_type },
+			{ Body = abstract_type(_) },
 			{ NameItem = Item },
 			% The body of an abstract type can be recorded
 			% as used when generating a call to the automatically
 			% generated unification procedure.
 			{ BodyItem = Item }
 		;
-			{ Body = du_type(_, _) },
+			{ Body = du_type(_, IsSolverType, _) },
 			{ NameItem = type_defn(VarSet, Name, Args,
-				abstract_type, Cond) },
+				abstract_type(IsSolverType), Cond) },
 			{ BodyItem = Item }	
 		;
 			{ Body = eqv_type(_) },

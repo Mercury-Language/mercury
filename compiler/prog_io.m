@@ -1042,8 +1042,9 @@ process_func_clause(error(ErrMessage, Term0), _, _, _,
 :- type decl_attribute
 	--->	purity(purity)
 	;	quantifier(quantifier_type, list(var))
-	;	constraints(quantifier_type, term).
+	;	constraints(quantifier_type, term)
 		% the term here is the (not yet parsed) list of constraints
+	;	solver_type.
 
 :- type quantifier_type
 	--->	exist
@@ -1101,8 +1102,7 @@ parse_decl_2(ModuleName, VarSet, F, Attributes, Result) :-
 :- mode process_decl(in, in, in, in, in, out) is semidet.
 
 process_decl(ModuleName, VarSet, "type", [TypeDecl], Attributes, Result) :-
-	parse_type_decl(ModuleName, VarSet, TypeDecl, Result0),
-	check_no_attributes(Result0, Attributes, Result).
+	parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "pred", [PredDecl], Attributes, Result) :-
 	parse_type_decl_pred(ModuleName, VarSet, PredDecl, Attributes, Result).
@@ -1409,8 +1409,9 @@ parse_decl_attribute("some", [TVars, Decl],
 parse_decl_attribute("all", [TVars, Decl],
 		quantifier(univ, TVarsList), Decl) :-
 	parse_list_of_vars(TVars, TVarsList).
+parse_decl_attribute("solver", [Decl], solver_type, Decl).
 
-:- pred check_no_attributes(maybe1(item), decl_attrs, maybe1(item)).
+:- pred check_no_attributes(maybe1(T), decl_attrs, maybe1(T)).
 :- mode check_no_attributes(in, in, out) is det.
 
 check_no_attributes(Result0, Attributes, Result) :-
@@ -1434,6 +1435,7 @@ attribute_description(quantifier(exist, _), "existential quantifier (`some')").
 attribute_description(constraints(univ, _), "type class constraint (`<=')").
 attribute_description(constraints(exist, _),
 	"existentially quantified type class constraint (`=>')").
+attribute_description(solver_type, "solver type specifier").
 
 %-----------------------------------------------------------------------------%
 
@@ -1463,17 +1465,18 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_type_decl(module_name, varset, term, maybe1(item)).
-:- mode parse_type_decl(in, in, in, out) is det.
-parse_type_decl(ModuleName, VarSet, TypeDecl, Result) :-
+:- pred parse_type_decl(module_name, varset, term, decl_attrs, maybe1(item)).
+:- mode parse_type_decl(in, in, in, in, out) is det.
+parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result) :-
 	( 
 		TypeDecl = term__functor(term__atom(Name), Args, _),
-		parse_type_decl_type(ModuleName, Name, Args, Cond, R) 
+		parse_type_decl_type(ModuleName, Name, Args, Attributes,
+			Cond, R) 
 	->
 		R1 = R,
 		Cond1 = Cond
 	;
-		process_abstract_type(ModuleName, TypeDecl, R1),
+		process_abstract_type(ModuleName, TypeDecl, Attributes, R1),
 		Cond1 = true
 	),
 	process_maybe1(make_type_defn(VarSet, Cond1), R1, Result).
@@ -1493,6 +1496,18 @@ make_type_defn(VarSet0, Cond, processed_type_body(Name, Args, TypeDefn),
 
 make_external(VarSet0, SymSpec, module_defn(VarSet, external(SymSpec))) :-
 	varset__coerce(VarSet0, VarSet).
+
+:- pred get_is_solver_type(decl_attrs, is_solver_type, decl_attrs).
+:- mode get_is_solver_type(in, out, out) is det.
+
+get_is_solver_type(Attributes0, IsSolverType, Attributes) :-
+	( Attributes0 = [solver_type - _ | Attributes1] ->
+		IsSolverType = solver_type,
+		Attributes = Attributes1
+	;
+		IsSolverType = non_solver_type,
+		Attributes = Attributes0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1516,19 +1531,22 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 
-:- pred parse_type_decl_type(module_name, string, list(term), condition,
-				maybe1(processed_type_body)).
-:- mode parse_type_decl_type(in, in, in, out, out) is semidet.
+:- pred parse_type_decl_type(module_name, string, list(term), decl_attrs,
+		condition, maybe1(processed_type_body)).
+:- mode parse_type_decl_type(in, in, in, in, out, out) is semidet.
 
-parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
+parse_type_decl_type(ModuleName, "--->", [H, B], Attributes0, Condition, R) :-
 	/* get_condition(...), */
 	Condition = true,
 	get_maybe_equality_compare_preds(ModuleName, B, Body, EqCompare),
-	process_du_type(ModuleName, H, Body, EqCompare, R).
+	get_is_solver_type(Attributes0, IsSolverType, Attributes),
+	process_du_type(ModuleName, H, Body, IsSolverType, EqCompare, R0),
+	check_no_attributes(R0, Attributes, R).
 
-parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
+parse_type_decl_type(ModuleName, "==", [H, B], Attributes, Condition, R) :-
 	get_condition(B, Body, Condition),
-	process_eqv_type(ModuleName, H, Body, R).
+	process_eqv_type(ModuleName, H, Body, R0),
+	check_no_attributes(R0, Attributes, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1870,19 +1888,20 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 	% This is for "Head ---> Body" (constructor) definitions.
-:- pred process_du_type(module_name, term, term, maybe1(maybe(unify_compare)),
-			maybe1(processed_type_body)).
-:- mode process_du_type(in, in, in, in, out) is det.
-process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
-	parse_type_defn_head(ModuleName, Head, Body, Result0),
-	process_du_type_2(ModuleName, Result0, Body, EqualityPred, Result).
-
-:- pred process_du_type_2(module_name, maybe_functor, term,
+:- pred process_du_type(module_name, term, term, is_solver_type,
 		maybe1(maybe(unify_compare)), maybe1(processed_type_body)).
-:- mode process_du_type_2(in, in, in, in, out) is det.
-process_du_type_2(_, error(Error, Term), _, _, error(Error, Term)).
-process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
-		Result) :-
+:- mode process_du_type(in, in, in, in, in, out) is det.
+process_du_type(ModuleName, Head, Body, IsSolverType, EqualityPred, Result) :-
+	parse_type_defn_head(ModuleName, Head, Body, Result0),
+	process_du_type_2(ModuleName, Result0, Body, IsSolverType,
+		EqualityPred, Result).
+
+:- pred process_du_type_2(module_name, maybe_functor, term, is_solver_type,
+		maybe1(maybe(unify_compare)), maybe1(processed_type_body)).
+:- mode process_du_type_2(in, in, in, in, in, out) is det.
+process_du_type_2(_, error(Error, Term), _, _, _, error(Error, Term)).
+process_du_type_2(ModuleName, ok(Functor, Args0), Body, IsSolverType,
+		MaybeEqualityPred, Result) :-
 	% check that body is a disjunction of constructors
 	list__map(term__coerce, Args0, Args),
 	(
@@ -1953,7 +1972,8 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 			(
 				MaybeEqualityPred = ok(EqualityPred),
 				Result = ok(processed_type_body(Functor, Args,
-					du_type(Constrs, EqualityPred)))
+					du_type(Constrs, IsSolverType,
+						EqualityPred)))
 			;
 				MaybeEqualityPred = error(Error, Term),
 				Result = error(Error, Term)
@@ -1970,18 +1990,23 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 
-:- pred process_abstract_type(module_name, term, maybe1(processed_type_body)).
-:- mode process_abstract_type(in, in, out) is det.
-process_abstract_type(ModuleName, Head, Result) :-
+:- pred process_abstract_type(module_name, term, decl_attrs,
+		maybe1(processed_type_body)).
+:- mode process_abstract_type(in, in, in, out) is det.
+process_abstract_type(ModuleName, Head, Attributes0, Result) :-
 	dummy_term(Body),
 	parse_type_defn_head(ModuleName, Head, Body, Result0),
-	process_abstract_type_2(Result0, Result).
+	get_is_solver_type(Attributes0, IsSolverType, Attributes),
+	process_abstract_type_2(Result0, IsSolverType, Result1),
+	check_no_attributes(Result1, Attributes, Result).
 
-:- pred process_abstract_type_2(maybe_functor, maybe1(processed_type_body)).
-:- mode process_abstract_type_2(in, out) is det.
-process_abstract_type_2(error(Error, Term), error(Error, Term)).
-process_abstract_type_2(ok(Functor, Args0),
-		ok(processed_type_body(Functor, Args, abstract_type))) :-
+:- pred process_abstract_type_2(maybe_functor, is_solver_type,
+		maybe1(processed_type_body)).
+:- mode process_abstract_type_2(in, in, out) is det.
+process_abstract_type_2(error(Error, Term), _, error(Error, Term)).
+process_abstract_type_2(ok(Functor, Args0), IsSolverType,
+		ok(processed_type_body(Functor, Args,
+			abstract_type(IsSolverType)))) :-
 	list__map(term__coerce, Args0, Args).
 
 %-----------------------------------------------------------------------------%

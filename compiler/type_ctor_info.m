@@ -112,7 +112,7 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 			TypeModuleName = ModuleName,
 			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-			TypeBody \= abstract_type,
+			TypeBody \= abstract_type(_),
 			\+ type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
 			( are_equivalence_types_expanded(ModuleInfo)
 				=> TypeBody \= eqv_type(_) )
@@ -147,8 +147,7 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		;
 			SpecialPreds = no,
 			hlds_data__get_type_defn_body(TypeDefn, Body),
-			Body = du_type(_, _, _, yes(_UserDefinedEquality),
-				_, _)
+			Body ^ du_type_usereq = yes(_UserDefinedEquality)
 		)
 	->
 		map__lookup(SpecMap, unify - TypeCtor, UnifyPredId),
@@ -219,10 +218,10 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	hlds_data__get_type_defn_body(HldsDefn, TypeBody),
 	Version = type_ctor_info_rtti_version,
 	(
-		TypeBody = abstract_type,
+		TypeBody = abstract_type(_),
 		error("type_ctor_info__gen_type_ctor_data: abstract_type")
 	;
-		TypeBody = foreign_type(_),
+		TypeBody = foreign_type(_, _),
 		(
 			ModuleName = unqualified(ModuleStr1),
 			builtin_type_ctor(ModuleStr1, TypeName, TypeArity,
@@ -249,7 +248,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		Details = eqv(MaybePseudoTypeInfo)
 	;
 		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred,
-			ReservedTag, _),
+			ReservedTag, _, _),
 		(
 			EqualityPred = yes(_),
 			EqualityAxioms = user_defined
@@ -279,7 +278,7 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 		)
 	),
 	Flags0 = set__init,
-	( TypeBody = du_type(_, _, _, _, _, _) ->
+	( TypeBody = du_type(_, _, _, _, _, _, _) ->
 		Flags1 = set__insert(Flags0, kind_of_du_flag),
 		( TypeBody ^ du_type_reserved_tag = yes ->
 			Flags2 = set__insert(Flags1, reserve_tag_flag)

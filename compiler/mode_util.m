@@ -149,13 +149,21 @@
 		list(inst), list(inst)).
 :- mode propagate_types_into_inst_list(in, in, in, in, out) is det.
 
-	% Convert a list of constructors to a list of bound_insts.
+	% Convert a list of constructors to a list of bound_insts where the
+	% arguments are `ground'.
 	% Note that the list(bound_inst) is not sorted and may contain
 	% duplicates.
 :- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
 				list(bound_inst)).
 :- mode constructors_to_bound_insts(in, in, in, out) is det.
 
+	% Convert a list of constructors to a list of bound_insts where the
+	% arguments are `any'.
+	% Note that the list(bound_inst) is not sorted and may contain
+	% duplicates.
+:- pred constructors_to_bound_any_insts(list(constructor), uniqueness,
+		module_info, list(bound_inst)).
+:- mode constructors_to_bound_any_insts(in, in, in, out) is det.
 
 	% Given the mode of a predicate,
 	% work out which arguments are live (might be used again
@@ -854,26 +862,34 @@ default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 		PredArgModes0, PredArgModes),
 	PredInstInfo = pred_inst_info(function, PredArgModes, det).
 
-constructors_to_bound_insts([], _, _, []).
-constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
+constructors_to_bound_insts(Constructors, Uniq, ModuleInfo, BoundInsts) :-
+	constructors_to_bound_insts_2(Constructors, Uniq, ModuleInfo,
+		ground(Uniq, none), BoundInsts).
+
+constructors_to_bound_any_insts(Constructors, Uniq, ModuleInfo, BoundInsts) :-
+	constructors_to_bound_insts_2(Constructors, Uniq, ModuleInfo,
+		any(Uniq), BoundInsts).
+
+:- pred constructors_to_bound_insts_2(list(constructor), uniqueness,
+		module_info, inst, list(bound_inst)).
+:- mode constructors_to_bound_insts_2(in, in, in, in, out) is det.
+
+constructors_to_bound_insts_2([], _, _, _, []).
+constructors_to_bound_insts_2([Ctor | Ctors], Uniq, ModuleInfo, ArgInst,
 		[BoundInst | BoundInsts]) :-
 	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-	ctor_arg_list_to_inst_list(Args, Uniq, Insts),
+	ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
 	list__length(Insts, Arity),
 	BoundInst = functor(cons(Name, Arity), Insts),
-	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).
+	constructors_to_bound_insts_2(Ctors, Uniq, ModuleInfo, ArgInst,
+		BoundInsts).
 
-:- pred ctor_arg_list_to_inst_list(list(constructor_arg), uniqueness,
-	list(inst)).
+:- pred ctor_arg_list_to_inst_list(list(constructor_arg), (inst), list(inst)).
 :- mode ctor_arg_list_to_inst_list(in, in, out) is det.
 
 ctor_arg_list_to_inst_list([], _, []).
-ctor_arg_list_to_inst_list([_Name - _Type | Args], Uniq, [Inst | Insts]) :-
-	% The information added by this is not yet used, so it's disabled 
-	% since it unnecessarily complicates the insts.
-	% Inst = defined_inst(typed_ground(Uniq, Type)), 
-	Inst = ground(Uniq, none),
-	ctor_arg_list_to_inst_list(Args, Uniq, Insts).
+ctor_arg_list_to_inst_list([_Name - _Type | Args], Inst, [Inst | Insts]) :-
+	ctor_arg_list_to_inst_list(Args, Inst, Insts).
 
 :- pred propagate_ctor_info_2(list(bound_inst), (type), module_info,
 		list(bound_inst)).
@@ -911,7 +927,7 @@ propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 		map__search(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams0),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-		TypeBody = du_type(Constructors, _, _, _, _, _)
+		Constructors = TypeBody ^ du_type_ctors
 	->
 		term__term_list_to_var_list(TypeParams0, TypeParams),
 		map__from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),

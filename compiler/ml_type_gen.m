@@ -127,12 +127,13 @@ ml_gen_type_defn(ModuleInfo, TypeTable, TypeCtor, MLDS_Defns0, MLDS_Defns) :-
 		mlds__defns, mlds__defns).
 :- mode ml_gen_type_2(in, in, in, in, in, out) is det.
 
-ml_gen_type_2(abstract_type, _, _, _) --> [].
+ml_gen_type_2(abstract_type(_), _, _, _) --> [].
 ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
 	% For a description of the problems with equivalence types,
 	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
 ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeUserEqCompare,
-		_ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn) -->
+		_ReservedTag, _IsSolverType, _), ModuleInfo, TypeCtor, TypeDefn)
+		-->
 	% XXX we probably shouldn't ignore _ReservedTag
 	{ ml_gen_equality_members(MaybeUserEqCompare, MaybeEqualityMembers) },
 	( { IsEnum = yes } ->
@@ -143,7 +144,7 @@ ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeUserEqCompare,
 			Ctors, TagValues, MaybeEqualityMembers)
 	).
 	% XXX Fixme!  Same issues here as for eqv_type/1.
-ml_gen_type_2(foreign_type(_), _, _, _) --> [].
+ml_gen_type_2(foreign_type(_, _), _, _, _) --> [].
 
 %-----------------------------------------------------------------------------%
 %

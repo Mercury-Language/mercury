@@ -348,8 +348,8 @@ equiv_type__replace_in_type_defn(TypeCtor, eqv_type(TBody0),
 	equiv_type__replace_in_type_2(TBody0, VarSet0, EqvMap, [TypeCtor],
 		TBody, VarSet, ContainsCirc, Info0, Info).
 
-equiv_type__replace_in_type_defn(_, du_type(TBody0,
-		EqPred), VarSet0, EqvMap, du_type(TBody, EqPred),
+equiv_type__replace_in_type_defn(_, du_type(TBody0, IsSolverType, EqPred),
+		VarSet0, EqvMap, du_type(TBody, IsSolverType, EqPred),
 		VarSet, no, Info0, Info) :-
 	equiv_type__replace_in_du(TBody0, VarSet0, EqvMap, TBody,
 		VarSet, Info0, Info).

@@ -501,7 +501,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		ExtraGoals1 = no_extra_goals
 	;
 		abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
-			InstArgs, LiveArgs, real_unify, ModuleInfo0,
+			InstArgs, LiveArgs, real_unify, TypeOfX, ModuleInfo0,
 			UnifyInst, Det1, ModuleInfo1)
 	->
 		Inst = UnifyInst,

@@ -670,7 +670,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(ForeignTypeBody) ->
+		( Body = foreign_type(ForeignTypeBody, _IsSolverType) ->
 			ExportType = foreign(fst(
 				foreign_type_body_to_exported_type(ModuleInfo,
 					ForeignTypeBody)))

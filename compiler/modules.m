@@ -6406,16 +6406,17 @@ include_in_short_interface(instance(_, _, _, _, _, _)).
 
 make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		ShortInterfaceKind,
-		type_defn(VarSet, Name, Args, abstract_type, Cond)) :-
+		type_defn(VarSet, Name, Args, abstract_type(IsSolverType),
+			Cond)) :-
 	(
-		TypeDefn = du_type(_, _),
+		TypeDefn = du_type(_, IsSolverType, _),
 		% For the `.int2' files, we need the full definitions of
 		% discriminated union types.  Even if the functors for a type
 		% are not used within a module, we may need to know them for
 		% comparing insts, e.g. for comparing `ground' and `bound(...)'.
 		ShortInterfaceKind = int3
 	;
-		TypeDefn = abstract_type
+		TypeDefn = abstract_type(IsSolverType)
 	;
 		TypeDefn = eqv_type(_),
 		% For the `.int2' files, we need the full definitions of
@@ -6426,7 +6427,8 @@ make_abstract_defn(type_defn(VarSet, Name, Args, TypeDefn, Cond),
 		% But the full definitions are not needed for the `.int3'
 		% files. So we convert equivalence types into abstract
 		% types only for the `.int3' files.
-		ShortInterfaceKind = int3
+		ShortInterfaceKind = int3,
+		IsSolverType = non_solver_type
 	).
 make_abstract_defn(instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
 	make_abstract_instance(Item0, Item).
@@ -6439,8 +6441,9 @@ make_abstract_defn(typeclass(A, B, C, _, E), _,
 make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
 		int2,
 		type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
-	TypeDefn0 = du_type(Constructors, yes(_UnifyCompare)),
-	TypeDefn  = du_type(Constructors, yes(abstract_noncanonical_type)).
+	TypeDefn0 = du_type(Constructors, IsSolverType, yes(_UnifyCompare)),
+	TypeDefn  = du_type(Constructors, IsSolverType,
+			yes(abstract_noncanonical_type)).
 
 
 	% All instance declarations must be written

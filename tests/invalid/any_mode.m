@@ -6,4 +6,6 @@
 p(X) :- q(X).
 
 :- mode q(in).
-q(42).
+q(bar).
+
+:- solver type foo ---> bar ; baz.
