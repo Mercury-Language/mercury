@@ -264,13 +264,36 @@ value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, BreakSet,
 	vn_debug__dump_instrs(OptInstrs1),
 	{ globals__lookup_bool_option(Globals, pred_value_number, PredVn) },
 	( { PredVn = yes } ->
-		{ list__reverse(RevTuples, Tuples) },
-		value_number__process_parallel_tuples(Tuples, OptBlocks0,
-			LiveMap, Params, OptBlocks),
-		{ list__condense([Comments | OptBlocks], OptInstrs2) },
-		{ opt_util__propagate_livevals(OptInstrs2, OptInstrs) },
-		vn_debug__cost_header_msg("procedure after parallels"),
-		vn_debug__dump_instrs(OptInstrs)
+		% Predicate wide value numbering tries to delete assignments
+		% to variables when the target location already contains the 
+		% right value. However, if this assignment is in a loop,
+		% then this eliminated assignment may be exactly what put the
+		% right value in the right location. For example, we can't
+		% delete the assignment to r1 in the following code:
+		%
+		% L1:
+		%	r1 = r2
+		%	goto L1
+		%
+		% If opt_util__propagate_livevals changes any livevals
+		% instructions, we also can't apply predicate wide value
+		% numbering, since its input (OptBlocks) contains the
+		% old livevals sets.
+		(
+			{ value_number__has_no_backward_branches(Instrs0) },
+			{ OptInstrs1 = OptInstrs0 }
+		->
+			{ list__reverse(RevTuples, Tuples) },
+			value_number__process_parallel_tuples(Tuples,
+				OptBlocks0, LiveMap, Params, OptBlocks),
+			{ list__condense([Comments | OptBlocks], OptInstrs2) },
+			{ opt_util__propagate_livevals(OptInstrs2, OptInstrs) },
+			vn_debug__cost_header_msg("procedure after parallels"),
+			vn_debug__dump_instrs(OptInstrs)
+		;
+			vn_debug__cost_header_msg("parallels do not apply"),
+			{ OptInstrs = OptInstrs0 }
+		)
 	;
 		{ OptInstrs = OptInstrs0 }
 	).
@@ -1048,6 +1071,39 @@ value_number__boundary_instr(discard_ticket, yes).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _), yes).
+
+%-----------------------------------------------------------------------------%
+
+:- pred value_number__has_no_backward_branches(list(instruction)).
+:- mode value_number__has_no_backward_branches(in) is semidet.
+
+value_number__has_no_backward_branches(Instrs) :-
+	set__init(Labels),
+	value_number__has_no_backward_branches_2(Instrs, Labels).
+
+:- pred value_number__has_no_backward_branches_2(list(instruction), set(label)).
+:- mode value_number__has_no_backward_branches_2(in, in) is semidet.
+
+value_number__has_no_backward_branches_2([], _).
+value_number__has_no_backward_branches_2([Instr - _ | Instrs], SoFar0) :-
+	(
+		Instr = label(Label)
+	->
+		set__insert(SoFar0, Label, SoFar)
+	;
+		opt_util__instr_labels(Instr, LabelRefs, _),
+		value_number__no_old_labels(LabelRefs, SoFar0),
+		SoFar = SoFar0
+	),
+	value_number__has_no_backward_branches_2(Instrs, SoFar).
+
+:- pred value_number__no_old_labels(list(label), set(label)).
+:- mode value_number__no_old_labels(in, in) is semidet.
+
+value_number__no_old_labels([], _SoFar).
+value_number__no_old_labels([Label | Labels], SoFar) :-
+	\+ set__member(Label, SoFar),
+	value_number__no_old_labels(Labels, SoFar).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -155,8 +155,8 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 		{ RangeCheck = empty }
 	),
 		% Now generate the jump table and the cases
-	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel, EndLabel,
-			Labels, CasesCode, no, MLiveness),
+	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel,
+			EndLabel, Labels, CasesCode, no, MLiveness),
 		% We keep track of what variables are supposed to be
 		% live at the end of cases. We have to do this explicitly
 		% because generating a `fail' slot last would yield the

@@ -53,48 +53,14 @@ labelopt__build_useset(Instrs, Useset) :-
 	labelopt__build_useset_2(Instrs, Useset0, Useset).
 
 :- pred labelopt__build_useset_2(list(instruction), set(label), set(label)).
-:- mode labelopt__build_useset_2(in, di, uo) is det.
+:- mode labelopt__build_useset_2(in, in, out) is det.
 
 labelopt__build_useset_2([], Useset, Useset).
 labelopt__build_useset_2([Instr | Instructions], Useset0, Useset) :-
 	Instr = Uinstr - _Comment,
-	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
-	labelopt__label_list_build_useset(Labels, Useset0, Useset1),
-	labelopt__code_addr_list_build_useset(CodeAddresses, Useset1, Useset2),
-	labelopt__build_useset_2(Instructions, Useset2, Useset).
-
-:- pred labelopt__code_addr_list_build_useset(list(code_addr),
-	set(label), set(label)).
-:- mode labelopt__code_addr_list_build_useset(in, di, uo) is det.
-
-	% build a list and then use set__insert_list which is
-	% O(NlgN) rather than doing N insertions which is O(N^2)
-labelopt__code_addr_list_build_useset(CodeAddrs, Useset0, Useset) :-
-	labelopt__code_addr_list_build_useset_2(CodeAddrs, [], UseList),
-	set__insert_list(Useset0, UseList, Useset1),
-	copy(Useset1, Useset).
-
-:- pred labelopt__code_addr_list_build_useset_2(list(code_addr),
-		list(label), list(label)). 
-:- mode labelopt__code_addr_list_build_useset_2(in, in, out) is det.
-
-	% We are not interested in code addresses that are not labels.
-
-labelopt__code_addr_list_build_useset_2([], UseList, UseList).
-labelopt__code_addr_list_build_useset_2([CodeAddr | Rest], UseList0, UseList) :-
-	( CodeAddr = label(Label) ->
-		UseList1 = [Label|UseList0]
-	;
-		UseList1 = UseList0
-	),
-	labelopt__code_addr_list_build_useset_2(Rest, UseList1, UseList).
-
-:- pred labelopt__label_list_build_useset(list(label), set(label), set(label)).
-:- mode labelopt__label_list_build_useset(in, di, uo) is det.
-
-labelopt__label_list_build_useset(Labels, Useset0, Useset) :-
+	opt_util__instr_labels(Uinstr, Labels, _CodeAddresses),
 	set__insert_list(Useset0, Labels, Useset1),
-	copy(Useset1, Useset).
+	labelopt__build_useset_2(Instructions, Useset1, Useset).
 
 %-----------------------------------------------------------------------------%
 

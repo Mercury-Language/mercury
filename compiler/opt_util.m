@@ -207,7 +207,8 @@
 :- mode opt_util__livevals_addr(in, out) is det.
 
 	% Determine all the labels and code addresses which are referenced
-	% by an instruction.
+	% by an instruction. The code addresses that are labels are returned
+	% in both output arguments.
 
 :- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels(in, out, out) is det.
@@ -1046,12 +1047,28 @@ opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
 % determine all the labels and code_addresses that are referenced by Instr
 
 opt_util__instr_labels(Instr, Labels, CodeAddrs) :-
-	opt_util__instr_labels_2(Instr, Labels, CodeAddrs1),
+	opt_util__instr_labels_2(Instr, Labels0, CodeAddrs1),
 	opt_util__instr_rvals_and_lvals(Instr, Rvals, Lvals),
 	exprn_aux__rval_list_addrs(Rvals, CodeAddrs2, _),
 	exprn_aux__lval_list_addrs(Lvals, CodeAddrs3, _),
 	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
-	list__append(CodeAddrs12, CodeAddrs3, CodeAddrs).
+	list__append(CodeAddrs12, CodeAddrs3, CodeAddrs),
+	opt_util__find_label_code_addrs(CodeAddrs, Labels0, Labels).
+
+:- pred opt_util__find_label_code_addrs(list(code_addr),
+	list(label), list(label)). 
+:- mode opt_util__find_label_code_addrs(in, in, out) is det.
+
+	% Find out which code addresses are also labels.
+
+opt_util__find_label_code_addrs([], Labels, Labels).
+opt_util__find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
+	( CodeAddr = label(Label) ->
+		Labels1 = [Label | Labels0]
+	;
+		Labels1 = Labels0
+	),
+	opt_util__find_label_code_addrs(Rest, Labels1, Labels).
 
 :- pred opt_util__instr_labels_2(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels_2(in, out, out) is det.
