@@ -190,20 +190,20 @@ else
 	EXCEPTION_PROGS =
 endif
 
-# compare_representation does not work in the hl* grades (e.g. hlc.gc),
+# compare_representation does not work in the MLDS grades (e.g. hlc.gc),
 # because comparison of closures gives "Sorry, not implemented" when
-# HIGHLEVEL_CODE is set.
+# MR_HIGHLEVEL_CODE is set.
 #
-# factt_non does not work in the hl* grades because the code for nondet
+# factt_non does not work in the MLDS grades because the code for nondet
 # fact tables assumes that we're using the LLDS back-end. Also, fact tables
 # and deep profiling do not (yet) mix.
 #
-# type_tables does not work in the hl* grades because the test itself
+# type_tables does not work in the MLDS grades because the test itself
 # is a quick hack that assumes the use of the LLDS backend; it should
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 
-ifeq "$(findstring hl,$(GRADE))" ""
+ifeq "$(filter hl% il% java%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
 			factt_non
@@ -223,12 +223,19 @@ endif
 # The MLDS back-end doesn't support nondet C in trailing grades,
 # or in no-GC grades (except with --no-reclaim-heap-on-failure).
 # We also don't support nondet C in deep profiling grades.
-ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
+# These tests are also not supported in IL and Java grades,
+# since those back-ends don't support the C interface at all.
+# (XXX perhaps we should add analagous tests of the nondet IL, C#, MC++,
+# and [evenetually] Java interfaces?)
+ifneq "$(filter il% java%,$(GRADE))" ""
 	NONDET_C_PROGS =
 else
-   ifeq "$(findstring hl,$(GRADE))$(findstring .gc,$(GRADE))" "hl"
+  ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
 	NONDET_C_PROGS =
-   else
+  else
+    ifeq "$(findstring hl,$(GRADE))$(findstring .gc,$(GRADE))" "hl"
+	NONDET_C_PROGS =
+    else
 	ifneq "$(findstring profdeep,$(GRADE))" ""
 		NONDET_C_PROGS =
 	else
@@ -237,7 +244,8 @@ else
 			nondet_c \
 			nondet_pragma_c_bug
 	endif
-   endif
+    endif
+  endif
 endif
 
 PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
