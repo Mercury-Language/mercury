@@ -142,9 +142,9 @@ MR_define_type_ctor_info(private_builtin, type_ctor_info, 1,
 MR_define_type_ctor_info(private_builtin, type_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO);
 MR_define_type_ctor_info(private_builtin, base_typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO);
-MR_define_type_ctor_info(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_BASETYPECLASSINFO);
+MR_define_type_ctor_info(private_builtin, typeclass_info, 1,
+	MR_TYPECTOR_REP_TYPECLASSINFO);
 
 /*---------------------------------------------------------------------------*/
 
