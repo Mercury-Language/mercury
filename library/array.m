@@ -399,30 +399,34 @@ ML_make_array(Integer size, Word item)
 ").
 
 :- pragma c_code(array__init(Size::in, Item::in, Array::array_uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_make_array(Size, Item);
 ").
 
 :- pragma c_code(array__make_empty_array(Array::array_uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_make_array(0, 0);
 ").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(array__min(Array::array_ui, Min::out), will_not_call_mercury, "
+:- pragma c_code(array__min(Array::array_ui, Min::out),
+		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma c_code(array__min(Array::in, Min::out), will_not_call_mercury, "
+:- pragma c_code(array__min(Array::in, Min::out),
+		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 
-:- pragma c_code(array__max(Array::array_ui, Max::out), will_not_call_mercury, "
+:- pragma c_code(array__max(Array::array_ui, Max::out), 
+		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
-:- pragma c_code(array__max(Array::in, Max::out), will_not_call_mercury, "
+:- pragma c_code(array__max(Array::in, Max::out), 
+		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
 
@@ -433,10 +437,11 @@ array__bounds(Array, Min, Max) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code(array__size(Array::array_ui, Max::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
-:- pragma c_code(array__size(Array::in, Max::out), will_not_call_mercury, "
+:- pragma c_code(array__size(Array::in, Max::out),
+		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 
@@ -465,7 +470,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code(array__lookup(Array::array_ui, Index::in, Item::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
@@ -475,7 +480,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Item = array->elements[Index];
 }").
 :- pragma c_code(array__lookup(Array::in, Index::in, Item::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
@@ -488,7 +493,8 @@ array__slow_set(Array0, Index, Item, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code(array__set(Array0::array_di, Index::in,
-		Item::in, Array::array_uo), will_not_call_mercury, "{
+		Item::in, Array::array_uo),
+		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
@@ -541,7 +547,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 ").
 
 :- pragma c_code(array__resize(Array0::array_di, Size::in, Item::in,
-		Array::array_uo), will_not_call_mercury, "
+		Array::array_uo), [will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
@@ -584,7 +590,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 ").
 
 :- pragma c_code(array__shrink(Array0::array_di, Size::in, Array::array_uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
@@ -619,12 +625,12 @@ ML_copy_array(MR_ArrayType *old_array)
 ").
 
 :- pragma c_code(array__copy(Array0::array_ui, Array::array_uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
 :- pragma c_code(array__copy(Array0::in, Array::array_uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 

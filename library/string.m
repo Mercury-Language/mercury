@@ -587,7 +587,7 @@ string__from_char_list(CharList, String) :-
 % it improves the overall speed of parsing by about 7%.
 %
 :- pragma c_code(string__from_rev_char_list(Chars::in, Str::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 {
 	Word list_ptr;
 	Word size, len;
@@ -1551,7 +1551,7 @@ string__special_precision_and_width(-1).
 %-----------------------------------------------------------------------------%
 
 :- pragma c_code(string__float_to_string(FloatVal::in, FloatString::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
 	Word tmp;
 	sprintf(buf, ""%#.15g"", FloatVal);
@@ -1566,7 +1566,7 @@ string__special_precision_and_width(-1).
 :- pred string__float_to_f_string(float::in, string::out) is det.
 
 :- pragma c_code(string__float_to_f_string(FloatVal::in, FloatString::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
 	Word tmp;
 	sprintf(buf, ""%.15f"", FloatVal);
@@ -1576,7 +1576,7 @@ string__special_precision_and_width(-1).
 }").
 
 :- pragma c_code(string__to_float(FloatString::in, FloatVal::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	/* use a temporary, since we can't don't know whether FloatVal
 	   is a double or float */
 	double tmp;
@@ -1594,7 +1594,7 @@ string__special_precision_and_width(-1).
 */
 
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	const char *p = Str + strlen(Str);
 	IntList = list_empty();
 	while (p > Str) {
@@ -1604,7 +1604,7 @@ string__special_precision_and_width(-1).
 }").
 
 :- pragma c_code(string__to_int_list(Str::out, IntList::in),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 		/* mode (out, in) is det */
 	Word int_list_ptr;
 	size_t size;
@@ -1647,7 +1647,7 @@ string__special_precision_and_width(-1).
 :- mode string__contains_char(in, in) is semidet.
 */
 :- pragma c_code(string__contains_char(Str::in, Ch::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);
 ").
 
@@ -1658,7 +1658,7 @@ string__special_precision_and_width(-1).
 :- mode string__index(in, in, out) is semidet.
 */
 :- pragma c_code(string__index(Str::in, Index::in, Ch::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	if ((Word) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
@@ -1670,7 +1670,7 @@ string__special_precision_and_width(-1).
 /*-----------------------------------------------------------------------*/
 
 :- pragma c_code(string__unsafe_index(Str::in, Index::in, Ch::out),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Ch = Str[Index];
 ").
 
@@ -1681,7 +1681,7 @@ string__special_precision_and_width(-1).
 :- mode string__length(in, out) is det.
 */
 :- pragma c_code(string__length(Str::in, Length::uo),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	Length = strlen(Str);
 ").
 
@@ -1699,7 +1699,7 @@ string__special_precision_and_width(-1).
 :- mode string__append(in, in, in) is semidet.
 */
 :- pragma c_code(string__append(S1::in, S2::in, S3::in),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	size_t len_1 = strlen(S1);
 	SUCCESS_INDICATOR = (
 		strncmp(S1, S3, len_1) == 0 &&
@@ -1711,7 +1711,7 @@ string__special_precision_and_width(-1).
 :- mode string__append(in, out, in) is semidet.
 */
 :- pragma c_code(string__append(S1::in, S2::out, S3::in),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	Word tmp;
 	size_t len_1, len_2, len_3;
 
@@ -1736,7 +1736,7 @@ string__special_precision_and_width(-1).
 :- mode string__append(in, in, out) is det.
 */
 :- pragma c_code(string__append(S1::in, S2::in, S3::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2;
 	Word tmp;
 	len_1 = strlen(S1);
@@ -1818,7 +1818,7 @@ void sys_init_string_append_module(void) {
 
 % :- mode string__append(out, out, in) is multidet.
 :- pragma c_code(string__append(S1::out, S2::out, S3::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	/*
 	** The pragma_c_code will generate a mkframe();
 	** we need to pop off that frame before jumping to the hand-coded
@@ -1857,7 +1857,7 @@ void sys_init_string_append_module(void) {
 
 :- pragma c_code(string__substring(Str::in, Start::in, Count::in,
 		SubString::out),
-		will_not_call_mercury,
+		[will_not_call_mercury, thread_safe],
 "{
 	Integer len;
 	Word tmp;
@@ -1884,7 +1884,7 @@ void sys_init_string_append_module(void) {
 
 :- pragma c_code(string__unsafe_substring(Str::in, Start::in, Count::in,
 		SubString::out),
-		will_not_call_mercury,
+		[will_not_call_mercury, thread_safe],
 "{
 	Integer len;
 	Word tmp;
@@ -1906,7 +1906,7 @@ void sys_init_string_append_module(void) {
 */
 
 :- pragma c_code(string__split(Str::in, Count::in, Left::out, Right::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	Integer len;
 	Word tmp;
 	if (Count <= 0) {
@@ -1948,7 +1948,7 @@ void sys_init_string_append_module(void) {
 :- mode string__first_char(in, in, in) is semidet.	% implied
 */
 :- pragma c_code(string__first_char(Str::in, First::in, Rest::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	SUCCESS_INDICATOR = (
 		Str[0] == First &&
 		First != '\\0' &&
@@ -1960,7 +1960,7 @@ void sys_init_string_append_module(void) {
 :- mode string__first_char(in, out, in) is semidet.	% implied
 */
 :- pragma c_code(string__first_char(Str::in, First::out, Rest::in),
-		will_not_call_mercury, "
+		[will_not_call_mercury, thread_safe], "
 	First = Str[0];
 	SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
 ").
@@ -1969,7 +1969,7 @@ void sys_init_string_append_module(void) {
 :- mode string__first_char(in, in, out) is semidet.	% implied
 */
 :- pragma c_code(string__first_char(Str::in, First::in, Rest::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	Word tmp;
 	if (Str[0] != First || First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
@@ -1991,7 +1991,7 @@ void sys_init_string_append_module(void) {
 :- mode string__first_char(in, out, out) is semidet.
 */
 :- pragma c_code(string__first_char(Str::in, First::out, Rest::out),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	Word tmp;
 	First = Str[0];
 	if (First == '\\0') {
@@ -2014,7 +2014,7 @@ void sys_init_string_append_module(void) {
 :- mode string__first_char(out, in, in) is det.
 */
 :- pragma c_code(string__first_char(Str::out, First::in, Rest::in),
-		will_not_call_mercury, "{
+		[will_not_call_mercury, thread_safe], "{
 	size_t len = strlen(Rest) + 1;
 	Word tmp;
 	incr_hp_atomic(tmp, (len + sizeof(Word)) / sizeof(Word));

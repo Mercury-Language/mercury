@@ -138,7 +138,7 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-#if 0
+#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d locking on %p (%s)\n", pthread_self(), lock, from);
 #endif
 	err = pthread_mutex_lock(lock);
@@ -150,7 +150,7 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
 {
 	int err;
 
-#if 0
+#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d unlocking on %p (%s)\n",
 		pthread_self(), lock, from);
 #endif
@@ -163,7 +163,7 @@ MR_cond_signal(MercuryCond *cond)
 {
 	int err;
 
-#if 0
+#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d signaling %p\n", pthread_self(), cond);
 #endif
 	err = pthread_cond_broadcast(cond);
@@ -175,35 +175,11 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
 {
 	int err;
 
-#if 0
+#ifdef MR_DEBUG_THREADS
 	fprintf(stderr, "%d waiting on %p (%p)\n", pthread_self(), cond, lock);
 #endif
 	err = pthread_cond_wait(cond, lock);
 	assert(err == 0);
 }
 #endif
-
-/*
-INIT mercury_scheduler_wrapper
-ENDINIT
-*/
-
-
-Define_extern_entry(do_runnext);
-
-BEGIN_MODULE(scheduler_module)
-	init_entry(do_runnext);
-BEGIN_CODE
-
-Define_entry(do_runnext);
-	runnext();
-
-	fatal_error("Execution should never reach here.");
-
-END_MODULE
-
-void mercury_scheduler_wrapper(void); /* suppress gcc warning */
-void mercury_scheduler_wrapper(void) {
-	scheduler_module();
-}
 

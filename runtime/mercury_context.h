@@ -132,8 +132,8 @@ typedef MR_Context Context;	/* for backwards compatibility */
 ** the runqueue is a linked list of contexts that are
 ** runnable.
 */
-extern		MR_Context	*MR_runqueue;
-extern		MR_Context	*MR_suspended_forks;
+extern		MR_Context	*MR_runqueue_head;
+extern		MR_Context	*MR_runqueue_tail;
 #ifdef	MR_THREAD_SAFE
   extern	MercuryLock	*MR_runqueue_lock;
   extern	MercuryCond	*MR_runqueue_cond;
@@ -175,84 +175,31 @@ void	finalize_runqueue(void);
 */
 void	flounder(void);
 
-#ifdef	MR_THREAD_SAFE
-  /*
-  ** schedule(MR_Context *cptr):
-  **	Inserts a context onto the start of the run queue.
-  */
-  #define schedule(cptr)					\
+/*
+** schedule(MR_Context *cptr):
+**	Append a context onto the end of the run queue.
+*/
+#define schedule(cptr)						\
   	do {							\
+		MR_Context *ctxt = (MR_Context *) (cptr);	\
+		ctxt->next = NULL;				\
 		MR_LOCK(MR_runqueue_lock, "schedule");		\
-		((MR_Context *)cptr)->next = MR_runqueue;	\
-		MR_runqueue = (MR_Context *) (cptr);		\
+		if (MR_runqueue_tail) {				\
+			MR_runqueue_tail->next = ctxt;		\
+			MR_runqueue_tail = ctxt;		\
+		} else {					\
+			MR_runqueue_head = ctxt;		\
+			MR_runqueue_tail = ctxt;		\
+		}						\
 		MR_SIGNAL(MR_runqueue_cond);			\
 		MR_UNLOCK(MR_runqueue_lock, "schedule");	\
 	} while(0)
 
-  /*
-  ** runnext() tries to execute the first context on the
-  ** runqueue. If the context was directly called from C
-  ** it may only be executed in the thread that the C call
-  ** originated in or should the context return to C the
-  ** C stack will be wrong!
-  ** If there are no contexts that the current thread can
-  ** execute, then we suspend until another thread puts something
-  ** into the runqueue. Currently, it is not possible for
-  ** floundering to occur, so we haven't got a check for it.
-  */
-  #define runnext()						\
-  	do {							\
-		MR_Context *rn_c, *rn_p;			\
-		unsigned x;					\
-		MercuryThread t;				\
-		x = MR_ENGINE(c_depth);				\
-		t = MR_ENGINE(owner_thread);			\
-		MR_LOCK(MR_runqueue_lock, "runnext i");		\
-		while (1) {					\
-			if (MR_exit_now == TRUE)		\
-				destroy_thread(MR_engine_base);	\
-			rn_c = MR_runqueue;			\
-			rn_p = NULL;				\
-			while (rn_c != NULL) {			\
-				if ( (x > 0 && rn_c->owner_thread == t) \
-				   ||	(rn_c->owner_thread == NULL)) \
-					break;			\
-				rn_p = rn_c;			\
-				rn_c = rn_c->next;		\
-			}					\
-			if (rn_c != NULL)			\
-				break;				\
-			MR_WAIT(MR_runqueue_cond, MR_runqueue_lock); \
-		}						\
-		MR_ENGINE(this_context) = rn_c;			\
-		if (rn_p == NULL)				\
-			MR_runqueue = rn_c->next;		\
-		else						\
-			rn_p->next = rn_c->next;		\
-		MR_UNLOCK(MR_runqueue_lock, "runnext");		\
-		load_context(MR_ENGINE(this_context));		\
-		GOTO(MR_ENGINE(this_context)->resume);		\
-	} while(0)
-#else
-  /* see above for documentation */
-  #define schedule(cptr)					\
-  	do {							\
-		((MR_Context *)cptr)->next = MR_runqueue;	\
-		MR_runqueue = (MR_Context *) (cptr);		\
-	} while(0)
-
-  /* see above for documentation */
-  #define runnext()						\
-  	do {							\
-		if (MR_runqueue == NULL) {			\
-			fatal_error("empty runqueue");		\
-		}						\
-		MR_ENGINE(this_context) = MR_runqueue;		\
-		MR_runqueue = MR_runqueue->next;		\
-		load_context(MR_ENGINE(this_context));		\
-		GOTO(MR_ENGINE(this_context)->resume);		\
-	} while(0)
-#endif
+Declare_entry(do_runnext);
+#define runnext()						\
+	do {							\
+		GOTO(ENTRY(do_runnext));			\
+	} while (0)						\
 
 #ifdef	MR_THREAD_SAFE
   #define IF_MR_THREAD_SAFE(x)	x

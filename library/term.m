@@ -1120,3 +1120,4 @@ term__compare(Cmp, Term1, Term2, Bindings) :-
 	compare(Cmp, TermA, TermB).
 
 %-----------------------------------------------------------------------------%
+
