@@ -879,7 +879,8 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 						MR_comp_type_name,
 					proc_id->MR_proc_comp.
 						MR_comp_pred_name,
-					proc_id->MR_proc_comp.MR_comp_arity,
+					proc_id->MR_proc_comp.
+						MR_comp_type_arity,
 					proc_id->MR_proc_comp.MR_comp_mode);
 			} else {
 				fprintf(fp, "  %s.%s/%d-%d\n  ",

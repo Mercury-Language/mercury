@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -621,7 +621,7 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_module,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_def_module,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_pred_name,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_arity,
+			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
 #endif
 
@@ -635,7 +635,7 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
 		MR_write_string(fp,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_pred_name);
 		MR_write_num(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_arity);
+			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity);
 		MR_write_num(fp,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
 	} else {
@@ -645,7 +645,7 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
 			ps->MR_ps_proc_id.MR_proc_user.MR_user_decl_module,
 			ps->MR_ps_proc_id.MR_proc_user.MR_user_def_module,
 			ps->MR_ps_proc_id.MR_proc_user.MR_user_name,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_arity,
+			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity,
 			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
 #endif
 
