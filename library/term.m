@@ -145,6 +145,11 @@
 %	term__is_ground(Term, Bindings) is true iff no variables contained
 %		in Term are non-ground in Bindings.
 
+:- pred term__is_ground(term).
+:- mode term__is_ground(in) is semidet.
+%	term__is_ground(Term, Bindings) is true iff Term contains no
+%		variables.
+
 :- pred term__compare(comparison, term, term, substitution).
 :- mode term__compare(out, in, in, in) is semidet.
 %	term__compare(Comparison, Term1, Term2, Bindings) is true iff
@@ -905,7 +910,20 @@ term__is_ground_2([], _Bindings).
 term__is_ground_2([Term|Terms], Bindings) :-
 	term__is_ground(Term, Bindings),
 	term__is_ground_2(Terms, Bindings).
-	
+
+%-----------------------------------------------------------------------------%
+
+term__is_ground(term__functor(_, Args, _)) :-
+	term__is_ground_2(Args).
+
+:- pred term__is_ground_2(list(term)).
+:- mode term__is_ground_2(in) is semidet.
+
+term__is_ground_2([]).
+term__is_ground_2([Term|Terms]) :-
+	term__is_ground(Term),
+	term__is_ground_2(Terms).
+
 %-----------------------------------------------------------------------------%
 
 term__compare(Cmp, Term1, Term2, Bindings) :-
