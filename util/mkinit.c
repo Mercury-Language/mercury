@@ -1,8 +1,14 @@
+/*
+** Copyright (C) 1995 University of Melbourne.
+** This file may only be copied under the terms of the GNU General
+** Public License - see the file COPYING in the Mercury distribution.
+*/
+
 #include	<stdio.h>
 #include	<stdlib.h>
-#include	<unistd.h>
 #include	<string.h>
 #include	<ctype.h>
+#include	"getopt.h"
 
 #define	isokchar(c)	(isalnum(c) || c == '_')
 
