@@ -328,7 +328,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 				lval(field(0, OldClosure,
 					lval(LoopCounterReg))))
 				- "copy old field",
-			if_val(binop(<, lval(LoopCounterReg),
+			if_val(binop(<=, lval(LoopCounterReg),
 				lval(NumOldArgsReg)), label(LoopStart))
 				- "repeat the loop?",
 			label(LoopEnd) - "end of loop"
