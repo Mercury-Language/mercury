@@ -101,7 +101,7 @@ static volatile	int		in_profiling_code = FALSE;
 
 
 #ifdef PROFILE_CALLS
-  FILE 			*MR_prof_decl_fptr = NULL;
+  static FILE 		*MR_prof_decl_fptr = NULL;
   static prof_call_node	*addr_pair_table[CALL_TABLE_SIZE] = {NULL};
 #endif
 
@@ -613,20 +613,26 @@ MR_prof_finish(void)
 	if (done) return;
 	done = TRUE;
 
+#ifdef PROFILE_CALLS
+	prof_output_addr_pair_table();
+#endif
+
 #ifdef PROFILE_TIME
 	MR_prof_turn_off_time_profiling();
 	prof_output_addr_table();
 #endif
 
+#ifdef PROFILE_MEMORY
+	prof_output_mem_tables();
+#endif
+}
+
+void MR_close_prof_decl_file(void)
+{
 #ifdef PROFILE_CALLS
 	if (MR_prof_decl_fptr) {
 		checked_fclose(MR_prof_decl_fptr, "Prof.Decl");
 	}
-	prof_output_addr_pair_table();
-#endif
-
-#ifdef PROFILE_MEMORY
-	prof_output_mem_tables();
 #endif
 }
 

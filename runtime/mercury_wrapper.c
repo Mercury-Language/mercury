@@ -421,12 +421,9 @@ do_init_modules(void)
 
 	if (! done) {
 		(*address_of_init_modules)();
+		MR_close_prof_decl_file();
 		done = TRUE;
 	}
-
-#ifdef PROFILE_CALLS
-	fclose(MR_prof_decl_fptr);
-#endif
 }
 
 /*

@@ -25,13 +25,6 @@
 extern MR_Code *	volatile	MR_prof_current_proc;
 
 /*
-** A pointer to the "Prof.Decl" file.
-*/
-#ifdef PROFILE_CALLS
-  extern FILE	*MR_prof_decl_fptr;
-#endif
-
-/*
 ** The following two macros are used to ensure that the profiler can
 ** use `prof_current_proc' to determine what procedure is currently
 ** being executed when a profiling interrupt occurs.
@@ -74,8 +67,9 @@ extern void	MR_prof_output_addr_decl(const char *name, const MR_Code *address);
 /*
 ** The following functions are used by mercury_wrapper.c to
 ** initiate profiling, at the start of the the program,
-** and to finish up profiling (writing the profiling data to files)
-** at the end of the program.
+** to finish up profiling (writing the profiling data to files)
+** at the end of the program, and to close the `Prof.Decl' file at end of
+** module initialization.
 ** Note that prof_init() calls atexit(prof_finish), so that it can handle
 ** the case where the program exits by calling exit() rather than just
 ** returning, so it is actually not necessary to call prof_finish()
@@ -84,6 +78,7 @@ extern void	MR_prof_output_addr_decl(const char *name, const MR_Code *address);
 
 extern	void	MR_prof_init(void);
 extern	void	MR_prof_finish(void);
+extern	void	MR_close_prof_decl_file(void);
 
 #ifdef PROFILE_TIME
   extern void 	MR_prof_turn_on_time_profiling(void);
