@@ -10,6 +10,7 @@
 *.date
 *.date3
 rl_file.m rl_out.m
+*.pp_date
 mercury_compile.stats
 mercury_compile
 mercury_compile.dep
