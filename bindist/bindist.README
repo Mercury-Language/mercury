@@ -1,5 +1,5 @@
 This directory contains the binary distribution for the
-University of Melbourne Mercury compiler, version 0.6alpha.
+University of Melbourne Mercury compiler, version 0.6.
 
 The Mercury implementation is free software, but it is Copyright (C)
 1994, 1995, 1996 The University of Melbourne.  It is distributed under
@@ -39,9 +39,9 @@ EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
 See the file INSTALL for installation instructions.
 
 The installation process will install INFO, HTML, and DVI versions in the
-following default locations: /usr/local/mercury-0.6alpha/info,
-/usr/local/mercury-0.6alpha/lib/mercury/html, and
-/usr/local/mercury-0.6alpha/lib/mercury/doc.
+following default locations: /usr/local/mercury-0.6/info,
+/usr/local/mercury-0.6/lib/mercury/html, and
+/usr/local/mercury-0.6/lib/mercury/doc.
 
 For some small example Mercury programs, see the `samples' directory.
 For examples of larger programs, download the Mercury source distribution -
@@ -60,7 +60,6 @@ ftp or WWW from the following locations:
 
 	Australia:
 		ftp://turiel.cs.mu.oz.au/pub/mercury
-		http://www.cs.mu.oz.au/~fjh/mercury
 	USA:
 		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
 	Europe:
