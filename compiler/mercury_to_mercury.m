@@ -1820,7 +1820,8 @@ mercury_infix_op("and").	/* NU-Prolog */
 mercury_infix_op("=").
 mercury_infix_op("=..").
 mercury_infix_op("=:=").
-mercury_infix_op("==").
+mercury_infix_op("==").		/* Prolog (also for constraints, in svar.m) */
+mercury_infix_op("\\==").	/* Prolog */
 mercury_infix_op("=\\=").
 mercury_infix_op(">").
 mercury_infix_op(">=").
