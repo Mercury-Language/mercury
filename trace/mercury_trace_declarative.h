@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,11 +50,11 @@ typedef Word MR_Trace_Node;
 #define MR_TRACE_STATUS_FAILED		(Word) 1
 #define MR_TRACE_STATUS_UNDECIDED	(Word) 2
 
-#define MR_trace_atom(atom, name, args)					\
-	do {								\
-		tag_incr_hp((atom), MR_mktag(0), 2);			\
-		MR_field(MR_mktag(0), (atom), 0) = (Word) (name);       \
-		MR_field(MR_mktag(0), (atom), 1) = (args);              \
+#define MR_trace_atom(atom, name, args)					    \
+	do {								    \
+		tag_incr_hp((atom), MR_mktag(0), 2);			    \
+		MR_field(MR_mktag(0), (atom), (Integer) 0) = (Word) (name); \
+		MR_field(MR_mktag(0), (atom), (Integer) 1) = (args);	    \
 	} while(0)
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

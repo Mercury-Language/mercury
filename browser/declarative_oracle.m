@@ -3,7 +3,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: declarative_debugger.m
+% File: declarative_oracle.m
 % Author: Mark Brown
 % Purpose:
 %	This module implements the oracle for a Mercury declarative debugger.
@@ -24,92 +24,100 @@
 
 :- module declarative_oracle.
 :- interface.
-:- import_module io.
-:- import_module declarative_debugger, declarative_user.
+:- import_module declarative_debugger.
+:- import_module list, io.
 
+	% A response that the oracle gives to the caller.
 	%
+:- type oracle_response
+	--->	oracle_answers(list(decl_answer))
+	;	no_oracle_answers
+	;	abort_diagnosis.
+
 	% The oracle state.  This is threaded around the declarative
 	% debugger.
 	%
 :- type oracle_state.
 
-	%
-	% A response that the oracle gives to the caller.  This is
-	% a truth value, if available, or else an indication of why
-	% the query cannot be answered yet.  For deferred answers
-	% the argument is the user response, which will not be a truth
-	% value (since, if it was, the truth_value/1 constructor would
-	% be used).
-	%
-:- type oracle_answer
-	--->	truth_value(edt_truth)
-	;	deferred(user_response).
-
-	%
-	% Query the oracle about the program being debugged.  The first
-	% argument is a node in the evaluation tree, the second argument
-	% is the oracle response.  The oracle state is threaded through
-	% so its contents can be updated after user responses.
-	%
-:- pred query_oracle(edt_node, oracle_answer, oracle_state, oracle_state,
-		io__state, io__state).
-:- mode query_oracle(in, out, in, out, di, uo) is det.
-
-	%
 	% Produce a new oracle state.
 	%
-:- pred oracle_state_init(oracle_state).
-:- mode oracle_state_init(out) is det.
+:- pred oracle_state_init(io__input_stream, io__output_stream, oracle_state).
+:- mode oracle_state_init(in, in, out) is det.
+
+	% Query the oracle about the program being debugged.  The first
+	% argument is a queue of nodes in the evaluation tree, the second
+	% argument is the oracle response to any of these.  The oracle
+	% state is threaded through so its contents can be updated after
+	% user responses.
+	%
+:- pred query_oracle(list(decl_question), oracle_response, oracle_state,
+		oracle_state, io__state, io__state).
+:- mode query_oracle(in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, list, char, require, std_util, string, map.
-:- import_module declarative_user, util, browse.
+:- import_module declarative_user, util.
+:- import_module bool, std_util, map, set.
 
+query_oracle(Queries, Response, Oracle0, Oracle) -->
+	{ get_oracle_kb(Oracle0, KB0) },
+	{ list__filter_map(query_oracle_kb(KB0), Queries, Answers) },
+	(
+		{ Answers = [] }
+	->
+		{ get_oracle_user(Oracle0, User0) },
+		query_user(Queries, UserResponse, User0, User),
+		{
+			UserResponse = user_answer(Answer),
+			assert_oracle_kb(Answer, KB0, KB),
+			Response = oracle_answers([Answer])
+		;
+			UserResponse = no_user_answer,
+			Response = no_oracle_answers,
+			KB = KB0
+		;
+			UserResponse = abort_diagnosis,
+			Response = abort_diagnosis,
+			KB = KB0
+		},
+		{ set_oracle_kb(Oracle0, KB, Oracle1) },
+		{ set_oracle_user(Oracle1, User, Oracle) }
+	;
+		{ Response = oracle_answers(Answers) },
+		{ Oracle = Oracle0 }
+	).
+		
 :- type oracle_state
 	--->	oracle(
-%			browser_state,		% XXX not used yet
-			oracle_kb
+			oracle_kb,		% Knowledge base.
+			user_state		% User interface.
 		).
 
-oracle_state_init(oracle(KB)) :-
-	oracle_kb_init(KB).
-
+oracle_state_init(InStr, OutStr, Oracle) :-
+	user_state_init(InStr, OutStr, User),
+	oracle_kb_init(KB),
+	Oracle = oracle(KB, User).
 
 :- pred get_oracle_kb(oracle_state, oracle_kb).
 :- mode get_oracle_kb(in, out) is det.
 
-get_oracle_kb(oracle(KB), KB).
+get_oracle_kb(oracle(KB, _), KB).
 
 :- pred set_oracle_kb(oracle_state, oracle_kb, oracle_state).
 :- mode set_oracle_kb(in, in, out) is det.
 
-set_oracle_kb(oracle(_), KB, oracle(KB)).
+set_oracle_kb(oracle(_, UI), KB, oracle(KB, UI)).
 
-query_oracle(Node, Answer, Oracle0, Oracle) -->
-	(
-		{ query_oracle_kb(Node, Oracle0, KBTruth, _KBAssumption) }
-	->
-		{ Answer = truth_value(KBTruth) },
-		{ Oracle = Oracle0 }
-	;
-		query_user(Node, Answer),
-		{
-			Answer = truth_value(Truth),
-			%
-			% We don't need to check the consistency of this
-			% assertion because we only get here if the KB
-			% didn't know the answer already.
-			%
-			add_oracle_assumption(Node, Truth, _Assumption,
-					Oracle0, Oracle)
-		;
-			Answer = deferred(_),
-			Oracle = Oracle0
-		}
-	).
+:- pred get_oracle_user(oracle_state, user_state).
+:- mode get_oracle_user(in, out) is det.
 
+get_oracle_user(oracle(_, UI), UI).
+
+:- pred set_oracle_user(oracle_state, user_state, oracle_state).
+:- mode set_oracle_user(in, in, out) is det.
+
+set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 
 %-----------------------------------------------------------------------------%
 
@@ -117,62 +125,138 @@ query_oracle(Node, Answer, Oracle0, Oracle) -->
 	% This section implements the oracle knowledge base, which
 	% stores anything that the debugger knows about the intended
 	% interpretation.  This can be used to check the correctness
-	% of an EDT node.  The KB stores items of knowledge, called
-	% oracle assumptions, and these can be referred to from outside
-	% this module by the use of an identifier.
+	% of an EDT node.
 	%
 
-	%
 	% The type of the knowledge base.  Other fields may be added in
 	% the future, such as for assertions made on-the-fly by the user,
 	% or assertions in the program text.
 	%
 :- type oracle_kb
 	---> oracle_kb(
-		%
+
 		% For ground atoms, the knowledge is represented directly
 		% with a map.  This is used, for example, in the common
 		% case that the user supplies a truth value for a
 		% "wrong answer" node.
 		%
-		map(edt_node, edt_truth)
+		map(decl_atom, decl_truth),
+
+		% Mapping from call atoms to their solution sets.
+		% The sets in this map are all complete---but they may
+		% contain wrong answers.
+		%
+		map(decl_atom, set(decl_atom)),
+
+		% Mapping from call atoms to their solution sets.
+		% The sets in this map are all incomplete---there
+		% exists a correct solution which is not in the set.
+		%
+		map(decl_atom, set(decl_atom))
 	).
-
-
-	%
-	% The type of identifiers for the oracle assumptions.
-	%
-:- type oracle_assumption
-			%
-			% Truth value came from a table of ground atoms.
-			%
-	--->	ground(edt_node).
-
-
-:- pred query_oracle_kb(edt_node, oracle_state, edt_truth, oracle_assumption).
-:- mode query_oracle_kb(in, in, out, out) is semidet.
-
-query_oracle_kb(Node, Oracle, Truth, Assumption) :-
-	get_oracle_kb(Oracle, oracle_kb(NodeMap)),
-	map__search(NodeMap, Node, Truth),
-	Assumption = ground(Node).
-
-
-:- pred add_oracle_assumption(edt_node, edt_truth, oracle_assumption,
-		oracle_state, oracle_state).
-:- mode add_oracle_assumption(in, in, out, in, out) is det.
-
-add_oracle_assumption(Node, Truth, Assumption, Oracle0, Oracle) :-
-	get_oracle_kb(Oracle0, oracle_kb(NodeMap0)),
-	map__set(NodeMap0, Node, Truth, NodeMap),
-	set_oracle_kb(Oracle0, oracle_kb(NodeMap), Oracle),
-	Assumption = ground(Node).
-
 
 :- pred oracle_kb_init(oracle_kb).
 :- mode oracle_kb_init(out) is det.
 
-oracle_kb_init(oracle_kb(NodeMap)) :-
-	map__init(NodeMap).
+oracle_kb_init(oracle_kb(G, Y, N)) :-
+	map__init(G),
+	map__init(Y),
+	map__init(N).
 
+:- pred get_kb_ground_map(oracle_kb, map(decl_atom, decl_truth)).
+:- mode get_kb_ground_map(in, out) is det.
+
+get_kb_ground_map(oracle_kb(Map, _, _), Map).
+
+:- pred set_kb_ground_map(oracle_kb, map(decl_atom, decl_truth), oracle_kb).
+:- mode set_kb_ground_map(in, in, out) is det.
+
+set_kb_ground_map(oracle_kb(_, Y, N), G, oracle_kb(G, Y, N)).
+
+:- pred get_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom))).
+:- mode get_kb_complete_map(in, out) is det.
+
+get_kb_complete_map(oracle_kb(_, Map, _), Map).
+
+:- pred set_kb_complete_map(oracle_kb, map(decl_atom, set(decl_atom)),
+		oracle_kb).
+:- mode set_kb_complete_map(in, in, out) is det.
+
+set_kb_complete_map(oracle_kb(G, _, N), Y, oracle_kb(G, Y, N)).
+
+:- pred get_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom))).
+:- mode get_kb_incomplete_map(in, out) is det.
+
+get_kb_incomplete_map(oracle_kb(_, _, Map), Map).
+
+:- pred set_kb_incomplete_map(oracle_kb, map(decl_atom, set(decl_atom)),
+		oracle_kb).
+:- mode set_kb_incomplete_map(in, in, out) is det.
+
+set_kb_incomplete_map(oracle_kb(G, Y, _), N, oracle_kb(G, Y, N)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred query_oracle_kb(oracle_kb, decl_question, decl_answer).
+:- mode query_oracle_kb(in, in, out) is semidet.
+
+query_oracle_kb(KB, Node, Node - Truth) :-
+	Node = wrong_answer(Atom),
+	get_kb_ground_map(KB, Map),
+	map__search(Map, Atom, Truth).
+
+query_oracle_kb(KB, Node, Node - Truth) :-
+	Node = missing_answer(Call, Solns),
+	set__list_to_set(Solns, Ss),
+	get_kb_complete_map(KB, CMap),
+	(
+		map__search(CMap, Call, CSs),
+		set__subset(CSs, Ss)
+	->
+		Truth = yes
+	;
+		get_kb_incomplete_map(KB, IMap),
+		map__search(IMap, Call, ISs),
+		set__subset(Ss, ISs),
+		Truth = no
+	).
+
+	% assert_oracle_kb/3 assumes that the asserted fact is consistent
+	% with the current knowledge base.  This will generally be the
+	% case, since the user will never be asked questions which
+	% the knowledge base knows anything about.
+	%
+:- pred assert_oracle_kb(decl_answer, oracle_kb, oracle_kb).
+:- mode assert_oracle_kb(in, in, out) is det.
+
+assert_oracle_kb(wrong_answer(Atom) - Truth, KB0, KB) :-
+	get_kb_ground_map(KB0, Map0),
+	map__det_insert(Map0, Atom, Truth, Map),
+	set_kb_ground_map(KB0, Map, KB).
+
+assert_oracle_kb(missing_answer(Call, Solns) - yes, KB0, KB) :-
+	get_kb_complete_map(KB0, Map0),
+	set__list_to_set(Solns, Ss0),
+	(
+		map__search(Map0, Call, OldSs)
+	->
+			% The sets are both complete, so their
+			% intersection must be also.
+			%
+		set__intersect(OldSs, Ss0, Ss),
+		map__set(Map0, Call, Ss, Map)
+	;
+		map__det_insert(Map0, Call, Ss0, Map)
+	),
+	set_kb_complete_map(KB0, Map, KB).
+
+assert_oracle_kb(missing_answer(Call, Solns) - no, KB0, KB) :-
+	get_kb_incomplete_map(KB0, Map0),
+	set__list_to_set(Solns, Ss),
+		%
+		% XXX should also keep the old incomplete set around, too.
+		% It can still give us information that the new one can't.
+		%
+	map__set(Map0, Call, Ss, Map),
+	set_kb_incomplete_map(KB0, Map, KB).
 

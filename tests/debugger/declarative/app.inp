@@ -1,19 +1,31 @@
 echo on
-goto 19
-dd_wrong
-y
-dd_wrong
-n
-n
-n
-n
-n
-n
-goto 67
-dd_wrong
-n
-n
-n
-y
-continue -a
+break app
+continue
+continue
+continue
+continue
+finish -n
+dd
+yes
+continue
+continue
+continue
+dd
+no
+no
+no
+continue
+finish -n
+dd
+no
+no
+no
+no
+no
+no
+no
+no
+no
+no
+continue
 

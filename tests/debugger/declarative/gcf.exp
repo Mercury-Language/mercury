@@ -1,57 +1,52 @@
-       1:      1  1 CALL pred gcf:main/2-0 (cc_multi) 
+       1:      1  1 CALL pred gcf:main/2-0 (cc_multi) gcf.m:8
 mdb> echo on
 Command echo enabled.
-mdb> goto 22
-      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> dd_wrong
-a(11)
-Valid? y
-Bug not found.
-      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> dd_wrong
-a(11)
-Valid? n
-f(11)
-Valid? n
-Incorrect instance found:
-
-f(11).
-
-      22:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> goto 29
-      29:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> dd_wrong
-a(12)
-Valid? n
-f(12)
-Valid? y
-c(2, 12)
-Valid? y
-g(2)
-Valid? n
-Incorrect instance found:
-
-g(2).
-
-      29:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> goto 41
-      41:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> dd_wrong
-a(20)
-Valid? n
-f(20)
-Valid? y
-c(3, 20)
-Valid? y
-g(3)
-Valid? y
-Incorrect instance found:
-
-a(20) :-
-	g(3),
-	c(3, 20),
-	f(20).
-
-      41:      2  2 EXIT pred gcf:a/1-0 (nondet) 
-mdb> c
+mdb> break a
+Registering debuggable procedures... done.
+There is one debuggable module, with 5 procedures.
+ 0: + stop  interface pred gcf:a/1-0 (nondet)
+mdb> continue
+       3:      2  2 CALL pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> finish
+      23:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> dd
+atom("a", [univ(11 : int)])
+Valid? no
+atom("g", [univ(2 : int)])
+Valid? yes
+atom("c", [univ(2 : int), univ(11 : int)])
+Valid? yes
+atom("f", [univ(11 : int)])
+Valid? yes
+e_bug(dynamic(id('<<c_pointer>>')))
+      23:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> continue
+      24:      2  2 REDO pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> finish
+      30:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> dd
+atom("a", [univ(12 : int)])
+Valid? no
+atom("c", [univ(2 : int), univ(12 : int)])
+Valid? yes
+atom("f", [univ(12 : int)])
+Valid? yes
+e_bug(dynamic(id('<<c_pointer>>')))
+      30:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> continue
+      31:      2  2 REDO pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> finish
+      42:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> dd
+atom("a", [univ(20 : int)])
+Valid? no
+atom("g", [univ(3 : int)])
+Valid? yes
+atom("c", [univ(3 : int), univ(20 : int)])
+Valid? yes
+atom("f", [univ(20 : int)])
+Valid? yes
+e_bug(dynamic(id('<<c_pointer>>')))
+      42:      2  2 EXIT pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)
+mdb> continue
 yes(20)

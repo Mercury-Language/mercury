@@ -1,3 +1,9 @@
+EXTRA_MCFLAGS=--c-debug
+EXTRA_CFLAGS=-g
+EXTRA_MLFLAGS=--no-strip
+
+# GRADE=asm_fast.gc.tr.debug
+
 #-----------------------------------------------------------------------------#
 
 main_target:	check
@@ -16,22 +22,24 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
 #-----------------------------------------------------------------------------#
 
-DECLARATIVE_PROGS = \
-	$(LARGE_DECLARATIVE_PROGS) $(SMALL_DECLARATIVE_PROGS)
+DECLARATIVE_PROGS=		\
+	app			\
+	big			\
+	gcf			\
+	if_then_else		\
+	lpe_example		\
+	neg_conj		\
+	negation		\
+	oracle_db		\
+	propositional		\
+	queens			\
+	small
 
+NONWORKING_DECLARATIVE_PROGS=	\
+	family			\
+	higher_order		\
+	ite_2
 
-# These tests run out of memory when run in non-gc grades.
-LARGE_DECLARATIVE_PROGS=
-# These tests are disabled until the new backend is finished.
-#	app			\
-#	queens
-
-SMALL_DECLARATIVE_PROGS=
-# These tests are disabled until the new backend is finished.
-#	gcf			\
-#	if_then_else		\
-#	oracle_db		\
-#	propositional
 
 MCFLAGS = --trace deep --trace-decl
 MLFLAGS = --trace
@@ -39,13 +47,13 @@ C2INITFLAGS = --trace
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
-# Also the $(LARGE_DECLARATIVE_PROGS) tests only work in `.gc' grades.
+# Also, declarative debugging only works in `.gc' grades.
 
 ifneq "$(findstring asm_,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
         PROGS=$(DECLARATIVE_PROGS)
     else
-        PROGS=$(SMALL_DECLARATIVE_PROGS)
+        PROGS=
     endif
 else
     ifneq "$(findstring jump,$(GRADE))" ""
@@ -57,7 +65,7 @@ else
             ifneq "$(findstring .gc,$(GRADE))" ""
                 PROGS=$(DECLARATIVE_PROGS)
             else
-                PROGS=$(SMALL_DECLARATIVE_PROGS)
+                PROGS=
             endif
         endif
     endif
@@ -65,23 +73,47 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-propositional.out: propositional propositional.inp
-	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1
-
 app.out: app app.inp
 	$(MDB) ./app < app.inp > app.out 2>&1
+
+big.out: big big.inp
+	$(MDB) ./big < big.inp > big.out 2>&1
+
+family.out: family family.inp
+	$(MDB) ./family < family.inp > family.out 2>&1
 
 gcf.out: gcf gcf.inp
 	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1
 
+higher_order.out: higher_order higher_order.inp
+	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1
+
 if_then_else.out: if_then_else if_then_else.inp
 	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
+
+ite_2.out: ite_2 ite_2.inp
+	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1
+
+lpe_example.out: lpe_example lpe_example.inp
+	$(MDB) ./lpe_example < lpe_example.inp > lpe_example.out 2>&1
+
+neg_conj.out: neg_conj neg_conj.inp
+	$(MDB) ./neg_conj < neg_conj.inp > neg_conj.out 2>&1
+
+negation.out: negation negation.inp
+	$(MDB) ./negation < negation.inp > negation.out 2>&1
 
 oracle_db.out: oracle_db oracle_db.inp
 	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1
 
+propositional.out: propositional propositional.inp
+	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1
+
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+small.out: small small.inp
+	$(MDB) ./small < small.inp > small.out 2>&1
 
 #-----------------------------------------------------------------------------#
 

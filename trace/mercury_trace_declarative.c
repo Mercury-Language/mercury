@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -51,7 +51,7 @@
 ** macro gives the default depth limit (relative to the starting depth).
 */
 
-#define MR_EDT_DEPTH_STEP_SIZE		8
+#define MR_EDT_DEPTH_STEP_SIZE		128
 
 /*
 ** The declarative debugger back end is controlled by the
@@ -79,9 +79,13 @@ static	Unsigned	MR_trace_node_store;
 
 /*
 ** The front end state is stored here in between calls to it.
+** MR_trace_decl_ensure_init should be called before using the state.
 */
 
-static	Word		MR_trace_front_end_state = (Word) NULL;
+static	Word		MR_trace_front_end_state;
+
+static	void
+MR_trace_decl_ensure_init(void);
 
 /*
 ** MR_trace_current_node always contains the last node allocated,
@@ -779,6 +783,29 @@ MR_decl_atom_args(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	return arglist;
 }
 
+static	void
+MR_trace_decl_ensure_init(void)
+{
+	static bool		done = FALSE;
+	static MercuryFile		mdb_in;
+	static MercuryFile		mdb_out;
+
+	mdb_in.file = MR_mdb_in;
+	mdb_in.line_number = 1;
+	mdb_out.file = MR_mdb_out;
+	mdb_out.line_number = 1;
+
+	if (! done) {
+		MR_TRACE_CALL_MERCURY(
+			MR_DD_decl_diagnosis_state_init(
+					(Word) &mdb_in,
+					(Word) &mdb_out,
+					&MR_trace_front_end_state);
+		);
+		done = TRUE;
+	}
+}
+
 bool
 MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details,
@@ -823,17 +850,13 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		}
 	}
 
+	MR_trace_decl_ensure_init();
+
 	MR_edt_last_event = event_info->MR_event_number;
 	MR_edt_min_depth = event_info->MR_call_depth;
 	MR_edt_max_depth = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
 	MR_trace_node_store = 0;
 	MR_trace_current_node = (MR_Trace_Node) NULL;
-
-	if (MR_trace_front_end_state == (Word) NULL) {
-		MR_TRACE_CALL_MERCURY(
-			MR_DD_diagnoser_state_init(&MR_trace_front_end_state);
-		);
-	}
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
 	cmd->MR_trace_stop_event = MR_trace_event_number + 1;
@@ -846,21 +869,20 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 static	void
 MR_decl_diagnosis(MR_Trace_Node root)
 {
-	MercuryFile		mdb_in, mdb_out;
 	Word			response;
 
-	mdb_in.file = MR_mdb_in;
-	mdb_in.line_number = 1;
-	mdb_out.file = MR_mdb_out;
-	mdb_out.line_number = 1;
-
 	MR_TRACE_CALL_MERCURY(
-		MR_DD_decl_diagnosis((Word) &mdb_in, (Word) &mdb_out,
-				MR_trace_node_store, root, &response,
+		MR_DD_decl_diagnosis(MR_trace_node_store, root, &response,
 				MR_trace_front_end_state,
 				&MR_trace_front_end_state
 			);
 	);
+
+	/*
+	** XXX We don't do anything with the response yet.
+	** We should set the current event to the call of the buggy node
+	** (if there is one), or we should handle requests for subtrees.
+	*/
 }
 
 static	void

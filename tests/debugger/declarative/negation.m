@@ -12,7 +12,8 @@
 
 main(S0, S) :-
 	p(1, X),
-	io__write_int(X, S0, S).
+	io__write_int(X, S0, S1),
+	io__nl(S1, S).
 
 :- pred p(int, int).
 :- mode p(in, out) is det.

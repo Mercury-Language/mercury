@@ -1,49 +1,66 @@
-       1:      1  1 CALL pred app:main/2-0 (det) 
+       1:      1  1 CALL pred app:main/2-0 (det) app.m:10
 mdb> echo on
 Command echo enabled.
-mdb> goto 19
-      19:      2  2 EXIT pred app:app/3-0 (det) 
-mdb> dd_wrong
-app([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? y
-Bug not found.
-      19:      2  2 EXIT pred app:app/3-0 (det) 
-mdb> dd_wrong
-app([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([4, 5], [6, 7, 8], [4, 5, 6, 7, 8], int)
-Valid? n
-app([5], [6, 7, 8], [5, 6, 7, 8], int)
-Valid? n
-app([], [6, 7, 8], [6, 7, 8], int)
-Valid? n
-Incorrect instance found:
-
-app([], [6, 7, 8], [6, 7, 8], int).
-
-      19:      2  2 EXIT pred app:app/3-0 (det) 
-mdb> goto 67
+mdb> break app
+Registering debuggable procedures... done.
+There is one debuggable module, with 5 procedures.
+ 0: + stop  interface pred app:app/3-0 (det)
+mdb> continue
+       2:      2  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:13)
+mdb> continue
+       4:      3  3 CALL pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> continue
+       6:      4  4 CALL pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> continue
+       8:      5  5 CALL pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> finish -n
+      16:      5  5 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> dd
+atom("app", [univ([4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? yes
+      16:      5  5 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> continue
+      17:      4  4 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> continue
+      18:      3  3 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
+mdb> continue
+      19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
+mdb> dd
+atom("app", [univ([1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+e_bug(dynamic(id('<<c_pointer>>')))
+      19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
+mdb> continue
 append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
-      67:      8  2 EXIT pred app:app/3-0 (det) 
-mdb> dd_wrong
-app([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? n
-app([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int)
-Valid? y
-Incorrect instance found:
-
-app([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int) :-
-	app([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8], int).
-
-      67:      8  2 EXIT pred app:app/3-0 (det) 
-mdb> continue -a
+      20:      8  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
+mdb> finish -n
+      67:      8  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+mdb> dd
+atom("app", [univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+atom("app", [univ([0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Valid? no
+e_bug(dynamic(id('<<c_pointer>>')))
+      67:      8  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+mdb> continue
 append([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8]).
-      68:      1  1 EXIT pred app:main/2-0 (det) 

@@ -1,12 +1,15 @@
 echo on
-goto 10
-dd_wrong
-n
-y
-goto 21
-dd_wrong
-n
-n
-y
-c
-
+break a
+break b
+continue
+finish
+dd
+no
+no
+continue
+finish
+dd
+no
+no
+yes
+continue

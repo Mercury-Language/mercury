@@ -1,45 +1,35 @@
-       1:      1  1 CALL pred if_then_else:main/2-0 (det) 
+       1:      1  1 CALL pred if_then_else:main/2-0 (det) if_then_else.m:7
 mdb> echo on
 Command echo enabled.
-mdb> goto 8
-       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
-mdb> dd_wrong
-ite(0, 1)
-Valid? n
-b(1)
-Valid? y
-a(0)
-Valid? y
-Incorrect instance found:
-
-ite(0, 1) :-
-	a(0),
-	b(1).
-
-       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
-mdb> dd_wrong
-ite(0, 1)
-Valid? n
-b(1)
-Valid? n
-Incorrect instance found:
-
-b(1).
-
-       8:      2  2 EXIT pred if_then_else:ite/2-0 (det) 
-mdb> goto 15
+mdb> break ite
+Registering debuggable procedures... done.
+There is one debuggable module, with 5 procedures.
+ 0: + stop  interface pred if_then_else:ite/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+mdb> finish
+       9:      2  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+mdb> dd
+atom("ite", [univ(0 : int), univ(1 : int)])
+Valid? no
+atom("a", [univ(0 : int)])
+Valid? yes
+atom("b", [univ(1 : int)])
+Valid? yes
+e_bug(dynamic(id('<<c_pointer>>')))
+       9:      2  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+mdb> continue
 ite(0, 1).
-      15:      5  2 EXIT pred if_then_else:ite/2-0 (det) 
-mdb> dd_wrong
-ite(1, 0)
-Valid? n
-a(0)
-Valid? y
-Incorrect instance found:
-
-ite(1, 0) :-
-	a(0).
-
-      15:      5  2 EXIT pred if_then_else:ite/2-0 (det) 
-mdb> c
+      10:      5  2 CALL pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+mdb> finish
+      17:      5  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+mdb> dd
+atom("ite", [univ(1 : int), univ(0 : int)])
+Valid? no
+Call atom("a", [univ(1 : int)])
+Solutions:
+Complete? yes
+e_bug(dynamic(id('<<c_pointer>>')))
+      17:      5  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+mdb> continue
 ite(1, 0).

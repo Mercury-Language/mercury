@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 :- import_module browse, frame, help, parse, util.
 :- import_module debugger_interface.
 :- import_module declarative_debugger, declarative_oracle, declarative_user.
-:- import_module declarative_execution.
+:- import_module declarative_execution, declarative_analyser.
 :- import_module interactive_query, dl, name_mangle.
 :- import_module collect_lib.
 

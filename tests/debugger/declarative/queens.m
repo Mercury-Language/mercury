@@ -43,8 +43,8 @@ queen(Data, Out) :-
 	safe(Out).
 
 qperm([], []).
-qperm([X|Y], K) :-
-	qdelete(U, [X|Y], Z),
+qperm([X|K], K) :-
+	qdelete(U, [X|K], Z),
 	K = [U|V],
 	qperm(Z, V).
 

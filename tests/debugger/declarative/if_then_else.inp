@@ -1,14 +1,14 @@
 echo on
-goto 8
-dd_wrong
-n
-y
-y
-dd_wrong
-n
-n
-goto 15
-dd_wrong
-n
-y
-c
+break ite
+continue
+finish
+dd
+no
+yes
+yes
+continue
+finish
+dd
+no
+yes
+continue
