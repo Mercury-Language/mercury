@@ -29,7 +29,7 @@ Any code which uses macros such as incr_hp(), list_cons(),
 make_aligned_string(), etc. that modify the heap pointer must call
 restore_transient_regs() beforehand and must call save_transient_regs()
 afterwards.  The simplest way to do this is to use the macro
-MR_USE_HP() in trace/mercury_trace_util.h.
+MR_TRACE_USE_HP() in trace/mercury_trace_util.h.
 
 The tracer may invoke Mercury code defined in the browser or library
 directories if that code is exported to C using `pragma export'.
@@ -38,4 +38,4 @@ and exported using `pragma export', i.e. functions starting with `ML_'
 prefixes, must be preceded by a call to save_registers() and
 followed by a call to restore_registers().
 The simplest way to do this is to use the macro
-MR_CALL_MERCURY() in trace/mercury_trace_util.h.
+MR_TRACE_CALL_MERCURY() in trace/mercury_trace_util.h.
