@@ -522,6 +522,19 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 	intermod_info_get_tvarset(TVarSet),
 	intermod_info_get_var_types(VarTypes),
 	(
+		% Is it a higher-order function call?
+		% (higher-order predicate calls are transformed into
+		% higher_order_call goals by make_hlds.m).
+		{ Functor0 = cons(unqualified(ApplyName), _) },
+		{ ApplyName = "apply"
+		; ApplyName = ""
+		},
+		{ list__length(Vars, ApplyArity) },
+		{ ApplyArity >= 1 }
+	->
+		{ Functor = Functor0 },
+		{ DoWrite = yes }
+	;
 		%
 		% Is it a function call?
 		%
@@ -1146,7 +1159,8 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
 	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
-	do_adjust_pred_import_status(Info1, Module0, Module).
+	intermod__gather_abstract_exported_types(Info1, Info),
+	do_adjust_pred_import_status(Info, Module0, Module).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
 		module_info::in, module_info::out) is det.

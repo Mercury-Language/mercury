@@ -40,6 +40,7 @@ PROGS=		array_test \
 		float_test \
 		frameopt_mkframe_bug \
 		higher_order \
+		intermod_type \
 		liveness \
 		liveness2 \
 		mode_inf_bug \
@@ -63,6 +64,8 @@ NOT_WORKING =	space
 # mode_inf and mode_inf_bug need to be compiled with `--infer-all'.
 MCFLAGS-mode_inf = --infer-all
 MCFLAGS-mode_inf_bug = --infer-all
+MCFLAGS-intermod_type = --intermodule-optimization
+MCFLAGS-intermod_type2 = --intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
