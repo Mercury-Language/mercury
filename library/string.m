@@ -3541,7 +3541,7 @@ string__split(Str, Count, Left, Right) :-
 	string__first_char(Str::in, First::in, Rest::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	in len = Str.Length;
+	int len = Str.Length;
 	SUCCESS_INDICATOR = (
 		len > 0 &&
 		Str[0] == First &&
