@@ -1,0 +1,2 @@
+:- module vangelder.
+:- pragma termination_info(vangelder:q(mercury_builtin:in, mercury_builtin:in), finite(0, [no, no]), can_loop).

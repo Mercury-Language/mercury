@@ -1,0 +1,2 @@
+:- module list.
+:- pragma termination_info(list:list(mercury_builtin:in), finite(0, [no, no]), cannot_loop).

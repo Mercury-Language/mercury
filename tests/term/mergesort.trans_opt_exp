@@ -1,0 +1,2 @@
+:- module mergesort.
+:- pragma termination_info(mergesort:mergesort(mercury_builtin:in, mercury_builtin:out), finite(0, [yes, no]), can_loop).

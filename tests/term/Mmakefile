@@ -1,0 +1,66 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	\
+	ack \
+	append \
+	arit_exp \
+	associative \
+	dds1_2 \
+	dds3_13 \
+	dds3_14 \
+	dds3_15 \
+	dds3_17 \
+	dds3_8 \
+	fold \
+	list \
+	lte \
+	map \
+	member \
+	mergesort \
+	mergesort_ap \
+	mergesort_t \
+	mmatrix \
+	money \
+	naive_rev \
+	occur \
+	ordered \
+	overlap \
+	permutation \
+	pl1_1 \
+	pl1_2 \
+	pl2_3_1 \
+	pl3_1_1 \
+	pl3_5_6 \
+	pl3_5_6a \
+	pl4_01 \
+	pl4_4_3 \
+	pl4_4_6a \
+	pl4_5_2 \
+	pl4_5_3a \
+	pl5_2_2 \
+	pl6_1_1 \
+	pl7_2_9 \
+	pl7_6_2a \
+	pl7_6_2b \
+	pl7_6_2c \
+	pl8_2_1 \
+	pl8_2_1a \
+	pl8_3_1 \
+	pl8_3_1a \
+	pl8_4_1 \
+	pl8_4_2 \
+	queens \
+	quicksort \
+	select \
+	subset \
+	sum \
+	vangelder
+
+modules:
+	@echo $(PROGS)

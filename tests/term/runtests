@@ -1,0 +1,40 @@
+#!/bin/sh
+# Test whether the termination analysis algorithm of the Mercury compiler
+# is working right.
+# Return a status of 0 (true) if everything is all right, and 1 otherwise.
+
+set -x
+
+stdoptions="--make-trans-opt --enable-termination"
+options="$stdoptions --term-single-arg 5 --term-norm simple"
+
+modules=`mmake modules`
+
+cat /dev/null > .allres
+failure=""
+for module in $modules
+do
+	/bin/rm $module.trans_opt > /dev/null 2>&1
+	lmc3 -C $options $module > $module.out 2>&1
+	if test "$?" = 0
+	then
+		diff -u $module.trans_opt $module.trans_opt_exp > $module.res
+		cat $module.res >> .allres
+	else
+		failure="$failure $module"
+	fi
+done
+
+if test ! -s .allres -a "$failure" = ""
+then
+	echo "the tests in the term directory succeeded"
+	rm -f .allres
+	exit 0
+else
+	echo "the tests in the term directory failed"
+	echo "the following modules had the compiler fail:"
+	echo $failure
+	echo "the differences are:"
+	cat .allres
+	exit 1
+fi

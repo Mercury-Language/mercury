@@ -1,0 +1,2 @@
+:- module money.
+:- pragma termination_info(money:solve(mercury_builtin:out), finite(10, [no]), cannot_loop).

@@ -1,0 +1,2 @@
+:- module map.
+:- pragma termination_info(map:map(mercury_builtin:in, mercury_builtin:out), infinite, cannot_loop).

@@ -153,7 +153,7 @@
 detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	requantify_proc(ProcInfo0, ProcInfo1),
 	proc_info_goal(ProcInfo1, Goal0),
-	proc_info_variables(ProcInfo1, Varset),
+	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
 	live_info_init(ModuleInfo, ProcInfo1, VarTypes, Varset, LiveInfo),
 

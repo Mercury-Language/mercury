@@ -233,7 +233,7 @@ c_gen_procs_2([ProcId | ProcIds], ModuleInfo, Indent, PredId, PredInfo) -->
 
 c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	{ proc_info_interface_determinism(Proc, InterfaceDeterminism) },
-	{ proc_info_variables(Proc, VarSet) },
+	{ proc_info_varset(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ pred_info_name(Pred, PredName) },
 	{ proc_info_vartypes(Proc, VarTypes) },
@@ -350,7 +350,7 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 		PredInfo, ProcInfo) },
 
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
-	{ proc_info_variables(ProcInfo, VarSet) },
+	{ proc_info_varset(ProcInfo, VarSet) },
 	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ pred_info_arg_types(PredInfo, _HeadTypeVarSet, HeadTypes) },
 	{ proc_info_argmodes(ProcInfo, HeadModes) },

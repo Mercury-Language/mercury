@@ -146,7 +146,7 @@
 			% Predname, Arity
 
 	;	termination_info(pred_or_func, sym_name, list(mode),
-			termination)
+			maybe(arg_size_info), maybe(termination_info))
 			% the list(mode) is the declared argmodes of the
 			% procedure, unless there are no declared argmodes,
 			% in which case the inferred argmodes are used.

@@ -1,0 +1,2 @@
+:- module pl7_6_2a.
+:- pragma termination_info(pl7_6_2a:reach(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in), finite(0, [no, no, no, no]), can_loop).

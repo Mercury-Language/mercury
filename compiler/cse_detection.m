@@ -135,7 +135,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	CseInfo0 = cse_info(Varset0, VarTypes0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
@@ -154,7 +154,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 			VarTypes1, Goal, Varset, VarTypes, _Warnings),
 
 		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-		proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
+		proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
 		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
 
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),

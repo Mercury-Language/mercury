@@ -236,18 +236,22 @@ hlds_out__write_cons_id(base_type_info_const(_, _, _)) -->
 hlds_out__write_cons_id(base_typeclass_info_const(_, _, _)) -->
 	io__write_string("<base_typeclass_info>").
 
+	% The code of this predicate duplicates the functionality of
+	% term_errors__describe_one_pred_name. Changes here should be made
+	% there as well.
+
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	(   { special_pred_name_arity(Kind, _, Name, Arity) } ->	
+	( { special_pred_name_arity(Kind, _, Name, Arity) } ->	
 		{ special_pred_description(Kind, Descr) },
 		io__write_string(Descr),
 		io__write_string(" for type "),
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
-		(   { special_pred_get_type(Name, ArgTypes, Type) } ->
+		( { special_pred_get_type(Name, ArgTypes, Type) } ->
 			mercury_output_term(Type, TVarSet, no)
 		;
 			{ error("special_pred_get_type failed!") }
@@ -1931,12 +1935,13 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_vartypes(Proc, VarTypes) },
 	{ proc_info_declared_determinism(Proc, DeclaredDeterminism) },
 	{ proc_info_inferred_determinism(Proc, InferredDeterminism) },
-	{ proc_info_variables(Proc, VarSet) },
+	{ proc_info_varset(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ proc_info_argmodes(Proc, HeadModes) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
-	{ proc_info_termination(Proc, Termination) },
+	{ proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize) },
+	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ Indent1 is Indent + 1 },
 
@@ -1954,13 +1959,13 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 't') } ->
-		io__write_string("% Inferred termination: "),
-		termination__out(Termination),
+		io__write_string("% Arg size properties: "),
+		termination__write_maybe_arg_size_info(MaybeArgSize, yes),
 		io__nl,
-		io__write_string("% Termination - used args: "),
-		termination__out_used_args(Termination),
-		io__nl,
-		term_errors__output_hlds(PredId, ProcId, ModuleInfo)
+		io__write_string("% Termination properties: "),
+		termination__write_maybe_termination_info(MaybeTermination,
+			yes),
+		io__nl
 	;
 		[]
 	),

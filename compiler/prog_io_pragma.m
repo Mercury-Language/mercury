@@ -334,9 +334,8 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
     (
 	PragmaTerms = [
 	    PredAndModesTerm0,
-	    ConstTerm,
-	    TerminatesTerm,
-	    MaybeUsedArgsTerm
+	    ArgSizeTerm,
+	    TerminationTerm
 	],
 	( 
 	    PredAndModesTerm0 = term__functor(Const, Terms0, _) 
@@ -367,44 +366,35 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 	    ),
 	    convert_mode_list(ModeListTerm, ModeList),
 	    (			
-		ConstTerm = term__functor(term__atom("not_set"), [], _),
-		TerminationConst = not_set
+		ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
+		MaybeArgSizeInfo = no
 	    ;
-		ConstTerm = term__functor( 
-		    term__atom("infinite"), [], ConstContext),
-		TerminationConst = inf(ConstContext - imported_pred)
+		ArgSizeTerm = term__functor(term__atom("infinite"), [],
+			ArgSizeContext),
+		MaybeArgSizeInfo = yes(infinite(
+			[ArgSizeContext - imported_pred]))
 	    ;
-		ConstTerm = term__functor(term__atom("set"), [IntTerm], _),
+		ArgSizeTerm = term__functor(term__atom("finite"),
+			[IntTerm, UsedArgsTerm], _),
 		IntTerm = term__functor(term__integer(Int), [], _),
-		TerminationConst = set(Int)
+		convert_bool_list(UsedArgsTerm, UsedArgs),
+		MaybeArgSizeInfo = yes(finite(Int, UsedArgs))
 	    ),
 	    (
-		TerminatesTerm = term__functor(term__atom("not_set"), [], _),
-		Terminates = not_set,
-		MaybeError = no
+		TerminationTerm = term__functor(term__atom("not_set"), [], _),
+		MaybeTerminationInfo = no
 	    ;
-		TerminatesTerm = term__functor(
-		    term__atom("dont_know"), [], TermContext),
-		Terminates = dont_know,
-		MaybeError = yes(TermContext - imported_pred)
+		TerminationTerm = term__functor(term__atom("can_loop"),
+			[], TermContext),
+		MaybeTerminationInfo = yes(can_loop(
+			[TermContext - imported_pred]))
 	    ;
-		TerminatesTerm = term__functor(term__atom("yes"), [], _),
-		Terminates = yes,
-		MaybeError = no
+		TerminationTerm = term__functor(term__atom("cannot_loop"),
+			[], _),
+		MaybeTerminationInfo = yes(cannot_loop)
 	    ),
-	    (
-		MaybeUsedArgsTerm = term__functor(
-		    term__atom("yes"), [BoolListTerm], _),
-		convert_bool_list(BoolListTerm, BoolList),
-		MaybeUsedArgs = yes(BoolList)
-	    ;
-		MaybeUsedArgsTerm = term__functor(term__atom("no"), [], _),
-		MaybeUsedArgs = no
-	    ),
-	    Termination = term(TerminationConst, Terminates,
-	    	MaybeUsedArgs, MaybeError),
 	    Result0 = ok(pragma(termination_info(PredOrFunc, PredName, 
-	    	ModeList, Termination)))
+	    	ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
 	;
 	    Result0 = error("unexpected variable in pragma termination_info",
 						ErrorTerm)
@@ -415,7 +405,6 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 	Result = error("syntax error in `pragma termination_info'", ErrorTerm)
     ).
 			
-
 parse_pragma_type(ModuleName, "terminates", PragmaTerms,
 				ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "terminates",

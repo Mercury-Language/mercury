@@ -53,7 +53,7 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 
 	% XXX We probably ought to remove these vars from the type map as well.
-	proc_info_variables(ProcInfo1, Varset0),
+	proc_info_varset(ProcInfo1, Varset0),
 	varset__delete_vars(Varset0, ElimVars, Varset),
 	proc_info_set_varset(ProcInfo1, Varset, ProcInfo).
 

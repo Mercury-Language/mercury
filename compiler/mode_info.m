@@ -336,7 +336,7 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_procedures(PredInfo, Procs),
 	map__lookup(Procs, ProcId, ProcInfo),
-	proc_info_variables(ProcInfo, VarSet),
+	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 
 	LiveVarsList = [LiveVars],

@@ -1,0 +1,2 @@
+:- module associative.
+:- pragma termination_info(associative:normal_form(mercury_builtin:in, mercury_builtin:out), finite(0, [yes, no]), can_loop).

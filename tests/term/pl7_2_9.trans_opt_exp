@@ -1,0 +1,2 @@
+:- module pl7_2_9.
+:- pragma termination_info(pl7_2_9:mult(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out), infinite, cannot_loop).

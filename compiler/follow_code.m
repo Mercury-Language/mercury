@@ -43,7 +43,7 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
 	Flags = FollowCode - PrevCode,
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	(
 		move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),

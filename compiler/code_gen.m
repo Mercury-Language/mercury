@@ -180,7 +180,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% get the goal for this procedure
 	proc_info_goal(ProcInfo, Goal),
 		% get the information about this procedure that we need.
-	proc_info_variables(ProcInfo, VarInfo),
+	proc_info_varset(ProcInfo, VarInfo),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_stack_slots(ProcInfo, StackSlots),
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst),

@@ -324,9 +324,10 @@ mercury_output_item(pragma(Pragma), Context) -->
 					   "promise_pure")
 	;
 		{ Pragma = termination_info(PredOrFunc, PredName, 
-			ModeList, Termination) },
-		termination__output_pragma_termination_info(PredOrFunc,
-			PredName, ModeList, Termination, Context)
+			ModeList, MaybeArgSizeInfo, MaybeTerminationInfo) },
+		termination__write_pragma_termination_info(PredOrFunc,
+			PredName, ModeList, Context,
+			MaybeArgSizeInfo, MaybeTerminationInfo)
 	;
 		{ Pragma = terminates(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "terminates")

@@ -1,0 +1,2 @@
+:- module arit_exp.
+:- pragma termination_info(arit_exp:e(mercury_builtin:in), finite(0, [no]), cannot_loop).

@@ -684,7 +684,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	proc_info_set_goal(ProcInfo0, Body, ProcInfo1),
-	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
+	proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
 	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
 

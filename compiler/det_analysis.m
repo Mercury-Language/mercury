@@ -771,11 +771,11 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 			_TypeContext)
 	->
 		( CanFail = can_fail ->
-			proc_info_variables(ProcInfo, VarSet),
+			proc_info_varset(ProcInfo, VarSet),
 			Msgs = [cc_unify_can_fail(GoalInfo, Var, Type,
 				VarSet, GoalContext) | Msgs0]
 		; SolnContext \= first_soln ->
-			proc_info_variables(ProcInfo, VarSet),
+			proc_info_varset(ProcInfo, VarSet),
 			Msgs = [cc_unify_in_wrong_context(GoalInfo, Var,
 				Type, VarSet, GoalContext) | Msgs0]
 		;

@@ -122,13 +122,13 @@ implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
 			OutsideVars, Goal, Varset, VarTypes, Warnings).
 
 requantify_proc(ProcInfo0, ProcInfo) :-
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_goal(ProcInfo0, Goal0),
 	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
 		Goal, Varset, VarTypes, _),
-	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo).
 

@@ -960,7 +960,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	map__from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
 		% the varset should probably be fixed up, but it
 		% shouldn't make too much difference
-	proc_info_variables(OldProc0, Varset0),
+	proc_info_varset(OldProc0, Varset0),
 	remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 	GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
 		      not_builtin, no, qualified(PredModule, PredName)),
@@ -1119,7 +1119,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_goal(ProcInfo0, Goal0),
 	remove_listof_elements(HeadVars0, 1, UnusedArgs, HeadVars),
 	remove_listof_elements(ArgModes0, 1, UnusedArgs, ArgModes),

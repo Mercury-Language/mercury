@@ -88,7 +88,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_varset(ProcInfo0, VarSet0),
 	varset__vars(VarSet0, VarList),
 	set__list_to_set(VarList, VarSet1),
 
@@ -104,7 +104,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 
-	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
 

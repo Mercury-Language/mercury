@@ -338,7 +338,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
 
@@ -354,7 +354,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
-	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoVarMap, ProcInfo3),
 	proc_info_set_goal(ProcInfo3, Goal, ProcInfo),
@@ -427,7 +427,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			% Callee has
 		module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			PredInfo, ProcInfo),
-        	proc_info_variables(ProcInfo, CalleeVarset),
+        	proc_info_varset(ProcInfo, CalleeVarset),
 		varset__vars(CalleeVarset, CalleeListOfVars),
 		list__length(CalleeListOfVars, CalleeThisMany),
 		TotalVars is ThisMany + CalleeThisMany,

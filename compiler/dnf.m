@@ -139,7 +139,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, ClassContext),
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet),
+	proc_info_varset(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers),
 

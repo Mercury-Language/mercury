@@ -1,0 +1,2 @@
+:- module select.
+:- pragma termination_info(select:select(mercury_builtin:out, mercury_builtin:in, mercury_builtin:out), finite(-1, [no, no, yes, no]), cannot_loop).

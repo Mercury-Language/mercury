@@ -1,0 +1,2 @@
+:- module lte.
+:- pragma termination_info(lte:goal, finite(0, []), cannot_loop).

@@ -419,7 +419,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 			DetInfo),
 		prog_out__write_context(Context),
 		{ det_get_proc_info(DetInfo, ProcInfo) },
-		{ proc_info_variables(ProcInfo, Varset) },
+		{ proc_info_varset(ProcInfo, Varset) },
 		{ det_info_get_module_info(DetInfo, ModuleInfo) },
 		(
 			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
@@ -717,7 +717,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 		DetInfo) -->
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
+	{ proc_info_varset(ProcInfo, Varset) },
 	{ SwitchContext = switch_context(Var, ConsId) },
 	io__write_string("  Inside the case "),
 	hlds_out__write_cons_id(ConsId),
@@ -797,7 +797,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	hlds_out__write_unify_context(First0, UnifyContext, Context, First),
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
+	{ proc_info_varset(ProcInfo, Varset) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	( { First = yes } ->
 		( { Last = yes } ->

@@ -656,8 +656,8 @@ qualify_pragma(fact_table(SymName, Arity, FileName),
 	fact_table(SymName, Arity, FileName), Info, Info) --> [].
 qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
 		Info, Info) --> [].
-qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Termination), 
-		termination_info(PredOrFunc, SymName, ModeList, Termination), 
+qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term), 
+		termination_info(PredOrFunc, SymName, ModeList, Args, Term), 
 		Info0, Info) --> 
 	qualify_mode_list(ModeList0, ModeList, Info0, Info).
 qualify_pragma(terminates(A, B), terminates(A, B), Info, Info) --> [].

@@ -403,7 +403,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 				promised_pure, [], Module)
 	;
 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
-			Termination) },
+			MaybeArgSizeInfo, MaybeTerminationInfo) },
 		{ module_info_get_predicate_table(Module0, Preds) },
 		{ list__length(ModeList, Arity) },
 		(
@@ -425,8 +425,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 					ModeList, Module0, ProcId) }
 			->
 				{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
-				{ proc_info_set_termination(ProcInfo0, 
-					Termination, ProcInfo) },
+				{ proc_info_set_maybe_arg_size_info(ProcInfo0, 
+					MaybeArgSizeInfo, ProcInfo1) },
+				{ proc_info_set_maybe_termination_info(
+					ProcInfo1, 
+					MaybeTerminationInfo, ProcInfo) },
 				{ map__det_update(ProcTable0, ProcId, ProcInfo,
 					ProcTable) },
 				{ pred_info_set_procedures(PredInfo0, 

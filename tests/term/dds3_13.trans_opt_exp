@@ -1,0 +1,2 @@
+:- module dds3_13.
+:- pragma termination_info(dds3_13:duplicate(mercury_builtin:in, mercury_builtin:out), infinite, cannot_loop).

@@ -1,878 +1,588 @@
 %-----------------------------------------------------------------------------
-%
 % Copyright (C) 1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------
 %
 % term_pass2.m
-% Main author: crs.
 %
-% This file contains the actual termination analysis.  This file processes
-% through each procedure, and sets the terminates property of each one.
+% Main author of original version: crs.
+% Main author of this version: zs.
 %
-% Termination analysis:
-% This goes through each of the SCC's in turn, analysing them to determine
-% which predicates terminate.
-% 			
+% This file contains the code that tries to prove that procedures terminate.
+%
+% For details, please refer to the papers mentioned in termination.m.
 %-----------------------------------------------------------------------------
+
 :- module term_pass2.
 :- interface.
 
-:- import_module io, hlds_module, term_util.
+:- import_module hlds_module, term_util.
 
-% Analyse each predicate in the order given by
-% hlds_dependency_info_get_dependency_ordering to determine whether or not
-% it terminates.  Put the result of the analysis into the termination
-% field of the proc_info structure..  
-:- pred termination(module_info, functor_info, module_info, 
-	io__state, io__state).
-:- mode termination(in, in, out, di, uo) is det.
+:- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
+	pass_info::in, int::in, termination_info::out) is det.
 
 :- implementation.
 
-:- import_module bag, hlds_pred, std_util, int, list, relation, require.
-:- import_module set, hlds_goal, term_util, term_errors, bool.
-:- import_module globals, options, map, term, type_util.
+:- import_module term_traversal, term_util, term_errors.
+:- import_module hlds_pred, hlds_goal, prog_data, type_util, mode_util.
 
-% Used in termination_goal to keep track of the relative sizes of variables
-% between the head of a predicate and any recursive calls.
-:- type termination_call
-	--->	tuple(pred_proc_id, 	% The called procedure
-			int, 		% The relative size of the active
-					% variables, in comparison with the 
-					% size of the variables in the
-					% recursive call.
-			bag(var), 	% The bag of active variables.
-			maybe(var), 	% Only for single argrgument analysis.
-					% This stores which head variable
-					% is being traced by this tuple.
-			term__context).	% Where the call occured.
+:- import_module std_util, bool, int, list, assoc_list.
+:- import_module set, bag, map, term, require.
 
-termination(Module0, FunctorInfo, Module) -->
-	{ module_info_dependency_info(Module0, DependencyInfo) },
-	{ hlds_dependency_info_get_dependency_ordering(DependencyInfo, 
-		DependencyOrdering) },
+:- type fixpoint_dir
+	--->	up
+	;	down.
 
-	termination_module(Module0, DependencyOrdering, FunctorInfo, Module).
+:- type call_weight_info
+	==	pair(list(term_errors__error), call_weight_graph).
 
 
-:- pred termination_module(module_info, dependency_ordering, functor_info, 
-	module_info, io__state, io__state).
-:- mode termination_module(in, in, in, out, di, uo) is det.
-termination_module(Module, [], _FunctorInfo, Module) --> [].
-termination_module(Module0, [SCC | SCCs], FunctorInfo, Module) -->
-	termination_module_check_terminates(SCC, SCC, Module0, Module1, Succ),
-	( { Succ = yes } ->
-		% Need to run termination checking on this SCC.
-		% Initialise the relation
-		{ relation__init(Relation0) },
-		% Add each procedure to the relation.
-		{ add_pred_procs_to_relation(SCC, Relation0, Relation1) },
-		% Analyse the current SCC.
-		{ init_used_args(SCC, Module1, InitUsedArgs) },
-		{ call_termination_scc(SCC, FunctorInfo, Module1, Res, 
-			InitUsedArgs, Relation1, Relation2) },
-		( 	
-			{ Res = ok },
-			% Check that the relation returned is acyclic 
-			% and set the termination property accordingly.
-			( { relation__tsort(Relation2, _) } ->
-				% All the procedures in this SCC terminate,
-				% set all termination properties to yes.
-				{ set_pred_proc_ids_terminates(SCC, 
-					yes, no, Module1, Module3) }
-			;
-				( { SCC = [ proc(PredId, _) | _ ] } ->
-					{ module_info_pred_info(Module1,
-						PredId, PredInfo) },
-					{ pred_info_context(PredInfo, 
-						Context) }
-				;
-					{ error("Unexpected empty list in term_pass2__termination_module/6")}
-				),
-				% Try doing single argument analysis.
-				termination_scc_single_args(SCC, FunctorInfo,
-					Context - not_dag, InitUsedArgs, 
-					Module1, Module3)
-			)
-		;
-			{ Res = error(Error) },
-			% Normal analysis failed, try doing single argument
-			% analysis.
-			termination_scc_single_args(SCC, FunctorInfo, 
-				Error, InitUsedArgs, Module1, Module3)
+:- type call_weight_graph
+	==	map(pred_proc_id,		% The max noninfinite weight
+						% call from this proc
+			map(pred_proc_id,	% to this proc
+				pair(term__context, int))).
+						% is at this context and with
+						% this weight.
+
+:- type pass2_result
+	--->	ok(
+			call_weight_info,
+			used_args
 		)
-	;
-		% All the termination properties are already set.
-		{ Module3 = Module1 }
-	),
-	termination_module(Module3, SCCs, FunctorInfo, Module).
+	;	error(
+			list(term_errors__error)
+		).
 
+%-----------------------------------------------------------------------------
 
-% If this predicate returns Succ = yes, then termination analysis needs to be
-% run on this SCC.  If it returns Succ =  no, then the termination
-% properties of this SCC have already been set.
-% XXX this can be improved.  If ANY Terminates in the SCC is set to dont_know,
-% then the whole SCC can be set to dont_know
-:- pred termination_module_check_terminates(list(pred_proc_id), 
-	list(pred_proc_id), module_info, module_info, bool, 
-	io__state, io__state).
-:- mode termination_module_check_terminates(in, in, in, out, out, 
-		di, uo) is det.
-termination_module_check_terminates([], _SCC, Module, Module, no) --> [].
-termination_module_check_terminates([ PPId | PPIds ], SCC, Module0, 
-		Module, Succ) -->
-	{ PPId = proc(PredId, ProcId) },
-	{ module_info_pred_proc_info(Module0, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_termination(ProcInfo, Term) },
-	{ Term = term(_Const, Terminates, _UsedArgs, MaybeError) },
-	( 
-		{ Terminates = not_set },
-		{ Succ = yes },
-		{ Module = Module0 }
-	;
-		{ Terminates = yes },
-		termination_module_check_terminates(PPIds, SCC, Module0, 
-			Module, Succ)
-	;
-		{ Terminates = dont_know},
-		{ Succ = no },
-		( { MaybeError = yes(Error) } ->
-			do_ppid_check_terminates(SCC, Error, Module0, Module)
-		;
-			{ error("term_pass2.m: unexpected value in termination_module_check_terminates/6") }
-		)
-	).
-
-% This predicate runs termination_scc until a fixed point for UsedArgs 
-% is reached.
-:- pred call_termination_scc(list(pred_proc_id), functor_info, module_info,
-	term_util__result(term_errors__error), map(pred_proc_id, set(var)),
-	relation(pred_proc_id), relation(pred_proc_id)).
-:- mode call_termination_scc(in, in, in, out, in, in, out) is det.
-call_termination_scc(SCC, FunctorInfo, Module, Result, UsedArgs0, 
-		Relation0, Relation) :-
-	termination_scc(SCC, FunctorInfo, Module, Res1, UsedArgs0, UsedArgs1, 
-		Relation0, Relation1),
-	( 
-		% If some other error prevented the analysis from proving
-		% termination, then finding a fixed point will not assist
-		% in proving termination, so we may as well stop here.
-		( Res1 = error(_ - not_subset(_, _, _))
-		; Res1 = error(_ - positive_value(_, _))
-		),
-		UsedArgs1 \= UsedArgs0  % If these are equal, then we are at 
-					% a fixed point, so further
-					% analysis will not get any better
-					% results.
-	->
-		% We can use the new Used Args values, and try again.
-		call_termination_scc(SCC, FunctorInfo, Module, Result, 
-			UsedArgs1, Relation0, Relation)
-
-	;
-		Relation = Relation1,
-		Result = Res1
-	).
-
-% This initialises the used arguments to be the set of input variables.
-:- pred init_used_args(list(pred_proc_id), module_info, 
-	map(pred_proc_id, set(var))).
-:- mode init_used_args(in, in, out) is det.
-init_used_args([], _, InitMap) :-
-	map__init(InitMap).
-init_used_args([PPId | PPIds], Module, UsedArgs) :-
-	init_used_args(PPIds, Module, UsedArgs0),
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-	proc_info_headvars(ProcInfo, Args),
-	proc_info_argmodes(ProcInfo, ArgModes),
-	partition_call_args(Module, ArgModes, Args, InArgs, _OutVars),
-	set__list_to_set(InArgs, ArgSet),
-	map__det_insert(UsedArgs0, PPId, ArgSet, UsedArgs).
-
-% Given a list of all the arguments of a predicate, find out which
-% arguments are unused, so that they can be removed from the used arguments
-% list for that predicate.
-:- pred termination_scc_calc_unused_args(list(var), list(termination_call), 
-	list(var)).
-:- mode termination_scc_calc_unused_args(in, in, out) is det.
-termination_scc_calc_unused_args(Vars, [], Vars).
-termination_scc_calc_unused_args(Vars0, [X | Xs], Vars) :-
-	X = tuple(_, _, VarBag, _, _),
-	termination_scc_calc_unused_args_2(Vars0, VarBag, Vars1),
-	termination_scc_calc_unused_args(Vars1, Xs, Vars).
-
-:- pred termination_scc_calc_unused_args_2(list(var), bag(var), list(var)).
-:- mode termination_scc_calc_unused_args_2(in, in, out) is det.
-termination_scc_calc_unused_args_2([], _, []).
-termination_scc_calc_unused_args_2([ X | Xs ], Vars, Ys) :-
-	( bag__contains(Vars, X) ->
-		% If the variable is in the bag, then it is used.
-		% Therefore, it should not be in the list of unused vars
-		termination_scc_calc_unused_args_2(Xs, Vars, Ys)
-	;
-		termination_scc_calc_unused_args_2(Xs, Vars, Ys0),
-		Ys = [X | Ys0]
-	).
-
-% Process a whole SCC, to determine the termination property of each
-% procedure in that SCC.   
-:- pred termination_scc(list(pred_proc_id), functor_info, module_info, 
-	term_util__result(term_errors__error), map(pred_proc_id, set(var)),
-	map(pred_proc_id, set(var)), relation(pred_proc_id),
-	relation(pred_proc_id)).
-:- mode termination_scc(in, in, in, out, in, out, in, out) is det.
-termination_scc([], _, _Module, ok, UsedArgs, UsedArgs, Relation, Relation).
-termination_scc([ PPId | PPIds ], FunctorInfo, Module, Result, 
-		UsedArgs0, UsedArgs, Relation0, Relation) :-
-	% Get the goal info.
-	PPId = proc(PredId, ProcId),
-	module_info_pred_proc_info(Module, PredId, ProcId, _PredInfo, ProcInfo),
-	proc_info_termination(ProcInfo, Termination),
-	( Termination = term(_Const, dont_know, _, MaybeError) ->
-		% If the termination property is set to dont_know then
-		% MaybeError should contain an error.  
-		( MaybeError = yes(Error) ->
-			Result = error(Error)
-		;
-			error("term_pass2.m: Unexpected value in term_pass2:termination_scc")
-		),
-		UsedArgs = UsedArgs0,
-		Relation = Relation0
-	;
-		proc_info_goal(ProcInfo, Goal),
-		proc_info_vartypes(ProcInfo, VarTypes),
-		Goal = GoalExpr - GoalInfo,
-		% Analyse goal info. This returns a list of ppid - size
-		% pairs.
-		UnifyInfo = VarTypes - FunctorInfo,
-		CallInfo = call_info(PPId, UsedArgs0, no),
-		termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo,
-			CallInfo, Res0, [], Out),
-		
-		proc_info_argmodes(ProcInfo, ArgModes),
-		proc_info_headvars(ProcInfo, Args),
-		partition_call_args(Module, ArgModes, Args, InVars, _OutVars),
-		bag__from_list(InVars, InVarsBag),
-	
-		( Res0 = ok ->
-			termination_scc_calc_unused_args(Args, Out, UnUsedArgs),
-			map__lookup(UsedArgs0, PPId, OldUsedArgs),
-			set__delete_list(OldUsedArgs, UnUsedArgs, NewUsedArgs),
-			termination_add_arcs_to_relation(PPId, Out, 
-				InVarsBag, Res1, Relation0, Relation1),
-			( Res1 = ok ->
-				termination_scc(PPIds, FunctorInfo, Module, 
-					Result, UsedArgs0, UsedArgs1, 
-					Relation1, Relation)
-			;
-				% We failed because of positive value, or
-				% because of not_subset.  Keep analysing,
-				% to discover the used variables, of the other
-				% procedures.
-				termination_scc(PPIds, FunctorInfo, Module, 
-					Res2, UsedArgs0, UsedArgs1, 
-					Relation0, _Relation),
-				Relation = Relation0,
-				% We know that Res1 is not_subset or
-				% positive_value.  If Res2 is ok, then we
-				% need to return Res1 (so that the calling
-				% predicate knows that the analysis
-				% failed). If Res2 is an error, then it
-				% needs to be returned.  If Res2 is also
-				% not_subset or positive_value, then fine,
-				% the analysis will be re-run.  If it is
-				% some other error, then re-running the
-				% analysis will not gain anything.
-				( Res2 = ok ->
-					Result = Res1
-				;
-					Result = Res2
-				)
-			),
-			% Add the used vars from the current pass to the
-			% UsedArgs map.
-			map__det_update(UsedArgs1, PPId, NewUsedArgs, UsedArgs)
-		;
-			UsedArgs = UsedArgs0,
-			Result = Res0,
-			Relation = Relation0
-		)
-	).
-
-% This runs single argument analysis on the goal.  This is only run if
-% normal termination analysis failed.  
-:- pred termination_scc_single_args(list(pred_proc_id), functor_info, 
-	term_errors__error, map(pred_proc_id, set(var)), 
-	module_info, module_info, io__state, io__state).
-:- mode termination_scc_single_args(in, in, in, in, in, out, di, uo) is det.
-termination_scc_single_args([], _, _, _, Module, Module) -->
-	{ error("term_pass2__termination_scc_single_args: there should be\nat least 1 predicate in a SCC\n") }.
-termination_scc_single_args([PPId | Rest], FunctorInfo, Error, UsedArgs,
-		Module0, Module) -->
-	globals__io_lookup_bool_option(termination_single_args, SingleArgs),
-	{ SCC = [PPId | Rest] },
-	{ PPId = proc(PredId, ProcId) },
-	{ set__init(InitSet) },
+prove_termination_in_scc(SCC, Module, PassInfo, SingleArgs, Termination) :-
+	init_rec_input_suppliers(SCC, Module, InitRecSuppliers),
+	prove_termination_in_scc_trial(SCC, InitRecSuppliers, down,
+		Module, PassInfo, Termination1),
 	(
-		{ SingleArgs = yes },
-		{ Rest = [] },
-		{ Error \= _ - imported_pred }
-		% What other errors would prevent single argument analysis
-		% from succeeding?
-	->
-		% Can do single argument analysis.
-		{  module_info_pred_proc_info(Module0, PredId, ProcId, 
-			_PredInfo, ProcInfo) },
-		{ proc_info_goal(ProcInfo, Goal) },
-		{ proc_info_vartypes(ProcInfo, VarTypes) },
-		{ Goal = GoalExpr - GoalInfo },
-		{ UnifyInfo = VarTypes - FunctorInfo },
-		{ CallInfo = call_info(PPId, UsedArgs, yes) },
-		{ termination_goal(GoalExpr, GoalInfo, Module0,
-			UnifyInfo, CallInfo, Res0, [], Out) },
-		( { Res0 = error(Error2) } ->
-			% The context of single_arg_failed needs to be the
-			% same as the context of the Normal analysis error
-			% message.
-			{ Error = Context - _ },
-			{ Error3 = Context - single_arg_failed(Error, Error2) },
-			do_ppid_check_terminates(SCC, Error3, 
-				Module0, Module)
-			
-		; { termination_scc_single_2(Out, InitSet, InitSet) } ->
-			% Single argument analysis succeded.
-			{ set_pred_proc_ids_terminates(SCC, yes, yes(Error),
-				Module0, Module) }
-		;
-			% Single argument analysis failed to prove
-			% termination.  
-			{ Error = Context - _ },
-			{ Error2 = Context - single_arg_failed(Error) },
-			do_ppid_check_terminates(SCC, Error2,
-				Module0, Module)
-		)
-	;
-		% Cant do single argument analysis.
-		do_ppid_check_terminates(SCC, Error, 
-			Module0, Module)
-	).
-		
-:- pred termination_scc_single_2(list(termination_call), set(var), set(var)).
-:- mode termination_scc_single_2(in, in, in) is semidet.
-termination_scc_single_2([], NegSet, NonNegSet) :-
-	set__difference(NegSet, NonNegSet, DiffSet),
-	% Check that there is at least one head variable that is always
-	% strictly decreasing in size between the head of the procedure and
-	% the recursive call.
-	set__remove_least(DiffSet, _, _).
+		Termination1 = can_loop(Errors),
+		(
+			% On large SCCs, single arg analysis can require
+			% many iterations, so we allow the user to limit
+			% the size of the SCCs we will try it on.
+			list__length(SCC, ProcCount),
+			ProcCount =< SingleArgs,
 
-termination_scc_single_2([Off | Offs], NegSet0, NonNegSet0) :-
-	Off = tuple(_, Int, VarBag0, MaybeVar, _Context),
-	( 	
-		MaybeVar = no,
-		error("termination.m: Maybevar should be yes in single argument analysis\n")
-	; 
-		MaybeVar = yes(HeadVar),
-		( 
-			Int < 0,
-			% Check that the variable that was recursed on did
-			% not change positions between the head and
-			% recursive call.  I am not sure if the first call
-			% to bag__remove is actually required to succeed
-			bag__remove(VarBag0, HeadVar, VarBag1),
-			\+ bag__remove_smallest(VarBag1, _, _)
+			% Don't try single arg analysis if it cannot cure
+			% the reason for the failure of the main analysis.
+			\+ (
+				member(Error, Errors),
+				Error = _ - imported_pred
+			),
+			prove_termination_in_scc_single_arg(SCC,
+				Module, PassInfo)
 		->
-			set__insert(NegSet0, HeadVar, NegSet),
-			termination_scc_single_2(Offs, NegSet, NonNegSet0)
+			Termination = cannot_loop
 		;
-			set__insert(NonNegSet0, HeadVar, NonNegSet),
-			termination_scc_single_2(Offs, NegSet0, NonNegSet)
-		)
-	).
-
-% This adds the information from termination_goal to the relation.
-% The relation is between the procedures in the current SCC. An arc
-% shows that one procedure calls another with the size of the variables
-% unchanged between the head and the (possibly indirect) recursive call.
-% Any loops in the relation show possible non-termination. This predicate
-% also checks that the calculated input variables are subsets of the actual
-% input variables
-:- pred termination_add_arcs_to_relation(pred_proc_id, list(termination_call), 
-	bag(var), term_util__result(term_errors__error), 
-	relation(pred_proc_id), relation(pred_proc_id)).
-:- mode termination_add_arcs_to_relation(in, in, in, out, in, out) is det.
-termination_add_arcs_to_relation(_PPid, [], _Vars, ok, Relation, Relation).
-termination_add_arcs_to_relation(PPId, [X | Xs], Vars, Result, Relation0, 
-		Relation) :-
-	X = tuple(CalledPPId, Value, Bag, _Var, Context),
-	( bag__is_subbag(Bag, Vars) ->
-		compare(Res, Value, 0),
-		( 
-			Res = (>),
-			Result = error(Context - 
-				positive_value(PPId, CalledPPId)),
-			Relation = Relation0
-		;
-			Res = (=),
-			% Add the arc to the relation.
-			relation__lookup_element(Relation0, PPId, Key),
-			relation__lookup_element(Relation0, CalledPPId, 
-				CalledKey),
-			relation__add(Relation0, Key, CalledKey, Relation1),
-			termination_add_arcs_to_relation(PPId, Xs, Vars, 
-				Result, Relation1, Relation)
-		;
-			Res = (<),
-			termination_add_arcs_to_relation(PPId, Xs, Vars, 
-				Result, Relation0, Relation)
+			Termination = Termination1
 		)
 	;
-		Result = error(Context - not_subset(PPId, Bag, Vars)),
-		Relation = Relation0
+		Termination1 = cannot_loop,
+		Termination = Termination1
 	).
 
-:- pred add_pred_procs_to_relation(list(pred_proc_id), relation(pred_proc_id),
-	relation(pred_proc_id)).
-:- mode add_pred_procs_to_relation(in, in, out) is det.
-add_pred_procs_to_relation([], Relation, Relation).
-add_pred_procs_to_relation([PPId | PPIds], Relation0, Relation) :-
-	relation__add_element(Relation0, PPId, _, Relation1),
-	add_pred_procs_to_relation(PPIds, Relation1, Relation).
+	% Initialise the set of recursive input suppliers to be the set
+	% of all input variables in all procedures of the SCC.
 
-%-----------------------------------------------------------------------------%
-% termination_goal is the main section of the analysis for pass 2.  It
-% processes the goal of a single procedure, and returns a list of
-% termination_call structures.  Each termination_call structure represents
-% a single (mutually or directly) recursive call, and also tracks the
-% relative size of the input variables in the recursive call, in comparison
-% to the variables in the head.
-:- type call_info --->
-	call_info(
-			% The pred_proc_id of the predicate that we are
-			% currently processing.
-		pred_proc_id, 
-			% A map from each procedure in the current SCC to
-			% the used-vars for that procedure.  It is used to
-			% find whether or not a call is mutually recursive,
-			% and to find the used-variables of the predicate
-			% that is being called.
-		map(pred_proc_id, set(var)), 
-		bool % are we doing single argument analysis?
-	).
+:- pred init_rec_input_suppliers(list(pred_proc_id)::in, module_info::in,
+	used_args::out) is det.
 
-
-:- pred termination_goal(hlds_goal_expr, hlds_goal_info, module_info, 
-	unify_info, call_info, term_util__result(term_errors__error), 
-	list(termination_call), list(termination_call)).
-:- mode termination_goal(in, in, in, in, in, out, in, out) is det.
-
-termination_goal(conj(Goals), 
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_conj(Goals, Module, UnifyInfo, CallInfo, Res, 
-		Out0, Out).
-
-% This processes calls when doing normal termination analysis (as opposed
-% to single argument analysis).
-termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _), 
-		GoalInfo, Module, _UnifyInfo, call_info(PPId, UsedArgsMap, no), 
-		Res, Out0, Out) :-
+init_rec_input_suppliers([], _, InitMap) :-
+	map__init(InitMap).
+init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
+	init_rec_input_suppliers(PPIds, Module, RecSupplierMap0),
 	PPId = proc(PredId, ProcId),
-	CallPPId = proc(CallPredId, CallProcId),
-
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
-		CallProcInfo),
-
-	proc_info_vartypes(ProcInfo, VarType),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	proc_info_termination(CallProcInfo, CallTermination),
-	CallTermination = term(CallTermConst, CallTerminates, CallUsedArgs, _),
-	goal_info_get_context(GoalInfo, Context),
-
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
-	bag__from_list(InVars, InVarBag0),
-	bag__from_list(OutVars, OutVarBag),
-
-	( CallUsedArgs = yes(UsedVars) ->
-		remove_unused_args(InVarBag0, Args, UsedVars,
-			InVarBag1)
-	;
-		InVarBag1 = InVarBag0
-	),
-
-	% Step 1 - modify Out0
-	( 
-		CallTermConst = set(Int),
-		termination_goal_modify_out(InVarBag1, OutVarBag, Int,
-			Out0, Out1),
-		Res0 = ok
-	;
-		CallTermConst = not_set,
-		error("Unexpected Termination Constant in termination.m"),
-		Res0 = ok,
-		Out1 = Out0
-	;
-		CallTermConst = inf(_),
-		( termination_goal_check_intersect(Out0, OutVarBag) ->
-			% There is no intersection, so just continue
-			Res0 = ok
-		;
-			Res0 = error(Context - 
-				inf_termination_const(PPId, CallPPId))
-		),
-		Out1 = Out0
-	),
-
-	% Step 2 - do we add another arc?
-	( CallTerminates = dont_know ->
-		Res = error(Context - dont_know_proc_called(PPId, CallPPId)),
-		Out = Out0
-	; \+ check_horder_args(Args, VarType) ->
-		Res = error(Context - horder_args(PPId, CallPPId)),
-		Out = Out0
-	;
-		( map__search(UsedArgsMap, CallPPId, RecursiveUsedArgs) ->
-			% The called procedure is in the map, so the call is
-			% recursive - add it to Out.
-			proc_info_headvars(CallProcInfo, HeadVars),
-			termination_call_2(Args, HeadVars, 
-				RecursiveUsedArgs, Bag),
-			NewOutElem = tuple(CallPPId, 0, Bag, no, Context),
-			Out = [ NewOutElem | Out1 ]
-		;
-			% The call is not recursive
-			Out = Out1
-		),
-		Res = Res0
-	).
-	
-termination_goal(call(CallPredId, CallProcId, Args, _IsBuiltin, _, _), 
-		GoalInfo, Module, _UnifyInfo, 
-		call_info(PPId, _UsedArgsMap, yes), Res, Out0, Out) :-
-	PPId = proc(PredId, ProcId),
-	CallPPId = proc(CallPredId, CallProcId),
-
-	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
-		CallProcInfo),
-
-	proc_info_vartypes(ProcInfo, VarType),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	proc_info_headvars(CallProcInfo, HeadVars),
-	proc_info_termination(CallProcInfo, CallTermination),
-	CallTermination = term(_, CallTerminates, _CallUsedArgs, _),
-	goal_info_get_context(GoalInfo, Context),
-
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
-	partition_call_args(Module, CallArgModes, HeadVars, InHeadVars, _),
-	bag__from_list(OutVars, OutVarBag),
-
-	% Step 1 - modify Out0
-	( termination_goal_check_intersect(Out0, OutVarBag) ->
-		% There is no intersection, so just continue.
-		Res0 = ok,
-		Out1 = Out0
-	;
-		% This analysis could be much better, but it will do for
-		% now.
-		Res0 = error(Context - call_in_single_arg(CallPPId)),
-		Out1 = Out0
-	),
-
-	% Step 2 - do we add another arc?
-	( CallTerminates = dont_know ->
-		Res = error(Context - dont_know_proc_called(PPId, CallPPId)),
-		Out = Out0
-	; \+ check_horder_args(Args, VarType) ->
-		Res = error(Context - horder_args(PPId, CallPPId)),
-		Out = Out0
-	;
-		( CallPPId = PPId ->
-			% The call is recursive - add it to Out
-			termination_call(InVars, InHeadVars, PPId, 
-				Context, Out1, Out)
-		;
-			% The call is not recursive
-			Out = Out1
-		),
-		Res = Res0
-	).
-
-termination_goal(higher_order_call(_, _, _, _, _, _), 
-		GoalInfo, _Module, _UnifyInfo, _CallInfo, Res, Out0, Out) :-
-	goal_info_get_context(GoalInfo, Context),
-	Res = error(Context - horder_call),
-	Out = Out0.
-
-	% For now, we'll pretend that the class method call is a higher order
-	% call. In reality, we could probably analyse further than this, since
-	% we know that the method being called must come from one of the
-	% instance declarations, and we could potentially (globally) analyse
-	% these.
-termination_goal(class_method_call(_, _, _, _, _, _), 
-		GoalInfo, _Module, _UnifyInfo, _CallInfo, Res, Out0, Out) :-
-	goal_info_get_context(GoalInfo, Context),
-	Res = error(Context - horder_call),
-	Out = Out0.
-
-termination_goal(switch(_Var, _CanFail, Cases, _StoreMap),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_switch(Cases, Module, UnifyInfo, CallInfo, 
-		Res, Out0, Out).
-
-termination_goal(unify(_Var, _RHS, _UniMode, Unification, _Context),
-		_GInfo, Module, UnifyInfo, _CallInfo, ok, Out0, Out) :-
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	partition_call_args(Module, ArgModes, HeadVars, InArgs, _OutVars),
+	MapIsInput = lambda([HeadVar::in, Bool::out] is det,
 	(
-		Unification = construct(OutVar, ConsId, Args0, Modes0),
-		UnifyInfo = VarTypes - FunctorInfo,
-		map__lookup(VarTypes, OutVar, Type),
-		% length(Args) is not necessarily equal to length(Modes)
-		% for higher order constructions.
-		( type_is_higher_order(Type, _, _) ->
-			Out = Out0
+		( bag__contains(InArgs, HeadVar) ->
+			Bool = yes
 		;
-			( type_to_type_id(Type, TypeIdPrime, _) ->
-				TypeId = TypeIdPrime
-			;
-				error("variable type in termination_goal")
-			),
-			functor_norm(FunctorInfo, TypeId, ConsId, Module,
-				FunctorNorm, Args0, Args, Modes0, Modes),
-			split_unification_vars(Args, Modes, Module, InVarBag, 
-				OutVarBag0),
-			bag__insert(OutVarBag0, OutVar, OutVarBag),
-			termination_goal_modify_out(InVarBag, OutVarBag, 
-				FunctorNorm, Out0, Out)
+			Bool = no
 		)
+	)),
+	list__map(MapIsInput, HeadVars, BoolList),
+	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap).
+
+%-----------------------------------------------------------------------------
+
+	% Perform single arg analysis on the SCC.
+	%
+	% We pick one procedure in the SCC (one of those with minimal arity).
+	% We set the recursive input suppliers of this procedure to contain
+	% only the first input argument, and the recursive input suppliers
+	% of the other procedures to the empty set, and try a fixpoint
+	% iteration. If it works, great, if not, try again with the next
+	% input arg of the selected procedure, until we run out of input
+	% arguments of that procedure.
+	%
+	% While the fixpoint iteration in the main algorithm looks for the
+	% greatest fixpoint, in which the recursive input supplier sets
+	% cannot increase, in single arg analysis we are looking for a
+	% smallest fixpoint starting from a given location, so we must
+	% make sure that the recursive input supplier sets cannot decrease.
+
+:- pred prove_termination_in_scc_single_arg(list(pred_proc_id)::in,
+	module_info::in, pass_info::in) is semidet.
+
+prove_termination_in_scc_single_arg(SCC, Module, PassInfo) :-
+	( SCC = [FirstPPId | LaterPPIds] ->
+		lookup_proc_arity(FirstPPId, Module, FirstArity),
+		find_min_arity_proc(LaterPPIds, FirstPPId, FirstArity, Module,
+			TrialPPId, RestSCC),
+		prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, 1,
+			Module, PassInfo)
 	;
-		Unification = deconstruct(InVar, ConsId, Args0, Modes0, _),
-		UnifyInfo = VarTypes - FunctorInfo,
-		map__lookup(VarTypes, InVar, Type),
-		( type_to_type_id(Type, TypeIdPrime, _) ->
-			TypeId = TypeIdPrime
-		;
-			error("variable type in termination analysis")
-		),
-		functor_norm(FunctorInfo, TypeId, ConsId, Module,
-			FunctorNorm, Args0, Args, Modes0, Modes),
-		split_unification_vars(Args, Modes, Module, InVarBag0,
-			OutVarBag),
-		bag__insert(InVarBag0, InVar, InVarBag),
-		termination_goal_modify_out(InVarBag, OutVarBag, 
-			(- FunctorNorm), Out0, Out)
-	;
-		Unification = assign(OutVar, InVar),
-		bag__init(InitBag),
-		bag__insert(InitBag, InVar, InVarBag),
-		bag__insert(InitBag, OutVar, OutVarBag),
-		termination_goal_modify_out(InVarBag, OutVarBag, 0, Out0, Out)
-	;
-		Unification = simple_test(_InVar1, _InVar2),
-		Out = Out0
-	;
-		Unification = complicated_unify(_, _),
-		error("Unexpected complicated_unify in term_pass2.m")
+		error("empty SCC in prove_termination_in_scc_single_arg")
 	).
 
-termination_goal(disj(Goals, _StoreMap),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_disj(Goals, Module, UnifyInfo, CallInfo, Res, Out0, Out).
+	% Find a procedure of minimum arity among the given list and the
+	% tentative guess.
 
-termination_goal(not(GoalExpr - GoalInfo),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo, CallInfo, 
-		Res, Out0, Out).
+:- pred find_min_arity_proc(list(pred_proc_id)::in, pred_proc_id::in, int::in,
+	module_info::in, pred_proc_id::out, list(pred_proc_id)::out) is det.
 
-termination_goal(some(_Vars, GoalExpr - GoalInfo),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	termination_goal(GoalExpr, GoalInfo, Module, UnifyInfo, CallInfo, 
-		Res, Out0, Out).
-
-termination_goal(if_then_else(_Vars, CondGoal, ThenGoal, ElseGoal, _),
-		_GoalInfo, Module, UnifyInfo, CallInfo, Res, Out0, Out) :-
-	CondGoal = CondExpr - CondGoalInfo,
-	ThenGoal = ThenExpr - ThenGoalInfo,
-	ElseGoal = ElseExpr - ElseGoalInfo,
-	termination_goal(ThenExpr, ThenGoalInfo, Module, UnifyInfo, CallInfo, 
-		ThenRes, Out0, ThenOut),
-	termination_goal(ElseExpr, ElseGoalInfo, Module, UnifyInfo, CallInfo, 
-		ElseRes, Out0, ElseOut),
-	( ThenRes = error(_) ->
-		Res = ThenRes,
-		Out = ThenOut
-	; ElseRes = error(_) ->
-		Res = ElseRes,
-		Out = ElseOut
+find_min_arity_proc([], BestSofarPPId, _, _, BestSofarPPId, []).
+find_min_arity_proc([PPId | PPIds], BestSofarPPId, BestSofarArity, Module,
+		BestPPId, RestSCC) :-
+	lookup_proc_arity(PPId, Module, Arity),
+	( Arity < BestSofarArity ->
+		find_min_arity_proc(PPIds, PPId, Arity,
+			Module, BestPPId, RestSCC0),
+		RestSCC = [BestSofarPPId | RestSCC0]
 	;
-		% They both succeded - join the outs
-		list__append(ThenOut, ElseOut, Out1),
-		termination_goal(CondExpr, CondGoalInfo, Module, 
-			UnifyInfo, CallInfo, Res, Out1, Out)
-	).
-	
-termination_goal(pragma_c_code(_, _, CallPredId, CallProcId, Args, _, _, _),
-		GoalInfo, Module, _UnifyInfo, _CallInfo, Res, Out, Out) :-
-	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
-		CallProcInfo),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
-	bag__from_list(OutVars, OutVarBag),
-	( termination_goal_check_intersect(Out, OutVarBag) ->
-		% c_code has no important output variables, so we 
-		% dont need an error.
-		Res = ok
-	;
-		goal_info_get_context(GoalInfo, Context),
-		Res = error(Context - pragma_c_code)
+		find_min_arity_proc(PPIds, BestSofarPPId, BestSofarArity,
+			Module, BestPPId, RestSCC0),
+		RestSCC = [PPId | RestSCC0]
 	).
 
-%-----------------------------------------------------------------------------%
-% These following predicates all support termination_goal. 
+	% Perform single arg analysis on the SCC.
 
-:- pred termination_conj(list(hlds_goal), module_info, 
-	unify_info, call_info, term_util__result(term_errors__error), 
-	list(termination_call), list(termination_call)).
-:- mode termination_conj(in, in, in, in, out, in, out) is det.
-termination_conj([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out).
-termination_conj([ Goal | Goals ], Module, UnifyInfo, CallInfo, 
-		Res, Out0, Out) :-
-	Goal = GoalExpr - GoalInfo,
-	termination_conj(Goals, Module, UnifyInfo, CallInfo, 
-		Res0, Out0, Out1),
-	( Res0 = ok ->
-		termination_goal(GoalExpr, GoalInfo, Module, 
-			UnifyInfo, CallInfo, Res, Out1, Out)
-	;
-		Res = Res0,
-		Out = Out1
-	).
+:- pred prove_termination_in_scc_single_arg_2(pred_proc_id::in,
+	list(pred_proc_id)::in, int::in, module_info::in, pass_info::in)
+	is semidet.
 
-% Used by single argument analysis to make a seperate Out for each input
-% variable in a recursive call.
-:- pred termination_call(list(var), list(var), pred_proc_id, 
-	term__context, list(termination_call), list(termination_call)).
-:- mode termination_call(in, in, in, in, in, out) is det.
-termination_call([], [], _, _, Out, Out).
-termination_call([_|_], [], _, _, Out, Out) :-
-	error("term_pass2__termination_call: Unmatched variables\n").
-termination_call([], [_|_], _, _, Out, Out) :-
-	error("term_pass2:termination_call: Unmatched variables\n").
-termination_call([ Var | Vars ], [ HeadVar | HeadVars ], PPId, 
-		Context, Outs0, Outs) :-
-	bag__init(Bag0),
-	bag__insert(Bag0, Var, Bag),
-	Out = tuple(PPId, 0, Bag, yes(HeadVar), Context),
-	termination_call(Vars, HeadVars, PPId, Context, 
-		[Out | Outs0], Outs).
-
-% Used to set the bag of input variables for a recursive call, according to
-% the set of used arguments.
-:- pred termination_call_2(list(var), list(var), set(var), bag(var)).
-:- mode termination_call_2(in, in, in, out) is det.
-termination_call_2([], [], _, Out) :-
-	bag__init(Out).
-termination_call_2([_|_], [], _, _Out) :-
-	error("Unmatched vars in termination_call_2\n").
-termination_call_2([], [_|_], _, _Out) :-
-	error("Unmatched vars in termination_call_2\n").
-termination_call_2([Var | Vars], [HeadVar | HeadVars], 
-		UsedSet, OutBag) :-
-	termination_call_2(Vars, HeadVars, UsedSet, OutBag0),
-	( set__member(HeadVar, UsedSet) ->
-		bag__insert(OutBag0, Var, OutBag)
-	;
-		OutBag = OutBag0
-	).
-
-
-:- pred termination_switch(list(case), module_info, 
-	unify_info, call_info, term_util__result(term_errors__error), 
-	list(termination_call), list(termination_call)).
-:- mode termination_switch(in, in, in, in, out, in, out) is det.
-termination_switch([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out) :-
-    error("term_pass2:termination_switch: unexpected empty switch\n").
-termination_switch([ Case | Cases ], Module, UnifyInfo, 
-		CallInfo, Res, Out0, Out):-
-	Case = case(_, Goal),
-	Goal = GoalExpr - GoalInfo,
-
-	( Cases = [] ->
-		Res1 = ok,
-		Out1 = Out0
-	;
-		termination_switch(Cases, Module, UnifyInfo, CallInfo, 
-			Res1, Out0, Out1)
-	),
-	( Res1 = ok ->
-		termination_goal(GoalExpr, GoalInfo, 
-			Module, UnifyInfo, CallInfo, Res, Out0, Out2),
-		list__append(Out1, Out2, Out)
-	;
-		Res = Res1,
-		Out = Out1
-	).
-
-:- pred termination_disj(list(hlds_goal), module_info, 
-	unify_info, call_info, term_util__result(term_errors__error), 
-	list(termination_call), list(termination_call)).
-:- mode termination_disj(in, in, in, in, out, in, out) is det.
-termination_disj([] , _Module, _UnifyInfo, _CallInfo, ok, Out, Out):-
-	( Out = [] ->
+prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
+		Module, PassInfo) :-
+	init_rec_input_suppliers_single_arg(TrialPPId, RestSCC,
+		ArgNum0, Module, InitRecSuppliers),
+	prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
+		up, Module, PassInfo, Termination),
+	( Termination = cannot_loop ->
 		true
 	;
-		error("term_pass2:termination_disj: Unexpected value after disjunction\n")
-	).
-termination_disj([ Goal | Goals ], Module, UnifyInfo, 
-		CallInfo, Res, Out0, Out) :-
-	Goal = GoalExpr - GoalInfo,
-
-	( Goals = [] ->
-		Res1 = ok, 
-		Out1 = Out0
-	;
-		termination_disj(Goals, Module, UnifyInfo, CallInfo, 
-			Res1, Out0, Out1)
-	),
-	( Res1 = ok ->
-		termination_goal(GoalExpr, GoalInfo, Module, 
-			UnifyInfo, CallInfo, Res, Out0, Out2),
-		list__append(Out1, Out2, Out)
-	;
-		Res = Res1,
-		Out = Out1
+		ArgNum1 is ArgNum0 + 1,
+		prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC,
+			ArgNum1, Module, PassInfo)
 	).
 
+:- pred init_rec_input_suppliers_single_arg(pred_proc_id::in,
+	list(pred_proc_id)::in, int::in, module_info::in, used_args::out)
+	is semidet.
 
-:- pred termination_goal_check_intersect(list(termination_call), bag(var)).
-:- mode termination_goal_check_intersect(in, in) is semidet.
+init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
+		RecSupplierMap) :-
+	TrialPPId = proc(PredId, ProcId),
+	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	proc_info_argmodes(ProcInfo, ArgModes),
+	init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
+		Module, TrialPPIdRecSuppliers),
+	map__init(RecSupplierMap0),
+	map__det_insert(RecSupplierMap0, TrialPPId, TrialPPIdRecSuppliers,
+		RecSupplierMap1),
+	init_rec_input_suppliers_single_arg_others(RestSCC, Module,
+		RecSupplierMap1, RecSupplierMap).
 
-% termination_goal_check_intersect succeeds if there is no intersection
-% between any one of the Outs and the OutVarBag.
-termination_goal_check_intersect([], _).
-termination_goal_check_intersect([ Out | Outs ], OutVarBag) :-
-	Out = tuple(_PPId, _Const, OutBag, _Var, _Context),
-	\+ bag__intersect(OutBag, OutVarBag),
-	termination_goal_check_intersect(Outs, OutVarBag).
+:- pred init_rec_input_suppliers_add_single_arg(list(mode)::in, int::in,
+	module_info::in, list(bool)::out) is semidet.
 
-:- pred termination_goal_modify_out(bag(var), bag(var), int, 
-	list(termination_call), list(termination_call)).
-:- mode termination_goal_modify_out(in, in, in, in, out) is det.
-termination_goal_modify_out(_, _, _, [], []).
-termination_goal_modify_out(InVars, OutVars, Off, 
-		[Out0 | Out0s], [Out | Outs]):-
-	Out0 = tuple(PPId, Int0, Vars0, Var, Context),
-	( bag__intersect(OutVars, Vars0) ->
-		% There is an intersection.
-		bag__subtract(Vars0, OutVars, Vars1),
-		bag__union(InVars, Vars1, Vars),
-		Int = Int0 + Off,
-		Out = tuple(PPId, Int, Vars, Var, Context)
+init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
+		BoolList) :-
+	(
+		mode_is_input(Module, Mode),
+		ArgNum = 1
+	->
+		MapToNo = lambda([_Mode::in, Bool::out] is det,
+		(
+			Bool = no
+		)),
+		list__map(MapToNo, Modes, BoolList1),
+		BoolList = [yes | BoolList1]
 	;
-		% There is not an intersection.
-		Out = Out0
-	),
-	termination_goal_modify_out(InVars, OutVars, Off, Out0s, Outs).
+		(
+			mode_is_output(Module, Mode)
+		->
+			NextArgNum = ArgNum
+		;
+			mode_is_input(Module, Mode),
+			ArgNum > 1
+		->
+			NextArgNum is ArgNum - 1
+		;
+			fail
+		)
+	->
+		init_rec_input_suppliers_add_single_arg(Modes, NextArgNum,
+			Module, BoolList1),
+		BoolList = [no | BoolList1]
+	;
+		fail
+	).
 
+:- pred init_rec_input_suppliers_single_arg_others(list(pred_proc_id)::in,
+	module_info::in, used_args::in, used_args::out) is det.
+
+init_rec_input_suppliers_single_arg_others([], _,
+	RecSupplierMap, RecSupplierMap).
+init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
+		RecSupplierMap0, RecSupplierMap) :-
+	PPId = proc(PredId, ProcId),
+	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	proc_info_headvars(ProcInfo, HeadVars),
+	MapToNo = lambda([_HeadVar::in, Bool::out] is det,
+	(
+		Bool = no
+	)),
+	list__map(MapToNo, HeadVars, BoolList),
+	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap1),
+	init_rec_input_suppliers_single_arg_others(PPIds, Module,
+		RecSupplierMap1, RecSupplierMap).
+
+:- pred lookup_proc_arity(pred_proc_id::in, module_info::in, int::out) is det.
+
+lookup_proc_arity(PPId, Module, Arity) :-
+	PPId = proc(PredId, ProcId),
+	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	proc_info_headvars(ProcInfo, HeadVars),
+	list__length(HeadVars, Arity).
+
+%-----------------------------------------------------------------------------
+
+:- pred prove_termination_in_scc_trial(list(pred_proc_id)::in, used_args::in,
+	fixpoint_dir::in, module_info::in, pass_info::in,
+	termination_info::out) is det.
+
+prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, Module,
+		PassInfo, Termination) :-
+	prove_termination_in_scc_fixpoint(SCC, FixDir, Module, PassInfo,
+		InitRecSuppliers, Result),
+	(
+		Result = ok(CallInfo, _),
+		CallInfo = InfCalls - CallWeights,
+		(
+			InfCalls \= []
+		->
+			PassInfo = pass_info(_, MaxErrors, _),
+			list__take_upto(MaxErrors, InfCalls, ReportedInfCalls),
+			Termination = can_loop(ReportedInfCalls)
+		;
+			zero_or_positive_weight_cycles(CallWeights, Module,
+				Cycles),
+			Cycles \= []
+		->
+			PassInfo = pass_info(_, MaxErrors, _),
+			list__take_upto(MaxErrors, Cycles, ReportedCycles),
+			Termination = can_loop(ReportedCycles)
+		;
+			Termination = cannot_loop
+		)
+	;
+		Result = error(Errors),
+		Termination = can_loop(Errors)
+	).
+
+%-----------------------------------------------------------------------------
+
+:- pred prove_termination_in_scc_fixpoint(list(pred_proc_id)::in,
+	fixpoint_dir::in, module_info::in, pass_info::in, used_args::in,
+	pass2_result::out) is det.
+
+prove_termination_in_scc_fixpoint(SCC, FixDir, Module, PassInfo,
+		RecSupplierMap0, Result) :-
+	% unsafe_perform_io(io__write_string("prove_termination_in_scc\n")),
+	% unsafe_perform_io(io__write(RecSupplierMap0)),
+	% unsafe_perform_io(io__write_string("\n")),
+	map__init(NewRecSupplierMap0),
+	map__init(CallWeightGraph0),
+	CallInfo0 = [] - CallWeightGraph0,
+	prove_termination_in_scc_pass(SCC, FixDir, Module, PassInfo,
+		RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1),
+	(
+		Result1 = ok(_, RecSupplierMap1),
+		( RecSupplierMap1 = RecSupplierMap0 ->
+			% We are at a fixed point, so further analysis
+			% will not get any better results.
+			Result = Result1
+		;
+			prove_termination_in_scc_fixpoint(SCC, FixDir,
+				Module, PassInfo, RecSupplierMap1, Result)
+		)
+	;
+		Result1 = error(_),
+		Result = Result1
+	).
+
+%-----------------------------------------------------------------------------
+
+	% Process a whole SCC, to determine the termination property of each
+	% procedure in that SCC.
+
+:- pred prove_termination_in_scc_pass(list(pred_proc_id)::in, fixpoint_dir::in,
+	module_info::in, pass_info::in, used_args::in, used_args::in,
+	call_weight_info::in, pass2_result::out) is det.
+
+prove_termination_in_scc_pass([], _, _, _, _, NewRecSupplierMap, CallInfo,
+		ok(CallInfo, NewRecSupplierMap)).
+prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
+		RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result) :-
+	% Get the goal info.
+	PPId = proc(PredId, ProcId),
+	module_info_pred_proc_info(Module, PredId, ProcId, PredInfo, ProcInfo),
+	pred_info_context(PredInfo, Context),
+	proc_info_goal(ProcInfo, Goal),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	map__init(EmptyMap),
+	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
+	init_traversal_params(Module, FunctorInfo, PPId, Context, VarTypes,
+		EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
+	set__init(PathSet0),
+	Info0 = ok(PathSet0, []),
+	traverse_goal(Goal, Params, Info0, Info),
+	(
+		Info = ok(Paths, CanLoop),
+		require(unify(CanLoop, []),
+			"can_loop detected in pass2 but not pass1"),
+		set__to_sorted_list(Paths, PathList),
+		upper_bound_active_vars(PathList, ActiveVars),
+		map__lookup(RecSupplierMap, PPId, RecSuppliers0),
+		proc_info_headvars(ProcInfo, Args),
+		bag__init(EmptyBag),
+		update_rec_input_suppliers(Args, ActiveVars, FixDir,
+			RecSuppliers0, RecSuppliers,
+			EmptyBag, RecSuppliers0Bag),
+		map__det_insert(NewRecSupplierMap0, PPId, RecSuppliers,
+			NewRecSupplierMap1),
+		add_call_arcs(PathList, RecSuppliers0Bag,
+			CallInfo0, CallInfo1),
+		prove_termination_in_scc_pass(PPIds, FixDir, Module,
+			PassInfo, RecSupplierMap,
+			NewRecSupplierMap1, CallInfo1, Result)
+	;
+		Info = error(Errors, CanLoop),
+		require(unify(CanLoop, []),
+			"can_loop detected in pass2 but not pass1"),
+		Result = error(Errors)
+	).
+
+%-----------------------------------------------------------------------------
+
+:- pred update_rec_input_suppliers(list(var)::in, bag(var)::in,
+	fixpoint_dir::in, list(bool)::in, list(bool)::out,
+	bag(var)::in, bag(var)::out) is det.
+
+update_rec_input_suppliers([], _, _, [], [], RecBag, RecBag).
+update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
+	error("update_rec_input_suppliers: Unmatched variables").
+update_rec_input_suppliers([], _, _, [_ | _], [], _, _) :-
+	error("update_rec_input_suppliers: Unmatched variables").
+update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
+		[RecInputSupplier0 | RecInputSuppliers0],
+		[RecInputSupplier | RecInputSuppliers],
+		RecBag0, RecBag) :-
+	(
+		RecInputSupplier0 = yes,
+		bag__insert(RecBag0, Arg, RecBag1)
+	;
+		RecInputSupplier0 = no,
+		RecBag1 = RecBag0
+	),
+	(
+		FixDir = down,
+		% This guarantees that the set of rec input suppliers
+		% can only decrease.
+		( bag__contains(ActiveVars, Arg) ->
+			RecInputSupplier = RecInputSupplier0
+		;
+			RecInputSupplier = no
+		)
+	;
+		FixDir = up,
+		% This guarantees that the set of rec input suppliers
+		% can only increase.
+		( bag__contains(ActiveVars, Arg) ->
+			RecInputSupplier = yes
+		;
+			RecInputSupplier = RecInputSupplier0
+		)
+	),
+	update_rec_input_suppliers(Args, ActiveVars, FixDir,
+		RecInputSuppliers0, RecInputSuppliers, RecBag1, RecBag).
+
+%-----------------------------------------------------------------------------
+
+% This adds the information from a stage 2 traversal to the graph.
+% The graph's nodes are the procedures in the current SCC.
+% The graph's edges represent calls from one procedure in the SCC to another.
+% The number attached to the edge from p to q shows the upper bound
+% on the difference between the size of the recursive input supplier arguments
+% in the call to q and the size of the recursive input supplier arguments
+% in the head of p. If there is no finite upper bound, then we insert the
+% details of the call into the list of "infinite" calls.
+
+:- pred add_call_arcs(list(path_info)::in,
+	bag(var)::in, call_weight_info::in, call_weight_info::out) is det.
+
+add_call_arcs([], _RecInputSuppliers, CallInfo, CallInfo).
+add_call_arcs([Path | Paths], RecInputSuppliers, CallInfo0, CallInfo) :-
+	Path = path_info(PPId, CallSite, GammaConst, GammaVars, ActiveVars),
+	( CallSite = yes(CallPPIdPrime - ContextPrime) ->
+		CallPPId = CallPPIdPrime,
+		Context = ContextPrime
+	;
+		error("no call site in path in stage 2")
+	),
+	( GammaVars = [] ->
+		true
+	;
+		error("gamma variables in path in stage 2")
+	),
+	CallInfo0 = InfCalls0 - CallWeights0,
+	( bag__is_subbag(ActiveVars, RecInputSuppliers) ->
+		( map__search(CallWeights0, PPId, NeighbourMap0) ->
+			( map__search(NeighbourMap0, CallPPId, OldEdgeInfo) ->
+				OldEdgeInfo = _OldContext - OldWeight,
+				( OldWeight >= GammaConst ->
+					EdgeInfo = OldEdgeInfo
+				;
+					EdgeInfo = Context - GammaConst
+				),
+				map__det_update(NeighbourMap0, CallPPId,
+					EdgeInfo, NeighbourMap)
+			;
+				map__det_insert(NeighbourMap0, CallPPId,
+					Context - GammaConst, NeighbourMap)
+			),
+			map__det_update(CallWeights0, PPId, NeighbourMap,
+				CallWeights1)
+		;
+			map__init(NeighbourMap0),
+			map__det_insert(NeighbourMap0, CallPPId,
+				Context - GammaConst, NeighbourMap),
+			map__det_insert(CallWeights0, PPId, NeighbourMap,
+				CallWeights1)
+		),
+		CallInfo1 = InfCalls0 - CallWeights1
+	;
+		InfCalls1 = [Context - inf_call(PPId, CallPPId) | InfCalls0],
+		CallInfo1 = InfCalls1 - CallWeights0
+	),
+	add_call_arcs(Paths, RecInputSuppliers, CallInfo1, CallInfo).
+
+%-----------------------------------------------------------------------------
+
+	% We use a simple depth first search to find and return the list
+	% of all cycles in the call graph of the SCC where the change in
+	% the size of the recursive input supplier arguments of the procedure
+	% that serves as the start and end point of the circularity are
+	% not guaranteed to decrease.
+	%
+	% Finding one such cycle is enough for us to conclude that we
+	% cannot prove termination of the procedures in the SCC; we collect
+	% all cycles because it may be useful to print them out (if not
+	% all, then maybe a limited set).
+
+:- pred zero_or_positive_weight_cycles(call_weight_graph::in,
+	module_info::in, list(term_errors__error)::out) is det.
+
+zero_or_positive_weight_cycles(CallWeights, Module, Cycles) :-
+	map__keys(CallWeights, PPIds),
+	zero_or_positive_weight_cycles_2(PPIds, CallWeights, Module, Cycles).
+
+:- pred zero_or_positive_weight_cycles_2(list(pred_proc_id)::in,
+	call_weight_graph::in, module_info::in,
+	list(term_errors__error)::out) is det.
+
+zero_or_positive_weight_cycles_2([], _, _, []).
+zero_or_positive_weight_cycles_2([PPId | PPIds], CallWeights, Module, Cycles) :-
+	zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles1),
+	zero_or_positive_weight_cycles_2(PPIds, CallWeights, Module, Cycles2),
+	list__append(Cycles1, Cycles2, Cycles).
+
+:- pred zero_or_positive_weight_cycles_from(pred_proc_id::in,
+	call_weight_graph::in, module_info::in,
+	list(term_errors__error)::out) is det.
+
+zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
+	map__lookup(CallWeights, PPId, NeighboursMap),
+	map__to_assoc_list(NeighboursMap, NeighboursList),
+	PPId = proc(PredId, _ProcId),
+	module_info_pred_info(Module, PredId, PredInfo),
+	pred_info_context(PredInfo, Context),
+	zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
+		PPId, Context, 0, [], CallWeights, Cycles).
+
+:- pred zero_or_positive_weight_cycles_from_neighbours(assoc_list(pred_proc_id,
+	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
+	int::in, assoc_list(pred_proc_id, term__context)::in,
+	call_weight_graph::in, list(term_errors__error)::out) is det.
+
+zero_or_positive_weight_cycles_from_neighbours([], _, _, _, _, _, []).
+zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
+		LookforPPId, Context, WeightSoFar, VisitedCalls, CallWeights,
+		Cycles) :-
+	zero_or_positive_weight_cycles_from_neighbour(Neighbour, LookforPPId,
+		Context, WeightSoFar, VisitedCalls, CallWeights, Cycles1),
+	zero_or_positive_weight_cycles_from_neighbours(Neighbours, LookforPPId,
+		Context, WeightSoFar, VisitedCalls, CallWeights, Cycles2),
+	list__append(Cycles1, Cycles2, Cycles).
+
+:- pred zero_or_positive_weight_cycles_from_neighbour(pair(pred_proc_id,
+	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
+	int::in, assoc_list(pred_proc_id, term__context)::in,
+	call_weight_graph::in, list(term_errors__error)::out) is det.
+
+zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
+		LookforPPId, ProcContext, WeightSoFar0, VisitedCalls,
+		CallWeights, Cycles) :-
+	WeightSoFar1 is WeightSoFar0 + EdgeWeight,
+	(
+		CurPPId = LookforPPId
+	->
+		% We have a cycle on the looked for ppid.
+		( WeightSoFar1 >= 0 ->
+			FinalVisitedCalls = [CurPPId - Context | VisitedCalls],
+			list__reverse(FinalVisitedCalls, RevFinalVisitedCalls),
+			Cycles = [ProcContext -
+				cycle(LookforPPId, RevFinalVisitedCalls)]
+		;
+			Cycles = []
+		)
+	;
+		assoc_list__keys(VisitedCalls, VisitedPPIds),
+		list__member(CurPPId, VisitedPPIds)
+	->
+		% We have a cycle, but not on the looked for ppid.
+		% We ignore it here; it will be picked up when we process
+		% that ppid.
+		Cycles = []
+	;
+		% No cycle; try all possible edges from this node.
+		NewVisitedCalls = [CurPPId - Context | VisitedCalls],
+		map__lookup(CallWeights, CurPPId, NeighboursMap),
+		map__to_assoc_list(NeighboursMap, NeighboursList),
+		zero_or_positive_weight_cycles_from_neighbours(NeighboursList,
+			LookforPPId, ProcContext, WeightSoFar1,
+			NewVisitedCalls, CallWeights, Cycles)
+	).
+
+%-----------------------------------------------------------------------------

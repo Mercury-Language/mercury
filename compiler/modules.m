@@ -257,7 +257,7 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
 		{ Pragma \= terminates(_, _) },
 		{ Pragma \= does_not_terminate(_, _) },
 		{ Pragma \= check_termination(_, _) },
-		{ Pragma \= termination_info(_, _, _, _) }
+		{ Pragma \= termination_info(_, _, _, _, _) }
 	->
 		prog_out__write_context(Context),
 		report_warning("Warning: pragma in module interface.\n"),

@@ -204,6 +204,8 @@
 		;	verbose_check_termination
 		;	termination_single_args
 		;	termination_norm
+		;	termination_error_limit
+		;	termination_path_limit
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -438,8 +440,10 @@ option_defaults_2(special_optimization_option, [
 	check_termination	-	bool(no),
 	verbose_check_termination -	bool(no),
 	termination		-	bool(no),
-	termination_single_args	-	bool(no),
+	termination_single_args	-	int(0),
 	termination_norm	-	string("total"),
+	termination_error_limit	-	int(3),
+	termination_path_limit	-	int(256),
 	split_c_files		-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -767,6 +771,10 @@ long_option("termination-single-argument-analysis",
 long_option("term-single-arg", 		termination_single_args).
 long_option("termination-norm",		termination_norm).
 long_option("term-norm",		termination_norm).
+long_option("termination-error-limit",	termination_error_limit).
+long_option("term-err-limit",		termination_error_limit).
+long_option("termination-path-limit",	termination_path_limit).
+long_option("term-path-limit",		termination_path_limit).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -1513,8 +1521,8 @@ options_help_optimization -->
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
 	io__write_string("\t\tThis option must be set throughout the compilation process.\n"),
-%	io__write_string("\t--transitive-intermodule-optimization\n"),
 %	io__write_string("\t--trans-intermod-opt\n"),
+%	io__write_string("\t--transitive-intermodule-optimization\n"),
 %	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
 %	io__write_string("\t\tThis data is imported from <module>.trans_opt files.\n"),
 	io__write_string("\t--enable-term, --enable-termination\n"),
@@ -1531,13 +1539,24 @@ options_help_optimization -->
 	io__write_string("\t--verb-chk-term, --verb-check-term, --verbose-check-termination\n"),
 	io__write_string("\t\tEnable termination analysis, and emit warnings for all\n"),
 	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.\n"),
+	io__write_string("\t--term-single-arg <n>, --termination-single-argument-analysis <n>\n"),
+	io__write_string("\t\tWhen performing termination analysis, try analyzing\n"),
+	io__write_string("\t\trecursion on single arguments in strongly connected\n"),
+	io__write_string("\t\tcomponents of the call graph that have up to <n> procedures.\n"),
+	io__write_string("\t\tSetting this limit to zero disables single argument analysis.\n"),
 	io__write_string("\t--termination-norm {simple, total, num-data-elems}\n"),
 	io__write_string("\t\tThe norm defines how termination analysis measures the size\n"),
-	io__write_string("\t\tof a memory cell. The simple norm says that size is always one.\n"),
-	io__write_string("\t\tThe total norm says that it is the number of words in the cell.\n"),
-	io__write_string("\t\tThe num-data-elems norm says that it is the number of words in\n"),
+	io__write_string("\t\tof a memory cell. The `simple' norm says that size is always one.\n"),
+	io__write_string("\t\tThe `total' norm says that it is the number of words in the cell.\n"),
+	io__write_string("\t\tThe `num-data-elems' norm says that it is the number of words in\n"),
 	io__write_string("\t\tthe cell that contain something other than pointers to cells of\n"),
 	io__write_string("\t\tthe same type.\n"),
+	io__write_string("\t--term-err-limit <n>, --termination-error-limit <n>\n"),
+	io__write_string("\t\tPrint at most <n> reasons for any single termination error\n"),
+	io__write_string("\t\t(default: 3).\n"),
+	io__write_string("\t--term-path-limit <n>, --termination-path-limit <n>\n"),
+	io__write_string("\t\tPerform termination analysis only on predicates\n"),
+	io__write_string("\t\twith at most <n> paths (default: 256).\n"),
 	io__write_string("\t--split-c-files\n"),
 	io__write_string("\t\tGenerate each C function in its own C file,\n"),
 	io__write_string("\t\tso that the linker will optimize away unused code.\n"),

@@ -89,7 +89,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_variables(ProcInfo, VarSet),
+	proc_info_varset(ProcInfo, VarSet),
 	proc_info_interface_determinism(ProcInfo, Detism),
 	determinism_to_code_model(Detism, CodeModel),
 

@@ -47,7 +47,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	write_proc_progress_message("% Minimizing saved vars in ",
 		PredId, ProcId, ModuleInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_variables(ProcInfo0, Varset0) },
+	{ proc_info_varset(ProcInfo0, Varset0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 	{ init_slot_info(Varset0, VarTypes0, SlotInfo0) },
 
@@ -68,7 +68,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
-	{ proc_info_set_variables(ProcInfo1, Varset, ProcInfo2) },
+	{ proc_info_set_varset(ProcInfo1, Varset, ProcInfo2) },
 	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) }.
 
 %-----------------------------------------------------------------------------%

@@ -1,0 +1,2 @@
+:- module mmatrix.
+:- pragma termination_info(mmatrix:mmultiply(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out), infinite, cannot_loop).

@@ -32,12 +32,12 @@ The basic design is that compilation is broken into the following
 stages:
 
 <ol>
-<li> parsing (source files -> HLDS)
-<li> semantic analysis and error checking (HLDS -> annotated HLDS)
-<li> high-level transformations (annotated HLDS -> annotated HLDS)
-<li> code generation (annotated HLDS -> LLDS)
-<li> low-level optimizations (LLDS -> LLDS)
-<li> output C code (LLDS -> C)
+<li> parsing (source files -&gt; HLDS)
+<li> semantic analysis and error checking (HLDS -&gt; annotated HLDS)
+<li> high-level transformations (annotated HLDS -&gt; annotated HLDS)
+<li> code generation (annotated HLDS -&gt; LLDS)
+<li> low-level optimizations (LLDS -&gt; LLDS)
+<li> output C code (LLDS -&gt; C)
 </ol>
 
 <p>
@@ -367,6 +367,30 @@ one - polymorphism.m calls calls lambda__transform_lambda directly.
 
 <p>
 
+The next pass is termination analysis. The various modules involved are:
+
+<ul>
+<li>
+termination.m is the control module. It sets the argument size and
+termination properties of builtin and compiler generated procedures,
+invokes term_pass1.m and term_pass2.m
+and writes .trans_opt files and error messages as appropriate.
+<li>
+term_pass1.m analyzes the argument size properties of user-defined procedures,
+<li>
+term_pass2.m analyzes the termination properties of user-defined procedures.
+<li>
+term_traversal.m contains code common to the two passes.
+<li>
+term_errors.m defines the various kinds of termination errors
+and prints the messages appropriate for each.
+<li>
+term_util.m defines the main types used in termination analysis
+and contains utility predicates.
+</ul>
+
+<p>
+
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
@@ -375,10 +399,8 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
-<li> constraint propagation (constraint.m) <br>
-	<p>
-
-	Not yet working.
+<li> pushing constraints as far left as possible (constraint.m);
+  this does not yet work.
 
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
@@ -392,11 +414,12 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 <li> elimination of useless assignments, assignments that merely introduce
   another name for an already existing variable (excess.m).
 
-<li> reducing the number of variables that have to be saved across procedure calls
-  (saved_vars.m). We do this by putting the code that generates the value of
-  a variable just before the use of that variable, duplicating the variable
-  and the code that produces it if necessary, provided the cost of doing so
-  is smaller than the cost of saving and restoring the variable would be.
+<li> reducing the number of variables that have to be saved across
+  procedure calls (saved_vars.m). We do this by putting the code that
+  generates the value of a variable just before the use of that variable,
+  duplicating the variable and the code that produces it if necessary,
+  provided the cost of doing so is smaller than the cost of saving and
+  restoring the variable would be.
 
 </ul>
 
@@ -644,7 +667,7 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
   creates base_type_functors structures that give information on 
   the functors of a given type. The base_type_layout and base_type_functors
   structures of each declared type constructor are added to the LLDS.
-<ul>
+
 <li> base_typeclass_info.m generates the base_typeclass_info structures that 
   list the methods of a class for each instance declaration. These are added to
   the LLDS.
@@ -700,10 +723,8 @@ completed.
 		<dd>
 		These modules contain stuff for handling the special
 		compiler-generated predicates which are generated for
-		each type: unify/2, compare/3, index/1 (used in the
-		implementation of compare/3), and also type_to_term/2
-		and term_to_type/2 (but those last two are disabled
-		at the moment).
+		each type: unify/2, compare/3, and index/1 (used in the
+		implementation of compare/3).
 
 	<dt> dependency_graph.m:
 		<dd>
@@ -724,6 +745,10 @@ completed.
 	<dt> opt_debug.m:
 		<dd>
 		Utility routines for debugging the LLDS-to-LLDS optimizations.
+
+	<dt> error_util.m:
+		<dd>
+		Utility routines for printing nicely formatted error messages.
 	</dl>
 
 
@@ -766,6 +791,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-12-22 06:59:04 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-12-22 09:57:04 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
