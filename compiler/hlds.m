@@ -1424,16 +1424,15 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- pred goal_info_set_determinism(hlds__goal_info, category, hlds__goal_info).
 :- mode goal_info_set_determinism(in, in, out) is det.
 
-	% The `local' determinism is used that part of the determinism
-	% which is computed before the determinism analysis computes
-	% the overall determinism for a goal.
+	% The `internal' determinism is the determinism _before_ we
+	% prune nondet goals that don't have any output variables.
 
-:- pred goal_info_get_local_determinism(hlds__goal_info, category).
-:- mode goal_info_get_local_determinism(in, out) is det.
+:- pred goal_info_get_internal_determinism(hlds__goal_info, category).
+:- mode goal_info_get_internal_determinism(in, out) is det.
 
-:- pred goal_info_set_local_determinism(hlds__goal_info, category,
+:- pred goal_info_set_internal_determinism(hlds__goal_info, category,
 					hlds__goal_info).
-:- mode goal_info_set_local_determinism(in, in, out) is det.
+:- mode goal_info_set_internal_determinism(in, in, out) is det.
 
 :- pred goal_info_get_nonlocals(hlds__goal_info, set(var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
@@ -1520,10 +1519,10 @@ goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H),
 	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H).
 
-goal_info_get_local_determinism(GoalInfo, LocalDeterminism) :-
+goal_info_get_internal_determinism(GoalInfo, LocalDeterminism) :-
 	GoalInfo = goal_info(_, LocalDeterminism, _, _, _, _, _, _).
 
-goal_info_set_local_determinism(GoalInfo0, LocalDeterminism, GoalInfo) :-
+goal_info_set_internal_determinism(GoalInfo0, LocalDeterminism, GoalInfo) :-
 	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H),
 	GoalInfo = goal_info(A, LocalDeterminism, C, D, E, F, G, H).
 
