@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2003 The University of Melbourne.
+** Copyright (C) 1999-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -400,8 +400,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 
     for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
         /* free the memory allocated by previous MR_copy_string */
-        free(MR_point.MR_point_vars[slot].MR_var_fullname);
-        free(MR_point.MR_point_vars[slot].MR_var_basename);
+        MR_free(MR_point.MR_point_vars[slot].MR_var_fullname);
+        MR_free(MR_point.MR_point_vars[slot].MR_var_basename);
     }
 
     string_table = entry->MR_sle_module_layout->MR_ml_string_table;

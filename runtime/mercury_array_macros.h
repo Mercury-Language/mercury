@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000,2002 The University of Melbourne.
+** Copyright (C) 1998-2000,2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,6 +31,24 @@
 ** If not, doubles the size of the existing widgets array, or
 ** allocates an array of INIT_SIZE items if the widgets array
 ** has not been initialized before.
+**
+** BEWARE: YOU NEED TO BE VERY CAREFUL OF POINTERS TO OBJECTS ON THE GC HEAP:
+**
+** - For MR_ensure_room_for_next(), the memory is allocated with MR_malloc(),
+**   which means that if conservative GC is enabled, the array elements
+**   _MUST NOT_ point to the GC heap (or at least must not be the _only_
+**   pointer to any object on the GC heap); but the array address can be
+**   stored anywhere.
+**
+** - For MR_GC_ensure_room_for_next(), the memory is allocated on the GC heap,
+**   which means that the array elements can point to anything;
+**   but the array address _MUST NOT_ be stored in memory allocated with
+**   malloc() or MR_malloc() (unless it is also stored in some place
+**   which _is_ scanned by the collector).
+**
+** It is the caller's responsibility to deallocate the memory for the array
+** if/when it is no longer needed, using MR_free() or MR_GC_free()
+** respectively.
 */
 
 #define	MR_ensure_room_for_next(base, type, init)	  		    \
@@ -46,6 +64,19 @@
 			}						    \
 		}							    \
 	} while(0)
+#define	MR_GC_ensure_room_for_next(base, type, init)	  		    \
+	do {								    \
+		if (base##_next >= base##_max) {			    \
+			if (base##_max == 0) {				    \
+				base##_max = (init);			    \
+				base##s = MR_GC_NEW_ARRAY(type, base##_max); \
+			} else {					    \
+				base##_max *= 2;			    \
+				base##s = MR_GC_RESIZE_ARRAY(base##s, type, \
+						base##_max);		    \
+			}						    \
+		}							    \
+	} while(0)
 
 /*
 ** MR_ensure_big_enough makes the same assumptions as MR_ensure_room_for_next,
@@ -54,6 +85,9 @@
 ** is big enough to contain the element at index `slot'. Since with this regime
 ** there is no notion of the "next" slot, this macro does not access, nor does
 ** it require the existence of, base##_next.
+**
+** BEWARE: YOU NEED TO BE VERY CAREFUL OF POINTERS TO OBJECTS ON THE GC HEAP.
+** See the comment for MR_ensure_room_for_next().
 */
 
 #define	MR_ensure_big_enough(slot, base, type, init)	  		    \
@@ -76,6 +110,9 @@
 ** it resizes two arrays at once. These two arrays are named base##s1 and
 ** base##s2, and since they are always the same size, they share the
 ** base##_max variable.
+**
+** BEWARE: YOU NEED TO BE VERY CAREFUL OF POINTERS TO OBJECTS ON THE GC HEAP.
+** See the comment for MR_ensure_room_for_next().
 */
 
 #define	MR_ensure_big_enough2(slot, base, s1, s2, type, init)  		      \
@@ -83,8 +120,8 @@
 		if ((slot) >= base##_max) {				      \
 			if (base##_max == 0) {				      \
 				base##_max = MR_max((init), (slot) + 1);      \
-				base##s1 = MR_NEW_ARRAY(type,	base##_max);  \
-				base##s2 = MR_NEW_ARRAY(type,	base##_max);  \
+				base##s1 = MR_NEW_ARRAY(type, base##_max);    \
+				base##s2 = MR_NEW_ARRAY(type, base##_max);    \
 			} else {					      \
 				base##_max = MR_max(base##_max * 2,           \
 						(slot) + 1);                  \

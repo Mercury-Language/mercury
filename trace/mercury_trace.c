@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1376,7 +1376,7 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
         }
 
         if (call_table != NULL) {
-            MR_ensure_room_for_next(MR_call_table_ptr, MR_TrieNode,
+            MR_GC_ensure_room_for_next(MR_call_table_ptr, MR_TrieNode,
                 INIT_CALL_TABLE_ARRAY_SIZE);
 
             MR_call_table_ptrs[MR_call_table_ptr_next] = call_table;
@@ -1435,7 +1435,7 @@ static void
 MR_abandon_call_table_array(void)
 {
     if (MR_call_table_ptrs != NULL) {
-        MR_free(MR_call_table_ptrs);
+        MR_GC_free(MR_call_table_ptrs);
         MR_call_table_ptrs = NULL;
     }
 }

@@ -641,7 +641,7 @@ MR_cmp_strings(const void *p1, const void *p2)
             for (bucket = 0; bucket < table->size; bucket++) {          \
                 slot = table->hash_table[bucket].table_field;           \
                 while (slot != NULL) {                                  \
-                    MR_ensure_room_for_next(value, type_name,           \
+                    MR_GC_ensure_room_for_next(value, type_name,        \
                         MR_INIT_HASH_CONTENTS_ARRAY_SIZE);              \
                     values[value_next] = slot->key;                     \
                     value_next++;                                       \

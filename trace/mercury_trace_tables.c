@@ -191,7 +191,7 @@ MR_insert_module_info(const MR_Module_Layout *module)
 	MR_bool		found;
 	const char	*nickname;
 
-	MR_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
+	MR_GC_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
 		INIT_MODULE_TABLE_SIZE);
 	MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next,
 		slot,
@@ -211,7 +211,7 @@ MR_insert_module_info(const MR_Module_Layout *module)
 					MR_module_nicks[slot].MR_nick_layouts,
 					module);
 		} else {
-			MR_ensure_room_for_next(MR_module_nick,
+			MR_GC_ensure_room_for_next(MR_module_nick,
 				MR_Module_Nick, INIT_MODULE_TABLE_SIZE);
 			MR_prepare_insert_into_sorted(MR_module_nicks,
 				MR_module_nick_next,
