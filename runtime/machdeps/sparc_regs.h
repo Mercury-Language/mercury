@@ -3,6 +3,10 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
+#ifndef SPARC_REGS_H
+#define SPARC_REGS_H
+
 /*
 ** Machine registers mr0 - mr36 for the SPARC architecture.
 **
@@ -107,3 +111,5 @@ register	Word	mr9 __asm__("l4");
 #define	mr36	fake_reg[36]
 
 #endif
+
+#endif /* SPARC_REGS_H */
