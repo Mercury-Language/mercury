@@ -36,7 +36,7 @@ sub parse_options {
     $opt_s = "";
     do Getopts("gls:");
     if ($opt_g || $opt_s eq "fast" || $opt_s eq "fast.gc"
-		|| $opt_s eq "jump" || $opt_s eq jump.gc)
+		|| $opt_s eq "jump" || $opt_s eq "jump.gc")
     {
 	    $gnuc = 1;
     } else {
