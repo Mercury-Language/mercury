@@ -271,6 +271,7 @@
 		;	c_flag_to_name_object_file
 		;	object_file_extension
 		;	max_jump_table_size
+		;	compare_specialization
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
 				% fact table data array
@@ -628,6 +629,7 @@ option_defaults_2(code_gen_option, [
 					% above default with a value determined
 					% at configuration time
 	max_jump_table_size	-	int(0),
+	compare_specialization	-	int(3),
 					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
@@ -1002,6 +1004,7 @@ long_option("c-include-directory",	c_include_directory).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",	object_file_extension).
 long_option("max-jump-table-size",	max_jump_table_size).
+long_option("compare-specialization",	compare_specialization).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).

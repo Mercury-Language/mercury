@@ -2943,7 +2943,11 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 						UserDefinedEquality),
 				IsEnum = no,
 				UserDefinedEquality = no,
-				Ctors = [_, _|_]
+				module_info_globals(Module0, Globals),
+				globals__lookup_int_option(Globals,
+					compare_specialization, CompareSpec),
+				list__length(Ctors, CtorCount),
+				CtorCount > CompareSpec
 			->
 				SpecialPredIds = [index, compare]
 			;

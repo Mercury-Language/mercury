@@ -45,7 +45,7 @@
 
 :- implementation.
 
-:- import_module options, globals, prog_io_util, trace_params.
+:- import_module options, globals, prog_io_util, trace_params, unify_proc.
 :- import_module char, int, string, map, set, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
@@ -320,6 +320,16 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
+
+	% make_hlds contains an optimization which requires the value of the
+	% compare_specialization option to accurately specify the max number
+	% of constructors in a type whose comparison procedure is specialized
+	% and which therefore don't need index functions.
+	globals__io_lookup_int_option(compare_specialization, CompareSpec0),
+	{ int__min(unify_proc__max_exploited_compare_spec_value,
+		CompareSpec0, CompareSpec) },
+	globals__io_set_option(compare_specialization, int(CompareSpec)),
+
 
 	% Minimal model tabling is not compatible with trailing;
 	% see the comment in runtime/mercury_tabling.c.

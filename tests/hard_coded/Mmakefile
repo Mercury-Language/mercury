@@ -15,32 +15,33 @@ ORDINARY_PROGS=	\
 	boyer \
 	c_write_string \
 	cc_and_non_cc_test \
-	cc_nondet_disj \
 	cc_multi_bug \
+	cc_nondet_disj \
 	checked_nondet_tailcall \
 	closure_extension \
 	common_type_cast \
 	compare_spec \
+	comparison \
 	construct \
 	curry \
 	curry2 \
 	cut_test \
- 	cycles \
- 	cycles2 \
+	cycles \
+	cycles2 \
 	deep_copy \
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \
 	dupcall_types_bug \
 	elim_special_pred \
+	eqv_type_bug \
+	erroneous_liveness \
+	error_func \
 	existential_bound_tvar \
 	existential_float \
 	existential_reordering \
 	existential_type_switch_opt \
 	existential_types_test \
-	eqv_type_bug \
-	error_func \
-	erroneous_liveness \
 	expand \
 	export_test \
 	factt \
@@ -66,8 +67,8 @@ ORDINARY_PROGS=	\
 	ho_univ_to_type \
 	impossible_unify \
 	impure_prune \
-	integer_test \
 	inline_nondet_pragma_c \
+	integer_test \
 	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \
@@ -79,9 +80,9 @@ ORDINARY_PROGS=	\
 	nondet_ctrl_vn \
 	nullary_ho_func \
 	pragma_c_code \
-	pragma_inline \
-	pragma_import \
 	pragma_export \
+	pragma_import \
+	pragma_inline \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
@@ -107,10 +108,11 @@ ORDINARY_PROGS=	\
 	term_io_test \
 	test_imported_no_tag \
 	tim_qual1 \
-	type_qual \
-	type_to_term_bug \
 	tuple_test \
+	tuple_test \
+	type_qual \
 	type_spec_modes \
+	type_to_term_bug \
 	user_defined_equality \
 	user_defined_equality2 \
 	write \
