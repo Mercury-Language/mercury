@@ -2369,6 +2369,20 @@ fi
 LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
+AC_ARG_ENABLE(new-mercuryfile-struct,
+[  --enable-new-mercuryfile-struct   enable new MercuryFile struct.],
+ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
+
+if test "$ac_new_mercuryfile_struct" = "yes"; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_NEW_MERCURYFILE_STRUCT)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
 #
 # Add an option that enables the external debugger support.
 # By default, external debugger support is enabled if and only if

@@ -404,11 +404,8 @@ MR_trace_init_external(void)
 		fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
 	}
 
-	MR_debugger_socket_in.file = file_in;
-	MR_debugger_socket_in.line_number = 1;
-
-	MR_debugger_socket_out.file = file_out;
-	MR_debugger_socket_out.line_number = 1;
+	MR_mercuryfile_init(file_in, 1, &MR_debugger_socket_in);
+	MR_mercuryfile_init(file_out, 1, &MR_debugger_socket_out);
 
 	/*
 	** Send hello
@@ -986,7 +983,7 @@ MR_read_request_from_socket(
 			MR_Word *debugger_request_ptr, 
 			MR_Integer *debugger_request_type_ptr)
 {		
-	fflush(MR_debugger_socket_in.file);
+	fflush(MR_file(MR_debugger_socket_in));
 
     MR_TRACE_CALL_MERCURY(
 	ML_DI_read_request_from_socket(
@@ -1059,18 +1056,18 @@ MR_send_message_to_socket_format(const char *format, ...)
 	va_list args;
 
 	va_start(args, format);
-	vfprintf(MR_debugger_socket_out.file, format, args);
+	vfprintf(MR_file(MR_debugger_socket_out), format, args);
 	va_end(args);
-	fflush(MR_debugger_socket_out.file);
-	MR_debugger_socket_out.line_number++;
+	fflush(MR_file(MR_debugger_socket_out));
+	MR_line_number(MR_debugger_socket_out)++;
 }
 
 static void
 MR_send_message_to_socket(const char *message)
 {
-	fprintf(MR_debugger_socket_out.file, "%s.\n", message);
-	fflush(MR_debugger_socket_out.file);
-	MR_debugger_socket_out.line_number++;
+	fprintf(MR_file(MR_debugger_socket_out), "%s.\n", message);
+	fflush(MR_file(MR_debugger_socket_out));
+	MR_line_number(MR_debugger_socket_out)++;
 }
 
 /*

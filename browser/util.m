@@ -96,7 +96,7 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 
 		if (MR_address_of_trace_getline != NULL) {
 			line = (*MR_address_of_trace_getline)((char *) Prompt,
-					mdb_in->file, mdb_out->file);
+					MR_file(*mdb_in), MR_file(*mdb_out));
 		} else {
 			MR_tracing_not_enabled();
 			/* not reached */

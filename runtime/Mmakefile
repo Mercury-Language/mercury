@@ -45,6 +45,7 @@ HDRS		=	\
 			mercury_dummy.h		\
 			mercury_dlist.h		\
 		  	mercury_engine.h	\
+			mercury_file.h		\
 			mercury_float.h		\
 			mercury_getopt.h	\
 			mercury_goto.h		\
@@ -120,6 +121,7 @@ CFILES		= 	\
 			mercury_dlist.c		\
 			mercury_dummy.c		\
 			mercury_engine.c	\
+			mercury_file.c		\
 			mercury_float.c		\
 			mercury_getopt.c	\
 			mercury_getopt1.c	\

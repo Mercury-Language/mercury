@@ -350,6 +350,16 @@
 #undef  HAVE_READLINE_READLINE
 #undef  HAVE_READLINE_HISTORY
 
+
+/*
+** MR_NEW_MERCURYFILE_STRUCT
+**	Set this if you want to use the new MercuryFile structure.  The
+**	new structure contains pointers to functions to do all the basic IO
+**	functions.  See extras/logged_output for an example of how to
+**	override the pointers to provide IO streams with extra functionality.
+*/
+#undef	MR_NEW_MERCURYFILE_STRUCT
+
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

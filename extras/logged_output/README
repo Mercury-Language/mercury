@@ -1,0 +1,11 @@
+% Copyright (C) 2000 The University of Melbourne.
+
+This directory shows how you can use the MercuryFile structure to change
+the behaviour of io.m.
+
+The file logged_output.m implements an io__output_stream which writes to
+stdout and also logs all of its output to a file at the same time.
+
+To compile this module you need a mercury compiler which has has been
+configured with --enable-new-mercuryfile-struct.
+

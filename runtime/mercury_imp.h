@@ -47,6 +47,7 @@
 
 #include	"mercury_types.h"
 #include	"mercury_library_types.h"
+#include	"mercury_file.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
 #include	"mercury_bootstrap.h"

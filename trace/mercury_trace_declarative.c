@@ -1104,10 +1104,8 @@ MR_trace_decl_ensure_init(void)
 	static MercuryFile	mdb_in;
 	static MercuryFile	mdb_out;
 
-	mdb_in.file = MR_mdb_in;
-	mdb_in.line_number = 1;
-	mdb_out.file = MR_mdb_out;
-	mdb_out.line_number = 1;
+	MR_mercuryfile_init(MR_mdb_in, 1, &mdb_in);
+	MR_mercuryfile_init(MR_mdb_out, 1, &mdb_out);
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
@@ -1351,10 +1349,9 @@ MR_decl_handle_bug_found(Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 static	void
 MR_decl_diagnosis_test(MR_Trace_Node root)
 {
-	MercuryFile		stream;
+	MercuryFile stream;
 
-	stream.file = MR_trace_store_file;
-	stream.line_number = 1;
+	MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
 
 	MR_TRACE_CALL_MERCURY(
 		MR_DD_save_trace((MR_Word) &stream, MR_trace_node_store, root);
@@ -1467,10 +1464,9 @@ MR_decl_checkpoint_event_imp(const char *str, MR_Event_Info *event_info)
 static	void
 MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node)
 {
-	MercuryFile		mdb_out;
+	MercuryFile mdb_out;
 
-	mdb_out.file = MR_mdb_out;
-	mdb_out.line_number = 1;
+	MR_mercuryfile_init(MR_mdb_out, 1, &mdb_out);
 
 	fprintf(MR_mdb_out, "DD %s: %ld ", str, (long) node);
 	MR_TRACE_CALL_MERCURY(

@@ -47,8 +47,7 @@ static	void		MR_trace_browse_ensure_init(void);
 static void
 MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 {
-	mercury_file->file = c_file;
-	mercury_file->line_number = 1;
+	MR_mercuryfile_init(c_file, 1, mercury_file);
 }
 
 void
