@@ -6415,9 +6415,6 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 :- pragma foreign_decl("C", "
 #include <stdlib.h>	/* for getenv() and putenv() */
 ").
-:- pragma foreign_decl("MC++", "
-#include <stdlib.h>	/* for putenv() */
-").
 
 :- pragma promise_semipure(io__getenv/2).
 
@@ -6457,7 +6454,7 @@ io__setenv(Var, Value) :-
 	SUCCESS_INDICATOR = (putenv(VarAndValue) == 0);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__putenv(VarAndValue::in),
 	[will_not_call_mercury, tabled_for_io],
 "
@@ -6467,16 +6464,7 @@ io__setenv(Var, Value) :-
 	** platform-specific methods.  Currently we use the Posix function
 	** putenv(), which is also supported on Windows.
 	*/
-
-	/*
-	** Convert VarAndValue from a .NET managed string (System.String)
-	** to an unmanaged C string (`char *') on the unmanaged C heap,
-	** and then just invoke putenv().
-	*/
-	char __nogc *c_string = static_cast<char*>(
-			System::Runtime::InteropServices::Marshal::
-			StringToHGlobalAnsi(VarAndValue).ToPointer()); 
-	SUCCESS_INDICATOR = (putenv(c_string) == 0);
+	SUCCESS_INDICATOR = (mercury.runtime.PInvoke._putenv(VarAndValue) == 0);
 ").
 
 /*---------------------------------------------------------------------------*/

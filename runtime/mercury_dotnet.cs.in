@@ -152,5 +152,10 @@ public class LowLevelData
     }
 }
 
+class PInvoke {
+    [System.Runtime.InteropServices.DllImport("msvcrt.dll")]
+    public static extern int _putenv(string env);
+}
+
 }
 }
