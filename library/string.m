@@ -1751,6 +1751,13 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 			Spec)
 	).
 
+	% Are we using C's sprintf?  All backends other than C return false.
+	% Note that any backends which return true for using_sprintf/0 must
+	% also implement:	int_length_modifer/0
+	%			native_format_float/2
+	%			native_format_int/2
+	%			native_format_string/2
+	%			native_format_char/2
 :- pred using_sprintf is semidet.
 
 :- pragma foreign_proc("C", using_sprintf,
@@ -1762,6 +1769,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR = false;
+").
+:- pragma foreign_proc("Java", using_sprintf,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	succeeded = false;
 ").
 
 	% Construct a format string suitable to passing to sprintf.
@@ -1829,6 +1841,9 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	MR_make_aligned_string(LengthModifier,
 		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
 }").
+% This predicate is only called if using_sprintf/0, so we produce an error
+% by default.
+int_length_modifer = _ :- error("string.int_length_modifer/0 not defined").
 
 	% Create a string from a float using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1842,6 +1857,10 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
 }").
+% This predicate is only called if using_sprintf/0, so we produce an error
+% by default.
+native_format_float(_, _) = _ :-
+	error("string.native_format_float/2 not defined").
 
 	% Create a string from a int using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1855,6 +1874,10 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
+% This predicate is only called if using_sprintf/0, so we produce an error
+% by default.
+native_format_int(_, _) = _ :-
+	error("string.native_format_int/2 not defined").
 
 	% Create a string from a string using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1868,6 +1891,10 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
+% This predicate is only called if using_sprintf/0, so we produce an error
+% by default.
+native_format_string(_, _) = _ :-
+	error("string.native_format_string/2 not defined").
 
 	% Create a string from a char using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1881,6 +1908,10 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
+% This predicate is only called if using_sprintf/0, so we produce an error
+% by default.
+native_format_char(_, _) = _ :-
+	error("string.native_format_char/2 not defined").
 
 %-----------------------------------------------------------------------------%
 
@@ -2857,6 +2888,13 @@ max_precision = min_precision + 2.
 	FloatString = FloatVal.ToString(""R"");
 ").
 
+:- pragma foreign_proc("Java",
+	string__lowlevel_float_to_string(FloatVal::in, FloatString::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	FloatString = java.lang.Double.toString(FloatVal);
+").
+
 :- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
@@ -2896,6 +2934,48 @@ max_precision = min_precision + 2.
 	    }
 	}
 }").
+
+:- pragma foreign_proc("Java",
+	string__to_float(FloatString::in, FloatVal::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	FloatVal = 0.0;		// FloatVal must be initialized to suppress
+				// error messages when the predicate fails.
+
+	// leading or trailing whitespace is not allowed
+	if (FloatString.length() == 0 || FloatString.trim() != FloatString) {
+		succeeded = false;
+	} else {
+		try {
+			FloatVal = java.lang.Double.parseDouble(FloatString);
+			succeeded = true;
+		} catch(java.lang.NumberFormatException e) {
+			if (FloatString.equalsIgnoreCase(""nan"")) {
+				FloatVal = java.lang.Double.NaN;
+				succeeded = true;
+			} else if (FloatString.equalsIgnoreCase(""infinity""))
+			{
+				FloatVal = java.lang.Double.POSITIVE_INFINITY;
+				succeeded = true;
+			} else if (FloatString.substring(1).
+					equalsIgnoreCase(""infinity"")) {
+				if (FloatString.charAt(0) == '+') {
+					FloatVal = java.lang.Double.
+							POSITIVE_INFINITY;
+					succeeded = true;
+				} else if (FloatString.charAt(0) == '-') {
+					FloatVal = java.lang.Double.
+							NEGATIVE_INFINITY;
+					succeeded = true;
+				} else {
+					succeeded = false;
+				}
+			} else {
+				succeeded = false;
+			}
+		}
+	}
+").
 
 /*-----------------------------------------------------------------------*/
 
@@ -3137,6 +3217,12 @@ string__set_char(Ch, Index, Str0, Str) :-
 		System.Convert.ToString(Ch), 
 		Str0.Substring(Index + 1));
 ").
+:- pragma foreign_proc("Java",
+	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
+").
 
 /*
 :- pred string__unsafe_set_char(char, int, string, string).
@@ -3157,6 +3243,12 @@ string__set_char(Ch, Index, Str0, Str) :-
 	Str = System.String.Concat(Str0.Substring(0, Index),
 		System.Convert.ToString(Ch), 
 		Str0.Substring(Index + 1));
+").
+:- pragma foreign_proc("Java",
+	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
 ").
 */
 
@@ -3441,6 +3533,12 @@ strchars(I, End, Str) =
 "{
 	SubString = Str.Substring(Start, Count);
 }").
+:- pragma foreign_proc("Java",
+	string__unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	SubString = Str.substring(Start, Start + Count + 1);
+").
 
 /*
 :- pred string__split(string, int, string, string).
