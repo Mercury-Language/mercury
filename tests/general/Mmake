@@ -8,7 +8,7 @@ include ../Mmake
 
 PROGS=	arithmetic disj_disj interpreter \
 	nasty_nondet nondet_disj nondet_ite petdr1 \
-	string_test string_test_2 univ \
+	string__format_test string_test string_test_2 univ \
 	environment duplicate_label \
 	commit_bug
 
