@@ -26,15 +26,18 @@ TYPECLASS_SOURCES= \
 	instance_superclass.m \
 	instance_unconstrained_tvar.m
 
-OTHER_SOURCES= \
+ADITI_SOURCES= \
 	aditi_update.m \
 	base_relation.m \
 	base_relation2.m \
+	context_anc.m \
+	ite_to_disj.m
+
+OTHER_SOURCES= \
 	common_struct_bug.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
-	context_anc.m \
 	dcg_test.m \
 	deforest_loop.m \
 	deforest_rerun_det.m \
@@ -76,7 +79,6 @@ OTHER_SOURCES= \
 	intermod_typeclass.m \
 	intermod_user_equality.m \
 	intermod_user_equality_nested.m \
-	ite_to_disj.m \
 	lambda_inference.m\
 	lambda_instmap_bug.m \
 	lambda_output.m \
@@ -163,12 +165,20 @@ else
 endif
 
 ifneq "$(findstring .mm,$(GRADE))" ""
-    SOURCES=$(SOURCES0)
+    SOURCES1=$(SOURCES0)
 else
-    SOURCES=$(SOURCES0) $(TRAIL_SOURCES)
+    SOURCES1=$(SOURCES0) $(TRAIL_SOURCES)
 endif
 
-DEPS =	$(SOURCES:%.m=%.depend) aditi_update.depend
+# Aditi is not yet implemented for the MLDS back-end
+# (i.e. grades hl*).
+ifneq "$(findstring hl,$(GRADE))" ""
+    SOURCES=$(SOURCES1)
+else
+    SOURCES=$(SOURCES1) $(ADITI_SOURCES)
+endif
+
+DEPS =	$(SOURCES:%.m=%.depend)
 OBJS =	$(SOURCES:%.m=$(os_subdir)%.o)
 PROGS =	$(SOURCES:%.m=%)
 
