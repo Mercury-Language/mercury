@@ -26,6 +26,10 @@
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
 
+:- pred unravel_unification(term, term, unify_main_context,
+				unify_sub_contexts, varset, hlds__goal, varset).
+:- mode unravel_unification(in, in, in, in, in, out, out) is det.
+
 :- pred create_atomic_unification(var, unify_rhs, term__context,
 			unify_main_context, unify_sub_contexts, hlds__goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
@@ -1328,10 +1332,6 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 	make_fresh_arg_vars_2(Args, [Var | Vars0], VarSet1, Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
-
-:- pred unravel_unification(term, term, unify_main_context,
-				unify_sub_contexts, varset, hlds__goal, varset).
-:- mode unravel_unification(in, in, in, in, in, out, out) is det.
 
 	% `X = Y' needs no unravelling.
 
