@@ -43,7 +43,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data, (parse_tree__inst).
-:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__hlds_goal, hlds__hlds_data, hlds__hlds_module.
 :- import_module libs__globals.
 
 :- import_module bool, std_util, list, io, varset, term.
@@ -206,6 +206,8 @@
 
 	% Output an inst in a format that makes it easy to read
 	% but may not be valid Mercury.
+	% The `int' argument specifies the indentation level.
+	% (These routines are used with `--debug-modes'.)
 
 :- pred mercury_output_structured_inst(inst, int, inst_varset,
 		io__state, io__state).
@@ -213,15 +215,36 @@
 
 :- func mercury_structured_inst_to_string(inst, int, inst_varset) = string.
 
+	% Output an inst in a format where all compiler-defined insts
+	% have been expanded out; recursive insts have their self-referential
+	% parts printed out as elipses ("...").
+	% (These routines are used for outputting insts in mode errors.)
+
+:- pred mercury_output_expanded_inst(inst, inst_varset, module_info,
+		io__state, io__state).
+:- mode mercury_output_expanded_inst(in, in, in, di, uo) is det.
+
+:- func mercury_expanded_inst_to_string(inst, inst_varset, module_info)
+	= string.
+
+	% Output an inst in a format that is valid Mercury.
+	% (These routines are used to create `.int' files, etc.)
+
 :- pred mercury_output_inst(inst, inst_varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo) is det.
 
 :- func mercury_inst_to_string(inst, inst_varset) = string.
 
+	% Output a cons_id, parenthesizing it if necessary
+
 :- pred mercury_output_cons_id(cons_id, needs_brackets, io__state, io__state).
 :- mode mercury_output_cons_id(in, in, di, uo) is det.
 
 :- func mercury_cons_id_to_string(cons_id, needs_brackets) = string.
+
+	% Output a mode / list of modes / uni_mode,
+	% in a format that is valid Mercury.
+	% (These routines are used to create `.int' files, etc.)
 
 :- pred mercury_output_mode(mode, inst_varset, io__state, io__state).
 :- mode mercury_output_mode(in, in, di, uo) is det.
@@ -243,6 +266,8 @@
 :- mode mercury_output_uni_mode_list(in, in, di, uo) is det.
 
 :- func mercury_uni_mode_list_to_string(list(uni_mode), inst_varset) = string.
+
+	% Output a determinism, in a format that is valid Mercury.
 
 :- pred mercury_output_det(determinism, io__state, io__state).
 :- mode mercury_output_det(in, di, uo) is det.
@@ -329,7 +354,8 @@
 
 :- import_module parse_tree__prog_out, parse_tree__prog_util, hlds__hlds_pred.
 :- import_module hlds__hlds_out, hlds__instmap.
-:- import_module recompilation__version, check_hlds__purity.
+:- import_module recompilation__version.
+:- import_module check_hlds__purity, check_hlds__mode_util.
 :- import_module transform_hlds__term_util.
 :- import_module libs__options, transform_hlds__termination.
 :- import_module backend_libs__foreign.
@@ -947,13 +973,13 @@ mercury_format_structured_inst_list([Inst | Insts], Indent0, VarSet) -->
 	mercury_format_structured_inst_list(Insts, Indent0, VarSet).
 
 mercury_output_inst_list(Insts, VarSet) -->
-	mercury_format_inst_list(Insts, VarSet).
+	mercury_format_inst_list(Insts, simple_inst_info(VarSet)).
 
 mercury_inst_list_to_string(Insts, VarSet) = String :-
-	mercury_format_inst_list(Insts, VarSet, "", String).
+	mercury_format_inst_list(Insts, simple_inst_info(VarSet), "", String).
 
-:- pred mercury_format_inst_list(list(inst)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_inst_list(list(inst)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_inst_list([], _) --> [].
 mercury_format_inst_list([Inst | Insts], VarSet) -->
@@ -1012,7 +1038,8 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet)
 				add_string(")\n")
 			;
 				add_string("(pred("),
-				mercury_format_mode_list(Modes, VarSet),
+				mercury_format_mode_list(Modes,
+					simple_inst_info(VarSet)),
 				add_string(") is "),
 				mercury_format_det(Det),
 				add_string(")\n")
@@ -1024,10 +1051,11 @@ mercury_format_structured_inst(ground(Uniq, GroundInstInfo), Indent, VarSet)
 				add_string("((func) = ")
 			;
 				add_string("(func("),
-				mercury_format_mode_list(ArgModes, VarSet),
+				mercury_format_mode_list(ArgModes,
+					simple_inst_info(VarSet)),
 				add_string(") = ")
 			),
-			mercury_format_mode(RetMode, VarSet),
+			mercury_format_mode(RetMode, simple_inst_info(VarSet)),
 			add_string(" is "),
 			mercury_format_det(Det),
 			add_string(")\n")
@@ -1044,7 +1072,8 @@ mercury_format_structured_inst(inst_var(Var), Indent, VarSet) -->
 mercury_format_structured_inst(constrained_inst_vars(Vars, Inst), Indent,
 		VarSet) -->
 	mercury_format_tabs(Indent),
-	mercury_format_constrained_inst_vars(Vars, Inst, VarSet),
+	mercury_format_constrained_inst_vars(Vars, Inst,
+		simple_inst_info(VarSet)),
 	add_string("\n").
 mercury_format_structured_inst(abstract_inst(Name, Args), Indent, VarSet) -->
 	mercury_format_structured_inst_name(user_inst(Name, Args), Indent,
@@ -1055,14 +1084,83 @@ mercury_format_structured_inst(not_reached, Indent, _) -->
 	mercury_format_tabs(Indent),
 	add_string("not_reached\n").
 
+% We use the following type class to share code between mercury_output_inst,
+% which outputs inst in Mercury syntax, and mercury_output_expanded_inst,
+% which is the same except that it expands any compiler-defined insts
+% (except those which have already been encountered).
+%
+% (XXX Perhaps we should use the same sort of technique to also avoid
+% code duplication with mercury_format_structured_inst.)
+
+:- typeclass inst_info(InstInfo) where [
+	(func instvarset(InstInfo) = inst_varset),
+	(pred format_defined_inst(inst_name::in, InstInfo::in,
+		U::di, U::uo) is det <= output(U))
+].
+
+:- type simple_inst_info
+	--->	simple_inst_info(sii_varset :: inst_varset).
+
+:- instance inst_info(simple_inst_info) where [
+	func(instvarset/1) is sii_varset,
+	pred(format_defined_inst/4) is mercury_format_inst_name
+].
+
+:- instance inst_info(expanded_inst_info) where [
+	func(instvarset/1) is eii_varset,
+	pred(format_defined_inst/4) is mercury_format_expanded_defined_inst
+].
+
+:- type expanded_inst_info
+	--->	expanded_inst_info(
+			eii_varset :: inst_varset,
+			eii_module_info :: module_info,
+			eii_expansions :: set(inst_name)
+					% the set of already-expanded insts;
+					% further occurrences of these will
+					% be output as "..."
+		).
+
+:- pred mercury_format_expanded_defined_inst(inst_name::in,
+	expanded_inst_info::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo) -->
+	( { set__member(InstName, ExpandedInstInfo ^ eii_expansions) } ->
+		add_string("...")
+	; { InstName = user_inst(_, _) } ->
+		% don't expand user-defined insts, just output them as is
+		% (we do expand any compiler-defined insts that occur
+		% in the arguments of the user-defined inst, however)
+		mercury_format_inst_name(InstName, ExpandedInstInfo)
+        ;                                                                       
+                { inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName,
+			Inst) },
+                { set__insert(ExpandedInstInfo ^ eii_expansions, InstName,
+			Expansions) },
+		mercury_format_inst(Inst,
+			ExpandedInstInfo ^ eii_expansions := Expansions)
+	).
+
+
+mercury_output_expanded_inst(Inst, VarSet, ModuleInfo) -->
+	{ set__init(Expansions) },
+	mercury_format_inst(Inst,
+		expanded_inst_info(VarSet, ModuleInfo, Expansions)).
+
+mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
+	set__init(Expansions),
+	mercury_format_inst(Inst,
+		expanded_inst_info(VarSet, ModuleInfo, Expansions),
+		"", String).
+
 mercury_output_inst(Inst, VarSet) -->
-	mercury_format_inst(Inst, VarSet).
+	mercury_format_inst(Inst, simple_inst_info(VarSet)).
 
 mercury_inst_to_string(Inst, VarSet) = String :-
-	mercury_format_inst(Inst, VarSet, "", String).
+	mercury_format_inst(Inst, simple_inst_info(VarSet), "", String).
 
-:- pred mercury_format_inst((inst)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_inst((inst)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_inst(any(Uniq), _) -->
 	mercury_format_any_uniqueness(Uniq).
@@ -1070,12 +1168,12 @@ mercury_format_inst(free, _) -->
 	add_string("free").
 mercury_format_inst(free(_T), _) -->
 	add_string("free(with some type)").
-mercury_format_inst(bound(Uniq, BoundInsts), VarSet) -->
+mercury_format_inst(bound(Uniq, BoundInsts), InstInfo) -->
 	mercury_format_uniqueness(Uniq, "bound"),
 	add_string("("),
-	mercury_format_bound_insts(BoundInsts, VarSet),
+	mercury_format_bound_insts(BoundInsts, InstInfo),
 	add_string(")").
-mercury_format_inst(ground(Uniq, GroundInstInfo), VarSet) -->
+mercury_format_inst(ground(Uniq, GroundInstInfo), InstInfo) -->
 	(	
 		{ GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
 				Modes, Det)) },
@@ -1094,7 +1192,7 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), VarSet) -->
 				add_string(")")
 			;
 				add_string("(pred("),
-				mercury_format_mode_list(Modes, VarSet),
+				mercury_format_mode_list(Modes, InstInfo),
 				add_string(") is "),
 				mercury_format_det(Det),
 				add_string(")")
@@ -1106,11 +1204,11 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), VarSet) -->
 				add_string("((func)")
 			;
 				add_string("(func("),
-				mercury_format_mode_list(ArgModes, VarSet),
+				mercury_format_mode_list(ArgModes, InstInfo),
 				add_string(")")
 			),
 			add_string(" = "),
-			mercury_format_mode(RetMode, VarSet),
+			mercury_format_mode(RetMode, InstInfo),
 			add_string(" is "),
 			mercury_format_det(Det),
 			add_string(")")
@@ -1119,14 +1217,14 @@ mercury_format_inst(ground(Uniq, GroundInstInfo), VarSet) -->
 		{ GroundInstInfo = none },
 		mercury_format_uniqueness(Uniq, "ground")
 	).
-mercury_format_inst(inst_var(Var), VarSet) -->
-	mercury_format_var(Var, VarSet, no).
-mercury_format_inst(constrained_inst_vars(Vars, Inst), VarSet) -->
-	mercury_format_constrained_inst_vars(Vars, Inst, VarSet).
-mercury_format_inst(abstract_inst(Name, Args), VarSet) -->
-	mercury_format_inst_name(user_inst(Name, Args), VarSet).
-mercury_format_inst(defined_inst(InstName), VarSet) -->
-	mercury_format_inst_name(InstName, VarSet).
+mercury_format_inst(inst_var(Var), InstInfo) -->
+	mercury_format_var(Var, InstInfo ^ instvarset, no).
+mercury_format_inst(constrained_inst_vars(Vars, Inst), InstInfo) -->
+	mercury_format_constrained_inst_vars(Vars, Inst, InstInfo).
+mercury_format_inst(abstract_inst(Name, Args), InstInfo) -->
+	mercury_format_inst_name(user_inst(Name, Args), InstInfo).
+mercury_format_inst(defined_inst(InstName), InstInfo) -->
+	format_defined_inst(InstName, InstInfo).
 mercury_format_inst(not_reached, _) -->
 	add_string("not_reached").
 
@@ -1248,47 +1346,49 @@ mercury_format_structured_inst_name(typed_inst(Type, InstName),
 	mercury_format_tabs(Indent),
 	add_string(")\n").
 
-:- pred mercury_format_inst_name(inst_name::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_inst_name(inst_name::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
-mercury_format_inst_name(user_inst(Name, Args), VarSet) -->
+mercury_format_inst_name(user_inst(Name, Args), InstInfo) -->
 	( { Args = [] } ->
 		mercury_format_bracketed_sym_name(Name)
 	;
 		mercury_format_sym_name(Name),
 		add_string("("),
-		mercury_format_inst_list(Args, VarSet),
+		mercury_format_inst_list(Args, InstInfo),
 		add_string(")")
 	).
-mercury_format_inst_name(merge_inst(InstA, InstB), VarSet) -->
+mercury_format_inst_name(merge_inst(InstA, InstB), InstInfo) -->
 	add_string("$merge_inst("),
-	mercury_format_inst_list([InstA, InstB], VarSet),
+	mercury_format_inst_list([InstA, InstB], InstInfo),
 	add_string(")").
-mercury_format_inst_name(shared_inst(InstName), VarSet) -->
+mercury_format_inst_name(shared_inst(InstName), InstInfo) -->
 	add_string("$shared_inst("),
-	mercury_format_inst_name(InstName, VarSet),
+	mercury_format_inst_name(InstName, InstInfo),
 	add_string(")").
-mercury_format_inst_name(mostly_uniq_inst(InstName), VarSet) -->
+mercury_format_inst_name(mostly_uniq_inst(InstName), InstInfo) -->
 	add_string("$mostly_uniq_inst("),
-	mercury_format_inst_name(InstName, VarSet),
+	mercury_format_inst_name(InstName, InstInfo),
 	add_string(")").
-mercury_format_inst_name(unify_inst(Liveness, InstA, InstB, Real), VarSet) -->
+mercury_format_inst_name(unify_inst(Liveness, InstA, InstB, Real),
+		InstInfo) -->
 	add_string("$unify("),
 	( { Liveness = live } ->
 		add_string("live, ")
 	;
 		add_string("dead, ")
 	),
-	mercury_format_inst_list([InstA, InstB], VarSet),
+	mercury_format_inst_list([InstA, InstB], InstInfo),
 	( { Real = real_unify } ->
 		add_string(", real")
 	;
 		add_string(", fake")
 	),
 	add_string(")").
-mercury_format_inst_name(ground_inst(InstName, IsLive, Uniq, Real), VarSet) -->
+mercury_format_inst_name(ground_inst(InstName, IsLive, Uniq, Real),
+		InstInfo) -->
 	add_string("$ground("),
-	mercury_format_inst_name(InstName, VarSet),
+	mercury_format_inst_name(InstName, InstInfo),
 	add_string(", "),
 	( { IsLive = live } ->
 		add_string("live, ")
@@ -1302,9 +1402,9 @@ mercury_format_inst_name(ground_inst(InstName, IsLive, Uniq, Real), VarSet) -->
 		add_string(", fake")
 	),
 	add_string(")").
-mercury_format_inst_name(any_inst(InstName, IsLive, Uniq, Real), VarSet) -->
+mercury_format_inst_name(any_inst(InstName, IsLive, Uniq, Real), InstInfo) -->
 	add_string("$any("),
-	mercury_format_inst_name(InstName, VarSet),
+	mercury_format_inst_name(InstName, InstInfo),
 	add_string(", "),
 	( { IsLive = live } ->
 		add_string("live, ")
@@ -1318,19 +1418,19 @@ mercury_format_inst_name(any_inst(InstName, IsLive, Uniq, Real), VarSet) -->
 		add_string(", fake")
 	),
 	add_string(")").
-mercury_format_inst_name(typed_ground(Uniqueness, Type), _VarSet) -->
+mercury_format_inst_name(typed_ground(Uniqueness, Type), _InstInfo) -->
 	add_string("$typed_ground("),
 	mercury_format_uniqueness(Uniqueness, "shared"),
 	add_string(", "),
 	{ varset__init(TypeVarSet) },
 	mercury_format_term(Type, TypeVarSet, no),
 	add_string(")").
-mercury_format_inst_name(typed_inst(Type, InstName), VarSet) -->
+mercury_format_inst_name(typed_inst(Type, InstName), InstInfo) -->
 	add_string("$typed_inst("),
 	{ varset__init(TypeVarSet) },
 	mercury_format_term(Type, TypeVarSet, no),
 	add_string(", "),
-	mercury_format_inst_name(InstName, VarSet),
+	mercury_format_inst_name(InstName, InstInfo),
 	add_string(")").
 
 :- pred mercury_format_uniqueness(uniqueness::in, string::in,
@@ -1390,24 +1490,24 @@ mercury_format_structured_bound_insts([functor(ConsId, Args) | BoundInsts],
 			VarSet)
 	).
 
-:- pred mercury_format_bound_insts(list(bound_inst)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_bound_insts(list(bound_inst)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_bound_insts([], _) --> [].
-mercury_format_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
+mercury_format_bound_insts([functor(ConsId, Args) | BoundInsts], InstInfo) -->
 	( { Args = [] } ->
 		mercury_format_cons_id(ConsId, needs_brackets)
 	;
 		mercury_format_cons_id(ConsId, does_not_need_brackets),
 		add_string("("),
-		mercury_format_inst_list(Args, VarSet),
+		mercury_format_inst_list(Args, InstInfo),
 		add_string(")")
 	),
 	( { BoundInsts = [] } ->
 		[]
 	;
 		add_string(" ; "),
-		mercury_format_bound_insts(BoundInsts, VarSet)
+		mercury_format_bound_insts(BoundInsts, InstInfo)
 	).
 
 mercury_output_cons_id(ConsId, NeedsBrackets) -->
@@ -1480,17 +1580,18 @@ mercury_format_cons_id(table_io_decl(_), _) -->
 	add_string("<table_io_decl>").
 
 :- pred mercury_format_constrained_inst_vars(set(inst_var)::in, (inst)::in,
-		inst_varset::in, U::di, U::uo) is det <= output(U).
+		InstInfo::in, U::di, U::uo) is det
+		<= (output(U), inst_info(InstInfo)).
 
-mercury_format_constrained_inst_vars(Vars0, Inst, VarSet) -->
+mercury_format_constrained_inst_vars(Vars0, Inst, InstInfo) -->
 	( { set__remove_least(Vars0, Var, Vars1) } ->
 		add_string("("),
-		mercury_format_var(Var, VarSet, no),
+		mercury_format_var(Var, InstInfo ^ instvarset, no),
 		add_string(" =< "),
-		mercury_format_constrained_inst_vars(Vars1, Inst, VarSet),
+		mercury_format_constrained_inst_vars(Vars1, Inst, InstInfo),
 		add_string(")")
 	;
-		mercury_format_inst(Inst, VarSet)
+		mercury_format_inst(Inst, InstInfo)
 	).
 
 :- pred mercury_format_mode_defn(inst_varset::in, sym_name::in,
@@ -1503,26 +1604,26 @@ mercury_format_mode_defn(VarSet, Name, Args, eqv_mode(Mode), Context) -->
 	{ construct_qualified_term(Name, ArgTerms, Context, ModeTerm) },
 	mercury_format_term(ModeTerm, VarSet, no),
 	add_string(") :: "),
-	mercury_format_mode(Mode, VarSet),
+	mercury_format_mode(Mode, simple_inst_info(VarSet)),
 	add_string(".\n").
 
 mercury_output_mode_list(Modes, VarSet) -->
-	mercury_format_mode_list(Modes, VarSet).
+	mercury_format_mode_list(Modes, simple_inst_info(VarSet)).
 
 mercury_mode_list_to_string(Modes, VarSet) = String :-
-	mercury_format_mode_list(Modes, VarSet, "", String).
+	mercury_format_mode_list(Modes, simple_inst_info(VarSet), "", String).
 
-:- pred mercury_format_mode_list(list(mode)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_mode_list(list(mode)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
-mercury_format_mode_list([], _VarSet) --> [].
-mercury_format_mode_list([Mode | Modes], VarSet) -->
-	mercury_format_mode(Mode, VarSet),
+mercury_format_mode_list([], _InstInfo) --> [].
+mercury_format_mode_list([Mode | Modes], InstInfo) -->
+	mercury_format_mode(Mode, InstInfo),
 	( { Modes = [] } ->
 		[]
 	;
 		add_string(", "),
-		mercury_format_mode_list(Modes, VarSet)
+		mercury_format_mode_list(Modes, InstInfo)
 	).
 
 mercury_output_uni_mode_list(UniModes, VarSet) -->
@@ -1554,20 +1655,20 @@ mercury_uni_mode_to_string(UniMode, VarSet) = String :-
 	U::di, U::uo) is det <= output(U).
 
 mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
-	mercury_format_mode((InstA1 -> InstA2), VarSet),
+	mercury_format_mode((InstA1 -> InstA2), simple_inst_info(VarSet)),
 	add_string(" = "),
-	mercury_format_mode((InstB1 -> InstB2), VarSet).
+	mercury_format_mode((InstB1 -> InstB2), simple_inst_info(VarSet)).
 
 mercury_output_mode(Mode, VarSet) -->
-	mercury_format_mode(Mode, VarSet).
+	mercury_format_mode(Mode, simple_inst_info(VarSet)).
 
 mercury_mode_to_string(Mode, VarSet) = String :-
-	mercury_format_mode(Mode, VarSet, "", String).
+	mercury_format_mode(Mode, simple_inst_info(VarSet), "", String).
 
-:- pred mercury_format_mode((mode)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
+:- pred mercury_format_mode((mode)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
-mercury_format_mode((InstA -> InstB), VarSet) -->
+mercury_format_mode((InstA -> InstB), InstInfo) -->
 	( 
 		%
 		% check for higher-order pred or func modes, and output them
@@ -1577,21 +1678,21 @@ mercury_format_mode((InstA -> InstB), VarSet) -->
 				_Modes, _Det))) },
 		{ InstB = InstA }
 	->
-		mercury_format_inst(InstA, VarSet)
+		mercury_format_inst(InstA, InstInfo)
 	;
 		add_string("("),
-		mercury_format_inst(InstA, VarSet),
+		mercury_format_inst(InstA, InstInfo),
 		add_string(" -> "),
-		mercury_format_inst(InstB, VarSet),
+		mercury_format_inst(InstB, InstInfo),
 		add_string(")")
 	).
-mercury_format_mode(user_defined_mode(Name, Args), VarSet) -->
+mercury_format_mode(user_defined_mode(Name, Args), InstInfo) -->
 	( { Args = [] } ->
 		mercury_format_bracketed_sym_name(Name)
 	;
 		mercury_format_sym_name(Name),
 		add_string("("),
-		mercury_format_inst_list(Args, VarSet),
+		mercury_format_inst_list(Args, InstInfo),
 		add_string(")")
 	).
 
@@ -2175,7 +2276,7 @@ mercury_format_pred_or_func_mode_subdecl(VarSet, PredName, Modes,
 		{ Modes = [_|_] },
 		mercury_format_sym_name(PredName),
 		add_string("("),
-		mercury_format_mode_list(Modes, VarSet),
+		mercury_format_mode_list(Modes, simple_inst_info(VarSet)),
 		add_string(")")
 	;
 		{ Modes = [] },
@@ -2184,7 +2285,7 @@ mercury_format_pred_or_func_mode_subdecl(VarSet, PredName, Modes,
 	(
 		{ MaybeWithInst = yes(WithInst) },
 		add_string(" `with_inst` ("),
-		mercury_format_inst(WithInst, VarSet),
+		mercury_format_inst(WithInst, simple_inst_info(VarSet)),
 		add_string(")")
 	;
 		{ MaybeWithInst = no }	
@@ -2235,14 +2336,14 @@ mercury_format_func_mode_subdecl(VarSet, FuncName, Modes, RetMode, MaybeDet,
 		{ Modes = [_|_] },
 		mercury_format_sym_name(FuncName),
 		add_string("("),
-		mercury_format_mode_list(Modes, VarSet),
+		mercury_format_mode_list(Modes, simple_inst_info(VarSet)),
 		add_string(")")
 	;
 		{ Modes = [] },
 		mercury_format_bracketed_sym_name(FuncName)
 	),
 	add_string(" = "),
-	mercury_format_mode(RetMode, VarSet),
+	mercury_format_mode(RetMode, simple_inst_info(VarSet)),
 	mercury_format_det_annotation(MaybeDet).
 
 :- pred mercury_format_det_annotation(maybe(determinism)::in, U::di, U::uo)
@@ -2884,7 +2985,7 @@ mercury_format_pragma_foreign_code_vars([V|Vars], VarSet) -->
 	add_string(" :: "),
 		% XXX Fake the inst varset
 	{ varset__init(InstVarSet) },
-	mercury_format_mode(Mode, InstVarSet),
+	mercury_format_mode(Mode, simple_inst_info(InstVarSet)),
 	( { Vars = [] } ->
 		[]
 	;
@@ -3013,19 +3114,20 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 		C_Function) -->
 	{ varset__init(Varset) }, % the varset isn't really used.
+	{ InstInfo = simple_inst_info(Varset) },
 	add_string(":- pragma import("),
 	mercury_format_sym_name(Name),
 	(
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ModeList, ArgModes, RetMode) },
 		add_string("("),
-		mercury_format_mode_list(ArgModes, Varset),
+		mercury_format_mode_list(ArgModes, InstInfo),
 		add_string(") = "),
-		mercury_format_mode(RetMode, Varset)
+		mercury_format_mode(RetMode, InstInfo)
 	;
 		{ PredOrFunc = predicate },
 		add_string("("),
-		mercury_format_mode_list(ModeList, Varset),
+		mercury_format_mode_list(ModeList, InstInfo),
 		add_string(")")
 	),
 	add_string(", "),
@@ -3040,19 +3142,20 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 
 mercury_format_pragma_export(Name, PredOrFunc, ModeList, C_Function) -->
 	{ varset__init(Varset) }, % the varset isn't really used.
+	{ InstInfo = simple_inst_info(Varset) },
 	add_string(":- pragma export("),
 	mercury_format_sym_name(Name),
 	(
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ModeList, ArgModes, RetMode) },
 		add_string("("),
-		mercury_format_mode_list(ArgModes, Varset),
+		mercury_format_mode_list(ArgModes, InstInfo),
 		add_string(") = "),
-		mercury_format_mode(RetMode, Varset)
+		mercury_format_mode(RetMode, InstInfo)
 	;
 		{ PredOrFunc = predicate },
 		add_string("("),
-		mercury_format_mode_list(ModeList, Varset),
+		mercury_format_mode_list(ModeList, InstInfo),
 		add_string(")")
 	),
 	add_string(", "),

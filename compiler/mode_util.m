@@ -1732,9 +1732,8 @@ strip_builtin_qualifiers_from_inst(ground(Uniq, GII0), ground(Uniq, GII)) :-
 strip_builtin_qualifiers_from_inst(bound(Uniq, BoundInsts0),
 					bound(Uniq, BoundInsts)) :-
 	strip_builtin_qualifiers_from_bound_inst_list(BoundInsts0, BoundInsts).
-strip_builtin_qualifiers_from_inst(defined_inst(Name0), Inst) :-
-	strip_builtin_qualifiers_from_inst_name(Name0,
-		defined_inst(Name0), Inst).
+strip_builtin_qualifiers_from_inst(defined_inst(Name0), defined_inst(Name)) :-
+	strip_builtin_qualifiers_from_inst_name(Name0, Name).
 strip_builtin_qualifiers_from_inst(abstract_inst(Name0, Args0),
 				abstract_inst(Name, Args)) :-
 	strip_builtin_qualifier_from_sym_name(Name0, Name),
@@ -1754,24 +1753,40 @@ strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
 	BoundInst = functor(ConsId, Insts),
 	list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 
-:- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, (inst)::in,
-		(inst)::out) is det.
+:- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
+	is det.
 
-strip_builtin_qualifiers_from_inst_name(InstName0, Inst0, Inst) :-
-	( InstName0 = user_inst(SymName0, Insts0) ->
-		strip_builtin_qualifier_from_sym_name(SymName0, SymName),
-		strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
-		Inst = defined_inst(user_inst(SymName, Insts))
-	; InstName0 = typed_inst(_, InstName1) ->
-		% Don't output the $typed_inst in error messages.
-		strip_builtin_qualifiers_from_inst_name(InstName1, Inst0, Inst)
-	; InstName0 = typed_ground(Uniq, _Type) ->
-		% Don't output the $typed_ground in error messages.
-		Inst = ground(Uniq, none)
-	;
-		% for the compiler-generated insts, don't bother.
-		Inst = Inst0
-	).
+strip_builtin_qualifiers_from_inst_name(user_inst(SymName0, Insts0),
+		user_inst(SymName, Insts)) :-
+	strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+	strip_builtin_qualifiers_from_inst_list(Insts0, Insts).
+strip_builtin_qualifiers_from_inst_name(merge_inst(InstA0, InstB0),
+		merge_inst(InstA, InstB)) :-
+	strip_builtin_qualifiers_from_inst(InstA0, InstA),
+	strip_builtin_qualifiers_from_inst(InstB0, InstB).
+strip_builtin_qualifiers_from_inst_name(unify_inst(Live, InstA0, InstB0, Real),
+		unify_inst(Live, InstA, InstB, Real)) :-
+	strip_builtin_qualifiers_from_inst(InstA0, InstA),
+	strip_builtin_qualifiers_from_inst(InstB0, InstB).
+strip_builtin_qualifiers_from_inst_name(
+		ground_inst(InstName0, Live, Uniq, Real),
+		ground_inst(InstName, Live, Uniq, Real)) :-
+	strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
+strip_builtin_qualifiers_from_inst_name(
+		any_inst(InstName0, Live, Uniq, Real),
+		any_inst(InstName, Live, Uniq, Real)) :-
+	strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
+strip_builtin_qualifiers_from_inst_name(shared_inst(InstName0),
+		shared_inst(InstName)) :-
+	strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
+strip_builtin_qualifiers_from_inst_name(mostly_uniq_inst(InstName0),
+		mostly_uniq_inst(InstName)) :-
+	strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
+strip_builtin_qualifiers_from_inst_name(typed_ground(Uniq, Type),
+		typed_ground(Uniq, Type)).
+strip_builtin_qualifiers_from_inst_name(typed_inst(Type, InstName0),
+		typed_inst(Type, InstName)) :-
+	strip_builtin_qualifiers_from_inst_name(InstName0, InstName).
 
 :- pred strip_builtin_qualifiers_from_ground_inst_info(ground_inst_info::in,
 		ground_inst_info::out) is det.
