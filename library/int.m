@@ -22,7 +22,7 @@
 
 :- interface.
 
-:- import_module enum.
+:- import_module array, enum.
 
 :- instance enum(int).
 
@@ -233,17 +233,87 @@
 :- func int__bits_per_int = int.
 :- pred int__bits_per_int(int::out) is det.
 
-	% fold_up(F, Acc, Low, High) = list.foldl(F, Low `..` High, Acc)
+	% fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low `..` High, !Acc)
 	%
-	% NOTE: fold_up/4 is undefined if High = int__max_int.
+	% NOTE: fold_up/5 is undefined if High = int.max_int.
 	%
-:- func int__fold_up(func(int, T) = T, T, int, int) = T.
+:- pred int__fold_up(pred(int, T, T), int, int, T, T).
+:- mode int__fold_up(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int__fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode int__fold_up(pred(in, array_di, array_uo) is det, in, in,
+	array_di, array_uo) is det.
+:- mode int__fold_up(pred(in, in, out) is semidet, in, in, in, out)
+	is semidet.
+:- mode int__fold_up(pred(in, in, out) is nondet, in, in, in, out)
+	is nondet.
+:- mode int__fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
+	is cc_multi.
+:- mode int__fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
+	is cc_multi.
 
-	% fold_down(F, Acc, Low, High) = list.foldr(F, Low `..` High, Acc)
+	% fold_up(F, Low, High, Acc) <=> list.foldl(F, Low `..` High, Acc)
 	%
-	% NOTE: fold_down/4 is undefined if Low = int__min_int.
+	% NOTE: fold_up/4 is undefined if High = int.max_int.
 	%
-:- func int__fold_down(func(int, T) = T, T, int, int) = T.
+:- func int__fold_up(func(int, T) = T, int, int, T) = T.
+
+	% fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low `..` High, !Acc)
+	%
+	% NOTE: fold_down/5 is undefined if Low int.min_int.
+	%
+:- pred int__fold_down(pred(int, T, T), int, int, T, T).
+:- mode int__fold_down(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int__fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode int__fold_down(pred(in, array_di, array_uo) is det, in, in,
+	array_di, array_uo) is det.
+:- mode int__fold_down(pred(in, in, out) is semidet, in, in, in, out)
+	is semidet.
+:- mode int__fold_down(pred(in, in, out) is nondet, in, in, in, out)
+	is nondet.
+:- mode int__fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
+	is cc_multi.
+:- mode int__fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
+	is cc_multi.
+	
+	% fold_down(F, Low, High, Acc) <=> list.foldr(F, Low `..` High, Acc)
+	%
+	% NOTE: fold_down/4 is undefined if Low = int.min_int.
+	%
+:- func int__fold_down(func(int, T) = T, int, int, T) = T.
+
+	% fold_up2(F, Low, High, !Acc1, Acc2) <=>
+	% 	list.foldl2(F, Low `..` High, !Acc1, !Acc2)
+	%
+	% NOTE: fold_up2/7 is undefined if High = int.max_int. 
+	%
+:- pred int__fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode int__fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
+	in, out) is det.
+:- mode int__fold_up2(pred(in, in, out, in, out) is semidet, in, in, 
+	in, out, in, out) is semidet.
+:- mode int__fold_up2(pred(in, in, out, in, out) is nondet, in, in,
+	in, out, in, out) is nondet.
+:- mode int__fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
+	di, uo) is det.
+:- mode int__fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+	di, uo) is det.
+
+	% fold_down2(F, Low, High, !Acc1, !Acc2) <=>
+	% 	list.foldr2(F, Low `..` High, !Acc1, Acc2).
+	%
+	% NOTE: fold_down2/7 is undefined if Low = int.min_int.
+	%
+:- pred int__fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode int__fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
+	in, out) is det.
+:- mode int__fold_down2(pred(in, in, out, in, out) is semidet, in, in,
+	in, out, in, out) is semidet.
+:- mode int__fold_down2(pred(in, in, out, in, out) is nondet, in, in,
+	in, out, in, out) is nondet.
+:- mode int__fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
+	di, uo) is det.
+:- mode int__fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+	di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -674,13 +744,37 @@ int__bits_per_int = X :-
 
 %-----------------------------------------------------------------------------%
 
-int__fold_up(F, A, Lo, Hi) =
-	( if Lo =< Hi then int__fold_up(F, F(Lo, A), Lo + 1, Hi) else A ).
+int__fold_up(P, Lo, Hi, !A) :-
+	( if	Lo =< Hi
+	  then	P(Lo, !A), int__fold_up(P, Lo + 1, Hi, !A)
+	  else	true
+	).		
+
+int__fold_up(F, Lo, Hi, A) =
+	( if Lo =< Hi then int__fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
+
+int__fold_up2(P, Lo, Hi, !A, !B) :-
+	( if	Lo =< Hi
+	  then	P(Lo, !A, !B), int__fold_up2(P, Lo + 1, Hi, !A, !B)
+	  else	true
+	).
 
 %-----------------------------------------------------------------------------%
 
-int__fold_down(F, A, Lo, Hi) =
-	( if Lo =< Hi then int__fold_down(F, F(Hi, A), Lo, Hi - 1) else A ).
+int__fold_down(P, Lo, Hi, !A) :-
+	( if 	Lo =< Hi
+	  then	P(Hi, !A), int__fold_down(P, Lo, Hi - 1, !A)
+	  else	true
+	).
+
+int__fold_down(F, Lo, Hi, A) =
+	( if Lo =< Hi then int__fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
+
+int__fold_down2(P, Lo, Hi, !A, !B) :-
+	( if	Lo =< Hi
+	  then	P(Hi, !A, !B), int__fold_down2(P, Lo, Hi - 1, !A, !B)
+	  else	true
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
