@@ -271,64 +271,61 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 	(
 		InstanceNames = [InstancePredName]
 	->
-		(
-			get_matching_instance_pred_ids(ModuleInfo,
-				InstancePredName, PredOrFunc, PredArity,
-				InstancePredIds)
-		->
-			handle_instance_method_overloading(ClassVars, 
-				InstanceTypes, InstanceConstraints, 
-				InstanceVarSet, 
-				InstancePredName, InstancePredIds, 
-				InstancePredId, InstanceProcIds, Info0, Info),
+		produce_auxiliary_procs(ClassVars, 
+			InstanceTypes, InstanceConstraints, 
+			InstanceVarSet, 
+			InstancePredName,
+			InstancePredId, InstanceProcIds, Info0, Info),
 
-			MakeClassProc = 
-				lambda([TheProcId::in, PredProcId::out] is det,
-				(
-					PredProcId =
-						hlds_class_proc(InstancePredId,
-							TheProcId)
-				)),
-			list__map(MakeClassProc, InstanceProcIds,
-				InstancePredProcs1),
+		MakeClassProc = 
+			lambda([TheProcId::in, PredProcId::out] is det,
 			(
-				MaybeInstancePredProcs =
-					yes(InstancePredProcs0),
-				list__append(InstancePredProcs0,
-					InstancePredProcs1, InstancePredProcs)
-			;
-				MaybeInstancePredProcs = no,
-				InstancePredProcs = InstancePredProcs1
-			),
-			InstanceDefn = hlds_instance_defn(A,
-					InstanceConstraints, InstanceTypes,
-					InstanceInterface,
-					yes(InstancePredProcs), InstanceVarSet,
-					F)
+				PredProcId = hlds_class_proc(InstancePredId,
+					TheProcId)
+			)),
+		list__map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
+		(
+			MaybeInstancePredProcs = yes(InstancePredProcs0),
+			list__append(InstancePredProcs0,
+				InstancePredProcs1, InstancePredProcs)
 		;
-			InstanceDefn = InstanceDefn0,
-				% XXX make a better error message
-			Errors = ["instance method not found"|Errors0],
-			Info = instance_method_info(ModuleInfo, PredName,
-				PredArity, ArgTypes, ClassContext, ArgModes,
-				Errors, ArgTypeVars, Status, PredOrFunc,
-				Context)
-		)
+			MaybeInstancePredProcs = no,
+			InstancePredProcs = InstancePredProcs1
+		),
+		InstanceDefn = hlds_instance_defn(A, InstanceConstraints,
+			InstanceTypes, InstanceInterface,
+			yes(InstancePredProcs), InstanceVarSet, F)
 	;
 		InstanceNames = [_,_|_]
 	->
 			% one kind of error
-			% XXX make a better error message
+			% XXX still room for improvement in the error message
 		InstanceDefn = InstanceDefn0,
-		Errors = ["multiply defined class method"|Errors0],
+		prog_out__sym_name_to_string(MethodName, MethodNameString),
+		string__int_to_string(PredArity, PredArityString),
+		string__append_list([
+			"Multiple implementations of type class method ",
+			MethodNameString,
+			"/",
+			PredArityString],
+			NewError),
+		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
 			Status, PredOrFunc, Context)
 	;
 			 % another kind of error
-			 % XXX make a better error message
+			 % XXX still room for improvement in the error message
 		InstanceDefn = InstanceDefn0,
-		Errors = ["undefined class method"|Errors0],
+		prog_out__sym_name_to_string(MethodName, MethodNameString),
+		string__int_to_string(PredArity, PredArityString),
+		string__append_list([
+			"No implementation for type class method ",
+			MethodNameString,
+			"/",
+			PredArityString],
+			NewError),
+		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
 			Status, PredOrFunc, Context)
@@ -363,43 +360,23 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 			InstanceNames)
 	).
 
-:- pred get_matching_instance_pred_ids(module_info, sym_name, pred_or_func,
-	arity, list(pred_id)).
-:- mode get_matching_instance_pred_ids(in, in, in, in, out) is semidet.
-
-get_matching_instance_pred_ids(ModuleInfo, InstancePredName0, PredOrFunc,
-		PredArity, InstancePredIds) :-
-	% strip off any empty module qualifiers
-	% XXX how do these bogus empty qualifiers get here in the first place?
-	( InstancePredName0 = qualified(unqualified(""), Name) ->
-		InstancePredName = unqualified(Name)
-	;
-		InstancePredName = InstancePredName0
-	),
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	predicate_table_search_pf_sym_arity(PredicateTable,
-		PredOrFunc, InstancePredName, PredArity, InstancePredIds).
-
 	% Just a bit simpler than using a pair of pairs
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
-:- pred handle_instance_method_overloading(list(var), 
-	list(type), list(class_constraint), varset, sym_name, list(pred_id), 
+:- pred produce_auxiliary_procs(list(var), 
+	list(type), list(class_constraint), varset, sym_name,
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
-:- mode handle_instance_method_overloading(in, in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, out, out, 
 	in, out) is det.
 
-handle_instance_method_overloading(ClassVars, 
+produce_auxiliary_procs(ClassVars, 
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
-		InstancePredName, InstancePredIds, InstancePredId, 
+		InstancePredName, PredId, 
 		InstanceProcIds, Info0, Info) :-
 
-	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
-		ArgTypes0, ClassContext0, ArgModes, Errors0, ArgTypeVars0,
+	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
+		ArgTypes0, ClassContext0, ArgModes, Errors, ArgTypeVars0,
 		Status, PredOrFunc, Context),
-
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	predicate_table_get_preds(PredicateTable, PredTable),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars,
@@ -421,203 +398,82 @@ handle_instance_method_overloading(ClassVars,
 		% instance declaration as a whole.
 	list__append(InstanceConstraints, ClassContext1, ClassContext),
 
-	Info1 = instance_method_info(ModuleInfo, PredName, PredArity, 
-		ArgTypes, ClassContext, ArgModes, Errors0, ArgTypeVars,
-		Status, PredOrFunc, Context),
+		% Introduce a new predicate which calls the implementation
+		% given in the instance declaration.
+	module_info_name(ModuleInfo0, ModuleName),
 
+	Cond = true,
+	map__init(Proofs),
+	init_markers(Markers),
+
+		% We have to add the actual clause after we have added the
+		% procs because we need a list of proc numbers for which the
+		% clauses holds.
+	DummyClause = [],
+	varset__init(VarSet0),
+	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
+	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+	DummyClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
+		DummyClause),
+
+
+	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
+		ArgTypes, Cond, Context, DummyClausesInfo, Status,
+		Markers, none, PredOrFunc, ClassContext, Proofs,
+		PredInfo0),
+
+	module_info_globals(ModuleInfo0, Globals),
+	globals__get_args_method(Globals, ArgsMethod),
+
+		% Add procs with the expected modes and determinisms
+	AddProc = lambda([ModeAndDet::in, NewProcId::out,
+			OldPredInfo::in, NewPredInfo::out] is det,
 	(
-			% There is a single matching pred_id.
-			% No overloading
+		ModeAndDet = Modes - Det,
+		add_new_proc(OldPredInfo, PredArity, Modes, yes(Modes), no,
+			yes(Det), Context, ArgsMethod, NewPredInfo, NewProcId)
+	)),
+	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
+		PredInfo0, PredInfo1),
 
-		InstancePredIds = [InstancePredId0]
-	->
-		map__lookup(PredTable, InstancePredId0, InstancePredInfo), 
-		check_instance_types_and_modes(InstancePredName,
-			InstancePredInfo, InstancePredId0, InstancePredId,
-			InstanceProcIds, Info1, Info)
-	;
+		% Add the body of the introduced pred
 
-		% Now we have a list of potential pred_ids for
-		% the instance method. We have to resolve
-		% overloading by checking each possible pred_id
-		% to see if it is type and mode correct.
+		% First the goal info
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	set__list_to_set(HeadVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo),
 
-		Resolve = lambda(
-			[PredId0::in, Procs::out] is semidet,
-			(
-			map__lookup(PredTable, PredId0, InstancePredInfo), 
-			check_instance_types_and_modes(
-				InstancePredName, InstancePredInfo, 
-				PredId0, PredId, Procs0, Info1, NewInfo),
-			Procs = triple(PredId, Procs0, NewInfo)
-			)),
-		list__filter_map(Resolve, InstancePredIds,
-			Matches),
-		(
-				% no matching preds
-			Matches = [],
-			invalid_pred_id(InstancePredId),
-			InstanceProcIds = [],
-				% XXX improve error message
-			NewError = 
-	    "no type/mode-correct match for overloaded instance method name",
-			Errors = [NewError|Errors0],
-			Info = instance_method_info(ModuleInfo, PredName,
-				PredArity, ArgTypes, ClassContext, ArgModes,
-				Errors, ArgTypeVars, Status, PredOrFunc,
-				Context)
-		;
-				% There is a single matching
-				% pred_id. 
-			Matches = [triple(InstancePredId,InstanceProcIds,
-				Info)]
-		;
-				% unresolved overloading
-			Matches = [_,_|_],
-			invalid_pred_id(InstancePredId),
-			InstanceProcIds = [],
-				% XXX improve error message
-			NewError = "ambiguous overloading in instance method",
-			Errors = [NewError|Errors0],
-			Info = instance_method_info(ModuleInfo, PredName,
-				PredArity, ArgTypes, ClassContext, ArgModes,
-				Errors, ArgTypeVars, Status, PredOrFunc,
-				Context)
-		)
-	).
-
-:- pred check_instance_types_and_modes(sym_name, pred_info, pred_id, pred_id, 
-	list(proc_id), instance_method_info, instance_method_info).
-:- mode check_instance_types_and_modes(in, in, in, out, out, in, out) is det.
-
-check_instance_types_and_modes(InstancePredName, InstancePredInfo, 
-		PredId0, PredId, InstanceProcIds, Info0, Info) :-
-	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, ArgTypes,
-		ClassContext, ArgModes, Errors, ArgTypeVars, Status,
-		PredOrFunc, Context),
-	pred_info_arg_types(InstancePredInfo, _, InstanceArgTypes),
-	pred_info_get_class_context(InstancePredInfo, InstanceClassContext),
+		% Then the goal itself
+	invalid_pred_id(InvalidPredId),
+	invalid_proc_id(InvalidProcId),
 	(
-			% As an optimisation, if the types and constraints
-			% are _exactly_ the same, there is no point introducing
-			% a predicate to call the instance method
-
-		type_and_constraint_list_matches_exactly(
-			InstanceArgTypes, InstanceClassContext,
-			ArgTypes, ClassContext),
-		pred_info_procedures(InstancePredInfo, InstanceProcedures0),
-		map__to_assoc_list(InstanceProcedures0, InstanceProcedures),
-		list__map(
-			check_instance_modes(ModuleInfo0, InstanceProcedures), 
-			ArgModes, InstanceProcIds0)
-	->
-		Info = Info0,
-		PredId = PredId0,
-		InstanceProcIds = InstanceProcIds0
+		PredOrFunc = predicate,
+		Call = call(InvalidPredId, InvalidProcId, HeadVars, not_builtin,
+			no, InstancePredName),
+		IntroducedGoal = Call - GoalInfo
 	;
-			% Introduce a new predicate which calls the
-			% implementation given in the instance declaration.
-			% This allows the type to be more polymorphic than
-			% expected etc.
-		module_info_name(ModuleInfo0, ModuleName),
+		PredOrFunc = function,
+		pred_args_to_func_args(HeadVars, RealHeadVars, ReturnVar),
+		create_atomic_unification(ReturnVar, 
+			functor(cons(InstancePredName, PredArity),
+				RealHeadVars), 
+			Context, explicit, [], IntroducedGoal)
+	),
+	IntroducedClause = clause(InstanceProcIds, IntroducedGoal, Context),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
+		[IntroducedClause]),
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 
-		Cond = true,
-		map__init(Proofs),
-		init_markers(Markers),
+	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
+	predicate_table_insert(PredicateTable0, PredInfo,
+		may_be_unqualified, PredId, PredicateTable),
+	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		ModuleInfo),
 
-			% We have to add the actual clause after we have
-			% added the procs because we need a list of proc 
-			% numbers for which the clauses holds.
-		DummyClause = [],
-	        varset__init(VarSet0),
-		make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars,
-			VarSet), 
-		map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-		DummyClausesInfo = clauses_info(VarSet, VarTypes, VarTypes,
-			HeadVars, DummyClause),
-
-
-		pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
-			ArgTypes, Cond, Context, DummyClausesInfo, Status,
-			Markers, none, PredOrFunc, ClassContext, Proofs,
-			PredInfo0),
-
-		module_info_globals(ModuleInfo0, Globals),
-		globals__get_args_method(Globals, ArgsMethod),
-
-			% Add procs with the expected modes and determinisms
-		AddProc = lambda([ModeAndDet::in, NewProcId::out,
-				OldPredInfo::in, NewPredInfo::out] is det,
-		(
-			ModeAndDet = Modes - Det,
-			add_new_proc(OldPredInfo, PredArity, Modes, yes(Modes),
-				no, yes(Det), Context, ArgsMethod,
-				NewPredInfo, NewProcId)
-		)),
-		list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
-			PredInfo0, PredInfo1),
-
-			% Add the body of the introduced pred
-
-			% First the goal info
-		goal_info_init(GoalInfo0),
-		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-		set__list_to_set(HeadVars, NonLocals),
-		goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo),
-
-			% Then the goal itself
-		invalid_pred_id(InvalidPredId),
-		invalid_proc_id(InvalidProcId),
-		Call = call(InvalidPredId, InvalidProcId, HeadVars, 
-			not_builtin, no, InstancePredName),
-		IntroducedGoal = Call - GoalInfo,
-		IntroducedClause = clause(InstanceProcIds, IntroducedGoal, 
-			Context),
-		ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes,
-			HeadVars, [IntroducedClause]),
-		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
-
-		module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
-		predicate_table_insert(PredicateTable0, PredInfo,
-			may_be_unqualified, PredId, PredicateTable),
-		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
-			ModuleInfo),
-
-		Info = instance_method_info(ModuleInfo, PredName, PredArity,
-			ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
-			Status, PredOrFunc, Context)
-	).
-
-:- pred check_instance_modes(module_info, assoc_list(proc_id, proc_info),
-	pair(list(mode), determinism), proc_id).
-:- mode check_instance_modes(in, in, in, out) is semidet.
-
-check_instance_modes(ModuleInfo, [ProcId - ProcInfo|Ps], ArgModes - Detism,
-		TheProcId) :-
-	proc_info_argmodes(ProcInfo, ProcArgModes),
-		% If there was a decl. for the proc, then use that determinism,
-		% otherwise use what was inferred.
-	proc_info_interface_determinism(ProcInfo, ProcDetism),
-	(
-		matching_mode_list(ModuleInfo, ProcArgModes, ArgModes),
-		ProcDetism = Detism
-	->
-		TheProcId = ProcId
-	;
-		check_instance_modes(ModuleInfo, Ps, ArgModes - Detism,
-			TheProcId)
-	).
-
-:- pred matching_mode_list(module_info, list(mode), list(mode)).
-:- mode matching_mode_list(in, in, in) is semidet.
-
-matching_mode_list(_, [], []).
-matching_mode_list(ModuleInfo, [A|As], [B|Bs]) :-
-	mode_get_insts(ModuleInfo, A, Ainit, Afinal),
-	mode_get_insts(ModuleInfo, B, Binit, Bfinal),
-	inst_matches_final(Ainit, Binit, ModuleInfo),
-	inst_matches_final(Afinal, Bfinal, ModuleInfo),
-	matching_mode_list(ModuleInfo, As, Bs).
+	Info = instance_method_info(ModuleInfo, PredName, PredArity,
+		ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
+		Status, PredOrFunc, Context).
 
 %---------------------------------------------------------------------------%
 	% Make the name of the introduced pred used to check a particular
