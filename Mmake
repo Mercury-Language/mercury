@@ -252,6 +252,7 @@ install_library_grades: dep_library
 uninstall:
 	cd scripts; $(SUBDIR_MMAKE) uninstall
 	cd util; $(SUBDIR_MMAKE) uninstall
+	cd doc; $(SUBDIR_MMAKE) uninstall
 	rm -rf $(INSTALL_LIBDIR)
 
 #-----------------------------------------------------------------------------#
