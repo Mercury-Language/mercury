@@ -94,7 +94,7 @@
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
-:- import_module ll_backend__code_util. 	    % needed for `cons_id_to_tag'.
+:- import_module ll_backend__code_util.   % needed for `cons_id_to_tag'.
 
 :- import_module int, string, map, require, term, varset.
 :- import_module assoc_list, set.
@@ -1247,6 +1247,12 @@ ml_gen_cons_args(Lvals, ArgTypes, ConsArgTypes, UniModes, ModuleInfo,
 		%
 		{ UniMode = ((_LI - RI) -> (_LF - RF)) },
 		(
+			{ type_util__is_dummy_argument_type(ArgType)
+			; type_util__is_dummy_argument_type(ConsArgType)
+			}
+		->
+			{ Rval = const(null(MLDS_Type)) }
+		;
 			{ mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType,
 				top_in) }
 		->
