@@ -310,6 +310,19 @@ case $HOST in
 			;;
 		esac
 		;;
+	venus)
+		CONFIG_OPTS=""
+		case $C_COMPILER in lcc)
+			# For grade none.gc.tr.debug, lcc 4.1 gets an
+			# internal error when compiling library/hash_table.c.
+			# So we need to disable that grade.
+			INSTALL_LIBGRADES="none 
+				none.gc.prof none.prof none.gc.memprof
+				none.gc.tr
+				hlc.gc hlc.par.gc"
+			;;
+		esac
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -682,9 +695,12 @@ case $HOST in
 				asm_fast.gc.memprof asm_fast.gc.tr
 				asm_fast.gc.tr.debug
 				hlc.gc hlc.par.gc" ;;
-			*)	GRADES="none.gc none none.gc.prof
+			*)	# We don't test none.gc.tr.debug
+				# because it wasn't installed,
+				# due to lcc 4.1 internal error (see above)
+				GRADES="none.gc none none.gc.prof
 				none.prof none.gc.memprof none.gc.tr
-				none.gc.tr.debug hlc.gc hlc.par.gc" ;;
+				hlc.gc hlc.par.gc" ;;
 		esac
 		;;
 	roy)
