@@ -21,3 +21,4 @@ address_of_builtins
 reverse_arith
 curry
 rev_arith
+curry2
