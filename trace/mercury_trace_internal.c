@@ -11,6 +11,10 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_layout_util.h"
+#include "mercury_array_macros.h"
+#include "mercury_getopt.h"
+
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_declarative.h"
@@ -22,9 +26,6 @@
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 #include "mercury_trace_readline.h"
-#include "mercury_layout_util.h"
-#include "mercury_array_macros.h"
-#include "mercury_getopt.h"
 
 #include "mdb.browse.h"
 

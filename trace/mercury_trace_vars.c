@@ -17,6 +17,7 @@
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_stack_layout.h"
+
 #include "mercury_trace_vars.h"
 
 #include <stdio.h>

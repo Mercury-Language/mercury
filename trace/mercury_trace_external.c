@@ -31,8 +31,13 @@
 
 #include "mdb.debugger_interface.h"
 #include "mdb.collect_lib.h"
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+#else
+  #include "std_util.h"
+#endif
+
 #include "mercury_deep_copy.h"
-#include "std_util.h"
 
 #include <stdio.h>
 #include <errno.h>

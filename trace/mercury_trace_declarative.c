@@ -38,14 +38,20 @@
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
+
 #include "mercury_layout_util.h"
 #include "mercury_deep_copy.h"
 #include "mercury_stack_trace.h"
 #include "mercury_string.h"
 #include "mercury_trace_base.h"
+
 #include "mdb.declarative_debugger.h"
 #include "mdb.declarative_execution.h"
-#include "std_util.h"
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+#else
+  #include "std_util.h"
+#endif
 
 #include <errno.h>
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,10 +35,6 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_trace.h"
-#include "mercury_trace_internal.h"
-#include "mercury_trace_external.h"
-#include "mercury_trace_spy.h"
 #include "mercury_layout_util.h"
 #include "mercury_memory.h"
 #include "mercury_engine.h"
@@ -46,6 +42,12 @@
 #include "mercury_misc.h"
 #include "mercury_array_macros.h"
 #include "mercury_init.h"
+
+#include "mercury_trace.h"
+#include "mercury_trace_internal.h"
+#include "mercury_trace_external.h"
+#include "mercury_trace_spy.h"
+
 #include <stdio.h>
 
 static	MR_Trace_Cmd_Info	MR_trace_ctrl = {

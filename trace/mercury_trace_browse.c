@@ -22,14 +22,21 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_deep_copy.h"
+
 #include "mercury_trace_browse.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_internal.h"
-#include "mercury_deep_copy.h"
+#include "mercury_trace_external.h"
+
 #include "mdb.browse.h"
 #include "mdb.interactive_query.h"
-#include "std_util.h"
-#include "mercury_trace_external.h"
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+#else
+  #include "std_util.h"
+#endif
+
 #include <stdio.h>
 
 static	Word		MR_trace_browser_state;

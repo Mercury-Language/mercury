@@ -23,14 +23,22 @@
 */
 
 #include "mercury_imp.h"
-#include "mercury_trace_help.h"
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_deep_copy.h"
+
+#include "mercury_trace_help.h"
 #include "mercury_trace_util.h"
-#include "std_util.h"
+
+#ifdef MR_HIGHLEVEL_CODE
+  #include "mercury.std_util.h"
+  #include "mercury.io.h"
+#else
+  #include "std_util.h"
+  #include "io.h"
+#endif
 #include "mdb.help.h"
-#include "io.h"
+
 #include <stdio.h>
 
 static	Word		MR_trace_help_system;
