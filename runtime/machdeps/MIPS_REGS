@@ -1,3 +1,7 @@
+
+This file contains the relevant part of config/mips/mips.h from the
+GNU C source code which describes how each register is used.
+
 #define REGISTER_NAMES							\
 {"$0", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0",			\
  "t1", "t2", "t3", "t4", "t5", "t6", "t7","s0",				\

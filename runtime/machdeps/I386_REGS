@@ -1,3 +1,7 @@
+
+This file contains the relevant part of config/i386/i386.h from the
+GNU C source code which describes how each register is used.
+
 /* 1 for registers that have pervasive standard uses
    and are not available for the register allocator.
    On the 80386, the stack pointer is such, as is the arg pointer. */

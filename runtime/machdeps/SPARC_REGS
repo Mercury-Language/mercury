@@ -1,3 +1,7 @@
+
+This file contains the relevant part of config/sparc/sparc.h from the
+GNU C source code which describes how each register is used.
+
 #define REGISTER_NAMES \
 {"%g0", "%g1", "%g2", "%g3", "%g4", "%g5", "%g6", "%g7",		\
  "%o0", "%o1", "%o2", "%o3", "%o4", "%o5", "%sp", "%o7",		\
