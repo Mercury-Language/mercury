@@ -804,11 +804,14 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 			if_val(lval(reg(r(1))), label(SkipLab)) -
 				"Test for success of pragma_c_code"
 			]), tree(FailCode, node([ label(SkipLab) - "" ])))
-		}
+		},
+		code_info__lock_reg(r(1)),
+		pragma_acquire_regs(OutArgs, Regs),
+		code_info__unlock_reg(r(1))
 	;
-		{ CheckFailureCode = empty }
+		{ CheckFailureCode = empty },
+		pragma_acquire_regs(OutArgs, Regs)
 	),
-	pragma_acquire_regs(OutArgs, Regs),
 	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
 	% { goal_info__context(GoalInfo, Context) },
 	{ PragmaCode = node([pragma_c(Decls, Inputs, C_Code, Outputs) - 

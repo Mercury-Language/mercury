@@ -202,6 +202,12 @@
 :- pred code_info__release_reg(reg, code_info, code_info).
 :- mode code_info__release_reg(in, in, out) is det.
 
+:- pred code_info__lock_reg(reg, code_info, code_info).
+:- mode code_info__lock_reg(in, in, out) is det.
+
+:- pred code_info__unlock_reg(reg, code_info, code_info).
+:- mode code_info__unlock_reg(in, in, out) is det.
+
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
 
@@ -784,6 +790,20 @@ code_info__place_vars([V-Rs|RestList], Code) -->
 	),
 	code_info__place_vars(RestList, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__lock_reg(Reg) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__lock_reg(Reg, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+%---------------------------------------------------------------------------%
+
+code_info__unlock_reg(Reg) -->
+	code_info__get_exprn_info(Exprn0),
+	{ code_exprn__unlock_reg(Reg, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%
 
