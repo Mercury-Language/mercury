@@ -3087,15 +3087,19 @@ code_info__place_var(Var, Lval, Code) -->
 
 code_info__place_vars([], empty) --> [].
 code_info__place_vars([V - Rs | RestList], Code) -->
-	(
-		{ set__to_sorted_list(Rs, VList) },
-		{ list__filter_map(code_exprn__value_to_rval, VList, RList) },
-		{ code_info__lval_in_rval_list(L, RList) }
-	->
-		code_info__place_var(V, L, ThisCode)
+	{ set__to_sorted_list(Rs, VList) },
+	{ list__filter_map(code_exprn__value_to_rval, VList, RList, RefList) },
+	( { code_info__lval_in_rval_list(L, RList) } ->
+		code_info__place_var(V, L, ValueCode)
 	;
-		{ ThisCode = empty }
+		{ ValueCode = empty }
 	),
+	( { RefList = [reference(RefLval) | _] } ->
+		code_info__place_var_reference(V, RefLval, ReferenceCode)
+	;
+		{ ReferenceCode = empty }
+	),
+	{ ThisCode = tree(ValueCode, ReferenceCode) },
 	code_info__place_vars(RestList, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
 
