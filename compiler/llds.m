@@ -1059,7 +1059,7 @@ output_c_quoted_string(S0) -->
 :- pred quote_c_char(character, character).
 :- mode quote_c_char(in, out) is semidet.
 
-quote_c_char('\"', '"').
+quote_c_char('"', '"').
 quote_c_char('\\', '\\').
 quote_c_char('\n', 'n').
 quote_c_char('\t', 't').
@@ -1213,6 +1213,10 @@ llds__mangle_char(C, Chars) :-
 		C = ('=')
 	->
 		Chars = ['_','_','e','q','_','_']
+	;
+		C = ('!')
+	->
+		Chars = ['_','_','c','u','t','_','_']
 	;
 		Chars = [C]
 	).
