@@ -12,7 +12,7 @@
 */
 
 /*
-** The number of real physical machine registers that we can use. */
+** The number of real physical machine registers that we can use.
 **
 ** Note that when adding a header file for a new machine, you also
 ** need to add code to set NUM_REAL_R_REGS in ../configure.in.
