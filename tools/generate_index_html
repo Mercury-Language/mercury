@@ -73,6 +73,16 @@ link_to_file () {
 
 #-----------------------------------------------------------------------------#
 
+skip_file () {
+	stable_file=$1
+	unstable_file=$2
+	if [ -f $stable_file ]; then
+		handled_files="$unstable_file $handled_files"
+	fi
+}
+
+#-----------------------------------------------------------------------------#
+
 # link_to_file filename description
 #
 # Generate a link to a file if it exists.
@@ -132,6 +142,11 @@ do_handle_release () {
 		release_name="Stable $version beta $date"
 		release_id="$version-beta-$date"
 		;;
+	    *-*([0-9.])*-unstable*)
+		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*-unstable.*"`
+		release_name="Unstable release $version"
+		release_id="$version-unstable"
+		;;
 	    *-*([0-9.])*)
 		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*"`
 		release_name="Release $version"
@@ -143,6 +158,7 @@ do_handle_release () {
 		return 0
 		;;
 	esac
+	#echo "[release_id=$release_id	file=$file]" 1>&2
 
 	echo "<li> $release_name" >> $INDEX
 	echo '<ul>' >> $INDEX
@@ -157,17 +173,40 @@ do_handle_release () {
 	link_to_existing_file mercury-compiler-$release_id-1.i386.rpm \
 		"RPM (x86)"
 	link_to_existing_file mercury_$release_id-1_i386.deb "Debian (x86)"
-	bindists=`echo mercury-$release_id.[a-z]*.tar.gz`
-	case "$bindists" in
+	bindists1=`echo mercury-$release_id.[a-z]*.tar.gz`
+	bindists2=`echo mercury-compiler-$release_id.[a-z]*.zip`
+	case "$bindists1" in
 	    *'*'.tar.gz)
 		;;
+	    *)
+	    	bindists="$bindists1"
+		;;
+	esac
+	case "$bindists2" in
+	    *'*'.zip)
+	    	;;
+	    *)
+	    	bindists="$bindists $bindists2"
+		;;
+	esac
+	case "$bindists" in
+	    "")
+	    	;;
 	    *)
 		echo "<li> Binary distributions" >> $INDEX
 		echo "<ul>" >> $INDEX
 		for bindist in $bindists
 		do
-		    bindist_name=`expr \
-		    	"$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
+		    case $bindist in
+		        *.tar.gz)
+			    bindist_name=`expr \
+		    	      "$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
+			    ;;
+		        *.zip)
+			    bindist_name=`expr \
+		    	      "$bindist" : "mercury-compiler-$release_id.\(.*\).zip"`
+			    ;;
+		    esac
 		    link_to_file "<li> " $bindist $bindist_name
 		    echo "<ul>" >> $INDEX
 		    bindist_news="mercury-NEWS-$release_id.$bindist_name.txt"
@@ -181,7 +220,7 @@ do_handle_release () {
 		    # distributions don't match, but that should be rare.
 		    if cmp $bindist_news $source_dist_news >& /dev/null
 		    then
-			handled_files="$bindist_news $handled_files"
+		    	handled_files="$bindist_news $handled_files"
 		    else
 			link_to_existing_file $bindist_news "News"
 		    fi
@@ -203,6 +242,27 @@ do_handle_release () {
 	link_to_existing_file mercury-test-failures-$release_id.txt \
 		"Test failures"
 	echo '</ul><p>' >> $INDEX
+
+	# If the same release occurs as both stable and unstable,
+	# only include the stable version in the index.
+	case $release_id in
+		*-unstable*)
+			;;
+		*)	
+			skip_file mercury-NEWS-$release_id.txt \
+				  mercury-NEWS-$release_id-unstable.txt
+			skip_file mercury-INSTALL-$release_id.txt \
+				  mercury-INSTALL-$release_id-unstable.txt
+			skip_file mercury-compiler-$release_id.tar.gz \
+				  mercury-compiler-$release_id-unstable.tar.gz
+			skip_file mercury-extras-$release_id.tar.gz \
+				  mercury-extras-$release_id-unstable.tar.gz
+			skip_file mercury-tests-$release_id.tar.gz \
+				  mercury-tests-$release_id-unstable.tar.gz
+			skip_file mercury-gcc-$release_id.tar.gz \
+				  mercury-gcc-$release_id-unstable.tar.gz
+			;;
+	esac
 }
 
 #-----------------------------------------------------------------------------#
