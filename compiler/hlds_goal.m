@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,30 +308,33 @@
 :- type unify_rhs
 	--->	var(prog_var)
 	;	functor(
-			cons_id,
-			is_existential_construction,
+			rhs_functor	:: cons_id,
+			rhs_is_exist_constr :: is_existential_construction,
 					% The `is_existential_construction'
 					% field is only used after
 					% polymorphism.m strips off
 					% the `new ' prefix from
 					% existentially typed constructions.
 					
-			list(prog_var)
+			rhs_args	:: list(prog_var)
 		)
 	;	lambda_goal(
-			purity,
-			pred_or_func,
-			lambda_eval_method,
+			rhs_purity	:: purity,
+			rhs_p_or_f	:: pred_or_func,
+			rhs_eval_method	:: lambda_eval_method,
 					% should be `normal' except for
 					% closures executed by Aditi.
-			fix_aditi_state_modes,
-			list(prog_var),	% non-locals of the goal excluding
+			rhs_aditi	:: fix_aditi_state_modes,
+			rhs_nonlocals	:: list(prog_var),
+					% non-locals of the goal excluding
 					% the lambda quantified variables
-			list(prog_var),	% lambda quantified variables
-			list(mode),	% modes of the lambda
+			rhs_lambda_quant_vars :: list(prog_var),
+					% lambda quantified variables
+			rhs_lambda_modes :: list(mode),
+					% modes of the lambda
 					% quantified variables
-			determinism,
-			hlds_goal
+			rhs_detism	:: determinism,
+			rhs_lambda_goal	:: hlds_goal
 		).
 
 	% Was the constructor originally of the form 'new ctor'(...).
