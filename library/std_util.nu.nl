@@ -76,6 +76,12 @@ builtin_solutions(P, L) :-
 
 %-----------------------------------------------------------------------------%
 
+builtin_aggregate(P, A, Acc0, Acc) :-
+	findall(X, call(P, X), L),
+	list__foldl(A, L, Acc0, Acc).
+
+%-----------------------------------------------------------------------------%
+
 % This is buggy in the backwards mode, but it will just have to do for
 % the moment.
 
