@@ -26,6 +26,7 @@ BYTES_PER_WORD=@BYTES_PER_WORD@
 NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
 NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
 HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
+HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
 # The default optimization level should be after
@@ -41,7 +42,9 @@ case $# in
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
-		$HAVE_DELAY_SLOT $DEFAULT_OPT_LEVEL \
+		$HAVE_DELAY_SLOT \
+		$HAVE_BOXED_FLOATS \
+		$DEFAULT_OPT_LEVEL \
 		;;
 	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
@@ -52,6 +55,8 @@ case $# in
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--bits-per-word "$BITS_PER_WORD" \
 		--bytes-per-word "$BYTES_PER_WORD" \
-		$HAVE_DELAY_SLOT $DEFAULT_OPT_LEVEL \
+		$HAVE_DELAY_SLOT \
+		$HAVE_BOXED_FLOATS \
+		$DEFAULT_OPT_LEVEL \
 		"$@" ;;
 esac
