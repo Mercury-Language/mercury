@@ -76,7 +76,7 @@ include Mercury.options
 	@echo "Comparing $*.sorted_out with $*.exp*,"
 	@echo "	results in $@"
 	@-rm -f $@ $*.res[1-5]
-	@cat $*.out | sort | sed -e 's/$$//g' > $*.sorted_out
+	@sort $*.out > $*.sorted_out
 	@{ diff $(DIFF_OPTS) $*.exp $*.sorted_out > $*.res1 && \
 		echo "Matched $*.exp" && \
 		cp $*.res1 $@; } || \
