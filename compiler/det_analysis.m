@@ -598,27 +598,34 @@ det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
 		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, Extra),
 		Detism, Msgs) :-
-	det_lookup_detism(DetInfo, PredId, ProcId, Detism0),
-	determinism_components(Detism0, CanFail, NumSolns0),
-	( Extra = extra_pragma_info(_, _) ->
-		% pragma C codes that specify saved variables and labels
-		% can have more than one solution
-		NumSolns1 = at_most_many
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_declared_determinism(ProcInfo, MaybeDetism),
+	( MaybeDetism = yes(Detism0) ->
+		determinism_components(Detism0, CanFail, NumSolns0),
+		( Extra = extra_pragma_info(_, _) ->
+			% pragma C codes that specify saved variables and labels
+			% can have more than one solution
+			NumSolns1 = at_most_many
+		;
+			NumSolns1 = NumSolns0
+		),
+		(
+			NumSolns1 = at_most_many_cc,
+			SolnContext \= first_soln
+		->
+			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
+					PredId, ProcId)],
+			NumSolns = at_most_many
+		;
+			Msgs = [],
+			NumSolns = NumSolns1
+		),
+		determinism_components(Detism, CanFail, NumSolns)
 	;
-		NumSolns1 = NumSolns0
-	),
-	(
-		NumSolns1 = at_most_many_cc,
-		SolnContext \= first_soln
-	->
-		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-				PredId, ProcId)],
-		NumSolns = at_most_many
-	;
-		Msgs = [],
-		NumSolns = NumSolns1
-	),
-	determinism_components(Detism, CanFail, NumSolns).
+		Msgs = [pragma_c_code_without_det_decl(PredId, ProcId)],
+		Detism = erroneous
+	).
 
 %-----------------------------------------------------------------------------%
 

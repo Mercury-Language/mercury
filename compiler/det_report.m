@@ -49,7 +49,9 @@
 				determinism)
 		;	error_in_lambda(
 				determinism, determinism, % declared, inferred
-				hlds_goal, hlds_goal_info, pred_id, proc_id).
+				hlds_goal, hlds_goal_info, pred_id, proc_id)
+		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
+		.
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -891,6 +893,7 @@ det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
 det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
 det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
+det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
 
 :- pred det_report_msg(det_msg, module_info, io__state, io__state).
 :- mode det_report_msg(in, in, di, uo) is det.
@@ -1105,6 +1108,15 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	{ det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) },
 	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
 	io__set_exit_status(1).
+det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),
+		ModuleInfo) -->
+	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, Context),
+	prog_out__write_context(Context),	
+	io__write_string("  error: `:- pragma c_code(...)' for a procedure"),
+	io__nl,
+	prog_out__write_context(Context),	
+	io__write_string("  without a determinism declaration."),
+	io__nl.
 
 %-----------------------------------------------------------------------------%
 
