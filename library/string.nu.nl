@@ -25,6 +25,9 @@ string__to_float(String, Float) :-
 	Float is float(Num).
 
 string__float_to_string(Float, String) :-
+	sformat("~g", [Float], String).
+
+string__float_to_f_string(Float, String) :-
 	sformat("~f", [Float], String).
 
 %-----------------------------------------------------------------------------%
