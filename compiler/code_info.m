@@ -765,7 +765,8 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 	->
 		{ error("Cannot shuffle a reserved register.") }
 	;
-		{ Contents = vars(Vars) }
+		{ Contents = vars(Vars) },
+		code_info__variables_are_live(Vars)
 	->
 			% get a spare register
 		code_info__get_free_register(NewReg),
@@ -781,7 +782,7 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 		{ Code = [assign(reg(NewReg), lval(reg(Reg))) -
 				"Swap variable to a new register"] }
 	;
-		{ error("This can never happen") }
+		{ Code = [] }
 	).
 
 %---------------------------------------------------------------------------%
@@ -958,6 +959,26 @@ code_info__cons_id_to_abstag(_ConsId, AbsTag) -->
 code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
 	{ set__member(Var, Liveness) }.
+
+:- pred code_info__variables_are_live(set(var), code_info, code_info).
+:- mode code_info__variables_are_live(in, in, out) is semidet.
+
+code_info__variables_are_live(Vars) -->
+	{ set__to_sorted_list(Vars, VarList) },
+	code_info__variables_are_live_2(VarList).
+
+:- pred code_info__variables_are_live_2(list(var), code_info, code_info).
+:- mode code_info__variables_are_live_2(in, in, out) is semidet.
+
+code_info__variables_are_live_2([]) --> { fail }.
+code_info__variables_are_live_2([V|Vs]) -->
+	(
+		code_info__variable_is_live(V)
+	->
+		{ true }
+	;
+		code_info__variables_are_live_2(Vs)
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -1330,9 +1351,15 @@ code_info__add_lvalues_to_variable_2([Lval|Lvals], Var) -->
 
 code_info__remap_variable(Var, Lval) -->
 	code_info__get_variables(Variables0),
-	{ set__singleton_set(Lvals, Lval) },
-	{ map__set(Variables0, Var, evaluated(Lvals), Variables) },
-	code_info__set_variables(Variables).
+	(
+		{ map__search(Variables0, Var, evaluated(Lvals0)) }
+	->
+		{ set__to_sorted_list(Lvals0, Lvals1) },
+		code_info__reenter_lvals(Var, Lvals1)
+	;
+		{ true }
+	),
+	code_info__add_lvalue_to_variable(Lval, Var).
 
 :- pred code_info__remap_variables(set(var), lval, code_info, code_info).
 :- mode code_info__remap_variables(in, in, in, out) is det.
