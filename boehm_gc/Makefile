@@ -15,7 +15,7 @@ include ../Mmake.common
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
 
-CC= ../scripts/mgnuc --grade $(GRADE) --no-check
+CC= ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
 
 CXX=g++ -ansi
 # Needed only for "make c++", which adds the c++ interface
