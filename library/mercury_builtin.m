@@ -433,14 +433,10 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
-	const Word *f8;
-	const Word *f9;
 #endif
 } mercury_data___base_type_info_int_0 = {
 	((Integer) 0),
@@ -465,14 +461,10 @@ mercury_data___base_type_info_character_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
-	const Word *f8;
-	const Word *f9;
 #endif
 } mercury_data___base_type_info_character_0 = {
 	((Integer) 0),
@@ -496,14 +488,10 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
-	const Word *f8;
-	const Word *f9;
 #endif
 } mercury_data___base_type_info_string_0 = {
 	((Integer) 0),
@@ -527,14 +515,10 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
-	const Word *f8;
-	const Word *f9;
 #endif
 } mercury_data___base_type_info_float_0 = {
 	((Integer) 0),
@@ -556,24 +540,16 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
-	const Word *f8;
-	const Word *f9;
 #endif
 } mercury_data___base_type_info_void_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-#ifdef USE_TYPE_TO_TERM
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
-	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0))
-#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_void_0,
 	(const Word *) & mercury_data___base_type_functors_void_0,
