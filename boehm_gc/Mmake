@@ -22,7 +22,8 @@ libgc$(PROF).so: submake
 #	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) libgc$(PROF).a libgc$(PROF).$(SO)
+	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) libgc$(PROF).a \
+		libgc$(PROF).$(EXT_FOR_SHARED_LIB)
 
 .PHONY: force
 force:
@@ -44,10 +45,10 @@ install_headers: gc.h
 	cp `vpath_find gc.h` $(INSTALL_INC_DIR)
 
 .PHONY: install_lib
-install_lib: libgc$(PROF).a libgc$(PROF).$(SO)
+install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)
 	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
 		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
-	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(SO)` \
+	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_GC_LIB_DIR) \
 
 #-----------------------------------------------------------------------------#
