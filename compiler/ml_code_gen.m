@@ -2076,8 +2076,8 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _) -->
 	%		struct {
 	%			<user's local_vars decls>
 	%		} MR_locals;
-	%		bool MR_done = FALSE;
-	%		bool MR_succeeded = FALSE;
+	%		MR_Bool MR_done = FALSE;
+	%		MR_Bool MR_succeeded = FALSE;
 	%
 	%		#define FAIL		(MR_done = TRUE)
 	%		#define SUCCEED		(MR_succeeded = TRUE)
@@ -2191,8 +2191,8 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 			user_target_code(LocalVarsDecls, LocalVarsContext),
 			raw_target_code("\n"),
 			raw_target_code("\t} MR_locals;\n"),
-			raw_target_code("\tbool MR_succeeded = FALSE;\n"),
-			raw_target_code("\tbool MR_done = FALSE;\n"),
+			raw_target_code("\tMR_Bool MR_succeeded = FALSE;\n"),
+			raw_target_code("\tMR_Bool MR_done = FALSE;\n"),
 			raw_target_code("\n"),
 			raw_target_code(HashDefines),
 			raw_target_code("\n")],
@@ -2351,7 +2351,7 @@ ml_gen_ordinary_pragma_csharp_proc(_CodeModel, Attributes,
 	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
-	%		bool SUCCESS_INDICATOR;
+	%		MR_Bool SUCCESS_INDICATOR;
 	%
 	%		<assign input args>
 	%		<obtain global lock>
@@ -2446,7 +2446,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 			[raw_target_code("{\n")],
 			HashDefine,
 			ArgDeclsList,
-			[raw_target_code("\tbool SUCCESS_INDICATOR;\n"),
+			[raw_target_code("\tMR_Bool SUCCESS_INDICATOR;\n"),
 			raw_target_code("\n")],
 			AssignInputsList,
 			[raw_target_code(ObtainLock),
