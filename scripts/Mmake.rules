@@ -47,6 +47,10 @@ endif
 .PRECIOUS: $(date3s_subdir)%.date3
 .PRECIOUS: $(optdates_subdir)%.optdate
 .PRECIOUS: $(trans_opt_dates_subdir)%.trans_opt_date
+.PRECIOUS: $(c_dates_subdir)%.c_date
+.PRECIOUS: $(il_dates_subdir)%.il_date
+.PRECIOUS: $(s_dates_subdir)%.s_date
+.PRECIOUS: $(pic_s_dates_subdir)%.pic_s_date
 
 #-----------------------------------------------------------------------------#
 #
