@@ -4297,6 +4297,14 @@ does no loop checking, @samp{pragma loop_check} checks for loops
 and reports runtime errors, while @samp{pragma minimal_model}
 computes the ``minimal model'' semantics.
 
+@c XXX we should fix this bug...
+@cartouche
+@strong{Warning:}
+The current implementation of @samp{pragma minimal_model} is broken:
+the generated code sometimes produces incorrect results.  It should
+not be used.
+@end cartouche
+
 The syntax for each of these declarations is
 
 @example
@@ -4355,6 +4363,7 @@ This ensures that code which does not use tabling does not pay any
 runtime overheads from the more complicated execution mechanism
 required by (minimal model) tabling.
 
+@cartouche
 @strong{Please note:}
 the current implementation of tabling does not support all the
 possible compilation grades (see the "Compilation model options"
@@ -4363,6 +4372,11 @@ implementation.  In particular, if you enable the use of trailing,
 or if you select a garbage collection method other than the default
 (conservative), then any use of tabling will result in a
 ``Sorry, not implemented'' error at runtime.
+
+@c XXX we should fix this bug...
+@strong{Reminder}: the current implementation of
+@samp{pragma minimal_model} is broken.
+@end cartouche
 
 @node Termination analysis
 @subsection Termination analysis
