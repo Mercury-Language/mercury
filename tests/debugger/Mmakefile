@@ -39,7 +39,8 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
-	type_desc_test
+	type_desc_test			\
+	uci_index
 
 # We currently don't pass this test.
 #	deeply_nested_typeinfo
@@ -447,6 +448,9 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 
 uci.out: uci uci.inp
 	$(MDB) ./uci < uci.inp 2>&1 > uci.out 2>&1
+
+uci_index.out: uci_index uci_index.inp
+	$(MDB) ./uci_index < uci_index.inp 2>&1 > uci_index.out 2>&1
 
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.
 ifneq ($(origin WORKSPACE), undefined)

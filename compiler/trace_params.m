@@ -162,25 +162,51 @@ convert_trace_level("default", yes, no,  yes(deep)).
 convert_trace_level("default", _,   yes, yes(decl_rep)).
 
 eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
-	(
-		TraceLevel = shallow,
-		pred_info_import_status(PredInfo, Status),
-		status_is_exported(Status, no),
-		proc_info_is_address_taken(ProcInfo, address_is_not_taken),
+	( TraceLevel = none ->
+		EffTraceLevel = none
+	;
 		pred_info_get_maybe_special_pred(PredInfo, MaybeSpecialPred),
+		(
+			MaybeSpecialPred = yes(SpecialPred - _),
 			% Unify and compare predicates can be called from
 			% the generic unify and compare predicates in
 			% builtin.m, so they can be called from outside this
 			% module even if they don't have their address taken.
-		(
-			MaybeSpecialPred = no
+			%
+			% Index predicates can never be called from anywhere
+			% except the compare predicate.
+			%
+			% Initialise predicates invoke user-provided code.
+			% Whether that code has debugging enabled or not,
+			% there is no point in generating events in the
+			% initialise predicate itself.
+			(
+				SpecialPred = unify,
+				EffTraceLevel = shallow
+			;
+				SpecialPred = compare,
+				EffTraceLevel = shallow
+			;
+				SpecialPred = index,
+				EffTraceLevel = none
+			;
+				SpecialPred = initialise,
+				EffTraceLevel = TraceLevel
+			)
 		;
-			MaybeSpecialPred = yes(index - _)
+			MaybeSpecialPred = no,
+			pred_info_import_status(PredInfo, Status),
+			(
+				TraceLevel = shallow,
+				status_is_exported(Status, no),
+				proc_info_is_address_taken(ProcInfo,
+					address_is_not_taken)
+			->
+				EffTraceLevel = none
+			;
+				EffTraceLevel = TraceLevel
+			)
 		)
-	->
-		EffTraceLevel = none
-	;
-		EffTraceLevel = TraceLevel
 	).
 
 given_trace_level_is_none(TraceLevel) =

@@ -27,6 +27,14 @@ MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
 # is fixed to fix the event numbers in the input script; this is needed
 # because one cannot (yet) put breakpoints on unify, compare and index preds.
 MCFLAGS-uci = -O2 --compare-specialization 2
+# uci_index is a regression test. We used to get a garbage value for the call
+# sequence number of the index predicate, which shouldn't have had debugging
+# enabled in the first place. The --compare-specialization option was required 
+# to get the compiler to create the index predicate in the first place, and
+# intermodule optimization was required to export the type, and thus its unify,
+# compare and index predicates. The bug occurred only in asm_fast.gc, not
+# asm_fast.gc.debug.tr.
+MCFLAGS-uci_index = --compare-specialization 2 --intermodule-optimization
 
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.
