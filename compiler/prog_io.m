@@ -73,7 +73,6 @@
 				%      VarNames, PredName, ArgTypes, Cond
 			; 	mode(varset, sym_name, list(mode), condition)
 				%      VarNames, PredName, ArgModes, Cond
-			;	unimplemented	% XXX
 			; 	error.
 
 :- type type_and_mode	--->	type_only(type)
@@ -274,7 +273,8 @@ prog_io__read_program(FileName, Result) -->
 		  string__append(Progname, ": can't open file '", Message1),
 		  string__append(Message1, FileName, Message2),
 		  string__append(Message2, "'.\n", Message),
-		  Term = term_functor(term_atom("<end of file>"), [])
+		  Term = term_functor(term_atom("<end of file>"), []),
+		  Result = error([Message - Term])
 		}
 	).
 
@@ -327,22 +327,22 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
             ModuleName1 \= ModuleName2
             )
         then
-            ThisError = error(
-"`:- end_module' declaration doesn't match `:- module' declaration",
-			term_functor(term_atom("<end of file>"), []) ),
+            ThisError = 
+"`:- end_module' declaration doesn't match `:- module' declaration" -
+			term_functor(term_atom("<end of file>"), []),
             append([ThisError], Messages0, Messages),
-            Program = error(Messages)
+            Result = error(Messages)
         else
             (if Error = yes then
-                Program = error(Messages0)
+                Result = error(Messages0)
             else
-                Program = ok(Messages0, module(ModuleName1,Items1))
+                Result = ok(Messages0, module(ModuleName1,Items1))
             )
         )
     else
-        ThisError = error("module should start with a ':- module' declaration",
-            		   term_functor(term_atom("<start of file>"), []) ),
-        Program = error([ThisError | Messages])
+        ThisError = "module should start with a ':- module' declaration" -
+            		   term_functor(term_atom("<start of file>"), []),
+        Result = error([ThisError | Messages0])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -375,8 +375,8 @@ read_program_4(eof, Msgs, Items, Error, Msgs, Items, Error) --> [].
 
 read_program_4(error(ErrorMsg), Msgs0, Items, _, Msgs, Items, yes) -->
 	{
-	  Error = error(Msg, term_functor(term_atom(""), [])),
-	  Msgs = [Error | Msgs]
+	  Error = error(ErrorMsg, term_functor(term_atom(""), [])),
+	  Msgs = [Error | Msgs0]
 	}.
 
 read_program_4(term(VarSet, Term), Msgs0, Items0,
@@ -387,7 +387,7 @@ read_program_4(term(VarSet, Term), Msgs0, Items0,
 				  Msgs1, Items1, Error1)
 	},
 	io__read_term(MaybeTerm),
- 	read_program_4(MaybeTerm, Messages1, Items1, Error1,
+ 	read_program_4(MaybeTerm, Msgs1, Items1, Error1,
 			Msgs, Items, Error).
 
 :- pred process_item(maybe(item),  message_list, program, yes_or_no,
@@ -395,7 +395,7 @@ read_program_4(term(VarSet, Term), Msgs0, Items0,
 :- mode process_item(input, input, input, input,
 			output, output, output).
 process_item(ok(Item), Msgs, Items0, Error, Msgs, [Item|Items0], Error).
-process_item(error(M,T), Msgs0, Items, _, Msgs, Items0, yes) :-
+process_item(error(M,T), Msgs0, Items, _, Msgs, Items, yes) :-
 	add_error(M, T, Msgs0, Msgs).
 
 :- pred parse_item(varset, term, maybe(item)).
@@ -417,9 +417,8 @@ parse_item(VarSet, Term, Result) :-
 			Body = term_functor(term_atom("true"), [])
 		),
 		parse_goal(Body, Body2),
-		parse_qualified_term(Head, "clause head", Result),
-		process_clause(Result, VarSet, Body2, Msgs0, Error0,
-				Item, Msgs1, Error)
+		parse_qualified_term(Head, "clause head", R),
+		process_clause(R, VarSet, Body2, Result)
 	).
 
 :- pred process_clause(maybe_functor, varset, term, maybe(item)).
@@ -603,10 +602,23 @@ process_decl(VarSet, "interface", [], ok(module_defn(VarSet, interface))).
 process_decl(VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
 
-	% XXX
+process_decl(VarSet, "module", [ModuleName], Result) :-
+	(if some [Module]
+		ModuleName = term_functor(term_atom(Module), [])
+	then
+		Result = ok(module_defn(VarSet, module(Module)))
+	else
+		Result = error("module name expected", ModuleName)
+	).
 
-process_decl(VarSet, "module", [_ModuleName], ok(unimplemented)).
-process_decl(VarSet, "end_module", [_ModuleName], ok(unimplemented)).
+process_decl(VarSet, "end_module", [ModuleName], Result) :-
+	(if some [Module]
+		ModuleName = term_functor(term_atom(Module), [])
+	then
+		Result = ok(module_defn(VarSet, end_module(Module)))
+	else
+		Result = error("module name expected", ModuleName)
+	).
 
 :- pred parse_type_decl(varset, term, maybe(item)).
 :- mode parse_type_decl(input, input, output).
@@ -624,9 +636,9 @@ parse_type_decl(VarSet, TypeDecl, Result) :-
 parse_type_decl_2(error(Error, Term), _, _, error(Error, Term)).
 parse_type_decl_2(ok(TypeDefn), VarSet, Cond,
 					ok(type_defn(VarSet, TypeDefn, Cond))).
-		% XXX we should check the condition for errs
-		%    (don't bother at the moment, since we ignore
-		%     conditions anyhow :-)
+		% we should check the condition for errs
+		% (don't bother at the moment, since we ignore
+		% conditions anyhow :-)
 
 %-----------------------------------------------------------------------------%
 
@@ -979,9 +991,9 @@ parse_inst_decl(VarSet, InstDefn, Result) :-
 		Result = error("`=' expected in `:- inst' definition", InstDefn)
 	).
 
-		% XXX we should check the condition for errs
-		%    (don't bother at the moment, since we ignore
-		%     conditions anyhow :-)
+		% we should check the condition for errs
+		% (don't bother at the moment, since we ignore
+		% conditions anyhow :-)
 
 :- pred convert_inst_defn(term, term, maybe(inst_defn)).
 :- mode convert_inst_defn(input, input, output).
@@ -1139,7 +1151,8 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 		then
 			Result = ok(mode_defn(Name, Args, ConvertedBody))
 		else
-			% XXX catch-all error message
+			% catch-all error message - we should do
+			% better than this
 			Result = error("syntax error in mode definition body",
 					Body)
 		)
@@ -1184,7 +1197,7 @@ convert_mode(Term, Mode) :-
 		Mode = (ConvertedInstA -> ConvertedInstB)
 	else
 		parse_qualified_term(Term, "mode definition", R),
-		R = ok(Name, Args),	% XXX should improve error reporting
+		R = ok(Name, Args),	% should improve error reporting
 		convert_inst_list(Args, ConvertedArgs),
 		Mode = user_defined_mode(Name, ConvertedArgs)
 	).
