@@ -23,8 +23,6 @@ procinfo: the structure in HLDS which contains
 predinfo: the structure in HLDS which contains information about
 	a predicate.
 
-globalinfo: a structure used by codegen.nl
-
 codeinfo: a structure used by codegen.nl
 
 switch: a disjunction which does a case analysis on the toplevel

@@ -2,7 +2,7 @@ This file contains various notes about the design of the compiler.
 The overall structure for the compiler is as follows:
 
 1. lexical analysis & stage 1 parsing - convert strings to terms
-   (io__read_term, in term_io.nl).
+   (lexer.nl, parser.nl).
 
 2. stage 2 parsing - convert terms to declarations, clauses, etc.
    result of this stage has a one-to-one correspondence with
@@ -18,7 +18,7 @@ The overall structure for the compiler is as follows:
    fully qualify all names
    (typecheck.nl)
 
-5. mode analysis (also computes liveness information) (modes.nl),
+5. mode analysis (modes.nl),
    switch detection (switch_detection.nl),
    determinism analysis (det_analysis.nl)
 
@@ -30,12 +30,9 @@ The overall structure for the compiler is as follows:
 		(followvars.nl)
 	code generation (codegen.nl).
 
-7. peephole optimization (not yet implemented).
+7. peephole optimization (peephole.nl).
 
 8. output final code (llds.nl).
-
-Middle recursion optimization: should be done in the code generator
-by recognizing the pattern of the hlds?  Ditto tail recursion.
 
 Structure reuse optimization : we should have a pass after mode
 analysis (or at the same time?) which annotates the hlds with reuse
