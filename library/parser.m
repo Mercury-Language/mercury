@@ -194,18 +194,31 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		{ ops__lookup_binary_prefix_op(OpTable, Op,
 				BinOpPriority, RightAssoc, RightRightAssoc) },
 		{ BinOpPriority =< MaxPriority },
+		parser__peek_token(NextToken),
+		{ parser__could_start_term(NextToken, yes) }
+	->
 		{ parser__adjust_priority(RightAssoc, BinOpPriority,
 							RightPriority) },
 		{ parser__adjust_priority(RightRightAssoc, BinOpPriority,
 							RightRightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, ok(RightTerm)),
-		parser__parse_term_2(RightRightPriority, IsArg,
-						ok(RightRightTerm))
-	->
-		parser__get_term_context(Context, TermContext),
 		{ OpPriority = BinOpPriority },
-		{ Term = ok(term__functor(term__atom(Op),
-			[RightTerm, RightRightTerm], TermContext)) }
+		parser__parse_term_2(RightPriority, IsArg, RightResult),
+		( { RightResult = ok(RightTerm) } ->
+			parser__parse_term_2(RightRightPriority, IsArg,
+						RightRightResult),
+			( { RightRightResult = ok(RightRightTerm) } ->
+				parser__get_term_context(Context, TermContext),
+				{ Term = ok(term__functor(term__atom(Op),
+					[RightTerm, RightRightTerm],
+					TermContext)) }
+			;
+				% propagate error upwards
+				{ Term = RightRightResult }
+			)
+		;
+			% propagate error upwards
+			{ Term = RightResult }
+		)
 	;
 		% prefix op
 		parser__get_token(name(Op), Context),
@@ -214,27 +227,38 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 		{ ops__lookup_prefix_op(OpTable, Op, UnOpPriority,
 						RightAssoc) },
 		{ UnOpPriority =< MaxPriority },
+		parser__peek_token(NextToken),
+		{ parser__could_start_term(NextToken, yes) }
+	->
 		{ parser__adjust_priority(RightAssoc, UnOpPriority,
 						RightPriority) },
-		parser__parse_term_2(RightPriority, IsArg, ok(RightTerm))
-	->
-		parser__get_term_context(Context, TermContext),
+		parser__parse_term_2(RightPriority, IsArg, RightResult),
 		{ OpPriority = UnOpPriority },
-		{
-			Op = "-",
-			RightTerm = term__functor(term__integer(X), [], _)
-		->
-			NegX is 0 - X,
-			Term = ok(term__functor(term__integer(NegX), [],
-						TermContext))
-		; Op = "-", RightTerm = term__functor(term__float(F), [], _) ->
-			builtin_float_minus(0.0, F, NegF),
-			Term = ok(term__functor(term__float(NegF), [],
-				TermContext))
+		( { RightResult = ok(RightTerm) } ->
+			parser__get_term_context(Context, TermContext),
+			{
+				Op = "-",
+				RightTerm = term__functor(term__integer(X), [],
+						_)
+			->
+				NegX is 0 - X,
+				Term = ok(term__functor(term__integer(NegX), [],
+							TermContext))
+			;
+				Op = "-",
+				RightTerm = term__functor(term__float(F), [], _)
+			->
+				builtin_float_minus(0.0, F, NegF),
+				Term = ok(term__functor(term__float(NegF), [],
+					TermContext))
+			;
+				Term = ok(term__functor(term__atom(Op),
+					[RightTerm], TermContext))
+			}
 		;
-			Term = ok(term__functor(term__atom(Op), [RightTerm],
-						TermContext))
-		}
+			% propagate error upwards
+			{ Term = RightResult }
+		)
 	;
 		parser__parse_simple_term(MaxPriority, Term),
 		{ OpPriority = 0 }
@@ -548,6 +572,31 @@ parser__error(Message, error(Message, Tokens), ParserState, ParserState) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred parser__could_start_term(token, bool).
+:- mode parser__could_start_term(in, out) is det.
+
+parser__could_start_term(name(_), yes).
+parser__could_start_term(variable(_), yes).
+parser__could_start_term(integer(_), yes).
+parser__could_start_term(float(_), yes).
+parser__could_start_term(string(_), yes).
+parser__could_start_term(open, yes).
+parser__could_start_term(open_ct, yes).
+parser__could_start_term(close, no).
+parser__could_start_term(open_list, yes).
+parser__could_start_term(close_list, no).
+parser__could_start_term(open_curly, yes).
+parser__could_start_term(close_curly, no).
+parser__could_start_term(ht_sep, no).
+parser__could_start_term(comma, no).
+parser__could_start_term(end, no).
+parser__could_start_term(junk(_), no).
+parser__could_start_term(error(_), no).
+parser__could_start_term(io_error(_), no).
+parser__could_start_term(eof, no).
+
+%-----------------------------------------------------------------------------%
+
 :- pred parser__init_state(token_list, parser__state, io__state, io__state).
 :- mode parser__init_state(in, out, di, uo) is det.
 
@@ -587,8 +636,6 @@ parser__get_token(Token, Context,
 parser__unget_token(Token, Context, ParseState0, ParseState) :-
 	parser__get_token(Token, Context, ParseState, ParseState0).
 
-/**** This is not used
-
 :- pred parser__peek_token(token, parser__state, parser__state).
 :- mode parser__peek_token(out, in, out) is semidet.
 
@@ -601,8 +648,6 @@ parser__peek_token(Token) -->
 parser__peek_token(Token, Context) -->
 	=(parser__state(_, _, _, Tokens)),
 	{ Tokens = [Token - Context | _] }.
-
-****/
 
 %-----------------------------------------------------------------------------%
 
