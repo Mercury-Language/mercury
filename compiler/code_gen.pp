@@ -1078,9 +1078,9 @@ code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 		bintree_set__insert(L0, stackvar(N), L1),
 		I = livevals(L1)
         ;
-		I0 = call(T,R, LV0)
+		I0 = call(T, R, C, LV0)
 	->
-		I = call(T,R, [live_lvalue(stackvar(N), -1)|LV0])
+		I = call(T, R, C, [live_lvalue(stackvar(N), -1)|LV0])
 	;
 		I = I0
 	),
