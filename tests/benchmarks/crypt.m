@@ -22,7 +22,7 @@
 :- import_module list, int, io, printlist.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is multidet.
+:- mode main(di, uo) is cc_multi.
 
 :- pred main1(list(int)).
 :- mode main1(out) is nondet.

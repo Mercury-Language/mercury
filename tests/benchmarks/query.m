@@ -17,7 +17,7 @@
 :- mode main1(out) is nondet.
 
 :- pred main(io__state, io__state).
-:- mode main(di, uo) is multidet.
+:- mode main(di, uo) is cc_multi.
 
 :- implementation.
 

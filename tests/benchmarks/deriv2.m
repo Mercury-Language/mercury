@@ -28,26 +28,24 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
-main --> ( main6(_, _, _, _) -> [] ; [] ).
-
-:- pred main6(expr, expr, expr, expr, io__state, io__state).
-:- mode main6(out, out, out, out, di, uo) is semidet.
-
 :- pred main4(expr, expr, expr, expr).
 :- mode main4(out, out, out, out) is semidet.
 
 :- implementation.
 
-main6(E1, E2, E3, E4) -->
-	{ main4(E1, E2, E3, E4) },
-	print_expr(E1),
-	io__write_string("\n\n"),
-	print_expr(E2),
-	io__write_string("\n\n"),
-	print_expr(E3),
-	io__write_string("\n\n"),
-	print_expr(E4),
-	io__write_string("\n").
+main -->
+	( { main4(E1, E2, E3, E4) } ->
+		print_expr(E1),
+		io__write_string("\n\n"),
+		print_expr(E2),
+		io__write_string("\n\n"),
+		print_expr(E3),
+		io__write_string("\n\n"),
+		print_expr(E4),
+		io__write_string("\n")
+	;
+		[]
+	).
 
 :- pred times10(expr).
 :- mode times10(out) is semidet.
