@@ -24,8 +24,10 @@
 
 #include "mercury_types.h"	/* for Word */
 #include "mercury_std.h"	/* for bool */
-#include "gc.h"			/* for GC_FREE */
-
+#include "mercury_conf.h"	/* for CONSERVATIVE_GC, etc. */
+#ifdef CONSERVATIVE_GC
+  #include "gc.h"		/* for GC_FREE */
+#endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
 extern	MemoryZone	*dumpstack_zone;
