@@ -424,3 +424,42 @@ is(X, X).
 	Bits = sizeof(Integer) * CHAR_BIT;
 ").
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func int__plus(int, int) = int.
+
+:- func int__times(int, int) = int.
+
+:- func int__minus(int, int) = int.
+
+:- func int__max_int = int.
+
+:- func int__min_int = int.
+
+:- func int__bits_per_int = int.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+int__plus(X, Y) = X + Y.
+
+int__times(X, Y) = X * Y.
+
+int__minus(X, Y) = X - Y.
+
+int__max_int = X :-
+	int__max_int(X).
+
+int__min_int = X :-
+	int__min_int(X).
+
+int__bits_per_int = X :-
+	int__bits_per_int(X).
+

@@ -1133,3 +1133,173 @@ list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
 
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func list__det_head(list(T)) = T.
+
+:- func list__det_tail(list(T)) = list(T).
+
+:- func list__append(list(T), list(T)) = list(T).
+
+:- func list__merge(list(T), list(T)) = list(T).
+
+:- func list__merge_and_remove_dups(list(T), list(T)) = list(T).
+
+:- func list__remove_adjacent_dups(list(T)) = list(T).
+
+:- func list__remove_dups(list(T)) = list(T).
+
+:- func list__length(list(T)) = int.
+
+:- func list__take_upto(int, list(T)) = list(T).
+
+:- func list__delete_all(list(T), T) = list(T).
+
+:- func list__delete_elems(list(T), list(T)) = list(T).
+
+:- func list__replace_all(list(T), T, T) = list(T).
+
+:- func list__replace_nth_det(list(T), int, T) = list(T).
+
+:- func list__sort_and_remove_dups(list(T)) = list(T).
+
+:- func list__sort(list(T)) = list(T).
+
+:- func list__reverse(list(T)) = list(T).
+
+:- func list__index0_det(list(T), int) = T.
+
+:- func list__index1_det(list(T), int) = T.
+
+:- func list__zip(list(T), list(T)) = list(T).
+
+:- func list__duplicate(int, T) = list(T).
+
+:- func list__condense(list(list(T))) = list(T).
+
+:- func list__chunk(list(T), int) = list(list(T)).
+
+:- func list__map(func(X) = Y, list(X)) = list(Y).
+
+:- func list__foldl(func(X, Y) = Y, list(X), Y) = Y.
+
+:- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
+
+:- func list__filter(pred(X), list(X)) = list(X).
+:- mode list__filter(pred(in) is semidet, in) = out is det.
+
+:- func list__filter_map(func(X) = Y, list(X)) = list(Y).
+:- mode list__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func list__sort(func(X, X) = comparison_result, list(X)) = list(X).
+
+:- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
+
+:- func list__merge_and_remove_dups(func(X, X) = comparison_result, list(X), list(X)) = list(X).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+list__det_head([]) = _ :- error("list__det_head/1: empty list as argument").
+list__det_head([X | _]) = X.
+
+list__det_tail([]) = _ :- error("list__det_tail/1: empty list as argument").
+list__det_tail([_ | Xs]) = Xs.
+
+list__append(Xs, Ys) = Zs :-
+	list__append(Xs, Ys, Zs).
+
+list__merge(Xs, Ys) = Zs :-
+	list__merge(Xs, Ys, Zs).
+
+list__merge_and_remove_dups(Xs, Ys) = Zs :-
+	list__merge_and_remove_dups(Xs, Ys, Zs).
+
+list__remove_adjacent_dups(Xs) = Ys :-
+	list__remove_adjacent_dups(Xs, Ys).
+
+list__remove_dups(Xs) = Ys :-
+	list__remove_dups(Xs, Ys).
+
+list__length(Xs) = N :-
+	list__length(Xs, N).
+
+list__take_upto(N, Xs) = Ys :-
+	list__take_upto(N, Xs, Ys).
+
+list__delete_all(Xs, A) = Ys :-
+	list__delete_all(Xs, A, Ys).
+
+list__delete_elems(Xs, Ys) = Zs :-
+	list__delete_elems(Xs, Ys, Zs).
+
+list__replace_all(Xs, A, B) = Ys :-
+	list__replace_all(Xs, A, B, Ys).
+
+list__replace_nth_det(Xs, N, A) = Ys :-
+	list__replace_nth_det(Xs, N, A, Ys).
+
+list__sort_and_remove_dups(Xs) = Ys :-
+	list__sort_and_remove_dups(Xs, Ys).
+
+list__sort(Xs) = Ys :-
+	list__sort(Xs, Ys).
+
+list__reverse(Xs) = Ys :-
+	list__reverse(Xs, Ys).
+
+list__index0_det(Xs, N) = A :-
+	list__index0_det(Xs, N, A).
+
+list__index1_det(Xs, N) = A :-
+	list__index1_det(Xs, N, A).
+
+list__zip(Xs, Ys) = Zs :-
+	list__zip(Xs, Ys, Zs).
+
+list__duplicate(N, A) = Xs :-
+	list__duplicate(N, A, Xs).
+
+list__condense(Xss) = Ys :-
+	list__condense(Xss, Ys).
+
+list__chunk(Xs, N) = Ys :-
+	list__chunk(Xs, N, Ys).
+
+list__map(F, Xs) = Ys :-
+	P = ( pred(X::in, Y::out) is det :- Y = F(X) ),
+	list__map(P, Xs, Ys).
+
+list__foldl(F, Xs, A) = B :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	list__foldl(P, Xs, A, B).
+
+list__foldr(F, Xs, A) = B :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	list__foldr(P, Xs, A, B).
+
+list__filter(P, Xs) = Ys :-
+	list__filter(P, Xs, Ys).
+
+list__filter_map(F, Xs) = Ys :-
+	P = ( pred(X::in, Y::out) is semidet :- Y = F(X) ),
+	list__filter_map(P, Xs, Ys).
+
+list__sort(F, Xs) = Ys :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	list__sort(P, Xs, Ys).
+
+list__merge(F, Xs, Ys) = Zs :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	list__merge(P, Xs, Ys, Zs).
+
+list__merge_and_remove_dups(F, Xs, Ys) = Zs :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	list__merge_and_remove_dups(P, Xs, Ys, Zs).
+

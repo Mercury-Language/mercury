@@ -11,6 +11,9 @@
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
 
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2771,3 +2774,50 @@ get_type_info_for_type_info(TypeInfo) :-
 % 	cc_multi.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func pair(T1, T2) = pair(T1, T2).
+
+:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
+:- mode maybe_func(func(in) = out is semidet, in) = out is det.
+
+	% General purpose higher-order programming constructs.
+
+	% compose(F, G, X) = F(G(X))
+	%
+	% Function composition.
+	% XXX It would be nice to have infix `o' or somesuch for this.
+:- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
+
+	% converse(F, X, Y) = F(Y, X)
+:- func converse(func(T1, T2) = T3, T2, T1) = T3.
+
+	% pow(F, N, X) = F^N(X)
+	%
+	% Function exponentiation.
+:- func pow(func(T) = T, int, T) = T.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+pair(X, Y) =
+	X-Y.
+
+maybe_func(PF, X) =
+	( if Y = PF(X) then yes(Y) else no ).
+
+compose(F, G, X) =
+	F(G(X)).
+
+converse(F, X, Y) =
+	F(Y, X).
+
+pow(F, N, X) =
+	( if N = 0 then X else pow(F, N - 1, F(X)) ).
+

@@ -431,5 +431,48 @@ char__min_char_value(0).
                [will_not_call_mercury, thread_safe], "
 	Max = UCHAR_MAX;
 ").
-	
+
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+%       Functional forms added.
+
+:- interface.
+
+:- func char__to_int(char) = int.
+
+:- func char__max_char_value = int.
+
+:- func char__min_char_value = int.
+
+:- func char__to_upper(char) = char.
+
+:- func char__to_lower(char) = char.
+
+:- func char__det_int_to_digit(int) = char.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+char__to_int(C) = N :-
+	char__to_int(C, N).
+
+char__max_char_value = N :-
+	char__max_char_value(N).
+
+char__min_char_value = N :-
+	char__min_char_value(N).
+
+char__to_upper(C1) = C2 :-
+	char__to_upper(C1, C2).
+
+char__to_lower(C1) = C2 :-
+	char__to_lower(C1, C2).
+
+char__det_int_to_digit(N) = C :-
+	char__det_int_to_digit(N, C).
+
+
+

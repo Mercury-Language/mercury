@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -77,3 +77,34 @@ dir__dirname(FileName, DirName) :-
 	dir__split_name(FileName, DirName, _).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+%       Functional forms added.
+
+:- interface.
+
+:- func dir__directory_separator = character.
+
+:- func dir__this_directory = string.
+
+:- func dir__basename(string) = string.
+
+:- func dir__dirname(string) = string.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+dir__directory_separator = C :-
+	dir__directory_separator(C).
+
+dir__this_directory = S :-
+	dir__this_directory(S).
+
+dir__basename(S1) = S2 :-
+	dir__basename(S1, S2).
+
+dir__dirname(S1) = S2 :-
+	dir__dirname(S1, S2).
+
