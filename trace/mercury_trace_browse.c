@@ -160,6 +160,8 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 	);
 }
 
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+
 void
 MR_trace_query_external(MR_Query_Type type, String options, int num_imports,
 	Word imports_list)
@@ -170,3 +172,5 @@ MR_trace_query_external(MR_Query_Type type, String options, int num_imports,
 			(Word) &MR_debugger_socket_out);
 	);
 }
+
+#endif
