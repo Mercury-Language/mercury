@@ -41,14 +41,14 @@
 					condition,	% formal specification
 							% (not used)
 
-					% XXX clause_info_list
+					clause_list
 
 					proc_table
 				).
 
-:- type clause_info_list =	list(clause_info).
+:- type clause_list	=	list(clause).
 
-:- type clause_info	--->	clause(
+:- type clause		--->	clause(
 					list(mode_id),	% modes for which
 							% this clause applies
 					varset,		% variable names
@@ -95,7 +95,7 @@
 				% name, arity
 
 :- export_type type_table.
-:- type type_table	=	map(type_id, type_defn).
+:- type type_table	=	map(type_id, hlds__type_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -105,7 +105,7 @@
 				% name, arity
 
 :- export_type mode_table.
-:- type mode_table	=	map(mode_id, mode).
+:- type mode_table	=	map(mode_id, hlds__mode_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -115,7 +115,7 @@
 				% name, arity.
 
 :- export_type inst_table.
-:- type inst_table	=	map(inst_id, inst_body).
+:- type inst_table	=	map(inst_id, hlds__inst_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -235,8 +235,8 @@
 :- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
 					inst, condition).
 
-:- type hlds__mode_defn --->	hlds__inst_defn(varset, list(inst_param),
-					inst, condition).
+:- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
+					mode, condition).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -392,11 +392,11 @@ predicate_name(pred(_Module,Name,_Arity), Name).
 predicate_arity(pred(_Module,_Name,Arity), Arity).
 
 predinfo_modes(PredInfo, Modes) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Procs),
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs),
 	map__keys(Procs, Modes).
 
 predinfo_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, Procs).
+	PredInfo = predicate(_TypeVars, _ArgTypes, _Cond, _Clauses, Procs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -456,27 +456,150 @@ goalinfo_liveness(GoalInfo, Liveness) :-
 :- mode mode_is_output(input, input).
 
 :- pred pred_mode_id_to_int(pred_mode_id, int).
+:- mode pred_mode_id_to_int(input, output).
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-	% XXX this implementation is wrong and needs to be fixed.
+	% A mode is considered an input mode if the top-level
+	% node is input.
 
-mode_is_input(ModuleInfo, ModeID) :-
-	moduleinfo_modes(ModuleInfo, Modes),
-	moduleinfo_insts(ModuleInfo, Insts),
-	map__search(Modes, ModeID, Mode),
-	Mode = Inst1 - _Inst2,
-	map__search(Insts, Inst1, ground).
+mode_is_input(ModuleInfo, Mode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
+	inst_is_bound(InitialInst).
 
-mode_is_output(ModuleInfo, ModeID) :-
-	moduleinfo_modes(ModuleInfo, Modes),
-	moduleinfo_insts(ModuleInfo, Insts),
-	map__search(Modes, ModeID, Mode),
-	Mode = Inst1 - Inst2,
-	map__search(Insts, Inst1, free),
-	map__search(Insts, Inst2, ground).
+	% A mode is considered an output mode if the top-level
+	% node is output.
+
+mode_is_output(ModuleInfo, Mode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	inst_is_free(ModuleInfo, InitialInst),
+	inst_is_bound(ModuleInfo, FinalInst).
+
+	% inst_is_free succeeds iff the inst passed is `free'
+	% or is a user-defined inst which is defined as `free'.
+
+:- pred inst_is_free(module_info, inst).
+:- mode inst_is_free(input, input).
+
+inst_is_free(_, free).
+inst_is_free(_, inst_var(_)) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
+	inst_lookup(ModuleInfo, Name, Args, Inst),
+	inst_is_free(ModuleInfo, Inst).
+
+	% inst_is_bound succeeds iff the inst passed is not `free'
+	% or is a user-defined inst which is not defined as `free'.
+
+:- pred inst_is_bound(module_info, inst).
+:- mode inst_is_bound(input, input).
+
+inst_is_bound(_, ground).
+inst_is_bound(_, bound(_)).
+inst_is_bound(_, inst_var(_)) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
+	inst_lookup(ModuleInfo, Name, Args, Inst),
+	inst_is_bound(ModuleInfo, Inst).
+
+:- pred inst_lookup(module_info, string, list(inst), inst).
+:- mode inst_lookup(input, input, input, output).
+
+inst_lookup(ModuleInfo, Name, Args, Inst) :-
+	length(Args, Arity),
+	module_modes(ModuleInfo, Modes),
+	map__search(Modes, Name - Arity, ModeDefn),
+	ModeDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond),
+	inst_substitute_args(Inst0, Args, Params, Inst).
+
+	% mode_get_insts returns the initial instantiatedness and
+	% the final instantiatedness for a given mode.
+
+:- pred mode_get_insts(module_info, mode, inst, inst).
+:- mode mode_get_insts(input, input, output, output).
+
+mode_get_insts(ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
+mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
+	length(Args, Arity),
+	module_modes(ModuleInfo, Modes),
+	map__search(Modes, Name - Arity, HLDS_Mode),
+	HLDS_Mode = hlds__mode_defn(_VarSet, Params, Mode0, _Cond),
+	mode_substitute_args(Args, Params, Mode0, Mode),
+	mode_get_insts(ModuleInfo, Mode, Initial, Final).
+
+	% mode_substute_args(Args, Params, Mode0, Mode) is true
+	% iff Mode is the mode that results from substituting all
+	% occurrences of Params in Mode0 with the corresponding
+	% value in Args.
+
+:- pred mode_substitute_args(list(inst), list(inst_param), mode, mode).
+:- mode mode_substitute_args(input, input, input, output).
+
+mode_substitute_args([], [], Mode, Mode).
+mode_substitute_args([Arg|Args], [Param|Params], Mode0, Mode) :-
+	mode_substitute_arg(Mode0, Arg, Param, Mode1),
+	mode_substitute_args(Args, Params, Mode1, Mode).
+
+	% mode_substitute_arg(Mode0, Arg, Param, Mode) is true
+	% iff Mode is the mode that results from substituting all
+	% occurrences of Param in Mode0 with Arg.
+
+:- pred mode_substitute_arg(mode, inst_param, mode, mode).
+:- mode mode_substitute_arg(input, input, input, output).
+
+mode_substitute_arg(I0 -> F0, Arg, Param, I -> F) :-
+	inst_substitute_arg(I0, Arg, Param, I),
+	inst_substitute_arg(I, Arg, Param, F).
+mode_substitute_arg(user_defined_mode(Name, Args0), Arg, Param,
+		    user_defined_mode(Name, Args)) :-
+	inst_substitute_args(Args0, Arg, Param, Args).
+
+	% inst_substitute_args(Inst0, Args, Params, Inst) is true
+	% iff Inst is the inst that results from substituting all
+	% occurrences of Param in Inst0 with Arg.
+
+:- pred inst_substitute_args(list(inst), inst_param, mode, list(inst)).
+:- mode inst_substitute_args(input, input, input, output).
+
+inst_substitute_args([], _, _, []).
+inst_substitute_args([A0|As0], Arg, Param, [A|As]) :-
+	inst_substitute_arg(A0, Arg, Param, A),
+	inst_substitute_args(As0, Arg, Param, As).
+
+	% inst_substitute_arg(Inst0, Arg, Param, Inst) is true
+	% iff Inst is the inst that results from substituting all
+	% occurrences of Param in Inst0 with Arg.
+
+:- pred inst_substitute_arg(inst, inst_param, mode, inst).
+:- mode inst_substitute_arg(input, input, input, output).
+
+inst_substitute_arg(free, _, _, free).
+inst_substitute_arg(ground, _, _, ground).
+inst_substitute_arg(bound(Alts0), Arg, Param, bound(Alts)) :-
+	inst_substitute_alts(Alts0, Arg, Param, Alts).
+inst_substitute_arg(inst_var(Var), Arg, Param, Result) :-
+	Param = term_variable(ParamVar),	% XXX params should be vars?
+	(if Var = ParamVar then
+		Result = Arg
+	else
+		Result = inst_var(Var)
+	).
+inst_substitute_arg(user_defined_inst(Name, Args0), Arg, Param,
+		    user_defined_inst(Name, Args)) :-
+	inst_substitute_args(Args0, Arg, Param, Args).
+
+:- pred inst_substitute_alts(list(bound_inst), inst, inst_param,
+				list(bound_inst).
+:- mode inst_substitute_alts(input, input, input, output).
+
+inst_substitute_alts([], _, _, []).
+inst_substitute_alts([Alt0|Alts0], Arg, Param, [Alt|Alts]) :-
+	Alt0 = functor(Name, Args0),
+	inst_substitute_args(Args0, Arg, Param, Args),
+	Alt = functor(Name, Args),
+	inst_substitute_alts(Alts0, Arg, Param, Alts).
 
 	% In case we later decided to change the representation
 	% of mode_ids.
