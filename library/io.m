@@ -1541,7 +1541,7 @@ io__check_err(Stream, Res) -->
 		/* just have to alloc and copy */
 		incr_hp_atomic(Buffer,
 		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word));
-		buffer = (Char *) buffer;
+		buffer = (Char *) Buffer;
 		if (OldSize > NewSize) {
 			memcpy(buffer, buffer0, NewSize);
 		} else {
