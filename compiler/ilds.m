@@ -23,6 +23,9 @@
 
 :- import_module list, std_util, bool, assoc_list.
 
+	% Returns the maximum stack usage of a list of IL instructions.
+:- func calculate_max_stack(list(ilds__instr)) = int.
+
 	% A method parameter
 :- type param == pair(
 			ilds__type,	% type of the parameter
@@ -42,14 +45,15 @@
 	---> methoddef(call_conv, ret_type, class_member_name,
 		list(ilds__type))
 			% XXX not sure whether methodref is used.
-	;    methodref(call_conv, ret_type, class_name,
-		list(ilds__type))
+%	;    methodref(call_conv, ret_type, class_name,
+%		list(ilds__type))
 	;    local_method(call_conv, ret_type, member_name,
 		list(ilds__type)).
 
 	% A field reference
 :- type fieldref
 	---> fieldref(ilds__type, class_member_name).
+
 
 % -------------------------------------------------------------------------
 
@@ -236,12 +240,10 @@
 	;	cpblk		% copy data from memory to memory
 	; 	div(signed)	% divide values
 	;	dup		% duplicate the value on the top of the stack
-	;	endcatch	% end exception handler
 	;	endfilter	% end filter clause of SEH exception handling
 	;	endfinally	% end finally clause of an exception block
 	;	initblk		% initialize a block
 	;	jmp(methodref) % jump to a specified method
-	;	jmpi		% exit current method and jump to spec method
 	;	ldarg(variable)	% load argument onto the stack
 	; 	ldarga(variable)	% fetch address of argument
 	;	ldc(simple_type, constant)	
@@ -279,8 +281,6 @@
 	;	callvirt(methodref)	% call a method associated with obj
 	;	castclass(ilds__type)	% cast obj to class
 	;	cpobj(ilds__type)	% copy a value type
-	;	entercrit		% enter a critical region with obj
-	;	exitcrit		% exit a critical region with obj
 	;	initobj(ilds__type)	% initialize a value type
 	;	isinst(ilds__type)	% test if obj is an instance
 	;	ldelem(simple_type)	% load an element of an array
@@ -289,9 +289,6 @@
 	;	ldflda(fieldref)	% load field address of obj
 	;	ldlen			% load length of array
 	;	ldobj(ilds__type)	% copy value type to stack
-	;	ldrefany(index)		% push refany in arg num onto stack
-		% XXX this appears to have been removed
-%	;	ldrefanya(index, ilds__type) % push refany addr into arg num
 	;	ldsfld(fieldref)	% load static field of a class
 	;	ldsflda(fieldref)	% load static field address
 	;	ldstr(string)		% load a literal string
@@ -300,28 +297,16 @@
 	;	mkrefany(ilds__type)	% push a refany pointer of type class
 	;	newarr(ilds__type)	% create a zero based 1D array
 	;	newobj(methodref)	% create new obj and call constructor
+	;	refanytype		% extract type info from refany nth arg
+	;	refanyval(ilds__type)	% extract type info from refany nth arg
+	;	rethrow			% rethrow an exception
+	;	sizeof(ilds__type)	% push the sizeof a value type
 	;	stelem(simple_type)	% store an element of an array
 	;	stfld(fieldref)		% store into a field of an object
+	;	stobj(ilds__type)
 	;	stsfld(fieldref)	% replace the value of field with val
 	;	throw			% throw an exception
-	;	typerefany(index)	% extract type info from refany nth arg
-	;	unbox(ilds__type)	% convert boxed value type to raw form
-
-	% ANNOTATIONS (only used for OPT-IL)
-
-	;	ann_call(signature)	% start of simple calling sequence
-	;	ann_catch		% start an exception filter or handler
-	;	ann_data(int)		% int32 bytes of uninterp. data follows 
-	;	ann_dead(location)	% stack location is no longer live
-	;	ann_def			% start SSA node
-	;	ann_hoisted(signature)  % start of complex argument evaluation
-	;	ann_hoisted_call	% start of simple part of hoisted call
-	;	ann_lab			% label (mark a branch target location)
-	;	ann_live(location)	% mark a stack location as live
-	;	ann_phi(list(node_number)) % merge SSA definition nodes
-	;	ann_ref(node_number).	% SSA reference node -- value at 
-					% node_number is same as next 
-					% instruction
+	;	unbox(ilds__type).	% convert boxed value type to raw form
 
 	% locations marked as dead by ann_dead -- positive numbers are
 	% stack slots, negative numbers are locals.
@@ -353,6 +338,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module error_util.
 
 get_class_suffix(structured_name(_, FullName)) = SuffixName :-
@@ -380,7 +366,140 @@ append_class_name(structured_name(Assembly, ClassName), ExtraClass) =
 		structured_name(Assembly, NewClassName) :-
 	list__append(ClassName, ExtraClass, NewClassName).
 
+calculate_max_stack(Instrs) = 
+	calculate_max_stack_2(Instrs, 0, 0).
 
+:- func calculate_max_stack_2(list(ilds__instr), int, int) = int.
+
+calculate_max_stack_2([], _, Max) = Max.
+calculate_max_stack_2([I | Instrs], Current, Max) =  
+		calculate_max_stack_2(Instrs, NewCurrent, NewMax) :-
+	NewCurrent = Current + get_stack_difference(I),
+	NewMax = max(NewCurrent, Max).
+	
+:- func get_stack_difference(ilds__instr) = int.
+get_stack_difference(end_block(_, _)) 				= 0.
+get_stack_difference(comment(_)) 				= 0.
+get_stack_difference(start_block(_, _)) 			= 0.
+get_stack_difference(context(_, _)) 				= 0.
+get_stack_difference(label(_Label)) 				= 0. 
+
+get_stack_difference(add(_Overflow, _Signed))	 		= -1. 
+get_stack_difference((and)) 					= -1. 
+get_stack_difference(arglist) 					=  1.
+get_stack_difference(beq(_))					= -2.
+get_stack_difference(bge(_, _))					= -2.
+get_stack_difference(bgt(_, _))					= -2.
+get_stack_difference(ble(_, _))					= -2.
+get_stack_difference(blt(_, _))					= -2.
+get_stack_difference(bne(_, _))					= -2.
+get_stack_difference(br(_)) 					= 0.
+get_stack_difference(break) 					= 0.
+get_stack_difference(brtrue(_))					= -1.
+get_stack_difference(brfalse(_))				= -1.
+get_stack_difference(call(MethodRef)) = 
+	get_methodref_stack_difference(MethodRef).
+	% Remove an extra argument for the function pointer.
+get_stack_difference(calli(Signature)) = 
+	get_signature_stack_difference(Signature) - 1.
+get_stack_difference(callvirt(MethodRef)) = 
+	get_methodref_stack_difference(MethodRef).
+get_stack_difference(ceq) 					= -1. 
+get_stack_difference(cgt(_Signed)) 				= -1.
+get_stack_difference(ckfinite) 					= 0. 
+get_stack_difference(clt(_Signed)) 				= -1.
+get_stack_difference(conv(_SimpleType)) 			= 0. 
+get_stack_difference(cpblk) 					= -3. 
+get_stack_difference(div(_Signed)) 				= -1. 
+get_stack_difference(dup) 					= 1.
+get_stack_difference(endfilter) 				= -1. 
+get_stack_difference(endfinally) 				= -1. 
+get_stack_difference(initblk) 					= -3. 
+get_stack_difference(jmp(_MethodRef)) 				= 0. 
+get_stack_difference(ldarg(_)) 					= 1. 
+get_stack_difference(ldarga(_Variable)) 			= 1.
+get_stack_difference(ldc(_Type, _Const)) 			= 1.
+get_stack_difference(ldftn(_MethodRef)) 			= 1. 
+get_stack_difference(ldind(_SimpleType)) 			= 0. 
+get_stack_difference(ldloc(_Variable)) 				= 1. 
+get_stack_difference(ldloca(_Variable)) 			= 1.
+get_stack_difference(ldnull) 					= 1. 
+get_stack_difference(leave(_Target)) 				= 0. 
+get_stack_difference(localloc)		 			= 0. 
+get_stack_difference(mul(_Overflow, _Signed)) 			= -1. 
+get_stack_difference(neg) 					= 0. 
+get_stack_difference(nop) 					= 0. 
+get_stack_difference((not)) 					= 0. 
+get_stack_difference((or)) 					= -1. 
+get_stack_difference(pop) 					= -1. 
+get_stack_difference(rem(_Signed)) 				= -1. 
+get_stack_difference(ret) 					= 0. 
+get_stack_difference(shl) 					= -1. 
+get_stack_difference(shr(_Signed)) 				= -1. 
+get_stack_difference(starg(_Variable)) 				= -1.
+get_stack_difference(stind(_SimpleType)) 			= -2. 
+get_stack_difference(stloc(_Variable)) 				= -1. 
+get_stack_difference(sub(_OverFlow, _Signed)) 			= -1. 
+get_stack_difference(switch(_))					= -1.
+get_stack_difference(tailcall) 					= 0. 
+get_stack_difference(unaligned(_)) 				= 0.
+get_stack_difference(volatile) 					= 0. 
+get_stack_difference(xor) 					= -1. 
+
+get_stack_difference(box(_Type)) 				= 0. 
+get_stack_difference(castclass(_Type)) 				= 0.
+get_stack_difference(cpobj(_Type)) 				= -2. 
+get_stack_difference(initobj(_Type)) 				= -1. 
+get_stack_difference(isinst(_Type)) 				= 0. 
+get_stack_difference(ldelem(_SimpleType)) 			= -1. 
+get_stack_difference(ldelema(_Type)) 				= -1. 
+get_stack_difference(ldfld(_FieldRef)) 				= 0.
+get_stack_difference(ldflda(_FieldRef)) 			= 0.
+get_stack_difference(ldlen) 					= 0. 
+get_stack_difference(ldobj(_Type)) 				= 0.
+get_stack_difference(ldsfld(_FieldRef)) 			= 1. 
+get_stack_difference(ldsflda(_FieldRef)) 			= 1. 
+get_stack_difference(ldstr(_String)) 				= 1. 
+get_stack_difference(ldtoken(_)) 				= 1.
+get_stack_difference(ldvirtftn(_MethodRef)) 			= 0.
+get_stack_difference(mkrefany(_Type)) 				= 0.
+get_stack_difference(newarr(_Type)) 				= 0. 
+get_stack_difference(newobj(methoddef(_, _, _, Params))) =  Diff :-
+	Diff = -(length(Params)) + 1.
+get_stack_difference(newobj(local_method(_, _, _, Params))) =  Diff :-
+	Diff = -(length(Params)) + 1.
+get_stack_difference(refanytype)				= 0.
+get_stack_difference(refanyval(_Type)) 				= 0.
+get_stack_difference(rethrow)	 				= 0.
+get_stack_difference(sizeof(_Type))				= 1.
+get_stack_difference(stelem(_SimpleType)) 			= -3. 
+get_stack_difference(stfld(_FieldRef)) 				= -2. 
+get_stack_difference(stobj(_ClassName))				= -2.
+get_stack_difference(stsfld(_FieldRef)) 			= -1. 
+get_stack_difference(throw)					= -1.
+get_stack_difference(unbox(_Type)) 				= 0.
+
+
+	% Remove the params, and remove "this" if it is an instance
+	% method, but add the return type (if there is one).
+:- func get_methodref_stack_difference(methodref) = int.
+get_methodref_stack_difference(MethodRef) = Diff :-
+	( 
+		MethodRef = methoddef(CallConv, RetType, _, Params) 
+	; 
+		MethodRef = local_method(CallConv, RetType, _, Params)
+	),
+	InstanceDiff = ( CallConv = call_conv(yes, _) -> -1 ; 0 ),
+	RetDiff = ( RetType = void -> 0 ; 1),
+	Diff = -(length(Params)) + InstanceDiff + RetDiff.
+
+	% Remove the params, and remove "this" if it is an instance
+	% method, but add the return type (if there is one).
+:- func get_signature_stack_difference(signature) = int.
+get_signature_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
+	InstanceDiff = ( CallConv = call_conv(yes, _) -> -1 ; 0 ),
+	RetDiff = ( RetType = void -> 0 ; 1),
+	Diff = -(length(Params)) + InstanceDiff + RetDiff.
 
 :- func this_file = string.
 this_file = "ilds.m".

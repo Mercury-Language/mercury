@@ -873,12 +873,6 @@ output_instr(ret, I, I) -->
 	io__write_string("ret").
 output_instr((and), I, I) --> 
 	io__write_string("and").
-output_instr(ann_catch, I, I) --> 
-	io__write_string("ann_catch").
-output_instr(ann_def, I, I) --> 
-	io__write_string("ann_def").
-output_instr(ann_lab, I, I) --> 
-	io__write_string("ann_lab").
 output_instr(arglist, I, I) --> 
 	io__write_string("arglist").
 output_instr(break, I, I) --> 
@@ -891,16 +885,12 @@ output_instr(cpblk, I, I) -->
 	io__write_string("cpblk").
 output_instr(dup, I, I) -->
 	io__write_string("dup").
-output_instr(endcatch, I, I) -->
-	io__write_string("endcatch").
 output_instr(endfilter, I, I) --> 
 	io__write_string("endfilter").
 output_instr(endfinally, I, I) --> 
 	io__write_string("endfinally").
 output_instr(initblk, I, I) --> 
 	io__write_string("initblk").
-output_instr(jmpi, I, I) --> 
-	io__write_string("jmpi").
 output_instr(ldnull, I, I) --> 
 	io__write_string("ldnull").
 output_instr(localloc, I, I) --> 
@@ -923,16 +913,10 @@ output_instr(volatile, I, I) -->
 	io__write_string("volatile").
 output_instr(xor, I, I) --> 
 	io__write_string("xor").
-output_instr(entercrit, I, I) --> 
-	io__write_string("entercrit").
-output_instr(exitcrit, I, I) -->
-	io__write_string("exitcrit").
 output_instr(ldlen, I, I) --> 
 	io__write_string("ldlen").
 output_instr(throw, I, I) --> 
 	io__write_string("throw").
-output_instr(ann_hoisted_call, I, I) -->
-	io__write_string("ann_hoisted_call").
 
 	% There are short forms of various instructions.
 	% The assembler can't generate them for you.
@@ -1176,10 +1160,6 @@ output_instr(ldflda(FieldRef), Info0, Info) -->
 output_instr(ldobj(Type), Info0, Info) -->
 	io__write_string("ldobj\t"),
 	output_type(Type, Info0, Info).
-	
-output_instr(ldrefany(Index), I, I) -->
-	io__write_string("ldrefany\t"),
-	output_index(Index).
 
 output_instr(ldsfld(FieldRef), Info0, Info) --> 
 	io__write_string("ldsfld\t"),
@@ -1208,6 +1188,16 @@ output_instr(newobj(MethodRef), Info0, Info) -->
 	io__write_string("newobj\t"),
 	output_methodref(MethodRef, Info0, Info).
 
+output_instr(refanytype, I, I) --> 
+	io__write_string("refanytype").
+
+output_instr(refanyval(Type), Info0, Info) --> 
+	io__write_string("refanyval\t"),
+	output_type(Type, Info0, Info).
+
+output_instr(rethrow, I, I) --> 
+	io__write_string("rethrow").
+
 output_instr(stelem(SimpleType), I, I) --> 
 	io__write_string("stelem."),
 	output_simple_type_opcode(SimpleType).
@@ -1216,28 +1206,21 @@ output_instr(stfld(FieldRef), Info0, Info) -->
 	io__write_string("stfld\t"),
 	output_fieldref(FieldRef, Info0, Info).
 
+output_instr(stobj(Type), Info0, Info) -->
+	io__write_string("stobj\t"),
+	output_type(Type, Info0, Info).
+	
+output_instr(sizeof(Type), Info0, Info) -->
+	io__write_string("sizeof\t"),
+	output_type(Type, Info0, Info).
+
 output_instr(stsfld(FieldRef), Info0, Info) --> 
 	io__write_string("stsfld\t"),
 	output_fieldref(FieldRef, Info0, Info).
 
-output_instr(typerefany(Index), I, I) -->
-	io__write_string("typerefany\t"),
-	output_index(Index).
-
 output_instr(unbox(Type), Info0, Info) -->
 	io__write_string("unbox\t"),
 	output_type(Type, Info0, Info).
-
-	% This is stuff for "Opt-IL", which was (is?) some sort of 
-	% optimization annotated IL.  I have no idea whether it is used
-	% at all.
-output_instr(ann_call(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_data(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_dead(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_hoisted(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_live(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_phi(_), I, I) --> { error("output not implemented") }.
-output_instr(ann_ref(_), I, I) --> { error("output not implemented") }.
 
 :- pred output_overflow(overflow::in, io__state::di,
 		io__state::uo) is det.
@@ -1275,19 +1258,6 @@ output_fieldref(fieldref(Type, ClassMemberName), Info0, Info) -->
 
 :- pred output_methodref(methodref::in, ilasm_info::in, ilasm_info::out,
 		io__state::di, io__state::uo) is det.
-output_methodref(methodref(call_conv(IsInstance, _), ReturnType, 
-		StructuredName, ArgTypes), Info0, Info) -->
-	( { IsInstance = yes } ->
-		io__write_string("instance ")
-	;
-		[]
-	),
-	output_ret_type(ReturnType, Info0, Info1),
-	io__write_string(" "),
-	output_structured_name(StructuredName, Info1, Info2),
-	io__write_string("("),
-	ilasm__write_list(ArgTypes, ", ", output_type, Info2, Info),
-	io__write_string(")").
 output_methodref(methoddef(call_conv(IsInstance, _), ReturnType, 
 		ClassMemberName, ArgTypes), Info0, Info) -->
 	( { IsInstance = yes } ->

@@ -52,7 +52,6 @@
 %     we should (this can occur in nondet C code). 
 % [ ] ml_gen_call_current_success_cont_indirectly should be merged with
 % 	similar code for doing copy-in/copy-out.
-% [ ] generate maxstack correctly
 % [ ] Try to use the IL bool type for the true/false rvals.
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
@@ -2700,10 +2699,7 @@ mlds_to_il__generate_extern_assembly(Imports, AllDecls) :-
 make_method_defn(InstrTree) = MethodDecls :-
 	Instrs = list__condense(tree__flatten(InstrTree)),
 	MethodDecls = [
-			% XXX should avoid hard-coding "100" for
-			% the maximum static size -- not sure if we even
-			% need this anymore.
-		maxstack(int32(100)),
+		maxstack(int32(calculate_max_stack(Instrs))),
 			% note that we only need .zeroinit to ensure
 			% verifiability; for nonverifiable code,
 			% we could omit that (it ensures that all
