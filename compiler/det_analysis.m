@@ -120,7 +120,7 @@
 
 :- implementation.
 
-:- import_module det_report, purity.
+:- import_module purity.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.

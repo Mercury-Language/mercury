@@ -480,7 +480,7 @@
 
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
-:- import_module prog_io_util, globals, options, intermod, module_qual.
+:- import_module prog_io_util, globals, options, module_qual.
 
 :- import_module string, set, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.

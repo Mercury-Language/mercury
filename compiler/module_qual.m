@@ -63,7 +63,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
+:- import_module type_util, prog_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
 :- import_module (inst), instmap.
 :- import_module int, map, require, set, std_util, string, term, varset.
@@ -117,6 +117,12 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 			need_qualifier	% must uses of the current item be 
 				% explicitly module qualified.
 	).
+
+	% We only need to keep track of what is exported and what isn't,
+	% so we use a simpler data type here than hlds_pred__import_status.
+:- type import_status
+	--->	exported
+	;	not_exported.
 		
 	% Pass over the item list collecting all defined type, mode and
 	% inst ids and the names of all modules imported in the interface.
@@ -208,17 +214,17 @@ process_module_defn(include_module(_), Info, Info).
 process_module_defn(interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, exported, Info).
 process_module_defn(private_interface, Info0, Info) :-
-	mq_info_set_import_status(Info0, exported_to_submodules, Info).
+	mq_info_set_import_status(Info0, not_exported, Info).
 process_module_defn(implementation, Info0, Info) :-
-	mq_info_set_import_status(Info0, local, Info).
+	mq_info_set_import_status(Info0, not_exported, Info).
 process_module_defn(imported, Info0, Info) :-
-	mq_info_set_import_status(Info0, imported, Info1),
+	mq_info_set_import_status(Info0, not_exported, Info1),
 	mq_info_set_need_qual_flag(Info1, may_be_unqualified, Info).
 process_module_defn(used, Info0, Info) :-
-	mq_info_set_import_status(Info0, imported, Info1),
+	mq_info_set_import_status(Info0, not_exported, Info1),
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
 process_module_defn(opt_imported, Info0, Info) :-
-	mq_info_set_import_status(Info0, opt_imported, Info1),
+	mq_info_set_import_status(Info0, not_exported, Info1),
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
 process_module_defn(external(_), Info, Info).
 process_module_defn(end_module(_), Info, Info).
@@ -368,9 +374,9 @@ update_import_status(module(_), Info, Info, yes).
 update_import_status(interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, exported, Info).
 update_import_status(implementation, Info0, Info, yes) :-
-	mq_info_set_import_status(Info0, local, Info).
+	mq_info_set_import_status(Info0, not_exported, Info).
 update_import_status(private_interface, Info0, Info, yes) :-
-	mq_info_set_import_status(Info0, exported_to_submodules, Info).
+	mq_info_set_import_status(Info0, not_exported, Info).
 update_import_status(imported, Info, Info, no).
 update_import_status(used, Info, Info, no).
 update_import_status(external(_), Info, Info, yes).
@@ -1129,6 +1135,8 @@ report_invalid_type(Type, ErrorContext - Context) -->
 	% is_builtin_atomic_type(TypeId)
 	%	is true iff 'TypeId' is the type_id of a builtin atomic type
 
+:- type type_id == id.
+
 :- pred is_builtin_atomic_type(type_id).
 :- mode is_builtin_atomic_type(in) is semidet.
 
@@ -1167,8 +1175,9 @@ init_mq_info(ReportErrors, Info0) :-
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
 	id_set_init(Empty),
-	Info0 = mq_info(Empty, Empty, Empty, Empty, InterfaceModules0, local, 0,
-		no, no, ReportErrors, ErrorContext, may_be_unqualified).
+	Info0 = mq_info(Empty, Empty, Empty, Empty, InterfaceModules0,
+		not_exported, 0, no, no, ReportErrors, ErrorContext,
+		may_be_unqualified).
 
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.

@@ -57,9 +57,16 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module hlds_goal, hlds_data, prog_data.
 :- import_module mode_util, globals, options, code_util, goal_util.
-:- import_module llds, llds_out, mercury_to_mercury.
+:- import_module mercury_to_mercury.
+
+% XXX we should not import llds here -- this should depend only on the HLDS,
+% not on the LLDS.  But the LLDS stuff is unfortunately needed for producing
+% the LLDS labels used for dependency_graph__write_prof_dependency_graph.
+:- import_module llds, llds_out.
+
 :- import_module term, varset.
 :- import_module int, bool, term, require, string.
 :- import_module map, multi_map, set, std_util.
