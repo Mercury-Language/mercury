@@ -899,21 +899,21 @@ case "$host" in
 		# NUM_REAL_REGS=3
 		# but succip and sp are real regs, so subtract 2
 		NUM_REAL_R_REGS=1
-		NUM_REAL_TEMPS=0
+		NUM_REAL_R_TEMPS=0
 		HAVE_DELAY_SLOT=
 		;;
 	alpha-*)
 		# NUM_REAL_REGS=6
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=3
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
 	mips-*)
 		# NUM_REAL_REGS=8
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=5
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=--have-delay-slot
 		;;
 	rs6000-*)
@@ -921,7 +921,7 @@ case "$host" in
 		# but succip, sp, hp, maxfr, and curfr are real regs,
 		# so subtract 5
 		NUM_REAL_R_REGS=5
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
 	sparc-*)
@@ -929,24 +929,24 @@ case "$host" in
 		# but succip, sp, hp, maxfr, and curfr are real regs,
 		# so subtract 5
 		NUM_REAL_R_REGS=5
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=--have-delay-slot
 		;;
 	hppa-*)
 		# NUM_REAL_REGS=8
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=5
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
 	*)
 		NUM_REAL_R_REGS=0
-		NUM_REAL_TEMPS=6
+		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=
 		;;
 esac
 AC_SUBST(NUM_REAL_R_REGS)
-AC_SUBST(NUM_REAL_TEMPS)
+AC_SUBST(NUM_REAL_R_TEMPS)
 AC_SUBST(HAVE_DELAY_SLOT)
 
 #-----------------------------------------------------------------------------#

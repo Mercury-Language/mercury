@@ -72,6 +72,12 @@ NEWS for Mercury release 0.6
   realistic "pseudoknot" benchmark by nearly a factor of four.
   (There's still plenty of room for performance improvements, however.)
 
+* We now support reverse mode arithmetic.
+
+  This means that a goal such as A is B + C can be used not only to compute
+  A from B and C, but also to compute B from A and C, or to compute C from
+  A and B.
+
 * We have added some new compiler options to simplify the choice of which
   optimization options to enable.
 
