@@ -293,10 +293,16 @@ $(os_subdir)library.pic_o \
 # require some files in the library to be recompiled.
 $(os_subdir)benchmarking.$O \
 $(os_subdir)benchmarking.pic_o \
+$(os_subdir)construct.$O \
+$(os_subdir)construct.pic_o \
+$(os_subdir)deconstruct.$O \
+$(os_subdir)deconstruct.pic_o \
 $(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_stack_layout.h
 
+$(os_subdir)deconstruct.$O \
+$(os_subdir)deconstruct.pic_o \
 $(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_ml_functor_body.h \
@@ -304,6 +310,18 @@ $(os_subdir)std_util.pic_o \
 	../runtime/mercury_ml_deconstruct_body.h \
 	../runtime/mercury_deconstruct_macros.h \
 	../runtime/mercury_deconstruct.h
+
+$(os_subdir)construct.$O \
+$(os_subdir)construct.pic_o \
+$(os_subdir)std_util.$O \
+$(os_subdir)std_util.pic_o \
+	: ../runtime/mercury_construct.h
+
+$(os_subdir)type_desc.$O \
+$(os_subdir)type_desc.pic_o \
+$(os_subdir)std_util.$O \
+$(os_subdir)std_util.pic_o \
+	: ../runtime/mercury_type_desc.h
 
 #-----------------------------------------------------------------------------#
 
