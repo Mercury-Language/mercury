@@ -1027,10 +1027,9 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, VarSet0,
 	;
 		error("goal_util__case_to_disjunct - get_arg_insts failed")
 	),
-	InstToUniMode =
-		lambda([ArgInst::in, ArgUniMode::out] is det, (
+	InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
 			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
-		)),
+		),
 	list__map(InstToUniMode, ArgInsts, UniModes),
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
 	UnifyContext = unify_context(explicit, []),

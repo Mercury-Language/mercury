@@ -1537,11 +1537,11 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 		% order they came in, so that the all the modes get the
 		% same proc_id in the importing modules.
 	{ CompareProcId =
-		 lambda([ProcId1::in, ProcId2::in, Result::out] is det, (
+		(pred(ProcId1::in, ProcId2::in, Result::out) is det :-
 			proc_id_to_int(ProcId1, ProcInt1),
 			proc_id_to_int(ProcId2, ProcInt2),
 			compare(Result, ProcInt1, ProcInt2)
-		)) },
+		) },
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),
 					PredOrFunc, SortedProcIds),
@@ -1644,11 +1644,9 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, _HeadVars,
 		(
 			% Pull the foreign code out of the goal.
 			{ Goal = conj(Goals) - _ },
-			{ list__filter(
-				lambda([X::in] is semidet, (
+			{ list__filter((pred(X::in) is semidet :-
 				    X = foreign_proc(_,_,_,_,_,_,_) - _
-				)),
-				Goals, [ForeignCodeGoal]) },
+				), Goals, [ForeignCodeGoal]) },
 			{ ForeignCodeGoal = foreign_proc(Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		;
@@ -2249,10 +2247,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	( { UnusedArgs = yes } ->
 		read_optimization_interfaces(no, ModuleName, [ModuleName],
 				set__init, [], LocalItems, no, UAError),
-		{ IsPragmaUnusedArgs = lambda([Item::in] is semidet, (
+		{ IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
 					Item = pragma(PragmaType) - _,
 					PragmaType = unused_args(_,_,_,_,_)
-				)) },
+			) },
 		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) },
 
 		{ module_imports_get_items(Module1, Items2) },

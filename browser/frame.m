@@ -59,7 +59,6 @@
 :- import_module string, list, int, io, require.
 :- import_module mdb__util.
 
-
 frame__from_string(Str, [Str]).
 
 	% glue frames vertically (stack). align to left.
@@ -86,12 +85,10 @@ frame__hglue(LeftFrame, RightFrame, GluedFrame) :-
 	% XXX: mmc doesn't yet handle this. Use more verbose version instead.
 	% zip_with(string__append, PaddedLeftFrameNew, RightFrameNew,
 	%	GluedFrame).
-	util__zip_with(
-		lambda([S1::in, S2::in, S3::out] is det,
+	util__zip_with((pred(S1::in, S2::in, S3::out) is det :-
 			string__append(S1,S2,S3)),
 		PaddedLeftFrameNew, RightFrameNew, GluedFrame).
 
-	
 	% Add right padding. That is, add whitespace on right so that
 	% lines are all equal length.
 :- pred frame_right_pad(frame, frame).
@@ -117,7 +114,6 @@ add_right_padding(Strs, Lens, PaddedFrame) :-
 		error("add_right_padding: list arguments are of unequal length")
 	).
 
-
 	% We need this since Mercury has no Haskell-ese operation sections.
 :- pred subtract(int, int, int).
 :- mode subtract(in, in, out) is det.
@@ -130,7 +126,6 @@ subtract(M, X, Z) :-
 frame_lower_pad(Frame, PadLines, PaddedFrame) :-
 	list__duplicate(PadLines, "", Padding),
 	list__append(Frame, Padding, PaddedFrame).
-
 
 	% Horizontal size (width) of a frame
 frame__hsize(Frame, HSize) :-

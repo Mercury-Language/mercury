@@ -1273,9 +1273,9 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 			module_info_type_spec_info(ModuleInfo3, TypeSpecInfo0),
 			TypeSpecInfo0 = type_spec_info(ProcsToSpec0,
 				ForceVersions0, SpecMap0, PragmaMap0),
-			list__map(lambda([ProcId::in, PredProcId::out] is det, (
+			list__map((pred(ProcId::in, PredProcId::out) is det :-
 					PredProcId = proc(PredId, ProcId)
-				)), ProcIds, PredProcIds),
+				), ProcIds, PredProcIds),
 			set__insert_list(ProcsToSpec0, PredProcIds,
 				ProcsToSpec),
 			set__insert(ForceVersions0, NewPredId, ForceVersions),
@@ -3243,7 +3243,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
 :- mode check_for_overlapping_instances(in, in, in, di, uo) is det.
 
 check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
-	{ IsOverlapping = lambda([(Context - OtherContext)::out] is nondet, (
+	{ IsOverlapping = (pred((Context - OtherContext)::out) is nondet :-
 		NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
 				_, Types, Body, _, VarSet, _),
 		Body \= abstract, % XXX
@@ -3255,7 +3255,7 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
 		varset__merge(VarSet, OtherVarSet, OtherTypes,
 				_NewVarSet, NewOtherTypes),
 		type_list_subsumes(Types, NewOtherTypes, _)
-	)) },
+	) },
 	aggregate(IsOverlapping,
 		report_overlapping_instance_declaration(ClassId)).
 
@@ -4175,17 +4175,16 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 			true
 		)
 	;
-				% A promise will not have a
-				% corresponding pred declaration.
+			% A promise will not have a
+			% corresponding pred declaration.
 		(
 			GoalType = promise(_)
 		->
 			term__term_list_to_var_list(Args, HeadVars),
 			preds_add_implicit_for_assertion(HeadVars,
-					!.ModuleInfo, PredicateTable0,
-					ModuleName, PredName, Arity, Status,
-					Context, PredOrFunc,
-					PredId, PredicateTable1),
+				!.ModuleInfo, PredicateTable0, ModuleName,
+				PredName, Arity, Status, Context, PredOrFunc,
+				PredId, PredicateTable1),
 			module_info_set_predicate_table(PredicateTable1,
 				!ModuleInfo)
 		;
@@ -5497,11 +5496,11 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 	(
 		{ PragmaImpl = ordinary(C_Code, _) },
 		{ c_code_to_name_list(C_Code, C_CodeList) },
-		{ solutions(lambda([Name::out] is nondet, (
+		{ solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - _), ArgInfo),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, C_CodeList)
-			)), UnmentionedVars) },
+			), UnmentionedVars) },
 		( { UnmentionedVars = [] } ->
 			[]
 		;
@@ -5520,12 +5519,12 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 		{ c_code_to_name_list(FirstCode, FirstCodeList) },
 		{ c_code_to_name_list(LaterCode, LaterCodeList) },
 		{ c_code_to_name_list(SharedCode, SharedCodeList) },
-		{ solutions(lambda([Name::out] is nondet, (
+		{ solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_input(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList)
-			)), UnmentionedInputVars) },
+			), UnmentionedInputVars) },
 		( { UnmentionedInputVars = [] } ->
 			[]
 		;
@@ -5538,13 +5537,13 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 			io__write_string("not occur in the first " ++
 				LangStr ++ " code.\n ")
 		),
-		{ solutions(lambda([Name::out] is nondet, (
+		{ solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList),
 				\+ list__member(Name, SharedCodeList)
-			)), UnmentionedFirstOutputVars) },
+			), UnmentionedFirstOutputVars) },
 		( { UnmentionedFirstOutputVars = [] } ->
 			[]
 		;
@@ -5559,13 +5558,13 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 				LangStr ++ " code or the shared " ++ LangStr ++
 				" code.\n ")
 		),
-		{ solutions(lambda([Name::out] is nondet, (
+		{ solutions((pred(Name::out) is nondet :-
 				list__member(yes(Name - Mode), ArgInfo),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, LaterCodeList),
 				\+ list__member(Name, SharedCodeList)
-			)), UnmentionedLaterOutputVars) },
+			), UnmentionedLaterOutputVars) },
 		( { UnmentionedLaterOutputVars = [] } ->
 			[]
 		;
@@ -5694,7 +5693,7 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 	% start with "_" or "DCG_", and don't have the same name as any
 	% variable in QuantVars (i.e. weren't explicitly quantified).
 
-	{ solutions(lambda([Var::out] is nondet, (
+	{ solutions((pred(Var::out) is nondet :-
 		  	list__member(Var, GoalVars),
 			\+ set__member(Var, NonLocals),
 			varset__search_name(VarSet, Var, Name),
@@ -5704,7 +5703,7 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 				set__member(QuantVar, QuantVars),
 				varset__search_name(VarSet, QuantVar, Name)
 			)
-		)), SingletonVars) },
+		), SingletonVars) },
 
 	% if there were any such variables, issue a warning
 
@@ -5731,12 +5730,12 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 	% goal (i.e. are not singleton) and have a variable name that starts
 	% with "_".
 
-	{ solutions(lambda([Var2::out] is nondet, (
+	{ solutions((pred(Var2::out) is nondet :-
 		  	list__member(Var2, GoalVars),
 			set__member(Var2, NonLocals),
 			varset__search_name(VarSet, Var2, Name2),
 			string__prefix(Name2, "_")
-		)), MultiVars) },
+		), MultiVars) },
 
 	% if there were any such variables, issue a warning
 

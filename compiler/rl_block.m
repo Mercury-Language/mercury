@@ -179,18 +179,17 @@ rl_block__get_dominator_info -->
 
 		% Initially, all non-initial nodes dominate all other
 		% non-initial nodes.
-	{ Initialise = 
-	    lambda([Node::in, Dom0::in, Dom::out] is det, (
+	{ Initialise = (pred(Node::in, Dom0::in, Dom::out) is det :-
 		 set_dominating_nodes(Dom0, Node, NonInitialNodes, Dom)
-	    )) },
+	) },
 	{ list__foldl(Initialise, NonInitialNodeList,
 		Dominators1, Dominators2) },
 
-	{ SinglePass =
-	    lambda([Dom0::in, Dom::out, Changed::out] is det, (
-		list__foldl(rl_block__get_dominator_info_single_pass(FlowGraph),
+	{ SinglePass = (pred(Dom0::in, Dom::out, Changed::out) is det :-
+		list__foldl(
+			rl_block__get_dominator_info_single_pass(FlowGraph),
 			NonInitialNodeList, Dom0 - no, Dom - Changed)
-	    )) },	
+	) },	
 	{ compute_to_fixpoint(SinglePass, Dominators2, Dominators) },
 	rl_opt_info_set_dominator_info(Dominators).
 
@@ -209,15 +208,14 @@ rl_block__get_dominator_info_single_pass(FlowGraph, Node,
 		relation__lookup_key(FlowGraph, PredKey, Pred),
 		lookup_dominating_nodes(Dominators0, Pred,
 			DomByPredecessors0),
-		IntersectPredecessors = 
-		    lambda([PredecessorKey::in, Inter0::in,
-				Inter::out] is det, (
+		IntersectPredecessors = (pred(PredecessorKey::in, Inter0::in,
+				Inter::out) is det :-
 			relation__lookup_key(FlowGraph, PredecessorKey,
 				Predecessor),
 			lookup_dominating_nodes(Dominators0, Predecessor, 
 				PredecessorDom),
 			set__intersect(Inter0, PredecessorDom, Inter)
-		    )),
+		),
 		list__foldl(IntersectPredecessors, PredKeys,
 			DomByPredecessors0, DomByPredecessors),
 		set__insert(DomByPredecessors, Node, NewValue)
@@ -245,8 +243,7 @@ rl_block__find_loops -->
 	{ relation__to_key_assoc_list(FlowGraph, FlowAssocList) },
 		% If the edge is a back edge, find the loop that it closes,
 		% otherwise fail.
-	{ BackEdgeToLoop =
-	    lambda([GraphEdge::in, Loop::out] is semidet, (
+	{ BackEdgeToLoop = (pred(GraphEdge::in, Loop::out) is semidet :-
 		GraphEdge = CallingKey - CalledKey,
 		relation__lookup_key(FlowGraph, CallingKey, CallingNode),
 		relation__lookup_key(FlowGraph, CalledKey, CalledNode),
@@ -265,7 +262,7 @@ rl_block__find_loops -->
 				NodesToProcess1, LoopNodes0, LoopNodes)
 		),
 		Loop = loop(CalledNode, LoopNodes)
-	   )) },
+	) },
 	{ list__filter_map(BackEdgeToLoop, FlowAssocList, Loops) },
 	rl_opt_info_set_loops(Loops).
 
@@ -278,9 +275,8 @@ rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue0,
 		relation__lookup_element(FlowGraph, Node, NodeKey),
 		relation__lookup_to(FlowGraph, NodeKey, Predecessors),
 		set__to_sorted_list(Predecessors, PredecessorList),
-		HandlePredecessor =
-		    lambda([PredecessorKey::in, Info0::in, 
-		    		Info::out] is det, (
+		HandlePredecessor = (pred(PredecessorKey::in, Info0::in, 
+		    		Info::out) is det :-
 		    	Info0 = Nodes0 - Queue0,
 			relation__lookup_key(FlowGraph, PredecessorKey,
 				Predecessor),
@@ -292,7 +288,7 @@ rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue0,
 				queue__put(Queue0, Predecessor, Queue)
 			),
 			Info = Nodes - Queue
-		    )),
+		),
 		list__foldl(HandlePredecessor, PredecessorList, 
 			LoopNodes0 - NodeQueue1, LoopNodes1 - NodeQueue2),
 		rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue2,
@@ -335,12 +331,11 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 		-->
 	rl_opt_info_get_block(BlockId, Block),
 	{ Block = block(_, Instrs, MaybeBranch, _) },
-	{ AddInstrRels =
-		lambda([Instr::in, Rels0::in, Rels::out] is det, (
+	{ AddInstrRels = (pred(Instr::in, Rels0::in, Rels::out) is det :-
 			rl__instr_relations(Instr, Inputs, Outputs),
 			set__insert_list(Rels0, Inputs, Rels1),
 			set__insert_list(Rels1, Outputs, Rels)
-		)) },
+		) },
 	{ set__init(BlockRels0) },
 	{ list__foldl(AddInstrRels, Instrs, BlockRels0, BlockRels1) },
 	{ MaybeBranch = yes(Branch) ->
@@ -734,8 +729,7 @@ rl_block__get_proc(Info0, ProcName, MercuryProcs, Proc) :-
 	rl_opt_info_get_rev_block_order(RevOrder, Info0, Info1),
 	list__reverse(RevOrder, Order),
 	rl_opt_info_get_block_map(BlockMap, Info1, Info2),
-	GetInstrs = 
-	    lambda([BlockId::in, Instrs::out] is det, (
+	GetInstrs = (pred(BlockId::in, Instrs::out) is det :-
 		map__lookup(BlockMap, BlockId, 
 			block(MaybeLabel, Instrs0, MaybeBranch, _)),
 		( MaybeBranch = yes(Branch) ->
@@ -748,7 +742,7 @@ rl_block__get_proc(Info0, ProcName, MercuryProcs, Proc) :-
 		;
 			Instrs = Instrs1
 		)
-	    )),
+	),
 	list__map(GetInstrs, Order, InstrLists),
 	list__condense(InstrLists, Instructions),
 	rl_opt_info_get_input_relations(Inputs, Info2, Info3),

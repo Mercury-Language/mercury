@@ -425,14 +425,14 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 	globals__io_lookup_bool_option(verbose_check_termination,
 		VerboseErrors),
 	( 
-		{ IsCheckTerm = lambda([PPId::in] is semidet, (
+		{ IsCheckTerm = (pred(PPId::in) is semidet :-
 			PPId = proc(PredId, ProcId),
 			module_info_pred_proc_info(Module0, PredId, ProcId,
 				PredInfo, _),
 			\+ pred_info_is_imported(PredInfo),
 			pred_info_get_markers(PredInfo, Markers),
 			check_marker(Markers, check_termination)
-		)) },
+		) },
 		{ list__filter(IsCheckTerm, SCC, CheckTermPPIds) },
 		{ CheckTermPPIds = [_ | _] }
 	->
@@ -443,12 +443,12 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 		io__set_exit_status(1),
 		{ module_info_incr_errors(Module0, Module) }
 	;
-		{ IsNonImported = lambda([PPId::in] is semidet, (
+		{ IsNonImported = (pred(PPId::in) is semidet :-
 			PPId = proc(PredId, ProcId),
 			module_info_pred_proc_info(Module0, PredId, ProcId,
 				PredInfo, _),
 			\+ pred_info_is_imported(PredInfo)
-		)) },
+		) },
 		{ list__filter(IsNonImported, SCC, NonImportedPPIds) },
 		{ NonImportedPPIds = [_ | _] },
 
@@ -462,10 +462,10 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 		{ VerboseErrors = yes ->
 			PrintErrors = Errors
 		; NormalErrors = yes ->
-			IsNonSimple = lambda([ContextError::in] is semidet, (
+			IsNonSimple = (pred(ContextError::in) is semidet :-
 				ContextError = _Context - Error,
 				\+ indirect_error(Error)
-			)),
+			),
 			list__filter(IsNonSimple, Errors, PrintErrors)
 		;
 			fail

@@ -293,14 +293,15 @@ magic_util__adjust_index(ArgTypes, index_spec(IndexType, Attrs0),
 	construct_type(qualified(unqualified("aditi"), "state") - 0,
 		[], StateType),
 	( list__nth_member_search(ArgTypes, StateType, StateIndex) ->
-		AdjustAttr = lambda([Attr0::in, Attr::out] is det, (
+		AdjustAttr = (pred(Attr0::in, Attr::out) is det :-
 			( Attr0 < StateIndex ->
 				Attr = Attr0
 			; Attr0 > StateIndex ->
 				Attr = Attr0 - 1
 			;
-	 			error("base relation indexed on aditi__state attribute")
-			))),
+	 			error("base relation indexed on " ++
+					"aditi__state attribute")
+			)),
 		list__map(AdjustAttr, Attrs0, Attrs)	
 	;
 		error("magic_util__adjust_index: no aditi__state in base relation argument types")
@@ -1062,8 +1063,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__apply_to_list(SuppOutputArgs, VarTypes, SuppOutputTypes) },  
 
-	{ GetSuppMode = 
-	    lambda([Var::in, Mode::out] is det, (
+	{ GetSuppMode = (pred(Var::in, Mode::out) is det :-
 		( instmap_delta_search_var(Delta, Var, NewInst) ->
 			Mode = (free -> NewInst)
 		;
@@ -1074,7 +1074,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 			% procedure will be reported there.
 			Mode = (ground(shared, none) -> ground(shared, none))
 		)
-	    )) },
+	) },
 	{ list__map(GetSuppMode, SuppOutputArgs, SuppOutputModes) },
 	magic_util__check_args(SuppOutputArgs, SuppOutputModes,
 		SuppOutputTypes, Context, var_name),
@@ -1212,10 +1212,10 @@ magic_util__check_args_2([Var | Vars], [ArgMode | ArgModes],
 		),
 
 		{ ConvertError = 
-			lambda([ErrorType::in, MagicError::out] is det, (
+			(pred(ErrorType::in, MagicError::out) is det :-
 				MagicError = argument_error(ErrorType,
-						ArgId, PredProcId) - Context
-			)) },
+					ArgId, PredProcId) - Context
+			) },
 		{ list__map(ConvertError, ErrorTypeList, TypeErrors) },
 
 		( { TypeErrors = [] } ->

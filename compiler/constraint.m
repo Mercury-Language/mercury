@@ -201,10 +201,10 @@ constraint__propagate_conj_sub_goal_2(Goal, Constraints0,
 		list(hlds_goal)::out) is det.
 
 constraint__flatten_constraints(Constraints0, Goals) :-
-	list__map(lambda([Constraint::in, Lists::out] is det, (
+	list__map((pred(Constraint::in, Lists::out) is det :-
 			Constraint = constraint(Goal, _, _, Constructs),
 			Lists = [Constructs, [Goal]]
-	)), Constraints0, GoalLists0),
+		), Constraints0, GoalLists0),
 	list__condense(GoalLists0, GoalLists),
 	list__condense(GoalLists, Goals).
 
@@ -383,9 +383,9 @@ constraint__annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes,
 
 constraint__annotate_conj_constraints(_, [], Constraints0, Goals0, Goals) -->
 	{ constraint__flatten_constraints(Constraints0, Constraints1) },
-	{ list__map(lambda([Goal::in, CnstrGoal::out] is det, (
+	{ list__map((pred(Goal::in, CnstrGoal::out) is det :-
 			CnstrGoal = Goal - []
-		)), Constraints1, Constraints) },
+		), Constraints1, Constraints) },
 	{ list__append(Constraints, Goals0, Goals) }.
 constraint__annotate_conj_constraints(ModuleInfo, 
 		[Conjunct | RevConjuncts0],

@@ -312,11 +312,11 @@ rl_block_opt__unset_relation_node(RelationId) -->
 		dag_get_node_info_map(NodeInfoMap0),
 		{ map__lookup(NodeInfoMap0, Node, NodeInfo0) },
 		{ NodeInfo0 = node_info(Instr, Outputs0) },
-		{ DeleteOutput = lambda([Output0::in, Output::out] is det, (
+		{ DeleteOutput = (pred(Output0::in, Output::out) is det :-
 				Output0 = output_node(Schema, Index, Set0),
 				set__delete(Set0, RelationId, Set),
 				Output = output_node(Schema, Index, Set)
-			)) },
+			) },
 		{ list__map(DeleteOutput, Outputs0, Outputs) },
 		{ NodeInfo = node_info(Instr, Outputs) },
 		{ map__det_update(NodeInfoMap0, Node, NodeInfo, NodeInfoMap) },
@@ -468,16 +468,16 @@ rl_block_opt__set_relation_node(NodeId, Output, Index0, Index) -->
 
 rl_block_opt__add_node_dependencies(MatchingNode, InputNodes) -->
 	dag_get_output_use_map(Uses0),
-	{ AddDepArc = lambda([OutputId::in, UseMap0::in, UseMap::out] is det, (
+	{ AddDepArc = (pred(OutputId::in, UseMap0::in, UseMap::out) is det :-
 		multi_map__set(UseMap0, OutputId, MatchingNode, UseMap)
-	)) },
+	) },
 	{ list__foldl(AddDepArc, InputNodes, Uses0, Uses) },
 	dag_set_output_use_map(Uses),
 
 	dag_get_node_dep_map(Dep0),
-	{ MMapSet = lambda([Node::in, Depend0::in, Depend::out] is det, (
+	{ MMapSet = (pred(Node::in, Depend0::in, Depend::out) is det :-
 		multi_map__set(Depend0, MatchingNode, Node, Depend)
-	)) },		
+	) },		
 	{ list__foldl(MMapSet, InputNodes, Dep0, Dep) },
 	dag_set_node_dep_map(Dep).
 
@@ -755,9 +755,9 @@ rl_block_opt__update_node(Node, Instr, InputLocs, OutputRels) -->
 	( { multi_map__search(Dep0, Node, UsedNodes) } ->
 		{ multi_map__det_replace(Dep0, Node, [], Dep) },
 		{ list__foldl(
-			lambda([Use::in, UseMap0::in, UseMap::out] is det, (
+			(pred(Use::in, UseMap0::in, UseMap::out) is det :-
 				multi_map__delete(UseMap0, Use, Node, UseMap)
-			)), UsedNodes, Uses0, Uses) },
+			), UsedNodes, Uses0, Uses) },
 		dag_set_output_use_map(Uses),
 		dag_set_node_dep_map(Dep)
 	;		
@@ -782,11 +782,11 @@ rl_block_opt__rename_node(OldNode, OldLoc, InputRel) -->
 	( { map__search(Deps, OldNode, UsedNodes) } ->
 		dag_get_output_use_map(Uses0),
 		{ list__foldl(
-			lambda([Use::in, UseMap0::in, UseMap::out] is det, (
+			(pred(Use::in, UseMap0::in, UseMap::out) is det :-
 				multi_map__delete(UseMap0,
 					Use, OldNode, UseMap1),
 				multi_map__set(UseMap1, Use, NewNode, UseMap)
-			)), UsedNodes, Uses0, Uses) },
+			), UsedNodes, Uses0, Uses) },
 		dag_set_output_use_map(Uses)
 	;
 		[]
@@ -975,13 +975,12 @@ rl_block_opt__produce_merged_projection(project_partition(_, Projects)) -->
 
                 dag_get_output_use_map(Uses0),
                 { multi_map__lookup(Uses0, Input, InputUses0) },
-                { list__filter(
-                    lambda([NodeId::in] is semidet, (
+                { list__filter((pred(NodeId::in) is semidet :-
                         \+ (
                                 list__member(Project, Projects),
                                 Project = output_projection(NodeId, _, _, _)
                         )
-                    )), InputUses0, InputUses) },
+                ), InputUses0, InputUses) },
 		{ multi_map__det_replace(Uses0, Input,
 			[NewNode | InputUses], Uses) },
 		dag_set_output_use_map(Uses),
@@ -1195,11 +1194,10 @@ rl_block_opt__deconstruct_dag(Instrs) -->
 	% Find out which of the non-locals are evaluated by this block.
 	dag_get_rel_node_map(RelNodeMap),
 	dag_get_output_loc_map(Locs),
-	{ IsProducedNonLocal =
-		lambda([Rel::in, Node::out] is semidet, (
-			map__search(RelNodeMap, Rel, OutputId),
-			map__lookup(Locs, OutputId, input_node(Node, _))
-		)) },
+	{ IsProducedNonLocal = (pred(Rel::in, Node::out) is semidet :-
+		map__search(RelNodeMap, Rel, OutputId),
+		map__lookup(Locs, OutputId, input_node(Node, _))
+	) },
 
 	{ list__filter_map(IsProducedNonLocal, LiveAtEnd,
 		RequiredNodes0) },
@@ -1215,7 +1213,7 @@ rl_block_opt__deconstruct_dag(Instrs) -->
 		error("rl_block_opt__deconstruct_dag: relation__tsort failed")
 	},
 	{ list__filter(
-		lambda([X::in] is semidet, set__member(X, RequiredNodes)),
+		(pred(X::in) is semidet :- set__member(X, RequiredNodes)),
 		NodeSort1, NodeSort) },
 	{ map__init(NodeRels) },
 	rl_block_opt__evaluate_nodes(NodeSort, LiveAtEnd0,
@@ -1242,19 +1240,17 @@ rl_block_opt__get_required_nodes([Node | Nodes0], Required0, Required,
 		dag_get_output_loc_map(Locs),
 		{ map__search(Dep, Node, NeededOutputs) ->
 			GetNode = 
-				lambda([OutputId::in, OutputNode::out] is det,
-				(
+				(pred(OutputId::in, OutputNode::out) is det :-
 					map__lookup(Locs, OutputId,
 						input_node(OutputNode, _))
-				)),
+				),
 			list__map(GetNode, NeededOutputs, SubNodes),
 			list__append(SubNodes, Nodes0, Nodes1),
 			AddDep =
-				lambda([DepNode::in, Rel0::in, Rel::out] is det,
-				(
+				(pred(DepNode::in, Rel0::in, Rel::out) is det :-
 					relation__add_values(Rel0,
 						Node, DepNode, Rel)
-				)),
+				),
 			list__foldl(AddDep, SubNodes, NodeRel0, NodeRel1)
 		;
 			Nodes1 = Nodes0,
@@ -1348,10 +1344,9 @@ rl_block_opt__get_node_outputs(Instr, NonLocalRels, [OutputNode | OutputNodes],
 		list(rl_instruction)::out) is det.
 
 rl_block_opt__get_ref_instrs(RelationId, OutputList, RefInstrs) :-
-	GetRefInstr =
-	    lambda([OtherOutput::in, Instr::out] is det, (
+	GetRefInstr = (pred(OtherOutput::in, Instr::out) is det :-
 		Instr = ref(OtherOutput, RelationId) - ""
-	    )),
+	),
 	list__map(GetRefInstr, OutputList, RefInstrs).
 
 %-----------------------------------------------------------------------------%

@@ -262,27 +262,27 @@ about unbound type variables.
 :- import_module int, string, map, require, varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
-	{ True = lambda([_PredInfo::in] is semidet, true) },
+	{ True = (pred(_PredInfo::in) is semidet :- true) },
 	process_matching_nonimported_procs(Task, True, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
-	{ NotAditi = lambda([PredInfo::in] is semidet, (
-			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-		)) }, 
+	{ NotAditi = (pred(PredInfo::in) is semidet :-
+		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+	) }, 
 	process_matching_nonimported_procs(Task, NotAditi, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_nonaditi_procs(Task0, Task,
 		ModuleInfo0, ModuleInfo) -->
-	{ NotAditi = lambda([PredInfo::in] is semidet, (
-			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
-		)) }, 
+	{ NotAditi = (pred(PredInfo::in) is semidet :-
+		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+	) }, 
 	process_matching_nonimported_procs(Task0, Task, NotAditi, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
-	{ True = lambda([_PredInfo::in] is semidet, true) },
+	{ True = (pred(_PredInfo::in) is semidet :- true) },
 	process_matching_nonimported_procs(Task0, Task, True, 
 		ModuleInfo0, ModuleInfo).
 

@@ -152,9 +152,9 @@ simplify__procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
 	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Procs, !PredInfo),
 	set__to_sorted_list(Msgs1, Msgs2),
-	list__filter(lambda([Msg::in] is semidet,
-		det_msg_is_any_mode_msg(Msg, any_mode)),
-		Msgs2, AnyModeMsgs1, AllModeMsgs1),
+	list__filter((pred(Msg::in) is semidet :-
+			det_msg_is_any_mode_msg(Msg, any_mode)
+		), Msgs2, AnyModeMsgs1, AllModeMsgs1),
 	set__sorted_list_to_set(AnyModeMsgs1, AnyModeMsgs2),
 	set__sorted_list_to_set(AllModeMsgs1, AllModeMsgs2),
 	( !.MaybeMsgs = yes(AnyModeMsgs0 - AllModeMsgs0) ->
@@ -2047,9 +2047,9 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 		error("simplify__goal_2 - get_arg_insts failed")
 	),
 	InstToUniMode =
-		lambda([ArgInst::in, ArgUniMode::out] is det, (
+		(pred(ArgInst::in, ArgUniMode::out) is det :-
 			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
-		)),
+		),
 	list__map(InstToUniMode, ArgInsts, UniModes),
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
 	UnifyContext = unify_context(explicit, []),
@@ -2337,23 +2337,23 @@ simplify_info_reinit(Simplifications, InstMap0) -->
 
 :- implementation.
 
-simplify_info_get_det_info(SI, SI^det_info).
-simplify_info_get_msgs(SI, SI^msgs).
-simplify_info_get_simplifications(SI, SI^simplifications).
-simplify_info_get_common_info(SI, SI^common_info).
-simplify_info_get_instmap(SI, SI^instmap).
-simplify_info_get_varset(SI, SI^varset).
+simplify_info_get_det_info(SI, SI ^ det_info).
+simplify_info_get_msgs(SI, SI ^ msgs).
+simplify_info_get_simplifications(SI, SI ^ simplifications).
+simplify_info_get_common_info(SI, SI ^ common_info).
+simplify_info_get_instmap(SI, SI ^ instmap).
+simplify_info_get_varset(SI, SI ^ varset).
 simplify_info_get_var_types(SI, VarTypes) :-
-	det_info_get_vartypes(SI^det_info, VarTypes).
+	det_info_get_vartypes(SI ^ det_info, VarTypes).
 simplify_info_requantify(SI) :-
-	SI^requantify = yes.
+	SI ^ requantify = yes.
 simplify_info_recompute_atomic(SI) :-
-	SI^recompute_atomic = yes.
+	SI ^ recompute_atomic = yes.
 simplify_info_rerun_det(SI) :-
-	SI^rerun_det = yes.
-simplify_info_get_cost_delta(SI, SI^cost_delta).
-simplify_info_get_type_info_varmap(SI, SI^type_info_varmap).
-simplify_info_get_typeclass_info_varmap(SI, SI^typeclass_info_varmap).
+	SI ^ rerun_det = yes.
+simplify_info_get_cost_delta(SI, SI ^ cost_delta).
+simplify_info_get_type_info_varmap(SI, SI ^ type_info_varmap).
+simplify_info_get_typeclass_info_varmap(SI, SI ^ typeclass_info_varmap).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
 	simplify_info_get_det_info(Info, DetInfo),
@@ -2412,23 +2412,24 @@ simplify_info_get_pred_info(Info, PredInfo) :-
 
 :- implementation.
 
-simplify_info_set_det_info(SI, Det, SI^det_info := Det).
-simplify_info_set_msgs(SI, Msgs, SI^msgs := Msgs). 
-simplify_info_set_simplifications(SI, Simp, SI^simplifications := Simp).
-simplify_info_set_instmap(SI, InstMap, SI^instmap := InstMap). 
-simplify_info_set_common_info(SI, Common, SI^common_info := Common). 
-simplify_info_set_varset(SI, VarSet, SI^varset := VarSet). 
-simplify_info_set_var_types(SI, VarTypes, SI^det_info := DetInfo) :-
-	det_info_set_vartypes(SI ^ det_info, VarTypes, DetInfo).
-simplify_info_set_requantify(SI, SI^requantify := yes).
-simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
-simplify_info_set_rerun_det(SI, SI^rerun_det := yes).
-simplify_info_set_cost_delta(SI, Delta, SI^cost_delta := Delta).
-simplify_info_set_type_info_varmap(SI, Map, SI^type_info_varmap := Map).
+simplify_info_set_det_info(SI, Det, SI ^ det_info := Det).
+simplify_info_set_msgs(SI, Msgs, SI ^ msgs := Msgs). 
+simplify_info_set_simplifications(SI, Simp, SI ^ simplifications := Simp).
+simplify_info_set_instmap(SI, InstMap, SI ^ instmap := InstMap). 
+simplify_info_set_common_info(SI, Common, SI ^ common_info := Common). 
+simplify_info_set_varset(SI, VarSet, SI ^ varset := VarSet). 
+simplify_info_set_var_types(SI, VarTypes, SI ^ det_info := DetInfo) :-
+	det_info_set_vartypes(SI  ^  det_info, VarTypes, DetInfo).
+simplify_info_set_requantify(SI, SI ^ requantify := yes).
+simplify_info_set_recompute_atomic(SI, SI ^ recompute_atomic := yes).
+simplify_info_set_rerun_det(SI, SI ^ rerun_det := yes).
+simplify_info_set_cost_delta(SI, Delta, SI ^ cost_delta := Delta).
+simplify_info_set_type_info_varmap(SI, Map, SI ^ type_info_varmap := Map).
 simplify_info_set_typeclass_info_varmap(SI, Map,
-		SI^typeclass_info_varmap := Map).
+		SI ^ typeclass_info_varmap := Map).
 
-simplify_info_incr_cost_delta(SI, Incr, SI^cost_delta := SI^cost_delta + Incr).
+simplify_info_incr_cost_delta(SI, Incr,
+	SI ^ cost_delta := SI ^ cost_delta + Incr).
 
 simplify_info_add_msg(Info0, Msg, Info) :-
 	( simplify_do_warn(Info0) ->
@@ -2442,16 +2443,16 @@ simplify_info_do_add_msg(Info0, Msg, Info) :-
 	set__insert(Msgs0, Msg, Msgs),
 	simplify_info_set_msgs(Info0, Msgs, Info).
 
-simplify_info_enter_lambda(SI, SI^lambdas := SI^lambdas + 1).
-simplify_info_leave_lambda(SI, SI^lambdas := LambdaCount) :-
-	LambdaCount1 = SI^lambdas - 1,
+simplify_info_enter_lambda(SI, SI ^ lambdas := SI ^ lambdas + 1).
+simplify_info_leave_lambda(SI, SI ^ lambdas := LambdaCount) :-
+	LambdaCount1 = SI ^ lambdas - 1,
 	( LambdaCount1 >= 0 ->
 		LambdaCount = LambdaCount1
 	;
 		error("simplify_info_leave_lambda: Left too many lambdas")
 	).
 simplify_info_inside_lambda(SI) :-
-	SI^lambdas > 0.
+	SI ^ lambdas > 0.
 
 simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 	simplify_info_get_det_info(Info0, DetInfo0),
@@ -2499,8 +2500,8 @@ simplify_do_more_common(Info) :-
 :- pred simplify_info_update_instmap(simplify_info::in, hlds_goal::in,
 		simplify_info::out) is det.
 
-simplify_info_update_instmap(SI, Goal, SI^instmap := InstMap) :-
-	update_instmap(Goal, SI^instmap, InstMap).
+simplify_info_update_instmap(SI, Goal, SI ^ instmap := InstMap) :-
+	update_instmap(Goal, SI ^ instmap, InstMap).
 
 :- type before_after
 	--->	before

@@ -1047,10 +1047,10 @@ tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
 	;
 		LowRangeEnd = (MinStag + MaxStag) // 2,
 		HighRangeStart = LowRangeEnd + 1,
-		InLowGroup = lambda([StagGoal::in] is semidet, (
+		InLowGroup = (pred(StagGoal::in) is semidet :-
 			StagGoal = Stag - _,
 			Stag =< LowRangeEnd
-		)),
+		),
 		list__filter(InLowGroup, StagGoals, LowGoals, HighGoals),
 		code_info__get_next_label(NewLabel, !CI),
 		string__int_to_string(MinStag, LowStartStr),

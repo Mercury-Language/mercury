@@ -892,20 +892,19 @@ qualify_type(Type0, Type, Info0, Info) -->
 
 	% Qualify the modes in a pragma c_code(...) decl.
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
-		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
+	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 qualify_pragma(X@source_file(_), X, Info, Info) --> [].
 qualify_pragma(X@foreign_decl(_, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_code(_, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_type(_, _, _, _, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_import_module(_, _), X, Info, Info) --> [].
-qualify_pragma(
-	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
-	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
-		Info0, Info) -->
-	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
+qualify_pragma(X, Y, Info0, Info) -->
+	{ PragmaVars0 = X ^ proc_vars },
+	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info),
+	{ Y = X ^ proc_vars := PragmaVars }.
 qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 
-	Info0, Info) --> 
+		Info0, Info) --> 
 	(
 		{ MModes0 = yes(Modes0) }
 	->
@@ -1064,11 +1063,11 @@ qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
 		Ms = M0s
 	;
 		sym_name_get_module_name(ClassName, unqualified(""), Module),
-		Qualify = lambda([M0::in, M::out] is det, (
+		Qualify = (pred(M0::in, M::out) is det :-
 			M0 = instance_method(A, Method0, C, D, E),
 			add_module_qualifier(Module, Method0, Method),
 			M = instance_method(A, Method, C, D, E)
-		)),
+		),
 		list__map(Qualify, M0s, Ms)
 	).
 
@@ -1659,12 +1658,11 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
 			% third, take the intersection of the sets computed
 			% in the first two steps
 			%
-			FindMatch =
-				lambda([MatchModule::out] is nondet, (
-				    list__member(MatchModule,
-				    	AllMatchingModules),
-				    set__member(MatchModule, DefiningModules)
-				)),
+			FindMatch = (pred(MatchModule::out) is nondet :-
+				list__member(MatchModule,
+					AllMatchingModules),
+				set__member(MatchModule, DefiningModules)
+			),
 			solutions(FindMatch, MatchingModules)
 		)
 	;

@@ -417,8 +417,10 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 		    % being sorted on the first input mode.
 		    (
 			{ MaybeOutput = yes(OutputStream - StructName) },
-			{ TermToArg = lambda([Term::in,FactArg::out] is semidet,
-				Term = term__functor(FactArg, _, _)) },
+			{ TermToArg =
+				(pred(Term::in,FactArg::out) is semidet :-
+					Term = term__functor(FactArg, _, _)
+			) },
 			{ list__map(TermToArg, Terms, FactArgs) }
 		    ->
 			write_fact_data(FactNum, FactArgs, StructName,
@@ -1645,9 +1647,9 @@ build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName, TableNum0,
 	},
 	(
 		{ MaybeDataStream = yes(DataStream) },
-		{ list__map(lambda([X::in, Y::out] is det, 
-			X = sort_file_line(_, _, Y)), MatchingFacts,
-			OutputData) },
+		{ list__map((pred(X::in, Y::out) is det :-
+			X = sort_file_line(_, _, Y)
+		), MatchingFacts, OutputData) },
 		write_fact_table_data(FactNum, OutputData, StructName,
 			DataStream)
 	;
@@ -2190,7 +2192,7 @@ fact_table_hash(HashSize, Key, HashVal) :-
 		% if cross-compiling between systems that have different
 		% character representations.
 		string__to_char_list(String, Cs),
-		list__map(lambda([C::in, I::out] is det, char__to_int(C, I)),
+		list__map((pred(C::in, I::out) is det :- char__to_int(C, I)),
 			Cs, Ns)
 	;
 		Key = term__integer(Int)
@@ -3208,7 +3210,7 @@ void mercury_sys_init_%s_module(void) {
 
 generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
 		OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
-	list__map(lambda([X::in, Y::out] is det, X = pragma_var(_,_,Y)),
+	list__map((pred(X::in, Y::out) is det :- X = pragma_var(_,_,Y)),
 		PragmaVars, Modes),
 	make_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
 	generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, ModuleInfo,

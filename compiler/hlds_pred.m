@@ -2253,11 +2253,10 @@ proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
 				% or in a typeclass_info. Either get the
 				% type_info variable or the typeclass_info
 				% variable
-			LookupVar = lambda([TVar::in, TVarVar::out] is det,
-				(
+			LookupVar = (pred(TVar::in, TVarVar::out) is det :-
 					map__lookup(TVarMap, TVar, Locn),
 					type_info_locn_var(Locn, TVarVar)
-				)),
+				),
 			list__map(LookupVar, TypeVars, TypeInfoVars0),
 
 			proc_info_get_typeinfo_vars_2(Vars, VarTypes, TVarMap,
@@ -2311,12 +2310,12 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
 	proc_info_argmodes(ProcInfo, ArgModes),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
-	IsInstChanged = lambda([VarMode::in, Var::out] is semidet, (
+	IsInstChanged = (pred(VarMode::in, Var::out) is semidet :-
 		VarMode = Var - Mode,
 		map__lookup(VarTypes, Var, Type),
 		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
 		\+ inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
-	)),
+	),
 	list__filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
 proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
@@ -2325,12 +2324,12 @@ proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
 	proc_info_argmodes(ProcInfo, ArgModes),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
-	IsInstUnchanged = lambda([VarMode::in, Var::out] is semidet, (
+	IsInstUnchanged = (pred(VarMode::in, Var::out) is semidet :-
 		VarMode = Var - Mode,
 		map__lookup(VarTypes, Var, Type),
 		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
 		inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
-	)),
+	),
 	list__filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 
 proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,

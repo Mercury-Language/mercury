@@ -3139,10 +3139,9 @@ add_aditi_procs(HLDS0, PredId, AditiPreds0, AditiPreds) :-
 	module_info_pred_info(HLDS0, PredId, PredInfo),
 	( hlds_pred__pred_info_is_aditi_relation(PredInfo) ->
 		ProcIds = pred_info_procids(PredInfo),
-		AddProc = 
-		    lambda([ProcId::in, Preds0::in, Preds::out] is det, (
+		AddProc = (pred(ProcId::in, Preds0::in, Preds::out) is det :-
 			set__insert(Preds0, proc(PredId, ProcId), Preds)
-		    )),
+		),
 		list__foldl(AddProc, ProcIds, AditiPreds0, AditiPreds)
 	;
 		AditiPreds = AditiPreds0

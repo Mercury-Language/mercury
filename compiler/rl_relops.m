@@ -157,11 +157,11 @@ rl_relops__get_dependent_goals(Vars, InstMap0,
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
 	rl_info_get_module_info(ModuleInfo),
 	{ IsInput = 
-		lambda([Var::in] is semidet, (
+		(pred(Var::in) is semidet :-
 			instmap__lookup_var(InstMap0, Var, Inst0),
 			instmap__lookup_var(InstMap, Var, Inst),
 			mode_is_input(ModuleInfo, (Inst0 -> Inst))
-		)) },
+		) },
 	{ list__filter(IsInput, NonLocalsList, InputNonLocalsList) },
 	{ set__sorted_list_to_set(InputNonLocalsList, InputNonLocals) },
 	{ set__difference(InputNonLocals, Vars, OtherCallInputs) },

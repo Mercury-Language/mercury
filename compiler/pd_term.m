@@ -140,8 +140,9 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	Info0 = global_term_info(SingleGoalCover0, MultipleGoalCover0),
 	(
 		EarlierGoal = call(PredId1, ProcId1, _, _, _, _) - _,
-		Hd = lambda([List::in, Head::out] is semidet, 
-			List = [Head | _]),
+		Hd = (pred(List::in, Head::out) is semidet :-
+			List = [Head | _]
+		),
 		expand_calls(Hd, Versions, proc(PredId1, ProcId1), 
 			FirstPredProcId),
 		(

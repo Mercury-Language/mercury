@@ -29,7 +29,7 @@
 :- import_module aditi_backend__rl.
 
 :- import_module assoc_list, bimap, bool, int, list, map, queue, relation.
-:- import_module require, set, std_util.
+:- import_module string, require, set, std_util.
 
 rl_loop__shift_invariants -->
 	rl_opt_info_get_loops(Loops0),
@@ -37,9 +37,8 @@ rl_loop__shift_invariants -->
 	% as they can go in one jump. If a variable is an invariant of
 	% an outer loop, it must be invariant in any inner loops of that
 	% outer loop.
-	{ CompareLoops = 
-	    lambda([Loop1::in, Loop2::in, Compare::out] is det, (
-	    	Loop1 = loop(_, Nodes1),
+	{ CompareLoops = (pred(Loop1::in, Loop2::in, Compare::out) is det :-
+		Loop1 = loop(_, Nodes1),
 		Loop2 = loop(_, Nodes2),
 		set__to_sorted_list(Nodes1, Nodes1List),
 		list__length(Nodes1List, Size1),
@@ -47,7 +46,7 @@ rl_loop__shift_invariants -->
 		list__length(Nodes2List, Size2),
 		% Sort in descending order on size.
 		compare(Compare, Size2, Size1)
-	    )) },
+	) },
 	{ list__sort(CompareLoops, Loops0, SortedLoops) },
 	rl_loop__shift_invariants_2(SortedLoops, [], Loops),
 	rl_opt_info_set_loops(Loops).
@@ -65,7 +64,7 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 		% it dominates all the exit points.
 	rl_opt_info_get_flow_graph(FlowGraph),
 	{ IsExitPoint = 
-		lambda([Node::in] is semidet, (
+		(pred(Node::in) is semidet :-
 			relation__lookup_element(FlowGraph, Node, NodeKey),
 			relation__lookup_from(FlowGraph, NodeKey,
 				CalledNodeKeys),
@@ -73,7 +72,7 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 			relation__lookup_key(FlowGraph,
 				CalledNodeKey, CalledNode),
 			\+ set__member(CalledNode, Nodes)
-		)) },
+		) },
 	{ set__to_sorted_list(Nodes, NodeList) },
 	{ list__filter(IsExitPoint, NodeList, ExitNodes) },
 	rl_opt_info_get_dominator_info(DominatorInfo), 
@@ -81,10 +80,10 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 		ExitNodes = [ExitNode | ExitNodes1],
 		map__lookup(DominatorInfo, ExitNode, ExitDominatingNodes0),
 		IntersectDominators =
-		    lambda([N::in, Inter0::in, Inter::out] is det, (
-		    	map__lookup(DominatorInfo, N, DominatingNodes1),
-			set__intersect(Inter0, DominatingNodes1, Inter)
-		    )),
+			(pred(N::in, Inter0::in, Inter::out) is det :-
+				map__lookup(DominatorInfo, N, DominatingNodes1),
+				set__intersect(Inter0, DominatingNodes1, Inter)
+			),
 		list__foldl(IntersectDominators, ExitNodes1, 
 			ExitDominatingNodes0, ExitDominatingNodes)
 	;
@@ -123,16 +122,15 @@ rl_loop__get_nonlocal_rels([Block | Blocks], OneBlock0, OneBlock,
 		ManyBlock0, ManyBlock) -->
 	rl_opt_info_get_block(Block, block(_, Instrs, _, _)),
 	{ GetInstrRelations = 
-		lambda([Instr::in, Rels0::in, Rels::out] is det, (
+		(pred(Instr::in, Rels0::in, Rels::out) is det :-
 			rl__instr_relations(Instr, Inputs, Outputs),
 			set__insert_list(Rels0, Inputs, Rels1),
 			set__insert_list(Rels1, Outputs, Rels)
-		)) },
+		) },
 	{ set__init(BlockRels0) },
 	{ list__foldl(GetInstrRelations, Instrs, BlockRels0, BlockRels1) },
 
-	{ Update =
-	    lambda([Rel::in, Changed0::in, Changed::out] is det, (
+	{ Update = (pred(Rel::in, Changed0::in, Changed::out) is det :-
 		Changed0 = One0 - Many0,
 		( set__member(Rel, Many0) ->
 			Many = Many0,
@@ -145,7 +143,7 @@ rl_loop__get_nonlocal_rels([Block | Blocks], OneBlock0, OneBlock,
 			Many = Many0
 		),
 		Changed = One - Many
-	    )) },
+	) },
 	{ set__to_sorted_list(BlockRels1, BlockRels) },
 	{ list__foldl(Update, BlockRels,
 		OneBlock0 - ManyBlock0, OneBlock1 - ManyBlock1) },
@@ -166,10 +164,10 @@ rl_loop__shift_invariants_loop([LoopNode | LoopNodes], AllLoopNodes,
 	rl_opt_info_get_block(LoopNode, Block0),
 	{ Block0 = block(Label, Instrs0, Branch, BlockInfo) },
 	{ GetChangedRels = 
-		lambda([Instr::in, Rels0::in, Rels::out] is det, (
+		(pred(Instr::in, Rels0::in, Rels::out) is det :-
 			rl__instr_relations(Instr, _, Outputs),
 			set__insert_list(Rels0, Outputs, Rels)
-		)) },
+		) },
 	{ set__init(BlockChangedRels0) },
 	{ list__foldl(GetChangedRels, Instrs0, 
 		BlockChangedRels0, BlockChangedRels) },
@@ -346,8 +344,7 @@ rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
 
 	% Add the new block to all loops containing the old header.
 	( { EntryBlock = block(yes(EntryLabel), _, _, _) } ->
-		{ UpdateLoop = 
-		    lambda([L0::in, L::out] is det, (
+		{ UpdateLoop = (pred(L0::in, L::out) is det :-
 			L0 = loop(LEntry0, LNodes0),
 			( set__member(EntryNode, LNodes0) ->
 				set__insert(LNodes0, HeaderBlockId, LNodes)
@@ -355,13 +352,14 @@ rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
 				LNodes = LNodes0
 			),
 			L = loop(LEntry0, LNodes)
-		    )) },
+		) },
 		{ list__map(UpdateLoop, ProcessedLoops0, ProcessedLoops) },
 		{ list__map(UpdateLoop, LoopsToProcess0, LoopsToProcess) },
 		rl_loop__update_gotos(LoopNodes, EntryLabel, HeaderLabel, 
 			EntryNode, HeaderBlockId)
 	;
-		{ error("rl_loop__maybe_add_header: loop entry does not have a label") }
+		{ error("rl_loop__maybe_add_header: " ++
+			"loop entry does not have a label") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -394,28 +392,30 @@ rl_loop__update_gotos(LoopNodes, OldLabel, NewLabel,
 	%
 	rl_opt_info_get_block_map(BlockMap0),
 	{ map__to_assoc_list(BlockMap0, BlockAL0) },
-	{ UpdateBlock =
-	   lambda([BlockIdAndBlock0::in, BlockIdAndBlock::out] is det, (
+	{ UpdateBlock = (pred(BlockIdAndBlock0::in, BlockIdAndBlock::out)
+			is det :-
 	   	BlockIdAndBlock0 = BlockId - block(A, B, MaybeBranch0, D),
 		( set__member(BlockId, LoopNodes) ->
-		    MaybeBranch = MaybeBranch0
+			MaybeBranch = MaybeBranch0
 		;
-		    ( 
-		    	MaybeBranch0 = yes(goto(OldLabel) - Comment) 
-		    ->
-			MaybeBranch = yes(goto(NewLabel) - Comment)
-		    ; 
-		    	MaybeBranch0 = 
-				yes(conditional_goto(Cond, OldLabel) - Comment)
-		    ->
-			MaybeBranch = 
-				yes(conditional_goto(Cond, NewLabel) - Comment)
-		    ;
-		        MaybeBranch = MaybeBranch0
-		    )
+			( 
+				MaybeBranch0 = yes(goto(OldLabel) - Comment) 
+			->
+				MaybeBranch = yes(goto(NewLabel) - Comment)
+			; 
+				MaybeBranch0 = 
+					yes(conditional_goto(Cond, OldLabel)
+						- Comment)
+			->
+				MaybeBranch = 
+					yes(conditional_goto(Cond, NewLabel)
+						- Comment)
+			;
+				MaybeBranch = MaybeBranch0
+			)
 		),
-	   	BlockIdAndBlock = BlockId - block(A, B, MaybeBranch, D)
-	    )) },
+		BlockIdAndBlock = BlockId - block(A, B, MaybeBranch, D)
+	) },
 	{ list__map(UpdateBlock, BlockAL0, BlockAL) },
 	{ map__from_assoc_list(BlockAL, BlockMap) },
 	rl_opt_info_set_block_map(BlockMap),

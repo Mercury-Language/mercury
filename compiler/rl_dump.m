@@ -40,15 +40,14 @@ rl_dump__write_procedure(ModuleInfo, Proc) -->
 	{ Proc = rl_proc(Name, Inputs, Outputs, MemoedRels,
 			RelationInfo, Instructions, SCC) },
 	io__write_string("% Procedure for\n"),
-	{ OutputProcName = 
-	    lambda([PredProcId::in, IO0::di, IO::uo] is det, (
+	{ OutputProcName = (pred(PredProcId::in, IO0::di, IO::uo) is det :-
 		PredProcId = proc(PredId, _ProcId),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		PredName = pred_info_name(PredInfo),
 		io__write_string("%\t", IO0, IO1),
 		io__write_string(PredName, IO1, IO2),
 		io__nl(IO2, IO)
-	    )) },
+	) },
 	list__foldl(OutputProcName, SCC),
 	io__write_string("% Memoed relations "),
 	{ set__to_sorted_list(MemoedRels, MemoedList) },
@@ -732,9 +731,9 @@ rl_dump__write_key_term(ModuleInfo, VarSet,
 		io__state::di, io__state::uo) is det.
 
 rl_dump__write_var_list(VarSet, Vars) -->
-        { PrintVar = lambda([Var::in, IO0::di, IO::uo] is det,
-			mercury_output_var(Var, VarSet, yes, IO0, IO)
-		) },
+        { PrintVar = (pred(Var::in, IO0::di, IO::uo) is det :-
+		mercury_output_var(Var, VarSet, yes, IO0, IO)
+	) },
 	rl_dump__write_list(PrintVar, Vars).
 
 :- pred rl_dump__write_list(pred(T, io__state, io__state), list(T),

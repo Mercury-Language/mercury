@@ -345,8 +345,7 @@ magic__check_scc_2(SCC) -->
 	;
 		% Add errors for context procedures which are mutually
 		% recursive with other procedures.
-		solutions(
-			lambda([ProcAndContext::out] is nondet, (
+		solutions((pred(ProcAndContext::out) is nondet :-
 				list__member(ContextProc, SCC),
 				ContextProc = proc(ContextPredId, _),
 				module_info_pred_info(ModuleInfo,
@@ -357,13 +356,12 @@ magic__check_scc_2(SCC) -->
 				pred_info_context(ContextPredInfo,
 					Context),
 				ProcAndContext = ContextProc - Context
-			)), ContextProcs),
-		list__map(
-			lambda([BadContextProc::in, Error::out] is det, (
+			), ContextProcs),
+		list__map((pred(BadContextProc::in, Error::out) is det :-
 				BadContextProc = TheContextProc - TheContext,
 				Error = mutually_recursive_context(
 					TheContextProc, SCC) - TheContext
-			)), ContextProcs, ContextErrors),
+			), ContextProcs, ContextErrors),
 		set__insert_list(Errors0, ContextErrors, Errors1)
 	},
 	{
@@ -585,10 +583,10 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputTypes, _) },
 	{ construct_higher_order_type((pure), predicate, (aditi_bottom_up),
 		InputTypes, Type) },
-	{ GetOutputMode = lambda([ArgMode::in, OutputMode::out] is det, (
+	{ GetOutputMode = (pred(ArgMode::in, OutputMode::out) is det :-
 			mode_get_insts(ModuleInfo, ArgMode, _, OutputInst),
 			OutputMode = (free -> OutputInst)
-		)) },
+		) },
 	{ list__map(GetOutputMode, InputModes, InputRelModes) },
  	{ Inst = ground(unique, higher_order(pred_inst_info(predicate, 
 				InputRelModes, nondet))) },
@@ -1595,10 +1593,10 @@ magic__check_goal_nonlocals(Goal) -->
 		{ set__to_sorted_list(GoalVars0, GoalVars) },
 		magic_info_get_proc_info(ProcInfo),
 		{ proc_info_vartypes(ProcInfo, VarTypes) },
-		{ IsAditiVar = lambda([Var::in] is semidet, (
-					map__lookup(VarTypes, Var, Type),
-					type_is_aditi_state(Type)
-				)) },
+		{ IsAditiVar = (pred(Var::in) is semidet :-
+				map__lookup(VarTypes, Var, Type),
+				type_is_aditi_state(Type)
+			) },
 		{ list__filter(IsAditiVar, GoalVars, IllegalNonLocals) },
 		( { IllegalNonLocals = [] } ->
 			[]

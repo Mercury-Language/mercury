@@ -503,13 +503,13 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
 		string__format("%d__%d", [i(Line), i(Counter)], PredIdStr)
 	;
 		NewPredId = type_subst(VarSet, TypeSubst),
-		SubstToString = lambda([SubstElem::in, SubstStr::out] is det, (
+		SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
 			SubstElem = Var - Type,
 			varset__lookup_name(VarSet, Var, VarName),
 			TypeString = mercury_type_to_string(VarSet, Type),
 			string__append_list([VarName, " = ", TypeString],
 				SubstStr)
-		)),
+		),
 		list_to_string(SubstToString, TypeSubst, PredIdStr)
 	;
 		NewPredId = unused_args(Args),

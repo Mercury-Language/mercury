@@ -453,9 +453,9 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 
 output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 		DeclSet0, DeclSet) -->
-	{ MustInit = lambda([Module::in] is semidet, (
+	{ MustInit = (pred(Module::in) is semidet :-
 		module_defines_label_with_layout(Module, StackLayoutLabels)
-	)) },
+	) },
 	{ list__filter(MustInit, Modules,
 		AlwaysInitModules, MaybeInitModules) },
 	{ list__chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches) },

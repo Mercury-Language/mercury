@@ -1568,7 +1568,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 			FirstVarsList, FirstVarNames),
 		list__map(varset__lookup_name(VarSet),
 			RestVarsList, RestVarNames),
-		Pad = lambda([S0::in, S::out] is det,
+		Pad = (pred(S0::in, S::out) is det :-
 			string__append(S0, " ", S)),
 		list__map(Pad, FirstVarNames, PaddedFirstNames),
 		list__map(Pad, RestVarNames, PaddedRestNames),

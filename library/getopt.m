@@ -233,10 +233,10 @@ getopt__process_options(OptionOps, Args0, Args, Result) :-
 
 getopt__process_options(OptionOps, Args0, OptionArgs, NonOptionArgs, Result) :-
 	getopt__get_option_defaults(OptionOps, OptionDefaultsPred),
-	solutions(lambda([OptionDataPair::out] is nondet, (
+	solutions((pred(OptionDataPair::out) is nondet :-
 			OptionDataPair = Option - OptionData,
 			call(OptionDefaultsPred, Option, OptionData)
-		)), OptionDefaultsList),
+		), OptionDefaultsList),
 	map__from_assoc_list(OptionDefaultsList, OptionTable0),
 	getopt__process_arguments(Args0, NonOptionArgs, OptionOps,
 		[], RevOptionArgs, OptionTable0, Result),

@@ -259,8 +259,8 @@ get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
 		Needed = Needed0
 	;
 		PredProcIds = yes(Ids),
-		get_class_interface_pred_procs(Ids, Queue0, Queue,
-			Needed0, Needed)
+		list__foldl2(get_class_interface_pred_proc, Ids,
+			Queue0, Queue, Needed0, Needed)
 	).
 
 :- pred get_class_pred_procs(hlds_class_defn, entity_queue, entity_queue,
@@ -269,23 +269,17 @@ get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
 
 get_class_pred_procs(Class, Queue0, Queue, Needed0, Needed) :-
 	Class = hlds_class_defn(_, _, _, _, Methods, _, _),
-	get_class_interface_pred_procs(Methods,
+	list__foldl2(get_class_interface_pred_proc, Methods,
 		Queue0, Queue, Needed0, Needed).
 
-:- pred get_class_interface_pred_procs(list(hlds_class_proc),
-	entity_queue, entity_queue, needed_map, needed_map).
-:- mode get_class_interface_pred_procs(in, in, out, in, out) is det.
+:- pred get_class_interface_pred_proc(hlds_class_proc::in,
+	entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+	is det.
 
-get_class_interface_pred_procs(Ids, Queue0, Queue, Needed0, Needed) :-
-	AddHldsClassProc = lambda(
-		[PredProc::in, Q0::in, Q::out, N0::in, N::out] is det,
-		(
-			PredProc = hlds_class_proc(PredId, ProcId),
-			queue__put(Q0, proc(PredId, ProcId), Q),
-			map__set(N0, proc(PredId, ProcId), no, N)
-		)),
-	list__foldl2(AddHldsClassProc, Ids, Queue0, Queue,
-		Needed0, Needed).
+get_class_interface_pred_proc(ClassProc, Queue0, Queue, Needed0, Needed) :-
+	ClassProc = hlds_class_proc(PredId, ProcId),
+	queue__put(Queue0, proc(PredId, ProcId), Queue),
+	map__set(Needed0, proc(PredId, ProcId), no, Needed).
 
 %-----------------------------------------------------------------------------%
 
@@ -642,13 +636,13 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo, !IO) :-
 			% conj([]).
 			% XXX this looks fishy to me - zs
 		DestroyGoal =
-			lambda([Id::in, PTable0::in, PTable::out] is det, (
+			(pred(Id::in, PTable0::in, PTable::out) is det :-
 				map__lookup(ProcTable0, Id, ProcInfo0),
 				goal_info_init(GoalInfo),
 				Goal = conj([]) - GoalInfo,
 				proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
 				map__det_update(PTable0, Id, ProcInfo, PTable)
-			)),
+			),
 		list__foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
 		pred_info_set_import_status(imported(interface),
@@ -801,14 +795,14 @@ dead_pred_elim(!ModuleInfo) :-
 		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
 			SpecMap0, PragmaMap0)),
 	set__to_sorted_list(NeededPreds2, NeededPredList2),
-	list__foldl(
-	    lambda([NeededPred::in, AllPreds0::in, AllPreds::out] is det, (
+	list__foldl((pred(NeededPred::in, AllPreds0::in, AllPreds::out)
+		    	is det :-
 		( map__search(SpecMap0, NeededPred, NewNeededPreds) ->
 			set__insert_list(AllPreds0, NewNeededPreds, AllPreds)
 		;
 			AllPreds = AllPreds0
 		)
-	)), NeededPredList2, NeededPreds2, NeededPreds),
+	), NeededPredList2, NeededPreds2, NeededPreds),
 	set__intersect(TypeSpecForcePreds0, NeededPreds, TypeSpecForcePreds),
 
 	module_info_set_type_spec_info(
@@ -819,7 +813,7 @@ dead_pred_elim(!ModuleInfo) :-
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
 	module_info_get_partial_qualifier_info(!.ModuleInfo, PartialQualInfo),
 	predicate_table_restrict(PartialQualInfo, PredTable0,
-			set__to_sorted_list(NeededPreds), PredTable),
+		set__to_sorted_list(NeededPreds), PredTable),
 	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
@@ -928,10 +922,10 @@ pre_modecheck_examine_goal(disj(Goals) - _) -->
 pre_modecheck_examine_goal(if_then_else(_, If, Then, Else) - _) -->
 	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
 pre_modecheck_examine_goal(switch(_, _, Cases) - _) -->
-	{ ExamineCase = lambda([Case::in, Info0::in, Info::out] is det, (
+	{ ExamineCase = (pred(Case::in, Info0::in, Info::out) is det :-
 		Case = case(_, Goal),
 		pre_modecheck_examine_goal(Goal, Info0, Info)
-	)) },
+	) },
 	list__foldl(ExamineCase, Cases).
 pre_modecheck_examine_goal(generic_call(_,_,_,_) - _) --> [].
 pre_modecheck_examine_goal(not(Goal) - _) -->

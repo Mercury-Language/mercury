@@ -7,11 +7,11 @@
 % Main author: stayl
 %
 % Work out what sorting and indexing is available, and introduce
-% sort-merge, hashed or indexed operations where possible. 
+% sort-merge, hashed or indexed operations where possible.
 %
 % Remove unnecessary sort and add_index operations.
 %
-% 
+%
 % Eventually this module should:
 %
 % Generate sort and add_index instructions where required.
@@ -73,7 +73,7 @@ rl_sort__proc_2(IO0, IO) -->
 	( { set__empty(MemoedRels) } ->
 		[]
 	;
-		rl_opt_info_get_flow_graph(FlowGraph0),	
+		rl_opt_info_get_flow_graph(FlowGraph0),
 		{ relation__lookup_element(FlowGraph0, FirstBlock, FirstKey) },
 		{ relation__lookup_element(FlowGraph0, LastBlock, LastKey) },
 		{ relation__add(FlowGraph0, LastKey, FirstKey, FlowGraph1) },
@@ -95,7 +95,7 @@ rl_sort__proc_2(IO0, IO) -->
 	{ AvailSortEqual = rl_sort__unify },
 	{ AvailSortWrite = rl_sort__write_sort_data },
 
-	{ AvailSortAnalysis = 
+	{ AvailSortAnalysis =
 		rl_analysis(
 			forward,
 			AvailSortConfluence,
@@ -103,12 +103,12 @@ rl_sort__proc_2(IO0, IO) -->
 			AvailSortEqual,
 			AvailSortWrite
 		) },
-			
+
 	{ map__init(AvailVarRequests0) },
 	rl_analyse(Order, AvailSortAnalysis, AvailSortMap1, AvailSortMap,
 		AvailVarRequests0, _AvailVarRequests, IO0, IO1),
 
-	% 	
+	%
 	% Go through the instructions using joins and indexes where possible.
 	%
 	list__foldl(rl_sort__exploit_sorting_and_indexing(AvailSortMap),
@@ -127,7 +127,7 @@ rl_sort__proc_2(IO0, IO) -->
 	{ NeededSortEqual = rl_sort__unify },
 	{ NeededSortWrite = rl_sort__write_sort_data },
 
-	{ NeededSortAnalysis = 
+	{ NeededSortAnalysis =
 		rl_analysis(
 			backward,
 			NeededSortConfluence,
@@ -135,7 +135,7 @@ rl_sort__proc_2(IO0, IO) -->
 			NeededSortEqual,
 			NeededSortWrite
 		) },
-			
+
 	{ map__init(NeededVarRequests0) },
 	rl_analyse(RevOrder, NeededSortAnalysis, NeededSortMap1,
 		NeededSortMap, NeededVarRequests0, _NeededVarRequests,
@@ -155,7 +155,7 @@ rl_sort__proc_2(IO0, IO) -->
 	( { set__empty(MemoedRels) } ->
 		[]
 	;
-		rl_opt_info_get_flow_graph(FlowGraph2),	
+		rl_opt_info_get_flow_graph(FlowGraph2),
 		{ relation__lookup_element(FlowGraph2, FirstBlock, FirstKey1) },
 		{ relation__lookup_element(FlowGraph2, LastBlock, LastKey1) },
 		{ relation__remove(FlowGraph2, LastKey1,
@@ -175,7 +175,7 @@ rl_sort__proc_2(IO0, IO) -->
 
 :- type sort_index
 	--->	sort(sort_spec)
-	;	index(index_spec)	
+	;	index(index_spec)
 	.
 
 :- type relation_sort_map == map(relation_id, sort_req_map).
@@ -193,7 +193,7 @@ rl_sort__proc_2(IO0, IO) -->
 			rl_opt_info
 		).
 
-:- type sort_req 
+:- type sort_req
 	---> sort_req(
 		is_definite,
 		set(block_id)	% requesting/producing blocks
@@ -253,12 +253,11 @@ rl_sort__unify(sortedness(RelMap1, VarMap1),
 
 rl_sort__map_equal(UnifyValue, Map1, Map2) :-
 	map__foldl(
-		lambda([Key1::in, Value1::in, _Unit0::in, Unit::out] is semidet,
-		(
+		(pred(Key1::in, Value1::in, _Unit0::in, Unit::out) is semidet :-
 			Unit = unit,
 			map__search(Map2, Key1, Value2),
 			call(UnifyValue, Value1, Value2)
-		)), Map1, unit, _).
+		), Map1, unit, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -290,7 +289,7 @@ rl_sort__confluence(CalledBlockId - CalledSortData0,
 	;
 		{ CalledSortData = CalledSortData0 }
 	),
-	
+
 	{ MaybeSortData0 = yes(SortData0) ->
 		SortData0 = sortedness(SortedRels0, SortVars0),
 		CalledSortData = sortedness(CalledSortedRels,
@@ -303,8 +302,8 @@ rl_sort__confluence(CalledBlockId - CalledSortData0,
 	;
 		SortData = CalledSortData
 	}.
-	
-:- pred rl_sort__merge_maps(map(T, set(U))::in, map(T, set(U))::in, 
+
+:- pred rl_sort__merge_maps(map(T, set(U))::in, map(T, set(U))::in,
 		map(T, set(U))::out) is det.
 
 rl_sort__merge_maps(Map1, Map2, NewMap) :-
@@ -457,13 +456,13 @@ rl_sort__merge_sort_reqs(_, Req0, Req1, Req) :-
 
 :- pred rl_sort__restrict(sortedness::in, set(relation_id)::in,
 		sortedness::out) is det.
-	
+
 rl_sort__restrict(SortData0, Rels, SortData) :-
 	SortData0 = sortedness(SortedRels0, SortVars0),
 	map__select(SortedRels0, Rels, SortedRels),
-	IntersectRels = lambda([_::in, VarRels0::in, VarRels::out] is det, (
+	IntersectRels = (pred(_::in, VarRels0::in, VarRels::out) is det :-
 			set__intersect(VarRels0, Rels, VarRels)
-		)),
+		),
 	map__map_values(IntersectRels, SortVars0, SortVars),
 	SortData = sortedness(SortedRels, SortVars).
 
@@ -526,7 +525,7 @@ rl_sort__add_relation_sortedness_map(NewSortSpecs, RelationId,
 
 	rl_sort__update_var_requests(OldVarsList, Specs, VarReqs0, VarReqs1),
 	rl_sort__update_var_requests(NewVarsList, NewSpecs, VarReqs1, VarReqs),
-	
+
 	list__foldl(rl_sort__add_var_relation(RelationId), NewVarsList,
 		VarMap0, VarMap),
 
@@ -538,7 +537,7 @@ rl_sort__add_relation_sortedness_map(NewSortSpecs, RelationId,
 rl_sort__get_vars(Specs, Vars) :-
 	set__to_sorted_list(Specs, SpecList),
 	rl_sort__get_vars_2(SpecList, Vars0),
-	set__list_to_set(Vars0, Vars).	
+	set__list_to_set(Vars0, Vars).
 
 :- pred rl_sort__get_vars_2(list(sort_index)::in, list(int)::out) is det.
 
@@ -626,11 +625,10 @@ rl_sort__assign_sortedness_and_indexing(SpecFilter, BlockId,
 		{ map__init(Specs0) },
 		{ set__singleton_set(BlockIds, BlockId) },
 		{ list__foldl(
-			lambda([Index::in, SpecMap0::in, SpecMap::out] is det, 
-			(
+			(pred(Index::in, SpecMap0::in, SpecMap::out) is det :-
 				map__set(SpecMap0, index(Index),
 					sort_req(definite, BlockIds), SpecMap)
-			)), Indexes, Specs0, Specs1) },
+			), Indexes, Specs0, Specs1) },
 		{ map__to_assoc_list(Specs1, SpecAL1) },
 		{ list__filter(SpecFilter, SpecAL1, SpecAL) },
 		{ map__from_assoc_list(SpecAL, Specs) },
@@ -651,9 +649,9 @@ rl_sort__handle_output_indexing(BlockId, output_rel(Output, Indexes0)) -->
 	{ set__singleton_set(BlockIds, BlockId) },
 	{ list__sort_and_remove_dups(Indexes0, Indexes) },
 	{ list__map(
-		lambda([Index::in, Spec::out] is det,
-			Spec = index(Index) - sort_req(definite, BlockIds)),
-		Indexes, Specs0) },
+		(pred(Index::in, Spec::out) is det :-
+			Spec = index(Index) - sort_req(definite, BlockIds)
+		), Indexes, Specs0) },
 	{ map__from_assoc_list(Specs0, Specs) },
 	rl_sort__add_relation_sortedness_map(Specs, Output).
 
@@ -671,7 +669,7 @@ rl_sort__assign_sortedness(BlockId, Output, Input) -->
 	rl_sort__assign_sortedness_and_indexing(sort_filter,
 		BlockId, Output, Input).
 
-:- pred rl_sort__unset_relation(relation_id::in, 
+:- pred rl_sort__unset_relation(relation_id::in,
 		sort_info::in, sort_info::out) is det.
 
 rl_sort__unset_relation(Relation, SortInfo0, SortInfo) :-
@@ -690,7 +688,7 @@ rl_sort__unset_relation(Relation, SortInfo0, SortInfo) :-
 
 rl_sort__needed_block_update(BlockId, InValue0,
 		_SortData0, SortData, VarReqs0, VarReqs, Info0, Info) :-
-	rl_opt_info_get_last_block_id(LastBlockId, Info0, Info1),     
+	rl_opt_info_get_last_block_id(LastBlockId, Info0, Info1),
 	rl_opt_info_get_output_relations(Outputs, Info1, Info2),
 	rl_opt_info_get_block(BlockId, Block, Info2, Info3),
 	SortInfo0 = sort_info(InValue0, VarReqs0, Info3),
@@ -716,7 +714,7 @@ rl_sort__needed_block_update(BlockId, InValue0,
 
 rl_sort__instr_needed(BlockId,
 		join(_Output, Input1, Input2, Type, _Exprn, _, _) - _) -->
-	( 
+	(
 		{ Type = nested_loop }
 	;
 		{ Type = hash(_, _) }
@@ -801,8 +799,8 @@ rl_sort__instr_needed(_, comment - _) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_sort__write_sort_data(sort_data::in, var_requests::in, 
-		io__state::di, io__state::uo) is det. 
+:- pred rl_sort__write_sort_data(sort_data::in, var_requests::in,
+		io__state::di, io__state::uo) is det.
 
 rl_sort__write_sort_data(block_data(sortedness(InSortData, _),
 		sortedness(OutSortData, _), _), _) -->
@@ -814,11 +812,11 @@ rl_sort__write_sort_data(block_data(sortedness(InSortData, _),
 	io__nl.
 
 :- pred rl_sort__write_sort_req_map(relation_id::in,
-		map(sort_index, sort_req)::in, 
-		io__state::di, io__state::uo) is det. 
+		map(sort_index, sort_req)::in,
+		io__state::di, io__state::uo) is det.
 
 rl_sort__write_sort_req_map(Rel, SortMap) -->
-	io__write_int(Rel),	
+	io__write_int(Rel),
 	io__write_string(" -> "),
 	map__foldl(rl_sort__write_sort_req, SortMap),
 	io__nl.
@@ -832,7 +830,7 @@ rl_sort__write_sort_req(SortIndex, SortReqs) -->
 	io__write_string(" - "),
 	io__write(SortReqs),
 	io__nl.
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -844,7 +842,7 @@ rl_sort__write_sort_req(SortIndex, SortReqs) -->
 
 rl_sort__avail_block_update(BlockId, InValue0, _SortData0, SortData,
 		VarRequests0, VarRequests, Info0, Info) :-
-	rl_opt_info_get_first_block_id(FirstBlockId, Info0, Info1),	
+	rl_opt_info_get_first_block_id(FirstBlockId, Info0, Info1),
 	rl_opt_info_get_block(BlockId, Block, Info1, Info2),
 	rl_opt_info_get_input_relations(Inputs, Info2, Info3),
 	SortInfo0 = sort_info(InValue0, VarRequests0, Info3),
@@ -991,10 +989,10 @@ rl_sort__handle_project_sortedness(Input, output_rel(Output, _) - Goal) -->
 
 rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 		sort(SortSpec) - Reqs) :-
-	RLGoal = rl_goal(_, _, _, _, Inputs, Outputs, _, _),	
+	RLGoal = rl_goal(_, _, _, _, Inputs, Outputs, _, _),
 	Inputs = one_input(InputArgs),
 	(
-		% A select. 
+		% A select.
 		Outputs = no,
 		SortSpec = SortSpec0
 	;
@@ -1004,34 +1002,31 @@ rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 
 		% Work out the sort specification in terms
 		% of the input arguments.
-		list__map(
-			lambda([AttrDir::in, VarDir::out] is det, (
+		list__map((pred(AttrDir::in, VarDir::out) is det :-
 				AttrDir = Attr - Dir,
 				list__index1_det(InputArgs, Attr, Var),
 				VarDir = Var - Dir
-			)), SortAttrs0, VarAttrs0),
+			), SortAttrs0, VarAttrs0),
 
 		% Take the longest prefix of the sort specification that
 		% is in the output arguments (we could do better here
 		% by looking at the goal, since some of the outputs may
 		% be equivalent but not named identically to the input).
-		list__takewhile(
-			lambda([VarDir::in] is semidet, (
+		list__takewhile((pred(VarDir::in) is semidet :-
 				VarDir = Var - _,
 				list__member(Var, OutputArgs)
-			)), VarAttrs0, VarAttrs, _),
+			), VarAttrs0, VarAttrs, _),
 		VarAttrs \= [],
 
 		% Map those output arguments back into argument numbers.
-		list__map(
-			lambda([VarDir::in, AttrDirs::out] is det, (
+		list__map((pred(VarDir::in, AttrDirs::out) is det :-
 				VarDir = Var - Dir,
 				rl_sort__all_positions(OutputArgs,
 					1, Var, Attrs),
-				list__map(lambda([X::in, Y::out] is det, (
-					Y = X - Dir
-				)), Attrs, AttrDirs)
-			)), VarAttrs, SortAttrs1),
+				list__map((pred(X::in, Y::out) is det :-
+						Y = X - Dir
+					), Attrs, AttrDirs)
+			), VarAttrs, SortAttrs1),
 		list__condense(SortAttrs1, SortAttrs),
 		SortSpec = attributes(SortAttrs)
 	).
@@ -1041,7 +1036,7 @@ rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 :- pred rl_sort__all_positions(list(prog_var)::in,
 		int::in, prog_var::in, list(int)::out) is det.
 
-rl_sort__all_positions([], _, _, []). 
+rl_sort__all_positions([], _, _, []).
 rl_sort__all_positions([Arg | Args], Index0, Var, Attrs) :-
 	Index = Index0 + 1,
 	( Arg = Var ->
@@ -1063,7 +1058,7 @@ rl_sort__exploit_sorting_and_indexing(AvailSortMap, BlockId, Info0, Info) :-
 	map__lookup(AvailSortMap, BlockId, block_data(AvailSorts, _, _)),
 	map__init(VarRequests),
 	SortInfo0 = sort_info(AvailSorts, VarRequests, Info1),
-	
+
 	list__foldl2(rl_sort__specialize_instr(BlockId),
 		Instrs0, [], RevInstrs, SortInfo0, sort_info(_, _, Info2)),
 	list__reverse(RevInstrs, Instrs),
@@ -1227,7 +1222,7 @@ rl_sort__introduce_indexed_join(RelSortMap, Output, Input1, Input2, _JoinType0,
 		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
 		rl__is_trivial_join(ModuleInfo, JoinType, Exprn, SemiJoin,
 			TrivialJoin),
-		
+
 		JoinInstr = join(Output, JoinInput1, JoinInput2,
 			JoinType, Exprn, SemiJoin, TrivialJoin) - Comment,
 		MaybeIndexJoinInstrs = yes([JoinInstr])
@@ -1258,7 +1253,7 @@ rl_sort__introduce_indexed_subtract(RelSortMap, Output, Input1, Input2,
 		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
 		rl__is_trivial_subtract(ModuleInfo, SubtractType, Exprn,
 			TrivialSubtract),
-		
+
 		SubtractInstr = subtract(Output, Input1, Input2,
 			SubtractType, Exprn, TrivialSubtract) - Comment,
 		MaybeIndexSubtractInstrs = yes([SubtractInstr])
@@ -1281,18 +1276,18 @@ rl_sort__is_indexed_join_or_subtract(RelSortMap, Input1, Input2,
 
 	rl_opt_info_get_relation_info_map(RelMap, RLInfo0, RLInfo1),
 	rl_sort__get_relation_indexes(RelSortMap, RelMap,
-		Input1, Input1Indexes, IsBaseRelation1), 
+		Input1, Input1Indexes, IsBaseRelation1),
 	rl_sort__get_relation_indexes(RelSortMap, RelMap,
-		Input2, Input2Indexes, IsBaseRelation2), 
+		Input2, Input2Indexes, IsBaseRelation2),
 
 	( Input1Indexes = [], Input2Indexes = [] ->
 		MaybeIndexInfo = no,
 		RLInfo = RLInfo1
 	;
 		rl_opt_info_get_module_info(ModuleInfo, RLInfo1, RLInfo),
-		rl_sort__find_useful_join_indexes(ModuleInfo, Input1Indexes, 
+		rl_sort__find_useful_join_indexes(ModuleInfo, Input1Indexes,
 			Exprn, one, IndexRanges1),
-		rl_sort__find_useful_join_indexes(ModuleInfo, Input2Indexes, 
+		rl_sort__find_useful_join_indexes(ModuleInfo, Input2Indexes,
 			Exprn, two, IndexRanges2),
 
 		% XXX the choice of index here is slightly cheap and nasty
@@ -1372,21 +1367,21 @@ rl_sort__find_useful_join_indexes(ModuleInfo, Indexes,
 		IndexRanges = []
 	;
 		list__filter_map(
-		    lambda([Index::in, ThisIndexRanges::out] is semidet, (
-			Inputs = two_inputs(Args1, Args2),
-			( 
-				TupleNum = one,
-				rl_key__get_join_key_ranges(ModuleInfo,
-					VarTypes, Args2, Args1, Index,
-					VarBounds, Ranges)
-			;	
-				TupleNum = two,
-				rl_key__get_join_key_ranges(ModuleInfo,
-					VarTypes, Args1, Args2, Index,
-					VarBounds, Ranges)
-			),
-			ThisIndexRanges = Index - Ranges
-		    )), Indexes, IndexRanges)
+			(pred(Index::in, ThisIndexRanges::out) is semidet :-
+				Inputs = two_inputs(Args1, Args2),
+				(
+					TupleNum = one,
+					rl_key__get_join_key_ranges(ModuleInfo,
+						VarTypes, Args2, Args1, Index,
+						VarBounds, Ranges)
+				;
+					TupleNum = two,
+					rl_key__get_join_key_ranges(ModuleInfo,
+						VarTypes, Args1, Args2, Index,
+						VarBounds, Ranges)
+				),
+				ThisIndexRanges = Index - Ranges
+			), Indexes, IndexRanges)
 	).
 
 :- type index_ranges == list(index_range).
@@ -1470,12 +1465,12 @@ matching_sort_spec(AttrNums, Spec0, Spec) :-
 	assoc_list__from_corresponding_lists(AttrNums, SortDirs, SortAttrs),
 	Spec = attributes(SortAttrs).
 
-:- pred find_definite_sort_specs(map(sort_index, sort_req)::in, 
+:- pred find_definite_sort_specs(map(sort_index, sort_req)::in,
 		list(sort_spec)::out) is det.
 
 find_definite_sort_specs(SortMap, SortSpecs) :-
-    map__foldl(
-	(pred(SortIndex::in, SortReq::in, Specs0::in, Specs::out) is det :-
+	map__foldl((pred(SortIndex::in, SortReq::in, Specs0::in, Specs::out)
+			is det :-
 		(
 			SortReq = sort_req(definite, _),
 			%(
@@ -1574,14 +1569,14 @@ rl_sort__introduce_hash_subtract(Output, Input1, Input2, _SubtractType0, Exprn,
 	relation_id::in, rl_goal::in, assoc_list(output_rel, rl_goal)::in,
 	project_type::in, string::in, list(rl_instruction)::in,
 	list(rl_instruction)::out, sort_info::in, sort_info::out) is det.
-		
+
 rl_sort__specialize_project(Instr0, OutputRel, Input, Exprn, ProjOutputs0,
 		_Type, Comment, Instrs0, Instrs, SortInfo0, SortInfo) :-
 	SortInfo0 = sort_info(Sortedness0, SortVars, RLInfo0),
 	Sortedness0 = sortedness(RelSortMap, _),
 	rl_opt_info_get_relation_info_map(RelMap, RLInfo0, RLInfo1),
 	rl_sort__get_relation_indexes(RelSortMap, RelMap,
-		Input, Indexes, _), 
+		Input, Indexes, _),
 	( Indexes = [] ->
 		Instrs = [Instr0 | Instrs0],
 		RLInfo = RLInfo1
@@ -1593,9 +1588,9 @@ rl_sort__specialize_project(Instr0, OutputRel, Input, Exprn, ProjOutputs0,
 
 		% Partition out those expressions for which there
 		% are no suitable indexes.
-		list__filter(lambda([ProjOutput::in] is semidet, 
-			ProjOutput = proj_output(_, _, [])),
-			ProjOutputIndexes, NoIndexOutputs0, IndexOutputs),
+		list__filter((pred(ProjOutput::in) is semidet :-
+				ProjOutput = proj_output(_, _, [])
+			), ProjOutputIndexes, NoIndexOutputs0, IndexOutputs),
 		( IndexOutputs = [] ->
 			Instrs = [Instr0 | Instrs0],
 			RLInfo = RLInfo2
@@ -1606,10 +1601,11 @@ rl_sort__specialize_project(Instr0, OutputRel, Input, Exprn, ProjOutputs0,
 				Partitions = Partitions0
 			;
 				list__map(
-				    lambda([POutput::in, PRel::out] is det,  (
-					POutput = proj_output(ORel, Goal, _),
-					PRel = ORel - Goal
-				    )), NoIndexOutputs0, NoIndexOutputs),	
+					(pred(POutput::in, PRel::out) is det :-
+						POutput = proj_output(ORel,
+							Goal, _),
+						PRel = ORel - Goal
+					), NoIndexOutputs0, NoIndexOutputs),
 				Partition = NoIndexOutputs - no,
 				Partitions = [Partition | Partitions0]
 			),
@@ -1643,12 +1639,13 @@ rl_sort__find_useful_project_indexes(ModuleInfo, Indexes, OutputRel - Goal,
 		IndexRanges = []
 	;
 		list__filter_map(
-		    lambda([Index::in, ThisIndexRanges::out] is semidet, (
-			Inputs = one_input(Args),
-			rl_key__get_select_key_ranges(ModuleInfo, VarTypes,
-				Args, Index, VarBounds, Ranges),
-			ThisIndexRanges = Index - Ranges
-		    )), Indexes, IndexRanges)
+			(pred(Index::in, ThisIndexRanges::out) is semidet :-
+				Inputs = one_input(Args),
+				rl_key__get_select_key_ranges(ModuleInfo,
+					VarTypes, Args, Index, VarBounds,
+					Ranges),
+				ThisIndexRanges = Index - Ranges
+			), Indexes, IndexRanges)
 	).
 
 	% Find the set of indexes which results in the smallest
@@ -1665,7 +1662,7 @@ rl_sort__partition_project_outputs([Output | Outputs],
 		IndexRange = Index - KeyRanges,
 		Partition = [OutputRel - Goal] - yes(Index - KeyRanges)
 	;
-		error("rl_sort__partition_project_outputs")	
+		error("rl_sort__partition_project_outputs")
 	),
 	rl_sort__partition_project_outputs(Outputs, Partitions).
 
@@ -1702,7 +1699,7 @@ rl_sort__generate_project(Input, Comment, Outputs - MaybeIndex, Instr) :-
 :- pred rl_sort__get_relation_indexes(relation_sort_map::in,
 	relation_info_map::in, relation_id::in, list(index_spec)::out,
 	bool::out) is det.
-				
+
 rl_sort__get_relation_indexes(RelSortMap, RelMap,
 		Rel, Indexes, IsBaseRelation) :-
 	map__lookup(RelMap, Rel, RelInfo),
@@ -1713,10 +1710,10 @@ rl_sort__get_relation_indexes(RelSortMap, RelMap,
 		( map__search(RelSortMap, Rel, Specs0) ->
 			map__to_assoc_list(Specs0, SpecsAL),
 			list__filter_map(
-				lambda([SpecPair::in, Index::out] is semidet, (
+				(pred(SpecPair::in, Index::out) is semidet :-
 					SpecPair = index(Index)
 						- sort_req(definite, _)
-				)), SpecsAL, Indexes)
+				), SpecsAL, Indexes)
 		;
 			Indexes = []
 		),
@@ -1738,14 +1735,14 @@ rl_sort__add_indexing_and_remove_useless_ops(NeededSortMap,
 	map__lookup(NeededSortMap, BlockId, block_data(NeededSorts, _, _)),
 	map__init(VarRequests),
 	SortInfo0 = sort_info(NeededSorts, VarRequests, Info1),
-	
+
 	list__foldl2(
 		rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId),
 		RevInstrs0, [], Instrs, SortInfo0, sort_info(_, _, Info2)),
 	Block = block(Label, Instrs, EndInstr, BlockInfo),
 	rl_opt_info_set_block(BlockId, Block, Info2, Info).
 
-:- pred rl_sort__add_indexing_and_remove_useless_ops_instr(block_id::in, 
+:- pred rl_sort__add_indexing_and_remove_useless_ops_instr(block_id::in,
 	rl_instruction::in, list(rl_instruction)::in,
 	list(rl_instruction)::out, sort_info::in, sort_info::out) is det.
 
@@ -1761,7 +1758,7 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 		{ NeededIndexes = [] ->
 			Instrs = [ref(Relation, Input) - Comm | Instrs0]
 		;
-			Instrs = [add_index(output_rel(Relation, 
+			Instrs = [add_index(output_rel(Relation,
 				NeededIndexes), Input) - Comm | Instrs0]
 		}
 	;
@@ -1777,7 +1774,7 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 			->
 				SpecNeeded = yes
 			;
-			    	SpecNeeded = no
+				SpecNeeded = no
 			)
 		;
 			SpecNeeded = no
@@ -1786,7 +1783,7 @@ rl_sort__add_indexing_and_remove_useless_ops_instr(BlockId,
 			{ SpecNeeded = no },
 			list__foldl2(
 			    rl_sort__add_indexing_and_remove_useless_ops_instr(
-			    	BlockId),
+				BlockId),
 				[add_index(Output, Input) - Comm],
 				Instrs0, Instrs)
 		;
@@ -1893,7 +1890,7 @@ rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
 		call(IndexPred, Index0, Index),
 		Type = index(Index, Range)
 	;
-		Type = Type0		
+		Type = Type0
 	).
 rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
 		subtract(Output0, B, C, Type0, E, F) - G,
@@ -1907,7 +1904,7 @@ rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, SortPred,
 		call(IndexPred, Index0, Index),
 		Type = semi_index(Index, Range)
 	;
-		Type = Type0		
+		Type = Type0
 	).
 rl_sort__map_sort_and_index_specs(OutputPred, _, SortPred,
 		difference(Output0, B, C, Type0) - E,
@@ -1922,11 +1919,11 @@ rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
 		project(Output,
 			B, C, ProjectOutputs, Type) - F) :-
 	call(OutputPred, Output0, Output),
-	list__map(lambda([ProjOutput0::in, ProjOutput::out] is det, (
+	list__map((pred(ProjOutput0::in, ProjOutput::out) is det :-
 			ProjOutput0 = OutputRel0 - Expr,
 			call(OutputPred, OutputRel0, OutputRel),
 			ProjOutput = OutputRel - Expr
-		)), ProjectOutputs0, ProjectOutputs),
+		), ProjectOutputs0, ProjectOutputs),
 	(
 		Type0 = index(Index0, Range),
 		call(IndexPred, Index0, Index),
@@ -1935,7 +1932,7 @@ rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
 		Type0 = filter,
 		Type = filter
 	).
-rl_sort__map_sort_and_index_specs(OutputPred, _IndexPred, SortPred, 
+rl_sort__map_sort_and_index_specs(OutputPred, _IndexPred, SortPred,
 		union(Output0, Inputs, Type0) - Comm,
 		union(Output, Inputs, Type) - Comm) :-
 	call(OutputPred, Output0, Output),
@@ -1978,12 +1975,12 @@ rl_sort__map_sort_and_index_specs(OutputPred, _, SortPred,
 		sort(Output0, B, Attrs0) - D,
 		sort(Output, B, Attrs) - D) :-
 	call(OutputPred, Output0, Output),
-	call(SortPred, attributes(Attrs0), Spec), 
+	call(SortPred, attributes(Attrs0), Spec),
 	( Spec = attributes(Attrs1) ->
 		Attrs = Attrs1
 	;
 		error("rl_sort__map_sort_and_index_specs: weird result")
-	).	
+	).
 rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 	Instr = ref(_, _) - _.
 rl_sort__map_sort_and_index_specs(OutputPred, _, _,
@@ -2028,87 +2025,86 @@ rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 	Instr = comment - _.
 
 %-----------------------------------------------------------------------------%
-/*
-	% Beyond this point is junk at the moment.
 
-	% Do an assignment of sort specifiers to each sort variable.
-:- pred rl_sort__assign_sort_vars(sort_data_map::in, var_requests::in,
-	sort_data_map::in, var_requests::in, map(int, sort_index)::out,
-	rl_opt_info::in, rl_opt_info::out) is det.
+% 	% Beyond this point is junk at the moment.
+% 
+% 	% Do an assignment of sort specifiers to each sort variable.
+% :- pred rl_sort__assign_sort_vars(sort_data_map::in, var_requests::in,
+% 	sort_data_map::in, var_requests::in, map(int, sort_index)::out,
+% 	rl_opt_info::in, rl_opt_info::out) is det.
+% 
+% rl_sort__assign_sort_vars(_AvailData0, AvailRequests0, _NeededData0,
+% 		NeededRequests, VarBindings) -->
+% 	{
+% 	map__keys(AvailRequests, VarsList0),
+% 	map__keys(NeededRequests, VarsList1),
+% 	set__sorted_list_to_set(VarsList0, Vars0),
+% 	set__sorted_list_to_set(VarsList1, Vars1),
+% 	set__union(Vars0, Vars1, Vars),
+% 
+% 	map__init(VarBindings0),
+% 
+% 	% Find out which sort vars can be allocated based on
+% 	% available sortedness.
+% 	rl_sort__single_request_vars(AvailRequests0,
+% 		VarBindings0, VarBindings1),
+% 	rl_sort__bind_vars(AvailRequests0, VarBindings1, AvailRequests),
+% 
+% 	map__keys(VarBindings1, BoundVars1),
+% 	set__delete_list(Vars, BoundVars1, UnboundVars1)
+% 	},
+% 	{ set__empty(UnboundVars1) ->
+% 		VarBindings = VarBindings0
+% 	;
+% 		% Find out which sort vars can be allocated based on
+% 		% needed sortedness intersecting with available sortedness.
+% 		rl_sort__intersect_requests(AvailRequests, NeededRequests,
+% 			IntersectedRequests),
+% 
+% 		rl_sort__single_request_vars(IntersectedRequests,
+% 			VarBindings1, VarBindings)
+% 
+% 		% If there's anything left unbound, just pick one of the
+% 		% available sortednesses. XXX try all with cost measurement
+% 		% to pick the best.
+% 	}.
+% 
+% 	% Find all sort variables which have only one requested sortedness.
+% :- pred rl_sort__single_request_vars(var_requests::in,
+% 		map(int, sort_index)::in,
+% 		map(int, sort_index)::out) is det.
+% 
+% rl_sort__single_request_vars(Requests0, SingleVars0, SingleVars) :-
+% 	IsSingleBindingVar =
+% 		(pred(Var::in, Reqs0::in, Single0::in, Single::out) is det :-
+% 			set__to_sorted_list(Reqs0, Reqs1),
+% 			(
+% 				\+ map__contains(Single0, Var),
+% 				list__filter((pred(Req::in) is semidet :-
+% 						\+ Req = sort_var(Var) - _
+% 					), Reqs1, [Request]),
+% 				Request = attributes(_) - _
+% 			->
+% 				map__det_insert(Single0, Var, Request, Single)
+% 			;
+% 				Single = Single0
+% 			)
+% 		),
+% 	map__foldl(IsSingleBindingVar, Requests0, SingleVars0, SingleVars).
+% 
+% :- pred rl_sort__intersect_requests(var_requests::in,
+% 		var_requests::in, var_requests::out) is det.
+% 
+% rl_sort__intersect_requests(Requests1, Requests2, Intersection) :-
+% 	IntersectBindings =
+% 		(pred(Key::in, Value0::in, Inter0::in, Inter::out) is det :-
+% 			( map__search(Inter0, Key, Value1) ->
+% 				set__intersect(Value0, Value1, Value),
+% 				map__det_update(Inter0, Key, Value, Inter)
+% 			;
+% 				Inter = Inter0
+% 			)
+% 		),
+% 	map__foldl(IntersectBindings, Requests1, Requests2, Intersection).
 
-rl_sort__assign_sort_vars(_AvailData0, AvailRequests0, _NeededData0,
-		NeededRequests, VarBindings) -->
-	{
-	map__keys(AvailRequests, VarsList0),
-	map__keys(NeededRequests, VarsList1),
-	set__sorted_list_to_set(VarsList0, Vars0),
-	set__sorted_list_to_set(VarsList1, Vars1),
-	set__union(Vars0, Vars1, Vars),
-
-	map__init(VarBindings0), 
-
-	% Find out which sort vars can be allocated based on
-	% available sortedness.
-	rl_sort__single_request_vars(AvailRequests0,
-		VarBindings0, VarBindings1),
-	rl_sort__bind_vars(AvailRequests0, VarBindings1, AvailRequests),
-
-	map__keys(VarBindings1, BoundVars1),
-	set__delete_list(Vars, BoundVars1, UnboundVars1)
-	},
-	{ set__empty(UnboundVars1) ->
-		VarBindings = VarBindings0
-	;
-		% Find out which sort vars can be allocated based on
-		% needed sortedness intersecting with available sortedness.
-		rl_sort__intersect_requests(AvailRequests, NeededRequests,
-			IntersectedRequests),
-
-		rl_sort__single_request_vars(IntersectedRequests,
-			VarBindings1, VarBindings)
-
-		% If there's anything left unbound, just pick one of the
-		% available sortednesses. XXX try all with cost measurement
-		% to pick the best.
-	}.
-
-	% Find all sort variables which have only one requested sortedness.
-:- pred rl_sort__single_request_vars(var_requests::in,
-		map(int, sort_index)::in,
-		map(int, sort_index)::out) is det.
-
-rl_sort__single_request_vars(Requests0, SingleVars0, SingleVars) :-
-	IsSingleBindingVar =
-		lambda([Var::in, Reqs0::in, Single0::in, Single::out] is det, (
-			set__to_sorted_list(Reqs0, Reqs1),
-			(
-				\+ map__contains(Single0, Var),
-				list__filter(lambda([Req::in] is semidet, (
-						\+ Req = sort_var(Var) - _
-					)), Reqs1, [Request]),
-				Request = attributes(_) - _
-			->
-				map__det_insert(Single0, Var, Request, Single)
-			;
-				Single = Single0
-			)
-		)),
-	map__foldl(IsSingleBindingVar, Requests0, SingleVars0, SingleVars).
-
-:- pred rl_sort__intersect_requests(var_requests::in,
-		var_requests::in, var_requests::out) is det.
-
-rl_sort__intersect_requests(Requests1, Requests2, Intersection) :-
-	IntersectBindings =
-		lambda([Key::in, Value0::in, Inter0::in, Inter::out] is det, (
-			( map__search(Inter0, Key, Value1) ->
-				set__intersect(Value0, Value1, Value),
-				map__det_update(Inter0, Key, Value, Inter)
-			;
-				Inter = Inter0
-			))),
-	map__foldl(IntersectBindings, Requests1, Requests2, Intersection).
-*/
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

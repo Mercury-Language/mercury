@@ -774,11 +774,10 @@ rl__goto_cond_relations(not(Cond), Rels) :-
 %-----------------------------------------------------------------------------%
 
 rl__ascending_sort_spec(Schema, Attrs) :-
-	GetAttr =
-		lambda([_::in, Attr::out, Index0::in, Index::out] is det, (
+	GetAttr = (pred(_::in, Attr::out, Index0::in, Index::out) is det :-
 			Attr = Index0 - ascending,
 			Index = Index0 + 1
-		)),
+		),
 	list__map_foldl(GetAttr, Schema, Attrs, 1, _).
 
 rl__attr_list(Schema, Attrs) :-

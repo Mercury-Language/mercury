@@ -3598,11 +3598,11 @@ code_info__generate_resume_layout(Label, ResumeMap, !CI) :-
 
 code_info__acquire_temp_slot(Item, StackVar, !CI) :-
 	code_info__get_temps_in_use(!.CI, TempsInUse0),
-	IsTempUsable = lambda([TempContent::in, Lval::out] is semidet, (
+	IsTempUsable = (pred(TempContent::in, Lval::out) is semidet :-
 		TempContent = Lval - ContentType,
 		ContentType = Item,
 		\+ set__member(Lval, TempsInUse0)
-	)),
+	),
 	code_info__get_temp_content_map(!.CI, TempContentMap0),
 	map__to_assoc_list(TempContentMap0, TempContentList),
 	list__filter_map(IsTempUsable, TempContentList, UsableLvals),

@@ -101,11 +101,11 @@ pd_debug__search_version_result_2(ModuleInfo, MaybeVersion) -->
 
 pd_debug__register_version(PredProcId, Version) -->
 	pd_info_get_module_info(ModuleInfo),
-	{ Register = lambda([IO0::di, IO::uo] is det, (
+	{ Register = (pred(IO0::di, IO::uo) is det :-
 		io__write_string("Registering version:\n", IO0, IO1),
 		pd_debug__output_version(ModuleInfo, PredProcId, Version,
 			no, IO1, IO)
-		)) },
+	) },
 	pd_debug__do_io(Register).
 
 %-----------------------------------------------------------------------------%

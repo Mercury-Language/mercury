@@ -111,14 +111,13 @@ init_rec_input_suppliers([PPId | PPIds], Module, RecSupplierMap) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	partition_call_args(Module, ArgModes, HeadVars, InArgs, _OutVars),
-	MapIsInput = lambda([HeadVar::in, Bool::out] is det,
-	(
+	MapIsInput = (pred(HeadVar::in, Bool::out) is det :-
 		( bag__contains(InArgs, HeadVar) ->
 			Bool = yes
 		;
 			Bool = no
 		)
-	)),
+	),
 	list__map(MapIsInput, HeadVars, BoolList),
 	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap).
 
@@ -220,11 +219,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
 		mode_is_input(Module, Mode),
 		ArgNum = 1
 	->
-		MapToNo = lambda([_Mode::in, Bool::out] is det,
-		(
-			Bool = no
-		)),
-		list__map(MapToNo, Modes, BoolList1),
+		list__map(map_to_no, Modes, BoolList1),
 		BoolList = [yes | BoolList1]
 	;
 		(
@@ -257,11 +252,7 @@ init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
-	MapToNo = lambda([_HeadVar::in, Bool::out] is det,
-	(
-		Bool = no
-	)),
-	list__map(MapToNo, HeadVars, BoolList),
+	list__map(map_to_no, HeadVars, BoolList),
 	map__det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap1),
 	init_rec_input_suppliers_single_arg_others(PPIds, Module,
 		RecSupplierMap1, RecSupplierMap).
@@ -592,5 +583,11 @@ zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
 			LookforPPId, ProcContext, WeightSoFar1,
 			NewVisitedCalls, CallWeights, Cycles)
 	).
+
+%-----------------------------------------------------------------------------
+
+:- pred map_to_no(T::in, bool::out) is det.
+
+map_to_no(_, no).
 
 %-----------------------------------------------------------------------------

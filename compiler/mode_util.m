@@ -955,16 +955,16 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 	),
 	(
 		ConsId = cons(ConsName, Arity),
-		GetCons = lambda([Ctor::in] is semidet, (
+		GetCons = (pred(Ctor::in) is semidet :-
 				Ctor = ctor(_, _, ConsName, CtorArgs),
 				list__length(CtorArgs, Arity)
-			)),
+			),
 		list__filter(GetCons, Constructors, [Constructor])
 	->
 		Constructor = ctor(_ExistQVars, _Constraints, _Name, Args),
-		GetArgTypes = lambda([CtorArg::in, ArgType::out] is det, (
+		GetArgTypes = (pred(CtorArg::in, ArgType::out) is det :-
 				CtorArg = _ArgName - ArgType
-			)),
+			),
 		list__map(GetArgTypes, Args, ArgTypes),
 		propagate_types_into_inst_list(ArgTypes, Subst,
 			ModuleInfo, ArgInsts0, ArgInsts),
@@ -1673,11 +1673,10 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
 			% change.
 			FinalInst = InitialInst
 		),
-		UniModeToRhsMode =
-			 lambda([UMode::in, Mode::out] is det, (
+		UniModeToRhsMode = (pred(UMode::in, Mode::out) is det :-
 				UMode = ((_ - Inst0) -> (_ - Inst)),
 				Mode = (Inst0 -> Inst)
-			)),
+			),
 		list__map(UniModeToRhsMode, UniModes, Modes),
 		instmap_delta_from_mode_list([Var | Vars],
 			[(InitialInst -> FinalInst) |  Modes],

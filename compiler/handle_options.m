@@ -1485,8 +1485,8 @@ convert_grade_option(GradeString, Options0, Options) :-
 	reset_grade_options(Options0, Options1),
 	split_grade_string(GradeString, Components),
 	set__init(NoComps),
-	list__foldl2(lambda([CompStr::in, Opts0::in, Opts::out,
-			CompSet0::in, CompSet::out] is semidet, (
+	list__foldl2((pred(CompStr::in, Opts0::in, Opts::out,
+			CompSet0::in, CompSet::out) is semidet :-
 		grade_component_table(CompStr, Comp, CompOpts, MaybeTargets),
 			% Check that the component isn't mentioned
 			% more than once.
@@ -1502,17 +1502,17 @@ convert_grade_option(GradeString, Options0, Options) :-
 		;
 			Opts = Opts1
 		)
-	)), Components, Options1, Options, NoComps, _FinalComps).
+	), Components, Options1, Options, NoComps, _FinalComps).
 
 :- pred add_option_list(list(pair(option, option_data)), option_table,
 		option_table).
 :- mode add_option_list(in, in, out) is det.
 
 add_option_list(CompOpts, Opts0, Opts) :-
-	list__foldl(lambda([Opt::in, Opts1::in, Opts2::out] is det, (
+	list__foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
 		Opt = Option - Data,
 		map__set(Opts1, Option, Data, Opts2)
-	)), CompOpts, Opts0, Opts).
+	), CompOpts, Opts0, Opts).
 
 grade_directory_component(Globals, Grade) :-
 	compute_grade(Globals, Grade0),
@@ -1563,7 +1563,7 @@ construct_string([_ - Bit|Bits], Grade) :-
 :- mode compute_grade_components(in, out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-	solutions(lambda([CompData::out] is nondet, (
+	solutions((pred(CompData::out) is nondet :-
 		grade_component_table(Name, Comp, CompOpts, MaybeTargets),
 			% For possible component of the grade string
 			% include it in the actual grade string if all
@@ -1589,7 +1589,7 @@ compute_grade_components(Options, GradeComponents) :-
 			true
 		),
 		CompData = Comp - Name
-	)), GradeComponents).
+	), GradeComponents).
 
 :- pred grade_component_table(string, grade_component,
 		list(pair(option, option_data)), maybe(list(option_data))).
@@ -1771,11 +1771,11 @@ grade_component_table("strce", trace,
 :- mode reset_grade_options(in, out) is det.
 
 reset_grade_options(Options0, Options) :-
-	aggregate(grade_start_values, lambda([Pair::in, Opts0::in, Opts::out]
-			is det, (
-		Pair = Option - Value,
-		map__set(Opts0, Option, Value, Opts)
-	)), Options0, Options).
+	aggregate(grade_start_values,
+		(pred(Pair::in, Opts0::in, Opts::out) is det :-
+			Pair = Option - Value,
+			map__set(Opts0, Option, Value, Opts)
+		), Options0, Options).
 
 :- pred grade_start_values(pair(option, option_data)).
 :- mode grade_start_values(out) is multi.

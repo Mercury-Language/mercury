@@ -175,11 +175,10 @@ rl_analyse__blocks(Analysis, [BlockId | BlockIds], BlockDataMap0, BlockDataMap,
 		Predecessors) },
 	{ map__lookup(BlockDataMap0, BlockId, BlockData0) },
 	
-	{ GetOutValues =
-	    lambda([Node::in, NodeAndOValue::out] is det, (
+	{ GetOutValues = (pred(Node::in, NodeAndOValue::out) is det :-
 		map__lookup(BlockDataMap0, Node, block_data(_, OutValue, _)),
 		NodeAndOValue = Node - OutValue
-	    )) },
+	) },
 	{ list__map(GetOutValues, Predecessors, OutPredecessors) },
 
 	%

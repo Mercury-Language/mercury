@@ -763,14 +763,14 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 parse_pragma_type(ModuleName, "inline", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "inline",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = inline(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "no_inline", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "no_inline",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = no_inline(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -790,7 +790,7 @@ parse_pragma_type(ModuleName, "minimal_model", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "obsolete",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = obsolete(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -889,7 +889,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "reserve_tag", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_type_pragma(ModuleName, "reserve_tag",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = reserve_tag(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -923,14 +923,14 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
 
 parse_pragma_type(ModuleName, "aditi", PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "aditi",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = aditi(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "base_relation", PragmaTerms, 
 		ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "base_relation",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = base_relation(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -980,41 +980,41 @@ parse_pragma_type(ModuleName, "aditi_index", PragmaTerms,
 
 parse_pragma_type(ModuleName, "naive", PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "naive",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = naive(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "psn", PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "psn",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = psn(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "aditi_memo",
 		PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "aditi_memo",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = aditi_memo(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "aditi_no_memo",
 		PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "aditi_no_memo",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = aditi_no_memo(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "supp_magic", 
 		PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "supp_magic",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = supp_magic(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "context",
 		PragmaTerms, ErrorTerm, _, Result) :-
 	parse_simple_pragma(ModuleName, "context",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = context(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -1023,7 +1023,7 @@ parse_pragma_type(ModuleName, "owner",
 	( PragmaTerms = [SymNameAndArityTerm, OwnerTerm] ->
 	    ( OwnerTerm = term__functor(term__atom(Owner), [], _) ->
 		parse_simple_pragma(ModuleName, "owner",
-			lambda([Name::in, Arity::in, Pragma::out] is det,
+			(pred(Name::in, Arity::in, Pragma::out) is det :-
 				Pragma = owner(Name, Arity, Owner)),
 			[SymNameAndArityTerm], ErrorTerm, Result)
 	    ;
@@ -1038,14 +1038,14 @@ parse_pragma_type(ModuleName, "owner",
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "promise_pure",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = promise_pure(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "promise_semipure", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "promise_semipure",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = promise_semipure(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -1098,21 +1098,21 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "terminates", PragmaTerms,
 				ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "terminates",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = terminates(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "does_not_terminate", PragmaTerms,
 				ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "does_not_terminate",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = does_not_terminate(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 				ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "check_termination",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
+		(pred(Name::in, Arity::in, Pragma::out) is det :-
 			Pragma = check_termination(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
@@ -1631,9 +1631,9 @@ convert_bool_list(ListTerm, Bools) :-
 
 convert_int_list(ListTerm, Result) :-
 	convert_list(ListTerm,
-		lambda([Term::in, Int::out] is semidet, (
+		(pred(Term::in, Int::out) is semidet :-
 			Term = term__functor(term__integer(Int), [], _)
-		)), Result).
+		), Result).
 
 	%
 	% convert_list(T, P, M) will convert a term T into a list of

@@ -400,12 +400,12 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 		% Get all the continuation info from the call instructions.
 	global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
 	Internals0 = ProcLayoutInfo0^internal_map,
-	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
+	GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
 		Instr = call(Target, label(ReturnLabel), LiveInfo, Context,
 			GoalPath, _) - _Comment,
 		Call = call_info(ReturnLabel, Target, LiveInfo, Context,
 			GoalPath)
-	)),
+	),
 	list__filter_map(GetCallInfo, Instructions, Calls),
 
 		% Process the continuation label info.
@@ -475,19 +475,19 @@ continuation_info__process_continuation(WantReturnInfo, CallInfo,
 	set(var_info)::out, map(tvar, set(layout_locn))::out) is det.
 
 continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
-	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
+	GetVarInfo = (pred(LiveLval::in, VarInfo::out) is det :-
 		LiveLval = live_lvalue(Lval, LiveValueType, _),
 		VarInfo = var_info(Lval, LiveValueType)
-	)),
+	),
 	list__map(GetVarInfo, LiveInfos, VarInfoList),
-	GetTypeInfo = lambda([LiveLval::in, LiveTypeInfoMap::out] is det, (
+	GetTypeInfo = (pred(LiveLval::in, LiveTypeInfoMap::out) is det :-
 		LiveLval = live_lvalue(_, _, LiveTypeInfoMap)
-	)),
+	),
 	list__map(GetTypeInfo, LiveInfos, TypeInfoMapList),
 	map__init(Empty),
-	list__foldl(lambda([TIM1::in, TIM2::in, TIM::out] is det,
-		map__union(set__intersect, TIM1, TIM2, TIM)),
-		TypeInfoMapList, Empty, TypeInfoMap),
+	list__foldl((pred(TIM1::in, TIM2::in, TIM::out) is det :-
+			map__union(set__intersect, TIM1, TIM2, TIM)
+		), TypeInfoMapList, Empty, TypeInfoMap),
 	set__list_to_set(VarInfoList, VarInfoSet).
 
 :- pred continuation_info__filter_named_vars(list(liveinfo)::in,
@@ -744,12 +744,12 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
 	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
-	FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
+	FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
 		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
 		(
 			map__search(VarLocs, TypeInfoVar, TypeInfoLvalSet)
 		->
-			ConvertLval = lambda([Locn::out] is nondet, (
+			ConvertLval = (pred(Locn::out) is nondet :-
 				set__member(Lval, TypeInfoLvalSet),
 				(
 					TypeInfoLocn = typeclass_info(_,
@@ -759,7 +759,7 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 					TypeInfoLocn = type_info(_),
 					Locn = direct(Lval)
 				)
-			)),
+			),
 			solutions_set(ConvertLval, Locns)
 		;
 			varset__lookup_name(VarSet, TypeInfoVar,
@@ -770,7 +770,7 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 				s(VarString)], ErrStr),
 			error(ErrStr)
 		)
-	)),
+	),
 	list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
 	map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
 		TypeInfoDataMap).
@@ -814,7 +814,7 @@ continuation_info__find_typeinfos_for_tvars_table(TypeVars,
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
 	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
-	FindLocn = lambda([TypeInfoLocn::in, Locn::out] is det, (
+	FindLocn = (pred(TypeInfoLocn::in, Locn::out) is det :-
 		(
 			(
 				TypeInfoLocn = typeclass_info(TypeInfoVar,
@@ -839,7 +839,7 @@ continuation_info__find_typeinfos_for_tvars_table(TypeVars,
 				s(VarString)], ErrStr),
 			error(ErrStr)
 		)
-	)),
+	),
 	list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
 	map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
 		TypeInfoDataMap).

@@ -1658,33 +1658,30 @@ fail_goal(Context, Goal - GoalInfo) :-
 %-----------------------------------------------------------------------------%
 
 goal_list_nonlocals(Goals, NonLocals) :-
-       UnionNonLocals =
-               lambda([Goal::in, Vars0::in, Vars::out] is det, (
+       UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
                        Goal = _ - GoalInfo,
                        goal_info_get_nonlocals(GoalInfo, Vars1),
                        set__union(Vars0, Vars1, Vars)
-               )),
+               ),
        set__init(NonLocals0),
        list__foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
-       ApplyDelta =
-               lambda([Goal::in, Delta0::in, Delta::out] is det, (
+       ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
                        Goal = _ - GoalInfo,
                        goal_info_get_instmap_delta(GoalInfo, Delta1),
                        instmap_delta_apply_instmap_delta(Delta0,
                                Delta1, Delta)
-               )),
+               ),
        instmap_delta_init_reachable(InstMapDelta0),
        list__foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
 
 goal_list_determinism(Goals, Determinism) :-
-       ComputeDeterminism =
-               lambda([Goal::in, Det0::in, Det::out] is det, (
+       ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
                        Goal = _ - GoalInfo,
                        goal_info_get_determinism(GoalInfo, Det1),
                        det_conjunction_detism(Det0, Det1, Det)
-               )),
+               ),
        list__foldl(ComputeDeterminism, Goals, det, Determinism).
 
 goal_list_purity(Goals, Purity) :-

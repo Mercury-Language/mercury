@@ -441,10 +441,10 @@ deforest__propagate_conj_constraints([Goal0 | Goals0],
 		{ Goal0 = call(PredId, _ProcId, _Args, _, _, SymName) - _ }, 
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ \+ pred_info_is_imported(PredInfo) },
-		{ list__takewhile(lambda([CnstrGoal::in] is semidet, (
+		{ list__takewhile((pred(CnstrGoal::in) is semidet :-
 			CnstrGoal = _ - CnstrGoalInfo,
 			goal_info_has_feature(CnstrGoalInfo, constraint)
-		)), Goals0, Constraints, Goals1) },
+		), Goals0, Constraints, Goals1) },
 		{ Constraints \= [] }
 	->
 		{ prog_out__sym_name_to_string(SymName, SymNameString) },
@@ -579,11 +579,11 @@ deforest__potential_deforestation(Info1, Info2, DeforestBranches) :-
 
 		% Work out which branches of the first goal should
 		% contain unfolded versions of the second goal.
-	GetBranches = 
-	    lambda([VarInfo::in, Branches0::in, Branches::out] is det, (
-		VarInfo = _ - Branches1,
-		set__union(Branches0, Branches1, Branches)
-	    )),
+	GetBranches =
+		(pred(VarInfo::in, Branches0::in, Branches::out) is det :-
+			VarInfo = _ - Branches1,
+			set__union(Branches0, Branches1, Branches)
+	),
 	set__init(DeforestBranches0),
 	list__foldl(GetBranches, VarAssoc, 
 		DeforestBranches0, DeforestBranches).
@@ -1523,12 +1523,11 @@ deforest__get_sub_conj_nonlocals(NonLocals0, DeforestInfo,
 deforest__get_sub_conj_nonlocals(NonLocals0, RevBeforeGoals, BeforeIrrelevant,
 		EarlierGoal, BetweenGoals, MaybeLaterGoal,
 		AfterIrrelevant, AfterGoals, SubConjNonLocals) :-
-	AddGoalNonLocals =
-	    lambda([Goal::in, Vars0::in, Vars::out] is det, (
+	AddGoalNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
 		Goal = _ - GoalInfo,
 		goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
 		set__union(Vars0, GoalNonLocals, Vars)
-	    )),
+	),
 	list__foldl(AddGoalNonLocals, RevBeforeGoals, NonLocals0, NonLocals1),
 	list__foldl(AddGoalNonLocals, BeforeIrrelevant,
 		NonLocals1, NonLocals2),

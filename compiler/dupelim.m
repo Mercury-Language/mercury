@@ -119,8 +119,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	;
 		Fixed1 = Fixed0
 	),
-	AddPragmaReferredLabels = lambda(
-		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
+	AddPragmaReferredLabels =
+		(pred(Instr::in, FoldFixed0::in, FoldFixed::out) is det :-
 		(
 			Instr = pragma_c(_, _, _,
 				MaybeFixedLabel, MaybeLayoutLabel,
@@ -146,7 +146,7 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 		;
 			FoldFixed = FoldFixed0
 		)
-	)),
+	),
 	list__foldl(AddPragmaReferredLabels, Instrs,
 		Fixed1, Fixed2),
 	dupelim__build_maps(Labels, BlockMap, StdMap1, StdMap,
@@ -175,9 +175,9 @@ find_clusters([Labels | LabelsList], Fixed, Clusters0, Clusters) :-
 			% The rest of the condition is relatively expensive,
 			% so don't do it if there aren't at least two labels
 			% whose blocks have the same standardized form.
-		IsFallenInto = lambda([Label::in] is semidet, (
+		IsFallenInto = (pred(Label::in) is semidet :-
 			set__member(Label, Fixed)
-		)),
+		),
 		list__filter(IsFallenInto, Labels,
 			FixedLabels, NonFixedLabels),
 		NonFixedLabels = [FirstNonFixed | OtherNonFixed]

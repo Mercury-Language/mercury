@@ -309,7 +309,7 @@ modecheck_unification(X,
 		mode_info_set_instmap(InstMap2, ModeInfo3, ModeInfo4),
 
 		mode_info_lock_vars(lambda(PredOrFunc), NonLocals,
-				ModeInfo4, ModeInfo5),
+			ModeInfo4, ModeInfo5),
 
 		mode_checkpoint(enter, "lambda goal", ModeInfo5, ModeInfo6),
 		% if we're being called from unique_modes.m, then we need to 
@@ -344,29 +344,28 @@ modecheck_unification(X,
 		%
 
 		RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod,
-				modes_are_ok, ArgVars, Vars, Modes, Det, Goal),
+			modes_are_ok, ArgVars, Vars, Modes, Det, Goal),
 		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
-				Det, RHS0, Unification0, Mode,
-				RHS, Unification, ModeInfo12, ModeInfo)
+			Det, RHS0, Unification0, Mode,
+			RHS, Unification, ModeInfo12, ModeInfo)
 	;
-		list__filter(lambda([Var :: in] is semidet,
-			( instmap__lookup_var(InstMap1, Var, Inst),
-			  \+ inst_is_ground(ModuleInfo2, Inst)
-			)),
-			NonLocalsList, NonGroundNonLocals),
+		list__filter((pred(Var :: in) is semidet :-
+				instmap__lookup_var(InstMap1, Var, Inst),
+				\+ inst_is_ground(ModuleInfo2, Inst)
+			), NonLocalsList, NonGroundNonLocals),
 		( NonGroundNonLocals = [BadVar | _] ->
 			instmap__lookup_var(InstMap1, BadVar, BadInst),
 			set__singleton_set(WaitingVars, BadVar),
 			mode_info_error(WaitingVars,
 				mode_error_non_local_lambda_var(BadVar,
-						BadInst),
+					BadInst),
 				ModeInfo2, ModeInfo)
 		;
 			error("modecheck_unification(lambda): very strange var")
 		),
 			% return any old garbage
 		RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, modes_are_ok,
-				ArgVars, Vars, Modes0, Det, Goal0),
+			ArgVars, Vars, Modes0, Det, Goal0),
 		Mode = (free -> free) - (free -> free),
 		Unification = Unification0
 	).

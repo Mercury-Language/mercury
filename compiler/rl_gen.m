@@ -299,12 +299,12 @@ rl_gen__scc(SCC0, SCCs, InputMap, SCCCode) -->
 	% Make sure predicates with `generate_inline' markers (used to
 	% create input relations for calls) do not have code generated for
 	% them, and are not considered to be entry points to the SCC.
-	{ list__filter(lambda([PredProcId::in] is semidet, (
+	{ list__filter((pred(PredProcId::in) is semidet :-
 		PredProcId = proc(PredId, _),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_get_markers(PredInfo, Markers),
 		\+ check_marker(Markers, generate_inline)
-	)), SCC0, SCC) },
+	), SCC0, SCC) },
  
 	rl_info_set_scc(SCC),
 	{ dependency_graph__get_scc_entry_points(SCC, SCCs, 
@@ -435,9 +435,9 @@ rl_gen__scc_list_entry_procs([EntryPoint | EntryPoints], SubModuleProc,
 	rl_info_lookup_relation(full - EntryPoint, Output),
 
 	{ set__init(SavedRels) },
-	{ list__map(lambda([Rel::in, OutputRel::out] is det, (
+	{ list__map((pred(Rel::in, OutputRel::out) is det :-
 			OutputRel = output_rel(Rel, [])
-		)), OutputArgs, OutputRels) },
+		), OutputArgs, OutputRels) },
 	{ Instr = call(SubModuleProc, InputArgs, OutputRels, SavedRels) - "" },
 	rl_info_get_relation_info(RelInfo),
 	{ set__init(MemoedRels) },
@@ -1199,7 +1199,7 @@ rl_gen__single_call_rule(DBCallInfo, FullRel, MaybeDiffRel, Goals, RuleOutputs,
 
 		% A negated goal must have another call providing 
 		% input to subtract from.
-	{ require(lambda([] is semidet, IsNeg = no), 
+	{ require(unify(IsNeg, no), 
 		"rl_gen__single_call_rule: negated supp or magic call") },
 
 	( { MaybeDiffRel = yes(DiffRel) } ->
@@ -1230,7 +1230,7 @@ rl_gen__diff_diff_rule(CallInfo1, Full1, Diff1, CallInfo2, Full2, Diff2,
 	{ CallInfo2 = db_call(_PredProcId2, IsNeg2,
 		_InputArgs2, OutputArgs2, _GoalInfo2) },
 
-	{ require(lambda([] is semidet, (IsNeg1 = no, IsNeg2 = no)),
+	{ require(unify({IsNeg1, IsNeg2}, {no, no}),
 		"rl_gen__diff_diff_rule: negated differential call") },
 
 	{ rl_gen__get_call_instmap(CallInfo1, CallInfo2, InstMap) },
@@ -1253,7 +1253,7 @@ rl_gen__diff_non_diff_rule(CallInfo1, _Full1, Diff1, CallInfo2, Full2,
 	{ CallInfo2 = db_call(_PredProcId2, IsNeg2,
 		_InputArgs2, OutputArgs2, _GoalInfo2) },
 
-	{ require(lambda([] is semidet, (IsNeg1 = no)),
+	{ require(unify(IsNeg1, no),
 		"rl_gen__rec_non_rec_rule: negated recursive call") },
 
 	{ rl_gen__get_call_instmap(CallInfo1, CallInfo2, InstMap) },
@@ -1284,9 +1284,8 @@ rl_gen__non_diff_diff_rule(CallInfo1, Full1, CallInfo2, _Full2, Diff2,
 	{ CallInfo2 = db_call(_PredProcId2, IsNeg2,
 		_InputArgs2, OutputArgs2, _GoalInfo2) },
 
-	{ require(lambda([] is semidet, (IsNeg1 = no, IsNeg2 = no)),
+	{ require(unify({IsNeg1, IsNeg2}, {no, no}),
 		"rl_gen__non_rec_rec_rule: negated recursive or magic call") },
-
 
 	{ rl_gen__get_call_instmap(CallInfo1, CallInfo2, InstMap) },
 
@@ -1307,7 +1306,7 @@ rl_gen__non_diff_non_diff_rule(CallInfo1, Full1, CallInfo2, Full2, Goals,
 	{ CallInfo2 = db_call(_PredProcId2, IsNeg2,
 		_InputArgs2, OutputArgs2, _GoalInfo2) },
 
-	{ require(lambda([] is semidet, (IsNeg1 = no)),
+	{ require(unify(IsNeg1, no),
 		"rl_gen__non_rec_non_rec_rule: negated magic call") },
 
 	{ rl_gen__get_call_instmap(CallInfo1, CallInfo2, InstMap) },
@@ -1660,7 +1659,7 @@ rl_gen__inline_call(_PredProcId, CalledPredInfo, CalledProcInfo, CurriedArgs,
 	{ list__append(CurriedArgs, OutputArgs, Args) },
 	rl_gen__rename_inline_call(Args, CalledPredInfo, CalledProcInfo, Goal),	
 	( { Goal = conj(_) - _ } ->
-		{ require(lambda([] is semidet, OutputArgs = []),
+		{ require(unify(OutputArgs, []),
 		    "rl_gen__inline_call: `true' relation not zero arity") },
 		% create a zero arity relation containing a tuple
 		{ true_goal(True) },

@@ -290,9 +290,9 @@ unneeded_code__process_proc(!ProcInfo, !ModuleInfo, Successful) :-
 		NeededVarsList),
 	map__init(WhereNeededMap0),
 	NeededEverywhere =
-		lambda([Var::in, NeededMap0::in, NeededMap::out] is det, (
+		(pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
 			map__det_insert(NeededMap0, Var, everywhere, NeededMap)
-		)),
+		),
 	list__foldl(NeededEverywhere, NeededVarsList,
 		WhereNeededMap0, WhereNeededMap1),
 	map__init(RefinedGoals0),

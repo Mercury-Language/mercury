@@ -173,11 +173,11 @@ rl_stream__detect_must_materialise_rels(Graph, BlockMap,
 	%
 	Block = block(_, Instrs, MaybeBranch, _),
 	AddMustMaterialiseRels =
-	    lambda([Instr::in, StreamInfo0::in, StreamInfo::out] is det, (
-		rl_stream__must_materialise_rels(Instr, Rels),
-		rl_stream__add_must_materialise_rels(Rels,
-			StreamInfo0, StreamInfo)
-	    )),
+		(pred(Instr::in, StreamInfo0::in, StreamInfo::out) is det :-
+			rl_stream__must_materialise_rels(Instr, Rels),
+			rl_stream__add_must_materialise_rels(Rels,
+				StreamInfo0, StreamInfo)
+		),
 	list__foldl(AddMustMaterialiseRels, Instrs, Info2, Info3),
 	( MaybeBranch = yes(Branch) ->
 		AddMustMaterialiseRels(Branch, Info3, Info)
@@ -246,9 +246,9 @@ rl_stream__inside_and_after(CalledBlocks, BlockId,
 		list__split_list(N1, BlockIds, _, AfterBlockIds0),
 		AfterBlockIds0 = [BlockId | AfterBlockIds]
 	->
-		list__filter(lambda([CalledBlock::in] is semidet, (
+		list__filter((pred(CalledBlock::in) is semidet :-
 				list__member(CalledBlock, AfterBlockIds)
-			)), CalledBlocks, InsideLaterCalledBlocks)
+			), CalledBlocks, InsideLaterCalledBlocks)
 	;
 		error("rl_stream__inside_and_after")
 	).
@@ -338,7 +338,7 @@ rl_stream__end_block_check_relation(Uses, Aliases, Relation,
 	( set__empty(Intersect) ->
 		set__to_sorted_list(Relations, RelationsList),
 		list__map(bag__count_value(Uses), RelationsList, Counts),
-		list__foldl(lambda([X::in, Y::in, Z::out] is det, Z = X + Y),
+		list__foldl((pred(X::in, Y::in, Z::out) is det :- Z = X + Y),
 			Counts, 0, NumUses),
 		( NumUses = 1 ->
 			Materialise = Materialise0
@@ -470,10 +470,10 @@ rl_stream__must_materialise_rels(call(_, Inputs, OutputRels, _) - _,
 		list(relation_id)::out) is det.
 
 rl_stream__outputs_are_indexed(Outputs, Indexed) :-
-	list__filter_map(lambda([OutputRel::in, Output::out] is semidet, (
+	list__filter_map((pred(OutputRel::in, Output::out) is semidet :-
 		OutputRel = output_rel(Output, Indexes),
-		Indexes = [_|_]
-	)), Outputs, Indexed).
+		Indexes = [_ | _]
+	), Outputs, Indexed).
 
 :- pred rl_stream__output_is_indexed(output_rel::in,
 		list(relation_id)::out) is det.

@@ -747,13 +747,13 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 	{ string__to_char_list(ProcNameStr, ProcNameList0) },
 	% Slashes are significant in relation names, so convert them to colons.
 	{ RemoveSlashes =
-		lambda([Char0::in, Char::out] is det, (
+		(pred(Char0::in, Char::out) is det :-
 			( Char0 = ('/') ->
 				Char = (':')
 			;
 				Char = Char0
 			)
-		)) },
+		) },
 	{ list__map(RemoveSlashes, ProcNameList0, ProcNameList) },
 	{ string__from_char_list(ProcNameList, ProcNameStr1) },
 	rl_out_info_get_module_info(ModuleInfo),
@@ -843,10 +843,10 @@ rl_out__collect_permanent_relation(PredId, Addr, SetCode, UnsetCode) -->
 
 rl_out__get_rel_var_list(Rels, Code) -->
 	list__map_foldl(rl_out_info_get_relation_addr, Rels, Addrs),
-	{ ConsElems = lambda([Addr::in, Cons::out] is det, (
+	{ ConsElems = (pred(Addr::in, Cons::out) is det :-
 			LockSpec = 0,
 			Cons = rl_PROC_var_list_cons(Addr, LockSpec)
-		)) },
+		) },
 	{ list__map(ConsElems, Addrs, Code1) },
 	{ Code = tree(node(Code1), node([rl_PROC_var_list_nil])) }.
 
@@ -1104,9 +1104,9 @@ rl_out__generate_instr(call(ProcName, Inputs, OutputRels, SaveRels) - _,
 		OverlapTmpVars, OverlapCode),
 
 	{ list__append(NewInputs, NewOutputs, CallArgs) },
-	{ list__map(lambda([Arg::in, ArgCode::out] is det, (
+	{ list__map((pred(Arg::in, ArgCode::out) is det :-
 		ArgCode = rl_PROC_var_list_cons(Arg, 0)
-	)), CallArgs, CallArgCodes) },
+	), CallArgs, CallArgCodes) },
 	{ rl__proc_name_to_string(ProcName, ProcNameStr) },
 	rl_out_info_assign_const(string(ProcNameStr), ProcNameConst),
 	rl_out_info_return_tmp_vars(SaveTmpVars, SaveClearCode),
@@ -2088,10 +2088,10 @@ rl_out__generate_union(UnionCode, Exprn, Inputs, InstrCode) -->
 :- pred rl_out__generate_arg_list(list(int)::in, byte_tree::out) is det.
 
 rl_out__generate_arg_list(List, Code) :-
-	ConsElem = lambda([Elem::in, ArgCode::out] is det, (
+	ConsElem = (pred(Elem::in, ArgCode::out) is det :-
 			LockSpec = 0, % default lock spec.
 			ArgCode = rl_PROC_var(Elem, LockSpec)
-		)),
+		),
 	list__map(ConsElem, List, Codes),
 	Code = node(Codes).
 
@@ -2100,9 +2100,9 @@ rl_out__generate_arg_list(List, Code) :-
 :- pred rl_out__generate_int_list(list(int)::in, byte_tree::out) is det.
 
 rl_out__generate_int_list(List, Code) :-
-	ConsElem = lambda([Elem::in, Cons::out] is det, (
+	ConsElem = (pred(Elem::in, Cons::out) is det :-
 			Cons = rl_PROC_int_list_cons(Elem)
-		)),
+		),
 	list__map(ConsElem, List, Codes0),
 	list__append(Codes0, [rl_PROC_int_list_nil], Codes),
 	Code = node(Codes).
@@ -2115,7 +2115,7 @@ rl_out__generate_int_list(List, Code) :-
 rl_out__resolve_proc_addresses(ByteTree0, ByteTree) -->
 	rl_out_info_get_labels(Labels),
 	{ ResolveAddr = 
-		lambda([Code0::in, Code::out] is det, (
+		(pred(Code0::in, Code::out) is det :-
 			%
 			% The actual code addresses of rl_PROC_goto_label
 			% are resolved at runtime, we possibly could resolve
@@ -2139,7 +2139,7 @@ rl_out__resolve_proc_addresses(ByteTree0, ByteTree) -->
 			;
 				Code = Code0
 			)
-		)) },
+		) },
 	{ rl_out__resolve_addresses(ResolveAddr, ByteTree0, ByteTree) }.
 
 	% Labels introduced as optimizations in rl_out.m don't
@@ -2167,11 +2167,11 @@ rl_out__resolve_addresses(ResolveAddr, tree(CodeA0, CodeB0),
 
 rl_out__instr_code_size(empty, 0).
 rl_out__instr_code_size(node(Instrs), Size) :-
-	AddSize = lambda([Instr::in, S0::in, S::out] is det, (
+	AddSize = (pred(Instr::in, S0::in, S::out) is det :-
 			bytecode_to_intlist(Instr, IntList),
 			list__length(IntList, S1),
 			S = S0 + S1
-		)),
+		),
 	list__foldl(AddSize, Instrs, 0, Size).
 rl_out__instr_code_size(tree(CodeA, CodeB), Size) :-
 	rl_out__instr_code_size(CodeA, SizeA),

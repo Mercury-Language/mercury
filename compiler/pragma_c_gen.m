@@ -823,8 +823,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 		;
 			Treat = automatic,
 			\+ pred_info_requested_no_inlining(PredInfo),
-			CountSemis = lambda([Char::in, Count0::in, Count::out]
-				is det,
+			CountSemis = (pred(Char::in, Count0::in, Count::out)
+					is det :-
 				( Char = (;) ->
 					Count = Count0 + 1
 				;

@@ -249,10 +249,10 @@ rl_liveness__init_block_creation(CreatedAtStartOfFirst, BlockId,
 	rl_opt_info_get_block(BlockId, Block),
 	{ Block = block(_, Instrs, _, _) },
 	{ set__init(Created0) },
-	{ AddCreated = lambda([Instr::in, C0::in, C::out] is det, (
+	{ AddCreated = (pred(Instr::in, C0::in, C::out) is det :-
 			rl__instr_relations(Instr, _, Outputs),
 			set__insert_list(C0, Outputs, C)
-		)) },
+		) },
 	{ list__foldl(AddCreated, Instrs, Created0, Created) },
 
 	rl_opt_info_get_first_block_id(FirstBlock),
@@ -321,10 +321,10 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	{ list__map(relation__lookup_key(Graph), CallingBlockKeys, 
 		CallingBlocks) },
 	{ GetLiveOutputs = 
-		lambda([CallingBlock::in, LiveRels::out] is det, (
+		(pred(CallingBlock::in, LiveRels::out) is det :-
 			map__lookup(LiveMap, CallingBlock, CallingData),
 			CallingData = block_data(LiveRels, _, _)
-		)) },
+		) },
 	{ list__map(GetLiveOutputs, CallingBlocks, CallingBlockLiveRels0) },
 	( { BlockId = FirstBlockId } ->
 		{ CallingBlockLiveRels1 = CreatedAtStart }
@@ -362,7 +362,7 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	{ list__map(relation__lookup_key(Graph), CalledBlockKeys,
 		CalledBlocks) },
 	{ GetCreatedOutputs =
-		lambda([CalledBlock::in, CalledInitAtStart::out] is det, (
+		(pred(CalledBlock::in, CalledInitAtStart::out) is det :-
 			map__lookup(CreateMap, CalledBlock, CalledCreateData),
 			map__lookup(LiveMap, CalledBlock, CalledLiveData),
 			CalledLiveData = block_data(_, CalledLiveAtStart, _),
@@ -370,7 +370,7 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 				block_data(_, CalledInitAtStart0, _),
 			set__intersect(CalledInitAtStart0, CalledLiveAtStart,
 				CalledInitAtStart)
-		)) },
+		) },
 	{ list__map(GetCreatedOutputs, CalledBlocks, CalledBlockCreated0) },	
 	( { BlockId = LastBlockId } ->
 		{ CalledBlockCreated1 = LiveAtEnd }

@@ -20,11 +20,11 @@
 
 :- import_module list, varset, term.
 
-	% parse a typeclass declaration. 
+	% parse a typeclass declaration.
 :- pred parse_typeclass(module_name, varset, list(term), maybe1(item)).
 :- mode parse_typeclass(in, in, in, out) is semidet.
 
-	% parse an instance declaration. 
+	% parse an instance declaration.
 :- pred parse_instance(module_name, varset, list(term), maybe1(item)).
 :- mode parse_instance(in, in, in, out) is semidet.
 
@@ -123,15 +123,15 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 		->
 			Result = Result0
 		;
-			Result0 = ok(typeclass(_, Name, Vars, Interface, 
+			Result0 = ok(typeclass(_, Name, Vars, Interface,
 				VarSet0))
 		->
 			(
 				%
 				% check for type variables in the constraints
 				% which do not occur in the type class
-				% parameters 
-				% 
+				% parameters
+				%
 				type_util__constraint_list_get_tvars(
 					ConstraintList, ConstrainedVars),
 				list__member(Var, ConstrainedVars),
@@ -159,7 +159,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 :- mode parse_superclass_constraints(in, in, out) is det.
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
-	parse_simple_class_constraints(ModuleName, Constraints, 
+	parse_simple_class_constraints(ModuleName, Constraints,
 		"constraints on class declaration may only constrain type variables and ground types",
 		Result).
 
@@ -198,18 +198,16 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 	(
 		list_term_to_term_list(Methods, MethodList)
-			% Convert the list of terms into a list of 
+			% Convert the list of terms into a list of
 			% maybe1(class_method)s.
 	->
-		list__map(lambda([MethodTerm::in, Method::out] is det, 
-			(
+		list__map((pred(MethodTerm::in, Method::out) is det :-
 				% Turn the term into an item
-			parse_decl(ModuleName, VarSet, MethodTerm, Item),
+				parse_decl(ModuleName, VarSet, MethodTerm,
+					Item),
 				% Turn the item into a class_method
-			item_to_class_method(Item, MethodTerm, Method)
-			)),
-			MethodList,
-			Interface),
+				item_to_class_method(Item, MethodTerm, Method)
+			), MethodList, Interface),
 		find_errors(Interface, Result)
 	;
 		Result = error("expected list of class methods", Methods)
@@ -229,7 +227,7 @@ list_term_to_term_list(Methods, MethodList) :-
 	).
 
 
-:- pred item_to_class_method(maybe2(item, prog_context), term, 
+:- pred item_to_class_method(maybe2(item, prog_context), term,
 	maybe1(class_method)).
 :- mode item_to_class_method(in, in, out) is det.
 
@@ -282,7 +280,7 @@ parse_class_constraints(ModuleName, ConstraintsTerm, Result) :-
 		Result).
 
 parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
-	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm, 
+	parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 		Result).
 
 % Parse constraints which can only constrain type variables and ground types.
@@ -332,7 +330,7 @@ parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 		Result) :-
 	conjunction_to_list(ConstraintsTerm, ConstraintList),
-	parse_class_and_inst_constraint_list(ModuleName, ConstraintList, 
+	parse_class_and_inst_constraint_list(ModuleName, ConstraintList,
 		Result).
 
 :- pred parse_class_and_inst_constraint_list(module_name, list(term),
@@ -453,7 +451,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 			Result = ok(instance(ConstraintList, Name, Types, Body,
 					VarSet, ModName))
 		;
-				% if the item we get back isn't an instance, 
+				% if the item we get back isn't an instance,
 				% something has gone wrong...
 				% maybe we should use cleverer inst decls to
 				% avoid this call to error
@@ -484,37 +482,35 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		MaybeClassName),
 	(
 		MaybeClassName = ok(ClassName, TermTypes0),
-			% check that the type in the name of the instance 
+			% check that the type in the name of the instance
 			% decl is a functor with vars as args
 		list__map(convert_type, TermTypes0, TermTypes),
-		IsFunctorAndVarArgs = lambda([Type::in] is semidet,
+		IsFunctorAndVarArgs = (pred(Type::in) is semidet :-
+				% Is the top level functor an atom?
+			Type = term__functor(term__atom(Functor),
+					Args, _),
 			(
-					% Is the top level functor an atom?
-				Type = term__functor(term__atom(Functor),
-						Args, _),
-				(
-					(	Functor = ":"
-					;	Functor = "."
-					)
-				->
-					Args = [_Module, Type1],
-						% Is the top level functor an
-						% atom?
-					Type1 = term__functor(term__atom(_), 
-							Args1, _),
-						% Are all the args of the
-						% functor variables?
-					list__map(lambda([A::in, B::out] 
-							is semidet, 
-						type_util__var(A,B)), Args1, _)
-				;
-						% Are all the args of the
-						% functor variables?
-					list__map(lambda([A::in, B::out] 
-							is semidet, 
-						type_util__var(A,B)), Args, _)
+				(	Functor = ":"
+				;	Functor = "."
 				)
-			)),
+			->
+				Args = [_Module, Type1],
+					% Is the top level functor an
+					% atom?
+				Type1 = term__functor(term__atom(_), Args1, _),
+					% Are all the args of the
+					% functor variables?
+				list__map((pred(A::in, B::out) is semidet :-
+					type_util__var(A, B)
+				), Args1, _)
+			;
+					% Are all the args of the
+					% functor variables?
+				list__map((pred(A::in, B::out) is semidet :-
+					type_util__var(A, B)
+				), Args, _)
+			)
+		),
 		list__filter(IsFunctorAndVarArgs, TermTypes, _,
 			ErroneousTypes),
 		(
@@ -579,7 +575,7 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 		% on the instance declaration also occur in the type class
 		% argument types in the instance declaration
 		%
-		( 
+		(
 			type_util__constraint_list_get_tvars(Constraints,
 				TVars),
 			list__member(TVar, TVars),
@@ -603,7 +599,7 @@ parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 	(
 		list_term_to_term_list(Methods, MethodList)
 	->
-			% Convert the list of terms into a list of 
+			% Convert the list of terms into a list of
 			% maybe1(class_method)s.
 		list__map(term_to_instance_method(ModuleName, VarSet),
 			MethodList, Interface),
@@ -625,16 +621,16 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 		(
 			ClassMethodTerm = term__functor(term__atom("pred"),
 				[term__functor(
-					term__atom("/"), 
-					[ClassMethod, Arity], 
-					_)], 
+					term__atom("/"),
+					[ClassMethod, Arity],
+					_)],
 				_)
 		->
 			(
 				parse_qualified_term(ClassMethod,
-					ClassMethod, "instance method", 
+					ClassMethod, "instance method",
 					ok(ClassMethodName, [])),
-				Arity = term__functor(term__integer(ArityInt), 
+				Arity = term__functor(term__integer(ArityInt),
 					[], _),
 				parse_qualified_term(InstanceMethod,
 					InstanceMethod, "instance method",
@@ -652,16 +648,16 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 		;
 			ClassMethodTerm = term__functor(term__atom("func"),
 				[term__functor(
-					term__atom("/"), 
-					[ClassMethod, Arity], 
-					_)], 
+					term__atom("/"),
+					[ClassMethod, Arity],
+					_)],
 				_)
 		->
 			(
 				parse_qualified_term(ClassMethod,
 					ClassMethod, "instance method",
 					ok(ClassMethodName, [])),
-				Arity = term__functor(term__integer(ArityInt), 
+				Arity = term__functor(term__integer(ArityInt),
 					[], _),
 				parse_qualified_term(InstanceMethod,
 					InstanceMethod, "instance method",

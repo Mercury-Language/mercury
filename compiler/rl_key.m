@@ -180,10 +180,10 @@ rl_key__bounds_to_key_range(MaybeConstructArgs, Args, VarTypes,
 		MaybeConstructArgTypes = no
 	),
 		% Partial matches on indexes aren't yet allowed.
-	list__map(lambda([Attr::in, (Attr - AttrBound)::out] is semidet, (
+	list__map((pred(Attr::in, (Attr - AttrBound)::out) is semidet :-
 			list__index1(Args, Attr, KeyArg), 
 			map__search(VarBoundMap, KeyArg, AttrBound)
-		)), Attrs, AttrBounds),
+		), Attrs, AttrBounds),
 				
 	list__map(list__index1(Args), Attrs, KeyArgs),
 	map__apply_to_list(KeyArgs, VarTypes, ArgTypes),
@@ -737,12 +737,12 @@ rl_key__update_compare_bounds(unknown, Args) -->
 rl_key__add_compare_result(CompareResult, Arg1, Arg2) -->
 	key_info_get_constraints(Cnstrs0),
 	{ UpdateCompares =
-		lambda([VarMap0::in, VarMap::out] is det, (
+		(pred(VarMap0::in, VarMap::out) is det :-
 			VarMap0 = var_map(Map, Compares0),
 			map__set(Compares0, CompareResult,
 				Arg1 - Arg2, Compares),
 			VarMap = var_map(Map, Compares)
-		)) },
+		) },
 	{ list__map(UpdateCompares, Cnstrs0, Cnstrs) },
 	key_info_set_constraints(Cnstrs).
 
@@ -822,10 +822,10 @@ rl_key__extract_key_range_unify(complicated_unify(_, _, _)) -->
 
 rl_key__unify_functor(Var, ConsId, Args) -->
 	key_info_get_constraints(Constraints0),	
-	{ GetArgTerm = lambda([Arg::in, ArgTerm::out] is det, (
+	{ GetArgTerm = (pred(Arg::in, ArgTerm::out) is det :-
 			set__singleton_set(ArgSet, Arg),
 			ArgTerm = var - ArgSet
-		)) },
+		) },
 	{ list__map(GetArgTerm, Args, ArgTerms) },
 
 	{ set__singleton_set(VarSet, Var) },
@@ -833,8 +833,7 @@ rl_key__unify_functor(Var, ConsId, Args) -->
 	{ map__lookup(VarTypes, Var, Type) },
 	{ Term1 = functor(ConsId, Type, ArgTerms) - VarSet },
 	key_info_get_module_info(ModuleInfo),
-	{ AddConstraint =
-	    lambda([VarMap0::in, VarMap::out] is semidet, (
+	{ AddConstraint = (pred(VarMap0::in, VarMap::out) is semidet :-
 		VarMap0 = var_map(Map0, CompRes),
 		( map__search(Map0, Var, VarInfo0) ->
 			VarInfo0 = var_info(LBound0, UBound0),
@@ -848,7 +847,7 @@ rl_key__unify_functor(Var, ConsId, Args) -->
 		),
 		map__set(Map0, Var, VarInfo, Map),
 		VarMap = var_map(Map, CompRes)
-	)) },
+	) },
 	{ list__filter_map(AddConstraint, Constraints0, Constraints) },
 	key_info_set_constraints(Constraints).
 
@@ -857,11 +856,10 @@ rl_key__unify_functor(Var, ConsId, Args) -->
 
 rl_key__unify_var_var(Var1, Var2) -->
 	key_info_get_constraints(Constraints0),	
-	{ AddEquality =
-	    lambda([Map0::in, Map::out] is det, (
+	{ AddEquality = (pred(Map0::in, Map::out) is det :-
 		rl_key__add_alias(Var1, Var2, Map0, Map1),
 		rl_key__add_alias(Var2, Var1, Map1, Map)
-	    )) }, 
+	) }, 
 	{ list__map(AddEquality, Constraints0, Constraints) },
 	key_info_set_constraints(Constraints).
 
@@ -949,8 +947,7 @@ rl_key__add_upper_bound(Var, Term) -->
 rl_key__update_bounds(Var, LowerBound1, UpperBound1) -->
 	key_info_get_constraints(Cnstrs0),
 	key_info_get_module_info(ModuleInfo),
-	{ UpdateBounds =
-	    lambda([VarMap0::in, VarMap::out] is det, (
+	{ UpdateBounds = (pred(VarMap0::in, VarMap::out) is det :-
 		VarMap0 = var_map(Map0, CompRes),
 		( map__search(Map0, Var, VarInfo0) ->
 			VarInfo0 = var_info(LowerBound0, UpperBound0),
@@ -964,7 +961,7 @@ rl_key__update_bounds(Var, LowerBound1, UpperBound1) -->
 		),
 		map__set(Map0, Var, VarInfo, Map),
 		VarMap = var_map(Map, CompRes)
-	    )) },
+	) },
 	{ list__map(UpdateBounds, Cnstrs0, Cnstrs) },
 	key_info_set_constraints(Cnstrs).
 
@@ -994,12 +991,11 @@ rl_key__unify_term_2(ModuleInfo, UpperLower,
 	( ConsId1 = ConsId2 ->	
 		ConsId = ConsId1,
 		assoc_list__from_corresponding_lists(Args1, Args2, Args3),
-		UpdatePair = 
-			lambda([Pair::in, Bound::out] is det, (
+		UpdatePair = (pred(Pair::in, Bound::out) is det :-
 				Pair = Bound1 - Bound2,
 				rl_key__unify_term(ModuleInfo,
 					UpperLower, Bound1, Bound2, Bound)
-			)),
+			),
 		list__map(UpdatePair, Args3, Args)
 	;
 		rl_key__det_choose_cons_id(ModuleInfo, UpperLower, 

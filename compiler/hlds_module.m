@@ -1885,11 +1885,11 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 			% insert partially module-qualified versions
 			% of the name into the module:name/arity index
 		get_partial_qualifiers(Module, QualInfo, PartialQuals),
-		list__map_foldl(lambda([AncModule::in, AncModule::out,
-				MNAs0::in, MNAs::out] is det,
-			insert_into_mna_index(AncModule, Name, Arity, PredId,
-					MNAs0, MNAs)),
-			PartialQuals, _, MNA_Index0, MNA_Index1),
+		list__map_foldl((pred(AncModule::in, AncModule::out,
+					MNAs0::in, MNAs::out) is det :-
+				insert_into_mna_index(AncModule, Name, Arity,
+					PredId, MNAs0, MNAs)
+			), PartialQuals, _, MNA_Index0, MNA_Index1),
 
 		AccessibleByPartiallyQualifiedNames = yes
 	;
@@ -1901,7 +1901,6 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		% module:name/arity index
 	insert_into_mna_index(Module, Name, Arity, PredId,
 			MNA_Index1, MNA_Index),
-
 
 	Access = access(AccessibleByUnqualifiedName,
 			AccessibleByPartiallyQualifiedNames),

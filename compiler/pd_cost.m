@@ -136,8 +136,7 @@ pd_cost__unify(NonLocals, deconstruct(_, _, Args, _, CanFail, _), Cost) :-
 	;
 		Cost0 = 0
 	),
-	list__filter(
-		lambda([X::in] is semidet,
+	list__filter((pred(X::in) is semidet :-
 			set__member(X, NonLocals)
 		), Args, NonLocalArgs),
 	list__length(NonLocalArgs, NumAssigns),

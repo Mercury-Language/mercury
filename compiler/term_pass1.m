@@ -130,7 +130,7 @@ init_output_suppliers([PPId | PPIds], Module, OutputSupplierMap) :-
 	PPId = proc(PredId, ProcId),
 	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
-	MapToNo = lambda([_HeadVar::in, Bool::out] is det, (Bool = no)),
+	MapToNo = (pred(_HeadVar::in, Bool::out) is det :- Bool = no),
 	list__map(MapToNo, HeadVars, BoolList),
 	map__det_insert(OutputSupplierMap0, PPId, BoolList, OutputSupplierMap).
 
@@ -326,10 +326,7 @@ convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
 		EqnSet0, EqnSet),
 	set__to_sorted_list(EqnSet, Equations),
 	map__values(PPVars, Vars),
-	Convert = lambda([Var::in, Coeff::out] is det,
-	(
-		Coeff = Var - 1.0
-	)),
+	Convert = (pred(Var::in, Coeff::out) is det :- Coeff = Var - 1.0),
 	list__map(Convert, Vars, Objective).
 
 :- pred convert_equations_2(list(path_info)::in,
@@ -345,13 +342,12 @@ convert_equations_2([Path | Paths], PPVars0, PPVars, Varset0, Varset,
 	Eqn = eqn(Coeffs, (>=), FloatGamma),
 	pred_proc_var(ThisPPId, ThisVar, Varset0, Varset2, PPVars0, PPVars1),
 	Coeffs = [ThisVar - 1.0 | RestCoeffs],
-	Convert = lambda([PPId::in, Coeff::out, Pair0::in, Pair::out] is det,
-	(
+	Convert = (pred(PPId::in, Coeff::out, Pair0::in, Pair::out) is det :-
 		Pair0 = VS0 - PPV0,
 		pred_proc_var(PPId, Var, VS0, VS, PPV0, PPV),
 		Coeff = Var - (-1.0),
 		Pair = VS - PPV
-	)),
+	),
 	list__map_foldl(Convert, PPIds, RestCoeffs, Varset2 - PPVars1,
 		Varset3 - PPVars2),
 	set__insert(Eqns0, Eqn, Eqns1),

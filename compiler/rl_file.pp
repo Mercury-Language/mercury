@@ -128,13 +128,12 @@
 	%
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
-	Writer =
-	    lambda([Byte::in, Pair0::di, Pair::uo] is det, (
+	Writer = (pred(Byte::in, Pair0::di, Pair::uo) is det :-
 		Pair0 = Len0 - IOState0,
 		Len = Len0 + 1,			
 		call(ByteWriter, Byte, IOState0, IOState),
 	    	Pair = Len - IOState
-	    )),
+	),
 	State0 = 0 - IO0,
 	rl_file__write_binary_2(Writer, RLFile, State0, State),
 	State = Length - IO.
@@ -351,11 +350,10 @@ rl_file__exprn_mode_to_int(ExprnMode, Mode) :-
 		rl_state::di, rl_state::uo) is det.
 
 rl_file__output_bytecodes(Writer, Code) -->
-	{ OutputByteCode =
-		lambda([Instr::in, IO0::di, IO::uo] is det, (
-			bytecode_to_intlist(Instr, IntList),
-			list__foldl(Writer, IntList, IO0, IO)
-		)) },
+	{ OutputByteCode = (pred(Instr::in, IO0::di, IO::uo) is det :-
+		bytecode_to_intlist(Instr, IntList),
+		list__foldl(Writer, IntList, IO0, IO)
+	) },
 	list__foldl(OutputByteCode, Code).
 
 %-----------------------------------------------------------------------------%

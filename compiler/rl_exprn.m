@@ -2066,41 +2066,40 @@ rl_exprn__resolve_addresses(ByteTree0, ByteTree) :-
 	map__init(Labels0),
 	rl_exprn__get_exprn_labels(0, _, Labels0, Labels,
 		ByteTree0, ByteTree1),
-	ResolveAddr =
-		lambda([Code0::in, Code::out] is det, (
-			% This is incomplete, but we don't generate any
-			% of the other jump instructions.
-			( Code0 = rl_EXP_jmp(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_jmp(Label)
-			; Code0 = rl_EXP_beqz(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_beqz(Label)
-			; Code0 = rl_EXP_bnez(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bnez(Label)
-			; Code0 = rl_EXP_bltz(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bltz(Label)
-			; Code0 = rl_EXP_blez(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_blez(Label)
-			; Code0 = rl_EXP_bgez(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bgez(Label)
-			; Code0 = rl_EXP_bgtz(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bgtz(Label)
-			; Code0 = rl_EXP_bt(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bt(Label)
-			; Code0 = rl_EXP_bf(Label0) ->
-				map__lookup(Labels, Label0, Label),
-				Code = rl_EXP_bf(Label)
-			;
-				Code = Code0
-			)
-		)),
+	ResolveAddr = (pred(Code0::in, Code::out) is det :-
+		% This is incomplete, but we don't generate any
+		% of the other jump instructions.
+		( Code0 = rl_EXP_jmp(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_jmp(Label)
+		; Code0 = rl_EXP_beqz(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_beqz(Label)
+		; Code0 = rl_EXP_bnez(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bnez(Label)
+		; Code0 = rl_EXP_bltz(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bltz(Label)
+		; Code0 = rl_EXP_blez(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_blez(Label)
+		; Code0 = rl_EXP_bgez(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bgez(Label)
+		; Code0 = rl_EXP_bgtz(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bgtz(Label)
+		; Code0 = rl_EXP_bt(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bt(Label)
+		; Code0 = rl_EXP_bf(Label0) ->
+			map__lookup(Labels, Label0, Label),
+			Code = rl_EXP_bf(Label)
+		;
+			Code = Code0
+		)
+	),
 	rl_out__resolve_addresses(ResolveAddr, ByteTree1, ByteTree).
 
 :- pred rl_exprn__get_exprn_labels(int::in, int::out, map(label_id, int)::in,

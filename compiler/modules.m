@@ -2180,11 +2180,12 @@ warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
 		;
 			[]
 		),
-		{ IsImportedAncestor = lambda([Import::out] is nondet, (
+		{ IsImportedAncestor = (pred(Import::out) is nondet :-
 			list__member(Import, AncestorModules),
 			( list__member(Import, ImportedModules)
 			; list__member(Import, UsedModules)
-			))) },
+			)
+		) },
 		aggregate(IsImportedAncestor,
 			warn_imported_ancestor(ModuleName))
 	;
@@ -3165,9 +3166,9 @@ read_dependency_file_get_modules(TransOptDeps) -->
 		% then take all characters until another whitespace occurs.
 		{ list__takewhile(char__is_whitespace, CharList0, _, 
 			CharList1) },
-		{ NotIsWhitespace = lambda([Char::in] is semidet, (
+		{ NotIsWhitespace = (pred(Char::in) is semidet :-
 			\+ char__is_whitespace(Char)
-		)) },
+		) },
 		{ list__takewhile(NotIsWhitespace, CharList1, CharList, _) },
 		{ string__from_char_list(CharList, FileName0) },
 		{ string__remove_suffix(FileName0, ".trans_opt", FileName) }
@@ -3544,8 +3545,9 @@ generate_dependencies_write_d_files([Dep | Deps],
 	% only allowed to depend on modules that occur later
 	% than it in the TransOptOrder.
 	%
-	{ FindModule = lambda([OtherModule::in] is semidet, (
-		ModuleName \= OtherModule )) },
+	{ FindModule = (pred(OtherModule::in) is semidet :-
+		ModuleName \= OtherModule
+	) },
 	{ list__takewhile(FindModule, TransOptOrder, _, TransOptDeps0) },
 	( { TransOptDeps0 = [ _ | TransOptDeps1 ] } ->
 		% The module was found in the list
@@ -5767,13 +5769,13 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
 			% context of the `import_module' or `use_module'
 			% declaration(s), so we need to search the item
 			% list again to find them.
-			{ FindImports = lambda([Item::in] is semidet, (
+			{ FindImports = (pred(Item::in) is semidet :-
 				Item = module_defn(_, ModuleDefn) - _,
 				( ModuleDefn = import(module(Mods))
 				; ModuleDefn = use(module(Mods))
 				),
 				list__member(ImportedModule, Mods)
-			  )) },
+			) },
 			{ list__filter(FindImports, Items, ImportItems) },
 			{ ImportItems = [] ->
 				error("check_parent_module")

@@ -1309,9 +1309,9 @@ type_util__get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
 	module_info_ctors(ModuleInfo, Ctors),
 	% will fail for builtin cons_ids.
 	map__search(Ctors, ConsId, ConsDefns),
-	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
+	MatchingCons = (pred(ThisConsDefn::in) is semidet :-
 			ThisConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
-		)),
+		),
 	list__filter(MatchingCons, ConsDefns, [ConsDefn]).
 
 %-----------------------------------------------------------------------------%
@@ -1897,43 +1897,36 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 
 apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 	map__init(Empty),
-	map__foldl(
-		lambda([Constraint0::in, Proof0::in, Map0::in, Map::out] is det,
+	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
+			is det :-
+		apply_subst_to_constraint(Subst, Constraint0, Constraint), 
 		(
-			apply_subst_to_constraint(Subst, Constraint0,
-				Constraint), 
-			(
-				Proof0 = apply_instance(_),
-				Proof = Proof0
-			;
-				Proof0 = superclass(Super0),
-				apply_subst_to_constraint(Subst, Super0, 
-					Super),
-				Proof = superclass(Super)
-			),
-			map__set(Map0, Constraint, Proof, Map)
-		)),
+			Proof0 = apply_instance(_),
+			Proof = Proof0
+		;
+			Proof0 = superclass(Super0),
+			apply_subst_to_constraint(Subst, Super0, Super),
+			Proof = superclass(Super)
+		),
+		map__set(Map0, Constraint, Proof, Map)
+	),
 	Proofs0, Empty, Proofs).
 
 apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
 	map__init(Empty),
-	map__foldl(
-		lambda([Constraint0::in, Proof0::in, Map0::in, Map::out] is det,
+	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
+			is det :-
+		apply_rec_subst_to_constraint(Subst, Constraint0, Constraint), 
 		(
-			apply_rec_subst_to_constraint(Subst, Constraint0,
-				Constraint), 
-			(
-				Proof0 = apply_instance(_),
-				Proof = Proof0
-			;
-				Proof0 = superclass(Super0),
-				apply_rec_subst_to_constraint(Subst, Super0, 
-					Super),
-				Proof = superclass(Super)
-			),
-			map__set(Map0, Constraint, Proof, Map)
-		)),
-	Proofs0, Empty, Proofs).
+			Proof0 = apply_instance(_),
+			Proof = Proof0
+		;
+			Proof0 = superclass(Super0),
+			apply_rec_subst_to_constraint(Subst, Super0, Super),
+			Proof = superclass(Super)
+		),
+		map__set(Map0, Constraint, Proof, Map)
+	), Proofs0, Empty, Proofs).
 
 apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
 	map__map_values(

@@ -171,10 +171,10 @@
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
 	goal_to_conj_list(Goal0, GoalList),
-	GetCalls = lambda([Goal::in, CalledPred::out] is semidet, (
+	GetCalls = (pred(Goal::in, CalledPred::out) is semidet :-
 			Goal = call(PredId, ProcId, _, _, _, _) - _,
 			CalledPred = proc(PredId, ProcId)
-		)),
+		),
 	list__filter_map(GetCalls, GoalList, CalledPreds).
 
 %-----------------------------------------------------------------------------%
@@ -594,17 +594,17 @@ pd_util__get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
 pd_util__get_branch_instmap_deltas(switch(_, _, Cases) - _,
 		InstMapDeltas) :-
 	GetCaseInstMapDelta =
-		lambda([Case::in, InstMapDelta::out] is det, (
+		(pred(Case::in, InstMapDelta::out) is det :-
 			Case = case(_, _ - CaseInfo),
 			goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
-		)),
+		),
 	list__map(GetCaseInstMapDelta, Cases, InstMapDeltas).
 pd_util__get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
 	GetDisjunctInstMapDelta =
-		lambda([Disjunct::in, InstMapDelta::out] is det, (
+		(pred(Disjunct::in, InstMapDelta::out) is det :-
 			Disjunct = _ - DisjInfo,
 			goal_info_get_instmap_delta(DisjInfo, InstMapDelta)
-		)),
+		),
 	list__map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
 
 
@@ -628,27 +628,28 @@ pd_util__get_left_vars(Goal, Vars0, Vars) :-
 pd_util__get_branch_vars(_, _, [], _, _, Extra, Extra).
 pd_util__get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas], 
 		InstMap, BranchNo, ExtraVars0, ExtraVars) :-
-	AddExtraInfoVars = 
-	    lambda([ChangedVar::in, Vars0::in, Vars::out] is det, (
-		(
-			instmap__lookup_var(InstMap, ChangedVar, VarInst),
-			instmap_delta_search_var(InstMapDelta, 
-				ChangedVar, DeltaVarInst),
-		    	inst_is_bound_to_functors(ModuleInfo, 
-				DeltaVarInst, [_]),
-		    	\+ inst_is_bound_to_functors(ModuleInfo, 
-				VarInst, [_])
-	    	->
-			( map__search(Vars0, ChangedVar, Set0) ->
-				set__insert(Set0, BranchNo, Set)
+	AddExtraInfoVars =
+		(pred(ChangedVar::in, Vars0::in, Vars::out) is det :-
+			(
+				instmap__lookup_var(InstMap, ChangedVar,
+					VarInst),
+				instmap_delta_search_var(InstMapDelta, 
+					ChangedVar, DeltaVarInst),
+				inst_is_bound_to_functors(ModuleInfo, 
+					DeltaVarInst, [_]),
+				\+ inst_is_bound_to_functors(ModuleInfo, 
+					VarInst, [_])
+			->
+				( map__search(Vars0, ChangedVar, Set0) ->
+					set__insert(Set0, BranchNo, Set)
+				;
+					set__singleton_set(Set, BranchNo)
+				),
+				map__set(Vars0, ChangedVar, Set, Vars)
 			;
-				set__singleton_set(Set, BranchNo)
-			),
-			map__set(Vars0, ChangedVar, Set, Vars)
-		;
-			Vars = Vars0
-		)
-	    )),
+				Vars = Vars0
+			)
+		),
 	instmap_delta_changed_vars(InstMapDelta, ChangedVars),
 	set__to_sorted_list(ChangedVars, ChangedVarsList),
 	list__foldl(AddExtraInfoVars, ChangedVarsList, ExtraVars0, ExtraVars1),
@@ -1002,8 +1003,9 @@ pd_util__goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
 	% Check that the goal produces a superset of the outputs of the
 	% version we are searching for. 
 	%
-	Search = lambda([K1::in, V1::out] is semidet,
-			map__search(OldNewRenaming, K1, V1)),
+	Search = (pred(K1::in, V1::out) is semidet :-
+			map__search(OldNewRenaming, K1, V1)
+	),
 	list__map(Search, OldArgs, NewArgs),
 	NewGoal = _ - NewGoalInfo,
 	goal_info_get_nonlocals(NewGoalInfo, NewNonLocals),
@@ -1100,7 +1102,7 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 		assoc_list__from_corresponding_lists(OldArgs, 
 			NewArgs, ONArgsList),
 		MapInsert =
-			lambda([KeyValue::in, Map0::in, Map::out] is semidet, (
+			(pred(KeyValue::in, Map0::in, Map::out) is semidet :-
 				KeyValue = Key - Value,
 				( map__search(Map0, Key, Value0) ->
 					Value = Value0,
@@ -1108,7 +1110,7 @@ pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
 				;
 					map__det_insert(Map0, Key, Value, Map)
 				)
-			)),
+			),
 		list__foldl(MapInsert, ONArgsList, ONRenaming0, ONRenaming1)
 	;
 		(

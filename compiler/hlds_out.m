@@ -305,14 +305,14 @@ hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
 	prog_out__sym_name_to_string(SymName, SymNameString0),
 	( string__contains_char(SymNameString0, '*') ->
 		% We need to protect against the * appearing next to a /
-		Stuff = lambda([Char::in, Str0::in, Str::out] is det, (
+		Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
 			( Char = ('*') ->
 				string__append(Str0, "star", Str)
 			;
 				string__char_to_string(Char, CharStr),
 				string__append(Str0, CharStr, Str)
 			)
-		)),
+		),
 		string__foldl(Stuff, SymNameString0, "", SymNameString)
 	;
 		SymNameString = SymNameString0
@@ -1038,9 +1038,9 @@ hlds_out__write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
 		AppendVarnums, HeadVars, _PredOrFunc, Clause, TypeQual) -->
 
 		% curry the varset for term_io__write_variable/4
-	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
+	{ PrintVar = (pred(VarName::in, IO0::di, IO::uo) is det :-
 			term_io__write_variable(VarName, VarSet, IO0, IO)
-		) },
+	) },
 
 	hlds_out__write_indent(Indent),
 
@@ -1096,8 +1096,9 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	( { string__contains_char(Verbose, 'm') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
-		{ list__map(lambda([Mode :: in, ModeInt :: out] is det,
-			proc_id_to_int(Mode, ModeInt)), Modes, ModeInts) },
+		{ list__map((pred(Mode :: in, ModeInt :: out) is det :-
+				proc_id_to_int(Mode, ModeInt)
+			), Modes, ModeInts) },
 		hlds_out__write_intlist(ModeInts),
 		io__write_string("\n")
 	;
@@ -3216,7 +3217,7 @@ hlds_out__write_subclass_details(Indent, SuperClassId, SubClassDetails) -->
 		SubClassVars, VarSet) },
 
 		% curry the varset for term_io__write_variable/4
-	{ PrintVar = lambda([VarName::in, IO0::di, IO::uo] is det,
+	{ PrintVar = (pred(VarName::in, IO0::di, IO::uo) is det :-
 			term_io__write_variable(VarName, VarSet, IO0, IO)
 		) },
 	hlds_out__write_indent(Indent),
@@ -3289,7 +3290,7 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 	),
 
 		% curry the varset for term_io__write_variable/4
-	{ PrintTerm = lambda([TypeName::in, IO0::di, IO::uo] is det,
+	{ PrintTerm = (pred(TypeName::in, IO0::di, IO::uo) is det :-
 			mercury_output_term(TypeName, VarSet,
 				AppendVarnums, IO0, IO)
 		) },
@@ -3305,9 +3306,11 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 	io__nl,
 
 	hlds_out__write_indent(Indent),
-	(	{ Body = abstract },
+	(
+		{ Body = abstract },
 		io__write_string("% abstract")
-	;	{ Body = concrete(Methods) },
+	;
+		{ Body = concrete(Methods) },
 		io__write_string("% Instance Methods: "),
 		mercury_output_instance_methods(Methods)
 	),

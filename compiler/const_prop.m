@@ -61,10 +61,10 @@ evaluate_builtin(PredId, ProcId, Args, GoalInfo0, Goal, GoalInfo,
 	predicate_module(ModuleInfo0, PredId, ModuleName),
 	predicate_name(ModuleInfo0, PredId, PredName),
 	proc_id_to_int(ProcId, ProcInt),
-	LookupVarInsts = lambda([V::in, J::out] is det, (
+	LookupVarInsts = (pred(V::in, J::out) is det :-
 		instmap__lookup_var(InstMap, V, VInst),
 		J = V - VInst
-	)),
+	),
 	list__map(LookupVarInsts, Args, ArgInsts),
 	evaluate_builtin_2(ModuleName, PredName, ProcInt, ArgInsts, GoalInfo0,
 		Goal, GoalInfo, ModuleInfo0, ModuleInfo).

@@ -85,33 +85,30 @@
 :- type error_messages == list(error_message).
 
 check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
-		ModuleInfo, QualInfo, FoundError, IO0, IO) :-
+		ModuleInfo, QualInfo, FoundError, !IO) :-
 	module_info_classes(ModuleInfo0, ClassTable),
 	module_info_instances(ModuleInfo0, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
 	list_map_foldl2(check_one_class(ClassTable), InstanceList0,
 		InstanceList, check_tc_info([], ModuleInfo0, QualInfo0),
-		check_tc_info(Errors, ModuleInfo1, QualInfo),
-		IO0, IO1),
+		check_tc_info(Errors, ModuleInfo1, QualInfo), !IO),
 	(
 		Errors = []
 	->
 		map__from_assoc_list(InstanceList, InstanceTable),
 		module_info_set_instances(InstanceTable,
 			ModuleInfo1, ModuleInfo),
-		IO = IO1,
 		FoundError = no
 	;
 		ModuleInfo = ModuleInfo1,
 		list__reverse(Errors, ErrorList),
-		WriteError = lambda([E::in, TheIO0::di, TheIO::uo] is det,
-			(
-				E = ErrorContext - ErrorPieces,
-				write_error_pieces(ErrorContext, 0, 
-					ErrorPieces, TheIO0, TheIO)
-			)),
-		list__foldl(WriteError, ErrorList, IO1, IO2),
-		io__set_exit_status(1, IO2, IO),
+		WriteError = (pred(E::in, IO0::di, IO::uo) is det :-
+			E = ErrorContext - ErrorPieces,
+			write_error_pieces(ErrorContext, 0, ErrorPieces,
+				IO0, IO)
+		),
+		list__foldl(WriteError, ErrorList, !IO),
+		io__set_exit_status(1, !IO),
 		FoundError = yes
 	).  
 
@@ -412,13 +409,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
 				OrderedMethods0, Errors0, ModuleInfo0,
 				QualInfo0),
-	solutions(
-		lambda([ProcId::out] is nondet, 
-			(
-				list__member(ClassProc, ClassInterface),
-				ClassProc = hlds_class_proc(PredId, ProcId)
-			)),
-		ProcIds),
+	solutions((pred(ProcId::out) is nondet :-
+			list__member(ClassProc, ClassInterface),
+			ClassProc = hlds_class_proc(PredId, ProcId)
+		), ProcIds),
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
 	pred_info_get_class_context(PredInfo, ClassContext0),
@@ -445,24 +439,20 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	pred_info_procedures(PredInfo, ProcTable),
-	list__map(
-		lambda([TheProcId::in, ModesAndDetism::out] is det, 
-			(
-				map__lookup(ProcTable, TheProcId, ProcInfo), 
-				proc_info_argmodes(ProcInfo, Modes),
-				% if the determinism declaration on the method
-				% was omitted, then make_hlds.m will have
-				% already issued an error message, so
-				% don't complain here.
-				proc_info_declared_determinism(ProcInfo, 
-					MaybeDetism),
-				proc_info_inst_varset(ProcInfo, InstVarSet),
-				ModesAndDetism = modes_and_detism(Modes,
-						InstVarSet, MaybeDetism)
-			)),
-		ProcIds, 
-		ArgModes),
-	
+	list__map((pred(TheProcId::in, ModesAndDetism::out) is det :-
+			map__lookup(ProcTable, TheProcId, ProcInfo), 
+			proc_info_argmodes(ProcInfo, Modes),
+			% if the determinism declaration on the method
+			% was omitted, then make_hlds.m will have
+			% already issued an error message, so
+			% don't complain here.
+			proc_info_declared_determinism(ProcInfo, 
+				MaybeDetism),
+			proc_info_inst_varset(ProcInfo, InstVarSet),
+			ModesAndDetism = modes_and_detism(Modes,
+					InstVarSet, MaybeDetism)
+		), ProcIds, ArgModes),
+
 	InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, 
 		_, _, _, _),
 
@@ -499,7 +489,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
-		OrderedInstanceMethods, Info0, Info, IO0, IO) :-
+		OrderedInstanceMethods, Info0, Info, !IO) :-
 	InstanceDefn0 = hlds_instance_defn(InstanceModuleName, B,
 		InstanceContext, InstanceConstraints, InstanceTypes,
 		InstanceBody, MaybeInstancePredProcs, InstanceVarSet, I),
@@ -519,15 +509,12 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, InstanceModuleName,
 			InstancePredDefn, Context,
-			InstancePredId, InstanceProcIds, Info0, Info,
-			IO0, IO),
+			InstancePredId, InstanceProcIds, Info0, Info, !IO),
 
-		MakeClassProc = 
-			lambda([TheProcId::in, PredProcId::out] is det,
-			(
+		MakeClassProc = (pred(TheProcId::in, PredProcId::out) is det :-
 				PredProcId = hlds_class_proc(InstancePredId,
 					TheProcId)
-			)),
+			),
 		list__map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
 		(
 			MaybeInstancePredProcs = yes(InstancePredProcs0),
@@ -566,20 +553,18 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		Heading = 
 			[I1Context - [words("First definition appears here.")],
 			InstanceContext - [words(ErrorHeader)]],
-		list__map(lambda([Definition::in, ContextAndError::out] is det,
-		(
+		list__map((pred(Definition::in, ContextAndError::out) is det :-
 			Definition = instance_method(_, _, _, _, TheContext),
 			Error = [words("Subsequent definition appears here.")],
 			ContextAndError = TheContext - Error
-		)), [I2|Is], SubsequentErrors),
+		), [I2 | Is], SubsequentErrors),
 			
 			% errors are built up in reverse.
 		list__append(SubsequentErrors, Heading, NewErrors),
 		list__append(NewErrors, Errors0, Errors),
 		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
 			Arity, ExistQVars, ArgTypes, ClassContext,
-			ArgModes, Errors, ArgTypeVars, Status, PredOrFunc),
-		IO = IO0
+			ArgModes, Errors, ArgTypeVars, Status, PredOrFunc)
 	;
 		%
 		% undefined method error
@@ -604,8 +589,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
 			Arity, ExistQVars, ArgTypes, ClassContext,
 			ArgModes, Errors,
-			ArgTypeVars, Status, PredOrFunc),
-		IO = IO0
+			ArgTypeVars, Status, PredOrFunc)
 	).
 
 	%
@@ -677,7 +661,7 @@ pred_or_func_to_string(function, "function").
 produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstanceModuleName, InstancePredDefn, Context, PredId,
-		InstanceProcIds, Info0, Info, IO0, IO) :-
+		InstanceProcIds, Info0, Info, !IO) :-
 
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
 		Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
@@ -748,7 +732,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	adjust_func_arity(PredOrFunc, Arity, PredArity),
 	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
 		PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
-		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
+		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !IO),
 
 	pred_info_init(InstanceModuleName, PredName, PredArity, ArgTypeVars, 
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
@@ -766,14 +750,13 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		yes(MethodConstraints), PredInfo1, PredInfo2),
 
 		% Add procs with the expected modes and determinisms
-	AddProc = lambda([ModeAndDet::in, NewProcId::out,
-			OldPredInfo::in, NewPredInfo::out] is det,
-	(
+	AddProc = (pred(ModeAndDet::in, NewProcId::out,
+			OldPredInfo::in, NewPredInfo::out) is det :-
 		ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
 		add_new_proc(OldPredInfo, InstVarSet, PredArity, Modes,
 			yes(Modes), no, MaybeDet, Context, address_is_taken,
 			NewPredInfo, NewProcId)
-	)),
+	),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
 		PredInfo2, PredInfo),
 

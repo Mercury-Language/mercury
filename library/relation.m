@@ -499,7 +499,7 @@ relation__to_assoc_list_2(Fwd, [Key | Keys], ElementMap, AssocList) :-
 	map__lookup(Fwd, Key, Set),
 	set__to_sorted_list(Set, List),
 	bimap__reverse_lookup(ElementMap, KeyEl, Key),
-	Lookup = lambda([U::in, V::out] is det,
+	Lookup = (pred(U::in, V::out) is det :-
 			bimap__reverse_lookup(ElementMap, V, U)),
 	list__map(Lookup, List, ListEls),
 	relation__append_to(KeyEl, ListEls, AssocList2),
@@ -594,7 +594,7 @@ relation__compose_3(R2, X, Y, Comp0, Comp) :-
 		relation__lookup_from(R2, Y_R2Key, Zs_R2Keys_Set),
 		set__to_sorted_list(Zs_R2Keys_Set, Zs_R2Keys),
 		list__map(relation__lookup_key(R2), Zs_R2Keys, Zs),
-		AddValue = lambda([Z::in, Rel0::in, Rel::out] is det,
+		AddValue = (pred(Z::in, Rel0::in, Rel::out) is det :-
 				relation__add_values(Rel0, X, Z, Rel)),
 		list__foldl(AddValue, Zs, Comp0, Comp)
 	;
@@ -1051,28 +1051,25 @@ relation__rtc(Rel, RTC) :-
 	set_bbbtree(relation_key), relation(T), relation(T)).
 :- mode relation__rtc_2(in, in, in, in, out) is det.
 
-relation__rtc_2([], _, _, RTC, RTC).
-relation__rtc_2([H | T], Rel, Visit0, RTC0, RTC) :-
+relation__rtc_2([], _, _, !RTC).
+relation__rtc_2([H | T], Rel, Visit0, !RTC) :-
 	( set_bbbtree__member(H, Visit0) ->
-		relation__rtc_2(T, Rel, Visit0, RTC0, RTC)
+		relation__rtc_2(T, Rel, Visit0, !RTC)
 	;
 		relation__dfs_3([H], Rel, Visit0, [], Visit, CliqueL0),
 		list__sort_and_remove_dups(CliqueL0, CliqueL),
-		list__foldl(lambda([K :: in, L0 :: in, L :: out] is det,
-			( relation__lookup_from(Rel, K, Followers0),
-			  set__to_sorted_list(Followers0, Followers),
-			  list__merge_and_remove_dups(Followers, L0, L)
-			)),
-			CliqueL, CliqueL, CliqueFollowers),
-		list__foldl(lambda([K :: in, L0 :: in, L :: out] is det,
-			( relation__lookup_from(RTC0, K, Followers0),
-			  set__to_sorted_list(Followers0, Followers),
-			  list__merge_and_remove_dups(Followers, L0, L)
-			)),
-			CliqueFollowers, CliqueL, NewFollowers),
-		relation__add_cartesian_product(CliqueL, NewFollowers,
-			RTC0, RTC1),
-		relation__rtc_2(T, Rel, Visit, RTC1, RTC)
+		list__foldl((pred(K :: in, L0 :: in, L :: out) is det :-
+				relation__lookup_from(Rel, K, Followers0),
+				set__to_sorted_list(Followers0, Followers),
+				list__merge_and_remove_dups(Followers, L0, L)
+			), CliqueL, CliqueL, CliqueFollowers),
+		list__foldl((pred(K :: in, L0 :: in, L :: out) is det :-
+				relation__lookup_from(!.RTC, K, Followers0),
+				set__to_sorted_list(Followers0, Followers),
+				list__merge_and_remove_dups(Followers, L0, L)
+			), CliqueFollowers, CliqueL, NewFollowers),
+		relation__add_cartesian_product(CliqueL, NewFollowers, !RTC),
+		relation__rtc_2(T, Rel, Visit, !RTC)
 	).
 
 :- pred relation__add_cartesian_product(list(relation_key), list(relation_key),

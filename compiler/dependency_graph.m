@@ -847,9 +847,9 @@ dependency_graph__merge_aditi_sccs(Info, Ordering) :-
 		eqvclass__init(EqvSCCs0),
 		set__init(MergedSCCs),
 		% Make all the SCCs known to the equivalence class.
-		AddElement = lambda([Elem::in, Eqv0::in, Eqv::out] is det, (
+		AddElement = (pred(Elem::in, Eqv0::in, Eqv::out) is det :-
 				eqvclass__new_element(Eqv0, Elem, Eqv)
-			)),
+			),
 		list__foldl(AddElement, SCCTsort, EqvSCCs0, EqvSCCs),
 		dependency_graph__merge_aditi_sccs_2(SCCTsort, ModuleInfo,
 			EqvSCCs, MergedSCCs, NoMerge, SCCRel,
@@ -1042,9 +1042,9 @@ aditi_scc_info_add_scc(SCC, HigherSCCs, SCCid, Info0, Info) :-
 	dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
 		ModuleInfo, EntryPoints),
 	map__det_insert(SCCPred0, SCCid, SCC - EntryPoints, SCCPred),
-	AddToMap = lambda([PredProcId::in, PS0::in, PS::out] is det, (
+	AddToMap = (pred(PredProcId::in, PS0::in, PS::out) is det :-
 		map__det_insert(PS0, PredProcId, SCCid, PS)
-	)),
+	),
 	list__foldl(AddToMap, SCC, PredSCC0, PredSCC),
 	relation__add_element(SCCRel0, SCCid, _, SCCRel),
 	set__insert_list(AditiPreds0, SCC, AditiPreds),

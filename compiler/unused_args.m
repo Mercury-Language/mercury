@@ -401,16 +401,14 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 		VarDep) :-
 	map__lookup(VarTypeMap, Var, Type),
 	type_util__vars(Type, TVars),
-	list__map(lambda([TVar::in, TypeInfoVar::out] is det, 
-		(
+	list__map((pred(TVar::in, TypeInfoVar::out) is det :-
 			map__lookup(TVarMap, TVar, Locn),
 			type_info_locn_var(Locn, TypeInfoVar)
-		)), 
-		TVars, TypeInfoVars),
+		), TVars, TypeInfoVars),
 	AddArgDependency = 
-		lambda([TVar::in, VarDepA::in, VarDepB::out] is det, (
+		(pred(TVar::in, VarDepA::in, VarDepB::out) is det :-
 			add_arg_dep(VarDepA, TVar, PredProcId, Var, VarDepB)
-		)),
+		),
 	list__foldl(AddArgDependency, TypeInfoVars, VarDep0, VarDep1),
 	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap, 
 		VarDep1, VarDep).
@@ -541,10 +539,10 @@ traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
 traverse_goal(_, foreign_proc(_, _, _, Args, Names, _, _),
 		UseInf0, UseInf) :-
 	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
-	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
-				ArgAndName = Arg - MaybeName,
-				MaybeName = yes(_)
-			)),
+	ArgIsUsed = (pred(ArgAndName::in, Arg::out) is semidet :-
+			ArgAndName = Arg - MaybeName,
+			MaybeName = yes(_)
+		),
 	list__filter_map(ArgIsUsed, ArgsAndNames, UsedArgs),
 	set_list_vars_used(UseInf0, UsedArgs, UseInf).
 
