@@ -8,6 +8,11 @@
 
 :- implementation.
 
+	% Nothing from mercury_lib is used in mercury_main.
+	% The import is needed to make sure mmake includes
+	% mercury_lib in the executable.
+:- import_module mercury_lib.
+
 % import the module which defines the Mercury interface to the
 % C++ function cpp_main().
 :- import_module cpp_main_int.

@@ -3,7 +3,7 @@
 #-----------------------------------------------------------------------------#
 MAIN_TARGET=all
 
-depend: mercury_main.depend mercury_lib.depend
+depend: mercury_main.depend
 all: mercury_main
 
 #-----------------------------------------------------------------------------#
@@ -30,14 +30,10 @@ CXXFLAGS=-g
 MGNUCFLAGS=-g
 MLFLAGS=-g
 
-# tell the Mercury linker to link in cpp_main.o and mercury_lib.o
-MLOBJS=cpp_main.o mercury_lib.o
+# tell the Mercury linker to link in cpp_main.o
+MLOBJS=cpp_main.o
 
 #-----------------------------------------------------------------------------#
-
-# tell mmake that it needs to make cpp_main.o and mercury_lib.o
-# before it can make mercury_main
-mercury_main: cpp_main.o mercury_lib.o
 
 # we also need to add header file dependencies
 cpp_main.o: cpp_main.h mercury_lib.h
