@@ -2467,6 +2467,33 @@ case "$host" in
 		SHLIB_RPATH_OPT="-R"
 		SHLIB_RPATH_SEP=" -R"
 		;;
+	i*86-*-solaris2.*)
+		AC_MSG_RESULT(yes)
+
+		# XXX For Solaris/SPARC, we don't link in libgcc.a.
+		# Why not?  Do we need to do the same thing for Solaris/x86?
+		#SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
+		#SHARED_LIBS_SH="$MATH_LIB -lc"	# don't link in libgcc.a
+
+		# XXX We need -mimpure-text because libraries such as
+		# libreadline.a might be installed with only the .a rather
+		# than the .so, and not compiled with -fpic,
+		# and we need to link against them when creating shared libs.
+		LINK_SHARED_OBJ="$CC -shared -mimpure-text"
+		LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
+
+		# XXX We should use the following.
+		# However, this causes problems on mundroo.cs.mu.oz.au,
+		# due to the readline library being installed only as
+		# libreadline.a, with no corresponding libreadline.so.
+		#ERROR_UNDEFINED="-Wl,-z,defs"
+
+		EXE_RPATH_OPT="-R"
+		EXE_RPATH_SEP=" -R"
+		SHLIB_RPATH_OPT="-R"
+		SHLIB_RPATH_SEP=" -R"
+		EXT_FOR_SHARED_LIB=so
+		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a

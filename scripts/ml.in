@@ -107,10 +107,9 @@ esac
 # it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
-	case $FULLARCH in i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*)
-		# shared libraries are not the default on Linux
-		# -- see README.Linux
-		# Likewise for FreeBSD
+	case $FULLARCH in i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*|i*86-*-solaris*)
+		# shared libraries are not the default on x86 systems that
+		# use ELF -- see README.Linux
 		case $make_shared_lib in false)
 			mercury_libs=static
 			;;
@@ -338,9 +337,11 @@ esac
 merc_libdir_opts="\
 	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
 	@LIB_LIBPATH@$LIBDIR/$FULLARCH
+"
+system_libdir_opts="\
 	@LIB_LIBPATH@/usr/local/lib
 "
-LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
+LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts $system_libdir_opts"
 
 case $mercury_libs in
 	shared)
@@ -358,7 +359,7 @@ case $mercury_libs in
 		merc_shlib_dirs=""
 		;;
 	none)	LIBS="$TRACE_LIBS_SYSTEM $STDLIBS"
-		LIBDIR_OPTS="$user_libdir_opts"
+		LIBDIR_OPTS="$user_libdir_opts $system_libdir_opts"
 		merc_shlib_dirs=""
 		;;
 esac

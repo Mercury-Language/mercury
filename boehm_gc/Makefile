@@ -367,7 +367,7 @@ CURSES= -lcurses -ltermlib
 # the SHELL environment variable.
 SHELL= /bin/sh
 
-SPECIALCFLAGS = -I$(srcdir)/include
+SPECIALCFLAGS = -I$(srcdir)/include $(CFLAGS_FOR_PIC)
 # Alternative flags to the C compiler for mach_dep.c.
 # Mach_dep.c often doesn't like optimization, and it's
 # not time-critical anyway.
