@@ -188,17 +188,9 @@
 
 %-----------------------------------------------------------------------------%
 
-	% A temporary hack until we implement call/N (N>1) properly
-	% The way this works is magic ;-)
-
-call(Pred, T) :-
-	call(call(Pred, T)).
-
-call(Pred, T1, T2) :-
-	call(call(Pred, T1, T2)).
-
-%-----------------------------------------------------------------------------%
-
+:- external(call/1).
+:- external(call/2).
+:- external(call/3).
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).

@@ -1263,7 +1263,10 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 	;
 		{ Contents = vars(Vars) },
 		code_info__must_be_swapped(Vars, Args, reg(Reg))
+%%%		{ true }
 	->
+			% Find all the variables that depend of this reg
+		code_info__variables_depending_on_lval(reg(Reg), AllVars),
 			% We could make a smarter choice here,
 			% but value numbering should make the
 			% code good enough.
@@ -1276,7 +1279,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 			% Update the variable info -
 			% Set the location of the variable to the
 			% new register.
-		code_info__remap_variables(Vars, reg(Reg), reg(NewReg)),
+		code_info__remap_variables(AllVars, reg(Reg), reg(NewReg)),
 			% Generate the code fragment.
 		{ Code = node([
 			assign(reg(NewReg), lval(reg(Reg))) -
@@ -1414,6 +1417,48 @@ code_info__relocate_slot([V - S0|Rest0], Reg, Slot, [V - S|Rest]) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred code_info__variables_depending_on_lval(lval, set(var),
+						code_info, code_info).
+:- mode code_info__variables_depending_on_lval(in, out, in, out) is det.
+
+code_info__variables_depending_on_lval(Lval, AllVars) -->
+	code_info__get_variables(Variables),
+	{ map__to_assoc_list(Variables, VarList) },
+	{ set__init(AllVars0) },
+	{ code_info__variables_depending_on_lval_2(VarList, Lval,
+							AllVars0, AllVars) }.
+
+:- pred code_info__variables_depending_on_lval_2(assoc_list(var, variable_stat),
+					lval, set(var), set(var)).
+:- mode code_info__variables_depending_on_lval_2(in, in, in, out) is det.
+
+code_info__variables_depending_on_lval_2([], _Lval, AllVars, AllVars).
+code_info__variables_depending_on_lval_2([V - VStat|Rest], Lval,
+							AllVars0, AllVars) :-
+	(
+		VStat = evaluated(LvalSet),
+		(
+			set__member(Lval1, LvalSet),
+			code_info__lval_contains(Lval1, Lval)
+		->
+			set__insert(AllVars0, V, AllVars1)
+		;
+			AllVars1 = AllVars0
+		)
+	;
+		VStat = cached(RVal, _),
+		(
+			code_info__rval_contains(RVal, Lval)
+		->
+			set__insert(AllVars0, V, AllVars1)
+		;
+			AllVars1 = AllVars0
+		)
+	),
+	code_info__variables_depending_on_lval_2(Rest, Lval, AllVars1, AllVars).
+
+%---------------------------------------------------------------------------%
+
 :- pred code_info__replace_lval(lval, lval, lval, lval).
 :- mode code_info__replace_lval(in, in, in, out) is det.
 
@@ -1427,6 +1472,18 @@ code_info__replace_lval(Lval0, Match, Repl, Result) :-
 	->
 		code_info__replace_lval_in_rval(Rval0, Match, Repl, Rval),
 		Result = field(T, Rval, N)
+	;
+		Lval0 = stackvar(_)
+	->
+		Result = Lval0
+	;
+		Lval0 = framevar(_)
+	->
+		Result = Lval0
+	;
+		Lval0 = reg(_)
+	->
+		Result = Lval0
 	;
 		error("code_info__replace_lval: sanity check failed")
 	).
@@ -1711,7 +1768,7 @@ code_info__variable_is_live(Var) -->
 :- pred code_info__must_be_swapped(set(var), list(var), lval, code_info, code_info).
 :- mode code_info__must_be_swapped(in, in, in, in, out) is semidet.
 
-code_info__must_be_swapped(Vars, Args, Lval) -->
+code_info__must_be_swapped(Vars, Args, _Lval) -->
 	code_info__get_liveness_info(Liveness),
 	code_info__get_variables(Variables),
 	{ 
@@ -2364,31 +2421,8 @@ code_info__remap_variable(Var, Lval0, Lval) -->
 
 code_info__reenter_lvalues(_Var, _Lval0, _Lval, []) --> [].
 code_info__reenter_lvalues(Var, Lval0, Lval, [L|Ls]) -->
-	(
-		{ L = stackvar(_) }
-	->
-		code_info__add_lvalue_to_variable(L, Var)
-	;
-		{ L = framevar(_) }
-	->
-		code_info__add_lvalue_to_variable(L, Var)
-	;
-		{ L = field(Tag, lval(Lval1), _) },
-		{ Lval1 \= Lval0 }
-	->
-		code_info__add_lvalue_to_variable(L, Var)
-	;
-		{ L = field(Tag, lval(Lval0), Field) }
-	->
-		code_info__add_lvalue_to_variable(
-			field(Tag, lval(Lval), Field), Var)
-	;
-		{ L = Lval0 }
-	->
-		code_info__add_lvalue_to_variable(Lval, Var)
-	;
-		{ true }
-	),
+	{ code_info__replace_lval(L, Lval0, Lval, NewLval) },
+	code_info__add_lvalue_to_variable(NewLval, Var),
 	code_info__reenter_lvalues(Var, Lval0, Lval, Ls).
 
 %---------------------------------------------------------------------------%
