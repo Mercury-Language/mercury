@@ -71,6 +71,12 @@
 
 :- func num_functors(type_desc__type_desc) = int.
 
+:- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
+		list(type_desc__type_desc)::out) is semidet.
+
+:- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
+		list(type_desc__type_desc)::out, list(string)::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -133,7 +139,6 @@
 :- type type_ctor_info ---> type_ctor_info(c_pointer).
 :- type type_info ---> type_info(c_pointer).
 :- type compare_pred ---> compare_pred(c_pointer).
-:- type type_functors ---> type_functors(c_pointer).
 :- type type_layout ---> type_layout(c_pointer).
 :- type pred_type ---> pred_type(c_pointer).
 :- type pseudo_type_info ---> pred_type(c_pointer).
@@ -231,6 +236,216 @@ num_functors(TypeDesc) = NumFunctors :-
 	; TypeCtorRep = unknown,
 		error("num_functors: unknown type_ctor_rep")
 	).
+
+get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
+	get_functor_impl(TypeDesc, FunctorNumber,
+			FunctorName, Arity, TypeInfoList, _Names).
+
+get_functor_2(TypeDesc, FunctorNumber,
+		FunctorName, Arity, TypeInfoList, Names) :-
+	get_functor_impl(TypeDesc, FunctorNumber,
+			FunctorName, Arity, TypeInfoList, Names).
+
+:- pred get_functor_impl(type_desc__type_desc::in, int::in,
+		string::out, int::out, list(type_desc__type_desc)::out,
+		list(string)::out) is semidet.
+
+get_functor_impl(TypeDesc, FunctorNumber,
+		FunctorName, Arity, TypeInfoList, Names) :-
+	FunctorNumber >= 0,
+	FunctorNumber < TypeDesc ^ num_functors,
+	TypeInfo = unsafe_cast(TypeDesc),
+	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+	TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
+	( TypeCtorRep = du,
+		get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = du_usereq,
+		get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = reserved_addr,
+		get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = reserved_addr_usereq,
+		get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+
+	; TypeCtorRep = univ,
+		error("get_functor: univ type_ctor_rep")
+
+	; TypeCtorRep = enum,
+		get_functor_enum(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = enum_usereq,
+		get_functor_enum(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+
+	; TypeCtorRep = notag,
+		get_functor_notag(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = notag_usereq,
+		get_functor_notag(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = notag_ground,
+		get_functor_notag(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+	; TypeCtorRep = notag_ground_usereq,
+		get_functor_notag(TypeCtorRep, TypeCtorInfo,
+				FunctorNumber, FunctorName, Arity,
+				TypeInfoList, Names)
+
+	; TypeCtorRep = equiv_ground,
+		NewTypeInfo = collapse_equivalences(TypeInfo),
+		get_functor_impl(unsafe_cast(NewTypeInfo), FunctorNumber,
+				FunctorName, Arity, TypeInfoList, Names)
+	; TypeCtorRep = equiv,
+		NewTypeInfo = collapse_equivalences(TypeInfo),
+		get_functor_impl(unsafe_cast(NewTypeInfo), FunctorNumber,
+				FunctorName, Arity, TypeInfoList, Names)
+
+	; TypeCtorRep = tuple,
+		FunctorName = "{}",
+		Arity = get_var_arity_typeinfo_arity(TypeInfo),
+		TypeInfoList = iterate(1, Arity, (func(I) =
+			unsafe_cast(TypeInfo ^ var_arity_type_info_index(I)))
+		),
+		Names = list__duplicate(Arity, null)
+
+	; TypeCtorRep = int,
+		fail
+	; TypeCtorRep = char,
+		fail
+	; TypeCtorRep = float,
+		fail
+	; TypeCtorRep = string,
+		fail
+	; TypeCtorRep = (func),
+		fail
+	; TypeCtorRep = (pred),
+		fail
+	; TypeCtorRep = void,
+		fail
+	; TypeCtorRep = c_pointer,
+		fail
+	; TypeCtorRep = typeinfo,
+		fail
+	; TypeCtorRep = type_ctor_info,
+		fail
+	; TypeCtorRep = type_desc,
+		fail
+	; TypeCtorRep = type_ctor_desc,
+		fail
+	; TypeCtorRep = typeclassinfo,
+		fail
+	; TypeCtorRep = base_typeclass_info,
+		fail
+	; TypeCtorRep = array,
+		fail
+	; TypeCtorRep = succip,
+		fail
+	; TypeCtorRep = hp,
+		fail
+	; TypeCtorRep = curfr,
+		fail
+	; TypeCtorRep = maxfr,
+		fail
+	; TypeCtorRep = redofr,
+		fail
+	; TypeCtorRep = redoip,
+		fail
+	; TypeCtorRep = trail_ptr,
+		fail
+	; TypeCtorRep = ticket,
+		fail
+	; TypeCtorRep = foreign,
+		fail
+
+	; TypeCtorRep = unknown,
+		error("get_functor: unknown type_ctor_rep")
+	).
+
+:- pred get_functor_du(type_ctor_rep::in(du), type_info::in, type_ctor_info::in,
+		int::in, string::out, int::out,
+		list(type_desc__type_desc)::out,
+		list(string)::out) is semidet.
+
+get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
+		FunctorName, Arity, TypeDescList, Names) :-
+	TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
+	DuFunctorDesc = TypeFunctors ^
+			    du_functor_desc(TypeCtorRep, FunctorNumber),
+
+		% XXX We don't handle functors with existentially quantified
+		% arguments.
+	not (_ = DuFunctorDesc ^ du_functor_exist_info),
+
+	FunctorName = DuFunctorDesc ^ du_functor_name,
+	Arity = DuFunctorDesc ^ du_functor_arity,
+
+	ArgTypes = DuFunctorDesc ^ du_functor_arg_types,
+	F = (func(I) = ArgTypeDesc :-
+		PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, I),
+			% XXX we can pass 0 instead of an instance of the
+			% functor because that is only needed for functors
+			% with existentially quantified arguments.
+			% 
+		get_arg_type_info(TypeInfo, PseudoTypeInfo, 0,
+				DuFunctorDesc, ArgTypeInfo),
+		ArgTypeDesc = unsafe_cast(ArgTypeInfo)
+	),
+	TypeDescList = iterate(0, Arity - 1, F),
+
+	( ArgNames = DuFunctorDesc ^ du_functor_arg_names ->
+		Names = iterate(0, Arity - 1,
+				(func(I) = ArgNames ^ unsafe_index(I)))
+	;
+		Names = list__duplicate(Arity, null)
+	).
+
+:- pred get_functor_enum(type_ctor_rep::in(enum),
+		type_ctor_info::in, int::in, string::out, int::out,
+		list(type_desc__type_desc)::out,
+		list(string)::out) is det.
+
+get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber,
+		FunctorName, Arity, TypeDescList, Names) :-
+	TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
+	EnumFunctorDesc = TypeFunctors ^
+			    enum_functor_desc(TypeCtorRep, FunctorNumber),
+
+	FunctorName = EnumFunctorDesc ^ enum_functor_name,
+	Arity = 0,
+	TypeDescList = [],
+	Names = [].
+
+:- pred get_functor_notag(type_ctor_rep::in(notag),
+		type_ctor_info::in, int::in, string::out, int::out,
+		list(type_desc__type_desc)::out,
+		list(string)::out) is det.
+
+get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber,
+		FunctorName, Arity, TypeDescList, Names) :-
+	TypeFunctors = TypeCtorInfo ^ type_ctor_functors,
+	NoTagFunctorDesc = TypeFunctors ^
+			    notag_functor_desc(TypeCtorRep, FunctorNumber),
+
+	FunctorName = NoTagFunctorDesc ^ notag_functor_name,
+	Arity = 1,
+
+	ArgType = NoTagFunctorDesc ^ notag_functor_arg_type,
+	ArgName = NoTagFunctorDesc ^ notag_functor_arg_name,
+
+	TypeDescList = [unsafe_cast(ArgType)],
+	Names = [ArgName].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -778,8 +993,8 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		(
 			SecTagLocn = none,
 			FunctorDesc = PTagEntry ^ du_sectag_alternatives(0),
-			Functor = FunctorDesc ^ functor_name,
-			Arity = FunctorDesc ^ functor_arity,
+			Functor = FunctorDesc ^ du_functor_name,
+			Arity = FunctorDesc ^ du_functor_arity,
 			Arguments = iterate(0, Arity - 1, 
 				(func(X) = std_util__univ(
 					get_arg(Term, X, SecTagLocn,
@@ -795,8 +1010,8 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 			SecTag = get_remote_secondary_tag(Term),
 			FunctorDesc = PTagEntry ^
 				du_sectag_alternatives(SecTag),
-			Functor = FunctorDesc ^ functor_name,
-			Arity = FunctorDesc ^ functor_arity,
+			Functor = FunctorDesc ^ du_functor_name,
+			Arity = FunctorDesc ^ du_functor_arity,
 			Arguments = iterate(0, Arity - 1, 
 				(func(X) = std_util__univ(
 					get_arg(Term, X, SecTagLocn,
@@ -1085,18 +1300,17 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
 	% Retrieve an argument number from a term, given the functor
 	% descriptor.
 
-:- some [T] func get_arg(
-		U, int, sectag_locn, du_functor_descriptor, type_info) = T.
+:- some [T] func get_arg(U, int, sectag_locn, du_functor_desc, type_info) = T.
 
 get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
-	( ExistInfo = FunctorDesc ^ functor_exist_info ->
+	( ExistInfo = FunctorDesc ^ du_functor_exist_info ->
 		ExtraArgs = (ExistInfo ^ exist_info_typeinfos_plain) + 
 				(ExistInfo ^ exist_info_tcis)
 	;
 		ExtraArgs = 0
 	),
 
-	ArgTypes = FunctorDesc ^ functor_arg_types,
+	ArgTypes = FunctorDesc ^ du_functor_arg_types,
 	PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
 	get_arg_type_info(TypeInfo, PseudoTypeInfo, Term,
 			FunctorDesc, ArgTypeInfo),
@@ -1126,7 +1340,7 @@ high_level_data :-
 	).
 
 :- pred get_arg_type_info(type_info::in, P::in, T::in,
-	du_functor_descriptor::in, type_info::out) is det.
+	du_functor_desc::in, type_info::out) is det.
 
 get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term,
 		FunctorDesc, ArgTypeInfo) :-
@@ -1243,7 +1457,7 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 	% XXX existentially quantified vars are not yet handled.
 	
 :- pred get_type_info_for_var(
-		type_info::in, int::in, T::in, du_functor_descriptor::in,
+		type_info::in, int::in, T::in, du_functor_desc::in,
 		type_info::out) is det.
 
 get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
@@ -1252,7 +1466,7 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
 	->
 		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum)
 	;
-		( ExistInfo0 = FunctorDesc ^ functor_exist_info ->
+		( ExistInfo0 = FunctorDesc ^ du_functor_exist_info ->
 			ExistInfo = ExistInfo0
 		;
 			error("get_type_info_for_var no exist_info")
@@ -1485,9 +1699,9 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- type ptag_entry ---> ptag_entry(c_pointer).
 
-:- type du_functor_descriptor ---> du_functor_descriptor(c_pointer).
-
 :- type arg_types ---> arg_types(c_pointer).
+
+:- type arg_names ---> arg_names(c_pointer).
 
 :- type exist_info ---> exist_info(c_pointer).
 
@@ -1517,7 +1731,7 @@ sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 		PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
 ").
 
-:- func du_sectag_alternatives(int, ptag_entry) = du_functor_descriptor.
+:- func du_sectag_alternatives(int, ptag_entry) = du_functor_desc.
 
 du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :- 
 	det_unimplemented("sectag_alternatives").
@@ -1529,65 +1743,6 @@ du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :-
 	sectag_alternatives = (object []) 
 		PTagEntry[(int) ptag_layout_field_nums.sectag_alternatives];
 	FunctorDescriptor = (object []) sectag_alternatives[X];
-").
-
-:- func functor_name(du_functor_descriptor) = string.
-
-functor_name(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :- 
-	det_unimplemented("functor_name").
-
-:- pragma foreign_proc("C#",
-	functor_name(FunctorDescriptor::in) = (Name::out), [promise_pure], "
-	Name = (string)
-		FunctorDescriptor[(int) du_functor_field_nums.du_functor_name];
-").
-
-:- func functor_arity(du_functor_descriptor) = int.
-
-functor_arity(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :- 
-	det_unimplemented("functor_arity").
-
-:- pragma foreign_proc("C#",
-	functor_arity(FunctorDescriptor::in) = (Name::out), [promise_pure], "
-	Name = (int)
-		FunctorDescriptor[(int)
-			du_functor_field_nums.du_functor_orig_arity];
-		
-").
-
-:- func functor_arg_types(du_functor_descriptor) = arg_types.
-
-functor_arg_types(X::in) = (unsafe_cast(X)::out) :- 
-	det_unimplemented("functor_arg_types").
-
-:- pragma foreign_proc("C#",
-	functor_arg_types(FunctorDescriptor::in) = (ArgTypes::out),
-		[promise_pure], "
-	ArgTypes = (object[])
-		FunctorDescriptor[(int)
-			du_functor_field_nums.du_functor_arg_types];
-		
-").
-
-:- func functor_exist_info(du_functor_descriptor::in) =
-		(exist_info::out) is semidet.
-
-functor_exist_info(X::in) = (unsafe_cast(X)::out) :- 
-	semidet_unimplemented("functor_exist_info").
-
-:- pragma foreign_proc("C#",
-	functor_exist_info(FunctorDescriptor::in) = (ExistInfo::out),
-		[promise_pure], "
-	ExistInfo = (object[])
-		FunctorDescriptor[(int)
-			du_functor_field_nums.du_functor_exist_info];
-
-	if (ExistInfo != null) {
-		SUCCESS_INDICATOR = true;
-	} else {
-		SUCCESS_INDICATOR = false;
-	}
-		
 ").
 
 :- func typeinfo_locns_index(int, exist_info) = typeinfo_locn.
@@ -1861,6 +2016,25 @@ type_ctor_name(_) = _ :-
 	% matching foreign_proc version.
 	private_builtin__sorry("type_ctor_name").
 
+
+
+:- func type_ctor_functors(type_ctor_info) = type_functors.
+
+:- pragma foreign_proc("C#",
+	type_ctor_functors(TypeCtorInfo::in) = (Functors::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Functors = (object[])
+		TypeCtorInfo[(int) type_ctor_info_field_nums.type_functors];
+").
+
+type_ctor_functors(_) = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("type_ctor_functors").
+
+
+
 :- func type_layout(type_ctor_info) = type_layout.
 
 :- pragma foreign_proc("C#",
@@ -1916,6 +2090,153 @@ unsafe_cast(_) = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	private_builtin__sorry("unsafe_cast").
+
+%-----------------------------------------------------------------------------%
+%
+% TypeFunctors
+%
+:- type type_functors ---> type_functors(c_pointer).
+:- type du_functor_desc ---> du_functor_desc(c_pointer).
+:- type enum_functor_desc ---> enum_functor_desc(c_pointer).
+:- type notag_functor_desc ---> notag_functor_desc(c_pointer).
+
+:- inst du == bound(du; du_usereq; reserved_addr; reserved_addr_usereq).
+:- inst enum == bound(enum ; enum_usereq).
+:- inst notag == bound(notag ; notag_usereq ;
+				notag_ground ; notag_ground_usereq).
+
+:- func du_functor_desc(type_ctor_rep, int, type_functors) = du_functor_desc.
+:- mode du_functor_desc(in(du), in, in) = out is det.
+
+du_functor_desc(_, Num, TypeFunctors) = DuFunctorDesc :-
+	DuFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+
+:- func du_functor_name(du_functor_desc) = string.
+du_functor_name(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(0).
+
+:- func du_functor_arity(du_functor_desc) = int.
+du_functor_arity(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(1).
+
+:- func du_functor_arg_type_contains_var(du_functor_desc) = int.
+du_functor_arg_type_contains_var(DuFunctorDesc) =
+		DuFunctorDesc ^ unsafe_index(2).
+
+:- func du_functor_sectag_locn(du_functor_desc) = sectag_locn.
+du_functor_sectag_locn(DuFunctorDesc) =
+	unsafe_make_enum(DuFunctorDesc ^ unsafe_index(3)).
+
+:- func du_functor_primary(du_functor_desc) = int.
+du_functor_primary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(4).
+
+:- func du_functor_secondary(du_functor_desc) = int.
+du_functor_secondary(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(5).
+
+:- func du_functor_ordinal(du_functor_desc) = int.
+du_functor_ordinal(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(6).
+
+:- func du_functor_arg_types(du_functor_desc) = arg_types.
+du_functor_arg_types(DuFunctorDesc) = DuFunctorDesc ^ unsafe_index(7).
+
+:- func du_functor_arg_names(du_functor_desc::in) = (arg_names::out) is semidet.
+du_functor_arg_names(DuFunctorDesc) = ArgNames :-
+	ArgNames = DuFunctorDesc ^ unsafe_index(8),
+	not null(ArgNames).
+
+:- func du_functor_exist_info(du_functor_desc::in) =
+		(exist_info::out) is semidet.
+du_functor_exist_info(DuFunctorDesc) = ExistInfo :-
+	ExistInfo = DuFunctorDesc ^ unsafe_index(9),
+	not null(ExistInfo).
+
+ %--------------------------%
+
+:- func enum_functor_desc(type_ctor_rep, int, type_functors)
+		= enum_functor_desc.
+:- mode enum_functor_desc(in(enum), in, in) = out is det.
+
+enum_functor_desc(_, Num, TypeFunctors) = EnumFunctorDesc :-
+	EnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+
+:- func enum_functor_name(enum_functor_desc) = string.
+enum_functor_name(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(0).
+
+:- func enum_functor_ordinal(enum_functor_desc) = int.
+enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
+
+ %--------------------------%
+
+:- func notag_functor_desc(type_ctor_rep, int, type_functors)
+		= notag_functor_desc.
+:- mode notag_functor_desc(in(notag), in, in) = out is det.
+
+notag_functor_desc(_, Num, TypeFunctors) = NoTagFunctorDesc :-
+	NoTagFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+
+:- func notag_functor_name(notag_functor_desc) = string.
+notag_functor_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(0).
+
+:- func notag_functor_arg_type(notag_functor_desc) = type_info.
+notag_functor_arg_type(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(1).
+
+:- func notag_functor_arg_name(notag_functor_desc) = string.
+notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func unsafe_index(int, T) = U.
+:- pragma foreign_proc("C#", unsafe_index(Num::in, Array::in) = (Item::out),
+		[will_not_call_mercury, thread_safe, promise_pure], "
+	Item = ((object []) Array)[Num];
+").
+unsafe_index(_, _) = _ :-
+	private_builtin__sorry("rtti_implementation__unsafe_index").
+
+ %--------------------------%
+
+:- func unsafe_make_enum(int) = T.
+:- pragma foreign_proc("C#", unsafe_make_enum(Num::in) = (Enum::out),
+		[will_not_call_mercury, thread_safe, promise_pure], "
+	Enum = mercury.runtime.LowLevelData.make_enum(Num);
+").
+unsafe_make_enum(_) = _ :-
+	private_builtin__sorry("rtti_implementation__unsafe_make_enum").
+
+ %--------------------------%
+
+:- pred null(T::in) is semidet.
+:- pragma foreign_proc("C", null(S::in),
+		[will_not_call_mercury, thread_safe, promise_pure],
+"
+	SUCCESS_INDICATOR = (S == NULL);
+").
+:- pragma foreign_proc("MC++", null(S::in),
+		[will_not_call_mercury, thread_safe, promise_pure],
+"
+	SUCCESS_INDICATOR = (S == NULL);
+").
+null(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("rtti_implementation__null/1").
+
+ %--------------------------%
+
+:- func null = T.
+:- pragma foreign_proc("C", null = (T::out),
+		[will_not_call_mercury, thread_safe, promise_pure],
+"
+	T = NULL;
+").
+:- pragma foreign_proc("MC++", null = (T::out),
+		[will_not_call_mercury, thread_safe, promise_pure],
+"
+	T = NULL;
+").
+null = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("rtti_implementation__null/0").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

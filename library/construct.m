@@ -159,10 +159,9 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
     SUCCESS_INDICATOR = success;
 }").
 
-get_functor(_, _, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__get_functor").
+get_functor(TypeInfo, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
+	rtti_implementation__get_functor(TypeInfo, FunctorNumber,
+			FunctorName, Arity, TypeInfoList).
 
 get_functor(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList) :-
     get_functor_2(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList0),
@@ -257,10 +256,10 @@ null(_) :-
     SUCCESS_INDICATOR = success;
 }").
 
-get_functor_2(_, _, _, _, _, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("construct__get_functor_2").
+get_functor_2(TypeDesc, FunctorNumber,
+		FunctorName, Arity, TypeInfoList, Names) :-
+	rtti_implementation__get_functor_2(TypeDesc, FunctorNumber,
+		FunctorName, Arity, TypeInfoList, Names).
 
 :- pragma foreign_proc("C", 
 	get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),
