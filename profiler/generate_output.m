@@ -126,7 +126,7 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 :- mode generate_output__cycle(in, in, in, out) is det.
 
 generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
-	prof_get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _,
+	prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _,
 								_CycleMap),
 	int__to_float(IntTotalCounts, TotalCounts),
 
@@ -150,17 +150,8 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 	% Calculate the self time spent in the current predicate.
 	% Calculate the descendant time, which is the time spent in the 
 	% current predicate and its descendants
-	int__to_float(Hertz, HertzFloat),
-	int__to_float(ClockTicks, ClockTicksFloat),
-	(
-		HertzFloat = 0.0
-	->
-		SelfTime = 0.0,
-		DescTime = 0.0
-	;
-		SelfTime is InitialFloat / HertzFloat * ClockTicksFloat,
-		DescTime is (InitialFloat+Prop) / HertzFloat * ClockTicksFloat
-	),
+	SelfTime is InitialFloat * Scale,
+	DescTime is (InitialFloat+Prop) * Scale,
 
 	OutputProfNode = output_cycle_prof(	Name, CycleNum, SelfTime, 
 						DescPercentage,
@@ -182,7 +173,7 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 :- mode generate_output__single_predicate(in, in, in, out) is det.
 
 generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
-	prof_get_entire(Prof, Hertz, ClockTicks, IntTotalCounts, _, _, 
+	prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _, 
 								CycleMap),
 	int__to_float(IntTotalCounts, TotalCounts),
 
@@ -222,18 +213,8 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 		% Calculate the self time spent in the current predicate.
 		% Calculate the descendant time, which is the time spent in the 
 		% current predicate and its descendants
-		int__to_float(Hertz, HertzFloat),
-		int__to_float(ClockTicks, ClockTicksFloat),
-		(
-			HertzFloat = 0.0
-		->
-			SelfTime = 0.0,
-			DescTime = 0.0
-		;
-			SelfTime is InitialFloat / HertzFloat * ClockTicksFloat,
-			DescTime is (InitialFloat+Prop) / HertzFloat 
-							* ClockTicksFloat
-		),
+		SelfTime is InitialFloat * Scale,
+		DescTime is (InitialFloat+Prop) * Scale,
 
 		process_prof_node_parents(ParentList, SelfTime, DescTime, 
 				TotalCalls, CycleNum, CycleMap, 
@@ -440,7 +421,7 @@ remove_child_cycle_members([PN | PNs], CycleNum, CycleMap, List,
 process_prof_node_children_2([], _, Output, Output).
 process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
 	pred_info_get_entire(PN, LabelName, Calls),
-	prof_get_entire(Prof, Hertz, ClockTicks, _, AddrMap, ProfNodeMap, 
+	prof_get_entire(Prof, Scale, _Units, _, AddrMap, ProfNodeMap, 
 								CycleMap),
 
 	(
@@ -464,13 +445,11 @@ process_prof_node_children_2([PN | PNs], Prof, Output0, Output) :-
         checked_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 
 	% Calculate the self time spent in the current predicate.
-	int__to_float(Hertz, HertzFloat),
-	int__to_float(ClockTicks, ClockTicksFloat),
-	SelfTime is (InitialFloat / HertzFloat) * ClockTicksFloat,
+	SelfTime is InitialFloat * Scale,
 
 	% Calculate the descendant time, which is the time spent in the 
 	% current predicate and its descendants
-	DescTime is (CurrentCount / HertzFloat) * ClockTicksFloat,
+	DescTime is CurrentCount * Scale,
 
 	% Calculate the amount of the current predicate's self-time spent
         % due to the parent.

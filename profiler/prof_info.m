@@ -75,7 +75,8 @@
 
 	% *** Access prof predicates *** %
 
-:- pred prof_get_entire(prof, int,int,int, addrdecl, prof_node_map, cycle_map).
+:- pred prof_get_entire(prof,
+			float, string, int, addrdecl, prof_node_map, cycle_map).
 :- mode prof_get_entire(in, out, out, out, out, out, out) is det.
 
 :- pred prof_get_addrdeclmap(prof, addrdecl).
@@ -87,7 +88,8 @@
 
 	% *** Update prof predicates *** %
 
-:- pred prof_set_entire(int,int,int, addrdecl, prof_node_map, cycle_map, prof).
+:- pred prof_set_entire(float, string, int, addrdecl, prof_node_map, cycle_map,
+			prof).
 :- mode prof_set_entire(in, in, in, in, in, in, out) is det.
 
 :- pred prof_set_profnodemap(prof_node_map, prof, prof).
@@ -197,9 +199,10 @@
 
 :- type prof --->
 		prof(
-			int,			% Hertz of the system clock
-			int,			% No. of clock ticks between 
-						% each prof signal.
+			float,			% Scaling factor
+			string,			% Units
+						% (Each profiling count is
+						% equivalent to Scale Units)
 			int,			% Total counts of the profile
 						% run
 			addrdecl,		% Map between label name and

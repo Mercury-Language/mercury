@@ -848,10 +848,16 @@
 
 % Memory management predicates.
 
-	% Write some memory/time usage statistics to stdout.
+	% Write memory/time usage statistics to stdout.
 
 :- pred io__report_stats(io__state, io__state).
 :- mode io__report_stats(di, uo) is det.
+
+	% Write complete memory usage statistics to stdout,
+	% including information about all procedures and types.
+
+:- pred io__report_full_memory_stats(io__state, io__state).
+:- mode io__report_full_memory_stats(di, uo) is det.
 
 	% Preallocate heap space (to avoid NU-Prolog panic).
 
@@ -1902,6 +1908,9 @@ io__set_environment_var(Var, Value) -->
 
 io__report_stats -->
 	{ report_stats }.
+
+io__report_full_memory_stats -->
+	{ report_full_memory_stats }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

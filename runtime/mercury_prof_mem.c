@@ -11,10 +11,10 @@
 **
 ** This module is needed to get around the problem that when a signal occurs
 ** it may be in a malloc.  The handling routine may also do a malloc which 
-** stuff's up the internal state of malloc and cause a seg fault.
-**
-** NB.	This shouldn't be needed anymore when native gc is implemented
-** 	as mercury will no longer use malloc anymore.
+** stuffs up the internal state of malloc and cause a seg fault.
+** To avoid this problem, we use our own version of malloc() which
+** allocates memory in large chunks, reducing the chance of this
+** problem occurring.
 */
 
 #include <stdio.h>
@@ -50,7 +50,7 @@ static void	*next	 = NULL;	/* Pointer to next data block	*/
 
 
 void *
-prof_malloc(size_t size)
+MR_prof_malloc(size_t size)
 {
 	register void *p;
 

@@ -9,6 +9,8 @@
 ** that map from procedure names to addresses and vice versa.
 */
 
+#include	"mercury_imp.h"	/* we need libmer_dll.h for Windows DLLs */
+
 #include	<stdio.h>
 #include	<string.h>
 
@@ -16,9 +18,8 @@
 
 #include	"mercury_label.h"
 
-#include	"mercury_imp.h"		/* we need libmer_globals.h for Windows DLLs */
 #include	"mercury_table.h"	/* for `Table' */
-#include	"mercury_prof.h"	/* for prof_output_addr_decls() */
+#include	"mercury_prof.h"	/* for prof_output_addr_decl() */
 #include	"mercury_engine.h"	/* for `progdebug' */
 #include	"mercury_wrapper.h"	/* for do_init_modules() */
 
@@ -76,7 +77,7 @@ insert_entry(const char *name, Code *addr, Word *entry_layout_info)
 	entry->e_layout = entry_layout_info;
 
 #ifdef	PROFILE_CALLS
-	prof_output_addr_decls(name, addr);
+	if (MR_profiling) MR_prof_output_addr_decl(name, addr);
 #endif
 
 #ifndef	SPEED

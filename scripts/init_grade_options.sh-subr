@@ -19,6 +19,7 @@ global_regs=true
 gc_method=conservative
 profile_time=false
 profile_calls=false
+profile_memory=false
 use_trail=false
 args_method=compact
 debug=false

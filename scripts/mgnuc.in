@@ -26,6 +26,7 @@ Options:
 	-p, --profiling
 	--profile-calls
 	--profile-time
+	--profile-memory
 	--debug
 	--use-trail
 	--args {simple, compact}
@@ -206,6 +207,11 @@ case $profile_calls in
 	false)		PROF_CALLS_OPTS="" ;;
 esac
 
+case $profile_memory in
+	true)		PROF_MEMORY_OPTS="-DPROFILE_MEMORY" ;;
+	false)		PROF_MEMORY_OPTS="" ;;
+esac
+
 case $use_trail in
 	true)		TRAIL_OPTS="-DMR_USE_TRAIL" ;;
 	false)		TRAIL_OPTS="" ;;
@@ -338,17 +344,20 @@ esac
 
 case $verbose in true)
 	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$GRADE_OPTS $GC_OPTS \
+		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
 		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
 esac
 case $# in
 	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$GRADE_OPTS $GC_OPTS \
+		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
 		$PICREG_OPTS $ARCH_OPTS $OVERRIDE_OPTS ;;
 	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$GRADE_OPTS $GC_OPTS \
+		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
 		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
 esac

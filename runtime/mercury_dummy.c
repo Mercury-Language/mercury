@@ -5,7 +5,7 @@
 */
 
 #include "mercury_dummy.h"
-#include "mercury_imp.h"	/* we need libmer_globals.h for Windows DLLs */
+#include "mercury_imp.h"	/* we need libmer_dll.h for Windows DLLs */
 
 /*
 ** This dummy function is in a file of its own to ensure

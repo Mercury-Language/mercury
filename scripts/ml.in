@@ -55,6 +55,7 @@ Options:
 	-p, --profiling
 	--profile-calls
 	--profile-time
+	--profile-memory
 	--debug
 	--use-trail
 	--args {simple, compact}
@@ -229,11 +230,18 @@ case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
 esac
-case $profile_time,$profile_calls in
-	true,true)	GRADE="$GRADE.prof" ;;
-	true,false)	GRADE="$GRADE.proftime" ;;
-	false,true)	GRADE="$GRADE.profcalls" ;;
-	false,false)	;;
+case $profile_time,$profile_calls,$profile_memory in
+	true,true,false)	GRADE="$GRADE.prof" ;;
+	true,false,false)	GRADE="$GRADE.proftime" ;;
+	false,true,false)	GRADE="$GRADE.profcalls" ;;
+	true,true,true)		GRADE="$GRADE.profall" ;;
+	false,true,true)	GRADE="$GRADE.memprof" ;;
+	false,false,false)	;;
+	*)			progname=`basename $0`
+				echo \
+	"$progname: Error: invalid combination of profiling options." 1>&2
+				exit 1
+			;;
 esac
 case $use_trail in
 	true)		GRADE="$GRADE.tr" ;;

@@ -45,7 +45,8 @@
 
 main -->
 	io__command_line_arguments(Args0),
-	{ OptionOps = option_ops(short_option, long_option, option_defaults) },
+	{ OptionOps = option_ops(short_option, long_option, option_defaults,
+				special_handler) },
 	{ getopt__process_options(OptionOps, Args0, Args, Result0) },
 	postprocess_options(Result0, Args, Result),
 	main_2(Result, Args).
