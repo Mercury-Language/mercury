@@ -1,6 +1,8 @@
-This file documents just the Linux/x86 port.  For the Linux/PowerPC
-port, see README.Linux-PPC.  (Ports to Linux on other architecures have
-not yet been attempted, but should not be difficult.)
+This file documents just the Linux/x86 port. 
+For the Linux/PowerPC port, see README.Linux-PPC. 
+For the Linux/Alpha port, see README.Linux-Alpha. 
+(Ports to Linux on other architecures have not yet
+been attempted, but should not be difficult.)
 
 On Linux with a.out, shared libraries are not supported.
 If you still have an old a.out system, the auto-configuration might

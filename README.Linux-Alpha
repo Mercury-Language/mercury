@@ -1,0 +1,22 @@
+For Linux/Alpha you need to apply the patch below.
+Just type `patch scripts/mgnuc < README.Linux-Alpha'.
+This patch is needed to make the Boehm collector work
+with the GNU assembler on Alphas.
+
+Index: mgnuc.in
+===================================================================
+RCS file: /home/mercury1/repository/mercury/scripts/mgnuc.in,v
+retrieving revision 1.48
+diff -u -u -r1.48 mgnuc.in
+--- mgnuc.in	1998/03/11 05:58:58	1.48
++++ mgnuc.in	1998/04/01 18:34:19
+@@ -60,7 +60,8 @@
+ CC=${MERCURY_C_COMPILER="@CC@"}
+ CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
+ CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+-AS=as
++# AS=as
++AS="gcc -c -x assembler-with-cpp"
+ 
+ case "$CC" in
+     *gcc*)
