@@ -2,8 +2,8 @@
 # Leave the first line of this file blank!
 # This is a Perl script; the following two lines allow us to avoid
 # embedding the path of the perl interpreter in the script.
-eval "exec perl -S $0 $*"
-    if $running_under_some_shell;
+eval 'exec perl -w -S $0 ${1+"$@"}'
+    if $_running_under_some_shell;
 
 #---------------------------------------------------------------------------#
 # Copyright (C) 1994-2001, 2003 The University of Melbourne.
@@ -141,71 +141,71 @@ OPTION:
 while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
 	if ($ARGV[0] eq "-e" || $ARGV[0] eq "--emacs") {
 		$emacs = 1;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--ext" || $ARGV[0] eq "--vim") {
 		$extended_attributes = "vim";
 		$keep_dups = 1;
 		$search_definitions = 1;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--elvis") {
 		$extended_attributes = "elvis";
 		$keep_dups = 1;
 		$search_definitions = 0;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--traditional-vi") {
 		$extended_attributes = "none";
 		$keep_dups = 0;
 		$search_definitions = 1;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--simple") {
 		$extended_attributes = "none";
 		$keep_dups = 1;
 		$search_definitions = 0;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--no-keep-duplicates") {
 		$keep_dups = 0;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--keep-duplicates") {
 		$keep_dups = 1;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--no-search-definitions") {
 		$search_definitions = 0;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--search-definitions") {
 		$search_definitions = 1;
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--no-extended-attributes") {
 		$extended_attributes = "none";
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--vim-extended-attributes" ||
 	    $ARGV[0] eq "--extended-attributes") {
 		$extended_attributes = "vim";
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--elvis-extended-attributes") {
 		$extended_attributes = "elvis";
-		shift(ARGV);
+		shift(@ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "-h" || $ARGV[0] eq "--help") {
@@ -213,7 +213,7 @@ while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
 		exit(0);
 	}
 	if ($ARGV[0] eq "--") {
-		shift(ARGV);
+		shift(@ARGV);
 		last;
 	}
 	die "mtags: unrecognized option \`$ARGV[0]'\n" .
@@ -250,26 +250,26 @@ sub output_name {
 	if (substr($name, 0, length($module)) ne $module) {
 		$name = "${module}__$name";
 	}
-	do output_single_name();
+	&output_single_name();
 
 	# strip off the leading module qualifiers one by one,
 	# and output a tag for each partially qualified
 	# or unqualified name
 	while ($name =~ /__/) {
 		$name =~ s/[^_]*(_[^_]+)*__//;
-		do output_single_name();
+		&output_single_name();
 	}
 }
 
 sub output_single_name() {
 	# Output tag using `__' as module qualifier.
-	do output_single_tag();
+	&output_single_tag();
 
 	# Output tag using `.' as module qualifier.
 	if ($name =~ /__/) {
 		$save_name = $name;
 		$name =~ s/__/./g;
-		do output_single_tag();
+		&output_single_tag();
 		$name = $save_name;
 	}
 }
@@ -288,19 +288,19 @@ sub output_single_tag() {
 	    }
 	} else {
 	    if ($emacs) {
-		printf out "%s\177%s\001%d,%d\n",
+		printf OUT "%s\177%s\001%d,%d\n",
 		    $_, $name, $., $.;
 	    } else {
 	    	# Output basic tag line for vi/vim/elvis.
-	    	printf out "%s\t%s\t/^%s\$/",
+	    	printf OUT "%s\t%s\t/^%s\$/",
 		    $name, $file, $match_line;
 
 		# Output commands to alter the search buffer.
 		if ($search_definitions) {
 		    if ($kind eq "pred" || $kind eq "func") {
-			printf out ";kq|/^\\<%s\\>/;'q", $src_name;
+			printf OUT ";kq|/^\\<%s\\>/;'q", $src_name;
 		    } else {
-			printf out ";kq|-;/\\<%s\\>/;'q", $name;
+			printf OUT ";kq|-;/\\<%s\\>/;'q", $name;
 		    }
 		}
 
@@ -313,13 +313,13 @@ sub output_single_tag() {
 			$static = "";
 			$sfile = "";
 		    }
-		    printf out ";\"\tkind:%s%s", $kind, $static;
+		    printf OUT ";\"\tkind:%s%s", $kind, $static;
 		    if ($extended_attributes eq "elvis") {
-		    	printf out "%s", $sfile;
+		    	printf OUT "%s", $sfile;
 		    }
 		}
 
-		printf out "\n";
+		printf OUT "\n";
 	    }
 	    $seen{$name} = 1;
 	    $prev_file{$name} = $file;
@@ -330,29 +330,29 @@ sub output_single_tag() {
 #---------------------------------------------------------------------------#
 
 if ($emacs) {
-	open(out, "> TAGS") || die "mtags: error opening TAGS: $!\n";
+	open(OUT, "> TAGS") || die "mtags: error opening TAGS: $!\n";
 } elsif ($keep_dups) {
 	# Vim and elvis expect the tags file to be sorted so they can do
 	# binary search.
-	open(out, "| sort > tags") ||
+	open(OUT, "| sort > tags") ||
 		die "mtags: error opening pipe: $!\n";
 } else {
 	# Remove duplicate tags for vi.
-	open(out, "| sort -u +0 -1 > tags") ||
+	open(OUT, "| sort -u +0 -1 > tags") ||
 		die "mtags: error opening pipe: $!\n";
 }
 $context = "implementation";
 while ($#ARGV >= 0)
 {
-    $file = shift(ARGV);
-    open(srcfile, $file) || die "mtags: can't open $file: $!\n";
+    $file = shift(@ARGV);
+    open(SRCFILE, $file) || die "mtags: can't open $file: $!\n";
     if ($emacs) {
-	close(out) || die "mtags: error closing TAGS: $!\n";
-	open(out, ">> TAGS") || die "mtags: error opening TAGS: $!\n";
-	printf out "\f\n%s,%d\n", $file, 0;
-	close(out) || die "mtags: error closing TAGS: $!\n";
-	# open(out, "| sort -u +0 -1 >> TAGS") ||
-	open(out, ">> TAGS") ||
+	close(OUT) || die "mtags: error closing TAGS: $!\n";
+	open(OUT, ">> TAGS") || die "mtags: error opening TAGS: $!\n";
+	printf OUT "\f\n%s,%d\n", $file, 0;
+	close(OUT) || die "mtags: error closing TAGS: $!\n";
+	# open(OUT, "| sort -u +0 -1 >> TAGS") ||
+	open(OUT, ">> TAGS") ||
 		die "mtags: error opening pipe: $!\n";
     }
     
@@ -361,14 +361,14 @@ while ($#ARGV >= 0)
     $module =~ s/\.m$//;	# delete the trailing `.m'
     $module =~ s/\./__/;	# replace `.' module qualifiers with `__'
 
-    while ($_ = <srcfile>)
+    while ($_ = <SRCFILE>)
     {
 	# skip lines which are not declarations
 	next unless ($_ =~ /^:- /);
 
 	chop;
 
-	($cmd, $decl, @rest) = split;
+	($_cmd, $decl, @rest) = split;
 	$body = join(' ', @rest);
 
 	# Remove `impure' and `semipure' declarations.
@@ -423,7 +423,7 @@ while ($#ARGV >= 0)
 	# vim which assumes the kind attribute has at most 4 chars.
 	if ($kind eq "typeclass") { $kind = "tc"; }
 	if ($kind eq "instance") { $kind = "tci"; }
-	do output_name();
+	&output_name();
 	
 	# for everything except type, typeclass and instance declarations,
 	# we're done
@@ -434,7 +434,7 @@ while ($#ARGV >= 0)
 	    # make sure we're at the line with the `--->'
 	    if ($body !~ /--->/) {
 		    next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		    $_ = <srcfile>;
+		    $_ = <SRCFILE>;
 		    chop;
 		    $body = $_;
 	    }
@@ -453,7 +453,7 @@ while ($#ARGV >= 0)
 
 		    # skip blank lines and comments
 		    while ($body =~ /^[ \t]*$/ || $body =~ /^[ \t]*%.*$/) {
-			$_ = <srcfile> || last;
+			$_ = <SRCFILE> || last;
 			chop;
 			$body = $_;
 
@@ -467,14 +467,14 @@ while ($#ARGV >= 0)
 		    $name = $body;
 		    $name =~ s/[ \t;.%].*//;
 		    $kind = "cons";
-		    do output_name();
+		    &output_name();
 
 		    # Look for field names on the same line as the
 		    # constructor name
 		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
 		    	$name = $1;
 			$kind = "fld";
-			do output_name();
+			&output_name();
 			$body =~ s/^[^:]*:://;
 		    }
 
@@ -490,13 +490,13 @@ while ($#ARGV >= 0)
 		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
 			$name = $1;
 			$kind = "fld";
-			do output_name();
+			&output_name();
 			$body =~ s/^[^:]*:://;
 		   }
 		}
 
 		last if $_ =~ /^[^%]*\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		$_ = <srcfile> || last;
+		$_ = <SRCFILE> || last;
 		chop;
 		$body = $_;
 	    }
@@ -509,7 +509,7 @@ while ($#ARGV >= 0)
 		    $body =~ s/^.*\b(pred|func)[ \t]*//;
 
 		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <srcfile> || last;
+		    	$_ = <SRCFILE> || last;
 		    	chop;
 		    	$body = $_;
 		    }
@@ -517,12 +517,12 @@ while ($#ARGV >= 0)
 		    $name = $body;
 		    $name =~ s/[(,%].*//;
 		    $kind = "tcm";	# tcm == type class method
-		    do output_name();
+		    &output_name();
 		}
 
 		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		$_ = <srcfile> || last;
+		$_ = <SRCFILE> || last;
 		chop;
 		$body = $_;
 	    }
@@ -534,7 +534,7 @@ while ($#ARGV >= 0)
 		    $body =~ s/.*\b(pred\(|func\()//;
 
 		    if ($body =~ /^[ \t]*$/) {
-		    	$_ = <srcfile> || last;
+		    	$_ = <SRCFILE> || last;
 		    	chop;
 		    	$body = $_;
 		    }
@@ -542,17 +542,17 @@ while ($#ARGV >= 0)
 		    $name = $body;
 		    $name =~ s/[\/)].*//;
 		    $kind = "tcim";	# tcim == type class instance method
-		    do output_name();
+		    &output_name();
 		}
 
 		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\]/;
 
-		$_ = <srcfile> || last;
+		$_ = <SRCFILE> || last;
 		chop;
 		$body = $_;
 	    }
 	}
     }
-    close(srcfile) || die "mtags: error closing `$file': $!\n";
+    close(SRCFILE) || die "mtags: error closing `$file': $!\n";
 }
-close(out) || die "mtags: error closing pipe: $!\n";
+close(OUT) || die "mtags: error closing pipe: $!\n";
