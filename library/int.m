@@ -50,16 +50,16 @@
 :- mode int__to_float(in, out) is det.
 
 	% expontiation
-:- pred int__pow(int, int, int).
-:- mode int__pow(in, in, out) is det.
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
 	% Y must not be negative.
+:- pred int__pow(int, int, int).
+:- mode int__pow(in, in, out) is det.
 
 	% base 2 logarithm
-:- pred int__log2(int, int).
-:- mode int__log2(in, out) is det.
 	% int__log2(X, N): N is the least integer such that 2 to the power N
 	% is greater than or equal to X.  X must be positive.
+:- pred int__log2(int, int).
+:- mode int__log2(in, out) is det.
 
 	% addition
 :- func int + int = int.
@@ -84,15 +84,29 @@
 :- mode uo  - in  = in  is det.
 :- mode in  - uo  = in  is det.
 
-	% modulus (or is it remainder?)
+	% flooring integer division
+	% truncates towards minus infinity, e.g. (-10) // 3 = (-4).
+:- func div(int, int) = int.
+:- mode div(in, in) = uo is det.
+
+	% truncating integer division
+	% truncates towards zero, e.g. (-10) // 3 = (-3).
+	% `div' has nicer mathematical properties for negative operands,
+	% but `//' is typically more efficient.
+:- func int // int = int.
+:- mode in  // in  = uo  is det.
+
+	% modulus
+	% X mod Y = X - (X div Y) * Y
 :- func int mod int = int.
 :- mode in  mod in  = uo  is det.
 
-	% truncating integer division
-	% should truncate toward zero
-	% (if it doesn't, file a bug report)
-:- func int // int = int.
-:- mode in  // in  = uo  is det.
+	% remainder
+	% X rem Y = X - (X // Y) * Y
+	% `mod' has nicer mathematical properties for negative X,
+	% but `rem' is typically more efficient.
+:- func int rem int = int.
+:- mode in rem in = uo is det.
 
 	% left shift
 :- func int << int = int.
@@ -192,8 +206,20 @@
 :- implementation.
 :- import_module require.
 
-% The arithmetic and comparison operators are recognized by
+% Most of the arithmetic and comparison operators are recognized by
 % the compiler as builtins, so we don't need to define them here.
+
+X div Y = Div :-
+	Trunc = X // Y,
+	(if X // Y >= 0 then
+		Div = Trunc
+	else if X rem Y = 0 then
+		Div = Trunc
+	else
+		Div = Trunc - 1
+	).
+
+X mod Y = X - (X div Y) * Y.
 
 int__abs(Num, Abs) :-
 	(
