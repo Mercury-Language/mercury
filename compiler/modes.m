@@ -2017,17 +2017,8 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 			% lost some uniqueness, or bound part of the var.
 			% The call to inst_matches_binding will succeed
 			% only if we haven't bound any part of the var.
-			inst_matches_binding(Inst, Inst0, Type, ModuleInfo)
-		->
-			% We've just added some information
-			% or lost some uniqueness.
-			instmap__set(InstMap0, Var0, Inst, InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
-			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
-			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo,
-				ModeInfo2, ModeInfo3)
-		;
+			\+ inst_matches_binding(Inst, Inst0, Type, ModuleInfo),
+
 			% We've bound part of the var.  If the var was locked,
 			% then we need to report an error...
 			mode_info_var_is_locked(ModeInfo1, Var0, Reason0),
