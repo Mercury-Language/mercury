@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999,2001-2003 The University of Melbourne.
+% Copyright (C) 1999,2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,7 +38,9 @@ garbage_collect -->
 
 :- pragma no_inline(garbage_collect/0).
 
-:- pragma foreign_proc("C", garbage_collect, [may_call_mercury], "
+:- pragma foreign_proc("C", garbage_collect,
+	[may_call_mercury, terminates],
+"
 #ifdef MR_CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */

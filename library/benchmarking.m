@@ -94,7 +94,7 @@ extern void ML_report_full_memory_stats(void);
 ").
 
 :- pragma foreign_proc("Java", report_stats,
-	[may_call_mercury],
+	[may_call_mercury, terminates],
 "
 	ML_report_stats();
 ").

@@ -806,7 +806,8 @@ dir__make_directory(PathName, Result, !IO) :-
 :- pragma foreign_proc("C#",
 	dir__make_directory(DirName::in, Res::out,
 			_IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
     try {
         // CreateDirectory doesn't fail if a file with the same
@@ -830,7 +831,8 @@ dir__make_directory(PathName, Result, !IO) :-
 % Java has a similar library function java.io.File.mkdirs()
 :- pragma foreign_proc("Java",
 	dir__make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	try {
 		java.io.File dir = new java.io.File(DirName);
@@ -887,7 +889,8 @@ dir__make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("C",
 	dir__make_single_directory_2(ErrorIfExists::in, DirName::in,
 		Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 #if defined(MR_WIN32)
 	if (CreateDirectory(DirName, NULL)) {
@@ -921,7 +924,8 @@ dir__make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("C#",
 	dir__make_single_directory_2(ErrorIfExists::in, DirName::in,
 		Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
     try {
 	// CreateDirectory doesn't fail if a file with the same
@@ -965,7 +969,8 @@ dir__make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("Java",
 	dir__make_single_directory_2(ErrorIfExists::in, DirName::in,
 		Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	try {
 		java.io.File newDir = new java.io.File(DirName);
@@ -1293,7 +1298,8 @@ dir__open(DirName, Res, !IO) :-
 
 :- pragma foreign_proc("C",
 	dir__open_2(DirName::in, Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 #if defined(MR_WIN32)
 	WIN32_FIND_DATA file_data;
@@ -1339,7 +1345,8 @@ dir__open(DirName, Res, !IO) :-
 
 :- pragma foreign_proc("C#",
 	dir__open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	try {
 		System.Collections.IEnumerator Dir =
@@ -1355,7 +1362,8 @@ dir__open(DirName, Res, !IO) :-
 
 :- pragma foreign_proc("Java",
 	dir__open_2(DirName::in, Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	try {
 		java.lang.String[] fileList =

@@ -2533,7 +2533,8 @@ file_type_implemented :- semidet_fail.
 :- pragma foreign_proc("C",
 	io__file_type_2(FollowSymLinks::in, FileName::in,
 		Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 #ifdef MR_HAVE_STAT
 	struct stat s;
@@ -2664,7 +2665,8 @@ file_type_implemented :- semidet_fail.
 :- pragma foreign_proc("C#",
 	io__file_type_2(_FollowSymLinks::in, FileName::in,
 		Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
     try {
 	System.IO.FileAttributes attrs =
@@ -2697,7 +2699,8 @@ file_type_implemented :- semidet_fail.
 :- pragma foreign_proc("Java",
 	io__file_type_2(_FollowSymLinks::in, FileName::in,
 		Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	java.io.File file = new java.io.File(FileName);
 
@@ -2770,7 +2773,8 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 :- pragma foreign_proc("C",
 	io__check_file_accessibility_2(FileName::in, AccessTypes::in,
 		Result::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 #if defined(MR_HAVE_ACCESS)
   #ifdef F_OK
@@ -2821,7 +2825,8 @@ io__check_file_accessibility(FileName, AccessTypes, Result) -->
 :- pragma foreign_proc("Java",
 	io__check_file_accessibility_2(FileName::in, AccessTypes::in,
 		Result::out, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	java.lang.String permissions = null;
 
@@ -2944,7 +2949,7 @@ have_dotnet_exec_permission(Res, !IO) :-
 
 :- pragma foreign_proc("C#",
 	have_dotnet_exec_permission(Result::out, _IO0::di, _IO::uo),
-	[promise_pure, may_call_mercury, thread_safe],
+	[promise_pure, may_call_mercury, thread_safe, terminates],
 "{
     try {
         // We need unrestricted permissions to execute
@@ -2976,7 +2981,8 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
 :- pragma foreign_proc("C#",
 	check_directory_accessibility_dotnet(FileName::in, CheckRead::in,
 		CheckWrite::in, Result::out, _IO0::di, _IO::uo),
-	[promise_pure, may_call_mercury, tabled_for_io, thread_safe],
+	[promise_pure, may_call_mercury, tabled_for_io, thread_safe,
+		terminates],
 "{
 	try {
 		if (CheckRead != 0) {
@@ -4455,7 +4461,8 @@ io__maybe_delete_stream_info(Stream) -->
 
 :- pragma foreign_proc("C",
 	io__may_delete_stream_info(MayDelete::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	MayDelete = !MR_trace_ever_enabled;
 	IO = IO0;
@@ -6190,7 +6197,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C", 
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io],
+	[may_call_mercury, promise_pure, tabled_for_io, terminates],
 "{
 	MercuryFilePtr mf = File;
 	if (Character == '\\n') {
@@ -6205,7 +6212,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io],
+	[may_call_mercury, promise_pure, tabled_for_io, terminates],
 "{
 	MercuryFilePtr mf = File;
 	/* XXX should work even if ungetc() fails */
@@ -6238,7 +6245,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C#", 
 	io__putback_char(File::in, Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "{
 	MR_MercuryFileStruct mf = File;
 	mercury_ungetc(mf, Character);
@@ -6246,7 +6253,7 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C#",
 	io__putback_byte(File::in, Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "{
 	MR_MercuryFileStruct mf = File;
 	if (mf.putback != -1) {
@@ -6272,14 +6279,14 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("Java",
 	io__putback_char(File::in, Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "
 	File.ungetc(Character);
 ").
 
 :- pragma foreign_proc("Java",
 	io__putback_byte(File::in, Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure],
+	[may_call_mercury, promise_pure, terminates],
 "
 	File.ungetc(Byte);
 ").
@@ -6289,7 +6296,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C", 
 	io__write_string(Message::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	mercury_print_string(mercury_current_text_output, Message);
 	MR_update_io(IO0, IO);
@@ -6297,7 +6305,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C", 
 	io__write_char(Character::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	if (MR_PUTCH(*mercury_current_text_output, Character) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -6310,7 +6319,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__write_int(Val::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	if (ML_fprintf(mercury_current_text_output, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -6320,7 +6330,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__write_float(Val::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
 	MR_sprintf_float(buf, Val);
@@ -6332,7 +6343,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__write_byte(Byte::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (MR_PUTCH(*mercury_current_binary_output,
@@ -6345,7 +6357,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__write_bytes(Message::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	mercury_print_binary_string(mercury_current_binary_output, Message);
 	MR_update_io(IO0, IO);
@@ -6353,7 +6366,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C", 
 	io__flush_output(IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	if (MR_FLUSH(*mercury_current_text_output) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -6363,7 +6377,8 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C",
 	io__flush_binary_output(IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	if (MR_FLUSH(*mercury_current_binary_output) < 0) {
 		mercury_output_error(mercury_current_binary_output);
@@ -6373,14 +6388,16 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C#", 
 	io__write_string(Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_print_string(mercury_current_text_output, Message);
 ").
 
 :- pragma foreign_proc("C#", 
 	io__write_char(Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	/* See mercury_output_string() for comments */
 	if (mercury_current_text_output.writer == null) {
@@ -6408,14 +6425,16 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C#",
 	io__write_int(Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_print_string(mercury_current_text_output, Val.ToString());
 ").
 
 :- pragma foreign_proc("C#",
 	io__write_byte(Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_binary_output.stream.WriteByte(
 			System.Convert.ToByte(Byte));
@@ -6423,74 +6442,85 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 
 :- pragma foreign_proc("C#",
 	io__write_bytes(Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	mercury_print_binary_string(mercury_current_binary_output, Message);
 }").
 
 :- pragma foreign_proc("C#", 
 	io__flush_output(_IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_text_output.stream.Flush();
 ").
 
 :- pragma foreign_proc("C#",
 	io__flush_binary_output(_IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_binary_output.stream.Flush();
 ").
 
 :- pragma foreign_proc("Java", 
 	io__write_string(Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	System.out.print(Message);
 ").
 :- pragma foreign_proc("Java", 
 	io__write_char(Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	System.out.print(Character);
 ").
 :- pragma foreign_proc("Java",
 	io__write_int(Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	System.out.print(Val);
 ").
 :- pragma foreign_proc("Java",
 	io__write_float(Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	System.out.print(Val);
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_byte(Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_binary_output.put((byte) Byte);
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_bytes(Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	mercury_current_binary_output.write(Message);
 }").
 
 :- pragma foreign_proc("Java",
 	io__flush_output(_IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_text_output.flush();
 ").
 
 :- pragma foreign_proc("Java",
 	io__flush_binary_output(_IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	mercury_current_binary_output.flush();
 ").
@@ -6549,7 +6579,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe], 
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates], 
 "{
 	mercury_print_string(Stream, Message);
 	MR_update_io(IO0, IO);
@@ -6557,7 +6588,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe], 
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates], 
 "{
 	if (MR_PUTCH(*Stream, Character) < 0) {
 		mercury_output_error(Stream);
@@ -6570,7 +6602,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	if (ML_fprintf(Stream, ""%ld"", (long) Val) < 0) {
 		mercury_output_error(Stream);
@@ -6580,7 +6613,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
 	MR_sprintf_float(buf, Val);
@@ -6592,7 +6626,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	/* call putc with a strictly non-negative byte-sized integer */
 	if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
@@ -6603,7 +6638,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	mercury_print_binary_string(Stream, Message);
 	MR_update_io(IO0, IO);
@@ -6611,7 +6647,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__flush_output(Stream::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	if (MR_FLUSH(*Stream) < 0) {
 		mercury_output_error(Stream);
@@ -6621,7 +6658,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C",
 	io__flush_binary_output(Stream::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "{
 	if (MR_FLUSH(*Stream) < 0) {
 		mercury_output_error(Stream);
@@ -6631,14 +6669,16 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C#",
 	io__write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io], 
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates], 
 "{
 	mercury_print_string(Stream, Message);
 }").
 
 :- pragma foreign_proc("C#",
 	io__write_char(Stream::in, Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io], 
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates], 
 "{
 	MR_MercuryFileStruct stream = Stream;
 	/* See mercury_output_string() for comments */
@@ -6665,105 +6705,120 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma foreign_proc("C#",
 	io__write_int(Stream::in, Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	mercury_print_string(Stream, Val.ToString());
 }").
 
 :- pragma foreign_proc("C#",
 	io__write_byte(Stream::in, Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	Stream.stream.WriteByte(System.Convert.ToByte(Byte));
 }").
 
 :- pragma foreign_proc("C#",
 	io__write_bytes(Stream::in, Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	mercury_print_binary_string(Stream, Message);
 }").
 
 :- pragma foreign_proc("C#",
 	io__flush_output(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	Stream.stream.Flush();
 }").
 
 :- pragma foreign_proc("C#",
 	io__flush_binary_output(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "{
 	Stream.stream.Flush();
 }").
 
 :- pragma foreign_proc("Java",
 	io__seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	Stream.seek(Flag, Off);
 ").
 
 :- pragma foreign_proc("Java",
 	io__binary_stream_offset(Stream::in, Offset::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	Offset = Stream.getOffset();
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io], 
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates], 
 "
 	Stream.write(Message);
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_char(Stream::in, Character::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	Stream.put(Character);
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_int(Stream::in, Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	Stream.write(java.lang.String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_float(Stream::in, Val::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	Stream.write(java.lang.String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_byte(Stream::in, Byte::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	Stream.put(Byte);
 ").
 
 :- pragma foreign_proc("Java",
 	io__write_bytes(Stream::in, Message::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	Stream.write(Message);
 ").
 
 :- pragma foreign_proc("Java",
 	io__flush_output(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	Stream.flush();
 ").
 
 :- pragma foreign_proc("Java",
 	io__flush_binary_output(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
+	[may_call_mercury, promise_pure, thread_safe, tabled_for_io,
+		terminates],
 "
 	Stream.flush();
 ").
@@ -7412,7 +7467,8 @@ io__close_binary_output(Stream) -->
 
 :- pragma foreign_proc("C",
 	io__close_stream(Stream::in, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	mercury_close(Stream);
 	MR_update_io(IO0, IO);
@@ -7420,14 +7476,16 @@ io__close_binary_output(Stream) -->
 
 :- pragma foreign_proc("C#",
 	io__close_stream(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	mercury_close(Stream);
 ").
 
 :- pragma foreign_proc("Java",
 	io__close_stream(Stream::in, _IO0::di, _IO::uo),
-	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
+		terminates],
 "
 	Stream.close();
 ").

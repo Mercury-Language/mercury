@@ -715,28 +715,28 @@ deep_copy(java.lang.Object original) {
 
 :- pragma foreign_proc("C#",
 	copy(X::ui, Y::uo),
-	[may_call_mercury, thread_safe, promise_pure],
+	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
         Y = deep_copy(X);
 ").
 
 :- pragma foreign_proc("C#",
 	copy(X::in, Y::uo),
-	[may_call_mercury, thread_safe, promise_pure],
+	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
         Y = deep_copy(X);
 ").
 
 :- pragma foreign_proc("Java",
 	copy(X::ui, Y::uo),
-	[may_call_mercury, thread_safe, promise_pure],
+	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
         Y = deep_copy(X);
 ").
 
 :- pragma foreign_proc("Java",
 	copy(X::in, Y::uo),
-	[may_call_mercury, thread_safe, promise_pure],
+	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
         Y = deep_copy(X);
 ").
