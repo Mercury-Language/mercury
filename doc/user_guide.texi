@@ -2278,7 +2278,8 @@ Specify options to be passed to the C compiler.
 @sp 1
 @item @code{--c-debug}
 Pass the @samp{-g} flag to the C compiler, to enable debugging
-of the generated C code.
+of the generated C code, and also pass @samp{--no-strip} to the Mercury
+linker, to tell it not to strip the C debugging information.
 Since the generated C code is very low-level, this option is not likely
 to be useful to anyone except the Mercury implementors, except perhaps
 for debugging code that uses Mercury's C interface extensively.
