@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,16 +147,19 @@
 
 c_util__set_line_num(File, Line) -->
 	globals__io_lookup_bool_option(line_numbers, LineNumbers),
-	(
-		{ Line > 0 },
-		{ File \= "" },
-		{ LineNumbers = yes }
-	->
-		io__write_string("#line "),
-		io__write_int(Line),
-		io__write_string(" """),
-		c_util__output_quoted_string(File),
-		io__write_string("""\n")
+	( { LineNumbers = yes } ->
+		(
+			{ Line > 0 },
+			{ File \= "" }
+		->
+			io__write_string("#line "),
+			io__write_int(Line),
+			io__write_string(" """),
+			c_util__output_quoted_string(File),
+			io__write_string("""\n")
+		;
+			c_util__reset_line_num
+		)
 	;
 		[]
 	).
