@@ -2003,7 +2003,7 @@ and @samp{memprof}
 @samp{tr} (the default is no trailing).
 
 @item What debugging features to enable:
-@samp{debug} (the default is no debuging features).
+@samp{debug} (the default is no debugging features).
 
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
