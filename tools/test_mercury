@@ -205,6 +205,7 @@ case $HOST in
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
+	aral)		OPTIMIZE=-O5 ;;
 	venus) 		case "$C_COMPILER" in
 				gcc)	OPTIMIZE=-O5 ;;
 				*)	OPTIMIZE=-O2 ;;
@@ -291,7 +292,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-	hg|ender|roy|venus|earth|mars|ceres) 	
+	hg|ender|roy|venus|earth|mars|ceres|aral) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -346,6 +347,7 @@ case $HOST in
 	earth) 		PARALLEL= ;; 	# one CPU
 	mars) 		PARALLEL= ;; 	# one CPU
 	ceres) 		PARALLEL= ;; 	# one CPU
+	aral) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
@@ -497,6 +499,16 @@ case $HOST in
 		# ensure that the nogc grades get installed and tested
 		# on at least one host
 		CONFIG_OPTS="--enable-nogc-grades"
+		;;
+	aral)
+		#
+		# Aral has limited disk space, and not having to expend it
+		# on grades not needed by its primary user (zs) helps to
+		# conserve it.
+		#
+		INSTALL_LIBGRADES="asm_fast.gc asm_fast.gc.debug.tr \
+			asm_fast.gc.mm asm_fast.gc.mm.debug \
+			asm_fast.gc.profdeep hlc.gc"
 		;;
 	*)	
 		CONFIG_OPTS="" ;;
@@ -1054,6 +1066,9 @@ case $HOST in
 		;;
 	ceres)	
 		fullname=i686-pc-linux-libc2.2-gnu-O5-hlc
+		;;
+	aral)	
+		fullname=i686-pc-linux-libc2.3-gnu-O5
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc

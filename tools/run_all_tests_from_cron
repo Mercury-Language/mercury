@@ -97,6 +97,13 @@ case "$BRANCH" in
 			*)	  BRANCH=latest ;;
 		esac
 		;;
+	    aral)
+		#
+		# Aral has limited disk space, and not having to expend it
+		# on the release branch helps conserve it.
+		#
+	    	BRANCH=latest
+		;;
 	    *)
 		#
 		# For the remaining hosts, do the reverse:
