@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1997 The University of Melbourne. 
+# Copyright (C) 1996-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -164,7 +164,7 @@ AC_SUBST(CC)
 # The following allows us to share some subroutines between the
 # `ml' and `mgnuc' scripts.
 
-top=`pwd`/..
+top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
