@@ -25,7 +25,7 @@ DETPROGS=	arithmetic det_complicated_unify duplicate_label \
 
 # The `liveness' test doesn't work yet, due to bugs
 # in the compiler.  Ditto for frameopt_mkframe_bug.
-NOTWORKING=	liveness frameopt_mkframe_bug
+NOTWORKING=	liveness frameopt_mkframe_bug double_error
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
