@@ -2018,7 +2018,6 @@ AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 # check whether we need -lsocket
 #
 AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
-AC_SUBST(SOCKET_LIBRARY)
 
 #
 # temporarily add -lsocket to LIBS, for use by TRY_LINK
@@ -2225,7 +2224,12 @@ if test "$mercury_cv_enable_extern_debug" = "yes"; then
 	fi		
 else
 	AC_MSG_RESULT(no)
+
+	# don't link with the socket library if we're not going to use it
+	SOCKET_LIBRARY=
 fi
+
+AC_SUBST(SOCKET_LIBRARY)
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
