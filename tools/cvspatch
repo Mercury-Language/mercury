@@ -1,11 +1,10 @@
 #!/bin/sh
 
 case $# in
-	1)	;;
+	0)	cat > .cvspatch.input; inputfile=.cvspatch.input ;;
+	1)	inputfile=$1 ;;
 	*)	echo 1>&2 "Usage: cvspatch cvs_diff_file"; exit 1 ;;
 esac
-
-inputfile=$1
 
 awk '
 BEGIN	{
@@ -46,5 +45,7 @@ do
 	awk "{ if ($start <= NR && NR <= $end) print}" < $inputfile > $dirname/.cvspatch
 	( cd $dirname ; patch < .cvspatch ; /bin/rm .cvspatch )
 done
+
+rm -f .cvspatch.input
 
 exit 0
