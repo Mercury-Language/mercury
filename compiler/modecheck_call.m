@@ -99,7 +99,6 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 	mode_info_get_preds(!.ModeInfo, Preds),
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_get_purity(PredInfo, Purity),
 	pred_info_procedures(PredInfo, Procs),
 	( MayChangeCalledProc = may_not_change_called_proc ->
 		( ProcId0 = invalid_proc_id ->
@@ -162,7 +161,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 		modecheck_var_has_inst_list(ArgVars0, InitialInsts,
 			NeedExactMatch, ArgOffset, InstVarSub, !ModeInfo),
 
-		modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0,
+		modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
 			ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
 	;
 			% set the current error list to empty (and
@@ -205,10 +204,9 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 						CalleeModeErrors),
 					!ModeInfo)
 			;
-				modecheck_end_of_call(ProcInfo, Purity,
-					ProcArgModes, ArgVars0, ArgOffset,
-					InstVarSub, ArgVars, ExtraGoals,
-					!ModeInfo)
+				modecheck_end_of_call(ProcInfo, ProcArgModes,
+					ArgVars0, ArgOffset, InstVarSub,
+					ArgVars, ExtraGoals, !ModeInfo)
 			)
 		),
 
@@ -433,22 +431,12 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 	modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
 		!MatchingProcIds, !WaitingVars, !ModeInfo).
 
-:- pred modecheck_end_of_call(proc_info::in, purity::in, list(mode)::in,
+:- pred modecheck_end_of_call(proc_info::in, list(mode)::in,
 	list(prog_var)::in, int::in, inst_var_sub::in, list(prog_var)::out,
 	extra_goals::out, mode_info::in, mode_info::out) is det.
 
-modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
-		InstVarSub, ArgVars, ExtraGoals, !ModeInfo) :-
-		% Since we can't reschedule impure goals, we must allow
-		% the initialisation of free solver type args if
-		% necessary for impure calls.
-		%
-	( Purity = (impure) ->
-		mode_info_set_may_initialise_solver_vars(yes, !ModeInfo)
-	;
-		true
-	),
-
+modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset, InstVarSub,
+		ArgVars, ExtraGoals, !ModeInfo) :-
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts0),
 	inst_list_apply_substitution(InitialInsts0, InstVarSub, InitialInsts),
