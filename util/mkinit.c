@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -98,6 +98,17 @@ static const char header2[] =
 	"\n"
 	;
 
+static const char aditi_header[] =
+	"/*\n"
+	"** MR_do_load_aditi_rl_code() uploads all the Aditi-RL code\n"
+	"** for the program to a database to which the program currently\n"
+	"** has a connection, returning a status value as described in\n"
+	"** aditi2/src/api/aditi_err.h in the Aditi sources.\n"
+	"*/\n"
+	"static int MR_do_load_aditi_rl_code(void);\n"
+	"\n"
+	;
+
 static const char mercury_funcs[] =
 	"\n"
 	"#define MR_TRACE_ENABLED %d\n"
@@ -151,6 +162,7 @@ static const char mercury_funcs[] =
 	"\n"
 	"	address_of_mercury_init_io = mercury_init_io;\n"
 	"	address_of_init_modules = init_modules;\n"
+	"	MR_address_of_do_load_aditi_rl_code = %s;\n"
 	"#ifdef CONSERVATIVE_GC\n"
 	"	address_of_init_gc = init_gc;\n"
 	"#endif\n"
@@ -476,6 +488,10 @@ output_headers(void)
 	}
 
 	fputs(header2, stdout);
+
+	if (aditi) {
+		fputs(aditi_header, stdout);
+	}
 }
 
 static void 
@@ -526,7 +542,17 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	printf(mercury_funcs, need_tracing, entry_point, entry_point);
+	char *aditi_load_func;
+
+	if (aditi) {
+		aditi_load_func = "MR_do_load_aditi_rl_code";
+	} else {
+		aditi_load_func = "NULL";
+	}
+	
+	printf(mercury_funcs, need_tracing, entry_point,
+		aditi_load_func, entry_point);
+
 	if (output_main_func) {
 		fputs(main_func, stdout);
 	}
@@ -708,8 +734,9 @@ output_init_function(const char *func_name)
 
 	/*
 	** Load the Aditi-RL for each module into the database.
-	** mercury__load_aditi_rl_code() is called by aditi__connect/6
-	** in extras/aditi/aditi.m.
+	** MR_do_load_aditi_rl_code() is called by MR_load_aditi_rl_code()
+	** in runtime/mercury_wrapper.c, which is called by
+	** `aditi__connect/6' in extras/aditi/aditi.m.
 	*/
 static void
 output_aditi_load_function(void)
@@ -734,7 +761,9 @@ output_aditi_load_function(void)
 		printf("extern const int %s__length;\n", node->data);
 	}
 
-	printf("int mercury__load_aditi_rl_code(void)\n{\n"),
+	printf("\n");
+	printf("static int\n");
+	printf("MR_do_load_aditi_rl_code(void)\n{\n"),
 
 	/* Build an array containing the addresses of the RL data constants. */
 	printf("\tstatic const char *rl_data[] = {\n\t\t");
