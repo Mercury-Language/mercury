@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -285,7 +285,7 @@ output_type_ctor_and_arg_defns_and_decls(TypeCtorRttiData, ArgRttiDatas,
 output_type_ctor_data_defn(TypeCtorData, DeclSet0, DeclSet) -->
 	{ RttiTypeCtor = tcd_get_rtti_type_ctor(TypeCtorData) },
 	{ TypeCtorData = type_ctor_data(Version, Module, TypeName, TypeArity,
-		UnifyUniv, CompareUniv, TypeCtorDetails) },
+		UnifyUniv, CompareUniv, Flags, TypeCtorDetails) },
 	output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
 		MaybeFunctorsName, MaybeLayoutName, DeclSet0, DeclSet1),
 	{ det_univ_to_type(UnifyUniv, UnifyProcLabel) },
@@ -335,6 +335,8 @@ output_type_ctor_data_defn(TypeCtorData, DeclSet0, DeclSet) -->
 	),
 	io__write_string(",\n\t"),
 	io__write_int(type_ctor_details_num_functors(TypeCtorDetails)),
+	io__write_string(",\n\t"),
+	io__write_int(encode_type_ctor_flags(Flags)),
 % This code is commented out while the corresponding fields of the
 % MR_TypeCtorInfo_Struct type are commented out.
 %

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +178,7 @@ gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, SubDefns) :-
 gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, SubDefns) :-
 	RttiData = type_ctor_info(TypeCtorData), 
 	TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
-		TypeArity, UnifyUniv, CompareUniv, TypeCtorDetails),
+		TypeArity, UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
 	RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, TypeArity),
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	NumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
@@ -203,7 +203,8 @@ gen_init_rtti_data_defn(RttiData, ModuleInfo, Init, SubDefns) :-
 		init_struct([
 			LayoutInfo
 		]),
-		gen_init_int(NumFunctors)
+		gen_init_int(NumFunctors),
+		gen_init_int(encode_type_ctor_flags(Flags))
 			% These two are commented out while the corresponding
 			% fields of the MR_TypeCtorInfo_Struct type are
 			% commented out.

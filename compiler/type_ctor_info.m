@@ -67,7 +67,7 @@
 :- import_module backend_libs__builtin_ops, hlds__error_util.
 
 :- import_module bool, string, int, map, std_util, assoc_list, require.
-:- import_module term.
+:- import_module set, term.
 
 %---------------------------------------------------------------------------%
 
@@ -252,8 +252,14 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			)
 		)
 	),
+	Flags0 = set__init,
+	( TypeBody ^ du_type_reserved_tag = yes ->
+		Flags = set__insert(Flags0, reserve_tag_flag)
+	;
+		Flags = Flags0
+	),
 	TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
-		UnifyUniv, CompareUniv, Details),
+		UnifyUniv, CompareUniv, Flags, Details),
 	RttiData = type_ctor_info(TypeCtorData).
 
 :- pred type_ctor_info__make_proc_label(pred_proc_id::in, module_info::in,

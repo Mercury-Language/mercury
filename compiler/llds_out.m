@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -484,6 +484,8 @@ output_c_file_intro_and_grade(SourceFileName, Version) -->
 		"**\n",
 		"** END_OF_C_GRADE_INFO\n",
 		"*/\n",
+		"\n",
+		"#define MR_TYPE_CTOR_INFO_HAS_FLAG 1\n",
 		"\n"
 	]).
 

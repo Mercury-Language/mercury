@@ -25,6 +25,7 @@
 **      compiler/type_ctor_info.m
 **      compiler/rtti.m
 **      compiler/rtti_out.m
+**      compiler/rtti_to_mlds.m
 **      compiler/mlds_to_gcc.m
 **          (for updating the compiler-generated RTTI
 **          structures)
@@ -34,6 +35,7 @@
 **      library/private_builtin.m
 **      library/std_util.m
 **      runtime/mercury_bootstrap.c
+**      runtime/mercury_mcpp.h
 **          (for updating the hand-written RTTI
 **          structures)
 **
@@ -74,13 +76,14 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__REP
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__FLAG
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
 #define MR_RTTI_VERSION__VERSION_NO     5
 #define MR_RTTI_VERSION__COMPACT        6
 #define MR_RTTI_VERSION__REP            7
+#define MR_RTTI_VERSION__FLAG           8
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -91,7 +94,8 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP)
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__REP \
+        || typector->MR_type_ctor_version == MR_RTTI_VERSION__FLAG)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1057,6 +1061,9 @@ struct MR_TypeCtorInfo_Struct {
     MR_TypeFunctors     MR_type_ctor_functors;
     MR_TypeLayout       MR_type_ctor_layout;
     MR_int_least32_t    MR_type_ctor_num_functors;
+#ifdef  MR_TYPE_CTOR_INFO_HAS_FLAG
+    MR_int_least16_t    MR_type_ctor_flags;
+#endif
 
 /*
 ** The following fields will be added later, once we can exploit them:
@@ -1085,6 +1092,14 @@ struct MR_TypeCtorInfo_Struct {
 
 #define MR_type_ctor_num_functors(tci)                                      \
     ((tci)->MR_type_ctor_num_functors)
+
+/*
+** The flag bits here must agree with the ones in encode_type_ctor_flag
+** in compiler/rtti.m.
+*/
+
+#define MR_type_ctor_has_reserve_tag(tci)                                   \
+    ((tci)->MR_type_ctor_flags & 0x1)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1133,6 +1148,12 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 ** Macros to help the runtime and the library create type_ctor_info
 ** structures for builtin and special types.
 */
+
+#ifdef  MR_TYPE_CTOR_INFO_HAS_FLAG
+  #define MR_INIT_TYPE_CTOR_FLAG    , 0
+#else
+  #define MR_INIT_TYPE_CTOR_FLAG
+#endif
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -1186,6 +1207,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
         { 0 },                                                          \
         { 0 },                                                          \
         -1                                                              \
+        MR_INIT_TYPE_CTOR_FLAG                                          \
     }
 
   #define MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)              \
@@ -1240,6 +1262,7 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
         { 0 },                                                          \
         { 0 },                                                          \
         -1                                                              \
+        MR_INIT_TYPE_CTOR_FLAG                                          \
     }
 
   #define MR_DEFINE_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)              \

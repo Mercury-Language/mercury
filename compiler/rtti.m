@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 :- import_module backend_libs__code_model.
 
-:- import_module assoc_list, bool, list, map, std_util.
+:- import_module assoc_list, bool, list, set, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -104,8 +104,12 @@
 			tcr_arity		:: int,
 			tcr_unify_pred		:: univ,
 			tcr_compare_pred	:: univ,
+			tcr_flags		:: set(type_ctor_flag),
 			tcr_rep_details		:: type_ctor_details
 		).
+
+:- type type_ctor_flag
+	--->	reserve_tag_flag.
 
 	% A type_ctor_details structure contains all the information that the
 	% runtime system needs to know about the data representation scheme
@@ -501,6 +505,8 @@
 %
 % The functions operating on RTTI data.
 
+:- func encode_type_ctor_flags(set(type_ctor_flag)) = int.
+
 	% Return the id of the type constructor.
 :- func tcd_get_rtti_type_ctor(type_ctor_data) = rtti_type_ctor.
 
@@ -623,6 +629,15 @@
 :- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
 
 :- import_module int, string, require, varset.
+
+encode_type_ctor_flags(FlagSet) =
+		list__foldl(encode_type_ctor_flag, FlagList, 0) :-
+	set__to_sorted_list(FlagSet, FlagList).
+
+:- func encode_type_ctor_flag(type_ctor_flag, int) = int.
+
+	% The encoding here must match the one in runtime/mercury_type_info.h.
+encode_type_ctor_flag(reserve_tag_flag, N) = N + 1.
 
 rtti_data_to_name(type_ctor_info(TypeCtorData), RttiTypeCtor,
 		type_ctor_info) :-

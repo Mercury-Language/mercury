@@ -198,7 +198,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 	MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),	\
 	MR_BOX_INT(-1),							\
 	MR_BOX_INT(-1),							\
-	MR_BOX_INT(-1)							\
+	MR_BOX_INT(-1),							\
+	MR_BOX_INT(0)							\
     MR_STRUCT_INIT_END(})						\
     MR_CLASS_INIT_END(m, MR_PASTE5(__, type_ctor_info_, n, _, a), MR_PASTE4(type_ctor_init_, n, _, a))
 
