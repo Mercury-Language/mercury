@@ -12,6 +12,6 @@ mdb> goto 5
 mdb> finish
        6:      2  2 FAIL pred resume_typeinfos:test/2-0 (semidet)
 mdb> print *
-       HeadVar__1             	[1, 2]
+       TestList (arg 1)       	[1, 2]
 mdb> continue
 no solution.

@@ -79,7 +79,7 @@ mdb> break nondet
 mdb> continue
       21:     10  2 CALL pred retry:nondet/2-0 (multi)
 mdb> print *
-       HeadVar__1             	4
+       X0 (arg 1)             	4
 mdb> break nondet_2
  1: + stop  interface pred retry:nondet_2/2-0 (det)
 mdb> continue
@@ -87,7 +87,7 @@ mdb> continue
 mdb> retry 1
       21:     10  2 CALL pred retry:nondet/2-0 (multi)
 mdb> print *
-       HeadVar__1             	4
+       X0 (arg 1)             	4
 mdb> delete *
  0: E stop  interface pred retry:nondet/2-0 (multi)
  1: E stop  interface pred retry:nondet_2/2-0 (det)
@@ -101,11 +101,11 @@ mdb> continue
 50 51 
       89:     29  2 CALL pred retry:fib/2-0 (det)
 mdb> print *
-       HeadVar__1             	15
+       N (arg 1)              	15
 mdb> continue
       93:     30  3 CALL pred retry:fib/2-0 (det)
 mdb> print *
-       HeadVar__1             	14
+       N (arg 1)              	14
 mdb> continue
       97:     31  4 CALL pred retry:fib/2-0 (det)
 mdb> continue
@@ -115,7 +115,7 @@ mdb> step
 mdb> retry 2
       93:     30  3 CALL pred retry:fib/2-0 (det)
 mdb> print *
-       HeadVar__1             	14
+       N (arg 1)              	14
 mdb> next
       94:     30  3 ELSE pred retry:fib/2-0 (det) c2;e;
 mdb> retry 1

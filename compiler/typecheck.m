@@ -153,7 +153,7 @@
 
 :- implementation.
 
-:- import_module hlds__hlds_goal, parse_tree__prog_util.
+:- import_module hlds__hlds_goal, hlds__goal_util, parse_tree__prog_util.
 :- import_module check_hlds__type_util, parse_tree__modules.
 :- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_io, parse_tree__prog_io_util.
@@ -188,20 +188,20 @@ check_pred_types(Module0, Module, FoundError, ExceededIterationLimit) -->
 	{ module_info_predids(Module0, PredIds) },
 	globals__io_lookup_int_option(type_inference_iteration_limit,
 		MaxIterations),
-	typecheck_to_fixpoint(MaxIterations, PredIds, Module0,
+	typecheck_to_fixpoint(1, MaxIterations, PredIds, Module0,
 		Module, FoundError, ExceededIterationLimit),
 	write_inference_messages(PredIds, Module).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
-:- pred typecheck_to_fixpoint(int, list(pred_id), module_info, module_info, 
-		bool, bool, io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, in, out, out, out, di, uo) is det.
+:- pred typecheck_to_fixpoint(int, int, list(pred_id),
+		module_info, module_info, bool, bool, io__state, io__state).
+:- mode typecheck_to_fixpoint(in, in, in, in, out, out, out, di, uo) is det.
 
-typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module,
+typecheck_to_fixpoint(Iteration, NumIterations, PredIds, Module0, Module,
 		FoundError, ExceededIterationLimit) -->
-	typecheck_pred_types_2(PredIds, Module0, Module1,
+	typecheck_pred_types_2(Iteration, PredIds, Module0, Module1,
 		no, FoundError1, no, Changed),
 	( { Changed = no ; FoundError1 = yes } ->
 		{ Module = Module1 },
@@ -214,10 +214,10 @@ typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module,
 		;
 			[]
 		),
-		{ NumIterations1 = NumIterations - 1 },
-		( { NumIterations1 > 0 } ->
-			typecheck_to_fixpoint(NumIterations1, PredIds, Module1,
-				Module, FoundError, ExceededIterationLimit)
+		( { Iteration < NumIterations } ->
+			typecheck_to_fixpoint(Iteration + 1, NumIterations,
+				PredIds, Module1, Module,
+				FoundError, ExceededIterationLimit)
 		;
 			typecheck_report_max_iterations_exceeded,
 			{ Module = Module1 },
@@ -246,14 +246,14 @@ typecheck_report_max_iterations_exceeded -->
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred typecheck_pred_types_2(list(pred_id), module_info, module_info,
+:- pred typecheck_pred_types_2(int, list(pred_id), module_info, module_info,
 	bool, bool, bool, bool, io__state, io__state).
-:- mode typecheck_pred_types_2(in, in, out,
+:- mode typecheck_pred_types_2(in, in, in, out,
 	in, out, in, out, di, uo) is det.
 
-typecheck_pred_types_2([], ModuleInfo, ModuleInfo, 
+typecheck_pred_types_2(_, [], ModuleInfo, ModuleInfo, 
 		Error, Error, Changed, Changed) --> [].
-typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo, 
+typecheck_pred_types_2(Iteration, [PredId | PredIds], ModuleInfo0, ModuleInfo, 
 		Error0, Error, Changed0, Changed) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
@@ -264,7 +264,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ ModuleInfo2 = ModuleInfo0 },
 		{ Changed2 = Changed0 }
 	;
-		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, 
+		typecheck_pred_type(Iteration, PredId, PredInfo0, ModuleInfo0, 
 			PredInfo1, Error1, Changed1),
 		(
 			{ Error1 = no },
@@ -304,15 +304,15 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{ bool__or(Error0, Error1, Error2) },
 		{ bool__or(Changed0, Changed1, Changed2) }
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo2, ModuleInfo, 
+	typecheck_pred_types_2(Iteration, PredIds, ModuleInfo2, ModuleInfo, 
 		Error2, Error, Changed2, Changed).
 
-:- pred typecheck_pred_type(pred_id, pred_info, module_info,
+:- pred typecheck_pred_type(int, pred_id, pred_info, module_info,
 		pred_info, bool, bool, io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, out, out, di, uo) is det.
+:- mode typecheck_pred_type(in, in, in, in, out, out, out, di, uo) is det.
 
-typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
-		IOState0, IOState) :-
+typecheck_pred_type(Iteration, PredId, PredInfo0, ModuleInfo, PredInfo,
+		Error, Changed, IOState0, IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
@@ -335,8 +335,15 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    Changed = no,
 	    IOState = IOState0
 	;
-	    maybe_add_field_access_function_clause(ModuleInfo,
-		    PredInfo0, PredInfo1),
+	    globals__io_get_globals(Globals, IOState0, IOState1),
+	    ( Iteration = 1 ->
+		maybe_add_field_access_function_clause(ModuleInfo,
+			PredInfo0, PredInfo0a),
+		maybe_improve_single_clause_headvar_names(Globals,
+			PredInfo0a, PredInfo1)
+	    ;
+		PredInfo1 = PredInfo0	
+	    ),
 	    pred_info_arg_types(PredInfo1, _ArgTypeVarSet, ExistQVars0,
 		    ArgTypes0),
 	    pred_info_clauses_info(PredInfo1, ClausesInfo0),
@@ -352,7 +359,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 			% in polymorphism__expand_class_method_bodies
 	        pred_info_get_markers(PredInfo1, Markers),
 		( check_marker(Markers, class_method) ->
-			IOState = IOState0,
+			IOState = IOState1,
 				% For the moment, we just insert the types
 				% of the head vars into the clauses_info
 			map__from_corresponding_lists(HeadVars, ArgTypes0,
@@ -373,7 +380,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 			Changed = no
 		;
 			report_error_no_clauses(PredId, PredInfo1, ModuleInfo,
-			    IOState0, IOState),
+			    IOState1, IOState),
 			PredInfo = PredInfo1,
 			Error = yes,
 			Changed = no
@@ -391,13 +398,13 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 			% `pred foo(T1, T2, ..., TN)' by make_hlds.m.
 			Inferring = yes,
 			write_pred_progress_message("% Inferring type of ",
-				PredId, ModuleInfo, IOState0, IOState1),
+				PredId, ModuleInfo, IOState1, IOState2),
 			HeadTypeParams1 = [],
 			PredConstraints = constraints([], [])
 		;
 			Inferring = no,
 			write_pred_progress_message("% Type-checking ",
-				PredId, ModuleInfo, IOState0, IOState1),
+				PredId, ModuleInfo, IOState1, IOState2),
 			term__vars_list(ArgTypes0, HeadTypeParams0),
 			list__delete_elems(HeadTypeParams0, ExistQVars0,
 				HeadTypeParams1),
@@ -419,7 +426,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		;
 			IsFieldAccessFunction = no
 		),
-		typecheck_info_init(IOState1, ModuleInfo, PredId,
+		typecheck_info_init(IOState2, ModuleInfo, PredId,
 				IsFieldAccessFunction, TypeVarSet0, VarSet,
 				ExplicitVarTypes0, HeadTypeParams1,
 				Constraints, Status, TypeCheckInfo1),
@@ -829,6 +836,130 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 		PredInfo = PredInfo0
 	).
 
+	% If there is only one clause, use the original head variables
+	% from the clause rather than the introduced `HeadVar__n' variables
+	% as the head variables in the proc_info.
+	% This gives better error messages, more meaningful variable
+	% names in the debugger and slightly faster compilation.
+:- pred maybe_improve_single_clause_headvar_names(globals,
+		pred_info, pred_info).
+:- mode maybe_improve_single_clause_headvar_names(in, in, out) is det.
+
+maybe_improve_single_clause_headvar_names(Globals, PredInfo0, PredInfo) :-
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_clauses(ClausesInfo0, Clauses0),
+	(
+		% Don't do this when making a `.opt' file.
+		% intermod.m needs to perform a similar transformation
+		% which this transformation would interfere with (intermod.m
+		% places the original argument terms, not just the argument
+		% variables in the clause head, and this pass would make it
+		% difficult to work out what were the original arguments).
+		globals__lookup_bool_option(Globals,
+			make_optimization_interface, no),
+
+		Clauses0 = [SingleClause0]
+	->
+		SingleClause0 = clause(A, Goal0, C, D),
+		clauses_info_headvars(ClausesInfo0, HeadVars0),
+		clauses_info_varset(ClausesInfo0, VarSet0),
+
+		Goal0 = _ - GoalInfo0,
+		goal_to_conj_list(Goal0, Conj0),
+		improve_single_clause_headvars(Conj0, HeadVars0, [],
+			VarSet0, VarSet, map__init, Subst, [], RevConj),
+
+		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+		goal_util__rename_vars_in_var_set(NonLocals0, no,
+			Subst, NonLocals),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+		conj_list_to_goal(list__reverse(RevConj), GoalInfo, Goal),
+
+		apply_partial_map_to_list(HeadVars0, Subst, HeadVars),
+		clauses_info_set_headvars(ClausesInfo0,
+			HeadVars, ClausesInfo1),
+
+		SingleClause = clause(A, Goal, C, D),
+		clauses_info_set_clauses(ClausesInfo1,
+			[SingleClause], ClausesInfo2),
+		clauses_info_set_varset(ClausesInfo2, VarSet, ClausesInfo),
+		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
+	;
+		PredInfo = PredInfo0
+	).
+
+:- pred improve_single_clause_headvars(list(hlds_goal)::in, list(prog_var)::in,
+	list(prog_var)::in, prog_varset::in, prog_varset::out,
+	map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
+	list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+improve_single_clause_headvars([], _, _, VarSet, VarSet,
+		Subst, Subst, RevConj, RevConj).
+improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
+		VarSet0, VarSet, Subst0, Subst, RevConj0, RevConj) :-
+	(
+		Goal = unify(LVar, var(RVar), _, _, _) - _, 
+		( list__member(LVar, HeadVars) ->
+			HeadVar = LVar,
+			OtherVar = RVar
+		; list__member(RVar, HeadVars) ->
+			HeadVar = RVar,
+			OtherVar = LVar
+		;
+			fail
+		),
+
+		% The headvars must be distinct variables, so check
+		% that this variable doesn't already appear in the
+		% argument list.
+		\+ list__member(OtherVar, HeadVars),
+		\+ list__member(OtherVar, SeenVars0)
+	->
+		%
+		% If the headvar doesn't appear elsewhere the
+		% unification can be removed. This check is
+		% just to be safe -- the unification should
+		% always be removable.
+		%
+		(
+			some [OtherGoal] (
+				( list__member(OtherGoal, Conj0)
+				; list__member(OtherGoal, RevConj0)
+				),
+				OtherGoal = _ - OtherGoalInfo,
+				goal_info_get_nonlocals(OtherGoalInfo,
+					OtherNonLocals),
+				set__member(HeadVar, OtherNonLocals)
+			)
+		->
+			RevConj1 = [Goal | RevConj0]
+		;
+			RevConj1 = RevConj0
+		),
+
+		%
+		% If the variable wasn't named, use the `HeadVar__n' name.
+		%
+		(
+			\+ varset__search_name(VarSet0, OtherVar, _),
+			varset__search_name(VarSet0, HeadVar, HeadVarName)
+		->
+			varset__name_var(VarSet0, OtherVar,
+				HeadVarName, VarSet1)
+		;
+			VarSet1 = VarSet0
+		),
+
+		Subst1 = map__det_insert(Subst0, HeadVar, OtherVar),
+		SeenVars = [OtherVar | SeenVars0]
+	;
+		RevConj1 = [Goal | RevConj0],
+		VarSet1 = VarSet0,
+		Subst1 = Subst0,
+		SeenVars = SeenVars0
+	),
+	improve_single_clause_headvars(Conj0, HeadVars, SeenVars,
+		VarSet1, VarSet, Subst1, Subst, RevConj1, RevConj).
 
 %-----------------------------------------------------------------------------%
 

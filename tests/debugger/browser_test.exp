@@ -5,11 +5,11 @@ mdb> goto 3
        3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 mdb> set format pretty
 mdb> print *
-       HeadVar__1             	
+       Data (arg 1)           	
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> set -A format verbose
 mdb> print *
-       HeadVar__1             	
+       Data (arg 1)           	
 big
 1-big
 | 1-big
@@ -23,12 +23,12 @@ big(
   big(big(small, 4, big(small, 5, small)), 6, small))
 mdb> set -AP format flat
 mdb> print -f 1
-       HeadVar__1             	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
+       Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> print -r 1
-       HeadVar__1             	
+       Data (arg 1)           	
 big(big(big(...), ...), 3, ...)
 mdb> print -v 1
-       HeadVar__1             	
+       Data (arg 1)           	
 big
 1-big
 | 1-big
@@ -47,7 +47,7 @@ big
   3-small
 
 mdb> print -p 1
-       HeadVar__1             	
+       Data (arg 1)           	
 big(
   big(big(small, 1, small), 2, small), 
   3, 
@@ -59,7 +59,7 @@ mdb> browse 1; print; quit
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> browse -f 1; ls; quit
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small))
-mdb> browse HeadVar__1
+mdb> browse Data
 browser> ls
 big(
   big(big(small, 1, small), 2, small), 
@@ -86,14 +86,14 @@ big(
 browser> quit
 mdb> set -A -f depth 1
 mdb> print *
-       HeadVar__1             	big(big/3, 3, big/3)
-mdb> print HeadVar__1/1
-       HeadVar__1             	big(big(small, 1, small), 2, small)
+       Data (arg 1)           	big(big/3, 3, big/3)
+mdb> print Data/1
+       Data (arg 1)           	big(big(small, 1, small), 2, small)
 mdb> set -f depth 3
 mdb> print 1
-       HeadVar__1             	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
-mdb> print HeadVar__1/1/2
-       HeadVar__1             	2
+       Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
+mdb> print Data/1/2
+       Data (arg 1)           	2
 mdb> print 1^1^2^3
 mdb: the path 3 does not exist.
 mdb> retry

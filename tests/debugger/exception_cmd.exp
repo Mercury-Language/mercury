@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> exception
        4:      2  2 EXCP pred exception_cmd:test/2-0 (det)
 mdb> print *
-       HeadVar__1             	42
+       X (arg 1)              	42
 mdb> continue
 Uncaught exception:
 Software Error: oops

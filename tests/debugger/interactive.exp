@@ -2,7 +2,7 @@
 mdb> echo on
 Command echo enabled.
 mdb> print *
-       HeadVar__1             	state('<<c_pointer>>')
+       DCG_0 (arg 1)          	state('<<c_pointer>>')
 mdb> 
        2:      2  2 CALL pred interactive:data/1-0 (det) interactive.m:40 (interactive.m:19)
 mdb> print *
@@ -14,7 +14,7 @@ mdb> print *
 mdb> 
        4:      3  2 CALL pred interactive:queen/2-0 (nondet) interactive.m:42 (interactive.m:19)
 mdb> print *
-       HeadVar__1             	[1, 2, 3, 4, 5]
+       Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
        5:      4  3 CALL pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:43)
 mdb> print *
@@ -40,9 +40,9 @@ mdb> up 1
 Ancestor level set to 2:
    2  pred interactive:queen/2-0 (nondet) interactive.m:43
 mdb> vars
-        1 HeadVar__1
+        1 Data (arg 1)
 mdb> print *
-       HeadVar__1             	[1, 2, 3, 4, 5]
+       Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
        9:      5  4 EXIT pred interactive:qdelete/3-0 (nondet) interactive.m:52 (interactive.m:48)
 mdb> print HeadVar__1
@@ -267,7 +267,7 @@ mdb> continue -a
       39:     15  3 SWTC pred interactive:safe/1-0 (semidet) s2; interactive.m:57
       40:     16  4 CALL pred interactive:nodiag/3-0 (semidet) interactive.m:61 (interactive.m:58)
       41:     16  4 SWTC pred interactive:nodiag/3-0 (semidet) s2; interactive.m:62
-      42:     16  4 THEN pred interactive:nodiag/3-0 (semidet) s2;c4;t; interactive.m:66
+      42:     16  4 THEN pred interactive:nodiag/3-0 (semidet) s2;c6;t; interactive.m:66
       43:     16  4 FAIL pred interactive:nodiag/3-0 (semidet) interactive.m:61 (interactive.m:58)
       44:     15  3 FAIL pred interactive:safe/1-0 (semidet) interactive.m:56 (interactive.m:44)
       45:      4  3 REDO pred interactive:qperm/2-0 (nondet) interactive.m:46 (interactive.m:43)

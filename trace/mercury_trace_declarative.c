@@ -203,8 +203,6 @@ static	MR_bool		MR_trace_same_construct(const char *p1,
 static	MR_bool		MR_trace_single_component(const char *path);
 static	MR_Word		MR_decl_make_atom(const MR_Label_Layout *layout,
 				MR_Word *saved_regs, MR_Trace_Port port);
-static	MR_bool		MR_hlds_var_is_head_var(const MR_Proc_Layout *entry,
-				int hlds_num);
 static	MR_ConstString	MR_decl_atom_name(const MR_Proc_Layout *entry);
 static	MR_Word		MR_decl_atom_args(const MR_Label_Layout *layout,
 				MR_Word *saved_regs);
@@ -945,6 +943,7 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	MR_Word				arity;
 	MR_Word				atom;
 	int				hv;   /* any head variable */
+	int				num_added_args;
 	MR_TypeInfoParams		type_params;
 	const MR_Proc_Layout		*entry = layout->MR_sll_entry;
 
@@ -965,6 +964,9 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 				(MR_Word) entry->MR_sle_num_head_vars);
 	);
 
+	/* Find out how many type-info/typeclass-info variables were added. */
+	num_added_args = entry->MR_sle_num_head_vars - arity;
+
 	for (hv = 0; hv < entry->MR_sle_num_head_vars; hv++) {
 		int		hlds_num;
 		MR_Word		arg;
@@ -975,8 +977,8 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 
 		hlds_num = entry->MR_sle_head_var_nums[hv];
 
-		is_prog_visible_headvar = 
-			MR_hlds_var_is_head_var(entry, hlds_num);
+		is_prog_visible_headvar =
+				hv >= num_added_args ? MR_TRUE : MR_FALSE;
 
 		problem = MR_trace_return_hlds_var_info(hlds_num, &arg_type,
 				&arg_value);
@@ -1002,35 +1004,6 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	}
 
 	return atom;
-}
-
-static MR_bool
-MR_hlds_var_is_head_var(const MR_Proc_Layout *entry, int hlds_num)
-{
-	MR_ConstString	var_name;
-	MR_ConstString	prefix;
-	const char	*s;
-
-	var_name = MR_hlds_var_name(entry, hlds_num);
-	if (var_name == NULL) {
-		return MR_FALSE;
-	}
-
-	prefix = "HeadVar__";
-	if (! MR_strneq(var_name, prefix, strlen(prefix))) {
-		return MR_FALSE;
-	}
-
-	s = var_name + strlen(prefix);
-	while (*s != '\0') {
-		if (! MR_isdigit(*s)) {
-			return MR_FALSE;
-		}
-
-		s++;
-	}
-
-	return MR_TRUE;
 }
 
 static	MR_ConstString

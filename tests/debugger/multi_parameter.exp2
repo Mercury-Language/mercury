@@ -7,7 +7,7 @@ mdb>
        2:      2  2 CALL pred multi_parameter:foo/2-0 (det)
                          multi_parameter.m:32 (from multi_parameter.m:24)
 mdb> print *
-       HeadVar__1             	'z'
+       X (arg 1)              	'z'
 mdb> 
        3:      3  3 CALL pred multi_parameter:a/2-0 (det)
                          (from multi_parameter.m:32)
@@ -22,13 +22,13 @@ mdb>
        5:      5  5 CALL pred char:to_int/2-0 (det)
                          char.m:NNNN (from multi_parameter.m:20)
 mdb> print *
-       Character              	'z'
+       Character (arg 1)      	'z'
 mdb> 
        6:      5  5 EXIT pred char:to_int/2-0 (det)
                          char.m:NNNN (from multi_parameter.m:20)
 mdb> print *
-       Character              	'z'
-       Int                    	122
+       Character (arg 1)      	'z'
+       Int (arg 2)            	122
 mdb> 
        7:      4  4 EXIT pred multi_parameter:ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
                          multi_parameter.m:20

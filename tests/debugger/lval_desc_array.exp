@@ -10,7 +10,7 @@ mdb> up 1
 Ancestor level set to 1:
    1  pred lval_desc_array:perform_increments/2-0 (det)
 mdb> print *
-       HeadVar__1             	0
+       DCG_0 (arg 1)          	0
        DCG_1                  	1
        DCG_2                  	2
        DCG_3                  	3

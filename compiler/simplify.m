@@ -88,9 +88,9 @@
 :- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.
 :- import_module ll_backend__code_util, ll_backend__follow_code.
-:- import_module libs__options.
+:- import_module libs__options, libs__trace_params.
 
-:- import_module int, set, require, std_util, varset, term.
+:- import_module int, set, require, std_util, string, varset, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -1680,7 +1680,14 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
 	( simplify_do_excess_assigns(Info0) ->
 		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
 		map__init(Subn0),
-		simplify__find_excess_assigns_in_conj(ConjNonLocals,
+		simplify_info_get_module_info(Info0, ModuleInfo),
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_trace_level(Globals, TraceLevel),
+		globals__lookup_bool_option(Globals,
+			trace_optimized, TraceOptimized),
+		simplify_info_get_varset(Info0, VarSet0),
+		simplify__find_excess_assigns_in_conj(TraceLevel,
+			TraceOptimized, VarSet0, ConjNonLocals,
 			Goals0, [], RevGoals, Subn0, Subn1),
 		( map__is_empty(Subn1) ->
 			Goals = Goals0,
@@ -1691,7 +1698,6 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
 			MustSub = no,
 			goal_util__rename_vars_in_goals(Goals1, MustSub,
 				Subn, Goals),
-			simplify_info_get_varset(Info0, VarSet0),
 			map__keys(Subn0, RemovedVars),
 			varset__delete_vars(VarSet0, RemovedVars, VarSet),
 			simplify_info_set_varset(Info0, VarSet, Info1),
@@ -1714,28 +1720,35 @@ simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
 
 :- type var_renaming == map(prog_var, prog_var).
 
-:- pred simplify__find_excess_assigns_in_conj(set(prog_var)::in,
-	list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred simplify__find_excess_assigns_in_conj(trace_level::in, bool::in,
+	prog_varset::in, set(prog_var)::in, list(hlds_goal)::in,
+	list(hlds_goal)::in, list(hlds_goal)::out,
 	var_renaming::in, var_renaming::out) is det.
 
-simplify__find_excess_assigns_in_conj(_, [], RevGoals, RevGoals,
+simplify__find_excess_assigns_in_conj(_, _, _, _, [], RevGoals, RevGoals,
 			Subn, Subn).
-simplify__find_excess_assigns_in_conj(ConjNonLocals, [Goal | Goals],
-			RevGoals0, RevGoals, Subn0, Subn) :-
-	( goal_is_excess_assign(ConjNonLocals, Goal, Subn0, Subn1) ->
+simplify__find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet,
+		ConjNonLocals, [Goal | Goals], RevGoals0, RevGoals,
+		Subn0, Subn) :-
+	(
+		goal_is_excess_assign(Trace, TraceOptimized,
+			VarSet, ConjNonLocals, Goal, Subn0, Subn1)
+	->
 		RevGoals1 = RevGoals0,
 		Subn2 = Subn1
 	;
 		RevGoals1 = [Goal | RevGoals0],
 		Subn2 = Subn0
 	),
-	simplify__find_excess_assigns_in_conj(ConjNonLocals, Goals,
-		RevGoals1, RevGoals, Subn2, Subn).
+	simplify__find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet,
+		ConjNonLocals, Goals, RevGoals1, RevGoals, Subn2, Subn).
 
-:- pred goal_is_excess_assign(set(prog_var)::in, hlds_goal::in,
-	var_renaming::in, var_renaming::out) is semidet.
+:- pred goal_is_excess_assign(trace_level::in, bool::in, prog_varset::in,
+	set(prog_var)::in, hlds_goal::in, var_renaming::in,
+	var_renaming::out) is semidet.
 
-goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn) :-
+goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals,
+		Goal0, Subn0, Subn) :-
 	Goal0 = unify(_, _, _, Unif, _) - _,
 	Unif = assign(LeftVar0, RightVar0),
 
@@ -1745,12 +1758,47 @@ goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn) :-
 	%
 	find_renamed_var(Subn0, LeftVar0, LeftVar),
 	find_renamed_var(Subn0, RightVar0, RightVar),
-	( \+ set__member(LeftVar, ConjNonLocals) ->
-		map__det_insert(Subn0, LeftVar, RightVar, Subn)
-	; \+ set__member(RightVar, ConjNonLocals) ->
-		map__det_insert(Subn0, RightVar, LeftVar, Subn)
+
+	CanElimLeft = ( set__member(LeftVar, ConjNonLocals) -> no ; yes ),
+	CanElimRight = ( set__member(RightVar, ConjNonLocals) -> no ; yes ),
+
+	% If we have a choice, eliminate an unnamed variable.
+	( CanElimLeft = yes, CanElimRight = yes ->
+		( var_is_named(VarSet, LeftVar) ->
+			ElimVar = RightVar,
+			ReplacementVar = LeftVar
+		;
+			ElimVar = LeftVar,
+			ReplacementVar = RightVar
+		)
+	; CanElimLeft = yes ->
+		ElimVar = LeftVar,
+		ReplacementVar = RightVar
+	; CanElimRight = yes ->
+		ElimVar = RightVar,
+		ReplacementVar = LeftVar
 	;
 		fail
+	),
+	map__det_insert(Subn0, ElimVar, ReplacementVar, Subn),
+
+	% If the module is being compiled with `--trace deep' and
+	% `--no-trace-optimized' don't replace a meaningful variable
+	% name with `HeadVar__n' or an anonymous variable.
+	\+ (
+		trace_level_needs_meaningful_var_names(Trace) = yes,
+		TraceOptimized = no,
+		var_is_named(VarSet, ElimVar),
+		\+ var_is_named(VarSet, ReplacementVar)
+	).
+
+:- pred var_is_named(prog_varset::in, prog_var::in) is semidet.
+
+var_is_named(VarSet, Var) :-
+	varset__search_name(VarSet, Var, Name),
+	\+ (
+		string__append("HeadVar__", Suffix, Name),
+		string__to_int(Suffix, _)
 	).
 
 :- pred find_renamed_var(var_renaming, prog_var, prog_var).

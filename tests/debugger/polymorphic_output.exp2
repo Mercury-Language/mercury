@@ -56,13 +56,13 @@ mdb> b std_util__det_arg
 mdb> c
        9:      6  4 CALL func std_util:det_arg/2-0 (det)
 mdb> P
-       HeadVar__1             	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
-       HeadVar__2             	3
+       Type (arg 1)           	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+       Index (arg 2)          	3
 mdb> f
       10:      6  4 EXCP func std_util:det_arg/2-0 (det)
 mdb> P
-       HeadVar__1             	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
-       HeadVar__2             	3
+       Type (arg 1)           	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+       Index (arg 2)          	3
 mdb> c
 Uncaught exception:
 Software Error: det_arg: argument has wrong type

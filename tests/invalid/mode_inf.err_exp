@@ -5,8 +5,8 @@ mode_inf.m:009:   have insts `free, free',
 mode_inf.m:009:   which does not match any of the valid modes for
 mode_inf.m:009:   the callee, because of the following error.
 mode_inf.m:011: In clause for `q(out(not_reached), out(not_reached))':
-mode_inf.m:011:   in argument 1 of clause head:
-mode_inf.m:011:   mode error in unification of `HeadVar__1' and `X'.
-mode_inf.m:011:   Variable `HeadVar__1' has instantiatedness `free',
+mode_inf.m:011:   in argument 2 of clause head:
+mode_inf.m:011:   mode error in unification of `HeadVar__2' and `X'.
+mode_inf.m:011:   Variable `HeadVar__2' has instantiatedness `free',
 mode_inf.m:011:   variable `X' has instantiatedness `free'.
 For more information, try recompiling with `-E'.

@@ -38,8 +38,12 @@
 ** as the fullname field, and the has_suffix field will be set to false
 ** (the num_suffix field will not contain anything meaningful).
 **
-** The is_headvar field will be set to true iff the basename of the variable
-** is HeadVar__; such variables are always listed before other variables.
+** If the variable is an argument (but not a type-info argument), the
+** is_headvar field is set to the argument number (starting at 1).
+** If the variable is not an argument, the is_headvar field will be 0.
+** This field is used to list the head variables in order before the
+** body variables.
+**
 ** The is_ambiguous field will be set iff the full name of the variable
 ** does not uniquely identify it among all the variables live at the
 ** current point. What *is* guaranteed to uniquely identify a variable
@@ -54,7 +58,7 @@ typedef struct {
 	char				*MR_var_basename;
 	int				MR_var_num_suffix;
 	MR_bool				MR_var_has_suffix;
-	MR_bool				MR_var_is_headvar;
+	int				MR_var_is_headvar;
 	MR_bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
 	MR_TypeInfo			MR_var_type;
@@ -308,6 +312,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 	const MR_Proc_Layout		*entry;
 	MR_Word				*valid_saved_regs;
 	int				var_count;
+	int				proc_arity;
+	int				num_added_args;
 	MR_TypeInfo			*type_params;
 	MR_Word				value;
 	MR_TypeInfo			type_info;
@@ -400,9 +406,18 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 	string_table_size =
 		entry->MR_sle_module_layout->MR_ml_string_table_size;
 
+	/* Work out how many type-infos were added. */
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
+		proc_arity = entry->MR_sle_comp.MR_comp_arity;
+	} else {
+		proc_arity = entry->MR_sle_user.MR_user_arity;
+	}
+	num_added_args = entry->MR_sle_num_head_vars - proc_arity;
+
 	slot = 0;
 	for (i = 0; i < var_count; i++) {
 		int	var_num;
+		int	head_var_num;
 		int	offset;
 
 		var_num = level_layout->MR_sll_var_nums[i];
@@ -479,14 +494,18 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
 		}
 
-		if (MR_streq(MR_point.MR_point_vars[slot].MR_var_basename,
-			"HeadVar__"))
+		MR_point.MR_point_vars[slot].MR_var_is_headvar = 0;
+		for (head_var_num = num_added_args;
+				head_var_num < entry->MR_sle_num_head_vars;
+				head_var_num++)
 		{
-			MR_point.MR_point_vars[slot].MR_var_is_headvar =
-						MR_TRUE;
-		} else {
-			MR_point.MR_point_vars[slot].MR_var_is_headvar =
-						MR_FALSE;
+			if (entry->MR_sle_head_var_nums[head_var_num]
+					== var_num)
+			{
+				MR_point.MR_point_vars[slot].MR_var_is_headvar
+					= head_var_num - num_added_args + 1;
+				break;
+			}
 		}
 
 		MR_point.MR_point_vars[slot].MR_var_is_ambiguous = MR_FALSE;
@@ -554,14 +573,20 @@ MR_trace_compare_var_details(const void *arg1, const void *arg2)
 {
 	MR_Var_Details	*var1;
 	MR_Var_Details	*var2;
+	int		var1_is_headvar;
+	int		var2_is_headvar;
 	int		diff;
 
 	var1 = (MR_Var_Details *) arg1;
 	var2 = (MR_Var_Details *) arg2;
 
-	if (var1->MR_var_is_headvar && ! var2->MR_var_is_headvar) {
+	var1_is_headvar = var1->MR_var_is_headvar;
+	var2_is_headvar = var2->MR_var_is_headvar;
+	if (var1_is_headvar && var2_is_headvar) {
+		return var1_is_headvar - var2_is_headvar;
+	} else if (var1_is_headvar && ! var2_is_headvar) {
 		return -1;
-	} else if (! var1->MR_var_is_headvar && var2->MR_var_is_headvar) {
+	} else if (! var1_is_headvar && var2_is_headvar) {
 		return 1;
 	}
 
@@ -752,41 +777,76 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
 	MR_ConstString		proc_name;
 	MR_Word			is_func;
 	MR_Word			arg_list;
+	MR_Word			prev;
+	MR_Word			cur;
 	MR_Word			arg;
 	MR_TypeInfo		arg_list_typeinfo;
 	MR_Var_Details		*vars;
+	int			headvar_num;
 	int			arity;
-	int			hv;
 	int			slot;
 
-	proc_layout = MR_point.MR_point_level_entry;
-	MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
-		&is_func);
+        proc_layout = MR_point.MR_point_level_entry;
+        MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
+                &is_func);
 
-	vars = MR_point.MR_point_vars;
-	for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
-		if (vars[slot].MR_var_is_headvar) {
-			break;
-		}
-	}
+        vars = MR_point.MR_point_vars;
+        arg_list = MR_list_empty();
+        for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
+            headvar_num = vars[slot].MR_var_is_headvar;
+            if (headvar_num) {
+                /*
+                ** Insert the slot into the list sorted by argument number.
+                */
+                prev = MR_list_empty();
+                cur = arg_list;
+                while (!MR_list_is_empty(cur) &&
+                       headvar_num < vars[MR_list_head(cur)].MR_var_is_headvar)
+                {
+                    prev = cur;
+                    cur = MR_list_tail(cur);
+                }
+                if (MR_list_is_empty(prev)) {
+                    arg_list = MR_list_cons(slot, cur);
+                } else {
+                    MR_list_tail(prev) = MR_list_cons(slot, cur);
+                }
+            }
+        }
 
-	arg_list = MR_list_empty();
-	for (hv = arity; hv >= 1; hv--) {
-		if (slot >= 0 && vars[slot].MR_var_is_headvar
-			&& vars[slot].MR_var_num_suffix == hv)
-		{
-			MR_new_univ_on_hp(arg, vars[slot].MR_var_type,
-				vars[slot].MR_var_value);
-			slot--;
-		} else {
-			MR_new_univ_on_hp(arg, &MR_unbound_typeinfo_struct,
-				MR_UNBOUND);
-		}
-		arg_list = MR_list_cons(arg, arg_list);
-	}
+        /*
+        ** Replace the slot numbers in the argument list
+        ** with the argument values, adding entries for
+        ** any unbound arguments (they will be printed
+        ** as `_').
+        */
+        prev = MR_list_empty();
+        cur = arg_list;
+        for (headvar_num = 1; headvar_num <= arity; headvar_num++) {
+            if (!MR_list_is_empty(cur) && 
+                vars[MR_list_head(cur)].MR_var_is_headvar == headvar_num)
+            {
+                slot = MR_list_head(cur);
+                MR_new_univ_on_hp(arg, vars[slot].MR_var_type,
+                        vars[slot].MR_var_value);
+                MR_list_head(cur) = arg;
+                prev = cur;
+                cur = MR_list_tail(cur);
+            } else {
+                MR_new_univ_on_hp(arg, &MR_unbound_typeinfo_struct,
+                        MR_UNBOUND);
+                if (MR_list_is_empty(prev)) {
+                        arg_list = MR_list_cons(arg, cur);
+                        prev = arg_list;
+                } else {
+                        MR_list_tail(prev) = MR_list_cons(arg, cur);
+                        prev = MR_list_tail(prev);
+                }
+            }
+        }
 
-	(*browser)(proc_name, arg_list, is_func, caller, format);
-	return NULL;
+        (*browser)(proc_name, arg_list, is_func, caller, format);
+        return NULL;
 }
 
 const char *
@@ -1173,6 +1233,19 @@ MR_trace_print_var_name(FILE *out, MR_Var_Details *var)
 		char	buf[256]; /* this should be plenty big enough */
 
 		sprintf(buf, "(%d)", var->MR_var_hlds_number);
+		len += strlen(buf);
+		fputs(buf, out);
+	}
+
+	/*
+	** If the variable starts with "HeadVar__" then the
+	** argument number is part of the name.
+	*/
+	if (var->MR_var_is_headvar &&
+			!MR_streq(var->MR_var_basename, "HeadVar__")) {
+		char	buf[256]; /* this should be plenty big enough */
+
+		sprintf(buf, " (arg %d)", var->MR_var_is_headvar);
 		len += strlen(buf);
 		fputs(buf, out);
 	}

@@ -36,7 +36,6 @@ record_syntax_errors.m:046:   and constant `"invalid value"'.
 record_syntax_errors.m:046:   argument has type `int',
 record_syntax_errors.m:046:   constant `"invalid value"' has type `string'.
 	The partial type assignment was:
-	HeadVar__1 :: (record_syntax_errors:cons)
 	Cons :: (record_syntax_errors:cons)
 	Cons0 :: (record_syntax_errors:cons)
 	V_4 :: int

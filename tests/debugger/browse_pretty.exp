@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> goto 3
        3:      2  2 EXIT pred browse_pretty:big_data/1-0 (det) browse_pretty.m:19 (browse_pretty.m:13)
 mdb> print *
-       HeadVar__1             	big(big(big(small, [|]/2, small), [|](1, [|]/2), small), [|](1, [|](2, [|]/2)), big(big(small, [|]/2, big/3), [|]/2, small))
+       Data (arg 1)           	big(big(big(small, [|]/2, small), [|](1, [|]/2), small), [|](1, [|](2, [|]/2)), big(big(small, [|]/2, big/3), [|]/2, small))
 mdb> browse 1
 browser> set format raw_pretty
 browser> set depth 10

@@ -9,27 +9,27 @@ Pure Prolog Interpreter.
 
       11:      6  3 CALL pred interpreter:consult/5-0 (det)
 mdb> vars
-        1 HeadVar__1
-        2 HeadVar__2
-        3 HeadVar__4
+        1 File (arg 1)
+        2 Database0 (arg 2)
+        3 DCG_0 (arg 4)
 mdb> print *
-       HeadVar__1             	"interpreter.m"
-       HeadVar__2             	[]
-       HeadVar__4             	state('<<c_pointer>>')
+       File (arg 1)           	"interpreter.m"
+       Database0 (arg 2)      	[]
+       DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> goto 30
 Consulting file `interpreter.m'...
       30:     14  6 EXIT pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
-       HeadVar__1             	[]
-       HeadVar__2             	varset(var_supply(0), empty, empty)
-       HeadVar__3             	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
+       Database (arg 1)       	[]
+       VarSet (arg 2)         	varset(var_supply(0), empty, empty)
+       Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
        HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [])
 mdb> finish -a
 This command is a no-op from this port.
 mdb> print *
-       HeadVar__1             	[]
-       HeadVar__2             	varset(var_supply(0), empty, empty)
-       HeadVar__3             	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
+       Database (arg 1)       	[]
+       VarSet (arg 2)         	varset(var_supply(0), empty, empty)
+       Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
        HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [])
 mdb> 
       31:     16  6 CALL pred interpreter:consult_until_eof/4-0 (det)

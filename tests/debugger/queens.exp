@@ -4,7 +4,7 @@ Command echo enabled.
 mdb> retry 1
 not that many ancestors
 mdb> print *
-       HeadVar__1             	state('<<c_pointer>>')
+       DCG_0 (arg 1)          	state('<<c_pointer>>')
 mdb> 
        2:      2  2 CALL pred queens:data/1-0 (det) queens.m:39 (queens.m:15)
 mdb> print *
@@ -16,7 +16,7 @@ mdb> print *
 mdb> 
        4:      3  2 CALL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> print *
-       HeadVar__1             	[1, 2, 3, 4, 5]
+       Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
        5:      4  3 CALL pred queens:qperm/2-0 (nondet) queens.m:45 (queens.m:42)
 mdb> print *
@@ -70,14 +70,15 @@ Ancestor level set to 1:
                            pred queens:qperm/2-0 (nondet)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
+       L                      	[1, 2, 3, 4, 5]
 mdb> up 1
 Ancestor level set to 2:
    2  queens.m:42
       pred queens:queen/2-0 (nondet)
 mdb> vars
-        1 HeadVar__1
+        1 Data (arg 1)
 mdb> print *
-       HeadVar__1             	[1, 2, 3, 4, 5]
+       Data (arg 1)           	[1, 2, 3, 4, 5]
 mdb> 
        9:      5  4 EXIT queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
@@ -134,9 +135,9 @@ mdb> stack
    5       pred queens:main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d
    0      20      10    6 pred queens:qperm/2-0 (nondet) (queens.m:45) (empty)
-   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
-   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
-   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
+   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c3;
+   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c3;
+   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c3;
    4       4       3    2 pred queens:queen/2-0 (nondet) (queens.m:42) c2;
    5       1       1    1 pred queens:main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
 mdb> print *
@@ -199,7 +200,7 @@ mdb> continue -a
       41:     16  4 SWTC queens.m:61
                          pred queens:nodiag/3-0 (semidet) s2;
       42:     16  4 THEN queens.m:65
-                         pred queens:nodiag/3-0 (semidet) s2;c4;t;
+                         pred queens:nodiag/3-0 (semidet) s2;c6;t;
       43:     16  4 FAIL queens.m:60 (from queens.m:57)
                          pred queens:nodiag/3-0 (semidet)
       44:     15  3 FAIL queens.m:55 (from queens.m:43)

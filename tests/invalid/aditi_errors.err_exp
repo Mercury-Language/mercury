@@ -1,7 +1,7 @@
 aditi_errors.m:021: In Aditi predicate `aditi_errors:q/4':
 aditi_errors.m:021:   argument 4 is partially instantiated.
 aditi_errors.m:040: In Aditi predicate `aditi_errors:aditi_error/5':
-aditi_errors.m:040:   `HeadVar__4' is partially instantiated.
+aditi_errors.m:040:   `Thing' is partially instantiated.
 aditi_errors.m:008: In Aditi predicate `aditi_errors:aditi_error/5':
 aditi_errors.m:008:   the type of argument 5 contains abstract types.
 aditi_errors.m:040: In Aditi predicate `aditi_errors:aditi_error/5':

@@ -7,7 +7,7 @@ mdb>
        2:      2  2 CALL pred multi_parameter:foo/2-0 (det)
                          multi_parameter.m:32 (from multi_parameter.m:24)
 mdb> print *
-       HeadVar__1             	'z'
+       X (arg 1)              	'z'
 mdb> 
        3:      3  3 CALL pred multi_parameter:a/2-0 (det)
                          (from multi_parameter.m:32)
@@ -34,12 +34,12 @@ mdb>
        7:      2  2 EXIT pred multi_parameter:foo/2-0 (det)
                          multi_parameter.m:32 (from multi_parameter.m:24)
 mdb> print *
-       HeadVar__1             	'z'
-       HeadVar__2             	122
+       X (arg 1)              	'z'
+       Y (arg 2)              	122
 mdb> 
 122
        8:      1  1 EXIT pred multi_parameter:main/2-0 (det)
                          multi_parameter.m:23
 mdb> print *
-       HeadVar__2             	state('<<c_pointer>>')
+       DCG_2 (arg 2)          	state('<<c_pointer>>')
 mdb> continue -S

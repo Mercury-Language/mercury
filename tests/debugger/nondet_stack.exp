@@ -165,7 +165,7 @@ non  26: ordinary, 12 words
  succip: unnamed label
  succfr: non  10 
  on main nondet branch non 135
-       HeadVar__1             [1, 2, 3, 4, 5]
+       Data (arg 1)           [1, 2, 3, 4, 5]
        TypeCtorInfo_5         int
 non  14: temp
  redoip: label UNKNOWN
@@ -741,7 +741,9 @@ non 145: ordinary, 13 words
  succfr: non 132 
  internal frame on nondet side branch non 158
        HeadVar__2             [4, 5]
+       A                      4
        TypeInfo_for_T         int
+       Z                      [5]
 non 132: ordinary, 13 words
  redoip: unnamed label
  redofr: non 132 
@@ -749,7 +751,9 @@ non 132: ordinary, 13 words
  succfr: non 119 
  internal frame on nondet side branch non 158
        HeadVar__2             [2, 4, 5]
+       A                      2
        TypeInfo_for_T         int
+       Z                      [4, 5]
 non 119: ordinary, 13 words
  redoip: unnamed label
  redofr: non 119 
@@ -784,7 +788,9 @@ non  84: ordinary, 13 words
  succfr: non  71 
  internal frame on nondet side branch non  97
        HeadVar__2             [2, 3, 4, 5]
+       A                      2
        TypeInfo_for_T         int
+       Z                      [3, 4, 5]
 non  71: ordinary, 13 words
  redoip: unnamed label
  redofr: non  71 
@@ -825,7 +831,7 @@ non  26: ordinary, 12 words
  succip: unnamed label
  succfr: non  10 
  internal frame on nondet side branch non 247
-       HeadVar__1             [1, 2, 3, 4, 5]
+       Data (arg 1)           [1, 2, 3, 4, 5]
        TypeCtorInfo_5         int
 non  14: temp
  redoip: label UNKNOWN

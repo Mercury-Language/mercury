@@ -6,7 +6,7 @@ mdb> goto 2
 mdb> finish
        4:      2  2 EXCP pred exception_vars:test/2-0 (det)
 mdb> print *
-       HeadVar__1             	42
+       X (arg 1)              	42
 mdb> continue
 Uncaught exception:
 Software Error: oops

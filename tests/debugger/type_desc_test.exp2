@@ -13,7 +13,7 @@ mdb> continue
 mdb> finish
        6:      3  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
 mdb> print *
-       HeadVar__1             	[1, 2]
+       Val (arg 1)            	[1, 2]
        HeadVar__2             	list:list(int)
 mdb> continue
 type_desc: list:list(int)
@@ -21,7 +21,7 @@ type_desc: list:list(int)
 mdb> finish
       16:      8  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> print *
-       HeadVar__1             	list:list(int)
+       TypeDesc (arg 1)       	list:list(int)
        HeadVar__2             	list:list/1
 mdb> continue
 type_ctor_desc: list:list/1
@@ -29,7 +29,7 @@ type_ctor_desc: list:list/1
 mdb> finish
       28:     14  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
 mdb> print *
-       HeadVar__1             	["one", "two", "three"]
+       Val (arg 1)            	["one", "two", "three"]
        HeadVar__2             	list:list(string)
 mdb> continue
 type_desc: list:list(string)
@@ -37,7 +37,7 @@ type_desc: list:list(string)
 mdb> finish
       38:     19  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> print *
-       HeadVar__1             	list:list(string)
+       TypeDesc (arg 1)       	list:list(string)
        HeadVar__2             	list:list/1
 mdb> continue -S
 type_ctor_desc: list:list/1

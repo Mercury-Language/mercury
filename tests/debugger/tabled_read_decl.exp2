@@ -15,25 +15,25 @@ mdb> continue
 mdb> finish -n
       57:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
 mdb> print *
-       HeadVar__1             	'<<c_pointer>>'
-       HeadVar__2             	0
-       HeadVar__3             	123
-       HeadVar__5             	state('<<c_pointer>>')
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	123
+       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
        8:      4  3 CALL pred tabled_read_decl:test/5-0 (det)
 mdb> print *
-       HeadVar__1             	'<<c_pointer>>'
-       HeadVar__2             	0
-       HeadVar__4             	state('<<c_pointer>>')
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> finish -n
       57:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
 mdb> print *
-       HeadVar__1             	'<<c_pointer>>'
-       HeadVar__2             	0
-       HeadVar__3             	123
-       HeadVar__5             	state('<<c_pointer>>')
+       Stream (arg 1)         	'<<c_pointer>>'
+       SoFar (arg 2)          	0
+       N (arg 3)              	123
+       DCG_2 (arg 5)          	state('<<c_pointer>>')
 mdb> break tabled_read_decl__poly_test
  1: + stop  interface pred tabled_read_decl:poly_test/6-0 (det)
 mdb> continue
@@ -42,11 +42,11 @@ mdb> continue
 mdb> finish -n
      109:     24  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
 mdb> print *
-       HeadVar__1             	'<<c_pointer>>'
-       HeadVar__2             	['a', 'b', 'c']
-       HeadVar__3             	0
-       HeadVar__4             	456
-       HeadVar__6             	state('<<c_pointer>>')
+       Stream (arg 1)         	'<<c_pointer>>'
+       Unused (arg 2)         	['a', 'b', 'c']
+       SoFar (arg 3)          	0
+       N (arg 4)              	456
+       DCG_2 (arg 6)          	state('<<c_pointer>>')
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
@@ -54,11 +54,11 @@ Are you sure you want to do it? y
 mdb> finish -n
      109:     24  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
 mdb> print *
-       HeadVar__1             	'<<c_pointer>>'
-       HeadVar__2             	['a', 'b', 'c']
-       HeadVar__3             	0
-       HeadVar__4             	456
-       HeadVar__6             	state('<<c_pointer>>')
+       Stream (arg 1)         	'<<c_pointer>>'
+       Unused (arg 2)         	['a', 'b', 'c']
+       SoFar (arg 3)          	0
+       N (arg 4)              	456
+       DCG_2 (arg 6)          	state('<<c_pointer>>')
 mdb> delete *
  0: E stop  interface pred tabled_read_decl:test/5-0 (det)
  1: E stop  interface pred tabled_read_decl:poly_test/6-0 (det)

@@ -51,7 +51,7 @@
 :- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_data.
 :- import_module check_hlds__mode_util, hlds__make_hlds, check_hlds__purity.
 :- import_module libs__globals.
-:- import_module bool, int, set, map, varset.
+:- import_module assoc_list, bool, int, set, map, varset.
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
@@ -143,13 +143,40 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
-	ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, Clauses,
+	ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, Clauses,
 		TI_VarMap, TCI_VarMap, _),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->
+		(
+			SingleGoal = foreign_proc(_, _, _, Args,
+					ArgNames, _, _) - _
+		->
+			%
+			% Use the original variable names for the headvars
+			% of foreign_proc clauses, not the introduced
+			% `HeadVar__n' names.
+			%
+			ArgsAndNames = assoc_list__from_corresponding_lists(
+					Args, ArgNames),
+			VarSet = list__foldl(
+			    (func(Arg - MaybeArgName, Vars0) = Vars :-
+				(
+				    MaybeArgName = yes(ArgName - _),
+				    varset__name_var(Vars0, Arg, ArgName, Vars)
+				;
+				    MaybeArgName = no,
+				    Vars = Vars0
+				)
+			    ),
+			    ArgsAndNames, VarSet0)
+		;
+			VarSet = VarSet0
+		),
 		Goal = SingleGoal
 	;
+		VarSet = VarSet0,
+
 		%
 		% Convert the list of clauses into a disjunction,
 		% and construct a goal_info for the disjunction.

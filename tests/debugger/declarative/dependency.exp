@@ -22,7 +22,7 @@ mdb> set format pretty
 mdb> proc_body
 	
 proc_rep(
-  [|](1, []), 
+  [|](2, []), 
   conj_rep(
     [|](
       atomic_goal_rep(
