@@ -373,6 +373,33 @@ install_library: mercury.dll install_grade_dirs install_gac install_strong_name
 	cp `vpath_find $($(STD_LIB_NAME).foreign_dlls) $($(STD_LIB_NAME).dlls) \
 		mercury.dll` $(INSTALL_MERC_LIB_DIR)
 
+# To build the .NET library with debugging information, add
+# the following to ../Mmake.params:
+#
+#	EXTRA_MS_ILASMFLAGS=/debug
+#	EXTRA_CSCFLAGS=/debug+ /debug:full
+#	EXTRA_MS_CLFLAGS=/Zi
+#
+# XXX Unfortunately, however, this is a problem with AL, which prohibits
+# linking debuggable C# code with IL or MC++ code.  The following
+# horrible hack avoids that problem.  After modify Mmake.params as
+# described above, invoke `mmake install_debug_library'.
+
+.PHONY: install_debug_library
+install_debug_library:
+	-mmake library
+	mmake munge_dll_debug_info
+	mmake install_library
+
+.PHONY: munge_dll_debug_info
+munge_dll_debug_info:
+	for file in *csharp_code.dll; do \
+		ildasm /out:$$file.ild; \
+		sed  's/01 00 00 01/01 00 01 01/' $$file.ild \
+			> $$file.ild.munged; \
+		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
+	done
+
 # The GAC is the global assembly cache, which is the system managed
 # place to put .NET assemblies.
 # gacutil installs (and uninstalls) DLLs from the GAC.
