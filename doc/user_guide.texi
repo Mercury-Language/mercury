@@ -2910,15 +2910,16 @@ A path describes the position of a goal
 inside the body of a procedure definition.
 For example, if the procedure body is a disjunction
 in which each disjunct is a conjunction,
-then the path ``d2;c3;'' denotes the third conjunct within the second disjunct.
+then the path @samp{d2;c3;} denotes the third conjunct
+within the second disjunct.
 If the third conjunct within the second disjunct is an atomic goal
 such as a call or a unification,
-then this will be the only goal with whose path has ``d2;c3;'' as a prefix.
+then this will be the only goal with whose path has @samp{d2;c3;} as a prefix.
 If it is a compound goal,
-then its components will all have paths that have ``d2;c3;'' as a prefix,
+then its components will all have paths that have @samp{d2;c3;} as a prefix,
 e.g. if it is an if-then-else,
 then its three components will have the paths
-``d2;c3;?;'' ``d2;c3;t;'' and ``d2;c3;e;''.
+@samp{d2;c3;?;}, @samp{d2;c3;t;} and @samp{d2;c3;e;}.
 
 Paths refer to the internal form of the procedure definition.
 When debugging is enabled (and the option --trace-optimized is not given),
@@ -2947,7 +2948,7 @@ In such cases, making sense of goal paths
 may require a look at the internal form of the procedure.
 You can ask the compiler to generate a file
 with the internal forms of the procedures in a given module
-by including the options ``-dfinal -Dpaths'' on the command line
+by including the options @samp{-dfinal -Dpaths} on the command line
 when compiling that module.
 
 @node Preparing a program for debugging
@@ -2994,7 +2995,9 @@ will never generate any events.
 @item deep
 A procedure compiled with trace level @samp{deep}
 will always generate all the events requested by the user.
-XXX By default, this is all possible events,
+@c why is this XXX here?
+@c XXX
+By default, this is all possible events,
 but you can tell the compiler that
 you are not interested in some kinds of events
 via compiler options (see below).
@@ -3011,7 +3014,7 @@ its nearest ancestor whose trace level is not @samp{none}
 has trace level @samp{deep} or @samp{shallow}.
 @end table
 
-The intented use of these trace levels are as follows.
+The intended uses of these trace levels are as follows.
 
 @table @emph
 @item
@@ -3149,8 +3152,8 @@ even if some or all of their modules were compiled with some form of tracing,
 and even if the grade of the executable is a debugging grade,
 This is similar to the behavior of executables
 created by the implementations of other languages;
-for example the executable of a C program compiled with -g
-does not autonomously invoke gdb or dbx etc when it is executed.
+for example the executable of a C program compiled with @samp{-g}
+does not automatically invoke gdb or dbx etc when it is executed.
 
 Unlike those other language implementations,
 when you invoke the Mercury debugger @samp{mdb},
