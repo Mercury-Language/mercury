@@ -45,8 +45,6 @@
 % [ ] Computed gotos need testing.
 % [ ] :- extern doesn't work -- it needs to be treated like pragma c code.
 % [ ] nested modules need testing
-% [ ] We generate too many castclasses, it would be good to check if we
-%     really to do it before generating it.  Same with isinst.
 % [ ] Implement pragma export.
 % [ ] Fix issues with abstract types so that we can implement C
 %     pointers as MR_Box rather than MR_Word.
@@ -1841,10 +1839,12 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs,
 		{ StoreLvalInstrs = instr_node(stind(SimpleType)) } 
 	; { Lval = field(_MaybeTag, FieldRval, FieldNum, FieldType, 
 			ClassType) } -> 
-		{ FieldRef = get_fieldref(DataRep, FieldNum, FieldType,
-			ClassType) },
+		{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+			FieldRef, CastClassInstrs) },
 		load(FieldRval, LoadMemRefInstrs),
-		{ StoreLvalInstrs = instr_node(stfld(FieldRef)) } 
+		{ StoreLvalInstrs = tree__list([
+			CastClassInstrs,
+			instr_node(stfld(FieldRef))]) } 
 	;
 		{ LoadMemRefInstrs = empty },
 		store(Lval, StoreLvalInstrs)
@@ -1885,15 +1885,17 @@ load(lval(Lval), Instrs) -->
 			{ SimpleFieldType = mlds_type_to_ilds_simple_type(
 				DataRep, FieldType) },
 			load(OffSet, OffSetLoadInstrs),
+			{ CastClassInstrs = empty },
 			{ LoadInstruction = ldelem(SimpleFieldType) }
 		;
-			{ FieldRef = get_fieldref(DataRep, FieldNum, FieldType,
-				ClassType) },
+			{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+				FieldRef, CastClassInstrs) },
 			{ LoadInstruction = ldfld(FieldRef) },
 			{ OffSetLoadInstrs = empty }
 		),
 		{ Instrs = tree__list([
 				RvalLoadInstrs, 
+				CastClassInstrs,
 				OffSetLoadInstrs, 
 				instr_node(LoadInstruction)
 				]) }
@@ -1967,11 +1969,12 @@ load(mem_addr(Lval), Instrs) -->
 			Instrs = instr_node(ldsfld(FieldRef))
 		}
 	; { Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType) },
-		{ FieldRef = get_fieldref(DataRep, FieldNum, FieldType,
-			ClassType) },
+		{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+			FieldRef, CastClassInstrs) },
 		load(Rval, RvalLoadInstrs),
 		{ Instrs = tree__list([
 			RvalLoadInstrs, 
+			CastClassInstrs,
 			instr_node(ldflda(FieldRef))
 			]) }
 	; { Lval = mem_ref(_, _) },
@@ -1986,9 +1989,13 @@ load(self(_), tree__list([instr_node(ldarg(index(0)))])) --> [].
 
 store(field(_MaybeTag, Rval, FieldNum, FieldType, ClassType), Instrs) -->
 	DataRep =^ il_data_rep,
-	{ FieldRef = get_fieldref(DataRep, FieldNum, FieldType, ClassType) },
+	{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+		FieldRef, CastClassInstrs) },
 	load(Rval, RvalLoadInstrs),
-	{ Instrs = tree__list([RvalLoadInstrs, instr_node(stfld(FieldRef))]) }.
+	{ Instrs = tree__list([
+		RvalLoadInstrs,
+		CastClassInstrs,
+		instr_node(stfld(FieldRef))]) }.
 
 store(mem_ref(_Rval, _Type), _Instrs, Info, Info) :- 
 		% you always need load the reference first, then
@@ -3216,8 +3223,12 @@ data_addr_constant_to_fieldref(data_addr(ModuleName, DataName), FieldRef) :-
 	% XXX we remove byrefs from fields here.  Perhaps we ought to do
 	% this in a separate pass.   See defn_to_class_decl which does
 	% the same thing when creating the fields.
-:- func get_fieldref(il_data_rep, field_id, mlds__type, mlds__type) = fieldref.
-get_fieldref(DataRep, FieldNum, FieldType, ClassType0) = FieldRef :-
+:- pred get_fieldref(il_data_rep, field_id, mlds__type, mlds__type,
+		fieldref, instr_tree).
+:- mode get_fieldref(in, in, in, in, out, out) is det.
+
+get_fieldref(DataRep, FieldNum, FieldType, ClassType0,
+		FieldRef, CastClassInstrs) :-
 	( ClassType0 = mlds__ptr_type(ClassType1) ->
 		ClassType = ClassType1
 	;
@@ -3238,7 +3249,8 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0) = FieldRef :-
 		;
 			sorry(this_file, 
 				"offsets for non-int_const rvals")
-		)
+		),
+		CastClassInstrs = empty
 	; 
 		FieldNum = named_field(qual(ModuleName, FieldId), _CtorType),
 		% The MLDS doesn't record which qualifiers are class qualifiers
@@ -3247,7 +3259,15 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType0) = FieldRef :-
 		% we call fixup_class_qualifiers to make it correct.
 		CtorClassName = mlds_module_name_to_class_name(ModuleName),
 		BaseClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
-		ClassName = fixup_class_qualifiers(CtorClassName, BaseClassName)
+		ClassName = fixup_class_qualifiers(CtorClassName, BaseClassName),
+		(
+			BaseClassName = CtorClassName
+		->
+			CastClassInstrs = empty
+		;
+			CastClassInstrs = instr_node(
+				castclass(ilds__type([], class(ClassName))))
+		)
 	),
 	FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
 
