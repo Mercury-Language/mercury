@@ -67,38 +67,38 @@ parser__read_term(Result) -->
 
 parser__check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
 		_LeftOverTokens, Result) :-
-	% determine the right error message
+	% check if the error was caused by a bad token
 	(
-		parser__check_for_bad_token(ErrorTokens, BadTokenMessage, _)
+		parser__check_for_bad_token(Tokens,
+			BadTokenMessage, BadTokenLineNum)
 	->
-		Message = BadTokenMessage
+		Message = BadTokenMessage,
+		LineNum = BadTokenLineNum
 	;
-		ErrorTokens = [FirstTok - _| _]
-	->
-		lexer__token_to_string(FirstTok, TokString),
-		string__append_list(
-			["Syntax error at ", TokString, ": ", ErrorMessage],
-			Message)
-	;
-		string__append("Syntax error: ", ErrorMessage, Message)
-	),
-	% determine the appropriate line number
-	(
-		ErrorTokens = [_ - LineNum0 | _]
-	->
-		LineNum = LineNum0
-	;
-		Tokens = [_ - LineNum1 | _]
-	->
-		LineNum = LineNum1
-	;
-		error("parser__check_for_errors")
+		% find the token that caused the error
+		(
+			ErrorTokens = [ErrorTok - ErrorTokLineNum| _]
+		->
+			lexer__token_to_string(ErrorTok, TokString),
+			string__append_list( ["Syntax error at ", TokString,
+						": ", ErrorMessage], Message),
+			LineNum = ErrorTokLineNum
+		;
+			(
+				Tokens = [_FirstTok - FirstTokLineNum | _]
+			->
+				LineNum = FirstTokLineNum
+			;
+				error("parser__check_for_errors")
+			),
+			string__append("Syntax error: ", ErrorMessage, Message)
+		)
 	),
 	Result = error(Message, LineNum).
 
-parser__check_for_errors(ok(Term), VarSet, _Tokens, LeftOverTokens, Result) :-
+parser__check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 	(
-		parser__check_for_bad_token(LeftOverTokens, Message, LineNum)
+		parser__check_for_bad_token(Tokens, Message, LineNum)
 	->
 		Result = error(Message, LineNum)
 	;
@@ -115,21 +115,20 @@ parser__check_for_errors(ok(Term), VarSet, _Tokens, LeftOverTokens, Result) :-
 :- pred parser__check_for_bad_token(token_list, string, int).
 :- mode parser__check_for_bad_token(in, out, out) is semidet.
 
-parser__check_for_bad_token([Token - LineNum | _], Message, LineNum) :-
-	(
-		Token = io_error(IO_Error),
+parser__check_for_bad_token([Token - LineNum | Tokens], Message, LineNum) :-
+	( Token = io_error(IO_Error) ->
 		io__error_message(IO_Error, IO_ErrorMessage),
 		string__append("I/O error: ", IO_ErrorMessage, Message)
-	;
-		Token = junk(Char),
+	; Token = junk(Char) ->
 		char_to_int(Char, Code),
 		string__int_to_base_string(Code, 10, Decimal),
 		string__int_to_base_string(Code, 16, Hex),
 		string__append_list(["Syntax error: Illegal character 0x",
 			Hex, " (", Decimal, ") in input"], Message)
-	;
-		Token = error(ErrorMessage),
+	; Token = error(ErrorMessage) ->
 		string__append("Syntax error: ", ErrorMessage, Message)
+	;
+		parser__check_for_bad_token(Tokens, Message, LineNum)
 	).
 
 :- pred parser__parse_whole_term(parse(term), parser__state, parser__state).
