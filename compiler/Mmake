@@ -71,6 +71,9 @@ sicstus: mercury_compile.sicstus
 mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 	$(BOEHM_GC_DIR)/libgc.a
 
+mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
+mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
+
 #-----------------------------------------------------------------------------#
 
 # XXX conf.m shold depend on $(MERCURY_DIR)/config.status,
