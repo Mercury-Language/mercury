@@ -117,19 +117,20 @@ java_util__binary_infix_op(+, "+").
 java_util__binary_infix_op(-, "-").
 java_util__binary_infix_op(*, "*").
 java_util__binary_infix_op(/, "/").
+java_util__binary_infix_op(mod, "%").
 java_util__binary_infix_op(<<, "<<").
 java_util__binary_infix_op(>>, ">>").
 java_util__binary_infix_op(&, "&").
 java_util__binary_infix_op('|', "|").
 java_util__binary_infix_op(^, "^").
-java_util__binary_infix_op(mod, "%").
-java_util__binary_infix_op(eq, "==").
-java_util__binary_infix_op(ne, "!=").
 java_util__binary_infix_op(and, "&&").
 java_util__binary_infix_op(or, "||").
+java_util__binary_infix_op(eq, "==").
+java_util__binary_infix_op(ne, "!=").
 java_util__binary_infix_op(<, "<").
 java_util__binary_infix_op(>, ">").
 java_util__binary_infix_op(<=, "<=").
+java_util__binary_infix_op(>=, ">=").
 
 %------------------------------------------------------------------------------%
 
