@@ -312,7 +312,6 @@ MR_trace_event_external(const MR_Stack_Layout_Label *layout,
 	Integer debugger_request_type;
 	Word var_list;
 
-do_search:
 	if (searching) {
 		/* XXX should also pass registers here,
 		   since they're needed for checking for matches with the
@@ -343,7 +342,7 @@ do_search:
 				}
 				search_data = debugger_request;
 			        searching = TRUE;
-				goto do_search;
+				return;
 			       			      		
 			case MR_REQUEST_CURRENT:
 				if (MR_debug_socket) {
