@@ -523,13 +523,13 @@ io__read_char(Stream, Result, IO_0, IO) :-
 	;
 		io__read_char_code(Stream, Code, IO_0, IO),
 		(
-			char_to_int(Char, Code)
-		->
-			Result = ok(Char)
-		;
 			Code = -1
 		->
 			Result = eof
+		;
+			char_to_int(Char, Code)
+		->
+			Result = ok(Char)
 		;
 			% XXX improve error message
 			Result = error("read error")
