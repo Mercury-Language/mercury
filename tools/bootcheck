@@ -76,6 +76,8 @@ Options:
 		Don't rebuild the stage 3 directory from scratch after
 		building stage 1. Instead use the existing stage 3 directory
 		as the starting point for mmake.
+	--test-split-library
+		Build the split version of the stage 2 library.
 	--test-params
 		When executing the test suite, use the stage 2 Mmake.params
 		file.
@@ -138,6 +140,7 @@ grade=
 target=c
 test_grade=
 test_params=false
+test_split_library=false
 copy_runtime=false
 copy_boehm_gc=false
 copy_profiler=false
@@ -236,6 +239,9 @@ while [ $# -gt 0 ]; do
 
 	--test-grade)
 		test_grade="$2"; shift ;;
+
+	--test-split-library)
+		test_split_library=true ;;
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
@@ -656,6 +662,19 @@ then
 		else
 			echo "building of stage 2 library not successful"
 			exit 1
+		fi
+
+		if $test_split_library
+		then
+			if (cd stage2/library && $MMAKE $mmake_opts $jfactor $STD_LIB_NAME.split.a)
+			then
+				echo "building of stage 2 split library successful"
+			else
+				echo "building of stage 2 split library not successful"
+				exit 1
+			fi
+
+			mv stage2/library/$STD_LIB_NAME.split.a stage2/library/$STD_LIB_NAME.a
 		fi
 
 		if (cd stage2/browser && $MMAKE $mmake_opts $jfactor library)
