@@ -113,14 +113,48 @@
 % goals which are not atoms (e.g. goals which are free variables) into
 % calls to call/1.
 
+% call/N is really a polymorphically moded, builtin part of the language;
+% the many declarations below are just an artifact of the current
+% implementation.
+
 :- pred call(pred).
-:- mode call(in) is semidet.
+:- mode call((pred) is semidet) is semidet.
 
 :- pred call(pred(T), T).
-:- mode call(in, in) is semidet.
+
+:- mode call(pred(in)  is semidet, in)  is semidet.
+
+:- mode call(pred(uo)  is det,     uo)  is det.
+
+:- mode call(pred(out) is det,     out) is det.
+:- mode call(pred(out) is semidet, out) is semidet.
+:- mode call(pred(out) is multi,   out) is multi.
+:- mode call(pred(out) is nondet,  out) is nondet.
 
 :- pred call(pred(T1, T2), T1, T2).
-:- mode call(in, in, in) is semidet.
+
+:- mode call(pred(in,  in)  is semidet, in,  in)  is semidet.
+
+:- mode call(pred(di,  uo)  is det,     di,  uo)  is det.
+
+:- mode call(pred(in,  out) is det,     in,  out) is det.
+:- mode call(pred(in,  out) is semidet, in,  out) is semidet.
+:- mode call(pred(in,  out) is multi,   in,  out) is multi.
+:- mode call(pred(in,  out) is nondet,  in,  out) is nondet.
+ 
+:- mode call(pred(uo, di)   is det,     uo,  di)  is det.
+
+:- mode call(pred(out, in)  is det,     out, in)  is det.
+:- mode call(pred(out, in)  is semidet, out, in)  is semidet.
+:- mode call(pred(out, in)  is multi,   out, in)  is multi.
+:- mode call(pred(out, in)  is nondet,  out, in)  is nondet.
+
+:- mode call(pred(uo,  uo)  is det,     uo,  uo)  is det.
+
+:- mode call(pred(out, out) is det,     out, out) is det.
+:- mode call(pred(out, out) is semidet, out, out) is semidet.
+:- mode call(pred(out, out) is multi,   out, out) is multi.
+:- mode call(pred(out, out) is nondet,  out, out) is nondet.
 
 % In addition, the following predicate-like constructs are builtin:
 %
