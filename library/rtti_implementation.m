@@ -555,6 +555,7 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 	TypeCtorInfo = get_type_ctor_info(TypeInfo),
 	TypeCtorRep = type_ctor_rep(TypeCtorInfo),
 	( 
+		% XXX noncanonical term
 		TypeCtorRep = enum_usereq,
 		Functor = "some_enum_usereq", 
 		Arity = 0,
@@ -565,6 +566,7 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = du_usereq,
 		Functor = "some_du_usereq", 
 		Arity = 0,
@@ -635,8 +637,9 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = (func),
-		Functor = "some_func", 
+		Functor = "<<function>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -646,27 +649,32 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arguments = []
 	;
 		TypeCtorRep = int,
-		Functor = "some_int", 
+		cast_to_type(Term, Int),
+		Functor = string__int_to_string(Int),
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = char,
-		Functor = "some_char", 
+		cast_to_type(Term, Char),
+		Functor = "'" ++ char_to_string(Char) ++ "'",
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = float,
-		Functor = "some_float", 
+		cast_to_type(Term, Float),
+		Functor = float_to_string(Float),
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = string,
-		Functor = "some_string", 
+		cast_to_type(Term, String),
+		Functor = "\"" ++ String ++ "\"",
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = (pred),
-		Functor = "some_pred", 
+		Functor = "<<predicate>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -680,23 +688,26 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
+		% There is no way to create values of type `void', so this
+		% should never happen.
 		TypeCtorRep = void,
-		Functor = "some_void", 
-		Arity = 0,
-		Arguments = []
+		error("rtti_implementation.m: cannot deconstruct void types")
 	;
+		% XXX noncanonical term
 		TypeCtorRep = c_pointer,
-		Functor = "some_c_pointer", 
+		Functor = "<<c_pointer>>", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = typeinfo,
 		Functor = "some_typeinfo", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = typeclassinfo,
-		Functor = "some_typeclassinfo", 
+		Functor = "<<typeclassinfo>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -706,42 +717,42 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arguments = []
 	;
 		TypeCtorRep = succip,
-		Functor = "some_succip", 
+		Functor = "<<succip>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = hp,
-		Functor = "some_hp", 
+		Functor = "<<hp>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = curfr,
-		Functor = "some_curfr", 
+		Functor = "<<curfr>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = maxfr,
-		Functor = "some_maxfr", 
+		Functor = "<<maxfr>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = redofr,
-		Functor = "some_redofr", 
+		Functor = "<<redofr>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = redoip,
-		Functor = "some_redoip", 
+		Functor = "<<redoip>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = trail_ptr,
-		Functor = "some_trail_ptr", 
+		Functor = "<<trail_ptr>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = ticket,
-		Functor = "some_ticket", 
+		Functor = "<<ticket>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -750,42 +761,51 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = reserved_addr_usereq,
 		Functor = "some_reserved_addr_usereq", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = type_ctor_info,
 		Functor = "some_typectorinfo", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = base_typeclass_info,
-		Functor = "some_base_typeclass_info", 
+		Functor = "<<basetypeclassinfo>>", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = type_desc,
 		Functor = "some_type_desc", 
 		Arity = 0,
 		Arguments = []
 	;
+		% XXX noncanonical term
 		TypeCtorRep = type_ctor_desc,
 		Functor = "some_type_ctor_desc", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = foreign,
-		Functor = "some_foreign", 
+		Functor = "<<foreign>>", 
 		Arity = 0,
 		Arguments = []
 	;
 		TypeCtorRep = unknown,
-		Functor = "some_unknown", 
-		Arity = 0,
-		Arguments = []
+		error("rtti_implementation: unknown type_ctor rep in deconstruct")
 	).
 	
+:- pred cast_to_type(T::in, U::out) is det.
+
+cast_to_type(Term, Actual) :-
+	std_util__type_to_univ(Term, Univ),
+	std_util__det_univ_to_type(Univ, Actual).
+
 	% Retrieve an argument number from a term, given the functor
 	% descriptor.
 
