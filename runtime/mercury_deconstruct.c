@@ -273,8 +273,10 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_STRING:
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
+        case MR_TYPECTOR_REP_SUBGOAL:
         case MR_TYPECTOR_REP_VOID:
         case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPECTORINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
@@ -295,9 +297,6 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_UNKNOWN:
             return MR_FALSE;
-
-        case MR_TYPECTOR_REP_UNIV:
-            MR_fatal_error("MR_named_arg_num: bad type_ctor_rep");
     }
 
     MR_fatal_error("MR_named_arg_num: unexpected fallthrough");

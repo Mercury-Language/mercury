@@ -146,8 +146,10 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_STRING:
     case MR_TYPECTOR_REP_FUNC:
     case MR_TYPECTOR_REP_PRED:
+    case MR_TYPECTOR_REP_SUBGOAL:
     case MR_TYPECTOR_REP_VOID:
     case MR_TYPECTOR_REP_C_POINTER:
+    case MR_TYPECTOR_REP_STABLE_C_POINTER:
     case MR_TYPECTOR_REP_TYPEINFO:
     case MR_TYPECTOR_REP_TYPECTORINFO:
     case MR_TYPECTOR_REP_TYPEDESC:
@@ -166,9 +168,6 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_FOREIGN:
     case MR_TYPECTOR_REP_REFERENCE:
         return MR_FALSE;
-
-    case MR_TYPECTOR_REP_UNIV:
-        MR_fatal_error("MR_get_functor_info: bad type_ctor_rep");
 
     case MR_TYPECTOR_REP_UNKNOWN:
         MR_fatal_error("MR_get_functor_info: unknown type_ctor_rep");
@@ -307,8 +306,10 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_STRING:
         case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
+        case MR_TYPECTOR_REP_SUBGOAL:
         case MR_TYPECTOR_REP_VOID:
         case MR_TYPECTOR_REP_C_POINTER:
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPECTORINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
@@ -327,9 +328,6 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_FOREIGN:
         case MR_TYPECTOR_REP_REFERENCE:
             return -1;
-
-        case MR_TYPECTOR_REP_UNIV:
-            MR_fatal_error("MR_get_num_functors: bad type_ctor_rep");
 
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error("MR_get_num_functors: unknown type_ctor_rep");

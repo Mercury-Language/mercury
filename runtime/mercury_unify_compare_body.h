@@ -550,6 +550,16 @@ start_label:
 #endif
             }
 
+            /*
+            ** We use the c_pointer statistics for stable_c_pointer
+            ** until the stable_c_pointer type is actually added,
+            ** which will be *after* the builtin types' handwritten
+            ** unify and compare preds are replaced by automatically
+            ** generated code.
+            **
+            ** XXX This is a temporary measure.
+            */
+        case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef  select_compare_code
             if ((void *) x == (void *) y) {
@@ -682,9 +692,8 @@ start_label:
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
             MR_fatal_error(attempt_msg "base_typeclass_infos");
 
-        case MR_TYPECTOR_REP_UNIV:
-            /* univ is now implemented as a user-defined type */
-            MR_fatal_error(attempt_msg "univ");
+        case MR_TYPECTOR_REP_SUBGOAL:
+            MR_fatal_error(attempt_msg "subgoal");
 
         case MR_TYPECTOR_REP_HP:
             MR_fatal_error(attempt_msg "hp");

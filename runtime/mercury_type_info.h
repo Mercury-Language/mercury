@@ -555,7 +555,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FLOAT),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STRING),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PRED),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_UNIV),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_SUBGOAL),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_VOID),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_C_POINTER),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPEINFO),
@@ -581,6 +581,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPECTORDESC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_REFERENCE),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_C_POINTER),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -621,7 +622,7 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "FLOAT",                                    \
     "STRING",                                   \
     "PRED",                                     \
-    "UNIV",                                     \
+    "SUBGOAL",                                  \
     "VOID",                                     \
     "C_POINTER",                                \
     "TYPEINFO",                                 \
@@ -644,6 +645,8 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "TYPECTORINFO",                             \
     "BASETYPECLASSINFO",                        \
     "FOREIGN",                                  \
+    "REFERENCE",                                \
+    "STABLE_C_POINTER",                         \
     "UNKNOWN"
 
 /*---------------------------------------------------------------------------*/

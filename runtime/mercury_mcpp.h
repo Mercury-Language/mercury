@@ -151,9 +151,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_FLOAT_val			10
 #define MR_TYPECTOR_REP_STRING_val			11
 #define MR_TYPECTOR_REP_PRED_val			12
-	// MR_TYPECTOR_REP_UNIV_val is unused - it is retained
-	// only for backwards compatability.
-#define MR_TYPECTOR_REP_UNIV_val			13
+#define MR_TYPECTOR_REP_SUBGOAL_val			13
 #define MR_TYPECTOR_REP_VOID_val			14
 #define MR_TYPECTOR_REP_C_POINTER_val			15
 #define MR_TYPECTOR_REP_TYPEINFO_val			16
@@ -179,7 +177,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_TYPECTORDESC_val		36
 #define MR_TYPECTOR_REP_FOREIGN_val			37
 #define MR_TYPECTOR_REP_REFERENCE_val			38
-#define MR_TYPECTOR_REP_UNKNOWN_val			39
+#define MR_TYPECTOR_REP_STABLE_C_POINTER_val		39
+#define MR_TYPECTOR_REP_UNKNOWN_val			40
 
 // XXX we should integrate this macro in with the version in 
 // mercury_typeinfo.h

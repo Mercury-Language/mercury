@@ -498,6 +498,9 @@ try_again:
         }
         return new_data;
 
+    case MR_TYPECTOR_REP_SUBGOAL:
+        MR_fatal_error("Cannot copy a subgoal type");
+
     case MR_TYPECTOR_REP_VOID:
         MR_fatal_error("Cannot copy a void type");
 
@@ -556,6 +559,7 @@ try_again:
         /* base_typeclass_infos are always pointers to static data */
         return data;
 
+    case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
     case MR_TYPECTOR_REP_C_POINTER:
         {
             MR_Word *data_value;
@@ -625,9 +629,6 @@ try_again:
 
     case MR_TYPECTOR_REP_FOREIGN:
         MR_fatal_error("Cannot copy foreign types");
-
-    case MR_TYPECTOR_REP_UNIV:
-        MR_fatal_error(MR_STRINGIFY(copy) ": bad type_ctor_rep");
 
     case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
         MR_fatal_error("Unknown layout type in deep copy");

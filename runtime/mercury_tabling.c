@@ -1127,11 +1127,22 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 return table;
             }
 
+        case MR_TYPECTOR_REP_SUBGOAL:
+            MR_fatal_error("Cannot table a subgoal");
+
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error("Cannot table a void type");
 
         case MR_TYPECTOR_REP_C_POINTER:
             MR_fatal_error("Attempt to table a C_POINTER");
+
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
+            /*
+            ** This works because a stable C pointer guarantees that the
+            ** data structures pointed to, indirectly as well as directly,
+            ** will remain stable until the program exits.
+            */
+            MR_DEBUG_TABLE_INT(table, data);
 
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
@@ -1203,9 +1214,6 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
         case MR_TYPECTOR_REP_REFERENCE:
             MR_fatal_error("Attempt to table a value of a reference type");
-
-        case MR_TYPECTOR_REP_UNIV:
-            MR_fatal_error("MR_table_any: bad type_ctor_rep");
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
             MR_fatal_error("Unknown layout tag in table_any");

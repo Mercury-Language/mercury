@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2002 The University of Melbourne.
+// Copyright (C) 2000-2003 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -118,9 +118,7 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_FLOAT			=10;
     static int MR_TYPECTOR_REP_STRING			=11;
     static int MR_TYPECTOR_REP_PRED		    	=12;
-	// MR_TYPECTOR_REP_UNIV is unused - it is retained
-	// only for backwards compatability.
-    static int MR_TYPECTOR_REP_UNIV		    	=13;
+    static int MR_TYPECTOR_REP_SUBGOAL		    	=13;
     static int MR_TYPECTOR_REP_VOID		    	=14;
     static int MR_TYPECTOR_REP_C_POINTER		=15;
     static int MR_TYPECTOR_REP_TYPEINFO			=16;
@@ -146,7 +144,8 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_TYPECTORDESC	        =36;
     static int MR_TYPECTOR_REP_FOREIGN			=37;
     static int MR_TYPECTOR_REP_REFERENCE		=38;
-    static int MR_TYPECTOR_REP_UNKNOWN		        =39;
+    static int MR_TYPECTOR_REP_STABLE_C_POINTER	        =39;
+    static int MR_TYPECTOR_REP_UNKNOWN		        =40;
 
     static int MR_SECTAG_NONE				= 0;
     static int MR_SECTAG_LOCAL				= 1;

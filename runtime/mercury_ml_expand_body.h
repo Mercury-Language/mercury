@@ -872,21 +872,19 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_ONE_ARG */
             return;
 
-        case MR_TYPECTOR_REP_UNIV: {
-            MR_Word data_word;
-
-            MR_TypeInfo univ_type_info;
-            MR_Word univ_data;
-                /*
-                 * Univ is a two word structure, containing
-                 * type_info and data.
-                 */
-            data_word = *data_word_ptr;
-            MR_unravel_univ(data_word, univ_type_info, univ_data);
-            EXPAND_FUNCTION_NAME(univ_type_info, &univ_data, noncanon,
-                EXTRA_ARGS expand_info);
+        case MR_TYPECTOR_REP_SUBGOAL:
+#if MR_USE_MINIMAL_MODEL
+            if (noncanon == MR_NONCANON_CC) {
+                handle_functor_name(MR_subgoal_addr_name(
+                    (MR_SubgoalPtr) *data_word_ptr));
+            } else {
+                handle_functor_name("<<subgoal>>");
+            }
+#else
+            handle_functor_name("<<subgoal>>");
+#endif
+            handle_zero_arity_args();
             return;
-        }
 
         case MR_TYPECTOR_REP_VOID:
             /*
@@ -905,6 +903,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             }
 
             handle_functor_name("<<c_pointer>>");
+            handle_zero_arity_args();
+            return;
+
+        case MR_TYPECTOR_REP_STABLE_C_POINTER:
+            if (noncanon == MR_NONCANON_ABORT) {
+                /* XXX should throw an exception */
+                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                    ": attempt to deconstruct noncanonical term");
+                return;
+            }
+
+            handle_functor_name("<<stable_c_pointer>>");
             handle_zero_arity_args();
             return;
 
@@ -1152,20 +1162,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_TYPECTOR_REP_FOREIGN:
-#ifdef  MR_USE_MINIMAL_MODEL
-            if (MR_streq(type_ctor_info->MR_type_ctor_name, "ml_subgoal") &&
-                MR_streq(type_ctor_info->MR_type_ctor_module_name,
-                    "table_builtin") &&
-                (noncanon == MR_NONCANON_CC))
-            {
-                handle_functor_name(MR_subgoal_addr_name(
-                    (MR_SubgoalPtr) *data_word_ptr));
-            } else {
-                handle_functor_name("<<foreign>>");
-            }
-#else
             handle_functor_name("<<foreign>>");
-#endif
             handle_zero_arity_args();
             return;
 

@@ -107,7 +107,7 @@
 	;	float
 	;	string
 	;	(pred)
-	;	univ
+	;	subgoal
 	;	void
 	;	c_pointer
 	;	typeinfo
@@ -132,6 +132,8 @@
 	;	type_desc
 	;	type_ctor_desc
 	;	foreign
+	;	reference
+	;	stable_c_pointer
 	;	unknown.
 
 	% We keep all the other types abstract.
@@ -176,8 +178,8 @@ num_functors(TypeDesc) = NumFunctors :-
 		NumFunctors = 1
 	; TypeCtorRep = tuple,
 		NumFunctors = 1
-	; TypeCtorRep = univ,
-		NumFunctors = 1
+	; TypeCtorRep = subgoal,
+		NumFunctors = -1
 
 	; TypeCtorRep = equiv_ground,
 		error("rtti_implementation num_functors for equiv types")
@@ -199,6 +201,8 @@ num_functors(TypeDesc) = NumFunctors :-
 	; TypeCtorRep = void,
 		NumFunctors = -1
 	; TypeCtorRep = c_pointer,
+		NumFunctors = -1
+	; TypeCtorRep = stable_c_pointer,
 		NumFunctors = -1
 	; TypeCtorRep = typeinfo,
 		NumFunctors = -1
@@ -231,6 +235,8 @@ num_functors(TypeDesc) = NumFunctors :-
 	; TypeCtorRep = ticket,
 		NumFunctors = -1
 	; TypeCtorRep = foreign,
+		NumFunctors = -1
+	; TypeCtorRep = reference,
 		NumFunctors = -1
 
 	; TypeCtorRep = unknown,
@@ -274,8 +280,8 @@ get_functor_impl(TypeDesc, FunctorNumber,
 				FunctorNumber, FunctorName, Arity,
 				TypeInfoList, Names)
 
-	; TypeCtorRep = univ,
-		error("get_functor: univ type_ctor_rep")
+	; TypeCtorRep = subgoal,
+		fail
 
 	; TypeCtorRep = enum,
 		get_functor_enum(TypeCtorRep, TypeCtorInfo,
@@ -336,6 +342,8 @@ get_functor_impl(TypeDesc, FunctorNumber,
 		fail
 	; TypeCtorRep = c_pointer,
 		fail
+	; TypeCtorRep = stable_c_pointer,
+		fail
 	; TypeCtorRep = typeinfo,
 		fail
 	; TypeCtorRep = type_ctor_info,
@@ -367,6 +375,8 @@ get_functor_impl(TypeDesc, FunctorNumber,
 	; TypeCtorRep = ticket,
 		fail
 	; TypeCtorRep = foreign,
+		fail
+	; TypeCtorRep = reference,
 		fail
 
 	; TypeCtorRep = unknown,
@@ -1103,8 +1113,9 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				Next = Index + 1
 			), TypeArgs, Arguments, 0, _)
 	;
-		TypeCtorRep = univ,
-		Functor = "some_univ", 
+		% XXX noncanonical term
+		TypeCtorRep = subgoal,
+		Functor = "<<subgoal>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -1116,6 +1127,12 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		% XXX noncanonical term
 		TypeCtorRep = c_pointer,
 		Functor = "<<c_pointer>>", 
+		Arity = 0,
+		Arguments = []
+	;
+		% XXX noncanonical term
+		TypeCtorRep = stable_c_pointer,
+		Functor = "<<stable_c_pointer>>", 
 		Arity = 0,
 		Arguments = []
 	;
@@ -1227,6 +1244,12 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 	;
 		TypeCtorRep = foreign,
 		Functor = "<<foreign>>", 
+		Arity = 0,
+		Arguments = []
+	;
+		% XXX noncanonical term
+		TypeCtorRep = reference,
+		Functor = "<<reference>>", 
 		Arity = 0,
 		Arguments = []
 	;

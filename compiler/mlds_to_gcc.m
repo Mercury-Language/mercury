@@ -2256,13 +2256,13 @@ rtti_enum_const("MR_TYPECTOR_REP_DU_USEREQ", 3).
 rtti_enum_const("MR_TYPECTOR_REP_NOTAG", 4).
 rtti_enum_const("MR_TYPECTOR_REP_NOTAG_USEREQ", 5).
 rtti_enum_const("MR_TYPECTOR_REP_EQUIV", 6).
-rtti_enum_const("MR_TYPECTOR_REP_EQUIV_VAR", 7).
+rtti_enum_const("MR_TYPECTOR_REP_FUNC", 7).
 rtti_enum_const("MR_TYPECTOR_REP_INT", 8).
 rtti_enum_const("MR_TYPECTOR_REP_CHAR", 9).
 rtti_enum_const("MR_TYPECTOR_REP_FLOAT", 10).
 rtti_enum_const("MR_TYPECTOR_REP_STRING", 11).
 rtti_enum_const("MR_TYPECTOR_REP_PRED", 12).
-rtti_enum_const("MR_TYPECTOR_REP_UNIV", 13).
+rtti_enum_const("MR_TYPECTOR_REP_SUBGOAL", 13).
 rtti_enum_const("MR_TYPECTOR_REP_VOID", 14).
 rtti_enum_const("MR_TYPECTOR_REP_C_POINTER", 15).
 rtti_enum_const("MR_TYPECTOR_REP_TYPEINFO", 16).
@@ -2288,7 +2288,8 @@ rtti_enum_const("MR_TYPECTOR_REP_TYPEDESC", 35).
 rtti_enum_const("MR_TYPECTOR_REP_TYPECTORDESC", 36).
 rtti_enum_const("MR_TYPECTOR_REP_FOREIGN", 37).
 rtti_enum_const("MR_TYPECTOR_REP_REFERENCE", 38).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 39).
+rtti_enum_const("MR_TYPECTOR_REP_STABLE_C_POINTER", 39).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 40).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).
