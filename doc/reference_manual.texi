@@ -77,6 +77,7 @@ into another language, under the above conditions for modified versions.
 * Determinism::       Determinism declarations let you specify that a predicate
 		      should never fail or should never succeed more than once
 * Modules::           Modules allow you to divide a program into smaller parts
+* Semantics::         An informal semantics for Mercury programs
 @end menu
 
 @node Introduction, Syntax,, Top
@@ -1090,7 +1091,7 @@ determinism for the body of @code{p/1} is @code{det}.
 The small amount of up-front work that Mercury requires is paid back in
 reduced debugging time.)
 
-@node Modules,, Determinism, Top
+@node Modules, Semantics, Determinism, Top
 @chapter Modules
 
 The mercury module system is simple and straightforward. 
@@ -1117,6 +1118,23 @@ then it must explicitly import those modules
 using one or more @code{import_module} declarations.
 These declarations may occur
 either in the interface or the implementation section.
+
+One module most export a predicate @samp{main}, which
+must be declared as either
+
+@example
+:- pred main(io__state::di, io__state::uo) is det.
+@end example
+
+@noindent
+or
+
+@example
+:- pred main(io__state::di, io__state::uo) is multidet.
+@end example
+
+@noindent
+(or any declaration equivalent to one of the two above).
 
 For example, here is the definition of a simple module for managing queues:
 
@@ -1173,6 +1191,23 @@ Mercury has a standard library which includes modules for
 lists, stacks, queues, priority queues, sets, bags (multi-sets),
 maps (dictionaries), random number generation, input/output
 and filename and directory handling.
+
+@node Semantics,, Modules, Top
+@chapter Semantics
+
+A legal Mercury program is one that complies with the syntax,
+type, mode, determism, and module system rules specified in
+earlier chapters.  If a program does not comply with those rules,
+the compiler must report an error.
+
+For each legal Mercury program, there is an associated predicate calculus
+theory whose language is specified by the type declarations in the program
+and whose axioms are the completion of all predicates in the program
+plus the usual equality axioms.  The declarative semantics of a legal Mercury
+program is specified by this theory.  Mercury implementations must be
+sound: the answers they compute must be true in every model of the theory.
+
+Execution of a legal Mercury program begins with the predicate @samp{main}.
 
 @contents
 @bye
