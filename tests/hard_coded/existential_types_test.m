@@ -39,9 +39,12 @@ foo(X) -->
 
 call_my_univ_value(Univ) = my_univ_value(Univ).
 
-:- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	MR_unravel_univ(Univ, TypeInfo_for_T, Value);
-").
+:- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "{
+	MR_TypeInfo type_info;
+
+	MR_unravel_univ(Univ, type_info, Value);
+	TypeInfo_for_T = (MR_Word) type_info;
+}").
 
 % The predicate has_type/2 is basically an existentially typed
 % inverse to the function type_of/1.
