@@ -3506,21 +3506,17 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 							InitPicObjFileName),
 
 	% Note we have to do some ``interesting'' hacks to get
-	% `$(ALL_MLLIBS_DEP)' and `$(ALL_C2INITARGS)' to work in the
-	% dependency list (and not complain about undefined variables).
+	% `$(ALL_MLLIBS_DEP)' to work in the dependency list
+	% (and not complain about undefined variables).
 	% These hacks rely on features of GNU Make, so should not be used
 	% if we cannot assume we are using GNU Make.
 	globals__io_lookup_bool_option(assume_gmake, Gmake),
 	{ Gmake = yes ->
 		append_list(["\\\n\t\t$(foreach @,", MakeVarName,
 				",$(ALL_MLLIBS_DEP))"],
-				All_MLLibsDepString),
-		append_list(["\\\n\t\t$(foreach @,undefined,$(foreach *,",
-				MakeVarName, ",$(ALL_C2INITARGS)))"],
-				All_C2InitArgsDepString)
+				All_MLLibsDepString)
 	;
-		All_MLLibsDepString = "$(ALL_MLLIBS_DEP)",
-		All_C2InitArgsDepString = "$(ALL_C2INITARGS)"
+		All_MLLibsDepString = "$(ALL_MLLIBS_DEP)"
 	},
 
 	%
@@ -3664,12 +3660,19 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	list__foldl(append_to_init_list(DepStream, InitFileName), Modules),
 	io__write_string(DepStream, "\n"),
 
+	% The `force-module_init' dependency forces the commands for
+	% the `module_init.c' rule to be run every time the rule
+	% is considered.
+	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleFileName) },
+	{ ForceC2InitTarget = "force-" ++ ModuleFileName ++ "_init" },
+	{ TmpInitCFileName = InitCFileName ++ ".tmp" },
 	io__write_strings(DepStream, [
-		InitCFileName, " : ", DepFileName, " ", DvFileName, " ",
-			All_C2InitArgsDepString, "\n",
-		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) ",
-			"--init-c-file ", InitCFileName,
-			" $(", MakeVarName, ".init_cs) $(ALL_C2INITARGS)\n\n"
+		ForceC2InitTarget, " :\n\n",
+		InitCFileName, " : ", ForceC2InitTarget, "\n",
+		"\t@$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) ",
+			"--init-c-file ", TmpInitCFileName,
+			" $(", MakeVarName, ".init_cs) $(ALL_C2INITARGS)\n",
+		"\t@mercury_update_interface ", InitCFileName, "\n\n"
 	]),
 
 	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
