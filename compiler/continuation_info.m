@@ -31,14 +31,13 @@
 %	  all the static information about the procedure (some of which
 %	  is available only after code generation), together with the
 %	  info about internal labels accumulated in the code generator state,
-%	  in the global_data structure (which is part of HLDS).
+%	  in the global_data structure.
 %
 % 	4 If agc_stack_layouts is set, we make a pass over the
 % 	  optimized code recorded in the final LLDS instructions.
 %	  In this pass, we collect information from call instructions
 %	  about the internal labels to which calls can return.
-%	  This info will also go straight into the global_data
-%	  in the HLDS.
+%	  This info will also go straight into the global_data.
 %
 % This module defines the data structures used by all passes. It also
 % implements the whole of pass 4, and various fractions of the other passes.

@@ -37,7 +37,8 @@
 		% Translate a HLDS module to LLDS.
 
 :- pred generate_code(module_info::in, module_info::out,
-	list(c_procedure)::out, io__state::di, io__state::uo) is det.
+	global_data::in, global_data::out, list(c_procedure)::out,
+	io__state::di, io__state::uo) is det.
 
 		% Translate a HLDS procedure to LLDS, threading through
 		% the data structure that records information about layout
@@ -70,22 +71,25 @@
 
 %---------------------------------------------------------------------------%
 
-generate_code(ModuleInfo0, ModuleInfo, Procedures) -->
+generate_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, Procedures) -->
 		% get a list of all the predicate ids
 		% for which we are going to generate code.
 	{ module_info_predids(ModuleInfo0, PredIds) },
 		% now generate the code for each predicate
-	generate_pred_list_code(ModuleInfo0, ModuleInfo, PredIds, Procedures).
+	generate_pred_list_code(ModuleInfo0, ModuleInfo,
+		GlobalData0, GlobalData, PredIds, Procedures).
 
 	% Translate a list of HLDS predicates to LLDS.
 
 :- pred generate_pred_list_code(module_info::in, module_info::out,
+	global_data::in, global_data::out,
 	list(pred_id)::in, list(c_procedure)::out,
 	io__state::di, io__state::uo) is det.
 
-generate_pred_list_code(ModuleInfo, ModuleInfo, [], []) --> [].
-generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
-				Predicates) -->
+generate_pred_list_code(ModuleInfo, ModuleInfo, GlobalData, GlobalData,
+		[], []) --> [].
+generate_pred_list_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
+		[PredId | PredIds], Predicates) -->
 	{ module_info_preds(ModuleInfo0, PredInfos) },
 		% get the pred_info structure for this predicate
 	{ map__lookup(PredInfos, PredId, PredInfo) },
@@ -98,22 +102,27 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 		}
 	->
 		{ Predicates0 = [] },
-		{ ModuleInfo1 = ModuleInfo0 } 
+		{ ModuleInfo1 = ModuleInfo0 },
+		{ GlobalData1 = GlobalData0 }
 	;
-		generate_pred_code(ModuleInfo0, ModuleInfo1, PredId,
-					PredInfo, ProcIds, Predicates0) 
+		generate_pred_code(ModuleInfo0, ModuleInfo1,
+				GlobalData0, GlobalData1,
+				PredId, PredInfo, ProcIds, Predicates0) 
 	),
 	{ list__append(Predicates0, Predicates1, Predicates) },
 		% and generate the code for the rest of the predicates
-	generate_pred_list_code(ModuleInfo1, ModuleInfo, PredIds, Predicates1).
+	generate_pred_list_code(ModuleInfo1, ModuleInfo,
+		GlobalData1, GlobalData, PredIds, Predicates1).
 
 	% Translate a HLDS predicate to LLDS.
 
 :- pred generate_pred_code(module_info::in, module_info::out,
+	global_data::in, global_data::out,
 	pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
 	io__state::di, io__state::uo) is det.
 
-generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
+generate_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
+		PredId, PredInfo, ProcIds, Code) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Generating code for "),
@@ -124,15 +133,12 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 	;
 		[]
 	),
-	{ module_info_get_global_data(ModuleInfo0, GlobalData0) },
 	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
 	globals__io_get_globals(Globals),
 	{ generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
 		Globals, GlobalData0, GlobalData, CellCount0, CellCount,
 		[], Code) },
-	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo1) },
-	{ module_info_set_global_data(ModuleInfo1, GlobalData, 
-		ModuleInfo) }.
+	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo) }.
 
 	% Translate all the procedures of a HLDS predicate to LLDS.
 
@@ -243,12 +249,34 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	),
 	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
 	global_data_add_new_non_common_static_datas(GlobalData1,
-		NonCommonStatics, GlobalData),
+		NonCommonStatics, GlobalData2),
+	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
+		GlobalData2, GlobalData),
 
-	predicate_name(ModuleInfo, PredId, Name),
-	predicate_arity(ModuleInfo, PredId, Arity),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity),
 		% Construct a c_procedure structure with all the information.
 	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
+
+:- pred maybe_add_tabling_pointer_var(module_info, pred_id, proc_id, proc_info,
+		global_data, global_data).
+:- mode maybe_add_tabling_pointer_var(in, in, in, in, in, out) is det.
+
+maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
+		GlobalData0, GlobalData) :-
+	proc_info_eval_method(ProcInfo, EvalMethod),
+	(
+		EvalMethod \= eval_normal
+	->
+		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
+			ProcLabel),
+		module_info_name(ModuleInfo, ModuleName),
+		Var = tabling_pointer_var(ModuleName, ProcLabel),
+		global_data_add_new_proc_var(GlobalData0,
+			proc(PredId, ProcId), Var, GlobalData)
+	;
+		GlobalData = GlobalData0
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -12,7 +12,6 @@
 %	module_info
 %	dependency_info
 %	predicate_table
-%	global_data
 %
 % There is a separate interface section for each of these.
 
@@ -23,7 +22,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, prog_data, unify_proc, special_pred.
-:- import_module globals, llds, continuation_info.
+:- import_module globals, llds.
 :- import_module relation, map, std_util, list, set, multi_map.
 
 :- implementation.
@@ -148,12 +147,13 @@
 	module_info).
 :- mode module_info_set_special_pred_map(in, in, out) is det.
 
-:- pred module_info_get_global_data(module_info, global_data).
-:- mode module_info_get_global_data(in, out) is det.
+% This junk field is unused... feel free to replace it.
 
-:- pred module_info_set_global_data(module_info, global_data, 
-	module_info).
-:- mode module_info_set_global_data(in, in, out) is det.
+:- pred module_info_get_junk(module_info, unit).
+:- mode module_info_get_junk(in, out) is det.
+
+:- pred module_info_set_junk(module_info, unit, module_info).
+:- mode module_info_set_junk(in, in, out) is det.
 
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
@@ -554,7 +554,7 @@
 			predicate_table,
 			proc_requests,
 			special_pred_map,
-			global_data,
+			unit,		% junk (unused)
 			type_table,
 			inst_table,
 			mode_table,
@@ -614,7 +614,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 	map__init(Types),
 	inst_table_init(Insts),
 	mode_table_init(Modes),
-	global_data_init(GlobalData),
+	Junk = unit,
 	map__init(Ctors),
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
@@ -637,7 +637,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames,
 		no_aditi_compilation, TypeSpecInfo),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
-		UnifyPredMap, GlobalData, Types, Insts, Modes, Ctors,
+		UnifyPredMap, Junk, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable, 0).
 
 %-----------------------------------------------------------------------------%
@@ -801,7 +801,7 @@ module_sub_set_type_spec_info(MI0, P, MI) :-
 % B			predicate_table,
 % C			proc_requests,
 % D			special_pred_map,
-% E			global_data,
+% E			unit,		% junk (unused)
 % F			type_table,
 % G			inst_table,
 % H			mode_table,
@@ -832,7 +832,7 @@ module_info_get_proc_requests(MI0, C) :-
 module_info_get_special_pred_map(MI0, D) :-
 	MI0 = module(_, _, _, D, _, _, _, _, _, _, _, _, _, _).
 
-module_info_get_global_data(MI0, E) :-
+module_info_get_junk(MI0, E) :-
 	MI0 = module(_, _, _, _, E, _, _, _, _, _, _, _, _, _).
 
 module_info_types(MI0, F) :-
@@ -882,7 +882,7 @@ module_info_set_special_pred_map(MI0, D, MI) :-
 	MI0 = module(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
-module_info_set_global_data(MI0, E, MI) :-
+module_info_set_junk(MI0, E, MI) :-
 	MI0 = module(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
@@ -1206,8 +1206,6 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	module_info_get_predicate_table(ModuleInfo0, Preds0),
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo3),
-
-	% XXX Might want to optimize global_data here.
 
 	module_info_types(ModuleInfo3, Types0),
 	map__optimize(Types0, Types),
@@ -2136,150 +2134,5 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
-:- type global_data.
-
-:- pred global_data_init(global_data::out) is det.
-
-:- pred global_data_add_new_proc_var(global_data::in,
-	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
-
-:- pred global_data_add_new_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_update_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_add_new_non_common_static_datas(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is semidet.
-
-:- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is det.
-
-:- pred global_data_get_all_proc_vars(global_data::in,
-	list(comp_gen_c_var)::out) is det.
-
-:- pred global_data_get_all_proc_layouts(global_data::in,
-	list(proc_layout_info)::out) is det.
-
-:- pred global_data_get_all_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
-:- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
-
-:- type global_data
-	--->	global_data(
-			proc_var_map,		% Information about the global
-						% variables defined by each
-						% procedure.
-			proc_layout_map,	% Information about the
-						% layout structures defined
-						% by each procedure.
-			list(comp_gen_c_data)	% The list of global data
-						% structures that do not need
-						% to be checked by llds_common,
-						% because their construction
-						% ensures no overlaps.
-		).
-
-global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [])) :-
-	map__init(EmptyDataMap),
-	map__init(EmptyLayoutMap).
-
-global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar,
-		GlobalData) :-
-	global_data_get_proc_var_map(GlobalData0, ProcVarMap0),
-	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-	global_data_set_proc_var_map(GlobalData0, ProcVarMap,
-		GlobalData).
-
-global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
-	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
-
-global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
-	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
-
-global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
-		GlobalData) :-
-	global_data_get_non_common_static_data(GlobalData0, NonCommonStatics0),
-	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
-	global_data_set_non_common_static_data(GlobalData0, NonCommonStatics,
-		GlobalData).
-
-global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
-	map__search(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
-	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_all_proc_vars(GlobalData, ProcVars) :-
-	global_data_get_proc_var_map(GlobalData, ProcVarMap),
-	map__values(ProcVarMap, ProcVars).
-
-global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
-	global_data_get_proc_layout_map(GlobalData, ProcLayoutMap),
-	map__values(ProcLayoutMap, ProcLayouts).
-
-global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
-	global_data_get_non_common_static_data(GlobalData, NonCommonStatics).
-
-%-----------------------------------------------------------------------------%
-
-:- pred global_data_get_proc_var_map(global_data::in, proc_var_map::out)
-	is det.
-:- pred global_data_get_proc_layout_map(global_data::in, proc_layout_map::out)
-	is det.
-:- pred global_data_get_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-:- pred global_data_set_proc_var_map(global_data::in, proc_var_map::in,
-	global_data::out) is det.
-:- pred global_data_set_proc_layout_map(global_data::in, proc_layout_map::in,
-	global_data::out) is det.
-:- pred global_data_set_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-global_data_get_proc_var_map(GD, A) :-
-	GD = global_data(A, _, _).
-
-global_data_get_proc_layout_map(GD, B) :-
-	GD = global_data(_, B, _).
-
-global_data_get_non_common_static_data(GD, C) :-
-	GD = global_data(_, _, C).
-
-global_data_set_proc_var_map(GD0, A, GD) :-
-	GD0 = global_data(_, B, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_proc_layout_map(GD0, B, GD) :-
-	GD0 = global_data(A, _, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_non_common_static_data(GD0, C, GD) :-
-	GD0 = global_data(A, B, _),
-	GD  = global_data(A, B, C).
 
 %-----------------------------------------------------------------------------%

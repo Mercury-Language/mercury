@@ -224,19 +224,12 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], Module0,
 		EvalMethod \= eval_normal
 	->
 		table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo,
-			PredInfo, Module0, Module1),
-		module_info_get_global_data(Module1, GlobalData0),
-		code_util__make_proc_label(Module1, PredId, ProcId, ProcLabel),
-		module_info_name(Module0, ModuleName),
-		Var = tabling_pointer_var(ModuleName, ProcLabel),
-		global_data_add_new_proc_var(GlobalData0,
-			proc(PredId, ProcId), Var, GlobalData),
-		module_info_set_global_data(Module1, GlobalData, Module2)
+			PredInfo, Module0, Module1)
 	;
-		Module2 = Module0
+		Module1 = Module0
 	),
 
-	table_gen__process_procs(PredId, ProcIds, Module2, Module).
+	table_gen__process_procs(PredId, ProcIds, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
