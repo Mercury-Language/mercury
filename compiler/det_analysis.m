@@ -21,7 +21,7 @@
 %		determinism declarations to ensure that they are at
 %		least as deterministic as their declaration. This uses
 %		a form of the local analysis pass.
-
+%
 % If we are to avoid global analysis for predicates with
 % declarations, then it must be an error, not just a warning,
 % if the determinism checking step detects that the determinism
@@ -34,6 +34,17 @@
 % have to _make_ the predicate deterministic (or semideterministic)
 % by inserting run-time checking code which calls error/1 if the
 % predicate really isn't deterministic (semideterministic).
+
+% Determinism has three components:
+%
+%	whether a goal can fail
+%	whether a goal has more than one possible solution
+%	whether a goal occurs in a context where only the first solution
+%		is required
+%
+% The first two components are synthesized attributes: they are inferred
+% bottom-up.  The last component is an inherited attribute: it is
+% propagated top-down.
 
 %-----------------------------------------------------------------------------%
 
@@ -235,12 +246,25 @@ det_infer_proc(PredId, PredMode, ModuleInfo0, ModuleInfo, Changed0, Changed,
 		% Remember the old inferred determinism of this procedure
 	proc_info_inferred_determinism(Proc0, Detism0),
 
+		% Work out whether the procedure occurs in a single-solution
+		% context or not.  Currently we only assume so if
+		% the predicate has an explicit determinism declaration
+		% that says so.
+	(
+		proc_info_declared_determinism(Proc0, yes(DeclaredDetism)),
+		determinism_components(DeclaredDetism, _, at_most_many_cc)
+	->
+		SolnContext = first_soln
+	;	
+		SolnContext = all_solns
+	),
+
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
 	MiscInfo = misc_info(ModuleInfo0, PredId, PredMode),
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1,
-		Msgs),
+	det_infer_goal(Goal0, InstMap0, SolnContext, MiscInfo,
+			Goal, Detism1, Msgs),
 
 		% Take the worst of the old and new detisms.
 		% This is needed to prevent loops on p :- not(p)
@@ -270,24 +294,37 @@ det_infer_proc(PredId, PredMode, ModuleInfo0, ModuleInfo, Changed0, Changed,
 
 %-----------------------------------------------------------------------------%
 
+	% given a goal and an initial instmap, compute the final instmap that
+	% results from the initial instmap after execution of the goal.
+
+:- pred update_instmap(hlds__goal, instmap, instmap).
+:- mode update_instmap(in, in, out) is det.
+
+update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
+	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
+	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap).
+
+%-----------------------------------------------------------------------------%
+
 	% Infers the determinism of `Goal0' and returns this in `Detism'.
 	% It annotates the goal and all its subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
 
-:- pred det_infer_goal(hlds__goal, instmap, misc_info,
-	hlds__goal, instmap, determinism, list(det_msg)).
-:- mode det_infer_goal(in, in, in, out, out, out, out) is det.
+:- pred det_infer_goal(hlds__goal, instmap, soln_context, misc_info,
+	hlds__goal, determinism, list(det_msg)).
+:- mode det_infer_goal(in, in, in, in, out, out, out) is det.
 
-det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
-		Goal - GoalInfo, InstMap, Detism, Msgs) :-
+det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext, MiscInfo,
+		Goal - GoalInfo, Detism, Msgs) :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
-	apply_instmap_delta(InstMap0, DeltaInstMap, InstMap),
-	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, MiscInfo, NonLocalVars,
-		DeltaInstMap, Goal1, InternalDetism, Msgs1),
+	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, SolnContext, MiscInfo,
+		NonLocalVars, DeltaInstMap, Goal1, InternalDetism, Msgs1),
 
 	% If a goal with possibly multiple solutions doesn't have any
-	% output variables, then we make it succeed at most once.
+	% output variables, then it really has at most one solution.
+	% If such a goal occurs in a context where we only want the
+	% first solution, then we also make it succeed at most once.
 
 	( no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, MiscInfo) ->
 		OutputVars = no
@@ -302,8 +339,15 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	->
 		determinism_components(Detism, InternalCanFail, at_most_one)
 	;
+		InternalSolns = at_most_many,
+		SolnContext = first_soln
+	->
+		determinism_components(Detism, InternalCanFail, at_most_many_cc)
+	;
 		Detism = InternalDetism
 	),
+
+	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 
 	% See how we should introduce the commit operator, if one is needed.
 
@@ -311,43 +355,54 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		Goal1 = disj(Disjuncts),
 		Disjuncts \= [],
 		determinism_components(Detism, _, ExternalSolns),
-		\+ ExternalSolns = at_most_many
+		ExternalSolns \= at_most_many
 	->
-		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
-		det_fixup_disj(Disjuncts, InternalDetism, OutputVars, GoalInfo,
-			InstMap0, MiscInfo, Goal, Msgs1, Msgs)
+		% a disjunction with no more than one solution
+		% needs to get converted into an if-then-else or
+		% something similar
+		det_fixup_disj(Disjuncts, InternalDetism, OutputVars,
+			GoalInfo, InstMap0, MiscInfo, Goal, Msgs1, Msgs)
 	;
 		Detism \= InternalDetism,
 		Goal1 \= some(_, _)
 	->
+		% a commit needed - we must introduce an explicit `some'
+		% so that the code generator knows to insert the appropriate
+		% code for pruning
 		goal_info_set_determinism(GoalInfo0, InternalDetism, InnerInfo),
-		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 		Goal = some([], Goal1 - InnerInfo),
 		Msgs = Msgs1
 	;
-		goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
+		% either no commit needed, or a `some' already present
 		Goal = Goal1,
 		Msgs = Msgs1
 	).
 
 %-----------------------------------------------------------------------------%
 
-	% Disjunctions that cannot succeed more than once when viwed from the
+	% Disjunctions that cannot succeed more than once when viewed from the
 	% outside generally need some fixing up, and/or some warnings to be
 	% issued.
 	%
 	% For locally multidet disjunctions without output vars, which are det
-	% from the outside, generate a warning, then replace the whole
-	% disjunction with a disjunct that cannot fail.
+	% from the outside, generate a warning, and then as an optimization
+	% replace the whole disjunction with a disjunct that cannot fail.
 	% 
-	% For locally det disjunctions with or without output var(s), generate
-	% a warning, and find the first disjunct which cannot fail and replace
-	% the whole disjunction with that disjunct.
-	% 
+	% For locally det disjunctions with or without output var(s),
+	% (i.e. disjunctions in which the end of every disjunct except
+	% one is unreachable) generate a warning, and then as an
+	% optimization find the first disjunct which cannot fail and
+	% replace the whole disjunction with that disjunct.
+	%
 	% For locally nondet disjunctions without output vars, which are
-	% semidet from outside, replace them with an if-then-else.
-	% 
-	% For locally semidet disjunctions with or without output var(s), leave
+	% semidet from outside, we replace them with an if-then-else.
+	% (Is there any good reason for this?  Why not just leave them
+	% as semidet disjunctions?)
+	%
+	% For locally semidet disjunctions with or without output var(s),
+	% (i.e. disjunctions in which the end of every disjunct except
+	% one is unreachable) 
+	% leave
 	% the disjunction as semidet; the code generator must handle such
 	% semidet disjunctions by emitting code equivalent to an if-then-else
 	% chain. If the disjunction has output vars, generate a warning.
@@ -357,27 +412,62 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	%
 	% For disjunctions that cannot succeed, generate a warning.
 	%
-	% The second argument is the *internal* determinism of the dijunction.
+	% The second argument is the *internal* determinism of the disjunction.
 
-:- pred det_fixup_disj(list(hlds__goal), determinism, bool, hlds__goal_info,
-	instmap, misc_info, hlds__goal_expr, list(det_msg), list(det_msg)).
+:- pred det_fixup_disj(list(hlds__goal), determinism, bool,
+		hlds__goal_info, instmap, misc_info, hlds__goal_expr,
+		list(det_msg), list(det_msg)).
 :- mode det_fixup_disj(in, in, in, in, in, in, out, in, out) is det.
 
-det_fixup_disj(Disjuncts, multidet, _OutputVars, GoalInfo, _, _, Goal,
-		Msgs0, Msgs) :-
-	% Same considerations apply to GoalInfos as for det disjunctions
-	% above.
-	Msgs = [multidet_disj(GoalInfo, Disjuncts) | Msgs0],
-	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
-det_fixup_disj(Disjuncts, nondet, _, GoalInfo, InstMap, MiscInfo, Goal,
-		Msgs0, Msgs) :-
-	Msgs = Msgs0,
-	det_disj_to_ite(Disjuncts, GoalInfo, Goal1),
-	det_infer_goal(Goal1, InstMap, MiscInfo, Goal - _, _, NewDetism, _),
-	( NewDetism = semidet ->
-		true
+det_fixup_disj(Disjuncts, cc_multidet, OutputVars, GoalInfo, _, _,
+		Goal, Msgs0, Msgs) :-
+	( OutputVars = no ->
+		Msgs = [multidet_disj(GoalInfo, Disjuncts) | Msgs0]
 	;
-		error("transformation of pruned disj to ite changes its determinism")
+		Msgs = Msgs0
+	),
+	% Same considerations apply to GoalInfos as for det disjunctions
+	% below.
+	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
+det_fixup_disj(Disjuncts, multidet, OutputVars, GoalInfo, _, _,
+		Goal, Msgs0, Msgs) :-
+	( OutputVars = no ->
+		Msgs = [multidet_disj(GoalInfo, Disjuncts) | Msgs0]
+	;
+		Msgs = Msgs0
+	),
+	% Same considerations apply to GoalInfos as for det disjunctions
+	% below.
+	det_pick_no_fail_disjunct(Disjuncts, Goal - _).
+det_fixup_disj(Disjuncts, cc_nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
+		Goal, Msgs0, Msgs) :-
+	Msgs = Msgs0,
+	( OutputVars = no ->
+		det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
+		IfThenElse = Goal - _
+	;
+		% This is the case of a nondet disjunction in a
+		% single-solution context.  We can't replace it with
+		% an if-then-else, because the disjuncts may bind output
+		% variables.  We just leave it as a model_semi disjunction;
+		% the code generator will generate similar code to what
+		% it would for an if-then-else.
+		Goal = disj(Disjuncts)
+	).
+det_fixup_disj(Disjuncts, nondet, OutputVars, GoalInfo, _InstMap, _MiscInfo,
+		Goal, Msgs0, Msgs) :-
+	Msgs = Msgs0,
+	( OutputVars = no ->
+		det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
+		IfThenElse = Goal - _
+	;
+		% This is the case of a nondet disjunction in a
+		% single-solution context.  We can't replace it with
+		% an if-then-else, because the disjuncts may bind output
+		% variables.  We just leave it as a model_semi disjunction;
+		% the code generator will generate similar code to what
+		% it would for an if-then-else.
+		Goal = disj(Disjuncts)
 	).
 det_fixup_disj(Disjuncts, det, _OutputVars, GoalInfo, _, _, Goal,
 		Msgs0, Msgs) :-
@@ -407,13 +497,7 @@ det_fixup_disj(Disjuncts, erroneous, _OutputVars, GoalInfo, _, _, Goal,
 det_fixup_disj(Disjuncts, failure, _OutputVars, GoalInfo, _, _, Goal,
 		Msgs0, Msgs) :-
 	Msgs = [zero_soln_disj(GoalInfo, Disjuncts) | Msgs0],
-	( Disjuncts = [Goal1 - _ | _] ->
-		% Here we also discard the GoalInfo, but a disjunction can
-		% be failure only if all the disjuncts are failure.
-		Goal = Goal1
-	;
-		error("empty list of disjuncts in det_fixup_disj")
-	).
+	Goal = disj(Disjuncts).
 
 :- pred det_pick_no_fail_disjunct(list(hlds__goal), hlds__goal).
 :- mode det_pick_no_fail_disjunct(in, out) is det.
@@ -490,23 +574,24 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_goal_2(hlds__goal_expr, hlds__goal_info, instmap, misc_info,
-	set(var), instmap_delta, hlds__goal_expr, determinism, list(det_msg)).
-:- mode det_infer_goal_2(in, in, in, in, in, in, out, out, out) is det.
+:- pred det_infer_goal_2(hlds__goal_expr, hlds__goal_info, instmap,
+		soln_context, misc_info, set(var), instmap_delta,
+		hlds__goal_expr, determinism, list(det_msg)).
+:- mode det_infer_goal_2(in, in, in, in, in, in, in, out, out, out) is det.
 
 	% The determinism of a conjunction is the worst case of the elements
 	% of that conjuction.
 
-det_infer_goal_2(conj(Goals0), GoalInfo0, InstMap0, MiscInfo, _, _,
+det_infer_goal_2(conj(Goals0), GoalInfo0, InstMap0, SolnContext, MiscInfo, _, _,
 		Goal, Detism, Msgs) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton conjunction is equivalent to the goal itself
-		det_infer_goal(SingleGoal0, InstMap0, MiscInfo,
-				SingleGoal, _InstMap, Detism, Msgs),
+		det_infer_goal(SingleGoal0, InstMap0, SolnContext, MiscInfo,
+				SingleGoal, Detism, Msgs),
 		Goal = conj([SingleGoal])
 	;
-		det_infer_conj(Goals0, InstMap0, MiscInfo,
-			cannot_fail, at_most_one, Goals1, Detism, Msgs),
+		det_infer_conj(Goals0, InstMap0, SolnContext, MiscInfo,
+			Goals1, Detism, Msgs),
 		% Conjunctions that cannot produce solutions may nevertheless
 		% contain nondet and multidet goals. If this happens, the part
 		% of the conjunction up to and including the always-failing
@@ -528,14 +613,14 @@ det_infer_goal_2(conj(Goals0), GoalInfo0, InstMap0, MiscInfo, _, _,
 		)
 	).
 
-det_infer_goal_2(disj(Goals0), _, InstMap0, MiscInfo, _, _,
+det_infer_goal_2(disj(Goals0), _, InstMap0, SolnContext, MiscInfo, _, _,
 		Goal, Detism, Msgs) :-
 	( Goals0 = [SingleGoal0] ->
 		% a singleton disjunction is equivalent to the goal itself
-		det_infer_goal(SingleGoal0, InstMap0, MiscInfo,
-			Goal - _, _InstMap, Detism, Msgs)
+		det_infer_goal(SingleGoal0, InstMap0, SolnContext, MiscInfo,
+			Goal - _, Detism, Msgs)
 	;
-		det_infer_disj(Goals0, InstMap0, MiscInfo,
+		det_infer_disj(Goals0, InstMap0, SolnContext, MiscInfo,
 			can_fail, at_most_zero, Goals, Detism, Msgs),
 		Goal = disj(Goals)
 	).
@@ -545,38 +630,81 @@ det_infer_goal_2(disj(Goals0), _, InstMap0, MiscInfo, _, _,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), _, InstMap0, MiscInfo,
-		_, _, switch(Var, SwitchCanFail, Cases), Detism, Msgs) :-
-	det_infer_switch(Cases0, InstMap0, MiscInfo, cannot_fail, at_most_zero,
-		Cases, CasesDetism, Msgs),
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), _, InstMap0, SolnContext,
+		MiscInfo, _, _,
+		switch(Var, SwitchCanFail, Cases), Detism, Msgs) :-
+	det_infer_switch(Cases0, InstMap0, SolnContext, MiscInfo,
+		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
 	det_conjunction_canfail(SwitchCanFail, CasesCanFail, CanFail),
 	determinism_components(Detism, CanFail, CasesSolns).
 
-	% Look up the determinism entry associated with the call.
+	% For calls, just look up the determinism entry associated with
+	% the called predicate.
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism analysis.
 
-det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), _, _, MiscInfo, _, _,
-		call(PredId, ModeId, A, B, C, N, F), Detism, []) :-
-	det_lookup_detism(MiscInfo, PredId, ModeId, Detism).
+det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
+		MiscInfo, _, _,
+		call(PredId, ModeId, A, B, C, N, F), Detism, Msgs) :-
+	det_lookup_detism(MiscInfo, PredId, ModeId, Detism),
+	determinism_components(Detism, _, NumSolns),
+	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
+		Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism,
+				PredId, ModeId)]
+	;
+		Msgs = []
+	).
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT, M, U, C), _, _, MiscInfo, _, _,
+det_infer_goal_2(unify(LT, RT, M, U, C), _, _, _, MiscInfo, _, _,
 		unify(LT, RT, M, U, C), Detism, []) :-
 	det_infer_unify(U, MiscInfo, Detism).
 
-	% Question: should we warn about if-then-elses with deterministic
-	% and erroneous conditions?
-	% Answer: yes, probably, but it's not a high priority.
-
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
-		MiscInfo, NonLocalVars, DeltaInstMap, Goal, Detism, Msgs) :-
-	det_infer_goal(Cond0, InstMap0, MiscInfo, Cond, InstMap1, CondDetism,
-		CondMsgs),
+		SolnContext, MiscInfo, NonLocalVars, DeltaInstMap,
+		Goal, Detism, Msgs) :-
+
+	% We process the goal right-to-left, doing the `then' before
+	% the condition of the if-then-else, so that we can propagate
+	% the SolnContext correctly.
+
+	%
+	% First process the `then' part
+	%
+	update_instmap(Cond0, InstMap0, InstMap1),
+	det_infer_goal(Then0, InstMap1, SolnContext, MiscInfo,
+			Then, ThenDetism, ThenMsgs),
+	determinism_components(ThenDetism, ThenCanFail, ThenSolns),
+
+	%
+	% Next, work out the right soln_context to use for the condition.
+	% The condition is in a first_soln context if and only if the goal
+	% as a whole was in a first_soln context and the `then' part
+	% cannot fail.
+	%
+	(
+		ThenCanFail = cannot_fail,
+		SolnContext = first_soln
+	->
+		CondSolnContext = first_soln
+	;
+		CondSolnContext = all_solns
+	),
+
+	%
+	% Now process the condition.
+	%
+	det_infer_goal(Cond0, InstMap0, CondSolnContext, MiscInfo,
+			Cond, CondDetism, CondMsgs),
 	determinism_components(CondDetism, CondCanFail, CondSolns),
+
+	%
+	% Check for some special cases
+	%
 	( CondCanFail = cannot_fail ->
+		%
 		% Optimize away the `else' part.
 		% (We should actually convert this to a _sequential_
 		% conjunction, because if-then-else has an ordering
@@ -584,15 +712,20 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 		% currently reordering is only done in mode analysis,
 		% not in the code generator, so we don't have a
 		% sequential conjunction construct.)
+		%
 		goal_to_conj_list(Cond, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
-		det_infer_goal_2(conj(List), GoalInfo0, InstMap0, MiscInfo,
-			NonLocalVars, DeltaInstMap, Goal, Detism, Msgs)
+		det_infer_goal_2(conj(List), GoalInfo0, InstMap0, SolnContext,
+				MiscInfo, NonLocalVars, DeltaInstMap,
+				Goal, Detism, Msgs1),
+		Msgs = [ite_cond_cannot_fail(GoalInfo0)|Msgs1]
 /***********
 % The following optimization is not semantically valid if Cond can raise
 % an exception. Since this part of the compiler doesn't (yet) know about
 % the possibilities of exceptions, we forego the optimization.
+% (The safe part of this optimization is now done by modes.m anyway -
+% it replaces `(A -> B ; C)' with `not(A), B'.)
 %	; CondSolns = at_most_zero ->
 %		% Optimize away the condition and the `then' part.
 %		Else0 = ElseGoal0 - _,
@@ -600,19 +733,23 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 %			NonLocalVars, DeltaInstMap, Goal, Detism)
 ************/
 	;
-		det_infer_goal(Then0, InstMap1, MiscInfo, Then, _, ThenDetism,
-			ThenMsgs),
-		det_infer_goal(Else0, InstMap0, MiscInfo, Else, _, ElseDetism,
-			ElseMsgs),
-		list__append(ThenMsgs, ElseMsgs, AfterMsgs),
-		list__append(CondMsgs, AfterMsgs, Msgs),
-		Goal = if_then_else(Vars, Cond, Then, Else),
-		determinism_components(ThenDetism, ThenCanFail, ThenSolns),
+		%
+		% Process the `else' part
+		%
+		det_infer_goal(Else0, InstMap0, SolnContext, MiscInfo,
+				Else, ElseDetism, ElseMsgs),
 		determinism_components(ElseDetism, ElseCanFail, ElseSolns),
+
+		%
+		% Finally combine the results from the three parts
+		%
+		Goal = if_then_else(Vars, Cond, Then, Else),
 		det_conjunction_maxsoln(CondSolns, ThenSolns, AllThenSolns),
 		det_switch_maxsoln(AllThenSolns, ElseSolns, Solns),
 		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
-		determinism_components(Detism, CanFail, Solns)
+		determinism_components(Detism, CanFail, Solns),
+		list__append(ThenMsgs, ElseMsgs, AfterMsgs),
+		list__append(CondMsgs, AfterMsgs, Msgs)
 	).
 
 	% Negations are almost always semideterministic.  It is an error for
@@ -623,9 +760,10 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 	% cannot succeed or cannot fail?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Goal0), _, InstMap0, MiscInfo, _, _, Goal, Det, Msgs) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, NegDet,
-		Msgs),
+det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, MiscInfo, _, _, Goal,
+		Det, Msgs) :-
+	det_infer_goal(Goal0, InstMap0, first_soln, MiscInfo,
+			Goal1, NegDet, Msgs),
 	det_negation_det(NegDet, MaybeDet),
 	(
 		MaybeDet = no,
@@ -662,9 +800,10 @@ det_infer_goal_2(not(Goal0), _, InstMap0, MiscInfo, _, _, Goal, Det, Msgs) :-
 	% but we cannot rely on explicit quantification to detect this.
 	% Therefore cuts are handled in det_infer_goal.
 
-det_infer_goal_2(some(Vars0, Goal0), _, InstMap0, MiscInfo, _, _,
+det_infer_goal_2(some(Vars0, Goal0), _, InstMap0, SolnContext, MiscInfo, _, _,
 			Goal, Det, Msgs) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, Det, Msgs),
+	det_infer_goal(Goal0, InstMap0, SolnContext, MiscInfo,
+			Goal1, Det, Msgs),
 	% make sure that nested `some's are replaced by a single `some'
 	( Goal1 = some(Vars1, Goal2) - _GoalInfo ->
 		list__append(Vars0, Vars1, Vars),
@@ -675,32 +814,61 @@ det_infer_goal_2(some(Vars0, Goal0), _, InstMap0, MiscInfo, _, _,
 
 	% pragma_c_code must be deterministic.
 det_infer_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-		_, _, _, _, _, 
+		_, _, _, _, _, _,
 		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap),
 		det, []).
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_infer_conj(list(hlds__goal), instmap, misc_info,
-	can_fail, soln_count, list(hlds__goal), determinism, list(det_msg)).
-:- mode det_infer_conj(in, in, in, in, in, out, out, out) is det.
+:- pred det_infer_conj(list(hlds__goal), instmap, soln_context, misc_info,
+		list(hlds__goal), determinism, list(det_msg)).
+:- mode det_infer_conj(in, in, in, in, out, out, out) is det.
 
-det_infer_conj([], _InstMap0, _MiscInfo, CanFail, MaxSolns, [], Detism, []) :-
-	determinism_components(Detism, CanFail, MaxSolns).
-det_infer_conj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
+det_infer_conj([], _InstMap0, _SolnContext, _MiscInfo, [], det, []).
+det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, MiscInfo, 
 		[Goal | Goals], Detism, Msgs) :-
+
 	% We should look to see when we get to a not_reached point
 	% and optimize away the remaining elements of the conjunction.
 	% But that optimization is done in the code generation anyway.
 
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, InstMap1, Detism1,
-		Msgs1),
-	determinism_components(Detism1, CanFail1, MaxSolns1),
-	det_conjunction_canfail(CanFail0, CanFail1, CanFail2),
-	det_conjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
-	det_infer_conj(Goals0, InstMap1, MiscInfo, CanFail2, MaxSolns2,
-		Goals, Detism, Msgs2),
-	list__append(Msgs1, Msgs2, Msgs).
+	% We infer the determinisms right-to-left, so that we can propagate
+	% the SolnContext properly.
+
+	%
+	% First, process the second and subsequent conjuncts
+	%
+	update_instmap(Goal0, InstMap0, InstMap1),
+	det_infer_conj(Goals0, InstMap1, SolnContext, MiscInfo,
+			Goals, DetismB, MsgsB),
+	determinism_components(DetismB, CanFailB, MaxSolnsB),
+
+	%
+	% Next, work out whether the first conjunct is in
+	% a first_soln context or not
+	%
+	( 
+		CanFailB = cannot_fail,
+		SolnContext = first_soln
+	->
+		SolnContextA = first_soln
+	;
+		SolnContextA = all_solns
+	),
+	%
+	% Process the first conjunct
+	%
+	det_infer_goal(Goal0, InstMap0, SolnContextA, MiscInfo,
+			Goal, DetismA, MsgsA),
+	determinism_components(DetismA, CanFailA, MaxSolnsA),
+
+	%
+	% Finally combine the results computed above
+	%
+	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+	det_conjunction_maxsoln(MaxSolnsA, MaxSolnsB, MaxSolns),
+	determinism_components(Detism, CanFail, MaxSolns),
+	list__append(MsgsA, MsgsB, Msgs).
 
 :- pred det_fixup_nosoln_conj(list(hlds__goal), list(hlds__goal), bool, bool).
 :- mode det_fixup_nosoln_conj(in, out, in, out) is det.
@@ -724,21 +892,22 @@ det_fixup_nosoln_conj([Goal0 | Goals0], Goals, NeedCut0, NeedCut) :-
 		Goals = [Goal0 | Goals1]
 	).
 
-:- pred det_infer_disj(list(hlds__goal), instmap, misc_info,
+:- pred det_infer_disj(list(hlds__goal), instmap, soln_context, misc_info,
 	can_fail, soln_count, list(hlds__goal), determinism, list(det_msg)).
-:- mode det_infer_disj(in, in, in, in, in, out, out, out) is det.
+:- mode det_infer_disj(in, in, in, in, in, in, out, out, out) is det.
 
-det_infer_disj([], _InstMap0, _MiscInfo, CanFail, MaxSolns, [], Detism, []) :-
+det_infer_disj([], _InstMap0, _SolnContext, _MiscInfo, CanFail, MaxSolns,
+		[], Detism, []) :-
 	determinism_components(Detism, CanFail, MaxSolns).
-det_infer_disj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
-		[Goal | Goals1], Detism, Msgs) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1,
-		Msgs1),
+det_infer_disj([Goal0 | Goals0], InstMap0, SolnContext, MiscInfo, CanFail0,
+		MaxSolns0, [Goal | Goals1], Detism, Msgs) :-
+	det_infer_goal(Goal0, InstMap0, SolnContext, MiscInfo,
+			Goal, Detism1, Msgs1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
 	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
-	det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
-		Goals1, Detism, Msgs2),
+	det_infer_disj(Goals0, InstMap0, SolnContext, MiscInfo, CanFail2,
+		MaxSolns2, Goals1, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs3),
 	( MaxSolns1 = at_most_zero ->
 		Goal0 = _ - GoalInfo0,
@@ -747,27 +916,28 @@ det_infer_disj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 		Msgs = Msgs3
 	).
 
-:- pred det_infer_switch(list(case), instmap, misc_info,
+:- pred det_infer_switch(list(case), instmap, soln_context, misc_info,
 	can_fail, soln_count, list(case), determinism, list(det_msg)).
-:- mode det_infer_switch(in, in, in, in, in, out, out, out) is det.
+:- mode det_infer_switch(in, in, in, in, in, in, out, out, out) is det.
 
-det_infer_switch([], _InstMap0, _MiscInfo, CanFail, MaxSolns, [], Detism, []) :-
+det_infer_switch([], _InstMap0, _SolnContext, _MiscInfo, CanFail, MaxSolns,
+		[], Detism, []) :-
 	determinism_components(Detism, CanFail, MaxSolns).
-det_infer_switch([Case0 | Cases0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
-		[Case | Cases], Detism, Msgs) :-
+det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, MiscInfo, CanFail0,
+		MaxSolns0, [Case | Cases], Detism, Msgs) :-
 	% Technically, we should update the instmap to reflect the
 	% knowledge that the var is bound to this particular
 	% constructor, but we wouldn't use that information here anyway,
 	% so we don't bother.
 	Case0 = case(ConsId, Goal0),
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1,
-		Msgs1),
+	det_infer_goal(Goal0, InstMap0, SolnContext, MiscInfo,
+			Goal, Detism1, Msgs1),
 	Case = case(ConsId, Goal),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_switch_canfail(CanFail0, CanFail1, CanFail2),
 	det_switch_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
-	det_infer_switch(Cases0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
-		Cases, Detism, Msgs2),
+	det_infer_switch(Cases0, InstMap0, SolnContext, MiscInfo, CanFail2,
+		MaxSolns2, Cases, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs).
 
 :- pred det_infer_unify(unification, misc_info, determinism).
@@ -793,15 +963,25 @@ det_infer_unify(complicated_unify(_, CanFail, _), _MiscInfo, Detism) :-
 
 %-----------------------------------------------------------------------------%
 
-det_conjunction_maxsoln(at_most_zero, at_most_zero, at_most_zero).
-det_conjunction_maxsoln(at_most_zero, at_most_one,  at_most_zero).
-det_conjunction_maxsoln(at_most_zero, at_most_many, at_most_zero).
-det_conjunction_maxsoln(at_most_one,  at_most_zero, at_most_zero).
-det_conjunction_maxsoln(at_most_one,  at_most_one,  at_most_one).
-det_conjunction_maxsoln(at_most_one,  at_most_many, at_most_many).
-det_conjunction_maxsoln(at_most_many, at_most_zero, at_most_zero).
-det_conjunction_maxsoln(at_most_many, at_most_one,  at_most_many).
-det_conjunction_maxsoln(at_most_many, at_most_many, at_most_many).
+det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_zero).
+det_conjunction_maxsoln(at_most_zero,    at_most_many,    at_most_zero).
+
+det_conjunction_maxsoln(at_most_one,     at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_conjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_conjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many).
+
+det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
+det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
+det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
 det_conjunction_canfail(can_fail,    cannot_fail, can_fail).
@@ -811,15 +991,25 @@ det_conjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
 :- pred det_disjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_disjunction_maxsoln(in, in, out) is det.
 
-det_disjunction_maxsoln(at_most_zero, at_most_zero, at_most_zero).
-det_disjunction_maxsoln(at_most_zero, at_most_one,  at_most_one).
-det_disjunction_maxsoln(at_most_zero, at_most_many, at_most_many).
-det_disjunction_maxsoln(at_most_one,  at_most_zero, at_most_one).
-det_disjunction_maxsoln(at_most_one,  at_most_one,  at_most_many).
-det_disjunction_maxsoln(at_most_one,  at_most_many, at_most_many).
-det_disjunction_maxsoln(at_most_many, at_most_zero, at_most_many).
-det_disjunction_maxsoln(at_most_many, at_most_one,  at_most_many).
-det_disjunction_maxsoln(at_most_many, at_most_many, at_most_many).
+det_disjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_disjunction_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_disjunction_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_disjunction_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_disjunction_maxsoln(at_most_one,     at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_one,     at_most_many_cc, at_most_many).
+det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
+det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many).
+det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many).
+
+det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
+det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 :- pred det_disjunction_canfail(can_fail, can_fail, can_fail).
 :- mode det_disjunction_canfail(in, in, out) is det.
@@ -832,15 +1022,25 @@ det_disjunction_canfail(cannot_fail, cannot_fail, cannot_fail).
 :- pred det_switch_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_switch_maxsoln(in, in, out) is det.
 
-det_switch_maxsoln(at_most_zero, at_most_zero, at_most_zero).
-det_switch_maxsoln(at_most_zero, at_most_one,  at_most_one).
-det_switch_maxsoln(at_most_zero, at_most_many, at_most_many).
-det_switch_maxsoln(at_most_one,  at_most_zero, at_most_one).
-det_switch_maxsoln(at_most_one,  at_most_one,  at_most_one).
-det_switch_maxsoln(at_most_one,  at_most_many, at_most_many).
-det_switch_maxsoln(at_most_many, at_most_zero, at_most_many).
-det_switch_maxsoln(at_most_many, at_most_one,  at_most_many).
-det_switch_maxsoln(at_most_many, at_most_many, at_most_many).
+det_switch_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
+det_switch_maxsoln(at_most_zero,    at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_zero,    at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_zero,    at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_one,     at_most_zero,    at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_one,     at_most_one).
+det_switch_maxsoln(at_most_one,     at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many).
+det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many).
+det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
+det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many).
+
+det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
+det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 :- pred det_switch_canfail(can_fail, can_fail, can_fail).
 :- mode det_switch_canfail(in, in, out) is det.
@@ -857,6 +1057,8 @@ det_negation_det(det,		yes(failure)).
 det_negation_det(semidet,	yes(semidet)).
 det_negation_det(multidet,	no).
 det_negation_det(nondet,	no).
+det_negation_det(cc_multidet,	no).
+det_negation_det(cc_nondet,	no).
 det_negation_det(erroneous,	yes(erroneous)).
 det_negation_det(failure,	yes(det)).
 

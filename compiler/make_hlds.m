@@ -856,8 +856,10 @@ determinism_priority(semidet, 0).
 determinism_priority(failure, 0).
 determinism_priority(det, 10000).
 determinism_priority(erroneous, 10000).
-determinism_priority(nondet, 30000).
-determinism_priority(multidet, 40000).
+determinism_priority(cc_nondet, 30000).
+determinism_priority(nondet, 40000).
+determinism_priority(cc_multidet, 50000).
+determinism_priority(multidet, 60000).
 
 :- pred determinism_priority_unspecified(int).
 :- mode determinism_priority_unspecified(out) is det.

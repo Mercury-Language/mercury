@@ -111,6 +111,8 @@
 			;	semidet
 			;	nondet
 			;	multidet
+			;	cc_nondet
+			;	cc_multidet
 			;	erroneous
 			;	failure.
 
@@ -1862,6 +1864,8 @@ get_determinism(B, Body, Determinism) :-
 :- mode standard_det(in, out) is semidet.
 
 standard_det("det", det).
+standard_det("cc_nondet", cc_nondet).
+standard_det("cc_multi", cc_multidet).
 standard_det("nondet", nondet).
 standard_det("multi", multidet).
 standard_det("multidet", multidet).

@@ -33,12 +33,79 @@
 %---------------------------------------------------------------------------%
 
 disj_gen__generate_semi_disj(Goals, Code) -->
+	( { Goals = [] } ->
+		code_info__generate_failure(Code)
+	;
+		disj_gen__generate_semi_disj_2(Goals, Code)
+	).
+
+:- pred disj_gen__generate_semi_disj_2(list(hlds__goal),
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_semi_disj_2(in, out, in, out) is det.
+
+disj_gen__generate_semi_disj_2(Goals, Code) -->
+	code_info__generate_nondet_saves(SaveVarsCode),
+/****
+% This heap restore code only works for goals with no output variables.
+% It wouldn't work for nondet_cc disjuctions in single-solution contexts.
+	code_info__get_globals(Globals),
+	{ 
+		globals__lookup_bool_option(Globals,
+			reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_list_may_allocate_heap(Goals)
+	->
+		RestoreHeap = yes
+	;
+		RestoreHeap = no
+	},
+	code_info__maybe_save_hp(RestoreHeap, HPSaveCode),
+*/
+	code_info__get_next_label(EndLabel),
+	disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode),
+	code_info__remake_with_store_map,
+/*
+	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
+	{ Code = tree(tree(SaveVarsCode, HPSaveCode),
+			tree(GoalsCode, HPRestoreCode)) }.
+*/
+	{ Code = tree(SaveVarsCode, GoalsCode) }.
+
+:- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_semi_cases(in, in, out, in, out) is det.
+
+disj_gen__generate_semi_cases([], _EndLabel, _Code) -->
+	{ error("disj_gen__generate_semi_cases") }.
+disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 	(
 		{ Goals = [] }
 	->
-		code_info__generate_failure(Code)
+			% generate the case as a semi-deterministic goal
+		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
+		{ GoalsCode = tree(ThisCode, node([
+			label(EndLabel) - "End of semideterministic disj"
+		])) }
 	;
-		{ error("disj_gen__generate_semi_disj: should be eliminated") }
+		code_info__get_live_variables(VarList),
+		{ set__list_to_set(VarList, Vars) },
+		code_info__make_known_failure_cont(Vars, no, ModContCode),
+
+		code_info__grab_code_info(CodeInfo),
+
+			% generate the case as a semi-deterministic goal
+		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
+
+			% If there are more cases, then we need to restore
+			% the machine state, and clear registers, since
+			% we need to use the saved input vars.
+		code_info__slap_code_info(CodeInfo),
+		code_info__restore_failure_cont(RestoreContCode),
+		code_info__remake_with_call_info,
+
+			% generate the rest of the cases.
+		disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode0),
+		{ GoalsCode = tree(tree(ModContCode, ThisCode),
+				tree(RestoreContCode, GoalsCode0)) }
 	).
 
 %---------------------------------------------------------------------------%

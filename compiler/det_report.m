@@ -37,7 +37,10 @@
 		;	det_disj(hlds__goal_info, list(hlds__goal))
 		;	semidet_disj(hlds__goal_info, list(hlds__goal))
 		;	zero_soln_disj(hlds__goal_info, list(hlds__goal))
-		;	zero_soln_disjunct(hlds__goal_info).
+		;	zero_soln_disjunct(hlds__goal_info)
+		;	ite_cond_cannot_fail(hlds__goal_info)
+		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
+				pred_id, proc_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -143,7 +146,7 @@ global_checking_pass([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			% main/2 can also be `erroneous'.  But mentioning
 			% that would probably just confuse people.
 		io__write_string(
-			"Error: main/2 must be `det' or `multidet'.\n"),
+			"Error: main/2 must be `det' or `cc_multi'.\n"),
 		{ module_info_incr_errors(ModuleInfo1,
 			ModuleInfo2) }
 	;
@@ -235,15 +238,25 @@ compare_canfails(can_fail,    can_fail,    sameas).
 :- pred compare_solncounts(soln_count, soln_count, det_comparison).
 :- mode compare_solncounts(in, in, out) is det.
 
-compare_solncounts(at_most_zero, at_most_zero, sameas).
-compare_solncounts(at_most_zero, at_most_one,  tighter).
-compare_solncounts(at_most_zero, at_most_many, tighter).
-compare_solncounts(at_most_one,  at_most_zero, looser).
-compare_solncounts(at_most_one,  at_most_one,  sameas).
-compare_solncounts(at_most_one,  at_most_many, tighter).
-compare_solncounts(at_most_many, at_most_zero, looser).
-compare_solncounts(at_most_many, at_most_one,  looser).
-compare_solncounts(at_most_many, at_most_many, sameas).
+compare_solncounts(at_most_zero,    at_most_zero,    sameas).
+compare_solncounts(at_most_zero,    at_most_one,     tighter).
+compare_solncounts(at_most_zero,    at_most_many_cc, tighter).
+compare_solncounts(at_most_zero,    at_most_many,    tighter).
+
+compare_solncounts(at_most_one,     at_most_zero,    looser).
+compare_solncounts(at_most_one,     at_most_one,     sameas).
+compare_solncounts(at_most_one,     at_most_many_cc, tighter).
+compare_solncounts(at_most_one,     at_most_many,    tighter).
+
+compare_solncounts(at_most_many_cc, at_most_zero,    looser).
+compare_solncounts(at_most_many_cc, at_most_one,     looser).
+compare_solncounts(at_most_many_cc, at_most_many_cc, sameas).
+compare_solncounts(at_most_many_cc, at_most_many,    tighter).
+
+compare_solncounts(at_most_many,    at_most_zero,    looser).
+compare_solncounts(at_most_many,    at_most_one,     looser).
+compare_solncounts(at_most_many,    at_most_many_cc, looser).
+compare_solncounts(at_most_many,    at_most_many,    sameas).
 
 %-----------------------------------------------------------------------------%
 
@@ -696,6 +709,19 @@ det_report_msg(zero_soln_disjunct(GoalInfo)) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: this disjunct will never have any solutions.\n").
+det_report_msg(ite_cond_cannot_fail(GoalInfo)) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
+det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, _PredId, _ModeId)) -->
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Error: call to predicate with determinism `"),
+	mercury_output_det(Detism),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string("  occurs in a context which requires all solutions.\n"),
+	io__set_exit_status(1).
 
 %-----------------------------------------------------------------------------%
 

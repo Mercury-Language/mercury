@@ -672,7 +672,11 @@ mercury_output_det(semidet) -->
 mercury_output_det(nondet) -->
 	io__write_string("nondet").
 mercury_output_det(multidet) -->
-	io__write_string("multidet").
+	io__write_string("multi").
+mercury_output_det(cc_multidet) -->
+	io__write_string("cc_multi").
+mercury_output_det(cc_nondet) -->
+	io__write_string("cc_nondet").
 mercury_output_det(failure) -->
 	io__write_string("failure").
 mercury_output_det(erroneous) -->

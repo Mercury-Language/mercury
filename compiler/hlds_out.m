@@ -1023,6 +1023,10 @@ hlds_out__write_determinism(nondet) -->
 	io__write_string("nondet").
 hlds_out__write_determinism(multidet) -->
 	io__write_string("multi").
+hlds_out__write_determinism(cc_nondet) -->
+	io__write_string("cc_nondet").
+hlds_out__write_determinism(cc_multidet) -->
+	io__write_string("cc_multi").
 hlds_out__write_determinism(erroneous) -->
 	io__write_string("erroneous").
 hlds_out__write_determinism(failure) -->

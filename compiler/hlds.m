@@ -129,7 +129,18 @@
 
 :- type can_fail	--->	can_fail ; cannot_fail.
 
-:- type soln_count	--->	at_most_zero ; at_most_one ; at_most_many.
+:- type soln_count
+	--->	at_most_zero
+	;	at_most_one
+	;	at_most_many_cc
+			% "_cc" means "commited-choice": there is
+			% more than one logical solution, but
+			% the pred or goal is being used in a context
+			% where we are only looking for the first
+			% solution.
+	;	at_most_many.
+
+:- type soln_context	--->	all_solns ; first_soln.
 
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
@@ -149,19 +160,23 @@
 
 :- implementation.
 
-determinism_components(det,       cannot_fail, at_most_one).
-determinism_components(semidet,   can_fail,    at_most_one).
-determinism_components(multidet,  cannot_fail, at_most_many).
-determinism_components(nondet,    can_fail,    at_most_many).
-determinism_components(erroneous, cannot_fail, at_most_zero).
-determinism_components(failure,   can_fail,    at_most_zero).
+determinism_components(det,         cannot_fail, at_most_one).
+determinism_components(semidet,     can_fail,    at_most_one).
+determinism_components(multidet,    cannot_fail, at_most_many).
+determinism_components(nondet,      can_fail,    at_most_many).
+determinism_components(cc_multidet, cannot_fail, at_most_many_cc).
+determinism_components(cc_nondet,   can_fail,    at_most_many_cc).
+determinism_components(erroneous,   cannot_fail, at_most_zero).
+determinism_components(failure,     can_fail,    at_most_zero).
 
-determinism_to_code_model(det,       model_det).
-determinism_to_code_model(semidet,   model_semi).
-determinism_to_code_model(nondet,    model_non).
-determinism_to_code_model(multidet,  model_non).
-determinism_to_code_model(erroneous, model_det).
-determinism_to_code_model(failure,   model_semi).
+determinism_to_code_model(det,         model_det).
+determinism_to_code_model(semidet,     model_semi).
+determinism_to_code_model(nondet,      model_non).
+determinism_to_code_model(multidet,    model_non).
+determinism_to_code_model(cc_nondet,   model_semi).
+determinism_to_code_model(cc_multidet, model_det).
+determinism_to_code_model(erroneous,   model_det).
+determinism_to_code_model(failure,     model_semi).
 
 %-----------------------------------------------------------------------------%
 
