@@ -18,9 +18,48 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
+:- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, bool, int, list, map.
+:- import_module int, list.
+
+%-----------------------------------------------------------------------------%
+
+% The functor_info type contains information about how the weight of a term
+% is calculated.
+
+:- type functor_info.
+
+% This predicate sets the functor_info depending on the value of the 
+% termination_norm option.
+
+:- pred set_functor_info(globals__termination_norm::in, module_info::in, 
+	functor_info::out) is det.
+
+% This predicate computes the weight of a functor and the set of arguments
+% of that functor whose sizes should be counted towards the size of the whole
+% term.
+
+:- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
+	module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
+	list(uni_mode)::in, list(uni_mode)::out) is det.
+
+% Succeeds if all values of the given type are zero size (for all norms).
+
+:- pred zero_size_type((type)::in, module_info::in) is semidet.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module check_hlds__inst_match.
+:- import_module check_hlds__mode_util.
+:- import_module check_hlds__type_util.
+:- import_module libs__options.
+:- import_module parse_tree__prog_out.
+
+:- import_module assoc_list, bool, map, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,6 +70,7 @@
 % where i is an element of a set I, and I is a subset of {1, ... n}
 %
 % We currently support four kinds of semilinear norms.
+% XXX Actually we currently only use three of them.  `use_map/1' is unused. 
 
 :- type functor_info
 	--->	simple	% All non-constant functors have weight 1,
@@ -50,40 +90,6 @@
 			% size should be counted (I is given by the table
 			% entry of the functor).
 
-:- type weight_info	--->	weight(int, list(bool)).
-:- type weight_table	==	map(pair(type_ctor, cons_id), weight_info).
-
-:- pred find_weights(module_info::in, weight_table::out) is det.
-
-% This predicate computes the weight of a functor and the set of arguments
-% of that functor whose sizes should be counted towards the size of the whole
-% term.
-
-:- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
-	module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
-	list(uni_mode)::in, list(uni_mode)::out) is det.
-
-
-% Succeeds if all values of the given type are zero size (for all norms).
-
-:- pred zero_size_type(type, module_info).
-:- mode zero_size_type(in, in) is semidet.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__type_util.
-:- import_module libs__globals.
-:- import_module libs__options.
-:- import_module parse_tree__prog_out.
-
-:- import_module assoc_list, require.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % Calculate the weight to be assigned to each function symbol for the
@@ -103,68 +109,49 @@
 % arguments, except that we assign a weight of at least 1 to all functors
 % which are not constants.
 
+:- type weight_table == map(pair(type_ctor, cons_id), weight_info).
+
+:- type weight_info ---> weight(int, list(bool)).
+
+:- pred find_weights(module_info::in, weight_table::out) is det.
+
 find_weights(ModuleInfo, Weights) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__to_assoc_list(TypeTable, TypeList),
 	map__init(Weights0),
-	find_weights_for_type_list(TypeList, Weights0, Weights).
+	list__foldl(find_weights_for_type, TypeList, Weights0, Weights).
 
-:- pred find_weights_for_type_list(assoc_list(type_ctor, hlds_type_defn)::in,
+:- pred find_weights_for_type(pair(type_ctor, hlds_type_defn)::in,
 	weight_table::in, weight_table::out) is det.
 
-find_weights_for_type_list([], Weights, Weights).
-find_weights_for_type_list([TypeCtor - TypeDefn | TypeList],
-		Weights0, Weights) :-
-	find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights1),
-	find_weights_for_type_list(TypeList, Weights1, Weights).
-
-:- pred find_weights_for_type(type_ctor::in, hlds_type_defn::in,
-	weight_table::in, weight_table::out) is det.
-
-find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
+find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	(
 		Constructors = TypeBody ^ du_type_ctors,
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-		find_weights_for_cons_list(Constructors, TypeCtor, TypeParams,
-			Weights0, Weights)
+		list__foldl(find_weights_for_cons(TypeCtor, TypeParams),
+			Constructors, !Weights)
 	;
 		% This type does not introduce any functors
-		TypeBody = eqv_type(_),
-		Weights = Weights0
+		TypeBody = eqv_type(_)
 	;
 		% This type may introduce some functors,
 		% but we will never see them in this analysis
-		TypeBody = abstract_type(_),
-		Weights = Weights0
+		TypeBody = abstract_type(_)
 	;
 		% This type does not introduce any functors
-		TypeBody = foreign_type(_, _),
-		Weights = Weights0
+		TypeBody = foreign_type(_, _)
 	).
 
-:- pred find_weights_for_cons_list(list(constructor)::in,
-	type_ctor::in, list(type_param)::in,
-	weight_table::in, weight_table::out) is det.
-
-find_weights_for_cons_list([], _, _, Weights, Weights).
-find_weights_for_cons_list([Constructor | Constructors], TypeCtor, Params,
-		Weights0, Weights) :-
-	find_weights_for_cons(Constructor, TypeCtor, Params,
-		Weights0, Weights1),
-	find_weights_for_cons_list(Constructors, TypeCtor, Params,
-		Weights1, Weights).
-
-:- pred find_weights_for_cons(constructor::in,
-	type_ctor::in, list(type_param)::in,
-	weight_table::in, weight_table::out) is det.
+:- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,
+	constructor::in, weight_table::in, weight_table::out) is det.
 
 % XXX Currently, the weight of a functor is not affected by the presence
 % of any arguments that are type_info related.  However, the set of 
 % arguments whose sizes should be counted towards the total size of 
 % the term will include any type-info related arguments.
 
-find_weights_for_cons(Ctor, TypeCtor, Params, Weights0, Weights) :-
+find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
 	Ctor = ctor(ExistQVars, _Constraints, SymName, Args),
 	list__length(ExistQVars, NumExistQVars),
 	list__length(Args, Arity),
@@ -184,7 +171,7 @@ find_weights_for_cons(Ctor, TypeCtor, Params, Weights0, Weights) :-
 		WeightInfo = weight(0, [])
 	),
 	ConsId = cons(SymName, Arity),
-	map__det_insert(Weights0, TypeCtor - ConsId, WeightInfo, Weights).
+	map__det_insert(!.Weights, TypeCtor - ConsId, WeightInfo, !:Weights).
 
 :- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
 
@@ -208,8 +195,8 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
 		ArgInfo = [no | ArgInfo0]
 	).
 
-:- pred is_arg_recursive(constructor_arg::in,
-	type_ctor::in, list(type_param)::in) is semidet.
+:- pred is_arg_recursive(constructor_arg::in, type_ctor::in, 
+	list(type_param)::in) is semidet.
 
 is_arg_recursive(Arg, TypeCtor, Params) :-
 	Arg = _Name - ArgType,
@@ -218,7 +205,7 @@ is_arg_recursive(Arg, TypeCtor, Params) :-
 	list__perm(Params, ArgTypeParams).
 
 :- pred search_weight_table(weight_table::in, type_ctor::in, cons_id::in,
-		weight_info::out) is semidet.
+	weight_info::out) is semidet.
 
 search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
 	( map__search(WeightMap, TypeCtor - ConsId, WeightInfo0) ->
@@ -232,10 +219,19 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-% Although the module info is not used in either of these norms, it could
+set_functor_info(total, _Module, total).
+set_functor_info(simple, _Module, simple).
+set_functor_info(num_data_elems, Module, use_map_and_args(WeightMap)) :-
+	find_weights(Module, WeightMap).
+set_functor_info(size_data_elems, Module, use_map(WeightMap)) :-
+	find_weights(Module, WeightMap).
+
+%-----------------------------------------------------------------------------%
+
+% Although the module info is not used in any of these norms, it could
 % be needed for other norms, so it should not be removed.
 
-functor_norm(simple, _, ConsId, _, Int, Args, Args, Modes, Modes) :-
+functor_norm(simple, _, ConsId, _, Int, !Args, !Modes) :-
 	(
 		ConsId = cons(_, Arity),
 		Arity \= 0
@@ -244,43 +240,38 @@ functor_norm(simple, _, ConsId, _, Int, Args, Args, Modes, Modes) :-
 	;
 		Int = 0
 	).
-functor_norm(total, _, ConsId, _Module, Int, Args, Args, Modes, Modes) :-
+functor_norm(total, _, ConsId, _, Int, !Args, !Modes) :-
 	( ConsId = cons(_, Arity) ->
 		Int = Arity
 	;
 		Int = 0
 	).
-functor_norm(use_map(WeightMap), TypeCtor, ConsId, _Module, Int,
-		Args, Args, Modes, Modes) :-
+functor_norm(use_map(WeightMap), TypeCtor, ConsId, _, Int, !Args, !Modes) :-
 	( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, _)
 	;
 		Int = 0
 	).
-functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _Module, Int,
-		Args0, Args, Modes0, Modes) :-
+functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args, 
+		!Modes) :-
 	( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, UseArgList),
 		(
-			functor_norm_filter_args(UseArgList, Args0, Args1,
-				Modes0, Modes1)
+			functor_norm_filter_args(UseArgList, !Args, !Modes)
 		->
-			Modes = Modes1,
-			Args = Args1
+			true
 		;
 			error("Unmatched lists in functor_norm_filter_args.")
 		)
 	;
-		Int = 0,
-		Modes = Modes0,
-		Args = Args0
+		Int = 0
 	).
 
 % This predicate will fail if the length of the input lists are not matched.
 
-:- pred functor_norm_filter_args(list(bool), list(prog_var), list(prog_var),
-	list(uni_mode), list(uni_mode)).
-:- mode functor_norm_filter_args(in, in, out, in, out) is semidet.
+:- pred functor_norm_filter_args(list(bool)::in, list(prog_var)::in, 
+	list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) 
+	is semidet.
 
 functor_norm_filter_args([], [], [], [], []).
 functor_norm_filter_args([yes | Bools], [Arg0 | Args0], [Arg0 | Args],
@@ -296,8 +287,7 @@ zero_size_type(Type, Module) :-
 	classify_type(Module, Type) = TypeCategory,
 	zero_size_type_category(TypeCategory, yes).
 
-:- pred zero_size_type_category(type_category, bool).
-:- mode zero_size_type_category(in, out) is det.
+:- pred zero_size_type_category(type_category::in, bool::out) is det.
 
 zero_size_type_category(int_type, yes).
 zero_size_type_category(char_type, yes).

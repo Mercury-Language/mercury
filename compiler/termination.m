@@ -148,21 +148,6 @@ termination__pass(Module0, Module) -->
 		[]
 	).
 
-% This predicate sets the functor info depending on the value of the
-% termination_norm option. The functor info field stores the weight which
-% is associated with each functor, and may contain information about which
-% subterms contribute to the size of that functor.
-
-:- pred set_functor_info(globals__termination_norm, module_info, functor_info).
-:- mode set_functor_info(in, in, out) is det.
-
-set_functor_info(total, _Module, total).
-set_functor_info(simple, _Module, simple).
-set_functor_info(num_data_elems, Module, use_map_and_args(WeightMap)) :-
-	find_weights(Module, WeightMap).
-set_functor_info(size_data_elems, Module, use_map(WeightMap)) :-
-	find_weights(Module, WeightMap).
-
 %----------------------------------------------------------------------------%
 % Check that any user-supplied termination information (from pragma
 % terminates/does_not_terminate) is consistent for each SCC in the program.
