@@ -43,16 +43,13 @@ or <http://www.cygnus.com/misc/gnu-win32/>.
 
 RUNNING CONFIGURE
 
-Configure as follows (from the bash prompt):
+Configure with either
 
-	CC="gcc -Wl,--force-exe-suffix" sh configure i386-ms-win95
+	sh configure i386-ms-win95
 
-I don't think the CC="gcc -Wl,--force-exe-suffix" bit is needed on NT,
-so configuring with just
+or
 
 	sh configure i386-ms-winnt
-
-should work on NT -- but I haven't tested it.
 
 -----------------------------------------------------------------------------
 
@@ -71,17 +68,12 @@ directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH.
 But be careful where you add it: it is important to still make sure
 that C:\bin is first in your PATH, and that "." is last in your PATH.
 
-
 You should be able to read the HTML version of the Mercury
 documentation, which by default gets installed in the directory
 /usr/local/mercury-<VERSION>/lib/mercury/html,
 using Netscape or MS Internet Explorer.  Or you can get a copy
 of GNU Emacs for NT and use it to browse the INFO version in
 /usr/local/mercury-<VERSION>/lib/mercury/info.
-
-The system() function in gnu-win32 version beta-16 is broken, which
-means that compiling programs by invoking `mc' directly, rather than
-via `mmake', will fail.  Just use mmake.
 
 There may still be some problems with case-insensitive filenames
 and the nameclash between `mmake' and `Mmake'.  If you run into any
