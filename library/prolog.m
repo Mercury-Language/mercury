@@ -102,19 +102,20 @@ is/2 is currently defined in int.m, for historical reasons.
 !(X, X).
 *********/
 
-X == X.
-X \== Y :- X \= Y.
+% we use module qualifiers here to avoid
+% overriding the builtin Prolog versions
 
-X =:= X.
-X =\= Y :- X \= Y.
+'prolog__=='(X, X).
+'prolog__\\=='(X, Y) :- X \= Y.
 
-X @< Y :- compare(<, X, Y).
-X @> Y :- compare(>, X, Y).
-X @=< Y :- compare(R, X, Y), R \= (>).
-X @>= Y :- compare(R, X, Y), R \= (<).
+'prolog__=:='(X, X).
+'prolog__=\\='(X, Y) :- X \= Y.
 
-% we use a module qualifier here to avoid
-% overriding the builtin Prolog version
+'prolog__@<'(X, X) :- compare(<, X, Y).
+'prolog__@>'(X, Y) :- compare(>, X, Y).
+'prolog__@=<'(X, Y) :- compare(=<, X, Y).
+'prolog__@>='(X, Y) :- compare(>=, X, Y).
+
 'prolog__=..'(Term, Functor - Args) :-
 	deconstruct(Term, Functor, _Arity, Args).
 
