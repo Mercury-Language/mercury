@@ -123,7 +123,7 @@ do_handle_release () {
 
 	#echo "file=$file, date=$date"
 	case "$file" in
-	    *-rotd*-unstable*)
+	    *-rotd*[-_]unstable*)
 		release_name="Unstable snapshot $date"
 		release_id="rotd-$date-unstable"
 		release_id_underscores="rotd_${date_underscores}_unstable"
@@ -133,20 +133,20 @@ do_handle_release () {
 		release_id="rotd-$date"
 		release_id_underscores="rotd_$date_underscores"
 		;;
-	    *-*([0-9.])-beta*-unstable*)
-		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*-unstable.*"`
+	    *-*([0-9.])[-_]beta*[-_]unstable*)
+		version=`expr "$file" : ".*-\([0-9.]*\)[-_]beta.*[-_]unstable.*"`
 		release_name="Unstable $version beta $date"
 		release_id="$version-beta-$date-unstable"
 		release_id_underscores="${version}_beta_${date_underscores}_unstable"
 		;;
-	    *-*([0-9.])-beta*)
-		version=`expr "$file" : ".*-\([0-9.]*\)-beta.*"`
+	    *-*([0-9.])[-_]beta*)
+		version=`expr "$file" : ".*-\([0-9.]*\)[-_]beta.*"`
 		release_name="Stable $version beta $date"
 		release_id="$version-beta-$date"
 		release_id_underscores="${version}_beta_$date_underscores"
 		;;
-	    *-*([0-9.])*-unstable*)
-		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*-unstable.*"`
+	    *-*([0-9.])*[-_]unstable*)
+		version=`expr "$file" : ".*-\([0-9.]*[0-9]\).*[-_]unstable.*"`
 		release_name="Unstable release $version"
 		release_id="$version-unstable"
 		release_id_underscores="${version}_unstable"
