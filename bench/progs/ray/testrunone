@@ -1,0 +1,10 @@
+#!/bin/sh
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+dotime $1 -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+mv OUT.ppm OUT.$1.ppm

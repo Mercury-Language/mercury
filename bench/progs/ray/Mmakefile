@@ -1,0 +1,10 @@
+include Mmakefile.grade
+include Mmakefile.optlevel
+include Mmakefile.flags
+
+PROG_MCFLAGS =
+NAME = ray
+PROG = proj
+ARGS = -a 1.0 -l 10.0 -100.0 -100.0 -100.0 -f 100.0 dh.scene
+
+include ../Mmakefile.common
