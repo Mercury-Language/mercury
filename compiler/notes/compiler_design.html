@@ -377,6 +377,9 @@ so that the compiler does the right thing for options such as
 	  analysis (see below).  It contains the stuff related to
 	  type checking that can't be done in the main type checking pass.
 	  It also removes assertions from further processing.
+	  post_typecheck.m reports errors for unbound type and inst variables,
+	  for unsatisified type class constraints, for indistinguishable
+	  predicate or function modes, and for invalid Aditi calls and updates.
 	</ul>
 
 <dt> assertions
@@ -1256,6 +1259,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-03-28 03:44:36 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-04-07 10:23:05 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -1,4 +1,7 @@
 qualified_cons_id2.m:015: In mode declarations for predicate `qualified_cons_id2:test/2':
 qualified_cons_id2.m:015:   error: duplicate mode declaration.
 qualified_cons_id2.m:016:   Here is the conflicting mode declaration.
+qualified_cons_id2.m:015: In `test(in(bound(qualified_cons_id2:yes(ground))), out)':
+qualified_cons_id2.m:015:   error: determinism declaration not satisfied.
+qualified_cons_id2.m:015:   Declared `det', inferred `failure'.
 For more information, try recompiling with `-E'.

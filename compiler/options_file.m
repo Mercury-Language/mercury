@@ -157,15 +157,15 @@ read_options_file(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
 		{ FileToFind = OptionsFile0 }
 	),
 	io__input_stream(OldInputStream),
-	search_for_file(Dirs, FileToFind, MaybeDir),
+	search_for_file_returning_dir(Dirs, FileToFind, MaybeDir),
 	(
-		{ MaybeDir = yes(FoundDir) },
+		{ MaybeDir = ok(FoundDir) },
 		read_options_lines(FoundDir, Variables0, Variables),
 		io__input_stream(OptionsStream),
 		io__set_input_stream(OldInputStream, _),
 		io__close_input(OptionsStream)
 	;
-		{ MaybeDir = no },
+		{ MaybeDir = error(_) },
 		{ Variables = Variables0 },
 		( { ErrorIfNotExist = error } ->
 			{ Dirs = [SingleDir] ->

@@ -64,17 +64,29 @@
 
 % This module (prog_io) exports the following predicates:
 
-	% prog_io__read_module(FileName, DefaultModuleName, Search,
-	%		ReturnTimestamp, Error, ActualModuleName,
-	%		Messages, Program, MaybeModuleTimestamp)
-	% Reads and parses the module in file `FileName',
-	% using the default module name `DefaultModuleName'.
-	% If Search is `yes', search directories given by the option
-	% search_directories.
+:- type file_name == string.
+:- type dir_name == string.
+
+	% Open a source or interface file, returning `ok(FileInfo)' on
+	% success (where FileInfo is information about the file such as
+	% the file name or the directory in which it was found), or
+	% `error(Message)' on failure.
+:- type open_file(FileInfo) ==
+		pred(maybe_error(FileInfo), io__state, io__state).
+:- inst open_file == (pred(out, di, uo) is det).
+
+	% prog_io__read_module(OpenFile, FileName, DefaultModuleName,
+	%		ReturnTimestamp, Error, MaybeFileInfo,
+	%		ActualModuleName, Messages, Program,
+	%		MaybeModuleTimestamp)
+	% Reads and parses the file opened by OpenFile
+	% using the default module name DefaultModuleName.
 	% If ReturnTimestamp is `yes', attempt to return the 
 	% modification timestamp in MaybeModuleTimestamp.
 	% Error is `fatal' if the file coudn't be opened, `yes'
 	% if a syntax error was detected, and `no' otherwise.
+	% MaybeFileInfo is the information about the file (usually
+	% the file or directory name) returned by OpenFile.
 	% ActualModuleName is the module name specified in the
 	% `:- module' declaration, if any, or the DefaultModuleName
 	% if there is no `:- module' declaration.
@@ -86,28 +98,26 @@
 	;	some_module_errors	% some syntax errors
 	;	fatal_module_errors.	% couldn't open the file
 
-:- type file_name == string.
-:- type dir_name == string.
-
-:- pred prog_io__read_module(file_name, module_name, bool, bool,
-		module_error, module_name, message_list, item_list,
-		maybe(io__res(timestamp)), io__state, io__state).
-:- mode prog_io__read_module(in, in, in, in, out, out, out, out,
-		out, di, uo) is det.
-
-:- pred prog_io__read_module_if_changed(file_name, module_name, bool,
-		timestamp, module_error, module_name, message_list,
+:- pred prog_io__read_module(open_file(FileInfo), module_name, bool,
+		module_error, maybe(FileInfo), module_name, message_list,
 		item_list, maybe(io__res(timestamp)), io__state, io__state).
-:- mode prog_io__read_module_if_changed(in, in, in, in,
-		out, out, out, out, out, di, uo) is det.
+:- mode prog_io__read_module(in(open_file), in, in,
+		out, out, out, out, out, out, di, uo) is det.
+
+:- pred prog_io__read_module_if_changed(open_file(FileInfo), module_name,
+		timestamp, module_error, maybe(FileInfo), module_name,
+		message_list, item_list, maybe(io__res(timestamp)),
+		io__state, io__state).
+:- mode prog_io__read_module_if_changed(in(open_file), in, in, 
+		out, out, out, out, out, out, di, uo) is det.
 
 	% Same as prog_io__read_module, but use intermod_directories
 	% instead of search_directories when searching for the file.
 	% Also report an error if the actual module name doesn't match
 	% the expected module name.
-:- pred prog_io__read_opt_file(file_name, module_name, bool,
-		module_error, message_list, item_list, io__state, io__state).
-:- mode prog_io__read_opt_file(in, in, in, out, out, out, di, uo) is det.
+:- pred prog_io__read_opt_file(file_name, module_name, module_error,
+		message_list, item_list, io__state, io__state).
+:- mode prog_io__read_opt_file(in, in, out, out, out, di, uo) is det.
 
 	% check_module_has_expected_name(FileName, ExpectedName, ActualName):
 	%	Check that two module names are equal,
@@ -116,14 +126,34 @@
 		io__state, io__state).
 :- mode check_module_has_expected_name(in, in, in, di, uo) is det.
 
-	% search_for_file(Dirs, FileName, FoundDirName, IO0, IO)
+	% search_for_file(Dirs, FileName, FoundFileName, IO0, IO)
+	%
+	% Search Dirs for FileName, opening the file if it is found,
+	% and returning the path name of the file that was found.
+:- pred search_for_file(list(dir_name), file_name, maybe_error(file_name),
+		io__state, io__state).
+:- mode search_for_file(in, in, out, di, uo) is det.
+
+	% search_for_file_returning_dir(Dirs, FileName, FoundDirName, IO0, IO)
 	%
 	% Search Dirs for FileName, opening the file if it is found,
 	% and returning the name of the directory in which the file
 	% was found.
-:- pred search_for_file(list(dir_name), file_name, maybe(dir_name),
-		io__state, io__state).
-:- mode search_for_file(in, in, out, di, uo) is det.
+:- pred search_for_file_returning_dir(list(dir_name), file_name,
+		maybe_error(dir_name), io__state, io__state).
+:- mode search_for_file_returning_dir(in, in, out, di, uo) is det.
+
+	% search_for_module_source(Dirs, ModuleName,
+	%	FoundSourceFileName, IO0, IO)
+	%
+	% Look for the source for ModuleName in Dirs.
+	% This will also search for files matching partially
+	% qualified versions of ModuleName.
+	% For example, module foo:bar:baz can be found
+	% in foo.bar.m, bar.baz.m or bar.m.
+:- pred search_for_module_source(list(dir_name), module_name,
+		maybe_error(file_name), io__state, io__state).
+:- mode search_for_module_source(in, in, out, di, uo) is det.
 
 	% parse_item(ModuleName, VarSet, Term, MaybeItem)
 	%
@@ -223,31 +253,32 @@
 :- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
 :- import_module parse_tree__prog_out.
 :- import_module libs__globals, libs__options.
-:- import_module recompilation, recompilation__version.
+:- import_module parse_tree__modules, recompilation, recompilation__version.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list, map, time, set.
 
 %-----------------------------------------------------------------------------%
 
-prog_io__read_module(FileName, DefaultModuleName, Search, ReturnTimestamp,
-		Error, ModuleName, Messages, Items, MaybeModuleTimestamp) -->
-	prog_io__read_module_2(FileName, DefaultModuleName, Search,
-		search_directories, no, ReturnTimestamp, Error, ModuleName,
+prog_io__read_module(OpenFile, DefaultModuleName,
+		ReturnTimestamp, Error, FileData, ModuleName,
+		Messages, Items, MaybeModuleTimestamp) -->
+	prog_io__read_module_2(OpenFile, DefaultModuleName,
+		no, ReturnTimestamp, Error, FileData, ModuleName,
 		Messages, Items, MaybeModuleTimestamp).
 
-prog_io__read_module_if_changed(FileName, DefaultModuleName, Search,
-		OldTimestamp, Error, ModuleName, Messages,
+prog_io__read_module_if_changed(OpenFile, DefaultModuleName,
+		OldTimestamp, Error, FileData, ModuleName, Messages,
 		Items, MaybeModuleTimestamp) -->
-	prog_io__read_module_2(FileName, DefaultModuleName, Search,
-		search_directories, yes(OldTimestamp), yes, Error, ModuleName,
-		Messages, Items, MaybeModuleTimestamp).
+	prog_io__read_module_2(OpenFile, DefaultModuleName,
+		yes(OldTimestamp), yes, Error, FileData,
+		ModuleName, Messages, Items, MaybeModuleTimestamp).
 
-prog_io__read_opt_file(FileName, DefaultModuleName, Search,
-		Error, Messages, Items) -->
-	prog_io__read_module_2(FileName, DefaultModuleName, Search, 
-		intermod_directories, no, no, Error,
-		ModuleName, Messages, Items, _),
+prog_io__read_opt_file(FileName, DefaultModuleName, Error, Messages, Items) -->
+	globals__io_lookup_accumulating_option(intermod_directories, Dirs),
+	prog_io__read_module_2(search_for_file(Dirs, FileName),
+		DefaultModuleName, no, no, Error, _, ModuleName,
+		Messages, Items, _),
 	check_module_has_expected_name(FileName,
 		DefaultModuleName, ModuleName).
 
@@ -275,27 +306,22 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName) -->
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-:- pred prog_io__read_module_2(file_name, module_name, bool, option,
-	maybe(timestamp), bool, module_error, module_name, message_list,
-	item_list, maybe(io__res(timestamp)), io__state, io__state).
-:- mode prog_io__read_module_2(in, in, in, in, in, in, out, out, out, out,
-	out, di, uo) is det.
+:- pred prog_io__read_module_2(open_file(T), module_name,
+	maybe(timestamp), bool, module_error, maybe(T), module_name,
+	message_list, item_list, maybe(io__res(timestamp)),
+	io__state, io__state).
+:- mode prog_io__read_module_2(in(open_file), in, in, in,
+	out, out, out, out, out, out, di, uo) is det.
 
-prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
+prog_io__read_module_2(OpenFile, DefaultModuleName,
 		MaybeOldTimestamp, ReturnTimestamp, Error,
-		ModuleName, Messages, Items, MaybeModuleTimestamp) -->
-	( 
-		{ Search = yes }
-	->
-		globals__io_lookup_accumulating_option(SearchOpt, 
-			Dirs)
-	;
-		{ dir__this_directory(CurrentDir) },
-		{ Dirs = [CurrentDir] }
-	),
+		MaybeFileData, ModuleName, Messages, Items,
+		MaybeModuleTimestamp) -->
 	io__input_stream(OldInputStream),
-	search_for_file(Dirs, FileName, R),
-	( { R = yes(_) } ->
+	OpenFile(OpenResult),
+	(
+		{ OpenResult = ok(FileData) },
+		{ MaybeFileData = yes(FileData) },
 		( { ReturnTimestamp = yes } ->
 			io__input_stream_name(InputStreamName),
 			io__file_modification_time(InputStreamName,
@@ -330,25 +356,42 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
 			read_all_items(DefaultModuleName, ModuleName,
 				Messages, Items, Error)
 		),
-		io__seen,
-		io__set_input_stream(OldInputStream, _)
+		io__set_input_stream(OldInputStream, ModuleInputStream),
+		io__close_input(ModuleInputStream)
 	;
+		{ OpenResult = error(Message0) },
 		io__progname_base("prog_io.m", Progname),
 		{
-		  string__append(Progname, ": can't open file `", Message1),
-		  string__append(Message1, FileName, Message2),
-		  string__append(Message2, "'", Message),
+		  Message = Progname ++ ": " ++ Message0,
 		  dummy_term(Term),
 		  Messages = [Message - Term],
 		  Error = fatal_module_errors,
 		  Items = [],
 		  ModuleName = DefaultModuleName,
+		  MaybeFileData = no,
 		  MaybeModuleTimestamp = no
 		}
 	).
 
-search_for_file([], _, no) --> [].
-search_for_file([Dir | Dirs], FileName, R) -->
+search_for_file(Dirs, FileName, Result) -->
+	search_for_file_returning_dir(Dirs, FileName, Result0),
+	{
+		Result0 = ok(Dir),
+		( dir__this_directory(Dir) ->
+			PathName = FileName
+		;
+			PathName = dir__make_path_name(Dir, FileName)
+		),
+		Result = ok(PathName)
+	;
+		Result0 = error(Message),
+		Result = error(Message)
+	}.	
+
+search_for_file_returning_dir([], FileName,
+		error("cannot open `" ++ FileName ++ "'")) -->
+	[].
+search_for_file_returning_dir([Dir | Dirs], FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
 	;
@@ -356,9 +399,55 @@ search_for_file([Dir | Dirs], FileName, R) -->
 	},
 	io__see(ThisFileName, R0),
 	( { R0 = ok } ->
-		{ R = yes(Dir) }
+		{ R = ok(Dir) }
 	;
-		search_for_file(Dirs, FileName, R)
+		search_for_file_returning_dir(Dirs, FileName, R)
+	).
+
+search_for_module_source(Dirs, ModuleName, MaybeFileName) -->
+	search_for_module_source(Dirs, ModuleName, ModuleName, MaybeFileName).	
+
+:- pred search_for_module_source(list(dir_name), module_name, module_name,
+		maybe_error(file_name), io__state, io__state).
+:- mode search_for_module_source(in, in, in, out, di, uo) is det.
+
+search_for_module_source(Dirs, ModuleName, PartialModuleName, Result) -->
+	module_name_to_file_name(PartialModuleName, ".m", no, FileName),
+	search_for_file(Dirs, FileName, Result0),
+	(
+		{ Result0 = ok(_) },
+		{ Result = Result0 }
+	;
+		{ Result0 = error(_) },
+		(
+			{ PartialModuleName1 =
+				drop_one_qualifier(PartialModuleName) }
+		->
+			search_for_module_source(Dirs, ModuleName,
+				PartialModuleName1, Result)
+		;
+			{ sym_name_to_string(ModuleName, ModuleNameStr) },
+			{ Result = error("can't find source for module `" ++
+					ModuleNameStr ++ "'") }
+		)
+	).
+
+:- func drop_one_qualifier(module_name) = module_name is semidet.
+
+drop_one_qualifier(qualified(ParentQual, ChildName)) =
+	drop_one_qualifier_2(ParentQual, ChildName).
+
+:- func drop_one_qualifier_2(module_name, string) = module_name.
+
+drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
+	(
+		ParentQual = unqualified(_ParentName),
+		PartialQual = unqualified(ChildName)
+	;
+		ParentQual = qualified(GrandParentQual, ParentName),
+		PartialGrandParentQual = drop_one_qualifier_2(GrandParentQual,
+			ParentName),
+		PartialQual = qualified(PartialGrandParentQual, ChildName)
 	).
 
 %-----------------------------------------------------------------------------%

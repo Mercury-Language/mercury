@@ -885,7 +885,9 @@ mercury_output_module_defn(_VarSet, ModuleDefn, _Context) -->
 		io__write_string(").\n")
 	;
 		% XXX unimplemented
-		io__write_string("% unimplemented module declaration\n")
+		io__write_string("% unimplemented module declaration "),
+		io__write(ModuleDefn),
+		io__nl
 	).
 
 :- pred mercury_write_module_spec_list(list(module_specifier),

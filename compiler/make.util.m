@@ -483,7 +483,7 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, Info0, Info) -->
 	;
 		io__input_stream(OldInputStream),
 		search_for_file(SearchDirs, FileName, SearchResult),
-		( { SearchResult = yes(_) } ->
+		( { SearchResult = ok(_) } ->
 			io__input_stream_name(FullFileName),
 			io__set_input_stream(OldInputStream, FileStream),
 			io__close_input(FileStream),

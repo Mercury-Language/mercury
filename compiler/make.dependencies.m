@@ -202,15 +202,12 @@ compiled_code_dependencies(Globals) = Deps :-
 	globals__lookup_bool_option(Globals,
 		intermodule_optimization, Intermod),
 	( Intermod = yes ->
-			% XXX Handle inter-module optimization
-			% with sub-modules properly. Currently
-			% inter-module optimization is pretty much
-			% disabled in the presence of sub-modules.
-			% We need to read the `.int0' files for the parents
-			% of all modules for which we read `.opt' files.
 		Deps = combine_deps_list([
 				intermodule_interface `of` self,
 				intermodule_interface `of` intermod_imports,
+				map_find_module_deps(imports,
+					map_find_module_deps(parents,
+						intermod_imports)),
 				compiled_code_dependencies
 			])
 	;
@@ -224,10 +221,17 @@ compiled_code_dependencies =
 		combine_deps_list([
 			source `of` self,
 			fact_table `files_of` self,
-			private_interface `of` parents,
-			long_interface `of` direct_imports,
-			short_interface `of` indirect_imports
+			map_find_module_deps(imports, self)
 		]).
+
+:- func imports =
+	    (find_module_deps(dependency_file)::out(find_module_deps)) is det.
+
+imports = combine_deps_list([
+		private_interface `of` parents,
+		long_interface `of` direct_imports,
+		short_interface `of` indirect_imports
+	]).
 
 :- func module_target_type `of` find_module_deps(module_name) =
 		find_module_deps(dependency_file).
@@ -271,6 +275,28 @@ FindFiles `files_of` FindDeps =
     	)
     ).
 
+:- pred map_find_module_deps(find_module_deps(T)::in(find_module_deps),
+	find_module_deps(module_name)::in(find_module_deps),
+	module_name::in, bool::out, set(T)::out,
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
+		Success, Result, Info0, Info) -->
+	{ KeepGoing = Info0 ^ keep_going },
+	FindDeps1(ModuleName, Success0, Modules0, Info0, Info1),
+	( { Success0 = no, KeepGoing = no } ->
+		{ Success = no },
+		{ Result = set__init },
+		{ Info = Info1 }
+	;
+		foldl3_maybe_stop_at_error(KeepGoing, union_deps(FindDeps2),
+			set__to_sorted_list(Modules0), Success1,
+			set__init, Result, Info1, Info),
+		{ Success = Success0 `and` Success1 }
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred no_deps(module_name::in, bool::out, set(T)::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
@@ -284,8 +310,8 @@ self(ModuleName, yes, set__make_singleton_set(ModuleName), Info, Info) --> [].
 :- pred parents(module_name::in, bool::out, set(module_name)::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
-parents(ModuleName, yes, set__list_to_set(Ancestors), Info, Info) -->
-	{ get_ancestors(ModuleName, Ancestors) }.
+parents(ModuleName, yes, set__list_to_set(get_ancestors(ModuleName)),
+		Info, Info) --> [].
 
 %-----------------------------------------------------------------------------%
 

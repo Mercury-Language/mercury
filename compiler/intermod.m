@@ -307,14 +307,11 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
 		Deforestation, ModuleInfo) :-
-	%
-	% note: we can't include exported_to_submodules predicates in
-	% the `.opt' file, for reasons explained in the comments for
-	% intermod__add_proc
-	%
 	(
 		ProcessLocalPreds = no,
-		pred_info_is_exported(PredInfo)
+		( pred_info_is_exported(PredInfo)
+		; pred_info_is_exported_to_submodules(PredInfo)
+		)
 	;
 		ProcessLocalPreds = yes,
 		pred_info_import_status(PredInfo, local)
@@ -636,22 +633,6 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		{ DoWrite = no }
 	;
 		%
-		% Don't write this pred if it is exported to submodules,
-		% because we don't know whether or not to write out the
-		% pred decl to the .opt file -- if we write it out, you
-		% can get spurious "duplicate declaration" errors when
-		% compiling the submodules, and if we don't, then you
-		% can get spurious "undeclared predicate" errors when
-		% compiling other modules which import the parent module.
-		%
-		% XXX This prevents intermodule optimization in those
-		% cases, which is a pity.
-		%
-		{ Status = exported_to_submodules }
-	->
-		{ DoWrite = no }
-	;
-		%
 		% If a pred whose code we're going to put in the .opt file
 		% calls a predicate which is exported, then we don't
 		% need to do anything special.
@@ -677,7 +658,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% we need to put the declaration for the called predicate
 		% in the `.opt' file.
 		%
-		{ Status = local ; Status = external(implementation) }
+		{ import_status_to_write(Status) }
 	->
 		{ DoWrite = yes },
 		intermod_info_get_pred_decls(PredDecls0),
@@ -793,12 +774,7 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 		% before writing them to `int' files, so the full instance
 		% declaration should be written even for exported instances.
 		%
-		{ status_defined_in_this_module(Status, yes) },
-
-		%
-		% See the comments on intermod__add_proc.
-		%
-		{ Status \= exported_to_submodules }
+		{ status_defined_in_this_module(Status, yes) }
 	->
 		=(IntermodInfo0),
 		(
@@ -1034,12 +1010,6 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 			TVarSet, UserEq0, UserEq, UserEqPredId),
 		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq)),
 		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
-
-		% XXX If the predicate is exported to sub-modules, it
-		% won't be written to the `.opt' file. See the comments
-		% for intermod__add_proc.
-		% This doesn't cause problems because if there are
-		% sub-modules, nothing gets written to the `.opt' file.
 		intermod__add_proc(UserEqPredId, _, Info1, Info2)
 	    ;	
 		Info2 = Info1,
@@ -1059,9 +1029,7 @@ intermod__should_write_type(ModuleName, TypeCtor, TypeDefn) :-
 	hlds_data__get_type_defn_status(TypeDefn, ImportStatus),
 	TypeCtor = Name - _Arity,
 	Name = qualified(ModuleName, _),
-	( ImportStatus = local
-	; ImportStatus = abstract_exported
-	).
+	import_status_to_write(ImportStatus).
 
 %-----------------------------------------------------------------------------%
 	% Output module imports, types, modes, insts and predicates
@@ -1094,7 +1062,9 @@ intermod__write_intermod_info(IntermodInfo0) -->
 		\+ {
 			map__member(Types, _, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
-			Status = abstract_exported
+			( Status = abstract_exported
+			; Status = exported_to_submodules
+			)
 		}
 	->
 		[]	
@@ -1254,7 +1224,7 @@ intermod__write_mode(ModuleName, ModeId, ModeDefn) -->
 			_, Context, ImportStatus) },
 	(
 		{ SymName = qualified(ModuleName, _) },
-		{ ImportStatus = local }
+		{ import_status_to_write(ImportStatus) }
 	->
 		mercury_output_item(
 			mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
@@ -1282,7 +1252,7 @@ intermod__write_inst(ModuleName, InstId, InstDefn) -->
 			Context, ImportStatus) },
 	(
 		{ SymName = qualified(ModuleName, _) },
-		{ ImportStatus = local }
+		{ import_status_to_write(ImportStatus) }
 	->
 		(
 			{ Body = eqv_inst(Inst2) },
@@ -1316,9 +1286,7 @@ intermod__write_class(ModuleName, ClassId, ClassDefn) -->
 	{ ClassId = class_id(QualifiedClassName, _) },
 	(
 		{ QualifiedClassName = qualified(ModuleName, _) },
-		{ ImportStatus = local
-		; ImportStatus = abstract_exported
-		}
+		{ import_status_to_write(ImportStatus) }
 	->
 		{ Item = typeclass(Constraints, QualifiedClassName, TVars,
 				Interface, TVarSet) },
@@ -1931,27 +1899,24 @@ fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
 :- pred adjust_class_status(module_info::in, module_info::out) is det.
 
 adjust_class_status(ModuleInfo0, ModuleInfo) :-
-	module_info_name(ModuleInfo0, ModuleName),
 	module_info_classes(ModuleInfo0, Classes0),
 	map__to_assoc_list(Classes0, ClassAL0),
-	list__map_foldl(adjust_class_status_2(ModuleName), ClassAL0, ClassAL,
+	list__map_foldl(adjust_class_status_2, ClassAL0, ClassAL,
 		ModuleInfo0, ModuleInfo1),
 	map__from_assoc_list(ClassAL, Classes),
 	module_info_set_classes(ModuleInfo1, Classes, ModuleInfo).
 
-:- pred adjust_class_status_2(module_name::in,
-		pair(class_id, hlds_class_defn)::in,
+:- pred adjust_class_status_2(pair(class_id, hlds_class_defn)::in,
 		pair(class_id, hlds_class_defn)::out,
 		module_info::in, module_info::out) is det.
 
-adjust_class_status_2(ModuleName, ClassId - ClassDefn0, ClassId - ClassDefn,
+adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
 			ModuleInfo0, ModuleInfo) :-
 	(
-		ClassId = class_id(qualified(ModuleName, _), _),
 		ClassDefn0 = hlds_class_defn(Status0, Constraints, TVars,
 				Interface, HLDSClassInterface,
 				TVarSet, Context),	
-		Status0 \= exported
+		import_status_to_write(Status0)
 	->
 		ClassDefn = hlds_class_defn(exported, Constraints, TVars,
 				Interface, HLDSClassInterface,
@@ -2001,9 +1966,7 @@ adjust_instance_status_3(Instance0, Instance, ModuleInfo0, ModuleInfo) :-
 			Constraints, Types, Body, HLDSClassInterface,
 			TVarSet, ConstraintProofs),
 	(
-		( Status0 = local
-		; Status0 = abstract_exported
-		)
+		import_status_to_write(Status0)
 	->
 		Instance = hlds_instance_defn(InstanceModule, exported,
 			Context, Constraints, Types, Body, HLDSClassInterface,
@@ -2036,12 +1999,19 @@ set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo) :-
 set_list_of_preds_exported_2([], Preds, Preds).
 set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
-	( pred_info_import_status(PredInfo0, local) ->	
+	(
+		pred_info_import_status(PredInfo0, Status),
+		import_status_to_write(Status)
+	->	
 		(
 			pred_info_name(PredInfo0, "__Unify__"),
 			pred_info_arity(PredInfo0, 2)
 		->
 			NewStatus = pseudo_exported
+		;
+			Status = external(implementation)
+		->
+			NewStatus = external(interface)
 		;
 			NewStatus = opt_exported
 		),
@@ -2051,6 +2021,28 @@ set_list_of_preds_exported_2([PredId | PredIds], Preds0, Preds) :-
 		Preds1 = Preds0
 	),
 	set_list_of_preds_exported_2(PredIds, Preds1, Preds).
+
+	% Should a declaration with the given status be written
+	% to the `.opt' file.
+:- pred import_status_to_write(import_status::in) is semidet.
+
+import_status_to_write(Status) :-
+	import_status_to_write(Status) = yes.
+
+:- func import_status_to_write(import_status) = bool.
+
+import_status_to_write(external(interface)) = no.
+import_status_to_write(external(implementation)) = yes.
+import_status_to_write(imported(_)) = no.
+import_status_to_write(abstract_imported) = no.
+import_status_to_write(pseudo_imported) = no.
+import_status_to_write(opt_imported) = no.
+import_status_to_write(exported) = no.
+import_status_to_write(opt_exported) = yes.
+import_status_to_write(abstract_exported) = yes.
+import_status_to_write(pseudo_exported) = no.
+import_status_to_write(exported_to_submodules) = yes.
+import_status_to_write(local) = yes.
 
 %-----------------------------------------------------------------------------%
 	% Read in and process the optimization interfaces.
@@ -2104,6 +2096,16 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	),
 
 		%
+		% Read .int0 files required by the `.opt' files.
+		%
+	{ Int0Files = list__delete_all(
+			list__condense(list__map(get_ancestors, OptFiles)),
+			ModuleName) },
+	process_module_private_interfaces(ReadModules, Int0Files,
+			[], AncestorImports1, [], AncestorImports2,
+			Module2, Module3),
+
+		%
 		% Figure out which .int files are needed by the .opt files
 		%
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
@@ -2111,21 +2113,20 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ get_implicit_dependencies(OptItems, Globals,
 		NewImplicitImportDeps0, NewImplicitUseDeps0) },
 	{ NewDeps0 = list__condense([NewImportDeps0, NewUseDeps0,
-		NewImplicitImportDeps0, NewImplicitUseDeps0]) },
+		NewImplicitImportDeps0, NewImplicitUseDeps0,
+		AncestorImports1, AncestorImports2]) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
 	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
 	{ set__to_sorted_list(NewDepsSet, NewDeps) },
 
 		%
 		% Read in the .int, and .int2 files needed by the .opt files.
-		% (XXX do we also need to read in .int0 files here?)
 		%
 	{ map__init(ReadModules) },
-	process_module_long_interfaces(ReadModules,
-			must_be_qualified, NewDeps, ".int",
-			[], NewIndirectDeps, Module2, Module3),
-	process_module_indirect_imports(ReadModules, NewIndirectDeps, ".int2",
-			Module3, Module),
+	process_module_long_interfaces(ReadModules, must_be_qualified, NewDeps,
+			".int", [], NewIndirectDeps, Module3, Module4),
+	process_module_short_interfaces_transitively(ReadModules,
+			NewIndirectDeps, ".int2", Module4, Module),
 
 		%
 		% Figure out whether anything went wrong
@@ -2149,33 +2150,22 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 read_optimization_interfaces([], Items, Items, Error, Error) --> [].
 read_optimization_interfaces([Import | Imports],
 		Items0, Items, Error0, Error) -->
-	( { Import = qualified(_, _) } ->
-		% XXX Don't read in optimization interfaces for
-		% nested modules, because we also need to read in
-		% the `.int0' file for the parent modules.
-		% Reading them in may cause problems because the
-		% `.int0' files duplicate information in the `.int'
-		% files.
-		{ Error1 = Error0 },
-		{ Items2 = Items0 }
-	;
-		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-		maybe_write_string(VeryVerbose,
-				"% Reading optimization interface for module"),
-		maybe_write_string(VeryVerbose, " `"),
-		{ prog_out__sym_name_to_string(Import, ImportString) },
-		maybe_write_string(VeryVerbose, ImportString),
-		maybe_write_string(VeryVerbose, "'...\n"),
-		maybe_flush_output(VeryVerbose),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	maybe_write_string(VeryVerbose,
+			"% Reading optimization interface for module"),
+	maybe_write_string(VeryVerbose, " `"),
+	{ prog_out__sym_name_to_string(Import, ImportString) },
+	maybe_write_string(VeryVerbose, ImportString),
+	maybe_write_string(VeryVerbose, "'...\n"),
+	maybe_flush_output(VeryVerbose),
 
-		module_name_to_file_name(Import, ".opt", no, FileName),
-		prog_io__read_opt_file(FileName, Import, yes,
-				ModuleError, Messages, Items1),
-		update_error_status(opt, FileName, ModuleError, Messages,
-				Error0, Error1),
-		{ list__append(Items0, Items1, Items2) },
-		maybe_write_string(VeryVerbose, "% done.\n")
-	),
+	module_name_to_file_name(Import, ".opt", no, FileName),
+	prog_io__read_opt_file(FileName, Import,
+			ModuleError, Messages, Items1),
+	update_error_status(opt, FileName, ModuleError, Messages,
+			Error0, Error1),
+	{ list__append(Items0, Items1, Items2) },
+	maybe_write_string(VeryVerbose, "% done.\n"),
 	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
 
 update_error_status(FileType, FileName, ModuleError, Messages,

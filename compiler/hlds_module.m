@@ -899,13 +899,13 @@ visible_module(VisibleModule, ModuleInfo) :-
 	;
 		set__member(VisibleModule, ImportedModules)
 	;
-		get_ancestors(ThisModule, ParentModules),
+		ParentModules = get_ancestors(ThisModule),
 		list__member(VisibleModule, ParentModules)
 	).
 
 module_info_get_all_deps(ModuleInfo, AllImports) :-
 	module_info_name(ModuleInfo, ModuleName),
-	get_ancestors(ModuleName, Parents),
+	Parents = get_ancestors(ModuleName),
 	module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
 	module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
 		IndirectImports),

@@ -12,23 +12,20 @@
 %
 %	- it resolves predicate overloading
 %	- it resolves function overloading
+%	- it expands field access functions
+%	- it propagates type information into the modes of procedures
 %	- it checks for unbound type variables and if there are any,
 %	  it reports an error (or a warning, binding them to the type `void').
+%	- it reports errors for unbound inst variables in predicate or
+%	  function mode declarations
+%	- it reports errors for unsatisfied type class constraints
+%	- it reports an error if there are indistinguishable modes for
+%	  a predicate of function.
 %
 % These actions cannot be done until after type inference is complete,
 % so they need to be a separate "post-typecheck pass".  For efficiency
 % reasons, this is in fact done at the same time as purity analysis --
 % the routines here are called from purity.m rather than mercury_compile.m.
-%
-% This module also copies the clause_info structure
-% to the proc_info structures. This is done in the post_typecheck pass
-% and not at the start of modecheck because modecheck may be
-% reinvoked after HLDS transformations. Any transformation that
-% needs typechecking should work with the clause_info structure.
-% Type information is also propagated into the modes of procedures
-% by this pass if the ModeError parameter is no. 
-% ModeError should be yes if any undefined modes	
-% were found by previous passes.
 %
 
 :- module check_hlds__post_typecheck.
@@ -138,7 +135,9 @@
 :- import_module check_hlds__mode_util, check_hlds__inst_match.
 :- import_module (parse_tree__inst), parse_tree__prog_util, hlds__error_util.
 :- import_module parse_tree__mercury_to_mercury, parse_tree__prog_out.
+:- import_module check_hlds__mode_errors, check_hlds__modecheck_call.
 :- import_module hlds__hlds_out, check_hlds__type_util, hlds__goal_util.
+:- import_module hlds__special_pred.
 :- import_module libs__globals, libs__options.
 
 :- import_module map, set, assoc_list, term, require, int.
@@ -634,7 +633,9 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 	{ post_typecheck__finish_pred_no_io(ModuleInfo,
 			ErrorProcs, PredInfo0, PredInfo1) },
 	report_unbound_inst_vars(ModuleInfo, PredId,
-			ErrorProcs, PredInfo1, PredInfo).
+			ErrorProcs, PredInfo1, PredInfo2),
+	check_for_indistinguishable_modes(ModuleInfo, PredId,
+			PredInfo2, PredInfo).
 
 post_typecheck__finish_pred_no_io(ModuleInfo, ErrorProcs,
 		PredInfo0, PredInfo) :-
@@ -651,7 +652,9 @@ post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 	{ post_typecheck__propagate_types_into_modes(ModuleInfo,
 			ErrorProcs, PredInfo0, PredInfo1) },
 	report_unbound_inst_vars(ModuleInfo, PredId,
-			ErrorProcs, PredInfo1, PredInfo).
+			ErrorProcs, PredInfo1, PredInfo2),
+	check_for_indistinguishable_modes(ModuleInfo, PredId,
+			PredInfo2, PredInfo).
 
 	% 
 	% For imported preds, we just need to ensure that all
@@ -673,7 +676,9 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 	{ post_typecheck__finish_imported_pred_no_io(ModuleInfo, ErrorProcs,
 		PredInfo0, PredInfo1) },
 	report_unbound_inst_vars(ModuleInfo, PredId,
-		ErrorProcs, PredInfo1, PredInfo).
+		ErrorProcs, PredInfo1, PredInfo2),
+	check_for_indistinguishable_modes(ModuleInfo, PredId,
+		PredInfo2, PredInfo).
 
 post_typecheck__finish_imported_pred_no_io(ModuleInfo, Errors,
 		PredInfo0, PredInfo) :-
@@ -903,6 +908,89 @@ unbound_inst_var_error(PredId, ProcInfo, ModuleInfo) -->
 	io__write_string("  error: unbound inst variable(s).\n"),
 	prog_out__write_context(Context),
 	io__write_string("  (Sorry, polymorphic modes are not supported.)\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred check_for_indistinguishable_modes(module_info, pred_id,
+		pred_info, pred_info, io__state, io__state).
+:- mode check_for_indistinguishable_modes(in, in, in, out, di, uo) is det.
+
+check_for_indistinguishable_modes(ModuleInfo, PredId, PredInfo0, PredInfo) -->
+	(
+		%
+		% Don't check for indistinguishable modes in unification
+		% predicates.  The default (in, in) mode must be
+		% semidet, but for single-value types we also want to
+		% create a det mode which will be indistinguishable
+		% from the semidet mode.
+		% (When the type is known, the det mode is called,
+		% but the polymorphic unify needs to be able to call
+		% the semidet mode.)
+		%
+		{ special_pred_name_arity(unify, _, PredName, PredArity) },
+		{ pred_info_name(PredInfo0, PredName) },
+		{ pred_info_arity(PredInfo0, PredArity) }
+	->
+		{ PredInfo = PredInfo0 }
+	;
+		{ pred_info_procids(PredInfo0, ProcIds) },
+		check_for_indistinguishable_modes(ModuleInfo, PredId,
+			ProcIds, [], PredInfo0, PredInfo)
+	).
+
+:- pred check_for_indistinguishable_modes(module_info, pred_id, list(proc_id),
+		list(proc_id), pred_info, pred_info, io__state, io__state).
+:- mode check_for_indistinguishable_modes(in, in, in,
+		in, in, out, di, uo) is det.
+
+check_for_indistinguishable_modes(_, _, [], _, PredInfo, PredInfo) --> [].
+check_for_indistinguishable_modes(ModuleInfo, PredId, [ProcId | ProcIds],
+		PrevProcIds, PredInfo0, PredInfo) -->
+	check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId,
+		PrevProcIds, PredInfo0, PredInfo1),
+	check_for_indistinguishable_modes(ModuleInfo, PredId, ProcIds,
+		[ProcId | PrevProcIds], PredInfo1, PredInfo).
+
+:- pred check_for_indistinguishable_mode(module_info, pred_id, proc_id,
+		list(proc_id), pred_info, pred_info, io__state, io__state).
+:- mode check_for_indistinguishable_mode(in, in, in,
+		in, in, out, di, uo) is det.
+
+check_for_indistinguishable_mode(_, _, _, [], PredInfo, PredInfo) --> [].
+check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
+		[ProcId | ProcIds], PredInfo0, PredInfo) -->
+	(
+		{ modes_are_indistinguishable(ProcId, ProcId1,
+			PredInfo0, ModuleInfo) }
+	->
+		{ pred_info_import_status(PredInfo0, Status) },
+		globals__io_lookup_bool_option(intermodule_optimization,
+			Intermod),
+		globals__io_lookup_bool_option(make_optimization_interface,
+			MakeOptInt),
+		(
+			% With `--intermodule-optimization' we can read
+			% the declarations for a predicate from the `.int'
+			% and `.int0' files, so ignore the error in that case.
+			{
+				status_defined_in_this_module(Status, yes)
+			;
+				Intermod = no
+			;
+				MakeOptInt = yes
+			}
+		->
+			report_indistinguishable_modes_error(ProcId1,
+				ProcId, PredId, PredInfo0, ModuleInfo)
+		;
+			[]
+		),
+		{ pred_info_remove_procid(PredInfo0, ProcId1, PredInfo1) }
+	;
+		{ PredInfo1 = PredInfo0 }
+	),
+	check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
+		ProcIds, PredInfo1, PredInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -51,7 +51,7 @@ get_module_dependencies(ModuleName, MaybeImports, Info0, Info) -->
 		% generated as a side effect of generating the parent's
 		% dependencies.
 		%
-		{ get_ancestors(ModuleName, Ancestors) },
+		{ Ancestors = get_ancestors(ModuleName) },
 		list__foldl3(
 			generate_ancestor_dependencies(RebuildDeps),
 				Ancestors, no, Error, Info0, Info1),
@@ -292,8 +292,8 @@ read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
     	no, ModuleDepFile),
     globals__io_lookup_accumulating_option(search_directories, SearchDirs),
     io__input_stream(OldInputStream),
-    search_for_file(SearchDirs, ModuleDepFile, SearchResult),
-    ( { SearchResult = yes(ModuleDir) } ->
+    search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult),
+    ( { SearchResult = ok(ModuleDir) } ->
 	parser__read_term(ImportsTermResult),
 	io__set_input_stream(OldInputStream, ModuleDepStream),
 	io__close_input(ModuleDepStream),

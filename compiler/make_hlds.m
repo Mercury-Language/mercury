@@ -1792,18 +1792,15 @@ insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
 		{ Insts = Insts0 },
 		% If abstract insts are implemented, this will need to change
 		% to update the hlds_inst_defn to the non-abstract inst.
-		( { Status = opt_imported } ->
-			[]
-		;
-			% XXX we should record each error using 
-			%	 module_info_incr_errors
-			{ user_inst_table_get_inst_defns(Insts, InstDefns) },
-			{ map__lookup(InstDefns, Name - Arity, OrigI) },
-			{ OrigI = hlds_inst_defn(_, _, _, _,
-						OrigContext, _) },
-			multiple_def_error(Name, Arity, "inst",
-					Context, OrigContext)
-		)
+
+		% XXX we should record each error using 
+		%	 module_info_incr_errors
+		{ user_inst_table_get_inst_defns(Insts, InstDefns) },
+		{ map__lookup(InstDefns, Name - Arity, OrigI) },
+		{ OrigI = hlds_inst_defn(_, _, _, _,
+					OrigContext, _) },
+		multiple_def_error(Status, Name, Arity, "inst",
+			Context, OrigContext, _)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1837,18 +1834,13 @@ modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
 		{ Modes = Modes1 }
 	;
 		{ Modes = Modes0 },
-		( { Status = opt_imported } ->
-			[]
-		;
-			{ mode_table_get_mode_defns(Modes, ModeDefns) },
-			{ map__lookup(ModeDefns, Name - Arity, OrigI) },
-			{ OrigI = hlds_mode_defn(_, _, _, _,
-						OrigContext, _) },
-			% XXX we should record each error using
-			% 	module_info_incr_errors
-			multiple_def_error(Name, Arity, "mode",
-					Context, OrigContext)
-		)
+		{ mode_table_get_mode_defns(Modes, ModeDefns) },
+		{ map__lookup(ModeDefns, Name - Arity, OrigI) },
+		{ OrigI = hlds_mode_defn(_, _, _, _, OrigContext, _) },
+		% XXX we should record each error using
+		% 	module_info_incr_errors
+		multiple_def_error(Status, Name, Arity, "mode",
+			Context, OrigContext, _)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1929,16 +1921,9 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
-
-			% otherwise issue an error message if the second
-			% definition wasn't read while reading .opt files. 
-			{ Status = opt_imported }
-		->
-			{ Module = Module0 }
-		;
-			{ module_info_incr_errors(Module0, Module) },
-			multiple_def_error(Name, Arity, "type", Context,
-				OrigContext)
+			{ Module = Module0 },
+			multiple_def_error(Status, Name, Arity, "type",
+				Context, OrigContext, _)
 		)
 	;
 		{ map__set(Types0, TypeCtor, T, Types) },
@@ -2308,17 +2293,9 @@ module_add_pred_or_func(Module0, TypeVarSet, InstVarSet, ExistQVars,
 		PredOrFunc, PredName, TypesAndModes, MaybeDet, Cond, Purity,
 		ClassContext, Markers, Context, item_status(Status, NeedQual),
 		MaybePredProcId, Module) -->
-	% Only preds with opt_imported clauses are tagged as opt_imported, so
-	% that the compiler doesn't look for clauses for other preds read in
-	% from optimization interfaces.
-	{ Status = opt_imported ->
-		DeclStatus = imported(interface)
-	;
-		DeclStatus = Status
-	},
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes0) },
 	add_new_pred(Module0, TypeVarSet, ExistQVars, PredName, Types, Cond,
-		Purity, ClassContext, Markers, Context, DeclStatus, NeedQual, 
+		Purity, ClassContext, Markers, Context, Status, NeedQual, 
 		PredOrFunc, Module1),
 	{
 	    	PredOrFunc = predicate,
@@ -2407,38 +2384,35 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 				OldVarSet, OldConstraints, Vars, VarSet,
 				Constraints) }
 		->
-			multiple_def_error(Name, ClassArity,
-				"typeclass", Context, OldContext),
+			% Always report the error, even in `.opt' files.
+			{ DummyStatus = local },
+			multiple_def_error(DummyStatus, Name, ClassArity,
+				"typeclass", Context, OldContext, _),
 			prog_out__write_context(Context),
 			io__write_string(
 			"  The superclass constraints do not match.\n"),
 			io__set_exit_status(1),
-			{ FoundError = yes }
+			{ ErrorOrPrevDef = yes }
 		;
 			{ Interface = concrete(_) },
 			{ OldInterface = concrete(_) }
 		->
-			{ FoundError = yes },
-			( { ImportStatus = opt_imported } ->
-				[]
-			;
-				multiple_def_error(Name, ClassArity,
-					"typeclass", Context, OldContext),
-				io__set_exit_status(1)
-			)
+			multiple_def_error(ImportStatus, Name, ClassArity,
+				"typeclass", Context, OldContext, _),
+			{ ErrorOrPrevDef = yes }
 		;
-			{ FoundError = no }
+			{ ErrorOrPrevDef = no }
 		),
 
 		{ IsNewDefn = no }
 	;
 		{ IsNewDefn = yes `with_type` bool },
-		{ FoundError = no `with_type` bool },
+		{ ErrorOrPrevDef = no `with_type` bool },
 		{ ClassMethods0 = [] },
 		{ ClassInterface = Interface },
 		{ ImportStatus = ImportStatus1 }
 	),
-	( { FoundError = no } ->
+	( { ErrorOrPrevDef = no } ->
 		(
 			{ Interface = concrete(Methods) },
 			module_add_class_interface(Module0, Name, Vars,
@@ -2748,8 +2722,17 @@ report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
 % to be reflected there too.
 
 add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
-		ClassContext, Markers0, Context, Status, NeedQual,
+		ClassContext, Markers0, Context, ItemStatus, NeedQual,
 		PredOrFunc, Module) -->
+	% Only preds with opt_imported clauses are tagged as opt_imported, so
+	% that the compiler doesn't look for clauses for other preds read in
+	% from optimization interfaces.
+	{ ItemStatus = opt_imported ->
+		Status = imported(interface)
+	;
+		Status = ItemStatus
+	},
+
 	check_tvars_in_constraints(ClassContext, Types, TVarSet,
 		PredOrFunc, PredName, Context, Module0, Module1),
 
@@ -2785,22 +2768,19 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 				PredOrFunc, MNameOfPred, PName, Arity,
 				[OrigPred|_]) }
 		->
-			( { Status \= opt_imported } ->
-				{ module_info_incr_errors(Module1, Module) },
-				{ module_info_pred_info(Module, OrigPred,
-					OrigPredInfo) },
-				{ pred_info_context(OrigPredInfo,
-					OrigContext) },
-				{ hlds_out__pred_or_func_to_str(PredOrFunc,
-					DeclString) },
-				{ adjust_func_arity(PredOrFunc,
-					OrigArity, Arity) },
-				multiple_def_error(PredName, OrigArity,
-					DeclString, Context, OrigContext)
+			{ module_info_pred_info(Module1, OrigPred,
+				OrigPredInfo) },
+			{ pred_info_context(OrigPredInfo, OrigContext) },
+			{ hlds_out__pred_or_func_to_str(PredOrFunc,
+				DeclString) },
+			{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+			multiple_def_error(ItemStatus, PredName, OrigArity,
+				DeclString, Context, OrigContext, FoundError),
+			{ FoundError = yes ->
+				module_info_incr_errors(Module1, Module)
 			;
-				% This can happen for exported external preds.
-				{ Module = Module0 }
-			)
+				Module = Module1
+			}
 		;
 			{ module_info_get_partial_qualifier_info(Module1,
 				PQInfo) },
@@ -7952,29 +7932,39 @@ report_unexpected_decl(Descr, Context) -->
 	io__write_string(Descr),
 	io__write_string("' declaration.\n").
 
-:- pred multiple_def_error(sym_name, int, string, prog_context, prog_context,
-				io__state, io__state).
-:- mode multiple_def_error(in, in, in, in, in, di, uo) is det.
+:- pred multiple_def_error(import_status, sym_name, int, string, prog_context,
+		prog_context, bool, io__state, io__state).
+:- mode multiple_def_error(in, in, in, in, in, in, out, di, uo) is det.
 
-multiple_def_error(Name, Arity, DefType, Context, OrigContext) -->
-	io__set_exit_status(1),
-	prog_out__write_context(Context),
-	io__write_string("Error: "),
-	io__write_string(DefType),
-	io__write_string(" `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("' multiply defined.\n"),
-	prog_out__write_context(OrigContext),
-	io__write_string(
-		"  Here is the previous definition of "),
-	io__write_string(DefType),
-	io__write_string(" `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'.\n").
+multiple_def_error(Status, Name, Arity, DefType, Context,
+		OrigContext, FoundError) -->
+	( { Status \= opt_imported } ->
+		io__set_exit_status(1),
+		prog_out__write_context(Context),
+		io__write_string("Error: "),
+		io__write_string(DefType),
+		io__write_string(" `"),
+		prog_out__write_sym_name(Name),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("' multiply defined.\n"),
+		prog_out__write_context(OrigContext),
+		io__write_string(
+			"  Here is the previous definition of "),
+		io__write_string(DefType),
+		io__write_string(" `"),
+		prog_out__write_sym_name(Name),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("'.\n"),
+		{ FoundError = yes }
+	;
+		% We don't take care not to read the same declaration
+		% from multiple sources with inter-module optimization
+		% so ignore multiple definition errors in the items read
+		% for inter-module optimization.
+		{ FoundError = no }
+	).
 
 :- pred undefined_pred_or_func_error(sym_name, int, prog_context, string,
 				io__state, io__state).

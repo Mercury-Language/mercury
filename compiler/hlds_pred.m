@@ -608,6 +608,10 @@
 :- pred pred_info_exported_procids(pred_info, list(proc_id)).
 :- mode pred_info_exported_procids(in, out) is det.
 
+	% Remove a procedure from the pred_info.
+:- pred pred_info_remove_procid(pred_info, proc_id, pred_info).
+:- mode pred_info_remove_procid(in, in, out) is det.
+
 :- pred pred_info_arg_types(pred_info, list(type)).
 :- mode pred_info_arg_types(in, out) is det.
 
@@ -1114,6 +1118,10 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 		ProcIds = []
 	).
 
+pred_info_remove_procid(PredInfo0, ProcId, PredInfo) :-
+	pred_info_procedures(PredInfo0, Procs0),
+	map__delete(Procs0, ProcId, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
 pred_info_clauses_info(PredInfo, PredInfo^clauses_info).
 

@@ -5616,7 +5616,7 @@ maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 get_unimported_parent(ModuleQualifier, ModuleInfo, UnimportedParent) :-
 	visible_module(ModuleName, ModuleInfo),
 	match_sym_name(ModuleQualifier, ModuleName),
-	get_ancestors(ModuleName, ParentModules),
+	ParentModules = get_ancestors(ModuleName),
 	list__member(UnimportedParent, ParentModules),
 	\+ visible_module(UnimportedParent, ModuleInfo).
 

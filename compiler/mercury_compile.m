@@ -1630,7 +1630,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 			module_name_to_file_name(ModuleName,
 				".opt", no, OptName),
 			search_for_file(IntermodDirs, OptName, Found),
-			( { Found = yes(_) } ->
+			( { Found = ok(_) } ->
 				{ UpdateStatus = yes },
 				io__seen
 			;
