@@ -18,9 +18,8 @@
 :- import_module ll_backend__code_info.
 :- import_module ll_backend__llds.
 
-:- pred middle_rec__match_and_generate(hlds_goal, code_tree,
-	code_info, code_info).
-:- mode middle_rec__match_and_generate(in, out, in, out) is semidet.
+:- pred middle_rec__match_and_generate(hlds_goal::in, code_tree::out,
+	code_info::in, code_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -42,8 +41,14 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, int, string, list, assoc_list, set, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
 :- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -297,17 +302,17 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_downloop_test(list(instruction), label,
-	list(instruction)).
-:- mode middle_rec__generate_downloop_test(in, in, out) is det.
+:- pred middle_rec__generate_downloop_test(list(instruction)::in, label::in,
+	list(instruction)::out) is det.
 
 middle_rec__generate_downloop_test([], _, _) :-
 	error("middle_rec__generate_downloop_test on empty list").
 middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 	( Instr0 = if_val(Test, _OldTarget) - _Comment ->
-		( Instrs0 = [] ->
-			true
+		(
+			Instrs0 = []
 		;
+			Instrs0 = [_ | _],
 			error("middle_rec__generate_downloop_test: " ++
 				"if_val followed by other instructions")
 		),
@@ -321,9 +326,8 @@ middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__split_rec_code(list(instruction),
-	list(instruction), list(instruction)).
-:- mode middle_rec__split_rec_code(in, out, out) is det.
+:- pred middle_rec__split_rec_code(list(instruction)::in,
+	list(instruction)::out, list(instruction)::out) is det.
 
 middle_rec__split_rec_code([], _, _) :-
 	error("did not find call in middle_rec__split_rec_code").
@@ -351,7 +355,7 @@ middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
 	list(instruction)::out) is det.
 
 middle_rec__add_counter_to_livevals([], _Lval, []).
-middle_rec__add_counter_to_livevals([I0|Is0], Lval, [I|Is]) :-
+middle_rec__add_counter_to_livevals([I0 | Is0], Lval, [I | Is]) :-
 	(
 		I0 = livevals(Lives0) - Comment
 	->
@@ -443,7 +447,7 @@ middle_rec__find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
 middle_rec__find_used_registers_instr(fork(_, _, _), !Used).
 middle_rec__find_used_registers_instr(join_and_terminate(Lval), !Used) :-
 	middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(join_and_continue(Lval,_), !Used) :-
+middle_rec__find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
 	middle_rec__find_used_registers_lval(Lval, !Used).
 
 :- pred middle_rec__find_used_registers_components(
@@ -543,7 +547,7 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 	set(int)::in, set(int)::out) is det.
 
 insert_pragma_c_input_registers([], !Used).
-insert_pragma_c_input_registers([Input|Inputs], !Used) :-
+insert_pragma_c_input_registers([Input | Inputs], !Used) :-
 	Input = pragma_c_input(_, _, _, Rval, _),
 	middle_rec__find_used_registers_rval(Rval, !Used),
 	insert_pragma_c_input_registers(Inputs, !Used).
@@ -552,7 +556,7 @@ insert_pragma_c_input_registers([Input|Inputs], !Used) :-
 	set(int)::in, set(int)::out) is det.
 
 insert_pragma_c_output_registers([], !Used).
-insert_pragma_c_output_registers([Output|Outputs], !Used) :-
+insert_pragma_c_output_registers([Output | Outputs], !Used) :-
 	Output = pragma_c_output(Lval, _, _, _, _),
 	middle_rec__find_used_registers_lval(Lval, !Used),
 	insert_pragma_c_output_registers(Outputs, !Used).

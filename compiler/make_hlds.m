@@ -1041,7 +1041,7 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !IO) :-
     ; module_defn_update_import_status(Defn, ItemStatus1) ->
         ItemStatus1 = item_status(!:Status, NeedQual),
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        mq_info_set_need_qual_flag(MQInfo0, NeedQual, MQInfo),
+        mq_info_set_need_qual_flag(NeedQual, MQInfo0, MQInfo),
         qual_info_set_mq_info(MQInfo, !QualInfo)
     ;
         true
@@ -8724,7 +8724,7 @@ get_disj(Goal, Subst, Disj0, Disj, !VarSet, !ModuleInfo, !QualInfo, SInfo,
 :- pred init_qual_info(mq_info::in, eqv_map::in, qual_info::out) is det.
 
 init_qual_info(MQInfo0, EqvMap, QualInfo) :-
-    mq_info_set_need_qual_flag(MQInfo0, may_be_unqualified, MQInfo),
+    mq_info_set_need_qual_flag(may_be_unqualified, MQInfo0, MQInfo),
     varset__init(TVarSet),
     map__init(Renaming),
     map__init(Index),
@@ -8780,7 +8780,7 @@ apply_to_recompilation_info(Pred, !QualInfo) :-
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
         Pred(RecompInfo0, RecompInfo),
-        mq_info_set_recompilation_info(MQInfo0, yes(RecompInfo), MQInfo),
+        mq_info_set_recompilation_info(yes(RecompInfo), MQInfo0, MQInfo),
         !:QualInfo = !.QualInfo ^ mq_info := MQInfo
     ;
         MaybeRecompInfo0 = no

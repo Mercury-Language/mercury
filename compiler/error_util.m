@@ -77,6 +77,11 @@
 :- func component_lists_to_pieces(list(list(format_component))) =
 	list(format_component).
 
+	% Convert a list of format_components into a list of format_components
+	% separated by commas, with the last two elements separated by `and'.
+:- func component_list_to_pieces(list(format_component)) =
+	list(format_component).
+
 	% Display the given error message, without a context and with standard
 	% indentation.
 :- pred write_error_pieces_plain(list(format_component)::in,
@@ -189,6 +194,16 @@ component_lists_to_pieces(
 	list__append(append_punctuation(Components1, ','),
 		component_lists_to_pieces(
 			[Components2, Components3 | Components])).
+
+component_list_to_pieces([]) = [].
+component_list_to_pieces([Component]) = [Component].
+component_list_to_pieces([Component1, Component2]) =
+		[Component1, words("and"), Component2].
+component_list_to_pieces(
+		[Component1, Component2, Component3 | Components]) =
+	list__append(append_punctuation([Component1], ','),
+		component_list_to_pieces(
+			[Component2, Component3 | Components])).
 
 write_error_pieces_plain(Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, no, 0, Components, !IO).
@@ -431,8 +446,10 @@ sym_name_to_word(SymName) = "`" ++ SymStr ++ "'" :-
 
 :- func sym_name_and_arity_to_word(sym_name_and_arity) = string.
 
-sym_name_and_arity_to_word(SymNameAndArity) = "`" ++ SymStr ++ "'" :-
-	sym_name_and_arity_to_string(SymNameAndArity, SymStr).
+sym_name_and_arity_to_word(SymName / Arity) =
+		"`" ++ SymStr ++ "'/" ++ ArityStr :-
+	sym_name_to_string(SymName, SymStr),
+	string__int_to_string(Arity, ArityStr).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
 

@@ -1,8 +1,10 @@
 errors1.m:001: Warning: interface for module `errors1' does not export
 errors1.m:001:   anything.
-errors1.m:051: In definition of type `errors1.du_type_which_references_undefined_type'/0:
+errors1.m:051: In definition of type
+errors1.m:051:   `errors1.du_type_which_references_undefined_type'/0:
 errors1.m:051:   error: undefined type `undefined_type'/0.
-errors1.m:053: In definition of type `errors1.eqv_type_which_references_undefined_type'/0:
+errors1.m:053: In definition of type
+errors1.m:053:   `errors1.eqv_type_which_references_undefined_type'/0:
 errors1.m:053:   error: undefined type `undefined_type'/0.
 errors1.m:055: Error: circular equivalence type `errors1.circular_eqv_type/0'.
 errors1.m:057: Error: circular equivalence type

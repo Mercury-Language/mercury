@@ -8,6 +8,7 @@ test_nested.m:013: In module `test_nested':
 test_nested.m:013:   error in `use_module' declaration:
 test_nested.m:013:   module `parent2.child' is inaccessible.
 test_nested.m:015: In definition of type `test_nested.foo'/0:
-test_nested.m:015:   error: undefined type `parent.nonexistent_child.foo'/0
-test_nested.m:015:   (the module `(parent.nonexistent_child)' has not been imported).
+test_nested.m:015:   error: undefined type `parent.nonexistent_child.foo'/0.
+test_nested.m:015:   (The module `parent.nonexistent_child' has not been
+test_nested.m:015:   imported.)
 For more information, try recompiling with `-E'.

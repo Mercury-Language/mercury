@@ -1744,7 +1744,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1,
 	mq_info_get_recompilation_info(MQInfo0, RecompInfo0),
 	mercury_compile__expand_equiv_types(Module, Items2, Verbose, Stats,
 		Items, CircularTypes, EqvMap, RecompInfo0, RecompInfo, !IO),
-	mq_info_set_recompilation_info(MQInfo0, RecompInfo, MQInfo),
+	mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
 	bool__or(UndefTypes0, CircularTypes, UndefTypes1),
 
 	mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap,

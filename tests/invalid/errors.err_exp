@@ -4,9 +4,11 @@ errors.m:061: Error: free type parameter in RHS of type definition: f(_1).
 errors.m:001: Warning: interface for module `errors' does not export anything.
 errors.m:001: Warning: module `int' is imported using both
 errors.m:001:   `:- import_module' and `:- use_module' declarations.
-errors.m:051: In definition of type `errors.du_type_which_references_undefined_type'/0:
+errors.m:051: In definition of type
+errors.m:051:   `errors.du_type_which_references_undefined_type'/0:
 errors.m:051:   error: undefined type `undefined_type'/0.
-errors.m:053: In definition of type `errors.eqv_type_which_references_undefined_type'/0:
+errors.m:053: In definition of type
+errors.m:053:   `errors.eqv_type_which_references_undefined_type'/0:
 errors.m:053:   error: undefined type `undefined_type'/0.
 errors.m:100: In definition of type `errors.needs_qualification'/0:
 errors.m:100:   error: undefined type `state'/0.

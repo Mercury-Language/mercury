@@ -1,4 +1,3 @@
 unused_import.m:001: In module `unused_import':
-unused_import.m:001:   warning: modules `float' and `list'
-unused_import.m:001:   are imported in the interface, but are not
-unused_import.m:001:   used in the interface.
+unused_import.m:001:   warning: modules `float' and `list' are imported in the
+unused_import.m:001:   interface, but are not used in the interface.

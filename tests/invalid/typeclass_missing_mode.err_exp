@@ -1,3 +1,3 @@
 typeclass_missing_mode.m:007: Error: no mode declaration for type class method
-typeclass_missing_mode.m:007:   predicate `typeclass_missing_mode.p/1'.
+typeclass_missing_mode.m:007:   predicate `typeclass_missing_mode.p'/1.
 For more information, try recompiling with `-E'.

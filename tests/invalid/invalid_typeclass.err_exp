@@ -1,8 +1,8 @@
 invalid_typeclass.m:011: Error: expected distinct variables as class parameters: class3(_1, _1).
-invalid_typeclass.m:017: Error: typeclass `invalid_typeclass.class2/1' multiply
+invalid_typeclass.m:017: Error: typeclass `invalid_typeclass.class2'/1 multiply
 invalid_typeclass.m:017:   defined.
 invalid_typeclass.m:009: Here is the previous definition of typeclass
-invalid_typeclass.m:009:   `invalid_typeclass.class2/1'.
+invalid_typeclass.m:009:   `invalid_typeclass.class2'/1.
 invalid_typeclass.m:017:   The superclass constraints do not match.
 invalid_typeclass.m:007: Error: no definition for typeclass
 invalid_typeclass.m:007:   `invalid_typeclass.class/1'.

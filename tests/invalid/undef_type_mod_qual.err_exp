@@ -1,3 +1,5 @@
-undef_type_mod_qual.m:005: In definition of predicate `undef_type_mod_qual.blah'/1:
-undef_type_mod_qual.m:005:   error: undefined type `undef_type_mod_qual.undefined_type'/0.
+undef_type_mod_qual.m:005: In definition of predicate
+undef_type_mod_qual.m:005:   `undef_type_mod_qual.blah'/1:
+undef_type_mod_qual.m:005:   error: undefined type
+undef_type_mod_qual.m:005:   `undef_type_mod_qual.undefined_type'/0.
 For more information, try recompiling with `-E'.

@@ -5,6 +5,6 @@ undef_type.m:003:   error: undefined type `undef1'/0.
 undef_type.m:010: In definition of predicate `undef_type.q'/1:
 undef_type.m:010:   error: undefined type `undef2'/0.
 undef_type.m:013: In definition of predicate `undef_type.r'/1:
-undef_type.m:013:   error: undefined type `io.state'/0
-undef_type.m:013:   (the module `io' has not been imported).
+undef_type.m:013:   error: undefined type `io.state'/0.
+undef_type.m:013:   (The module `io' has not been imported.)
 For more information, try recompiling with `-E'.
