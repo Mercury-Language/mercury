@@ -68,7 +68,8 @@
 			;	gcc_global_registers
 			;	debug
 			;	optimize
-			;	grade.
+			;	grade
+			;	mod_comments.
 
 :- implementation.
 
@@ -113,7 +114,8 @@ option_defaults([
 	gcc_global_registers	-	bool(no),
 	debug			-	bool(no),
 	optimize		-	bool(no),
-	grade			-	string("")
+	grade			-	string(""),
+	mod_comments		-	bool(yes)
 ]).
 
 short_option('v', 			verbose).
@@ -213,7 +215,7 @@ options_help -->
 	io__write_string("\t\tOutput messages about the compiler's time/space usage\n"),
 	io__write_string("\t-T, --debug-types\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
-	io__write_string("\t-M, --debug-modes\n"),
+	io__write_string("\t-N, --debug-modes\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
 
 	io__write_string("\nOutput Options:\n"),
@@ -248,6 +250,8 @@ options_help -->
 	io__write_string("\t\tInvoke the C compiler on the generated .c file.\n"),
 	io__write_string("\t--link (*** NOT YET IMPLEMENTED ***)\n"),
 	io__write_string("\t\tLink the named modules to produce an executable.\n"),
+	io__write_string("\t--no-mod-comments\n"),
+	io__write_string("\t\tDon't output comments in the .mod file\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),

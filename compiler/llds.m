@@ -122,7 +122,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, globals, options.
 
 %-----------------------------------------------------------------------------%
 
@@ -203,14 +203,17 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction(Inst),
+	io__write_string("\n"),
+	globals__io_lookup_bool_option(mod_comments, PrintModComments),
 	(
-		{ Comment = "" }
+		{ Comment \= "" },
+		{ PrintModComments = yes }
 	->
-		io__write_string("\n")
-	;
 		io__write_string("\n\t\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
+	;
+		[]
 	),
 	output_instruction_list(Instructions).
 
@@ -218,7 +221,15 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 :- mode output_instruction(in, di, uo) is det.
 
 output_instruction(comment(Comment)) -->
-	io__write_strings(["/* ",Comment," */"]).
+	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	(
+		{ Comment \= "" },
+		{ PrintModComments = yes }
+	->
+		io__write_strings(["/* ", Comment, " */"])
+	;
+		[]
+	).
 
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t"),
@@ -358,8 +369,7 @@ output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
 	io__write_string("\t"),
 	%%% io__write_string("ENTRY("),
 	%%% io__write_string(Module),
-	io__write_string("mercury"),
-	io__write_string("__"),
+	output_label_prefix,
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
@@ -371,18 +381,16 @@ output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
 :- mode output_label(in, di, uo) is det.
 
 output_label(entrylabel(_Module, Pred, Arity, Mode)) -->
+	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string("mercury"),
-	io__write_string("__"),
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode).
 output_label(label(_Module, Pred, Arity, Mode, Num)) -->
+	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string("mercury"),
-	io__write_string("__"),
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
@@ -395,12 +403,21 @@ output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 :- mode output_unilabel(in, di, uo) is det.
 
 output_unilabel(unilabel(_Module, LeftStr, RightStr)) -->
+	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string("mercury"),
-	io__write_string("__"),
 	io__write_string(LeftStr),
 	io__write_string("_"),
 	io__write_string(RightStr).
+
+	% To ensure that Mercury labels don't clash with C symbols, we
+	% prefix them with `mercury__'.
+
+:- pred output_label_prefix(io__state, io__state).
+:- mode output_label_prefix(di, uo) is det.
+
+output_label_prefix -->
+	io__write_string("mercury"),
+	io__write_string("__").
 
 :- pred output_reg(reg, io__state, io__state).
 :- mode output_reg(in, di, uo) is det.
