@@ -637,8 +637,7 @@ propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, ModuleInfo,
 
 propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
-propagate_ctor_info(inst_var(_), _, _, _, _) :-
-	error("propagate_ctor_info: unbound inst var").
+propagate_ctor_info(inst_var(V), _, _, _, inst_var(V)).
 propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
 propagate_ctor_info(defined_inst(InstName), Type, Ctors, ModuleInfo, Inst) :-
@@ -702,8 +701,7 @@ propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		Modes = Modes0
 	).
 propagate_ctor_info_lazily(not_reached, _Type, _, _ModuleInfo, not_reached).
-propagate_ctor_info_lazily(inst_var(_), _, _, _, _) :-
-	error("propagate_ctor_info_lazily: unbound inst var").
+propagate_ctor_info_lazily(inst_var(Var), _, _, _, inst_var(Var)).
 propagate_ctor_info_lazily(abstract_inst(Name, Args), _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
 propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _,
