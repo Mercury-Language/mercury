@@ -1048,8 +1048,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 			{ predicate_table_insert(PredicateTable0, PredInfo0, 
 					PredId, PredicateTable1) },
 			( 
-				{ code_util__predinfo_is_builtin(Module1, 
-						PredInfo0) }
+				{ code_util__predinfo_is_builtin(PredInfo0) }
 			->
 				{ add_builtin(PredId, Types,
 					PredInfo0, PredInfo) },

@@ -174,8 +174,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			% Don't export builtins since they will be
 			% recreated in the importing module anyway.
 			{ \+ code_util__compiler_generated(PredInfo0) },
-			{ \+ code_util__predinfo_is_builtin(ModuleInfo0,
-					PredInfo0) },
+			{ \+ code_util__predinfo_is_builtin(PredInfo0) },
 			(
 				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) }

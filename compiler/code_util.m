@@ -86,8 +86,8 @@
 :- pred code_util__compiler_generated(pred_info).
 :- mode code_util__compiler_generated(in) is semidet.
 
-:- pred code_util__predinfo_is_builtin(module_info, pred_info).
-:- mode code_util__predinfo_is_builtin(in, in) is semidet.
+:- pred code_util__predinfo_is_builtin(pred_info).
+:- mode code_util__predinfo_is_builtin(in) is semidet.
 
 :- pred code_util__builtin_state(module_info, pred_id, proc_id, builtin_state).
 :- mode code_util__builtin_state(in, in, in, out) is det.
@@ -314,7 +314,7 @@ code_util__arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 
-code_util__predinfo_is_builtin(_ModuleInfo, PredInfo) :-
+code_util__predinfo_is_builtin(PredInfo) :-
 	pred_info_module(PredInfo, ModuleName),
 	pred_info_name(PredInfo, PredName),
 %	code_util__translate_builtin(ModuleName, PredName, _, _, _, _).

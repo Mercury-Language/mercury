@@ -182,7 +182,7 @@ setup_local_var_usage(ModuleInfo, PredTable, [PredId | PredIds], UnusedArgInfo,
 		OptProcList0, OptProcList) :-
 	map__lookup(PredTable, PredId, PredInfo),
 		% The builtins use all their arguments.
-	( code_util__predinfo_is_builtin(ModuleInfo, PredInfo) ->
+	( code_util__predinfo_is_builtin(PredInfo) ->
 		VarUsage1 = VarUsage0,
 		setup_local_var_usage(ModuleInfo, PredTable, PredIds,
 			UnusedArgInfo, VarUsage1, VarUsage, PredProcList0,
@@ -1369,8 +1369,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 			\+ pred_info_is_imported(PredInfo),
 				% Don't warn about builtins
 				% that have unused arguments.
-			\+ code_util__predinfo_is_builtin(ModuleInfo,
-				PredInfo),
+			\+ code_util__predinfo_is_builtin(PredInfo),
 			\+ code_util__compiler_generated(PredInfo),
 				% Don't warn about lambda expressions
 				% not using arguments. (The warning
