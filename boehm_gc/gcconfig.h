@@ -53,6 +53,10 @@
 #    define NETBSD
 #    define mach_type_known
 # endif
+# if defined(LINUX) && defined(__sparc__)
+#    define SPARC
+#    define mach_type_known
+# endif
 # if defined(vax)
 #    define VAX
 #    ifdef ultrix
