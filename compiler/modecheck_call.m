@@ -504,7 +504,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	% and insert it into the queue of requested procedures.
 	%
 	unify_proc__request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
-		MaybeDet, Context, ModuleInfo0, ProcId, ModuleInfo),
+		MaybeDet, Context, ProcId, ModuleInfo0, ModuleInfo),
 
 	mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 

@@ -497,7 +497,7 @@ polymorphism__fixup_pred(PredId, !ModuleInfo) :-
 	),
 
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo).
+	module_info_set_preds(PredTable, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -543,8 +543,7 @@ polymorphism__process_pred(PredId, !ModuleInfo) :-
 		ExtraArgModes), ProcIds, Procs0, Procs),
 	pred_info_set_procedures(Procs, PredInfo2, PredInfo),
 
-	module_info_set_pred_info(!.ModuleInfo, PredId, PredInfo,
-		!:ModuleInfo).
+	module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 :- pred polymorphism__process_clause_info(pred_info::in, module_info::in,
 	clauses_info::in, clauses_info::out, poly_info::out, list(mode)::out)
@@ -3232,7 +3231,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
 		% We also mark the predicate as invalid, also to avoid
 		% flow-on errors.
 		Detism = nondet,
-		module_info_remove_predid(!.ModuleInfo, PredId, !:ModuleInfo)
+		module_info_remove_predid(PredId, !ModuleInfo)
 	),
 
 		% Work out which argument corresponds to the constraint which
@@ -3277,7 +3276,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
 	),
 
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo),
+	module_info_set_preds(PredTable, !ModuleInfo),
 
 	!:ProcNum = !.ProcNum + 1.
 

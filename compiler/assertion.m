@@ -665,7 +665,7 @@ update_pred_info(AssertId, PredId, !Module) :-
 	pred_info_get_assertions(PredInfo0, Assertions0),
 	set__insert(Assertions0, AssertId, Assertions),
 	pred_info_set_assertions(Assertions, PredInfo0, PredInfo),
-	module_info_set_pred_info(!.Module, PredId, PredInfo, !:Module).
+	module_info_set_pred_info(PredId, PredInfo, !Module).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

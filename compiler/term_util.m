@@ -286,10 +286,10 @@ remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-set_pred_proc_ids_arg_size_info([], _ArgSize, Module, Module).
-set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, Module0, Module) :-
+set_pred_proc_ids_arg_size_info([], _ArgSize, !Module).
+set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !Module) :-
 	PPId = proc(PredId, ProcId),
-	module_info_preds(Module0, PredTable0),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
@@ -299,14 +299,13 @@ set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, Module0, Module) :-
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	set_pred_proc_ids_arg_size_info(PPIds, ArgSize, Module1, Module).
+	module_info_set_preds(PredTable, !Module),
+	set_pred_proc_ids_arg_size_info(PPIds, ArgSize, !Module).
 
-set_pred_proc_ids_termination_info([], _Termination, Module, Module).
-set_pred_proc_ids_termination_info([PPId | PPIds], Termination,
-		Module0, Module) :-
+set_pred_proc_ids_termination_info([], _Termination, !Module).
+set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !Module) :-
 	PPId = proc(PredId, ProcId),
-	module_info_preds(Module0, PredTable0),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
@@ -317,9 +316,8 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination,
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	set_pred_proc_ids_termination_info(PPIds, Termination,
-		Module1, Module).
+	module_info_set_preds(PredTable, !Module),
+	set_pred_proc_ids_termination_info(PPIds, Termination, !Module).
 
 lookup_proc_termination_info(Module, PredProcId, MaybeTermination) :-
 	PredProcId = proc(PredId, ProcId),

@@ -307,23 +307,19 @@ process_matching_nonimported_procs(Task0, Task, Filter,
 :- mode process_nonimported_pred(in(pred_error_task), pred(in) is semidet, in,
 	in, out, di, uo) is det.
 
-process_nonimported_pred(Task, Filter, PredId, ModuleInfo0, ModuleInfo,
-		IO0, IO) :-
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 	(
 		( pred_info_is_imported(PredInfo0)
 		; \+ call(Filter, PredInfo0)
 		)
 	->
-		ModuleInfo = ModuleInfo0,
-		IO = IO0
+		true
 	;
-		call(Task, PredId, ModuleInfo0, ModuleInfo1,
-			PredInfo0, PredInfo, WarnCnt, ErrCnt, IO0, IO1),
-		module_info_set_pred_info(ModuleInfo1,
-			PredId, PredInfo, ModuleInfo2),
-		passes_aux__handle_errors(WarnCnt, ErrCnt,
-			ModuleInfo2, ModuleInfo, IO1, IO)
+		call(Task, PredId, !ModuleInfo,
+			PredInfo0, PredInfo, WarnCnt, ErrCnt, !IO),
+		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
+		passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
 	).
 
 :- pred process_nonimported_procs_in_preds(list(pred_id), task, task,
@@ -404,7 +400,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
 	map__det_update(Procs8, ProcId, Proc, Procs),
 	pred_info_set_procedures(Procs, Pred8, Pred),
 	map__det_update(Preds8, PredId, Pred, Preds),
-	module_info_set_preds(!.ModuleInfo, Preds, !:ModuleInfo),
+	module_info_set_preds(Preds, !ModuleInfo),
 
 	process_nonimported_procs(ProcIds, PredId, !Task, !ModuleInfo, !IO).
 

@@ -528,10 +528,8 @@
 
 :- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
 
-	% list__foldl2(Pred, List, Start, End, Start2, End2)
-	% calls Pred with each element of List (working left-to-right),
-	% 2 accumulators (with the initial values of Start and Start2),
-	% and returns the final values in End and End2.
+	% list__foldl2(Pred, List, !Acc1, !Acc2)
+	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
@@ -548,10 +546,8 @@
 :- mode list__foldl2(pred(in, di, uo, di, uo) is det,
 		in, di, uo, di, uo) is det.
 
-	% list__foldl3(Pred, List, Start1, End1, Start2, End2, Start3, End3)
-	% calls Pred with each element of List (working left-to-right),
-	% 3 accumulators (with the initial values of Start1, Start2 and Start3),
-	% and returns the final values in End1, End2 and End3.
+	% list__foldl3(Pred, List, !Acc1, !Acc2, !Acc3)
+	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl3(pred(L, A1, A1, A2, A2, A3, A3), list(L),
@@ -564,6 +560,21 @@
 		in, in, out, in, out, in, out) is nondet.
 :- mode list__foldl3(pred(in, in, out, in, out, di, uo) is det,
 		in, in, out, in, out, di, uo) is det.
+
+	% list__foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4)
+	% Does the same job as list__foldl, but with two accumulators.
+	% (Although no more expressive than list__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred list__foldl4(pred(L, A1, A1, A2, A2, A3, A3, A4, A4), list(L),
+		A1, A1, A2, A2, A3, A3, A4, A4).
+:- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
+		in, in, out, in, out, in, out, in, out) is det.
+:- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is semidet,
+		in, in, out, in, out, in, out, in, out) is semidet.
+:- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
+		in, in, out, in, out, in, out, in, out) is nondet.
+:- mode list__foldl4(pred(in, in, out, in, out, in, out, di, uo) is det,
+		in, in, out, in, out, in, out, di, uo) is det.
 
 	% list__map_foldl(Pred, InList, OutList, Start, End) calls Pred
 	% with an accumulator (with the initial value of Start) on
@@ -1335,35 +1346,35 @@ list__filter_map_corresponding3(F, As, Bs, Cs) =
 mismatched list arguments")
 	).
 
-list__foldl(_, [], Acc, Acc).
-list__foldl(P, [H | T], Acc0, Acc) :-
-	call(P, H, Acc0, Acc1),
-	list__foldl(P, T, Acc1, Acc).
+list__foldl(_, [], !A).
+list__foldl(P, [H | T], !A) :-
+	call(P, H, !A),
+	list__foldl(P, T, !A).
 
-list__foldl2(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc).
-list__foldl2(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc) :-
-	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1),
-	list__foldl2(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc).
+list__foldl2(_, [], !A, !B).
+list__foldl2(P, [H | T], !A, !B) :-
+	call(P, H, !A, !B),
+	list__foldl2(P, T, !A, !B).
 
-list__foldl3(_, [], FirstAcc, FirstAcc, SecAcc, SecAcc, ThirdAcc, ThirdAcc).
-list__foldl3(P, [H | T], FirstAcc0, FirstAcc, SecAcc0, SecAcc,
-		ThirdAcc0, ThirdAcc) :-
-	call(P, H, FirstAcc0, FirstAcc1, SecAcc0, SecAcc1,
-		ThirdAcc0, ThirdAcc1),
-	list__foldl3(P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc,
-		ThirdAcc1, ThirdAcc).
+list__foldl3(_, [], !A, !B, !C).
+list__foldl3(P, [H | T], !A, !B, !C) :-
+	call(P, H, !A, !B, !C),
+	list__foldl3(P, T, !A, !B, !C).
 
-list__map_foldl(_, [], []) -->
-	[].
-list__map_foldl(P, [H0 | T0], [H | T]) -->
-	call(P, H0, H),
-	list__map_foldl(P, T0, T).
+list__foldl4(_, [], !A, !B, !C, !D).
+list__foldl4(P, [H | T], !A, !B, !C, !D) :-
+	call(P, H, !A, !B, !C, !D),
+	list__foldl4(P, T, !A, !B, !C, !D).
 
-list__map2_foldl(_, [], [], []) -->
-	[].
-list__map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2]) -->
-	call(P, H0, H1, H2),
-	list__map2_foldl(P, T0, T1, T2).
+list__map_foldl(_, [], [], !A).
+list__map_foldl(P, [H0 | T0], [H | T], !A) :-
+	call(P, H0, H, !A),
+	list__map_foldl(P, T0, T, !A).
+
+list__map2_foldl(_, [], [], [], !A).
+list__map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
+	call(P, H0, H1, H2, !A),
+	list__map2_foldl(P, T0, T1, T2, !A).
 
 list__map_foldl2(_, [], [], !A, !B).
 list__map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
@@ -1375,10 +1386,10 @@ list__map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
 	call(P, H0, H, !A, !B, !C),
 	list__map_foldl3(P, T0, T, !A, !B, !C).
 
-list__foldr(_, [], Acc, Acc).
-list__foldr(P, [H | T], Acc0, Acc) :-
-	list__foldr(P, T, Acc0, Acc1),
-	call(P, H, Acc1, Acc).
+list__foldr(_, [], !A).
+list__foldr(P, [H | T], !A) :-
+	list__foldr(P, T, !A),
+	call(P, H, !A).
 
 list__filter(P, Xs, Ys) :-
 	list__filter(P, Xs, Ys, _).

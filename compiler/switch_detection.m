@@ -108,8 +108,8 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
 	detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
 	detect_switches_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
 
-detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
@@ -119,14 +119,14 @@ detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 		% and pass these to `detect_switches_in_goal'.
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo0, Goal),
+	proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
+	detect_switches_in_goal(Goal0, InstMap0, VarTypes, !.ModuleInfo, Goal),
 
 	proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
+	module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

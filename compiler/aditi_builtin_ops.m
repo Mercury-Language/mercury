@@ -257,8 +257,8 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	->
 		{ pred_info_set_import_status(exported,
 			CalleePredInfo0, CalleePredInfo) },
-		{ module_info_set_pred_info(ModuleInfo1, PredId,
-			CalleePredInfo, ModuleInfo) },
+		{ module_info_set_pred_info(PredId, CalleePredInfo,
+			ModuleInfo1, ModuleInfo) },
 		^ module_info := ModuleInfo
 	;
 		{ CalleePredInfo = CalleePredInfo0 }
@@ -449,8 +449,8 @@ create_aditi_call_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 	requantify_proc(ProcInfo2, ProcInfo3),
 	recompute_instmap_delta_proc(yes, ProcInfo3, ProcInfo,
 		ModuleInfo1, ModuleInfo2),
-	module_info_set_pred_proc_info(ModuleInfo2,
-		PredProcId, PredInfo, ProcInfo, ModuleInfo).
+	module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
+		ModuleInfo2, ModuleInfo).
 
 	%
 	% Produce the call
@@ -718,7 +718,7 @@ deconstruct_aditi_transform_info(Info, PredId,
 	ProcInfo = Info ^ proc_info,
 	PredInfo = Info ^ pred_info,
 	Changed = Info ^ changed,
-	module_info_set_pred_info(ModuleInfo0, PredId, PredInfo, ModuleInfo).
+	module_info_set_pred_info(PredId, PredInfo, ModuleInfo0, ModuleInfo).
 
 :- type aditi_transform_info
 	---> aditi_transform_info(

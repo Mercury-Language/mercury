@@ -798,10 +798,10 @@
 :- pred check_marker(pred_markers::in, marker::in) is semidet.
 
 	% add a marker to the set
-:- pred add_marker(pred_markers::in, marker::in, pred_markers::out) is det.
+:- pred add_marker(marker::in, pred_markers::in, pred_markers::out) is det.
 
 	% remove a marker from the set
-:- pred remove_marker(pred_markers::in, marker::in, pred_markers::out) is det.
+:- pred remove_marker(marker::in, pred_markers::in, pred_markers::out) is det.
 
 	% convert the set to a list
 :- pred markers_to_marker_list(pred_markers::in, list(marker)::out) is det.
@@ -1380,9 +1380,9 @@ init_markers([]).
 check_marker(Markers, Marker) :-
 	list__member(Marker, Markers).
 
-add_marker(Markers, Marker, [Marker | Markers]).
+add_marker(Marker, Markers, [Marker | Markers]).
 
-remove_marker(Markers0, Marker, Markers) :-
+remove_marker(Marker, Markers0, Markers) :-
 	list__delete_all(Markers0, Marker, Markers).
 
 markers_to_marker_list(Markers, Markers).
@@ -1495,8 +1495,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, PredInfo, PredId,
 		PredTable),
-	module_info_set_predicate_table(ModuleInfo0, PredTable,
-		ModuleInfo),
+	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
 
 	GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
 	Goal = GoalExpr - GoalInfo,

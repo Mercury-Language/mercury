@@ -360,10 +360,10 @@ termination__process_scc(SCC, Module0, PassInfo, Module) -->
 	used_args::in, module_info::in, module_info::out) is det.
 
 set_finite_arg_size_infos([], _, Module, Module).
-set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, Module0, Module) :-
+set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !Module) :-
 	Soln = PPId - Gamma,
 	PPId = proc(PredId, ProcId),
-	module_info_preds(Module0, PredTable0),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
@@ -374,16 +374,16 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, Module0, Module) :-
 	map__set(ProcTable, ProcId, ProcInfo1, ProcTable1),
 	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
 	map__set(PredTable0, PredId, PredInfo1, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	set_finite_arg_size_infos(Solns, OutputSupplierMap, Module1, Module).
+	module_info_set_preds(PredTable, !Module),
+	set_finite_arg_size_infos(Solns, OutputSupplierMap, !Module).
 
 :- pred set_infinite_arg_size_infos(list(pred_proc_id)::in,
 	arg_size_info::in, module_info::in, module_info::out) is det.
 
-set_infinite_arg_size_infos([], _, Module, Module).
-set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, Module0, Module) :-
+set_infinite_arg_size_infos([], _, !Module).
+set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !Module) :-
 	PPId = proc(PredId, ProcId),
-	module_info_preds(Module0, PredTable0),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
@@ -392,18 +392,18 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, Module0, Module) :-
 	map__set(ProcTable, ProcId, ProcInfo1, ProcTable1),
 	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
 	map__set(PredTable0, PredId, PredInfo1, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	set_infinite_arg_size_infos(PPIds, ArgSizeInfo, Module1, Module).
+	module_info_set_preds(PredTable, !Module),
+	set_infinite_arg_size_infos(PPIds, ArgSizeInfo, !Module).
 
 %----------------------------------------------------------------------------%
 
 :- pred set_termination_infos(list(pred_proc_id)::in, termination_info::in,
 	module_info::in, module_info::out) is det.
 
-set_termination_infos([], _, Module, Module).
-set_termination_infos([PPId | PPIds], TerminationInfo, Module0, Module) :-
+set_termination_infos([], _, !Module).
+set_termination_infos([PPId | PPIds], TerminationInfo, !Module) :-
 	PPId = proc(PredId, ProcId),
-	module_info_preds(Module0, PredTable0),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
@@ -412,8 +412,8 @@ set_termination_infos([PPId | PPIds], TerminationInfo, Module0, Module) :-
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	set_termination_infos(PPIds, TerminationInfo, Module1, Module).
+	module_info_set_preds(PredTable, !Module),
+	set_termination_infos(PPIds, TerminationInfo, !Module).
 
 :- pred report_termination_errors(list(pred_proc_id)::in,
 	list(term_errors__error)::in, module_info::in, module_info::out,
@@ -498,13 +498,12 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 % 	about it (termination_info pragmas, terminates pragmas,
 % 	check_termination pragmas, builtin/compiler generated).
 
-check_preds([], Module, Module, State, State).
-check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
-	write_pred_progress_message("% Checking ", PredId, Module0,
-		State0, State1),
+check_preds([], !Module, !IO).
+check_preds([PredId | PredIds] , !Module, !IO) :-
+	write_pred_progress_message("% Checking ", PredId, !.Module, !IO),
 	globals__io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt, State1, State2),
-	module_info_preds(Module0, PredTable0),
+		MakeOptInt, !IO),
+	module_info_preds(!.Module, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, ImportStatus),
 	pred_info_context(PredInfo0, Context),
@@ -516,7 +515,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 		% predicates to be imported or locally defined, so they
 		% must be covered here, separately.
 		set_compiler_gen_terminates(PredInfo0, ProcIds, PredId,
-			Module0, ProcTable0, ProcTable1)
+			!.Module, ProcTable0, ProcTable1)
 	->
 		ProcTable2 = ProcTable1
 	;
@@ -570,8 +569,8 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(Module0, PredTable, Module1),
-	check_preds(PredIds, Module1, Module, State2, State).
+	module_info_set_preds(PredTable, !Module),
+	check_preds(PredIds, !Module, !IO).
 
 %----------------------------------------------------------------------------%
 

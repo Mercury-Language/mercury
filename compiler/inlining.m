@@ -438,15 +438,14 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		module_info, module_info, io__state, io__state).
 :- mode inlining__in_predproc(in, in, in, in, out, di, uo) is det.
 
-inlining__in_predproc(PredProcId, InlinedProcs, Params,
-		ModuleInfo0, ModuleInfo, IoState0, IoState) :-
+inlining__in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 	VarThresh = Params ^ var_threshold,
 	HighLevelCode = Params ^ highlevel_code,
 	AnyTracing = Params ^ any_tracing,
 
 	PredProcId = proc(PredId, ProcId),
 
-	module_info_preds(ModuleInfo0, PredTable0),
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
@@ -466,7 +465,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	PurityChanged0 = no,
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
-		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
+		InlinedProcs, !.ModuleInfo, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
 		DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
@@ -494,11 +493,10 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	(
 		DidInlining = yes,
 		recompute_instmap_delta_proc(yes, ProcInfo5, ProcInfo,
-			ModuleInfo0, ModuleInfo1)
+			!ModuleInfo)
 	;
 		DidInlining = no,
-		ProcInfo = ProcInfo5,
-		ModuleInfo1 = ModuleInfo0
+		ProcInfo = ProcInfo5
 	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -506,7 +504,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 	(
 		PurityChanged = yes,
-		repuritycheck_proc(ModuleInfo1, PredProcId,
+		repuritycheck_proc(!.ModuleInfo, PredProcId,
 			PredInfo2, PredInfo)
 	;
 		PurityChanged = no,
@@ -514,20 +512,18 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	),
 
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
+	module_info_set_preds(PredTable, !ModuleInfo),
 
 		% If the determinism of some sub-goals has changed,
 		% then we re-run determinism analysis, because
 		% propagating the determinism information through
 		% the procedure may lead to more efficient code.
-	globals__io_get_globals(Globals, IoState0, IoState),
+	globals__io_get_globals(Globals, !IO),
 	(
 		DetChanged = yes,	
-		det_infer_proc(PredId, ProcId, ModuleInfo2, ModuleInfo,
-			Globals, _, _, _)
+		det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, _, _, _)
 	;
-		DetChanged = no,
-		ModuleInfo = ModuleInfo2
+		DetChanged = no
 	).
 
 %-----------------------------------------------------------------------------%

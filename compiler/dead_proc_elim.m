@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% The job of this module is to delete dead predicates, procedures 
+% The job of this module is to delete dead predicates, procedures
 % and type_ctor_gen_info structures from the HLDS.
 %
 % It also computes the usage counts that inlining.m uses for the
@@ -48,14 +48,14 @@
 
 	% Optimize away any dead predicates.
 	% This is performed immediately after make_hlds.m to avoid doing
-	% semantic checking and optimization on predicates from `.opt' 
+	% semantic checking and optimization on predicates from `.opt'
 	% files which are not used in the current module. This assumes that
 	% the clauses_info is still valid, so it cannot be run after mode
 	% analysis.
 :- pred dead_pred_elim(module_info, module_info).
 :- mode dead_pred_elim(in, out) is det.
 
-:- type entity	
+:- type entity
 	--->	proc(pred_id, proc_id)
 	;	base_gen_info(module_name, string, int).
 
@@ -104,10 +104,9 @@
 :- type entity_queue	==	queue(entity).
 :- type examined_set	==	set(entity).
 
-dead_proc_elim(Pass, ModuleInfo0, ModuleInfo, State0, State) :-
-	dead_proc_elim__analyze(ModuleInfo0, Needed),
-	dead_proc_elim__eliminate(Pass, ModuleInfo0, Needed, ModuleInfo,
-		State0, State).
+dead_proc_elim(Pass, !ModuleInfo, !IO) :-
+	dead_proc_elim__analyze(!.ModuleInfo, Needed),
+	dead_proc_elim__eliminate(Pass, Needed, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -227,12 +226,12 @@ dead_proc_elim__initialize_base_gen_infos([TypeCtorGenInfo | TypeCtorGenInfos],
 	dead_proc_elim__initialize_base_gen_infos(TypeCtorGenInfos,
 		Queue1, Queue, Needed1, Needed).
 
-:- pred dead_proc_elim__initialize_class_methods(class_table, instance_table, 
+:- pred dead_proc_elim__initialize_class_methods(class_table, instance_table,
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode dead_proc_elim__initialize_class_methods(in, in,
 	in, out, in, out) is det.
 
-dead_proc_elim__initialize_class_methods(Classes, Instances, Queue0, Queue, 
+dead_proc_elim__initialize_class_methods(Classes, Instances, Queue0, Queue,
 		Needed0, Needed) :-
 	map__values(Instances, InstanceDefns0),
 	list__condense(InstanceDefns0, InstanceDefns),
@@ -273,7 +272,7 @@ get_class_pred_procs(Class, Queue0, Queue, Needed0, Needed) :-
 	get_class_interface_pred_procs(Methods,
 		Queue0, Queue, Needed0, Needed).
 
-:- pred get_class_interface_pred_procs(list(hlds_class_proc), 
+:- pred get_class_interface_pred_procs(list(hlds_class_proc),
 	entity_queue, entity_queue, needed_map, needed_map).
 :- mode get_class_interface_pred_procs(in, in, out, in, out) is det.
 
@@ -285,7 +284,7 @@ get_class_interface_pred_procs(Ids, Queue0, Queue, Needed0, Needed) :-
 			queue__put(Q0, proc(PredId, ProcId), Q),
 			map__set(N0, proc(PredId, ProcId), no, N)
 		)),
-	list__foldl2(AddHldsClassProc, Ids, Queue0, Queue, 
+	list__foldl2(AddHldsClassProc, Ids, Queue0, Queue,
 		Needed0, Needed).
 
 %-----------------------------------------------------------------------------%
@@ -497,7 +496,7 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		NewNotation = yes(1),
 		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
 	).
-dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _, 
+dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _,
 		_, _, _), _CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
 	map__set(Needed0, proc(PredId, ProcId), no, Needed).
@@ -525,52 +524,48 @@ dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-
 		% information used during the elimination phase.
 
 :- type elim_info
 	--->	elimination_info(
-			needed_map,	% collected usage counts 
+			needed_map,	% collected usage counts
 			module_info,	% ye olde module_info
 			pred_table,	% table of predicates in this module:
 					% preds and procs in this table
 					% may be eliminated
 			bool		% has anything changed
 		).
-			
+
 	% Given the information about which entities are needed,
 	% eliminate procedures which are not needed.
-:- pred dead_proc_elim__eliminate(dead_proc_pass, module_info, needed_map,
-		module_info, io__state, io__state).
-:- mode dead_proc_elim__eliminate(in, in, in, out, di, uo) is det.
+:- pred dead_proc_elim__eliminate(dead_proc_pass::in, needed_map::in,
+	module_info::in, module_info::out, io__state::di, io__state::uo)
+	is det.
 
-dead_proc_elim__eliminate(Pass, ModuleInfo0, Needed0, ModuleInfo,
-		State0, State) :-
-	module_info_predids(ModuleInfo0, PredIds),
-	module_info_preds(ModuleInfo0, PredTable0),
+dead_proc_elim__eliminate(Pass, Needed0, !ModuleInfo, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
+	module_info_preds(!.ModuleInfo, PredTable0),
 
 	Changed0 = no,
-	ElimInfo0 = elimination_info(Needed0, ModuleInfo0,
-			PredTable0, Changed0),
-	list__foldl2(dead_proc_elim__eliminate_pred(Pass), PredIds, ElimInfo0, 
-		ElimInfo, State0, State),
-	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable, Changed),
+	ElimInfo0 = elimination_info(Needed0, !.ModuleInfo, PredTable0,
+		Changed0),
+	list__foldl2(dead_proc_elim__eliminate_pred(Pass), PredIds,
+		ElimInfo0, ElimInfo, !IO),
+	ElimInfo = elimination_info(Needed, !:ModuleInfo, PredTable, Changed),
 
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
-	module_info_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos0),
+	module_info_set_preds(PredTable, !ModuleInfo),
+	module_info_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
 	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
 		TypeCtorGenInfos),
-	module_info_set_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos,
-		ModuleInfo3),
+	module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo),
 	(
 		Changed = yes,
 		% The dependency graph will still contain references to the
 		% eliminated procedures, so it must be rebuilt if it will
 		% be used later.
-		module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo)
+		module_info_clobber_dependency_info(!ModuleInfo)
 	;
-		Changed	= no,
-		ModuleInfo = ModuleInfo3
+		Changed	= no
 	).
 
 		% eliminate any unused procedures for this pred
@@ -579,8 +574,7 @@ dead_proc_elim__eliminate(Pass, ModuleInfo0, Needed0, ModuleInfo,
 	elim_info, elim_info, io__state, io__state).
 :- mode dead_proc_elim__eliminate_pred(in, in, in, out, di, uo) is det.
 
-dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
-		State0, State) :-
+dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo, !IO) :-
 	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0, Changed0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
@@ -628,7 +622,7 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 		list__foldl2(dead_proc_elim__eliminate_proc(Pass, PredId,
 			Keep, WarnForThisProc, ElimInfo0),
 			ProcIds, Changed0 - ProcTable0, Changed - ProcTable,
-			State0, State),
+			!IO),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
@@ -644,7 +638,7 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 		Changed = yes,
 		ProcIds = pred_info_procids(PredInfo0),
 		pred_info_procedures(PredInfo0, ProcTable0),
-			% Reduce memory usage by replacing the goals with 
+			% Reduce memory usage by replacing the goals with
 			% conj([]).
 			% XXX this looks fishy to me - zs
 		DestroyGoal =
@@ -661,22 +655,21 @@ dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
 			PredInfo1, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose,
-			State0, State1),
-		( VeryVerbose = yes ->
+			!IO),
+		(
+			VeryVerbose = yes,
 			write_pred_progress_message(
 				"% Eliminated opt_imported predicate ",
-				PredId, ModuleInfo, State1, State)
+				PredId, ModuleInfo, !IO)
 		;
-			State = State1
+			VeryVerbose = no
 		)
 	;
 		% This predicate is not defined in this module.
-		State = State0,
 		PredTable = PredTable0,
 		Changed = Changed0
 	),
 	ElimInfo = elimination_info(Needed, ModuleInfo, PredTable, Changed).
-
 
 		% eliminate a procedure, if unused
 
@@ -730,7 +723,7 @@ dead_proc_elim__eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
 :- mode warn_dead_proc(in, in, in, in, di, uo) is det.
 
 warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
-	error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), 
+	error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
 		ProcName),
 	Components = [words("Warning:"), fixed(ProcName),
 			words("is never called.")],
@@ -743,7 +736,7 @@ warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
 dead_proc_elim__eliminate_base_gen_infos([], _Needed, []).
 dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 		Needed, TypeCtorGenInfos) :-
-	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,	
+	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
 		TypeCtorGenInfos1),
 	TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
 		TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
@@ -768,11 +761,10 @@ dead_proc_elim__eliminate_base_gen_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
 			set(sym_name)	% pred names needed.
 		).
 
-dead_pred_elim(ModuleInfo0, ModuleInfo) :-
-
+dead_pred_elim(!ModuleInfo) :-
 	queue__init(Queue0),
 	map__init(Needed0),
-	module_info_get_pragma_exported_procs(ModuleInfo0, PragmaExports),
+	module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
 	dead_proc_elim__initialize_pragma_exports(PragmaExports,
 		Queue0, _, Needed0, Needed1),
 	%
@@ -780,8 +772,8 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	% examined because they contain calls to the actual method
 	% implementations.
 	%
-	module_info_instances(ModuleInfo0, Instances),
-	module_info_classes(ModuleInfo0, Classes),
+	module_info_instances(!.ModuleInfo, Instances),
+	module_info_classes(!.ModuleInfo, Classes),
 	dead_proc_elim__initialize_class_methods(Classes, Instances,
 		Queue0, _, Needed1, Needed),
 	map__keys(Needed, Entities),
@@ -792,21 +784,20 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 
 	set__init(Preds0),
 	set__init(Names0),
-	DeadInfo0 = dead_pred_info(ModuleInfo0, Queue, 
+	DeadInfo0 = dead_pred_info(!.ModuleInfo, Queue,
 		Preds0, NeededPreds1, Names0),
 
-	module_info_predids(ModuleInfo0, PredIds),
-	list__foldl(dead_pred_elim_initialize, PredIds, 
-		DeadInfo0, DeadInfo1),
+	module_info_predids(!.ModuleInfo, PredIds),
+	list__foldl(dead_pred_elim_initialize, PredIds, DeadInfo0, DeadInfo1),
 	dead_pred_elim_analyze(DeadInfo1, DeadInfo),
-	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds2, _),
+	DeadInfo = dead_pred_info(!:ModuleInfo, _, _, NeededPreds2, _),
 
 	%
 	% If a predicate is not needed, predicates which were added in
 	% make_hlds.m to force type specialization are also not needed.
 	% Here we add in those which are needed.
 	%
-	module_info_type_spec_info(ModuleInfo1,
+	module_info_type_spec_info(!.ModuleInfo,
 		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
 			SpecMap0, PragmaMap0)),
 	set__to_sorted_list(NeededPreds2, NeededPredList2),
@@ -820,17 +811,16 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	)), NeededPredList2, NeededPreds2, NeededPreds),
 	set__intersect(TypeSpecForcePreds0, NeededPreds, TypeSpecForcePreds),
 
-	module_info_set_type_spec_info(ModuleInfo1,
-		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds, 
+	module_info_set_type_spec_info(
+		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds,
 			SpecMap0, PragmaMap0),
-		ModuleInfo2),
+		!ModuleInfo),
 
-	module_info_get_predicate_table(ModuleInfo2, PredTable0),
-	module_info_get_partial_qualifier_info(ModuleInfo2, PartialQualInfo),
+	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+	module_info_get_partial_qualifier_info(!.ModuleInfo, PartialQualInfo),
 	predicate_table_restrict(PartialQualInfo, PredTable0,
 			set__to_sorted_list(NeededPreds), PredTable),
-	module_info_set_predicate_table(ModuleInfo2, PredTable, ModuleInfo).
-
+	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
 	queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.
@@ -841,18 +831,18 @@ dead_pred_elim_add_entity(proc(PredId, _), Q0, Q, Preds0, Preds) :-
 	set__insert(Preds0, PredId, Preds).
 
 :- pred dead_pred_elim_initialize(pred_id::in, dead_pred_info::in,
-		dead_pred_info::out) is det.
+	dead_pred_info::out) is det.
 
 dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	( 
+	(
 		PredModule = pred_info_module(PredInfo),
 		PredName = pred_info_name(PredInfo),
 		PredArity = pred_info_arity(PredInfo),
 		(
 			% Don't eliminate special preds since they won't
-			% be actually called from the HLDS until after 
+			% be actually called from the HLDS until after
 			% polymorphism.
 			is_unify_or_compare_pred(PredInfo)
 		;
@@ -863,9 +853,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			any_mercury_builtin_module(PredModule)
 		;
 			% Don't attempt to eliminate local preds here, since we
-			% want to do semantic checking on those even if they 
+			% want to do semantic checking on those even if they
 			% aren't used.
-			\+ pred_info_is_imported(PredInfo), 
+			\+ pred_info_is_imported(PredInfo),
 			\+ pred_info_import_status(PredInfo, opt_imported)
 		;
 			% Don't eliminate predicates declared in this module
@@ -886,7 +876,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			pred_info_get_goal_type(PredInfo, promise(_))
 		)
 	->
-		set__insert(NeededNames0, qualified(PredModule, PredName), 
+		set__insert(NeededNames0, qualified(PredModule, PredName),
 			NeededNames),
 		queue__put(Q0, PredId, Q)
 	;
@@ -895,7 +885,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	),
 	DeadInfo = dead_pred_info(ModuleInfo, Q, Ex, Needed, NeededNames).
 
-:- pred dead_pred_elim_analyze(dead_pred_info::in, 
+:- pred dead_pred_elim_analyze(dead_pred_info::in,
 		dead_pred_info::out) is det.
 
 dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
@@ -907,7 +897,7 @@ dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 		;
 			set__insert(Needed0, PredId, Needed),
 			set__insert(Ex0, PredId, Ex),
-			DeadInfo1 = dead_pred_info(ModuleInfo, Q, Ex, 
+			DeadInfo1 = dead_pred_info(ModuleInfo, Q, Ex,
 				Needed, NeededNames),
 			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			pred_info_clauses_info(PredInfo, ClausesInfo),
@@ -920,13 +910,13 @@ dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 		DeadInfo = DeadInfo0
 	).
 
-:- pred dead_pred_elim_process_clause(clause::in, dead_pred_info::in, 
+:- pred dead_pred_elim_process_clause(clause::in, dead_pred_info::in,
 		dead_pred_info::out) is det.
 
 dead_pred_elim_process_clause(clause(_, Goal, _, _)) -->
 	pre_modecheck_examine_goal(Goal).
 
-:- pred pre_modecheck_examine_goal(hlds_goal::in, 
+:- pred pre_modecheck_examine_goal(hlds_goal::in,
 		dead_pred_info::in, dead_pred_info::out) is det.
 
 pre_modecheck_examine_goal(conj(Goals) - _) -->
@@ -958,7 +948,7 @@ pre_modecheck_examine_goal(shorthand(_) - _) -->
 	% these should have been expanded out by now
 	{ error("pre_modecheck_examine_goal: unexpected shorthand") }.
 
-:- pred pre_modecheck_examine_unify_rhs(unify_rhs::in, 
+:- pred pre_modecheck_examine_unify_rhs(unify_rhs::in,
 		dead_pred_info::in, dead_pred_info::out) is det.
 
 pre_modecheck_examine_unify_rhs(var(_)) --> [].
@@ -971,12 +961,12 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _, _)) -->
 pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, Goal)) -->
 	pre_modecheck_examine_goal(Goal).
 
-:- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 
+:- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in,
 		dead_pred_info::out) is det.
 
 dead_pred_info_add_pred_name(Name, DeadInfo0, DeadInfo) :-
 	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),
-	( set__member(Name, NeededNames0) ->	
+	( set__member(Name, NeededNames0) ->
 		DeadInfo = DeadInfo0
 	;
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),

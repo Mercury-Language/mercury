@@ -49,31 +49,29 @@
 :- import_module bool, int, list, assoc_list, map, require, set.
 :- import_module std_util, string, term, varset, counter.
 
-apply_deep_profiling_transformation(ModuleInfo0, ModuleInfo, ProcStatics) -->
-	{ module_info_globals(ModuleInfo0, Globals) },
-	{ globals__lookup_bool_option(Globals, deep_profile_tail_recursion,
-		TailRecursion) },
+apply_deep_profiling_transformation(!ModuleInfo, ProcStatics, !IO) :-
+	module_info_globals(!.ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, deep_profile_tail_recursion,
+		TailRecursion),
 	(
-		{ TailRecursion = yes },
-		{ apply_tail_recursion_transformation(ModuleInfo0,
-			ModuleInfo1) }
+		TailRecursion = yes,
+		apply_tail_recursion_transformation(!ModuleInfo)
 	;
-		{ TailRecursion = no },
-		{ ModuleInfo1 = ModuleInfo0 }
+		TailRecursion = no
 	),
-	{ module_info_predids(ModuleInfo1, PredIds) },
-	{ module_info_get_predicate_table(ModuleInfo1, PredTable0) },
-	{ predicate_table_get_preds(PredTable0, PredMap0) },
-	{ list__foldl2(transform_predicate(ModuleInfo1),
-		PredIds, PredMap0, PredMap, [], MaybeProcStatics) },
+	module_info_predids(!.ModuleInfo, PredIds),
+	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+	predicate_table_get_preds(PredTable0, PredMap0),
+	list__foldl2(transform_predicate(!.ModuleInfo),
+		PredIds, PredMap0, PredMap, [], MaybeProcStatics),
 		% Remove any duplicates that resulted from
 		% references in inner tail recursive procedures
-	{ list__filter_map(
+	list__filter_map(
 		(pred(MaybeProcStatic::in, ProcStatic::out) is semidet :-
 			MaybeProcStatic = yes(ProcStatic)
-	), MaybeProcStatics, ProcStatics) },
-	{ predicate_table_set_preds(PredTable0, PredMap, PredTable) },
-	{ module_info_set_predicate_table(ModuleInfo1, PredTable, ModuleInfo) }.
+	), MaybeProcStatics, ProcStatics),
+	predicate_table_set_preds(PredTable0, PredMap, PredTable),
+	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -141,7 +139,7 @@ apply_tail_recursion_to_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 			ProcTable),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
-		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo)
+		module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo)
 	;
 		ModuleInfo = ModuleInfo0
 	).

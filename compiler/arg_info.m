@@ -146,7 +146,7 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable),
-		module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo)
+		module_info_set_preds(PredTable, !ModuleInfo)
 	),
 	generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 

@@ -235,7 +235,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
 	rval::out, code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
-        code_info__produce_variable(Var, Code, Rval, !CI),
+	code_info__produce_variable(Var, Code, Rval, !CI),
 	Tag = code_info__cons_id_to_tag(!.CI, Var, ConsId),
 	unify_gen__generate_tag_test_rval_2(Tag, Rval, TestRval).
 
@@ -528,84 +528,91 @@ unify_gen__generate_construction_2(
 		globals__lookup_bool_option(Globals, profile_deep, Deep),
 		Deep = no
 	->
-	    ( CallArgs = [] ->
-		% if there are no new arguments, we can just use the old
-		% closure
-		code_info__assign_var_to_var(Var, CallPred, !CI),
-		Code = empty
-	    ;
-		code_info__get_next_label(LoopStart, !CI),
-		code_info__get_next_label(LoopTest, !CI),
-		code_info__acquire_reg(r, LoopCounter, !CI),
-		code_info__acquire_reg(r, NumOldArgs, !CI),
-		code_info__acquire_reg(r, NewClosure, !CI),
-		Zero = const(int_const(0)),
-		One = const(int_const(1)),
-		Two = const(int_const(2)),
-		Three = const(int_const(3)),
-		list__length(CallArgs, NumNewArgs),
-		NumNewArgs_Rval = const(int_const(NumNewArgs)),
-		NumNewArgsPlusThree = NumNewArgs + 3,
-		NumNewArgsPlusThree_Rval =
-			const(int_const(NumNewArgsPlusThree)),
-		code_info__produce_variable(CallPred, OldClosureCode,
-			OldClosure, !CI),
-		NewClosureCode = node([
-			comment("build new closure from old closure") - "",
-			assign(NumOldArgs,
-				lval(field(yes(0), OldClosure, Two)))
-				- "get number of arguments",
-			incr_hp(NewClosure, no, no,
-				binop(+, lval(NumOldArgs),
-				NumNewArgsPlusThree_Rval), "closure")
-				- "allocate new closure",
-			assign(field(yes(0), lval(NewClosure), Zero),
-				lval(field(yes(0), OldClosure, Zero)))
-				- "set closure layout structure",
-			assign(field(yes(0), lval(NewClosure), One),
-				lval(field(yes(0), OldClosure, One)))
-				- "set closure code pointer",
-			assign(field(yes(0), lval(NewClosure), Two),
-				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
-				- "set new number of arguments",
-			assign(NumOldArgs, binop(+, lval(NumOldArgs), Three))
-				- "set up loop limit",
-			assign(LoopCounter, Three)
-				- "initialize loop counter",
-			% It is possible for the number of hidden arguments
-			% to be zero, in which case the body of this loop
-			% should not be executed at all. This is why we
-			% jump to the loop condition test.
-			goto(label(LoopTest))
-				- "enter the copy loop at the conceptual top",
-			label(LoopStart) - "start of loop",
-			assign(field(yes(0), lval(NewClosure),
-					lval(LoopCounter)),
-				lval(field(yes(0), OldClosure,
-					lval(LoopCounter))))
-				- "copy old hidden argument",
-			assign(LoopCounter,
-				binop(+, lval(LoopCounter), One))
-				- "increment loop counter",
-			label(LoopTest)
-				- "do we have more old arguments to copy?",
-			if_val(binop(<, lval(LoopCounter), lval(NumOldArgs)),
-				label(LoopStart))
-				- "repeat the loop?"
-		]),
-		unify_gen__generate_extra_closure_args(CallArgs,
-			LoopCounter, NewClosure, ExtraArgsCode, !CI),
-		code_info__release_reg(LoopCounter, !CI),
-		code_info__release_reg(NumOldArgs, !CI),
-		code_info__release_reg(NewClosure, !CI),
-		code_info__assign_lval_to_var(Var, NewClosure, AssignCode,
-			!CI),
-		Code =
-			tree(OldClosureCode,
-			tree(NewClosureCode,
-			tree(ExtraArgsCode,
-			     AssignCode)))
-	    )
+		( CallArgs = [] ->
+			% if there are no new arguments, we can just use the old
+			% closure
+			code_info__assign_var_to_var(Var, CallPred, !CI),
+			Code = empty
+		;
+			code_info__get_next_label(LoopStart, !CI),
+			code_info__get_next_label(LoopTest, !CI),
+			code_info__acquire_reg(r, LoopCounter, !CI),
+			code_info__acquire_reg(r, NumOldArgs, !CI),
+			code_info__acquire_reg(r, NewClosure, !CI),
+			Zero = const(int_const(0)),
+			One = const(int_const(1)),
+			Two = const(int_const(2)),
+			Three = const(int_const(3)),
+			list__length(CallArgs, NumNewArgs),
+			NumNewArgs_Rval = const(int_const(NumNewArgs)),
+			NumNewArgsPlusThree = NumNewArgs + 3,
+			NumNewArgsPlusThree_Rval =
+				const(int_const(NumNewArgsPlusThree)),
+			code_info__produce_variable(CallPred, OldClosureCode,
+				OldClosure, !CI),
+			NewClosureCode = node([
+				comment("build new closure from old closure")
+					- "",
+				assign(NumOldArgs,
+					lval(field(yes(0), OldClosure, Two)))
+					- "get number of arguments",
+				incr_hp(NewClosure, no, no,
+					binop(+, lval(NumOldArgs),
+					NumNewArgsPlusThree_Rval), "closure")
+					- "allocate new closure",
+				assign(field(yes(0), lval(NewClosure), Zero),
+					lval(field(yes(0), OldClosure, Zero)))
+					- "set closure layout structure",
+				assign(field(yes(0), lval(NewClosure), One),
+					lval(field(yes(0), OldClosure, One)))
+					- "set closure code pointer",
+				assign(field(yes(0), lval(NewClosure), Two),
+					binop(+, lval(NumOldArgs),
+						NumNewArgs_Rval))
+					- "set new number of arguments",
+				assign(NumOldArgs, binop(+, lval(NumOldArgs),
+					Three))
+					- "set up loop limit",
+				assign(LoopCounter, Three)
+					- "initialize loop counter",
+				% It is possible for the number of hidden
+				% arguments to be zero, in which case the body
+				% of this loop should not be executed at all.
+				% This is why we jump to the loop condition
+				% test.
+				goto(label(LoopTest))
+					- ("enter the copy loop " ++
+					"at the conceptual top"),
+				label(LoopStart) - "start of loop",
+				assign(field(yes(0), lval(NewClosure),
+						lval(LoopCounter)),
+					lval(field(yes(0), OldClosure,
+						lval(LoopCounter))))
+					- "copy old hidden argument",
+				assign(LoopCounter,
+					binop(+, lval(LoopCounter), One))
+					- "increment loop counter",
+				label(LoopTest)
+					- ("do we have more old arguments " ++
+					"to copy?"),
+				if_val(binop(<, lval(LoopCounter),
+					lval(NumOldArgs)),
+					label(LoopStart))
+					- "repeat the loop?"
+			]),
+			unify_gen__generate_extra_closure_args(CallArgs,
+				LoopCounter, NewClosure, ExtraArgsCode, !CI),
+			code_info__release_reg(LoopCounter, !CI),
+			code_info__release_reg(NumOldArgs, !CI),
+			code_info__release_reg(NewClosure, !CI),
+			code_info__assign_lval_to_var(Var, NewClosure,
+				AssignCode, !CI),
+			Code =
+				tree(OldClosureCode,
+				tree(NewClosureCode,
+				tree(ExtraArgsCode,
+				     AssignCode)))
+		)
 	;
 		CodeAddr = code_info__make_entry_label(!.CI, ModuleInfo,
 			PredId, ProcId, no),

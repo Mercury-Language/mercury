@@ -953,7 +953,7 @@ magic_util__add_to_magic_predicate(PredProcId, Rule, RuleArgs) -->
 	{ pred_info_set_procedures(MagicProcs,
 		MagicPredInfo0, MagicPredInfo) },
 	{ map__det_update(Preds0, MagicPredId, MagicPredInfo, Preds) },
-	{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) },
+	{ module_info_set_preds(Preds, ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1092,10 +1092,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ proc_info_inst_varset(ProcInfo, InstVarSet) },
 	{ pred_info_get_aditi_owner(PredInfo, Owner) },
 	{ pred_info_get_markers(PredInfo, Markers0) },
-	{ AddMarkers = lambda([Marker::in, Ms0::in, Ms::out] is det,
-			add_marker(Ms0, Marker, Ms)
-		) },
-	{ list__foldl(AddMarkers, ExtraMarkers, Markers0, Markers) },
+	{ list__foldl(add_marker, ExtraMarkers, Markers0, Markers) },
 
 	% Add the predicate to the predicate table.
 	{ conj_list_to_goal(Goals, GoalInfo, SuppGoal) },

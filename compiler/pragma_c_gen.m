@@ -1091,16 +1091,16 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 
 pragma_select_out_args([], []).
 pragma_select_out_args([Arg | Rest], Out) :-
-        pragma_select_out_args(Rest, Out0),
+	pragma_select_out_args(Rest, Out0),
 	Arg = c_arg(_, _, _, ArgInfo),
 	ArgInfo = arg_info(_Loc, Mode),
-        (
-                Mode = top_out
-        ->
-                Out = [Arg | Out0]
-        ;
-                Out = Out0
-        ).
+	(
+		Mode = top_out
+	->
+		Out = [Arg | Out0]
+	;
+		Out = Out0
+	).
 
 % pragma_select_in_args returns the list of variables which are inputs for
 % a procedure
@@ -1109,16 +1109,16 @@ pragma_select_out_args([Arg | Rest], Out) :-
 
 pragma_select_in_args([], []).
 pragma_select_in_args([Arg | Rest], In) :-
-        pragma_select_in_args(Rest, In0),
+	pragma_select_in_args(Rest, In0),
 	Arg = c_arg(_, _, _, ArgInfo),
 	ArgInfo = arg_info(_Loc, Mode),
-        (
-                Mode = top_in
-        ->
+	(
+		Mode = top_in
+	->
 		In = [Arg | In0]
-        ;
-                In = In0
-        ).
+	;
+		In = In0
+	).
 
 %---------------------------------------------------------------------------%
 

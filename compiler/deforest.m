@@ -155,8 +155,8 @@ reset_inferred_proc_determinism(PredProcId, !ModuleInfo) :-
 	;	
 		proc_info_set_inferred_determinism(erroneous,
 			ProcInfo0, ProcInfo),
-		module_info_set_pred_proc_info(!.ModuleInfo, PredProcId,
-			PredInfo, ProcInfo, !:ModuleInfo)
+		module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
+			!ModuleInfo)
 	).
 
 :- pred proc_arg_info_init(map(pred_proc_id, pd_proc_arg_info)::out) is det.
@@ -229,8 +229,8 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 
 		pd_info_get_pred_info(PredInfo),
 		{ proc_info_set_goal(Goal, ProcInfo3, ProcInfo) },
-		{ module_info_set_pred_proc_info(ModuleInfo3, PredId, ProcId,
-			PredInfo, ProcInfo, ModuleInfo4) },
+		{ module_info_set_pred_proc_info(PredId, ProcId,
+			PredInfo, ProcInfo, ModuleInfo3, ModuleInfo4) },
 
 		pd_info_get_rerun_det(RerunDet),
 
@@ -254,8 +254,8 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 	;
 		pd_info_get_module_info(ModuleInfo2),
 		pd_info_get_pred_info(PredInfo),
-		{ module_info_set_pred_proc_info(ModuleInfo2, PredId, ProcId,
-			PredInfo, ProcInfo2, ModuleInfo3) },
+		{ module_info_set_pred_proc_info(PredId, ProcId,
+			PredInfo, ProcInfo2, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3)
 	),		
 

@@ -106,10 +106,10 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		MaybeProcId = no
 	).
 
-copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, Preds0),
+copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, Preds0),
 	copy_module_clauses_to_procs_2(PredIds, Preds0, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
+	module_info_set_preds(Preds, !ModuleInfo).
 
 :- pred copy_module_clauses_to_procs_2(list(pred_id), pred_table, pred_table).
 :- mode copy_module_clauses_to_procs_2(in, in, out) is det.

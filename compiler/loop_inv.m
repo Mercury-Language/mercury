@@ -850,8 +850,8 @@ gen_aux_proc(InvGoals, PredProcId,
     mode_util__recompute_instmap_delta_proc(no, AuxProcInfo2, AuxProcInfo,
             ModuleInfo0, ModuleInfo1),
 
-    hlds_module__module_info_set_pred_proc_info(ModuleInfo1,
-            AuxPredId, AuxProcId, AuxPredInfo, AuxProcInfo, ModuleInfo).
+    hlds_module__module_info_set_pred_proc_info(AuxPredId, AuxProcId,
+        AuxPredInfo, AuxProcInfo, ModuleInfo1, ModuleInfo).
 
 %------------------------------------------------------------------------------%
 
@@ -963,8 +963,8 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
     mode_util__recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
             ModuleInfo0, ModuleInfo1),
 
-    hlds_module__module_info_set_pred_proc_info(ModuleInfo1, PredId, ProcId,
-            PredInfo0, ProcInfo, ModuleInfo).
+    hlds_module__module_info_set_pred_proc_info(PredId, ProcId,
+        PredInfo0, ProcInfo, ModuleInfo1, ModuleInfo).
 
 %------------------------------------------------------------------------------%
 

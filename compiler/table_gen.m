@@ -581,7 +581,7 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 	repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
 	module_info_preds(!.ModuleInfo, PredTable1),
 	map__det_update(PredTable1, PredId, !.PredInfo, PredTable),
-	module_info_set_preds(!.ModuleInfo, PredTable, !:ModuleInfo).
+	module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -837,8 +837,8 @@ table_gen__create_new_det_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 	; EvalMethod = eval_memo ->
 		SaveAnsGoal = SaveAnsGoal0
 	;
-		error(
-    "table_gen__create_new_det_goal: unsupported evaluation model")
+		error("table_gen__create_new_det_goal: " ++
+			"unsupported evaluation model")
 	),
 
 	generate_call("table_simple_is_active", [TableTipVar], semidet,
@@ -1002,8 +1002,8 @@ table_gen__create_new_semi_goal(EvalMethod, Detism, OrigGoal, PredId, ProcId,
 			GenTrueAnsGoalInfo),
 		GenTrueAnsGoal = GenTrueAnsGoalEx - GenTrueAnsGoalInfo
 	;
-		error(
-    "table_gen__create_new_semi_goal: unsupported evaluation model")
+		error("table_gen__create_new_semi_goal: " ++
+			"unsupported evaluation model")
 	),
 
 	( Detism = failure ->
@@ -1354,8 +1354,8 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			->
 				list__length(Ctors, EnumRange)
 			;
-				error(
-    "gen_lookup_call_for_type: enum type is not du_type?")
+				error("gen_lookup_call_for_type: " ++
+					"enum type is not du_type?")
 			),
 			gen_int_construction("RangeVar", EnumRange, !VarTypes,
 				!VarSet, RangeVar, RangeUnifyGoal),
@@ -1810,8 +1810,8 @@ get_input_output_vars([Var | RestV], [Mode | RestM], ModuleInfo,
 			InVars, OutVars0),
 		OutVars = [Var | OutVars0]
 	;
-		error(
-    "Only fully input/output arguments are allowed in tabled code!")
+		error("Only fully input/output arguments are allowed " ++
+			"in tabled code!")
 	).
 
 :- pred create_instmap_delta(hlds_goals::in, instmap_delta::out) is det.

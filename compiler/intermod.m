@@ -299,8 +299,8 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 				PredInfo0, PredInfo) },	
 			{ map__det_update(PredTable0, PredId,
 					PredInfo, PredTable) },
-			{ module_info_set_preds(ModuleInfo0, PredTable,
-					ModuleInfo) },
+			{ module_info_set_preds(PredTable,
+				ModuleInfo0, ModuleInfo) },
 			intermod_info_get_preds(Preds0),
 			( { pred_info_pragma_goal_type(PredInfo) } ->
 				% The header code must be written since
@@ -1148,7 +1148,7 @@ intermod__resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
 	module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
 	pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
 	init_markers(Markers0),
-	add_marker(Markers0, calls_are_fully_qualified, Markers),
+	add_marker(calls_are_fully_qualified, Markers0, Markers),
 	typecheck__resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
 		TVarSet, Pred0, Pred, UserEqPredId),
 	intermod__add_proc(UserEqPredId, _, Info0, Info).
@@ -2026,13 +2026,12 @@ do_adjust_pred_import_status(Info, ModuleInfo0, ModuleInfo) :-
 
 :- pred adjust_type_status(module_info::in, module_info::out) is det.
 
-adjust_type_status(ModuleInfo0, ModuleInfo) :-
-	module_info_types(ModuleInfo0, Types0),
+adjust_type_status(!ModuleInfo) :-
+	module_info_types(!.ModuleInfo, Types0),
 	map__to_assoc_list(Types0, TypesAL0),
-	list__map_foldl(adjust_type_status_2, TypesAL0, TypesAL,
-		ModuleInfo0, ModuleInfo1),
+	list__map_foldl(adjust_type_status_2, TypesAL0, TypesAL, !ModuleInfo),
 	map__from_assoc_list(TypesAL, Types),
-	module_info_set_types(ModuleInfo1, Types, ModuleInfo).
+	module_info_set_types(Types, !ModuleInfo).
 
 :- pred adjust_type_status_2(pair(type_ctor, hlds_type_defn)::in,
 		pair(type_ctor, hlds_type_defn)::out,
@@ -2062,13 +2061,12 @@ fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
 
 :- pred adjust_class_status(module_info::in, module_info::out) is det.
 
-adjust_class_status(ModuleInfo0, ModuleInfo) :-
-	module_info_classes(ModuleInfo0, Classes0),
+adjust_class_status(!ModuleInfo) :-
+	module_info_classes(!.ModuleInfo, Classes0),
 	map__to_assoc_list(Classes0, ClassAL0),
-	list__map_foldl(adjust_class_status_2, ClassAL0, ClassAL,
-		ModuleInfo0, ModuleInfo1),
+	list__map_foldl(adjust_class_status_2, ClassAL0, ClassAL, !ModuleInfo),
 	map__from_assoc_list(ClassAL, Classes),
-	module_info_set_classes(ModuleInfo1, Classes, ModuleInfo).
+	module_info_set_classes(Classes, !ModuleInfo).
 
 :- pred adjust_class_status_2(pair(class_id, hlds_class_defn)::in,
 		pair(class_id, hlds_class_defn)::out,
@@ -2105,13 +2103,13 @@ class_procs_to_pred_ids(ClassProcs, PredIds) :-
 
 :- pred adjust_instance_status(module_info::in, module_info::out) is det.
 
-adjust_instance_status(ModuleInfo0, ModuleInfo) :-
-	module_info_instances(ModuleInfo0, Instances0),
+adjust_instance_status(!ModuleInfo) :-
+	module_info_instances(!.ModuleInfo, Instances0),
 	map__to_assoc_list(Instances0, InstanceAL0),
 	list__map_foldl(adjust_instance_status_2, InstanceAL0, InstanceAL,
-		ModuleInfo0, ModuleInfo1),
+		!ModuleInfo),
 	map__from_assoc_list(InstanceAL, Instances),
-	module_info_set_instances(ModuleInfo1, Instances, ModuleInfo).
+	module_info_set_instances(Instances, !ModuleInfo).
 
 :- pred adjust_instance_status_2(pair(class_id, list(hlds_instance_defn))::in,
 		pair(class_id, list(hlds_instance_defn))::out,
@@ -2152,10 +2150,10 @@ adjust_instance_status_3(Instance0, Instance, ModuleInfo0, ModuleInfo) :-
 :- pred set_list_of_preds_exported(list(pred_id)::in, module_info::in,
 		module_info::out) is det.
 
-set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, Preds0),
+set_list_of_preds_exported(PredIds, !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, Preds0),
 	set_list_of_preds_exported_2(PredIds, Preds0, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
+	module_info_set_preds(Preds, !ModuleInfo).
 
 :- pred set_list_of_preds_exported_2(list(pred_id)::in, pred_table::in,
 					pred_table::out) is det.

@@ -127,30 +127,30 @@ dnf__transform_pred(PredId, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
-dnf__transform_procs([], _, _, ModuleInfo, ModuleInfo, NewPredIds, NewPredIds).
+dnf__transform_procs([], _, _, !ModuleInfo, NewPredIds, NewPredIds).
 dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, NewPredIds0, NewPredIds) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+		!ModuleInfo, NewPredIds0, NewPredIds) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1, ProcInfo, NewPredIds0, NewPredIds1),
+		!ModuleInfo, ProcInfo, NewPredIds0, NewPredIds1),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
 	% We must look up the pred table again
 	% since dnf__transform_proc may have added new predicates
-	module_info_preds(ModuleInfo1, PredTable1),
+	module_info_preds(!.ModuleInfo, PredTable1),
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
+	module_info_set_preds(PredTable, !ModuleInfo),
 
 	dnf__transform_procs(ProcIds, PredId, MaybeNonAtomic,
-		ModuleInfo2, ModuleInfo, NewPredIds1, NewPredIds).
+		!ModuleInfo, NewPredIds1, NewPredIds).
 
 dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo, ProcInfo, NewPredIds0, NewPredIds) :-
+		!ModuleInfo, ProcInfo, NewPredIds0, NewPredIds) :-
 	PredName = pred_info_name(PredInfo0),
 	pred_info_typevarset(PredInfo0, TVarSet),
 	pred_info_get_markers(PredInfo0, Markers),
@@ -165,9 +165,8 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
 		VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
 
-	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
-	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo,
+	proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap),
+	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic, !ModuleInfo,
 		PredName, DnfInfo, Goal, NewPredIds0, NewPredIds),
 	proc_info_set_goal(Goal, ProcInfo0, ProcInfo).
 

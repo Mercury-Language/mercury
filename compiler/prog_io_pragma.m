@@ -81,98 +81,103 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 		fail
 	).
 
-:- pred parse_pragma_type(module_name, string, list(term), term,
-						varset, maybe1(item)).
-:- mode parse_pragma_type(in, in, in, in, in, out) is semidet.
+:- pred parse_pragma_type(module_name::in, string::in, list(term)::in,
+	term::in, varset::in, maybe1(item)::out) is semidet.
 
 parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 	( PragmaTerms = [SourceFileTerm] ->
-	    (
-		SourceFileTerm = term__functor(term__string(SourceFile), [], _)
-	    ->
-		Result = ok(pragma(source_file(SourceFile)))
-	    ;
-		Result = error(
-		"string expected in `:- pragma source_file' declaration",
-				SourceFileTerm)
-	    )
+		(
+			SourceFileTerm = term__functor(
+				term__string(SourceFile), [], _)
+		->
+			Result = ok(pragma(source_file(SourceFile)))
+		;
+			Result = error("string expected in `:- pragma " ++
+				"source_file' declaration", SourceFileTerm)
+		)
 	;
-	    Result = error(
-	"wrong number of arguments in `:- pragma source_file' declaration",
-			ErrorTerm)
+		Result = error("wrong number of arguments in " ++
+			"`:- pragma source_file' declaration", ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "foreign_type", PragmaTerms,
-            ErrorTerm, VarSet, Result) :-
-    ( PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm] ->
-	( parse_foreign_language(LangTerm, Language) ->
-	    parse_foreign_language_type(ForeignTypeTerm, Language,
-	    	MaybeForeignType),
-	    (
-		MaybeForeignType = ok(ForeignType),
-		parse_type_defn_head(ModuleName, MercuryTypeTerm,
-		    ErrorTerm, MaybeTypeDefnHead),
-		(
-		    MaybeTypeDefnHead = ok(MercuryTypeSymName, MercuryArgs0),
-		    varset__coerce(VarSet, TVarSet),
-		    MercuryArgs = list__map(term__coerce, MercuryArgs0),
-		    Result = ok(pragma(foreign_type(ForeignType,
-			    TVarSet, MercuryTypeSymName,
-			    MercuryArgs, no))) 
-		;
-		    MaybeTypeDefnHead = error(String, Term),
-		    Result = error(String, Term)
+parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
+		Result) :-
+	( PragmaTerms = [LangTerm, MercuryTypeTerm, ForeignTypeTerm] ->
+		( parse_foreign_language(LangTerm, Language) ->
+			parse_foreign_language_type(ForeignTypeTerm, Language,
+				MaybeForeignType),
+			(
+				MaybeForeignType = ok(ForeignType),
+				parse_type_defn_head(ModuleName,
+					MercuryTypeTerm, ErrorTerm,
+					MaybeTypeDefnHead),
+				(
+					MaybeTypeDefnHead = ok(
+						MercuryTypeSymName,
+						MercuryArgs0),
+					varset__coerce(VarSet, TVarSet),
+					MercuryArgs = list__map(term__coerce,
+						MercuryArgs0),
+					Result = ok(pragma(
+						foreign_type(ForeignType,
+							TVarSet,
+							MercuryTypeSymName,
+							MercuryArgs, no))) 
+				;
+					MaybeTypeDefnHead =
+						error(String, Term),
+					Result = error(String, Term)
+				)
+			;
+				MaybeForeignType = error(String, Term),
+				Result = error(String, Term)
+			)
+		;   
+			Result = error("invalid foreign language in " ++
+				"`:- pragma foreign_type' declaration",
+				LangTerm)
 		)
-	    ;
-		MaybeForeignType = error(String, Term),
-		Result = error(String, Term)
-	    )
-	;   
-	   Result = error(
-	   "invalid foreign language in `:- pragma foreign_type' declaration",
-			LangTerm)
-	)
-    ;
-        Result = error(
-    "wrong number of arguments in `:- pragma foreign_type' declaration",
-            ErrorTerm)
-    ).
+	;
+		Result = error("wrong number of arguments in " ++
+			"`:- pragma foreign_type' declaration", ErrorTerm)
+	).
 
-parse_pragma_type(ModuleName, "foreign_decl", PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_type(ModuleName, "foreign_decl", PragmaTerms, ErrorTerm,
+		VarSet, Result) :-
 	parse_pragma_foreign_decl_pragma(ModuleName, "foreign_decl",
 		PragmaTerms, ErrorTerm, VarSet, Result).
 		
-parse_pragma_type(ModuleName, "c_header_code", PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_type(ModuleName, "c_header_code", PragmaTerms, ErrorTerm,
+		VarSet, Result) :-
 	(
-	    PragmaTerms = [term__functor(_, _, Context) | _]
+		PragmaTerms = [term__functor(_, _, Context) | _]
 	->
-	    LangC = term__functor(term__string("C"), [], Context),
-	    parse_pragma_foreign_decl_pragma(ModuleName, "c_header_code",
-		[LangC | PragmaTerms], ErrorTerm, VarSet, Result)
+		LangC = term__functor(term__string("C"), [], Context),
+		parse_pragma_foreign_decl_pragma(ModuleName, "c_header_code",
+			[LangC | PragmaTerms], ErrorTerm, VarSet, Result)
 	;
-	    Result = error("wrong number of arguments or unexpected variable in `:- pragma c_header_code' declaration", 
-		    ErrorTerm)
+		Result = error("wrong number of arguments or unexpected " ++
+			"variable in `:- pragma c_header_code' declaration", 
+			ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "foreign_code", PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_type(ModuleName, "foreign_code", PragmaTerms, ErrorTerm,
+		VarSet, Result) :-
 	parse_pragma_foreign_code_pragma(ModuleName, "foreign_code",
-		    PragmaTerms, ErrorTerm, VarSet, Result).
+		PragmaTerms, ErrorTerm, VarSet, Result).
 
-parse_pragma_type(ModuleName, "foreign_proc", PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_type(ModuleName, "foreign_proc", PragmaTerms, ErrorTerm,
+		VarSet, Result) :-
 	parse_pragma_foreign_proc_pragma(ModuleName, "foreign_proc",
-		    PragmaTerms, ErrorTerm, VarSet, Result).
+		PragmaTerms, ErrorTerm, VarSet, Result).
 
 	% pragma c_code is almost as if we have written foreign_code
 	% or foreign_proc with the language set to "C".
 	% There are a few differences (error messages, some deprecated
 	% syntax is still supported for c_code) so we pass the original
 	% pragma name to parse_pragma_foreign_code_pragma.
-parse_pragma_type(ModuleName, "c_code", PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_type(ModuleName, "c_code", PragmaTerms, ErrorTerm,
+		VarSet, Result) :-
 	(
 			% arity = 1 (same as foreign_code)
 		PragmaTerms = [term__functor(_, _, Context)]
@@ -188,39 +193,42 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		parse_pragma_foreign_proc_pragma(ModuleName, "c_code",
 			[LangC | PragmaTerms], ErrorTerm, VarSet, Result)
 	;
-	    Result = error("wrong number of arguments or unexpected variable in `:- pragma c_code' declaration", 
-		    ErrorTerm)
+		Result = error("wrong number of arguments or unexpected " ++
+			"variable in `:- pragma c_code' declaration", 
+			ErrorTerm)
 	).
 
-parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms,
-		ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	(
 		PragmaTerms = [ImportTerm],
 		sym_name_and_args(ImportTerm, Import, [])
 	->
 		Result = ok(pragma(foreign_import_module(c, Import)))	
 	;
-		Result = error("wrong number of arguments or invalid module name in `:- pragma c_import_module' declaration", 
-			ErrorTerm)
+		Result = error("wrong number of arguments or invalid " ++
+			"module name in `:- pragma c_import_module' " ++
+			"declaration", ErrorTerm)
 	).
 
-parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms,
-		ErrorTerm, _VarSet, Result) :-
+parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
 	(
-	    PragmaTerms = [LangTerm, ImportTerm],
-	    sym_name_and_args(ImportTerm, Import, [])
+		PragmaTerms = [LangTerm, ImportTerm],
+		sym_name_and_args(ImportTerm, Import, [])
 	->
-	    ( parse_foreign_language(LangTerm, Language) ->
-	    	Result = ok(pragma(
-			foreign_import_module(Language, Import)))
-	    ;
-		Result = error("invalid foreign language in `:- pragma foreign_import_module' declaration",
-			LangTerm)
-	    )
+		( parse_foreign_language(LangTerm, Language) ->
+			Result = ok(pragma(
+				foreign_import_module(Language, Import)))
+		;
+			Result = error("invalid foreign language in " ++
+				"`:- pragma foreign_import_module' " ++
+				"declaration", LangTerm)
+		)
 	;
-	    Result = error("wrong number of arguments or invalid module name in `:- pragma foreign_import_module' declaration", 
-			ErrorTerm)
-			
+		Result = error("wrong number of arguments or invalid " ++
+			"module name in `:- pragma foreign_import_module' " ++
+			"declaration", ErrorTerm)
 	).
 
 :- pred parse_foreign_language(term, foreign_language).
@@ -383,10 +391,10 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 				Lang)
 		)
 	;
-	    string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
-		ErrorStr),
-	    Result = error(ErrorStr, ErrorTerm)
-        ).
+		string__format("invalid `:- pragma %s' declaration ",
+			[s(Pragma)], ErrorStr),
+		Result = error(ErrorStr, ErrorTerm)
+	).
 
 	% This predicate parses both c_code and foreign_code pragmas.
 	% Processing of foreign_proc (or c_code that defines a procedure)
@@ -430,7 +438,7 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
 	CheckLanguage = (func(PTermsLang) = Res is semidet :- 
 		PTermsLang = [Lang | Rest],
 		( 
-	    		parse_foreign_language(Lang, ForeignLanguage)
+			parse_foreign_language(Lang, ForeignLanguage)
 		->
 			Res = CheckLength(Rest, ForeignLanguage)
 		;
@@ -450,7 +458,6 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
 			ErrorTerm)
 	).
 
-
 	% This predicate parses both c_code and foreign_proc pragmas.
 :- pred parse_pragma_foreign_proc_pragma(module_name, string,
 		list(term), term, varset, maybe1(item)).
@@ -465,38 +472,38 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             PTerms6 = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
 	    parse_pragma_foreign_proc_attributes_term(
-	    		ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
+			ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
 	    ( MaybeFlags = ok(Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
 	            ( parse_pragma_keyword("first_code", FirstTerm, First,
-		    		FirstContext) ->
+				FirstContext) ->
 	                ( parse_pragma_keyword("retry_code", LaterTerm, Later,
 				LaterContext) ->
 	                    ( parse_pragma_keyword("shared_code", SharedTerm,
-			    		Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName,
+					Shared, SharedContext) ->
+			        parse_pragma_foreign_code(ModuleName,
 				    Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
+					First, yes(FirstContext),
 					Later, yes(LaterContext),
 					share, Shared, yes(SharedContext)),
 				    VarSet, Res)
 		            ; parse_pragma_keyword("duplicated_code",
-			    		SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName,
+					SharedTerm, Shared, SharedContext) ->
+			        parse_pragma_foreign_code(ModuleName,
 				    Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
+					First, yes(FirstContext),
 					Later, yes(LaterContext),
 					duplicate, Shared, yes(SharedContext)),
 				    VarSet, Res)
 		            ; parse_pragma_keyword("common_code", SharedTerm,
-			    		Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName, 
+					Shared, SharedContext) ->
+			        parse_pragma_foreign_code(ModuleName, 
 				    Flags, PredAndVarsTerm,
 				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
+					First, yes(FirstContext),
 					Later, yes(LaterContext),
 					automatic, Shared, yes(SharedContext)),
 				    VarSet, Res)
@@ -508,17 +515,17 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 		        ;
 		            ErrMsg = "-- invalid sixth argument, expecting `retry_code(<code>)'",
 			    Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	LaterTerm)
+				LaterTerm)
 			)
 		    ;
 		        ErrMsg = "-- invalid fifth argument, expecting `first_code(<code>)'",
 			Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	FirstTerm)
+				FirstTerm)
 		    )
 		;
 		    ErrMsg = "-- invalid fourth argument, expecting `local_vars(<fields>)'",
 		    Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	FieldsTerm)
+				FieldsTerm)
 		)
 	    ;
 		MaybeFlags = error(FlagsErrorStr, ErrorTerm),
@@ -539,7 +546,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	),
 
 	Check3 = (func(PTerms3, ForeignLanguage) = Res is semidet :- 
-    	    PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
+	    PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
 	    (
 		CodeTerm = term__functor(term__string(Code), [], Context)
 	    ->
@@ -581,14 +588,13 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	    ;
 		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
 		Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	CodeTerm)
+			CodeTerm)
 	    )
 	),
 
-
 	Check2 = (func(PTerms2, ForeignLanguage) = Res is semidet :- 
 		PTerms2 = [PredAndVarsTerm, CodeTerm],
-	    	% XXX we should issue a warning; this syntax is deprecated.
+		% XXX we should issue a warning; this syntax is deprecated.
 		% We will continue to accept this if c_code is used, but
 		% not with foreign_code
 		( 
@@ -609,7 +615,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 			    ErrMsg = "-- expecting either `may_call_mercury' or `will_not_call_mercury', and a string for foreign code",
 			    Res = error(string__append(InvalidDeclStr, ErrMsg), 
 				CodeTerm)
-	    		)
+			)
 		;
 			ErrMsg = "-- doesn't say whether it can call mercury",
 			Res = error(string__append(InvalidDeclStr, ErrMsg),
@@ -644,7 +650,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	CheckLanguage = (func(PTermsLang) = Res is semidet :- 
 		PTermsLang = [Lang | Rest],
 		( 
-	    		parse_foreign_language(Lang, ForeignLanguage)
+			parse_foreign_language(Lang, ForeignLanguage)
 		->
 			Res = CheckLength(Rest, ForeignLanguage)
 		;
@@ -663,7 +669,6 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 		Result = error(string__append(InvalidDeclStr, ErrMsg0),
 			ErrorTerm)
 	).
-
 
 parse_pragma_type(ModuleName, "import", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
@@ -712,13 +717,13 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 			Result = error(Msg, Term)
 		)
 	    ;
-	    	Result = error(
+		Result = error(
 	"expected pragma import(PredName(ModeList), Function)",
 		     PredAndModesTerm)
 	    )
 	;
 	    Result = 
-	    	error(
+		error(
 		"wrong number of arguments in `:- pragma import' declaration",
 		ErrorTerm)
 	).
@@ -737,20 +742,20 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 			PredAndModesResult),
 		(
 			PredAndModesResult = ok(PredName - PredOrFunc, Modes),
-		    	Result = ok(pragma(export(PredName, PredOrFunc,
+			Result = ok(pragma(export(PredName, PredOrFunc,
 					Modes, Function)))
 		;    
 			PredAndModesResult = error(Msg, Term),
 			Result = error(Msg, Term)
 		)
 	    ;
-	    	Result = error(
+		Result = error(
 		     "expected pragma export(PredName(ModeList), Function)",
 		     PredAndModesTerm)
 	    )
 	;
 	    Result = 
-	    	error(
+		error(
 		"wrong number of arguments in `:- pragma export' declaration",
 		ErrorTerm)
        ).
@@ -856,13 +861,13 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm,
 		( list__map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
 			( MaybeName = yes(SpecializedName0) ->
 				SpecializedName = SpecializedName0
-		    	;
+			;
 				unqualify_name(PredName, UnqualName),
 				make_pred_name(ModuleName, "TypeSpecOf",
 					MaybePredOrFunc, UnqualName,
 					type_subst(TVarSet, TypeSubn),
 					SpecializedName)
-		    	),
+			),
 		   	Result = ok(pragma(type_spec(PredName,
 				SpecializedName, Arity, MaybePredOrFunc,
 				MaybeModes, TypeSubn, TVarSet, set__init)))
@@ -894,7 +899,7 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
 	    PragmaTerms = [PredAndArityTerm, FileNameTerm]
 	->
 	    parse_pred_name_and_arity(ModuleName, "fact_table",
-	    	PredAndArityTerm, ErrorTerm, NameArityResult),
+		PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
 		NameArityResult = ok(PredName, Arity),
 		(
@@ -933,35 +938,35 @@ parse_pragma_type(ModuleName, "aditi_index", PragmaTerms,
 		ErrorTerm, _, Result) :-
 	( PragmaTerms = [PredNameArityTerm, IndexTypeTerm, AttributesTerm] ->
 	    parse_pred_name_and_arity(ModuleName, "aditi_index",
-	    	PredNameArityTerm, ErrorTerm, NameArityResult),
+		PredNameArityTerm, ErrorTerm, NameArityResult),
 	    (
 	        NameArityResult = ok(PredName, PredArity),
 		(
 		    IndexTypeTerm = term__functor(term__atom(IndexTypeStr),
-		    		[], _),
+				[], _),
 		    (
 			IndexTypeStr = "unique_B_tree",
 			IndexType = unique_B_tree
 		    ;
 			IndexTypeStr = "non_unique_B_tree",
-		    	IndexType = non_unique_B_tree
+			IndexType = non_unique_B_tree
 		    )
 		->
 		    convert_int_list(AttributesTerm, AttributeResult),
 		    (
 			AttributeResult = ok(Attributes),
 			Result = ok(pragma(aditi_index(PredName, PredArity,
-			    		index_spec(IndexType, Attributes))))
+					index_spec(IndexType, Attributes))))
 		    ;
 			AttributeResult = error(_, AttrErrorTerm),
 			Result = error(
 	"expected attribute list for `:- pragma aditi_index' declaration", 
 				AttrErrorTerm)	
 		    )
-	    	;
+		;
 		    Result = error(
 	"expected index type for `:- pragma aditi_index' declaration",
-	    			IndexTypeTerm)	
+				IndexTypeTerm)	
 	        )
 	    ;
 		NameArityResult = error(NameErrorMsg, NameErrorTerm),
@@ -1149,7 +1154,7 @@ parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
 	    parse_simple_name_and_arity(ModuleName, PragmaType, NameKind,
 		PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
-	    	NameArityResult = ok(PredName, Arity),
+		NameArityResult = ok(PredName, Arity),
 		call(MakePragma, PredName, Arity, Pragma),
 		Result = ok(pragma(Pragma))
 	    ;
@@ -1264,7 +1269,6 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		MaybeAttributes = error(ErrMsg, Term)
 	).
 
-
 	% Update the pragma_foreign_proc_attributes according to the given 
 	% collected_pragma_foreign_proc_attribute.
 :- pred process_attribute(collected_pragma_foreign_proc_attribute::in,
@@ -1284,7 +1288,6 @@ process_attribute(max_stack_size(Size), Attrs0, Attrs) :-
 
 	% Aliasing is currently ignored in the main branch compiler.
 process_attribute(aliasing, Attrs, Attrs).
-
 
 	% Check whether all the required attributes have been set for
 	% a particular language
@@ -1420,10 +1423,10 @@ parse_purity_promise(term__functor(term__atom("promise_semipure"), [], _),
 parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
 	PragmaImpl, VarSet0, Result) :-
     parse_pred_or_func_and_args(yes(ModuleName), PredAndVarsTerm0,
-    	PredAndVarsTerm0, "`:- pragma c_code' declaration", PredAndArgsResult),
+	PredAndVarsTerm0, "`:- pragma c_code' declaration", PredAndArgsResult),
     (
-    	PredAndArgsResult = ok(PredName, VarList0 - MaybeRetTerm),
-    	(
+	PredAndArgsResult = ok(PredName, VarList0 - MaybeRetTerm),
+	(
 	    % is this a function or a predicate?
 	    MaybeRetTerm = yes(FuncResultTerm0)
 	->
@@ -1492,7 +1495,6 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 		Error = yes("arguments not in form 'Var :: mode'")
 	).
 
-
 :- pred parse_tabling_pragma(module_name, string, eval_method, list(term), 
 		term, maybe1(item)).
 :- mode parse_tabling_pragma(in, in, in, in, in, out) is det.
@@ -1508,7 +1510,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 		ErrorTerm, ParseMsg, ArityModesResult),
         (
 	    ArityModesResult = ok(arity_or_modes(PredName,
-	    	Arity, MaybePredOrFunc, MaybeModes)),
+		Arity, MaybePredOrFunc, MaybeModes)),
             Result = ok(pragma(tabled(TablingType, PredName, Arity, 
                 MaybePredOrFunc, MaybeModes)))
 	;
@@ -1516,7 +1518,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 	    Result = error(Msg, Term)
 	)
     ;
-    	string__append_list(["wrong number of arguments in `:- pragma ", 
+	string__append_list(["wrong number of arguments in `:- pragma ", 
             PragmaName, "' declaration"], ErrorMessage),
         Result = error(ErrorMessage, ErrorTerm)
     ).
@@ -1548,17 +1550,17 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
             )
         ;
 	    parse_pred_or_func_and_arg_modes(yes(ModuleName),
-	    	PredAndModesTerm0, PredAndModesTerm0, ErrorMsg,
+		PredAndModesTerm0, PredAndModesTerm0, ErrorMsg,
 		PredAndModesResult),
 	    (
-	    	PredAndModesResult = ok(PredName - PredOrFunc, Modes),
+		PredAndModesResult = ok(PredName - PredOrFunc, Modes),
                 list__length(Modes, Arity0),
                 ( PredOrFunc = function ->
                     Arity = Arity0 - 1
                 ;
                     Arity = Arity0
                 ),
-	    	Result = ok(arity_or_modes(PredName, Arity,
+		Result = ok(arity_or_modes(PredName, Arity,
 			yes(PredOrFunc), yes(Modes)))
             ;
 		PredAndModesResult = error(Msg, Term),
@@ -1581,13 +1583,13 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 	    PredAndArgsResult =
 		ok(PredName, ArgModeTerms - MaybeRetModeTerm),
 	    (
-	    	convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
-	    		ArgModes0)
+		convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
+			ArgModes0)
 	    ->
 		(
 		    MaybeRetModeTerm = yes(RetModeTerm),
 		    (
-		    	convert_mode(allow_constrained_inst_var, RetModeTerm,
+			convert_mode(allow_constrained_inst_var, RetModeTerm,
 				RetMode)
 		    ->
 			list__append(ArgModes0, [RetMode], ArgModes1),
@@ -1597,7 +1599,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 		    ;
 			string__append("error in return mode in ",
 				Msg, ErrorMsg),
-		    	Result = error(ErrorMsg, ErrorTerm)
+			Result = error(ErrorMsg, ErrorTerm)
 		    )
 		;
 		    MaybeRetModeTerm = no,
@@ -1606,7 +1608,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 	    ;
 		string__append("error in argument modes in ", Msg,
 			ErrorMsg),
-	    	Result = error(ErrorMsg, ErrorTerm)
+		Result = error(ErrorMsg, ErrorTerm)
 	    )
 	;
 		PredAndArgsResult = error(ErrorMsg, Term),

@@ -332,9 +332,8 @@ goal_util__rename_var(V, Must, Subn, N) :-
 		;
 			Must = yes,
 			term__var_to_int(V, VInt),
-			string__format(
-			    "goal_util__rename_var: no substitute for var %i", 
-			    [i(VInt)], Msg),
+			string__format("goal_util__rename_var: " ++
+				"no substitute for var %i", [i(VInt)], Msg),
 			error(Msg)
 		)
 	).
@@ -460,11 +459,11 @@ goal_util__rename_unify_rhs(functor(Functor, E, ArgVars0), Must, Subn,
 			functor(Functor, E, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
-	    lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes, NonLocals0,
-			Vars0, Modes, Det, Goal0),
-	    Must, Subn, 
-	    lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes, NonLocals,
-			Vars, Modes, Det, Goal)) :-
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NonLocals0, Vars0, Modes, Det, Goal0),
+		Must, Subn, 
+		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -680,8 +679,9 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 goal_util__rhs_goal_vars(functor(_Functor, _, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 goal_util__rhs_goal_vars(
-	    lambda_goal(_, _, _, _, NonLocals, LambdaVars, _M, _D, Goal - _), 
-	    Set0, Set) :-
+		lambda_goal(_, _, _, _, NonLocals, LambdaVars, _M, _D,
+			Goal - _), 
+		Set0, Set) :-
 	set__insert_list(Set0, NonLocals, Set1),
 	set__insert_list(Set1, LambdaVars, Set2),
 	goal_util__goal_vars_2(Goal, Set2, Set).
@@ -700,7 +700,7 @@ goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
 	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
 		% Find all the type-infos and typeclass-infos that are
 		% non-local
-	solutions_set(lambda([Var::out] is nondet, (
+	solutions_set((pred(Var::out) is nondet :-
 			%
 			% if there is some TypeVar for which either
 			% (a) the type of some non-local variable
@@ -717,15 +717,16 @@ goal_util__extra_nonlocal_typeinfos(TypeVarMap, TypeClassVarMap, VarTypes,
 			% constraints on types which include that type,
 			% should be included in the NonLocalTypeInfos.
 			%
-			( map__search(TypeVarMap, TypeVar, Location),
-			  type_info_locn_var(Location, Var)
+			(
+				map__search(TypeVarMap, TypeVar, Location),
+				type_info_locn_var(Location, Var)
 			;
-			  % this is probably not very efficient...
-			  map__member(TypeClassVarMap, Constraint, Var),
-			  Constraint = constraint(_Name, ArgTypes),
-			  term__contains_var_list(ArgTypes, TypeVar)
+				% this is probably not very efficient...
+				map__member(TypeClassVarMap, Constraint, Var),
+				Constraint = constraint(_Name, ArgTypes),
+				term__contains_var_list(ArgTypes, TypeVar)
 			)
-		)), NonLocalTypeInfos).
+		), NonLocalTypeInfos).
 
 %-----------------------------------------------------------------------------%
 
@@ -1289,7 +1290,7 @@ predids_from_goals(Goals, PredIds) :-
 	).
 
 predids_from_goal(Goal, PredIds) :-
-                % Explicit lambda expression needed since
+		% Explicit lambda expression needed since
 		% goal_calls_pred_id has multiple modes.
 	P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
 	solutions(P, PredIds).

@@ -428,8 +428,8 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 
 	% analyze the procedures whose "can-process" flag was no;
 	% those procedures were inserted into the unify requests queue.
-	modecheck_queued_procs(WhatToCheck, OldPredTable0,
-		ModuleInfo2, OldPredTable, ModuleInfo3, Changed2),
+	modecheck_queued_procs(WhatToCheck, OldPredTable0, OldPredTable,
+		ModuleInfo2, ModuleInfo3, Changed2),
 	io__get_exit_status(ExitStatus),
 
 	{ bool__or(Changed1, Changed2, Changed) },
@@ -503,11 +503,11 @@ report_max_iterations_exceeded -->
 %	PredIds from OldPredTable into ModuleInfo0, giving ModuleInfo.
 :- pred copy_pred_bodies(pred_table, list(pred_id), module_info, module_info).
 :- mode copy_pred_bodies(in, in, in, out) is det.
-copy_pred_bodies(OldPredTable, PredIds, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	list__foldl(copy_pred_body(OldPredTable), PredIds,
 		PredTable0, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
+	module_info_set_preds(PredTable, !ModuleInfo).
 
 % copy_pred_body(OldPredTable, ProcId, PredTable0, PredTable):
 %	copy the procedure bodies for all procedures of the specified
@@ -554,20 +554,18 @@ copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
 :- mode modecheck_pred_modes_2(in, in, in, in, out, in, out, in, out, di, uo)
 			is det.
 
-modecheck_pred_modes_2([], _, _, ModuleInfo, ModuleInfo, Changed, Changed,
-		NumErrors, NumErrors) --> [].
+modecheck_pred_modes_2([], _, _, !ModuleInfo, !Changed, !NumErrors, !IO).
 modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, ModuleInfo, Changed0, Changed,
-		NumErrors0, NumErrors) -->
-	{ module_info_preds(ModuleInfo0, Preds0) },
-	{ map__lookup(Preds0, PredId, PredInfo0) },
+		!ModuleInfo, !Changed, !NumErrors, !IO) :-
+	module_info_preds(!.ModuleInfo, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
 	(
 		(
 			%
 			% don't modecheck imported predicates
 			%
-			( { pred_info_is_imported(PredInfo0) }
-			; { pred_info_is_pseudo_imported(PredInfo0) }
+			( pred_info_is_imported(PredInfo0)
+			; pred_info_is_pseudo_imported(PredInfo0)
 			)
 		;
 			%
@@ -575,34 +573,30 @@ modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
 			% are generated already mode-correct and with
 			% correct instmap deltas.
 			%
-			{ pred_info_get_markers(PredInfo0, PredMarkers) },
-			{ check_marker(PredMarkers, class_method) }
+			pred_info_get_markers(PredInfo0, PredMarkers),
+			check_marker(PredMarkers, class_method)
 		)
 	->
-		{ ModuleInfo3 = ModuleInfo0 },
-		{ Changed1 = Changed0 },
-		{ NumErrors1 = NumErrors0 }
+		true
 	;
-		write_modes_progress_message(PredId, PredInfo0, ModuleInfo0,
-			WhatToCheck),
+		write_modes_progress_message(PredId, PredInfo0, !.ModuleInfo,
+			WhatToCheck, !IO),
 		modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
-			MayChangeCalledProc, ModuleInfo0, ModuleInfo1,
-			Changed0, Changed1, ErrsInThisPred),
-		{ ErrsInThisPred = 0 ->
-			ModuleInfo3 = ModuleInfo1
+			MayChangeCalledProc, !ModuleInfo, !Changed,
+			ErrsInThisPred, !IO),
+		( ErrsInThisPred = 0 ->
+			true
 		;
-			module_info_num_errors(ModuleInfo1, ModNumErrors0),
+			module_info_num_errors(!.ModuleInfo, ModNumErrors0),
 			ModNumErrors1 = ModNumErrors0 + ErrsInThisPred,
-			module_info_set_num_errors(ModuleInfo1, ModNumErrors1,
-				ModuleInfo2),
-			module_info_remove_predid(ModuleInfo2, PredId,
-				ModuleInfo3)
-		},
-		{ NumErrors1 = NumErrors0 + ErrsInThisPred }
+			module_info_set_num_errors(ModNumErrors1,
+				!ModuleInfo),
+			module_info_remove_predid(PredId, !ModuleInfo)
+		),
+		!:NumErrors = !.NumErrors + ErrsInThisPred
 	),
 	modecheck_pred_modes_2(PredIds, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo3, ModuleInfo, Changed1, Changed,
-		NumErrors1, NumErrors).
+		!ModuleInfo, !Changed, !NumErrors, !IO).
 
 :- pred write_modes_progress_message(pred_id, pred_info, module_info,
 			how_to_check_goal, io__state, io__state).
@@ -633,113 +627,101 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 	% Mode-check the code for single predicate.
 
 modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, ModuleInfo, NumErrors) -->
+		!ModuleInfo, NumErrors) -->
 	modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
-		MayChangeCalledProc, ModuleInfo0, ModuleInfo,
-		no, _Changed, NumErrors).
+		MayChangeCalledProc, !ModuleInfo, no, _Changed, NumErrors).
 
-:- pred modecheck_pred_mode_2(pred_id, pred_info, how_to_check_goal,
-		may_change_called_proc, module_info, module_info,
-		bool, bool, int, io__state, io__state).
-:- mode modecheck_pred_mode_2(in, in, in, in, in,
-		out, in, out, out, di, uo) is det.
+:- pred modecheck_pred_mode_2(pred_id::in, pred_info::in,
+	how_to_check_goal::in, may_change_called_proc::in,
+	module_info::in, module_info::out, bool::in, bool::out, int::out,
+	io__state::di, io__state::uo) is det.
 
 modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, ModuleInfo, Changed0, Changed, NumErrors) -->
-	( { WhatToCheck = check_modes } ->
-		{ pred_info_procedures(PredInfo0, ProcTable) },
+		!ModuleInfo, !Changed, NumErrors, !IO) :-
+	( WhatToCheck = check_modes ->
+		pred_info_procedures(PredInfo0, ProcTable),
 		(
-			some [ProcInfo] {
+			some [ProcInfo] (
 				map__member(ProcTable, _ProcId, ProcInfo),
 				proc_info_maybe_declared_argmodes(ProcInfo,
 					yes(_))
-			}
+			)
 		->
-			% there was at least one declared modes for this
+			% there was at least one declared mode for this
 			% procedure
-			[]
+			true
 		;
 			% there were no declared modes for this procedure
 			maybe_report_error_no_modes(PredId, PredInfo0,
-					ModuleInfo0)
+				!.ModuleInfo, !IO)
 		)
 	;
-		[]
+		true
 	),
 	% Note that we use pred_info_procids rather than
 	% pred_info_all_procids here, which means that we
 	% don't process modes that have already been inferred
 	% as invalid.
-	{ ProcIds = pred_info_procids(PredInfo0) },
+	ProcIds = pred_info_procids(PredInfo0),
 	modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, Changed0, 0,
-		ModuleInfo, Changed, NumErrors).
+		!ModuleInfo, !Changed, 0, NumErrors, !IO).
 
 	% Iterate over the list of modes for a predicate.
 
-:- pred modecheck_procs(list(proc_id), pred_id, how_to_check_goal,
-		may_change_called_proc, module_info, bool, int,
-		module_info, bool, int, io__state, io__state).
-:- mode modecheck_procs(in, in, in, in, in, in, in,
-		out, out, out, di, uo) is det.
+:- pred modecheck_procs(list(proc_id)::in, pred_id::in, how_to_check_goal::in,
+	may_change_called_proc::in, module_info::in, module_info::out,
+	bool::in, bool::out, int::in, int::out, io__state::di, io__state::uo)
+	is det.
 
-modecheck_procs([], _PredId, _, _, ModuleInfo, Changed, Errs,
-				ModuleInfo, Changed, Errs) --> [].
+modecheck_procs([], _PredId, _, _, !ModuleInfo, !Changed, !Errs, !IO).
 modecheck_procs([ProcId|ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
-				ModuleInfo0, Changed0, Errs0,
-				ModuleInfo, Changed, Errs) -->
+		!ModuleInfo, !Changed, !Errs, !IO) :-
 	% mode-check that mode of the predicate
 	modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-				ModuleInfo0, Changed0,
-				ModuleInfo1, Changed1, NumErrors),
-	{ Errs1 = Errs0 + NumErrors },
+		!ModuleInfo, !Changed, NumErrors, !IO),
+	!:Errs = !.Errs + NumErrors,
 		% recursively process the remaining modes
 	modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
-				ModuleInfo1, Changed1, Errs1,
-				ModuleInfo, Changed, Errs).
+		!ModuleInfo, !Changed, !Errs, !IO).
 
 %-----------------------------------------------------------------------------%
 
 	% Mode-check the code for predicate in a given mode.
 
-modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors, Changed) -->
+modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, Changed) -->
 	modecheck_proc(ProcId, PredId, check_modes, may_change_called_proc,
-		ModuleInfo0, ModuleInfo, NumErrors, Changed).
+		!ModuleInfo, NumErrors, Changed).
 
-modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc, ModuleInfo0,
-			ModuleInfo, NumErrors, Changed) -->
+modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
+		NumErrors, Changed) -->
 	modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-			ModuleInfo0, no, ModuleInfo, Changed, NumErrors).
+		!ModuleInfo, no, Changed, NumErrors).
 
-:- pred modecheck_proc_2(proc_id, pred_id, how_to_check_goal,
-		may_change_called_proc, module_info, bool,
-		module_info, bool, int, io__state, io__state).
-:- mode modecheck_proc_2(in, in, in, in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_proc_2(proc_id::in, pred_id::in, how_to_check_goal::in,
+	may_change_called_proc::in, module_info::in, module_info::out,
+	bool::in, bool::out, int::out, io__state::di, io__state::uo) is det.
 
 modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, Changed0, ModuleInfo, Changed, NumErrors, !IO) :-
+		!ModuleInfo, !Changed, NumErrors, !IO) :-
 		% get the proc_info from the module_info
-	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-					_PredInfo0, ProcInfo0),
+	module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+		_PredInfo0, ProcInfo0),
 	( proc_info_can_process(ProcInfo0, no) ->
-		ModuleInfo = ModuleInfo0,
-		Changed = Changed0,
 		NumErrors = 0
 	;
 			% modecheck it
 		modecheck_proc_3(ProcId, PredId, WhatToCheck,
-			MayChangeCalledProc, ModuleInfo0, ModuleInfo1,
-			ProcInfo0, ProcInfo, Changed0, Changed,
-			NumErrors, !IO),
+			MayChangeCalledProc, !ModuleInfo, ProcInfo0, ProcInfo,
+			!Changed, NumErrors, !IO),
 
 			% save the proc_info back in the module_info
-		module_info_preds(ModuleInfo1, Preds1),
+		module_info_preds(!.ModuleInfo, Preds1),
 		map__lookup(Preds1, PredId, PredInfo1),
 		pred_info_procedures(PredInfo1, Procs1),
 		map__set(Procs1, ProcId, ProcInfo, Procs),
 		pred_info_set_procedures(Procs, PredInfo1, PredInfo),
 		map__set(Preds1, PredId, PredInfo, Preds),
-		module_info_set_preds(ModuleInfo1, Preds, ModuleInfo)
+		module_info_set_preds(Preds, !ModuleInfo)
 	).
 
 modecheck_proc_info(ProcId, PredId, ModuleInfo0, ProcInfo0,

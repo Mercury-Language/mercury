@@ -316,8 +316,7 @@ setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage,
 			FuncId, unused_args_func_info(PredArity),
 			any_call, MaybeBestResult,
 			AnalysisInfo0, AnalysisInfo, !IO),
-		module_info_set_analysis_info(!.ModuleInfo,
-			AnalysisInfo, !:ModuleInfo),
+		module_info_set_analysis_info(AnalysisInfo, !ModuleInfo),
 		( MaybeBestResult = yes(_ - unused_args(UnusedArgs)) ->
 			proc_info_headvars(ProcInfo, HeadVars),
 			list__map(list__index1_det(HeadVars),
@@ -898,8 +897,8 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
 					unused_args(UnusedArgs),
 					AnalysisInfo1, AnalysisInfo)
 			),
-			module_info_set_analysis_info(!.ModuleInfo,
-				AnalysisInfo, !:ModuleInfo),
+			module_info_set_analysis_info(AnalysisInfo,
+				!ModuleInfo),
 
 			%
 			% XXX Mark versions which have more unused arguments
@@ -954,8 +953,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
 		module_info_get_predicate_table(!.ModuleInfo, PredTable0),
 		predicate_table_insert(PredTable0,
 			NewPredInfo, NewPredId, PredTable),
-		module_info_set_predicate_table(!.ModuleInfo,
-			PredTable, !:ModuleInfo),
+		module_info_set_predicate_table(PredTable, !ModuleInfo),
 
 			% add the new proc to the proc_call_info map
 		PredSymName = qualified(PredModule, NewPredName),
@@ -967,9 +965,8 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
 			% original interface.
 		create_call_goal(UnusedArgs, NewPredId, ProcId, PredModule,
 			NewPredName, OrigProcInfo, ForwardingProcInfo),
-		module_info_set_pred_proc_info(!.ModuleInfo,
-			PredId, ProcId, OrigPredInfo,
-			ForwardingProcInfo, !:ModuleInfo),
+		module_info_set_pred_proc_info(PredId, ProcId, OrigPredInfo,
+			ForwardingProcInfo, !ModuleInfo),
 
 			% add forwarding predicates for results
 			% produced in previous compilations.
@@ -1006,7 +1003,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
 	pred_info_set_procedures(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
 	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
 	predicate_table_insert(PredTable0, ExtraPredInfo, _, PredTable),
-	module_info_set_predicate_table(!.ModuleInfo, PredTable, !:ModuleInfo).
+	module_info_set_predicate_table(PredTable, !ModuleInfo).
 
 :- pred make_new_pred_info(module_info::in, list(int)::in, import_status::in,
 	pred_proc_id::in, pred_info::in, pred_info::out) is det.
@@ -1114,15 +1111,15 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	% Create a pred_info for an imported pred with a pragma unused_args
 	% in the .opt file.
 :- pred make_imported_unused_args_pred_info(pred_proc_id::in, list(int)::in,
-		proc_call_info::in, proc_call_info::out,
-		module_info::in, module_info::out) is det.
+	proc_call_info::in, proc_call_info::out,
+	module_info::in, module_info::out) is det.
 
 make_imported_unused_args_pred_info(OptProc, UnusedArgs,
- 		ProcCallInfo0, ProcCallInfo, ModuleInfo0, ModuleInfo) :-
+ 		ProcCallInfo0, ProcCallInfo, !ModuleInfo) :-
 	OptProc = proc(PredId, ProcId),
-	module_info_pred_proc_info(ModuleInfo0,
+	module_info_pred_proc_info(!.ModuleInfo,
 		PredId, ProcId, PredInfo0, ProcInfo0),
-	make_new_pred_info(ModuleInfo0, UnusedArgs, imported(interface),
+	make_new_pred_info(!.ModuleInfo, UnusedArgs, imported(interface),
 		OptProc, PredInfo0, NewPredInfo0),
 	pred_info_procedures(NewPredInfo0, NewProcs0),
 
@@ -1137,9 +1134,9 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs,
 	pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
 
 		% Add the new proc to the pred table.
-	module_info_get_predicate_table(ModuleInfo0, PredTable0),
+	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
 	predicate_table_insert(PredTable0, NewPredInfo, NewPredId, PredTable1),
-	module_info_set_predicate_table(ModuleInfo0, PredTable1, ModuleInfo),
+	module_info_set_predicate_table(PredTable1, !ModuleInfo),
 	PredModule = pred_info_module(NewPredInfo),
 	PredName = pred_info_name(NewPredInfo),
 	PredSymName = qualified(PredModule, PredName),
@@ -1200,7 +1197,7 @@ get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
 
 fixup_unused_args(_, [], _, Mod, Mod, _) --> []. 
 fixup_unused_args(VarUsage, [PredProc | PredProcs], ProcCallInfo,
-			ModuleInfo0, ModuleInfo, VeryVerbose) -->
+		ModuleInfo0, ModuleInfo, VeryVerbose) -->
 	(
 		{ VeryVerbose = yes }
 	->
@@ -1275,7 +1272,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 	map__set(Procs0, ProcId, FixedProc5, Procs),
 	pred_info_set_procedures(Procs, PredInfo0, PredInfo),
 	map__set(Preds0, PredId, PredInfo, Preds),
-	module_info_set_preds(Mod0, Preds, Mod).
+	module_info_set_preds(Preds, Mod0, Mod).
 
 % 	this is the important bit of the transformation
 :- pred fixup_goal(module_info::in, list(prog_var)::in, proc_call_info::in,

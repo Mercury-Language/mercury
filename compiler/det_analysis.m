@@ -139,7 +139,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
 
-:- import_module assoc_list, bool, map, set, require, term.
+:- import_module string, assoc_list, bool, map, set, require, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -313,7 +313,7 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Procs, Pred0, Pred),
 	map__det_update(Preds0, PredId, Pred, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
+	module_info_set_preds(Preds, ModuleInfo0, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -924,7 +924,7 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 
 det_find_matching_non_cc_mode(DetInfo, PredId, ProcId0, ProcId) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-        module_info_preds(ModuleInfo, PredTable),
+	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__to_assoc_list(ProcTable, ProcList),
@@ -1111,8 +1111,8 @@ det_conjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_conjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
 det_conjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-    % if the first conjunct could be cc pruned,
-    % the second conj ought to have been cc pruned too
+	% if the first conjunct could be cc pruned,
+	% the second conj ought to have been cc pruned too
 	error("det_conjunction_maxsoln: many_cc , many").
 
 det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
@@ -1142,16 +1142,18 @@ det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-    % if the first disjunct could be cc pruned,
-    % the second disjunct ought to have been cc pruned too
-    error("det_disjunction_maxsoln: cc in first case, not cc in second case").
+	% if the first disjunct could be cc pruned,
+	% the second disjunct ought to have been cc pruned too
+	error("det_disjunction_maxsoln: cc in first case, " ++
+		"not cc in second case").
 
 det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
 det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
 det_disjunction_maxsoln(at_most_many,    at_most_many_cc, _) :-
-    % if the first disjunct could be cc pruned,
-    % the second disjunct ought to have been cc pruned too
-    error("det_disjunction_maxsoln: cc in second case, not cc in first case").
+	% if the first disjunct could be cc pruned,
+	% the second disjunct ought to have been cc pruned too
+	error("det_disjunction_maxsoln: cc in second case, " ++
+		"not cc in first case").
 det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_disjunction_canfail(can_fail,    can_fail,    can_fail).
@@ -1318,8 +1320,7 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
 		proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
 		map__det_update(Procs0, ProcId, ProcInfo, Procs),
 		pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-		module_info_set_pred_info(!.ModuleInfo,
-			PredId, PredInfo, !:ModuleInfo)
+		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
 	;
 		true
 	).

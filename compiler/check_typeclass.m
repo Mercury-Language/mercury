@@ -97,8 +97,8 @@ check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
 		Errors = []
 	->
 		map__from_assoc_list(InstanceList, InstanceTable),
-		module_info_set_instances(ModuleInfo1, InstanceTable,
-			ModuleInfo),
+		module_info_set_instances(InstanceTable,
+			ModuleInfo1, ModuleInfo),
 		IO = IO1,
 		FoundError = no
 	;
@@ -423,7 +423,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
 	pred_info_get_class_context(PredInfo, ClassContext0),
 	pred_info_get_markers(PredInfo, Markers0),
-	remove_marker(Markers0, class_method, Markers),
+	remove_marker(class_method, Markers0, Markers),
 		% The first constraint in the class context of a class method
 		% is always the constraint for the class of which it is
 		% a member. Seeing that we are checking an instance 
@@ -725,14 +725,14 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		% given in the instance declaration.
 	Cond = true,
 	map__init(Proofs),
-	add_marker(Markers0, class_instance_method, Markers1),
+	add_marker(class_instance_method, Markers0, Markers1),
 	( InstancePredDefn = name(_) ->
 		% For instance methods which are defined using the named
 		% syntax (e.g. "pred(...) is ...") rather than the clauses
 		% syntax, we record an additional marker; the only effect
 		% of this marker is that we output slightly different
 		% error messages for such predicates.
-		add_marker(Markers1, named_class_instance_method, Markers)
+		add_marker(named_class_instance_method, Markers1, Markers)
 	;
 		Markers = Markers1
 	),
@@ -783,8 +783,8 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	%     rather than passing must_be_qualified or calling the /4 version?
 	predicate_table_insert(PredicateTable1, PredInfo,
 		may_be_unqualified, PQInfo, PredId, PredicateTable),
-	module_info_set_predicate_table(ModuleInfo1, PredicateTable,
-		ModuleInfo),
+	module_info_set_predicate_table(PredicateTable,
+		ModuleInfo1, ModuleInfo),
 
 	Info = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,

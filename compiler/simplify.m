@@ -280,8 +280,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 			PredInfo, ProcInfo0),
 		proc_info_set_vartypes(VarTypes4, ProcInfo0, ProcInfo1),
 		proc_info_set_varset(VarSet4, ProcInfo1, ProcInfo),
-		module_info_set_pred_proc_info(ModuleInfo5, PredId, ProcId,
-			PredInfo, ProcInfo, ModuleInfo6),
+		module_info_set_pred_proc_info(PredId, ProcId,
+			PredInfo, ProcInfo, ModuleInfo5, ModuleInfo6),
 		simplify_info_set_module_info(Info4, ModuleInfo6, Info),
 
 		simplify_info_get_det_info(Info, DetInfo),
@@ -1560,8 +1560,8 @@ simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 	% in the module_info and put the new module_info
 	% back in the simplify_info.
 	%
-	module_info_set_pred_proc_info(ModuleInfo1, PredId, ProcId,
-		PredInfo, ProcInfo, ModuleInfo),
+	module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo1, ModuleInfo),
 	simplify_info_set_module_info(Info2, ModuleInfo, Info).
 
 :- pred simplify__type_info_locn(tvar, prog_var, list(hlds_goal),

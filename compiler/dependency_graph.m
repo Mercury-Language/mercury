@@ -124,15 +124,14 @@
 	% Ensure that the dependency graph has been built by building
 	% it if necessary.
 
-module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
-	module_info_get_maybe_dependency_info(ModuleInfo0, MaybeDepInfo),
+module_info_ensure_dependency_info(!ModuleInfo) :-
+	module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
 	( MaybeDepInfo = yes(_) ->
-		ModuleInfo = ModuleInfo0
+		true
 	;
-		dependency_graph__build_dependency_graph(ModuleInfo0, no,
+		dependency_graph__build_dependency_graph(!.ModuleInfo, no,
 			DepInfo),
-		module_info_set_dependency_info(ModuleInfo0, DepInfo,
-			ModuleInfo)
+		module_info_set_dependency_info(DepInfo, !ModuleInfo)
 	).
 
 	% Traverse the module structure, calling `dependency_graph__add_arcs'
@@ -153,10 +152,10 @@ dependency_graph__build_dependency_graph(ModuleInfo, Imported, DepInfo) :-
 	dependency_graph__add_arcs(PredIds, ModuleInfo, Imported,
 		DepGraph1, DepGraph),
 	hlds_dependency_info_init(DepInfo0),
-	hlds_dependency_info_set_dependency_graph(DepInfo0, DepGraph, DepInfo1),
+	hlds_dependency_info_set_dependency_graph(DepGraph, DepInfo0, DepInfo1),
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
-	hlds_dependency_info_set_dependency_ordering(DepInfo1, DepOrd, DepInfo).
+	hlds_dependency_info_set_dependency_ordering(DepOrd, DepInfo1, DepInfo).
 
 :- pred dependency_graph__sets_to_lists(list(set(T)), list(list(T)),
 	list(list(T))).
@@ -704,24 +703,23 @@ dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-module_info_ensure_aditi_dependency_info(ModuleInfo0, ModuleInfo) :-
-	module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1),
-	module_info_dependency_info(ModuleInfo1, DepInfo0),
+module_info_ensure_aditi_dependency_info(!ModuleInfo) :-
+	module_info_ensure_dependency_info(!ModuleInfo),
+	module_info_dependency_info(!.ModuleInfo, DepInfo0),
 	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo0,
 		MaybeAditiInfo),
 	( MaybeAditiInfo = yes(_) ->
-		ModuleInfo = ModuleInfo1
+		true
 	;
 		hlds_dependency_info_get_dependency_ordering(DepInfo0,
 			DepOrdering),
-		aditi_scc_info_init(ModuleInfo1, AditiInfo0),
+		aditi_scc_info_init(!.ModuleInfo, AditiInfo0),
 		dependency_graph__build_aditi_scc_info(DepOrdering,
 			AditiInfo0, AditiInfo),
 		dependency_graph__merge_aditi_sccs(AditiInfo, AditiOrdering),
-		hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
-			AditiOrdering, DepInfo),
-		module_info_set_dependency_info(ModuleInfo1,
-			DepInfo, ModuleInfo)
+		hlds_dependency_info_set_aditi_dependency_ordering(
+			AditiOrdering, DepInfo0, DepInfo),
+		module_info_set_dependency_info(DepInfo, !ModuleInfo)
 	).
 
 :- pred dependency_graph__build_aditi_scc_info(dependency_ordering::in,

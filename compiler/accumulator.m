@@ -1555,7 +1555,7 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, AccPredInfo, AccPredId, PredTable),
-	module_info_set_predicate_table(ModuleInfo0, PredTable, ModuleInfo1),
+	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo1),
 
 	create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
 			HeadToCallSubst, CallToHeadSubst, BaseCase,
@@ -1973,14 +1973,13 @@ top_level(ite_rec_base, Goal, OrigBaseGoal,
 :- pred update_accumulator_pred(pred_id::in, proc_id::in,
 		hlds_goal::in, module_info::in, module_info::out) is det.
 
-update_accumulator_pred(NewPredId, NewProcId, AccGoal,
-		ModuleInfo0, ModuleInfo) :-
-	module_info_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
+update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
+	module_info_pred_proc_info(!.ModuleInfo, NewPredId, NewProcId,
 			PredInfo, ProcInfo0),
 	proc_info_set_goal(AccGoal, ProcInfo0, ProcInfo1),
 	requantify_proc(ProcInfo1, ProcInfo),
-	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
-		PredInfo, ProcInfo, ModuleInfo).
+	module_info_set_pred_proc_info(NewPredId, NewProcId,
+		PredInfo, ProcInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

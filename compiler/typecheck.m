@@ -194,49 +194,46 @@ typecheck(Module0, Module, FoundError, ExceededIterationLimit) -->
 
 	% Type-check the code for all the predicates in a module.
 
-:- pred check_pred_types(module_info, module_info, bool, bool,
-		io__state, io__state).
-:- mode check_pred_types(in, out, out, out, di, uo) is det.
+:- pred check_pred_types(module_info::in, module_info::out,
+	bool::out, bool::out, io__state::di, io__state::uo) is det.
 
-check_pred_types(Module0, Module, FoundError, ExceededIterationLimit) -->
-	{ module_info_predids(Module0, PredIds) },
+check_pred_types(!Module, FoundError, ExceededIterationLimit, !IO) :-
+	module_info_predids(!.Module, PredIds),
 	globals__io_lookup_int_option(type_inference_iteration_limit,
-		MaxIterations),
-	typecheck_to_fixpoint(1, MaxIterations, PredIds, Module0,
-		Module, FoundError, ExceededIterationLimit),
-	write_inference_messages(PredIds, Module).
+		MaxIterations, !IO),
+	typecheck_to_fixpoint(1, MaxIterations, PredIds, !Module,
+		FoundError, ExceededIterationLimit, !IO),
+	write_inference_messages(PredIds, !.Module, !IO).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
-:- pred typecheck_to_fixpoint(int, int, list(pred_id),
-		module_info, module_info, bool, bool, io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, in, in, out, out, out, di, uo) is det.
+:- pred typecheck_to_fixpoint(int::in, int::in, list(pred_id)::in,
+	module_info::in, module_info::out, bool::out, bool::out,
+	io__state::di, io__state::uo) is det.
 
-typecheck_to_fixpoint(Iteration, NumIterations, PredIds, Module0, Module,
-		FoundError, ExceededIterationLimit) -->
-	typecheck_pred_types_2(Iteration, PredIds, Module0, Module1,
-		no, FoundError1, no, Changed),
-	( { Changed = no ; FoundError1 = yes } ->
-		{ Module = Module1 },
-		{ FoundError = FoundError1 },
-		{ ExceededIterationLimit = no }
+typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
+		FoundError, ExceededIterationLimit, !IO) :-
+	typecheck_pred_types_2(Iteration, PredIds, !Module,
+		no, FoundError1, no, Changed, !IO),
+	( ( Changed = no ; FoundError1 = yes ) ->
+		FoundError = FoundError1,
+		ExceededIterationLimit = no
 	;
-		globals__io_lookup_bool_option(debug_types, DebugTypes),
-		( { DebugTypes = yes } ->
-			write_inference_messages(PredIds, Module1)
+		globals__io_lookup_bool_option(debug_types, DebugTypes, !IO),
+		( DebugTypes = yes ->
+			write_inference_messages(PredIds, !.Module, !IO)
 		;
-			[]
+			true
 		),
-		( { Iteration < NumIterations } ->
+		( Iteration < NumIterations ->
 			typecheck_to_fixpoint(Iteration + 1, NumIterations,
-				PredIds, Module1, Module,
-				FoundError, ExceededIterationLimit)
+				PredIds, !Module,
+				FoundError, ExceededIterationLimit, !IO)
 		;
-			typecheck_report_max_iterations_exceeded,
-			{ Module = Module1 },
-			{ FoundError = yes },
-			{ ExceededIterationLimit = yes }
+			typecheck_report_max_iterations_exceeded(!IO),
+			FoundError = yes,
+			ExceededIterationLimit = yes
 		)
 	).
 
@@ -260,73 +257,66 @@ typecheck_report_max_iterations_exceeded -->
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred typecheck_pred_types_2(int, list(pred_id), module_info, module_info,
-	bool, bool, bool, bool, io__state, io__state).
-:- mode typecheck_pred_types_2(in, in, in, out,
-	in, out, in, out, di, uo) is det.
+:- pred typecheck_pred_types_2(int::in, list(pred_id)::in,
+	module_info::in, module_info::out, bool::in, bool::out,
+	bool::in, bool::out, io__state::di, io__state::uo) is det.
 
-typecheck_pred_types_2(_, [], ModuleInfo, ModuleInfo, 
-		Error, Error, Changed, Changed) --> [].
-typecheck_pred_types_2(Iteration, [PredId | PredIds], ModuleInfo0, ModuleInfo, 
-		Error0, Error, Changed0, Changed) -->
-	{ module_info_preds(ModuleInfo0, Preds0) },
-	{ map__lookup(Preds0, PredId, PredInfo0) },
+typecheck_pred_types_2(_, [], !ModuleInfo, !Error, !Changed, !IO).
+typecheck_pred_types_2(Iteration, [PredId | PredIds], !ModuleInfo, 
+		!Error, !Changed, !IO) :-
+	module_info_preds(!.ModuleInfo, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
 	(
-		{ pred_info_is_imported(PredInfo0) }
+		pred_info_is_imported(PredInfo0)
 	->
-		{ Error2 = Error0 },
-		{ ModuleInfo3 = ModuleInfo0 },
-		{ Changed2 = Changed0 }
+		true
 	;
 		typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo1,
-			ModuleInfo0, ModuleInfo1, Error1, Changed1),
+			!ModuleInfo, NewError, NewChanged, !IO),
 		(
-			{ Error1 = no },
-			{ map__det_update(Preds0, PredId, PredInfo1, Preds) },
-			{ module_info_set_preds(ModuleInfo1, Preds,
-				ModuleInfo3) }
+			NewError = no,
+			map__det_update(Preds0, PredId, PredInfo1, Preds),
+			module_info_set_preds(Preds, !ModuleInfo)
 		;
-			{ Error1 = yes },
-		/********************
-		This code is not needed at the moment,
-		since currently we don't run mode analysis if
-		there are any type errors.
-		And this code also causes problems:
-		if there are undefined modes,
-		this code can end up calling error/1,
-		since post_typecheck__finish_ill_typed_pred
-		assumes that there are no undefined modes.
-			%
-			% if we get an error, we need to call
-			% post_typecheck__finish_ill_typed_pred on the
-			% pred, to ensure that its mode declaration gets
-			% properly module qualified; then we call
-			% `remove_predid', so that the predicate's definition
-			% will be ignored by later passes (the declaration
-			% will still be used to check any calls to it).
-			%
-			post_typecheck__finish_ill_typed_pred(ModuleInfo0,
-				PredId, PredInfo1, PredInfo),
-			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
-		*******************/
-			{ map__det_update(Preds0, PredId, PredInfo1, Preds) },
-			{ module_info_set_preds(ModuleInfo1, Preds,
-				ModuleInfo2) },
-			{ module_info_remove_predid(ModuleInfo2, PredId,
-				ModuleInfo3) }
+			NewError = yes,
+%		/********************
+%		This code is not needed at the moment,
+%		since currently we don't run mode analysis if
+%		there are any type errors.
+%		And this code also causes problems:
+%		if there are undefined modes,
+%		this code can end up calling error/1,
+%		since post_typecheck__finish_ill_typed_pred
+%		assumes that there are no undefined modes.
+%			%
+%			% if we get an error, we need to call
+%			% post_typecheck__finish_ill_typed_pred on the
+%			% pred, to ensure that its mode declaration gets
+%			% properly module qualified; then we call
+%			% `remove_predid', so that the predicate's definition
+%			% will be ignored by later passes (the declaration
+%			% will still be used to check any calls to it).
+%			%
+%			post_typecheck__finish_ill_typed_pred(ModuleInfo0,
+%				PredId, PredInfo1, PredInfo),
+%			map__det_update(Preds0, PredId, PredInfo, Preds),
+%		*******************/
+			map__det_update(Preds0, PredId, PredInfo1, Preds),
+			module_info_set_preds(Preds, !ModuleInfo),
+			module_info_remove_predid(PredId, !ModuleInfo)
 		),
-		{ bool__or(Error0, Error1, Error2) },
-		{ bool__or(Changed0, Changed1, Changed2) }
+		bool__or(!.Error, NewError, !:Error),
+		bool__or(!.Changed, NewChanged, !:Changed)
 	),
-	typecheck_pred_types_2(Iteration, PredIds, ModuleInfo3, ModuleInfo, 
-		Error2, Error, Changed2, Changed).
+	typecheck_pred_types_2(Iteration, PredIds, !ModuleInfo, 
+		!Error, !Changed, !IO).
 
-:- pred typecheck_pred_type(int, pred_id, pred_info, pred_info,
-		module_info, module_info, bool, bool, io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, in, out, out, out, di, uo) is det.
+:- pred typecheck_pred_type(int::in, pred_id::in,
+	pred_info::in, pred_info::out, module_info::in, module_info::out,
+	bool::out, bool::out, io__state::di, io__state::uo) is det.
 
 typecheck_pred_type(Iteration, PredId, !PredInfo,
-		ModuleInfo0, ModuleInfo, Error, Changed, !IOState) :-
+		!ModuleInfo, Error, Changed, !IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
@@ -335,7 +325,7 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	    % or if it is a special pred for an existentially typed data type.
 	    (
 	    	is_unify_or_compare_pred(!.PredInfo),
-	    	\+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo0)
+	    	\+ special_pred_needs_typecheck(!.PredInfo, !.ModuleInfo)
 	    ;
 	    	pred_info_is_builtin(!.PredInfo)
 	    )
@@ -347,21 +337,19 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	    ;
 	        true
 	    ),
-	    ModuleInfo = ModuleInfo0,
 	    Error = no,
 	    Changed = no
 	;
 	    globals__io_get_globals(Globals, !IOState),
 	    ( Iteration = 1 ->
-		maybe_add_field_access_function_clause(ModuleInfo0, !PredInfo),
+		maybe_add_field_access_function_clause(!.ModuleInfo, !PredInfo),
 		maybe_improve_headvar_names(Globals, !PredInfo),
 
 		% The goal_type of the pred_info may have been changed
 		% by maybe_add_field_access_function_clause.
-		module_info_set_pred_info(ModuleInfo0, PredId, !.PredInfo,
-			ModuleInfo)
+		module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
 	    ;
-	    	ModuleInfo = ModuleInfo0
+		    true
 	    ),
 	    pred_info_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
 		    ArgTypes0),
@@ -382,13 +370,13 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	    ->
 		( globals__lookup_bool_option(Globals, warn_stubs, yes) ->
 			report_no_clauses("Warning", PredId, !.PredInfo,
-				ModuleInfo, !IOState)
+				!.ModuleInfo, !IOState)
 		;
 			true
 		),
-		error_util__describe_one_pred_name(ModuleInfo, PredId,
+		error_util__describe_one_pred_name(!.ModuleInfo, PredId,
 			PredName),
-		generate_stub_clause(PredName, !PredInfo, ModuleInfo,
+		generate_stub_clause(PredName, !PredInfo, !.ModuleInfo,
 			StubClause, VarSet0, VarSet),
 		Clauses1 = [StubClause],
 	        clauses_info_set_clauses(Clauses1, ClausesInfo0, ClausesInfo1),
@@ -424,7 +412,7 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 			Changed = no
 		;
 			report_no_clauses("Error", PredId, !.PredInfo,
-				ModuleInfo, !IOState),
+				!.ModuleInfo, !IOState),
 			Error = yes,
 			Changed = no
 		)
@@ -440,13 +428,13 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 			% `pred foo(T1, T2, ..., TN)' by make_hlds.m.
 			Inferring = yes,
 			write_pred_progress_message("% Inferring type of ",
-				PredId, ModuleInfo, !IOState),
+				PredId, !.ModuleInfo, !IOState),
 			HeadTypeParams1 = [],
 			PredConstraints = constraints([], [])
 		;
 			Inferring = no,
 			write_pred_progress_message("% Type-checking ",
-				PredId, ModuleInfo, !IOState),
+				PredId, !.ModuleInfo, !IOState),
 			term__vars_list(ArgTypes0, HeadTypeParams0),
 			list__delete_elems(HeadTypeParams0, ExistQVars0,
 				HeadTypeParams1),
@@ -463,13 +451,16 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 		%
 		dual_constraints(PredConstraints, Constraints),
 
-		( pred_info_is_field_access_function(ModuleInfo, !.PredInfo) ->
+		(
+			pred_info_is_field_access_function(!.ModuleInfo,
+				!.PredInfo)
+		->
 			IsFieldAccessFunction = yes
 		;
 			IsFieldAccessFunction = no
 		),
 		pred_info_get_markers(!.PredInfo, Markers),
-		typecheck_info_init(!.IOState, ModuleInfo, PredId,
+		typecheck_info_init(!.IOState, !.ModuleInfo, PredId,
 				IsFieldAccessFunction, TypeVarSet0, VarSet,
 				ExplicitVarTypes0, HeadTypeParams1,
 				Constraints, Status, Markers, TypeCheckInfo1),
@@ -647,9 +638,9 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	%		private_builtin.sorry(PredName).
 	% depending on whether the predicate is part of
 	% the Mercury standard library or not.
-:- pred generate_stub_clause(string, pred_info, pred_info, module_info, clause,
-		prog_varset, prog_varset).
-:- mode generate_stub_clause(in, in, out, in, out, in, out) is det.
+:- pred generate_stub_clause(string::in, pred_info::in, pred_info::out,
+	module_info::in, clause::out, prog_varset::in, prog_varset::out)
+	is det.
 
 generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	%
@@ -657,7 +648,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	% (i.e. record that it originally had no clauses)
 	%
 	pred_info_get_markers(!.PredInfo, Markers0),
-	add_marker(Markers0, stub, Markers),
+	add_marker(stub, Markers0, Markers),
 	pred_info_set_markers(Markers, !PredInfo),
 
 	%
@@ -920,7 +911,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 		pred_info_update_goal_type(clauses, !PredInfo),
 		pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 		pred_info_get_markers(!.PredInfo, Markers0),
-		add_marker(Markers0, calls_are_fully_qualified, Markers),
+		add_marker(calls_are_fully_qualified, Markers0, Markers),
 		pred_info_set_markers(Markers, !PredInfo)
 	;
 		true

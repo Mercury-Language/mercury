@@ -375,8 +375,8 @@ traverse_proc(MustRecompute, PredId, ProcId, GlobalInfo0, GlobalInfo) :-
 			proc(PredId, ProcId), PredInfo0, ProcInfo0, unchanged),
 	traverse_goal(MustRecompute, Info0, Info),
 	Info = higher_order_info(GlobalInfo1, _, _, PredInfo, ProcInfo, _),
-	module_info_set_pred_proc_info(GlobalInfo1 ^ module_info,
-		PredId, ProcId, PredInfo, ProcInfo, ModuleInfo),
+	module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+		GlobalInfo1 ^ module_info, ModuleInfo),
 	GlobalInfo = GlobalInfo1 ^ module_info := ModuleInfo.
 
 %-------------------------------------------------------------------------------
@@ -2518,7 +2518,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, NewPredInfo1, NewPredId, PredTable),
-	module_info_set_predicate_table(ModuleInfo0, PredTable, ModuleInfo1),
+	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo1),
 
 	!:Info = !.Info ^ module_info := ModuleInfo1,
 
@@ -2529,8 +2529,8 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	add_new_pred(CalledPredProc, NewPred, !Info),
 
 	create_new_proc(NewPred, ProcInfo0, NewPredInfo1, NewPredInfo, !Info),
-	module_info_set_pred_info(!.Info ^ module_info, NewPredId, NewPredInfo,
-		ModuleInfo),
+	module_info_set_pred_info(NewPredId, NewPredInfo,
+		!.Info ^ module_info, ModuleInfo),
 	!:Info = !.Info ^ module_info := ModuleInfo.
 
 :- pred add_new_pred(pred_proc_id::in, new_pred::in,

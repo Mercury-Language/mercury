@@ -162,21 +162,21 @@ lambda__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 :- pred lambda__process_proc(pred_id, proc_id, module_info, module_info).
 :- mode lambda__process_proc(in, in, in, out) is det.
 
-lambda__process_proc(PredId, ProcId, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
+lambda__process_proc(PredId, ProcId, !ModuleInfo) :-
+	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	lambda__process_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1,
-		ModuleInfo0, ModuleInfo1),
+		!ModuleInfo),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
-	module_info_preds(ModuleInfo1, PredTable1),
+	module_info_preds(!.ModuleInfo, PredTable1),
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo).
+	module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred lambda__process_proc_2(proc_info::in, proc_info::out,
 	pred_info::in, pred_info::out, module_info::in, module_info::out)
@@ -453,8 +453,9 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		%
 		proc_info_set_address_taken(address_is_taken,
 			Call_ProcInfo, Call_NewProcInfo),
-		module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
-			Call_PredInfo, Call_NewProcInfo, ModuleInfo)
+		module_info_set_pred_proc_info(PredId, ProcId,
+			Call_PredInfo, Call_NewProcInfo,
+			ModuleInfo0, ModuleInfo)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
@@ -465,8 +466,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		list__append(ArgVars, Vars, AllArgVars),
 
 		module_info_name(ModuleInfo0, ModuleName),
-		module_info_next_lambda_count(ModuleInfo0, LambdaCount,
-					ModuleInfo1),
+		module_info_next_lambda_count(LambdaCount,
+			ModuleInfo0, ModuleInfo1),
 		goal_info_get_context(LambdaGoalInfo, OrigContext),
 		term__context_line(OrigContext, OrigLine),
 		make_pred_name_with_context(ModuleName, "IntroducedFrom",
@@ -521,7 +522,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		->
 			markers_to_marker_list(Markers, MarkerList0),
 			list__filter(
-			    lambda([Marker::in] is semidet, 
+			    (pred(Marker::in) is semidet :-
 				% Pass through only Aditi markers.
 				% Don't pass through `context' markers, since
 				% they are useless for non-recursive predicates
@@ -535,13 +536,12 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 				; Marker = aditi_no_memo
 				)),
 				MarkerList0, MarkerList),
-			LambdaMarkers = list__foldl((func(LMs0, Mrk) = LMs :-
-				add_marker(Mrk, LMs0, LMs)),
-				MarkerList, LambdaMarkers0)
+			list__foldl(add_marker, MarkerList,
+				LambdaMarkers0, LambdaMarkers)
 		;
 			EvalMethod = (aditi_bottom_up)
 		->
-			add_marker(LambdaMarkers0, aditi, LambdaMarkers)
+			add_marker(aditi, LambdaMarkers0, LambdaMarkers)
 		;
 			LambdaMarkers = LambdaMarkers0
 		),
@@ -573,8 +573,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
 		predicate_table_insert(PredicateTable0, PredInfo,
 			PredId, PredicateTable),
-		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
-			ModuleInfo)
+		module_info_set_predicate_table(PredicateTable,
+			ModuleInfo1, ModuleInfo)
 	),
 	ConsId = pred_const(PredId, ProcId, EvalMethod),
 	Functor = functor(ConsId, no, ArgVars),

@@ -2368,68 +2368,64 @@ mercury_compile__backend_pass_by_preds(HLDS0, HLDS, GlobalData0, GlobalData,
 :- mode mercury_compile__backend_pass_by_preds_2(in, in, out, in, out, out,
 	di, uo) is det.
 
-mercury_compile__backend_pass_by_preds_2([], ModuleInfo, ModuleInfo,
-		GlobalData, GlobalData, []) --> [].
-mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
-		ModuleInfo, GlobalData0, GlobalData, Code) -->
-	{ module_info_preds(ModuleInfo0, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ ProcIds = pred_info_non_imported_procids(PredInfo) },
+mercury_compile__backend_pass_by_preds_2([], !ModuleInfo, !GlobalData, [],
+		!IO).
+mercury_compile__backend_pass_by_preds_2([PredId | PredIds], !ModuleInfo,
+		!GlobalData, Code, !IO) :-
+	module_info_preds(!.ModuleInfo, PredTable),
+	map__lookup(PredTable, PredId, PredInfo),
+	ProcIds = pred_info_non_imported_procids(PredInfo),
 	( 
-		{ ProcIds = []
+		( ProcIds = []
 		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
-		}
+		)
 	->
-		{ ModuleInfo3 = ModuleInfo0 },
-		{ GlobalData1 = GlobalData0 },
-		{ Code1 = [] }
+		Code1 = []
 	;
-		globals__io_lookup_bool_option(verbose, Verbose),
-		( { Verbose = yes } ->
-			io__write_string("% Generating code for "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string("\n")
+		globals__io_lookup_bool_option(verbose, Verbose, !IO),
+		( Verbose = yes ->
+			io__write_string("% Generating code for ", !IO),
+			hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
+			io__write_string("\n", !IO)
 		;
-			[]
+			true
 		),
 		(
-			{ PredModule = pred_info_module(PredInfo) },
-			{ PredName = pred_info_name(PredInfo) },
-                        { PredArity = pred_info_arity(PredInfo) },
-                        { no_type_info_builtin(PredModule, PredName,
-				PredArity) }
+			PredModule = pred_info_module(PredInfo),
+			PredName = pred_info_name(PredInfo),
+                        PredArity = pred_info_arity(PredInfo),
+                        no_type_info_builtin(PredModule, PredName,
+				PredArity)
 		->
 				% These predicates should never be traced,
 				% since they do not obey typeinfo_liveness.
 				% Since they may be opt_imported into other
 				% modules, we must switch off the tracing
 				% of such preds on a pred-by-pred basis.
-			{ module_info_globals(ModuleInfo0, Globals0) },
-			{ globals__get_trace_level(Globals0, TraceLevel) },
-			{ globals__set_trace_level_none(Globals0, Globals1) },
-			{ module_info_set_globals(ModuleInfo0, Globals1,
-				ModuleInfo1) },
-			{ copy(Globals1, Globals1Unique) },
-			globals__io_set_globals(Globals1Unique),
+			module_info_globals(!.ModuleInfo, Globals0),
+			globals__get_trace_level(Globals0, TraceLevel),
+			globals__set_trace_level_none(Globals0, Globals1),
+			module_info_set_globals(Globals1, !ModuleInfo),
+			copy(Globals1, Globals1Unique),
+			globals__io_set_globals(Globals1Unique, !IO),
 			mercury_compile__backend_pass_by_preds_3(ProcIds,
-				PredId, PredInfo, ModuleInfo1, ModuleInfo2,
-				GlobalData0, GlobalData1, Code1),
-			{ module_info_globals(ModuleInfo2, Globals2) },
-			{ globals__set_trace_level(Globals2, TraceLevel,
-				Globals) },
-			{ module_info_set_globals(ModuleInfo2, Globals,
-				ModuleInfo3) },
-			{ copy(Globals, GlobalsUnique) },
-			globals__io_set_globals(GlobalsUnique)
+				PredId, PredInfo, !ModuleInfo, !GlobalData,
+				Code1, !IO),
+			module_info_globals(!.ModuleInfo, Globals2),
+			globals__set_trace_level(Globals2, TraceLevel,
+				Globals),
+			module_info_set_globals(Globals, !ModuleInfo),
+			copy(Globals, GlobalsUnique),
+			globals__io_set_globals(GlobalsUnique, !IO)
 		;
 			mercury_compile__backend_pass_by_preds_3(ProcIds,
-				PredId, PredInfo, ModuleInfo0, ModuleInfo3,
-				GlobalData0, GlobalData1, Code1)
+				PredId, PredInfo, !ModuleInfo, !GlobalData,
+				Code1, !IO)
 		)
 	),
-	mercury_compile__backend_pass_by_preds_2(PredIds,
-		ModuleInfo3, ModuleInfo, GlobalData1, GlobalData, Code2),
-	{ list__append(Code1, Code2, Code) }.
+	mercury_compile__backend_pass_by_preds_2(PredIds, !ModuleInfo,
+		!GlobalData, Code2, !IO),
+	list__append(Code1, Code2, Code).
 
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
 	pred_info, module_info, module_info, global_data, global_data,

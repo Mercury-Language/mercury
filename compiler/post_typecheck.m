@@ -158,21 +158,18 @@ post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors,
 :- mode post_typecheck__finish_preds(in, in, in, out, in, out,
 	in, out, di, uo) is det.
 
-post_typecheck__finish_preds([], _, ModuleInfo, ModuleInfo,
-		NumErrors, NumErrors,
-		PostTypecheckError, PostTypecheckError) --> [].
+post_typecheck__finish_preds([], _, !ModuleInfo, !NumErrors,
+		!PostTypecheckError, !IO).
 post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
-		ModuleInfo0, ModuleInfo, NumErrors0, NumErrors,
-		FoundTypeError0, FoundTypeError) -->
-	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
+		!ModuleInfo, !NumErrors, !FoundTypeError, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 	(	
-		{ pred_info_is_imported(PredInfo0)
-		; pred_info_is_pseudo_imported(PredInfo0) }
+		( pred_info_is_imported(PredInfo0)
+		; pred_info_is_pseudo_imported(PredInfo0)
+		)
 	->
-		post_typecheck__finish_imported_pred(ModuleInfo0, PredId,
-				PredInfo0, PredInfo),
-		{ NumErrors1 = NumErrors0 },
-		{ FoundTypeError1 = FoundTypeError0 }
+		post_typecheck__finish_imported_pred(!.ModuleInfo, PredId,
+			PredInfo0, PredInfo, !IO)
 	;
 		%
 		% Only report error messages for unbound type variables
@@ -180,8 +177,8 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 		% a lot of spurious diagnostics.
 		%
 		post_typecheck__check_type_bindings(PredId, PredInfo0,
-				ModuleInfo0, ReportTypeErrors,
-				PredInfo1, UnboundTypeErrsInThisPred),
+			!.ModuleInfo, ReportTypeErrors,
+			PredInfo1, UnboundTypeErrsInThisPred, !IO),
 
 		%
 		% if there were any unsatisfied type class constraints,
@@ -189,26 +186,26 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 		% if we try to continue, so we need to halt compilation
 		% after this pass.
 		%
-		{ UnboundTypeErrsInThisPred \= 0 ->
-			FoundTypeError1 = yes
+		( UnboundTypeErrsInThisPred \= 0 ->
+			!:FoundTypeError = yes
 		;
-			FoundTypeError1 = FoundTypeError0
-		},
+			true
+		),
 
-		{ post_typecheck__finish_pred_no_io(ModuleInfo0,
-			ErrorProcs, PredInfo1, PredInfo2) },
-		report_unbound_inst_vars(ModuleInfo0, PredId,
-			ErrorProcs, PredInfo2, PredInfo3),
-		check_for_indistinguishable_modes(ModuleInfo0, PredId,
-			PredInfo3, PredInfo),
+		post_typecheck__finish_pred_no_io(!.ModuleInfo,
+			ErrorProcs, PredInfo1, PredInfo2),
+		report_unbound_inst_vars(!.ModuleInfo, PredId,
+			ErrorProcs, PredInfo2, PredInfo3, !IO),
+		check_for_indistinguishable_modes(!.ModuleInfo, PredId,
+			PredInfo3, PredInfo, !IO),
 
 		%
 		% check that main/2 has the right type
 		%
-		( { ReportTypeErrors = yes } ->
-			check_type_of_main(PredInfo)
+		( ReportTypeErrors = yes ->
+			check_type_of_main(PredInfo, !IO)
 		;
-			[]
+			true
 		),
 
 		%
@@ -217,20 +214,18 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 		% of type inference -- the types of some Aditi predicates
 		% may not be known before.
 		%
-		{ pred_info_get_markers(PredInfo, Markers) },
-		( { ReportTypeErrors = yes, check_marker(Markers, aditi) } ->
-			check_aditi_state(ModuleInfo0, PredInfo)
+		pred_info_get_markers(PredInfo, Markers),
+		( ReportTypeErrors = yes, check_marker(Markers, aditi) ->
+			check_aditi_state(!.ModuleInfo, PredInfo, !IO)
 		;
-			[]
+			true
 		),
 	 
-		{ NumErrors1 = NumErrors0 + UnboundTypeErrsInThisPred }
+		!:NumErrors = !.NumErrors + UnboundTypeErrsInThisPred
 	),
-	{ module_info_set_pred_info(ModuleInfo0, PredId,
-		PredInfo, ModuleInfo1) },
+	module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
 	post_typecheck__finish_preds(PredIds, ReportTypeErrors,
-		ModuleInfo1, ModuleInfo, NumErrors1, NumErrors,
-		FoundTypeError1, FoundTypeError).
+		!ModuleInfo, !NumErrors, !FoundTypeError, !IO).
 
 %-----------------------------------------------------------------------------%
 %			Check for unbound type variables
@@ -764,7 +759,7 @@ post_typecheck__finish_promise(PromiseType, Module0, PromiseId, Module) -->
 	{ store_promise(PromiseType, Module0, PromiseId, Module1, Goal) },
 			
 		% Remove from further processing.
-	{ module_info_remove_predid(Module1, PromiseId, Module2) },
+	{ module_info_remove_predid(PromiseId, Module1, Module2) },
 
 		% If the promise is in the interface, then ensure that
 		% it doesn't refer to any local symbols.
@@ -788,12 +783,12 @@ store_promise(PromiseType, Module0, PromiseId, Module, Goal) :-
 	->
 		module_info_assertion_table(Module0, AssertTable0),
 		assertion_table_add_assertion(PromiseId, AssertTable0, 
-				AssertionId, AssertTable),
-		module_info_set_assertion_table(Module0, AssertTable, 
-				Module1),
+			AssertionId, AssertTable),
+		module_info_set_assertion_table(AssertTable, 
+			Module0, Module1),
 		assertion__goal(AssertionId, Module1, Goal),
 		assertion__record_preds_used_in(Goal, AssertionId, Module1,
-				Module)
+			Module)
 	;
 		% case for exclusivity
 		(
@@ -807,7 +802,7 @@ store_promise(PromiseType, Module0, PromiseId, Module, Goal) :-
 		module_info_exclusive_table(Module0, Table0),
 		list__foldl(exclusive_table_add(PromiseId), PredIds, Table0,
 				Table),
-		module_info_set_exclusive_table(Module0, Table, Module)
+		module_info_set_exclusive_table(Table, Module0, Module)
 
 	;
 		% case for exhaustiveness -- XXX not yet implemented

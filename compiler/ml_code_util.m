@@ -2387,8 +2387,8 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals,
 	%
 	% Save the new information back in the ml_gen_info
 	%
-	module_info_set_pred_proc_info(ModuleInfo1, PredId, ProcId,
-		PredInfo, ProcInfo, ModuleInfo),
+	module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo1, ModuleInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	MLGenInfo = (((MLGenInfo0 ^ module_info := ModuleInfo)

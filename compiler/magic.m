@@ -388,21 +388,21 @@ magic__check_scc_2(SCC) -->
 	% from C. These old versions must have their aditi/base relation
 	% markers removed.
 :- pred magic__update_pred_status(pred_id::in,
-		magic_info::in, magic_info::out) is det.
+	magic_info::in, magic_info::out) is det.
 
-magic__update_pred_status(PredId) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
-	{ pred_info_get_markers(PredInfo0, Markers0) },
-	( { check_marker(Markers0, aditi) } ->
-		{ remove_marker(Markers0, aditi, Markers1) },
-		{ remove_marker(Markers1, base_relation, Markers) },
-		{ pred_info_set_markers(Markers, PredInfo0, PredInfo) },
-		{ module_info_set_pred_info(ModuleInfo0,
-			PredId, PredInfo, ModuleInfo) },
-		magic_info_set_module_info(ModuleInfo)
+magic__update_pred_status(PredId, !MagicInfo) :-
+	magic_info_get_module_info(ModuleInfo0, !MagicInfo),
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+	pred_info_get_markers(PredInfo0, Markers0),
+	( check_marker(Markers0, aditi) ->
+		remove_marker(aditi, Markers0, Markers1),
+		remove_marker(base_relation, Markers1, Markers),
+		pred_info_set_markers(Markers, PredInfo0, PredInfo),
+		module_info_set_pred_info(PredId, PredInfo,
+			ModuleInfo0, ModuleInfo),
+		magic_info_set_module_info(ModuleInfo, !MagicInfo)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -545,8 +545,8 @@ magic__process_base_relation(PredId0, ProcId0) -->
 		PredInfo1, PredInfo) },
 	{ proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo1) },
 	{ proc_info_set_headvars(HeadVars, ProcInfo1, ProcInfo) },
-	{ module_info_set_pred_proc_info(ModuleInfo0,
-		PredProcId, PredInfo, ProcInfo, ModuleInfo) },
+	{ module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo),
 	magic__interface_from_c([CPredProcId], CPredProcId, PredProcId).
 
@@ -668,8 +668,8 @@ magic__separate_proc(PredId, ProcId) -->
 	{ module_info_get_predicate_table(ModuleInfo1, PredTable0) },
 	{ predicate_table_insert(PredTable0, NewPredInfo, NewPredId, 
 		PredTable) },
-	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
-		ModuleInfo) },
+	{ module_info_set_predicate_table(PredTable,
+		ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo),
 
 	%
@@ -827,8 +827,8 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 			MagicTypes, MagicModes, LocalAditiPredProcId)
 	;
 		magic_info_get_module_info(ModuleInfo5),
-		{ module_info_set_pred_proc_info(ModuleInfo5, AditiPredProcId,
-			PredInfo, ProcInfo, ModuleInfo) },
+		{ module_info_set_pred_proc_info(AditiPredProcId,
+			PredInfo, ProcInfo, ModuleInfo5, ModuleInfo) },
 		magic_info_set_module_info(ModuleInfo),
 		{ LocalAditiPredProcId = AditiPredProcId }
 	),
@@ -932,8 +932,9 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	{ pred_info_set_import_status(exported,
 		ExportedPredInfo2, ExportedPredInfo) },
 	magic_info_get_module_info(ModuleInfo5),
-	{ module_info_set_pred_proc_info(ModuleInfo5, AditiPredProcId,
-		ExportedPredInfo, ExportedProcInfo, ModuleInfo6) },
+	{ module_info_set_pred_proc_info(AditiPredProcId,
+		ExportedPredInfo, ExportedProcInfo,
+		ModuleInfo5, ModuleInfo6) },
 	magic_info_set_module_info(ModuleInfo6).
 
 %-----------------------------------------------------------------------------%
@@ -999,8 +1000,8 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 	->
 		{ pred_info_set_import_status(exported,
 			PredInfo0, PredInfo1) },
-		{ module_info_set_pred_proc_info(ModuleInfo0, CPredProcId,
-			PredInfo1, ProcInfo0, ModuleInfo1) },
+		{ module_info_set_pred_proc_info(CPredProcId,
+			PredInfo1, ProcInfo0, ModuleInfo0, ModuleInfo1) },
 		magic_info_set_module_info(ModuleInfo1)
 	;
 		{ PredInfo1 = PredInfo0 },
@@ -1019,8 +1020,8 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 		%
 		{ true_goal(Goal) },
 		{ proc_info_set_goal(Goal, ProcInfo0, ProcInfo) },
-		{ module_info_set_pred_proc_info(ModuleInfo1, CPredProcId,
-			PredInfo1, ProcInfo, ModuleInfo) },
+		{ module_info_set_pred_proc_info(CPredProcId,
+			PredInfo1, ProcInfo, ModuleInfo1, ModuleInfo) },
 		magic_info_set_module_info(ModuleInfo)
 	;
 		{ magic__create_input_join_proc(CPredProcId, AditiPredProcId,
@@ -1133,24 +1134,23 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId,
 	conj_list_to_goal([InputGoal, CallGoal | Tests], GoalInfo,
 		JoinGoal),
 	proc_info_set_goal(JoinGoal, JoinProcInfo4, JoinProcInfo),
-	module_info_set_pred_proc_info(ModuleInfo1, JoinPredProcId,
-		JoinPredInfo, JoinProcInfo, ModuleInfo).
+	module_info_set_pred_proc_info(JoinPredProcId,
+		JoinPredInfo, JoinProcInfo, ModuleInfo1, ModuleInfo).
 
 :- pred magic__build_join_pred_info(pred_proc_id::in, pred_info::in,
 		proc_info::in, list(prog_var)::in, pred_proc_id::out,
 		pred_info::out, module_info::in, module_info::out) is det.
 
 magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
-		Args, JoinPredProcId, JoinPredInfo1,
-		ModuleInfo0, ModuleInfo) :-
+		Args, JoinPredProcId, JoinPredInfo, !ModuleInfo) :-
 	proc_info_vartypes(JoinProcInfo, JoinVarTypes),
 	map__apply_to_list(Args, JoinVarTypes, NewArgTypes),
 	PredModule = pred_info_module(CPredInfo),
-	rl__get_c_interface_proc_name(ModuleInfo0, CPredProcId, NewPredName),
+	rl__get_c_interface_proc_name(!.ModuleInfo, CPredProcId, NewPredName),
 	init_markers(Markers0),
-	add_marker(Markers0, aditi, Markers1),
-	add_marker(Markers1, aditi_no_memo, Markers2),
-	add_marker(Markers2, naive, Markers),
+	add_marker(aditi, Markers0, Markers1),
+	add_marker(aditi_no_memo, Markers1, Markers2),
+	add_marker(naive, Markers2, Markers),
 	ClassContext = constraints([], []),
 	pred_info_get_aditi_owner(CPredInfo, User),
 	varset__init(TVarSet),	% must be empty.
@@ -1160,12 +1160,12 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 	pred_info_create(PredModule, qualified(PredModule, NewPredName),
 		TVarSet, ExistQVars, NewArgTypes, true, DummyContext,
 		exported, Markers, predicate, ClassContext, User, Assertions,
-		JoinProcInfo, JoinProcId, JoinPredInfo1),
+		JoinProcInfo, JoinProcId, JoinPredInfo),
 
-	module_info_get_predicate_table(ModuleInfo0, Preds0),
-	predicate_table_insert(Preds0, JoinPredInfo1, JoinPredId, Preds),
+	module_info_get_predicate_table(!.ModuleInfo, Preds0),
+	predicate_table_insert(Preds0, JoinPredInfo, JoinPredId, Preds),
 	JoinPredProcId = proc(JoinPredId, JoinProcId),
-	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo).
+	module_info_set_predicate_table(Preds, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1302,8 +1302,8 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
 	{ predicate_table_insert(PredTable0, 
 		MagicPredInfo, MagicPredId, PredTable) },
-	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
-		ModuleInfo) },
+	{ module_info_set_predicate_table(PredTable,
+		ModuleInfo0, ModuleInfo) },
 	magic_info_set_module_info(ModuleInfo),
 
 	% Record that the magic predicate in the magic_info.
@@ -1718,8 +1718,8 @@ magic__process_proc(PredProcId0) -->
 		{ proc_info_set_goal(Goal, ProcInfo1, ProcInfo) },
 
 		magic_info_get_module_info(ModuleInfo1),
-		{ module_info_set_pred_proc_info(ModuleInfo1, PredProcId,
-			PredInfo, ProcInfo, ModuleInfo) },
+		{ module_info_set_pred_proc_info(PredProcId,
+			PredInfo, ProcInfo, ModuleInfo1, ModuleInfo) },
 		magic_info_set_module_info(ModuleInfo)
 	).
 

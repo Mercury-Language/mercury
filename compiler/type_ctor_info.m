@@ -83,14 +83,13 @@
 
 %---------------------------------------------------------------------------%
 
-type_ctor_info__generate_hlds(ModuleInfo0, ModuleInfo) :-
-	module_info_name(ModuleInfo0, ModuleName),
-	module_info_types(ModuleInfo0, TypeTable),
+type_ctor_info__generate_hlds(!ModuleInfo) :-
+	module_info_name(!.ModuleInfo, ModuleName),
+	module_info_types(!.ModuleInfo, TypeTable),
 	map__keys(TypeTable, TypeCtors),
 	type_ctor_info__gen_type_ctor_gen_infos(TypeCtors, TypeTable,
-		ModuleName, ModuleInfo0, TypeCtorGenInfos),
-	module_info_set_type_ctor_gen_infos(ModuleInfo0, TypeCtorGenInfos,
-		ModuleInfo).
+		ModuleName, !.ModuleInfo, TypeCtorGenInfos),
+	module_info_set_type_ctor_gen_infos(TypeCtorGenInfos, !ModuleInfo).
 
 	% Given a list of the ids of all the types in the type table,
 	% find the types defined in this module, and return a type_ctor_gen_info

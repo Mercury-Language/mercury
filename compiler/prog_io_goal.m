@@ -19,17 +19,17 @@
 
 	% Convert a single term into a goal.
 	%
-:- pred parse_goal(term, prog_varset, goal, prog_varset).
-:- mode parse_goal(in, in, out, out) is det.
+:- pred parse_goal(term::in, goal::out, prog_varset::in, prog_varset::out)
+	is det.
 
 	% Convert a term, possibly starting with `some [Vars]', into
 	% a list of the quantified variables, a list of quantified
 	% state variables, and a goal. (If the term doesn't start
 	% with `some [Vars]', we return empty lists of variables.)
 	% 
-:- pred parse_some_vars_goal(term, prog_varset, list(prog_var), list(prog_var),
-		goal, prog_varset).
-:- mode parse_some_vars_goal(in, in, out, out, out, out) is det.
+:- pred parse_some_vars_goal(term::in, list(prog_var)::out,
+	list(prog_var)::out, goal::out, prog_varset::in, prog_varset::out)
+	is det.
 
 	% parse_lambda_expression/3 converts the first argument to a lambda/2
 	% expression into a list of arguments, a list of their corresponding
@@ -111,7 +111,7 @@
 	% We could do some error-checking here, but all errors are picked up
 	% in either the type-checker or parser anyway.
 
-parse_goal(Term, VarSet0, Goal, VarSet) :-
+parse_goal(Term, Goal, !VarSet) :-
 	% first, get the goal context
 	(
 		Term = term__functor(_, _, Context)
@@ -125,10 +125,9 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 	(
 		% check for builtins...
 		Term = term__functor(term__atom(Name), Args, Context),
-		parse_goal_2(Name, Args, VarSet0, GoalExpr, VarSet1)
+		parse_goal_2(Name, Args, GoalExpr, !VarSet)
 	->
-		Goal = GoalExpr - Context,
-		VarSet = VarSet1
+		Goal = GoalExpr - Context
 	;
 		% it's not a builtin
 		term__coerce(Term, ArgsTerm),
@@ -136,80 +135,68 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 			% check for predicate calls
 			sym_name_and_args(ArgsTerm, SymName, Args)
 		->
-			VarSet = VarSet0,
 			Goal = call(SymName, Args, pure) - Context
 		;
-		% A call to a free variable, or to a number or string.
-		% Just translate it into a call to call/1 - the typechecker
-		% will catch calls to numbers and strings.
+			% A call to a free variable, or to a number or string.
+			% Just translate it into a call to call/1 - the
+			% typechecker will catch calls to numbers and strings.
 			Goal = call(unqualified("call"), [ArgsTerm], pure)
-					- Context,
-			VarSet = VarSet0
+				- Context
 		)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_goal_2(string, list(term), prog_varset, goal_expr, prog_varset).
-:- mode parse_goal_2(in, in, in, out, out) is semidet.
-parse_goal_2("true", [], V, true, V).
-parse_goal_2("fail", [], V, fail, V).
-parse_goal_2("=", [A0, B0], V, unify(A, B, pure), V) :-
+:- pred parse_goal_2(string::in, list(term)::in, goal_expr::out,
+	prog_varset::in, prog_varset::out) is semidet.
+
+	% Since (A -> B) has different semantics in standard Prolog
+	% (A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
+	% for the moment we'll just disallow it.
+	% For consistency we also disallow if-then without the else.
+
+parse_goal_2("true", [], true, !V).
+parse_goal_2("fail", [], fail, !V).
+parse_goal_2("=", [A0, B0], unify(A, B, pure), !V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
-/******
-	Since (A -> B) has different semantics in standard Prolog
-	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
-	for the moment we'll just disallow it.
-parse_goal_2("->", [A0, B0], V0, if_then(Vars, StateVars, A, B), V) :-
-	parse_some_vars_goal(A0, V0, Vars, A, V1),
-	parse_goal(B0, V1, B, V).
-******/
-parse_goal_2(",", [A0, B0], V0, (A, B), V) :-
-	parse_goal(A0, V0, A, V1),
-	parse_goal(B0, V1, B, V).
-parse_goal_2("&", [A0, B0], V0, (A & B), V) :-
-	parse_goal(A0, V0, A, V1),
-	parse_goal(B0, V1, B, V).
-parse_goal_2(";", [A0, B0], V0, R, V) :-
+parse_goal_2(",", [A0, B0], (A, B), !V) :-
+	parse_goal(A0, A, !V),
+	parse_goal(B0, B, !V).
+parse_goal_2("&", [A0, B0], (A & B), !V) :-
+	parse_goal(A0, A, !V),
+	parse_goal(B0, B, !V).
+parse_goal_2(";", [A0, B0], R, !V) :-
 	(
 		A0 = term__functor(term__atom("->"), [X0, Y0], _Context)
 	->
-		parse_some_vars_goal(X0, V0, Vars, StateVars, X, V1),
-		parse_goal(Y0, V1, Y, V2),
-		parse_goal(B0, V2, B, V),
+		parse_some_vars_goal(X0, Vars, StateVars, X, !V),
+		parse_goal(Y0, Y, !V),
+		parse_goal(B0, B, !V),
 		R = if_then_else(Vars, StateVars, X, Y, B)
 	;
-		parse_goal(A0, V0, A, V1),
-		parse_goal(B0, V1, B, V),
+		parse_goal(A0, A, !V),
+		parse_goal(B0, B, !V),
 		R = (A;B)
 	).
-/****
-	For consistency we also disallow if-then
-parse_goal_2("if",
-		[term__functor(term__atom("then"), [A0, B0], _)], V0,
-		if_then(Vars, StateVars, A, B), V) :-
-	parse_some_vars_goal(A0, V0, Vars, A, V1),
-	parse_goal(B0, V1, B, V).
-****/
 parse_goal_2("else", [
 		    term__functor(term__atom("if"), [
 			term__functor(term__atom("then"), [A0, B0], _)
 		    ], _),
 		    C0
-		], V0,
-		if_then_else(Vars, StateVars, A, B, C), V) :-
-	parse_some_vars_goal(A0, V0, Vars, StateVars, A, V1),
-	parse_goal(B0, V1, B, V2),
-	parse_goal(C0, V2, C, V).
+		],
+		if_then_else(Vars, StateVars, A, B, C), !V) :-
+	parse_some_vars_goal(A0, Vars, StateVars, A, !V),
+	parse_goal(B0, B, !V),
+	parse_goal(C0, C, !V).
 
-parse_goal_2("not", [A0], V0, not(A), V) :-
-	parse_goal(A0, V0, A, V).
+parse_goal_2("not", [A0], not(A), !V) :-
+	parse_goal(A0, A, !V).
 
-parse_goal_2("\\+", [A0], V0, not(A), V) :-
-	parse_goal(A0, V0, A, V).
+parse_goal_2("\\+", [A0], not(A), !V) :-
+	parse_goal(A0, A, !V).
 
-parse_goal_2("all", [QVars, A0], V0, GoalExpr, V):-
+parse_goal_2("all", [QVars, A0], GoalExpr, !V):-
 
 		% Extract any state variables in the quantifier.
 		%
@@ -217,7 +204,7 @@ parse_goal_2("all", [QVars, A0], V0, GoalExpr, V):-
 	list__map(term__coerce_var, StateVars0, StateVars),
 	list__map(term__coerce_var, Vars0, Vars),
 
-	parse_goal(A0, V0, A @ (GoalExprA - ContextA), V),
+	parse_goal(A0, A @ (GoalExprA - ContextA), !V),
 
 	(
 		Vars = [],    StateVars = [],
@@ -234,20 +221,20 @@ parse_goal_2("all", [QVars, A0], V0, GoalExpr, V):-
 	).
 
 	% handle implication
-parse_goal_2("<=", [A0, B0], V0, implies(B, A), V):-
-	parse_goal(A0, V0, A, V1),
-	parse_goal(B0, V1, B, V).
+parse_goal_2("<=", [A0, B0], implies(B, A), !V):-
+	parse_goal(A0, A, !V),
+	parse_goal(B0, B, !V).
 
-parse_goal_2("=>", [A0, B0], V0, implies(A, B), V):-
-	parse_goal(A0, V0, A, V1),
-	parse_goal(B0, V1, B, V).
+parse_goal_2("=>", [A0, B0], implies(A, B), !V):-
+	parse_goal(A0, A, !V),
+	parse_goal(B0, B, !V).
 
 	% handle equivalence
-parse_goal_2("<=>", [A0, B0], V0, equivalent(A, B), V):-
-	parse_goal(A0, V0, A, V1),
-	parse_goal(B0, V1, B, V).
+parse_goal_2("<=>", [A0, B0], equivalent(A, B), !V):-
+	parse_goal(A0, A, !V),
+	parse_goal(B0, B, !V).
 
-parse_goal_2("some", [QVars, A0], V0, GoalExpr, V):-
+parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 
 		% Extract any state variables in the quantifier.
 		%
@@ -255,7 +242,7 @@ parse_goal_2("some", [QVars, A0], V0, GoalExpr, V):-
 	list__map(term__coerce_var, StateVars0, StateVars),
 	list__map(term__coerce_var, Vars0, Vars),
 
-	parse_goal(A0, V0, A @ (GoalExprA - ContextA), V),
+	parse_goal(A0, A @ (GoalExprA - ContextA), !V),
 
 	(
 		Vars = [],    StateVars = [],
@@ -275,24 +262,22 @@ parse_goal_2("some", [QVars, A0], V0, GoalExpr, V):-
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [A0, B0], V, unify(A, B, pure), V) :-
+parse_goal_2("is", [A0, B0], unify(A, B, pure), !V) :-
 	term__coerce(A0, A),
 	term__coerce(B0, B).
-parse_goal_2("impure", [A0], V0, A, V) :-
-	parse_goal_with_purity(A0, V0, (impure), A, V).
-parse_goal_2("semipure", [A0], V0, A, V) :-
-	parse_goal_with_purity(A0, V0, (semipure), A, V).
+parse_goal_2("impure", [A0], A, !V) :-
+	parse_goal_with_purity(A0, (impure), A, !V).
+parse_goal_2("semipure", [A0], A, !V) :-
+	parse_goal_with_purity(A0, (semipure), A, !V).
 
+:- pred parse_goal_with_purity(term::in, purity::in, goal_expr::out,
+	prog_varset::in, prog_varset::out) is det.
 
-:- pred parse_goal_with_purity(term, prog_varset, purity, goal_expr,
-		prog_varset).
-:- mode parse_goal_with_purity(in, in, in, out, out) is det.
-
-parse_goal_with_purity(A0, V0, Purity, A, V) :-
-	parse_goal(A0, V0, A1, V),
-	(   A1 = call(Pred, Args, pure) - _ ->
+parse_goal_with_purity(A0, Purity, A, !V) :-
+	parse_goal(A0, A1, !V),
+	( A1 = call(Pred, Args, pure) - _ ->
 		A = call(Pred, Args, Purity)
-	;   A1 = unify(ProgTerm1, ProgTerm2, pure) - _ ->
+	; A1 = unify(ProgTerm1, ProgTerm2, pure) - _ ->
 		A = unify(ProgTerm1, ProgTerm2, Purity)
 	;
 		% Inappropriate placement of an impurity marker, so we treat
@@ -305,18 +290,18 @@ parse_goal_with_purity(A0, V0, Purity, A, V) :-
 
 %-----------------------------------------------------------------------------%
 
-parse_some_vars_goal(A0, VarSet0, Vars, StateVars, A, VarSet) :-
+parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
 	( 
 		A0 = term__functor(term__atom("some"), [QVars, A1], _Context),
 		parse_quantifier_vars(QVars, StateVars0, Vars0)
 	->
 		list__map(term__coerce_var, StateVars0, StateVars),
 		list__map(term__coerce_var, Vars0,      Vars),
-		parse_goal(A1, VarSet0, A, VarSet)
+		parse_goal(A1, A, !VarSet)
 	;
 		Vars      = [],
 		StateVars = [],
-		parse_goal(A0, VarSet0, A, VarSet)
+		parse_goal(A0, A, !VarSet)
 	).
 
 %-----------------------------------------------------------------------------%

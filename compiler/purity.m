@@ -285,7 +285,7 @@ check_preds_purity(FoundTypeError, ModuleInfo0,
 		NumErrors1, NumErrors),
 	{ module_info_num_errors(ModuleInfo2, Errs0) },
 	{ Errs = Errs0 + NumErrors },
-	{ module_info_set_num_errors(ModuleInfo2, Errs, ModuleInfo) }.
+	{ module_info_set_num_errors(Errs, ModuleInfo2, ModuleInfo) }.
 
 :- pred check_preds_purity_2(list(pred_id), module_info, module_info,
 			int, int, io__state, io__state).
@@ -308,8 +308,8 @@ check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo0,
 				PurityErrsInThisPred),
 		{ NumErrors1 = NumErrors0 + PurityErrsInThisPred },
-		{ module_info_set_pred_info(ModuleInfo0, PredId,
-				PredInfo, ModuleInfo1) }
+		{ module_info_set_pred_info(PredId, PredInfo,
+			ModuleInfo0, ModuleInfo1) }
 	),
 
 		% finish processing of promise declarations
@@ -430,11 +430,11 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 	->
 		(
 			OldPurity = pure,
-			remove_marker(Markers0, promised_semipure, Markers1),
-			add_marker(Markers1, promised_pure, Markers)
+			remove_marker(promised_semipure, Markers0, Markers1),
+			add_marker(promised_pure, Markers1, Markers)
 		;
 			OldPurity = (semipure),
-			add_marker(Markers0, promised_semipure, Markers)
+			add_marker(promised_semipure, Markers0, Markers)
 		;
 			OldPurity = (impure),
 			Markers = Markers0
@@ -455,12 +455,12 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 
 		(
 			Bodypurity = pure,
-			remove_marker(Markers0, (impure), Markers1),
-			remove_marker(Markers1, (semipure), Markers)
+			remove_marker((impure), Markers0, Markers1),
+			remove_marker((semipure), Markers1, Markers)
 		;
 			Bodypurity = (semipure),
-			remove_marker(Markers0, (impure), Markers1),
-			add_marker(Markers1, (semipure), Markers)
+			remove_marker((impure), Markers0, Markers1),
+			add_marker((semipure), Markers1, Markers)
 		;
 			Bodypurity = (impure),
 			Markers = Markers0

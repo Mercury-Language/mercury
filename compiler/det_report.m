@@ -75,39 +75,36 @@
 	% Check all the determinism declarations in this module.
 	% This is the main predicate exported by this module.
 
-:- pred global_checking_pass(pred_proc_list, module_info, module_info,
-	io__state, io__state).
-:- mode global_checking_pass(in, in, out, di, uo) is det.
+:- pred global_checking_pass(pred_proc_list::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
 	% Check a lambda goal with the specified declared and inferred
 	% determinisms.
 
-:- pred det_check_lambda(determinism, determinism, hlds_goal, hlds_goal_info,
-			det_info, list(det_msg)).
-:- mode det_check_lambda(in, in, in, in, in, out) is det.
+:- pred det_check_lambda(determinism::in, determinism::in, hlds_goal::in,
+	hlds_goal_info::in, det_info::in, list(det_msg)::out) is det.
 
 	% Print some determinism warning and/or error messages,
 	% and update the module info accordingly.
 
-:- pred det_report_and_handle_msgs(list(det_msg), module_info, module_info,
-		io__state, io__state).
-:- mode det_report_and_handle_msgs(in, in, out, di, uo) is det.
+:- pred det_report_and_handle_msgs(list(det_msg)::in,
+	module_info::in, module_info::out, io__state::di, io__state::uo)
+	is det.
 
 	% Print some determinism warning and/or error messages,
 	% and return the number of warnings and errors, so that code
 	% somewhere elsewhere can update the module info.
 
-:- pred det_report_msgs(list(det_msg), module_info, int, int,
-	io__state, io__state).
-:- mode det_report_msgs(in, in, out, out, di, uo) is det.
+:- pred det_report_msgs(list(det_msg)::in, module_info::in, int::out, int::out,
+	io__state::di, io__state::uo) is det.
 
 
 :- type msg_modes
-	--->    all_modes       % the warning should be reported only
+	--->	all_modes	% the warning should be reported only
 				% if it occurs in all modes of the predicate
-	;       any_mode	% the warning should be reported 
+	;	any_mode.	% the warning should be reported 
 				% if it occurs in any mode of the predicate
-	.
 
 	% Return `yes' if the warning should be reported if it occurs in
 	% any mode of the predicate, not only if it occurs in all modes.
@@ -120,11 +117,11 @@
 	% Call this predicate before rerunning determinism analysis
 	% after an optimization pass to disable all warnings. Errors will
 	% still be reported.
-:- pred disable_det_warnings(options_to_restore, io__state, io__state).
-:- mode disable_det_warnings(out, di, uo) is det.
+:- pred disable_det_warnings(options_to_restore::out,
+	io__state::di, io__state::uo) is det.
 
-:- pred restore_det_warnings(options_to_restore, io__state, io__state).
-:- mode restore_det_warnings(in, di, uo) is det.
+:- pred restore_det_warnings(options_to_restore::in,
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -154,46 +151,42 @@
 
 %-----------------------------------------------------------------------------%
 
-global_checking_pass([], ModuleInfo, ModuleInfo) --> [].
-global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
-	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-		PredInfo, ProcInfo) },
+global_checking_pass([], !ModuleInfo, !IO).
+global_checking_pass([proc(PredId, ProcId) | Rest], !ModuleInfo, !IO) :-
+	module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
 	check_determinism(PredId, ProcId, PredInfo, ProcInfo,
-		ModuleInfo0, ModuleInfo1),
+		!ModuleInfo, !IO),
 	check_determinism_of_main(PredId, ProcId, PredInfo, ProcInfo,
-		ModuleInfo1, ModuleInfo2),
+		!ModuleInfo, !IO),
 	check_for_multisoln_func(PredId, ProcId, PredInfo, ProcInfo,
-		ModuleInfo2, ModuleInfo3),
-	global_checking_pass(Rest, ModuleInfo3, ModuleInfo).
+		!ModuleInfo, !IO),
+	global_checking_pass(Rest, !ModuleInfo, !IO).
 
-:- pred check_determinism(pred_id, proc_id, pred_info, proc_info,
-		module_info, module_info, io__state, io__state).
-:- mode check_determinism(in, in, in, in, in, out, di, uo) is det.
+:- pred check_determinism(pred_id::in, proc_id::in, pred_info::in,
+	proc_info::in, module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
 check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
-		ModuleInfo0, ModuleInfo) -->
-	{ proc_info_declared_determinism(ProcInfo0, MaybeDetism) },
-	{ proc_info_inferred_determinism(ProcInfo0, InferredDetism) },
+		!ModuleInfo, !IO) :-
+	proc_info_declared_determinism(ProcInfo0, MaybeDetism),
+	proc_info_inferred_determinism(ProcInfo0, InferredDetism),
 	(
-		{ MaybeDetism = no },
-		{ ModuleInfo1 = ModuleInfo0 }
+		MaybeDetism = no
 	;
-		{ MaybeDetism = yes(DeclaredDetism) },
-		{ compare_determinisms(DeclaredDetism, InferredDetism, Cmp) },
+		MaybeDetism = yes(DeclaredDetism),
+		compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
 		(
-			{ Cmp = sameas },
-			{ ModuleInfo1 = ModuleInfo0 }
+			Cmp = sameas
 		;
-			{ Cmp = looser },
-			globals__io_lookup_bool_option(
-				warn_det_decls_too_lax,
-				ShouldIssueWarning),
-			globals__io_lookup_bool_option(
-				warn_inferred_erroneous,
-				WarnAboutInferredErroneous),
-			{ pred_info_get_markers(PredInfo0, Markers) },
+			Cmp = looser,
+			globals__io_lookup_bool_option(warn_det_decls_too_lax,
+				ShouldIssueWarning, !IO),
+			globals__io_lookup_bool_option(warn_inferred_erroneous,
+				WarnAboutInferredErroneous, !IO),
+			pred_info_get_markers(PredInfo0, Markers),
 			(
-				{ ShouldIssueWarning = yes },
+				ShouldIssueWarning = yes,
 
 				% Don't report warnings for class method
 				% implementations -- the determinism in the
@@ -201,12 +194,12 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% the loosest of all possible instances.
 				% This is similar to the reason we don't
 				% report warnings for lambda expressions.
-				{ \+ check_marker(Markers,
-					class_instance_method) },
+				\+ check_marker(Markers,
+					class_instance_method),
 
 				% Don't report warnings for procedures with
 				% no clauses.
-				{ \+ check_marker(Markers, stub) },
+				\+ check_marker(Markers, stub),
 
 				% Don't report warnings for compiler-generated
 				% Unify, Compare or Index procedures, since the
@@ -214,40 +207,44 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% happen for the Unify pred for the unit type,
 				% if such types are not boxed (as they are not
 				% boxed for the IL backend).
-				{ \+ is_unify_or_compare_pred(PredInfo0) },
+				\+ is_unify_or_compare_pred(PredInfo0),
 
 				% Don't warn about predicates which are
 				% inferred erroneous when the appropiate
 				% option is set.  This is to avoid
 				% warnings about unimplemented
 				% predicates.
-				{ WarnAboutInferredErroneous = yes,
+				(
+					WarnAboutInferredErroneous = yes,
 					true
-				; WarnAboutInferredErroneous = no,
+				;
+					WarnAboutInferredErroneous = no,
 					InferredDetism \= erroneous
-				}
+				)
 			->
-				{ Message = "  warning: determinism declaration could be tighter.\n" },
-				report_determinism_problem(PredId,
-					ProcId, ModuleInfo0, Message,
-					DeclaredDetism, InferredDetism)
+				Message = "  warning: determinism " ++
+					"declaration could be tighter.\n",
+				report_determinism_problem(PredId, ProcId,
+					!.ModuleInfo, Message, DeclaredDetism,
+					InferredDetism, !IO)
 			;
-				[]
-			),
-			{ ModuleInfo1 = ModuleInfo0 }
+				true
+			)
 		;
-			{ Cmp = tighter },
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-			{ Message = "  error: determinism declaration not satisfied.\n" },
-			report_determinism_problem(PredId,
-				ProcId, ModuleInfo1, Message,
-				DeclaredDetism, InferredDetism),
-			{ proc_info_goal(ProcInfo0, Goal) },
-			{ proc_info_vartypes(ProcInfo0, VarTypes) },
-			globals__io_get_globals(Globals),
-			{ det_info_init(ModuleInfo1, VarTypes, PredId, ProcId,
-				Globals, DetInfo) },
-			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _)
+			Cmp = tighter,
+			module_info_incr_errors(!ModuleInfo),
+			Message = "  error: determinism declaration " ++
+				"not satisfied.\n",
+			report_determinism_problem(PredId, ProcId,
+				!.ModuleInfo, Message, DeclaredDetism,
+				InferredDetism, !IO),
+			proc_info_goal(ProcInfo0, Goal),
+			proc_info_vartypes(ProcInfo0, VarTypes),
+			globals__io_get_globals(Globals, !IO),
+			det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId,
+				Globals, DetInfo),
+			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo,
+				_, !IO)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
 			% returns false, i.e. it didn't print a message.
@@ -255,40 +252,40 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 	),
 	
 	% make sure the code model is valid given the eval method
-	{ proc_info_eval_method(ProcInfo0, EvalMethod) },
+	proc_info_eval_method(ProcInfo0, EvalMethod),
 	( 
-		{ valid_determinism_for_eval_method(EvalMethod,
-			InferredDetism) = yes }
+		valid_determinism_for_eval_method(EvalMethod,
+			InferredDetism) = yes
 	->
-		{
-		    proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-		    pred_info_procedures(PredInfo0, ProcTable0),
-		    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-		    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-		    module_info_set_pred_info(ModuleInfo1, PredId, PredInfo, 
-		    	ModuleInfo)
-		}
+		proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
+		pred_info_procedures(PredInfo0, ProcTable0),
+		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+		pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
 	;
-		{ proc_info_context(ProcInfo0, Context) },
-		prog_out__write_context(Context),
-		{ EvalMethodS = eval_method_to_string(EvalMethod) },
-		io__write_string("Error: `pragma "),
-		io__write_string(EvalMethodS),
-		io__write_string("' declaration not allowed for procedure\n"),
-		prog_out__write_context(Context),
-		io__write_string("  with determinism `"),
-		mercury_output_det(InferredDetism),
-		io__write_string("'.\n"), 
-		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-		( { VerboseErrors = yes } ->
-			io__write_string(
-"\tThe pragma requested is only valid for the folowing determinism(s):\n"),
-			{ solutions(get_valid_dets(EvalMethod), Sols) },
-			print_dets(Sols)
+		proc_info_context(ProcInfo0, Context),
+		prog_out__write_context(Context, !IO),
+		EvalMethodS = eval_method_to_string(EvalMethod),
+		io__write_string("Error: `pragma ", !IO),
+		io__write_string(EvalMethodS, !IO),
+		io__write_string("' declaration not allowed for procedure\n",
+			!IO),
+		prog_out__write_context(Context, !IO),
+		io__write_string("  with determinism `", !IO),
+		mercury_output_det(InferredDetism, !IO),
+		io__write_string("'.\n", !IO), 
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
+			!IO),
+		( VerboseErrors = yes ->
+			io__write_string("\tThe pragma requested is only " ++
+				"valid for the folowing determinism(s):\n",
+				!IO),
+			solutions(get_valid_dets(EvalMethod), Sols),
+			print_dets(Sols, !IO)
 		;
-			[]
+			true
 		),
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) }
+		module_info_incr_errors(!ModuleInfo)
 	).
 
 :- pred get_valid_dets(eval_method, determinism).
@@ -322,31 +319,32 @@ print_dets([D|Rest]) -->
 	io__nl,
 	print_dets(Rest).
 	
-:- pred check_determinism_of_main(pred_id, proc_id, pred_info, proc_info,
-		module_info, module_info, io__state, io__state).
-:- mode check_determinism_of_main(in, in, in, in, in, out, di, uo) is det.
+:- pred check_determinism_of_main(pred_id::in, proc_id::in,
+	pred_info::in, proc_info::in, module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
 check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
-		ModuleInfo0, ModuleInfo) -->
+		!ModuleInfo, !IO) :-
 	%
 	% check that `main/2' has determinism `det' or `cc_multi',
 	% as required by the language reference manual
 	%
-	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
+	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	( 
-		{ pred_info_name(PredInfo) = "main" },
-		{ pred_info_arity(PredInfo) = 2 },
-		{ pred_info_is_exported(PredInfo) },
-		{ MaybeDetism = yes(DeclaredDetism) },
-		{ DeclaredDetism \= det, DeclaredDetism \= cc_multidet }
+		pred_info_name(PredInfo) = "main",
+		pred_info_arity(PredInfo) = 2,
+		pred_info_is_exported(PredInfo),
+		MaybeDetism = yes(DeclaredDetism),
+		DeclaredDetism \= det,
+		DeclaredDetism \= cc_multidet
 	->
-		{ proc_info_context(ProcInfo, Context1) },
-		prog_out__write_context(Context1),
+		proc_info_context(ProcInfo, Context1),
+		prog_out__write_context(Context1, !IO),
 		io__write_string(
-			"Error: main/2 must be `det' or `cc_multi'.\n"),
-		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }
+			"Error: main/2 must be `det' or `cc_multi'.\n", !IO),
+		module_info_incr_errors(!ModuleInfo)
 	;
-		{ ModuleInfo = ModuleInfo0 }
+		true
 	).
 
 :- pred check_for_multisoln_func(pred_id, proc_id, pred_info, proc_info,
@@ -1433,9 +1431,8 @@ disable_det_warnings(OptionsToRestore) -->
 	] }.
 
 restore_det_warnings(OptionsToRestore) -->
-	list__foldl(
-	    (pred((Option - Value)::in, di, uo) is det -->
+	list__foldl((pred((Option - Value)::in, di, uo) is det -->
 		globals__io_set_option(Option, Value)
-	    ), OptionsToRestore).
+	), OptionsToRestore).
 
 %-----------------------------------------------------------------------------%

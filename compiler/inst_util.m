@@ -173,7 +173,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 		map__det_insert(UnifyInsts0, ThisInstPair, unknown,
 			UnifyInsts1),
 		inst_table_set_unify_insts(InstTable0, UnifyInsts1, InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 			% unify the insts
 		inst_expand(ModuleInfo0, InstA, InstA2),
 		inst_expand(ModuleInfo0, InstB, InstB2),
@@ -194,7 +194,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 		map__det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
 			UnifyInsts),
 		inst_table_set_unify_insts(InstTable2, UnifyInsts, InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+		module_info_set_insts(InstTable, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(Inst1, ModuleInfo, ThisInstPair) ->
@@ -938,7 +938,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			GroundInsts1),
 		inst_table_set_ground_insts(InstTable0, GroundInsts1,
 			InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
@@ -956,7 +956,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			known(GroundInst, Det), GroundInsts),
 		inst_table_set_ground_insts(InstTable2, GroundInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+		module_info_set_insts(InstTable, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(GroundInst, ModuleInfo, GroundInstKey) ->
@@ -1052,7 +1052,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			AnyInsts1),
 		inst_table_set_any_insts(InstTable0, AnyInsts1,
 			InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
@@ -1070,7 +1070,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, ModuleInfo0,
 			known(AnyInst, Det), AnyInsts),
 		inst_table_set_any_insts(InstTable2, AnyInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+		module_info_set_insts(InstTable, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(AnyInst, ModuleInfo, AnyInstKey) ->
@@ -1211,7 +1211,7 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		map__det_insert(SharedInsts0, InstName, unknown, SharedInsts1),
 		inst_table_set_shared_insts(InstTable0, SharedInsts1,
 			InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
@@ -1228,7 +1228,7 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 			SharedInsts),
 		inst_table_set_shared_insts(InstTable2, SharedInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+		module_info_set_insts(InstTable, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(SharedInst, ModuleInfo, InstName) ->
@@ -1313,7 +1313,7 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 			NondetLiveInsts1),
 		inst_table_set_mostly_uniq_insts(InstTable0, NondetLiveInsts1,
 			InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 
 		% expand the inst name, and invoke ourself recursively on
 		% it's expansion
@@ -1331,7 +1331,7 @@ make_mostly_uniq_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 			known(NondetLiveInst), NondetLiveInsts),
 		inst_table_set_mostly_uniq_insts(InstTable2, NondetLiveInsts,
 			InstTable),
-		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+		module_info_set_insts(InstTable, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(NondetLiveInst, ModuleInfo, InstName) ->
@@ -1413,7 +1413,7 @@ inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 			MergeInstTable1),
 		inst_table_set_merge_insts(InstTable0, MergeInstTable1,
 			InstTable1),
-		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+		module_info_set_insts(InstTable1, ModuleInfo0, ModuleInfo1),
 
 			% merge the insts
 		inst_merge_2(InstA, InstB, MaybeType, ModuleInfo1, Inst0,
@@ -1427,7 +1427,7 @@ inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 			MergeInstTable3),
 		inst_table_set_merge_insts(InstTable2, MergeInstTable3,
 			InstTable3),
-		module_info_set_insts(ModuleInfo2, InstTable3, ModuleInfo)
+		module_info_set_insts(InstTable3, ModuleInfo2, ModuleInfo)
 	),
 		% avoid expanding recursive insts
 	( inst_contains_instname(Inst0, ModuleInfo, merge_inst(InstA, InstB)) ->

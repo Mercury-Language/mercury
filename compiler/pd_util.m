@@ -285,8 +285,8 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	pd_info_get_io_state(IO0),
 	pd_info_get_pred_info(PredInfo0),
 	pd_info_get_proc_info(ProcInfo0),
-	{ module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
-		PredInfo0, ProcInfo0, ModuleInfo1) },
+	{ module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo0,
+		ModuleInfo0, ModuleInfo1) },
 
 	% If we perform generalisation, we shouldn't change any called
 	% procedures, since that could cause a less efficient version to
@@ -374,8 +374,8 @@ pd_util__rerun_det_analysis(Goal0, Goal) -->
 	pd_info_get_pred_info(PredInfo),
 	pd_info_get_proc_info(ProcInfo),
 	pd_info_get_module_info(ModuleInfo0),
-	{ module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
-		PredInfo, ProcInfo, ModuleInfo) },
+	{ module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
+		ModuleInfo0, ModuleInfo) },
 	pd_info_set_module_info(ModuleInfo),
 
 	{ module_info_globals(ModuleInfo, Globals) },

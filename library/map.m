@@ -302,6 +302,23 @@
 :- mode map__foldl2(pred(in, in, di, uo, di, uo) is det,
 		in, di, uo, di, uo) is det.
 
+	% Perform an inorder traversal of the map, applying
+	% an accumulator predicate with three accumulators for
+	% each key-value pair.
+	% (Although no more expressive than map__foldl, this is often
+	% a more convenient format, and a little more efficient).
+:- pred map__foldl3(pred(K, V, T, T, U, U, W, W), map(K, V), T, T, U, U, W, W).
+:- mode map__foldl3(pred(in, in, in, out, in, out, in, out) is det, 
+		in, in, out, in, out, in, out) is det.
+:- mode map__foldl3(pred(in, in, in, out, in, out, in, out) is semidet, 
+		in, in, out, in, out, in, out) is semidet.
+:- mode map__foldl3(pred(in, in, in, out, in, out, di, uo) is det,
+		in, in, out, in, out, di, uo) is det.
+:- mode map__foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
+		in, in, out, di, uo, di, uo) is det.
+:- mode map__foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
+		in, di, uo, di, uo, di, uo) is det.
+
 	% Apply a transformation predicate to all the values
 	% in a map.
 :- pred map__map_values(pred(K, V, W), map(K, V), map(K, W)).
@@ -674,13 +691,14 @@ map__remove_smallest(Map0, K, V, Map) :-
 
 %-----------------------------------------------------------------------------%
 
-map__foldl(Pred, Map, Acc0, Acc) :-
-	tree234__foldl(Pred, Map, Acc0, Acc).
+map__foldl(Pred, Map, !A) :-
+	tree234__foldl(Pred, Map, !A).
 
-%-----------------------------------------------------------------------------%
+map__foldl2(Pred, Map, !A, !B) :-
+	tree234__foldl2(Pred, Map, !A, !B).
 
-map__foldl2(Pred, Map, Acc0, Acc) -->
-	tree234__foldl2(Pred, Map, Acc0, Acc).
+map__foldl3(Pred, Map, !A, !B, !C) :-
+	tree234__foldl3(Pred, Map, !A, !B, !C).
 
 %-----------------------------------------------------------------------------%
 
