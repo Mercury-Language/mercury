@@ -712,19 +712,35 @@ typecheck_var_has_arg_type(VarId, ArgTypeAssignSet0, ArgTypeAssignSet,
 				TypeInfo0, TypeInfo) :-
 	type_info_get_head_type_params(TypeInfo0, HeadTypeParams),
 	typecheck_var_has_arg_type_2(ArgTypeAssignSet0, HeadTypeParams,
-				VarId, [], ArgTypeAssignSet),
+				VarId, [], ArgTypeAssignSet1),
 	(
-		ArgTypeAssignSet = [],
+		ArgTypeAssignSet1 = [],
 		ArgTypeAssignSet0 \= []
 	->
+		skip_arg(ArgTypeAssignSet0, ArgTypeAssignSet),
 		type_info_get_io_state(TypeInfo0, IOState0),
 		report_error_arg_var(TypeInfo0, VarId,
 				ArgTypeAssignSet0, IOState0, IOState),
 		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
+		ArgTypeAssignSet = ArgTypeAssignSet1,
 		TypeInfo = TypeInfo0
 	).
+
+:- pred skip_arg(args_type_assign_set, args_type_assign_set).
+:- mode skip_arg(in, out) is det.
+
+skip_arg([], []).
+skip_arg([TypeAssign - Args0 | ArgTypeAssigns0],
+				[TypeAssign - Args| ArgTypeAssigns]) :-
+	( Args0 = [_ | Args1] ->
+		Args = Args1
+	;
+		% this should never happen
+		error("typecheck.m: skip_arg")
+	),
+	skip_arg(ArgTypeAssigns0, ArgTypeAssigns).
 
 :- pred typecheck_var_has_arg_type_2(args_type_assign_set, headtypes, var,
 				args_type_assign_set, args_type_assign_set).
