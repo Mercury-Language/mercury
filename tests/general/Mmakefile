@@ -60,6 +60,7 @@ ORDINARY_PROGS=	\
 		string_format_test \
 		string_format_test_2 \
 		string_format_test_3 \
+		string_replace \
 		string_test \
 		string_test_2 \
 		string_to_float \

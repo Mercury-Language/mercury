@@ -520,6 +520,13 @@
 :- pred string__sub_string_search(string, string, int).
 :- mode string__sub_string_search(in, in, out) is semidet.
 
+	% string__sub_string_search(String, SubString, BeginAt, Index).
+	% `Index' is the position in `String' where the first occurrence of
+	% `SubString' occurs such that 'Index' is greater than or equal to
+	% `BeginAt'.  Indices start at zero,
+:- pred string__sub_string_search(string, string, int, int).
+:- mode string__sub_string_search(in, in, in, out) is semidet.
+
 	% A function similar to sprintf() in C.
 	%
 	% For example,
@@ -589,83 +596,42 @@
 :- import_module bool, integer, std_util, int, float, array, require.
 :- use_module term_io, type_desc, rtti_implementation.
 
-string__replace(String, SubString0, SubString1, StringOut) :-
-	string__to_char_list(String, CharList),
-	string__to_char_list(SubString0, SubCharList0),
-	find_sub_charlist(CharList, SubCharList0, Before, After),
-	string__to_char_list(SubString1, SubCharList1),
-	list__append(Before, SubCharList1, Before0),
-	list__append(Before0, After, CharListOut),
-	string__from_char_list(CharListOut, StringOut).
+string__replace(Str, Pat, Subst, Result) :-
+	sub_string_search(Str, Pat, Index),
 
-string__replace_all(String, SubString0, SubString1, StringOut) :-
-	string__to_char_list(String, CharList),
-	string__to_char_list(SubString0, SubCharList0),
-	string__to_char_list(SubString1, SubCharList1),
-	find_all_sub_charlist(CharList, SubCharList0, SubCharList1,
-		CharListOut),
-	string__from_char_list(CharListOut, StringOut).
+	Initial = string__unsafe_substring(Str, 0, Index),
 
-	% find_all_sub_charlist replaces any occurences of the second list of
-	% characters (in order) in the first list of characters with the second
-	% list of characters.
-:- pred find_all_sub_charlist(list(char)::in, list(char)::in, list(char)::in,
-	list(char)::out) is det.
+	BeginAt = Index + string__length(Pat),
+	Length = string__length(Str) - BeginAt,
+	Final = string__unsafe_substring(Str, BeginAt, Length),
 
-find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
-		% find the first occurence
-	( find_sub_charlist(CharList, SubCharList0, BeforeList, AfterList) ->
-		( AfterList = [] ->
-			% at the end
-			list__append(BeforeList, SubCharList1, CharList0)
-		;
-			% recursively find the rest of the occurences
-			find_all_sub_charlist(AfterList, SubCharList0,
-				SubCharList1, AfterList0),
-			list__append(BeforeList, SubCharList1, BeforeList0),
-			list__append(BeforeList0, AfterList0, CharList0)
-		)
+	Result = string__append_list([Initial, Subst, Final]).
+
+string__replace_all(Str, Pat, Subst, Result) :-
+	( Pat = "" ->
+		copy(Str, Result)
 	;
-		% no occurences left
-		CharList0 = CharList
+		PatLength = string__length(Pat),
+		ReversedChunks = replace_all(Str, Pat, Subst, PatLength, 0, []),
+		Chunks = list__reverse(ReversedChunks),
+		Result = string__append_list(Chunks)
 	).
 
-	% find_sub_charlist(List, SubList, Before, After) is true iff SubList
-	% is a sublist of List, and Before is the list of characters before
-	% SubList in List, and After is the list after it.
-:- pred find_sub_charlist(list(char)::in, list(char)::in, list(char)::out,
-	list(char)::out) is semidet.
+:- func string__replace_all(string, string, string,
+			int, int, list(string)) = list(string).
 
-find_sub_charlist(CharList, [], [], CharList).
-find_sub_charlist([C | CharList], [S | SubCharList], Before, After) :-
-	(
-		C = S
-	->
-		(
-			find_rest_of_sub_charlist(CharList, SubCharList, After0)
-		->
-			Before = [],
-			After = After0
-		;
-			find_sub_charlist(CharList, [S | SubCharList], Before0,
-				After0),
-			Before = [C | Before0],
-			After = After0
-
-		)
+string__replace_all(Str, Pat, Subst, PatLength, BeginAt, Result0) = Result :-
+	( sub_string_search(Str, Pat, BeginAt, Index) ->
+		Length = Index - BeginAt,
+		Initial = string__unsafe_substring(Str, BeginAt, Length),
+		Start = Index + PatLength,
+		Result = string__replace_all(Str, Pat, Subst,
+			PatLength, Start, [Subst, Initial | Result0])
 	;
-		find_sub_charlist(CharList, [S | SubCharList], Before0, After),
-		Before = [C | Before0]
+		Length = string__length(Str) - BeginAt,
+		EndString = string__unsafe_substring(Str, BeginAt, Length),
+		Result = [EndString | Result0]
 	).
-
-	% find_rest_of_sub_charlist(List, SubList, After) is true iff List
-	% begins with all the characters in SubList in order, and end with
-	% After.
-:- pred find_rest_of_sub_charlist(list(char)::in, list(char)::in,
-	list(char)::out) is semidet.
-
-find_rest_of_sub_charlist(CharList, SubCharList, After) :-
-	list__append(SubCharList, After, CharList).
 
 string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
@@ -1265,12 +1231,15 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
+string__sub_string_search(WholeString, Pattern, Index) :-
+	sub_string_search(WholeString, Pattern, 0, Index).
+
 :- pragma foreign_proc("C",
-	string__sub_string_search(WholeString::in, SubString::in, Index::out),
+	sub_string_search(WholeString::in, Pattern::in, BeginAt::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	char *match;
-	match = strstr(WholeString, SubString);
+	match = strstr(WholeString + BeginAt, Pattern);
 	if (match) {
 		Index = match - WholeString;
 		SUCCESS_INDICATOR = MR_TRUE;
@@ -1280,16 +1249,16 @@ string__combine_hash(H0, X, H) :-
 }").
 
 :- pragma foreign_proc("C#",
-	string__sub_string_search(WholeString::in, SubString::in, Index::out),
+	sub_string_search(WholeString::in, Pattern::in, BeginAt::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	Index = WholeString.IndexOf(SubString);
+	Index = WholeString.IndexOf(Pattern, BeginAt);
 	SUCCESS_INDICATOR = (Index >= 0);
 }").
 
 % This is only used if there is no matching foreign_proc definition
-string__sub_string_search(String, SubString, Index) :-
-	sub_string_search_2(String, SubString, 0, length(String),
+sub_string_search(String, SubString, BeginAt, Index) :-
+	sub_string_search_2(String, SubString, BeginAt, length(String),
 		length(SubString), Index).
 
 	% Brute force string searching. For short Strings this is
@@ -1298,14 +1267,14 @@ string__sub_string_search(String, SubString, Index) :-
 	int::out) is semidet.
 
 sub_string_search_2(String, SubString, I, Length, SubLength, Index) :-
+	I < Length,
 	(
-		I < Length,
 		% XXX This is inefficient --
 		% there is no (in, in, in) = in is semidet mode of
-		% string__substring, so this ends up calling the
+		% substring, so this ends up calling the
 		% (in, in, in) = out mode and then doing the unification.
 		% This will create a lot of unnecessary garbage.
-		string__substring(String, I, SubLength) = SubString
+		substring(String, I, SubLength) = SubString
 	->
 		Index = I
 	;

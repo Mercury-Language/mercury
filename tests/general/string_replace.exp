@@ -1,0 +1,24 @@
+string__replace("", "a", "bc", Result) 
+	FAIL!
+string__replace("aaa bbbb ccccc aaa", "aab", "**", Result) 
+	FAIL!
+string__replace("aaa bbbb ccccc aaa", "aaaa", "**", Result) 
+	FAIL!
+string__replace("aaa bbbb ccccc aaa", "", "**", Result) 
+	"**aaa bbbb ccccc aaa"
+string__replace("aaa bbbb ccccc aaa", "aaa", "", Result) 
+	" bbbb ccccc aaa"
+string__replace("aaa bbbb ccccc aaa", "cc", "**", Result) 
+	"aaa bbbb **ccc aaa"
+string__replace_all("", "a", "bc", Result) 
+	""
+string__replace_all("aaa bbbb ccccc aaa", "aab", "**", Result) 
+	"aaa bbbb ccccc aaa"
+string__replace_all("aaa bbbb ccccc aaa", "aaaa", "**", Result) 
+	"aaa bbbb ccccc aaa"
+string__replace_all("aaa bbbb ccccc aaa", "", "**", Result) 
+	"aaa bbbb ccccc aaa"
+string__replace_all("aaa bbbb ccccc aaa", "aaa", "", Result) 
+	" bbbb ccccc "
+string__replace_all("aaa bbbb ccccc aaa", "cc", "**", Result) 
+	"aaa bbbb ****c aaa"
