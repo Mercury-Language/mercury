@@ -247,6 +247,7 @@ install_init: $(MDBCOMP_LIB_NAME).init install_dirs
 
 .PHONY: install_library
 install_library: \
+		$(mer_mdbcomp.int3s) $(mer_mdbcomp.ints) \
 		lib$(MDBCOMP_LIB_NAME).$A \
 		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs
