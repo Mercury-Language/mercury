@@ -572,11 +572,7 @@ table_simple_mark_as_inactive(_) :-
 	SUCCESS_INDICATOR = (table->MR_answerblock != NULL);
 ").
 
-:- pragma foreign_proc("C", table_io_copy_io_state(S0::di, S::uo),
-	[will_not_call_mercury, promise_pure],
-"
-	S = S0;
-").
+table_io_copy_io_state(IO, IO).
 
 :- pragma foreign_proc("C",
 	table_io_left_bracket_unitized_goal(TraceEnabled::out),
@@ -606,11 +602,6 @@ table_io_has_occurred(_) :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_io_has_occurred").
-
-table_io_copy_io_state(_, _) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("table_io_copy_io_state").
 
 table_io_left_bracket_unitized_goal(_TraceEnabled) :-
 	% This version is only used for back-ends for which there is no
