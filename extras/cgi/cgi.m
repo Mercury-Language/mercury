@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,17 @@
 :- pred cgi__get_form(maybe(assoc_list(string, string))::out,
 			io__state::di, io__state::uo) is det. 
 
+% cgi__maybe_get_form(MaybeFormEntries):
+%	This procedure should be called form within a CGI program
+%	that *may* be invoked with a METHOD of POST.
+%	If all goes well, it will return the form entries.
+%	If not invoked using a METHOD of POST, it will return `no'.
+%	If something goes wrong, it will print an appropriate HTML-formatted
+%	error message to stdout, call io__set_exit_status(1),
+%	and return `no'.
+:- pred cgi__maybe_get_form(maybe(assoc_list(string, string))::out,
+			io__state::di, io__state::uo) is det. 
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -38,10 +49,16 @@
 
 %-----------------------------------------------------------------------------%
 
+cgi__maybe_get_form(FormEntries) -->
+    io__get_environment_var("REQUEST_METHOD", REQUEST_METHOD),
+    ( { REQUEST_METHOD \= yes("POST") } ->
+	{ FormEntries = no }
+    ;
+        cgi__get_form_contents(FormEntries)
+    ).
+
 cgi__get_form(FormEntries) -->
     io__get_environment_var("REQUEST_METHOD", REQUEST_METHOD),
-    io__get_environment_var("CONTENT_TYPE", CONTENT_TYPE),
-    io__get_environment_var("CONTENT_LENGTH", CONTENT_LENGTH),
     ( { REQUEST_METHOD \= yes("POST") } ->
     	cgi__error([
 	    "This script should be referenced with a ",
@@ -51,7 +68,17 @@ cgi__get_form(FormEntries) -->
 	        "/fill-out-forms/overview.html"">forms overview</A>.\n"
 	]),
 	{ FormEntries = no }
-    ; { CONTENT_TYPE \= yes("application/x-www-form-urlencoded") } ->
+    ;
+        cgi__get_form_contents(FormEntries)
+    ).
+
+:- pred cgi__get_form_contents(maybe(assoc_list(string, string))::out,
+			io__state::di, io__state::uo) is det. 
+
+cgi__get_form_contents(FormEntries) -->
+    io__get_environment_var("CONTENT_TYPE", CONTENT_TYPE),
+    io__get_environment_var("CONTENT_LENGTH", CONTENT_LENGTH),
+    ( { CONTENT_TYPE \= yes("application/x-www-form-urlencoded") } ->
     	cgi__error([
 	    "This script can only be used to decode form results.\n",
 	    "It should be referenced with a <code>CONTENT_TYPE</code> of ",
@@ -194,6 +221,7 @@ hex_pair_to_char(Hex1, Hex2, Char) :-
 :- pred cgi__error(list(string)::in, io__state::di, io__state::uo) is det.
 cgi__error(MessageList) -->
 	{ string__append_list(MessageList, Message) },
+	output_content_type_html,
 	html__output_html(html([title(text("CGI Error Message"))],
 		(heading(1, text("CGI Error")),
 		 markup(Message)))),
