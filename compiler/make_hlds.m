@@ -408,13 +408,10 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ list__length(ModeList, Arity) },
 		(
 		    { predicate_table_search_pf_sym_arity(Preds,
-			PredOrFunc, SymName, Arity, PredIds) }
+			PredOrFunc, SymName, Arity, PredIds) },
+		    { PredIds \= [] }
 		->
-		    ( { PredIds = [] } ->
-			undefined_pred_or_func_error(SymName, Arity, Context,
-				"`:- pragma termination_info' declaration"),
-			{ module_info_incr_errors(Module0, Module) }
-		    ; { PredIds = [PredId] } ->
+		    ( { PredIds = [PredId] } ->
 			{ module_info_preds(Module0, PredTable0) },
 			{ map__lookup(PredTable0, PredId, PredInfo0) },
 			{ pred_info_procedures(PredInfo0, ProcTable0)},
@@ -459,9 +456,15 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			{ module_info_incr_errors(Module0, Module) }
 		    )
 		;
-		    undefined_pred_or_func_error(SymName, Arity, Context,
-			"`:- pragma termination_info' declaration"),
-		    { module_info_incr_errors(Module0, Module) }
+		    % XXX This happens in `.trans_opt' files sometimes --
+		    % so just ignore it
+		    { Module = Module0 }
+		    /***
+		    ****   undefined_pred_or_func_error(
+		    ****	    SymName, Arity, Context,
+		    **** 	    "`:- pragma termination_info' declaration"),
+		    ****   { module_info_incr_errors(Module0, Module) }
+		    ***/
 		)
 	;
 		{ Pragma = terminates(Name, Arity) },
