@@ -3435,9 +3435,15 @@ mercury_compile__il_assemble(ModuleName, HasMain) -->
 	module_name_to_file_name(ModuleName, ".dll", no, DLL_File),
 	module_name_to_file_name(ModuleName, ".exe", no, EXE_File),
 	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(sign_assembly, SignAssembly),
 	maybe_write_string(Verbose, "% Assembling `"),
 	maybe_write_string(Verbose, IL_File),
 	maybe_write_string(Verbose, "':\n"),
+	{ SignAssembly = yes ->
+		SignOpt = "/keyf=mercury.sn "
+	;
+		SignOpt = ""
+	},
 	{ Verbose = yes ->
 		VerboseOpt = ""
 	;
@@ -3457,8 +3463,8 @@ mercury_compile__il_assemble(ModuleName, HasMain) -->
 		TargetFile = DLL_File
 	},
 	{ OutputOpt = "/out=" },
-	{ string__append_list(["ilasm ", VerboseOpt, DebugOpt, TargetOpt,
-		OutputOpt, TargetFile, " ", IL_File], Command) },
+	{ string__append_list(["ilasm ", SignOpt, VerboseOpt, DebugOpt,
+		TargetOpt, OutputOpt, TargetFile, " ", IL_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem assembling IL file.")
