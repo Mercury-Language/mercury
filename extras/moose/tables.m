@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -129,7 +129,9 @@ actions2([A | As], I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs) :-
 			map__search(ILAs, A, Alphas)
 		->
 			set__to_sorted_list(Alphas, AlphaList),
-			list__foldl2((pred(T::in, !.Actions::in, !:Actions::out, 					!.Errs::in, !:Errs::out) is det :-
+			list__foldl2((pred(T::in,
+					!.Actions::in, !:Actions::out,
+					!.Errs::in, !:Errs::out) is det :-
 				( Ip = 0, T = ($) ->
 					addaction(Sn, T, accept, !Actions, 
 						!Errs)
