@@ -113,7 +113,7 @@ scripts:
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	case "$$grade" in \
+	case $(GRADE) in \
 	    *.prof*) \
 		prof=_prof \
 		;; \
@@ -311,7 +311,7 @@ install_trace: trace
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	case "$$grade" in \
+	case $(GRADE) in \
 	    *.prof*) \
 		prof=_prof \
 		;; \
