@@ -17,11 +17,11 @@ cc_query           finish             print_optionals    stack_regs
 context            forward            printlevel         step
 continue           g                  proc_body          table_io
 current            goto               proc_stats         unalias
-d                  h                  procedures         up
-dd                 help               query              v
-dd_dd              ignore             quit               vars
-delete             io_query           r                  view
-disable            label_stats        register           
+d                  h                  procedures         unhide_events
+dd                 help               query              up
+dd_dd              ignore             quit               v
+delete             io_query           r                  vars
+disable            label_stats        register           view
 document           level              retry              
 mdb> h
 h     help  
