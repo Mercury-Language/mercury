@@ -65,8 +65,8 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	(
 		{ Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) }
 	->
-		{ ResumeVars = ResumeVarsPrime},
-		{ ResumeLocs = ResumeLocsPrime}
+		{ ResumeVars = ResumeVarsPrime },
+		{ ResumeLocs = ResumeLocsPrime }
 	;
 		{ error("condition of an if-then-else has no resume point") }
 	),
