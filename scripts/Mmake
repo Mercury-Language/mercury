@@ -48,7 +48,7 @@ install_scripts: $(SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SCRIPTS); do \
-		chmod +w $(INSTALL_BINDIR)/$$file ;\
+		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
 
 .PHONY: install_nuprolog
@@ -56,7 +56,7 @@ install_nuprolog: $(NUPROLOG_SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(NUPROLOG_SCRIPTS); do \
-		chmod +w $(INSTALL_BINDIR)/$$file ;\
+		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
 
 .PHONY: install_sicstus
@@ -64,7 +64,7 @@ install_sicstus: $(SICSTUS_SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SICSTUS_SCRIPTS); do \
-		chmod +w $(INSTALL_BINDIR)/$$file ;\
+		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
 
 #-----------------------------------------------------------------------------#
