@@ -921,16 +921,16 @@ compare_inst(InstA, InstB, MaybeArgInst, Type, Result, ModuleInfo) :-
 		;
 			MaybeArgInst = yes(ArgInst),
 			(
-				inst_matches_final(ArgInst, InstA, Type,
-					ModuleInfo)
+				inst_matches_initial_no_implied_modes(ArgInst,
+					InstA, Type, ModuleInfo)
 			->
 				Arg_mf_A = yes
 			;
 				Arg_mf_A = no
 			),
 			(
-				inst_matches_final(ArgInst, InstB, Type,
-					ModuleInfo)
+				inst_matches_initial_no_implied_modes(ArgInst,
+					InstB, Type, ModuleInfo)
 			->
 				Arg_mf_B = yes
 			;
@@ -948,12 +948,18 @@ compare_inst(InstA, InstB, MaybeArgInst, Type, Result, ModuleInfo) :-
 			% or comparing with the arg inst doesn't help,
 			% then compare the two proc insts
 			%
-			( inst_matches_final(InstA, InstB, Type, ModuleInfo) ->
+			(
+				inst_matches_initial_no_implied_modes(InstA,
+					InstB, Type, ModuleInfo)
+			->
 				A_mf_B = yes
 			;
 				A_mf_B = no
 			),
-			( inst_matches_final(InstB, InstA, Type, ModuleInfo) ->
+			(
+				inst_matches_initial_no_implied_modes(InstB,
+					InstA, Type, ModuleInfo)
+			->
 				B_mf_A = yes
 			;
 				B_mf_A = no

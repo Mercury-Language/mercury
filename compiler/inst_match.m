@@ -85,6 +85,20 @@ mode system to distinguish between different representations.
 		inst_var_sub, inst_var_sub).
 :- mode inst_matches_initial(in, in, in, in, out, in, out) is semidet.
 
+	% This version of inst_matches_initial does not allow implied modes.
+	% This makes it almost the same as inst_matches_final.  The only
+	% different is in the way it handles constrained_inst_vars.
+
+:- pred inst_matches_initial_no_implied_modes(inst, inst, type, module_info).
+:- mode inst_matches_initial_no_implied_modes(in, in, in, in) is semidet.
+
+	% A version of the above that also computes the inst_var_sub.
+
+:- pred inst_matches_initial_no_implied_modes(inst, inst, type, module_info,
+		module_info, inst_var_sub, inst_var_sub).
+:- mode inst_matches_initial_no_implied_modes(in, in, in, in, out, in, out)
+		is semidet.
+
 	% inst_matches_final(InstA, InstB, ModuleInfo):
 	%	Succeed iff InstA is compatible with InstB,
 	%	i.e. iff InstA will satisfy the final inst
@@ -327,13 +341,28 @@ inst_matches_initial(InstA, InstB, Type, ModuleInfo0, ModuleInfo, Sub0, Sub) :-
 		error("inst_matches_initial: missing inst_var_sub")
 	).
 
+inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
+	Info0 = init_inst_match_info(ModuleInfo) ^ calculate_sub := forward,
+	inst_matches_final_2(InstA, InstB, yes(Type), Info0, _).
+	
+inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo0,
+		ModuleInfo, Sub0, Sub) :-
+	Info0 = (init_inst_match_info(ModuleInfo0)
+			^ calculate_sub := forward)
+			^ maybe_sub := yes(Sub0),
+	inst_matches_final_2(InstA, InstB, yes(Type), Info0, Info),
+	ModuleInfo = Info ^ module_info,
+	yes(Sub) = Info ^ maybe_sub.
+
 :- pred inst_matches_initial_1(inst, inst, type, module_info, module_info,
 		maybe(inst_var_sub), maybe(inst_var_sub)).
 :- mode inst_matches_initial_1(in, in, in, in, out, in, out) is semidet.
 
 inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 		MaybeSub0, MaybeSub) :-
-	Info0 = init_inst_match_info(ModuleInfo0) ^ maybe_sub := MaybeSub0,
+	Info0 = (init_inst_match_info(ModuleInfo0)
+			^ maybe_sub := MaybeSub0)
+			^ calculate_sub := forward,
 	inst_matches_initial_2(InstA, InstB, yes(Type), Info0, Info),
 	ModuleInfo = Info^module_info,
 	MaybeSub = Info ^ maybe_sub.
@@ -358,9 +387,24 @@ inst_matches_initial_1(InstA, InstB, Type, ModuleInfo0, ModuleInfo,
 			module_info	:: module_info,
 			expansions	:: expansions,
 			maybe_sub	:: maybe(inst_var_sub),
+			calculate_sub	:: calculate_sub,
 			uniqueness_comparison	:: uniqueness_comparison,
 			any_matches_any	:: bool
 		).
+
+	% The calculate_sub type determines how the inst var substitution
+	% should be calculated.
+:- type calculate_sub
+	--->	forward
+			% Calculate in the (normal) forward direction
+			% (used by inst_matches_initial).
+	;	reverse
+			% Calculate in the reverse direction.  Used by the call
+			% to inst_matches_final from pred_inst_argmodes_match
+			% to ensure contravariance of the initial argument
+			% insts of higher order pred insts.
+	;	none.
+			% Do not calculate inst var substitions.
 
 :- func sub(inst_match_info) = inst_var_sub is semidet.
 
@@ -375,12 +419,32 @@ sub(Info) = Sub :-
 :- func init_inst_match_info(module_info) = inst_match_info.
 
 init_inst_match_info(ModuleInfo) =
-		inst_match_info(ModuleInfo, Exp, no, match, yes) :-
+		inst_match_info(ModuleInfo, Exp, no, none, match, yes) :-
 	set__init(Exp).
 
-:- pred inst_matches_initial_2(inst, inst, maybe(type), 
+:- pred swap_sub(pred(inst_match_info, inst_match_info),
 		inst_match_info, inst_match_info).
-:- mode inst_matches_initial_2(in, in, in, in, out) is semidet.
+:- mode swap_sub(pred(in, out) is semidet, in, out) is semidet.
+
+swap_sub(P, Info0, Info) :-
+	CalculateSub = Info0 ^ calculate_sub,
+	Info1 = Info0 ^ calculate_sub := swap_calculate_sub(CalculateSub),
+	P(Info1, Info2),
+	Info = Info2 ^ calculate_sub := CalculateSub.
+
+:- func swap_calculate_sub(calculate_sub) = calculate_sub.
+
+swap_calculate_sub(forward) = reverse.
+swap_calculate_sub(reverse) = forward.
+swap_calculate_sub(none) = none.
+
+:- type inst_matches_pred ==
+		pred(inst, inst, maybe(type), inst_match_info, inst_match_info).
+:- inst inst_matches_pred ==
+		(pred(in, in, in, in, out) is semidet).
+
+:- pred inst_matches_initial_2 `with_type` inst_matches_pred.
+:- mode inst_matches_initial_2 `with_inst` inst_matches_pred.
 
 inst_matches_initial_2(InstA, InstB, Type, Info0, Info) :-
 	ThisExpansion = InstA - InstB,
@@ -391,21 +455,43 @@ inst_matches_initial_2(InstA, InstB, Type, Info0, Info) :-
 		inst_expand(Info0^module_info, InstA, InstA2),
 		inst_expand(Info0^module_info, InstB, InstB2),
 		set__insert(Info0^expansions, ThisExpansion, Expansions1),
-		inst_matches_initial_3(InstA2, InstB2, Type, 
+		handle_inst_var_subs(inst_matches_initial_2,
+			inst_matches_initial_4, InstA2, InstB2, Type, 
 			Info0^expansions := Expansions1, Info)
 	).
 
-:- pred inst_matches_initial_3(inst, inst, maybe(type), 
-		inst_match_info, inst_match_info).
-:- mode inst_matches_initial_3(in, in, in, in, out) is semidet.
+:- pred handle_inst_var_subs(inst_matches_pred, inst_matches_pred) `with_type`
+		inst_matches_pred.
+:- mode handle_inst_var_subs(in(inst_matches_pred), in(inst_matches_pred))
+		`with_inst` inst_matches_pred.
 
-inst_matches_initial_3(InstA, InstB, Type, Info0, Info) :-
+handle_inst_var_subs(Recurse, Continue, InstA, InstB, Type, Info0, Info) :-
+	CalculateSub = Info0 ^ calculate_sub,
+	(
+		CalculateSub = forward,
+		handle_inst_var_subs_2(Recurse, Continue, InstA, InstB,
+			Type, Info0, Info)
+	;
+		CalculateSub = reverse,
+		handle_inst_var_subs_2(swap_args(Recurse), swap_args(Continue),
+			InstB, InstA, Type, Info0, Info)
+	;
+		CalculateSub = none,
+		Continue(InstA, InstB, Type, Info0, Info)
+	).
+
+:- pred handle_inst_var_subs_2(inst_matches_pred, inst_matches_pred) `with_type`
+		inst_matches_pred.
+:- mode handle_inst_var_subs_2(in(inst_matches_pred), in(inst_matches_pred))
+		`with_inst` inst_matches_pred.
+
+handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, Info0, Info) :-
 	( InstB = constrained_inst_vars(InstVarsB, InstB1) ->
 		% InstB is a constrained_inst_var with upper bound InstB1.
 		% We need to check that InstA matches_initial InstB1 and add the
 		% appropriate inst_var substitution.
 
-		inst_matches_initial_2(InstA, InstB1, Type, Info0, Info1),
+		Recurse(InstA, InstB1, Type, Info0, Info1),
 
 		ModuleInfo0 = Info1^module_info,
 
@@ -419,14 +505,19 @@ inst_matches_initial_3(InstA, InstB, Type, Info0, Info) :-
 		Info2 = Info1 ^ module_info := ModuleInfo1,
 		update_inst_var_sub(InstVarsB, Inst, Type, Info2, Info)
 	; InstA = constrained_inst_vars(_InstVarsA, InstA1) ->
-		inst_matches_initial_2(InstA1, InstB, Type, Info0, Info)
+		Recurse(InstA1, InstB, Type, Info0, Info)
 	;
-		inst_matches_initial_4(InstA, InstB, Type, Info0, Info)
+		Continue(InstA, InstB, Type, Info0, Info)
 	).
 
-:- pred inst_matches_initial_4(inst, inst, maybe(type), 
-		inst_match_info, inst_match_info).
-:- mode inst_matches_initial_4(in, in, in, in, out) is semidet.
+:- pred swap_args(inst_matches_pred) `with_type` inst_matches_pred.
+:- mode swap_args(in(inst_matches_pred)) `with_inst` inst_matches_pred.
+
+swap_args(P, InstA, InstB, Type, Info0, Info) :-
+	P(InstB, InstA, Type, Info0, Info).
+
+:- pred inst_matches_initial_4 `with_type` inst_matches_pred.
+:- mode inst_matches_initial_4 `with_inst` inst_matches_pred.
 
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
@@ -644,44 +735,10 @@ ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type) -->
 	{ PredInstB = pred_inst_info(function, ArgModes, _Det) },
 	{ Arity = list__length(ArgModes) },
 	{ PredInstA = pred_inst_info_standard_func_mode(Arity) },
-	pred_inst_matches_initial(PredInstA, PredInstB, Type).
+	pred_inst_matches_2(PredInstA, PredInstB, Type).
 ground_inst_info_matches_initial(higher_order(PredInstA),
 		higher_order(PredInstB), _, MaybeType) -->
-	pred_inst_matches_initial(PredInstA, PredInstB, MaybeType).
-
-:- pred pred_inst_matches_initial(pred_inst_info, pred_inst_info, maybe(type),
-	inst_match_info, inst_match_info).
-:- mode pred_inst_matches_initial(in, in, in, in, out) is semidet.
-
-pred_inst_matches_initial(pred_inst_info(PredOrFunc, ModesA, Det),
-		pred_inst_info(PredOrFunc, ModesB, Det), MaybeType) -->
-	{ maybe_get_higher_order_arg_types(MaybeType, length(ModesA),
-		MaybeTypes) },
-	pred_inst_argmodes_matches_initial(ModesA, ModesB, MaybeTypes),
-	( 
-		Sub =^ sub
-	->
-		{ mode_list_apply_substitution(ModesA, Sub, ModesASub) },
-		{ mode_list_apply_substitution(ModesB, Sub, ModesBSub) }
-	;
-		{ ModesASub = ModesA },
-		{ ModesBSub = ModesB }
-	),
-	pred_inst_argmodes_matches(ModesASub, ModesBSub, MaybeTypes).
-
-:- pred pred_inst_argmodes_matches_initial(list(mode), list(mode),
-	list(maybe(type)), inst_match_info, inst_match_info).
-:- mode pred_inst_argmodes_matches_initial(in, in, in, in, out) is semidet.
-
-pred_inst_argmodes_matches_initial([], [], []) --> [].
-pred_inst_argmodes_matches_initial([ModeA|ModeAs], [ModeB|ModeBs],
-		[Type|Types]) -->
-	ModuleInfo0 =^ module_info,
-	{ mode_get_insts(ModuleInfo0, ModeA, InitialA, FinalA) },
-	{ mode_get_insts(ModuleInfo0, ModeB, InitialB, FinalB) },
-	inst_matches_initial_2(InitialA, InitialB, Type),
-	inst_matches_initial_2(FinalA, FinalB, Type),
-	pred_inst_argmodes_matches_initial(ModeAs, ModeBs, Types).
+	pred_inst_matches_2(PredInstA, PredInstB, MaybeType).
 
 pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
 	pred_inst_matches_1(PredInstA, PredInstB, no, ModuleInfo).
@@ -737,7 +794,7 @@ pred_inst_argmodes_matches([ModeA|ModeAs], [ModeB|ModeBs],
 	ModuleInfo =^ module_info,
 	{ mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA) },
 	{ mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB) },
-	inst_matches_final_2(InitialB, InitialA, MaybeType),
+	swap_sub(inst_matches_final_2(InitialB, InitialA, MaybeType)),
 	inst_matches_final_2(FinalA, FinalB, MaybeType),
 	pred_inst_argmodes_matches(ModeAs, ModeBs, MaybeTypes).
 
@@ -885,9 +942,8 @@ inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo),
 	inst_matches_final_2(InstA, InstB, yes(Type), Info0, _).
 
-:- pred inst_matches_final_2(inst, inst, maybe(type),
-		inst_match_info, inst_match_info).
-:- mode inst_matches_final_2(in, in, in, in, out) is semidet.
+:- pred inst_matches_final_2 `with_type` inst_matches_pred.
+:- mode inst_matches_final_2 `with_inst` inst_matches_pred.
 
 inst_matches_final_2(InstA, InstB, MaybeType, Info0, Info) :-
 	ThisExpansion = InstA - InstB,
@@ -899,13 +955,13 @@ inst_matches_final_2(InstA, InstB, MaybeType, Info0, Info) :-
 		inst_expand(Info0^module_info, InstA, InstA2),
 		inst_expand(Info0^module_info, InstB, InstB2),
 		set__insert(Info0^expansions, ThisExpansion, Expansions1),
-		inst_matches_final_3(InstA2, InstB2, MaybeType,
+		handle_inst_var_subs(inst_matches_final_2, inst_matches_final_3,
+			InstA2, InstB2, MaybeType,
 			Info0^expansions := Expansions1, Info)
 	).
 
-:- pred inst_matches_final_3(inst, inst, maybe(type),
-		inst_match_info, inst_match_info).
-:- mode inst_matches_final_3(in, in, in, in, out) is semidet.
+:- pred inst_matches_final_3 `with_type` inst_matches_pred.
+:- mode inst_matches_final_3 `with_inst` inst_matches_pred.
 
 inst_matches_final_3(any(UniqA), any(UniqB), _, I, I) :-
 	unique_matches_final(UniqA, UniqB).
@@ -1059,9 +1115,8 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo),
 	inst_matches_binding_2(InstA, InstB, yes(Type), Info0, _).
 
-:- pred inst_matches_binding_2(inst, inst, maybe(type), inst_match_info,
-		inst_match_info).
-:- mode inst_matches_binding_2(in, in, in, in, out) is semidet.
+:- pred inst_matches_binding_2 `with_type` inst_matches_pred.
+:- mode inst_matches_binding_2 `with_inst` inst_matches_pred.
 
 inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
 	ThisExpansion = InstA - InstB,
@@ -1077,9 +1132,8 @@ inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
 			Info0^expansions := Expansions1, Info)
 	).
 
-:- pred inst_matches_binding_3(inst, inst, maybe(type), inst_match_info,
-		inst_match_info).
-:- mode inst_matches_binding_3(in, in, in, in, out) is semidet.
+:- pred inst_matches_binding_3 `with_type` inst_matches_pred.
+:- mode inst_matches_binding_3 `with_inst` inst_matches_pred.
 
 % Note that `any' is *not* considered to match `any' unless 
 % Info ^ any_matches_any = yes or the type is not a solver type (and does not

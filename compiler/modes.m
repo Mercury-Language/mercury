@@ -1893,21 +1893,8 @@ modecheck_var_has_inst(VarId, Inst, NeedExactMatch, Subst0, Subst,
 				ModuleInfo, Subst0, Subst1)
 		;
 			NeedExactMatch = yes,
-			inst_matches_final(VarInst, Inst, Type, ModuleInfo0),
-			ModuleInfo = ModuleInfo0,
-			Subst1 = Subst0
-			% WARNING:
-			% The code above (Subst1 = Subst0) assumes that there
-			% are no inst variables in the mode of the callee.
-			% Currently this will always true, since
-			% `NeedExactMatch' will be `yes' only if we are
-			% doing mode inference on the callee, and mode
-			% inference currently will not infer polymorphic modes.
-			% But that assumption might not always hold in future.
-			% An alternative would be to call inst_matches_initial
-			% here too, just to calculate the inst substitution.
-			% But that would be less efficient, so (at least
-			% for now) we don't do it.
+			inst_matches_initial_no_implied_modes(VarInst, Inst,
+				Type, ModuleInfo0, ModuleInfo, Subst0, Subst1)
 		)
 	->
 		Subst = Subst1,
@@ -2099,7 +2086,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		inst_matches_final(VarInst1, InitialInst, VarType, ModuleInfo0)
+		inst_matches_initial_no_implied_modes(VarInst1, InitialInst,
+			VarType, ModuleInfo0)
 	->
 		Var = Var0,
 		ExtraGoals = ExtraGoals0,
