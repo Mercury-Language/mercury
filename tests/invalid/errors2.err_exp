@@ -1,15 +1,15 @@
 errors2.m:009: Error: clause for predicate `errors2:bind_type_param/1'
 errors2.m:009:   without preceding `pred' declaration.
 errors2.m:052: In clause for predicate `errors2:type_error_4/0':
-errors2.m:052:   Warning: variable `X' occurs only once in this scope.
+errors2.m:052:   warning: variable `X' occurs only once in this scope.
 errors2.m:059: In clause for predicate `errors2:type_error_5/0':
-errors2.m:059:   Warning: variable `X' occurs only once in this scope.
+errors2.m:059:   warning: variable `X' occurs only once in this scope.
 errors2.m:065: In clause for predicate `errors2:type_error_6/0':
-errors2.m:065:   Warning: variable `X' occurs only once in this scope.
+errors2.m:065:   warning: variable `X' occurs only once in this scope.
 errors2.m:070: In clause for predicate `errors2:type_error_7/0':
-errors2.m:070:   Warning: variable `Y' occurs only once in this scope.
+errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2:type_error_7/0':
-errors2.m:071:   Warning: variables `Z, A, B' occur only once in this scope.
+errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
 errors2.m:007: Error: no clauses for predicate `errors2:bind_type_param/2'
 errors2.m:023: Error: no clauses for predicate `errors2:produce_string/1'
 errors2.m:025: Error: no clauses for predicate `errors2:expect_int/1'
@@ -49,9 +49,4 @@ errors2.m:072:   in argument 1 of call to pred `expect_int/1':
 errors2.m:072:   type error: variable `C' has type `string',
 errors2.m:072:   expected type was `int'.
 errors2.m:009: Inferred :- pred bind_type_param(int).
-errors2.m:019: In clause for `unresolved_polymorphism':
-errors2.m:019:   in argument 1 of call to predicate `errors2:bind_type_param/2':
-errors2.m:019:   mode error: variable `Arg' has instantiatedness `free',
-errors2.m:019:   expected instantiatedness was `ground'.
-errors2.m:009: Error: no mode declaration for predicate `errors2:bind_type_param/1'.
 For more information, try recompiling with `-E'.
