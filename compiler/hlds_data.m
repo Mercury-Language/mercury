@@ -400,14 +400,12 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 				cons_tag).
 			% This is for constructors of discriminated union
 			% types where one or more of the *other* constructors
-			% for that type is represented
-			% as a null_pointer, small_pointer(int),
-			% or reserved_pointer(sym_name, arity).
-			% The reserved_values field specifies which.
+			% for that type is represented as a reserved address.
 			% Any semidet deconstruction against a constructor
-			% represented as a shared_with_reserved_values cons_tag
-			% must check that the value isn't any of the reserved
-			% values before doing a deconstruction against
+			% represented as a shared_with_reserved_addresses
+			% cons_tag must check that the value isn't any of
+			% the reserved addresses before testing for the
+			% constructor's own cons_tag.
 
 :- type reserved_address
 	--->	null_pointer

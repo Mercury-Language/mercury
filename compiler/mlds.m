@@ -103,9 +103,18 @@
 
 % 5. Global data
 %
-% Is there any use in hanging on to the structure of the names for
-% compiler-generated global data?  Currently we do.  I'm not sure
-% if it would be better to flatten it (using mangled names) at this point.
+% MLDS names for global data are structured; they hold some
+% information about the kind of global data (see the mlds__data_name type).
+%
+% It's not clear whether this is actually useful.
+% And we're not completely consistent about applying this approach.
+% Many of the passes which create global data items do not actually
+% generate structured names, but instead just generate var/1 names
+% where the variable name already contains some mangling to ensure uniqueness.
+% Examples of this include "string_table" and "next_slots_table" (for
+% string switches), "float_*" (boxed floating point constants),
+% and "obj_*" (reserved objects, for representing constants in
+% discriminated union types).
 
 % 6. Types
 %
@@ -1331,8 +1340,9 @@ XXX Full exception handling support is not yet implemented.
 	.
 
 %-----------------------------------------------------------------------------%
-
-	% XXX this probably needs work
+%
+% Expressions
+%
 
 	% An rval is an expression that represents a value.
 :- type mlds__rval	
