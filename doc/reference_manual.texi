@@ -1817,8 +1817,8 @@ the instantiation state of a list of lists of free variables.
 The standard library provides the parametric modes
 
 @example
-:- mode in(Inst) :: Inst -> Inst.
-:- mode out(Inst) :: free -> Inst.
+:- mode in(Inst) == Inst >> Inst.
+:- mode out(Inst) == free >> Inst.
 @end example
 
 @noindent
@@ -1826,7 +1826,7 @@ so that for example the mode @samp{create_request} defined above
 could have be defined as
 
 @example
-:- mode create_request :: out(request).
+:- mode create_request == out(request).
 @end example
 
 There must not be more than one inst definition with the same name
@@ -1842,10 +1842,10 @@ Each mode of a predicate or function is called a @dfn{procedure}.
 For example, given the mode names defined by
 
 @example
-:- mode out_listskel ::
-        free -> listskel.
-:- mode in_listskel ::
-        listskel -> listskel.
+:- mode out_listskel ==
+        free >> listskel.
+:- mode in_listskel ==
+        listskel >> listskel.
 @end example
 
 the (type and) mode declarations of the function length and predicate append
@@ -2030,13 +2030,13 @@ There are three standard modes for manipulation unique values:
 
 @example
 % unique output
-:- mode uo :: free -> unique.
+:- mode uo == free >> unique.
 
 % unique input
-:- mode ui :: unique -> unique.
+:- mode ui == unique >> unique.
 
 % destructive input
-:- mode di :: unique -> dead.
+:- mode di == unique >> dead.
 @end example
 
 Mode @samp{uo} is used to create a unique value.
@@ -2082,13 +2082,13 @@ values, just as it does for unique values:
 
 @example
 % mostly unique output
-:- mode muo :: free -> mostly_unique.
+:- mode muo == free >> mostly_unique.
 
 % mostly unique input
-:- mode mui :: mostly_unique -> mostly_unique.
+:- mode mui == mostly_unique >> mostly_unique.
 
 % mostly destructive input
-:- mode mdi :: mostly_unique -> mostly_dead.
+:- mode mdi == mostly_unique >> mostly_dead.
 @end example
 
 @node Limitations of the current implementation
@@ -3173,8 +3173,8 @@ up to now).  These modes map from the corresponding @samp{inst} to
 itself.  It is as if they were defined by
 
 @example
-:- mode (pred is @var{Determinism}) :: in(pred is @var{Determinism}).
-:- mode (pred(@var{Inst}) is @var{Determinism}) ::
+:- mode (pred is @var{Determinism}) == in(pred is @var{Determinism}).
+:- mode (pred(@var{Inst}) is @var{Determinism}) ==
     in(pred(@var{Inst}) is @var{Determinism}).
 @dots{}
 @end example
