@@ -932,9 +932,12 @@
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module int, std_util.
 
-:- type io__state == c_pointer.
+:- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
 	% instead we store data in global variables.
+	% The reason this is not defined simply as `io__state == c_pointer'
+	% is so that `type_name' produces more informative results
+	% for cases such as `type_name(main)'.
 
 :- pragma c_header_code("
 	extern Word ML_io_stream_names;
