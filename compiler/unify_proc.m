@@ -572,6 +572,13 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		{ error("trying to create unify proc for abstract type") }
 	).
 
+	% This predicate generates the bodies of index predicates for the
+	% types that need index predicates.
+	%
+	% add_special_preds in make_hlds.m should include index in the list
+	% of special preds to define only for the kinds of types which do not
+	% lead this predicate to abort.
+
 :- pred unify_proc__generate_index_clauses(hlds_type_body, prog_var, prog_var,
 	prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_index_clauses(in, in, in, in, out, in, out)
@@ -582,22 +589,20 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
 		( { MaybeEqPred = yes(_) } ->
 			%
-			% For non-canonical types, we just give up and
-			% always return -1 (meaning "index not available")
-			% from index/1.
+			% For non-canonical types, the generated comparison
+			% predicate returns an error, and does not call the
+			% type's index predicate, so do not generate an index
+			% predicate for such types.
 			%
-			{ ArgVars = [X, Index] },
-			unify_proc__build_call(
-				"builtin_index_non_canonical_type",
-				ArgVars, Context, Goal),
-			unify_proc__quantify_clause_body(ArgVars, Goal,
-				Context, Clauses)
+			{ error("trying to create index proc for non-canonical type") }
 		; { IsEnum = yes } ->
-			{ ArgVars = [X, Index] },
-			unify_proc__build_call("unsafe_type_cast",
-				ArgVars, Context, Goal),
-			unify_proc__quantify_clause_body(ArgVars, Goal,
-				Context, Clauses)
+			%
+			% For enum types, the generated comparison predicate
+			% performs an integer comparison, and does not call the
+			% type's index predicate, so do not generate an index
+			% predicate for such types.
+			%
+			{ error("trying to create index proc for enum type") }
 		;
 			unify_proc__generate_du_index_clauses(Ctors, X, Index,
 				Context, 0, Clauses)

@@ -2717,14 +2717,26 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 
 	% The only place that the index predicate for a type can ever
 	% be called from is the compare predicate for that type.
-	% However, the compare predicate for an equivalence type
-	% never calls the index predicate for that type; it calls
-	% the compare predicate of the expanded type instead.
-	% We therefore do not generate index predicates for equivalence types.
+	% The only types whose compare predicates call the type's index
+	% predicate are discriminated union types which
+	%
+	% - do not have user-defined equality (the compare predicates for
+	%   types with user-defined equality generate a runtime abort),
+	%
+	% - are not enums (comparison predicates for enums just do an integer
+	%   comparison), and
+	%
+	% - have more than one constructor (for types with only one
+	%   constructor, the comparison predicate just deconstructs the
+	%   arguments and compares them).
+	%
+	% The compare predicate for an equivalence type never calls the index
+	% predicate for that type; it calls the compare predicate of the
+	% expanded type instead.
 	%
 	% When we see an abstract type declaration, we do not declare an index
-	% predicate for that type, since the type definition may later define
-	% the type as an equivalence type. If the type does turn out to need
+	% predicate for that type, since the actual type definition may later
+	% turn out not to require one. If the type does turn out to need
 	% an index predicate, its declaration will be generated together with
 	% its implementation.
 	%
@@ -2733,6 +2745,10 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	%
 	% What we do here for uu types does not matter much, since such types
 	% are not yet supported.
+	%
+	% Note: this predicate should include index in the list of special
+	% predicates to be defined only for the kinds of types which do not
+	% lead unify_proc__generate_index_clauses to abort.
 
 add_special_preds(Module0, TVarSet, Type, TypeId,
 			Body, Context, Status, Module) :-
@@ -2749,10 +2765,15 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
 	;
-		( Body = eqv_type(_) ->
-			SpecialPredIds = [unify, compare]
-		;
+		(
+			Body = du_type(Ctors, _, IsEnum, UserDefinedEquality),
+			IsEnum = no,
+			UserDefinedEquality = no,
+			Ctors = [_, _|_]
+		->
 			SpecialPredIds = [unify, index, compare]
+		;
+			SpecialPredIds = [unify, compare]
 		),
 		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
