@@ -337,7 +337,7 @@ struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
-	MR_uint_least16_t		MR_sll_goal_path;
+	MR_uint_least32_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
 	const MR_uint_least16_t		*MR_sll_var_nums;
@@ -348,7 +348,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
-	MR_uint_least16_t		MR_sll_goal_path;
+	MR_uint_least32_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
 
@@ -605,13 +605,7 @@ typedef union MR_Proc_Id_Union {
 ** into the string table, with the offset at index i-1 giving the name of
 ** variable i (since variable numbers start at one). If a variable has no name
 ** or cannot be referred to from an event, the offset will be zero, at which
-** offset the string table will contain an empty string. The string table
-** is restricted to be small enough to be addressed with 16 bits;
-** a string is reserved near the start for a string that says "too many
-** variables". Stack_layout.m will generate a reference to this string
-** instead of generating an offset that does not fit into 16 bits.
-** Therefore using the stored offset to index into the string table
-** is always safe.
+** offset the string table will contain an empty string.
 **
 ** The max_named_var_num field gives the number of elements in the
 ** used_var_names table, which is also the number of the highest numbered
@@ -682,7 +676,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_TrieNode		MR_exec_tabling_pointer;
 	MR_Table_Info		MR_exec_table_info;
 	const MR_uint_least16_t	*MR_exec_head_var_nums;
-	const MR_uint_least16_t	*MR_exec_used_var_names;
+	const MR_uint_least32_t	*MR_exec_used_var_names;
 	MR_uint_least16_t	MR_exec_num_head_vars;
 	MR_uint_least16_t	MR_exec_max_named_var_num;
 	MR_uint_least16_t	MR_exec_max_r_num;

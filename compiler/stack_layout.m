@@ -998,7 +998,7 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 		stack_layout__get_next_cell_number(CNum2),
 		{ NumVector = create(0, VarNumRvals,
 			uniform(yes(uint_least16)), must_be_static,
-			CNum2, "stack_layout_num_name_vector", Reuse) }
+			CNum2, "stack_layout_var_num_vector", Reuse) }
 	;
 		{ NumVector = const(int_const(0)) }
 	).
@@ -1731,8 +1731,18 @@ stack_layout__lookup_string_in_table(String, Offset) -->
 		{ Offset = OldOffset }
 	;
 		{ string__length(String, Length) },
-		{ TableOffset is TableOffset0 + Length + 1 },
-		{ TableOffset < (1 << (2 * stack_layout__byte_bits)) }
+		{ TableOffset = TableOffset0 + Length + 1 },
+		% We use a 32 bit unsigned integer to represent the offset.
+		% Computing that limit exactly without getting an overflow
+		% or using unportable code isn't trivial. The code below
+		% is overly conservative, requiring the offset to be
+		% representable in only 30 bits. The over-conservatism
+		% should not be an issue; the machine will run out of
+		% virtual memory before the test below fails, for the
+		% next several years anyway. (Compiling a module that has
+		% a 1 Gb string table will require several tens of Gb
+		% of other compiler structures.)
+		{ TableOffset < (1 << ((4 * stack_layout__byte_bits) - 2)) }
 	->
 		{ Offset = TableOffset0 },
 		{ map__det_insert(TableMap0, String, TableOffset0,

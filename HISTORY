@@ -1870,4 +1870,4 @@ compiling programs such as "hello world" and "eliza", was committed to
 the public Mercury CVS repository on 14th Oct, 2000.  The compiler first
 completed a successful bootstrap using the .NET CLR back-end grade on
 February 21st, 2003.
-
+ 
