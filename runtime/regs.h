@@ -39,7 +39,7 @@
 ** a real machine register, and not a simulated one. The number of
 ** real machine registers is given by the macro NUM_REAL_REGS.
 **
-** The second level maps the Mercury virtual machine registers
+** The final level maps the Mercury virtual machine registers
 **
 **	succip, hp, sp, curfr, maxfr and
 **	r1, ..., r32, r(33), ..., r(MAX_VIRTUAL_REG)
@@ -93,6 +93,25 @@
 /* regorder.h defines r1 .. r32; now define r(n) for n > 32 */
 
 #define r(n) mr((n) + NUM_SPECIAL_REG - 1)
+
+/* the save_registers() macro copies the physical machine registers
+   to their corresponding slots in the fake_reg array */
+
+#define save_registers() 	save_regs_to_mem(fake_reg)
+
+/* the restore_registers() macro sets the physical machine registers
+   to the values in their corresponding slots in the fake_reg array */
+
+#define restore_registers() 	restore_regs_from_mem(fake_reg)
+
+/* the save_transient_registers() and restore_transient_registers()
+   macros are similar to save_registers() and restore_registers()
+   except that they only save/restore registers which can be
+   affected by calling or returning from a C function (e.g.
+   by sliding register windows on SPARCs).  */
+
+#define save_transient_registers()    save_transient_regs_to_mem(fake_reg)
+#define restore_transient_registers() restore_transient_regs_from_mem(fake_reg)
 
 /* virtual_reg(n) accesses the underlying fake_reg for register n */
 
