@@ -653,7 +653,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		NonCanon, Functor, Arity, Arguments) :-
 	( 
 		TypeCtorRep = enum_usereq,
-		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, enum,
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	; 	
 		TypeCtorRep = enum,
@@ -662,7 +662,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arguments = []
 	;
 		TypeCtorRep = du_usereq,
-		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, du,
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = du,
@@ -706,7 +706,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		)
 	;
 		TypeCtorRep = notag_usereq,
-		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, notag,
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = notag,
@@ -715,7 +715,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arguments = []
 	;
 		TypeCtorRep = notag_ground_usereq,
-		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, notag_ground,
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	;
 		TypeCtorRep = notag_ground,
@@ -863,7 +863,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 		Arguments = []
 	;
 		TypeCtorRep = reserved_addr_usereq,
-		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, reserved_addr,
+		handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	;
 		% XXX noncanonical term
@@ -906,16 +906,20 @@ det_dynamic_cast(Term, Actual) :-
 	std_util__det_univ_to_type(Univ, Actual).
 
 
+:- inst usereq == bound(enum_usereq; du_usereq; notag_usereq;
+				notag_ground_usereq; reserved_addr_usereq).
+
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
 		noncanon_handling, string, int, list(std_util__univ)).
 
-:- mode handle_usereq_type(in, in, in, in,
-		in(do_not_allow), out, out, out) is det.
-:- mode handle_usereq_type(in, in, in, in,
+:- mode handle_usereq_type(in, in, in, in(usereq),
+		in(do_not_allow), out, out, out) is erroneous.
+:- mode handle_usereq_type(in, in, in, in(usereq),
 		in(canonicalize), out, out, out) is det.
-:- mode handle_usereq_type(in, in, in, in,
+:- mode handle_usereq_type(in, in, in, in(usereq),
 		in(include_details_cc), out, out, out) is cc_multi.
-:- mode handle_usereq_type(in, in, in, in, in, out, out, out) is cc_multi.
+:- mode handle_usereq_type(in, in, in, in(usereq),
+		in, out, out, out) is cc_multi.
 
 
 handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
@@ -927,9 +931,21 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
 		Arity = 0,
 		Arguments = []
 	; NonCanon = include_details_cc,
-		deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+		( TypeCtorRep = enum_usereq,
+			BaseTypeCtorRep = enum
+		; TypeCtorRep = du_usereq,
+			BaseTypeCtorRep = du
+		; TypeCtorRep = notag_usereq,
+			BaseTypeCtorRep = notag
+		; TypeCtorRep = notag_ground_usereq,
+			BaseTypeCtorRep = notag_ground
+		; TypeCtorRep = reserved_addr_usereq,
+			BaseTypeCtorRep = reserved_addr
+		),
+		deconstruct(Term, TypeInfo, TypeCtorInfo, BaseTypeCtorRep,
 				NonCanon, Functor, Arity, Arguments)
 	).
+
 
 	% MR_expand_type_name from mercury_deconstruct.c
 :- func expand_type_name(type_ctor_info, bool) = string.
