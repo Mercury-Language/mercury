@@ -2161,6 +2161,7 @@ Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 void
 mercury_print_const(Word data_value, Word entry_value) 
 {
+	char *functor;
 
 #ifdef DEBUG_IO__WRITE
 	printf(""This is a constant functor, %ld of %ld with this tag\n"",
@@ -2170,12 +2171,17 @@ mercury_print_const(Word data_value, Word entry_value)
 	/* the functors are stored after the enum_indicator and
 	 * the number of functors
 	 */
-	printf(""%s"", (char *) ((Word *) entry_value)[data_value + 2]);	
+	functor = (char *) ((Word *) entry_value)[data_value + 2];
+
+	if (fprintf(mercury_current_text_output->file, ""%s"", functor) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
 }
 
 void
 mercury_print_enum(Word data_value, Word entry_value) 
 {
+	char *functor;
 
 #ifdef DEBUG_IO__WRITE
 	printf(""This is a constant functor, %ld of %ld in this enum\n"",
@@ -2185,8 +2191,11 @@ mercury_print_enum(Word data_value, Word entry_value)
 	/* the functors are stored after the enum_indicator and
 	 * the number of functors
 	 */
+	functor = (char *) ((Word *) entry_value)[data_value + 2];
 
-	printf(""%s"", (char *) ((Word *) entry_value)[data_value + 2]);	
+	if (fprintf(mercury_current_text_output->file, ""%s"", functor) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
 }
 
 
@@ -2201,21 +2210,29 @@ mercury_print_simple(Word data_value, Word entry_value, Word * type_info)
 {
 	int num_args, i;
 	int allocated = 0;
+	char * functor;
 
 	num_args = field(0, (Word *) entry_value, 0);
 
 #ifdef DEBUG_IO__WRITE
 	printf(""This functor has %d arguments.\n"", num_args); 
 #endif
-	
-	printf(""%s("", (char *) ((Word *) entry_value)[num_args + 1]);
+
+	functor = (char *) ((Word *) entry_value)[num_args + 1];
+
+	if (fprintf(mercury_current_text_output->file, ""%s("", functor) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
 
 	for (i = 0; i < num_args ; i++) {
 		Word * arg_pseudo_type_info;
 		Word * arg_type_info;
 
 		if (i != 0) {
-			printf("", "");
+			if (fprintf(mercury_current_text_output->file, 
+					"", "") < 0) {
+				mercury_output_error(mercury_current_text_output);
+			}
 		}
 
 #ifdef DEBUG_IO__WRITE
@@ -2242,7 +2259,9 @@ mercury_print_simple(Word data_value, Word entry_value, Word * type_info)
 
 	}
 
-	printf("")"");
+	if (fprintf(mercury_current_text_output->file, "")"") < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
 }
 
 /*
