@@ -66,7 +66,7 @@ Options:
 
 Diagnostics options:
 	-v, --verbose
-		Echo the gcc command line before executing it.
+		Print each command before executing it.
 	--no-demangle
 		Don't pipe the output of the linker through the Mercury
 		demangler.
@@ -139,16 +139,8 @@ Debugging options:
 Initialization options:
 	-a, --aditi
 		Generate a function to upload Aditi-RL data to a database.
-	-c <n>, --max-calls <n>
-		Break up the initialization into groups of at most <n> function
-		calls.  (Default value of <n> is 40.)
-	-i, --include-initialization-code
-		Always include code that calls the initialization functions
-		of the various modules. With this option, the debugger can use
-		information from any modules that were compiled with execution
-		tracing to print (partial) stack traces, and to print the
-		values of variables in ancestors of the current call, even
-		in grades in which this not normally possible.
+		This option is needed when interfacing with the Aditi
+		deductive database system.
 	--no-main, --library
 		Don't generate a \`main()' function.
 		Instead, generate a function
@@ -174,19 +166,34 @@ Initialization options:
 		containing only C code that was automatically generated
 		by the Mercury compiler.)
 
-	Environment variables:
-		MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
-		MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS,
-		MERCURY_MKINIT.
-
 Threads options:
 	--use-thread-libs
 		Link with the POSIX thread libraries. This option is useful
 		if a C library being linked with uses threads, but the
 		Mercury code being linked doesn't.
 
-$grade_usage"
+$grade_usage
 
+Environment variables:
+		MERCURY_DEFAULT_GRADE, MERCURY_C_COMPILER,
+		MERCURY_C_LIB_DIR, MERCURY_NONSHARED_LIB_DIR,
+		MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
+		MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS,
+		MERCURY_MKINIT."
+
+# The following options are not generally useful, so they are not documented:
+# -i, --include-initialization-code
+# 	Always include code that calls the initialization functions
+# 	of the various modules. With this option, the debugger can use
+# 	information from any modules that were compiled with execution
+# 	tracing to print (partial) stack traces, and to print the
+# 	values of variables in ancestors of the current call, even
+# 	in grades in which this not normally possible.
+#	(It's usually better just to use `--trace').
+# -c <n>, --max-calls <n>
+#         Break up the initialization into groups of at most <n> function
+#         calls.  (Default value of <n> is 40.)
+ 
 while : ; do
     case "$1" in
 	-h|--help|"-?")
