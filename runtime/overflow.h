@@ -6,7 +6,7 @@
 
 /* DEFINITIONS FOR OVERFLOW CHECKS */
 
-#define IF(cond, val)	((cond) ? (val) : 0)
+#define IF(cond, val)	((cond) ? (val),(void)0 : (void)0)
 
 #ifdef	SPEED
 
