@@ -294,10 +294,10 @@
 % The argument passing convention is that the new parameters
 % introduced by this pass are placed in the following order:
 %
-%	First the UnivTypeClassInfos (for universally quantified constraints)
-%	then the ExistTypeClassInfos (for existentially quantified constraints)
-%	then the UnivTypeInfos (for universally quantified type variables)
+%	First the UnivTypeInfos (for universally quantified type variables)
 % 	then the ExistTypeInfos (for existentially quantified type variables)
+%	then the UnivTypeClassInfos (for universally quantified constraints)
+%	then the ExistTypeClassInfos (for existentially quantified constraints)
 %	and finally the original arguments of the predicate.
 %
 %-----------------------------------------------------------------------------%
@@ -1826,9 +1826,14 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			polymorphism__make_typeclass_info_vars_2(
 				InstanceConstraints,
 				ExistQVars, Context,
-				[], InstanceExtraTypeClassInfoVars, 
+				[], InstanceExtraTypeClassInfoVars0, 
 				ExtraGoals0, ExtraGoals1, 
 				Info1, Info2),
+			
+				% The variables are built up in 
+				% reverse order.
+			list__reverse(InstanceExtraTypeClassInfoVars0,
+				InstanceExtraTypeClassInfoVars),
 
 			polymorphism__construct_typeclass_info(
 				InstanceExtraTypeInfoVars, 
