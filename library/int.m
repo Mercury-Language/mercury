@@ -209,11 +209,11 @@
 
 X div Y = Div :-
 	Trunc = X // Y,
-	(if X // Y >= 0 then
+	( X // Y >= 0 ->
 		Div = Trunc
-	else if X rem Y = 0 then
+	; X rem Y = 0 ->
 		Div = Trunc
-	else
+	;
 		Div = Trunc - 1
 	).
 
