@@ -3790,36 +3790,60 @@ so on Windows you must explicitly specify @samp{-Tr}.
 @c Tells the Boehm collector not to perform any garbage collection.
 
 @sp 1
-@item --heap-size=@var{size}
+@item --heap-size @var{size}
 Sets the size of the heap to @var{size} kilobytes.
 
 @sp 1
-@item --detstack-size=@var{size}
+@item --detstack-size @var{size}
 Sets the size of the det stack to @var{size} kilobytes.
 
 @sp 1
-@item --nondetstack-size=@var{size}
+@item --nondetstack-size @var{size}
 Sets the size of the nondet stack to @var{size} kilobytes.
 
 @sp 1
-@item --trail-size=@var{size}
+@item --trail-size @var{size}
 Sets the size of the trail to @var{size} kilobytes.
 
 @c @sp 1
-@c @item --heap-redzone-size=@var{size}
+@c @item --heap-redzone-size @var{size}
 @c Sets the size of the redzone on the heap to @var{size} kilobytes.
 
 @c @sp 1
-@c @item --detstack-redzone-size=@var{size}
+@c @item --detstack-redzone-size @var{size}
 @c Sets the size of the redzone on the det stack to @var{size} kilobytes.
 
 @c @sp 1
-@c @item --nondetstack-redzone-size=@var{size}
+@c @item --nondetstack-redzone-size @var{size}
 @c Sets the size of the redzone on the nondet stack to @var{size} kilobytes.
 
 @c @sp 1
-@c @item --trail-redzone-size=@var{size}
+@c @item --trail-redzone-size @var{size}
 @c Sets the size of the redzone on the trail to @var{size} kilobytes.
+
+@sp 1
+@item -i @var{filename}
+@itemx --mdb-in @var{filename}
+Read debugger input from the file or device specified by @var{filename},
+rather than from standard input.
+
+@sp 1
+@item -o @var{filename}
+@item --mdb-out @var{filename}
+Print debugger output to the file or device specified by @var{filename},
+rather than to standard output.
+
+@sp 1
+@item -e @var{filename}
+@itemx --mdb-err @var{filename}
+Print debugger error messages to the file or device specified by @var{filename},
+rather than to standard error.
+
+@sp 1
+@item -m @var{filename}
+@itemx --mdb-tty @var{filename}
+Redirect all three debugger I/O streams -- input, output, and error messages --
+to the file or device specified by @var{filename}.
 
 @end table
 

@@ -50,30 +50,34 @@ ALLPROGS=	$(PROGS)
 #-----------------------------------------------------------------------------#
 
 debugger_regs.out: debugger_regs debugger_regs.inp
-	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out
+	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
 
 existential_type_classes.out: existential_type_classes \
 			existential_type_classes.inp
-	$(MDB) ./existential_type_classes < existential_type_classes.inp > existential_type_classes.out
+	$(MDB) ./existential_type_classes < existential_type_classes.inp \
+		> existential_type_classes.out 2>&1
 
 implied_instance.out: implied_instance implied_instance.inp
-	$(MDB) ./implied_instance < implied_instance.inp > implied_instance.out
+	$(MDB) ./implied_instance < implied_instance.inp \
+		> implied_instance.out 2>&1
 
 interpreter.out: interpreter interpreter.inp
-	$(MDB) ./interpreter interpreter.m < interpreter.inp > interpreter.out
+	$(MDB) ./interpreter interpreter.m < interpreter.inp \
+		> interpreter.out 2>&1
 
 multi_parameter.out: multi_parameter multi_parameter.inp
-	$(MDB) ./multi_parameter < multi_parameter.inp > multi_parameter.out
+	$(MDB) ./multi_parameter < multi_parameter.inp \
+		> multi_parameter.out 2>&1
 
 queens.out: queens queens.inp
-	$(MDB) ./queens < queens.inp > queens.out
+	$(MDB) ./queens < queens.inp > queens.out 2>&1
 
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
 mdb_command_test.out: queens mdb_command_test.inp
 	-$(MDB) ./queens < mdb_command_test.inp \
 		| egrep "internal error in the trace help system" \
-		> mdb_command_test.out
+		> mdb_command_test.out 2>&1
 
 #-----------------------------------------------------------------------------#
 

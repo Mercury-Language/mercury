@@ -365,9 +365,10 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 }
 
 void
-MR_print_proc_id_for_debugger(const MR_Stack_Layout_Entry *entry_layout)
+MR_print_proc_id_for_debugger(FILE *fp,
+	const MR_Stack_Layout_Entry *entry_layout)
 {
-	MR_print_proc_id(stdout, entry_layout, NULL, NULL, NULL);
+	MR_print_proc_id(fp, entry_layout, NULL, NULL, NULL);
 }
 
 void

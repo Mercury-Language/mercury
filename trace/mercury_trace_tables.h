@@ -110,11 +110,15 @@ extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
 					MR_Proc_Spec *spec, bool *unique);
 
 /*
-** Call f(entry) on the layout of every procedure that matches
-** the given specification.
+** MR_process_matching_procedures(spec, f, data):
+**	For each procedure that matches the specification given by `spec',
+**	call `f(data, entry)', where `entry' is the entry layout for that
+**	procedure.  The argument `data' is a `void *' which can be used
+**	to pass any other information needed by the function `f'.
 */
 
 extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
-			void f(const MR_Stack_Layout_Entry *));
+			void f(void *, const MR_Stack_Layout_Entry *), 
+			void *data);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

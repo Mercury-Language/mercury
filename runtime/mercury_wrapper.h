@@ -135,6 +135,11 @@ extern	size_t		trail_zone_size;
 extern	size_t		global_heap_zone_size;
 extern	size_t		debug_heap_zone_size;
 
+/* file names for the mdb debugging streams */
+extern const char *MR_mdb_in_filename;
+extern const char *MR_mdb_out_filename;
+extern const char *MR_mdb_err_filename;
+
 /* size of the primary cache */
 extern	size_t		pcache_size;
 
