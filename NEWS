@@ -21,7 +21,8 @@ NEWS for Mercury release 0.5
   See the Mercury language reference manual.
 
 * We now provide genuinue arrays with destructive update.
-  See the library module `uniq_array'.
+  See the library module `uniq_array'.  (Warning: this has not had
+  much testing.  The interface is not yet stable.)
 
 * We now support interfacing to C code.
   See the documentation in the Mercury language reference manual.
