@@ -1,0 +1,5 @@
+duplicate_instance_2.o(.rodata+0x0): multiple definition of `base_typeclass_info_duplicate_instance_1__foo__arity1__int__arity0__'
+duplicate_instance_1.o(.rodata+0x0): first defined here
+collect2: ld returned 1 exit status
+Error: system command returned non-zero exit status.
+Error: link failed.

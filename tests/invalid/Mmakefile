@@ -16,6 +16,7 @@ MULTIMODULE_SOURCES= \
 	aditi_state_errors.m \
 	aditi_update_errors.m \
 	aditi_update_mode_errors.m \
+	duplicate_instance_2.m \
 	imported_mode.m \
 	partial_implied_mode.m \
 	test_nested.m \
@@ -163,16 +164,28 @@ ERRS=		$(SOURCES:%.m=%.err)
 ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
 %.err: %.m
-	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --errorcheck-only $* \
+		> $*.err 2>&1; \
+	then false; else true; fi
+
+# For duplicate_instance_{1,2}, the error is only caught at link time.
+# So we need to use a different rule for that.
+duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
+		duplicate_instance_1.int
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		duplicate_instance_1.m duplicate_instance_2.m \
+		> $*.err 2>&1; \
 	then false; else true; fi
 
 # Some tests have more than one possible valid output, so
 # we allow the test to pass if it matches *either* the .err_exp
 # or the .err_exp2 file. 
+DIFF_OPTS=-c
 %.err_res: %.err %.err_exp
 	-rm -f $@
-	diff -c $*.err_exp $*.err > $@ || \
-		{ [ -f $*.err_exp2 ] && diff -c $*.err_exp2 $*.err > $@; }
+	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
+		{ [ -f $*.err_exp2 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; }
 
 all:	check
 
