@@ -189,7 +189,7 @@ dont_throw_away: dll_fixup.o dll_init.o
 clean: clean_dll
 
 .PHONY: clean_dll
-clean_dll
+clean_dll:
 	-rm -f dll_init.c dll_init.o dll_fixup.s dll_fixup.o
 
 #-----------------------------------------------------------------------------#
