@@ -152,14 +152,24 @@
 % This is described in more detail in the following paper:
 %	Fergus Henderson <fjh@cs.mu.oz.au>,
 %	"Accurate garbage collection in an uncooperative environment".
-%	Submitted for publication.  Available from the author on request.
+%	International Symposium on Memory Management, Berlin, Germany, 2002.
 %
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
+%	- heap reclamation on failure is not yet supported.
+%	  One difficulty is that when resetting the heap,
+%	  we need to also reset all the local variables which might
+%	  point to reclaimed garbage, otherwise the collector might
+%	  try to trace through them, which can result in an error
+%	  since the data pointed to isn't of the right type
+%	  because it has been overwritten.
+%	- the garbage collector should resize the heap if/when it fills up
+%	- the garbage collector should collect the solutions heap
+%	  and the global heap as well as the ordinary heap
 %	- handle `pragma export'
-%	- support higher-order code: fix the remaining problems with tracing
-%	  the wrapper functions generated for higher-order code.
-%	- support type classes: same issues as for higher-order code, I think
+%	- support type classes: currently we generate code for type class
+%	  method wrappers which calls MR_materialize_closure_type_params(),
+%	  which only works for closures, not for typeclass_infos.
 %	- support --nondet-copy-out (see comment in flatten_nested_defn)
 %	- support --high-level-data (fixup_newobj_in_atomic_statement
 %	  gets the types wrong; see comment in ml_code_util.m)
@@ -411,7 +421,15 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		DefnBody0 = mlds__function(PredProcId, Params0,
-			defined_here(FuncBody0), Attributes)
+			defined_here(FuncBody0), Attributes),
+		% Don't add GC tracing code to the gc_trace/1 primitive!
+		% (Doing so would just slow things down unnecessarily.)
+		\+ (
+			Name = function(PredLabel, _, _, _),
+			PredLabel = pred(_, _, "gc_trace", 1, _, _),
+			mercury_private_builtin_module(PrivateBuiltin),
+			ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
+		)
 	->
 		EnvName = ml_env_name(Name, Action),
 		EnvTypeName = ml_create_env_type_name(EnvName,
