@@ -246,6 +246,27 @@ $(os_subdir)%.pic_o : $(cs_subdir)%.c
 endif # $(cs_subdir) != ""
 
 #-----------------------------------------------------------------------------#
+#
+# Code to handle dependencies on $(MLOBJS) and $(MLPICOBJS).
+#
+
+# The generated `.dep' files include rules for targets which may depend
+# on $(MLOBJS) or $(MLPICOBJS).  However, the definition of $(MLOBJS)
+# or $(MLPICOBJS) is in the user's Mmakefile, and the `.dep' files get
+# included *before* the Mmakefile.  The `.dep' files cannot contain
+# those dependency directly, because $(MLOBJS) and $(MLPICOBJS) variables
+# have not yet been defined.
+#
+# Instead, the generated `.dep' files just add the appropriate targets to
+# the $(MLOBJS_DEPS) or $(MLPICOBJS_DEPS) variables, and then we record the
+# dependency of those files on $(MLOBJS) or $(MLPICOBJS) here in Mmake.rules,
+# which gets included after the user's Mmakefile.
+
+$(MLOBJS_DEPS) : $(MLOBJS)
+$(MLPICOBJS_DEPS) : $(MLPICOBJS)
+
+# The following is obsolete; I've kept it here only for
+# bootstrapping reasons and for compatibility with old `.dep' files.
 
 MLOBJS-%: $(MLOBJS)
 	@

@@ -1947,8 +1947,9 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	module_name_to_file_name(ModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
+		"MLOBJS_DEPS += ", ExeFileName, "\n",
 		ExeFileName, " : $(", MakeVarName, ".os) ",
-		InitObjFileName, " MLOBJS-", MakeVarName, "\n",
+			InitObjFileName, "\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ExeFileName, " ",
 		InitObjFileName, " \\\n",
 		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
@@ -1965,8 +1966,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SplitLibFileName, " : $(", MakeVarName, ".dir_os) ",
-				"MLOBJS-", MakeVarName, "\n",
+		"MLOBJS_DEPS += ", SplitLibFileName, "\n",
+		SplitLibFileName, " : $(", MakeVarName, ".dir_os)\n",
 		"\trm -f ", SplitLibFileName, "\n",
 		"\t$(AR) $(ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
 		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
@@ -1993,16 +1994,16 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SharedLibFileName, " : $(", MakeVarName, ".pic_os) ",
-				"MLPICOBJS-", MakeVarName, "\n",
+		"MLPICOBJS_DEPS += ", SharedLibFileName, "\n",
+		SharedLibFileName, " : $(", MakeVarName, ".pic_os)\n",
 		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
 			SharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		LibFileName, " : $(", MakeVarName, ".os) ",
-				"MLOBJS-", MakeVarName, "\n",
+		"MLOBJS_DEPS += ", LibFileName, "\n",
+		LibFileName, " : $(", MakeVarName, ".os)\n",
 		"\trm -f ", LibFileName, "\n",
 		"\t$(AR) $(ARFLAGS) ", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
