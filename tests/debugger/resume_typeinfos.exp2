@@ -10,7 +10,7 @@ mdb> print *
 mdb> goto 5
        5:      4  3 CALL pred list:length/2-0 (det)
 mdb> finish
-      15:      4  3 EXIT pred list:length/2-0 (det)
+       6:      4  3 EXIT pred list:length/2-0 (det)
 mdb> print *
        HeadVar__1             	[1, 2]
        HeadVar__2             	2
