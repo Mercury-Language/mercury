@@ -55,6 +55,8 @@
 :- pred set_unordlist__equal(set_unordlist(T), set_unordlist(T)).
 :- mode set_unordlist__equal(in, in) is semidet.
 
+	% `set_unordlist__empty(Set)' is true iff `Set' is an empty set.
+
 :- pred set_unordlist__empty(set_unordlist(_T)).
 :- mode set_unordlist__empty(in) is semidet.
 
@@ -127,6 +129,10 @@
 :- pred set_unordlist__remove_list(set_unordlist(T), list(T), set_unordlist(T)).
 :- mode set_unordlist__remove_list(in, in, out) is semidet.
 
+	% `set_unordlist__remove_least(Set0, X, Set)' is true iff `X' is the
+	% least element in `Set0', and `Set' is the set which contains all the
+	% elements of `Set0' except `X'.
+
 :- pred set_unordlist__remove_least(set_unordlist(T), T, set_unordlist(T)).
 :- mode set_unordlist__remove_least(in, out, out) is semidet.
 
@@ -145,15 +151,15 @@
 							set_unordlist(T)).
 :- mode set_unordlist__power_union(in, out) is det.
 
-	% `set_unordlist_intersect(SetA, SetB, Set)' is true iff `Set' is the
+	% `set_unordlist__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
 
 :- pred set_unordlist__intersect(set_unordlist(T), set_unordlist(T),
 							set_unordlist(T)).
 :- mode set_unordlist__intersect(in, in, out) is det.
 
-	% `set_unordlist__power_union(A, B)' is true iff `B' is the union of
-	% all the sets in `A'
+	% `set_unordlist__power_intersect(A, B)' is true iff `B' is the
+	% intersection of all the sets in `A'
 
 :- pred set_unordlist__power_intersect(set_unordlist(set_unordlist(T)),
 							set_unordlist(T)).
@@ -166,12 +172,6 @@
 :- pred set_unordlist__difference(set_unordlist(T), set_unordlist(T),
 							set_unordlist(T)).
 :- mode set_unordlist__difference(in, in, out) is det.
-
-	% `set_unordlist__join(Sets, Set)' is true iff `Set' is the union of
-	% all of the elements of `Sets'.
-
-:- pred set_unordlist__join(set_unordlist(set_unordlist(T)), set_unordlist(T)).
-:- mode set_unordlist__join(in, out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -249,13 +249,13 @@ set_unordlist__remove_least(Set0, E, Set) :-
 	set_unordlist__to_sorted_list(Set0, [E|Set]).
 
 set_unordlist__union(Set0, Set1, Set) :-
-	list__append(Set1, Set0, Set2),
-	list__sort_and_remove_dups(Set2, Set).
+	list__append(Set1, Set0, Set).
 
 set_unordlist__power_union(PS, S) :-
 	set_unordlist__to_sorted_list(PS, SL),
 	set_unordlist__init(S0),
-	set_unordlist__power_union_2(SL, S0, S).
+	set_unordlist__power_union_2(SL, S0, S1),
+	list__sort_and_remove_dups(S1, S).
 
 :- pred set_unordlist__power_union_2(list(set_unordlist(T)), set_unordlist(T),
 							set_unordlist(T)).
@@ -263,7 +263,7 @@ set_unordlist__power_union(PS, S) :-
 
 set_unordlist__power_union_2([], S, S).
 set_unordlist__power_union_2([T|Ts], S0, S) :-
-	set_unordlist__union(T, S0, S1),
+	set_unordlist__union(S0, T, S1),
 	set_unordlist__power_union_2(Ts, S1, S).
 
 set_unordlist__intersect(S0, S1, S) :-
@@ -308,20 +308,5 @@ set_unordlist__difference_2([], C, C).
 set_unordlist__difference_2([E|Es], A, C) :-
 	set_unordlist__delete(A, E, B),
 	set_unordlist__difference_2(Es, B, C).
-
-%--------------------------------------------------------------------------%
-
-set_unordlist__join(Sets, Set) :-
-	set_unordlist__to_sorted_list(Sets, SetsAsList),
-	set_unordlist__init(Set0),
-	set_unordlist__union_list(Set0, SetsAsList, Set).
-
-:- pred set_unordlist__union_list(set_unordlist(T), list(set_unordlist(T)),
-							set_unordlist(T)).
-:- mode set_unordlist__union_list(in, in, out) is det.
-set_unordlist__union_list(Set, [], Set).
-set_unordlist__union_list(SetIn, [Set | Sets], SetOut) :-
-	set_unordlist__union(SetIn, Set, SetOut1),
-	set_unordlist__union_list(SetOut1, Sets, SetOut).
 
 %--------------------------------------------------------------------------%
