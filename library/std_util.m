@@ -2329,21 +2329,17 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     data_tag = tag(data_word);
     data_value = body(data_word, data_tag);
 
-    layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
-
 #ifdef MR_RESERVE_TAG
-#if 0
-#error	This needs to be re-done for new RTTI
-
     /*
     ** Catch unbound Herbrand variables.
     ** Should fix the test --- I have no idea of the real origin of
     ** the RHS, so it may not work in all cases...
+    ** (In fact, it doesn't in some polymorphic cases.)
     */
 
-    if (data_tag == MR_TAG_VAR && type_ctor_layout_entry ==
-		    mkword(mktag(0), (Word *) mkbody((Integer) 1))) {
+    if (data_tag == MR_TAG_VAR &&
+	    MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors) ==
+		    MR_TYPE_CTOR_FUNCTORS_DU) {
 	/*
 	** We assume this is a Herbrand variable.  First check whether
 	** it is really a variable by performing one dereference step
@@ -2356,7 +2352,27 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	data_tag = tag(data_word);
 
 	if (data_tag == MR_TAG_VAR) {
-	    info->functor = ""<unbound>"";
+	    char buf[500];
+	    char *str;
+	    Word *min_ptr;
+	    Word *tmp_ptr;
+
+	    /* Chase the cycle to find the smallest entry */
+	    min_ptr = (Word *) data_value;
+	    tmp_ptr = (Word *) body(data_word, MR_TAG_VAR);
+	    while (tmp_ptr != (Word *) data_value) {
+		if (tmp_ptr < min_ptr)
+		    min_ptr = tmp_ptr;
+		MR_assert(tag(*tmp_ptr) == MR_TAG_VAR);
+	    	tmp_ptr = (Word *) body(*tmp_ptr, MR_TAG_VAR);
+	    }
+
+	    sprintf(buf, ""unbound(%p)"", min_ptr);
+	    incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
+                    (strlen(buf) + sizeof(Word)) / sizeof(Word));
+	    strcpy(str, buf);
+
+	    info->functor = str;
 	    info->argument_vector = NULL;
 	    info->type_info_vector = NULL;
 	    info->arity = 0;
@@ -2364,11 +2380,11 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	}
 
 	data_value = body(data_word, data_tag);
-	type_ctor_layout_entry = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT_ENTRY(
-	    type_ctor_info, data_tag);
     }
 #endif
-#endif
+
+    layout_for_tag = type_ctor_layout[data_tag];
+    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
 
     switch(type_ctor_info->type_ctor_rep) {
 
