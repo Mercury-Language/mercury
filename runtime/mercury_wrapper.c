@@ -35,10 +35,12 @@ ENDINIT
 
 #include	<stdio.h>
 #include	<string.h>
+#if 0 /* XXX the following code breaks on Win32 */
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<fcntl.h>
 #include	<sys/resource.h>
+#endif /* breaks on Win32 */
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
   #include <excpt.h>
@@ -2000,6 +2002,7 @@ mercury_runtime_terminate(void)
   #endif
 #endif
 
+#if 0 /* XXX the following code breaks on Win32 */
 	if (mem_usage_report) {
 		char	buf[MAX_MEM_USAGE_REPORT_FILENAME_SIZE];
 		int	i;
@@ -2042,6 +2045,7 @@ mercury_runtime_terminate(void)
 			(void) fclose(fp);
 		}
 	}
+#endif /* breaks on Win32 */
 
 	MR_terminate_engine();
 
