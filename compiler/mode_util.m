@@ -1507,7 +1507,7 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
 	{ goal_info_get_determinism(CondInfo0, CondDetism0) },
 	{ determinism_components(CondDetism0, CondCanFail0, CondSolns0) },
 	( { CondCanFail0 = cannot_fail } ->
-		{ goal_to_conj_list(C0, CondList) },
+		{ goal_to_conj_list(A0, CondList) },
 		{ goal_to_conj_list(B0, ThenList) },
 		{ list__append(CondList, ThenList, List) },
 		slap_recompute_info(RI0),
@@ -1552,7 +1552,7 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
 		recompute_instmap_delta_2(C0, C, InstMap0, InstMap3,
 				_InstMapDelta3),
 		{ instmap__vars(InstMap0, OuterNonLocals) },
-		{ goal_info_get_nonlocals(GoalInfo, InnerNonLocals) },
+		{ goal_info_get_nonlocals(GoalInfo0, InnerNonLocals) },
 		{ set__union(InnerNonLocals, OuterNonLocals, NonLocals) },
 		=(RI4),
 		{ recompute_info_get_module_info(RI4, M4) },
@@ -2049,11 +2049,21 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		; Unification0 = simple_test(_, _)
 		)
 	->
-		Det = Det1,
-		Goal = unify(Var, UnifyRhs, UniMode, Unification0,
-				UniContext),
-		ModuleInfo = ModuleInfo2,
-		GoalChanged = no
+		(
+			Unification0 = simple_test(_, _),
+			determinism_components(Det1, DetCanFail1, _),
+			DetCanFail1 = cannot_fail
+		->
+			Det = det,
+			Goal = conj([]),
+			GoalChanged = yes
+		;
+			Det = Det1,
+			Goal = unify(Var, UnifyRhs, UniMode, Unification0,
+					UniContext),
+			GoalChanged = no
+		),
+		ModuleInfo = ModuleInfo2
 	;
 		Unification0 = complicated_unify(_, CanFail)
 	->

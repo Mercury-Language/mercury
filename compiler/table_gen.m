@@ -607,7 +607,7 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredInfo, InstTable,
 		varset, inst_table, module_info, var, hlds_goal).
 :- mode generate_get_table_goals(in, out, in, out, in, in, out, out) is det.
 
-generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, _InstTable,
+generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, InstTable,
 		Module, TableVar, Goal) :-
 	generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet, 
 		TableVar),
@@ -639,12 +639,12 @@ generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, _InstTable,
 	TableVarMode = (free(unique) -> TableVarInst), 
 	get_table_var_type(TableVarType),
 	
-	inst_table_init(ArgInstTable),
+	% YYY Could use a blank InstTable here, too.
 	default_attributes(Attrs0),
 	set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs),
-	GoalEx = pragma_c_code(Attrs, PredId, ProcId,
-			[TableVar], pragma_c_code_arg_info(ArgInstTable, 
-				[yes("MC_table_var" - TableVarMode)]), 
+	GoalEx = pragma_c_code(Attrs, PredId, ProcId, [TableVar],
+			pragma_c_code_arg_info(InstTable,
+				[yes("MC_table_var" - TableVarMode)]),
 			[TableVarType], ordinary( 
 "	{
 		static Word MR_table = 0;

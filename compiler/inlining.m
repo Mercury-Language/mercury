@@ -379,6 +379,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		proc_info_inst_table(ProcInfo0, InstTable0),
 		proc_info_headvars(ProcInfo0, ArgVars),
 		proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
+
 		recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal1,
 			Goal, Instmap0, InstTable0, InstTable, _, ModuleInfo0,
 			ModuleInfo1),

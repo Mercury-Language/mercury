@@ -1833,9 +1833,6 @@ modecheck_force_set_var_inst(Var0, Inst, ModeInfo0, ModeInfo) :-
 		ModeInfo = ModeInfo0
 	).
 
-:- pred breakpoint is det.
-breakpoint.
-
 % If this was a call to an implied mode for that variable, then we need to
 % introduce a fresh variable.
 
@@ -1928,7 +1925,6 @@ handle_implied_mode(Var0, InstMapBefore, VarInst0, VarInst, InitialInst0,
 				% predicate, then give up.
 				ExtraGoals = ExtraGoals0,
 				set__singleton_set(WaitingVars, Var0),
-				breakpoint,
 				mode_info_error(WaitingVars,
 					mode_error_implied_mode(Var0, VarInst0,
 					InitialInst),
@@ -1944,7 +1940,6 @@ handle_implied_mode(Var0, InstMapBefore, VarInst0, VarInst, InitialInst0,
 			Var = Var0,
 			ExtraGoals = ExtraGoals0,
 			set__singleton_set(WaitingVars, Var0),
-			breakpoint,
 			mode_info_error(WaitingVars,
 				mode_error_implied_mode(Var0, VarInst0,
 				InitialInst),

@@ -1088,11 +1088,11 @@ intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	% XXX will need modification for alias declarations in arguments
 	%     of pragma_c_code
-	( { MaybeArgModes = yes(argument_modes(_ArgIKT, ArgModes)) } ->
+	( { MaybeArgModes = yes(argument_modes(ArgIT, ArgModes)) } ->
 		{ get_pragma_c_code_vars(Vars, Names, Varset0, ArgModes,
 			Varset, PragmaVars) },
 		mercury_output_pragma_c_code(Attributes, SymName,
-			PredOrFunc, PragmaVars, Varset, PragmaImpl, InstTable),
+			PredOrFunc, PragmaVars, Varset, PragmaImpl, ArgIT),
 		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
 			PragmaImpl, Attributes, Vars, Varset, Names,
 			SymName, InstTable)

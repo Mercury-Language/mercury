@@ -665,15 +665,14 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 		ModuleInfo, InstMap) :-
 	inst_expand_defined_inst(InstTable0, ModuleInfo0, InstA, InstA2),
 
-	UI0 = unify_inst_info(ModuleInfo0, InstTable0, InstMap0),
-
 	( InstA2 = alias(KeyA) ->
 		inst_table_get_inst_key_table(InstTable0, IKT0),
 		instmap__inst_key_table_lookup(InstMap0, IKT0, KeyA, InstA3),
 
-		abstractly_unify_inst_functor_2(Live, Real, InstA3, ConsId,
-			ArgInsts, ArgLives, UI0, Inst0, Det, UI),
-		UI = unify_inst_info(ModuleInfo, InstTable1, InstMap1),
+		abstractly_unify_inst_functor(Live, InstA3, ConsId, ArgInsts,
+			ArgLives, Real, InstTable0, ModuleInfo0, InstMap0,
+			Inst0, Det, InstTable1, ModuleInfo, InstMap1),
+
 		( determinism_components(Det, _, at_most_zero) ->
 			Inst = not_reached,
 			InstMap = InstMap1,
@@ -687,6 +686,7 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 			instmap__add_alias(InstMap1, KeyA, NewKey, InstMap)
 		)
 	;
+		UI0 = unify_inst_info(ModuleInfo0, InstTable0, InstMap0),
 		abstractly_unify_inst_functor_2(Live, Real, InstA2, ConsId,
 			ArgInsts, ArgLives, UI0, Inst0, Det, UI),
 		UI = unify_inst_info(ModuleInfo, InstTable, InstMap),
@@ -970,8 +970,8 @@ unify_uniq(Live,   Real, Det,  shared,   mostly_clobbered,  mostly_clobbered) :-
 	allow_unify_with_clobbered(Live, Real, Det).
 
 unify_uniq(_,      _, _,       unique,   shared,	    shared).
-unify_uniq(live,   _, _,       unique,   unique,	    shared).
-unify_uniq(live,   _, _,       unique,   mostly_unique,     shared).
+unify_uniq(live,   _, _,       unique,   unique,	    unique).
+unify_uniq(live,   _, _,       unique,   mostly_unique,     mostly_unique).
 unify_uniq(dead,   _, _,       unique,   unique,	    unique).
 unify_uniq(dead,   _, _,       unique,   mostly_unique,     mostly_unique).
 		% XXX the above line is a conservative approximation
@@ -982,8 +982,8 @@ unify_uniq(Live,   Real, Det,  unique,   mostly_clobbered,  mostly_clobbered) :-
 	allow_unify_with_clobbered(Live, Real, Det).
 
 unify_uniq(_,      _, _,       mostly_unique,    shared,    shared).
-unify_uniq(live,   _, _,       mostly_unique,    unique,    shared).
-unify_uniq(live,   _, _,       mostly_unique,    mostly_unique,    shared).
+unify_uniq(live,   _, _,       mostly_unique,    unique,    mostly_unique).
+unify_uniq(live,   _, _,       mostly_unique,    mostly_unique, mostly_unique).
 unify_uniq(dead,   _, _,       mostly_unique,    unique,    mostly_unique).
 		% XXX the above line is a conservative approximation
 		% sometimes it should return unique not mostly_unique

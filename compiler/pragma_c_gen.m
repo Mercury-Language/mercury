@@ -894,6 +894,25 @@ pragma_select_in_args([Arg | Rest], In) :-
 
 %---------------------------------------------------------------------------%
 
+% var_is_not_singleton determines whether or not a given pragma_c variable
+% is singleton (i.e. starts with an underscore) or anonymous (in which case
+% it's singleton anyway, it just doesn't necessarily have a singleton name).
+%
+% Singleton vars should be ignored when generating the declarations for
+% pragma_c arguments because:
+%
+%	- they should not appear in the C code
+% 	- they could clash with the system name space
+%
+
+:- pred var_is_not_singleton(maybe(string), string) is semidet.
+:- mode var_is_not_singleton(in, out) is semidet.
+
+var_is_not_singleton(yes(Name), Name) :-
+	\+ string__first_char(Name, '_', _).
+
+%---------------------------------------------------------------------------%
+
 % make_pragma_decls returns the list of pragma_decls for the pragma_c
 % data structure in the LLDS. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
@@ -903,7 +922,9 @@ pragma_select_in_args([Arg | Rest], In) :-
 make_pragma_decls([], []).
 make_pragma_decls([Arg | Args], Decls) :-
 	Arg = c_arg(_Var, ArgName, OrigType, _ArgInfo),
-	( ArgName = yes(Name) ->
+	(
+		var_is_not_singleton(ArgName, Name)
+	->
 		Decl = pragma_c_arg_decl(OrigType, Name),
 		make_pragma_decls(Args, Decls1),
 		Decls = [Decl | Decls1]
@@ -925,7 +946,9 @@ make_pragma_decls([Arg | Args], Decls) :-
 get_pragma_input_vars([], [], empty) --> [].
 get_pragma_input_vars([Arg | Args], Inputs, Code) -->
 	{ Arg = c_arg(Var, MaybeName, Type, _ArgInfo) },
-	( { MaybeName = yes(Name) } ->
+	(
+		{ var_is_not_singleton(MaybeName, Name) }
+	->
 		code_info__produce_variable(Var, Code0, Rval),
 		{ Input = pragma_c_input(Name, Type, Rval) },
 		get_pragma_input_vars(Args, Inputs1, Code1),
@@ -961,17 +984,18 @@ pragma_acquire_regs([Arg | Args], [Reg | Regs]) -->
 	list(pragma_c_output)::out, code_info::in, code_info::out) is det.
 
 place_pragma_output_args_in_regs([], [], []) --> [].
-place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
-		[Output | Outputs]) -->
+place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs) -->
 	{ Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo) },
 	code_info__release_reg(Reg),
 	code_info__set_var_location(Var, Reg),
-	( { MaybeName = yes(Name) } ->
-		{ Output = pragma_c_output(Reg, OrigType, Name) }
+	{
+		var_is_not_singleton(MaybeName, Name)
+	->
+		Outputs = [pragma_c_output(Reg, OrigType, Name) | Outputs0]
 	;
-		{ error("place_pragma_output_args_in_regs: unnamed arg") }
-	),
-	place_pragma_output_args_in_regs(Args, Regs, Outputs).
+		Outputs = Outputs0
+	},
+	place_pragma_output_args_in_regs(Args, Regs, Outputs0).
 place_pragma_output_args_in_regs([_|_], [], _) -->
 	{ error("place_pragma_output_args_in_regs: length mismatch") }.
 place_pragma_output_args_in_regs([], [_|_], _) -->
@@ -988,7 +1012,9 @@ place_pragma_output_args_in_regs([], [_|_], _) -->
 input_descs_from_arg_info([], []).
 input_descs_from_arg_info([Arg | Args], Inputs) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
-	( MaybeName = yes(Name) ->
+	(
+		var_is_not_singleton(MaybeName, Name)
+	->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
 		Input = pragma_c_input(Name, OrigType, lval(Reg)),
@@ -1008,16 +1034,18 @@ input_descs_from_arg_info([Arg | Args], Inputs) :-
 	is det.
 
 output_descs_from_arg_info([], []).
-output_descs_from_arg_info([Arg | Args], [Output | Outputs]) :-
+output_descs_from_arg_info([Arg | Args], Outputs) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
-	( MaybeName = yes(Name) ->
+	(
+		var_is_not_singleton(MaybeName, Name)
+	->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		Output = pragma_c_output(Reg, OrigType, Name)
+		Outputs = [pragma_c_output(Reg, OrigType, Name) | Outputs0]
 	;
-		error("output_descs_from_arg_info: unnamed arg")
+		Outputs = Outputs0
 	),
-	output_descs_from_arg_info(Args, Outputs).
+	output_descs_from_arg_info(Args, Outputs0).
 
 %---------------------------------------------------------------------------%
 

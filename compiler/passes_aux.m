@@ -333,9 +333,14 @@ passes_aux__handle_errors(WarnCnt, ErrCnt, ModuleInfo1, ModuleInfo8,
 
 invoke_system_command(Command, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Invoking system command `"),
-	maybe_write_string(Verbose, Command),
-	maybe_write_string(Verbose, "'...\n"),
+	( { Verbose = yes } ->
+		io__write_string("% Invoking system command `"),
+		io__write_string(Command),
+		io__write_string("'...\n"),
+		io__flush_output
+	;
+		[]
+	),
 	io__call_system(Command, Result),
 	( { Result = ok(0) } ->
 		maybe_write_string(Verbose, "% done.\n"),

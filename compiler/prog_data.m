@@ -638,36 +638,24 @@
 
 :- implementation.
 
-:- import_module int.
+:- type pragma_c_code_attributes
+	--->	attributes(
+			may_call_mercury,
+			thread_safe
+		).
 
-:- type pragma_c_code_attributes == int.
-
-default_attributes(0).
-
-% bit 1	:	may_call_mercury / will_not_call_mercury
-% bit 2 :	not_thread_safe / thread_safe
+default_attributes(attributes(may_call_mercury, not_thread_safe)).
 
 may_call_mercury(Attrs, MayCallMercury) :-
-	( Attrs /\ 0x01 \= 0 ->
-		MayCallMercury = will_not_call_mercury
-	;
-		MayCallMercury = may_call_mercury
-	).
+	Attrs = attributes(MayCallMercury, _).
 
 thread_safe(Attrs, ThreadSafe) :-
-	( Attrs /\ 0x02 \= 0 ->
-		ThreadSafe = thread_safe
-	;
-		ThreadSafe = not_thread_safe
-	).
+	Attrs = attributes(_, ThreadSafe).
 
-set_may_call_mercury(Attrs0, may_call_mercury, Attrs) :-
-	Attrs = Attrs0 /\ (\ 0x01).
-set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs) :-
-	Attrs = Attrs0 \/ 0x01.
+set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
+	Attrs0 = attributes(_, ThreadSafe),
+	Attrs  = attributes(MayCallMercury, ThreadSafe).
 
-set_thread_safe(Attrs0, not_thread_safe, Attrs) :-
-	Attrs = Attrs0 /\ (\ 0x02).
-set_thread_safe(Attrs0, thread_safe, Attrs) :-
-	Attrs = Attrs0 \/ 0x02.
-
+set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
+	Attrs0 = attributes(MayCallMercury, _),
+	Attrs  = attributes(MayCallMercury, ThreadSafe).

@@ -344,6 +344,9 @@
 	% the argtypes of the called predicates, and so we need to make
 	% sure we don't muck them up before we've finished the first pass.
 
+:- pred breakpoint is det.
+breakpoint.
+
 polymorphism__process_module(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__keys(Preds0, PredIds0),
@@ -399,9 +402,9 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 
 %	It is misleading to output this message for predicates which are
 %	not defined in this module, and we get far too many of them anyway.
-%	write_proc_progress_message("% Transforming polymorphism for ",
-%				PredId, ProcId, ModuleInfo0, IO0, IO1),
-	IO1 = IO0,
+	write_proc_progress_message("% Transforming polymorphism for ",
+				PredId, ProcId, ModuleInfo0, IO0, IO1),
+%	IO1 = IO0,
 
 	polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, 
 		ModuleInfo0, ProcInfo, PredInfo1, ModuleInfo1),
@@ -482,7 +485,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 			PredInfo1 = PredInfo0,
 			ModuleInfo1 = ModuleInfo0
 		;
-			polymorphism__fixup_procs(ProcIds, ProcTable0,
+			polymorphism__fixup_procs(ProcIds, PredId, ProcTable0,
 				ProcTable, ModuleInfo0, ModuleInfo1),
 			pred_info_set_procedures(PredInfo0, ProcTable,
 				PredInfo1)
@@ -496,12 +499,14 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	),
 	polymorphism__fixup_preds(PredIds, ModuleInfo2, ModuleInfo).
 
-:- pred polymorphism__fixup_procs(list(proc_id), proc_table, proc_table,
-		module_info, module_info).
-:- mode polymorphism__fixup_procs(in, in, out, in, out) is det.
+:- import_module unsafe.	% BBB
+:- pragma promise_pure(polymorphism__fixup_procs/6).
+:- pred polymorphism__fixup_procs(list(proc_id), pred_id,
+			proc_table, proc_table, module_info, module_info).
+:- mode polymorphism__fixup_procs(in, in, in, out, in, out) is det.
 
-polymorphism__fixup_procs([], ProcTable, ProcTable, ModuleInfo, ModuleInfo).
-polymorphism__fixup_procs([ProcId | ProcIds], ProcTable0, ProcTable,
+polymorphism__fixup_procs([], _, ProcTable, ProcTable, ModuleInfo, ModuleInfo).
+polymorphism__fixup_procs([ProcId | ProcIds], PredId, ProcTable0, ProcTable,
 		ModuleInfo0, ModuleInfo) :-
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 	proc_info_headvars(ProcInfo0, HeadVars),
@@ -509,14 +514,23 @@ polymorphism__fixup_procs([ProcId | ProcIds], ProcTable0, ProcTable,
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	proc_info_inst_table(ProcInfo0, InstTable0),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	proc_info_goal(ProcInfo0, Goal0),
+	(
+		list__same_length(HeadVars, ArgLives)
+	->
+		proc_info_goal(ProcInfo0, Goal0)
+	;
+		impure unsafe_perform_io(hlds_out__write_proc(1, no,
+			ModuleInfo0, PredId, ProcId, local, ProcInfo0)),
+		error("polymorphism__fixup_procs")
+	),
 	recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal0, Goal,
 		InstMap, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo1),
 	proc_info_set_inst_table(ProcInfo0, InstTable, ProcInfo1),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo),
+	% proc_info_set_maybe_arglives(ProcInfo2, yes(ArgLives), ProcInfo),
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
-	polymorphism__fixup_procs(ProcIds, ProcTable1, ProcTable, ModuleInfo1,
-		ModuleInfo).
+	polymorphism__fixup_procs(ProcIds, PredId, ProcTable1, ProcTable,
+		ModuleInfo1, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -573,10 +587,15 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
 	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo5),
-	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo6),
-	proc_info_set_typeclass_info_varmap(ProcInfo6, TypeClassInfoMap,
-		ProcInfo7),
-	proc_info_set_inst_table(ProcInfo7, InstTable, ProcInfo),
+
+		% Clear the arglives, because the arity of the
+		% proc may have changed.  These will be put back
+		% in polymorphism__fixup_procs.
+	proc_info_set_maybe_arglives(ProcInfo5, no, ProcInfo6),
+	proc_info_set_typeinfo_varmap(ProcInfo6, TypeInfoMap, ProcInfo7),
+	proc_info_set_typeclass_info_varmap(ProcInfo7, TypeClassInfoMap,
+		ProcInfo8),
+	proc_info_set_inst_table(ProcInfo8, InstTable, ProcInfo),
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
 % XXX the following code ought to be rewritten to handle
