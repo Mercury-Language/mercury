@@ -36,7 +36,7 @@
 	% procedure may inlined while others are not.
 	%
 	% It builds the call-graph (if necessary) works from the bottom of
-	% the call-graph towards the top, first perfoming inlining on a
+	% the call-graph towards the top, first performing inlining on a
 	% procedure then deciding if calls to it (higher in the call-graph)
 	% should be inlined. SCCs get flattend and processed in the order
 	% returned by hlds_dependency_info_get_dependency_ordering.
@@ -58,7 +58,7 @@
 	%	  inlining them enables the code generator to avoid creating
 	%	  the intermediate structures which is often a win).
 	%
-	%	- arithmetic predicates where the as above, the cost of the
+	%	- arithmetic predicates where as above, the cost of the
 	%	  call will often outweigh the cost of the arithmetic.
 	%
 	%	- det or semi pragma C code, where often the C operation is
@@ -228,7 +228,7 @@ inlining(ModuleInfo0, ModuleInfo) -->
 :- mode inlining__do_inlining(in, in, in, in, in, out, di, uo) is det.
 
 inlining__do_inlining([], _Needed, _Params, _Inlined, Module, Module) --> [].
-inlining__do_inlining([PPId|PPIds], Needed, Params, Inlined0,
+inlining__do_inlining([PPId | PPIds], Needed, Params, Inlined0,
 		Module0, Module) -->
 	inlining__in_predproc(PPId, Inlined0, Params, Module0, Module1),
 	inlining__mark_predproc(PPId, Needed, Params, Module1,
@@ -281,7 +281,6 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		% Don't inline recursive predicates
 		% (unless explicitly requested)
 		{ \+ goal_calls(CalledGoal, PredProcId) }
-
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
 			InlinedProcs0, InlinedProcs)
