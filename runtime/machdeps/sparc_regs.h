@@ -6,8 +6,19 @@
    registers with much faster access time than the rest, which
    are just global variables.
 
-   At the moment we're only using the callee-save registers.
-   We should modify this to optionally use the caller-save registers. */
+   This is a bit tricky on sparcs, because of the sliding register
+   windows.  There are only seven global registers (g1-g7), and of
+   these three (g5-g7) are reserved for use by the operating system,
+   and the other four (g1-g4) are all temp registers that get clobbered
+   by calls to the C standard library functions.
+
+   So it looks like we'll have to use the sliding registers.
+   This will make debugging a real pain.
+   It won't work at all unless we are using gcc's non-local gotos.
+*/
+#ifndef USE_GCC_NONLOCAL_GOTOS
+#error "on sparcs, you must use non-local gotos if you want global registers"
+#endif
 
 reg 	Word	mr0 __asm__("i0");
 reg	Word	mr1 __asm__("i1");
@@ -25,9 +36,7 @@ reg	Word	mr10 __asm__("l4");
 
 #define NUM_REAL_REGS 11
 
-extern Word mr2, mr3, mr4, mr5, mr6;
-extern Word mr7, mr8, mr9, mr10;
-extern Word mr11, mr12, mr13, mr14, mr15, mr16;
-extern Word mr17, mr18, mr19, mr20, mr21, mr22, mr23, mr24;
-extern Word mr25, mr26, mr27, mr28, mr29, mr30, mr31;
+extern Word mr11, mr12, mr13, mr14, mr15;
+extern Word mr16, mr17, mr18, mr19, mr20, mr21, mr22, mr23;
+extern Word mr24, mr25, mr26, mr27, mr28, mr29, mr30, mr31;
 
