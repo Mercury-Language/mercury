@@ -37,6 +37,10 @@
 # operations by setting the environment variable MMC_TABLE_DEBUG to the same
 # string.
 #
+# You can get the C compiler to enable graph profiling on the generated code
+# by setting the environment variable MMC_GPROF to the string "true".
+# string.
+#
 # You can ask for additional C flags to compile with by setting the environment
 # variable MMC_ADDED_CFLAGS to those flags. Setting up this environment
 # variable one can be more convenient than repeatedly supplying
@@ -77,6 +81,8 @@ $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/browser/libmer_mdbc
 
 INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 
+LINK_FLAGS=""
+
 if test "$MMC_CDEBUG" != ""
 then
 	CDEBUG_FLAGS="--target-debug"
@@ -94,6 +100,12 @@ then
 	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_TABLE_DEBUG"
 fi
 
+if test "$MMC_GPROF" != ""
+then
+	CDEBUG_FLAGS="$CDEBUG_FLAGS --target-debug --cflags -pg --cflags --no-omit-frame-pointer"
+	LINK_FLAGS="--ld-flags -pg"
+fi
+
 if test "$MMC_ADDED_CFLAGS" != ""
 then
 	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags \"$MMC_ADDED_CFLAGS\""
@@ -109,4 +121,4 @@ fi
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
 export PATH
-exec mmc --no-mercury-stdlib-dir --config-file $WORKSPACE/scripts/Mercury.config -I $WORKSPACE/library -I $WORKSPACE/analysis $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
+exec mmc --no-mercury-stdlib-dir --config-file $WORKSPACE/scripts/Mercury.config -I $WORKSPACE/library -I $WORKSPACE/analysis $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"
