@@ -217,4 +217,18 @@
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** Memory protection and signal handling.
+*/
+
+#if defined(HAVE_SIGINFO) && defined(PC_ACCESS)
+  #define MR_CAN_GET_PC_AT_SIGNAL
+#endif
+
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+  #define MR_CHECK_OVERFLOW_VIA_MPROTECT
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 #endif /* MERCURY_CONF_PARAM_H */

@@ -61,7 +61,7 @@ new_context(void)
 	c->context_succip = ENTRY(do_not_reached);
 
 	if (c->detstack_zone != NULL) {
-		reset_zone(c->detstack_zone);
+		reset_redzone(c->detstack_zone);
 	} else {
 		c->detstack_zone = create_zone("detstack", 0,
 			detstack_size, next_offset(), detstack_zone_size, 
@@ -70,7 +70,7 @@ new_context(void)
 	c->context_sp = c->detstack_zone->min;
 
 	if (c->nondetstack_zone != NULL) {
-		reset_zone(c->nondetstack_zone);
+		reset_redzone(c->nondetstack_zone);
 	} else {
 		c->nondetstack_zone = create_zone("nondetstack", 0,
 			nondstack_size, next_offset(), nondstack_zone_size,
@@ -85,7 +85,7 @@ new_context(void)
 
 #ifdef MR_USE_TRAIL
 	if (c->trail_zone != NULL) {
-		reset_zone(c->trail_zone);
+		reset_redzone(c->trail_zone);
 	} else {
 		c->trail_zone = create_zone("trail", 0,
 			trail_size, next_offset(), trail_zone_size, 

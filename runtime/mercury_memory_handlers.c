@@ -89,44 +89,19 @@
 */
 
 static	void	setup_mprotect(void);
-static void	print_dump_stack(void);
-
-#ifdef	HAVE_SIGINFO
-  static	bool	try_munprotect(void *address, void *context);
-  static	char	*explain_context(void *context);
-#endif /* HAVE_SIGINFO */
+static	void	print_dump_stack(void);
+static	bool	try_munprotect(void *address, void *context);
+static	char	*explain_context(void *context);
 
 #define STDERR 2
 
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
-	/* try_munprotect is only useful if we have SIGINFO */
-
-/*
-** fatal_abort() prints an error message, possibly a stack dump, and then exits.
-** It is like fatal_error(), except that it is safe to call
-** from a signal handler.
-*/
-
-static void 
-fatal_abort(void *context, const char *main_msg, int dump)
-{
-	char	*context_msg;
-
-	context_msg = explain_context(context);
-	write(STDERR, main_msg, strlen(main_msg));
-	write(STDERR, context_msg, strlen(context_msg));
-	MR_trace_report_raw(STDERR);
-
-	if (dump) {
-		print_dump_stack();
-	}
-
-	_exit(1);
-}
 
 static bool 
 try_munprotect(void *addr, void *context)
 {
+#ifndef HAVE_SIGINFO
+	return FALSE;
+#else
 	Word *    fault_addr;
 	Word *    new_zone;
 	MemoryZone *zone;
@@ -163,11 +138,44 @@ try_munprotect(void *addr, void *context)
 	}
 
 	return FALSE;
-} /* end try_munprotect() */
+#endif /* HAVE_SIGINFO */
+} 
+
+bool 
+null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+{
+	return FALSE;
+}
+
+/*
+** fatal_abort() prints an error message, possibly a stack dump, and then exits.
+** It is like fatal_error(), except that it is safe to call
+** from a signal handler.
+*/
+
+static void 
+fatal_abort(void *context, const char *main_msg, int dump)
+{
+	char	*context_msg;
+
+	context_msg = explain_context(context);
+	write(STDERR, main_msg, strlen(main_msg));
+	write(STDERR, context_msg, strlen(context_msg));
+	MR_trace_report_raw(STDERR);
+
+	if (dump) {
+		print_dump_stack();
+	}
+
+	_exit(1);
+}
 
 bool 
 default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
+#ifndef MR_CHECK_OVERFLOW_VIA_MPROTECT
+	return FALSE;
+#else
     Word *new_zone;
     size_t zone_size;
 
@@ -212,42 +220,13 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     }
 
     return FALSE;
-} /* end default_handler() */
-
-bool 
-null_handler(Word *fault_addr, MemoryZone *zone, void *context)
-{
-	return FALSE;
-}
-
-#else
-/* not HAVE_MPROTECT || not HAVE_SIGINFO */
-
-static bool 
-try_munprotect(void *addr, void *context)
-{
-	return FALSE;
-}
-
-bool 
-default_handler(Word *fault_addr, MemoryZone *zone, void *context)
-{
-	return FALSE;
-}
-
-bool 
-null_handler(Word *fault_addr, MemoryZone *zone, void *context)
-{
-	return FALSE;
-}
-
-#endif /* not HAVE_MPROTECT || not HAVE_SIGINFO */
-
-#if defined(HAVE_SIGCONTEXT_STRUCT)
+#endif
+} 
 
 void
 setup_signal(void)
 {
+#if defined(HAVE_SIGCONTEXT_STRUCT)
 	if (signal(SIGBUS, (void(*)(int)) complex_sighandler) == SIG_ERR)
 	{
 		perror("cannot set SIGBUS handler");
@@ -259,7 +238,95 @@ setup_signal(void)
 		perror("cannot set SIGSEGV handler");
 		exit(1);
 	}
+
+#elif defined(HAVE_SIGINFO_T)
+
+	struct sigaction	act;
+
+	act.sa_flags = SA_SIGINFO | SA_RESTART;
+	if (sigemptyset(&act.sa_mask) != 0) {
+		perror("Mercury runtime: cannot set clear signal mask");
+		exit(1);
+	}
+
+	act.SIGACTION_FIELD = complex_bushandler;
+	if (sigaction(SIGBUS, &act, NULL) != 0) {
+		perror("Mercury runtime: cannot set SIGBUS handler");
+		exit(1);
+	}
+
+	act.SIGACTION_FIELD = complex_segvhandler;
+	if (sigaction(SIGSEGV, &act, NULL) != 0) {
+		perror("Mercury runtime: cannot set SIGSEGV handler");
+		exit(1);
+	}
+
+#else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
+
+	if (signal(SIGBUS, simple_sighandler) == SIG_ERR) {
+		perror("cannot set SIGBUS handler");
+		exit(1);
+	}
+
+	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR) {
+		perror("cannot set SIGSEGV handler");
+		exit(1);
+	}
+
+#endif
 }
+
+static char *
+explain_context(void *the_context)
+{
+	static	char	buf[100];
+
+#if defined(HAVE_SIGCONTEXT_STRUCT)
+
+  #ifdef PC_ACCESS
+	struct sigcontext_struct *context = the_context;
+	void *pc_at_signal = (void *) context->PC_ACCESS;
+
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long)pc_at_signal, (long)pc_at_signal);
+  #else
+	buf[0] = '\0';
+  #endif
+
+#elif defined(HAVE_SIGINFO_T)
+
+  #ifdef PC_ACCESS
+
+	ucontext_t *context = the_context;
+
+    #ifdef PC_ACCESS_GREG
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long) context->uc_mcontext.gregs[PC_ACCESS],
+		(long) context->uc_mcontext.gregs[PC_ACCESS]);
+    #else
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long) context->uc_mcontext.PC_ACCESS,
+		(long) context->uc_mcontext.PC_ACCESS);
+    #endif
+
+  #else /* not PC_ACCESS */
+
+	/* if PC_ACCESS is not set, we don't know the context */
+	/* therefore we return an empty string to be printed  */
+	buf[0] = '\0';
+
+  #endif /* not PC_ACCESS */
+
+#else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
+
+	buf[0] = '\0';
+
+#endif
+
+	return buf;
+}
+
+#if defined(HAVE_SIGCONTEXT_STRUCT)
 
 static void
 complex_sighandler(int sig, struct sigcontext_struct sigcontext)
@@ -322,48 +389,8 @@ complex_sighandler(int sig, struct sigcontext_struct sigcontext)
 	exit(1);
 } /* end complex_sighandler() */
 
-static char *
-explain_context(void *the_context)
-{
-	static	char	buf[100];
-  #ifdef PC_ACCESS
-	struct sigcontext_struct *context = the_context;
-	void *pc_at_signal = (void *) context->PC_ACCESS;
-
-	sprintf(buf, "PC at signal: %ld (%lx)\n",
-		(long)pc_at_signal, (long)pc_at_signal);
-  #else
-	buf[0] = '\0';
-  #endif
-
-	return buf;
-}
 
 #elif defined(HAVE_SIGINFO_T)
-
-void 
-setup_signal(void)
-{
-	struct sigaction	act;
-
-	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	if (sigemptyset(&act.sa_mask) != 0) {
-		perror("Mercury runtime: cannot set clear signal mask");
-		exit(1);
-	}
-
-	act.SIGACTION_FIELD = complex_bushandler;
-	if (sigaction(SIGBUS, &act, NULL) != 0) {
-		perror("Mercury runtime: cannot set SIGBUS handler");
-		exit(1);
-	}
-
-	act.SIGACTION_FIELD = complex_segvhandler;
-	if (sigaction(SIGSEGV, &act, NULL) != 0) {
-		perror("Mercury runtime: cannot set SIGSEGV handler");
-		exit(1);
-	}
-}
 
 static void 
 complex_bushandler(int sig, siginfo_t *info, void *context)
@@ -487,51 +514,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 	exit(1);
 } /* end complex_segvhandler */
 
-static char *
-explain_context(void *the_context)
-{
-	static	char	buf[100];
-
-  #ifdef PC_ACCESS
-
-	ucontext_t *context = the_context;
-
-    #ifdef PC_ACCESS_GREG
-	sprintf(buf, "PC at signal: %ld (%lx)\n",
-		(long) context->uc_mcontext.gregs[PC_ACCESS],
-		(long) context->uc_mcontext.gregs[PC_ACCESS]);
-    #else
-	sprintf(buf, "PC at signal: %ld (%lx)\n",
-		(long) context->uc_mcontext.PC_ACCESS,
-		(long) context->uc_mcontext.PC_ACCESS);
-    #endif
-
-  #else /* not PC_ACCESS */
-
-	/* if PC_ACCESS is not set, we don't know the context */
-	/* therefore we return an empty string to be printed  */
-	buf[0] = '\0';
-
-  #endif /* not PC_ACCESS */
-
-	return buf;
-}
-
 #else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
-
-void 
-setup_signal(void)
-{
-	if (signal(SIGBUS, simple_sighandler) == SIG_ERR) {
-		perror("cannot set SIGBUS handler");
-		exit(1);
-	}
-
-	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR) {
-		perror("cannot set SIGSEGV handler");
-		exit(1);
-	}
-}
 
 static void 
 simple_sighandler(int sig)
@@ -562,21 +545,18 @@ simple_sighandler(int sig)
 
 #endif /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
-#ifndef	MR_LOWLEVEL_DEBUG
 
 static void 
 print_dump_stack(void)
 {
+
+#ifndef	MR_LOWLEVEL_DEBUG
+
 	const char *msg =
 		"You can get a stack dump by using `--low-level-debug'\n";
 	write(STDERR, msg, strlen(msg));
-}
 
 #else /* MR_LOWLEVEL_DEBUG */
-
-static void 
-print_dump_stack(void)
-{
 	int	i;
 	int	start;
 	int	count;
@@ -613,7 +593,8 @@ print_dump_stack(void)
 	strcpy(buf, "\nend of stack dump\n");
 	write(STDERR, buf, strlen(buf));
 
+#endif /* MR_LOWLEVEL_DEBUG */
+
 } /* end print_dump_stack() */
 
-#endif /* MR_LOWLEVEL_DEBUG */
 

@@ -166,10 +166,10 @@ init_zones(void)
 		zone_table[i].max = NULL;
 #endif
 #ifdef HAVE_MPROTECT
-  #ifdef HAVE_SIGINFO
-		zone_table[i].redzone = NULL;
-  #endif
 		zone_table[i].hardmax = NULL;
+#endif
+#ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
+		zone_table[i].redzone = NULL;
 #endif
 		if (i+1 < MAX_ZONES) {
 			zone_table[i].next = &(zone_table[i+1]);
@@ -319,9 +319,9 @@ construct_zone(const char *name, int id, Word *base,
 	zone->name = name;
 	zone->id = id;
 
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+#ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->handler = handler;
-#endif
+#endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
 	zone->bottom = base;
 
@@ -329,19 +329,18 @@ construct_zone(const char *name, int id, Word *base,
 	total_size = size + unit;
 #else
 	total_size = size;
-#endif
+#endif	/* HAVE_MPROTECT */
 
-	zone->top = (Word *) ((char *)base+total_size);
-	zone->min = (Word *) ((char *)base+offset);
-#ifdef MR_LOWLEVEL_DEBUG
+	zone->top = (Word *) ((char *)base + total_size);
+	zone->min = (Word *) ((char *)base + offset);
+#ifdef	MR_LOWLEVEL_DEBUG
 	zone->max = zone->min;
-#endif
+#endif	/* MR_LOWLEVEL_DEBUG */
 
 	/*
-	** setup the redzone+hardzone
+	** setup the redzone
 	*/
-#ifdef	HAVE_MPROTECT
-  #ifdef HAVE_SIGINFO
+#ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone_base = zone->redzone = (Word *)
 			round_up((Unsigned)base + size - redsize, unit);
 	if (mprotect((char *)zone->redzone, redsize + unit, MY_PROT) < 0) {
@@ -351,25 +350,31 @@ construct_zone(const char *name, int id, Word *base,
 			zone->name, zone->id, zone->bottom, zone->redzone);
 		fatal_error(buf);
 	}
-  #else	/* not HAVE_SIGINFO */
-	zone->hardmax = (Word *) ((char *)zone->top-unit);
+#endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
+
+	/*
+	** setup the hardzone (only if the redzone is unavailable)
+	*/
+#if	defined(HAVE_MPROTECT) && !defined(MR_CHECK_OVERFLOW_VIA_MPROTECT)
+	zone->hardmax = (Word *) round_up((Unsigned)zone->top - unit, unit);
 	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"
-			"base=%p, hardmax=%p",
-			zone->name, zone->id, zone->bottom, zone->hardmax);
+			"base=%p, hardmax=%p top=%p",
+			zone->name, zone->id, zone->bottom, zone->hardmax,
+			zone->top);
 		fatal_error(buf);
 	}
-  #endif /* not HAVE_SIGINFO */
-#endif	/* not HAVE_MPROTECT */
+#endif	/* HAVE_MPROTECT */
+
 
 	return zone;
 } /* end construct_zone() */
 
 void 
-reset_zone(MemoryZone *zone)
+reset_redzone(MemoryZone *zone)
 {
-#if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+#ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 	zone->redzone = zone->redzone_base;
 
 	if (mprotect((char *)zone->redzone,
@@ -381,7 +386,7 @@ reset_zone(MemoryZone *zone)
 			zone->name, zone->id, zone->bottom, zone->redzone);
 		fatal_error(buf);
 	}
-#endif
+#endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 }
 
 MemoryZone *
@@ -416,11 +421,11 @@ debug_memory(void)
 			zone->name, zone->id, (void *) zone->min);
 		fprintf(stderr, "%-16s#%d-top		= %p\n",
 			zone->name, zone->id, (void *) zone->top);
-#ifdef HAVE_MPROTECT
-  #ifdef HAVE_SIGINFO
+#ifdef	MR_CHECK_OVERFLOW_VIA_MPROTECT
 		fprintf(stderr, "%-16s#%d-redzone	= %p\n",
 			zone->name, zone->id, (void *) zone->redzone);
-  #endif /* HAVE_SIGINFO */
+#endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
+#ifdef	HAVE_MPROTECT
 		fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
 			zone->name, zone->id, (void *) zone->hardmax);
 		fprintf(stderr, "%-16s#%d-size		= %lu\n",
@@ -430,7 +435,7 @@ debug_memory(void)
 		fprintf(stderr, "%-16s#%d-size		= %lu\n",
 			zone->name, zone->id, (unsigned long)
 			((char *)zone->top - (char *)zone->min));
-#endif /* HAVE_MPROTECT */
+#endif	/* HAVE_MPROTECT */
 		fprintf(stderr, "\n");
 	}
 }

@@ -77,14 +77,13 @@ extern	unsigned long 	num_uses[MAX_RN];
 **			mprotect.
 **			(should be on a page boundary)
 **	redzone	- the address of the start of the region that has been
-**			mprotected as a redzone. Since without SIGINFO
-**			it is not possible [portably] to figure out
-**			where the fault occured, redzone is only available
-**			on platforms that have both mprotect and SIGINFO.
+**			mprotected as a redzone.  Redzone is only
+**			available on platforms where
+**			MR_CHECK_OVERFLOW_VIA_MPROTECT is defined.
 **			(should be on a page boundary)
 **	handler - the address of a function to handle accesses in the
 **			redzone of this allocated area. This is only
-**			specified if mprotect and SIGINFO are available.
+**			available with MR_CHECK_OVERFLOW_VIA_MPROTECT.
 */
 
 typedef struct MEMORY_ZONE	MemoryZone;
@@ -107,14 +106,14 @@ struct MEMORY_ZONE {
 				   computed only if MR_LOWLEVEL_DEBUG is
 				   enabled */
 #ifdef HAVE_MPROTECT
-	Word	*redzone_base;	/* beginning of the original redzone */
-	Word	*redzone;	/* beginning of the current redzone */
 	Word	*hardmax;	/* last page of the zone which can't be
 				   unprotected */
-  #ifdef HAVE_SIGINFO
-	ZoneHandler *handler;   /* handler for page faults in the redzone */
-  #endif /* HAVE_SIGINFO */
 #endif	/* HAVE_MPROTECT */
+#ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
+	Word	*redzone_base;	/* beginning of the original redzone */
+	Word	*redzone;	/* beginning of the current redzone */
+	ZoneHandler *handler;   /* handler for page faults in the redzone */
+#endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 };
 
 
@@ -145,8 +144,8 @@ void init_zones(void);
 ** (must be less than Size), and the address of a function to handle
 ** memory references in the redzone.
 ** If it fails to allocate or protect the zone, then it exits.
-** If mprotect or SIGINFO are unavailable, then the last two arguments
-** are ignored.
+** If MR_CHECK_OVERFLOW_VIA_MPROTECT is unavailable, then the last two
+** arguments are ignored.
 */
 
 MemoryZone	*create_zone(const char *name, int id,
@@ -157,11 +156,11 @@ MemoryZone	*create_zone(const char *name, int id,
 ** construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
 ** has the same behaviour as create_zone, except instread of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
-** least Size bytes, or if HAVE_MPROTECT is defined, then it must be at
-** least Size + unit[*] bytes.
-** If it fails to protect the redzone then it exits
-** If mprotect or SIGINFO are unavailable, then the last two arguments
-** are ignored.
+** least Size + unit[*] bytes, or if HAVE_MPROTECT is defined, then it
+** must be at least Size + 2 * unit[*] bytes.
+** If it fails to protect the redzone then it exits.
+** If MR_CHECK_OVERFLOW_VIA_MPROTECT is unavailable, then the last two
+** arguments are ignored.
 **
 ** [*] unit is a global variable containing the page size in bytes
 */
@@ -171,12 +170,12 @@ MemoryZone	*construct_zone(const char *name, int Id, Word *base,
 			ZoneHandler *handler);
 
 /*
-** reset_zone(Zone) resets the redzone on the given MemoryZone to the
+** reset_redzone(Zone) resets the redzone on the given MemoryZone to the
 ** original zone specified in the call to {create,construct}_zone() if
-** HAVE_MPROTECT and HAVE_SIGINFO. If either HAVE_MPROTECT or HAVE_SIGINFO
-** are not defined, it does nothing.
+** MR_CHECK_OVERFLOW_VIA_MPROTECT is defined.  Otherwise it does
+** nothing.
 */
-void	reset_zone(MemoryZone *zone);
+void	reset_redzone(MemoryZone *zone);
 
 /*
 ** get_used_memory_zones() returns a pointer to the linked list of
