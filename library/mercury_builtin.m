@@ -187,6 +187,13 @@
 :- pred builtin_term_to_type_int(term :: in, int :: out) is semidet.
 :- pred builtin_type_to_term_int(int :: in, term :: out) is det.
 
+:- pred builtin_unify_character(character::in, character::in) is semidet.
+:- pred builtin_index_character(character::in, int::out) is det.
+:- pred builtin_compare_character(comparison_result::out, character::in,
+	character::in) is det.
+:- pred builtin_term_to_type_character(term :: in, character :: out) is semidet.
+:- pred builtin_type_to_term_character(character :: in, term :: out) is det.
+
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_index_string(string::in, int::out) is det.
 :- pred builtin_compare_string(comparison_result::out, string::in, string::in)
@@ -205,6 +212,8 @@
 :- pred builtin_index_pred((pred)::in, int::out) is det.
 :- pred builtin_compare_pred(comparison_result::out, (pred)::in, (pred)::in)
 	is det.
+:- pred builtin_term_to_type_pred(term::in, (pred)::out) is semidet.
+:- pred builtin_type_to_term_pred((pred)::in, term::out) is det.
 
 	% compare_error is used in the code generated for compare/3 preds
 :- pred compare_error is erroneous.
@@ -243,7 +252,8 @@
 :- type var_supply.
 
 % The type list should be defined in list.m, but we define it here since
-% it's need for the implementation of term_to_type/2 and type_to_term/2.
+% it is needed for the definition of type term, which is needed for the
+% implementation of term_to_type/2 and type_to_term/2.
 
 :- type list(T) ---> [] ; [T | list(T)].
 
@@ -251,7 +261,7 @@
         % number.
 
 :- type term__context	--->	term__context(string, int).
-				% file, line number.
+				% file name, line number.
 
 %-----------------------------------------------------------------------------%
 
@@ -288,7 +298,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util, int, float, list.
+:- import_module require, std_util, int, float, char, string, list.
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
@@ -333,6 +343,31 @@ builtin_term_to_type_int(term__functor(term__integer(Int), _TermList, _Context),
 builtin_type_to_term_int(Int, term__functor(term__integer(Int), [], Context)) :-
 	term__context_init(Context).
 
+builtin_unify_character(C, C).
+
+builtin_index_character(C, N) :-
+	char__to_int(C, N).
+
+builtin_compare_character(R, X, Y) :-
+	char__to_int(X, XI),
+	char__to_int(Y, YI),
+	( XI < YI ->
+		R = (<)
+	; XI = YI ->
+		R = (=)
+	;
+		R = (>)
+	).
+
+builtin_term_to_type_character(
+		term__functor(term__atom(String), [], _Context), Character) :-
+	string__first_char(String, Character, "").
+
+builtin_type_to_term_character(
+		Character, term__functor(term__atom(String), [], Context)) :-
+	term__context_init(Context),
+	string__char_to_string(Character, String).
+
 builtin_unify_string(S, S).
 
 builtin_index_string(_, -1).
@@ -353,7 +388,6 @@ builtin_term_to_type_string(
 builtin_type_to_term_string(
 		String, term__functor(term__string(String), [], Context)) :- 
         term__context_init(Context).
-
 
 builtin_unify_float(F, F).
 
@@ -389,6 +423,8 @@ builtin_unify_pred(_Pred1, _Pred2) :-
 		semidet_fail
 	).
 
+builtin_index_pred(_, -1).
+
 builtin_compare_pred(Res, _Pred1, _Pred2) :-
 	% suppress determinism warning
 	( semidet_succeed ->
@@ -398,7 +434,13 @@ builtin_compare_pred(Res, _Pred1, _Pred2) :-
 		Res = (<)
 	).
 
-builtin_index_pred(_, -1).
+builtin_term_to_type_pred(_Term, _Pred) :-
+	% suppress determinism warning
+	semidet_succeed,
+	error("attempted conversion of a term to a higher-order predicate").
+
+builtin_type_to_term_pred(_Pred, _Term) :-
+	error("attempted conversion of a higher-order predicate to a term").
 
 	% This is used by the code that the compiler generates for compare/3.
 compare_error :-
