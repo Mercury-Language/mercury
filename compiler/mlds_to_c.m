@@ -234,13 +234,19 @@ mlds_output_decls(Indent, ModuleName, Defns) -->
 :- mode mlds_output_defns(in, in, in, di, uo) is det.
 
 mlds_output_defns(Indent, ModuleName, Defns) -->
-	%
-	% GNU C __label__ declarations must precede
-	% ordinary variable declarations.
-	%
-	{ list__filter(defn_is_commit_type_var, Defns, LabelDecls, OtherDefns) },
-	list__foldl(mlds_output_defn(Indent, ModuleName), LabelDecls),
-	list__foldl(mlds_output_defn(Indent, ModuleName), OtherDefns).
+	{ OutputDefn = mlds_output_defn(Indent, ModuleName) },
+	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
+	( { GCC_LocalLabels = yes } ->
+		%
+		% GNU C __label__ declarations must precede
+		% ordinary variable declarations.
+		%
+		{ list__filter(defn_is_commit_type_var, Defns, LabelDecls, OtherDefns) },
+		list__foldl(OutputDefn, LabelDecls),
+		list__foldl(OutputDefn, OtherDefns)
+	;
+		list__foldl(OutputDefn, Defns)
+	).
 
 
 :- pred mlds_output_decl(int, mlds_module_name, mlds__defn,
@@ -591,8 +597,12 @@ mlds_output_type(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
 	io__write_string(" *").
 mlds_output_type(mlds__commit_type) -->
-	% XXX this assumes GNU C
-	io__write_string("__label__").
+	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
+	( { GCC_LocalLabels = yes } ->
+		io__write_string("__label__")
+	;
+		io__write_string("jmp_buf")
+	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -822,46 +832,99 @@ mlds_output_stmt(Indent, _FuncName, return(Results)) -->
 	
 	%
 	% commits
-	% XXX Currently we handle these using GNU C constructs.
 	%
 mlds_output_stmt(Indent, _FuncName, do_commit(Ref)) -->
 	mlds_indent(Indent),
-	io__write_string("goto "),
-	mlds_output_fully_qualified_name(Ref, io__write_string),
+	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
+	( { GCC_LocalLabels = yes } ->
+		% output "goto <Ref>"
+		io__write_string("goto "),
+		mlds_output_var(Ref)
+	;
+		% output "longjmp(<Ref>, 1)"
+		io__write_string("longjmp("),
+		mlds_output_var(Ref),
+		io__write_string(", 1)")
+	),
 	io__write_string(";\n").
-mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt, Handler)) -->
+mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt0, Handler)) -->
+	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
+	(
+		{ GCC_LocalLabels = yes },
 	
-	% Output the following:
-	%
-	%               <Stmt>
-	%               goto <Ref>_done;
-	%       <Ref>:
-	%               <Handler>
-	%       <Ref>_done:
-	%               ;
+		% Output the following:
+		%
+		%               <Stmt>
+		%               goto <Ref>_done;
+		%       <Ref>:
+		%               <Handler>
+		%       <Ref>_done:
+		%               ;
 
-	mlds_output_statement(Indent, FuncName, Stmt),
+		mlds_output_statement(Indent, FuncName, Stmt0),
 
-	mlds_indent(Indent),
-	io__write_string("goto "),
-	mlds_output_fully_qualified_name(Ref, io__write_string),
-	io__write_string("_done;\n"),
+		mlds_indent(Indent),
+		io__write_string("goto "),
+		mlds_output_var(Ref),
+		io__write_string("_done;\n"),
 
-	mlds_indent(Indent - 1),
-	mlds_output_fully_qualified_name(Ref, io__write_string),
-	io__write_string(":\n"),
+		mlds_indent(Indent - 1),
+		mlds_output_var(Ref),
+		io__write_string(":\n"),
 
-	mlds_output_statement(Indent, FuncName, Handler),
+		mlds_output_statement(Indent, FuncName, Handler),
 
-	mlds_indent(Indent - 1),
-	mlds_output_fully_qualified_name(Ref, io__write_string),
-	io__write_string("_done:\t;\n").
+		mlds_indent(Indent - 1),
+		mlds_output_var(Ref),
+		io__write_string("_done:\t;\n")
+
+	;
+		{ GCC_LocalLabels = no },
+
+		% Output the following:
+		%
+		%	if (setjmp(<Ref>) == 0)
+		%               <Stmt>
+		%       else
+		%               <Handler>
+
+		%
+		% XXX do we need to declare the local variables as volatile,
+		% because of the setjmp()?
+		%
+
+		%
+		% we need to take care to avoid problems caused by the
+		% dangling else ambiguity
+		%
+		{
+			Stmt0 = statement(if_then_else(_, _, no), Context)
+		->
+			Stmt = statement(block([], [Stmt0]), Context)
+		;
+			Stmt = Stmt0
+		},
+
+		mlds_indent(Indent),
+		io__write_string("if (setjmp("),
+		mlds_output_var(Ref),
+		io__write_string(") == 0)\n"),
+
+		mlds_output_statement(Indent + 1, FuncName, Stmt),
+
+		mlds_indent(Indent),
+		io__write_string("else\n"),
+
+		mlds_output_statement(Indent + 1, FuncName, Handler)
+	).
+
 
 	%
 	% exception handling
 	%
 
 	/* XXX not yet implemented */
+
 
 	%
 	% atomic statements
@@ -1035,6 +1098,12 @@ mlds_output_lval(mem_ref(Rval)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).
 mlds_output_lval(var(VarName)) -->
+	mlds_output_var(VarName).
+
+:- pred mlds_output_var(mlds__var, io__state, io__state).
+:- mode mlds_output_var(in, di, uo) is det.
+
+mlds_output_var(VarName) -->
 	mlds_output_fully_qualified_name(VarName, io__write_string).
 
 :- pred mlds_output_bracketed_rval(mlds__rval, io__state, io__state).

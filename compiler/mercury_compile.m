@@ -2228,9 +2228,18 @@ mercury_compile__mlds_backend(HLDS) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
-	ml_code_gen(HLDS, MLDS),
+	ml_code_gen(HLDS, MLDS0),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
+
+	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
+	( { NestedFuncs = no } ->
+		% XXX the pass to convert nested functions into unnested
+		% functions is not yet implemented.
+		{ error("Sorry, not implemented: --no-gcc-nested-functions.") }
+	;
+		{ MLDS = MLDS0 }
+	),
 
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
 	mlds_to_c__output_mlds(MLDS),
