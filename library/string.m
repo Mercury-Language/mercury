@@ -1507,7 +1507,7 @@ string__special_precision_and_width(-1).
 :- pragma(c_code, string__float_to_string(FloatVal::in, FloatString::out), "{
 	char buf[500];
 	Word tmp;
-	sprintf(buf, ""%g"", FloatVal);
+	sprintf(buf, ""%.15g"", FloatVal);
 	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
@@ -1518,7 +1518,7 @@ string__special_precision_and_width(-1).
 :- pragma(c_code, string__float_to_f_string(FloatVal::in, FloatString::out), "{
 	char buf[500];
 	Word tmp;
-	sprintf(buf, ""%f"", FloatVal);
+	sprintf(buf, ""%.15f"", FloatVal);
 	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
