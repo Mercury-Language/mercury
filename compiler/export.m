@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,6 +74,7 @@
 :- import_module hlds_pred, type_util.
 :- import_module code_model.
 :- import_module code_gen, code_util, llds_out.
+:- import_module globals, options.
 
 :- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.
@@ -85,21 +86,24 @@ export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
 	module_info_get_predicate_table(HLDS, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
-	export__get_foreign_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
+	module_info_globals(HLDS, Globals),
+	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
+		C_ExportDecls).
 
 :- pred export__get_foreign_export_decls_2(pred_table,
-	list(pragma_exported_proc), list(foreign_export_decl)).
-:- mode export__get_foreign_export_decls_2(in, in, out) is det.
+	list(pragma_exported_proc), globals, list(foreign_export_decl)).
+:- mode export__get_foreign_export_decls_2(in, in, in, out) is det.
 
-export__get_foreign_export_decls_2(_Preds, [], []).
-export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
+export__get_foreign_export_decls_2(_Preds, [], _, []).
+export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], Globals,
+		C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, _HowToDeclare, C_RetType,
-		_DeclareReturnVal, _FailureAction, _SuccessAction,
+	get_export_info(Preds, PredId, ProcId, Globals, _HowToDeclare,
+		C_RetType, _DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
 	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
-	export__get_foreign_export_decls_2(Preds, ExportedProcs,
+	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
 		C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
@@ -198,7 +202,8 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, DeclareString,
+	module_info_globals(Module, Globals),
+	get_export_info(Preds, PredId, ProcId, Globals, DeclareString,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
@@ -250,7 +255,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	ExportedProcsCode = [Code|TheRest].
 
 
-	% get_export_info(Preds, PredId, ProcId, DeclareString,
+	% get_export_info(Preds, PredId, ProcId, Globals, DeclareString,
 	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
 	%		ArgInfoTypes):
 	%	For a given procedure, figure out the information about
@@ -261,18 +266,21 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	%	- the actions on success and failure, and
 	%	- the argument locations/modes/types.
 
-:- pred get_export_info(pred_table, pred_id, proc_id, string,
-			string, string, string, string,
+:- pred get_export_info(pred_table, pred_id, proc_id, globals,
+			string, string, string, string, string,
 			assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, out, out, out, out, out, out) is det.
+:- mode get_export_info(in, in, in, in, out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
+get_export_info(Preds, PredId, ProcId, Globals, HowToDeclareLabel, C_RetType,
 		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_import_status(PredInfo, Status),
 	(
 		( procedure_is_exported(PredInfo, ProcId)
 		; status_defined_in_this_module(Status, no)
+		  % for --split-c-files, we need to treat
+		  % all procedures as if they were exported
+		; globals__lookup_bool_option(Globals, split_c_files, yes)
 		)
 	->
 		HowToDeclareLabel = "MR_declare_entry"
