@@ -587,7 +587,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		printlabel(MR_redoip_slot(max_frame));
 		fflush(NULL);
 	    }
-	    stack_pointer = MR_detfr_slot(max_frame); /* XXX ??? */
+	    stack_pointer = MR_tmp_detfr_slot(max_frame); /* XXX ??? */
 	} else {
 	    if (MR_agc_debug) {
 		printlabel(MR_redoip_slot(max_frame));

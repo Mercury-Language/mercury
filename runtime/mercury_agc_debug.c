@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -109,7 +109,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 			fprintf(stderr, " redofr: %p\n",
 				MR_redofr_slot(max_frame));
 			fprintf(stderr, " detfr:  %p\n",
-				MR_detfr_slot(max_frame));
+				MR_tmp_detfr_slot(max_frame));
 
 			label = MR_lookup_internal_by_addr(MR_redoip_slot(
 					max_frame));
@@ -117,7 +117,8 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 			if (label && label->i_layout) {
 				dump_live_variables(label->i_layout, heap_zone,
 					registers_valid,
-					MR_detfr_slot(max_frame), max_frame);
+					MR_tmp_detfr_slot(max_frame),
+					max_frame);
 				/*
 				** XXX should max_frame above be
 				** MR_redoip_slot(max_frame) instead?

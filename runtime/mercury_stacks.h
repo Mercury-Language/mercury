@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -113,7 +113,8 @@
 #define	MR_REDOFR	(-2)	/* value for curfr on backtracking      */
 #define	MR_SUCCIP	(-3)	/* in caller proc, set up at call	*/
 #define	MR_SUCCFR	(-4)	/* frame of caller proc, set up at call	*/
-#define	MR_DETFR	(-3)	/* sp, in model_det temp frames only	*/
+#define	MR_TMP_DETFR	(-3)	/* sp, in model_det temp frames only	 */
+#define	MR_TABLE_DETFR	(-5)	/* sp, in minimal model main frames only */
 
 /*
 ** MR_Code that traverses the nondet stack depends on the relationship
@@ -123,7 +124,12 @@
 
 #define	MR_NONDET_TEMP_SIZE	3 /* prevfr, redoip, redofr */
 #define	MR_DET_TEMP_SIZE	4 /* prevfr, redoip, redofr, detfr */
+#ifdef	MR_USE_MINIMAL_MODEL
+#define	MR_NONDET_FIXED_SIZE	6 /* prevfr, redoip, redofr, succip, succfr,
+				     sp */
+#else
 #define	MR_NONDET_FIXED_SIZE	5 /* prevfr, redoip, redofr, succip, succfr */
+#endif
 
 #define	MR_SAVEVAL		(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
@@ -133,7 +139,8 @@
 #define	MR_redofr_addr(fr)	(&((MR_Word *) (fr))[MR_REDOFR])
 #define	MR_succip_addr(fr)	(&((MR_Word *) (fr))[MR_SUCCIP])
 #define	MR_succfr_addr(fr)	(&((MR_Word *) (fr))[MR_SUCCFR])
-#define	MR_detfr_addr(fr)	(&((MR_Word *) (fr))[MR_DETFR])
+#define	MR_tmp_detfr_addr(fr)	(&((MR_Word *) (fr))[MR_TMP_DETFR])
+#define	MR_table_detfr_addr(fr)	(&((MR_Word *) (fr))[MR_TABLE_DETFR])
 #define	MR_based_framevar_addr(fr, n) \
 				(&(((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
@@ -147,8 +154,10 @@
 					((MR_Word *) (fr))[MR_SUCCIP])
 #define	MR_succfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
 					((MR_Word *) (fr))[MR_SUCCFR])
-#define	MR_detfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
-					((MR_Word *) (fr))[MR_DETFR])
+#define	MR_tmp_detfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_TMP_DETFR])
+#define	MR_table_detfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_TABLE_DETFR])
 #define	MR_based_framevar(fr, n) (((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
@@ -157,24 +166,33 @@
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
+#ifdef	MR_USE_MINIMAL_MODEL
+  #define	MR_maybe_fill_table_detfr_slot()			\
+				MR_table_detfr_slot(MR_curfr) = MR_sp
+#else
+  #define	MR_maybe_fill_table_detfr_slot()			\
+				((void) 0)
+#endif
+
 #define	MR_mkframe(predname, numslots, redoip)				\
-			do {						\
-				MR_Word	*prevfr;			\
-				MR_Word	*succfr;			\
+	do {								\
+		MR_Word	*prevfr;					\
+		MR_Word	*succfr;					\
 									\
-				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
-				MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots);\
-				MR_curfr = MR_maxfr;			\
-				MR_redoip_slot(MR_curfr) = redoip;	\
-				MR_prevfr_slot(MR_curfr) = prevfr;	\
-				MR_succip_slot(MR_curfr) = MR_succip;	\
-				MR_succfr_slot(MR_curfr) = succfr;	\
-				MR_redofr_slot(MR_curfr) = MR_curfr;	\
-				MR_debugmkframe(predname);		\
-				MR_nondstack_overflow_check();		\
-				MR_collect_non_frame_stats(numslots);	\
-			} while (0)
+		prevfr = MR_maxfr;					\
+		succfr = MR_curfr;					\
+		MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots);		\
+		MR_curfr = MR_maxfr;					\
+		MR_redoip_slot(MR_curfr) = redoip;			\
+		MR_prevfr_slot(MR_curfr) = prevfr;			\
+		MR_succip_slot(MR_curfr) = MR_succip;			\
+		MR_succfr_slot(MR_curfr) = succfr;			\
+		MR_redofr_slot(MR_curfr) = MR_curfr;			\
+		MR_maybe_fill_table_detfr_slot();			\
+		MR_debugmkframe(predname);				\
+		MR_nondstack_overflow_check();				\
+		MR_collect_non_frame_stats(numslots);			\
+	} while (0)
 
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
@@ -193,71 +211,75 @@
 		MR_succip_slot(MR_curfr) = MR_succip;			\
 		MR_succfr_slot(MR_curfr) = succfr;			\
 		MR_redofr_slot(MR_curfr) = MR_curfr;			\
+		MR_maybe_fill_table_detfr_slot();			\
 		MR_debugmkframe(predname);				\
 		MR_nondstack_overflow_check();				\
 		MR_collect_non_frame_stats(numslots);			\
 	} while (0)
 
 #define	MR_mktempframe(redoip)						\
-			do {						\
-				MR_Word	*prevfr;			\
+	do {								\
+		MR_Word	*prevfr;					\
 									\
-				prevfr = MR_maxfr;			\
-				MR_maxfr += MR_NONDET_TEMP_SIZE;	\
-				MR_prevfr_slot(MR_maxfr) = prevfr;	\
-				MR_redoip_slot(MR_maxfr) = redoip;	\
-				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
-				MR_nondstack_overflow_check();		\
-			} while (0)
+		prevfr = MR_maxfr;					\
+		MR_maxfr += MR_NONDET_TEMP_SIZE;			\
+		MR_prevfr_slot(MR_maxfr) = prevfr;			\
+		MR_redoip_slot(MR_maxfr) = redoip;			\
+		MR_redofr_slot(MR_maxfr) = MR_curfr;			\
+		MR_nondstack_overflow_check();				\
+	} while (0)
 
 #define	MR_mkdettempframe(redoip)					\
-			do {						\
-				MR_Word	*prevfr;			\
+	do {								\
+		MR_Word	*prevfr;					\
 									\
-				prevfr = MR_maxfr;			\
-				MR_maxfr += MR_DET_TEMP_SIZE;		\
-				MR_prevfr_slot(MR_maxfr) = prevfr;	\
-				MR_redoip_slot(MR_maxfr) = redoip;	\
-				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
-				MR_detfr_slot(MR_maxfr)  = MR_sp;	\
-				MR_nondstack_overflow_check();		\
-			} while (0)
+		prevfr = MR_maxfr;					\
+		MR_maxfr += MR_DET_TEMP_SIZE;				\
+		MR_prevfr_slot(MR_maxfr) = prevfr;			\
+		MR_redoip_slot(MR_maxfr) = redoip;			\
+		MR_redofr_slot(MR_maxfr) = MR_curfr;			\
+		MR_tmp_detfr_slot(MR_maxfr)  = MR_sp;			\
+		MR_nondstack_overflow_check();				\
+	} while (0)
 
-#define	MR_succeed()	do {						\
-				MR_Word	*childfr;			\
+#define	MR_succeed()							\
+	do {								\
+		MR_Word	*childfr;					\
 									\
-				MR_debugsucceed();			\
-				childfr = MR_curfr;			\
-				MR_curfr = MR_succfr_slot(childfr);	\
-				MR_GOTO(MR_succip_slot(childfr));	\
-			} while (0)
+		MR_debugsucceed();					\
+		childfr = MR_curfr;					\
+		MR_curfr = MR_succfr_slot(childfr);			\
+		MR_GOTO(MR_succip_slot(childfr));			\
+	} while (0)
 
 #define	MR_succeed_discard()						\
-			do {						\
-				MR_Word	*childfr;			\
+	do {								\
+		MR_Word	*childfr;					\
 									\
-				MR_debugsucceeddiscard();		\
-				childfr = MR_curfr;			\
-				MR_maxfr = MR_prevfr_slot(childfr);	\
-				MR_curfr = MR_succfr_slot(childfr);	\
-				MR_GOTO(MR_succip_slot(childfr));	\
-			} while (0)
+		MR_debugsucceeddiscard();				\
+		childfr = MR_curfr;					\
+		MR_maxfr = MR_prevfr_slot(childfr);			\
+		MR_curfr = MR_succfr_slot(childfr);			\
+		MR_GOTO(MR_succip_slot(childfr));			\
+	} while (0)
 
 
-#define	MR_fail()	do {						\
-				MR_debugfail();				\
-				MR_maxfr = MR_prevfr_slot(MR_maxfr);	\
-				MR_nondstack_underflow_check();		\
-				MR_curfr = MR_redofr_slot(MR_maxfr);	\
-				MR_GOTO(MR_redoip_slot(MR_maxfr));	\
-			} while (0)
+#define	MR_fail()							\
+	do {								\
+		MR_debugfail();						\
+		MR_maxfr = MR_prevfr_slot(MR_maxfr);			\
+		MR_nondstack_underflow_check();				\
+		MR_curfr = MR_redofr_slot(MR_maxfr);			\
+		MR_GOTO(MR_redoip_slot(MR_maxfr));			\
+	} while (0)
 
 
-#define	MR_redo()	do {						\
-				MR_debugredo();				\
-				MR_curfr = MR_redofr_slot(MR_maxfr);	\
-				MR_GOTO(MR_redoip_slot(MR_maxfr));	\
-			} while (0)
+#define	MR_redo()							\
+	do {								\
+		MR_debugredo();						\
+		MR_curfr = MR_redofr_slot(MR_maxfr);			\
+		MR_GOTO(MR_redoip_slot(MR_maxfr));			\
+	} while (0)
 
 /*---------------------------------------------------------------------------*/
 
