@@ -112,7 +112,10 @@ vn__find_free_regs(N, Max, Livevals, Vn_tables, Freeregs) :-
 			Vnrval = vn_origlval(vn_reg(r(N))), 
 			vn__search_assigned_vn(Vnrval, Vn, Vn_tables)
 		->
-			( vn__search_uses(Vn, [_|_], Vn_tables) ->
+			(
+				vn__search_uses(Vn, Uses, Vn_tables),
+				Uses \= []
+			->
 				Freeregs = Freeregs0
 			;
 				Freeregs = [vn_reg(r(N)) | Freeregs0]
