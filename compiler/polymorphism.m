@@ -12,12 +12,20 @@
 % using higher-order predicates, and also invokes `lambda__transform_lambda'
 % to handle lambda expressions by creating new predicates for them.
 %
+%-----------------------------------------------------------------------------%
+%
+% Tranformation of polymorphic code:
+%
 % Every polymorphic predicate is transformed so that it takes one additional
 % argument for every type variable in the predicate's type declaration.
 % The argument gives information about the type, including higher-order
 % predicate variables for each of the builtin polymorphic operations
 % (currently unify/2, compare/3, index/2, term_to_type/2 and type_to_term/2,
 % although the last two are usually omitted to improve compilation speed).
+%
+%-----------------------------------------------------------------------------%
+%
+% Representation of type information:
 %
 % We can use one of two ways to represent the type information.
 %
@@ -41,7 +49,8 @@
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
 %	word 4		<base_type_layout for type>
-%	word 5		<string name of type>
+%	word 5		<base_type_functors for type>
+%	word 6		<string name of type>
 %			e.g. "int" for 'int', "list" for 'list(T),
 %			"map" for 'map(K,V)'
 %
@@ -50,6 +59,8 @@
 %	word 4		<term_to_type/2 predicate for type>
 %	word 5		<type_to_term/2 predicate for type>
 %	word 6		<base_type_layout for type>
+%	word 7		<base_type_functors for type>
+%	word 8		<string name of type>
 %
 % The other cell is the new type_info structure, laid out like this:
 %
@@ -57,6 +68,10 @@
 %	word 1+		<the type_infos for the type params, at least one>
 %
 %	(seen note below for how higher order types differ)
+%
+%-----------------------------------------------------------------------------%
+%
+% Optimization of common case for one-or-two cells:
 %
 % The type_info structure itself is redundant if the type has no type
 % parameters (i.e. its arity is zero). Therefore if the arity is zero,
@@ -67,23 +82,50 @@
 % the cell is a new type_info structure, with the first field being the
 % pointer to the base_type_info structure.
 %
-% Note: There is a slight variation on this for higher-order types. Higher
-% order type-info always have a pointer to the pred/0 base_type_info, 
-% regardless of their true arity, so we store the real arity in the type-info
-% as well.
+%-----------------------------------------------------------------------------%
+%
+% Higher order types:
+%
+% There is a slight variation on this for higher-order types. Higher
+% order type_infos always have a pointer to the pred/0 base_type_info,
+% regardless of their true arity, so we store the real arity in the
+% type-info as well.
+%
 %	word 0		<pointer to the base_type_info structure (pred/0)>
 %	word 1		<arity of predicate>
 %	word 2+		<the type_infos for the type params, at least one>
 %
+%-----------------------------------------------------------------------------%
+%
+% Sharing one-or-two-cell structures:
+%
 % Whereas the old type_info structures are often different for different
 % references to a type which takes one or more type parameters, the
 % base_type_info structures will be the same for all references to the type.
+%
 % For compilation models that can put code addresses in static ground terms,
 % we can arrange to create one copy of the base_type_info structure statically,
 % avoiding the need to create other copies at runtime. For compilation models
-% that cannot put code addresses in static ground terms, we can use either
-% this one or two cell representation or the old one cell representation,
-% in both cases allocating all cells at runtime.
+% that cannot put code addresses in static ground terms, we have several
+% options:
+%
+% 	1. use this one or two cell representation, allocating all cells 
+% 	   at runtime.
+%	2. use the old one cell representation, allocating all cells at
+%	   runtime.
+%	3. use a shared static base_type_info, but initialize its code
+%	   addresses during startup (that is, during the module
+%	   initialization code).
+%
+% Presently, shared-one-or-two cells are the default, with grades that
+% cannot use static code addresses using option 3.  It is likely that in
+% future, support for one-cell representation, and non-shared
+% one-or-two-cell representations will be dropped, simply to reduce the
+% complexity of the polymorphism system.
+%
+%-----------------------------------------------------------------------------%
+%
+% Example of transformation:
 %
 % Take the following code as an example, ignoring the requirement for
 % super-homogeneous form for clarity:
@@ -111,7 +153,6 @@
 %			'__Compare__'<list/1>,
 %			'__Term_To_Type__'<list/1>,
 %			'__Type_To_Term__'<list/1>,
-%			<base_type_layout for list/1>,
 %			TypeInfoT1),
 %		q(TypeInfoT2, [X]),
 %		TypeInfoT3 = type_info(
@@ -121,7 +162,6 @@
 %			builtin_compare_int,
 %			builtin_term_to_type_int,
 %			builtin_type_to_term_int,
-%			<base_type_layout for int/0>),
 %		r(TypeInfoT3, 0).
 %
 % With the one_or_two_cell representation, we transform the body of p to this:
@@ -134,7 +174,9 @@
 %			'__Compare__'<list/1>,
 %			'__Term_To_Type__'<list/1>,
 %			'__Type_To_Term__'<list/1>,
-%			<base_type_layout for int/0>),
+%			<base_type_layout for list/1>,
+%			<base_type_functors for list/1>,
+%			"list"),
 %		TypeInfoT2 = type_info(
 %			BaseTypeInfoT2,
 %			TypeInfoT1),
@@ -146,7 +188,9 @@
 %			builtin_compare_int,
 %			builtin_term_to_type_int,
 %			builtin_type_to_term_int,
-%			<base_type_layout for int/0>),
+%			<base_type_layout for int/0>,
+%			<base_type_functors for int/0>,
+%			"int"),
 %		r(TypeInfoT3, 0).
 %
 % With the shared_one_or_two_cell representation, we transform the body of p
@@ -154,7 +198,7 @@
 % base_type_info(...) are generated as references to the single
 % definition of base_type_info (which is generated in the module that
 % defines it).
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module polymorphism.
