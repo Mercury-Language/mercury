@@ -704,7 +704,17 @@ get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
 
 lookup_main_target(Vars, MaybeMainTarget) -->
 	lookup_variable_words_report_error(Vars,
-		"MAIN_TARGET", MaybeMainTarget).
+		"MAIN_TARGET", MainTargetResult),
+	(
+		{ MainTargetResult = set(MainTarget) },
+		{ MaybeMainTarget = yes(MainTarget) }
+	;
+		{ MainTargetResult = unset },
+		{ MaybeMainTarget = yes([]) }
+	;
+		{ MainTargetResult = error(_) },
+		{ MaybeMainTarget = no }
+	).
 
 lookup_default_options(Vars, Result) -->
 	lookup_mmc_maybe_module_options(Vars, default, Result).
@@ -725,8 +735,12 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	list__map_foldl(lookup_options_variable(Vars, MaybeModuleName),
 		VariableTypes, Results),
 	{
-		list__map((pred(yes(Value)::in, Value::out) is semidet),
-			Results, Values)
+		list__map(
+		    (pred(VarResult::in, MaybeValue::out) is semidet :-
+			( VarResult = set(Value), MaybeValue = yes(Value)
+			; VarResult = unset, MaybeValue = no
+			)
+		    ), Results, Values)
 	->
 		assoc_list__from_corresponding_lists(VariableTypes,
 			Values, VariableValues),
@@ -743,7 +757,6 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	;	non_module_specific
 	;	module_specific(module_name)
 	.
-
 
 :- type options_variable_type
 	--->	grade_flags
@@ -818,10 +831,18 @@ options_variable_type_is_target_specific(lib_dirs) = no.
 options_variable_type_is_target_specific(lib_grades) = no.
 options_variable_type_is_target_specific(install_prefix) = no.
 
-:- func convert_to_mmc_options(pair(options_variable_type, list(string)))
+:- func convert_to_mmc_options(
+		pair(options_variable_type, maybe(list(string)))) =
+			list(string).
+
+convert_to_mmc_options(_ - no) = [].
+convert_to_mmc_options(VariableType - yes(VariableValue)) =
+		convert_to_mmc_options(VariableType, VariableValue).
+
+:- func convert_to_mmc_options(options_variable_type, list(string))
 			= list(string).
 
-convert_to_mmc_options(VariableType - VariableValue) = OptionsStrings :-
+convert_to_mmc_options(VariableType, VariableValue) = OptionsStrings :-
 	MMCOptionType = mmc_option_type(VariableType),
 	(
 		MMCOptionType = mmc_flags,
@@ -866,9 +887,16 @@ mmc_option_type(install_prefix) = option([], "--install-prefix").
 
 %-----------------------------------------------------------------------------%
 
+:- type variable_result(T)
+	--->	set(T)
+	;	unset
+	;	error(string)
+	.
+
 :- pred lookup_options_variable(options_variables::in,
 	options_variable_class::in, options_variable_type::in,
-	maybe(list(string))::out, io__state::di, io__state::uo) is det.
+	variable_result(list(string))::out,
+	io__state::di, io__state::uo) is det.
 
 lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 	{ VarName = options_variable_name(FlagsVar) },
@@ -877,8 +905,8 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 	(
 		{ OptionsVariableClass = default }
 	->
-		{ FlagsResult = yes([]) },
-		{ ExtraFlagsResult = yes([]) }
+		{ FlagsResult = unset },
+		{ ExtraFlagsResult = unset }
 	;
 		lookup_variable_words_report_error(Vars, VarName, FlagsResult),
 		lookup_variable_words_report_error(Vars, "EXTRA_" ++ VarName,
@@ -894,39 +922,39 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 		lookup_variable_words_report_error(Vars, ModuleVarName,
 			ModuleFlagsResult)
 	;
-		{ ModuleFlagsResult = yes([]) }
+		{ ModuleFlagsResult = unset }
 	),
+	{ Result = DefaultFlagsResult ++ FlagsResult ++
+			ExtraFlagsResult ++ ModuleFlagsResult }.
 
-	(
-		{ DefaultFlagsResult = yes(DefaultFlags) },
-		{ FlagsResult = yes(Flags) },
-		{ ExtraFlagsResult = yes(ExtraFlags) },
-		{ ModuleFlagsResult = yes(TargetFlags) }
-	->
-		{ Result = yes(list__condense([DefaultFlags,
-				Flags, ExtraFlags, TargetFlags])) }
-	;
-		{ Result = no }
-	).
+:- func variable_result(list(T)) ++ variable_result(list(T)) =
+		variable_result(list(T)).
+
+unset ++ unset = unset.
+unset ++ set(V) = set(V).
+unset ++ error(E) = error(E).
+set(V1) ++ set(V2) = set(V1 ++ V2).
+set(V) ++ unset = set(V).
+set(_) ++ error(E) = error(E).
+error(E) ++ _ = error(E).
 
 :- pred lookup_variable_words_report_error(options_variables::in,
-	options_variable::in, maybe(list(string))::out,
+	options_variable::in, variable_result(list(string))::out,
 	io__state::di, io__state::uo) is det.
 
 lookup_variable_words_report_error(Vars, VarName, Result) -->
-	lookup_variable_words(Vars, VarName, Result0),
+	lookup_variable_words(Vars, VarName, Result),
 	(
-		{ Result0 = ok(Words) },
-		{ Result = yes(Words) }
-	;
-		{ Result0 = error(Error) },
-		{ Result = no },
+		{ Result = error(Error) }
+	->
 		io__write_string(Error),
 		io__nl
+	;
+		[]
 	).
 
 :- pred lookup_variable_words(options_variables::in, options_variable::in,
-	maybe_error(list(string))::out,
+	variable_result(list(string))::out,
 	io__state::di, io__state::uo) is det.
 
 lookup_variable_words(Vars, VarName, Result) -->
@@ -936,7 +964,7 @@ lookup_variable_words(Vars, VarName, Result) -->
 			string__to_char_list(EnvValue)) },
 		{
 			SplitResult = ok(EnvWords),
-			Result = ok(EnvWords)
+			Result = set(EnvWords)
 		;
 			SplitResult = error(Msg),
 			Result = error(string__append_list(
@@ -945,13 +973,13 @@ lookup_variable_words(Vars, VarName, Result) -->
 		}
 	; { map__search(Vars, VarName, MapValue) } ->
 		{ MapValue = options_variable_value(_, Words, _) },
-		{ Result = ok(Words) }
+		{ Result = set(Words) }
 	;
-		{ Result = ok([]) }
+		{ Result = unset }
 	).
 
-:- pred lookup_variable_chars(options_variables::in, string::in, list(char)::out,
-	list(string)::in, list(string)::out,
+:- pred lookup_variable_chars(options_variables::in, string::in,
+	list(char)::out, list(string)::in, list(string)::out,
 	io__state::di, io__state::uo) is det.
 
 lookup_variable_chars(Variables, Var, Value, Undef0, Undef) -->
