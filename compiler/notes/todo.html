@@ -229,7 +229,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <li> transform non-tail-recursive predicates into tail-recursive form
      using accumulators
-	[being worked on by jammb]
 
 <li> deforestation and partial deduction
 	[being worked on by stayl]
@@ -242,10 +241,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      the real registers into the fake_reg array and back)
 
 <li> tail recursion optimization using pass-by-reference argument conventions
-	[being worked on by jammb]
 
 <li> other specializations, e.g. if argument is known to be bound to
      f(X,Y), then just pass X and Y in registers
+	[being worked on by petdr]
 
 <li> trim stack frames before making recursive calls, to minimize stack usage
      (this would probably be a pessimization much of the time - zs)
@@ -293,6 +292,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> implement streams (need coroutining at least)
 
 <li> implement tabling
+	[tabling in the absence of negation done by ohutch, but not committed]
 
 <li> implement a very fast turn-around bytecode compiler/interpreter/debugger,
      similar to Gofer
@@ -340,12 +340,14 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 	     code placement (Alpha has a tool for this).
 	</ul>
 
-<li> attribute grammars
+<li> use of attribute grammar technology
+	(including visit sequence optimization)
+	to implement code with circular modes
 </ul>
 
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-06-29 23:17:47 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-07-10 06:44:42 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
