@@ -40,6 +40,7 @@
 # include <sys/mman.h>
 # include <sys/time.h>
 # include <semaphore.h>
+# include <features.h>
 
 #undef pthread_create
 #undef pthread_sigmask
@@ -115,13 +116,20 @@ sem_t GC_suspend_ack_sem;
 GC_linux_thread_top_of_stack() relies on implementation details of
 LinuxThreads, namely that thread stacks are allocated on 2M boundaries
 and grow to no more than 2M.
-To make sure that we're using LinuxThreads and not some other thread
-package, we generate a dummy reference to `__pthread_initial_thread_bos',
-which is a symbol defined in LinuxThreads, but (hopefully) not in other
-thread packages.
+To make sure that we're using LinuxThreads (which more recently is part
+of glibc) and not some other thread package, we generate a dummy reference
+to `__pthread_initial_thread_bos', which is a symbol defined in LinuxThreads,
+but (hopefully) not in other thread packages.  However, unfortunately that
+doesn't work in glibc 2.1, because in glibc 2.1, it is defined as a local
+symbol.  So if we're using glibc >= 2.0, we just assume that it will work.
 */
-extern char * __pthread_initial_thread_bos;
-char **dummy_var_to_force_linux_threads = &__pthread_initial_thread_bos;
+#if defined(__GLIBC__) && __GLIBC__ >= 2
+  /* better just hope and pray ... */
+#else
+  /* force a link error if we're not using LinuxThreads */
+  extern char * __pthread_initial_thread_bos;
+  char **dummy_var_to_force_linux_threads = &__pthread_initial_thread_bos;
+#endif
 
 #define LINUX_THREADS_STACK_SIZE  (2 * 1024 * 1024)
 
