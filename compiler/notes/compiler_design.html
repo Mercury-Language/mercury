@@ -290,8 +290,7 @@ so that the compiler does the right thing for options such as
 	  pred_info.  However, typecheck.m doesn't figure out the pred_id
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
-	  later on (in post_typecheck.m, for preds, and in
-	  polymorphism.m, for function calls).
+	  later on (in post_typecheck.m, for both preds and function calls)
 	  Typeclass constraints are checked here, and
 	  any redundant constraints that are eliminated are recorded (as
 	  constraint_proofs) in the pred_info for future reference. When it has
@@ -339,7 +338,7 @@ so that the compiler does the right thing for options such as
 	wrong thing for goals whose only output is the type_info for 
 	an existentially quantified type parameter.)
 	<p>
-	This phase also converts function calls into predicate calls,
+	This phase also 
 	converts higher-order predicate terms into lambda expressions,
 	and copies the clauses to the proc_infos in preparation for
 	mode analysis.
@@ -1065,6 +1064,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-09-09 16:51:58 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-09-12 04:27:20 $ by $Author: petdr $@cs.mu.oz.au. <br>
 </body>
 </html>
