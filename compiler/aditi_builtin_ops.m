@@ -640,7 +640,8 @@ generate_const_args([ConstArg | ConstArgs], [ConstArgVar | ConstArgVars],
 :- mode create_bulk_update_closure_var(out, in, out) is det.
 
 create_bulk_update_closure_var(NewVar, Info0, Info) :-
-	construct_type(qualified(aditi_private_builtin_module, "relation") - 0,
+	construct_type(
+		qualified(aditi_private_builtin_module, "relation_ticket") - 0,
 		[], RelationType),
 	construct_higher_order_pred_type(pure, normal,
 		[aditi_state_type, RelationType], PredType),
