@@ -1,2 +1,0 @@
-:- module pl8_2_1.
-:- pragma termination_info(pl8_2_1:mergesort((builtin:in), (builtin:out)), finite(0, [yes, no]), can_loop).

@@ -1,3 +1,0 @@
-yes
-threw exception: univ(software_error("call to compare/3 for non-canonical type `user_defined_equality:foo\'") : require:software_error)
-threw exception: univ(software_error("call to compare/3 for non-canonical type `user_defined_equality:foo\'") : require:software_error)
