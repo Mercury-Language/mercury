@@ -38,8 +38,23 @@ rbtree__init(empty).
 
 %-----------------------------------------------------------------------------%
 
-rbtree__insert(empty, K, V, rbtree(red, K, V, empty, empty)).
-rbtree__insert(Tree0, K, V, Tree) :-
+rbtree__insert(empty, K, V, rbtree(black, K, V, empty, empty)).
+rbtree__insert(rbtree(Color, K1, V1, L1, R1), K, V, Tree) :-
+	rbtree__insert_2(rbtree(Color, K1, V1, L1, R1), K, V, Tree1),
+	% Ensure that the root of the tree is black.
+	(
+		Tree1 = rbtree(red, K0, V0, L0, R0)
+	->
+		Tree = rbtree(black, K0, V0, L0, R0)
+	;
+		Tree = Tree1
+	).
+
+:- pred rbtree__insert_2(rbtree(K, V), K, V, rbtree(K, V)). 
+:- mode rbtree__insert_2(in, in, in, out) is semidet.
+
+rbtree__insert_2(empty, K, V, rbtree(red, K, V, empty, empty)).
+rbtree__insert_2(Tree0, K, V, Tree) :-
 	Tree0 = rbtree(_Color, K0, V0, L0, R0),
 
 	% On the way down the rbtree we split any 4-nodes we find.
@@ -60,7 +75,7 @@ rbtree__insert(Tree0, K, V, Tree) :-
 	( 	
 		Result = (<)
 	->
-		rbtree__insert(L2, K, V, L),
+		rbtree__insert_2(L2, K, V, L),
 		(
 			% Only need to start looking for a rotation case if
 			% the current node is black, and it's child red. 
@@ -84,7 +99,7 @@ rbtree__insert(Tree0, K, V, Tree) :-
 	;
 		Result = (>)
 	->
-		rbtree__insert(R2, K, V, R),
+		rbtree__insert_2(R2, K, V, R),
 		(
 			Color = black,
 			R = rbtree(red, RK, RV, RL, RR)
