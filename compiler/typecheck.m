@@ -728,12 +728,13 @@ typecheck_term_has_type(term__functor(F, As, _), Type, TypeInfo0, TypeInfo) :-
 		TypeAssignSet0 \= []
 	    ->
 		type_info_get_io_state(TypeInfo0, IOState0),
-		report_error_cons(TypeInfo0, F, As, Type, TypeAssignSet0,
-					IOState0, IOState),
+		report_error_cons(TypeInfo0, F, ConsDefnList, As, Type,
+					TypeAssignSet0, IOState0, IOState),
 		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	    ;
-		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
+						TypeInfo)
 	    )
 	).
 
@@ -2356,9 +2357,9 @@ write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
 
 :- pred write_cons_type_list(list(cons_type_info), const, int, term__context,
 				io__state, io__state).
-:- mode write_cons_type_list(in, in, in, di, uo) is det.
+:- mode write_cons_type_list(in, in, in, in, di, uo) is det.
 
-write_cons_type_list([], _, _) --> [].
+write_cons_type_list([], _, _, _) --> [].
 write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context) -->
 	write_cons_type(ConsDefn, Functor, Context),
 	( { ConsDefns = [] } ->
@@ -2578,11 +2579,12 @@ write_call_context(Context, PredId, ArgNum, UnifyContext) -->
 		io__write_string("':\n")
 	).
 
-:- pred report_error_cons(type_info, const, list(term),
+:- pred report_error_cons(type_info, const, list(cons_type_info), list(term),
 			type, type_assign_set, io__state, io__state).
-:- mode report_error_cons(type_info_no_io, in, in, in, in, di, uo) is det.
+:- mode report_error_cons(type_info_no_io, in, in, in, in, in, di, uo) is det.
 
-report_error_cons(TypeInfo, Functor, Args, Type, TypeAssignSet) -->
+report_error_cons(TypeInfo, Functor, ConsDefnList, Args, Type, TypeAssignSet)
+		-->
 	{ type_info_get_called_predid(TypeInfo, CalledPredId) },
 	{ type_info_get_arg_num(TypeInfo, ArgNum) },
 	{ type_info_get_varset(TypeInfo, VarSet) },
