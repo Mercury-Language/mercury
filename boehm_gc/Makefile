@@ -1,7 +1,11 @@
-# I have modified this file - fjh.
-# I added the libgc.a target, added the `include ../Mmake.common' line,
+#-----------------------------------------------------------------------------#
+# I have modified this file.
+# I've added the libgc.a target, added the `include ../Mmake.common' line,
 # and changed the rule for libgc.so to use the $(LINK_SHARED_LIB) macro
 # defined in ../Mmake.common.
+# I've change the definitions of CC, AS, and CFLAGS.
+#	- fjh.
+#-----------------------------------------------------------------------------#
 
 MERCURY_DIR=..
 include ../Mmake.common
@@ -15,14 +19,14 @@ include ../Mmake.common
 #	 c++ interface to gc.a
 # cord/de - builds dumb editor based on cords.
 
-CC= ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check -Wall
+# CC=cc
+CC=../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check -Wall
 
 CXX=g++ -ansi
 # Needed only for "make c++", which adds the c++ interface
 
-AS=as
-# For Irix 5 with non-shared libraries, you'll need the following instead:
-# AS=as -non_shared
+# AS=as
+AS=../scripts/mgnuc --grade $(GRADE) -x assembler-with-cpp
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
 CFLAGS= -DNO_SIGNALS -DSILENT
