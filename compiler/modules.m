@@ -1468,6 +1468,11 @@ grab_imported_modules(SourceFileName, ModuleName, ReadModules, MaybeTimestamp,
 	process_module_short_interfaces_transitively(ReadModules,
 		ImpIndirectImports, ".int2", Module14, Module),
 
+	{ module_imports_get_items(Module, Items) },
+	check_imports_accessibility(ModuleName,
+		IntImportedModules ++ IntUsedModules ++
+		ImpImportedModules ++ ImpUsedModules, Items),
+
 	{ module_imports_get_error(Module, Error) }.
 
 % grab_unqual_imported_modules:
@@ -1541,6 +1546,11 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 	{ append_pseudo_decl(Module12, used(implementation), Module13) },
 	process_module_short_interfaces_transitively(ReadModules,
 			ImpIndirectImportDeps, ".int3", Module13, Module),
+
+	{ module_imports_get_items(Module, Items) },
+	check_imports_accessibility(ModuleName,
+		IntImportDeps ++ IntUseDeps ++ ImpImportDeps ++ ImpUseDeps,
+		Items),
 
 	{ module_imports_get_error(Module, Error) }.
 
@@ -4850,9 +4860,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
 			maybe_record_timestamp(Import, Ext, NeedQualifier,
 				MaybeTimestamp, Module0, Module1),
 			{ ModImplementationImports =
-				[Import | ModImplementationImports0] },
-			check_module_accessibility(ModuleName, Import,
-				ModItems0)
+				[Import | ModImplementationImports0] }
 		),
 		{ get_dependencies(Items, IndirectImports1, IndirectUses1) },
 		{ list__append(IndirectImports0, IndirectImports1,
@@ -4869,22 +4877,34 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
 			Module2, Module)
 	).
 
-:- pred check_module_accessibility(module_name, module_name, item_list,
+:- pred check_imports_accessibility(module_name, list(module_name), item_list,
 				io__state, io__state).
-:- mode check_module_accessibility(in, in, in, di, uo) is det.
+:- mode check_imports_accessibility(in, in, in, di, uo) is det.
 
-check_module_accessibility(ModuleName, ImportedModule, Items) -->
+	%
+	% At this point, we've read in all the appropriate interface files,
+	% including, for every imported/used module, at least the short
+	% interface for that module's parent module, which will contain
+	% the `include_module' declarations for any exported sub-modules
+	% of the parent.  So the accessible sub-modules can be determined
+	% by just calling get_children on the complete item list.
+	%
+	% We then go through all of the imported/used modules,
+	% checking that each one is accessible.
+	%
+check_imports_accessibility(ModuleName, Imports, Items) -->
+	{ get_children(Items, AccessibleSubModules) },
+	list__foldl(check_module_accessibility(ModuleName,
+		AccessibleSubModules, Items), Imports).
+
+:- pred check_module_accessibility(module_name, list(module_name), item_list,
+		module_name, io__state, io__state).
+:- mode check_module_accessibility(in, in, in, in, di, uo) is det.
+
+check_module_accessibility(ModuleName, AccessibleSubModules, Items,
+		ImportedModule) -->
 	( { ImportedModule = qualified(ParentModule, SubModule) } ->
-		%
-		% Check that the imported/used module is accessible,
-		% by searching through the current item list (we should
-		% have already read in the imported module's parent module
-		% at this point, so the item list should include the items
-		% in the parent's interface) looking for an `include_module'
-		% declaration that names it.
-		%
 		(
-			{ get_children(Items, AccessibleSubModules) },
 			{ list__member(ImportedModule, AccessibleSubModules) }
 		->
 			[]

@@ -18,6 +18,8 @@ include ../../Mmake.common
 #
 
 PROGS=	\
+	accessibility \
+	accessibility2 \
 	use_submodule \
 	parent \
 	parent2 \
@@ -26,12 +28,6 @@ PROGS=	\
 	nested3 \
 	class \
 	nested_intermod_main
-
-# The following test case is not enabled,
-# because we do not yet pass it:
-#	accessibility
-#		Shows up a bug where the nested module accessibility check
-#		reports some spurious errors.
 
 MCFLAGS-nested_intermod	=	--intermodule-optimization
 MCFLAGS-nested_intermod_main =	--intermodule-optimization

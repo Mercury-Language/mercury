@@ -24,7 +24,6 @@ MULTIMODULE_SOURCES= \
 	ho_default_func_2.sub.m \
 	imported_mode.m \
 	partial_implied_mode.m \
-	sub_b.m \
 	sub_c.m \
 	test_nested.m \
 	transitive_import.m \
