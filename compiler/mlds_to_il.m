@@ -21,12 +21,14 @@
 %
 % The IL backend TO-DO list:
 %
+% [ ] advanced name mangling: 
+%	- optionally only mangle names when it is absolutely necessary
 % [ ] solutions
-% [ ] floating point 
 % [ ] Type classes
-%	- You need to know what module the instance declaration is given in.
-%	- This involves module qualifying instance declarations.
-%	- This has semantic complications that we have to ignore for now
+%	- now work, but...
+%	- type class hierarchies don't work due to unimplemented pragma
+%	  foreign code.
+%	- should be implemented as interfaces
 % [ ] RTTI (io__write -- about half the work required for this is done)
 % [ ] High-level RTTI data
 % [ ] Test unused mode (we seem to create a byref for it)
@@ -43,7 +45,6 @@
 % [ ] nested modules need testing
 % [ ] We generate too many castclasses, it would be good to check if we
 %     really to do it before generating it.  Same with isinst.
-% [ ] Write line number information from contexts (in .il and .cpp files)
 % [ ] Implement pragma export.
 % [ ] Fix issues with abstract types so that we can implement C
 %     pointers as MR_Box rather than MR_Word.
@@ -51,7 +52,7 @@
 %     we should (this can occur in nondet C code). 
 % [ ] ml_gen_call_current_success_cont_indirectly should be merged with
 % 	similar code for doing copy-in/copy-out.
-% [ ] figure out whether we need maxstack and fix it
+% [ ] generate maxstack correctly
 % [ ] Try to use the IL bool type for the true/false rvals.
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such

@@ -8,6 +8,12 @@
 % interface.
 % Main author: trd.
 %
+% To-do:
+%
+% [ ] Fix the output of contexts so that the context gets reset after the
+%     user code.
+% [ ] Output contexts in more places, currently we don't do all of them.
+%
 % This code converts the MLDS representation of foreign language code into MC++ 
 
 :- module mlds_to_mcpp.
@@ -81,8 +87,6 @@ output_src_end(ModuleName) -->
 
 %-----------------------------------------------------------------------------%
 
-	% XXX we don't output contexts correctly -- we need to write out the
-	% original context at the end of the user's MC++ code.
 :- pred generate_mcplusplus_code(mlds, io__state, io__state).
 :- mode generate_mcplusplus_code(in, di, uo) is det.
 generate_mcplusplus_code(MLDS) -->
