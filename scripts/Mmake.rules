@@ -93,17 +93,6 @@ main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
-# Suppress some GNU make builtin rules, since they don't work
-
-%:%.o
-%:%.c
-%:%.s
-%:%.mod	
-%.o:%.mod
-# .mod is not Modula-2! ;-)
-
-#-----------------------------------------------------------------------------#
-
 # Clean up some mess
 
 # You can attach new dependencies to the `clean' and `realclean' targets
