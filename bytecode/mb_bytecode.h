@@ -1,18 +1,15 @@
 
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
-**
-** $Id: mb_bytecode.h,v 1.1 2001-01-24 07:42:22 lpcam Exp $
 **
 ** This file contains the bytecode format and data types
 ** This must be the same as that in compiler/bytecode.m
 */
 
-
 #ifndef MB_BYTECODE_H
-#define	MB_BYTECODE_H
+#define MB_BYTECODE_H
 
 #include <stdio.h>
 
@@ -20,31 +17,11 @@
 #include "mercury_types.h"
 #include "mercury_float.h"
 
+#include "mb_basetypes.h"
+#include "mb_stack.h"
 #include "mb_util.h"
 
-/* XXX expects sizeof(unsigned char) == 1 */
-typedef unsigned char
-	MB_Byte;
-
-typedef MR_INT_LEAST16_TYPE
-	MB_Short;
-
-typedef MR_Word
-	MB_Word;
-
-typedef MR_Integer
-	MB_Integer;
-
-typedef MR_Float
-	MB_Float;
-
-typedef MR_Float64
-	MB_Float64;
-
-typedef MR_Bool
-	MB_Bool;
-
-typedef struct MB_Tag_struct {
+typedef struct MB_Tag_Struct {
 	MB_Byte	id;
 	union {
 		MB_Byte	primary;
@@ -78,7 +55,29 @@ typedef MB_Byte
 #define	MB_DET_CC_NONDET		5
 #define	MB_DET_ERRONEOUS		6
 #define	MB_DET_FAILURE			7
+	/*
+	** Unusable is used to indicate that there is something wrong with
+	** this predicate (probably contains foreign code) and the bytecode
+	** version cannot be used
+	*/
+#define	MB_DET_UNUSABLE			99
 
+/* Return true if determinism model is the same as that specified */
+#define MB_model_det(x) (\
+	((x) == MB_DET_DET) || \
+	((x) == MB_DET_CC_MULTIDET) || \
+	((x) == MB_DET_ERRONEOUS))
+
+#define MB_model_semi(x) (\
+	((x) == MB_DET_SEMIDET) || \
+	((x) == MB_DET_CC_NONDET) || \
+	((x) == MB_DET_FAILURE))
+
+#define MB_model_nondet(x) (\
+	((x) == MB_DET_NONDET) || \
+	((x) == MB_DET_MULTIDET))
+
+	
 typedef struct MB_Op_arg_struct {
 	MB_Byte	id;
 	union {
@@ -111,12 +110,21 @@ typedef struct MB_Var_dir_struct {
 #define	MB_DIR_TO_VAR		1
 #define	MB_DIR_TO_NONE		2
 
+typedef struct {
+	/* Whether call is a native code call */
+	MB_Bool		is_native;
+	/* code address to call */
+	union {
+		MB_Bytecode_Addr bc;
+		MB_Native_Addr	native;
+	} addr;
+} MB_Code_Addr;
 
 typedef struct MB_Cons_id_struct {
 	MB_Byte	id;
 	union {
 		struct {
-			MB_CString	module_id;
+			MB_CString	module_name;
 			MB_CString	string;
 			MB_Short	arity;
 			MB_Tag		tag;
@@ -125,19 +133,22 @@ typedef struct MB_Cons_id_struct {
 		MB_CString	string_const;
 		MB_Float	float_const;
 		struct {
-			MB_CString	module_id;
-			MB_CString	pred_id;
+			MB_CString	module_name;
+			MB_CString	pred_name;
 			MB_Short	arity;
-			MB_Byte		proc_id;
+			MB_Bool		is_func;
+			MB_Byte		mode_num;
+			/* Actual call address */
+			MB_Code_Addr	addr;
 		} pred_const;
 		struct {
-			MB_CString	module_id;
-			MB_CString	pred_id;
+			MB_CString	module_name;
+			MB_CString	pred_name;
 			MB_Short	arity;
-			MB_Byte		proc_id;
+			MB_Byte		mode_num;
 		} code_addr_const;
 		struct {
-			MB_CString	module_id;
+			MB_CString	module_name;
 			MB_CString	type_name;
 			MB_Byte		type_arity;
 		} base_type_info_const;
@@ -159,11 +170,23 @@ typedef struct MB_Cons_id_struct {
 #define	MB_CONSID_BASE_TYPE_INFO_CONST	6
 #define	MB_CONSID_CHAR_CONST		7
 
+/*
+** Internal label structure. At load time the index is read from the file
+** and stored. translate_labels translates indexes into actual memory
+** addresses. The module load and label translation functions are the only
+** only functions that should access index, the rest of the program should
+** only use addr.
+*/
+typedef union {
+	MB_Short	index;
+	MB_Bytecode_Addr addr;
+} MB_Label;
+
 typedef union MB_Bytecode_Arg_tag {
 	struct {
-		MB_CString	pred_name;	/* XXX: malloc */
+		MB_CString	pred_name;
 		MB_Short	pred_arity;
-		MB_Byte		is_func;
+		MB_Bool		is_func;
 		MB_Short	proc_count;
 	} enter_pred;
 
@@ -171,19 +194,24 @@ typedef union MB_Bytecode_Arg_tag {
 	} endof_pred;
 
 	struct {
-		MB_Byte		proc_id;
+		MB_Byte		mode_num;
 		MB_Determinism	det;
 		MB_Short	label_count;
+		MB_Label	end_label;
 		MB_Short	temp_count;
 		MB_Short	list_length;
-		MB_CString	*var_info_list; /* XXX: malloc */
+		MB_CString	*var_info;
 		
-		/* index onto label heap for label indexes
-		 * (not in the file) */
+		/*
+		** index onto label heap for label indexes
+		** (not in the file)
+		*/
 		MB_Word		label_index; 	
 	} enter_proc;
 
 	struct {
+		/* start of proc (not in file) */
+		MB_Bytecode_Addr proc_start;
 	} endof_proc;
 
 	struct {
@@ -191,67 +219,89 @@ typedef union MB_Bytecode_Arg_tag {
 	} label;
 
 	struct {
-		MB_Short	end_label;
+		MB_Label end_label;
 	} enter_disjunction;
 
 	struct {
 	} endof_disjunction;
 
 	struct {
-		MB_Short	next_label;
+		MB_Label next_label;
 	} enter_disjunct;
 
 	struct {
-		MB_Short	label; /* XXX: what's label for? */
+		MB_Label end_label;
 	} endof_disjunct;
 
 	struct {
 		MB_Short	var;
-		MB_Short	end_label;
+		MB_Label	end_label;
 	} enter_switch;
 
 	struct {
+
 	} endof_switch;
 
 	struct {
 		MB_Cons_id	cons_id;
-		MB_Short	next_label;
+		MB_Label	next_label;
+
+		/* filled in at load time */
+		MB_Short	var;
 	} enter_switch_arm;
 
 	struct {
-		MB_Short	label;	/* XXX: what's this label for? */
+		MB_Label	end_label;
 	} endof_switch_arm;
 
 	struct {
-		MB_Short	else_label;
-		MB_Short	end_label;
+		MB_Label	else_label;
+		MB_Label	end_label;
 		MB_Short	frame_ptr_tmp;
 	} enter_if;
 
+	/* 
+	** identical to enter_else: if you change this, modify instr_else
+	** to reflect
+	*/
 	struct {
 		MB_Short	frame_ptr_tmp;
 	} enter_then;
 	
 	struct {
-		MB_Short	follow_label;
-	} endof_then;	/* XXX: should rename to enter_else */
+		MB_Label	follow_label;
+	} endof_then;
+
+	/* 
+	** identical to enter_then: if you change this, modify instr_then
+	** to reflect
+	*/
+	struct {
+		MB_Short	frame_ptr_tmp;
+	} enter_else;
 
 	struct {
+
 	} endof_if;
 
 	struct {
-		MB_Short	end_label;
+		MB_Short	frame_ptr_tmp;
+		MB_Label	end_label;
 	} enter_negation;
+
+	struct {
+		MB_Short	frame_ptr_tmp;
+	} endof_negation_goal;
 
 	struct {
 	} endof_negation;
 
 	struct {
-		MB_Short	temp;	
+		MB_Short	frame_ptr_tmp;
 	} enter_commit;
 
 	struct {
-		MB_Short	temp;	
+		MB_Short	frame_ptr_tmp;
 	} endof_commit;
 
 	struct {
@@ -268,28 +318,28 @@ typedef union MB_Bytecode_Arg_tag {
 		MB_Short	to_var;
 		MB_Cons_id	consid;
 		MB_Short	list_length;
-		MB_Short	*var_list;	/* XXX: malloc */
+		MB_Short	*var_list;
 	} construct;
 
 	struct {
 		MB_Short	from_var;
 		MB_Cons_id	consid;
 		MB_Short	list_length;
-		MB_Short	*var_list;	/* XXX: malloc */
+		MB_Short	*var_list;
 	} deconstruct;
 
 	struct {
 		MB_Short	to_var;
 		MB_Cons_id	consid;
 		MB_Short	list_length;
-		MB_Var_dir	*var_dir_list;/* XXX: malloc */	
+		MB_Var_dir	*var_dir;
 	} complex_construct;
 
 	struct {
 		MB_Short	from_var;
 		MB_Cons_id	consid;
 		MB_Short	list_length;
-		MB_Var_dir	*var_dir_list;/* XXX: malloc */
+		MB_Var_dir	*var_dir;
 	} complex_deconstruct;
 
 	struct {
@@ -303,13 +353,13 @@ typedef union MB_Bytecode_Arg_tag {
 	} pickup_arg;
 		
 	struct {
-		MB_CString	module_id;	/* XXX: malloc */
-		MB_CString	pred_id;	/* XXX: malloc */
+		MB_CString	module_name;
+		MB_CString	pred_name;
 		MB_Short	arity;
-		MB_Byte		proc_id;
-
-		/* code address to call (generated when file is loaded) */
-		MB_Word		adr;
+		MB_Bool		is_func;
+		MB_Byte		mode_num;
+		/* actual call address */
+		MB_Code_Addr	addr;
 	} call;
 
 	struct  {
@@ -359,6 +409,7 @@ typedef union MB_Bytecode_Arg_tag {
 
 	struct {
 	} not_supported;
+
 } MB_Bytecode_Arg;
 
 typedef struct MB_Bytecode_struct {
@@ -384,7 +435,6 @@ typedef struct MB_Bytecode_struct {
 #define	MB_BC_endof_switch_arm		12
 #define	MB_BC_enter_if			13
 #define	MB_BC_enter_then		14
-/* XXX: enter_else would be a better name than endof_then */
 #define	MB_BC_endof_then		15
 #define	MB_BC_endof_if			16
 #define	MB_BC_enter_negation		17
@@ -410,30 +460,34 @@ typedef struct MB_Bytecode_struct {
 #define	MB_BC_fail			37
 #define	MB_BC_context			38
 #define	MB_BC_not_supported		39
+#define	MB_BC_enter_else		40
+#define	MB_BC_endof_negation_goal	41
 
 /* These are used internally by the interpreter */
 /* all codes above MB_BC_debug are debugging values */
-#define MB_BC_debug			254
-#define	MB_BC_debug_trap		254
-#define	MB_BC_debug_invalid		255
-/*#define	MB_BC_noop			255*/
+#define	MB_BC_debug			0x3d
+#define	MB_BC_debug_trap		0x3e
+#define	MB_BC_debug_invalid		0x3f
+/*
+** Note that the limit to these is determined in mb_module.c by the
+** number of bits allocated to an id
+*/
 
 /*
- *	Read the next bytecode from the stream fp.
- *	If no bytecode can be read, return FALSE.
- *	Otherwise, return TRUE.
- */
+**	Read the next bytecode from the stream fp.
+**	If no bytecode can be read, return FALSE.
+**	Otherwise, return TRUE.
+*/
 MB_Bool
 MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p);
 
 /*
- *	Read the bytecode version number from the stream fp.
- *	If the version number cannot be read, return FALSE.
- *	Otherwise, return TRUE.
- */
+**	Read the bytecode version number from the stream fp.
+**	If the version number cannot be read, return FALSE.
+**	Otherwise, return TRUE.
+*/
 MB_Bool
 MB_read_bytecode_version_number(FILE *fp, MB_Short *version_number_p);
 
 #endif	/* MB_BYTECODE_H */
-
 

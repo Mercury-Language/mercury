@@ -1,10 +1,8 @@
 
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 1997,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
-**
-** $Id: mb_disasm.c,v 1.1 2001-01-24 07:42:23 lpcam Exp $
 **
 ** Contains functions for disassembling bytecodes into human readable form
 **
@@ -14,68 +12,69 @@
 #include	<assert.h>
 #include	<ctype.h>
 #include	<string.h>
+#include	<stdio.h>
 
 #include	"mb_disasm.h"
+#include	"mb_module.h"
 #include	"mb_util.h"
+
+#include	"mb_machine_def.h"
 
 /* Exported definitions */
 
-int MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level);
-void MB_listing(MB_Machine_State* ms, FILE* fp, MB_Word start, MB_Word end);
+int MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr,
+		char *buffer, int buffer_len, int indent_level);
+
+void MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start,
+	MB_Bytecode_Addr end, MB_Word line_len);
 
 /* Local declarations */
 
-static char
-rcs_id[]	= "$Id: mb_disasm.c,v 1.1 2001-01-24 07:42:23 lpcam Exp $";
-
-/* Fills a string buffer with the name of a bytecode */
-int MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level);
-
 /* Fills a c string buffer with to the name of a constructor id */
-static void str_cons_id(MB_Cons_id cons_id, char* buffer, int buffer_len);
+static void str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len);
 
 /* Fills a c string buffer with to the name of a tag */
-static void str_tag(MB_Tag tag, char* buffer, int buffer_len);
+static void str_tag(MB_Tag tag, char *buffer, int buffer_len);
 
 /* Returns a string corresponding to the name of a bytecode type */
-static const MB_CString str_bytecode_name(MB_Byte bytecode_id);
+static MB_CString_Const str_bytecode_name(MB_Byte bytecode_id);
 
 /* Returns a string corresponding to the name of a determinism type */
-static const MB_CString str_determinism_name(MB_Byte determinism_id);
+static MB_CString_Const str_determinism_name(MB_Byte determinism_id);
 
 /* Returns a string corresponding to the name of a unary operation */
-static const MB_CString str_unop_name(MB_Byte unop);
+static MB_CString_Const str_unop_name(MB_Byte unop);
 
 /* Returns a string corresponding to the name of a binary operation */
-static const MB_CString str_binop_name(MB_Byte binop);
+static MB_CString_Const str_binop_name(MB_Byte binop);
 
 /* Fills a buffer with a string transformed into a source-style c string 
  * (includes double quotes around string) */
-static void quote_cstring(MB_CString str, char* buffer, int buffer_len);
+static void quote_cstring(MB_CString str, char *buffer, int buffer_len);
 
 /* Fills a c string buffer with a variable list */
-static void str_var_dir(MB_Var_dir var_dir, char* buffer, int buffer_len);
+static void str_var_dir(MB_Var_dir var_dir, char *buffer, int buffer_len);
 
 /* Fills a c string buffer with an operation argument */
-static void str_op_arg(MB_Op_arg op_arg, char* buffer, int buffer_len);
+static void str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len);
 
 /* Implementation */
 
 
-/* Macros for printing:
-** expects buffer, buffer_len & last_len to be defined
-** (My kingdom for a C++ stream!)
-** wraps calls to snprintf, checks if the buffer is full and
+/*
+** Macros for printing:
+** Expects buffer, buffer_len & last_len to be defined.
+** Wraps calls to snprintf, checks if the buffer is full and
 ** if it is, returns from the function
 */
 
-#define Print()		if (buffer_len > 1) { \
+#define PRINT()		if (buffer_len > 1) { \
 				int last_len; \
 				assert(buffer_len > 0); \
 				last_len = snprintf(buffer, buffer_len,
 
 /* printf arguments get sandwiched between these macros */
-#define EndPrint()				);	\
+#define ENDPRINT()				);	\
 				if (last_len >= buffer_len) {\
 					last_len = buffer_len-1; \
 				} \
@@ -91,31 +90,48 @@ static void str_op_arg(MB_Op_arg op_arg, char* buffer, int buffer_len);
 			}
 
 
-/* Call this after calling a function that has added characters to the buffer */
-/* -> Requires that if the function filled the buffer, it must have at least */
-/* put a null terminator at the end */
-#define PrintFillCheck() {	\
+/*
+** Call this after calling a function that has added characters to the buffer
+** Requires that if the function filled the buffer, it must have at least
+** put a null terminator at the end
+*/
+#define PRINTFILLCHECK() {	\
 				int str_len = strlen(buffer);	\
 				buffer += str_len;		\
 				buffer_len -= str_len;		\
 				assert(buffer_len > 0); \
 			}
 
-/* Macro to call a function of the format f(arg, buffer, buffer_len)
- * where the function fills all or part of the buffer
- */
-#define PrintCall(x, y)	(x)((y), buffer, buffer_len); \
-			PrintFillCheck()
+/*
+** Macro to call a function of the format f(arg, buffer, buffer_len)
+** where the function fills all or part of the buffer
+*/
+#define PRINTCALL(x, y)	(x)((y), buffer, buffer_len); \
+			PRINTFILLCHECK()
 
-/* Fills a string corresponding to a bytecode */
-/* returns indent level for subsequent instructions */
-/* if buffer is NULL then only returns change in indent level */
+/*
+** Fills a string corresponding to a bytecode
+** Returns indent level for subsequent instructions
+**
+** If buffer is NULL or buffer_len is <= 0 then only returns
+**  new indent level
+**
+** The general convention is for arguments to be in square brackets and
+** calculated arguments (ie not in the bytecode file) in round brackets
+*/
+
 int
-MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level) 
+MB_str_bytecode(MB_Machine_State *ms, MB_Bytecode_Addr addr, char *buffer,
+		int buffer_len, int indent_level)
 {
+	MB_Byte bc_id = MB_code_get_id(addr);
+	MB_Bytecode_Arg *bca = MB_code_get_arg(addr);
+
+	/* calculate indent changes */
 	int this_indent = indent_level;
 	int next_indent = indent_level;
-	switch (bc.id) {
+
+	switch (bc_id) {
 		case MB_BC_enter_pred:
 		case MB_BC_enter_proc:
 		case MB_BC_enter_disjunction:
@@ -130,6 +146,8 @@ MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level)
 		case MB_BC_label:
 		case MB_BC_enter_then:
 		case MB_BC_endof_then:
+		case MB_BC_enter_else:
+		case MB_BC_endof_negation_goal:
 			this_indent--;
 			break;
 		case MB_BC_endof_pred:
@@ -169,249 +187,319 @@ MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level)
 	}
 
 	if (next_indent < 0) next_indent = 0;
+	
 
-	if (buffer == NULL) return next_indent;
+	/* if we only wanted to calculate the indents, return now */
+	if (buffer == NULL || buffer_len <= 0) return next_indent;
 
+	
+	/* indicate det/nondet code */
+	/* 
+	PRINT()
+		"%c",
+		(MB_code_get_det(addr) ? '+' : '-')
+	ENDPRINT()
+	*/
+
+	
+	/* print the indents */
 	while (this_indent > 0) {
-		Print()
+		PRINT()
 			"   "
-		EndPrint()
+		ENDPRINT()
 		this_indent--;
 	}
 	
-	Print()
+	PRINT()
 		"%s",
-		str_bytecode_name(bc.id)
-	EndPrint()
+		str_bytecode_name(bc_id)
+	ENDPRINT()
 
-	switch (bc.id) {
+	switch (bc_id) {
 		case MB_BC_enter_pred:
-			Print()
+			PRINT()
 				" %s %s/%d (%d procs)",
-				bc.opt.enter_pred.is_func ? "func" : "pred",
-				bc.opt.enter_pred.pred_name,
-				bc.opt.enter_pred.pred_arity,
-				bc.opt.enter_pred.proc_count
-			EndPrint()
+				bca->enter_pred.is_func ? "func" : "pred",
+				bca->enter_pred.pred_name,
+				(int) bca->enter_pred.pred_arity,
+				(int) bca->enter_pred.proc_count
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_pred:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_enter_proc: {
 			MB_Short	i;
 			MB_Short	len;
 			
-			Print()
-				" proc %d: %s, %d labels, %d temps, %d vars:", 
-				bc.opt.enter_proc.proc_id,
-				str_determinism_name(bc.opt.enter_proc.det),
-				bc.opt.enter_proc.label_count,
-				bc.opt.enter_proc.temp_count,
-				bc.opt.enter_proc.list_length
-			EndPrint()
+			PRINT()
+				" mode %d: [%s] [%d labels] [endlabel %p]"
+					" [%d temps] [%d vars]", 
+				(int) bca->enter_proc.mode_num,
+				str_determinism_name(bca->enter_proc.det),
+				bca->enter_proc.label_count,
+				bca->enter_proc.end_label.addr,
+				bca->enter_proc.temp_count,
+				bca->enter_proc.list_length
+			ENDPRINT()
 
-			len = bc.opt.enter_proc.list_length;
+			len = bca->enter_proc.list_length;
 			for (i = 0; i < len; i++) {
-				Print()
+				PRINT()
 					" %s",
-					bc.opt.enter_proc.var_info_list[i]
-				EndPrint()
+					bca->enter_proc.var_info[i]
+
+				ENDPRINT()
 			}
 			break;
 		}
 		case MB_BC_endof_proc:
-			/* No args */
+			PRINT()
+				" (%p)",
+				bca->endof_proc.proc_start
+			ENDPRINT()
 			break;
+			
 		case MB_BC_label:
-			Print()
+			PRINT()
 				" %d",
-				bc.opt.label.label
-			EndPrint()
+				(int) bca->label.label
+			ENDPRINT()
 			break;
+				
 		case MB_BC_enter_disjunction:
-			Print()
-				" %d",
-				bc.opt.enter_disjunction.end_label
-			EndPrint()
+			PRINT()
+				" [endlabel %p]",
+				bca->enter_disjunction.end_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_disjunction:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_enter_disjunct:
-			Print()
-				" %d",
-				bc.opt.enter_disjunct.next_label
-			EndPrint()
+			PRINT()
+				" [nextlabel %p]",
+				bca->enter_disjunct.next_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_disjunct:
-			Print()
-				" %d",
-				bc.opt.endof_disjunct.label
-			EndPrint()
+			PRINT()
+				" [endlabel %p]",
+				bca->endof_disjunct.end_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_enter_switch:
-			Print()
-				" on %d, label %d",
-				bc.opt.enter_switch.var,
-				bc.opt.enter_switch.end_label
-			EndPrint()
+			PRINT()
+				" [var %d] [endlabel %p]",
+				(int) bca->enter_switch.var,
+				bca->enter_switch.end_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_switch:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_enter_switch_arm:
-			Print()
-				" "
-			EndPrint()
+			PRINT()
+				" (on var %d) ",
+				(int) bca->enter_switch_arm.var
+			ENDPRINT()
 
-			PrintCall(str_cons_id, bc.opt.enter_switch_arm.cons_id)
+			PRINTCALL(str_cons_id, bca->enter_switch_arm.cons_id)
 
-			Print()
-				" %d",
-				bc.opt.enter_switch_arm.next_label
-			EndPrint()
+			PRINT()
+				" [nextlabel %p]",
+				bca->enter_switch_arm.next_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_switch_arm:
-			Print()
-				" endlabel %d",
-				bc.opt.endof_switch_arm.label
-			EndPrint()
+			PRINT()
+				" [endlabel %p]",
+				bca->endof_switch_arm.end_label.addr
+			ENDPRINT()
 			break;
+				
 		case MB_BC_enter_if:
-			Print()
-				" else %d, end %d, frame %d",
-				bc.opt.enter_if.else_label,
-				bc.opt.enter_if.end_label,
-				bc.opt.enter_if.frame_ptr_tmp
-			EndPrint()
+			PRINT()
+				" [else %p] [end %p] [frame %d]",
+				bca->enter_if.else_label.addr,
+				bca->enter_if.end_label.addr,
+				(int) bca->enter_if.frame_ptr_tmp
+			ENDPRINT()
 			break;
+				
 		case MB_BC_enter_then:
-			Print()
-				" %d",
-				bc.opt.enter_then.frame_ptr_tmp
-			EndPrint()
+			PRINT()
+				" [frame %d]",
+				(int) bca->enter_then.frame_ptr_tmp
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_then:
-			Print()
-				" %d",
-				bc.opt.endof_then.follow_label
-			EndPrint()
+			PRINT()
+				" [follow %p]",
+				bca->endof_then.follow_label.addr
+			ENDPRINT()
 			break;
+
+		case MB_BC_enter_else:
+			PRINT()
+				" [frame %d]",
+				(int) bca->enter_else.frame_ptr_tmp
+			ENDPRINT()
+			break;
+
+				
 		case MB_BC_endof_if:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_enter_negation:
-			printf(" %d", bc.opt.enter_negation.end_label);
+			PRINT()
+				" [frame %d] [endlabel %p]",
+				(int) bca->enter_negation.frame_ptr_tmp,
+				bca->enter_negation.end_label.addr
+			ENDPRINT()
 			break;
+
+		case MB_BC_endof_negation_goal:
+			PRINT()
+				" [frame %d]",
+				(int) bca->endof_negation_goal.frame_ptr_tmp
+			ENDPRINT()
+				
 		case MB_BC_endof_negation:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_enter_commit:
-			Print()
-				" %d",
-				bc.opt.enter_commit.temp
-			EndPrint()
+			PRINT()
+				" [frame %d]",
+				(int) bca->enter_commit.frame_ptr_tmp
+			ENDPRINT()
 			break;
+				
 		case MB_BC_endof_commit:
-			Print()
-				" %d",
-				bc.opt.endof_commit.temp
-			EndPrint()
+			PRINT()
+				" [frame %d]",
+				(int) bca->endof_commit.frame_ptr_tmp
+			ENDPRINT()
 			break;
+				
 		case MB_BC_assign:
-			Print()
-				" %d %d",
-				bc.opt.assign.to_var,
-				bc.opt.assign.from_var
-			EndPrint()
+			PRINT()
+				" [var %d] <= [var %d]",
+				(int) bca->assign.to_var,
+				(int) bca->assign.from_var
+			ENDPRINT()
 			break;
+				
 		case MB_BC_test:
-			Print()
-				" %d %d",
-				bc.opt.test.var1,
-				bc.opt.test.var2
-			EndPrint()
+			PRINT()
+				" [var %d] == [var %d]",
+				(int) bca->test.var1,
+				(int) bca->test.var2
+			ENDPRINT()
 			break;
+				
 		case MB_BC_construct: {
 			MB_Short	len;
 			MB_Short	i;
 
-			Print()
-				" %d ",
-				bc.opt.construct.to_var
-			EndPrint()
+			PRINT()
+				" [var %d] <= ",
+				(int) bca->construct.to_var
+			ENDPRINT()
 
-			PrintCall(str_cons_id,bc.opt.construct.consid)
+			PRINTCALL(str_cons_id,bca->construct.consid)
 
-			len = bc.opt.construct.list_length;
-			Print()
-				" %d",
-				len
-			EndPrint()
+			len = bca->construct.list_length;
+			PRINT()
+				" [%d var%s%s",
+				(int) len,
+				(len != 0) ? "s" : "",
+				(len > 0)  ? ":" : ""
+			ENDPRINT()
 			for (i = 0; i < len; i++) {
-				Print()
+				PRINT()
 					" %d",
-					bc.opt.construct.var_list[i]
-				EndPrint()
+					(int) bca->construct.var_list[i]
+				ENDPRINT()
 				
 			}
+			PRINT()
+				"]"
+			ENDPRINT()
 			break;
 		}
 		case MB_BC_deconstruct: {
 			MB_Short	len;
 			MB_Short	i;
 
-			Print()
-				" %d ",
-				bc.opt.deconstruct.from_var
-			EndPrint()
+			PRINT()
+				" [var %d] ",
+				(int) bca->deconstruct.from_var
+			ENDPRINT()
 			
-			PrintCall(str_cons_id,bc.opt.deconstruct.consid)
+			PRINTCALL(str_cons_id,bca->deconstruct.consid)
 
-			len = bc.opt.deconstruct.list_length;
-			Print()
-				" %d",
-				len
-			EndPrint()
+			len = bca->deconstruct.list_length;
+			PRINT()
+				" [%d var%s%s",
+				(int) len,
+				(len != 0) ? "s" : "",
+				(len > 0)  ? ":" : ""
+			ENDPRINT()
 
 			for (i = 0; i < len; i++) {
-				Print()
+				PRINT()
 					" %d",
-					bc.opt.deconstruct.var_list[i]
-				EndPrint()
+					(int) bca->deconstruct.var_list[i]
+				ENDPRINT()
 				
 			}
+			PRINT()
+				"]"
+			ENDPRINT()
 			break;
 		}
 		case MB_BC_complex_construct: {
 			MB_Short	len;
 			MB_Short	i;
 
-			Print()
+			PRINT()
 				" %d ",
-				bc.opt.complex_construct.to_var
-			EndPrint()
+				(int) bca->complex_construct.to_var
+			ENDPRINT()
 
-			PrintCall(str_cons_id,bc.opt.complex_construct.consid);
+			PRINTCALL(str_cons_id,bca->complex_construct.consid);
 
-			len = bc.opt.complex_construct.list_length;
+			len = bca->complex_construct.list_length;
 			
-			Print()
-				" %d", len
-			EndPrint()
+			PRINT()
+				" %d", (int) len
+			ENDPRINT()
 
 			for (i = 0; i < len; i++) {
-				Print()
+				PRINT()
 					" "
-				EndPrint()
+				ENDPRINT()
 
-				PrintCall(str_var_dir,
-					bc.opt.complex_construct.var_dir_list[i])
+				PRINTCALL(str_var_dir,
+					bca->complex_construct.var_dir[i])
 			}
 			break;
 		}
@@ -419,139 +507,157 @@ MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level)
 			MB_Short	len;
 			MB_Short	i;
 
-			Print()
+			PRINT()
 				" %d ",
-				bc.opt.complex_deconstruct.from_var
-			EndPrint()
+				(int) bca->complex_deconstruct.from_var
+			ENDPRINT()
 
-			PrintCall(str_cons_id,bc.opt.complex_deconstruct.consid);
+			PRINTCALL(str_cons_id,bca->complex_deconstruct.consid)
 
-			len = bc.opt.complex_deconstruct.list_length;
-			Print()
+			len = bca->complex_deconstruct.list_length;
+			PRINT()
 				" %d",
-				len
-			EndPrint()
+				(int) len
+			ENDPRINT()
 
 			for (i = 0; i < len; i++) {
-				Print()
+				PRINT()
 					" "
-				EndPrint()
+				ENDPRINT()
 
-				PrintCall(str_var_dir,
-					bc.opt.complex_deconstruct.var_dir_list[i])
+				PRINTCALL(str_var_dir,
+					bca->complex_deconstruct.var_dir[i])
 			}
 			break;
 		}
 		case MB_BC_place_arg:
-			Print()
-				": r[%d] <= slot %d",
-				bc.opt.place_arg.to_reg,
-				bc.opt.place_arg.from_var
-			EndPrint()
+			PRINT()
+				" [r%d] <= [var %d]",
+				(int) bca->place_arg.to_reg,
+				(int) bca->place_arg.from_var
+			ENDPRINT()
 			break;
+				
 		case MB_BC_pickup_arg:
-			Print()
-				": r[%d] => slot %d",
-				bc.opt.pickup_arg.from_reg,
-				bc.opt.pickup_arg.to_var
-			EndPrint()
+			PRINT()
+				" [r%d] => [var %d]",
+				(int) bca->pickup_arg.from_reg,
+				(int) bca->pickup_arg.to_var
+			ENDPRINT()
 			break;
+				
 		case MB_BC_call:
-			Print()
-				" %s %s %d %d (%08x)",
-				bc.opt.call.module_id,
-				bc.opt.call.pred_id,
-				bc.opt.call.arity,
-				bc.opt.call.proc_id,
-				bc.opt.call.adr
-			EndPrint()
+			PRINT()
+				" [%s %s__%s/%d mode %d (%s %p)]",
+				bca->call.is_func ? "func" : "pred",
+				bca->call.module_name,
+				bca->call.pred_name,
+				(int) bca->call.arity,
+				(int) bca->call.mode_num,
+				bca->call.addr.is_native ? "natv" : "byte",
+				bca->call.addr.is_native ?
+				 	(MB_Word *) bca->call.addr.addr.native :
+					(MB_Word *) bca->call.addr.addr.bc
+			ENDPRINT()
 			break;
+				
 		case MB_BC_higher_order_call:
-			Print()
-				" %d %d %d %s",
-				bc.opt.higher_order_call.pred_var,
-				bc.opt.higher_order_call.in_var_count,
-				bc.opt.higher_order_call.out_var_count,
-				str_determinism_name(bc.opt.higher_order_call.det)
-			EndPrint()
+			PRINT()
+				" [var %d] [invars %d] [outvars %d] [%s]",
+				(int) bca->higher_order_call.pred_var,
+				(int) bca->higher_order_call.in_var_count,
+				(int) bca->higher_order_call.out_var_count,
+				str_determinism_name(bca->higher_order_call.det)
+			ENDPRINT()
 			break;
+				
 		case MB_BC_builtin_binop:
-			Print()
+			PRINT()
 				": "
-			EndPrint()
+			ENDPRINT()
 
-			PrintCall(str_op_arg,bc.opt.builtin_binop.arg1)
+			PRINTCALL(str_op_arg,bca->builtin_binop.arg1)
 
-			Print()
+			PRINT()
 				" %s ", 
-				str_binop_name(bc.opt.builtin_binop.binop)
-			EndPrint()
+				str_binop_name(bca->builtin_binop.binop)
+			ENDPRINT()
 
-			PrintCall(str_op_arg,bc.opt.builtin_binop.arg2)
+			PRINTCALL(str_op_arg,bca->builtin_binop.arg2)
 
-			Print()
-				" => %d",
-				bc.opt.builtin_binop.to_var
-			EndPrint()
+			PRINT()
+				" => [var %d]",
+				(int) bca->builtin_binop.to_var
+			ENDPRINT()
 			break;
+				
 		case MB_BC_builtin_unop:
-			Print()
+			PRINT()
 				" %s ", 
-				str_unop_name(bc.opt.builtin_unop.unop)
-			EndPrint()
+				str_unop_name(bca->builtin_unop.unop)
+			ENDPRINT()
 
-			PrintCall(str_op_arg,bc.opt.builtin_unop.arg)
+			PRINTCALL(str_op_arg,bca->builtin_unop.arg)
 
-			Print()
+			PRINT()
 				" %d",
-				bc.opt.builtin_unop.to_var
-			EndPrint()
+				(int) bca->builtin_unop.to_var
+			ENDPRINT()
 			break;
+				
 		case MB_BC_builtin_bintest:
-			Print()
-				" %s ", 
-				str_binop_name(bc.opt.builtin_bintest.binop)
-			EndPrint()
 
-			PrintCall(str_op_arg,bc.opt.builtin_binop.arg1)
-
-			Print()
+			PRINT()
 				" "
-			EndPrint()
+			ENDPRINT()
 
-			PrintCall(str_op_arg,bc.opt.builtin_binop.arg2)
-			break;
-		case MB_BC_builtin_untest:
-			Print()
+			PRINTCALL(str_op_arg,bca->builtin_binop.arg1)
+
+			PRINT()
 				" %s ", 
-				str_unop_name(bc.opt.builtin_untest.unop)
-			EndPrint()
-			PrintCall(str_op_arg,bc.opt.builtin_unop.arg)
+				str_binop_name(bca->builtin_bintest.binop)
+			ENDPRINT()
+
+			PRINTCALL(str_op_arg,bca->builtin_binop.arg2)
 			break;
+				
+		case MB_BC_builtin_untest:
+			PRINT()
+				" %s ", 
+				str_unop_name(bca->builtin_untest.unop)
+			ENDPRINT()
+			PRINTCALL(str_op_arg,bca->builtin_unop.arg)
+			break;
+				
 		case MB_BC_semidet_succeed:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_semidet_success_check:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_fail:
 			/* No args */
 			buffer[0] = 0;
 			break;
+			
 		case MB_BC_context:
-			Print()
+			PRINT()
 				" %d",
-				bc.opt.context.line_number
-			EndPrint()
+				bca->context.line_number
+			ENDPRINT()
 			break;
+				
 		case MB_BC_not_supported:
 			/* No args */
 			buffer[0] = 0;
 			break;
+
 		default:
-			assert(FALSE); /*XXX*/
+			MB_fatal("Attempt to disassemble unknown bytecode");
 			break;
 	} /* end switch */
 
@@ -560,143 +666,147 @@ MB_str_bytecode(MB_Bytecode bc, char* buffer, int buffer_len, int indent_level)
 } /* end print_bytecode() */
 
 static void
-str_cons_id(MB_Cons_id cons_id, char* buffer, int buffer_len)
+str_cons_id(MB_Cons_id cons_id, char *buffer, int buffer_len)
 {
+	PRINT()
+		"["
+	ENDPRINT()
 	switch (cons_id.id) {
 		case MB_CONSID_CONS: {
-			Print()
-				"functor %s %s %d ",
-				cons_id.opt.cons.module_id,
+			PRINT()
+				"functor %s__%s/%d ",
+				cons_id.opt.cons.module_name,
 				cons_id.opt.cons.string,
-				cons_id.opt.cons.arity
-			EndPrint()
-			PrintCall(str_tag, cons_id.opt.cons.tag)
+				(int) cons_id.opt.cons.arity
+			ENDPRINT()
+			PRINTCALL(str_tag, cons_id.opt.cons.tag)
 			break;
 		}
 		case MB_CONSID_INT_CONST:
-			/*
-			** (This comment is labelled "CAST COMMENT".
-			** If you remove this comment, also
-			** remove references to it in this file.
-			** Search for "CAST COMMENT".)
-			**
-			** XXX: The cast to `long' in the following code
-			** is needed to remove a warning. `int_const' has
-			** type `Integer', but Integer may be typedef'ed
-			** to `int', `long', `long long' or whatever.
-			** The correct solution may be to define a
-			** format string for Integer in conf.h.
-			*/
-			Print()
-				"int_const %ld",
-				(long) cons_id.opt.int_const
-			EndPrint()
+			PRINT()
+				"int_const " MB_FMT_INT " (" MB_FMT_HEX ")",
+				cons_id.opt.int_const,
+				cons_id.opt.int_const
+			ENDPRINT()
 			break;
 		case MB_CONSID_STRING_CONST: {
-			Print()
-				"string_const "
-			EndPrint()
-			buffer[buffer_len-1] = 0; /* snprintf may not do it */
+			PRINT()
+				"string_const"
+			ENDPRINT()
 
-			PrintCall(quote_cstring, cons_id.opt.string_const);
+			PRINTCALL(quote_cstring, cons_id.opt.string_const);
 			break;
 		}
 		case MB_CONSID_FLOAT_CONST:
-			Print()
+			PRINT()
 				"float_const %.15g",
 				cons_id.opt.float_const
-			EndPrint()
+			ENDPRINT()
 			break;
 		case MB_CONSID_PRED_CONST:
-			Print()
-				"%s %s %s %d %d",
-				"pred_const ",
-				cons_id.opt.pred_const.module_id,
-				cons_id.opt.pred_const.pred_id,
-				cons_id.opt.pred_const.arity,
-				cons_id.opt.pred_const.proc_id
-			EndPrint()
+			PRINT()
+				"%s %s %s__%s/%d mode %d (%s %p)",
+				"pred_const",
+				cons_id.opt.pred_const.is_func ?"func":"pred",
+				cons_id.opt.pred_const.module_name,
+				cons_id.opt.pred_const.pred_name,
+				(int) cons_id.opt.pred_const.arity,
+				(int) cons_id.opt.pred_const.mode_num,
+				cons_id.opt.pred_const.addr.is_native
+					? "natv" : "byte",
+				cons_id.opt.pred_const.addr.is_native
+					? (MB_Word *) cons_id.opt.pred_const
+							.addr.addr.native
+					: (MB_Word *) cons_id.opt.pred_const
+							.addr.addr.bc
+			ENDPRINT()
 			break;
 		case MB_CONSID_CODE_ADDR_CONST:
-			Print()
+			PRINT()
 				"%s %s %s %d %d",
 				"code_addr_const",
-				cons_id.opt.code_addr_const.module_id,
-				cons_id.opt.code_addr_const.pred_id,
-				cons_id.opt.code_addr_const.arity,
-				cons_id.opt.code_addr_const.proc_id
-			EndPrint()
+				cons_id.opt.code_addr_const.module_name,
+				cons_id.opt.code_addr_const.pred_name,
+				(int) cons_id.opt.code_addr_const.arity,
+				(int) cons_id.opt.code_addr_const.mode_num
+			ENDPRINT()
 			break;
 		case MB_CONSID_BASE_TYPE_INFO_CONST:
-			Print()
-				"%s %s %s %d",
-				"base_type_info_const ",
-				cons_id.opt.base_type_info_const.module_id,
+			PRINT()
+				"%s %s__%s/%d",
+				"base_type_info_const",
+				cons_id.opt.base_type_info_const.module_name,
 				cons_id.opt.base_type_info_const.type_name,
-				cons_id.opt.base_type_info_const.type_arity
-			EndPrint()
+				(int) cons_id.opt.base_type_info_const
+								.type_arity
+			ENDPRINT()
 			break;
 		case MB_CONSID_CHAR_CONST:
 			if (isprint(cons_id.opt.char_const.ch)) {
-				Print()
+				PRINT()
 					"%s '%c'",
-					"char_const ",
+					"char_const",
 					cons_id.opt.char_const.ch
-				EndPrint()
+				ENDPRINT()
 			} else {
-				Print()
-					"%s %2X",
-					"char_const ",
-					(int)cons_id.opt.char_const.ch
-				EndPrint()
+				PRINT()
+					"%s %d (0x%02X)",
+					"char_const",
+					(int) cons_id.opt.char_const.ch,
+					(int) cons_id.opt.char_const.ch
+				ENDPRINT()
 			}
 			break;
 		default:
-			assert(FALSE); /*XXX*/
+			MB_fatal("Attempt to disassemble unknown cons");
 			break;
 	} /* end switch */
+	PRINT()
+		"]"
+	ENDPRINT()
 
 	buffer[buffer_len-1] = 0; /* snprintf may not do it if a long string */
 } /* end print_cons_id() */
 
 static void
-str_tag(MB_Tag tag, char* buffer, int buffer_len)
+str_tag(MB_Tag tag, char *buffer, int buffer_len)
 {
 	
 	switch (tag.id) {
 		case MB_TAG_SIMPLE:
 			snprintf(buffer, buffer_len,
-				"%s %d", "simple_tag", tag.opt.primary);
+				"%s %d",
+				"simple_tag",
+				(int) tag.opt.primary);
 			break;
 		case MB_TAG_COMPLICATED:
-			/*
-			** See comment labelled "CAST COMMENT".
-			*/
 			snprintf(buffer, buffer_len,
-				"%s %d %ld", "complicated_tag", 
-				tag.opt.pair.primary, 
-				(long) tag.opt.pair.secondary);
+				"%s %d %ld",
+				"complicated_tag", 
+				(int) tag.opt.pair.primary, 
+				(long int) tag.opt.pair.secondary);
 			break;
 		case MB_TAG_COMPLICATED_CONSTANT:
-			/*
-			** See comment labelled "CAST COMMENT".
-			*/
 			snprintf(buffer, buffer_len,
-				"%s %d %ld", "complicated_constant_tag", 
-				tag.opt.pair.primary, 
-				(long) tag.opt.pair.secondary);
+				"%s %d %ld",
+				"complicated_constant_tag", 
+				(int) tag.opt.pair.primary, 
+				(long int) tag.opt.pair.secondary);
 			break;
 		case MB_TAG_ENUM:
 			snprintf(buffer, buffer_len,
-				"%s %d", "enum_tag", tag.opt.enum_tag);
+				"%s %d",
+				"enum_tag",
+				(int) tag.opt.enum_tag);
 			break;
 		case MB_TAG_NONE:
 			snprintf(buffer, buffer_len,
-				"%s", "no_tag");
+				"%s",
+				"no_tag");
 			break;
 		default:
 			MB_util_error("Invalid tag: %d\n", tag.id);
-			assert(FALSE); /*XXX*/
+			assert(FALSE); /* XXX */
 			break;
 	} /* end switch */
 	
@@ -705,9 +815,9 @@ str_tag(MB_Tag tag, char* buffer, int buffer_len)
 } /* end print_tag() */
 
 /*
-**	XXX: Currently we depend on the order of elements in the table.
+** XXX ORDER: Currently we depend on the order of elements in the table.
 */
-static const char*
+static const char *
 bytecode_table[] = {
 	"enter_pred",
 	"endof_pred",
@@ -724,7 +834,7 @@ bytecode_table[] = {
 	"endof_switch_arm",
 	"enter_if",
 	"enter_then",
-	"endof_then",	/* XXX: change to enter_else */
+	"endof_then",
 	"endof_if",
 	"enter_negation",
 	"endof_negation",
@@ -736,7 +846,7 @@ bytecode_table[] = {
 	"deconstruct",
 	"complex_construct",
 	"complex_deconstruct",
-	"place_arg",
+	"place_arg ",
 	"pickup_arg",
 	"call",
 	"higher_order_call",
@@ -748,23 +858,25 @@ bytecode_table[] = {
 	"semidet_success_check",
 	"fail",
 	"context",
-	"not_supported"
+	"not_supported",
+	"enter_else",
+	"endof_negation_goal"
 };
 
-static const MB_CString
+static MB_CString_Const
 str_bytecode_name(MB_Byte bytecode_id)
 {
 	if (bytecode_id >= sizeof(bytecode_table) / sizeof(*bytecode_table)) {
-		return (const MB_CString)"<<unknown bytecode>>"; /*XXX*/
+		return (MB_CString_Const) "<<unknown bytecode>>"; /* XXX */
 	} else {
-		return (const MB_CString)bytecode_table[bytecode_id];
+		return (MB_CString_Const) bytecode_table[bytecode_id];
 	}
 }
 
 /*
-**	XXX: Currently we depend on the order of elements in the table.
+** XXX ORDER: Currently we depend on the order of elements in the table.
 */
-static const char*
+static const char *
 determinism_table[] = {
 	"det",
 	"semidet",
@@ -777,23 +889,23 @@ determinism_table[] = {
 };
 
 /* Returns a string corresponding to the name of a determinism type */
-static const MB_CString
+static MB_CString_Const
 str_determinism_name(MB_Byte determinism_id)
 {
 	if (determinism_id >=
 		sizeof(determinism_table) / sizeof(*determinism_table))
 	{
-		return (const MB_CString)"<<unknown determinism>>"; /*XXX*/
+		return (MB_CString_Const) "<<unknown determinism>>"; /* XXX */
 	} else {
-		return (const MB_CString)determinism_table[determinism_id];
+		return (MB_CString_Const) determinism_table[determinism_id];
 	}
 }
 
 
 /*
-**	XXX: Currently we depend on the order of elements in the table.
+** XXX ORDER: Currently we depend on the order of elements in the table.
 */
-static const char*
+static const char *
 unop_table[] = {
 	"mktag",
 	"tag",
@@ -807,22 +919,22 @@ unop_table[] = {
 };
 
 /* Return a string corresponding to the name of a unary operation */
-static const MB_CString
+static MB_CString_Const
 str_unop_name(MB_Byte unop)
 {
 	/* bounds check */
 	
 	if (unop >= sizeof(unop_table) / sizeof(*unop_table)) {
-		return (const MB_CString)"<<unknown unop>>";	/* XXX */
+		return (MB_CString_Const) "<<unknown unop>>";	/* XXX */
 	} else {
-		return (const MB_CString)unop_table[unop];
+		return (MB_CString_Const) unop_table[unop];
 	}
 }
 
 /*
-**	XXX: Currently we depend on the order of elements in the table.
+** XXX ORDER: Currently we depend on the order of elements in the table.
 */
-static const char*
+static const char *
 binop_table[] = {
 	"+",
 	"-",
@@ -862,14 +974,14 @@ binop_table[] = {
 	"body"
 };
 
-static const MB_CString
+static MB_CString_Const
 str_binop_name(MB_Byte binop)
 {
 	/* bounds check */
 	if (binop >= sizeof(binop_table) / sizeof(*binop_table)) {
-		return (const MB_CString)"<<unknown binop>>"; /*XXX*/
+		return (MB_CString_Const) "<<unknown binop>>"; /* XXX */
 	} else {
-		return (const MB_CString)binop_table[binop];
+		return (MB_CString_Const) binop_table[binop];
 	}
 } /* end str_binop_name() */
 
@@ -877,7 +989,7 @@ str_binop_name(MB_Byte binop)
 /* Fills a buffer with a string transformed into a source-style c string 
  * (includes double quotes around string) */
 static void
-quote_cstring(MB_CString str, char* buffer, int buffer_len)
+quote_cstring(MB_CString str, char * buffer, int buffer_len)
 {
 	int		i;	/* index into str */
 	int		j;	/* index into buffer */
@@ -926,80 +1038,92 @@ quote_cstring(MB_CString str, char* buffer, int buffer_len)
 } /* end quote_cstring() */
 
 static void
-str_var_dir(MB_Var_dir var_dir, char* buffer, int buffer_len)
+str_var_dir(MB_Var_dir var_dir, char *buffer, int buffer_len)
 {
-	Print()
+	PRINT()
 		"<<var_dir>>"
-	EndPrint()
+	ENDPRINT()
 	return;
 } /* end str_var_dir() */
 
 static void
-str_op_arg(MB_Op_arg op_arg, char* buffer, int buffer_len)
+str_op_arg(MB_Op_arg op_arg, char *buffer, int buffer_len)
 {
 	switch (op_arg.id) {
 		case MB_ARG_VAR:
-			Print()
-				"var %d",
+			PRINT()
+				"[var %d]",
 				op_arg.opt.var
-			EndPrint()
+			ENDPRINT()
 			break;
 		case MB_ARG_INT_CONST:
-			/*
-			** See comment labelled "CAST COMMENT".
-			*/
-			Print()
-				"int %ld",
-				(long) op_arg.opt.int_const
-			EndPrint()
+			PRINT()
+				/*
+				** XXX: int_const has type Integer which could
+				** be int, long or long long. Correct solution
+				** is to define a format string in conf.h, but
+				** for now assume long is enough
+				*/
+				"[int " MB_FMT_INT " (" MB_FMT_HEX ")]",
+				op_arg.opt.int_const,
+				op_arg.opt.int_const
+			ENDPRINT()
 			break;
 		case MB_ARG_FLOAT_CONST:
-			Print()
-				"float %f",
+			PRINT()
+				"[float %f]",
 				op_arg.opt.float_const
-			EndPrint()
+			ENDPRINT()
 			break;
 		default:
-			assert(FALSE); /*XXX*/
+			assert(FALSE); /* XXX */
 			break;
 	} /* end switch */
 } /* end str_op_arg() */
 
-/* displays a code listing from address start to end
+/*
+** displays a code listing from address start to end
 */
 
 void
-MB_listing(MB_Machine_State* ms, FILE* fp, MB_Word start, MB_Word end)
+MB_listing(MB_Machine_State *ms, FILE *fp, MB_Bytecode_Addr start, MB_Bytecode_Addr end,
+	MB_Word line_len)
 {
-	char buffer[73];
-	MB_Word i;
+	char buffer[256];
+	MB_Bytecode_Addr i;
 	MB_Word	indent = 0;
-	MB_Word ip = MB_ip_get(ms);
+	MB_Bytecode_Addr ip = MB_ip_get(ms);
 
-	/* backtrack to the previous predicate */
-	/* and assume that it is at indent level 0 */
-	i = MB_code_get_pred_adr(ms, start);
+	MB_SAY("linelen: %d\n", line_len);
 
-	/* work out the indent level at the start */
-	while (i != start) {
-		indent = MB_str_bytecode(MB_code_get(ms, i), NULL, 0, indent);
-		i++;
+	start = MB_code_range_clamp(start);
+	end = MB_code_range_clamp(end);
+
+	if (sizeof(buffer) < line_len) line_len = sizeof(buffer);
+
+	/*
+	** backtrack to the previous predicate 
+	** and assume that it is at indent level 0
+	*/
+	i = MB_code_get_pred_addr(start);
+
+	if (i != MB_CODE_INVALID_ADR) {
+		/* work out the indent level at the start */
+		while (i != start) {
+			indent = MB_str_bytecode(ms,
+					i, NULL, 0, indent);
+			i++;
+		}
 	}
 
 	/* Show the code */
 	for (; i != end+1; i++) {
-		if (i < 0 || i >= MB_code_size(ms)) {
-			fprintf(fp, "   %04x (????)\n", i & 0xffff);
-		} else {
-			indent = MB_str_bytecode(MB_code_get(ms, i),
-					buffer, sizeof(buffer), indent);
-			fprintf(fp, "%s%04x %s\n",
-				(i == ip) ? "-> " : "   ",
-				i,
-				buffer);
-		}
+		indent = MB_str_bytecode(ms, i,
+				buffer, line_len, indent);
+		fprintf(fp, "%s%p %s\n",
+			(i == ip) ? "-> " : "   ",
+			i,
+			buffer);
 	}
 }
-
-
 

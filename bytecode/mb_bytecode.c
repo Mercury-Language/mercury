@@ -1,10 +1,9 @@
 
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 1997,2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mb_bytecode.c,v 1.1 2001-01-24 07:42:22 lpcam Exp $
 */
 
 /* Imports */
@@ -14,14 +13,12 @@
 
 #include	"mb_bytecode.h"
 #include	"mb_mem.h"
+#include	"mb_module.h"
 #include	"mb_util.h"
 
 /* Exported definitions */
 
 /* Local declarations */
-
-static char
-rcs_id[]	= "$Id: mb_bytecode.c,v 1.1 2001-01-24 07:42:22 lpcam Exp $";
 
 /* 
 ** All read functions return true if successful
@@ -70,7 +67,6 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 	MB_Byte	c;
 
 	if (! MB_read_byte(fp, &c)) {
-		MB_util_error("Unable to read bytecode id\n");
 		return FALSE;
 	}
 
@@ -92,6 +88,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.enter_pred.pred_arity = pred_arity;
 				bc_p->opt.enter_pred.is_func = is_func;
 				bc_p->opt.enter_pred.proc_count = proc_count;
+
 				return TRUE;
 			}
 			break;
@@ -103,37 +100,44 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 		{
 			MB_Byte		proc_id;
 			MB_Determinism	det;
-			MB_Short	label_count, temp_count, list_length;
-			MB_CString	*var_info_list;
+			MB_Short	label_count, end_label;
+			MB_Short	temp_count, list_length;
+			MB_CString	*var_info;
 			
 			if (MB_read_byte(fp, &proc_id) &&
 				MB_read_byte(fp, &det) &&
 				MB_read_short(fp, &label_count) &&
+				MB_read_short(fp, &end_label) &&
 				MB_read_short(fp, &temp_count) &&
 				MB_read_short(fp, &list_length))
 			{
 				int 		i;
 				MB_CString	str;
 
-				var_info_list = MB_new_array(MB_CString,
-					list_length);
+				var_info = (list_length == 0) ?  NULL :
+					MB_CODE_DATA_ALLOC(MB_CString,
+							list_length); 
 
 				for (i = 0; i < list_length; i++) {
 					if (MB_read_cstring(fp, &str)) {
-						var_info_list[i] = str;
+						var_info[i] = str;
 					} else {
-						MB_fatal("XXX: decent message");
+						MB_fatal("enter_proc var"
+							" read error");
 					}
 				}
 
-				bc_p->opt.enter_proc.proc_id = proc_id;
+				bc_p->opt.enter_proc.mode_num = proc_id;
 				bc_p->opt.enter_proc.det = det;
 				bc_p->opt.enter_proc.label_count = label_count;
+				bc_p->opt.enter_proc.end_label.index =
+					end_label;
 				bc_p->opt.enter_proc.temp_count = temp_count;
 				bc_p->opt.enter_proc.list_length = list_length;
-				bc_p->opt.enter_proc.var_info_list =
-					var_info_list;
+				bc_p->opt.enter_proc.var_info = var_info;
 				return TRUE;
+			} else {
+				MB_fatal("enter_proc read error");
 			}
 			break;
 		}
@@ -157,7 +161,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 			MB_Short	end_label;
 
 			if (MB_read_short(fp, &end_label)) {
-				bc_p->opt.enter_disjunction.end_label =
+				bc_p->opt.enter_disjunction.end_label.index =
 					end_label;
 				return TRUE;
 			} else {
@@ -173,7 +177,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 			MB_Short	next_label;
 
 			if (MB_read_short(fp, &next_label)) {
-				bc_p->opt.enter_disjunct.next_label =
+				bc_p->opt.enter_disjunct.next_label.index =
 					next_label;
 				return TRUE;
 			} else {
@@ -186,10 +190,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 			MB_Short	label;
 
 			if (MB_read_short(fp, &label)) {
-				bc_p->opt.endof_disjunct.label = label;
+				bc_p->opt.endof_disjunct.end_label.index
+					= label;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX*/
+				MB_fatal("endof_disjunct read error");
 			}
 			break;
 		}
@@ -201,10 +206,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_short(fp, &end_label))
 			{
 				bc_p->opt.enter_switch.var = var;
-				bc_p->opt.enter_switch.end_label = end_label;
+				bc_p->opt.enter_switch.end_label.index =
+					end_label;
 				return TRUE;
 			} else {
-				MB_fatal("enter_switch malformed");
+				MB_fatal("enter_switch read error");
 			}
 			break;
 		}
@@ -219,11 +225,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_short(fp, &next_label))
 			{
 				bc_p->opt.enter_switch_arm.cons_id = cons_id;
-				bc_p->opt.enter_switch_arm.next_label 
-					= next_label;
+				bc_p->opt.enter_switch_arm.next_label.index = 
+					next_label;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("enter_switch_arm read error");
 			}
 			break;
 		}
@@ -231,11 +237,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 			MB_Short	label;
 
 			if (MB_read_short(fp, &label)) {
-				bc_p->opt.endof_switch_arm.label =
+				bc_p->opt.endof_switch_arm.end_label.index =
 					label;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX*/
+				MB_fatal("endof_switch_arm read error");
 			}
 			break;
 		}
@@ -246,15 +252,15 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_short(fp, &end_label) &&
 				MB_read_short(fp, &frame_ptr_tmp))
 			{
-				bc_p->opt.enter_if.else_label =
+				bc_p->opt.enter_if.else_label.index =
 					else_label;
-				bc_p->opt.enter_if.end_label =
+				bc_p->opt.enter_if.end_label.index =
 					end_label;
 				bc_p->opt.enter_if.frame_ptr_tmp =
 					frame_ptr_tmp;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("enter_if read error");
 			}
 			break;
 		}
@@ -267,59 +273,96 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					frame_ptr_tmp;
 				return TRUE;
 			} else {
-				assert(FALSE);	/* XXX */
+				MB_fatal("enter_then read error");
 			}
 			break;
 		}
-		case MB_BC_endof_then: {	/* XXX: change to enter_else */
+		case MB_BC_endof_then: {
 			MB_Short	follow_label;
 
 			if (MB_read_short(fp, &follow_label)) {
-				bc_p->opt.endof_then.follow_label =
+				bc_p->opt.endof_then.follow_label.index =
 					follow_label;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("endof_then read error");
 			}
 			break;
 		}
+
+		case MB_BC_enter_else: {
+			MB_Short	frame_ptr_tmp;
+
+			if (MB_read_short(fp, &frame_ptr_tmp))
+			{
+				bc_p->opt.enter_else.frame_ptr_tmp =
+					frame_ptr_tmp;
+				return TRUE;
+			} else {
+				MB_fatal("enter_else read error");
+			}
+			break;
+		}
+				       
 		case MB_BC_endof_if:
 			return TRUE;
 			break;
+			
 		case MB_BC_enter_negation: {
+			MB_Short	frame_ptr_tmp;
 			MB_Short	end_label;
 		
-			if (MB_read_short(fp, &end_label)) {
-				bc_p->opt.enter_negation.end_label =
+			if (MB_read_short(fp, &frame_ptr_tmp) &&
+				MB_read_short(fp, &end_label))
+			{
+				bc_p->opt.enter_negation.frame_ptr_tmp =
+					frame_ptr_tmp;
+				bc_p->opt.enter_negation.end_label.index =
 					end_label;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX*/
+				MB_fatal("enter_negation read error");
+			}
+			break;
+		}
+		case MB_BC_endof_negation_goal: {
+			MB_Short	frame_ptr_tmp;
+		
+			if (MB_read_short(fp, &frame_ptr_tmp))
+			{
+				bc_p->opt.endof_negation_goal.frame_ptr_tmp =
+					frame_ptr_tmp;
+				return TRUE;
+			} else {
+				MB_fatal("enter_negation_goal read error");
 			}
 			break;
 		}
 		case MB_BC_endof_negation:
 			return TRUE;
 			break;
-		case MB_BC_enter_commit: {
-			MB_Short	temp;
 			
-			if (MB_read_short(fp, &temp)) {
-				bc_p->opt.enter_commit.temp = temp;
+		case MB_BC_enter_commit: {
+			MB_Short	frame_ptr_tmp;
+			
+			if (MB_read_short(fp, &frame_ptr_tmp)) {
+				bc_p->opt.enter_commit.frame_ptr_tmp =
+					frame_ptr_tmp;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX */
+				MB_fatal("enter_commit read error");
 			}
 			break;
 		}
 		case MB_BC_endof_commit: {
-			MB_Short	temp;
+			MB_Short	frame_ptr_tmp;
 			
-			if (MB_read_short(fp, &temp)) {
-				bc_p->opt.endof_commit.temp = temp;
+			if (MB_read_short(fp, &frame_ptr_tmp)) {
+				bc_p->opt.endof_commit.frame_ptr_tmp
+					= frame_ptr_tmp;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX */
+				MB_fatal("endof_commit read error");
 			}
 			break;
 		}
@@ -334,7 +377,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					from_var;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("assign read error");
 			}
 			break;
 		}
@@ -348,7 +391,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.test.var2 = var2;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("test read error");
 			}
 			break;
 		}
@@ -362,9 +405,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_cons_id(fp, &consid) &&
 				MB_read_short(fp, &list_length))
 			{
-				MB_Short	i;
+				MB_Short i;
 
-				var_list = MB_new_array(MB_Short, list_length);
+				var_list = (list_length == 0) ?  NULL : 
+					MB_CODE_DATA_ALLOC(MB_Short,
+							list_length);
 
 				for (i = 0; i < list_length; i++) {
 					MB_Short	var;
@@ -372,9 +417,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					if (MB_read_short(fp, &var)) {
 						var_list[i] = var;
 					} else {
-						assert(FALSE); /*XXX*/
+						MB_fatal("construct var"
+							" read error");
 					}
 				}
+
 
 				bc_p->opt.construct.to_var = to_var;
 				bc_p->opt.construct.consid = consid;
@@ -382,7 +429,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.construct.var_list = var_list;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("construct read error");
 			}
 			break;
 		}
@@ -396,9 +443,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_cons_id(fp, &consid) &&
 				MB_read_short(fp, &list_length))
 			{
-				MB_Short	i;
+				MB_Short i;
 
-				var_list = MB_new_array(MB_Short, list_length);
+				var_list = (list_length == 0) ?  NULL : 
+					MB_CODE_DATA_ALLOC(MB_Short,
+							list_length);
 
 				for (i = 0; i < list_length; i++) {
 					MB_Short	var;
@@ -406,7 +455,8 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					if (MB_read_short(fp, &var)) {
 						var_list[i] = var;
 					} else {
-						assert(FALSE); /*XXX*/
+						MB_fatal("deconstruct var"
+							" read error");
 					}
 				}
 
@@ -415,11 +465,10 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.deconstruct.consid = consid;
 				bc_p->opt.deconstruct.list_length = 
 					list_length;
-				bc_p->opt.deconstruct.var_list = 
-					var_list;
+				bc_p->opt.deconstruct.var_list = var_list;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("deconstruct read error");
 			} 
 			break;
 		}
@@ -436,13 +485,15 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_Var_dir	var_dir;
 				int		i;
 
-				var_dir_list = MB_new_array(MB_Var_dir,
-					list_length);
+				var_dir_list = MB_CODE_DATA_ALLOC(MB_Var_dir,
+								list_length);
+
 				for (i = 0; i < list_length ; i++) {
 					if (MB_read_var_dir(fp, &var_dir)) {
 						var_dir_list[i] = var_dir;
 					} else {
-						assert(FALSE); /*XXX*/
+						MB_fatal("complex_construct"
+							" var read error");
 					}
 				}
 
@@ -450,9 +501,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.complex_construct.consid = consid;
 				bc_p->opt.complex_construct.list_length 
 					= list_length;
+				bc_p->opt.complex_construct.var_dir
+					= var_dir_list;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("complex_construct read error");
 			}
 			break;
 		}
@@ -469,13 +522,15 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_Var_dir	var_dir;
 				int		i;
 
-				var_dir_list = MB_new_array(MB_Var_dir,
-					list_length);
+				var_dir_list = MB_CODE_DATA_ALLOC(MB_Var_dir,
+								list_length);
+
 				for (i = 0; i < list_length; i++) {
 					if (MB_read_var_dir(fp, &var_dir)) {
 						var_dir_list[i] = var_dir;
 					} else {
-						assert(FALSE); /*XXX*/
+						MB_fatal("complex_deconstruct"
+							" var read error");
 					}
 				}
 				bc_p->opt.complex_deconstruct.from_var =
@@ -483,11 +538,11 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.complex_deconstruct.consid = consid;
 				bc_p->opt.complex_deconstruct.list_length =
 					list_length;
-				bc_p->opt.complex_deconstruct.var_dir_list =
+				bc_p->opt.complex_deconstruct.var_dir =
 					var_dir_list;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("complex_deconstruct read error");
 			}
 			break;
 		}
@@ -503,7 +558,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					from_var;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("place_arg read error");
 			}
 			break;
 		}
@@ -520,7 +575,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					to_var;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("pickup_arg read error");
 			}
 			break;
 		}
@@ -528,22 +583,32 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 			MB_CString	module_id;
 			MB_CString	pred_id;
 			MB_Short	arity;
+			MB_Byte		is_func;
 			MB_Byte		proc_id;
 
 			if (MB_read_cstring(fp, &module_id) &&
 				MB_read_cstring(fp, &pred_id) &&
 				MB_read_short(fp, &arity) &&
+				MB_read_byte(fp, &is_func) &&
 				MB_read_byte(fp, &proc_id))
 			{
-				bc_p->opt.call.module_id =
+				bc_p->opt.call.module_name =
 					module_id;
-				bc_p->opt.call.pred_id =
+				bc_p->opt.call.pred_name =
 					pred_id;
 				bc_p->opt.call.arity = arity;
-				bc_p->opt.call.proc_id = proc_id;
+				bc_p->opt.call.is_func = is_func;
+				bc_p->opt.call.mode_num = proc_id;
+
+				/*
+				** Initialise code address to invalid in case
+				** it somehow gets executed
+				*/
+				bc_p->opt.call.addr.is_native = FALSE;
+				bc_p->opt.call.addr.addr.bc = MB_CODE_INVALID_ADR;
 				return TRUE;
 			} else {
-				assert(FALSE); /*XXX*/
+				MB_fatal("call read error");
 			}
 			break;
 		}
@@ -568,7 +633,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					det = det;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("higher_order_call read error");
 			}
 			break;
 		}
@@ -583,17 +648,13 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				MB_read_op_arg(fp, &arg2) &&
 				MB_read_short(fp, &to_var))
 			{
-				bc_p->opt.builtin_binop.binop =
-					binop;
-				bc_p->opt.builtin_binop.arg1 =
-					arg1;
-				bc_p->opt.builtin_binop.arg2 =
-					arg2;
-				bc_p->opt.builtin_binop.to_var =
-					to_var;
+				bc_p->opt.builtin_binop.binop = binop;
+				bc_p->opt.builtin_binop.arg1 = arg1;
+				bc_p->opt.builtin_binop.arg2 = arg2;
+				bc_p->opt.builtin_binop.to_var = to_var;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("builtin_binop read error");
 			}
 			break;
 		}
@@ -611,7 +672,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.builtin_unop.to_var = to_var;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("builtin_unop read error");
 			}
 			break;
 		}
@@ -629,7 +690,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.builtin_bintest.arg2 = arg2;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("builtin_bintest read error");
 			}
 			break;
 		}
@@ -644,7 +705,7 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 				bc_p->opt.builtin_untest.arg = arg;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("builtin_untest read error");
 			}
 			break;
 		}
@@ -666,13 +727,14 @@ MB_read_bytecode(FILE *fp, MB_Bytecode *bc_p)
 					line_number;
 				return TRUE;
 			} else {
-				assert(FALSE); /* XXX */
+				MB_fatal("context read error");
 			}
 			break;
 		}
 		case MB_BC_not_supported:
 			return TRUE;
 			break;
+
 		default:
 			MB_fatal("bytecode.MB_read_bytecode: unknown bytecode");
 			break;
@@ -708,7 +770,7 @@ MB_read_short(FILE *fp, MB_Short *short_p)
 		*short_p = (c0 << 8) | c1;
 		return TRUE;
 	} else {
-		assert(FALSE); /*XXX*/
+		MB_fatal("Unexpected file error reading short");
 		return FALSE; /* not reached */
 	}
 } /* MB_read_short */
@@ -775,7 +837,7 @@ MB_read_int(FILE *fp, MB_Integer *int_p)
 		*int_p = tmp_int;
 		return TRUE;
 	} else {
-		assert(FALSE); /*XXX*/
+		MB_fatal("Unexpected file error reading int");
 		return FALSE;
 	}
 } /* MB_read_int */
@@ -845,50 +907,71 @@ MB_read_float(FILE *fp, MB_Float *float_p)
 }
 
 /*
-** MB_read_cstring MB_mallocs a string each time. The caller MB_frees it.
-** Starts assuming string won't be more than a certain length,
-** reallocates if it gets too long
+** Returned string is allocated with string routines MB_str_xxx
+** It is the responsibility of the caller to free it using MB_str_delete
 */
 static MB_Bool
 MB_read_cstring(FILE *fp, MB_CString *str_p)
 {
-	char		*str = NULL;
-	int		str_size = 128; /* highwater mark for str */
-	int		i = 0;
+	/*
+	** Initially tries to read string into buffer, but if this gets
+	** full then mallocs another buffer which is doubled in size
+	** whenever it gets full.
+	** Returned string is allocated with MB_str_dup
+	*/
+	char	buffer[64];
+	MB_Word	bufsize = sizeof(buffer);
+	char	*str = buffer;
+	
+	MB_Word		i = 0;
 	MB_Byte		c;
-
-	/* Allocate initial static string */
-	str = MB_new_array(char, str_size);
-
-	for (i=0;;) {
-		MB_Bool got_byte;
-
-		got_byte = MB_read_byte(fp, &c);
-
-		if (i + 1 > str_size) {
-			str_size *= 2; /* Double buffer size */
-			str = MB_resize_array(str, char, str_size);
-			assert(str != NULL); /* XXX */
+	
+	do {
+		/* get the next char */
+		if (!MB_read_byte(fp, &c)) {
+			MB_fatal("Error reading C String from file");
 		}
 
-		if ('\0' == c || ! got_byte) {
-			int		str_len;
-			MB_CString	ret_str;
+		/*
+		** If the next char is going to overflow the buffer then
+		** expand the buffer
+		*/
+		if (i == bufsize) {
+			/* Double the size of the buffer */
+			bufsize *= 2;
+			
+			if (str == buffer) {
+				/*
+				** If we are still using the stack buffer,
+				** allocate a new buffer with malloc
+				*/
+				str = MB_malloc(bufsize);
+				memcpy(str, buffer, bufsize/2);
+			} else {
+				/*
+				** The current buffer is already malloced;
+				** realloc it
+				*/
+				str = MB_realloc(str, bufsize);
+			}
 
-			str[i] = '\0';
-			str_len = strlen(str);
-			ret_str = MB_new_array(char, str_len + 1);
-			strcpy(ret_str, str);
-			*str_p = ret_str;
-			MB_free(str);
-			return TRUE;
-		} else {
-			str[i] = c;
-			i++;
+			if (str == NULL) return FALSE;
 		}
-	} /* end for */
-	assert(str != NULL);
-	MB_free(str);
+
+		str[i++] = c;
+
+	} while (c != 0);
+
+	if ((*str_p = MB_str_dup(str)) == NULL) {
+		return FALSE;
+	}
+
+	/* Free the string if it isn't on the local stack */
+	if (str != buffer) {
+		MB_free(str);
+	}
+
+	return TRUE;
 } /* end MB_read_cstring() */
 
 
@@ -917,7 +1000,7 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				MB_read_short(fp, &arity) &&
 				MB_read_tag(fp, &tag))
 			{
-				cons_id_p->opt.cons.module_id = module_id;
+				cons_id_p->opt.cons.module_name = module_id;
 				cons_id_p->opt.cons.string = string;
 				cons_id_p->opt.cons.arity = arity;
 				cons_id_p->opt.cons.tag = tag;
@@ -936,8 +1019,8 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				cons_id_p->opt.int_const = int_const;
 				return TRUE;
 			} else {
-				MB_util_error("Unable to read constructor integer"
-						" constant\n");
+				MB_util_error("Unable to read constructor"
+						" integer constant\n");
 				return FALSE;
 			}
 			break;
@@ -949,8 +1032,8 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				cons_id_p->opt.string_const = string_const;
 				return TRUE;
 			} else {
-				MB_util_error("Unable to read constructor string"
-						" constant\n");
+				MB_util_error("Unable to read constructor"
+						" string constant\n");
 				return FALSE;
 			}
 			break;
@@ -962,8 +1045,8 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				cons_id_p->opt.float_const = float_const;
 				return TRUE;
 			} else {
-				MB_util_error("Unable to read constructor float"
-						" constant\n");
+				MB_util_error("Unable to read constructor"
+						" float constant\n");
 				return FALSE;
 			}
 			break;
@@ -972,17 +1055,20 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 			MB_CString	module_id;
 			MB_CString	pred_id;
 			MB_Short	arity;
+			MB_Byte		is_func;
 			MB_Byte		proc_id;
 
 			if (MB_read_cstring(fp, &module_id) &&
 				MB_read_cstring(fp, &pred_id) &&
 				MB_read_short(fp, &arity) &&
+				MB_read_byte(fp, &is_func) &&
 				MB_read_byte(fp, &proc_id))
 			{
-				cons_id_p->opt.pred_const.module_id = module_id;
-				cons_id_p->opt.pred_const.pred_id = pred_id;
+				cons_id_p->opt.pred_const.module_name=module_id;
+				cons_id_p->opt.pred_const.pred_name = pred_id;
 				cons_id_p->opt.pred_const.arity = arity;
-				cons_id_p->opt.pred_const.proc_id = proc_id;
+				cons_id_p->opt.pred_const.is_func = is_func;
+				cons_id_p->opt.pred_const.mode_num = proc_id;
 				return TRUE;
 			} else {
 				MB_util_error("Unable to read predicate"
@@ -1003,12 +1089,12 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				MB_read_short(fp, &arity) &&
 				MB_read_byte(fp, &proc_id))
 			{
-				cons_id_p->opt.code_addr_const.module_id = 
+				cons_id_p->opt.code_addr_const.module_name = 
 					module_id;
-				cons_id_p->opt.code_addr_const.pred_id =
+				cons_id_p->opt.code_addr_const.pred_name =
 					pred_id;
 				cons_id_p->opt.code_addr_const.arity = arity;
-				cons_id_p->opt.code_addr_const.proc_id =
+				cons_id_p->opt.code_addr_const.mode_num =
 					proc_id;
 				return TRUE;
 			} else {
@@ -1027,8 +1113,8 @@ MB_read_cons_id(FILE *fp, MB_Cons_id *cons_id_p)
 				MB_read_cstring(fp, &type_name) && 
 				MB_read_byte(fp, &type_arity)) 
 			{
-				cons_id_p->opt.base_type_info_const.module_id = 
-					module_id;
+				cons_id_p->opt.base_type_info_const.module_name
+					= module_id;
 				cons_id_p->opt.base_type_info_const.type_name = 
 					type_name;
 				cons_id_p->opt.base_type_info_const.type_arity =
@@ -1106,7 +1192,8 @@ MB_read_tag(FILE *fp, MB_Tag *tag_p)
 				tag_p->opt.pair.secondary = secondary;
 				return TRUE;
 			} else {
-				MB_util_error("Unable to read complicated tag\n");
+				MB_util_error(
+					"Unable to read complicated tag\n");
 				return FALSE;
 			}
 			break;
@@ -1133,7 +1220,7 @@ MB_read_tag(FILE *fp, MB_Tag *tag_p)
 			break;
 	} /* switch */
 
-	assert(FALSE);	/* not reached*/
+	assert(FALSE);	/* not reached */
 	return FALSE;
 } /* end MB_read_tag() */
 
@@ -1173,7 +1260,8 @@ MB_read_op_arg(FILE *fp, MB_Op_arg *op_arg_p)
 				op_arg_p->opt.var = var;
 				return TRUE;
 			} else {
-				MB_util_error("Unable to read variable argument\n");
+				MB_util_error("Unable to read variable"
+						" argument\n");
 				return FALSE;
 			}
 			break;
@@ -1210,9 +1298,8 @@ MB_read_op_arg(FILE *fp, MB_Op_arg *op_arg_p)
 			return FALSE;
 	} /* end switch */
 
-	assert(FALSE);	/* not reached*/
+	assert(FALSE);	/* not reached */
 	return FALSE;
 } /* end MB_read_op_arg() */
-
 
 

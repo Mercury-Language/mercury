@@ -1,10 +1,8 @@
-
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mb_machine.c,v 1.1 2001-01-24 07:42:25 lpcam Exp $
 */
 
 /* XXX: make this variable */
@@ -17,924 +15,1340 @@
 #define INIT_LABELSTACK_SIZE	1000
 
 /* Imports */
+#include	"mercury_imp.h"
+
 #include	<assert.h>
 #include	<stdio.h>
 #include	<string.h>
 
 #include	"mb_bytecode.h"
 #include	"mb_disasm.h"
+#include	"mb_interface.h"
 #include	"mb_machine.h"
+#include	"mb_machine_def.h"
+
 #include	"mb_mem.h"
 #include	"mb_stack.h"
 
 /* Exported definitions */
 
+/* Set new stack vars to this help find bugs */
+#define CLOBBERED	0xbadbad00
 
-/* Get the value of a register */
-MB_Word		MB_reg_get(MB_Machine_State* ms, MB_Word idx);
-void		MB_reg_set(MB_Machine_State* ms, MB_Word idx, MB_Word value);
-MB_Word		MB_ip_get(MB_Machine_State* ms);
-void		MB_ip_set(MB_Machine_State* ms, MB_Word new_ip);
-MB_Word		MB_succip_get(MB_Machine_State* ms);
-void		MB_succip_set(MB_Machine_State* ms, MB_Word);
-MB_Bytecode	MB_code_get(MB_Machine_State* ms, MB_Word adr);
-MB_Byte		MB_code_get_id(MB_Machine_State* ms, MB_Word adr);
-MB_Bytecode_Arg*MB_code_get_arg(MB_Machine_State* ms, MB_Word adr);
-MB_Bytecode	MB_code_get_pred(MB_Machine_State* ms, MB_Word adr);
-MB_Word		MB_code_get_pred_adr(MB_Machine_State* ms, MB_Word adr);
-MB_Bytecode	MB_code_get_proc(MB_Machine_State* ms, MB_Word adr);
-MB_Word		MB_code_size(MB_Machine_State* ms);
-MB_Word		MB_var_get(MB_Machine_State* ms, MB_Word idx);
-void		MB_var_set(MB_Machine_State* ms, MB_Word idx, MB_Word value);
-MB_Word		MB_frame_get(MB_Machine_State* ms, MB_Word idx);
-void		MB_frame_set(MB_Machine_State* ms, MB_Word idx, MB_Word val);
-MB_Word		MB_frame_temp_get(MB_Machine_State* ms,
-			MB_Word frame_num, MB_Word idx);
-void		MB_frame_temp_set(MB_Machine_State* ms,
-			MB_Word frame_num, MB_Word idx, MB_Word val);
-MB_Word		MB_frame_var_get(MB_Machine_State* ms, MB_Word idx);
-void		MB_frame_var_set(MB_Machine_State* ms, MB_Word idx, MB_Word val);
-void		MB_frame_temp_add(MB_Machine_State* ms, MB_Word count);
-void		MB_frame_temp_remove(MB_Machine_State* ms, MB_Word count);
-void		MB_frame_add(MB_Machine_State* ms, MB_Word var_count);
-void		MB_frame_remove(MB_Machine_State* ms, MB_Word var_count);
-
-MB_Machine_State* MB_load_program(FILE* fp);
-MB_Machine_State* MB_load_program_name(MB_CString filename);
-MB_Bool		MB_reset_program(MB_Machine_State* ms);
-void		MB_unload_program(MB_Machine_State* ms);
-
-void		MB_step(MB_Machine_State* ms);
-void		MB_step_over(MB_Machine_State* ms);
-void		MB_run(MB_Machine_State* ms);
+#define CLOBBERPICKUPS	0	/* clobber reg after pickup */
+#define CLOBBERPLACES	0	/* clobber slot after place */
+#define CLOBBERSTACK	1	/* reset new stack vars */
 
 #define FILEVERSION	9
 
 /* Local declarations */
 
-static char
-rcs_id[]	= "$Id: mb_machine.c,v 1.1 2001-01-24 07:42:25 lpcam Exp $";
+static MB_Bool	dispatch(MB_Byte bc_id, MB_Machine_State *ms);
 
-static MB_Word	find_entry_point(MB_Machine_State* ms);
-static MB_Bool	translate_calls(MB_Machine_State* ms);
+static void instr_do_redo	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static void instr_do_fail	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
 
 /* Implementation */
 
-/* Finds the main/2 entry point */
-/* returns (MB_Word)-1 if it can't find it */
-static MB_Word
-find_entry_point(MB_Machine_State* ms)
-{
-	/* First find the main procedure */
-	MB_Word code_size = MB_code_size(ms);
-	MB_Bytecode bc;
-	MB_Integer i;
-	MB_Byte bcid;
-	for (i = 0; i < code_size; i++) {
-		/* Search for the main predicate */
-		bcid = MB_code_get_id(ms, i);
-		if (bcid == MB_BC_enter_pred) {
-			bc = MB_code_get(ms, i);
-			if (bc.opt.enter_pred.pred_arity == 2 &&
-				!bc.opt.enter_pred.is_func &&
-				MB_strcmp(bc.opt.enter_pred.pred_name, "main") == 0)
-			{
-				/* XXX: is proc 0 always the correct entry point? */
-				/* Find proc 0 */
-				for (i++; i < code_size; i++) {
-					bc = MB_code_get(ms, i);
-					if (bc.id == MB_BC_endof_pred) break;
-					if (bc.id == MB_BC_enter_proc &&
-						((bc.opt.enter_proc.det == MB_DET_DET) ||
-						(bc.opt.enter_proc.det == MB_DET_CC_MULTIDET)) &&
-							bc.opt.enter_proc.proc_id == 0) {
-	
-						MB_stack_push(&ms->call.stack, i);
-						return i;
-					}
-				
-				}
-			}
-		}
-	}
-
-	MB_util_error("Unable to find main/2 entry point");
-	return (MB_Word)-1;
-} /* find_entry_point */
-
-/* Get the value of a register */
-MB_Word
-MB_reg_get(MB_Machine_State* ms, MB_Word idx)
-{
-	assert(idx >= 0);
-	assert(idx < MB_MACHINEREGS);
-	return ms->reg[idx];
-}
-
-/* Set the value of a register */
-void
-MB_reg_set(MB_Machine_State* ms, MB_Word idx, MB_Word value)
-{
-	assert(idx >= 0);
-	assert(idx < MB_MACHINEREGS);
-	ms->reg[idx] = value;
-}
-
 /* Get the next instruction pointer */
-MB_Word
-MB_ip_get(MB_Machine_State* ms)
+MB_Bytecode_Addr
+MB_ip_get(MB_Machine_State *ms)
 {
 	return ms->ip;
 }
 
+/* set the native code return address */
+void
+MB_native_return_set(MB_Machine_State *ms, MB_Native_Addr native_return)
+{
+	ms->native_return = native_return;
+}
+
+MB_Native_Addr
+MB_native_return_get(MB_Machine_State * ms)
+{
+	return ms->native_return;
+}
 
 void
-MB_ip_set(MB_Machine_State* ms, MB_Word new_ip)
+MB_ip_set(MB_Machine_State *ms, MB_Bytecode_Addr new_ip)
 {
-	assert(new_ip >= 0);
-	assert(new_ip < ms->code.count);
-	ms->ip = new_ip;
-}
+	if (MB_ip_special(new_ip)) {
+		switch ((MB_Word) new_ip) {
+			case (MB_Word) MB_CODE_DO_FAIL:
+				instr_do_fail(ms, NULL);
+				break;
 
- /* Get the success instruction pointer */
-MB_Word
-MB_succip_get(MB_Machine_State* ms)
-{
-	return ms->det.succip;
-}
+			case (MB_Word) MB_CODE_DO_REDO:
+				instr_do_redo(ms, NULL);
+				break;
+				
+			case (MB_Word) MB_CODE_NATIVE_RETURN:
+				ms->ip = new_ip;
+				break;
 
-
-void
-MB_succip_set(MB_Machine_State* ms, MB_Word new_ip)
-{
-	ms->det.succip = new_ip;
-}  
-
-/* Get the actual size of a program, in bytecodes */
-MB_Word
-MB_code_size(MB_Machine_State* ms)
-{
-	return ms->code.count;
-}
-
-#define ARGSIZE(name)	(sizeof(((MB_Bytecode*)NULL)->opt.##name) + \
-				sizeof(MB_Word)-1) \
-				/ sizeof(MB_Word)
-/* the size of the arguments in a MB_Bytecode struct, in number of MB_Words*/
-static const MB_Word argument_size[] = {
-	ARGSIZE(enter_pred),
-	ARGSIZE(endof_pred),
-	ARGSIZE(enter_proc),
-	ARGSIZE(endof_proc),
-	ARGSIZE(label),
-	ARGSIZE(enter_disjunction),
-	ARGSIZE(endof_disjunction),
-	ARGSIZE(enter_disjunct),
-	ARGSIZE(endof_disjunct),
-	ARGSIZE(enter_switch),
-	ARGSIZE(endof_switch),
-	ARGSIZE(enter_switch_arm),
-	ARGSIZE(endof_switch_arm),
-	ARGSIZE(enter_if),
-	ARGSIZE(enter_then),
-	ARGSIZE(endof_then),
-	ARGSIZE(endof_if),
-	ARGSIZE(enter_negation),
-	ARGSIZE(endof_negation),
-	ARGSIZE(enter_commit),
-	ARGSIZE(endof_commit),
-	ARGSIZE(assign),
-	ARGSIZE(test),
-	ARGSIZE(construct),
-	ARGSIZE(deconstruct),
-	ARGSIZE(complex_construct),
-	ARGSIZE(complex_deconstruct),
-	ARGSIZE(place_arg),
-	ARGSIZE(pickup_arg),
-	ARGSIZE(call),
-	ARGSIZE(higher_order_call),
-	ARGSIZE(builtin_binop),
-	ARGSIZE(builtin_unop),
-	ARGSIZE(builtin_bintest),
-	ARGSIZE(builtin_untest),
-	ARGSIZE(semidet_succeed),
-	ARGSIZE(semidet_success_check),
-	ARGSIZE(fail),
-	ARGSIZE(context),
-	ARGSIZE(not_supported)
-};
-
-/* Get the bytecode at a given address; performs a range check */
-MB_Bytecode
-MB_code_get(MB_Machine_State* ms, MB_Word adr)
-{
-	MB_Bytecode bc;
-
-	assert(adr >= 0 && adr < ms->code.count);
-
-	bc.id = MB_code_get_id(ms, adr);
-	
-	assert(bc.id < sizeof(argument_size)/sizeof(argument_size[0]));
-
-	if (argument_size[bc.id] > 0) {
-	
-		memcpy(&(bc.opt),
-			MB_code_get_arg(ms, adr),
-			argument_size[bc.id]*sizeof(MB_Word));
-	}
-	return bc;
-}
-
-/* Get the bytecode type at a given address */
-MB_Byte
-MB_code_get_id(MB_Machine_State* ms, MB_Word adr)
-{
-	if (adr < 0 || adr >= ms->code.count)
-		return MB_BC_debug_invalid;
-	return ms->code.id[adr];
-}
-
-/* Get the bytecode argument at a given address */
-MB_Bytecode_Arg*
-MB_code_get_arg(MB_Machine_State* ms, MB_Word adr)
-{
-	MB_Word data_index;
-
-	if (adr < 0 || adr >= ms->code.count) return NULL;
-
-	data_index = MB_stack_peek(&ms->code.data_index, adr);
-	if (data_index == 0) {
-		return NULL;
+			default:
+				assert(FALSE);
+		}
 	} else {
-		return (void*)MB_stack_peek_p(&ms->code.data, data_index);
+		ms->ip = new_ip;
 	}
 }
 
-/* Get the predicate owning the code at adr */
-MB_Bytecode
-MB_code_get_pred(MB_Machine_State* ms, MB_Word adr)
+/*
+** Check which procedure we are in & set variable stack pointer appropriately
+**
+** If you don't call this after the ip switches to a new function
+** then MB_var_get and MB_var_set will give incorrect results
+**
+** If det/semidet, set the machine state variable slot pointer to the det stack
+** If nondet, set the machine state variable slot pointer to the nondet stack
+*/
+void
+MB_proc_var_init(MB_Machine_State *ms)
 {
-	MB_Word pred_adr = MB_code_get_pred_adr(ms, adr);
-	if (pred_adr == MB_CODE_INVALID_ADR) {
-		MB_Bytecode bc;
-		bc.id = MB_BC_enter_pred;
-		bc.opt.enter_pred.pred_name = MB_NULL_STR;
-		bc.opt.enter_pred.pred_arity = 0;
-		bc.opt.enter_pred.is_func = 0;
-		bc.opt.enter_pred.proc_count = 0;
-		return bc;
-	}
+	MB_Bytecode_Addr ip = MB_ip_get(ms);
+
+	MB_SAY("Hello from proc_var_init");
+
+	if (!MB_ip_normal(ip)) return;
 	
+	/* Check that we are actually in a procedure and not just entering one*/
+	if (MB_code_get_id(ip) != MB_BC_enter_proc) {
 
-	return MB_code_get(ms, pred_adr);
+		/* If we are, check the determinism & set vars as appropriate */
+		ms->cur_proc.is_det = MB_code_get_det(ip);
+
+		ms->cur_proc.var = (ms->cur_proc.is_det == MB_ISDET_YES)
+			? &(MB_stackitem(MB_DETFRAME_SIZE+1))
+			: &(MB_frameitem(MB_FRAME_SIZE));
+
+	} else {
+		MB_SAY(" not getting proc det of unentered procedure");
+	}
 }
 
+/*
+** Get a variable from the appropriate mercury stack
+**
+** It knows which stack to use because you have of course already
+** called MB_proc_var_init to set the current procedure's
+** variable pointer to point to variable 0.
+*/
 MB_Word
-MB_code_get_pred_adr(MB_Machine_State* ms, MB_Word adr) {
-
-	while (MB_code_get_id(ms, adr) != MB_BC_enter_pred) {
-
-		adr--;
-		if (adr < 0 || adr >= ms->code.count) {
-			return MB_CODE_INVALID_ADR;
-		}
-	}
-
-	return adr;
-}
-
-/* Get the procedure owning the code at adr */
-MB_Bytecode
-MB_code_get_proc(MB_Machine_State* ms, MB_Word adr)
+MB_var_get(MB_Machine_State *ms, MB_Word idx)
 {
-	MB_Byte bc_id;
-	adr++;
-	do {
-		adr--;
-		assert(adr >= 0 && adr < ms->code.count);
-		bc_id = MB_code_get_id(ms, adr);
-		assert(bc_id != MB_BC_enter_pred);
-		assert(bc_id != MB_BC_endof_pred);
-	}
-	while (bc_id != MB_BC_enter_proc);
-
-	return MB_code_get(ms, adr);
-}
-
-/* Translates calls from a predicate name / procedure to an actual code address */
-static MB_Bool
-translate_calls(MB_Machine_State* ms)
-{
-	/* first run through and save all the predicate names table
-	** XXX: should use a hash table for this: mercury_hash_table
-	** has one but it doesn't use the same memory allocation as
-	** in mb_mem.h - Is this a problem?
+	/*
+	** idx is negative because variable 0 is the topmost and
+	** higher number variables are below it on the stack
 	*/
-	MB_Stack pred_stack;
-	MB_Word i;
-	pred_stack = MB_stack_new(100);	/* guess 100 preds (grows as needed) */
-	for (i = 0; i < MB_code_size(ms); i++) {
-		if (MB_code_get_id(ms, i) == MB_BC_enter_pred) {
-			MB_stack_push(&pred_stack, i);
-		}
-	}
+	return ms->cur_proc.var[-idx];
+}
 
-	/* XXX: should also temporarily table the procs, instead of re-searching
-	** each time, but since there is usually only one proc per predicate, don't
-	** bother for now
-	*/
-
-	for (i = 0; i < MB_code_size(ms); i++) {
-
-		/* If we have found a call, find its destination address */
-		if (MB_code_get_id(ms, i) == MB_BC_call) {
-
-			MB_Bytecode_Arg* call_arg = MB_code_get_arg(ms, i);
-			MB_Byte		bc_id;
-			MB_Word		adr;
-			MB_Word		j = MB_CODE_INVALID_ADR;
-			
-			adr = MB_CODE_INVALID_ADR;
-
-			/* Search for the right procedure*/
-			for (j = 0; j < MB_stack_size(&pred_stack); j++) {
-				
-				MB_Bytecode_Arg* pred_arg;
-				adr = MB_stack_peek(&pred_stack, j);
-
-				pred_arg = MB_code_get_arg(ms, adr);
-
-				
-
-				/* XXX: we can't distinguish between predicates
-				** and functions in the same module, of the same
-				** arity! (bug in bytecode generator)
-				*/
-
-				/* XXX: We ignore the module*/
-				if ((pred_arg->enter_pred.pred_arity == call_arg->call.arity) &&
-					MB_strcmp(pred_arg->enter_pred.pred_name,
-						call_arg->call.pred_id) == 0)
-				{
-					break;
-				}
-			}
-
-			if (j == MB_stack_size(&pred_stack)) {
-				MB_util_error("Call from %08x to unknown predicate %s/%d",
-						(int)i, call_arg->call.pred_id,
-						(int)call_arg->call.arity);
-				call_arg->call.adr = MB_CODE_INVALID_ADR;
-				continue;
-			}
-
-			/* Now find the right proc */
-			do {
-				adr++;
-
-				assert(adr < MB_code_size(ms) && adr >= 0);
-
-				bc_id = MB_code_get_id(ms, adr);
-				if (bc_id == MB_BC_enter_proc) {
-					if (MB_code_get_arg(ms, adr)->enter_proc.proc_id ==
-						call_arg->call.proc_id)
-					{
-						call_arg->call.adr = adr;
-						break;
-					}
-				} else if ((bc_id == MB_BC_endof_pred) ||
-						(bc_id == MB_BC_enter_pred))
-				{
-					MB_util_error(
-						"Call from %08x to unknown predicate"
-							"procedure %s/%d (%d)",
-						i, call_arg->call.pred_id,
-						(int)call_arg->call.arity,
-						(int)call_arg->call.proc_id);
-					/* XXX: This should eventually be fatal */
-					MB_fatal("Error generating call addresses\n");
-					break;
-				}
-			} while (1);
-
-			if (adr >= MB_code_size(ms)) {
-				MB_stack_delete(&pred_stack);
-				return FALSE;
-			}
-		}
-	}
-
-	MB_stack_delete(&pred_stack);
-
-	return TRUE;
-} /* translate_calls */
-
-/* Create a new machine given a pointer to a file containing the bytecodes */
-MB_Machine_State*
-MB_load_program(FILE* fp)
-{
-
-	int			indent_level = 0;
-	MB_Short		version;
-	MB_Bytecode		bc;
-	MB_Bytecode_Arg*	cur_proc_arg = NULL;
-	MB_Word			cur_adr = 0;
-
-	MB_Machine_State*	ms = MB_new(MB_Machine_State);
-	if (ms == NULL) return NULL;
-	
-	ms->code.data	= MB_stack_new(INIT_CODE_DATA);
-	ms->det.stack	= MB_stack_new(INIT_DET_SIZE);
-	ms->nondet.stack= MB_stack_new(INIT_NONDET_SIZE);
-	ms->call.stack	= MB_stack_new(INIT_CALLSTACK_SIZE);
-	ms->label.stack	= MB_stack_new(INIT_LABELSTACK_SIZE);
-	ms->code.data_index= MB_stack_new(INIT_CODE_SIZE);
-	/* XXX don't use fixed limits */
-	ms->code.id	= MB_new_array(MB_Byte, MAX_CODE_SIZE);
-
-	MB_stack_push(&ms->code.data, 0);	/* reserve 0 for indicating no data */
-
-	if (!ms->code.id) {
-		MB_unload_program(ms);
-		return NULL;
-	}
-
-	/* Check the file version is ok */
-	if (!MB_read_bytecode_version_number(fp, &version)) {
-		MB_util_error("Unable to read version number\n");
-		return FALSE;
-	}
-	if (version != FILEVERSION) {
-		MB_util_error("Unknown file format version\n");
-		return FALSE;
-	}
-
-	/* read in each bytecode */
-	while (MB_read_bytecode(fp, &bc)) {
-		if (cur_adr+1 >= MAX_CODE_SIZE) {
-			MB_util_error("Not enough code space."
-					" Increase MAX_CODE_SIZE.\n");
-			MB_unload_program(ms);
-			return NULL;
-		}
-
-		ms->code.id[cur_adr] = bc.id;
-
-
-		if (bc.id == MB_BC_label) {
-			/* XXX: we don't actually need to save the labels
-			** in the code (but it makes printing the
-			** debugging output easier)
-			*/
-			if (cur_proc_arg == NULL) {
-				MB_fatal("Label encountered outside of a proc\n");
-			}
-
-			/* Add the label to the current proc's list of labels */
-			MB_stack_push(&ms->label.stack, cur_adr);
-		}
-		/* copy the bytecode arguments into the code.data
-		** structure, save the index & increment code.data
-		** counters
-		*/
-		if (bc.id < sizeof(argument_size)/sizeof(argument_size[0]))
-		{
-			if (argument_size[bc.id] == 0) {
-				/* If bytecode has no arguments, skip allocation */
-				MB_stack_push(&ms->code.data_index, CODE_DATA_NONE);
-			} else {
-				/* Allocate the space for the bytecode's arguments */
-				MB_Word cur_arg_index =
-					MB_stack_alloc(
-						&ms->code.data,
-						argument_size[bc.id]);
-
-				/* If we just read a procedure */
-				if (bc.id == MB_BC_enter_proc) {
-					/* Save the new current proc (so
-					** labels know where they are)
-					*/
-					cur_proc_arg =
-						(MB_Bytecode_Arg*)MB_stack_peek_p(
-							&ms->code.data,
-							cur_arg_index);
-
-					/* and mark where the label indexes will begin */
-					cur_proc_arg->enter_proc.label_index =
-						MB_stack_alloc(&ms->label.stack, 0);
-				}
-				
-				MB_stack_push(&ms->code.data_index, cur_arg_index);
-
-				/* Copy the arguments into the argument data stack */
-				memcpy(MB_stack_peek_p(&ms->code.data,
-						cur_arg_index),
-					&(bc.opt),
-					argument_size[bc.id]*
-						sizeof(MB_Word));
-			}
-		} else {
-			MB_util_error("Unknown op code");
-			MB_unload_program(ms);
-			return NULL;
-		}
-		cur_adr++;
-	}
-	ms->code.count = cur_adr;
-	ms->nondet.curfr = MB_stack_alloc(&ms->nondet.stack, MB_FRAME_SIZE);
-	
-	if (feof(fp) &&
-		(ms->code.count > 0) &&
-		(translate_calls(ms)) &&
-		(MB_reset_program(ms)))
-	{
-		return ms;
-	}
-	
-	MB_unload_program(ms);
-
-	return NULL;
-} /* MB_load_program */
-
-/* add/remove an ordinary nondet stack frame */
+/* Set a variable on the mercury stack */
 void
-MB_frame_add(MB_Machine_State* ms, MB_Word var_count)
+MB_var_set(MB_Machine_State *ms, MB_Word idx, MB_Word value)
 {
-	/* XXX */
-	MB_fatal("frame stuff not done");
+	ms->cur_proc.var[-idx] = value;
+}
+
+/* Get/set the initial stack frame (see machine_def.h for use) */
+MB_Word *
+MB_initialstackframe_get(MB_Machine_State *ms)
+{
+	return ms->initial_stack;
 }
 
 void
-MB_frame_remove(MB_Machine_State* ms, MB_Word var_count)
+MB_initialstackframe_set(MB_Machine_State *ms, MB_Word *frame)
 {
-	/* XXX */
-	MB_fatal("frame stuff not done");
+	MB_SAY("'spector gadget %08x\n", frame);
+	assert(ms->initial_stack == NULL);
+	ms->initial_stack = frame;
 }
 
-/* Load a program given a file name */
-MB_Machine_State*
-MB_load_program_name(MB_CString filename)
-{
-	FILE* fp = fopen(filename, "rb");
-	if (fp != NULL) {
-		return MB_load_program(fp);
-	}
-	return FALSE;
-}
-
-/* reset a program back to an unrun state*/
-MB_Bool
-MB_reset_program(MB_Machine_State* ms)
-{
-	ms->call.stack.sp = 0;
-
-	MB_succip_set(ms, MB_CODE_INVALID_ADR);
-
-	MB_ip_set(ms, find_entry_point(ms));
-	
-	if (MB_ip_get(ms) == (MB_Word)-1) {
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-/* free all memory associated with a machine state */
-void
-MB_unload_program(MB_Machine_State* ms)
-{
-	if (ms != NULL) {
-		/* the stacks will always be allocated since it will
-		** have aborted if their allocation failed
-		*/
-		MB_stack_delete(&ms->label.stack);
-		MB_stack_delete(&ms->call.stack);
-		MB_stack_delete(&ms->nondet.stack);
-		MB_stack_delete(&ms->det.stack);
-		MB_stack_delete(&ms->code.data);
-		MB_stack_delete(&ms->code.data_index);
-		if (ms->code.id) MB_free(ms->code.id);
-		MB_free(ms);
-	}
-}
-
-/* Get a variable on the det stack */
+/* Add a temporary det stack frame */
 MB_Word
-MB_var_get(MB_Machine_State* ms, MB_Word idx)
+MB_frame_temp_det_push(MB_Machine_State *ms, MB_Word redoip)
 {
-	assert(idx >= 0);
-	assert(idx <
-		MB_code_get_arg(ms, MB_stack_peek_rel(&ms->call.stack, 1))
-			->enter_proc.list_length);
-	return MB_stack_peek_rel(&ms->det.stack, idx+1);
+	MB_fatal("MB_frame_temp_det_push not implemented yet");
+	return 0;
+#if 0
+	MB_Word maxfr = MB_maxfr_get(ms);
+	MB_Word prevfr = maxfr;
+
+	maxfr += MB_FRAME_TEMP_DET_SIZE;
+	MB_maxfr_set(ms, maxfr);
+
+	MB_frame_max_set(ms, MB_FRAME_PREVFR, prevfr);
+	MB_frame_max_set(ms, MB_FRAME_REDOIP, redoip);
+	MB_frame_max_set(ms, MB_FRAME_REDOFR, MB_curfr_get(ms));
+	MB_frame_max_set(ms, MB_FRAME_DETFR, MB_stack_size(&ms->det.stack));
+
+	return maxfr;
+#endif
 }
 
-/* Set a variable on the det stack */
-void
-MB_var_set(MB_Machine_State* ms, MB_Word idx, MB_Word value)
-{
-	assert(idx >= 0);
-	assert(idx <
-		MB_code_get_arg(ms, MB_stack_peek_rel(&ms->call.stack, 1))
-			->enter_proc.list_length);
-	MB_stack_poke_rel(&ms->det.stack, idx+1, value);
-}
-
-/* Get/set an entry on the nondet stack, relative to the current frame */
+/* Add a temporary stack frame */
 MB_Word
-MB_frame_get(MB_Machine_State* ms, MB_Word idx)
+MB_frame_temp_push(MB_Machine_State *ms, MB_Word redoip)
 {
-	return MB_stack_peek(&ms->nondet.stack,
-			ms->nondet.curfr + idx);
+	MB_fatal("MB_frame_temp_push not implemented yet");
+	return 0;
+#if 0
+	if (ms->cur_proc.detism == MB_CUR_DET) {
+		return MB_frame_temp_det_push(ms, redoip);	
+	} else {
+		MB_Word maxfr = MB_maxfr_get(ms);
+		MB_Word prevfr = maxfr;
+
+		maxfr += MB_FRAME_TEMP_SIZE;
+		MB_maxfr_set(ms, maxfr);
+
+		MB_frame_max_set(ms, MB_FRAME_PREVFR, prevfr);
+		MB_frame_max_set(ms, MB_FRAME_REDOIP, redoip);
+		MB_frame_max_set(ms, MB_FRAME_REDOFR, MB_curfr_get(ms));
+
+		return maxfr;
+	}
+#endif
 }
 
-void
-MB_frame_set(MB_Machine_State* ms, MB_Word idx, MB_Word val)
-{
-	MB_stack_poke(&ms->nondet.stack, ms->nondet.curfr + idx, val);
-}
-
+/* Add a stack frame */
 MB_Word
-MB_frame_temp_get(MB_Machine_State* ms, MB_Word frame_num, MB_Word idx)
+MB_frame_push(MB_Machine_State *ms, MB_Word redoip,
+		MB_Word succip, MB_Word vars, MB_Word temps)
 {
-	return MB_frame_get(ms,
-			MB_FRAME_SIZE + frame_num*MB_FRAME_TEMP_SIZE + idx);
-}
+	MB_fatal("MB_frame_temp_push not implemented yet");
+	return 0;
+#if 0
+	MB_Word maxfr = MB_maxfr_get(ms);
+	MB_Word prevfr = maxfr;
+	MB_Word succfr = MB_curfr_get(ms);
 
-void
-MB_frame_temp_set(MB_Machine_State* ms,
-		MB_Word frame_num, MB_Word idx, MB_Word val)
-{
-	MB_frame_set(
-		ms,
-		MB_FRAME_SIZE + frame_num*MB_FRAME_TEMP_SIZE + idx,
-		val);
+	maxfr += MB_FRAME_SIZE + vars + temps;
 
+	MB_maxfr_set(ms, maxfr);
+	MB_curfr_set(ms, maxfr);
+
+	MB_frame_cur_set(ms, MB_FRAME_NUMVARS, vars);
+	MB_frame_cur_set(ms, MB_FRAME_REDOIP, redoip);
+	MB_frame_cur_set(ms, MB_FRAME_PREVFR, prevfr);
+	MB_frame_cur_set(ms, MB_FRAME_SUCCIP, succip);
+	MB_frame_cur_set(ms, MB_FRAME_SUCCFR, succfr);
+	MB_frame_cur_set(ms, MB_FRAME_REDOFR, MB_curfr_get(ms));
+
+	return maxfr;
+#endif
 }
 
 /* Get/set a variable in the current stack frame variable list */
+void
+MB_frame_var_set(MB_Machine_State *ms, MB_Word idx, MB_Word val)
+{
+	MB_fatal("MB_frame_var_set not implemented yet");
+#if 0
+	MB_stack_poke(&ms->nondet.stack,
+		MB_curfr_get(ms) - MB_FRAME_SIZE - idx, val);
+#endif
+}
+/* Get/set a variable in the current stack frame variable list */
 MB_Word
-MB_frame_var_get(MB_Machine_State* ms, MB_Word idx)
+MB_frame_var_get(MB_Machine_State *ms, MB_Word idx)
 {
-	return MB_stack_peek(&ms->nondet.stack, MB_FRAME_SIZE + idx);
-
+	MB_fatal("MB_frame_var_get not implemented yet");
+	return 0;
+#if 0
+	return MB_stack_peek(&ms->nondet.stack,
+		MB_curfr_get(ms) - MB_FRAME_SIZE - idx);
+#endif
 }
-
-void
-MB_frame_var_set(MB_Machine_State* ms, MB_Word idx, MB_Word val)
-{
-	MB_stack_poke(&ms->nondet.stack, MB_FRAME_SIZE + idx, val);
-}
-
-/* add/remove a number of temporary stack frames to the nondet stack */
-void
-MB_frame_temp_add(MB_Machine_State* ms, MB_Word count)
-{
-	MB_stack_alloc(&ms->nondet.stack, count * MB_FRAME_TEMP_SIZE);
-}
-
-void
-MB_frame_temp_remove(MB_Machine_State* ms, MB_Word count)
-{
-	MB_stack_free(&ms->nondet.stack, count * MB_FRAME_TEMP_SIZE);
-}
-
 /* -------------------------------------------------------------------------- */
-static void instr_invalid	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_enter_proc	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_endof_proc	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_enter_if	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_endof_if	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_construct	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_place		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_pickup	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_call		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_builtin_binop	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
+static void instr_invalid		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_proc		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_proc		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_disjunction	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_disjunction	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_disjunct	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_disjunct	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_switch		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_switch_arm	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_switch_arm	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_switch		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_if		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_then		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_then		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+/* instr_enter_else is identical to enter_then */
+static void instr_endof_if		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_negation	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_negation_goal	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_negation	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_enter_commit		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_endof_commit		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_assign		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_test			(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_construct		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_deconstruct		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_place			(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_pickup		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_call			(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_higher_order_call	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_builtin_binop		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_builtin_bintest	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_builtin_unop		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_builtin_untest	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_semidet_success	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_semidet_success_check	(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_do_redo		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_do_fail		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_noop			(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
+static void instr_notdone		(MB_Machine_State *ms,
+						const MB_Bytecode_Arg *bca);
 
-static void instr_noop		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static void instr_notdone	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
+/* return true if a construction succeeds */
+static MB_Word do_construct_cons(MB_Machine_State *ms, const MB_Cons_id *cid,
+		MB_Word list_length, MB_Short *var_list);
 
+/* return true if a deconstruction succeeds */
+static MB_Bool do_deconstruct(MB_Machine_State *ms, const MB_Cons_id *cid,
+		MB_Word var, MB_Word list_length, MB_Short *var_list);
+static MB_Bool do_deconstruct_cons(MB_Machine_State *ms, const MB_Cons_id *cid,
+		MB_Word val, MB_Word list_length, MB_Short *var_list);
 
-/* XXX: relies on the order of the definitions */
-static void (*instruction_table[])(MB_Machine_State*, const MB_Bytecode_Arg*) = {
-	instr_invalid,	/*enter_pred*/
-	instr_invalid,	/*endof_pred*/
+/* XXX det and nondet conditions (ite / disjunct / commit) all use the same
+** [would require modifying bytecode ids?]
+*/
+
+/*typedef void (MB_Instruction_Handler)(MB_Machine_State *,
+						const MB_Bytecode_Arg *);
+*/
+
+typedef void (*MB_Instruction_Handler)	(MB_Machine_State *,
+						const MB_Bytecode_Arg *);
+
+/* XXX ORDER: relies on the order of the definitions */
+static MB_Instruction_Handler instruction_table[] = {
+	instr_invalid,		/* enter_pred */
+	instr_invalid,		/* endof_pred */
 	instr_enter_proc,
 	instr_endof_proc,
-	instr_noop,	/* label */
-	instr_notdone,	/* disjunction */
-	instr_notdone,
-	instr_notdone,	/* disjunct */
-	instr_notdone,
-	instr_notdone,	/* switch */
-	instr_notdone,
-	instr_notdone,
-	instr_notdone,
+	instr_noop,		/* label */
+	instr_enter_disjunction,
+	instr_endof_disjunction,
+	instr_enter_disjunct,
+	instr_endof_disjunct,
+	instr_enter_switch,
+	instr_endof_switch,
+	instr_enter_switch_arm,
+	instr_endof_switch_arm,
 	instr_enter_if,
-	instr_notdone,
-	instr_notdone,
+	instr_enter_then,
+	instr_endof_then,
 	instr_endof_if,
-	instr_notdone,	/* neg */
-	instr_notdone,
-	instr_notdone,	/* commit */
-	instr_notdone,
-	instr_notdone,	/* assign */
-	instr_notdone,	/* test */
-	instr_construct,/* construct */
-	instr_notdone,
-	instr_notdone,
-	instr_notdone,
-	instr_place,	/* place */
-	instr_pickup,	/* pickup */
-	instr_call,	/* call */
-	instr_notdone,
+	instr_enter_negation,
+	instr_endof_negation,
+	instr_enter_commit,
+	instr_endof_commit,
+	instr_assign,
+	instr_test,
+	instr_construct,
+	instr_deconstruct,
+	instr_notdone,		/* XXX complex construct */
+	instr_notdone,		/* XXX complex deconstruct */
+	instr_place,
+	instr_pickup,
+	instr_call,
+	instr_higher_order_call,
 	instr_builtin_binop,
-	instr_notdone,
-	instr_notdone,
-	instr_notdone,
-	instr_notdone,	/* semidet */
-	instr_notdone,
-	instr_notdone,	/* fail */
-	instr_noop,	/* context */
-	instr_notdone	/* not supported */
+	instr_builtin_unop,	/* XXX unop */
+	instr_builtin_bintest,
+	instr_builtin_untest,	/* XXX unop test */
+	instr_semidet_success,
+	instr_semidet_success_check,
+	instr_do_redo,		/* fail */
+	instr_noop,		/* context */
+	instr_notdone,		/* not supported */
+	instr_enter_then,	/* enter_else (identical to enter_then) */
+	instr_endof_negation_goal
 };
 
 static void
-instr_invalid(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_invalid(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
-	assert(FALSE);
+	MB_fatal("Invalid instruction encountered");
 }
 
-
-/* Just something to set new stack vars to to help find bugs */
-#define UNSETSTACK	0xbadbad00
 
 /* Enter/exit procedure */
 static void
-instr_enter_proc(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_enter_proc(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
-	/* save the current address (for debugging) */
-	MB_stack_push(&ms->call.stack, MB_ip_get(ms));
-
 	switch (bca->enter_proc.det) {
+		case MB_DET_SEMIDET:
+			MB_fatal("semidet");
+
 		case MB_DET_DET: {
-			MB_Word i;
+			MB_Word detframe_size = 
+					bca->enter_proc.temp_count +
+					bca->enter_proc.list_length +
+					MB_DETFRAME_SIZE;
 
-			/* Allocate nondet stack frames */
-			MB_frame_temp_add(ms, bca->enter_proc.temp_count);
+			/*
+			** Save the initial stack frame if this function is
+			** going to be the one that returns to native code
+			*/
+			MB_SAY( "MB_sp:             %08x\n"
+				"initialstackframe: %08x\n",
+				MB_sp,
+				ms->initial_stack);
 
-			/* save our succip */
-			MB_stack_push(&ms->det.stack, MB_succip_get(ms));
-
-			/* allocate new stack variables */
-			for (i = 0; i < bca->enter_proc.list_length; i++) {
-				MB_stack_push(&ms->det.stack, UNSETSTACK+i);
+			if (MB_initialstackframe_get(ms) == NULL) {
+				MB_initialstackframe_set(ms, MB_sp);
 			}
 
-			MB_ip_set(ms, MB_ip_get(ms)+1);
+			MB_incr_sp(detframe_size);
+
+			/* save succip */
+			MB_stackitem(MB_DETFRAME_SUCCIP) = (MB_Word) MB_succip;
+
+			MB_ip_set(ms, MB_ip_get(ms) + 1);
+
 			break;
 		}
+		case MB_DET_MULTIDET:
+		case MB_DET_NONDET: {
 
+			MB_fatal("enter_proc/multidet,nondet");
+
+			#if 0
+			MB_frame_push(ms,
+				MB_CODE_DO_FAIL,
+				MB_succip_get(ms),
+				bca->enter_proc.list_length,
+				bca->enter_proc.temp_count);
+
+			MB_ip_set(ms, MB_ip_get(ms) + 1);
+			#endif
+			
+			break;
+		}
+		/* XXX Other options */
 		default:
-			instr_notdone(ms, bca);
+			instr_notdone(ms, NULL);
 	}
+
+	/* set procedure detism info & variable stack pointer */
+	MB_proc_var_init(ms);
+
+	#if CLOBBERSTACK
+	{
+		MB_Word i;
+		MB_Word count = bca->enter_proc.list_length +
+					bca->enter_proc.temp_count;
+		for (i = 0; i < count; i++) {
+			MB_var_set(ms, i, CLOBBERED + i);
+		}
+	}
+	#endif
+#if 0
+	if (MB_model_semi(bca->enter_proc.det)) {
+		/*
+		** If a semidet procedure then mark our success slot as failure
+		** until we know otherwise.
+		*/
+		MB_temp_set(ms, MB_SEMIDET_SUCCESS_SLOT, MB_SEMIDET_FAILURE);
+
+		/*
+		** Also push a failure context in case fail is encountered
+		*/
+		MB_frame_temp_push(ms, bca->enter_proc.end_label.addr);
+	}
+#endif
 }
 
 static void
-instr_endof_proc(MB_Machine_State* ms, const MB_Bytecode_Arg* endof_bca)
+instr_endof_proc(MB_Machine_State *ms, const MB_Bytecode_Arg *endof_bca)
 {
-	/* get the current proc off the top of the call stack */
-	MB_Bytecode_Arg* bca = MB_code_get_arg(ms,
-					MB_stack_pop(&ms->call.stack));
+	/* get the current proc */
+	MB_Bytecode_Arg *bca =
+		MB_code_get_arg(endof_bca->endof_proc.proc_start);
 	
 	switch (bca->enter_proc.det) {
+		case MB_DET_SEMIDET:
+			MB_fatal("endof semidet");
+#if 0
+			/* put the success indicator into a register */
+			MB_reg_set(ms, MB_SEMIDET_SUCCESS_REG,
+				MB_temp_get(ms, MB_SEMIDET_SUCCESS_SLOT));
+
+			/* remove the failure context */
+			MB_maxfr_pop(ms);
+#endif
+
 		case MB_DET_DET: {
-			/* deallocate stack variables */	
-			MB_stack_free(&ms->det.stack, bca->enter_proc.list_length);
-			MB_succip_set(ms, MB_stack_pop(&ms->det.stack));
+			MB_Word detframe_size = 
+					bca->enter_proc.temp_count +
+					bca->enter_proc.list_length +
+					MB_DETFRAME_SIZE;
 
-			/* dellocate nondet stack frames */
-			MB_frame_temp_remove(ms, bca->enter_proc.temp_count);
+			MB_succip = MB_stackitem(MB_DETFRAME_SUCCIP);
 
-			MB_ip_set(ms, MB_succip_get(ms));
+			/* deallocate stack variables */
+			MB_decr_sp(detframe_size);
+
+			/* Check whether we should return to native code */
+			if (MB_sp == MB_initialstackframe_get(ms)) {
+				MB_SAY("trying to go native again");
+				MB_native_return_set(ms, MB_succip);
+				MB_ip_set(ms, MB_CODE_NATIVE_RETURN);
+			} else {
+				MB_SAY("just doing an easy bc ret");
+				MB_SAY( "MB_sp:             %08x\n"
+					"initialstackframe: %08x\n",
+					MB_sp,
+					ms->initial_stack);
+				MB_ip_set(ms, MB_succip);
+			}
+			return;
+		}
+#if 0
+		case MB_DET_MULTIDET:
+		case MB_DET_NONDET: {
+			MB_ip_set(ms, MB_frame_cur_get(ms, MB_FRAME_SUCCIP));
+			MB_curfr_set(ms, MB_frame_cur_get(ms, MB_FRAME_SUCCFR));
 			break;
 		}
-
+#endif
+		/* XXX other options */
 		default:
-			instr_notdone(ms, bca);
+			instr_notdone(ms, NULL);
+	}
+	
+	MB_proc_var_init(ms);
+}
+
+static void
+instr_enter_disjunction(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("enter_disjunction");
+#if 0
+	/* push a new temp frame */
+	MB_frame_temp_push(ms, MB_CODE_INVALID_ADR);
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_enter_disjunct(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("enter_disjunct");
+#if 0
+	/*
+	** set the redo point of the topmost frame (pushed in
+	** enter_disjunction) to the disjunct after the current one
+	**
+	** if this is the last disjunct, then remove the top frame instead
+	*/
+	if (bca->enter_disjunct.next_label.addr == MB_CODE_INVALID_ADR) {
+		/* remove the top frame */
+		MB_maxfr_set(ms, MB_frame_max_get(ms, MB_FRAME_REDOFR));
+	} else {
+		/* set a new redoip */
+		MB_frame_max_set(ms, MB_FRAME_REDOIP,
+				bca->enter_disjunct.next_label.addr);
+	}
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_endof_disjunct(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_disjunct");
+#if 0
+	/*
+	** a simple jump to the end of the disjunction
+	** if we are coming from a nonlast disjunct then we will
+	** be leaving one or more nondet stack frames so we can backtrack
+	** into the disjunction if we fail later on
+	*/
+	MB_ip_set(ms, bca->endof_disjunct.end_label.addr);
+#endif
+}
+
+static void
+instr_endof_disjunction(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_disjunction");
+#if 0
+	/*
+	** do nothing
+	*/
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_enter_switch(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	instr_noop(ms, NULL);
+}
+
+static void
+instr_enter_switch_arm(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	/* Check if this deconstruct is going to succeed */
+	if (do_deconstruct(ms, &bca->enter_switch_arm.cons_id,
+			bca->enter_switch_arm.var, 0, 0))
+	{
+		/*
+		** If it does succeed, then step into the switch
+		*/
+		instr_noop(ms, NULL);
+
+	} else {
+		/*
+		** If it fails, go to the next switch arm
+		*/
+		MB_ip_set(ms, bca->enter_switch_arm.next_label.addr);
 	}
 }
 
 static void
-instr_enter_if (MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_endof_switch_arm(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
-//	MB_Word* temp_frame = ms-> bca
-	instr_notdone(ms, bca);
+	/* This switch arm has succeeded, now go to the end of the switch */
+	MB_ip_set(ms, bca->endof_switch_arm.end_label.addr);
 }
 
 static void
-instr_endof_if (MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_endof_switch(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
-	instr_notdone(ms, bca);
+	/*
+	** If we get here, no switch arm matched, so trigger a redo
+	*/
+	instr_do_redo(ms, NULL);
 }
 
 static void
-instr_construct(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_enter_if(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
-	assert(bca->construct.list_length == 0);
+	MB_fatal("enter_if");
+#if 0
+	/*
+	** push a failure context and save the frame address in a
+	** temp stack slot
+	*/
+	MB_temp_set(ms, bca->enter_if.frame_ptr_tmp,
+		MB_frame_temp_push(ms, bca->enter_if.else_label.addr)
+		);
+
+	instr_noop(ms, NULL);
+#endif
+}
+
+/* enter_else is identical to enter_then */
+/*
+instr_enter_else()
+*/
+static void
+instr_enter_then(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("enter_then");
+#if 0
+	MB_Word tempfr = MB_temp_get(ms, bca->enter_then.frame_ptr_tmp);
+
+	/* If the frame is on top, can we pop it */
+	if (MB_maxfr_get(ms) == tempfr) {
+		MB_maxfr_pop(ms);
+	} else {
+		/* otherwise replace redoip with do_fail, effectively
+		 * discarding it when the stack gets unwound */
+		MB_frame_set(ms,
+			tempfr + MB_FRAME_REDOIP,
+			MB_CODE_DO_FAIL
+			);
+	}
+	
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_endof_then(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_then");
+#if 0
+	/* jump to the end of the construct */
+	MB_ip_set(ms, bca->endof_then.follow_label.addr);
+#endif
+}
+
+static void
+instr_endof_if(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_if");
+#if 0
+	/* do nothing */
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_enter_negation(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("enter_negation");
+#if 0
+	/* push a fail context: if the negation fails we want it
+	** to drop through to the end of the negation and succeed
+	*/
+	MB_temp_set(ms, bca->enter_negation.frame_ptr_tmp,
+		MB_frame_temp_push(ms, bca->enter_negation.end_label.addr));
+
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_endof_negation_goal(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_negation_goal");
+#if 0
+	/*
+	** the negation has succeeded. Now we want to indicate
+	** failure.
+	** Rewind the stack back to before the negation and do a redo
+	*/
+
+	MB_maxfr_set(ms,
+		MB_frame_get(ms, MB_FRAME_PREVFR + 
+			MB_temp_get(ms, bca->endof_negation_goal.frame_ptr_tmp))
+		);
+
+	instr_do_redo(ms, NULL);
+#endif	
+}
+
+static void
+instr_endof_negation(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_negation");
+#if 0
+	/*
+	** the negation failed. remove the temp frame which will
+	** be at the top and continue
+	*/
+	MB_maxfr_pop(ms);
+	
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_enter_commit(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("enter_commit");
+#if 0
+	/*
+	** push a new stack frame & save its location in a temp
+	** stack slot
+	*/
+	MB_temp_set(ms, bca->enter_commit.frame_ptr_tmp,
+		MB_frame_temp_push(ms, MB_CODE_DO_FAIL));
+
+	instr_noop(ms, NULL);	
+#endif
+}
+
+static void
+instr_endof_commit(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("endof_commit");
+#if 0	
+	/*
+	** Unwind the stack back to where it was before the commit
+	*/
+	MB_maxfr_set(ms,
+		MB_frame_get(ms, MB_FRAME_PREVFR +
+			MB_temp_get(ms, bca->endof_commit.frame_ptr_tmp))
+		);
+
+	instr_noop(ms, NULL);	
+#endif
+}
+
+static void
+instr_assign(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("assign");
+#if 0	
+	/* copy variable from one slot to another */
+	MB_var_set(ms, bca->assign.to_var, MB_var_get(ms,bca->assign.from_var));
+
+	instr_noop(ms, NULL);	
+#endif
+}
+
+static void
+instr_test(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("test");
+#if 0
+	/* test the equality of two variable slots */
+	if (MB_var_get(ms, bca->test.var1) == MB_var_get(ms, bca->test.var2)) {
+		instr_noop(ms, NULL);
+	} else {
+		instr_do_redo(ms, NULL);
+	}
+#endif
+}
+
+static MB_Word
+do_construct_cons(MB_Machine_State *ms, const MB_Cons_id *cid,
+		MB_Word list_length, MB_Short *var_list)
+{
+	MB_fatal("do_construct_cons");
+#if 0
+	const MB_Tag	*cons_tag = &cid->opt.cons.tag;
+	MB_Word		*val = MB_mkword(
+				MB_mktag(cons_tag->opt.pair.primary),
+				MB_mkbody((MB_Word) NULL));
+
+	/* the final value we will put in the reg */
+
+	assert(cid->id == MB_CONSID_CONS);
+			
+	assert(cid->opt.cons.arity == list_length);
+
+	switch (cons_tag->id) {
+		case MB_TAG_SIMPLE: /* only need a primary tag */
+		case MB_TAG_COMPLICATED: /* need primary + remote 2ndary tag */
+		{
+			/*
+			** The code for these two is virtually identical except
+			** that if it is complicated we need one extra heap
+			** slot for the remote secondary tag
+			*/
+			MB_Word	extra = (cons_tag->id == MB_TAG_COMPLICATED)
+					? 1 : 0;
+			MB_Word *heap_data;
+			MB_Word	i;
+			
+
+			if (list_length + extra) {
+				MB_Short *var_list;
+
+				/* allocate heap memory */
+				heap_data = (MB_Word *) MB_GC_new_array(
+						MB_Word, list_length + extra);
+
+				/* ensure tag bits aren't used */
+				assert(MB_tag((MB_Word) heap_data) == 0);
+
+				/* get variable list */
+				var_list = (MB_Short *)MB_stack_peek_p(
+						&ms->code.data,
+						var_list_index);
+
+				/* copy variables to allocate heap block */
+				for (i = 0; i < list_length; i++) {
+					heap_data[i + extra] =
+						MB_var_get(ms, var_list[i]);
+				}
+			} else {
+				heap_data = NULL;
+			}
+
+			/*
+			** copy the secondary tag if we need to
+			** and combine the pointer & tag
+			*/
+			if (cons_tag->id == MB_TAG_COMPLICATED_CONSTANT) {
+				heap_data[0] = cons_tag->opt.pair.secondary;
+				val = MB_mkword(
+					MB_mktag(cons_tag->opt.pair.primary),
+					MB_body((MB_Word) heap_data,
+							MB_mktag(0)));
+			} else {
+				val = MB_mkword(
+					MB_mktag(cons_tag->opt.primary),
+					MB_body((MB_Word) heap_data,
+							MB_mktag(0)));
+			}
+			
+			break;
+		}
+			
+		case MB_TAG_COMPLICATED_CONSTANT:
+			/* primary + local secondary tag */
+			assert(list_length == 0);
+			val = MB_mkword(
+				MB_mktag(cons_tag->opt.pair.primary),
+				MB_mkbody(cons_tag->opt.pair.secondary));
+
+			break;
+			
+		case MB_TAG_ENUM:
+			assert(list_length == 0);
+			val = MB_mkword(MB_mktag(cons_tag->opt.enum_tag),
+					MB_mkbody(0));
+			break;
+
+		case MB_TAG_NONE:
+		default:
+			instr_notdone(ms, NULL);
+	}
+	return (MB_Word) val;
+#endif
+	return 0;
+}
+
+static void
+instr_construct(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_Word val;
+	/* construct a variable into a slot */
 	switch (bca->construct.consid.id) {
 		case MB_CONSID_INT_CONST:
-			MB_var_set(ms, bca->construct.to_var,
-					bca->construct.consid.opt.int_const);
-
-			instr_noop(ms, bca);
+			assert(bca->construct.list_length == 0);
+			val = bca->construct.consid.opt.int_const;
 			break;
+
 		case MB_CONSID_STRING_CONST:
-			MB_var_set(ms, bca->construct.to_var,
-					(MB_Word)bca->construct.consid.opt.string_const);
-			
-			instr_noop(ms, bca);
+			assert(bca->construct.list_length == 0);
+			val = (MB_Word) bca->construct.consid.opt.string_const;
 			break;
+
+		case MB_CONSID_CONS:
+			val = do_construct_cons(ms,
+				&bca->construct.consid,
+				bca->construct.list_length,
+				bca->construct.var_list);
+			break;
+
+		case MB_CONSID_FLOAT_CONST:
+			instr_notdone(ms, NULL);
+			
+		case MB_CONSID_PRED_CONST: {
+			MB_fatal("Construct closure not done");
+		#if 0
+			int i;
+
+			MB_Closure *closure = MB_GC_malloc(
+				MB_CLOSURE_SIZE(bca->construct.list_length),
+				MB_GC_NOT_ATOMIC);
+			MB_Short *var_list = (MB_Short *)MB_stack_peek_p(
+					&ms->code.data,
+					bca->construct.var_list_index);
+
+			closure->code_addr = bca->construct
+						.consid.opt.pred_const.addr;
+			closure->num_hidden_args = bca->construct.list_length;
+
+			for (i = 0; i < closure->num_hidden_args; i++) {
+				closure->closure_hidden_args[i] =
+					MB_var_get(ms, var_list[i]);
+			}
+
+			val = (MB_Word) closure;
+
+			break;
+		#endif
+		}
+			
+		case MB_CONSID_CODE_ADDR_CONST:
+		case MB_CONSID_BASE_TYPE_INFO_CONST:
+			instr_notdone(ms, NULL);
+
+		case MB_CONSID_CHAR_CONST:
+			val = (MB_Word) bca->construct.consid.opt.char_const.ch;
+			break;
+
 		default:
-			instr_notdone(ms, bca);
+			instr_notdone(ms, NULL);
 	}
+	MB_var_set(ms, bca->construct.to_var, val);
+	instr_noop(ms, NULL);
 }
-
-static void
-instr_place(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
-{
-	/* copy value from var slot to reg */
-	MB_reg_set(ms, bca->place_arg.to_reg,
-		MB_var_get(ms, bca->place_arg.from_var));
-
-	/* XXX for debugging only */
-	MB_var_set(ms, bca->place_arg.from_var, UNSETSTACK);
-
-	/* go to the next instruction */
-	instr_noop(ms, bca);
-}
-
-static void
-instr_pickup(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
-{
-	/* copy value from reg to var slot*/
-	MB_var_set(ms, bca->pickup_arg.to_var,
-		MB_reg_get(ms, bca->pickup_arg.from_reg));
-
-	/* XXX for debugging only */
-	MB_reg_set(ms, bca->pickup_arg.from_reg, UNSETSTACK);
-
-	/* go to the next instruction */
-	instr_noop(ms, bca);
-}
-
-static void
-instr_call(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
-{
-	MB_Word new_adr;
-	new_adr = bca->call.adr;
-
-	if (new_adr == MB_CODE_INVALID_ADR) {
-		MB_util_error("Attempt to call unknown predicate %s/%d (%d)",
-				bca->call.pred_id,
-				(int)bca->call.arity,
-				(int)bca->call.proc_id);
-		instr_noop(ms, bca);
-	} else {
-		/* set the new execution point*/
-		MB_succip_set(ms, MB_ip_get(ms)+1);
-
-		/* set the return address to the next instruction */
-		MB_ip_set(ms, new_adr);
-	}
-}
-
-/* --------------------------------------------------------------------- */
-
-static MB_Word binop_add	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_sub	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_mul	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_div	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_mod	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_lshift	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_rshift	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_and	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_or		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_xor	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_logand	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_logor	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_eq		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_ne		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_lt		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_gt		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_le		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_ge		(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
-static MB_Word binop_bad	(MB_Machine_State* ms, const MB_Bytecode_Arg* bca);
 
 /*
-**	XXX: Currently we depend on the order of elements in the table.
+** returns true if the deconstruction succeeds
+** if a int/string/char const, checks for equality and triggers a redo if it
+** fails.
+** if a functor then deconstructs arguments into variable slots
 */
-static MB_Word (*binop_table[])(MB_Machine_State* ms, const MB_Bytecode_Arg* bca) = {
+static MB_Bool
+do_deconstruct(MB_Machine_State *ms, const MB_Cons_id *cid, MB_Word var, 
+		MB_Word list_length, MB_Short *var_list)
+{
+	MB_Word var_val = MB_var_get(ms, var);
+	
+	/* XXX not all deconstructions done */
+	switch (cid->id) {
+		case MB_CONSID_INT_CONST:
+			return (var_val == cid->opt.int_const);
+
+		case MB_CONSID_STRING_CONST:
+			return (!MB_str_cmp((char *)var_val,
+				cid->opt.string_const));
+
+		case MB_CONSID_CONS: {
+			return do_deconstruct_cons(ms, cid, var_val,
+					list_length, var_list);
+		}
+
+		case MB_CONSID_CHAR_CONST:
+			return (var_val == (MB_Word) cid->opt.char_const.ch);
+
+		default:
+			instr_notdone(ms, NULL);
+	}
+
+	assert(FALSE);
+	return FALSE;
+}
+
+/* returns true if val is equivalent to a construction given by cid */
+static MB_Bool
+do_deconstruct_cons(MB_Machine_State *ms, const MB_Cons_id *cid,
+		MB_Word val, MB_Word list_length, MB_Short *var_list)
+{
+	const MB_Tag *cons_tag = &cid->opt.cons.tag;
+
+	assert(cid->id == MB_CONSID_CONS);
+
+	/*
+	** We should either check all variables (eg: deconstruct instruction)
+	** or none of them (eg: switch_arm instruction)
+	*/
+	assert((cid->opt.cons.arity == list_length) || (list_length == 0));
+
+	switch (cons_tag->id) {
+		case MB_TAG_SIMPLE: /* only need a primary tag */
+		case MB_TAG_COMPLICATED: /* need primary + remote 2ndary tag */
+		{
+			/*
+			** The code for these two is virtually identical except
+			** that if it is complicated we need one extra heap
+			** slot for the remote secondary tag
+			*/
+			MB_Word	extra = (cons_tag->id == MB_TAG_COMPLICATED)
+				? 1 : 0;
+			MB_Word *heap_data = (MB_Word *)MB_strip_tag(val);
+			MB_Word	i;
+
+			/* check that tags are identical */
+			if (cons_tag->id == MB_TAG_COMPLICATED) {
+				if ((MB_tag(val) != cons_tag->opt.pair.primary)
+					|| (heap_data[0] !=
+						cons_tag->opt.pair.secondary))
+				{
+					return FALSE;
+				}
+			} else {
+				if (MB_tag(val) != cons_tag->opt.primary) {
+					return FALSE;
+				}
+			}
+			
+
+			/* Deconstruct variables */
+			if (list_length) {
+				/* ensure variables are the same */
+				for (i = 0; i < list_length; i++)
+				{
+					MB_var_set(ms, var_list[i],
+							heap_data[i + extra]);
+				}
+			}
+
+			break;
+		}
+			
+		case MB_TAG_COMPLICATED_CONSTANT:
+			/* primary + local secondary tag */
+			assert(list_length == 0);
+			if (val != (MB_Word) MB_mkword(
+				MB_mktag(cons_tag->opt.pair.primary),
+				MB_mkbody(cons_tag->opt.pair.secondary)))
+			{
+				return FALSE;
+			}
+
+			break;
+			
+		case MB_TAG_ENUM:
+			assert(list_length == 0);
+			if (val != (MB_Word)
+				MB_mkword(MB_mktag(cons_tag->opt.enum_tag),
+				MB_mkbody(0)))
+			{
+				return FALSE;
+			}
+			break;
+
+		case MB_TAG_NONE:
+		default:
+			instr_notdone(ms, NULL);
+	}
+
+	return TRUE;
+}
+
+
+static void
+instr_deconstruct(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("deconstruct");
+	/* test the equality of a variable in a slot with a given value */
+	if (!do_deconstruct(ms, &bca->deconstruct.consid,
+				bca->deconstruct.from_var,
+				bca->deconstruct.list_length,
+				bca->deconstruct.var_list))
+	{
+		instr_do_redo(ms, NULL);
+	} else {
+		instr_noop(ms, NULL);
+	}
+}
+
+static void
+instr_place(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	/* copy value from var slot to reg */
+	MB_reg(bca->place_arg.to_reg) =
+		MB_var_get(ms, bca->place_arg.from_var);
+
+	#if CLOBBERPLACES
+		/* XXX for debugging only */
+		MB_var_set(ms, bca->place_arg.from_var, CLOBBERED);
+	#endif
+
+	/* go to the next instruction */
+	instr_noop(ms, NULL);
+}
+
+static void
+instr_pickup(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	/* copy value from reg to var slot */
+	MB_var_set(ms, bca->pickup_arg.to_var,
+		MB_reg(bca->pickup_arg.from_reg));
+
+	#if CLOBBERPICKUPS
+		/* XXX for debugging only */
+		MB_reg_set(ms, bca->pickup_arg.from_reg, CLOBBERED);
+	#endif
+
+	/* go to the next instruction */
+	instr_noop(ms, NULL);
+}
+
+static void
+instr_call(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	/* Call another procedure */
+	
+	MB_Bytecode_Addr next_ip = MB_ip_get(ms) + 1;
+
+	/* Call bytecode */
+	if (!bca->call.addr.is_native) {
+		MB_Bytecode_Addr new_addr = bca->call.addr.addr.bc;
+		if (new_addr == MB_CODE_INVALID_ADR) {
+			MB_util_error("Attempt to call unknown bytecode"
+					" %s %s__%s/%d mode %d",
+					bca->call.is_func ? "func" : "pred",
+					bca->call.module_name,
+					bca->call.pred_name,
+					(int) bca->call.arity,
+					(int) bca->call.mode_num);
+			MB_fatal("");
+		} else {
+			if (MB_ip_normal(new_addr)) {
+				/* set the return address to the next instr */
+				MB_succip = next_ip;
+				/* set the new execution point */
+				MB_ip_set(ms, new_addr);
+			} else {
+				MB_fatal("Unexpected call address"
+					" (special address not implemented?)");
+			}
+		}
+
+	/* Call native code */
+	} else {
+		MB_Native_Addr new_addr = bca->call.addr.addr.native;
+		MB_SAY("Attempting to call native code from bytecode");
+		
+		/* Make sure the address has been looked up */
+		if (new_addr == NULL) {
+			new_addr = MB_code_find_proc_native(
+					bca->call.module_name,
+					bca->call.pred_name,
+					bca->call.arity,
+					bca->call.mode_num,
+					bca->call.is_func);
+			if (new_addr == NULL) {
+				MB_util_error(
+					"Warning: proc ref in bytecode"
+					" to unknown %s %s__%s/%d mode %d",
+					bca->call.is_func ? "func" : "pred",
+					bca->call.module_name,
+					bca->call.pred_name,
+					(int) bca->call.arity,
+					(int) bca->call.mode_num);
+				MB_fatal("Are you sure the module"
+					" was compiled with trace"
+					" information enabled?");
+			}
+
+			/* XXX: Write to constant data */
+			bca->call.addr.addr.native = new_addr;
+		}
+
+		if (ms->cur_proc.is_det == MB_ISDET_YES) {
+			/* Push a interface det stack frame */
+			MB_incr_sp(MB_DETFRAME_INTERFACE_SIZE);
+
+			/* Set success ip to reentry stub */
+			MB_succip = MB_native_get_return_det();
+
+			/* Save initial stack frame pointer */
+			MB_stackitem(MB_DETFRAME_INTERFACE_INITIAL_FRAME)
+				= (MB_Word) MB_initialstackframe_get(ms);
+
+			/* Save bytecode reentry point */
+			MB_stackitem(MB_DETFRAME_INTERFACE_BC_SUCCIP)
+				= (MB_Word) next_ip;
+
+			/* return to native code at address new_addr */
+			MB_ip_set(ms, MB_CODE_NATIVE_RETURN);
+			MB_native_return_set(ms, new_addr);
+
+			MB_SAY("New ip:        %08x\n", ms->ip);
+			MB_SAY("native_return: %08x\n", ms->native_return);
+		} else {
+			MB_fatal("Native calls from nondet code not done");
+		}
+	}
+}
+
+/*
+**
+** XXX:
+** 
+** Why does the call need to know the number of output arguments ???
+**
+** If semidet, do I need to make space for the extra argument or has
+** the mercury compiler already done that ???
+**
+*/
+static void
+instr_higher_order_call(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("higher_order_call");
+#if 0
+	MB_Closure *closure = (MB_Closure *)MB_var_get(ms,
+				bca->higher_order_call.pred_var);
+	/*
+	** shift the input arguments to the right so we can insert the
+	** arguments inside the closure
+	*/
+	if (bca->higher_order_call.in_var_count != 0) {
+		signed int i = closure->num_hidden_args;
+		signed int j = i + bca->higher_order_call.in_var_count;
+		for (; i >= 1; i--, j--) {
+			MB_reg_set(ms, j, MB_reg_get(ms, i));
+		}
+	}
+	/*
+	** Now insert the hidden arguments
+	*/
+	if (closure->num_hidden_args) {
+		signed int i;
+		MB_Word num_hidden_args = closure->num_hidden_args;
+		for (i = 1; i <= num_hidden_args; i++) {
+			MB_reg_set(ms, i, closure->closure_hidden_args[i-1]);
+		}
+	}
+	
+	/*
+	** Do the actual call
+	*/
+	
+	/* set the return address to the next instruction */
+	MB_succip_set(ms, MB_ip_get(ms) + 1);
+
+	/* set the new execution point */
+	MB_ip_set(ms, closure->code_addr);
+#endif
+}
+/* -------------------------------------------------------------------------- */
+
+static MB_Word binop_add	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_sub	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_mul	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_div	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_mod	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_lshift	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_rshift	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_and	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_or		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_xor	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_logand	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_logor	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_eq		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_ne		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_lt		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_gt		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_le		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_ge		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word binop_bad	(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+
+
+typedef MB_Word (*MB_Instruction_Binop)	(MB_Machine_State *,
+						const MB_Bytecode_Arg *);
+/*
+** XXX ORDER Currently we depend on the order of elements in the table.
+*/
+static MB_Instruction_Binop binop_table[] = {
 	binop_add,
 	binop_sub,
 	binop_mul,
@@ -975,12 +1389,14 @@ static MB_Word (*binop_table[])(MB_Machine_State* ms, const MB_Bytecode_Arg* bca
 
 #define SIMPLEBINOP(name, op)	\
 	static MB_Word \
-	binop_##name(MB_Machine_State* ms, const MB_Bytecode_Arg* bca) \
+	binop_##name(MB_Machine_State *ms, const MB_Bytecode_Arg *bca) \
 	{ \
 		assert(bca->builtin_binop.arg1.id == MB_ARG_VAR); \
 		assert(bca->builtin_binop.arg2.id == MB_ARG_VAR); \
-		return (MB_Integer)(MB_var_get(ms, bca->builtin_binop.arg1.opt.var)) \
-			op (MB_Integer)(MB_var_get(ms, bca->builtin_binop.arg2.opt.var)); \
+		return (MB_Integer)(MB_var_get(ms, \
+					bca->builtin_binop.arg1.opt.var)) \
+			op (MB_Integer)(MB_var_get(ms, \
+					bca->builtin_binop.arg2.opt.var)); \
 	}
 
 SIMPLEBINOP(add,	+)
@@ -1004,62 +1420,227 @@ SIMPLEBINOP(ge,		>=)
 
 
 static MB_Word
-binop_bad(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+binop_bad(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
 	MB_fatal("Unsupported binop\n");
 	return 0;
 }
 
-/* --------------------------------------------------------------------- */
+
 
 static void
-instr_builtin_binop(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_builtin_binop(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
 	MB_Byte binop = bca->builtin_binop.binop;
 	if (binop < (sizeof(binop_table)/sizeof(binop_table[0]))) {
 		MB_var_set(ms,
 			bca->builtin_binop.to_var,
 			binop_table[bca->builtin_binop.binop](ms, bca));
+
+		instr_noop(ms, NULL);
 	} else {
-		MB_fatal("Invlid binop");
+		MB_fatal("Invalid binop");
+	}
+}
+
+static void
+instr_builtin_bintest(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("builtin_bintest");
+#if 0
+	MB_Byte binop = bca->builtin_binop.binop;
+	if (binop < (sizeof(binop_table)/sizeof(binop_table[0]))) {
+		if (binop_table[bca->builtin_binop.binop](ms, bca)) {
+			/* If successful, just go to the next instr */
+			instr_noop(ms, NULL);
+		} else {
+			/* otherwise follow the failure context */
+			/*instr_do_fail(ms, NULL);*/
+			instr_do_redo(ms, NULL);
+		}
+	} else {
+		MB_fatal("Invalid bintest");
+	}
+#endif
+}
+/* -------------------------------------------------------------------------- */
+static MB_Word unop_bad		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word unop_bitwise_complement
+				(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+static MB_Word unop_not		(MB_Machine_State*ms,const MB_Bytecode_Arg*bca);
+/*
+** XXX ORDER Currently we depend on the order of elements in the table
+*/
+static MB_Word (*unop_table[])(MB_Machine_State *ms,
+				const MB_Bytecode_Arg *bca) =
+{
+	unop_bad,		/* mktag */
+	unop_bad,		/* tag */
+	unop_bad, 		/* unmktag */
+	unop_bad, 		/* unmkbody */
+	unop_bad,		/* cast_to_unsigned */
+	unop_bad,		/* hash_string */
+	unop_bitwise_complement,
+	unop_not
+};
+
+#define SIMPLEUNOP(name, op)	\
+	static MB_Word \
+	unop_##name(MB_Machine_State *ms, const MB_Bytecode_Arg *bca) \
+	{ \
+		assert(bca->builtin_unop.arg.id == MB_ARG_VAR); \
+		return op (MB_Integer) \
+			(MB_var_get(ms, bca->builtin_unop.arg.opt.var)); \
 	}
 
-	/* move to the next instruction*/
-	instr_noop(ms, bca);
+SIMPLEUNOP(bitwise_complement,		~)
+SIMPLEUNOP(not,				!)
+
+static MB_Word
+unop_bad(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("Unsupported unop\n");
+	return 0;
 }
+
 static void
-instr_noop(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_builtin_unop(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("builtin_unop");
+#if 0
+	MB_Byte unop = bca->builtin_unop.unop;
+	
+	/* XXX until I learn properly what unary operations are */
+	instr_notdone(ms, NULL);
+	
+	if (unop < (sizeof(unop_table)/sizeof(unop_table[0]))) {
+		MB_var_set(ms,
+			bca->builtin_unop.to_var,
+			unop_table[bca->builtin_unop.unop](ms, bca));
+
+		instr_noop(ms, NULL);
+	} else {
+		MB_fatal("Invalid unop");
+	}
+#endif
+}
+
+
+static void
+instr_builtin_untest(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("builtin_untest");
+#if 0
+	instr_notdone(ms, NULL);
+#endif
+}
+
+/* --------------------------------------------------------------------- */
+static void
+instr_semidet_success(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("semidet_success");
+#if 0
+	MB_temp_set(ms, MB_SEMIDET_SUCCESS_SLOT, MB_SEMIDET_SUCCESS);
+
+	instr_noop(ms, NULL);
+#endif
+}
+
+static void
+instr_semidet_success_check(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("semidet_success_check");
+#if 0
+	if (MB_reg_get(ms, MB_SEMIDET_SUCCESS_REG) != MB_SEMIDET_SUCCESS) {
+		instr_do_redo(ms, NULL);
+	} else {
+		instr_noop(ms, NULL);
+	}
+#endif
+}
+
+static void
+instr_do_redo(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("do_redo");
+#if 0
+	MB_SAY("setting redo -> %d", MB_frame_max_get(ms, MB_FRAME_REDOIP));
+	MB_ip_set(ms, MB_frame_max_get(ms, MB_FRAME_REDOIP));
+	MB_curfr_set(ms, MB_frame_max_get(ms, MB_FRAME_REDOFR));
+
+	MB_SAY("checking proc", MB_frame_max_get(ms, MB_FRAME_REDOIP));
+	MB_proc_var_init(ms);
+	MB_SAY("checked proc", MB_frame_max_get(ms, MB_FRAME_REDOIP));
+#endif
+}
+
+static void
+instr_do_fail(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
+{
+	MB_fatal("do_fail");
+#if 0
+	MB_maxfr_pop(ms);
+	instr_do_redo(ms, bca);
+#endif
+}
+
+static void
+instr_noop(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
 	/* increment instruction pointer */
-	MB_ip_set(ms, MB_ip_get(ms)+1);
+	MB_ip_set(ms, MB_ip_get(ms) + 1);
 }
 
 static void
-instr_notdone(MB_Machine_State* ms, const MB_Bytecode_Arg* bca)
+instr_notdone(MB_Machine_State *ms, const MB_Bytecode_Arg *bca)
 {
+	MB_fatal("notdone");
+#if 0
 	/* invalid instruction */
-	MB_fatal("That instruction is not implemened yet\n");
-	instr_noop(ms, bca);
+	MB_fatal("That instruction is not implemented yet\n");
+	instr_noop(ms, NULL);
+#endif
 }
 
+/*
+** Execute the current instruction. Returns false if instruction could
+** not be executed
+*/
+static MB_Bool
+dispatch(MB_Byte bc_id, MB_Machine_State *ms)
+{
+	MB_Bytecode_Addr ip = MB_ip_get(ms);
+	
+	if (bc_id < sizeof(instruction_table) / sizeof(instruction_table[0])) {
+		instruction_table[bc_id](ms, MB_code_get_arg(ip));
+		return TRUE;
+	}
+	
+	return FALSE;
+}
 
 /* Single step execute */
 void
-MB_step(MB_Machine_State* ms)
+MB_step(MB_Machine_State *ms)
 {
+	MB_fatal("Untested step");
+#if 0
 	MB_Word ip = MB_ip_get(ms);
 
 	MB_Byte bc_id = MB_code_get_id(ms, ip);
-	if (bc_id >= sizeof(instruction_table) / sizeof(instruction_table[0])) {
+	if (!dispatch(bc_id, ms)) {
+		MB_fatal("Invalid instruction encountered\n");
 		instr_noop(ms, NULL);
-	} else {
-		instruction_table[bc_id](ms, MB_code_get_arg(ms, ip));
 	}
+#endif
 }
 
 void
-MB_step_over(MB_Machine_State* ms)
+MB_step_over(MB_Machine_State *ms)
 {
+	MB_fatal("Untested step_over");
+#if 0
 	MB_Word ip = MB_ip_get(ms);
 	MB_Byte bc_id = MB_code_get_id(ms, ip);
 	
@@ -1072,43 +1653,104 @@ MB_step_over(MB_Machine_State* ms)
 			
 			/* If we are about to step into a predicate */
 			/* then replace the following bytecode with */
-			/* a MB_BC_debug_trap and run until it traps */
+			/* an MB_BC_debug_trap and run until it halts */
 			/* then put things back to what they were */
 			MB_Byte old_id;
-			assert(ip+1 < MB_code_size(ms));
-			old_id = ms->code.id[ip+1];
+			assert(ip + 1 < MB_code_size(ms));
+			old_id = ms->code.id[ip + 1];
 
-			ms->code.id[ip+1] = MB_BC_debug_trap;
+			ms->code.id[ip + 1] = MB_BC_debug_trap;
 			MB_run(ms);
 
-			ms->code.id[ip+1] = old_id;
+			ms->code.id[ip + 1] = old_id;
 			break;
 		}
 		default:
 			MB_step(ms);
 	}
+#endif
 }
 
 /* Run until invalid instruction or debug_trap bytecode encountered */
 void
-MB_run(MB_Machine_State* ms)
+MB_run(MB_Machine_State *ms)
 {
+	MB_fatal("Untested run");
+#if 0
 	do {
 		MB_Word ip = MB_ip_get(ms);
 
 		MB_Byte bc_id = MB_code_get_id(ms, ip);
-		if (bc_id >= sizeof(instruction_table) / sizeof(instruction_table[0])) {
+		if (!dispatch(bc_id, ms)) {
 			switch (bc_id) {
 				case MB_BC_debug_trap:
 					return;
 			}
-			MB_util_error("Attempt to execute invalid instruction\n");
+			MB_util_error(
+				"Attempt to execute invalid instruction\n");
 			instr_noop(ms, NULL);
 			return;
-		} else {
-			instruction_table[bc_id](ms, MB_code_get_arg(ms, ip));
 		}
 	} while (1);
+#endif
+}
+
+/* --------------------------------------------------------------------- */
+void
+MB_machine_create(MB_Machine_State *ms, MB_Bytecode_Addr new_ip, 
+		MB_Word *initial_stack)
+{
+	
+	ms->ip = new_ip;
+	ms->initial_stack = initial_stack;
+	MB_proc_var_init(ms);
+}
+
+MB_Native_Addr
+MB_machine_exec(MB_Machine_State *ms)
+{
+	char buffer[4];
+	MB_Word count = 0;
+	MB_SAY("Hello from machine_exec");
+
+	do {
+		MB_Bytecode_Addr ip = MB_ip_get(ms);
+
+		if (MB_ip_normal(ip)) {
+
+			MB_Byte bc_id = MB_code_get_id(ip);
+
+			#if 1
+				MB_show_state(ms, stdout);
+				MB_SAY("count: %d, execing %p", count++, ip);
+				MB_SAY("press enter to continue");
+				fgets(buffer, sizeof(buffer), stdin);
+			#endif
+
+			if (!dispatch(bc_id, ms)) {
+				switch (bc_id) {
+					case MB_BC_debug_trap:
+						return 0;
+				}
+				MB_util_error("Attempt to execute"
+					" invalid instruction\n");
+				instr_noop(ms, NULL);
+				return 0;
+			}
+		} else {
+			switch ((MB_Word) ip) {
+				case (MB_Word) MB_CODE_NATIVE_RETURN:
+					MB_SAY("Returning to a native state");
+					return MB_native_return_get(ms);
+				default:
+					MB_SAY("Address %08x", ip);
+					MB_fatal("Attempt to execute invalid"
+						" address\n");
+			}
+		}
+	} while (1);
+
+	return 0;
 }
 
 
