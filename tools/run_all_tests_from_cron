@@ -25,7 +25,7 @@ case $# in
 esac
 
 case $HOST in
-	munta) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
+	munta) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.2 ;;
 	muse) 		ARCH=sgi	FULLARCH=mips-sgi-irix5.3 ;;
 	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
 	murlibobo) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
