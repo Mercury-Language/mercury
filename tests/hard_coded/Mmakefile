@@ -104,9 +104,9 @@ SUBDIRS = typeclasses
 #-----------------------------------------------------------------------------#
 
 SUBDIR_MMAKE = mmake $(MMAKEFLAGS) \
-			GRADE=$(GRADE) \
-			EXTRA_CFLAGS=$(EXTRA_CFLAGS) \
-			EXTRA_MCFLAGS=$(EXTRA_MCFLAGS)
+			GRADE='$(GRADE)' \
+			EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
+			EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
 
 dep:	$(DEPS)
 	for dir in $(SUBDIRS); do \
