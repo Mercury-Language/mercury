@@ -10,6 +10,16 @@ PROGS=	pragma_c_code_unused_var unused_args_test singleton_test \
 
 #-----------------------------------------------------------------------------#
 
+# some files need to be compiled with special options
+
+MCFLAGS = $(MCFLAGS-$*) $(EXTRA_MCFLAGS)
+
+MCFLAGS-duplicate_call		= --warn-duplicate-calls
+MCFLAGS-unused_args_test	= --warn-unused-args
+MCFLAGS-unused_import		= --warn-interface-imports
+
+#-----------------------------------------------------------------------------#
+
 %.res:	%.exp %.err
 	-rm -f $@
 	diff -u $*.exp $*.err > $@
@@ -21,18 +31,6 @@ ERRS=	$(PROGS:%=%.err)
 RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
-
-duplicate_call.err:
-	$(MC) --grade $(GRADE) -C --warn-duplicate-calls --errorcheck-only \
-		duplicate_call > duplicate_call.err 2>&1
-
-unused_args_test.err:
-	$(MC) --grade $(GRADE) -C --warn-unused-args --errorcheck-only \
-		unused_args_test > unused_args_test.err 2>&1
-
-unused_import.err:
-	$(MC) --grade $(GRADE) -C --warn-interface-imports --errorcheck-only \
-		unused_import > unused_import.err 2>&1
 
 depend:	$(DEPENDS)
 
