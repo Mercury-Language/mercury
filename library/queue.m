@@ -95,6 +95,10 @@
 
 :- import_module list, std_util, int.
 
+% This implementation is in terms of a pair of lists.  We impose the
+% extra constraint that the `off' list is empty if and only if the queue
+% is empty.
+
 :- type queue(T) == pair(list(T)).
 
 queue__init([] - []).
@@ -106,37 +110,46 @@ queue__equal(On0 - Off0, On1 - Off1) :-
 	list__append(Off1, On1R, Q1),
 	Q0 = Q1.
 
-queue__is_empty([] - []).
+queue__is_empty(_ - []).
 
 queue__is_full(_) :-
 	semidet_fail.
 
-queue__put(On - Off, Elem, [Elem | On] - Off).
-
-queue__put_list(Q0, [], Q0).
-queue__put_list(Q0, [X | Xs], Q1) :-
-	queue__put(Q0, X, Q2),
-	queue__put_list(Q2, Xs, Q1).
-
-queue__first(On - Off, Elem) :-
-	(	Off = [Elem | _]
-	;	Off = [],
-		% XXX efficiency could be improved
-		list__reverse(On, NewOff),
-		NewOff = [Elem | _]
+queue__put(On0 - Off0, Elem, On - Off) :-
+	( Off0 = [] ->
+		On = On0,
+		Off = [Elem]
+	;
+		On = [Elem | On0],
+		Off = Off0
 	).
 
-queue__get(On0 - Off0, Elem, On - Off) :-
-	queue__get_2(On0, Off0, Elem, On, Off).
+queue__put_list(On0 - Off0, Xs, On - Off) :-
+	( Off0 = [] ->
+		On = On0,
+		Off = Xs
+	;
+		Off = Off0,
+		queue__put_list_2(Xs, On0, On)
+	).
 
-:- pred queue__get_2(list(T), list(T), T, list(T), list(T)).
-:- mode queue__get_2(in, in, out, out, out) is semidet.
+:- pred queue__put_list_2(list(T), list(T), list(T)).
+:- mode queue__put_list_2(in, in, out) is det.
 
-:- queue__get_2(_, X, _, _, _) when X.	% NU-Prolog indexing
+queue__put_list_2([], On, On).
+queue__put_list_2([X | Xs], On0, On) :-
+	queue__put_list_2(Xs, [X | On0], On).
 
-queue__get_2(On, [Elem | Off], Elem, On, Off).
-queue__get_2(On, [], Elem, [], Off) :-
-	list__reverse(On, [Elem | Off]).
+queue__first(_ - [Elem | _], Elem).
+
+queue__get(On0 - [Elem | Off0], Elem, On - Off) :-
+	( Off0 = [] ->
+		list__reverse(On0, Off),
+		On = []
+	;
+		On = On0,
+		Off = Off0
+	).
 
 queue__length(On - Off, Length) :-
 	list__length(On, LengthOn),
