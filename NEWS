@@ -306,7 +306,7 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 ****************************************
 
-* There is also a new builtin function promise_only_soln/1,
+* There is also a new builtin function promise_only_solution/1,
   for calling `cc_multi' or `cc_nondet' code from `det' or `semidet'
   procedures.  See the "builtin" chapter of the Mercury Library
   Reference Manual for details.
