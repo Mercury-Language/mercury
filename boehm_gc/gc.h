@@ -685,7 +685,7 @@ void * GC_malloc_many(size_t lb);
  */
 #if defined(sparc) || defined(__sparc)
 #   define GC_INIT() { extern end, etext; \
-		       extern void GC_noop(void *, ...); \
+		       extern void GC_noop(void *, void *); \
 		       GC_noop(&end, &etext); }
 #else
 #   define GC_INIT()
