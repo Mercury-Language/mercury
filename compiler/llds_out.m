@@ -1172,14 +1172,15 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 		% which we might want to box we declare a static const
 		% variable holding that constant. 
 		%
-	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
-	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
-	(
+	( { llds_out__float_op(Op, OpStr) } ->
+	    globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	    globals__io_lookup_bool_option(static_ground_terms,
+					StaticGroundTerms),
+	    (
 		{ UnboxFloat = no, StaticGroundTerms = yes },
-		{ llds_out__float_op(Op, OpStr) },
 		{ llds_out__float_const_binop_expr_name(Op, Rval1, Rval2,
 			FloatName) }
-	->
+	    ->
 		{ FloatLabel = float_label(FloatName) },
 		( { set__member(FloatLabel, DeclSet2) } ->
 			{ DeclSet = DeclSet2 }
@@ -1189,6 +1190,12 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 				"static const Float mercury_float_const_"),
 			io__write_string(FloatName),
 			io__write_string(" = "),
+				% note that we just output the expression
+				% here, and let the C compiler evaluate it,
+				% rather than evaluating it ourselves;
+				% this avoids having to deal with some nasty
+				% issues regarding floating point accuracy
+				% when doing cross-compilation.
 			output_rval_as_float(Rval1),
 			io__write_string(" "),
 			io__write_string(OpStr),
@@ -1196,8 +1203,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 			output_rval_as_float(Rval2),
 			io__write_string(";\n\t  ")
 		)
-	;
+	    ;
 		{ DeclSet = DeclSet2 }
+	    )
+	;
+	    { DeclSet = DeclSet2 }
 	).
 
 	%
@@ -1454,8 +1464,6 @@ output_code_addr_decls(do_semidet_closure, DeclSet, DeclSet) -->
 	io__write_string("Declare_entry(do_call_semidet_closure);\n\t  ").
 output_code_addr_decls(do_nondet_closure, DeclSet, DeclSet) -->
 	io__write_string("Declare_entry(do_call_nondet_closure);\n\t  ").
-
-
 
 :- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
 	io__state, io__state).
