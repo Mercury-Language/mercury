@@ -47,7 +47,7 @@
 :- interface.
 
 :- import_module llds, hlds_pred, prog_data, hlds_data.
-:- import_module set, map, list, std_util.
+:- import_module set, map, list, std_util, bool.
 
 	%
 	% Information used by the continuation_info module.
@@ -135,15 +135,15 @@
 	% Call continuation_info__process_instructions on the code
 	% of every procedure in the list.
 	%
-:- pred continuation_info__process_llds(list(c_procedure)::in,
+:- pred continuation_info__process_llds(list(c_procedure)::in, bool::in,
 	continuation_info::in, continuation_info::out) is det.
 
 	%
 	% Add the information for all the continuation labels within a proc.
 	%
 :- pred continuation_info__process_instructions(pred_proc_id::in,
-	list(instruction)::in, continuation_info::in, continuation_info::out)
-	is det.
+	list(instruction)::in, bool::in, continuation_info::in,
+	continuation_info::out) is det.
 
 	%
 	% Get the finished list of proc_layout_infos.
@@ -193,18 +193,19 @@ continuation_info__add_proc_info(PredProcId, ProcLabel, StackSize,
 continuation_info__get_all_proc_layouts(ContInfo, Entries) :-
 	map__values(ContInfo, Entries).
 
-continuation_info__process_llds([]) --> [].
-continuation_info__process_llds([Proc | Procs]) -->
+continuation_info__process_llds([], _) --> [].
+continuation_info__process_llds([Proc | Procs], WantAgcInfo) -->
 	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
-	continuation_info__process_instructions(PredProcId, Instrs),
-	continuation_info__process_llds(Procs).
+	continuation_info__process_instructions(PredProcId, Instrs,
+		WantAgcInfo),
+	continuation_info__process_llds(Procs, WantAgcInfo).
 
 	%
 	% Process the list of instructions for this proc, adding
 	% all internal label information to the continuation_info.
 	%
 continuation_info__process_instructions(PredProcId, Instructions,
-		ContInfo0, ContInfo) :-
+		WantAgcInfo, ContInfo0, ContInfo) :-
 
 		% Get all the continuation info from the call instructions.
 	map__lookup(ContInfo0, PredProcId, ProcLayoutInfo0),
@@ -216,8 +217,8 @@ continuation_info__process_instructions(PredProcId, Instructions,
 	list__filter_map(GetCallLivevals, Instructions, Calls),
 
 		% Process the continuation label info.
-	list__foldl(continuation_info__process_continuation, Calls,
-		Internals0, Internals),
+	list__foldl(continuation_info__process_continuation(WantAgcInfo),
+		Calls, Internals0, Internals),
 
 	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, Internals),
 	map__det_update(ContInfo0, PredProcId, ProcLayoutInfo, ContInfo).
@@ -228,26 +229,30 @@ continuation_info__process_instructions(PredProcId, Instructions,
 	% Collect the liveness information from a single label and add
 	% it to the internals.
 	%
-:- pred continuation_info__process_continuation(
-	pair(label, list(liveinfo))::in,
+:- pred continuation_info__process_continuation(bool::in,
+	pair(label, list(liveinfo))::in, 
 	proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
-continuation_info__process_continuation(Label - LiveInfoList,
+continuation_info__process_continuation(WantAgcInfo, Label - LiveInfoList,
 		Internals0, Internals) :-
-	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
-		LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
-		VarInfo = var_info(Lval, LiveValueType, Name)
-	)),
-	list__map(GetVarInfo, LiveInfoList, VarInfoList),
-	GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
-		LiveLval = live_lvalue(_, _, _, TypeInfos)
-	)),
-	list__map(GetTypeInfo, LiveInfoList, TypeInfoListList),
-	list__condense(TypeInfoListList, TypeInfoList),
-	list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
-	set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
-	set__list_to_set(VarInfoList, VarInfoSet),
-	NewInternal = yes(layout_label_info(VarInfoSet, TypeInfoSet)),
+	( WantAgcInfo = yes ->
+		GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
+			LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
+			VarInfo = var_info(Lval, LiveValueType, Name)
+		)),
+		list__map(GetVarInfo, LiveInfoList, VarInfoList),
+		GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
+			LiveLval = live_lvalue(_, _, _, TypeInfos)
+		)),
+		list__map(GetTypeInfo, LiveInfoList, TypeInfoListList),
+		list__condense(TypeInfoListList, TypeInfoList),
+		list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
+		set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
+		set__list_to_set(VarInfoList, VarInfoSet),
+		NewInternal = yes(layout_label_info(VarInfoSet, TypeInfoSet))
+	;
+		NewInternal = no
+	),
 	continuation_info__add_internal_info(Label, NewInternal,
 		Internals0, Internals).
 

@@ -997,16 +997,18 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ globals__lookup_bool_option(Globals, agc_stack_layout,
-		AgcStackLayout) },
-	( { AgcStackLayout = yes } ->
+	{ globals__lookup_bool_option(Globals, basic_stack_layout,
+		BasicStackLayout) },
+	( { BasicStackLayout = yes } ->
 		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
+		{ globals__lookup_bool_option(Globals, agc_stack_layout,
+			AgcStackLayout) },
 		write_proc_progress_message(
 			"% Generating call continuation information for ",
 				PredId, ProcId, ModuleInfo5),
 		{ continuation_info__process_instructions(PredProcId,
-			Instructions, ContInfo2, ContInfo3) },
+			Instructions, AgcStackLayout, ContInfo2, ContInfo3) },
 		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
 			ModuleInfo) }
 	;
@@ -1631,13 +1633,15 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 
 mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
 		Stats, ModuleInfo) -->
-	globals__io_lookup_bool_option(agc_stack_layout, AgcStackLayout),
-	( { AgcStackLayout = yes } ->
+	globals__io_lookup_bool_option(basic_stack_layout, BasicStackLayout),
+	( { BasicStackLayout = yes } ->
 		maybe_write_string(Verbose,
 			"% Generating call continuation information..."),
 		maybe_flush_output(Verbose),
+		globals__io_lookup_bool_option(agc_stack_layout, 
+			AgcStackLayout),
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0,
+		{ continuation_info__process_llds(LLDS0, AgcStackLayout,
 			ContInfo0, ContInfo) },
 		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
 			ModuleInfo) },

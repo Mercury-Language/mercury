@@ -17,6 +17,9 @@
 % Main author: trd.
 % Modifications by zs.
 %
+% NOTE: If you make changes in this file, you may also need to modify
+% 		runtime/mercury_stack_layout.h
+%
 %---------------------------------------------------------------------------%
 %
 % Data Stucture: stack_layouts
