@@ -264,7 +264,7 @@ void GC_register_dynamic_libraries()
 /* Newer versions of Linux/Alpha and Linux/x86 define this macro.  We
  * define it for those older versions that don't.  */
 #  ifndef ElfW
-#    if ELF_CLASS == ELFCLASS32
+#    if !defined(ELF_CLASS) || ELF_CLASS == ELFCLASS32
 #      define ElfW(type) Elf32_##type
 #    else
 #      define ElfW(type) Elf64_##type
