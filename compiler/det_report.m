@@ -40,6 +40,10 @@
 		;	zero_soln_disjunct(hlds__goal_info)
 		;	ite_cond_cannot_fail(hlds__goal_info)
 		;	cc_pred_in_wrong_context(hlds__goal_info, determinism,
+				pred_id, proc_id)
+		;	error_in_lambda(
+				determinism, determinism, % declared, inferred
+				hlds__goal, hlds__goal_info,
 				pred_id, proc_id).
 
 %-----------------------------------------------------------------------------%
@@ -51,10 +55,17 @@
 	module_info, module_info, io__state, io__state).
 :- mode global_checking_pass(in, in, out, di, uo) is det.
 
+	% Check a lambda goal with the specified declared and inferred
+	% determinisms.
+
+:- pred det_check_lambda(determinism, determinism, hlds__goal, hlds__goal_info,
+			misc_info, list(det_msg)).
+:- mode det_check_lambda(in, in, in, in, in, out) is det.
+
 	% Print some determinism warning messages.
 
-:- pred det_report_msgs(list(det_msg), io__state, io__state).
-:- mode det_report_msgs(in, di, uo) is det.
+:- pred det_report_msgs(list(det_msg), module_info, io__state, io__state).
+:- mode det_report_msgs(in, in, di, uo) is det.
 
 	% Some auxiliary predicates used in both det_report and det_analysis.
 
@@ -154,44 +165,33 @@ global_checking_pass([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 	),
 	global_checking_pass(Rest, ModuleInfo2, ModuleInfo).
 
+det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, MiscInfo,
+		Msgs) :-
+	compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
+	( Cmp = tighter ->
+		MiscInfo = misc_info(_, PredId, ProcId),
+		Msgs = [error_in_lambda(DeclaredDetism, InferredDetism,
+			Goal, GoalInfo, PredId, ProcId)]
+	;
+		% we don't bother issuing warnings if
+		% the determinism was too loose; that will often
+		% be the case, and should not be warned about.
+		Msgs = []
+	).
+
 :- pred report_determinism_problem(pred_id, proc_id, module_info, string,
 	determinism, determinism, io__state, io__state).
 :- mode report_determinism_problem(in, in, in, in, in, in, di, uo) is det.
 
 report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 		DeclaredDetism, InferredDetism) -->
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ModeId, ProcInfo) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, ArgModes0) },
-
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
 		 io__set_exit_status(1)
 	;
 		[]
 	),
-
-	% We need to strip off the extra type_info arguments inserted at the
-	% front by polymorphism.m - we only want the last `PredArity' of them.
-	%
-	{ list__length(ArgModes0, NumArgModes) },
-	{ NumToDrop is NumArgModes - Arity },
-	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
-		{ ArgModes = ArgModes1 }
-	;	
-		{ error("report_determinism_problem: list__drop failed") }
-	),
-
-	prog_out__write_context(Context),
-	io__write_string("In `"),
-	det_report_pred_name_mode(PredName, ArgModes),
-	io__write_string("':\n"),
-
+	det_report_pred_proc_id(ModuleInfo, PredId, ModeId, Context),
 	prog_out__write_context(Context),
 	io__write_string(Message),
 	prog_out__write_context(Context),
@@ -645,6 +645,34 @@ det_report_unify_context(Context, UnifyContext, MiscInfo, LT, RT) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred det_report_pred_proc_id(module_info, pred_id, proc_id, term_context,
+				io__state, io__state).
+:- mode det_report_pred_proc_id(in, in, in, out, di, uo) is det.
+
+det_report_pred_proc_id(ModuleInfo, PredId, ProcId, Context) -->
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo) },
+	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ proc_info_argmodes(ProcInfo, ArgModes0) },
+
+	% We need to strip off the extra type_info arguments inserted at the
+	% front by polymorphism.m - we only want the last `PredArity' of them.
+	%
+	{ list__length(ArgModes0, NumArgModes) },
+	{ NumToDrop is NumArgModes - Arity },
+	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
+		{ ArgModes = ArgModes1 }
+	;	
+		{ error("report_determinism_problem: list__drop failed") }
+	),
+
+	prog_out__write_context(Context),
+	io__write_string("In `"),
+	det_report_pred_name_mode(PredName, ArgModes),
+	io__write_string("':\n").
+
 :- pred det_report_pred_name_mode(string, list((mode)), io__state, io__state).
 :- mode det_report_pred_name_mode(in, in, di, uo) is det.
 
@@ -661,15 +689,15 @@ det_report_pred_name_mode(PredName, ArgModes) -->
 
 %-----------------------------------------------------------------------------%
 
-det_report_msgs([]) --> [].
-det_report_msgs([Msg | Msgs]) -->
-	det_report_msg(Msg),
-	det_report_msgs(Msgs).
+det_report_msgs([], _ModuleInfo) --> [].
+det_report_msgs([Msg | Msgs], ModuleInfo) -->
+	det_report_msg(Msg, ModuleInfo),
+	det_report_msgs(Msgs, ModuleInfo).
 
-:- pred det_report_msg(det_msg, io__state, io__state).
-:- mode det_report_msg(in, di, uo) is det.
+:- pred det_report_msg(det_msg, module_info, io__state, io__state).
+:- mode det_report_msg(in, in, di, uo) is det.
 
-det_report_msg(multidet_disj(GoalInfo, Disjuncts0)) -->
+det_report_msg(multidet_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -678,7 +706,7 @@ det_report_msg(multidet_disj(GoalInfo, Disjuncts0)) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  has no outputs, but can succeed more than once.\n").
-det_report_msg(det_disj(GoalInfo, Disjuncts0)) -->
+det_report_msg(det_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -687,7 +715,7 @@ det_report_msg(det_disj(GoalInfo, Disjuncts0)) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  will succeed exactly once.\n").
-det_report_msg(semidet_disj(GoalInfo, Disjuncts0)) -->
+det_report_msg(semidet_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -696,7 +724,7 @@ det_report_msg(semidet_disj(GoalInfo, Disjuncts0)) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  is semidet, yet it has an output.\n").
-det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0)) -->
+det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the disjunction with arms on lines "),
@@ -705,15 +733,17 @@ det_report_msg(zero_soln_disj(GoalInfo, Disjuncts0)) -->
 	io__write_string("\n"),
 	prog_out__write_context(Context),
 	io__write_string("  cannot succeed.\n").
-det_report_msg(zero_soln_disjunct(GoalInfo)) -->
+det_report_msg(zero_soln_disjunct(GoalInfo), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: this disjunct will never have any solutions.\n").
-det_report_msg(ite_cond_cannot_fail(GoalInfo)) -->
+det_report_msg(ite_cond_cannot_fail(GoalInfo), _) -->
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
-det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, _PredId, _ModeId)) -->
+det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, ModeId), 
+		ModuleInfo) -->
+	det_report_pred_proc_id(ModuleInfo, PredId, ModeId, _ProcContext),
 	{ goal_info_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("Error: call to predicate with determinism `"),
@@ -721,6 +751,21 @@ det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, _PredId, _ModeId)) -->
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
 	io__write_string("  occurs in a context which requires all solutions.\n"),
+	io__set_exit_status(1).
+det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
+			PredId, ProcId), ModuleInfo) -->
+	det_report_pred_proc_id(ModuleInfo, PredId, ProcId, _ProcContext),
+	{ goal_info_context(GoalInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Determinism error in lambda expression.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Declared `"),
+	hlds_out__write_determinism(DeclaredDetism),
+	io__write_string("', inferred `"),
+	hlds_out__write_determinism(InferredDetism),
+	io__write_string("'.\n"),
+	{ MiscInfo = misc_info(ModuleInfo, PredId, ProcId) },
+	det_diagnose_goal(Goal, DeclaredDetism, [], MiscInfo, _),
 	io__set_exit_status(1).
 
 %-----------------------------------------------------------------------------%

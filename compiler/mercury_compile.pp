@@ -1471,7 +1471,7 @@ mercury_compile__semantic_pass(HLDS1, HLDS8, Proceed0, Proceed) -->
 :- mode mercury_compile__semantic_pass_by_phases(in, out, in, out, di, uo)
  	is det.
 
-mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8, Proceed0, Proceed) -->
+mercury_compile__semantic_pass_by_phases(HLDS1, HLDS6, Proceed0, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__typecheck(HLDS1, HLDS2, FoundTypeError),
@@ -1501,20 +1501,13 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8, Proceed0, Proceed) -->
 
 			mercury_compile__detect_cse(HLDS5, HLDS6),
 			maybe_report_stats(Statistics),
-			mercury_compile__maybe_dump_hlds(HLDS6, "6", "cse"),
+			mercury_compile__maybe_dump_hlds(HLDS6, "6", "cse")
 
-			mercury_compile__maybe_detect_common_struct(HLDS6, HLDS7),
-			maybe_report_stats(Statistics),
-			mercury_compile__maybe_dump_hlds(HLDS7, "7", "common"),
-
-			mercury_compile__maybe_do_inlining(HLDS7, HLDS8),
-			maybe_report_stats(Statistics),
-			mercury_compile__maybe_dump_hlds(HLDS8, "8", "inlining")
 		;
-			{ HLDS8 = HLDS3 }
+			{ HLDS6 = HLDS3 }
 		)
 	;
-		{ HLDS8 = HLDS2 },
+		{ HLDS6 = HLDS2 },
 		{ Proceed = no }
 	),
 
@@ -1764,16 +1757,16 @@ mercury_compile__semantic_pass_by_preds(HLDS1, HLDS8, Proceed0, Proceed) -->
 % :- mode mercury_compile__middle_pass(di, uo, out, di, uo) is det.
 :- mode mercury_compile__middle_pass(in, out, out, di, uo) is det.
 
-mercury_compile__middle_pass(HLDS8, HLDS12, Proceed) -->
+mercury_compile__middle_pass(HLDS6, HLDS12, Proceed) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
 	globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 	(
 		{ TradPasses = no },
-		mercury_compile__middle_pass_by_phases(HLDS8, HLDS12,
+		mercury_compile__middle_pass_by_phases(HLDS6, HLDS12,
 			ErrorcheckOnly, Proceed)
 	;
 		{ TradPasses = yes },
-		mercury_compile__middle_pass_by_preds(HLDS8, HLDS12,
+		mercury_compile__middle_pass_by_preds(HLDS6, HLDS12,
 			ErrorcheckOnly, Proceed)
 	).
 
@@ -1786,21 +1779,29 @@ mercury_compile__middle_pass(HLDS8, HLDS12, Proceed) -->
 :- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo)
 	is det.
 
-mercury_compile__middle_pass_by_phases(HLDS8, HLDS12, ErrorcheckOnly, Proceed)
+mercury_compile__middle_pass_by_phases(HLDS6, HLDS12, ErrorcheckOnly, Proceed)
 		-->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
-	mercury_compile__check_determinism(HLDS8, HLDS9, FoundDetError),
+	mercury_compile__check_determinism(HLDS6, HLDS7, FoundDetError),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS9, "9", "determinism"),
+	mercury_compile__maybe_dump_hlds(HLDS7, "7", "determinism"),
 
 	( { ErrorcheckOnly = no, FoundDetError = no } ->
 
-	    mercury_compile__check_unique_modes(HLDS9, HLDS10, FoundUniqError),
+	    mercury_compile__check_unique_modes(HLDS7, HLDS8, FoundUniqError),
 	    maybe_report_stats(Statistics),
-	    mercury_compile__maybe_dump_hlds(HLDS10, "10", "unique_modes"),
+	    mercury_compile__maybe_dump_hlds(HLDS8, "8", "unique_modes"),
 
 	    ( { FoundUniqError = no } ->
+
+		mercury_compile__maybe_do_inlining(HLDS8, HLDS9),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS9, "9", "inlining"),
+
+		mercury_compile__maybe_detect_common_struct(HLDS9, HLDS10),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "common"),
 
 		mercury_compile__maybe_propagate_constraints(HLDS10, HLDS11),
 		maybe_report_stats(Statistics),
@@ -1812,11 +1813,11 @@ mercury_compile__middle_pass_by_phases(HLDS8, HLDS12, ErrorcheckOnly, Proceed)
 
 		{ Proceed = yes }
 	    ;
-		{ HLDS12 = HLDS10 },
+		{ HLDS12 = HLDS8 },
 		{ Proceed = no }
 	    )
 	;
-	    { HLDS12 = HLDS9 },
+	    { HLDS12 = HLDS7 },
 	    { Proceed = no }
 	).
 

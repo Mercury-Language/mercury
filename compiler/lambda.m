@@ -42,10 +42,10 @@
 :- mode lambda__process_pred(in, in, out) is det.
 
 :- pred lambda__transform_lambda(list(var), list(mode), determinism,
-		set(var), hlds__goal, unification,
-		varset, map(var, type), tvarset, module_info,
+		hlds__goal, unification, varset,
+		map(var, type), tvarset, module_info,
 		unify_rhs, unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in,
+:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in,
 		out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -138,9 +138,7 @@ lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 	( { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must convert the lambda expression
 		% into a new predicate
-		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		lambda__process_lambda(Vars, Modes, Det, NonLocals0,
+		lambda__process_lambda(Vars, Modes, Det,
 				LambdaGoal0, Unification, Y1, Unification1),
 		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
 	;
@@ -194,20 +192,20 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_cases(Cases0, Cases).
 
 :- pred lambda__process_lambda(list(var), list(mode), determinism,
-		set(var), hlds__goal, unification, unify_rhs, unification,
+		hlds__goal, unification, unify_rhs, unification,
 		lambda_info, lambda_info).
-:- mode lambda__process_lambda(in, in, in, in, in, in, out, out,
+:- mode lambda__process_lambda(in, in, in, in, in, out, out,
 		in, out) is det.
 
-lambda__process_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+lambda__process_lambda(Vars, Modes, Det, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo0),
-	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+	lambda__transform_lambda(Vars, Modes, Det, LambdaGoal,
 		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
 		Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, ModuleInfo).
 
-lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+lambda__transform_lambda(Vars, Modes, Det, LambdaGoal,
 		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
 		Functor, Unification, ModuleInfo) :-
 
@@ -277,6 +275,10 @@ XXX this optimization temporarily disabled, see comment above
 		MaybeDet = yes(Det),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
+
+		% For the non-local vars, we use the modes from `UniModes'.
+		% For the lambda var arguments at the end,
+		% we use the mode in the lambda expression. 
 		(
 			Unification0 = construct(_, _, _, UniModes0)
 		->
@@ -285,28 +287,7 @@ XXX this optimization temporarily disabled, see comment above
 			error("polymorphism__transform_lambda: wierd unification")
 		),
 		lambda__uni_modes_to_modes(UniModes, OrigArgModes),
-
-		% We have to jump through hoops to work out the mode
-		% of the lambda predicate. For introduced
-		% type_info arguments, we use the mode "in".  For the original
-		% non-local vars, we use the modes from `UniModes'.
-		% For the lambda var arguments at the end,
-		% we use the mode in the lambda expression. 
-
-		list__length(ArgVars, NumArgVars),
-		In = user_defined_mode(unqualified("in"), []),
-		list__duplicate(NumArgVars, In, InModes),
-		map__from_corresponding_lists(ArgVars, InModes,
-			ArgModesMap),
-
-		set__delete_list(OrigNonLocals0, Vars, OrigNonLocals),
-		set__to_sorted_list(OrigNonLocals, OrigArgVars),
-		map__from_corresponding_lists(OrigArgVars, OrigArgModes,
-			OrigArgModesMap),
-		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
-		map__values(ArgModesMap1, ArgModes1),
-
-		list__append(ArgModes1, Modes, AllArgModes),
+		list__append(OrigArgModes, Modes, AllArgModes),
 
 		% 
 		% Now construct the pred_info for the new predicate, using
@@ -341,13 +322,8 @@ XXX this optimization temporarily disabled, see comment above
 	),
 	Functor = functor(term_atom(PName), ArgVars),
 	ConsId = pred_const(PredId, ModeId),
-	(
-		Unification0 = construct(Var, _, _, ArgModes)
-	->
-		Unification = construct(Var, ConsId, ArgVars, ArgModes)
-	;
-		error("polymorphism__transform_lambda: wierd unification")
-	).
+	Unification0 = construct(Var, _, _, ArgModes),
+	Unification = construct(Var, ConsId, ArgVars, ArgModes).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
 :- mode lambda__uni_modes_to_modes(in, out) is det.

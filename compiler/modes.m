@@ -120,11 +120,18 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_report_errors(mode_info_di, mode_info_uo) is det.
 
 	% Modecheck a unification.
-	%
+
+	% This argument specifies how to recursively process lambda goals -
+	% using either modes.m or unique_modes.m.
+:- type how_to_check_goal
+	--->	check_modes
+	;	check_unique_modes.
+
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
-			hlds__goal_info, var, unify_rhs, pair(list(hlds__goal)),
-			pair(mode), unification, mode_info, mode_info).
-:- mode modecheck_unification(in, in, in, in, in, out, out, out, out, out,
+			hlds__goal_info, how_to_check_goal,
+			var, unify_rhs, pair(list(hlds__goal)), pair(mode),
+			unification, mode_info, mode_info).
+:- mode modecheck_unification(in, in, in, in, in, in, out, out, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
@@ -226,6 +233,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module type_util, mode_util, code_util, prog_io, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux.
+:- import_module unique_modes, (lambda).
 
 %-----------------------------------------------------------------------------%
 
@@ -614,7 +622,7 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	mode_info_set_call_context(unify(UnifyContext)),
 	=(ModeInfo0),
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-				A, B, ExtraGoals, Mode, UnifyInfo),
+		check_modes, A, B, ExtraGoals, Mode, UnifyInfo),
 	=(ModeInfo),
 	% optimize away unifications with dead variables
 	(
@@ -1569,7 +1577,7 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 
 	% Mode check a unification.
 
-modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo,
+modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo, _,
 			X, var(Y), ExtraGoals, Modes, Unification,
 			ModeInfo0, ModeInfo) :-
 	ExtraGoals = [] - [],
@@ -1619,7 +1627,7 @@ modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo,
 	).
 
 modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
-			UnifyContext, GoalInfo0,
+			UnifyContext, GoalInfo0, HowToCheckGoal,
 			X, Functor, ExtraGoals, Mode, Unification,
 			ModeInfo0, ModeInfo) :-
 	%
@@ -1640,7 +1648,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	% Secondly, the polymorphism pass (polymorphism.m) is a lot easier
 	% if we don't have to handle higher-order pred consts.
 	% If it turns out that the predicate was non-polymorphic,
-	% polymorphism.m will (I hope) turn the lambda expression
+	% lambda.m will (I hope) turn the lambda expression
 	% back into a higher-order pred constant again.
 	%
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -1720,7 +1728,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		Functor0 = lambda_goal(LambdaVars, LambdaModes, LambdaDet,
 					LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
-				GoalInfo0,
+				GoalInfo0, HowToCheckGoal,
 				X, Functor, ExtraGoals, Mode, Unification,
 				ModeInfo2, ModeInfo)
 	;
@@ -1736,11 +1744,13 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	).
 
 modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
-			Unification0, _UnifyContext, _GoalInfo,
-			X, lambda_goal(Vars, Modes, Det, Goal), 
-			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
+			Unification0, _UnifyContext, _GoalInfo, HowToCheckGoal,
+			X, RHS, ExtraGoals, Mode, Unification,
+			ModeInfo0, ModeInfo) :-
+	ExtraGoals = [] - [],
+
 	%
-	% first modecheck the lambda goal itself:
+	% First modecheck the lambda goal itself:
 	%
 	% initialize the initial insts of the lambda variables,
 	% lock the non-local vars,
@@ -1749,7 +1759,17 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	% check that the final insts are correct,
 	% unmark the live vars,
 	% unlock the non-local vars,
-	% restore the initial instmap.
+	% restore the original instmap.
+	%
+	% XXX or should we merge the original and the final instmaps???
+	%
+	% The reason that we need to merge the original and final instmaps
+	% is as follows.  The lambda goal will not have bound any variables
+	% (since they were locked), but it may have added some information
+	% or lost some uniqueness.  We cannot use the final instmap,
+	% because that may have too much information.  If we use the
+	% initial instmap, variables will be considered as unique
+	% even if they become shared or clobbered in the lambda goal!
 	%
 
 	% initialize the initial insts of the lambda variables
@@ -1779,13 +1799,20 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
 	mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
 
-	modecheck_goal(Goal0, Goal, ModeInfo3, ModeInfo4),
-	modecheck_final_insts(Vars, FinalInsts, ModeInfo4, ModeInfo5),
-	mode_info_remove_live_vars(LiveVars, ModeInfo5, ModeInfo6),
+	mode_checkpoint(enter, "lambda goal", ModeInfo3, ModeInfo4),
+	% if we're being called from unique_modes.m, then we need to call
+	% unique_modes__check_goal rather than modecheck_goal.
+	( HowToCheckGoal = check_unique_modes ->
+		unique_modes__check_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
+	;
+		modecheck_goal(Goal0, Goal, ModeInfo4, ModeInfo5)
+	),
+	modecheck_final_insts(Vars, FinalInsts, ModeInfo5, ModeInfo6),
+	mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
 
-	mode_info_unlock_vars(NonLocals, ModeInfo6, ModeInfo7),
-
-	mode_info_set_instmap(InstMap0, ModeInfo7, ModeInfo8),
+	mode_info_remove_live_vars(LiveVars, ModeInfo7, ModeInfo8),
+	mode_info_unlock_vars(NonLocals, ModeInfo8, ModeInfo9),
+	mode_info_set_instmap(InstMap0, ModeInfo9, ModeInfo10),
 
 	%
 	% Now modecheck the unification of X with the lambda-expression.
@@ -1793,9 +1820,42 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 
 	set__to_sorted_list(NonLocals, ArgVars),
 	modecheck_unify_lambda(X, ArgVars, Modes, Det, Unification0,
-				Mode, Unification,
-				ModeInfo8, ModeInfo),
-	ExtraGoals = [] - [].
+				Mode, Unification1,
+				ModeInfo10, ModeInfo11),
+
+	%
+	% if we're being called from unique_modes.m, then we need to
+	% transform away lambda expressions
+	%
+	( HowToCheckGoal = check_unique_modes ->
+		modes__transform_lambda(Vars, Modes, Det, Goal, Unification1,
+			RHS, Unification, ModeInfo11, ModeInfo)
+	;
+		RHS = lambda_goal(Vars, Modes, Det, Goal), 
+		Unification = Unification1,
+		ModeInfo = ModeInfo11
+	).
+
+:- pred modes__transform_lambda(list(var), list(mode), determinism,
+		hlds__goal, unification, unify_rhs, unification,
+		mode_info, mode_info).
+:- mode modes__transform_lambda(in, in, in, in, in, out, out,
+		mode_info_di, mode_info_uo) is det.
+
+modes__transform_lambda(Vars, Modes, Det, LambdaGoal,
+		Unification0, Functor, Unification, ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_varset(ModeInfo0, VarSet),
+	mode_info_get_predid(ModeInfo0, PredId),
+	mode_info_get_procid(ModeInfo0, ProcId),
+	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+		PredInfo, ProcInfo),
+	pred_info_typevarset(PredInfo, TVarSet),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	lambda__transform_lambda(Vars, Modes, Det, LambdaGoal,
+		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
+		Functor, Unification, ModuleInfo),
+	mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo).
 
 :- pred modecheck_unify_lambda(var, list(var),
 			list(mode), determinism, unification,

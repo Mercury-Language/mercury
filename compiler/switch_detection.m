@@ -159,7 +159,15 @@ detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
 detect_switches_in_goal_2(call(A,B,C,D,E,F,G), _, _, _, _, _,
 		call(A,B,C,D,E,F,G)).
 
-detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, _, unify(A,B,C,D,E)).
+detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0, _,
+		VarTypes, ModuleInfo, unify(A,RHS,C,D,E)) :-
+	( RHS0 = lambda_goal(Vars, Modes, Det, Goal0) ->
+		detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo,
+			Goal),
+		RHS = lambda_goal(Vars, Modes, Det, Goal)
+	;
+		RHS = RHS0
+	).
 
 detect_switches_in_goal_2(switch(Var, CanFail, Cases0), _, InstMap, _,
 		VarTypes, ModuleInfo, switch(Var, CanFail, Cases)) :-

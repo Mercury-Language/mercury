@@ -28,7 +28,7 @@
 
 :- module unique_modes.
 :- interface. 
-:- import_module hlds, llds, io.
+:- import_module hlds, mode_info, io.
 
 	% check every predicate in a module
 :- pred unique_modes__check_module(module_info, module_info,
@@ -40,13 +40,17 @@
 				proc_info, module_info, io__state, io__state).
 :- mode unique_modes__check_proc(in, in, in, in, out, out, di, uo) is det.
 
+	% just check a single goal
+:- pred unique_modes__check_goal(hlds__goal, hlds__goal, mode_info, mode_info).
+:- mode unique_modes__check_goal(in, out, mode_info_di, mode_info_uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury.
-:- import_module mode_info, modes, inst_match, prog_io, mode_errors.
+:- import_module modes, inst_match, prog_io, mode_errors, llds.
 
 %-----------------------------------------------------------------------------%
 
@@ -76,17 +80,18 @@ unique_modes__check_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 unique_modes__check_procs(_PredId, [], ModuleInfo, ModuleInfo) --> [].
 unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 		ModuleInfo) -->
-	{ module_info_preds(ModuleInfo0, PredTable0) },
-	{ map__lookup(PredTable0, PredId, PredInfo0) },
-	{ pred_info_procedures(PredInfo0, ProcTable0) },
-	{ map__lookup(ProcTable0, ProcId, ProcInfo0) },
+	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+		_PredInfo0, ProcInfo0) },
 
 	unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
 		ProcInfo, ModuleInfo1),
 
-	{ map__set(ProcTable0, ProcId, ProcInfo, ProcTable) },
-	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
-	{ map__set(PredTable0, PredId, PredInfo, PredTable) },
+	{ module_info_preds(ModuleInfo1, PredTable1) },
+	{ map__lookup(PredTable1, PredId, PredInfo1) },
+	{ pred_info_procedures(PredInfo1, ProcTable1) },
+	{ map__set(ProcTable1, ProcId, ProcInfo, ProcTable) },
+	{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
+	{ map__set(PredTable1, PredId, PredInfo, PredTable) },
 	{ module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2) },
 
 	unique_modes__check_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
@@ -182,9 +187,6 @@ unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
-
-:- pred unique_modes__check_goal(hlds__goal, hlds__goal, mode_info, mode_info).
-:- mode unique_modes__check_goal(in, out, mode_info_di, mode_info_uo) is det.
 
 	% XXX we currently make the conservative assumption that
 	% any non-local variable in a disjunction or nondet call
@@ -491,29 +493,24 @@ unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 		GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "unify"),
 	mode_info_set_call_context(unify(UnifyContext)),
-	=(ModeInfo0),
+
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-				A, B, ExtraGoals, Mode, UnifyInfo),
-% this optimization from modes.m does not need to be repeated here
-	=(ModeInfo),
-	% optimize away unifications with dead variables
-	(
-		{ UnifyInfo = assign(AssignTarget, _),
-		  mode_info_var_is_live(ModeInfo, AssignTarget, dead)
-		; UnifyInfo = construct(ConstructTarget, _, _, _),
-		  mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
-		}
-	->
-		% replace the unification with `true'
-		{ Goal = conj([]) }
+		check_unique_modes, A, B, ExtraGoals, Mode, UnifyInfo),
+	{ Goal = unify(A, B, Mode, UnifyInfo, UnifyContext) },
+
+	%
+	% modecheck_unification sometimes needs to introduce new goals
+	% to handle complicated sub-unifications in deconstructions.
+	% But this should never happen here.
+	% (If it did, the code would be wrong since it wouldn't have the
+	% correct determinism annotations.)
+	%
+	{ ExtraGoals = [] - [] ->
+		true
 	;
-		{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
-		{ unify_rhs_vars(B0, B0Vars) },
-		{ unify_rhs_vars(B, BVars) },
-		{ handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
-					[A0|B0Vars], [A|BVars],
-					ModeInfo0, ModeInfo, Goal) }
-	),
+		error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
+	},
+
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 

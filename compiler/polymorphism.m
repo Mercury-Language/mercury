@@ -9,8 +9,7 @@
 
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism
-% using higher-order predicates, and also invokes `lambda__transform_lambda'
-% to handle lambda expressions by creating new predicates for them.
+% using higher-order predicates.
 %
 % Every polymorphic predicate is transformed
 % so that it takes one additional argument for every type variable in the
@@ -69,7 +68,7 @@
 :- import_module int, string, list, set, map, term, varset, std_util, require.
 :- import_module prog_io, type_util, mode_util, quantification.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module llds, (lambda).
+:- import_module llds.
 
 %-----------------------------------------------------------------------------%
 
@@ -390,15 +389,11 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		)
 	; { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must recursively traverse the
-		% lambda goal and then convert the lambda expression
-		% into a new predicate
-		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
+		% lambda goal
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
 		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
-		polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals,
-				LambdaGoal, Unification, Y1, Unification1),
-		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
+		{ Y1 = lambda_goal(Vars, Modes, Det, LambdaGoal) },
+		{ Goal = unify(XVar, Y1, Mode, Unification, Context)
 				- GoalInfo }
 	;
 		% ordinary unifications are left unchanged,
@@ -517,20 +512,6 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
 	),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
-
-:- pred polymorphism__process_lambda(list(var), list(mode), determinism,
-		set(var), hlds__goal, unification, unify_rhs, unification,
-		poly_info, poly_info).
-:- mode polymorphism__process_lambda(in, in, in, in, in, in, out, out,
-		in, out) is det.
-
-polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
-		Unification0, Functor, Unification, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
-	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
-		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
-		Functor, Unification, ModuleInfo),
-	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 

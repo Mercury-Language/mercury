@@ -204,7 +204,7 @@ global_analysis_single_pass([PredId - PredMode | PredProcs],
 	{ det_infer_proc(PredId, PredMode, ModuleInfo0, ModuleInfo1,
 		Changed0, Changed1, Msgs) },
 	( { Msgs \= [] } ->
-		det_report_msgs(Msgs),
+		det_report_msgs(Msgs, ModuleInfo1),
 		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 		( { HaltAtWarn = yes } ->
 			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
@@ -668,9 +668,28 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT, M, U, C), _, _, _, MiscInfo, _, _,
-		unify(LT, RT, M, U, C), Detism, []) :-
-	det_infer_unify(U, MiscInfo, Detism).
+det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
+		MiscInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
+	( RT0 = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal0) ->
+		(
+			determinism_components(LambdaDeclaredDet, _,
+				at_most_many_cc)
+		->
+			LambdaSolnContext = first_soln
+		;	
+			LambdaSolnContext = all_solns
+		),
+		det_infer_goal(Goal0, InstMap0, LambdaSolnContext, MiscInfo,
+				Goal, LambdaInferredDet, Msgs1),
+		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
+				Goal, GoalInfo, MiscInfo, Msgs2),
+		list__append(Msgs1, Msgs2, Msgs),
+		RT = lambda_goal(Vars, Modes, LambdaDeclaredDet, Goal)
+	;
+		RT = RT0,
+		Msgs = []
+	),
+	det_infer_unify(U, MiscInfo, UnifyDet).
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 		SolnContext, MiscInfo, NonLocalVars, DeltaInstMap,
