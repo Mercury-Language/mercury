@@ -267,7 +267,8 @@ install_ints: $(library.ints) $(library.int3s) \
 		dir=$${ext}s; \
 		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
 		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \
-			mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \
+			[ -d $(INSTALL_INT_DIR)/Mercury/$$dir ] || \
+				mkdir -p $(INSTALL_INT_DIR)/Mercury/$$dir; \
 			cp $(INSTALL_INT_DIR)/*.$$ext \
 				$(INSTALL_INT_DIR)/Mercury/$$dir; \
 		} || exit 1; \
