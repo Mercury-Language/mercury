@@ -323,9 +323,11 @@ fi
 case $use_subdirs in
 	yes)	cs_subdir=Mercury/cs/
 		ss_subdir=Mercury/ss/
+		ils_subdir=Mercury/ils/
 		;;
 	no)	cs_subdir=
 		ss_subdir=
+		ils_subdir=
 		;;
 esac
 
@@ -342,6 +344,17 @@ case $target in
 		# then we need to copy the profiler directory.
 		# So to be safe, we just enable this by default.
 		copy_profiler=true
+		;;
+esac
+case $grade in
+	il|ilc)	target_ext=il
+		target_subdir=$ils_subdir
+		target_opt=
+		# See comment above
+		copy_profiler=true
+		# The IL back-end generates native Windows executables,
+		# which do not understand symlinks.  So we need to use cp.
+		use_cp=true
 		;;
 esac
 
