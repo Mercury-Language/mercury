@@ -34,3 +34,17 @@ write_progress_message(Message, PredId, ModuleInfo) -->
 	;
 		[]
 	).
+
+% :- pred maybe_report_stats(bool::in, io__state::di, io__state::uo) is det.
+% :- pred maybe_write_string(bool::input, string::input,
+% 	io__state::di, io__state::uo) is det.
+% :- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
+% 
+% maybe_report_stats(yes) --> io__report_stats.
+% maybe_report_stats(no) --> [].
+% 
+% maybe_write_string(yes, String) --> io__write_string(String).
+% maybe_write_string(no, _) --> [].
+% 
+% maybe_flush_output(yes) --> io__flush_output.
+% maybe_flush_output(no) --> [].

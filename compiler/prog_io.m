@@ -124,7 +124,7 @@
 			;	inline(sym_name, int).
 				% Predname, Arity
 
-:- type pragma_var    --->  pragma_var(var, string, mode).
+:- type pragma_var    --->	pragma_var(var, string, mode).
 			  	% variable, name, mode
 				% we explicitly store the name because we
 				% need the real name in code_gen

@@ -124,7 +124,7 @@
 :- implementation.
 
 :- import_module exprn_aux.
-:- import_module bool, map, bag, set, require, int, term, string.
+:- import_module bool, map, bag, set, require, int, term, string, getopt.
 
 :- type var_stat	--->
 		evaled(set(rval))
@@ -513,9 +513,9 @@ code_exprn__rem_arg_reg_dependencies([M|Ms]) -->
 code_exprn__var_becomes_dead(Var) -->
 	code_exprn__get_vars(Vars0),
 	code_exprn__get_options(Options),
-	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ options__lookup_bool_option(Options, asm_labels, ASM) },
-	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
+	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
+	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ map__search(Vars0, Var, Stat) }
 	->
@@ -824,9 +824,9 @@ code_exprn__place_var(Var, Lval, Code) -->
 code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	code_exprn__get_options(Options),
-	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ options__lookup_bool_option(Options, asm_labels, ASM) },
-	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
+	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
+	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ exprn_aux__vars_in_rval(Exprn0, []) }
 	->
@@ -899,9 +899,9 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	code_exprn__get_options(Options),
-	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ options__lookup_bool_option(Options, asm_labels, ASM) },
-	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
+	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
+	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
+	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ set__member(lval(Lval), Rvals0) }
 	->

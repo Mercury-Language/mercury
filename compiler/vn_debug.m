@@ -64,6 +64,9 @@
 :- pred vn_debug__restart_msg(instruction, io__state, io__state).
 :- mode vn_debug__restart_msg(in, di, uo) is det.
 
+:- pred vn_debug__divide_msg(instruction, io__state, io__state).
+:- mode vn_debug__divide_msg(in, di, uo) is det.
+
 :- pred vn_debug__flush_start_msg(vn_node, io__state, io__state).
 :- mode vn_debug__flush_start_msg(in, di, uo) is det.
 
@@ -108,6 +111,18 @@ vn_debug__restart_msg(Instr) -->
 		{ Flag = yes },
 		{ opt_debug__dump_fullinstr(Instr, I_str) },
 		io__write_string("starting again at "),  
+		io__write_string(I_str),
+		io__write_string("\n")
+	;
+		{ Flag = no }
+	).
+
+vn_debug__divide_msg(Instr) -->
+	vn_debug__start_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		{ opt_debug__dump_fullinstr(Instr, I_str) },
+		io__write_string("dividing the block at "),  
 		io__write_string(I_str),
 		io__write_string("\n")
 	;

@@ -260,13 +260,15 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 			io__write_string(" */")
 		),
 		( { Modes = [] } ->
-			io__write_string("(pred) is ")
+			io__write_string("(pred) is "),
+			mercury_output_det(Det)
 		;
-			io__write_string("pred("),
+			io__write_string("(pred("),
 			mercury_output_mode_list(Modes, VarSet),
-			io__write_string(") is ")
-		),
-		mercury_output_det(Det)
+			io__write_string(") is "),
+			mercury_output_det(Det),
+			io__write_string(")")
+		)
 	;
 		mercury_output_uniqueness(Uniq, "ground")
 	).
