@@ -65,7 +65,7 @@ AC_DEFUN(MERCURY_CHECK_LOCAL_C_INCL_DIRS,
 AC_REQUIRE([AC_PROG_CC])
 AC_MSG_CHECKING(whether to pass -I/usr/local/include to C compiler)
 ALL_LOCAL_C_INCL_DIRS=""
-if test $GCC = yes; then
+if test "$GCC" = yes; then
 	# Don't add -I/usr/local/include, since it causes a warning
 	# with gcc 3.1, and gcc already searches /usr/local/include
 	AC_MSG_RESULT(no)
