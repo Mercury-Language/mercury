@@ -3,6 +3,9 @@
 MCFLAGS-mode_inf = --infer-all
 MCFLAGS-mode_inf_bug = --infer-all
 MCFLAGS-mode_inference_reorder = --infer-all
+
+# The intermod_type test is a regression test for a bug that occurred only
+# when intermodule optimization was enabled.
 MCFLAGS-intermod_type = --intermodule-optimization
 MCFLAGS-intermod_type2 = --intermodule-optimization
 
