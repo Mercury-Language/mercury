@@ -987,7 +987,7 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 	hlds_out__write_indent(Indent),
 	(	{ PredOrFunc = predicate },
 		( { string__contains_char(Verbose, 'l') } ->
-			io__write_string("% higher-order predicate call"),
+			io__write_string("% higher-order predicate call\n"),
 			hlds_out__write_indent(Indent)
 		;
 			[]
@@ -997,12 +997,14 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 	;
 		{ PredOrFunc = function },
 		( { string__contains_char(Verbose, 'l') } ->
-			io__write_string("% higher-order function application"),
+			io__write_string(
+				"% higher-order function application\n"),
 			hlds_out__write_indent(Indent)
 		;
 			[]
 		),
-		{ pred_args_to_func_args(ArgVars, FuncArgVars, FuncRetVar) },
+		{ pred_args_to_func_args([PredVar | ArgVars],
+			FuncArgVars, FuncRetVar) },
 		mercury_output_var(FuncRetVar, VarSet, AppendVarnums),
 		io__write_string(" = "),
 		hlds_out__write_functor(term__atom("apply"), FuncArgVars,
@@ -1047,9 +1049,13 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 		[]
 	),
 	hlds_out__write_indent(Indent),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_get_purity(PredInfo, Purity) },
-	write_purity_prefix(Purity),
+	( { invalid_pred_id(PredId)} ->
+		[]
+	;
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_get_purity(PredInfo, Purity) },
+		write_purity_prefix(Purity)
+	),
 	(
 		{ PredName = qualified(ModuleName, Name) },
 		hlds_out__write_qualified_functor(ModuleName, term__atom(Name),
