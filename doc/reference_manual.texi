@@ -44,7 +44,7 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury Language Reference Manual
-@subtitle January, 1996
+@subtitle April, 1996
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
@@ -97,17 +97,21 @@ into another language, under the above conditions for modified versions.
 Mercury is a new general-purpose programming language, designed
 and implemented by a small group of researchers at the University
 of Melbourne, Australia.  Mercury is based on the paradigm of
-pure declarative logic programming, and was designed to be
+pure declarative equational programming, and was designed to be
 useful for the development of large and robust ``real-world'' applications.
 It improves on existing logic programming languages by providing
 increased productivity, reliability and efficiency, and by avoiding the
-need for non-logical program constructs.
+need for non-logical program constructs.  Mercury provides the
+traditional logic programming syntax, but also allows the
+syntactic convenience of user-defined functions, smoothly integrating
+logic and functional programming into a single paradigm.
 
 Mercury requires programmers to supply
-type, mode and determinism declarations for the predicates they write.
+type, mode and determinism declarations for the predicates
+and functions they write.
 The compiler checks these declarations,
 and rejects the program if it cannot prove
-that every predicate satisfies its declarations.
+that every predicate or function satisfies its declarations.
 This improves reliability,
 since many kinds of errors simply cannot happen
 in successfully compiled Mercury programs.
@@ -139,6 +143,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * Goals::
 * DCG-rules::
 * DCG-goals::
+* Data-terms::
 * Implicit quantification::
 * Elimination of double negation::
 @end menu
@@ -147,7 +152,10 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 @section Syntax overview
 
 Mercury's syntax is similar to the syntax of Prolog, with some
-additional declarations for types, modes, determinism, and the module system.
+additional declarations for types, modes, determinism, the module system,
+and pragmas, and with the distinction that function symbols may stand also
+for invocations of user-defined functions as well as for data constructors.
+
 A Mercury program consists of a set of modules.  Each module is a file
 containing a sequence of items (declarations and clauses).  Each item
 is a term followed by a period.  Each term is composed of a sequence
@@ -254,12 +262,16 @@ The end of file.
 @node Terms
 @section Terms
 
-Terms in Mercury are exactly the same as in ISO Prolog, with two
+Syntactically, terms in Mercury are exactly the same as in ISO Prolog.
+However, the meaning of some terms in Mercury is different to that
+in Prolog.  See @xref{Data-terms}.
+
+with two
 exceptions.  The first one is that double-quoted strings are atomic in
 Mercury, they are not abbreviations for lists of character codes.
 The second is that Mercury terms can contain lambda expressions.
 
-A term is either a variable, a functor, or a lambda expression.
+A term is either a variable or a functor, or a lambda expression.
 
 A functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound term.
@@ -291,6 +303,11 @@ There are three types of clauses.
 If the top-level functor of the item is @samp{:-/2}, the item is a rule.
 If the top-level functor is @samp{-->/2}, the item is a DCG rule.
 Otherwise, the item is a fact.
+There are two types of rules and facts.
+If the top-level functor of the head of a rule is @samp{=/2}, the rule
+is a function rule, otherwise it is a predicate rule.
+If the top-level functor of the head of a fact is @samp{=/2}, the fact
+is a function fact, otherwise it is a predicate fact.
 
 @node Declarations
 @section Declarations
@@ -300,6 +317,7 @@ The allowed declarations are:
 @example
 :- type
 :- pred
+:- func
 :- inst
 :- mode
 :- pragma
@@ -311,7 +329,8 @@ The allowed declarations are:
 :- end_module
 @end example
 
-The @samp{type} and @samp{pred} declarations are used for the type system,
+The @samp{type}, @samp{pred} and @samp{func} declarations are used for the
+type system,
 the @samp{inst} and @samp{mode} declarations are for the mode system,
 the @samp{pragma} declarations are for the C interface, and for
 compiler hints about inlining, and the remainder are for the module system. 
@@ -325,24 +344,33 @@ that is both a Mercury program and an NU-Prolog program.)
 @node Facts
 @section Facts
 
-A fact is an item of the form @samp{@var{Head}},
+A function fact is an item of the form @samp{@var{Head} = @var{Result}}.
+A predicate fact is an item of the form @samp{@var{Head}},
 where the top-level functor of @var{Head}
-is not @code{:-/1}, @code{:-/2}, or @code{-->/2}.
-The @var{Head} term must not be a variable.
+is not @code{:-/1}, @code{:-/2}, @code{-->/2}, or @code{=/2}.
+In both cases, the @var{Head} term must not be a variable.
 The top-level functor of the @var{Head}
-determines which predicate the clause belongs to;
-the predicate must have been declared
-in a previous @samp{pred} declaration in this module.
-A fact is equivalent to a rule @samp{@var{Head} :- true}.
+determines which predicate or function the fact belongs to;
+the predicate or function must have been declared
+in a preceding @samp{pred} or @samp{func} declaration in this module.
+The arguments of the head must be valid data-terms.
+A fact is equivalent to a rule whole body is @samp{true}.
 
 @node Rules
 @section Rules
 
-A rule is an item of the form @samp{@var{Head} :- @var{Body}}.
-The @var{Head} term must not be a variable.  The top-level functor
-of the @var{Head} determines which predicate the clause belongs to;
-the predicate must have been declared in a previous @samp{pred}
-declaration in this module.  The @var{Body} must be a valid goal.
+A function rule is an item of the form
+@samp{@var{Head} = @var{Result} :- @var{Body}}.
+A predicate rule is an item of the form
+@samp{@var{Head} :- @var{Body}} where the top-level
+functor of @samp{Head} is not @code{=/2}.
+In both cases, the @var{Head} term must not be a variable. 
+The top-level functor of the @var{Head} determines which predicate or
+function the clause belongs to; the predicate or function must have
+been declared in a preceding @samp{pred} or @samp{func} declaration in
+this module.
+The arguments of the head must be valid data-terms.
+The @var{Body} must be a valid goal.
 
 @node Goals
 @section Goals
@@ -406,9 +434,11 @@ Note that the ``else'' part is @emph{not} optional.
 
 @item @code{@var{Term1} = @var{Term2}}
 A unification.
+@var{Term1} and @var{Term2} must be valid data-terms.
 
 @item @code{@var{Term1} \= @var{Term2}}
 An inequality. 
+@var{Term1} and @var{Term2} must be valid data-terms.
 This is an abbreviation for @samp{not (@var{Term1} = @var{Term2})}.
 
 @item @code{call(Closure)}
@@ -416,13 +446,15 @@ This is an abbreviation for @samp{not (@var{Term1} = @var{Term2})}.
 @itemx @code{call(Closure2, Arg1, Arg2)}
 @itemx @code{call(Closure3, Arg1, Arg2, Arg3)}
 @itemx @dots{}
-A higher-order predicate call.  @samp{call(Closure)} just calls
+A higher-order predicate call.  
+The closure and arguments must be valid data-terms.
+@samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
 See @xref{Higher-order}.
 
 @item @code{@var{Call}}
-Any term which does not match any of the above forms
+Any goal which does not match any of the above forms
 must be a predicate call.
 If the term is a variable @var{Var},
 it is treated as if it were @samp{call(@var{Var})},
@@ -431,6 +463,7 @@ Otherwise, the top-level functor of the term
 determines the predicate called;
 the predicate must be declared in a @code{pred} declaration
 in the module or in the interface of an imported module.
+The arguments must be valid data-terms.
 
 @end table
 
@@ -526,6 +559,7 @@ Unifies the implicit DCG input variable V_in,
 which must have type @samp{list(_)},
 with a list whose initial elements are the terms specified
 and whose tail is the implicit DCG output variable V_out.
+The terms must be valid data-terms.
 
 Semantics:
 @example
@@ -571,6 +605,7 @@ else
 
 @item =(@var{Term})
 A DCG unification.  Unifies @var{Term} with the implicit DCG argument.
+@var{Term} must be a valid data-term.
 
 Semantics:
 @example
@@ -591,6 +626,39 @@ p(A1, @dots{}, AN, V_in, V_out)
 @end example
 
 @end table
+
+@node Data-terms
+@section Data-terms
+
+Syntactically, a data-term is just a term.
+
+There are a couple of differences from Prolog.
+The first one is that double-quoted strings are atomic in
+Mercury, they are not abbreviations for lists of character codes.
+The second is that Mercury terms may contain function calls and
+lambda expressions.
+
+A data-term is either a variable, a data-functor, or a lambda expression.
+
+A data-functor is an integer, a float, a string, a character literal
+(any single-character name), a name, or a compound data-term.
+A compound data-term is a compound term whose form
+does not match the form of a lambda expression and whose arguments
+are data-terms.
+If a data-functor is a name or a compound data-term, its top-level functor
+must name a function, predicate, or data constructor declared
+in the program or in the interface of an imported module.
+
+A lambda expression is a compound term of the form
+
+@example
+lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
+@end example
+
+@noindent
+where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
+modes [@xref{Modes}], Det is a determinism [@xref{Determinism}],
+and Goal is a goal [@xref{Goals}].  See @xref{Higher-order}.
 
 @node Implicit quantification
 @section Implicit quantification
@@ -736,11 +804,16 @@ The following example illustrates this:
         ;       @{ @{ int @} @}.
 @end example
 
+This defines a type with two constructors, @code{';'}/2 and @code{'@{@}'/1},
+whose argument types are all @code{int}.
+
 Each discriminated union type definition introduces a distinct type.
 Mercury considers two discriminated union types that have the same bodies
 to be distinct types (name equivalence).
-Having two types of any kind with the same name in the program is an error.
-(We hope to relax this in the future.)
+Having two different types with the same name and arity in the program
+is an error.
+(We hope to relax this in the future, to allow types with the same name
+and arity in different modules.)
 
 @item
 Equivalence types: these are type abbreviations.
@@ -797,33 +870,51 @@ so overloading should not be over-used.
 
 The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
+The argument types and return type of each function must be
+explicitly declared with a @samp{:- func} declaration.
 These declarations may be polymorphic.
 For example:
 
 @example
-:- pred list__member(T, list(T)).
+:- pred member(T, list(T)).
+
+:- func length(list(T)) = int.
 @end example
 
-Predicates may not be overloaded:
-there must only be one predicate with a given name and arity in each module.
-A module qualifier must be used to disambiguate imported and locally defined
-predicates that have the same name.
-(This restriction will hopefully be further relaxed in the future.)
+There must only be one predicate with a given name and arity in each module,
+and only one function with a given name and arity in each module.
+The current implementation does not support defining a function of arity
+@var{N} and a predicate of arity @var{N+1} in the same module.
 
-The compiler infers the types of variables and overloaded constructors.
+The compiler infers the types of data-terms, and in particular the types
+of variables and overloaded constructors, functions, and predicates.
 A @dfn{type assignment} is an assignment of a type
-to every variable and constructor in a clause.
+to every variable and of a particular constructor, function, or predicate
+to every name in a clause.
 A type assignment is @dfn{valid} if it satisfies the following conditions.
+
 Each constructor in a clause
 must have been declared in at least one visible type declaration.
-The type assigned to each constructor
+The type assigned to each constructor term
 must match one of the type declarations for that constructor,
 and the types assigned to the arguments of that constructor
 must match the argument types specified in that type declaration.
+
+The type assigned to each function call term
+must match the return type of one of the @samp{:- func} declarations
+for that function, and the types assigned to the arguments of that function
+must match the argument types specified in that type declaration.
+
 The type assigned to each predicate argument must match
-the type specified in the @samp{:- pred} declaration for that predicate.
-The type assigned to each head argument in a clause must exactly match
-the type specified in the corresponding @samp{:- pred} declaration.
+the type specified in one of the @samp{:- pred} declarations for that predicate.
+The type assigned to each head argument in a predicate clause must exactly match
+the argument type specified in the corresponding @samp{:- pred} declaration.
+
+The type assigned to each head argument in a function clause must exactly match
+the argument type specified in the corresponding @samp{:- func} declaration,
+and the type assigned to the result term in a functin clause must exactly
+match the result type specified in the corresponding @samp{:- func} declaration.
+
 (Here ``match'' means to be an instance of,
 i.e. to be identical to for some substitution of the type parameters,
 and ``exactly match'' means to be identical up to renaming of type parameters.)
@@ -844,8 +935,9 @@ Every clause in a Mercury program must be type-correct.
 @node Modes
 @chapter Modes
 
-The @dfn{mode} of a predicate is a mapping
-from the initial state of instantiation of the arguments of the predicate
+The @dfn{mode} of a predicate, or function, is a mapping
+from the initial state of instantiation of the arguments of the predicate,
+or the arguments and result of a function,
 to their final state of instantiation.
 To describe states of instantiation,
 we use information provided by the type system.
@@ -936,7 +1028,7 @@ can do so by simply defining them using a mode declaration:
 :- mode (-) :: out.
 @end example
 
-These two modes are enough for most predicates.
+These two modes are enough for most functions and predicates.
 Nevertheless, Mercury's mode system is sufficiently
 expressive to handle more complex data-flow patterns,
 including those involving partially instantiated data structures.  
@@ -989,6 +1081,10 @@ could have be defined as
 
 A @dfn{predicate mode declaration}
 assigns a mode mapping to each argument of a predicate.
+A @dfn{function mode declaration}
+assigns a mode mapping to each argument of a function,
+and a mode mapping to the function result.
+Each mode of a predicate or function is called a @dfn{procedure}.
 For example, given the mode names defined by
 
 @example
@@ -998,43 +1094,54 @@ For example, given the mode names defined by
         listskel -> listskel.
 @end example
 
-the (type and) mode declarations of the predicates length and append
+the (type and) mode declarations of the function length and predicate append
 are as follows:
 
 @example
-:- pred length(list(T), int).
-:- mode length(in_listskel, out).
-:- mode length(out_listskel, in).
+:- func length(list(T) = int.
+:- mode length(in_listskel) = out.
+:- mode length(out_listskel) = in.
 
 :- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out).
 :- mode append(out, out, in).
 @end example
 
+Note that functions may have more than one mode, just like predicates;
+functions can be reversible.
+
 Alternately, the mode declarations for @samp{length} could use
 the standard library modes @samp{in/1} and @samp{out/1}:
 
 @example
-:- pred length(list(T), int).
-:- mode length(in(listskel), out).
-:- mode length(out(listskel), in).
+:- func length(list(T)) = int.
+:- mode length(in(listskel)) = out.
+:- mode length(out(listskel)) = in.
 @end example
 
-If a predicate has only one mode, the @samp{pred} and @samp{mode}
+If a predicate or function has only one mode, the @samp{pred} and @samp{mode}
 declaration can be combined:
 
 @example
+:- func length(list(T)::in) = (int::out).
 :- pred append(list(T)::in, list(T)::in, list(T)::out).
 @end example
 
-A predicate mode declaration is an assertion by the programmer
-that for all possible argument terms for the predicate
+If there is no mode declaration for a function, the compiler assumes
+a default mode for the function in which all the arguments have mode @samp{in}
+and the result of the function has mode @samp{out}.  (However, there
+is no requirement that a function have such a mode; if there is any
+explicit mode declaration, it overrides the default.)
+
+A function or predicate mode declaration is an assertion by the programmer
+that for all possible argument terms and (if applicable) result term
+for the function or predicate
 that are approximated (in our technical sense)
 by the initial instantiatedness trees of the mode declaration
 and all of whose free variables are distinct,
-if the predicate succeeds then
-the resulting binding of those argument terms
-will in turn be approximated
+if the function or predicate succeeds then
+the resulting binding of those argument terms and (if applicable)
+result term will in turn be approximated
 by the final instantiatedness trees of the mode declaration,
 with all free variables again being distinct.
 We refer to such assertions as @dfn{mode declaration constraints}.
@@ -1052,11 +1159,11 @@ would not be allowed, since it would create aliasing between the
 different arguments --- on success of the predicate, the list elements
 would be free variables but they would not be distinct.
 
-In Mercury it is always possible to call a predicate with an
+In Mercury it is always possible to call a procedure with an
 argument that is is more bound than the initial inst specified for that
-argument in the predicate's mode declaration.  In such cases, the
+argument in the procedure's mode declaration.  In such cases, the
 compiler will insert additional unifications to ensure that the
-argument actually passed to the predicate will have the inst specified.
+argument actually passed to the procedure will have the inst specified.
 For example, if the predicate @code{p/1} has mode @samp{p(out)}, you
 can still call @samp{p(X)} if @code{X} is ground.  The compiler will
 transform this code to @samp{p(Y), X = Y} where @code{Y} is a fresh
@@ -1081,21 +1188,21 @@ is a function symbol.
 
 @end itemize
 
-The @dfn{mode set} for a predicate
-is the set of mode declarations for the predicate.
+The @dfn{mode set} for a predicate or function
+is the set of mode declarations for the predicate or function.
 A mode set is an assertion by the programmer
 that the predicate should only be called with argument terms
 that satisfy the initial instantiatedness trees
 of one of the mode declarations in the set
 (i.e. the specified modes and the modes they imply
-are the only allowed modes for this predicate).
+are the only allowed modes for this predicate or function).
 We refer to the assertion associated with a mode set
 as the @dfn{mode set constraint};
 these are also checked by the compiler.
 
-A predicate @var{p} is @dfn{well-moded
+A predicate or function @var{p} is @dfn{well-moded
 with respect to a given mode declaration}
-if given that the predicates called by @var{p}
+if given that the predicates and functions called by @var{p}
 all satisfy their mode declaration constraints,
 there exists an ordering of the literals in the definition of @var{p}
 such that
@@ -1104,26 +1211,27 @@ such that
 @item
 @var{p} satisfies its mode declaration constraint, and
 @item
-@var{p} satisfies the mode set constraint of all of the predicates it calls
+@var{p} satisfies the mode set constraint of all of the predicates and
+functions it calls
 @end itemize
 
-We say that a predicate is well-moded
+We say that a predicate or function is well-moded
 if it is well-moded with respect to
 all the mode declarations in its mode set,
 and we say that a program is well-moded
-if all its predicates are well-moded.
+if all its predicates and functions are well-moded.
 
-The mode analysis algorithm checks one mode of one predicate at a time.
-It abstractly interprets the definition of the predicate,
+The mode analysis algorithm checks one procedure at a time.
+It abstractly interprets the definition of the predicate or function,
 keeping track of the instantiatedness of each variable,
 and selecting a mode for each call and unification in the definition.
 To ensure that
-the mode set constraints of called predicates are satisfied,
+the mode set constraints of called predicates and functions are satisfied,
 the compiler may reorder the elements of conjunctions;
 it reports an error if no satisfactory order exists.
 Finally it checks that
-the resulting instantiatedness of the predicate's arguments
-is the same as the one given by the predicate's mode declaration.
+the resulting instantiatedness of the procedure's arguments
+is the same as the one given by the procedure's declaration.
 
 The mode analysis algorithm annotates each call with the mode used.
 
@@ -1252,40 +1360,40 @@ implementation schedule.
 @node Determinism categories
 @section Determinism categories
 
-For each mode of a predicate,
+For each mode of a predicate or function,
 we categorise that mode according to how many times it can succeed,
 and whether or not it can fail before producing its first solution.
 
 @itemize @bullet
 @item
-If all possible calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate or function
 have exactly one solution,
-then that mode of the predicate is @dfn{deterministic} (@code{det}).
+then that mode is @dfn{deterministic} (@code{det}).
 
 @item
-If all possible calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate or function
 either have no solutions or have one solution,
-then that mode of the predicate is @dfn{semideterministic} (@code{semidet}).
+then that mode is @dfn{semideterministic} (@code{semidet}).
 
 @item
-If all possible calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate or function
 have at least one solution but may have more,
-then that mode of the predicate is @dfn{multisolution} (@code{multi}).
+then that mode is @dfn{multisolution} (@code{multi}).
 
 @item
-If some possible calls to a particular mode of a predicate have no solution
-but other calls may have more than one solution,
-then that mode of the predicate is @dfn{nondeterministic} (@code{nondet}).
+If some possible calls to a particular mode of a predicate or function
+have no solution but other calls may have more than one solution,
+then that mode is @dfn{nondeterministic} (@code{nondet}).
 
 @item
-If all possible calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate or function
 fail without producing a solution,
-then that mode of the predicate has a determinism of @code{failure}.
+then that mode has a determinism of @code{failure}.
 
 @item
-If all possible calls to a particular mode of a predicate
+If all possible calls to a particular mode of a predicate or function
 lead to a runtime error, i.e. neither succeed nor fail,
-then that mode of the predicate has a determinism of @code{erroneous}.
+then that mode has a determinism of @code{erroneous}.
 @end itemize
 
 The determinism annotation @code{erroneous} is used on the library
@@ -1301,7 +1409,7 @@ no              erroneous       det             multi
 yes             failure         semidet         nondet
 @end example
 
-The determinism of each mode of a predicate
+The determinism of each mode of a predicate or function
 is indicated by an annotation on the mode declaration.
 For example:
 
@@ -1310,13 +1418,19 @@ For example:
 :- mode append(in, in, out) is det.
 :- mode append(out, out, in) is multi.
 :- mode append(in, in, in) is semidet.
+
+:- func length(list(T)) = int.
+:- mode length(in) = out is det.
+:- mode length(in(list_skel)) = out is det.
+:- mode length(in) = in is semidet.
 @end example
 
 If the mode of the predicate is given in the @code{:- pred} declaration
 rather than in a separate @code{:- mode} declaration,
-then the determinism annotation goes on the @code{:- pred} declaration.
+then the determinism annotation goes on the @code{:- pred} declaration
+(and similarly for functions).
 In particular, this is necessary
-if the predicate does not have any argument variables.
+if a predicate does not have any argument variables.
 For example:
 
 @example
@@ -1329,6 +1443,9 @@ p.
 :- pred q is failure.
 q :- fail.
 @end example
+
+If there is no mode declaration for a function, then the default
+mode for that function is considered to be declared @samp{det}.
 
 The determinism categories form this lattice:
 
@@ -1368,7 +1485,7 @@ a new determinism assignment for those procedures.)
 It is an error to omit the determinism annotation
 for procedures that are exported from their containing module.
 
-If a determinism annotation is supplied for a predicate,
+If a determinism annotation is supplied for a procedure,
 the declared determinism is compared against the inferred determinism.
 If the declared determinism is greater than or not comparable to the
 inferred determinism (in the partial ordering above), it is an error.
@@ -1389,7 +1506,7 @@ since the compiler will implicitly prune away any duplicate solutions.
 @table @asis
 @item Calls
 The determinism category of a call is the determinism
-declared or inferred for the called mode of the called predicate.
+declared or inferred for the called mode of the called procedure.
 
 @item Unifications
 The determinism of a unification
@@ -1636,7 +1753,7 @@ Removing an unspecified element from a set is a nondeterministic operation,
 but no matter which order you remove them,
 the computed size of the set should be the same.
 
-We plan to eventually extend Mercury to allow users to write
+We may eventually extend Mercury to allow users to write
 
 @example
 unique [X] Goal
@@ -1722,6 +1839,8 @@ say that Mercury supports higher-order procedures: in Mercury, when you
 construct a higher-order predicate term, you only get one mode of
 a predicate; if you want multiple modes, you must pass multiple
 higher-order procedures.)
+
+Higher-order functions are not supported (yet).
 
 @menu
 * Creating higher-order terms::
@@ -1936,8 +2055,8 @@ Each module must start with a @code{module} declaration,
 specifying the name of the module. 
 An @code{interface} declaration specifies
 the start of the module's interface section:
-this section contains declarations for the types, function symbols,
-instantiation states, modes, and predicates exported by this module.
+this section contains declarations for the types, data constructors,
+instantiation states, modes, functions and predicates exported by this module.
 Mercury provides support for abstract data types,
 since the definition of a type may be kept hidden,
 with only the type name being exported.  
@@ -1946,8 +2065,8 @@ the start of the module's implementation section.
 Any entities declared in this section are local to the module
 and cannot be used by other modules.
 The implementation section must of course contain definitions
-for all abstract data types and predicates exported by the module,
-as well for all local types and predicates.
+for all abstract data types, functions and predicates exported by the module,
+as well for all local types, functions and predicates.
 The module may optionally end with an @code{end_module} declaration.
 
 @c XXX should we mention multipart interfaces and implementations?
@@ -2055,12 +2174,38 @@ the compiler must report an error.
 For each legal Mercury program,
 there is an associated predicate calculus theory
 whose language is specified by the type declarations in the program
-and whose axioms are the completion of all predicates in the program
-plus the usual equality axioms.
+and whose axioms are the completion of all predicates in the program,
+plus the usual equality axioms extended with the completion of all
+the functions in the program, plus axioms specifying the semantics
+of library predicates and functions.
 The declarative semantics of a legal Mercury program
 is specified by this theory.
 Mercury implementations must be sound:
 the answers they compute must be true in every model of the theory.
+
+There is an operational semantics of Mercury programs called the
+@dfn{vanilla} operational semantics.  In this semantics, the program
+is executed top-down, and conjunctions and disjunctions
+are executed left-to-right. 
+Conjunctions are ``minimally'' reordered:
+the order is determined by selecting the first mode-correct conjunct,
+executing that, then selecting the next mode-correct conjunct, executing
+that, and so on.  (There is no interleaving of different individual conjuncts,
+however; the conjuncts are reordered, not split and interleaved.)
+Function application is strict, not lazy.
+
+Mercury implementations are not required to be complete.  They are required
+to provide to provide at least one, and optionally two or three different
+methods of processing Mercury programs.  They must provide a method which
+is equivalent to the vanilla operational semantics.  They may optionally
+provide a method which is more complete than the vanilla semantics; in
+this mode of operation, the implementation will compute an answer for
+any program for which the vanilla semantics computes an answer, but may
+also compute answers for programs for which the vanilla semantics
+does not terminate, or calls the library predicate @code{error/1}.
+Implementations may also optionally provide a mode of operation which
+is sound, but is not guaranteed to be as complete as the vanilla
+operational semantics.
 
 Execution of a legal Mercury program begins with the predicate @samp{main/2}.
 Only one solution of main/2 is sought.
