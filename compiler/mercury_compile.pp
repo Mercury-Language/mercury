@@ -499,8 +499,14 @@ mercury_compile(Module) -->
 	mercury_compile__pre_hlds_pass(Module, HLDS1, Errors1),
 	mercury_compile__semantic_pass(HLDS1, HLDS7, Errors2),
 	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
-	( { Errors1 = no }, { Errors2 = no }, { ErrorCheckOnly = no } ->
-		mercury_compile__maybe_write_dependency_graph(HLDS7, HLDS7a),
+	( { Errors1 = no }, { Errors2 = no } ->
+	    mercury_compile__maybe_write_dependency_graph(HLDS7, HLDS7a),
+	    ( { ErrorCheckOnly = yes } ->
+		% we may still want to run `unused_args' so that we get
+		% the appropriate warnings
+		globals__io_set_option(optimize_unused_args, bool(no)),
+		mercury_compile__maybe_unused_args(HLDS7a, _)
+	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS7a, HLDS7b),
 		mercury_compile__middle_pass(HLDS7b, HLDS12),
 		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
@@ -520,8 +526,9 @@ mercury_compile(Module) -->
 			mercury_compile__output_pass(HLDS19, LLDS2,
 				ModuleName, _CompileErrors)
 		)
+	    )
 	;
-		[]
+	    []
 	).
 
 %-----------------------------------------------------------------------------%
@@ -663,7 +670,7 @@ mercury_compile__semantic_pass(HLDS1, HLDS, FoundError) -->
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS - Proceed), fail }.
-mercury_compile__semantic_pass(_, HLDS5, _, Proceed) -->
+mercury_compile__semantic_pass(_, HLDS, _, Proceed) -->
 	{ getprop(mc, mc, HLDS - Proceed, Ref), erase(Ref) },
 #endif
 
