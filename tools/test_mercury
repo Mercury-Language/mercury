@@ -203,6 +203,9 @@ case $HOST in
 	mercury)
 		GRADES="asm_fast.gc asm_fast \
 			asm_fast.gc.prof asm_fast.prof"
+		# don't test the directories that require SICStus Prolog,
+		# because we don't have SICStus installed on
+		# mercury@cs.mu.oz.au.
 		DIRS="hard_coded valid"
 		;;
 esac
