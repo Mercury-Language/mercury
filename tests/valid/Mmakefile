@@ -38,11 +38,12 @@ OTHER_SOURCES= \
 	higher_order2.m \
 	higher_order3.m \
 	higher_order_implied_mode.m \
-	ho_inst.m \
 	ho_func_call.m \
-	inhibit_warn_test.m \
+	ho_inst.m \
 	implied_mode.m \
 	indexing.m \
+	inhibit_warn_test.m \
+	inlining_bug.m \
 	intermod_lambda.m \
 	intermod_test.m \
 	lambda_inference.m\

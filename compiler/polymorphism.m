@@ -330,8 +330,19 @@ polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 
 polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
-	polymorphism__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo).
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	(
+		polymorphism__no_type_info_builtin(PredModule,
+			PredName, PredArity) 
+	->
+		ModuleInfo = ModuleInfo0
+	;
+		pred_info_procids(PredInfo, ProcIds),
+		polymorphism__process_procs(PredId, ProcIds,
+			ModuleInfo0, ModuleInfo)
+	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
 					module_info, module_info).
@@ -356,6 +367,19 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
 	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
+
+	% unsafe_type_cast and unsafe_promise_unique are polymorphic
+	% builtins which do not need their type_infos. unsafe_type_cast
+	% can be introduced by common.m after polymorphism is run, so it
+	% is much simpler to avoid introducing type_info arguments for it.
+	% Since both of these are really just assignment unifications, it
+	% is desirable to generate them inline.
+:- pred polymorphism__no_type_info_builtin(string, string, int).
+:- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
+
+polymorphism__no_type_info_builtin("mercury_builtin", "unsafe_type_cast", 2).
+polymorphism__no_type_info_builtin("mercury_builtin",
+		"unsafe_promise_unique", 2).
 
 %---------------------------------------------------------------------------%
 
@@ -853,8 +877,20 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 	term__apply_substitution_to_list(PredArgTypes0, Subst,
 		PredArgTypes),
 	term__vars_list(PredArgTypes, PredTypeVars0),
-	( PredTypeVars0 = [] ->
-		% optimize for common case of non-polymorphic call
+
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	( 
+		(
+			% optimize for common case of non-polymorphic call
+			PredTypeVars0 = []
+		;
+			% some builtins don't need the type_info
+			polymorphism__no_type_info_builtin(PredModule,
+				PredName, PredArity)
+		)
+	->
 		PredId = PredId0,
 		ProcId = ProcId0,
 		ArgVars = ArgVars0,
@@ -1731,8 +1767,16 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		IsHigherOrder = no
 	->
 		Var = BaseVar,
+
+		% Since this base_type_info is pretending to be
+		% a type_info, we need to adjust its type.
+		% Since base_type_info_const cons_ids are handled
+		% specially, this should not cause problems.
+		construct_type(qualified("mercury_builtin", "type_info") - 1,
+			[Type], NewBaseVarType),
+		map__det_update(VarTypes0, BaseVar, NewBaseVarType, VarTypes),
+
 		VarSet = VarSet0,
-		VarTypes = VarTypes0,
 		ExtraGoals = ExtraGoals0
 	;
 		% Unfortunately, if we have higher order terms, we

@@ -351,6 +351,11 @@ code_util__translate_builtin(Module, PredName, ProcId, Args, BinOp, AsgOp) :-
 	maybe(rval), maybe(pair(var, rval))).
 :- mode code_util__translate_builtin_2(in, in, in, in, out, out) is semidet.
 
+code_util__translate_builtin_2("mercury_builtin", "unsafe_type_cast", 0,
+		[X, Y], no, yes(Y - var(X))).
+code_util__translate_builtin_2("mercury_builtin", "unsafe_promise_unique", 0,
+		[X, Y], no, yes(Y - var(X))).
+
 code_util__translate_builtin_2("mercury_builtin", "builtin_int_gt", 0, [X, Y],
 	yes(binop((>), var(X), var(Y))), no).
 code_util__translate_builtin_2("mercury_builtin", "builtin_int_lt", 0, [X, Y],
