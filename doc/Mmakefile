@@ -50,21 +50,21 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .texi .dvi .ps .text
+.SUFFIXES: .in .texi_pp .texi .dvi .ps .text
 
-%.dvi: %.texi
+%.dvi: %.texi_pp
 	$(TEXI2DVI) $<
 
 %.ps: %.dvi
 	$(DVIPS) -f < $< > $@
 
-%.text: %.texi
+%.text: %.texi_pp
 	$(MAKEINFO) --no-headers -o $@ $<
 
-%.html %_toc.html: %.texi
+%.html %_toc.html: %.texi_pp
 	$(TEXI2HTML) $<
 
-%_1.html: %.texi
+%_1.html: %.texi_pp
 	$(TEXI2HTML_SPLIT) $<
 
 %.1: ../scripts/% make_manpage
@@ -72,6 +72,17 @@ endif
 	MERCURY_COMPILER=../compiler/mercury_compile \
 	MERCURY_MKINIT=../util/mkinit \
 	./make_manpage $< > $@
+
+SED_CMD = sed -e "s/<VERSION>/$(VERSION)/g" < $< > $@
+
+%.texi_pp: %.texi
+	$(SED_CMD)
+
+mercury.html: mercury.html.in
+	$(SED_CMD)
+
+mercury.info: mercury.info.in
+	$(SED_CMD)
 
 #-----------------------------------------------------------------------------#
 
@@ -132,15 +143,15 @@ manpages: c2init.1 mmc.1 mgnuc.1 ml.1 mmake.1 mdb.1 mprof.1 \
 
 #-----------------------------------------------------------------------------#
 
-mercury_user_guide.info: user_guide.texi
+mercury_user_guide.info: user_guide.texi_pp
 	$(MAKEINFO) $<
-mercury_ref.info: reference_manual.texi
+mercury_ref.info: reference_manual.texi_pp
 	$(MAKEINFO) $<
-mercury_trans_guide.info: transition_guide.texi
+mercury_trans_guide.info: transition_guide.texi_pp
 	$(MAKEINFO) $<
-mercury_faq.info: faq.texi
+mercury_faq.info: faq.texi_pp
 	$(MAKEINFO) $<
-mercury_library.info: library.texi
+mercury_library.info: library.texi_pp
 	$(MAKEINFO) $<
 
 #-----------------------------------------------------------------------------#
@@ -166,8 +177,8 @@ mdb_command_test.inp: generate_mdb_command_test mdb_doc
 # Note that the private_builtin.m module is just an implementation
 # detail of the library, so it is not documented.
 
-library-menu.texi: $(LIBRARY_DIR)/*.m
-	{								\
+library-menu.texi_pp: $(LIBRARY_DIR)/*.m
+	{ 								\
 	echo "";							\
 	for filename in $(LIBRARY_DIR)/*.m; do				\
 		case $$filename in					\
@@ -180,9 +191,9 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 				;;					\
 		esac;							\
 	done;								\
-	} > library-menu.texi
+	} > library-menu.texi_pp
 
-library-chapters.texi: $(LIBRARY_DIR)/*.m
+library-chapters.texi_pp: $(LIBRARY_DIR)/*.m
 	for filename in $(LIBRARY_DIR)/*.m; do 				\
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
@@ -205,10 +216,10 @@ library-chapters.texi: $(LIBRARY_DIR)/*.m
 				echo ""; 				\
 				;;					\
 		esac;							\
-	done > library-chapters.texi
+	done > library-chapters.texi_pp
 
-library.dvi library_toc.html mercury_library.info: \
-	library-menu.texi library-chapters.texi
+library.dvi library_toc.html library_1.html mercury_library.info: \
+	library-menu.texi_pp library-chapters.texi_pp
 
 #-----------------------------------------------------------------------------#
 
@@ -296,7 +307,7 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: library-chapters.texi split_html ps install_dirs
+install_webpage: library-chapters.texi_pp split_html ps install_dirs
 	cp *.ps $(INSTALL_WEBPAGE_DIR)
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
@@ -313,7 +324,7 @@ distclean:
 
 .PHONY: clean_texi
 clean_texi:
-	rm -f library-menu.texi library-chapters.texi
+	rm -f library-menu.texi library-chapters.texi *.texi_pp
 
 realclean_local: realclean_texi realclean_manpages
 

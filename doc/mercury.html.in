@@ -5,7 +5,7 @@
 <TITLE>Mercury documentation</TITLE>
 </HEAD>
 <BODY>
-<H1>Mercury documentation</H1>
+<H1>Mercury documentation, version <VERSION></H1>
 <P>
 <UL>
 <LI><A HREF="reference_manual_toc.html">Mercury Language Reference Manual</A>
