@@ -689,6 +689,11 @@ not_plain_mercury:
 	if (strip_prefix(&start, mercury_data)) {
 		/* LLDS */
 		high_level = MR_FALSE;
+		if (strip_prefix(&start, base_typeclass_info)) {
+			goto typeclass_info;
+		}
+		/* also try the old format,
+		   in case we're demangling old files */
 		if (strip_prefix(&start, underscores_base_typeclass_info)) {
 			goto typeclass_info;
 		}
