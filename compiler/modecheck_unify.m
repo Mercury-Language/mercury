@@ -97,7 +97,7 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 		Unify = unify(X, var(Y), Modes, Unification, UnifyContext)
 	).
 
-modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
+modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 			UnifyContext, GoalInfo0, HowToCheckGoal,
 			Goal, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
@@ -116,7 +116,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		% been expanded.)
 		%
 		HowToCheckGoal \= check_unique_modes,
-		ConsId = cons(unqualified(ApplyName), _),
+		ConsId0 = cons(unqualified(ApplyName), _),
 		( ApplyName = "apply" ; ApplyName = "" ),
 		Arity >= 2,
 		ArgVars0 = [FuncVar | FuncArgVars]
@@ -143,7 +143,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 
 		% Find the set of candidate predicates which have the
 		% specified name and arity (and module, if module-qualified)
-		ConsId = cons(PredName, _),
+		ConsId0 = cons(PredName, _),
 		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
 
 		%
@@ -190,7 +190,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		invalid_proc_id(ProcId),
 		list__append(ArgVars0, [X0], ArgVars),
 		FuncCallUnifyContext = call_unify_context(X0,
-			functor(ConsId, ArgVars0), UnifyContext),
+			functor(ConsId0, ArgVars0), UnifyContext),
 		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 		%
@@ -224,7 +224,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 
 		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
-		ConsId = cons(PName, _),
+		ConsId0 = cons(PName, _),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
 		% fields created by polymorphism.m
@@ -260,7 +260,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		QualifiedPName = qualified(PredModule, UnqualPName),
 
 		CallUnifyContext = call_unify_context(X0,
-				functor(ConsId, ArgVars0), UnifyContext),
+				functor(ConsId0, ArgVars0), UnifyContext),
 		LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
 				yes(CallUnifyContext), QualifiedPName),
 
@@ -309,9 +309,9 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		% call modecheck_unify_functor to do the ordinary thing.
 		%
 		mode_info_get_instmap(ModeInfo0, InstMap0),
-		modecheck_unify_functor(X0, TypeOfX, ConsId, ArgVars0, 
-				Unification0, ExtraGoals, Mode, ArgVars,
-				Unification, ModeInfo0, ModeInfo),
+		modecheck_unify_functor(X0, TypeOfX,
+			ConsId0, ArgVars0, Unification0, ExtraGoals, Mode,
+			ConsId, ArgVars, Unification, ModeInfo0, ModeInfo),
 		%
 		% Optimize away construction of unused terms by
 		% replacing the unification with `true'.
@@ -487,14 +487,13 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 	).
 
 :- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
-			pair(list(hlds_goal)), pair(mode), list(var),
-			unification,
-			mode_info, mode_info).
-:- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out,
+			pair(list(hlds_goal)), pair(mode), cons_id, list(var),
+			unification, mode_info, mode_info).
+:- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
 modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
-			ExtraGoals, Mode, ArgVars, Unification,
+			ExtraGoals, Mode, ConsId, ArgVars, Unification,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	list__length(ArgVars0, Arity),
