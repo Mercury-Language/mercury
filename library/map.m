@@ -227,10 +227,20 @@ map__lookup(Map, K, V) :-
 	;
 		KeyType = type_name(type_of(K)),
 		ValueType = type_name(type_of(V)),
+		functor(K, Functor, Arity),
+		( Arity = 0 ->
+			FunctorStr = Functor
+		;
+			string__int_to_string(Arity, ArityStr),
+			string__append_list([Functor, "/", ArityStr],
+				FunctorStr)
+		),
 		string__append_list(
 			["map__lookup: key not found\n",
 			"\tKey Type: ",
 			KeyType,
+			"\n\tKey Functor: ",
+			FunctorStr,
 			"\n\tValue Type: ",
 			ValueType
 			],
