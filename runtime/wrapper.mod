@@ -99,7 +99,8 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	init_entries();
+	/* process the command line options, save results in global vars */
+	process_options(argc, argv);
 
 #if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
 		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
@@ -112,9 +113,6 @@ int main(int argc, char **argv)
 
 	mercury_init_io();
 
-	/* process the command line options, save results in global vars */
-	process_options(argc, argv);
-
 	/* execute the selected entry point */
 	init_engine();
 	run_code();
@@ -126,6 +124,8 @@ void do_init_modules(void)
 {
 	static	bool	done = FALSE;
 
+	do_init_entries();
+
 	if (! done)
 	{
 		init_modules();
@@ -133,7 +133,8 @@ void do_init_modules(void)
 	}
 }
 
-static void process_options(int argc, char **argv)
+static void
+process_options(int argc, char **argv)
 {
 	int	c;
 	int	i;

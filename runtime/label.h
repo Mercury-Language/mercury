@@ -15,7 +15,7 @@ typedef struct s_label
 	Code		*e_addr;   /* address of the code	     */
 } Label;
 
-extern	void	init_entries(void);
+extern	void	do_init_entries(void);
 extern	Label	*insert_entry(const char *name, Code *addr);
 extern	Label	*lookup_label_name(const char *name);
 extern	Label	*lookup_label_addr(const Code *addr);

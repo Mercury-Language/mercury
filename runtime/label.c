@@ -23,17 +23,23 @@ Table	entry_name_table =
 Table	entry_addr_table =
 	{0, NULL, entry_addr, hash_addr, equal_addr};
 
-void init_entries(void)
+void do_init_entries(void)
 {
-	entry_name_table.ta_size = entry_table_size;
-	entry_addr_table.ta_size = entry_table_size;
-	init_table(entry_name_table);
-	init_table(entry_addr_table);
+	static bool done = FALSE;
+	if (!done) {
+		entry_name_table.ta_size = entry_table_size;
+		entry_addr_table.ta_size = entry_table_size;
+		init_table(entry_name_table);
+		init_table(entry_addr_table);
+		done = TRUE;
+	}
 }
 
 Label *insert_entry(const char *name, Code *addr)
 {
 	Label	*entry;
+
+	do_init_entries();
 
 	entry = make(Label);
 	entry->e_name  = name;
