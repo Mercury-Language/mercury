@@ -1913,39 +1913,30 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarnums,
 		{ set__to_sorted_list(CallResumeSet, CallResumeList) },
 		{ set__to_sorted_list(CallNondetSet, CallNondetList) },
 		hlds_out__write_indent(Indent),
-		io__write_string("% need across call forward vars:"),
+		io__write_string("% need across call forward vars: "),
 		( { CallForwardList = [] } ->
-			io__write_string(" none\n")
+			io__write_string("none\n")
 		;
-			io__write_string("\n"),
-			hlds_out__write_indent(Indent),
-			io__write_string("% "),
 			hlds_out__write_vars(CallForwardList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
 		),
 
 		hlds_out__write_indent(Indent),
-		io__write_string("% need across call resume vars:"),
+		io__write_string("% need across call resume vars: "),
 		( { CallResumeList = [] } ->
-			io__write_string(" none\n")
+			io__write_string("none\n")
 		;
-			io__write_string("\n"),
-			hlds_out__write_indent(Indent),
-			io__write_string("% "),
 			hlds_out__write_vars(CallResumeList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
 		),
 
 		hlds_out__write_indent(Indent),
-		io__write_string("% need across call nondet vars:"),
+		io__write_string("% need across call nondet vars: "),
 		( { CallNondetList = [] } ->
-			io__write_string(" none\n")
+			io__write_string("none\n")
 		;
-			io__write_string("\n"),
-			hlds_out__write_indent(Indent),
-			io__write_string("% "),
 			hlds_out__write_vars(CallNondetList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
@@ -1973,26 +1964,20 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarnums,
 			io__write_string("% resume point has no stack label\n")
 		),
 		hlds_out__write_indent(Indent),
-		io__write_string("% need in resume resume vars:"),
+		io__write_string("% need in resume resume vars: "),
 		( { ResumeResumeList = [] } ->
-			io__write_string(" none\n")
+			io__write_string("none\n")
 		;
-			io__write_string("\n"),
-			hlds_out__write_indent(Indent),
-			io__write_string("% "),
 			hlds_out__write_vars(ResumeResumeList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
 		),
 
 		hlds_out__write_indent(Indent),
-		io__write_string("% need in resume nondet vars:"),
+		io__write_string("% need in resume nondet vars: "),
 		( { ResumeNondetList = [] } ->
-			io__write_string(" none\n")
+			io__write_string("none\n")
 		;
-			io__write_string("\n"),
-			hlds_out__write_indent(Indent),
-			io__write_string("% "),
 			hlds_out__write_vars(ResumeNondetList, VarSet,
 				AppendVarnums),
 			io__write_string("\n")
@@ -2009,9 +1994,7 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarnums,
 		{ NeedInParConj = need_in_par_conj(ParConjSet) },
 		{ set__to_sorted_list(ParConjSet, ParConjList) },
 		hlds_out__write_indent(Indent),
-		io__write_string("% need in par_conj vars:\n"),
-		hlds_out__write_indent(Indent),
-		io__write_string("% "),
+		io__write_string("% need in par_conj vars: "),
 		hlds_out__write_vars(ParConjList, VarSet, AppendVarnums),
 		io__write_string("\n")
 	;
