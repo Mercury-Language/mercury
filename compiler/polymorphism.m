@@ -1877,9 +1877,18 @@ insert_typeclass_info_locns([_|_], [], _, _) :-
 %
 % If the pred we are processing is a polymorphic predicate,
 % or contains polymorphically-typed goals, we
-% may need to fix up the quantification (non-local variables)
+% may need to fix up the quantification (non-local variables) of the goal
 % so that it includes the extra type-info variables and type-class-info
-% variables that we added to the headvars in the non-locals set.
+% variables that we added to the headvars or the arguments of 
+% existentially typed predicate calls, function calls and deconstruction
+% unifications.
+%
+% Type(class)-infos for ground types added to predicate calls, function calls
+% and existentially typed construction unifications do not require
+% requantification because they are local to the conjunction containing
+% the type(class)-info construction and the goal which uses the
+% type(class)-info. The non-locals for those goals are adjusted by
+% the code which creates/alters them.
 %
 
 polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
