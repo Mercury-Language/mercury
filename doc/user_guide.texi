@@ -346,7 +346,7 @@ will list the available @var{runtime-options}.
 @subsection Debugging.
 Don't.  Prove your programs correct ;-)
 
-It is possible to debug the generated C code using gdb,
+It is possible to debug the generated C code using @samp{gdb},
 but we don't really recommend this unless there is no alternative.
 Also, if you compiled with @samp{-s debug.gc} rather than the
 default @samp{-s asm_fast.gc},
@@ -467,6 +467,12 @@ if your code uses lists.
 
 In Mercury, less-than-or-equal to is written as @samp{=<} not
 as @samp{<=}, which is used for reverse implication.
+
+@item I'm getting an error message that I don't understand.  What can I do?
+
+Try compiling with the @samp{-e} (@samp{--verbose-errors}) option.
+This option causes the compiler to give even more verbose descriptions
+than usual.
 
 @item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
 
