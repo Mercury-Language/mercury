@@ -626,10 +626,10 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 		}
 
-#ifdef PC_INDEX
-		fprintf(stderr, "PC at signal: %d (%x)\n",
-			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
-			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
+#ifdef PC_ACCESS
+		fprintf(stderr, "PC at signal: %ld (%lx)\n",
+			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS,
+			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS);
 #endif
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
@@ -668,10 +668,10 @@ static void explain_segv(siginfo_t *info, void *context)
 
 		}
 
-#ifdef PC_INDEX
-		fprintf(stderr, "PC at signal: %d (%x)\n",
-			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
-			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
+#ifdef PC_ACCESS
+		fprintf(stderr, "PC at signal: %ld (%lx)\n",
+			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS,
+			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS);
 #endif
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);

@@ -26,7 +26,7 @@
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SETITIMER		we have setitimer()
-**	PC_INDEX		index of PC in ucontexts.
+**	PC_ACCESS		the way to access the saved PC in ucontexts.
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
 **				(either sa_handler or sa_sigaction).
@@ -46,6 +46,6 @@
 #undef	HAVE_SYS_TIME
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SETITIMER
-#undef	PC_INDEX
+#undef	PC_ACCESS
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
