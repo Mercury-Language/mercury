@@ -168,7 +168,7 @@ poly_add(Poly1, Poly2, Result) :-
 				Result = poly(Var2, Terms)
 			)
 		;
-			Poly2 = const(C2),
+			Poly2 = const(_),
 			add_to_order_zero_term(Terms1, Poly2, Terms),
 			Result = poly(Var1, Terms)
 		)
@@ -247,7 +247,7 @@ poly_mul(Poly1, Poly2, Result) :-
 				Result = poly(Var2, Terms)
 			)
 		;
-			Poly2 = const(C2),
+			Poly2 = const(_),
 			mul_through(Terms1, Poly2, Terms),
 			Result = poly(Var1, Terms)
 		)
