@@ -163,7 +163,7 @@ void reg_msg(void)
 
 	for(i=1; i<=8; i++) {
 		x = (int) get_reg(i);
-		if ( (int) heapmin < x && x < (int) heapmax)
+		if ( (int) heapmin <= x && x < (int) heapend)
 			x -= (int) heapmin;
 		printf("%8x ", x);
 	}

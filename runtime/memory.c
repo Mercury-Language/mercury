@@ -122,25 +122,33 @@ void init_memory(void)
 	page_size = getpagesize();
 	unit = max(page_size, pcache_size);
 
-	heap_size           = roundup(heap_size * 1024, unit);
-	detstack_size       = roundup(detstack_size * 1024, unit);
-	nondstack_size      = roundup(nondstack_size * 1024, unit);
+#ifdef CONSERVATIVE_GC
+	heap_size = heap_zone_size = 0;
+#else
 	heap_zone_size      = roundup(heap_zone_size * 1024, unit);
+	heap_size           = roundup(heap_size * 1024, unit);
+#endif
+	detstack_size       = roundup(detstack_size * 1024, unit);
 	detstack_zone_size  = roundup(detstack_zone_size * 1024, unit);
+	nondstack_size      = roundup(nondstack_size * 1024, unit);
 	nondstack_zone_size = roundup(nondstack_zone_size * 1024, unit);
 
 	/*
-	** What is this code for, Zoltan?
+	** If the zone sizes where set to something too big, then
+	** set them to a single unit.
 	*/
 
+#ifndef CONSERVATIVE_GC
 	if (heap_zone_size >= heap_size)
 		heap_zone_size = unit;
+#endif
 
 	if (detstack_zone_size >= detstack_size)
 		detstack_zone_size = unit;
 
 	if (nondstack_zone_size >= nondstack_size)
 		nondstack_zone_size = unit;
+
 
 	/*
 	** Calculate how much memory to allocate, then allocate it
@@ -167,12 +175,20 @@ void init_memory(void)
 	detstack_offset = heap_offset + pcache_size / 4;
 	nondstack_offset = detstack_offset + pcache_size / 4;
 
+#ifdef CONSERVATIVE_GC
+	heap = heapmin = heapend = 0;
+#else
 	heap    = (Word *) arena;
 	heapmin = (Word *) ((char *) heap + heap_offset);
 	heapend = (Word *) ((char *) heap + heap_size + unit);
 	assert(((int) heapend) % unit == 0);
+#endif
 
+#ifdef CONSERVATIVE_GC
+	detstack    = (Word *) arena;
+#else
 	detstack    = heapend;
+#endif
 	detstackmin = (Word *) ((char *) detstack + detstack_offset);
 	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
 	assert(((int) detstackend) % unit == 0);
@@ -281,11 +297,25 @@ static int roundup(int value, int align)
 ** PROT_NONE    page can not be accessed
 */
 
+#ifdef CONSERVATIVE_GC
+	/*
+	** The conservative garbage collectors scans through
+	** all these areas, so we need to allow reads.
+	** XXX This probably causes efficiency problems:
+	** too much memory for the GC to scan, and it probably
+	** all gets paged it.
+	*/
+#define MY_PROT PROT_READ
+#else
+#define MY_PROT PROT_NONE
+#endif
+
 static void setup_mprotect(void)
 {
 	heap_zone_left = heap_zone_size;
 	heap_zone = (caddr_t) (heapend) - heap_zone_size;
-	if (mprotect(heap_zone, heap_zone_size, PROT_NONE) != 0)
+	if (heap_zone_size > 0
+	    && mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
 	{
 		perror("cannot protect head redzone");
 		exit(1);
@@ -293,7 +323,8 @@ static void setup_mprotect(void)
 
 	detstack_zone_left = detstack_zone_size;
 	detstack_zone = (caddr_t) (detstackend) - detstack_zone_size;
-	if (mprotect(detstack_zone, detstack_zone_size, PROT_NONE) != 0)
+	if (detstack_zone_size > 0
+	    && mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
 	{
 		perror("cannot protect detstack redzone");
 		exit(1);
@@ -301,7 +332,8 @@ static void setup_mprotect(void)
 
 	nondstack_zone_left = nondstack_zone_size;
 	nondstack_zone = (caddr_t) (nondstackend) - nondstack_zone_size;
-	if (mprotect(nondstack_zone, nondstack_zone_size, PROT_NONE) != 0)
+	if (nondstack_zone_size > 0
+	    && mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
 	{
 		perror("cannot protect nondstack redzone");
 		exit(1);
