@@ -86,14 +86,14 @@ RUNTIME_DIR = $(MERCURY_DIR)/runtime
 LIBRARY_DIR = $(MERCURY_DIR)/library
 BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 
-# Specify the location of the system .mod files 
+# Specify the location of the system .c files 
 
-SYS_MODS = \
-	$(RUNTIME_DIR)/engine.mod \
-	$(RUNTIME_DIR)/io_rt.mod \
-	$(RUNTIME_DIR)/wrapper.mod \
-	$(RUNTIME_DIR)/call.mod \
-	$(RUNTIME_DIR)/solutions.mod
+SYS_CS = \
+	$(RUNTIME_DIR)/engine.c \
+	$(RUNTIME_DIR)/io_rt.c \
+	$(RUNTIME_DIR)/wrapper.c \
+	$(RUNTIME_DIR)/call.c \
+	$(RUNTIME_DIR)/solutions.c
 
 #-----------------------------------------------------------------------------#
 
