@@ -1571,9 +1571,11 @@ output_set_line_num(Context) -->
 	{ term__context_line(Context, Line) },
 	% The context is unfortunately bogus for pragma_c_codes inlined
 	% from a .opt file.
+	globals__io_lookup_bool_option(line_numbers, LineNumbers),
 	(
 		{ Line > 0 },
-		{ File \= "" }
+		{ File \= "" },
+		{ LineNumbers = yes }
 	->
 		io__write_string("#line "),
 		io__write_int(Line),
@@ -1592,9 +1594,11 @@ output_reset_line_num -->
 	% idea of what it is processing back to the file we are generating.
 	io__get_output_line_number(Line),
 	io__output_stream_name(FileName),
+	globals__io_lookup_bool_option(line_numbers, LineNumbers),
 	(
 		{ Line > 0 },
-		{ FileName \= "" }
+		{ FileName \= "" },
+		{ LineNumbers = yes }
 	->
 		io__write_string("#line "),
 		{ NextLine is Line + 1 },

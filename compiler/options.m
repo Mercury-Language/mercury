@@ -409,7 +409,7 @@ option_defaults_2(aux_output_option, [
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
-	line_numbers		-	bool(no),
+	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
@@ -671,7 +671,6 @@ short_option('l', 			link_libraries).
 short_option('L', 			link_library_directories).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
-short_option('n', 			line_numbers).
 short_option('o', 			output_file_name).
 short_option('O', 			opt_level).
 short_option('p', 			profiling).
@@ -1497,9 +1496,11 @@ options_help_aux_output -->
 		"\tor `<module>.nl' (depending on the dialect).",
 		"--prolog-dialect {sicstus,nu}",
 		"\tTarget the named dialect if generating Prolog code.",
-		"-n, --line-numbers",
-		"\tOutput line numbers in the generated code.",
-		"\tOnly works with the `-G' and `-P' options.",
+		"--no-line-numbers",
+		"\tDo not put source line numbers in the generated code.",
+		"\tThe generated code may be in C (the usual case),",
+		"\tin Goedel (with the option --convert-to-goedel)",
+		"\tor in Mercury (with the option --convert-to-mercury).",
 		"--auto-comments",
 		"\tOutput comments in the `<module>.c' file.",
 		"\t(The code may be easier to understand if you also",
