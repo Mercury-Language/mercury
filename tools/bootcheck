@@ -126,7 +126,7 @@ mkdir library
 cd library
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
-# ln -s $root/library/*.nl .
+ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
 ln -s $root/library/library.init .
 cd $root/stage2
@@ -236,7 +236,7 @@ mkdir library
 cd library
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
-# ln -s $root/library/*.nl .
+ln -s $root/library/*.nl .
 cp $root/library/Mmake* .
 ln -s $root/library/library.init .
 cd $root/stage3
