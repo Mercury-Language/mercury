@@ -109,8 +109,9 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 
 	code_info__pop_failure_cont,
 
-		% Discard hp and solver ticket if the condition succeeded
-	code_info__maybe_discard_ticket(MaybeTicketSlot, DiscardTicketCode),
+		% Discard hp and trail ticket if the condition succeeded
+	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, commit,
+		DiscardTicketCode),
 	code_info__maybe_discard_hp(MaybeHpSlot),
 
 		% Generate the then branch
@@ -120,7 +121,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		% Generate the entry to the else branch
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, undo,
 		RestoreTicketCode),
 	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
 
@@ -234,18 +235,18 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	code_info__pickup_zombies(Zombies),
 	code_info__make_vars_forward_dead(Zombies),
 
-		% Discard hp and maybe solver ticket if the condition succeeded
+		% Discard hp and maybe trail ticket if the condition succeeded
 	code_info__maybe_discard_hp(MaybeHpSlot),
 	( { NondetCond = yes } ->
-			% We cannot discard the solver ticket if the 
+			% We cannot discard the trail ticket if the 
 			% condition can be backtracked into.
 		% code_info__maybe_pop_stack(MaybeTicketSlot, DiscardTicketCode)
 		{ DiscardTicketCode = empty }
 	;
-			% Discard the solver ticket if the condition succeeded
+			% Discard the trail ticket if the condition succeeded
 			% and we will not backtrack into the condition
-		code_info__maybe_discard_ticket(MaybeTicketSlot,
-			DiscardTicketCode)
+		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
+			commit, DiscardTicketCode)
 	),
 
 		% Generate the then branch
@@ -256,7 +257,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
 	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
-	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, undo,
 		RestoreTicketCode),
 
 		% Generate the else branch

@@ -280,7 +280,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
-		Uinstr0 = restore_ticket(Rval),
+		Uinstr0 = reset_ticket(Rval, _Reason),
 		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,

@@ -777,7 +777,7 @@ output_instruction_decls(restore_hp(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(store_ticket(Lval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
-output_instruction_decls(restore_ticket(Rval), DeclSet0, DeclSet) -->
+output_instruction_decls(reset_ticket(Rval, _Reason), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(discard_ticket, DeclSet, DeclSet) --> [].
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
@@ -994,17 +994,19 @@ output_instruction(restore_hp(Rval), _) -->
 	io__write_string(");\n").
 
 output_instruction(store_ticket(Lval), _) -->
-	io__write_string("\tstore_ticket("),
+	io__write_string("\tMR_store_ticket("),
 	output_lval_as_word(Lval),
 	io__write_string(");\n").
 
-output_instruction(restore_ticket(Rval), _) -->
-	io__write_string("\trestore_ticket("),
+output_instruction(reset_ticket(Rval, Reason), _) -->
+	io__write_string("\tMR_reset_ticket("),
 	output_rval_as_type(Rval, word),
+	io__write_string(", "),
+	output_reset_trail_reason(Reason),
 	io__write_string(");\n").
 
 output_instruction(discard_ticket, _) -->
-	io__write_string("\tdiscard_ticket();\n").
+	io__write_string("\tMR_discard_ticket();\n").
 
 output_instruction(incr_sp(N, Msg), _) -->
 	io__write_string("\tincr_sp_push_msg("),
@@ -1160,6 +1162,18 @@ output_pragma_outputs([O|Outputs]) -->
 	),
 	io__write_string(";\n"),
 	output_pragma_outputs(Outputs).
+
+:- pred output_reset_trail_reason(reset_trail_reason, io__state, io__state).
+:- mode output_reset_trail_reason(in, di, uo) is det.
+
+output_reset_trail_reason(undo) -->
+	io__write_string("MR_undo").
+output_reset_trail_reason(commit) -->
+	io__write_string("MR_commit").
+output_reset_trail_reason(exception) -->
+	io__write_string("MR_exception").
+output_reset_trail_reason(gc) -->
+	io__write_string("MR_gc").
 
 :- pred output_livevals(list(lval), io__state, io__state).
 :- mode output_livevals(in, di, uo) is det.

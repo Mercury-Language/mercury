@@ -173,16 +173,21 @@
 			% was allocated since that call to mark_hp.
 
 	;	store_ticket(lval)
-			% Get a ticket from the constraint solver,
-			% push it onto the ticket stack,
+			% Get a trail ticket from the constraint solver,
+			% (conceptually) push it onto the ticket stack
+			% [actually just increment the ticket counter]
 			% and store its address in the lval.
 
-	;	restore_ticket(rval)
-			% Restore the the constraint solver to the state
-			% it was in when the ticket pointed to by the
-			% specified rval was obtained with store_ticket().
+	;	reset_ticket(rval, reset_trail_reason)
 			% Reset the ticket stack so that the specified
 			% rval is now at the top of the ticket stack.
+			% (i.e. reset the trail back to the specified rval.)
+			% If undo_reason is `undo' (or `exception'), restore
+			% any global state to the state it was in when
+			% the ticket pointed to by the specified rval
+			% was obtained with store_ticket().
+			% If undo_reason is `commit', leave the state
+			% unchanged, just discard the trail entries.
 
 	;	discard_ticket
 			% Pop the top ticket off the ticket stack.
@@ -229,6 +234,14 @@
 	--->	pragma_c_output(lval, type, string).
 				% where to put the output val, type and name
 				% of variable containing the output val
+
+	% see runtime/mercury_trail.h
+:- type reset_trail_reason
+	--->	undo
+	;	commit
+	;	exception
+	;	gc
+	.
 
 	% Each call instruction has a list of liveinfo, which stores
 	% information about which variables are live after the call

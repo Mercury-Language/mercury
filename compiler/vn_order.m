@@ -370,7 +370,7 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
-			Vn_instr = vn_restore_ticket(Vn),
+			Vn_instr = vn_reset_ticket(Vn, _Reason),
 			vn_order__find_links(Vn, node_ctrl(Ctrl),
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)

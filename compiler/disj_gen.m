@@ -137,7 +137,7 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 				RestoreHPCode),
 
 				% Reset the solver state if necessary
-			code_info__maybe_restore_ticket(MaybeTicketSlot,
+			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
 				RestoreTicketCode)
 		;
 			{ RestoreHPCode = empty },
@@ -199,8 +199,8 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			RestoreHPCode),
 
 			% Restore the solver state if necessary
-		code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot, 
-			RestorePopTicketCode),
+		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, 
+			undo, RestorePopTicketCode),
 
 			% Generate the goal
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
@@ -299,7 +299,7 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 				RestoreHPCode),
 
 				% Reset the solver state if necessary
-			code_info__maybe_restore_ticket(MaybeTicketSlot,
+			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
 				RestoreTicketCode)
 		;
 			{ RestoreHPCode = empty },
@@ -354,8 +354,8 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			RestoreHPCode),
 
 			% Restore the solver state if necessary
-		code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
-			RestorePopTicketCode),
+		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
+			undo, RestorePopTicketCode),
 
 		code_gen__generate_goal(model_non, Goal0, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),

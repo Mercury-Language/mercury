@@ -1250,7 +1250,7 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			vn_util__record_use_list(Vns, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;
-			VnInstr = vn_restore_ticket(Vn),
+			VnInstr = vn_reset_ticket(Vn, _Reason),
 			vn_util__record_use(Vn, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;

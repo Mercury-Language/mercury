@@ -160,7 +160,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
-		Uinstr = restore_ticket(Rval),
+		Uinstr = reset_ticket(Rval, _Reason),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;

@@ -17,7 +17,7 @@
 %	- simple wrappers around access predicates
 %	- handling failure continuations
 %	- handling liveness issues
-%	- saving and restoring heap pointers, tickets etc
+%	- saving and restoring heap pointers, trail tickets etc
 %	- interfacing to code_exprn
 %	- managing the info required by garbage collection and value numbering
 %	- managing stack slots
@@ -2152,7 +2152,7 @@ code_info__pickup_zombies(Zombies) -->
 %---------------------------------------------------------------------------%
 
 	% Submodule for handling the saving and restoration
-	% of tickets, heap pointers, stack pointers etc.
+	% of trail tickets, heap pointers, stack pointers etc.
 
 :- interface.
 
@@ -2187,12 +2187,13 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__save_ticket(code_tree, lval, code_info, code_info).
 :- mode code_info__save_ticket(out, out, in, out) is det.
 
-:- pred code_info__restore_ticket(lval, code_tree, code_info, code_info).
-:- mode code_info__restore_ticket(in, out, in, out) is det.
-
-:- pred code_info__restore_and_discard_ticket(lval, code_tree,
+:- pred code_info__reset_ticket(lval, reset_trail_reason, code_tree,
 	code_info, code_info).
-:- mode code_info__restore_and_discard_ticket(in, out, in, out) is det.
+:- mode code_info__reset_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason, code_tree,
+	code_info, code_info).
+:- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
 
 :- pred code_info__discard_ticket(lval, code_tree, code_info, code_info).
 :- mode code_info__discard_ticket(in, out, in, out) is det.
@@ -2201,13 +2202,13 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__maybe_save_ticket(in, out, out, in, out) is det.
 
-:- pred code_info__maybe_restore_ticket(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_ticket(in, out, in, out) is det.
+:- pred code_info__maybe_reset_ticket(maybe(lval), reset_trail_reason,
+	code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_ticket(in, in, out, in, out) is det.
 
-:- pred code_info__maybe_restore_and_discard_ticket(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_and_discard_ticket(in, out, in, out) is det.
+:- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_and_discard_ticket(in, in, out, in, out) is det.
 
 :- pred code_info__maybe_discard_ticket(maybe(lval), code_tree,
 	code_info, code_info).
@@ -2264,19 +2265,17 @@ code_info__maybe_discard_hp(MaybeHpSlot) -->
 		[]
 	).
 
-% ZZZ
-
 code_info__save_ticket(Code, TicketSlot) -->
 	code_info__acquire_temp_slot(ticket, TicketSlot),
-	{ Code = node([store_ticket(TicketSlot) - "Save solver state"]) }.
+	{ Code = node([store_ticket(TicketSlot) - "Save trail state"]) }.
 
-code_info__restore_ticket(TicketSlot, Code) -->
-	{ Code = node([restore_ticket(lval(TicketSlot)) - "Restore solver state"]) }.
+code_info__reset_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([reset_ticket(lval(TicketSlot), Reason) - "Reset trail"]) }.
 
-code_info__restore_and_discard_ticket(TicketSlot, Code) -->
+code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
 	code_info__release_temp_slot(TicketSlot),
 	{ Code = node([
-		restore_ticket(lval(TicketSlot)) - "Restore solver state",
+		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
 		discard_ticket - "Pop ticket stack"
 	]) }.
 
@@ -2293,16 +2292,16 @@ code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
 		{ MaybeTicketSlot = no }
 	).
 
-code_info__maybe_restore_ticket(MaybeTicketSlot, Code) -->
+code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__restore_ticket(TicketSlot, Code)
+		code_info__reset_ticket(TicketSlot, Reason, Code)
 	;
 		{ Code = empty }
 	).
 
-code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot, Code) -->
+code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__restore_and_discard_ticket(TicketSlot, Code)
+		code_info__reset_and_discard_ticket(TicketSlot, Reason, Code)
 	;
 		{ Code = empty }
 	).

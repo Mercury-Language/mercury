@@ -314,11 +314,11 @@ vn_block__handle_instr(store_ticket(Lval),
 	vn_block__new_ctrl_node(vn_store_ticket(Vnlval), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(restore_ticket(Rval),
+vn_block__handle_instr(reset_ticket(Rval, Reason),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
-	vn_block__new_ctrl_node(vn_restore_ticket(Vn), Livemap,
+	vn_block__new_ctrl_node(vn_reset_ticket(Vn, Reason), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(discard_ticket,
@@ -443,7 +443,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		VnInstr = vn_restore_ticket(_),
+		VnInstr = vn_reset_ticket(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -845,7 +845,7 @@ vn_block__is_ctrl_instr(incr_hp(_, _, _), no).
 vn_block__is_ctrl_instr(mark_hp(_), yes).
 vn_block__is_ctrl_instr(restore_hp(_), yes).
 vn_block__is_ctrl_instr(store_ticket(_), yes).
-vn_block__is_ctrl_instr(restore_ticket(_), yes).
+vn_block__is_ctrl_instr(reset_ticket(_, _), yes).
 vn_block__is_ctrl_instr(discard_ticket, yes).
 vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).

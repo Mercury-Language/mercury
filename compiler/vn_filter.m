@@ -120,7 +120,7 @@ vn_filter__user_instr(incr_hp(_, _, Rval), yes(Rval)).
 vn_filter__user_instr(mark_hp(_), no).
 vn_filter__user_instr(restore_hp(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
-vn_filter__user_instr(restore_ticket(Rval), yes(Rval)).
+vn_filter__user_instr(reset_ticket(Rval, _Reason), yes(Rval)).
 vn_filter__user_instr(discard_ticket, no).
 vn_filter__user_instr(incr_sp(_, _), no).
 vn_filter__user_instr(decr_sp(_), no).
@@ -167,8 +167,8 @@ vn_filter__replace_in_user_instr(restore_hp(Rval0), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(store_ticket(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(restore_ticket(Rval0), Temp, Defn,
-		restore_ticket(Rval)) :-
+vn_filter__replace_in_user_instr(reset_ticket(Rval0, Reason), Temp, Defn,
+		reset_ticket(Rval, Reason)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(discard_ticket, _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -200,7 +200,7 @@ vn_filter__defining_instr(incr_hp(Lval, _, _), yes(Lval)).
 vn_filter__defining_instr(mark_hp(Lval), yes(Lval)).
 vn_filter__defining_instr(restore_hp(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
-vn_filter__defining_instr(restore_ticket(_), no).
+vn_filter__defining_instr(reset_ticket(_, _), no).
 vn_filter__defining_instr(discard_ticket, no).
 vn_filter__defining_instr(incr_sp(_, _), no).
 vn_filter__defining_instr(decr_sp(_), no).
@@ -246,7 +246,7 @@ vn_filter__replace_in_defining_instr(restore_hp(_), _, _, _) :-
 vn_filter__replace_in_defining_instr(store_ticket(Lval0), Temp, Defn,
 		store_ticket(Lval)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
-vn_filter__replace_in_defining_instr(restore_ticket(_), _, _, _) :-
+vn_filter__replace_in_defining_instr(reset_ticket(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(discard_ticket, _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").

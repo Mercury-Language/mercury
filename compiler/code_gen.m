@@ -955,26 +955,31 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
 	( { CodeModel = model_det } ->
+		{ DiscardTicketCode = empty },
 		{ FailCode = empty }
 	;
 		code_info__grab_code_info(CodeInfo),
 		code_info__pop_failure_cont,
+		% Is this necessary?  Must we reset things each step
+		% of the way, or can we just reset at the end?
+		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
+			commit, DiscardTicketCode),
 		code_info__generate_failure(FailCode),
 		code_info__slap_code_info(CodeInfo)
 	),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+	code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, undo,
 		RestoreTicketCode),
 	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHpCode),
 	{ Code = tree(ModContCode,
 		 tree(SaveHpCode,
 		 tree(SaveTicketCode,
 		 tree(GoalCode,
-		 % XXX don't we need `DiscardTicketCode' here?
+		 tree(DiscardTicketCode, % is this necessary?
 		 tree(FailCode,
 		 tree(RestoreContCode,
 		 tree(RestoreTicketCode,
-		      RestoreHpCode))))))) }.
+		      RestoreHpCode)))))))) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

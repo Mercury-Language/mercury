@@ -250,10 +250,10 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instr = store_ticket(Lval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
-		Vn_instr = vn_restore_ticket(Vn),
+		Vn_instr = vn_reset_ticket(Vn, Reason),
 		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
 			Templocs0, Templocs, Params, FlushInstrs),
-		Instr = restore_ticket(Rval) - "",
+		Instr = reset_ticket(Rval, Reason) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_discard_ticket,

@@ -77,7 +77,7 @@
 			;	vn_mark_hp(vnlval)
 			;	vn_restore_hp(vn)
 			;	vn_store_ticket(vnlval)
-			;	vn_restore_ticket(vn)
+			;	vn_reset_ticket(vn, reset_trail_reason)
 			;	vn_discard_ticket
 			;	vn_incr_sp(int, string)
 			;	vn_decr_sp(int).

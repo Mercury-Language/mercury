@@ -226,9 +226,9 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Info = Info0
 	;
 		% unlikely to find anything to share, but why not try?
-		Instr0 = restore_ticket(Rval0),
+		Instr0 = reset_ticket(Rval0, Reason),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
-		Instr = restore_ticket(Rval)
+		Instr = reset_ticket(Rval, Reason)
 	;
 		Instr0 = discard_ticket,
 		Instr = Instr0,

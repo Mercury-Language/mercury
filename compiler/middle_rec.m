@@ -405,7 +405,7 @@ middle_rec__find_used_registers_instr(restore_hp(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(store_ticket(Lval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(restore_ticket(Rval), Used0, Used) :-
+middle_rec__find_used_registers_instr(reset_ticket(Rval, _Rsn), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(discard_ticket, Used, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).

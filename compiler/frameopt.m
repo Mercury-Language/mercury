@@ -681,7 +681,7 @@ possible_targets(incr_hp(_, _, _), []).
 possible_targets(mark_hp(_), []).
 possible_targets(restore_hp(_), []).
 possible_targets(store_ticket(_), []).
-possible_targets(restore_ticket(_), []).
+possible_targets(reset_ticket(_, _), []).
 possible_targets(discard_ticket, []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
@@ -1291,7 +1291,7 @@ substitute_labels_instr(incr_hp(Lval, Tag, Rval), _,
 substitute_labels_instr(mark_hp(Lval), _, mark_hp(Lval)).
 substitute_labels_instr(restore_hp(Rval), _, restore_hp(Rval)).
 substitute_labels_instr(store_ticket(Lval), _, store_ticket(Lval)).
-substitute_labels_instr(restore_ticket(Rval), _, restore_ticket(Rval)).
+substitute_labels_instr(reset_ticket(Rval, Rsn), _, reset_ticket(Rval, Rsn)).
 substitute_labels_instr(discard_ticket, _, discard_ticket).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).

@@ -346,7 +346,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = restore_ticket(Rval),
+		Instr = reset_ticket(Rval, _Reason),
 		vn_verify__tags_rval(Rval, NoDeref0),
 		NoDeref = NoDeref0,
 		Tested = Tested0
