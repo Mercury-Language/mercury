@@ -1,9 +1,10 @@
-Infinity:
+Plus Infinity:
                   %e: success
-                  %e: success
-                  %f: success
                   %f: success
                   %g: success
+Minus Infinity:
+                  %e: success
+                  %f: success
                   %g: success
 Not a number:
                   %e: success
