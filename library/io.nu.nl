@@ -262,7 +262,7 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
 		IO = io__state(A, PutBack, C, D, E),
-		char_to_int(Char, Code)
+		char__to_int(Char, Code)
  	;
 		get0(Stream, Code),
 		IO = IO_0

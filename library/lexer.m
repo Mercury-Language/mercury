@@ -86,7 +86,7 @@ lexer__token_to_string(comma, "token `,'").
 lexer__token_to_string(end, "token `. '").
 lexer__token_to_string(eof, "end-of-file").
 lexer__token_to_string(junk(JunkChar), String) :-
-	char_to_int(JunkChar, Code),
+	char__to_int(JunkChar, Code),
 	string__int_to_base_string(Code, 16, Hex),
 	string__append_list(["illegal character <<0x", Hex, ">>"], String).
 lexer__token_to_string(io_error(IO_Error), String) :-
@@ -489,7 +489,7 @@ lexer__finish_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		{ lexer__rev_char_list_to_string(HexChars, HexString) },
 		(
 			{ string__base_string_to_int(16, HexString, Int) },
-			{ char_to_int(Char, Int) }
+			{ char__to_int(Char, Int) }
 		->
 			lexer__get_quoted_name(QuoteChar, [Char|Chars], Token) 
 		;
@@ -538,7 +538,7 @@ lexer__finish_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		{ lexer__rev_char_list_to_string(OctalChars, OctalString) },
 		(
 			{ string__base_string_to_int(8, OctalString, Int) },
-			{ char_to_int(Char, Int) }
+			{ char__to_int(Char, Int) }
 		->
 			lexer__get_quoted_name(QuoteChar, [Char|Chars], Token) 
 		;
@@ -654,7 +654,7 @@ lexer__get_char_code(Token) -->
 	; { Result = eof }, !,
 		{ Token = error("unterminated char code constant") }
 	; { Result = ok(Char) },
-		{ char_to_int(Char, CharCode) },
+		{ char__to_int(Char, CharCode) },
 		{ Token = integer(CharCode) }
 	).
 

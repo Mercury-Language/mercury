@@ -117,7 +117,7 @@ parser__check_for_bad_token([Token - LineNum | Tokens], Message, LineNum) :-
 		io__error_message(IO_Error, IO_ErrorMessage),
 		string__append("I/O error: ", IO_ErrorMessage, Message)
 	; Token = junk(Char) ->
-		char_to_int(Char, Code),
+		char__to_int(Char, Code),
 		string__int_to_base_string(Code, 10, Decimal),
 		string__int_to_base_string(Code, 16, Hex),
 		string__append_list(["Syntax error: Illegal character 0x",

@@ -636,7 +636,7 @@ io__read_char(Stream, Result, IO_0, IO) :-
 	->
 		Result = eof
 	;
-		char_to_int(Char, Code)
+		char__to_int(Char, Code)
 	->
 		Result = ok(Char)
 	;

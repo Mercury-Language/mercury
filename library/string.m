@@ -462,7 +462,7 @@ string__prefix(String, Prefix) :-
 :- string__char_to_string(Char, String) when Char or String.
 string__char_to_string(Char, String) :-
 	string__to_int_list(String, [Code]),
-	char_to_int(Char, Code).
+	char__to_int(Char, Code).
 
 string__int_to_string(N, Str) :-
 	string__int_to_base_string(N, 10, Str).
@@ -575,7 +575,7 @@ string__from_char_list(CharList, String) :-
 
 string__int_list_to_char_list([], []).
 string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
-	( char_to_int(Char0, Code) ->
+	( char__to_int(Char0, Code) ->
 		Char = Char0
 	;
 		error("string__int_list_to_char_list: char_to_int failed")
@@ -587,7 +587,7 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 
 string__char_list_to_int_list([], []).
 string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
-	( char_to_int(Char, Code0) ->
+	( char__to_int(Char, Code0) ->
 		Code = Code0
 	;
 		error("string__char_list_to_int_list: char_to_int failed")

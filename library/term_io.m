@@ -329,7 +329,7 @@ term_io__quote_single_char(Char) -->
 	% Convert a character to the corresponding octal escape code.
 
 mercury__escape_char(Char, EscapeCode) :-
-	char_to_int(Char, Int),
+	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
 	string__pad_left(OctalString0, '0', 3, OctalString),
 	string__first_char(EscapeCode, '\\', OctalString).

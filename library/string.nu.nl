@@ -31,7 +31,7 @@ string__float_to_string(Float, String) :-
 
 string__index(String, Int, Char) :-
 	list__index0(String, Int, Code),
-	char_to_int(Char, Code).
+	char__to_int(Char, Code).
 
 %-----------------------------------------------------------------------------%
 
@@ -68,6 +68,6 @@ string__first_char(String0, Char, String) :-
 	string__to_int_list(String0, List0),
 	List0 = [CharCode | List],
 	string__to_int_list(String, List),
-	char_to_int(Char, CharCode).
+	char__to_int(Char, CharCode).
 
 %-----------------------------------------------------------------------------%
