@@ -427,8 +427,11 @@ modecheck_pred_mode_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 		{ NumErrors = 0 },
 		{ Changed = Changed0 }
 	;
+		check_for_indistinguishable_modes(ProcIds, PredId, PredInfo0,
+					ModuleInfo0, 0, NumErrors0),
 		modecheck_procs(ProcIds, PredId, ModuleInfo0, Changed0, 0,
-					ModuleInfo, Changed, NumErrors)
+					ModuleInfo, Changed, NumErrors1),
+		{ NumErrors is NumErrors0 + NumErrors1 }
 	).
 
 	% Iterate over the list of modes for a predicate.
@@ -448,6 +451,52 @@ modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, Changed0, Errs0,
 		% recursively process the remaining modes
 	modecheck_procs(ProcIds, PredId, ModuleInfo1, Changed1,
 			Errs1, ModuleInfo, Changed, Errs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred check_for_indistinguishable_modes(list(proc_id),
+			pred_id, pred_info, module_info, int, int,
+			io__state, io__state).
+:- mode check_for_indistinguishable_modes(in, in, in, in, in, out,
+			di, uo) is det.
+
+check_for_indistinguishable_modes([], _, _, _, NumErrors, NumErrors) --> [].
+check_for_indistinguishable_modes([ProcId | ProcIds],
+		PredId, PredInfo, ModuleInfo, NumErrors0, NumErrors) -->
+	check_for_indistinguishable_mode(ProcIds, ProcId,
+		PredId, PredInfo, ModuleInfo, NumErrors0, NumErrors1),
+	check_for_indistinguishable_modes(ProcIds,
+		PredId, PredInfo, ModuleInfo, NumErrors1, NumErrors).
+
+:- pred check_for_indistinguishable_mode(list(proc_id), proc_id,
+			pred_id, pred_info, module_info, int, int,
+			io__state, io__state).
+:- mode check_for_indistinguishable_mode(in, in, in, in, in, in, out,
+			di, uo) is det.
+
+	% For each mode in the list, check that either that mode is the
+	% new mode we just added, or that it is distinguishable from the
+	% new mode.  If we find a mode that is indistinguishable from the
+	% one we just added, report an error.
+
+check_for_indistinguishable_mode([], _, _, _, _, NumErrors, NumErrors) --> [].
+check_for_indistinguishable_mode([ProcId | ProcIds], NewProcId,
+		PredId, PredInfo, ModuleInfo, NumErrors0, NumErrors) -->
+	(
+		{
+			ProcId = NewProcId
+		;
+			\+ modes_are_indistinguishable(ProcId, NewProcId,
+				PredInfo, ModuleInfo)
+		}
+	->
+		check_for_indistinguishable_mode(ProcIds, NewProcId,
+			PredId, PredInfo, ModuleInfo, NumErrors0, NumErrors)
+	;
+		report_indistinguishable_modes_error(ProcId, NewProcId,
+			PredId, PredInfo, ModuleInfo),
+		{ NumErrors is NumErrors0 + 1 }
+	).
 
 %-----------------------------------------------------------------------------%
 

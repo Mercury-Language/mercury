@@ -34,13 +34,18 @@
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_pred_mode_decl(in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pred_mode_subdecl(varset, sym_name, list(mode),
-		maybe(determinism), term__context, io__state, io__state).
-:- mode mercury_output_pred_mode_subdecl(in, in, in, in, in, di, uo) is det.
-
 :- pred mercury_output_func_mode_decl(varset, sym_name, list(mode), mode,
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_func_mode_decl(in, in, in, in, in, in, di, uo) is det.
+
+:- pred mercury_output_mode_subdecl(pred_or_func, varset, sym_name,
+		list(mode), maybe(determinism), term__context,
+		io__state, io__state).
+:- mode mercury_output_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
+
+:- pred mercury_output_pred_mode_subdecl(varset, sym_name, list(mode),
+		maybe(determinism), term__context, io__state, io__state).
+:- mode mercury_output_pred_mode_subdecl(in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_func_mode_subdecl(varset, sym_name, list(mode), mode,
 		maybe(determinism), term__context, io__state, io__state).
@@ -1154,6 +1159,19 @@ mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
 	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%
+
+	% Output a mode declaration for a predicate or function.
+
+mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes, MaybeDet,
+		Context) -->
+	(	{ PredOrFunc = predicate },
+		mercury_output_pred_mode_subdecl(InstVarSet, Name, Modes,
+				MaybeDet, Context)
+	;	{ PredOrFunc = function },
+		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+		mercury_output_func_mode_subdecl(InstVarSet, Name, ArgModes,
+				RetMode, MaybeDet, Context)
+	).
 
 	% Output a mode declaration for a predicate.
 

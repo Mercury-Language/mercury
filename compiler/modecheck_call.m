@@ -45,6 +45,15 @@
 :- mode modecheck_higher_order_func_call(in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
+	%
+	% Given two modes of a predicate, figure out whether
+	% they are indistinguishable; that is, whether any valid call to
+	% one mode would also be a valid call to the other.
+	% (If so, it is a mode error.)
+	%
+:- pred modes_are_indistinguishable(proc_id, proc_id, pred_info, module_info).
+:- mode modes_are_indistinguishable(in, in, in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -436,6 +445,51 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 
 %-----------------------------------------------------------------------------%
 
+	%
+	% Given two modes of a predicate, figure out whether
+	% they are indistinguishable; that is, whether any valid call to
+	% one mode would also be a valid call to the other.
+	% (If so, it is a mode error.)
+	%
+	% The code for this is similar to the code for compare_procs/5 below.
+	%
+modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
+	pred_info_procedures(PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo),
+	map__lookup(Procs, OtherProcId, OtherProcInfo),
+	%
+	% Compare the initial insts of the arguments
+	%
+	proc_info_argmodes(ProcInfo, ProcArgModes),
+	proc_info_argmodes(OtherProcInfo, OtherProcArgModes),
+	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
+	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
+							OtherInitialInsts),
+	compare_inst_list(InitialInsts, OtherInitialInsts, CompareInsts,
+		ModuleInfo),
+	CompareInsts = same,
+	%
+	% Compare the expected livenesses of the arguments
+	%
+	get_arg_lives(ProcArgModes, ModuleInfo, ProcArgLives),
+	get_arg_lives(OtherProcArgModes, ModuleInfo, OtherProcArgLives),
+	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
+	CompareLives = same,
+	%
+	% Compare the determinisms --
+	%	If both are cc_, or if both are not cc_,
+	%	then they are indistinguishable.
+	%
+	proc_info_interface_determinism(ProcInfo, Detism),
+	proc_info_interface_determinism(OtherProcInfo, OtherDetism),
+	determinism_components(Detism, _CanFail, Solns),
+	determinism_components(OtherDetism, _OtherCanFail, OtherSolns),
+	( Solns = at_most_many_cc, OtherSolns = at_most_many_cc
+	; Solns \= at_most_many_cc, OtherSolns \= at_most_many_cc
+	).
+
+%-----------------------------------------------------------------------------%
+
 /*
 The algorithm for choose_best_match is supposed to be equivalent
 to the following specification:
@@ -497,8 +551,11 @@ choose_best_match([ProcId | ProcIds], PredId, Procs, TheProcId,
 
 	%
 	% Given two modes of a predicate, figure out whether
-	% one of the is a better match than the other,
+	% one of them is a better match than the other,
 	% for calls which could match either mode.
+	%
+	% The code for this is similar to the code for
+	% modes_are_indistiguisable/4 above.
 	%
 :- pred compare_proc(proc_id, proc_id, match, proc_table, mode_info).
 :- mode compare_proc(in, in, out, in, mode_info_ui) is det.

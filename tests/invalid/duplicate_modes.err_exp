@@ -1,0 +1,18 @@
+duplicate_modes.m:004: In mode declarations for predicate `duplicate_modes:p/0':
+duplicate_modes.m:004:   error: duplicate mode declaration.
+duplicate_modes.m:004:   Modes `p'
+duplicate_modes.m:004:   and `p is det'
+duplicate_modes.m:004:   are indistinguishable.
+duplicate_modes.m:003:   Here is the conflicting mode declaration.
+duplicate_modes.m:008: In mode declarations for predicate `duplicate_modes:q/2':
+duplicate_modes.m:008:   error: duplicate mode declaration.
+duplicate_modes.m:008:   Modes `q(in, out) is det'
+duplicate_modes.m:008:   and `q((ground -> ground), (free -> ground)) is det'
+duplicate_modes.m:008:   are indistinguishable.
+duplicate_modes.m:009:   Here is the conflicting mode declaration.
+duplicate_modes.m:015: In mode declarations for predicate `duplicate_modes:r/2':
+duplicate_modes.m:015:   error: duplicate mode declaration.
+duplicate_modes.m:015:   Modes `r(in, in) is det'
+duplicate_modes.m:015:   and `r(in, in) is semidet'
+duplicate_modes.m:015:   are indistinguishable.
+duplicate_modes.m:014:   Here is the conflicting mode declaration.

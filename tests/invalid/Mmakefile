@@ -12,6 +12,7 @@ SOURCES= \
 	circ_type.m \
 	constructor_warning.m \
 	det_errors.m \
+	duplicate_modes.m \
 	errors.m \
 	errors1.m \
 	errors2.m \
@@ -49,6 +50,7 @@ SOURCES= \
 
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types
+MCFLAGS-duplicate_modes	=	--verbose-error-messages
 
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)

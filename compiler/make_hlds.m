@@ -1439,12 +1439,11 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	;
 		[]
 	),
-		% add the mode declaration to the proc_info for this procedure.
-		% XXX we should check that this mode declaration
-		% isn't the same as an existing one
+
+		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
 	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-			MaybeDet, MContext, PredInfo, _) },
+			MaybeDet, MContext, PredInfo, _NewProcId) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -1514,6 +1513,7 @@ next_mode_id(Procs, MaybeDet, ModeId) :-
 	% Higher numbers mean lower priority.
 	% This works because mode analysis tries each mode in turn,
 	% starting with the lowest-numbered modes.
+	% XXX This is obsolete!
 
 :- pred determinism_priority(determinism, int).
 :- mode determinism_priority(in, out) is det.

@@ -141,6 +141,13 @@
 				io__state, io__state).
 :- mode write_mode_inference_messages(in, in, di, uo) is det.
 
+	% report an error for the case when two mode declarations
+	% declare indistinguishable modes
+
+:- pred report_indistinguishable_modes_error(proc_id, proc_id,
+		pred_id, pred_info, module_info, io__state, io__state).
+:- mode report_indistinguishable_modes_error(in, in, in, in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -667,14 +674,8 @@ mode_info_write_context(ModeInfo) -->
 
 	prog_out__write_context(Context),
 	io__write_string("In clause for `"),
-	(	{ PredOrFunc = predicate },
-		mercury_output_pred_mode_subdecl(InstVarSet, Name, Modes,
-				MaybeDet, Context)
-	;	{ PredOrFunc = function },
-		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
-		mercury_output_func_mode_subdecl(InstVarSet, Name, ArgModes,
-				RetMode, MaybeDet, Context)
-	),
+	mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
+				MaybeDet, Context),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
 	write_mode_context(ModeContext, Context, ModuleInfo).
@@ -910,6 +911,66 @@ output_inst(Inst0, VarSet) -->
 output_inst_list(Insts0, VarSet) -->
 	{ strip_builtin_qualifiers_from_inst_list(Insts0, Insts) },
 	mercury_output_inst_list(Insts, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+report_indistinguishable_modes_error(OldProcId, NewProcId,
+		PredId, PredInfo, ModuleInfo) -->
+
+	io__set_exit_status(1),
+
+	{ pred_info_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, OldProcId, OldProcInfo) },
+	{ map__lookup(Procs, NewProcId, NewProcInfo) },
+	{ proc_info_context(OldProcInfo, OldContext) },
+	{ proc_info_context(NewProcInfo, NewContext) },
+
+	prog_out__write_context(NewContext),
+	io__write_string("In mode declarations for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n"),
+
+	prog_out__write_context(NewContext),
+	io__write_string("  error: duplicate mode declaration.\n"),
+
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(NewContext),
+		io__write_string("  Modes `"),
+		output_mode_decl(OldProcId, PredInfo),
+		io__write_string("'\n"),
+
+		prog_out__write_context(NewContext),
+		io__write_string("  and `"),
+		output_mode_decl(NewProcId, PredInfo),
+		io__write_string("'\n"),
+
+		prog_out__write_context(NewContext),
+		io__write_string("  are indistinguishable.\n")
+	;
+		[]
+	),
+
+	prog_out__write_context(OldContext),
+	io__write_string(
+		"  Here is the conflicting mode declaration.\n").
+
+:- pred output_mode_decl(proc_id, pred_info, io__state, io__state).
+:- mode output_mode_decl(in, in, di, uo) is det.
+
+output_mode_decl(ProcId, PredInfo) -->
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_name(PredInfo, Name0) },
+	{ pred_info_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
+	{ proc_info_declared_determinism(ProcInfo, MaybeDet) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ varset__init(InstVarSet) },
+	{ Name = unqualified(Name0) },
+	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
+	mercury_output_mode_subdecl(PredOrFunc, InstVarSet, Name, Modes,
+				MaybeDet, Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
