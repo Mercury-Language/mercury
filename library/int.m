@@ -66,29 +66,29 @@
 */
 
 int__abs(I0, I) :-
-	(if
+	(
 		I0 < 0
-	then
+	->
 		I is 0 - I0
-	else
+	;
 		I = I0
 	).
 
 int__max(I0, I1, I) :-
-	(if
+	(
 		I0 > I1
-	then
+	->
 		I = I0
-	else
+	;
 		I = I1
 	).
 
 int__min(I0, I1, I) :-
-	(if
+	(
 		I0 < I1
-	then
+	->
 		I = I0
-	else
+	;
 		I = I1
 	).
 

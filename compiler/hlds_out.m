@@ -86,21 +86,19 @@ hlds_out__write_preds(Indent, PredTable) -->
 :- mode hlds_out__write_preds_2(in, in, in, in, out).
 
 hlds_out__write_preds_2(Indent, PredIds0, PredTable) --> 
-	(if
+	(
 		{ PredIds0 = [] }
-	then
+	->
 		[]
-	else if
-		%%% nuprolog bug some [PredId] (
-			{ PredIds0 = [PredId] }
-		%%% )
-	then
+	;
+		{ PredIds0 = [PredId] }
+	->
 		{
 			map__search(PredTable, PredId, PredInfo),
 			Indent1 is Indent + 1
 		},
 		hlds_out__write_pred(Indent1, PredId, PredInfo)
-	else
+	;
 		{
 			PredIds0 = [PredId|PredIds],
 			map__search(PredTable, PredId, PredInfo),
@@ -169,18 +167,16 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 :- mode hlds_out__write_clauses(in, in, in, out).
 
 hlds_out__write_clauses(Indent, Clauses0) -->
-	(if
+	(
 		{ Clauses0 = [] }
-	then 
+	->
 		[]
-	else if
-		%%% nuprolog bug! some [Clause] (
-			{ Clauses0 = [Clause] }
-		%%% )
-	then
+	;
+		{ Clauses0 = [Clause] }
+	->
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_clause(Indent1, Clause)
-	else
+	;
 		{
 			Clauses0 = [Clause|Clauses],
 			Indent1 is Indent + 1
@@ -220,12 +216,12 @@ hlds_out__write_clause(Indent, Clause) -->
 :- mode hlds_out__write_intlist(in, in, in, out).
 
 hlds_out__write_intlist(Indent, IntList) -->
-	(if
+	(
 		{ IntList = [] }
-	then
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("[]")
-	else
+	;
 		hlds_out__write_indent(Indent),
 		io__write_string("[ "),
 		hlds_out__write_intlist_2(IntList),
@@ -236,17 +232,15 @@ hlds_out__write_intlist(Indent, IntList) -->
 :- mode hlds_out__write_intlist_2(in, in, out).
 
 hlds_out__write_intlist_2(Ns0) -->
-	(if
+	(
 		{ Ns0 = [] }
-	then
+	->
 		{ error("This should be unreachable.") }
-	else if
-		%%% nuprolog bug! some[N] (
-			{ Ns0 = [N] }
-		%%% )
-	then
+	;
+		{ Ns0 = [N] }
+	->
 		io__write_int(N)
-	else
+	;
 		{ Ns0 = [N|Ns] },
 		io__write_int(N),
 		io__write_string(", "),
@@ -335,7 +329,7 @@ hlds_out__write_goal(Indent, unify(LTerm, RTerm, Mode, Uni, _)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-	% XXX this out is terrible:
+	% XXX this output is terrible:
 
 hlds_out__write_goal(_Indent, if_then_else(Vars, A, B, C)) -->
 	io__write_anything(if_then_else(Vars, A, B, C)).
@@ -391,13 +385,13 @@ hlds_out__write_goalinfo(Indent, X) -->
 :- mode hlds_out__write_conj_goals(in, in, in, out).
 
 hlds_out__write_conj_goals(Indent, Goals0) -->
-	(if
+	(
 		{ Goals0 = [] }
-	then
+	->
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_indent(Indent1),
 		io__write_string("true\n")
-	else
+	;
 		{
 			Goals0 = [Goal | Goals],
 			Indent1 is Indent + 1
@@ -412,13 +406,13 @@ hlds_out__write_conj_goals(Indent, Goals0) -->
 :- mode hlds_out__write_disj_goals(in, in, in, out).
 
 hlds_out__write_disj_goals(Indent, Goals0) -->
-	(if
+	(
 		{ Goals0 = [] }
-	then
+	->
 		{ Indent1 is Indent + 1 },
 		hlds_out__write_indent(Indent1),
 		io__write_string("fail\n")
-	else
+	;
 		{
 			Goals0 = [Goal | Goals],
 			Indent1 is Indent + 1
@@ -477,12 +471,12 @@ hlds_out__write_procs(Indent, PredId, ProcTable) -->
 	io__write_string("[\n"),
 	{ map__keys(ProcTable, ProcIds) },
 	{ Indent1 is Indent + 1 },
-	(if
+	(
 		{ ProcIds = [] }
-	then
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("[]")
-	else
+	;
 		hlds_out__write_procs_2(Indent1, PredId, ProcIds, ProcTable),
 		hlds_out__write_indent(Indent),
 		io__write_string("]\n")
@@ -493,21 +487,19 @@ hlds_out__write_procs(Indent, PredId, ProcTable) -->
 :- mode hlds_out__write_procs_2(in, in, in, in, in, out).
 
 hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) --> 
-	(if
+	(
 		{ ProcIds0 = [] }
-	then
+	->
 		{ error("This should never happen") }
-	else if
-		%%% nuprolog bug some [ProcId] (
-			{ ProcIds0 = [ProcId] }
-		%%% )
-	then
+	;
+		{ ProcIds0 = [ProcId] }
+	->
 		{
 			map__search(ProcTable, ProcId, ProcInfo),
 			Indent1 is Indent + 1
 		},
 		hlds_out__write_proc(Indent1, PredId, ProcId, ProcInfo)
-	else
+	;
 		{
 			ProcIds0 = [ProcId|ProcIds],
 			map__search(ProcTable, ProcId, ProcInfo),
@@ -609,12 +601,12 @@ hlds_out__write_term(Indent, term_variable(VarId)) -->
 :- mode hlds_out__write_termlist(in, in, in, out).
 
 hlds_out__write_termlist(Indent, Terms) -->
-	(if
+	(
 		{ Terms = [] }
-	then
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("[]\n")
-	else
+	;
 		hlds_out__write_indent(Indent),
 		io__write_string("[\n"),
 		{ Indent1 is Indent + 1 },
@@ -627,18 +619,16 @@ hlds_out__write_termlist(Indent, Terms) -->
 :- mode hlds_out__write_termlist_2(in, in, in, out).
 
 hlds_out__write_termlist_2(Indent, Terms0) -->
-	(if
+	(
 		{ Terms0 = [] }
-	then
+	->
 		{ error("This cannot happen") }
-	else if
-		%%% nuprolog bug! some [Term] (
-			{ Terms0 = [Term] }
-		%%% )
-	then
+	;
+		{ Terms0 = [Term] }
+	->
 		{Indent1 is Indent + 1},
 		hlds_out__write_term(Indent1, Term)
-	else
+	;
 		{
 			Terms0 = [Term|Terms],
 			Indent1 is Indent + 1
@@ -791,12 +781,12 @@ hlds_out__write_varset(Indent, VarSet) -->
 
 hlds_out__write_varnames(Indent, VarNames) -->
 	{ map__to_assoc_list(VarNames, VarNameList) },
-	(if
+	(
 		{ VarNameList = [] }
-	then
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("[]\n")
-	else
+	;
 		hlds_out__write_indent(Indent),
 		io__write_string("[\n"),
 		{Indent1 is Indent + 1},
@@ -810,22 +800,20 @@ hlds_out__write_varnames(Indent, VarNames) -->
 :- mode hlds_out__write_varnames_2(in, in, in, out).
 
 hlds_out__write_varnames_2(Indent, VarNameList0) -->
-	(if
+	(
 		{ VarNameList0 = [] }
-	then
+	->
 		{ error("This cannot happen") }
-	else if
-		%%% nuprolog bug! some [VarId, Name] (
-			{ VarNameList0 = [VarId - Name] }
-		%%% )
-	then
+	;
+		{ VarNameList0 = [VarId - Name] }
+	->
 		{Indent1 is Indent + 1},
 		hlds_out__write_indent(Indent1),
 		io__write_anything(VarId),
 		io__write_string(" - "),
 		io__write_string(Name),
 		io__write_string("\n")
-	else
+	;
 		{
 			VarNameList0 = [VarId - Name|VarNameList],
 			Indent1 is Indent + 1
@@ -844,12 +832,12 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 
 hlds_out__write_varterms(Indent, VarTerms) -->
 	{ map__to_assoc_list(VarTerms, VarTermList) },
-	(if
+	(
 		{ VarTermList = [] }
-	then
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("[]\n")
-	else
+	;
 		hlds_out__write_indent(Indent),
 		io__write_string("[\n"),
 		{ Indent1 is Indent + 1 },
@@ -863,22 +851,20 @@ hlds_out__write_varterms(Indent, VarTerms) -->
 :- mode hlds_out__write_varterms_2(in, in, in, out).
 
 hlds_out__write_varterms_2(Indent, VarTermList0) -->
-	(if
+	(
 		{ VarTermList0 = [] }
-	then
+	->
 		{ error("This cannot happen") }
-	else if
-		%%% nuprolog bug! some [VarId, Term] (
-			{ VarTermList0 = [VarId - Term] }
-		%%% )
-	then
+	;
+		{ VarTermList0 = [VarId - Term] }
+	->
 		{Indent1 is Indent + 1},
 		{Indent2 is Indent1 + 1},
 		hlds_out__write_indent(Indent1),
 		io__write_anything(VarId),
 		io__write_string(" - "),
 		hlds_out__write_term(Indent2, Term)
-	else
+	;
 		{
 			VarTermList0 = [VarId - Term|VarTermList],
 			Indent1 is Indent + 1,
@@ -927,11 +913,11 @@ hlds_out__write_category(Indent, nondeterministic) -->
 :- mode hlds_out__write_indent(in, di, uo).
 
 hlds_out__write_indent(X) -->
-	(if
+	(
 		{ X = 0 }
-	then
+	->
 		[]
-	else
+	;
 		{ X1 is X - 1 },
 		io__write_string("  "),
 		hlds_out__write_indent(X1)

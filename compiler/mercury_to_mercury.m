@@ -645,11 +645,11 @@ mercury_output_newline(Indent) -->
 :- mode mercury_output_tabs(input, di, uo).
 
 mercury_output_tabs(Indent) -->
-	(if 
+	(
 		{ Indent = 0 }
-	then
+	->
 		[]
-	else
+	;
 		io__write_char('\t'),
 		{ Indent1 is Indent - 1 },
 		mercury_output_tabs(Indent1)
