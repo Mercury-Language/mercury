@@ -1069,7 +1069,7 @@ list__remove_adjacent_dups([X | Xs], L) :-
 
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1 | Xs], X0, L) :-
-	(X0 = X1 ->
+	( X0 = X1 ->
 		list__remove_adjacent_dups_2(Xs, X0, L)
 	;
 		L = [X0 | L0],
