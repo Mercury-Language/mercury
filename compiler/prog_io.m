@@ -316,8 +316,9 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 	).
 
 :- pred search_for_file(list(string), string, res, io__state, io__state).
-:- mode search_for_file(in, in, out, di, uo).
+:- mode search_for_file(in, in, out, di, uo) is det.
 
+search_for_file([], _, error) --> [].
 search_for_file([Dir | Dirs], FileName, R) -->
 	% xxx Operating system dependency -- assumptions about "." and "/".
 	% This will work on Unix and even on DOS, but maybe
