@@ -163,7 +163,7 @@ dead_proc_elim__traverse_goals([Goal | Goals], CurrProc, Queue0, Queue,
 	proc_queue, proc_queue, needed_map, needed_map).
 :- mode dead_proc_elim__traverse_cases(in, in, in, out, in, out) is det.
 
-dead_proc_elim__traverse_cases([], CurrProc, Queue, Queue, Needed, Needed).
+dead_proc_elim__traverse_cases([], _CurrProc, Queue, Queue, Needed, Needed).
 dead_proc_elim__traverse_cases([case(_, Goal) | Cases], CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__traverse_goal(Goal, CurrProc, Queue0, Queue1,
