@@ -84,7 +84,25 @@ module_qual__qualify_mode_list(Modes0, Modes, Context, Info0, Info) -->
 
 module_qual__qualify_type(Type0, Type, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, type_qual - Context, Info1) },
-	qualify_type(Type0, Type, Info1, Info).
+	qualify_type(Type0, Type, Info1, Info2),
+	%
+	% The types `int', `float', and `string' are builtin types,
+	% defined by the compiler, but arguably they ought to be
+	% defined in int.m, float.m, and string.m, and so if someone
+	% uses the type `int' in the interface, then we don't want
+	% to warn about `import_module int' in the interface.
+	%
+	{
+		Type = term__functor(term__atom(Typename), [], _),
+		( Typename = "int"
+		; Typename = "string"
+		; Typename = "float"
+		)
+	->
+		mq_info_set_module_used(Info2, Typename, Info)
+	;
+		Info = Info2
+	}.
 
 :- type mq_info
 	--->	mq_info(
@@ -705,14 +723,14 @@ report_multiply_defined(ErrorContext - Context, Id, IdType, Modules) -->
 	write_error_context2(ErrorContext),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
-	io__write_string("  error: multiple possible matches for "),
+	io__write_string("  ambiguity error: multiple possible matches for "),
 	{ id_type_to_string(IdType, IdStr) },
 	io__write_string(IdStr),
 	io__write_string(" "),
 	write_id(Id),
-	io__write_string("\n"),
+	io__write_string(".\n"),
 	prog_out__write_context(Context),
-	io__write_string("  The possible matches are in modules:\n"),
+	io__write_string("  The possible matches are in modules\n"),
 	prog_out__write_context(Context),
 	io__write_string("  "),
 	write_module_list(Modules),
@@ -818,13 +836,12 @@ is_or_are([_, _ | _], "are").
 					io__state::uo) is det.
 
 write_module_list([Import1, Import2, Import3 | Imports]) --> 
-	io__write_string(Import1),
-	io__write_string(".m, "),
+	io__write_strings(["`", Import1, "',"]),
 	write_module_list([Import2, Import3 | Imports]).
 write_module_list([Import1, Import2]) -->
-	io__write_strings([Import1, ".m and ", Import2 ,".m"]).
+	io__write_strings(["`", Import1, "' and `", Import2 ,"'"]).
 write_module_list([Import]) -->
-	io__write_strings([Import, ".m"]).
+	io__write_strings(["`", Import, "',"]).
 write_module_list([]) -->
 	{ error("module_qual:write_module_list") }.
 
