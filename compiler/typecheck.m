@@ -131,7 +131,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, string, require, std_util.
+:- import_module int, list, map, string, require, std_util, bintree.
 :- import_module varset, term, prog_util, type_util.
 :- import_module term_io, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals.
@@ -203,7 +203,8 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		type_info_set_found_error(TypeInfo0, Error0, TypeInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes, Clauses,
 				TypeInfo1, TypeInfo2),
-		type_info_get_vartypes(TypeInfo2, VarTypes),
+		type_info_get_vartypes(TypeInfo2, VarTypes0),
+		map__optimize(VarTypes0, VarTypes),
 		ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo),
 		type_info_get_found_error(TypeInfo2, Error1),
@@ -949,8 +950,37 @@ checkpoint_2(Msg, T0) -->
 	maybe_report_stats(Statistics),
 	io__write_string("\n"),
 	{ type_info_get_type_assign_set(T0, TypeAssignSet) },
+	(
+		{ Statistics = yes },
+		{ TypeAssignSet = [TypeAssign | _] }
+	->
+		{ type_assign_get_var_types(TypeAssign, VarTypes) },
+		checkpoint_tree_stats("\t`var -> type' map", VarTypes),
+		{ type_assign_get_type_bindings(TypeAssign, TypeBindings) },
+		checkpoint_tree_stats("\t`type var -> type' map", TypeBindings)
+	;
+		[]
+	),
 	{ type_info_get_varset(T0, VarSet) },
 	write_type_assign_set(TypeAssignSet, VarSet).
+
+:- pred checkpoint_tree_stats(string, map(_K, _V), io__state, io__state).
+:- mode checkpoint_tree_stats(in, in, di, uo) is det.
+
+checkpoint_tree_stats(Description, Tree) -->
+        { bintree__count(Tree, Count) },
+        { bintree__depth(Tree, Depth) },
+        { bintree__branching_factor(Tree, Nodes, Branches) },
+        io__write_string(Description),
+        io__write_string(": count = "),
+        io__write_int(Count),
+        io__write_string(", depth = "),
+        io__write_int(Depth),
+        io__write_string(", branching factor = "),
+        io__write_int(Branches),
+        io__write_string("/"),
+        io__write_int(Nodes),
+        io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -2359,7 +2389,6 @@ write_type_assign_2([], _, _, _, _, FoundOne) -->
 write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 			FoundOne) -->
 	( 
-		{ varset__lookup_name(VarSet, Var, _) },
 		{ map__search(VarTypes, Var, Type) }
 	->
 		( { FoundOne = yes } ->
