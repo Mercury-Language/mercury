@@ -91,7 +91,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, require.
+:- import_module tree, map, queue, int, string, require.
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, term, prog_util.
@@ -1255,7 +1255,10 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 	->
 		IndexPredId = PredId
 	;
-		error("unify_proc__build_call: invalid/ambiguous pred")
+		string__append_list(["unify_proc__build_call: ",
+			"invalid/ambiguous pred `", Name, "'"],
+			ErrorMessage),
+		error(ErrorMessage)
 	},
 	{ ModeId = 0 },
 	{ map__init(Follow) },
