@@ -162,7 +162,8 @@ code_aux__pre_goal_update(GoalInfo) -->
 	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
 	code_info__update_liveness_info(PreDelta),
 	code_info__update_deadness_info(PreDelta),
-	code_info__reduce_variables_and_registers,
+	{ PreDelta = _ - PreDeaths },
+	code_info__make_vars_dead(PreDeaths),
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
 	code_info__update_deadness_info(PostDelta).
 
@@ -171,7 +172,9 @@ code_aux__pre_goal_update(GoalInfo) -->
 code_aux__post_goal_update(GoalInfo) -->
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
 	code_info__update_liveness_info(PostDelta),
-	code_info__reduce_variables_and_registers,
+	{ PostDelta = PostBirths - PostDeaths },
+	code_info__make_vars_dead(PostDeaths),
+	code_info__make_vars_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__apply_instmap_delta(InstMapDelta).
 

@@ -50,7 +50,7 @@
 
 :- import_module tree, list, map, std_util, require, bintree_set, int.
 :- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
-:- import_module shapes.
+:- import_module set, shapes.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -63,15 +63,15 @@
 call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
-	call_gen__save_variables(CodeA),
-	code_info__clear_reserved_registers,
-	code_info__setup_call(Args, Arguments, caller, CodeB),
+	{ call_gen__select_out_args(Args, OutArgs) },
+	call_gen__save_variables(OutArgs, CodeA),
+	code_info__setup_call(Args, caller, CodeB),
 	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(InputArguments, CodeC0),
+	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
+	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	code_info__get_pred_id(CallerPredId),
 	code_info__get_proc_id(CallerProcId),
@@ -125,15 +125,15 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
-	call_gen__save_variables(CodeA),
-	code_info__clear_reserved_registers,
-	code_info__setup_call(Args, Arguments, caller, CodeB),
+	{ call_gen__select_out_args(Args, OutArgs) },
+	call_gen__save_variables(OutArgs, CodeA),
+	code_info__setup_call(Args, caller, CodeB),
 	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(InputArguments, CodeC0),
+	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
+	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
         code_info__get_pred_id(CallerPredId),
         code_info__get_proc_id(CallerProcId),
@@ -159,15 +159,15 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
-	call_gen__save_variables(CodeA),
-	code_info__clear_reserved_registers,
-	code_info__setup_call(Args, Arguments, caller, CodeB),
+	{ call_gen__select_out_args(Args, OutArgs) },
+	call_gen__save_variables(OutArgs, CodeA),
+	code_info__setup_call(Args, caller, CodeB),
 	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(InputArguments, CodeC0),
+	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 	{ call_gen__output_args(Args, OutputArguments) },
-	call_gen__generate_return_livevals(OutputArguments, OutLiveVals),
+	call_gen__generate_return_livevals(OutArgs, OutputArguments, OutLiveVals),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
         code_info__get_pred_id(CallerPredId),
         code_info__get_proc_id(CallerProcId),
@@ -188,11 +188,15 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__save_variables(code_tree, code_info, code_info).
-:- mode call_gen__save_variables(out, in, out) is det.
+:- pred call_gen__save_variables(set(var), code_tree,
+						code_info, code_info).
+:- mode call_gen__save_variables(in, out, in, out) is det.
 
-call_gen__save_variables(Code) -->
-	code_info__get_live_variables(Variables),
+call_gen__save_variables(Args, Code) -->
+	code_info__get_live_variables(Variables0),
+	{ set__list_to_set(Variables0, Vars0) },
+	{ set__difference(Vars0, Args, Vars) },
+	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 
 :- pred call_gen__save_variables_2(list(var), code_tree, code_info, code_info).
@@ -224,8 +228,7 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 		{ Mode = top_out }
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
-		code_info__add_lvalue_to_variable(reg(Register), Var),
-		code_info__add_variable_to_register(Var, Register)
+		code_info__set_var_location(Var, reg(Register))
 	;
 		{ true }
 	),
@@ -385,9 +388,9 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	{ arg_info__unify_arg_info(Det, ArgInfo) },
 	{ Arguments = [Var1, Var2] },
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
-	call_gen__save_variables(CodeA),
-	code_info__clear_reserved_registers,
-	code_info__setup_call(Args, Arguments, caller, CodeB),
+	{ call_gen__select_out_args(Args, OutArgs) },
+	call_gen__save_variables(OutArgs, CodeA),
+	code_info__setup_call(Args, caller, CodeB),
 	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
@@ -407,9 +410,9 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 				ModeNum) }
 		),
 		{ call_gen__input_args(ArgInfo, InputArguments) },
-		call_gen__generate_call_livevals(InputArguments, CodeC0),
+		call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
 		{ call_gen__output_args(Args, OutputArguments) },
-		call_gen__generate_return_livevals(OutputArguments, 
+		call_gen__generate_return_livevals(OutArgs, OutputArguments, 
 						OutLiveVals),
 		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
 			UniLabel) },
@@ -458,6 +461,23 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred call_gen__select_out_args(assoc_list(var, arg_info), set(var)).
+:- mode call_gen__select_out_args(in, out) is det.
+
+call_gen__select_out_args([], Out) :-
+	set__init(Out).
+call_gen__select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
+	call_gen__select_out_args(Rest, Out0),
+	(
+		Mode = top_out
+	->
+		set__insert(Out0, V, Out)
+	;
+		Out = Out0
+	).
+
+%---------------------------------------------------------------------------%
+
 :- pred call_gen__input_args(list(arg_info), list(arg_loc)).
 :- mode call_gen__input_args(in, out) is det.
 
@@ -491,12 +511,12 @@ call_gen__output_args([Var - arg_info(Loc, Mode)|Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_call_livevals(list(arg_loc), code_tree,
+:- pred call_gen__generate_call_livevals(set(var), list(arg_loc), code_tree,
 							code_info, code_info).
-:- mode call_gen__generate_call_livevals(in, out, in, out) is det.
+:- mode call_gen__generate_call_livevals(in, in, out, in, out) is det.
 
-call_gen__generate_call_livevals(InputArgs, Code) -->
-	code_info__generate_stack_livevals(LiveVals0),
+call_gen__generate_call_livevals(OutArgs, InputArgs, Code) -->
+	code_info__generate_stack_livevals(OutArgs, LiveVals0),
 	{ call_gen__insert_arg_livevals(InputArgs, LiveVals0, LiveVals) },
 	{ Code = node([
 		livevals(LiveVals) - ""
@@ -516,12 +536,12 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_return_livevals(list(pair(var, arg_loc)),
+:- pred call_gen__generate_return_livevals(set(var), list(pair(var, arg_loc)),
 					list(liveinfo), code_info, code_info).
-:- mode call_gen__generate_return_livevals(in, out, in, out) is det.
+:- mode call_gen__generate_return_livevals(in, in, out, in, out) is det.
 
-call_gen__generate_return_livevals(OutputArgs, LiveVals, Code0, Code) :- 
-	code_info__generate_stack_livelvals(LiveVals0, Code0, Code1),
+call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code) :-
+	code_info__generate_stack_livelvals(OutArgs, LiveVals0, Code0, Code1),
 	code_info__get_module_info(Module, Code1, Code2),
 	module_info_shapes(Module, S_Tab0),
 	call_gen__insert_arg_livelvals(OutputArgs, Module,
@@ -562,14 +582,14 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 
 call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 	code_info__set_succip_used(yes),
-	call_gen__save_variables(SaveCode),
-	code_info__clear_reserved_registers,
+	{ set__list_to_set(OutVars, OutArgs) },
+	call_gen__save_variables(OutArgs, SaveCode),
 		% place the immediate input arguments in registers
 		% starting at r4.
 	call_gen__generate_immediate_args(InVars, InVars, 4, ImmediateCode),
-	code_info__generate_stack_livevals(LiveVals0),
+	code_info__generate_stack_livevals(OutArgs, LiveVals0),
 	{ bintree_set__insert(LiveVals0, reg(r(1)), LiveVals) },
-	call_gen__generate_return_livevals([], OutLiveVals),
+	call_gen__generate_return_livevals(OutArgs, [], OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(
 		{ RVal = lval(reg(r(1))) }
@@ -632,8 +652,8 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 	;
 		{ FirstArg = 1 }
 	),
-	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArgs) },
-	call_gen__rebuild_registers(OutArgs).
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+	call_gen__rebuild_registers(OutArguments).
 
 %---------------------------------------------------------------------------%
 
@@ -643,7 +663,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 
 call_gen__generate_immediate_args([], _Args, _N, empty) --> [].
 call_gen__generate_immediate_args([V|Vs], Args, N0, Code) -->
-	code_info__shuffle_register(V, Args, r(N0), Code0),
+	code_info__place_var(V, reg(r(N0)), Code0),
 	{ N1 is N0 + 1 },
 	call_gen__generate_immediate_args(Vs, Args, N1, Code1),
 	{ Code = tree(Code0, Code1) }.

@@ -28,9 +28,9 @@
 
 string_switch__generate(Cases, Var, Det, _LocalDet, EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
-	code_info__get_free_register(SlotR),
+	code_info__acquire_reg(SlotR),
 	{ SlotReg = reg(SlotR) },
-	code_info__get_free_register(StringR),
+	code_info__acquire_reg(StringR),
 	{ StringReg = reg(StringR) },
 	code_info__get_next_label(LoopLabel, no),
 	code_info__get_next_label(FailLabel, no),
@@ -56,6 +56,15 @@ string_switch__generate(Cases, Var, Det, _LocalDet, EndLabel, Code) -->
 		string_switch__calc_hash_slots(HashValsList, HashValsMap,
 			HashSlotsMap)
 	},
+		% Note that it is safe to release the registers now,
+		% even though we haven't yet generated all the code
+		% which uses them, because that code will be executed
+		% before the code for the cases (which might reuse those
+		% registers), and because that code is generated manually
+		% (below) so we don't need the reg info to be valid when
+		% we generated it.
+	code_info__release_reg(SlotR),
+	code_info__release_reg(StringR),
 
 		% Generate the code etc. for the hash table
 		%

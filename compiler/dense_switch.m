@@ -217,9 +217,7 @@ dense_switch__generate_case(Cases0, NextVal, Det, Cases, Code, Comment) -->
 		% This case didn't occur in the original case list - just
 		% generate a `fail' for it.
 		{ Comment = "compiler-introduced `fail' case of dense switch" },
-		code_info__generate_failure(CodeA),
-		code_info__generate_forced_saves(CodeB),
-		{ Code = tree(CodeA, CodeB) },
+		code_info__generate_failure(Code),
 		code_info__remake_with_store_map,
 		{ Cases = Cases0 }
 	).

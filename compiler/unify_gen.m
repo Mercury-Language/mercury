@@ -199,9 +199,6 @@ unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 	% create a term, and a series of [optional] assignments to
 	% instantiate the arguments of that term.
 
-	% The current implementation generates the construction
-	% in an eager manner.
-
 unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	unify_gen__generate_construction_2(Tag, Var, Args, Modes, Code).
@@ -228,11 +225,8 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_next_label_number(LabelCount),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals) },
-	code_info__cache_expression(Var, create(SimpleTag, RVals, LabelCount)),
-		% we need to flush the expression immediately,
-		% since the expression cache doesn't handle the
-		% dependencies in create expressions
-	code_info__produce_variable(Var, Code, _).
+	{ Code = empty },
+	code_info__cache_expression(Var, create(SimpleTag, RVals, LabelCount)).
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
@@ -240,11 +234,8 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
-	code_info__cache_expression(Var, create(Bits0, RVals, LabelCount)),
-		% we need to flush the expression immediately,
-		% since the expression cache doesn't handle the
-		% dependencies in create expressions
-	code_info__produce_variable(Var, Code, _).
+	{ Code = empty },
+	code_info__cache_expression(Var, create(Bits0, RVals, LabelCount)).
 unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
@@ -277,9 +268,9 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		%
 		code_info__get_next_label(LoopEnd, no),
 		code_info__get_next_label(LoopStart, no),
-		code_info__get_free_register(LoopCounter),
-		code_info__get_free_register(NumOldArgs),
-		code_info__get_free_register(NewClosure),
+		code_info__acquire_reg(LoopCounter),
+		code_info__acquire_reg(NumOldArgs),
+		code_info__acquire_reg(NewClosure),
 		{ NumOldArgsReg = reg(NumOldArgs) },
 		{ LoopCounterReg = reg(LoopCounter) },
 		{ NewClosureReg = reg(NewClosure) },
@@ -321,6 +312,9 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
 			LoopCounterReg, NewClosureReg, Code3),
+		code_info__release_reg(LoopCounter),
+		code_info__release_reg(NumOldArgs),
+		code_info__release_reg(NewClosure),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosureReg) }
 	;
@@ -410,7 +404,7 @@ unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__make_fields_and_argvars(list(var), lval, int, int,
+:- pred unify_gen__make_fields_and_argvars(list(var), rval, int, int,
 						list(uni_val), list(uni_val)).
 :- mode unify_gen__make_fields_and_argvars(in, in, in, in, out, out) is det.
 
@@ -418,12 +412,12 @@ unify_gen__generate_cons_args_2([Var|Vars], ModuleInfo, [UniMode | UniModes],
 	% a term with variables.
 
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
-unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
+unify_gen__make_fields_and_argvars([Var|Vars], Rval, Field0, TagNum,
 							[F|Fs], [A|As]) :-
-	F = lval(field(TagNum, lval(Lval), const(int_const(Field0)))),
+	F = lval(field(TagNum, Rval, const(int_const(Field0)))),
 	A = ref(Var),
 	Field1 is Field0 + 1,
-	unify_gen__make_fields_and_argvars(Vars, Lval, Field1, TagNum, Fs, As).
+	unify_gen__make_fields_and_argvars(Vars, Rval, Field1, TagNum, Fs, As).
 
 %---------------------------------------------------------------------------%
 
@@ -462,9 +456,8 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
-		code_info__flush_variable(Var, CodeA),
-		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 0,
+		code_info__produce_variable(Var, CodeA, Rval),
+		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
 						SimpleTag, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),
@@ -472,9 +465,8 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	;
 		{ Tag = complicated_tag(Bits0, _Num0) }
 	->
-		code_info__flush_variable(Var, CodeA),
-		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
+		code_info__produce_variable(Var, CodeA, Rval),
+		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
 						Bits0, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),

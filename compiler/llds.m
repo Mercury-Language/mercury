@@ -9,6 +9,7 @@
 :- module llds.		
 :- interface.
 :- import_module io, std_util, list, bintree_set, term, string, int.
+:- import_module tree.
 		% and float, eventually.
 
 %-----------------------------------------------------------------------------%
@@ -23,6 +24,8 @@
 						list(instruction)).
 			%	predicate name, arity, mode, code
 :- type llds__proc_id == int.
+
+:- type code_tree	==	tree(list(instruction)).
 
 :- type instruction	==	pair(instr, string).
 			%	 instruction, comment

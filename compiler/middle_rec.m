@@ -110,7 +110,7 @@ middle_rec__gen_det(Goal, Instrs) -->
 		code_info__get_arginfo(ArgModes),
 		code_info__get_headvars(HeadVars),
 		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-		code_info__setup_call(Args, HeadVars, callee, EpilogFrag),
+		code_info__setup_call(Args, callee, EpilogFrag),
 
 		{ code_gen__output_args(Args, LiveArgs) },
 
