@@ -170,6 +170,7 @@ INCLUDE_ADITI_OUTPUT = yes
 #-----------------------------------------------------------------------------#
 
 INSTALL_INFO=@INSTALL_INFO@
+INFO=@INFO@
 TEXI2DVI=@TEXI2DVI@
 DVIPS=@DVIPS@
 MAKEINFO=@MAKEINFO@
