@@ -792,7 +792,9 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		{ code_exprn__expr_is_constant(Exprn0, Vars0, NLG, ASM, Exprn) }
 	->
 			% move stuff out of the way
-		code_exprn__clear_lval(Lval, ClearCode),
+			% We don't care about the renamed exprn
+			% because it is a constant
+		code_exprn__clear_lval(Lval, Exprn, _Exprn, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
 		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
@@ -804,24 +806,24 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		]) }
 	;
 			% move stuff out of the way
-		code_exprn__clear_lval(Lval, ClearCode),
+		code_exprn__clear_lval(Lval, Exprn0, Exprn1, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
-		{ exprn_aux__vars_in_rval(Exprn0, VarList) },
+		{ exprn_aux__vars_in_rval(Exprn1, VarList) },
 		code_exprn__produce_vars(VarList, VarLocList, Code0),
-		code_exprn__rem_rval_reg_dependencies(Exprn0),
+		code_exprn__rem_rval_reg_dependencies(Exprn1),
 		{ exprn_aux__substitute_vars_in_rval(VarLocList,
-					Exprn0, Exprn1) },
+					Exprn1, Exprn2) },
 		(
-			{ Exprn1 = create(_, _, _) }
+			{ Exprn2 = create(_, _, _) }
 		->
 			code_exprn__get_var_rvals(Var, Rvals7),
 			{ set__to_sorted_list(Rvals7, RvalList7) },
-			{ code_exprn__select_rval(RvalList7, Exprn2) },
+			{ code_exprn__select_rval(RvalList7, Exprn3) },
 			{ exprn_aux__substitute_vars_in_rval(VarLocList,
-						Exprn2, Exprn) }
+						Exprn3, Exprn) }
 		;
-			{ Exprn = Exprn1 }
+			{ Exprn = Exprn2 }
 		),
 		code_exprn__add_rval_reg_dependencies(Exprn),
 		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
@@ -848,17 +850,17 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ Stat = evaled(Rvals0) }
 	;
 		{ set__to_sorted_list(Rvals0, RvalList) },
-		{ code_exprn__select_rval(RvalList, Rval) },
+		{ code_exprn__select_rval(RvalList, Rval0) },
 		{
-			Rval = lval(reg(_))
+			Rval0 = lval(reg(_))
 		;
-			Rval = lval(stackvar(_))
+			Rval0 = lval(stackvar(_))
 		;
-			Rval = lval(framevar(_))
+			Rval0 = lval(framevar(_))
 		}
 	->
 			% move stuff out of the way
-		code_exprn__clear_lval(Lval, ClearCode),
+		code_exprn__clear_lval(Lval, Rval0, Rval, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
 		code_exprn__get_var_rvals(Var, Rvals1),
@@ -869,10 +871,10 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
-		{ code_exprn__member_expr_is_constant(RvalList0, Vars0, NLG, ASM, Rval1) }
+		{ code_exprn__member_expr_is_constant(RvalList0, Vars0, NLG, ASM, Rval0) }
 	->
 			% move stuff out of the way
-		code_exprn__clear_lval(Lval, ClearCode),
+		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
 		code_exprn__get_var_rvals(Var, Rvals1),
@@ -884,10 +886,6 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 			assign(Lval, Rval1) - Comment
 		]) }
 	;
-			% move stuff out of the way
-		code_exprn__clear_lval(Lval, ClearCode),
-			% reserve the register
-		code_exprn__add_lval_reg_dependencies(Lval),
 			% choose one of the rvals from
 			% the old set, to avoid the
 			% potential issue-slot conflict
@@ -895,7 +893,11 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 			% which is non-atomic so we must
 			% choose from the new set.
 		{ set__to_sorted_list(Rvals0, RvalList) },
-		{ code_exprn__select_rval(RvalList, Rval1) },
+		{ code_exprn__select_rval(RvalList, Rval0) },
+			% move stuff out of the way
+		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
+			% reserve the register
+		code_exprn__add_lval_reg_dependencies(Lval),
 		(
 			{ Rval1 = create(_, _, _) }
 		->
@@ -921,10 +923,11 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__clear_lval(lval, code_tree, exprn_info, exprn_info).
-:- mode code_exprn__clear_lval(in, out, in, out) is det.
+:- pred code_exprn__clear_lval(lval, rval, rval,
+				code_tree, exprn_info, exprn_info).
+:- mode code_exprn__clear_lval(in, in, out, out, in, out) is det.
 
-code_exprn__clear_lval(Lval, Code) -->
+code_exprn__clear_lval(Lval, Rval0, Rval, Code) -->
 	(
 		code_exprn__get_vars(Vars0),
 		{ code_exprn__lval_in_use(Lval, Vars0) }
@@ -934,11 +937,14 @@ code_exprn__clear_lval(Lval, Code) -->
 		code_exprn__relocate_lval(VarsList0, Lval, reg(Reg), VarsList),
 		{ map__from_assoc_list(VarsList, Vars) },
 		code_exprn__set_vars(Vars),
+		{ exprn_aux__substitute_lval_in_rval(Lval, reg(Reg),
+								Rval0, Rval) },
 		{ Code = node([
 			assign(reg(Reg), lval(Lval)) -
 				"shuffle lval"
 		]) }
 	;
+		{ Rval = Rval0 },
 		{ Code = empty }
 	).
 
