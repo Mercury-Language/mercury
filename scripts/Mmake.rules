@@ -125,6 +125,9 @@ main_target: $(MAIN_TARGET)
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
 	$(RM_C) $*.c
 
+%.dir/*.o: %.m
+	$(MC) -s$(GRADE) $(MCGFLAGS) -c --split-files $<
+
 #-----------------------------------------------------------------------------#
 
 # The actions for `mmake clean' etc. are in the `.d' files.
