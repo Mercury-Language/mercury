@@ -198,8 +198,10 @@ check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
 		Module = Module0
 	;
 		SCCTerminationKnown = [KnownPPId | _],
-		module_info_pred_proc_info(Module0, KnownPPId, _, KnownProcInfo),
-		proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
+		module_info_pred_proc_info(Module0, KnownPPId, _, 
+			KnownProcInfo),
+		proc_info_get_maybe_termination_info(KnownProcInfo, 
+			MaybeKnownTerm),
 		( 
 			MaybeKnownTerm = no,
 			unexpected(this_file, "No termination info. found.")
@@ -207,29 +209,36 @@ check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
 			MaybeKnownTerm  = yes(KnownTermStatus)
 		),
 		( 
-			check_procs_known_term(KnownTermStatus, SCCTerminationKnown, 
-				Module0)
+			check_procs_known_term(KnownTermStatus, 
+				SCCTerminationKnown, Module0)
 		->
-				% Force any procs. in the SCC whose termination status is
-				% unknown to have the same termination status as those that
-				% are known.
-			set_termination_infos(SCCTerminationUnknown, KnownTermStatus,
-				Module0, Module)
+			    % Force any procs. in the SCC whose termination 
+			    % status is unknown to have the same termination 
+			    % status as those that are known.
+			set_termination_infos(SCCTerminationUnknown, 
+				KnownTermStatus, Module0, Module)
 		;
-				% There is a conflict between the user-supplied termination
-				% information for two or more procs. in this SCC.  Emit
-				% a warning and then assume that they all loop.
-			get_context_from_scc(SCCTerminationKnown, Module0, Context),
-			NewTermStatus = can_loop([Context - inconsistent_annotations]),
-			set_termination_infos(SCC, NewTermStatus, Module0, Module),
+			    % There is a conflict between the user-supplied 
+			    % termination information for two or more procs. 
+			    % in this SCC.  Emit a warning and then assume 
+			    % that they all loop.
+			get_context_from_scc(SCCTerminationKnown, Module0, 
+				Context),
+			NewTermStatus = 
+				can_loop([Context - inconsistent_annotations]),
+			set_termination_infos(SCC, NewTermStatus, Module0, 
+				Module),
 			
 			PredIds = list__map((func(proc(PredId, _)) = PredId), 
 				SCCTerminationKnown),
-			error_util__describe_several_pred_names(Module, PredIds, 
-				PredNames),	
-			Piece1 = words("are mutually recursive but some of their"),
-			Piece2 = words("termination pragmas are inconsistent."), 
-			Components = [words("Warning:")] ++ PredNames ++ [Piece1, Piece2],
+			error_util__describe_several_pred_names(Module, 
+				PredIds, PredNames),	
+			Piece1 = words(
+				"are mutually recursive but some of their"),
+			Piece2 = words(
+				"termination pragmas are inconsistent."), 
+			Components = [words("Warning:")] ++ PredNames ++ 
+				[Piece1, Piece2],
 			error_util__report_warning(Context, 0, Components, !IO)
 		)	
 	).		
@@ -349,8 +358,8 @@ termination__process_scc(SCC, Module0, PassInfo, Module) -->
 		{ set_termination_infos(SCCTerminationUnknown,
 			TerminationResult, Module1, Module2) },
 		( { TerminationResult = can_loop(TerminationErrors) } -> 
-				report_termination_errors(SCC, TerminationErrors, Module2, 
-					Module)
+			report_termination_errors(SCC, TerminationErrors, 
+				Module2, Module)
 		;
 			{ Module = Module2 }
 		)
