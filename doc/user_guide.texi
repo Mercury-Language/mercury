@@ -630,6 +630,14 @@ e.g. @samp{--no-verbose}.
 Disable all warning messages.
 
 @sp 1
+@item --halt-at-warn.
+This option causes the compiler to treat all
+warnings as if they were errors.  This means that
+if any warning is issued, the compiler will not
+generate code --- instead, it will return a
+non-zero exit status.
+
+@sp 1
 @item --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 
