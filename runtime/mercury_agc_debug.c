@@ -21,12 +21,12 @@
 static	void	dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			MR_Word * stack_pointer, MR_Word *current_frame,
 			bool do_regs);
-static	void	dump_short_value(MR_Short_Lval locn, MemoryZone *heap_zone,
-			Word * stack_pointer, Word *current_frame,
+static	void	dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
+			MR_Word * stack_pointer, MR_Word *current_frame,
 			bool do_regs);
-static  void	dump_live_variables(const MR_Label_Layout *layout, 
-			MemoryZone *heap_zone, bool top_frame,
-			Word *stack_pointer, Word *current_frame);
+static  void	dump_live_variables(const MR_Label_Layout *layout,
+			MR_MemoryZone *heap_zone, bool top_frame,
+			MR_Word *stack_pointer, MR_Word *current_frame);
 
 /*---------------------------------------------------------------------------*/
 
@@ -70,8 +70,8 @@ MR_agc_dump_roots(MR_RootList roots)
 }
 
 void
-MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
-	Word *stack_pointer, Word *current_frame, Word *max_frame)
+MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
+	MR_Word *stack_pointer, MR_Word *current_frame, MR_Word *max_frame)
 {
 	Code *success_ip;
 	int frame_size;
@@ -86,7 +86,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			fprintf(stderr, "%p: nondet temp\n", max_frame);
 			fprintf(stderr, " redoip: ");
 			fflush(NULL);
-			printlabel(MR_redoip_slot(max_frame));
+			MR_printlabel(stderr, MR_redoip_slot(max_frame));
 			fflush(NULL);
 			fprintf(stderr, " redofr: %p\n",
 				MR_redofr_slot(max_frame));
@@ -104,7 +104,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			fprintf(stderr, "%p: nondet temp\n", max_frame);
 			fprintf(stderr, " redoip: ");
 			fflush(NULL);
-			printlabel(MR_redoip_slot(max_frame));
+			MR_printlabel(stderr, MR_redoip_slot(max_frame));
 			fflush(NULL);
 			fprintf(stderr, " redofr: %p\n",
 				MR_redofr_slot(max_frame));
@@ -118,7 +118,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 				dump_live_variables(label->i_layout, heap_zone,
 					registers_valid,
 					MR_detfr_slot(max_frame), max_frame);
-				/* 
+				/*
 				** XXX should max_frame above be
 				** MR_redoip_slot(max_frame) instead?
 				*/
@@ -128,17 +128,17 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			fprintf(stderr, "%p: nondet ordinary\n", max_frame);
 			fprintf(stderr, " redoip: ");
 			fflush(NULL);
-			printlabel(MR_redoip_slot(max_frame));
+			MR_printlabel(stderr, MR_redoip_slot(max_frame));
 			fflush(NULL);
 			fprintf(stderr, " redofr: %p\n",
 				MR_redofr_slot(max_frame));
 			fprintf(stderr, " succip: ");
 			fflush(NULL);
-			printlabel(MR_succip_slot(max_frame));
+			MR_printlabel(stderr, MR_succip_slot(max_frame));
 			fflush(NULL);
 			fprintf(stderr, " succfr: %p\n",
 				MR_succfr_slot(max_frame));
-		
+
 			/* XXX ??? */
 			label = MR_lookup_internal_by_addr(MR_redoip_slot(
 					max_frame));
@@ -164,20 +164,22 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 #ifdef NATIVE_GC
-	MR_Word saved_regs[MR_MAX_FAKE_REG];
-	int i, short_var_count, long_var_count;
-	MR_Word *type_params, type_info, value;
-	MR_Proc_Layout *entry_layout;
-	const MR_Label_Layout *layout;
-	const MR_Code *success_ip;
-	bool top_frame = TRUE;
+	MR_Word			saved_regs[MR_MAX_FAKE_REG];
+	int			i, short_var_count, long_var_count;
+	MR_Word			*type_params;
+	MR_TypeInfo		type_info;
+	MR_Word			value;
+	const MR_Proc_Layout	*entry_layout;
+	const MR_Label_Layout	*layout;
+	const MR_Code		*success_ip;
+	bool			top_frame = TRUE;
 
 	layout = label->i_layout;
 	success_ip = label->i_addr;
 	entry_layout = layout->MR_sll_entry;
 
-	/* 
-	** For each stack frame... 
+	/*
+	** For each stack frame...
 	*/
 
 	while (MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)) {
@@ -193,7 +195,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 
 		dump_live_variables(layout, heap_zone, top_frame,
 			stack_pointer, current_frame);
-		/* 
+		/*
 		** Move to the next stack frame.
 		*/
 		{
@@ -207,17 +209,17 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 			if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
 				MR_fatal_error("can only handle stackvars");
 			}
-			                                
-			success_ip = (MR_Code *) 
+
+			success_ip = (MR_Code *)
 				MR_based_stackvar(stack_pointer, number);
-			stack_pointer = stack_pointer - 
+			stack_pointer = stack_pointer -
 				entry_layout->MR_sle_stack_slots;
 			label = MR_lookup_internal_by_addr(success_ip);
 		}
 
 		top_frame = FALSE;
 		layout = label->i_layout;
-		
+
 		if (layout != NULL) {
 			entry_layout = layout->MR_sll_entry;
 		}
@@ -226,9 +228,9 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 }
 
 static void
-dump_live_variables(const MR_Label_Layout *label_layout, 
-		MemoryZone *heap_zone, bool top_frame,
-		Word *stack_pointer, Word *current_frame)
+dump_live_variables(const MR_Label_Layout *label_layout,
+	MR_MemoryZone *heap_zone, bool top_frame,
+	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 	int short_var_count, long_var_count, i;
 	MR_TypeInfo type_info;
@@ -267,7 +269,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 
 #ifdef MR_DEBUG_AGC_PRINT_VARS
 		/*
-		** Call Mercury but use the debugging heap. 
+		** Call Mercury but use the debugging heap.
 		*/
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
@@ -295,10 +297,10 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 			heap_zone, stack_pointer, current_frame, top_frame);
 		fprintf(stderr, "\n");
 		fflush(NULL);
-		
+
 #ifdef MR_DEBUG_AGC_PRINT_VARS
 		/*
-		** Call Mercury but use the debugging heap. 
+		** Call Mercury but use the debugging heap.
 		*/
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
@@ -325,7 +327,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 }
 
 static void
-dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone, 
+dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, bool do_regs)
 {
 #ifdef NATIVE_GC
@@ -397,9 +399,10 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			break;
 	}
 	if (have_value) {
-		if (value >= (Word) heap_zone->min && 
-				value < (Word) heap_zone->hardmax) {
-			difference = (Word *) value - (Word *) heap_zone->min;
+		if (value >= (MR_Word) heap_zone->min &&
+				value < (MR_Word) heap_zone->hardmax) {
+			difference = (MR_Word *) value -
+				(MR_Word *) heap_zone->min;
 			fprintf(stderr, "\thp[%d]\t(%lx)", difference,
 				(long) value);
 		} else {
@@ -410,12 +413,12 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 }
 
 static void
-dump_short_value(MR_Short_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
-	Word *current_frame, bool do_regs)
+dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
+	MR_Word *stack_pointer, MR_Word *current_frame, bool do_regs)
 {
 #ifdef NATIVE_GC
 	int	locn_num;
-	Word	value = 0;
+	MR_Word	value = 0;
 	int	difference;
 	bool 	have_value = FALSE;
 
@@ -423,7 +426,7 @@ dump_short_value(MR_Short_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 	switch (MR_SHORT_LVAL_TYPE(locn)) {
 		case MR_SHORT_LVAL_TYPE_R:
 			if (do_regs) {
-				value = virtual_reg(locn_num);
+				value = MR_virtual_reg(locn_num);
 				have_value = TRUE;
 				fprintf(stderr, "r%d\t", locn_num);
 			} else {
@@ -471,7 +474,7 @@ dump_short_value(MR_Short_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			break;
 	}
 	if (have_value) {
-		if (value >= (MR_Word) heap_zone->min && 
+		if (value >= (MR_Word) heap_zone->min &&
 				value < (MR_Word) heap_zone->hardmax) {
 			difference = (MR_Word *) value - (MR_Word *) heap_zone->min;
 			fprintf(stderr, "\thp[%d]\t(%lx)", difference,

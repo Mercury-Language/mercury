@@ -19,6 +19,7 @@
 /*
 ** Function prototypes.
 */
+
 static	void	garbage_collect(MR_Code *saved_success,
 			MR_Word *stack_pointer,
 			MR_Word *max_frame, MR_Word *current_frame);
@@ -33,6 +34,7 @@ static	void	copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
 /*
 ** Global variables (only used in this module, however).
 */
+
 static MR_Code	*saved_success = (MR_Code *) NULL;
 static MR_Word	*saved_success_location = (MR_Word *) NULL;
 static bool	gc_scheduled = FALSE;
@@ -44,9 +46,7 @@ static MR_RootList root_list = NULL;
 /* The last root on the list */
 static MR_RootList last_root = NULL;
 
-
-Define_extern_entry(mercury__garbage_collect_0_0);
-
+MR_define_extern_entry(mercury__garbage_collect_0_0);
 
 /*
 ** MR_schedule_agc:
@@ -62,6 +62,7 @@ Define_extern_entry(mercury__garbage_collect_0_0);
 ** 	by information associated with the continuation label
 ** 	that the code will return to).
 */
+
 void
 MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal, 
 	MR_Word *curfr_at_signal)
@@ -199,8 +200,8 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 #endif
 }
 
-BEGIN_MODULE(native_gc)
-BEGIN_CODE
+MR_BEGIN_MODULE(native_gc)
+MR_BEGIN_CODE
 
 /*
 ** Our garbage collection entry label.
@@ -208,7 +209,7 @@ BEGIN_CODE
 ** It saves the registers -- we use the saved registers
 ** for garbage collection and leave the real ones alone.
 */
-Define_entry(mercury__garbage_collect_0_0);
+MR_define_entry(mercury__garbage_collect_0_0);
 
         /* record that the collector is running */
 	gc_running = TRUE;
@@ -223,7 +224,7 @@ Define_entry(mercury__garbage_collect_0_0);
 	MR_proceed();
 	MR_fatal_error("Unreachable code reached");
 
-END_MODULE
+MR_END_MODULE
 
 /*---------------------------------------------------------------------------*/
 
@@ -236,7 +237,7 @@ END_MODULE
 */
 static void
 garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
-		MR_Word *max_frame, MR_Word *current_frame)
+	MR_Word *max_frame, MR_Word *current_frame)
 {
     MR_Internal                     *label, *first_label;
     int                             i, count;
@@ -247,9 +248,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     bool                            top_frame = TRUE;
     MR_MemoryList                   allocated_memory_cells = NULL;
     MR_Word                         *old_hp, *new_hp;
-    MR_Proc_Layout	            *proc_layout;
+    const MR_Proc_Layout	    *proc_layout;
     MR_Word                         *first_stack_pointer;
-    MR_Word                         *first_current_frame,
+    MR_Word                         *first_current_frame;
     MR_Word                         *first_max_frame;
 
     old_heap = MR_ENGINE(heap_zone);
@@ -312,8 +313,6 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     MR_virtual_hp = new_heap->min;
     fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 #endif
-
-
 
     /*
     ** For each stack frame ...
@@ -402,7 +401,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         result = MR_stack_walk_step(proc_layout, &label_layout,
             (MR_Word **) &stack_pointer, &current_frame, &problem);
 
-        if (result == STEP_ERROR_BEFORE || result == STEP_ERROR_AFTER) {
+        if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
         } 
 */
@@ -415,13 +414,11 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         top_frame = FALSE;
     } while (label_layout != NULL); /* end for each stack frame... */
 
-
     /* 
     ** New code for nondet.
     ** XXX Will we need correct value of stack_pointer?
     */ 
     
-
     while (max_frame > MR_nondet_stack_trace_bottom) {
 	bool registers_valid;
 	int frame_size;
@@ -458,7 +455,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
 		/* 
 		** XXX We must pass NULL since the registers have not
-		** been saved This is probably a bug; Tyson should look
+		** been saved. This is probably a bug; Tyson should look
 		** into it
 		*/
 		type_params = MR_materialize_typeinfos_base(label_layout,
@@ -500,7 +497,6 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 	max_frame = MR_prevfr_slot(max_frame);
     }
     
-
     /*
     ** Copy any roots that are not on the stack.
     */
@@ -540,11 +536,10 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         (long) ((char *) old_hp - (char *) old_heap->min) -
         ((char *) MR_virtual_hp - (char *) new_heap->min));
 
-
 #endif
 
     /* Reset the redzone on the old heap */
-    reset_redzone(old_heap);
+    MR_reset_redzone(old_heap);
 
 #ifdef MR_DEBUG_AGC_COLLECTION
     fprintf(stderr, "garbage_collect() done.\n\n");
@@ -562,6 +557,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 ** 	forwarding pointers in the old copy of the data, if
 ** 	it is on the old heap).
 */
+
 static void
 copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 	MR_Word *stack_pointer, MR_Word *current_frame)
@@ -572,7 +568,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 	switch (MR_LONG_LVAL_TYPE(locn)) {
 		case MR_LONG_LVAL_TYPE_R:
 			if (copy_regs) {
-				MR_virtual_reg(locn_num) = agc_deep_copy(
+				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
 					&MR_virtual_reg(locn_num), type_info,
 					MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));
@@ -637,8 +633,8 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 		case MR_SHORT_LVAL_TYPE_R:
 			if (copy_regs) {
 				locn_num = MR_SHORT_LVAL_NUMBER(locn);
-				virtual_reg(locn_num) = agc_deep_copy(
-					&virtual_reg(locn_num), type_info,
+				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
+					&MR_virtual_reg(locn_num), type_info,
 					MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));
 			}
@@ -647,7 +643,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 		case MR_SHORT_LVAL_TYPE_STACKVAR:
 			locn_num = MR_SHORT_LVAL_NUMBER(locn);
 			MR_based_stackvar(stack_pointer, locn_num) =
-				agc_deep_copy(&MR_based_stackvar(
+				MR_agc_deep_copy(&MR_based_stackvar(
 						stack_pointer,locn_num),
 					type_info, MR_ENGINE(heap_zone2->min),
 					MR_ENGINE(heap_zone2->hardmax));
@@ -656,19 +652,20 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 		case MR_SHORT_LVAL_TYPE_FRAMEVAR:
 			locn_num = MR_SHORT_LVAL_NUMBER(locn);
 			MR_based_framevar(current_frame, locn_num) =
-				agc_deep_copy(
-				&MR_based_framevar(current_frame, locn_num),
-				type_info,
-				MR_ENGINE(heap_zone2->min),
-				MR_ENGINE(heap_zone2->hardmax));
-			break;
+				MR_agc_deep_copy(
+					&MR_based_framevar(current_frame,
+						locn_num),
+					type_info,
+					MR_ENGINE(heap_zone2->min),
+					MR_ENGINE(heap_zone2->hardmax));
+				break;
 
 		default:
-			fatal_error("Unknown MR_Short_Lval_Type in copy_short_value");
+			MR_fatal_error("Unknown MR_Short_Lval_Type "
+				"in copy_short_value");
 			break;
 	}
 }
-
 
 /*
 ** garbage_collect_roots:
@@ -676,6 +673,7 @@ copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 ** 	Copies the extra roots.  The roots are overwritten
 ** 	with the new data.
 */
+
 static void
 garbage_collect_roots(void) 
 {
@@ -695,6 +693,7 @@ garbage_collect_roots(void)
 ** 
 ** 	Adds a new root to the extra roots.
 */
+
 void
 MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
 {
