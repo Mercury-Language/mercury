@@ -137,18 +137,43 @@ endif
 		cat $@; \
 		exit 1; }
 
-# Some tests have more than one possible valid output, so
-# we allow the test to pass if it matches any of the .err_exp* files.
+#
+# For some test cases, there is more than one valid output.
+# We try matching the output with the `.err_exp' file, and if that
+# doesn't succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
+# files, then we try matching against those too.  If none succeed,
+# the shortest of the diffs is put into the `.err_res' file.
+#
 %.err_res: %.err %.err_exp
-	@-rm -f $@
-	@diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
-		{ [ -f $*.err_exp2 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
-		{ [ -f $*.err_exp3 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
-		{ [ -f $*.err_exp4 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
-		{ cat $*.err && exit 1; }
+	@echo "Comparing $*.err with $*.err_exp*,"
+	@echo "	results in $@"
+	@-rm -f $@ $*.err_res[1-5]
+	@{ diff $(DIFF_OPTS) $*.err_exp $*.err > $*.err_res1 && \
+		echo "Matched $*.err_exp" && \
+		cp $*.err_res1 $@; } || \
+	{ test -f $*.err_exp2 && \
+		diff $(DIFF_OPTS) $*.err_exp2 $*.err > $*.err_res2 && \
+		echo "Matched $*.err_exp2" && \
+		cp $*.err_res2 $@; } || \
+	{ test -f $*.err_exp3 && \
+		diff $(DIFF_OPTS) $*.err_exp3 $*.err > $*.err_res3 && \
+		echo "Matched $*.err_exp3" && \
+		cp $*.err_res3 $@; } || \
+	{ test -f $*.err_exp4 && \
+		diff $(DIFF_OPTS) $*.err_exp4 $*.err > $*.err_res4 && \
+		echo "Matched $*.err_exp4" && \
+		cp $*.err_res4 $@; } || \
+	{ test -f $*.err_exp5 && \
+		diff $(DIFF_OPTS) $*.err_exp5 $*.err > $*.err_res5 && \
+		echo "Matched $*.err_exp5" && \
+		cp $*.err_res5 $@; } || \
+	{ shortest=`wc -l $*.err_res[1-5] | grep -v total | sort -n | \
+		head -1 | awk '{ print $$2; }' `; \
+		echo "** $*.err did not match the expected error output"; \
+		echo "** (closest match was $$shortest)"; \
+		cp $$shortest $@; \
+		cat $@; \
+		exit 1; }
 
 #-----------------------------------------------------------------------------#
 
@@ -166,7 +191,7 @@ clean_out:
 	rm -f *.out
 
 clean_res:
-	rm -f *.res*
+	rm -f *.res* *.err_res*
 
 clean_logs:
 	rm -f *.log
