@@ -120,8 +120,21 @@ extern	Code	*dofastnegproceed;
 				GOTO(proc);			\
 			} while (0)
 
-#define	tailcallentry(entry, succcont)	\
-			tailcall(entries[entry].e_addr, succcont)
+#ifdef USE_GCC_NONLOCAL_GOTOS
+#define	tailcallentry(procname)					\
+			do {					\
+				extern Code *paste(entry_,procname); \
+				debugtailcall(procname);	\
+				GOTO(paste(entry_,procname));	\
+			} while (0)
+#else
+#define	tailcallentry(procname)					\
+			do {					\
+				extern Code *procname(void); 	\
+				debugtailcall(procname);	\
+				GOTO(procname); 		\
+			} while (0)				
+#endif
 
 #define	proceed()	do {					\
 				debugproceed();			\
