@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -4066,6 +4066,7 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	{ typecheck_info_get_unify_context(TypeCheckInfo, UnifyContext) },
+	{ typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo) },
 	{ list__length(Args, Arity) },
 
 	write_context_and_pred_id(TypeCheckInfo),
@@ -4078,7 +4079,7 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 	prog_out__write_context(Context),
 	io__write_string("  and term `"),
 	{ strip_builtin_qualifier_from_cons_id(Functor, Functor1) },
-	hlds_out__write_functor_cons_id(Functor1, Args, VarSet, no),
+	hlds_out__write_functor_cons_id(Functor1, Args, VarSet, ModuleInfo, no),
 	io__write_string("':\n"),
 	prog_out__write_context(Context),
 	io__write_string("  type error in argument(s) of "),

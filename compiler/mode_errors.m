@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -635,7 +635,9 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 		mercury_output_var(Y, VarSet, no)
 	;
 		{ RHS = error_at_functor(ConsId, ArgVars) },
-		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, no)
+		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+		hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet,
+			ModuleInfo, no)
 	;
 		{ RHS = error_at_lambda(ArgVars, ArgModes) },
 		io__write_string("lambda(["),
@@ -739,12 +741,13 @@ report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error in unification of `"),
 	mercury_output_var(X, VarSet, no),
 	io__write_string("' and `"),
-	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, no),
+	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
@@ -754,7 +757,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
-	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, no),
+	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
 	( { Args \= [] } ->
 		io__write_string("'\n"),
 		prog_out__write_context(Context),

@@ -147,8 +147,8 @@
 	% print out a cons_id and arguments
 
 :- pred hlds_out__write_functor_cons_id(cons_id, list(prog_var), prog_varset,
-		bool, io__state, io__state).
-:- mode hlds_out__write_functor_cons_id(in, in, in, in, di, uo) is det.
+		module_info, bool, io__state, io__state).
+:- mode hlds_out__write_functor_cons_id(in, in, in, in, in, di, uo) is det.
 
 	% print out the right-hand-side of a unification
 
@@ -1458,9 +1458,10 @@ hlds_out__write_unify_rhs_2(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarnums,
 
 hlds_out__write_unify_rhs_3(var(Var), _, VarSet, _, AppendVarnums, _, _, _) -->
 	mercury_output_var(Var, VarSet, AppendVarnums).
-hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), _, VarSet, _,
+hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), ModuleInfo, VarSet, _,
 		AppendVarnums, _Indent, MaybeType, TypeQual) -->
-	hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums),
+	hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
+		AppendVarnums),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
 		io__write_string(" TYPE_QUAL_OP "),
 		mercury_output_term(Type, TVarSet, no)
@@ -1551,7 +1552,8 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
 		next_to_graphic_token).
 
-hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
+hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
+		AppendVarnums) -->
 	(
 		{ ConsId = cons(SymName, _) },
 		(
@@ -1605,8 +1607,13 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 		io__write_string(Instance),
 		io__write_string(")")
 	;
-		{ ConsId = tabling_pointer_const(_, _) },
-		{ error("hlds_out__write_functor_cons_id: tabling_pointer_const") }
+		{ ConsId = tabling_pointer_const(PredId, ProcId) },
+		io__write_string("tabling_pointer_const("),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		io__write_string(", "),
+		{ proc_id_to_int(ProcId, ProcIdInt) },
+		io__write_int(ProcIdInt),
+		io__write_string(")")
 	).
 
 hlds_out__write_var_modes([], [], _, _, _) --> [].
