@@ -714,11 +714,11 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% The transformation we perform is basically the same
 		% as in the first-order case below, except that
 		% we ignore the PredOrFunc and TypeArgs,
-		% and map all pred/func types to mercury_builtin:pred/0
+		% and map all pred/func types to builtin pred/0
 		% for the purposes of creating type_infos.
 		% XXX that probably causes univ_to_type to give
 		% the wrong results
-		TypeId = qualified("mercury_builtin", "pred") - 0,
+		TypeId = unqualified("pred") - 0,
 		polymorphism__construct_type_info(Type, TypeId, [],
 			ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
 			Var, ExtraGoals, VarSet, VarTypes)
