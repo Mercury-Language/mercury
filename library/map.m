@@ -29,6 +29,10 @@
 :- pred map__init(map(_,_)).
 :- mode map__init(out).
 
+	% Check whether a map is empty.
+:- pred map__is_empty(map(_,_)).
+:- mode map__is_empty(in) is semidet.
+
 	% Check whether map contains key
 :- pred map__contains(map(K,_V), K).
 :- mode map__contains(in, in).
@@ -103,6 +107,9 @@
 %-----------------------------------------------------------------------------%
 
 map__init(M) :-
+	bintree__init(M).
+
+map__is_empty(M) :-
 	bintree__init(M).
 
 map__contains(Map, K) :-

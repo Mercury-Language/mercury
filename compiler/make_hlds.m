@@ -87,8 +87,8 @@ module_balance(ModuleInfo0, ModuleInfo) :-
 
 add_item_list_decls([], Module, Module) --> [].
 add_item_list_decls([Item - Context | Items], Module0, Module) -->
-	(add_item_decl(Item, Context, Module0, Module1) ->
-		{ true }
+	( add_item_decl(Item, Context, Module0, Module1) ->
+		{ Module2 = Module1 }
 	;
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
@@ -99,9 +99,9 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 		io__write_anything(Item),
 		io__write_string("\n"),
 		io__set_output_stream(OldStream, _),
-		{ module_info_incr_errors(Module0, Module1) }
+		{ module_info_incr_errors(Module0, Module2) }
 	),
-	add_item_list_decls(Items, Module1, Module).
+	add_item_list_decls(Items, Module2, Module).
 
 	% add the clauses one by one to the module
 
@@ -111,8 +111,8 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 
 add_item_list_clauses([], Module, Module) --> [].
 add_item_list_clauses([Item - Context | Items], Module0, Module) -->
-	(add_item_clause(Item, Context, Module0, Module1) ->
-		{ true }
+	( add_item_clause(Item, Context, Module0, Module1) ->
+		{ Module2 = Module1 }
 	;
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
@@ -123,9 +123,9 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 		io__write_anything(Item),
 		io__write_string("\n"),
 		io__set_output_stream(OldStream, _),
-		{ module_info_incr_errors(Module0, Module1) }
+		{ module_info_incr_errors(Module0, Module2) }
 	),
-	add_item_list_clauses(Items, Module1, Module).
+	add_item_list_clauses(Items, Module2, Module).
 
 %-----------------------------------------------------------------------------%
 

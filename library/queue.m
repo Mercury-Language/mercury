@@ -5,7 +5,7 @@
 % Main author: fjh.
 
 % This file contains a `queue' ADT.
-% this implementation is in terms of a list pair.
+% This implementation is in terms of a list pair.
 
 %--------------------------------------------------------------------------%
 
@@ -33,7 +33,7 @@
 
 	% `queue__is_full(Queue)' is intended to be true iff `Queue'
 	% is a queue whose capacity is exhausted.  This
-	% implement allows arbitrary-sized queues, so queue__is_full
+	% implementation allows arbitrary-sized queues, so queue__is_full
 	% always fails.
 
 :- pred queue__is_full(queue(T)).
@@ -72,7 +72,7 @@
 
 :- import_module list, std_util.
 
-:- type queue(T) == pair(list(T), list(T)).
+:- type queue(T) == pair(list(T)).
 
 queue__init([] - []).
 
@@ -87,17 +87,19 @@ queue__is_empty([] - []).
 
 queue__is_full(_) :- fail.
 
-queue__put(On0 - Off, Elem, (Elem.On0) - Off).
+queue__put(On - Off, Elem, [Elem | On] - Off).
 
-queue__first(_On - (Elem._Off), Elem).
+queue__first(_On - [Elem | _Off], Elem).
 
-queue__get(On - (Elem.Off), Elem, On - Off).
+:- queue__get(_ - B, _, _) when B.
+
+queue__get(On - [Elem | Off], Elem, On - Off).
 queue__get(On - [], Elem, [] - Off) :-
-	reverse(On, Elem.Off).
+	reverse(On, [Elem | Off]).
 
-queue__length(On - Off, Depth) :-
-	length(On, DOn),
-	length(Off, DOff),
-	Depth is DOn + DOff.
+queue__length(On - Off, Length) :-
+	length(On, LengthOn),
+	length(Off, LengthOff),
+	Length is LengthOn + LengthOff.
 
 %--------------------------------------------------------------------------%

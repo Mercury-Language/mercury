@@ -39,6 +39,10 @@
 :- pred set__init(set(_T)).
 :- mode set__init(out) is det.
 
+:- pred set__singleton_set(set(T), T).
+:- mode set__singleton_set(in, out) is semidet.
+:- mode set__singleton_set(out, in) is det.
+
 	% `set__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
 
@@ -142,6 +146,8 @@ set__insert_list(Set0, List, Set) :-
 set__insert(S0, E, [E|S0]).
 
 set__init([]).
+
+set__singleton_set([X], X).
 
 set__equal(S1, S2) :-
 	set__subset(S1, S2),

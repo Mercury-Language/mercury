@@ -1177,7 +1177,7 @@ mercury_convert_var_name(Name, ConvertedName) :-
 	).
 
 :- pred strip_trailing_primes(string, string, int).
-:- mode strip_trailing_primes(in, in, out) is det.
+:- mode strip_trailing_primes(in, out, out) is det.
 
 strip_trailing_primes(Name0, Name, Num) :-
 	( string__append(Name1, "'", Name0) ->

@@ -1141,16 +1141,16 @@ type_assign_unify_term(term__functor(Functor, Args, _), term__variable(Y),
 	type_assign_unify_var_functor(ConsDefnList, Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet).
 
-type_assign_unify_term(term__variable(Y), term__functor(F, As, _), TypeAssign0,
+type_assign_unify_term(term__variable(Y), term__functor(F, As, C), TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	type_assign_unify_term(term__functor(F, As, _), term__variable(Y),
+	type_assign_unify_term(term__functor(F, As, C), term__variable(Y),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet).
 	
 type_assign_unify_term(term__functor(_, _, _), term__functor(_, _, _),
 		_, _, TypeAssignSet, TypeAssignSet) :-
 	    % We don't handle this, because it shouldn't occur
-	    % if the code is in superhomogeneous form, and we plan to
-	    % convert it to superhomogeneous form before doing type-checking.
+	    % if the code is in superhomogeneous form, and we convert the code
+	    % to superhomogeneous form before doing type-checking.
 	error("Unexpected unification of term with term\n").
 
 %-----------------------------------------------------------------------------%

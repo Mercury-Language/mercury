@@ -823,11 +823,11 @@ parse_dcg_goal_2(term__functor(term__atom("="),[A],_), VarSet, N, Var,
 
 	% If-then (Prolog syntax).
 	% We need to add an else part to unify the DCG args.
+
 parse_dcg_goal_2(term__functor(term__atom("->"),[A0,B0],_), VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
-	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
-				A, VarSet1, N1, Var1),
-	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var),
+	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
+		SomeVars, A, B, VarSet, N, Var),
 	Goal = if_then_else(SomeVars, A, B,
 		unify(term__variable(Var), term__variable(Var0))).
 
@@ -835,9 +835,8 @@ parse_dcg_goal_2(term__functor(term__atom("->"),[A0,B0],_), VarSet0, N0, Var0,
 parse_dcg_goal_2(term__functor(term__atom("if"), [
 			term__functor(term__atom("then"),[A0,B0],_)
 		],_), VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
-				A, VarSet1, N1, Var1),
-	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var),
+	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
+		SomeVars, A, B, VarSet, N, Var),
 	Goal = if_then_else(SomeVars, A, B,
 		unify(term__variable(Var), term__variable(Var0))).
 
@@ -853,10 +852,9 @@ parse_dcg_goal_2(term__functor(term__atom(";"),[A0,B0],_), VarSet0, N0, Var0,
 	(
 		A0 = term__functor(term__atom("->"), [X0,Y0], _Context)
 	->
-		parse_some_vars_dcg_goal(X0, SomeVars, VarSet0, N0, Var0,
-					X, VarSet1, N1, Var1),
-		parse_dcg_goal(Y0, VarSet1, N1, Var1, Y, VarSet2, N2, Var),
-		parse_dcg_goal(B0, VarSet2, N2, Var0, B, VarSet, N, VarB),
+		parse_dcg_if_then(X0, Y0, VarSet0, N0, Var0,
+			SomeVars, X, Y, VarSet1, N1, Var),
+		parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, VarB),
 		Goal = if_then_else(SomeVars, X, Y,
 			(B, unify(term__variable(Var), term__variable(VarB))))
 	;
@@ -872,12 +870,11 @@ parse_dcg_goal_2( term__functor(term__atom("else"),[
 		    ],_),
 		    C0
 		],_), VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
-				X, VarSet1, N1, Var1),
-	parse_dcg_goal(B0, VarSet1, N1, Var1, Y, VarSet2, N2, Var),
-	parse_dcg_goal(C0, VarSet2, N2, Var0, B, VarSet, N, VarB),
-	Goal = if_then_else(SomeVars, X, Y,
-		(B, unify(term__variable(Var), term__variable(VarB)))).
+	parse_dcg_if_then(A0, B0, VarSet0, N0, Var,
+		SomeVars, A, B, VarSet1, N1, Var),
+	parse_dcg_goal(C0, VarSet1, N1, Var0, C, VarSet, N, VarC),
+	Goal = if_then_else(SomeVars, A, B,
+		(C, unify(term__variable(Var), term__variable(VarC)))).
 
 	% Negation (NU-Prolog syntax).
 parse_dcg_goal_2( term__functor(term__atom("not"), [A0], _), VarSet0, N0, Var0,
@@ -916,6 +913,44 @@ parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
 	;
 		SomeVars = [],
 		parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var)
+	).
+
+	% Parse the "if" and the "then" part of an if-then or an
+	% if-then-else.
+	% If the condition is a DCG goal, but then "then" part
+	% is not, then we need to translate
+	%	( a -> { b } ; c )
+	% as
+	%	( a(DCG_1, DCG_2) ->
+	%		b,
+	%		DCG_3 = DCG_2
+	%	;
+	%		c(DCG_1, DCG_3)
+	%	)
+	% rather than
+	%	( a(DCG_1, DCG_2) ->
+	%		b
+	%	;
+	%		c(DCG_1, DCG_2)
+	%	)
+	% so that the implicit quantification of DCG_2 is correct.
+
+:- pred parse_dcg_if_then(term, term, varset, int, var,
+		list(var), goal, goal, varset, int, var).
+:- mode parse_dcg_if_then(in, in, in, in, in, out, out, out, out, out, out).
+
+parse_dcg_if_then(A0, B0, VarSet0, N0, Var0, SomeVars, A, B, VarSet, N, Var) :-
+	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
+				A, VarSet1, N1, Var1),
+	parse_dcg_goal(B0, VarSet1, N1, Var1, B1, VarSet2, N2, Var2),
+	( Var0 \= Var1, Var1 = Var2 ->
+		new_dcg_var(VarSet2, N2, VarSet, N, Var),
+		B = (B1, unify(term__variable(Var), term__variable(Var2)))
+	;
+		B = B1,
+		N = N2,
+		Var = Var2,
+		VarSet = VarSet2
 	).
 
 	% term_list_append_term(ListTerm, Term, Result):

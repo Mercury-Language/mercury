@@ -52,8 +52,14 @@
 :- mode condense(in, out) is det.
 
 :- pred same_length(list(T), list(T)).
+/**** 
+	% The current mode checker can't handle this
 :- mode same_length(input_list_skel, output_list_skel) is det.
 :- mode same_length(output_list_skel, input_list_skel) is det.
+****/
+:- mode same_length(in, output_list_skel) is det.
+:- mode same_length(output_list_skel, in) is det.
+:- mode same_length(in, in) is det.
 
 	% split_list(Len, List, Start, End):
 	%	splits `List' into a prefix `Start' of length `Len',

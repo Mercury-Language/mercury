@@ -331,7 +331,8 @@ check_final_insts([Var | Vars], [Inst | Insts], ArgNum, InstMap, ModuleInfo)
 	( { inst_matches_final(VarInst, Inst, ModuleInfo) } ->
 		[]
 	;
-		mode_info_error([],
+		{ set__init(WaitingVars) },
+		mode_info_error(WaitingVars,
 			mode_error_final_inst(ArgNum, Var, VarInst, Inst)
 		)
 	),
@@ -562,8 +563,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
 		mode_info_add_error(Error)
 	;
-		{ get_all_waiting_vars(DelayedGoals, Vars0) },
-		{ sort(Vars0, Vars) },	% eliminate duplicates
+		{ get_all_waiting_vars(DelayedGoals, Vars) },
 		mode_info_error(Vars, mode_error_conj(DelayedGoals))
 	).
 
@@ -634,15 +634,22 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 dcg_set_state(Val, _OldVal, Val).
 
 	% Given an association list of Vars - Goals,
-	% combine all the Vars together into a single list.
+	% combine all the Vars together into a single set.
 
-:- pred get_all_waiting_vars(list(delayed_goal), list(var)).
+:- pred get_all_waiting_vars(list(delayed_goal), set(var)).
 :- mode get_all_waiting_vars(in, out).
 
-get_all_waiting_vars([], []).
-get_all_waiting_vars([delayed_goal(Vars, _, _) | Rest], List) :-
-	append(Vars, List0, List),
-	get_all_waiting_vars(Rest, List0).
+get_all_waiting_vars(DelayedGoals, Vars) :-
+	set__init(Vars0),
+	get_all_waiting_vars_2(DelayedGoals, Vars0, Vars).
+
+:- pred get_all_waiting_vars_2(list(delayed_goal), set(var), set(var)).
+:- mode get_all_waiting_vars_2(in, in, out).
+
+get_all_waiting_vars_2([], Vars, Vars).
+get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
+	set__union(Vars0, Vars1, Vars2),
+	get_all_waiting_vars_2(Rest, Vars2, Vars).
 
 	% Schedule a conjunction.
 	% If it's empty, then there is nothing to do.
@@ -696,7 +703,8 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 			ModeInfo1 = ModeInfo0
 		;
 			ErrorList = [Var - _|_], 
-			mode_info_error([Var],
+			set__singleton_set(WaitingVars, Var),
+			mode_info_error(WaitingVars,
 				mode_error_disj(MergeContext, ErrorList),
 				ModeInfo0, ModeInfo1
 			)
@@ -817,8 +825,9 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 		mode_info_get_errors(ModeInfo0, OldErrors),
 		mode_info_set_errors([], ModeInfo0, ModeInfo1),
 
+		set__init(WaitingVars),
 		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
-			[], TheProcId, ModeInfo1, ModeInfo2),
+			WaitingVars, TheProcId, ModeInfo1, ModeInfo2),
 
 			% restore the error list, appending any new error(s)
 		mode_info_get_errors(ModeInfo2, NewErrors),
@@ -827,7 +836,7 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 	).
 
 :- pred modecheck_call_pred_2(list(proc_id), pred_id, proc_table, list(var),
-				list(var), proc_id, mode_info, mode_info).
+				set(var), proc_id, mode_info, mode_info).
 :- mode modecheck_call_pred_2(in, in, in, in, in, out,
 				mode_info_di, mode_info_uo) is det.
 
@@ -872,7 +881,7 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 			% otherwise, keep trying with the other modes
 			% for the called pred
 		Errors = [mode_error_info(WaitingVars2, _, _, _) | _],
-		append(WaitingVars2, WaitingVars, WaitingVars3),
+		set__union(WaitingVars, WaitingVars2, WaitingVars3),
 
 		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
 				WaitingVars3, TheProcId, ModeInfo0, ModeInfo)
@@ -912,7 +921,8 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 	( inst_matches_initial(VarInst, Inst, ModuleInfo) ->
 		ModeInfo = ModeInfo0
 	;
-		mode_info_error([VarId],
+		set__singleton_set(WaitingVars, VarId),
+		mode_info_error(WaitingVars,
 			mode_error_var_has_inst(VarId, VarInst, Inst),
 			ModeInfo0, ModeInfo)
 	).
@@ -1079,7 +1089,8 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 			\+ inst_matches_final(Inst, Inst0, ModuleInfo),
 			mode_info_var_is_locked(ModeInfo0, Var)
 		->
-			mode_info_error([Var],
+			set__singleton_set(WaitingVars, Var),
+			mode_info_error(WaitingVars,
 					mode_error_bind_var(Var, Inst0, Inst),
 					ModeInfo0, ModeInfo
 			)
@@ -1417,7 +1428,8 @@ modecheck_unification(term__variable(X), term__variable(Y), Modes, Unification,
 		Inst = UnifyInst,
 		ModeInfo1 = ModeInfo0
 	;
-		mode_info_error( [X, Y],
+		set__list_to_set([X, Y], WaitingVars),
+		mode_info_error(WaitingVars, 
 				mode_error_unify_var_var(X, Y, InstX, InstY),
 					ModeInfo0, ModeInfo1),
 			% If we get an error, set the inst to not_reached
@@ -1451,8 +1463,8 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 		ModeInfo1 = ModeInfo0
 	;
 		term_list_to_var_list(Args, ArgVars),
-		mode_info_error(
-			[X | ArgVars],
+		set__list_to_set([X | ArgVars], WaitingVars), % conservative
+		mode_info_error(WaitingVars,
 			mode_error_unify_var_functor(X, Name, Args,
 							InstX, InstArgs),
 			ModeInfo0, ModeInfo1
@@ -2641,7 +2653,7 @@ mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
 
 :- type delayed_goal
 	--->	delayed_goal(
-			list(var),	% The vars it's waiting on
+			set(var),	% The vars it's waiting on
 			mode_error_info,% The reason it can't be scheduled
 			hlds__goal	% The goal itself
 		).
@@ -2696,13 +2708,38 @@ delay_info_enter_conj(DelayInfo0, DelayInfo) :-
 
 delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
-				WaitingGoalsTable, PendingGoals, NextSeqNums0),
+				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 	stack__pop(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
+	map__values(DelayedGoals, DelayedGoalsList),
+	remove_delayed_goals(DelayedGoalsList, CurrentDepth0, 0,
+				WaitingGoalsTable0, WaitingGoalsTable),
 	stack__pop(NextSeqNums0, _, NextSeqNums),
 	CurrentDepth is CurrentDepth0 - 1,
 	map__values(DelayedGoals, DelayedGoalsList),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums).
+
+%-----------------------------------------------------------------------------%
+
+	% When a conjunction flounders, we need to remove the delayed sub-goals
+	% from the waiting goals table before we delay the conjunction as a
+	% whole.
+
+:- pred remove_delayed_goals(list(delayed_goal), depth_num, seq_num,
+				waiting_goals_table, waiting_goals_table).
+:- mode remove_delayed_goals(in, in, in, in, out).
+
+remove_delayed_goals([], _Depth, _Seq, WaitingGoalsTable, WaitingGoalsTable).
+remove_delayed_goals([DelayedGoal | DelayedGoals], Depth, Seq,
+		WaitingGoalsTable0, WaitingGoalsTable) :-
+	DelayedGoal = delayed_goal(Vars, _Error, _Goal),
+	GoalNum = Depth - Seq,
+	set__to_sorted_list(Vars, VarList),
+	delete_waiting_vars(VarList, GoalNum,
+		WaitingGoalsTable0, WaitingGoalsTable1),
+	Seq1 is Seq + 1,
+	remove_delayed_goals(DelayedGoals, Depth, Seq1,
+		WaitingGoalsTable1, WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -2731,7 +2768,8 @@ delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 
 		% Store indexes to the goal in the waiting goals table
 	GoalNum = CurrentDepth - SeqNum,
-	add_waiting_vars(Vars, GoalNum, Vars, WaitingGoalsTable0,
+	set__to_sorted_list(Vars, VarList),
+	add_waiting_vars(VarList, GoalNum, VarList, WaitingGoalsTable0,
 				WaitingGoalsTable),
 	
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
@@ -2780,11 +2818,10 @@ delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
 	(
 		map__search(WaitingGoalsTable0, Var, GoalsWaitingOnVar)
 	->
-		map__keys(GoalsWaitingOnVar, Keys),
-		add_pending_goals(Keys, Var, GoalsWaitingOnVar,
+		map__keys(GoalsWaitingOnVar, NewlyPendingGoals),
+		add_pending_goals(NewlyPendingGoals, GoalsWaitingOnVar,
 				PendingGoals0, PendingGoals,
-				WaitingGoalsTable0, WaitingGoalsTable1),
-		map__delete(WaitingGoalsTable1, Var, WaitingGoalsTable),
+				WaitingGoalsTable0, WaitingGoalsTable),
 		DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums)
 	;
@@ -2795,15 +2832,15 @@ delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
 	% (depth of nested conjunction and sequence number within conjunction),
 	% to the collection of pending goals.
 	
-:- pred add_pending_goals(list(goal_num), var, map(goal_num, list(var)),
+:- pred add_pending_goals(list(goal_num), map(goal_num, list(var)),
 			pending_goals_table, pending_goals_table,
 			waiting_goals_table, waiting_goals_table).
-:- mode add_pending_goals(in, in, in, in, out, in, out) is det.
+:- mode add_pending_goals(in, in, in, out, in, out) is det.
 
-add_pending_goals([], _Var, _WaitingVarsTable,
+add_pending_goals([], _WaitingVarsTable,
 			PendingGoals, PendingGoals,
 			WaitingGoals, WaitingGoals).
-add_pending_goals([Depth - SeqNum | Rest], Var, WaitingVarsTable,
+add_pending_goals([Depth - SeqNum | Rest], WaitingVarsTable,
 			PendingGoals0, PendingGoals,
 			WaitingGoals0, WaitingGoals) :-
 
@@ -2811,8 +2848,7 @@ add_pending_goals([Depth - SeqNum | Rest], Var, WaitingVarsTable,
 		% goals table
 	GoalNum = Depth - SeqNum,
 	map__lookup(WaitingVarsTable, GoalNum, WaitingVars),
-	delete_waiting_vars(WaitingVars, Var, GoalNum, WaitingGoals0,
-			WaitingGoals1),
+	delete_waiting_vars(WaitingVars, GoalNum, WaitingGoals0, WaitingGoals1),
 
 		% add the goal to the pending goals table
 	( map__search(PendingGoals0, Depth, PendingSeqNums0) ->
@@ -2824,31 +2860,30 @@ add_pending_goals([Depth - SeqNum | Rest], Var, WaitingVarsTable,
 	map__set(PendingGoals0, Depth, PendingSeqNums, PendingGoals1),
 
 		% do the same for the rest of the pending goals
-	add_pending_goals(Rest, Var, WaitingVarsTable,
+	add_pending_goals(Rest, WaitingVarsTable,
 		PendingGoals1, PendingGoals,
 		WaitingGoals1, WaitingGoals).
 
-	% Since we're about to move this goal from the waiting goal table
-	% to the pending table, we need to delete all the other indexes to it
-	% in the waiting goal table, so that we don't attempt to wake
-	% it up twice.
+%-----------------------------------------------------------------------------%
 
-:- pred delete_waiting_vars(list(var), var, goal_num,
+	% Remove all references to a goal from the waiting goals table.
+
+:- pred delete_waiting_vars(list(var), goal_num,
 				waiting_goals_table, waiting_goals_table).
-:- mode delete_waiting_vars(in, in, in, in, out) is det.
+:- mode delete_waiting_vars(in, in, in, out) is det.
 
-delete_waiting_vars([], _, _, WaitingGoalTables, WaitingGoalTables).
-delete_waiting_vars([Var | Vars], ThisVar, GoalNum, WaitingGoalsTable0,
+delete_waiting_vars([], _, WaitingGoalTables, WaitingGoalTables).
+delete_waiting_vars([Var | Vars], GoalNum, WaitingGoalsTable0,
 				WaitingGoalsTable) :-
-	( Var = ThisVar ->
-		WaitingGoalsTable1 = WaitingGoalsTable0
+	map__lookup(WaitingGoalsTable0, Var, WaitingGoals0),
+	map__delete(WaitingGoals0, GoalNum, WaitingGoals),
+	( map__is_empty(WaitingGoals) ->
+		map__delete(WaitingGoalsTable0, Var, WaitingGoalsTable1)
 	;
-		map__lookup(WaitingGoalsTable0, Var, WaitingGoals0),
-		map__delete(WaitingGoals0, GoalNum, WaitingGoals),
 		map__set(WaitingGoalsTable0, Var, WaitingGoals,
 			WaitingGoalsTable1)
 	),
-	delete_waiting_vars(Vars, ThisVar, GoalNum, WaitingGoalsTable1,
+	delete_waiting_vars(Vars, GoalNum, WaitingGoalsTable1,
 				WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
@@ -2887,7 +2922,7 @@ delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 
 :- type mode_error_info
 	---> mode_error_info(
-		list(var),	% the variables which caused the error
+		set(var),	% the variables which caused the error
 				% (we will attempt to reschedule the goal
 				% if the one of these variables becomes
 				% more instantiated)
@@ -2900,7 +2935,7 @@ delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 
 	% record a mode error (and associated context _info) in the mode_info.
 
-:- pred mode_info_error(list(var), mode_error, mode_info, mode_info).
+:- pred mode_info_error(set(var), mode_error, mode_info, mode_info).
 :- mode mode_info_error(in, in, mode_info_di, mode_info_uo).
 
 mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
@@ -3026,7 +3061,8 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 			VarSet, Context, ModeInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Floundered goal, waiting on { "),
-	mercury_output_vars(Vars, VarSet),
+	{ set__to_sorted_list(Vars, VarList) },
+	mercury_output_vars(VarList, VarSet),
 	io__write_string(" } :\n"),
 	lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
