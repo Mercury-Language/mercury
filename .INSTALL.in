@@ -124,6 +124,9 @@ make install
 #	   grades corresponding to the `--debug' and `--high-level-code'
 #	   options).
 #
+#	   The option --enable-agc-grades causes the installation
+#	   of grades that support type-accurate garbage collection.
+#
 #	   The option --disable-nogc-grades prevents the installation
 #	   of grades without garbage collection.
 #
