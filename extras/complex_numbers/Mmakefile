@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000, 2002-2003 The University of Melbourne.
+# Copyright (C) 2000, 2002-2003, 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -7,6 +7,8 @@
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 -include ../Mmake.params
+
+MCFLAGS += --intermodule-optimization -O5
 
 MAIN_TARGET = all
 
