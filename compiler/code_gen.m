@@ -745,14 +745,16 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 				Fields, FieldsContext) },
 			{ string__format("#define\tMR_ORDINARY_SLOTS\t%d\n",
 				[i(TotalSlots)], DefineStr) },
-			{ DefineComponents = [pragma_c_raw_code(DefineStr)] },
+			{ DefineComponents = [pragma_c_raw_code(DefineStr,
+				live_lvals_info(set__init))] },
 			{ NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots,
 				yes(Struct)) },
 			{ AllocCode = node([
 				mkframe(NondetFrameInfo, OutsideResumeAddress)
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
-					will_not_call_mercury, no, no, no, no)
+					will_not_call_mercury, no, no, no, no,
+					no)
 					- ""
 			]) },
 			{ NondetPragma = yes }
@@ -836,10 +838,11 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma) },
 	( { NondetPragma = yes } ->
 		{ UndefStr = "#undef\tMR_ORDINARY_SLOTS\n" },
-		{ UndefComponents = [pragma_c_raw_code(UndefStr)] },
+		{ UndefComponents = [pragma_c_raw_code(UndefStr,
+			live_lvals_info(set__init))] },
 		{ UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no, no, no, no)
+				will_not_call_mercury, no, no, no, no, no)
 				- ""
 		]) },
 		{ RestoreDeallocCode = empty },	% always empty for nondet code
@@ -1284,12 +1287,12 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		pragma_c(
 		[],
 		[
-		pragma_c_raw_code("\t{\n"),
-		pragma_c_raw_code(CallStruct),
-		pragma_c_raw_code(BytecodeCall),
-		pragma_c_raw_code("\t}\n")
+		pragma_c_raw_code("\t{\n", live_lvals_info(set__init)),
+		pragma_c_raw_code(CallStruct, live_lvals_info(set__init)),
+		pragma_c_raw_code(BytecodeCall, no_live_lvals_info),
+		pragma_c_raw_code("\t}\n", live_lvals_info(set__init))
 		],
-		may_call_mercury, no, no, no, no
+		may_call_mercury, no, no, no, no, no
 		) - "Entry stub"
 	].
 

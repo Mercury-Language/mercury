@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -538,14 +538,17 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			;
 				Uinstr = mkframe(_, _)
 			;
-				Uinstr = c_code(_)
+				Uinstr = c_code(_, _)
 			;
 				Uinstr = pragma_c(_, _, MayCallMercury,
-					_, MaybeLayout, _, NeedStack),
+					_, MaybeLayout, MaybeOnlyLayout, _,
+					NeedStack),
 				(
 					MayCallMercury = may_call_mercury
 				;
 					MaybeLayout = yes(_)
+				;
+					MaybeOnlyLayout = yes(_)
 				;
 					NeedStack = yes
 				)
@@ -670,7 +673,8 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 			Uinstr = call(_, _, _, _, _, _)
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
-			Uinstr = pragma_c(_, _, may_call_mercury, _, _, _, _)
+			Uinstr = pragma_c(_, _, may_call_mercury,
+				_, _, _, _, _)
 		)
 	->
 		CanClobberSuccip = yes

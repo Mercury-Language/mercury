@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, BlockMap0, BlockMap,
 			BlockMap0, BlockMap1, ProcLabel, C1, C),
 		( list__last(BlockInstrs, LastInstr) ->
 			LastInstr = LastUinstr - _,
-			possible_targets(LastUinstr, SideLabels),
+			opt_util__possible_targets(LastUinstr, SideLabels),
 			opt_util__can_instr_fall_through(LastUinstr,
 				CanFallThrough),
 			( CanFallThrough = yes ->

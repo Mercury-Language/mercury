@@ -273,7 +273,7 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		llds_common__process_rval(Rval0, Rval, Info0, Info),
 		Instr = computed_goto(Rval, Labels)
 	;
-		Instr0 = c_code(_),
+		Instr0 = c_code(_, _),
 		Instr = Instr0,
 		Info = Info0
 	;
@@ -349,7 +349,7 @@ llds_common__process_instr(Instr0, Instr, Info0, Info) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = pragma_c(_, _, _, _, _, _, _),
+		Instr0 = pragma_c(_, _, _, _, _, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	).

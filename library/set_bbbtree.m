@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -227,6 +227,11 @@
 
 :- func set_bbbtree__union(set_bbbtree(T), set_bbbtree(T)) = set_bbbtree(T).
 
+
+	% `set_bbbtree__union_list(Sets) = Set' is true iff `Set' is the union
+	% of all the sets in `Sets'
+
+:- func set_bbbtree__union_list(list(set_bbbtree(T))) = set_bbbtree(T).
 
 	% `set_bbbtree__power_union(Sets, Set)' is true iff `Set' is the union
 	% of all the sets in `Sets'
@@ -776,6 +781,11 @@ set_bbbtree__union_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 	set_bbbtree__union_r(LL, NewRL, LSet, Ratio),
 	set_bbbtree__union_r(LR, NewRR, RSet, Ratio),
 	set_bbbtree__concat4(LSet, RSet, V, Set, Ratio).
+
+%------------------------------------------------------------------------------%
+
+set_bbbtree__union_list(ListofSets) = 
+	list__foldl(set_bbbtree__union, ListofSets, set_bbbtree__init).
 
 %------------------------------------------------------------------------------%
 

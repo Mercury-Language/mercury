@@ -788,6 +788,8 @@ They are:
 
 <li> peephole optimization (peephole.m)
 
+<li> introduction of local C variables (use_local_vars.m) <br>
+
 <li> value numbering <br>
 
 	This is done by value_number.m, which has the following sub-modules:
@@ -853,10 +855,18 @@ They are:
 		until the tag is known. (Violations of (b) usually cause
 		unaligned accesses, which cause bus errors on many machines.)
 	</dl>
-
-	Several of these modules (and also frameopt, above) use livemap.m,
-	which finds the set of locations live at each label.
 </ul>
+
+<p>
+
+Several of these optimizations (frameopt, use_local_vars and value numbering)
+use livemap.m, a module that finds the set of locations live at each label.
+
+Use_local_vars and value numbering also introduce
+references to temporary variables in extended basic blocks
+in the LLDS representation of the C code.
+The transformation to insert the block scopes
+and declare the temporary variables is performed by wrap_blocks.m.
 
 <p>
 
@@ -1194,6 +1204,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-04-24 03:39:43 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-04-24 03:59:09 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

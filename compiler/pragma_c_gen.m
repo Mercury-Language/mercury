@@ -459,29 +459,32 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
 	{ MayCallMercury = will_not_call_mercury ->
-		SaveRegsComp = pragma_c_raw_code("")
+		SaveRegsComp = pragma_c_raw_code("",
+			live_lvals_info(set__init))
 	;
 		SaveRegsComp = pragma_c_raw_code(
-			"\tMR_save_registers();\n"
-		)
+			"\tMR_save_registers();\n",
+			live_lvals_info(set__init))
 	},
 
 	%
 	% Code fragments to obtain and release the global lock
 	%
 	{ ThreadSafe = thread_safe ->
-		ObtainLock = pragma_c_raw_code(""),
-		ReleaseLock = pragma_c_raw_code("")
+		ObtainLock = pragma_c_raw_code("", live_lvals_info(set__init)),
+		ReleaseLock = pragma_c_raw_code("", live_lvals_info(set__init))
 	;
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
 		llds_out__quote_c_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ObtainLockStr),
-		ObtainLock = pragma_c_raw_code(ObtainLockStr),
+		ObtainLock = pragma_c_raw_code(ObtainLockStr,
+			live_lvals_info(set__init)),
 		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ReleaseLockStr),
-		ReleaseLock = pragma_c_raw_code(ReleaseLockStr)
+		ReleaseLock = pragma_c_raw_code(ReleaseLockStr,
+			live_lvals_info(set__init))
 	},
 
 	%
@@ -510,7 +513,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		RestoreRegsComp = pragma_c_noop
 	;
 		RestoreRegsComp = pragma_c_raw_code(
-		"#ifndef CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n"
+		"#ifndef CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n",
+		live_lvals_info(set__init)
 		)
 	},
 
@@ -540,7 +544,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			CheckR1_Comp, RestoreRegsComp,
 			OutputComp, ProcLabelHashUndef] },
 	{ PragmaCCode = node([
-		pragma_c(Decls, Components, MayCallMercury, no, no,
+		pragma_c(Decls, Components, MayCallMercury, no, no, no,
 			MaybeFailLabel, no)
 			- "Pragma C inclusion"
 	]) },
@@ -598,8 +602,10 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 		ProcLabelHashDef, ProcLabelHashUndef) :-
 	ProcLabelHashDef = pragma_c_raw_code(string__append_list([
 		"#define\tMR_PROC_LABEL\t",
-		make_proc_label_string(ModuleInfo, PredId, ProcId), "\n"])),
-	ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n").
+		make_proc_label_string(ModuleInfo, PredId, ProcId), "\n"]),
+		live_lvals_info(set__init)),
+	ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n",
+		live_lvals_info(set__init)).
 
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
@@ -811,59 +817,62 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		CallDecls = [SaveStructDecl | Decls],
 		CallComponents = [
 			pragma_c_inputs(InputDescs),
-			pragma_c_raw_code(InitSaveStruct),
-			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(InitSaveStruct, no_live_lvals_info),
+			pragma_c_raw_code(SaveRegs, no_live_lvals_info),
 			ProcLabelDefine,
-			pragma_c_raw_code(CallDef1),
-			pragma_c_raw_code(CallDef2),
-			pragma_c_raw_code(CallDef3),
+			pragma_c_raw_code(CallDef1, no_live_lvals_info),
+			pragma_c_raw_code(CallDef2, no_live_lvals_info),
+			pragma_c_raw_code(CallDef3, no_live_lvals_info),
 			pragma_c_user_code(FirstContext, First),
 			pragma_c_user_code(SharedContext, Shared),
-			pragma_c_raw_code(CallSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(CallSuccessLabel, no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(Succeed),
-			pragma_c_raw_code(CallLastSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(Succeed, no_live_lvals_info),
+			pragma_c_raw_code(CallLastSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(SucceedDiscard),
-			pragma_c_raw_code(Undef1),
-			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3),
+			pragma_c_raw_code(SucceedDiscard, no_live_lvals_info),
+			pragma_c_raw_code(Undef1, no_live_lvals_info),
+			pragma_c_raw_code(Undef2, no_live_lvals_info),
+			pragma_c_raw_code(Undef3, no_live_lvals_info),
 			ProcLabelUndef
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, no, no, no, yes)
+				MayCallMercury, no, no, no, no, yes)
 				- "Call and shared pragma C inclusion"
 		]),
 
 		RetryDecls = [SaveStructDecl | OutDecls],
 		RetryComponents = [
-			pragma_c_raw_code(InitSaveStruct),
-			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(InitSaveStruct, no_live_lvals_info),
+			pragma_c_raw_code(SaveRegs, no_live_lvals_info),
 			ProcLabelDefine,
-			pragma_c_raw_code(RetryDef1),
-			pragma_c_raw_code(RetryDef2),
-			pragma_c_raw_code(RetryDef3),
+			pragma_c_raw_code(RetryDef1, no_live_lvals_info),
+			pragma_c_raw_code(RetryDef2, no_live_lvals_info),
+			pragma_c_raw_code(RetryDef3, no_live_lvals_info),
 			pragma_c_user_code(LaterContext, Later),
 			pragma_c_user_code(SharedContext, Shared),
-			pragma_c_raw_code(RetrySuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(RetrySuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(Succeed),
-			pragma_c_raw_code(RetryLastSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(Succeed, no_live_lvals_info),
+			pragma_c_raw_code(RetryLastSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(SucceedDiscard),
-			pragma_c_raw_code(Undef1),
-			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3),
+			pragma_c_raw_code(SucceedDiscard, no_live_lvals_info),
+			pragma_c_raw_code(Undef1, no_live_lvals_info),
+			pragma_c_raw_code(Undef2, no_live_lvals_info),
+			pragma_c_raw_code(Undef3, no_live_lvals_info),
 			ProcLabelUndef
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, no, no, no, yes)
+				MayCallMercury, no, no, no, no, yes)
 				- "Retry and shared pragma C inclusion"
 		]),
 
@@ -901,87 +910,93 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		CallDecls = [SaveStructDecl | Decls],
 		CallComponents = [
 			pragma_c_inputs(InputDescs),
-			pragma_c_raw_code(InitSaveStruct),
-			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(InitSaveStruct, no_live_lvals_info),
+			pragma_c_raw_code(SaveRegs, no_live_lvals_info),
 			ProcLabelDefine,
-			pragma_c_raw_code(CallDef1),
-			pragma_c_raw_code(CallDef2),
-			pragma_c_raw_code(CallDef3),
+			pragma_c_raw_code(CallDef1, no_live_lvals_info),
+			pragma_c_raw_code(CallDef2, no_live_lvals_info),
+			pragma_c_raw_code(CallDef3, no_live_lvals_info),
 			pragma_c_user_code(FirstContext, First),
-			pragma_c_raw_code(GotoSharedLabel),
-			pragma_c_raw_code(CallSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(GotoSharedLabel, no_live_lvals_info),
+			pragma_c_raw_code(CallSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(Succeed),
-			pragma_c_raw_code(CallLastSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(Succeed, no_live_lvals_info),
+			pragma_c_raw_code(CallLastSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(SucceedDiscard),
-			pragma_c_raw_code(Undef1),
-			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3),
+			pragma_c_raw_code(SucceedDiscard, no_live_lvals_info),
+			pragma_c_raw_code(Undef1, no_live_lvals_info),
+			pragma_c_raw_code(Undef2, no_live_lvals_info),
+			pragma_c_raw_code(Undef3, no_live_lvals_info),
 			ProcLabelUndef
 		],
 		CallBlockCode = node([
-			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, yes(SharedLabel), no, no, yes)
+			pragma_c(CallDecls, CallComponents, MayCallMercury,
+				yes(SharedLabel), no, no, no, yes)
 				- "Call pragma C inclusion"
 		]),
 
 		RetryDecls = [SaveStructDecl | OutDecls],
 		RetryComponents = [
-			pragma_c_raw_code(InitSaveStruct),
-			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(InitSaveStruct, no_live_lvals_info),
+			pragma_c_raw_code(SaveRegs, no_live_lvals_info),
 			ProcLabelDefine,
-			pragma_c_raw_code(RetryDef1),
-			pragma_c_raw_code(RetryDef2),
-			pragma_c_raw_code(RetryDef3),
+			pragma_c_raw_code(RetryDef1, no_live_lvals_info),
+			pragma_c_raw_code(RetryDef2, no_live_lvals_info),
+			pragma_c_raw_code(RetryDef3, no_live_lvals_info),
 			pragma_c_user_code(LaterContext, Later),
-			pragma_c_raw_code(GotoSharedLabel),
-			pragma_c_raw_code(RetrySuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(GotoSharedLabel, no_live_lvals_info),
+			pragma_c_raw_code(RetrySuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(Succeed),
-			pragma_c_raw_code(RetryLastSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(Succeed, no_live_lvals_info),
+			pragma_c_raw_code(RetryLastSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(SucceedDiscard),
-			pragma_c_raw_code(Undef1),
-			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3),
+			pragma_c_raw_code(SucceedDiscard, no_live_lvals_info),
+			pragma_c_raw_code(Undef1, no_live_lvals_info),
+			pragma_c_raw_code(Undef2, no_live_lvals_info),
+			pragma_c_raw_code(Undef3, no_live_lvals_info),
 			ProcLabelUndef
 		],
 		RetryBlockCode = node([
-			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, yes(SharedLabel), no, no, yes)
+			pragma_c(RetryDecls, RetryComponents, MayCallMercury,
+				yes(SharedLabel), no, no, no, yes)
 				- "Retry pragma C inclusion"
 		]),
 
 		SharedDecls = [SaveStructDecl | OutDecls],
 		SharedComponents = [
-			pragma_c_raw_code(InitSaveStruct),
-			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(InitSaveStruct, no_live_lvals_info),
+			pragma_c_raw_code(SaveRegs, no_live_lvals_info),
 			ProcLabelDefine,
-			pragma_c_raw_code(SharedDef1),
-			pragma_c_raw_code(SharedDef2),
-			pragma_c_raw_code(SharedDef3),
+			pragma_c_raw_code(SharedDef1, no_live_lvals_info),
+			pragma_c_raw_code(SharedDef2, no_live_lvals_info),
+			pragma_c_raw_code(SharedDef3, no_live_lvals_info),
 			pragma_c_user_code(SharedContext, Shared),
-			pragma_c_raw_code(SharedSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(SharedSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(Succeed),
-			pragma_c_raw_code(SharedLastSuccessLabel),
-			pragma_c_raw_code(RestoreRegs),
+			pragma_c_raw_code(Succeed, no_live_lvals_info),
+			pragma_c_raw_code(SharedLastSuccessLabel,
+				no_live_lvals_info),
+			pragma_c_raw_code(RestoreRegs, no_live_lvals_info),
 			pragma_c_outputs(OutputDescs),
-			pragma_c_raw_code(SucceedDiscard),
-			pragma_c_raw_code(Undef1),
-			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3),
+			pragma_c_raw_code(SucceedDiscard, no_live_lvals_info),
+			pragma_c_raw_code(Undef1, no_live_lvals_info),
+			pragma_c_raw_code(Undef2, no_live_lvals_info),
+			pragma_c_raw_code(Undef3, no_live_lvals_info),
 			ProcLabelUndef
 		],
 		SharedBlockCode = node([
 			pragma_c(SharedDecls, SharedComponents,
-				MayCallMercury, no, no, no, yes)
+				MayCallMercury, no, no, no, no, yes)
 				- "Shared pragma C inclusion"
 		]),
 

@@ -1830,15 +1830,18 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 			% inside MR_commit_{mark,cut}.
 			Components = [
 				pragma_c_raw_code(
-					"\tMR_save_transient_registers();\n"),
+					"\tMR_save_transient_registers();\n",
+					live_lvals_info(set__init)),
 				pragma_c_raw_code(
-					"\tMR_commit_mark();\n"),
+					"\tMR_commit_mark();\n",
+					live_lvals_info(set__init)),
 				pragma_c_raw_code(
-					"\tMR_restore_transient_registers();\n")
+					"\tMR_restore_transient_registers();\n",
+					live_lvals_info(set__init))
 			],
 			MarkCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no, no, no) - ""
+					no, no, no, no, no) - ""
 			])
 		;
 			UseMinimalModel = no,
@@ -1912,11 +1915,12 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 			UseMinimalModel = yes,
 			% See the comment in prepare_for_semi_commit above.
 			Components = [
-				pragma_c_raw_code("\tMR_commit_cut();\n")
+				pragma_c_raw_code("\tMR_commit_cut();\n",
+					live_lvals_info(set__init))
 			],
 			CutCode = node([
 				pragma_c([], Components, will_not_call_mercury,
-					no, no, no, no)
+					no, no, no, no, no)
 					- "commit for temp frame hijack"
 			])
 		;

@@ -382,6 +382,7 @@
 		;	optimize_jumps
 		;	optimize_fulljumps
 		;	checked_nondet_tailcalls
+		;	use_local_vars
 		;	optimize_labels
 		;	optimize_dups
 %%% unused:	;	optimize_copyprop
@@ -775,7 +776,8 @@ option_defaults_2(optimization_option, [
 	optimize_peep		-	bool(no),
 	optimize_jumps		-	bool(no),
 	optimize_fulljumps	-	bool(no),
-	checked_nondet_tailcalls	-	bool(no),
+	checked_nondet_tailcalls -	bool(no),
+	use_local_vars		-	bool(no),
 	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
 %%%	optimize_copyprop	-	bool(no),
@@ -1216,6 +1218,7 @@ long_option("optimise-jumps",		optimize_jumps).
 long_option("optimize-fulljumps",	optimize_fulljumps).
 long_option("optimise-fulljumps",	optimize_fulljumps).
 long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
+long_option("use-local-vars",		use_local_vars).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
@@ -2572,6 +2575,9 @@ options_help_llds_llds_optimization -->
 		"\tConvert nondet calls into tail calls whenever possible, even",
 		"\twhen this requires a runtime check. This option tries to",
 		"\tminimize stack consumption, possibly at the expense of speed.",
+		"--use-local-vars",
+		"\tDisable the transformation to use local variables in C code",
+		"\tblocks whereever possible.",
 		"--no-optimize-labels",
 		"\tDisable elimination of dead labels and code.",
 		"--optimize-dups",

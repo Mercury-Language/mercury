@@ -175,6 +175,12 @@
 :- func set_unordlist__union(set_unordlist(T), set_unordlist(T))
 		= set_unordlist(T).
 
+	% `set_unordlist__union_list(A) = B' is true iff `B' is the union of
+	% all the sets in `A'
+
+:- func set_unordlist__union_list(list(set_unordlist(T)))
+		= set_unordlist(T).
+
 	% `set_unordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
@@ -307,6 +313,9 @@ set_unordlist__remove_least(Set0, E, Set) :-
 
 set_unordlist__union(Set0, Set1, Set) :-
 	list__append(Set1, Set0, Set).
+
+set_unordlist__union_list(LS) = S :-
+	set_unordlist__power_union(LS, S).
 
 set_unordlist__power_union(PS, S) :-
 	set_unordlist__init(S0),

@@ -1355,7 +1355,7 @@ output_instruction_decls(call(Target, ContLabel, _, _, _, _), _,
 		DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(c_code(_), _, DeclSet, DeclSet) --> [].
+output_instruction_decls(c_code(_, _), _, DeclSet, DeclSet) --> [].
 output_instruction_decls(mkframe(FrameInfo, FailureContinuation), _,
 		DeclSet0, DeclSet) -->
 	(
@@ -1422,7 +1422,8 @@ output_instruction_decls(prune_tickets_to(Rval), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), _, DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), _, DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Comps, _, _, MaybeLayoutLabel, _, _),
+output_instruction_decls(pragma_c(_, Comps, _, _,
+		MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _),
 		StackLayoutLabels, DeclSet0, DeclSet) -->
 	( { MaybeLayoutLabel = yes(Label) } ->
 		{ map__lookup(StackLayoutLabels, Label, DataAddr) },
@@ -1430,7 +1431,13 @@ output_instruction_decls(pragma_c(_, Comps, _, _, MaybeLayoutLabel, _, _),
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
-	output_pragma_c_component_list_decls(Comps, DeclSet1, DeclSet).
+	( { MaybeOnlyLayoutLabel = yes(OnlyLabel) } ->
+		{ map__lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr) },
+		output_stack_layout_decl(OnlyDataAddr, DeclSet1, DeclSet2)
+	;
+		{ DeclSet2 = DeclSet1 }
+	),
+	output_pragma_c_component_list_decls(Comps, DeclSet2, DeclSet).
 output_instruction_decls(init_sync_term(Lval, _), _, DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(fork(Child, Parent, _), _, DeclSet0, DeclSet) -->
@@ -1462,7 +1469,8 @@ output_pragma_c_component_decls(pragma_c_inputs(Inputs), DeclSet0, DeclSet) -->
 output_pragma_c_component_decls(pragma_c_outputs(Outputs), DeclSet0, DeclSet)
 		-->
 	output_pragma_output_lval_decls(Outputs, DeclSet0, DeclSet).
-output_pragma_c_component_decls(pragma_c_raw_code(_), DeclSet, DeclSet) --> [].
+output_pragma_c_component_decls(pragma_c_raw_code(_, _), DeclSet, DeclSet)
+		--> [].
 output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
 		--> [].
 output_pragma_c_component_decls(pragma_c_fail_to(_), DeclSet, DeclSet) --> [].
@@ -1623,7 +1631,7 @@ output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo) -->
 	output_call(Target, ContLabel, CallerLabel),
 	output_gc_livevals(LiveVals).
 
-output_instruction(c_code(C_Code_String), _) -->
+output_instruction(c_code(C_Code_String, _), _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
@@ -1764,7 +1772,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _, _, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
@@ -1832,7 +1840,7 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 			io__write_string(";}\n")
 		)
 	).
-output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
+output_pragma_c_component(pragma_c_raw_code(C_Code, _)) -->
 	io__write_string(C_Code).
 output_pragma_c_component(pragma_c_fail_to(Label)) -->
 	io__write_string("if (!MR_r1) MR_GOTO_LABEL("),

@@ -124,7 +124,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
-		Uinstr = c_code(_),
+		Uinstr = c_code(_, _),
 		error("c_code found in vn_block_cost")
 	;
 		Uinstr = if_val(Rval, _),
@@ -185,7 +185,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = decr_sp(_),
 		Cost = 0
 	;
-		Uinstr = pragma_c(_, _, _, _, _, _, _),
+		Uinstr = pragma_c(_, _, _, _, _, _, _, _),
 		error("pragma_c found in vn_block_cost")
 	;
 		Uinstr = init_sync_term(_, _),

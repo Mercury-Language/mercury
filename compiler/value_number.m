@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,16 +23,6 @@
 :- pred value_number_main(list(instruction)::in, contains_reconstruction::in,
 	set(label)::in, proc_label::in, counter::in, counter::out,
 	list(instruction)::out, io__state::di, io__state::uo) is det.
-
-	% The main value numbering pass introduces references to temporary
-	% variables whose values need be preserved only within an extended
-	% basic block. The post_main pass looks for references to temporaries
-	% and introduces block instructions whenever it sees them. These
-	% block instructions go from the first reference to a temporary
-	% to the end of its extended basic block.
-
-:- pred value_number__post_main(list(instruction), list(instruction)).
-:- mode value_number__post_main(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,6 +51,14 @@ value_number_main(Instrs0, ContainsReconstruction, LayoutLabelSet,
 	{ livemap__build(Instrs2, MaybeLiveMap) },
 	(
 		{ MaybeLiveMap = yes(LiveMap) },
+		{ \+ (
+			list__member(Instr, Instrs2),
+			Instr = Uinstr - _,
+			( Uinstr = c_code(_, _)
+			; Uinstr = pragma_c(_, _, _, _, _, _, _, _)
+			)
+		) }
+	->
 		vn_debug__livemap_msg(LiveMap),
 		value_number__procedure(Instrs2, LiveMap, UseSet,
 			AllocSet, BreakSet, C1, C, Instrs3),
@@ -68,7 +66,6 @@ value_number_main(Instrs0, ContainsReconstruction, LayoutLabelSet,
 	;
 		% Can't find live lvals and thus can't perform value numbering
 		% if there is a c_code or a pragma_c in the instructions.
-		{ MaybeLiveMap = no },
 		{ C = C1 },
 		{ Instrs = Instrs0 }
 	).
@@ -1123,7 +1120,7 @@ value_number__boundary_instr(mkframe(_, _), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).
 value_number__boundary_instr(computed_goto(_, _), yes).
-value_number__boundary_instr(c_code(_), yes).
+value_number__boundary_instr(c_code(_, _), yes).
 value_number__boundary_instr(if_val(_, _), yes).
 value_number__boundary_instr(incr_hp(_, _, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
@@ -1141,7 +1138,7 @@ value_number__boundary_instr(init_sync_term(_, _), no).
 value_number__boundary_instr(fork(_, _, _), yes).
 value_number__boundary_instr(join_and_terminate(_), yes).
 value_number__boundary_instr(join_and_continue(_, _), yes).
-value_number__boundary_instr(pragma_c(_, _, _, _, _, _, _), yes).
+value_number__boundary_instr(pragma_c(_, _, _, _, _, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1175,53 +1172,6 @@ value_number__no_old_labels([], _SoFar).
 value_number__no_old_labels([Label | Labels], SoFar) :-
 	\+ set__member(Label, SoFar),
 	value_number__no_old_labels(Labels, SoFar).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-value_number__post_main(Instrs0, Instrs) :-
-	value_number__post_main_2(Instrs0, 0, 0, [], Instrs).
-
-	% R is the number of the highest numbered tempr variable seen so far;
-	% R = 0 means we haven't seen any temp variables. Similarly, F is the
-	% highest numbered tempf variable seen so far. RevSofar is a
-	% reversed list of instructions starting with the first instruction
-	% in this block that accesses a temp variable. Invariant: RevSofar
-	% is always empty if R = 0 and F = 0.
-
-:- pred value_number__post_main_2(list(instruction), int, int,
-	list(instruction), list(instruction)).
-:- mode value_number__post_main_2(in, in, in, in, out) is det.
-
-value_number__post_main_2([], R, F, RevSofar, []) :-
-	( RevSofar = [_|_] ->
-		error("procedure ends with fallthrough")
-	; ( R > 0 ; F > 0 ) ->
-		error("procedure ends without closing block")
-	;
-		true
-	).
-value_number__post_main_2([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
-	Instr0 = Uinstr0 - _Comment0,
-	opt_util__count_temps_instr(Uinstr0, R0, R1, F0, F1),
-	( ( R1 > 0 ; F1 > 0) ->
-		( opt_util__can_instr_fall_through(Uinstr0, no) ->
-			list__reverse([Instr0 | RevSofar], BlockInstrs),
-			value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
-			Instrs = [block(R1, F1, BlockInstrs) - "" | Instrs1]
-		; Uinstr0 = label(_) ->
-			list__reverse(RevSofar, BlockInstrs),
-			value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
-			Instrs = [block(R1, F1, BlockInstrs) - "", Instr0
-				| Instrs1]
-		;
-			value_number__post_main_2(Instrs0, R1, F1,
-				[Instr0 | RevSofar], Instrs)
-		)
-	;
-		value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
-		Instrs = [Instr0 | Instrs1]
-	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

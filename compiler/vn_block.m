@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -270,7 +270,7 @@ vn_block__handle_instr(computed_goto(Rval, Labels),
 	vn_block__new_ctrl_node(vn_computed_goto(Vn, Labels), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(c_code(_),
+vn_block__handle_instr(c_code(_, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("c_code should not be found in handle_instr").
@@ -373,7 +373,7 @@ vn_block__handle_instr(decr_sp(N),
 	vn_block__new_ctrl_node(vn_decr_sp(N), Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(pragma_c(_, _, _, _, _, _, _),
+vn_block__handle_instr(pragma_c(_, _, _, _, _, _, _, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("value numbering not supported for pragma_c").
@@ -929,7 +929,7 @@ vn_block__is_ctrl_instr(mkframe(_, _), yes).
 vn_block__is_ctrl_instr(label(_), yes).
 vn_block__is_ctrl_instr(goto(_), yes).
 vn_block__is_ctrl_instr(computed_goto(_, _), yes).
-vn_block__is_ctrl_instr(c_code(_), no).
+vn_block__is_ctrl_instr(c_code(_, _), no).
 vn_block__is_ctrl_instr(if_val(_, _), yes).
 vn_block__is_ctrl_instr(incr_hp(_, _, _, _), no).
 vn_block__is_ctrl_instr(mark_hp(_), yes).
@@ -947,7 +947,7 @@ vn_block__is_ctrl_instr(init_sync_term(_, _), no).
 vn_block__is_ctrl_instr(fork(_, _, _), yes).
 vn_block__is_ctrl_instr(join_and_terminate(_), yes).
 vn_block__is_ctrl_instr(join_and_continue(_, _), yes).
-vn_block__is_ctrl_instr(pragma_c(_, _, _, _, _, _, _), no).
+vn_block__is_ctrl_instr(pragma_c(_, _, _, _, _, _, _, _), no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

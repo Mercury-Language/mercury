@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -800,7 +800,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			Need = no
 		)
 	;
-		Uinstr0 = c_code(_),
+		Uinstr0 = c_code(_, _),
 		Need = no
 	;
 		Uinstr0 = if_val(Rval, _),
@@ -891,7 +891,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = init_sync_term(Lval, _),
@@ -988,7 +988,7 @@ opt_util__can_instr_branch_away(mkframe(_, _), no).
 opt_util__can_instr_branch_away(label(_), no).
 opt_util__can_instr_branch_away(goto(_), yes).
 opt_util__can_instr_branch_away(computed_goto(_, _), yes).
-opt_util__can_instr_branch_away(c_code(_), no).
+opt_util__can_instr_branch_away(c_code(_, _), no).
 opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_hp(_, _, _, _), no).
 opt_util__can_instr_branch_away(mark_hp(_), no).
@@ -1006,8 +1006,8 @@ opt_util__can_instr_branch_away(init_sync_term(_, _), no).
 opt_util__can_instr_branch_away(fork(_, _, _), yes).
 opt_util__can_instr_branch_away(join_and_terminate(_), no).
 opt_util__can_instr_branch_away(join_and_continue(_, _), yes).
-opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _), BranchAway)
-		:-
+opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _),
+		BranchAway) :-
 	opt_util__can_components_branch_away(Comps, BranchAway).
 
 :- pred opt_util__can_components_branch_away(list(pragma_c_component), bool).
@@ -1039,7 +1039,8 @@ opt_util__can_components_branch_away([Component | Components], BranchAway) :-
 
 opt_util__can_component_branch_away(pragma_c_inputs(_), no).
 opt_util__can_component_branch_away(pragma_c_outputs(_), no).
-opt_util__can_component_branch_away(pragma_c_raw_code(Code), CanBranchAway) :-
+opt_util__can_component_branch_away(pragma_c_raw_code(Code, _),
+		CanBranchAway) :-
 	( Code = "" -> CanBranchAway = no ; CanBranchAway = yes ).
 opt_util__can_component_branch_away(pragma_c_user_code(_, _), no).
 opt_util__can_component_branch_away(pragma_c_fail_to(_), yes).
@@ -1055,7 +1056,7 @@ opt_util__can_instr_fall_through(mkframe(_, _), yes).
 opt_util__can_instr_fall_through(label(_), yes).
 opt_util__can_instr_fall_through(goto(_), no).
 opt_util__can_instr_fall_through(computed_goto(_, _), no).
-opt_util__can_instr_fall_through(c_code(_), yes).
+opt_util__can_instr_fall_through(c_code(_, _), yes).
 opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_hp(_, _, _, _), yes).
 opt_util__can_instr_fall_through(mark_hp(_), yes).
@@ -1073,7 +1074,7 @@ opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
 opt_util__can_instr_fall_through(fork(_, _, _), no).
 opt_util__can_instr_fall_through(join_and_terminate(_), no).
 opt_util__can_instr_fall_through(join_and_continue(_, _), no).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1101,7 +1102,7 @@ opt_util__can_use_livevals(mkframe(_, _), no).
 opt_util__can_use_livevals(label(_), no).
 opt_util__can_use_livevals(goto(_), yes).
 opt_util__can_use_livevals(computed_goto(_, _), no).
-opt_util__can_use_livevals(c_code(_), no).
+opt_util__can_use_livevals(c_code(_, _), no).
 opt_util__can_use_livevals(if_val(_, _), yes).
 opt_util__can_use_livevals(incr_hp(_, _, _, _), no).
 opt_util__can_use_livevals(mark_hp(_), no).
@@ -1119,7 +1120,7 @@ opt_util__can_use_livevals(init_sync_term(_, _), no).
 opt_util__can_use_livevals(fork(_, _, _), no).
 opt_util__can_use_livevals(join_and_terminate(_), no).
 opt_util__can_use_livevals(join_and_continue(_, _), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1164,7 +1165,7 @@ opt_util__instr_labels_2(mkframe(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
 opt_util__instr_labels_2(computed_goto(_, Labels), Labels, []).
-opt_util__instr_labels_2(c_code(_), [], []).
+opt_util__instr_labels_2(c_code(_, _), [], []).
 opt_util__instr_labels_2(if_val(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(incr_hp(_, _, _, _), [], []).
 opt_util__instr_labels_2(mark_hp(_), [], []).
@@ -1183,9 +1184,9 @@ opt_util__instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
 opt_util__instr_labels_2(join_and_terminate(_), [], []).
 opt_util__instr_labels_2(join_and_continue(_, Label), [Label], []).
 opt_util__instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
-		MaybeSubLabel, _), Labels, []) :-
+		MaybeOnlyLayoutLabel, MaybeSubLabel, _), Labels, []) :-
 	opt_util__pragma_c_labels(MaybeFixLabel, MaybeLayoutLabel,
-		MaybeSubLabel, Labels).
+		MaybeOnlyLayoutLabel, MaybeSubLabel, Labels).
 
 opt_util__possible_targets(comment(_), []).
 opt_util__possible_targets(livevals(_), []).
@@ -1207,7 +1208,7 @@ opt_util__possible_targets(goto(CodeAddr), Targets) :-
 		Targets = []
 	).
 opt_util__possible_targets(computed_goto(_, Targets), Targets).
-opt_util__possible_targets(c_code(_), []).
+opt_util__possible_targets(c_code(_, _), []).
 opt_util__possible_targets(if_val(_, CodeAddr), Targets) :-
 	( CodeAddr = label(Label) ->
 		Targets = [Label]
@@ -1231,16 +1232,16 @@ opt_util__possible_targets(fork(Child, Parent, _), [Child, Parent]).
 opt_util__possible_targets(join_and_terminate(_), []).
 opt_util__possible_targets(join_and_continue(_, L), [L]).
 opt_util__possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
-		MaybeSubLabel, _), Labels) :-
+		_, MaybeSubLabel, _), Labels) :-
 	opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
-		MaybeSubLabel, Labels).
+		no, MaybeSubLabel, Labels).
 
 :- pred opt_util__pragma_c_labels(maybe(label), maybe(label), maybe(label),
-	list(label)).
-:- mode opt_util__pragma_c_labels(in, in, in, out) is det.
+	maybe(label), list(label)).
+:- mode opt_util__pragma_c_labels(in, in, in, in, out) is det.
 
-opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel, MaybeSubLabel,
-		Labels) :-
+opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
+		MaybeOnlyLayoutLabel, MaybeSubLabel, Labels) :-
 	( MaybeFixedLabel = yes(FixedLabel) ->
 		Labels0 = [FixedLabel]
 	;
@@ -1251,10 +1252,15 @@ opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel, MaybeSubLabel,
 	;
 		Labels1 = Labels0
 	),
-	( MaybeSubLabel = yes(SubLabel) ->
-		Labels = [SubLabel | Labels1]
+	( MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel) ->
+		Labels2 = [OnlyLayoutLabel | Labels1]
 	;
-		Labels = Labels1
+		Labels2 = Labels1
+	),
+	( MaybeSubLabel = yes(SubLabel) ->
+		Labels = [SubLabel | Labels2]
+	;
+		Labels = Labels2
 	).
 
 :- pred opt_util__instr_rvals_and_lvals(instr, list(rval), list(lval)).
@@ -1272,7 +1278,7 @@ opt_util__instr_rvals_and_lvals(mkframe(_, _), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
 opt_util__instr_rvals_and_lvals(goto(_), [], []).
 opt_util__instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
-opt_util__instr_rvals_and_lvals(c_code(_), [], []).
+opt_util__instr_rvals_and_lvals(c_code(_, _), [], []).
 opt_util__instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, Rval, _), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
@@ -1290,8 +1296,8 @@ opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 opt_util__instr_rvals_and_lvals(fork(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _), Rvals, Lvals)
-		:-
+opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _),
+		Rvals, Lvals) :-
 	pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
 	% extract the rvals and lvals from the pragma_c_components
@@ -1321,7 +1327,7 @@ pragma_c_component_get_rvals_and_lvals(pragma_c_outputs(Outputs),
 	list__append(Lvals1, Lvals0, Lvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_user_code(_, _),
 		Rvals, Rvals, Lvals, Lvals).
-pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_),
+pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_, _),
 		Rvals, Rvals, Lvals, Lvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_fail_to(_),
 		Rvals, Rvals, Lvals, Lvals).
@@ -1410,7 +1416,7 @@ opt_util__count_temps_instr(computed_goto(Rval, _), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(if_val(Rval, _), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(c_code(_), R, R, F, F).
+opt_util__count_temps_instr(c_code(_, _), R, R, F, F).
 opt_util__count_temps_instr(incr_hp(Lval, _, Rval, _), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
@@ -1439,7 +1445,7 @@ opt_util__count_temps_instr(join_and_terminate(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
 opt_util__count_temps_instr(join_and_continue(Lval, _), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _, _, _), R, R, F, F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
@@ -1546,7 +1552,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
 		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
-	; Uinstr = pragma_c(_, Components, _, _, _, _, _) ->
+	; Uinstr = pragma_c(_, Components, _, _, _, _, _, _) ->
 		opt_util__touches_nondet_ctrl_components(Components, Touch)
 	;
 		Touch = yes
@@ -1626,7 +1632,7 @@ opt_util__touches_nondet_ctrl_components([C | Cs], Touch) :-
 
 opt_util__touches_nondet_ctrl_component(pragma_c_inputs(_), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_outputs(_), no).
-opt_util__touches_nondet_ctrl_component(pragma_c_raw_code(_), no).
+opt_util__touches_nondet_ctrl_component(pragma_c_raw_code(_, _), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_user_code(_, _), yes).
 opt_util__touches_nondet_ctrl_component(pragma_c_fail_to(_), no).
 opt_util__touches_nondet_ctrl_component(pragma_c_noop, no).
@@ -1790,7 +1796,7 @@ opt_util__replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
 		Rval = Rval0
 	),
 	opt_util__replace_labels_label_list(Labels0, ReplMap, Labels).
-opt_util__replace_labels_instr(c_code(Code), _, _, c_code(Code)).
+opt_util__replace_labels_instr(c_code(Code, Lvals), _, _, c_code(Code, Lvals)).
 opt_util__replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
 		if_val(Rval, Target)) :-
 	(
@@ -1893,8 +1899,9 @@ opt_util__replace_labels_instr(join_and_continue(Lval0, Label0),
 	opt_util__replace_labels_label(Label0, Replmap, Label),
 	opt_util__replace_labels_lval(Lval0, Replmap, Lval).
 opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
-		MaybeSub0, F), ReplMap, _,
-		pragma_c(A, Comps, C, MaybeFix, MaybeLayout, MaybeSub, F)) :-
+		MaybeOnlyLayout, MaybeSub0, F), ReplMap, _,
+		pragma_c(A, Comps, C, MaybeFix, MaybeLayout, MaybeOnlyLayout,
+			MaybeSub, F)) :-
 	(
 		MaybeFix = no
 	;
@@ -1914,6 +1921,17 @@ opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
 			% We cannot replace the label that has a layout
 			% structure.
 		require(unify(LayoutLabel0, LayoutLabel),
+			"trying to replace Mercury label with layout")
+	),
+	(
+		MaybeOnlyLayout = no
+	;
+		MaybeOnlyLayout = yes(OnlyLayoutLabel0),
+		opt_util__replace_labels_label(OnlyLayoutLabel0, ReplMap,
+			OnlyLayoutLabel),
+			% We cannot replace the label that has a layout
+			% structure.
+		require(unify(OnlyLayoutLabel0, OnlyLayoutLabel),
 			"trying to replace Mercury label with layout")
 	),
 	(
@@ -1944,7 +1962,8 @@ opt_util__replace_labels_comp(pragma_c_inputs(A), _, pragma_c_inputs(A)).
 opt_util__replace_labels_comp(pragma_c_outputs(A), _, pragma_c_outputs(A)).
 opt_util__replace_labels_comp(pragma_c_user_code(A, B), _,
 		pragma_c_user_code(A, B)).
-opt_util__replace_labels_comp(pragma_c_raw_code(A), _, pragma_c_raw_code(A)).
+opt_util__replace_labels_comp(pragma_c_raw_code(A, B), _,
+		pragma_c_raw_code(A, B)).
 opt_util__replace_labels_comp(pragma_c_fail_to(Label0), ReplMap,
 		pragma_c_fail_to(Label)) :-
 	opt_util__replace_labels_label(Label0, ReplMap, Label).

@@ -186,6 +186,10 @@
 
 :- func set__union(set(T), set(T)) = set(T).
 
+	% `set__union_list(A, B)' is true iff `B' is the union of
+	% all the sets in `A'
+:- func set__union_list(list(set(T))) = set(T).
+
 	% `set__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
@@ -354,6 +358,8 @@ set__remove_least(Set0, X, Set) :-
 
 set__union(SetA, SetB, Set) :-
 	set_ordlist__union(SetA, SetB, Set).
+
+set__union_list(Sets) = set_ordlist__union_list(Sets).
 
 set__power_union(Sets, Set) :-
 	set_ordlist__power_union(Sets, Set).

@@ -170,6 +170,11 @@
 
 :- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
 
+	% `set_ordlist__union_list(A, B)' is true iff `B' is the union of
+	% all the sets in `A'
+
+:- func set_ordlist__union_list(list(set_ordlist(T))) = set_ordlist(T).
+
 	% `set_ordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
@@ -369,6 +374,10 @@ set_ordlist__remove_least([Elem|Set], Elem, Set).
 
 set_ordlist__union(Set0, Set1, Set) :-
 	list__merge_and_remove_dups(Set0, Set1, Set).
+
+set_ordlist__union_list(ListofSets) = Set :-
+	set_ordlist__init(Set0),
+	set_ordlist__power_union_2(ListofSets, Set0, Set).
 
 set_ordlist__power_union(SetofSets, Set) :-
 	set_ordlist__init(Set0),

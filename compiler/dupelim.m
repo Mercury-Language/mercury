@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,7 +119,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
 		(
 			Instr = pragma_c(_, _, _,
-				MaybeFixedLabel, MaybeLayoutLabel, _, _) - _
+				MaybeFixedLabel, MaybeLayoutLabel,
+				MaybeOnlyLayoutLabel, _, _) - _
 		->
 			( MaybeFixedLabel = yes(FixedLabel) ->
 				set__insert(FoldFixed0, FixedLabel, FoldFixed1)
@@ -127,9 +128,16 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 				FoldFixed1 = FoldFixed0
 			),
 			( MaybeLayoutLabel = yes(LayoutLabel) ->
-				set__insert(FoldFixed1, LayoutLabel, FoldFixed)
+				set__insert(FoldFixed1, LayoutLabel,
+					FoldFixed2)
 			;
-				FoldFixed = FoldFixed1
+				FoldFixed2 = FoldFixed1
+			),
+			( MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel) ->
+				set__insert(FoldFixed2, OnlyLayoutLabel,
+					FoldFixed)
+			;
+				FoldFixed = FoldFixed2
 			)
 		;
 			FoldFixed = FoldFixed0
@@ -321,7 +329,7 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = computed_goto(_, _),
 		Instr = Instr1
 	;
-		Instr1 = c_code(_),
+		Instr1 = c_code(_, _),
 		Instr = Instr1
 	;
 		Instr1 = if_val(Rval1, CodeAddr),
@@ -388,7 +396,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_lval(Lval1, Lval),
 		Instr = join_and_continue(Lval, N)
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -600,7 +608,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = c_code(_),
+		Instr1 = c_code(_, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
@@ -666,7 +674,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).

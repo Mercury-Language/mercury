@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -402,7 +402,7 @@ middle_rec__find_used_registers_instr(label(_), Used, Used).
 middle_rec__find_used_registers_instr(goto(_), Used, Used).
 middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(c_code(_), Used, Used).
+middle_rec__find_used_registers_instr(c_code(_, _), Used, Used).
 middle_rec__find_used_registers_instr(if_val(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_hp(Lval, _, Rval, _), Used0, Used) :-
@@ -426,8 +426,8 @@ middle_rec__find_used_registers_instr(prune_tickets_to(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _),
-		Used0, Used) :-
+middle_rec__find_used_registers_instr(pragma_c(_, Components,
+		_, _, _, _, _, _), Used0, Used) :-
 	middle_rec__find_used_registers_components(Components, Used0, Used).
 middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used).
@@ -455,7 +455,7 @@ middle_rec__find_used_registers_component(pragma_c_inputs(In), Used0, Used) :-
 middle_rec__find_used_registers_component(pragma_c_outputs(Out), Used0, Used) :-
 	insert_pragma_c_output_registers(Out, Used0, Used).
 middle_rec__find_used_registers_component(pragma_c_user_code(_, _), Used, Used).
-middle_rec__find_used_registers_component(pragma_c_raw_code(_), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_raw_code(_, _), Used, Used).
 middle_rec__find_used_registers_component(pragma_c_fail_to(_), Used, Used).
 middle_rec__find_used_registers_component(pragma_c_noop, Used, Used).
 

@@ -591,8 +591,9 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		TraceStmt1 = FillSlotsUptoTrail
 	),
 	TraceCode1 = node([
-		pragma_c([], [pragma_c_raw_code(TraceStmt1)],
-			will_not_call_mercury, no, MaybeLayoutLabel, no, yes)
+		pragma_c([], [pragma_c_raw_code(TraceStmt1,
+			live_lvals_info(set__init))], will_not_call_mercury,
+			no, no, MaybeLayoutLabel, no, yes)
 			- ""
 	]),
 	(
@@ -611,8 +612,10 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			"\t\t", CallTableLvalStr, " = 0;"
 		], TraceStmt3),
 		TraceCode3 = node([
-			pragma_c([], [pragma_c_raw_code(TraceStmt3)],
-				will_not_call_mercury, no, no, no, yes) - ""
+			pragma_c([], [pragma_c_raw_code(TraceStmt3,
+				live_lvals_info(set__init))],
+				will_not_call_mercury, no, no, no, no, yes)
+				- ""
 		])
 	;
 		MaybeCallTableLval = no,
@@ -641,8 +644,10 @@ trace__prepare_for_call(TraceCode) -->
 			ResetFromFullStmt = "MR_trace_from_full = TRUE;\n"
 		),
 		TraceCode = node([
-			c_code(ResetFromFullStmt) - "",
-			c_code(ResetDepthStmt) - ""
+			c_code(ResetFromFullStmt, live_lvals_info(set__init))
+				- "",
+			c_code(ResetDepthStmt, live_lvals_info(set__init))
+				- ""
 		])
 	;
 		TraceCode = empty
@@ -800,6 +805,16 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	set__to_sorted_list(TvarSet, TvarList),
 	continuation_info__find_typeinfos_for_tvars(TvarList,
 		VarLocs, ProcInfo, TvarDataMap),
+
+	% compute the set of live lvals at the event
+	VarLvals = list__map(find_lval_in_var_info, VarInfoList),
+	map__values(TvarDataMap, TvarLocnSets),
+	TvarLocnSet = set__union_list(TvarLocnSets),
+	set__to_sorted_list(TvarLocnSet, TvarLocns),
+	TvarLvals = list__map(find_lval_in_layout_locn, TvarLocns),
+	list__append(VarLvals, TvarLvals, LiveLvals),
+	LiveLvalSet = set__list_to_set(LiveLvals),
+
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	LabelStr = layout_out__make_label_layout_name(Label),
@@ -848,12 +863,23 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 				% because sometimes this pair is preceded
 				% by another label, and this way we can
 				% eliminate this other label.
-			pragma_c([], [pragma_c_raw_code(TraceStmt)],
-				may_call_mercury, no, yes(Label), no, yes)
+			pragma_c([], [pragma_c_raw_code(TraceStmt,
+				live_lvals_info(LiveLvalSet))],
+				may_call_mercury, no, no, yes(Label), no, yes)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode)
 	}.
+
+:- func find_lval_in_var_info(var_info) = lval.
+
+find_lval_in_var_info(var_info(LayoutLocn, _)) =
+	find_lval_in_layout_locn(LayoutLocn).
+
+:- func find_lval_in_layout_locn(layout_locn) = lval.
+
+find_lval_in_layout_locn(direct(Lval)) = Lval.
+find_lval_in_layout_locn(indirect(Lval, _)) = Lval.
 
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
 	TraceRedoLabel = TraceInfo ^ redo_label,

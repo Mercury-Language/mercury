@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,8 +27,7 @@
 	%
 	% We can compute this set only if the procedure contains no C code.
 
-:- pred livemap__build(list(instruction), maybe(livemap)).
-:- mode livemap__build(in, out) is det.
+:- pred livemap__build(list(instruction)::in, maybe(livemap)::out) is det.
 
 :- implementation.
 
@@ -55,14 +54,14 @@ livemap__build(Instrs, MaybeLivemap) :-
 	list__reverse(Instrs, BackInstrs),
 	livemap__build_2(BackInstrs, Livemap0, MaybeLivemap).
 
-:- pred livemap__build_2(list(instruction), livemap, maybe(livemap)).
-:- mode livemap__build_2(in, in, out) is det.
+:- pred livemap__build_2(list(instruction)::in, livemap::in,
+	maybe(livemap)::out) is det.
 
 livemap__build_2(Backinstrs, Livemap0, MaybeLivemap) :-
 	set__init(Livevals0),
-	livemap__build_livemap(Backinstrs, Livevals0, no, DontValueNumber1,
+	livemap__build_livemap(Backinstrs, Livevals0, no, DontValueNumber,
 		Livemap0, Livemap1),
-	( DontValueNumber1 = yes ->
+	( DontValueNumber = yes ->
 		MaybeLivemap = no
 	; livemap__equal_livemaps(Livemap0, Livemap1) ->
 		MaybeLivemap = yes(Livemap1)
@@ -77,16 +76,15 @@ livemap__build_2(Backinstrs, Livemap0, MaybeLivemap) :-
 	% The domain of Livemap2 should always be every label in the procedure.
 	% as should the domain of Livemap1 in every call after the first.
 
-:- pred livemap__equal_livemaps(livemap, livemap).
-:- mode livemap__equal_livemaps(in, in) is semidet.
+:- pred livemap__equal_livemaps(livemap::in, livemap::in) is semidet.
 
 livemap__equal_livemaps(Livemap1, Livemap2) :-
 	map__keys(Livemap1, Labels),
 	map__keys(Livemap2, Labels),
 	livemap__equal_livemaps_keys(Labels, Livemap1, Livemap2).
 
-:- pred livemap__equal_livemaps_keys(list(label), livemap, livemap).
-:- mode livemap__equal_livemaps_keys(in, in, in) is semidet.
+:- pred livemap__equal_livemaps_keys(list(label)::in, livemap::in, livemap::in)
+	is semidet.
 
 livemap__equal_livemaps_keys([], _Livemap1, _Livemap2).
 livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
@@ -101,9 +99,8 @@ livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
 	% Build up a map of what lvals are live at each label.
 	% The input instruction sequence is reversed.
 
-:- pred livemap__build_livemap(list(instruction), lvalset, bool, bool,
-	livemap, livemap).
-:- mode livemap__build_livemap(in, in, in, out, in, out) is det.
+:- pred livemap__build_livemap(list(instruction)::in, lvalset::in,
+	bool::in, bool::out, livemap::in, livemap::out) is det.
 
 livemap__build_livemap([], _, DontValueNumber, DontValueNumber,
 		Livemap, Livemap).
@@ -115,10 +112,9 @@ livemap__build_livemap([Instr0 | Instrs0], Livevals0,
 	livemap__build_livemap(Instrs1, Livevals1,
 		DontValueNumber1, DontValueNumber, Livemap1, Livemap).
 
-:- pred livemap__build_livemap_instr(instruction, list(instruction),
-	list(instruction), lvalset, lvalset, bool, bool, livemap, livemap).
-:- mode livemap__build_livemap_instr(in, in, out, in, out, in, out, in, out)
-	is det.
+:- pred livemap__build_livemap_instr(instruction::in, list(instruction)::in,
+	list(instruction)::out, lvalset::in, lvalset::out,
+	bool::in, bool::out, livemap::in, livemap::out) is det.
 
 livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livevals0, Livevals, DontValueNumber0, DontValueNumber,
@@ -209,12 +205,6 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
-	;
-		Uinstr0 = c_code(_),
-		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = yes
 	;
 		Uinstr0 = if_val(Rval, CodeAddr),
 		livemap__look_for_livevals(Instrs0, Instrs,
@@ -367,17 +357,84 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = yes
 	;
-		% XXX we shouldn't just give up here
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _),
+		Uinstr0 = c_code(_, LiveLvalInfo),
+		livemap__build_live_lval_info(LiveLvalInfo,
+			Livevals0, Livevals,
+			DontValueNumber0, DontValueNumber),
 		Livemap = Livemap0,
-		Livevals = Livevals0,
-		Instrs = Instrs0,
-		DontValueNumber = yes
+		Instrs = Instrs0
+	;
+		Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _),
+		livemap__build_livemap_pragma_components(Components,
+			Livevals0, Livevals,
+			DontValueNumber0, DontValueNumber),
+		Livemap = Livemap0,
+		Instrs = Instrs0
 	).
 
-:- pred livemap__look_for_livevals(list(instruction), list(instruction),
-	lvalset, lvalset, string, bool, bool).
-:- mode livemap__look_for_livevals(in, out, in, out, in, in, out) is det.
+:- pred livemap__build_livemap_pragma_components(list(pragma_c_component)::in,
+	lvalset::in, lvalset::out, bool::in, bool::out) is det.
+
+livemap__build_livemap_pragma_components([], Livevals, Livevals,
+		DontValueNumber, DontValueNumber).
+livemap__build_livemap_pragma_components([Component | Components],
+		Livevals0, Livevals, DontValueNumber0, DontValueNumber) :-
+	(
+		Component = pragma_c_inputs(Inputs),
+		livemap__build_livemap_pragma_inputs(Inputs,
+			Livevals0, Livevals1),
+		DontValueNumber1 = DontValueNumber0
+	;
+		Component = pragma_c_outputs(_),
+		Livevals1 = Livevals0,
+		DontValueNumber1 = DontValueNumber0
+	;
+		Component = pragma_c_user_code(_, _),
+		Livevals1 = Livevals0,
+		DontValueNumber1 = yes
+	;
+		Component = pragma_c_raw_code(_, LiveLvalInfo),
+		livemap__build_live_lval_info(LiveLvalInfo,
+			Livevals0, Livevals1,
+			DontValueNumber0, DontValueNumber1)
+	;
+		Component = pragma_c_fail_to(_),
+		Livevals1 = Livevals0,
+		DontValueNumber1 = DontValueNumber0
+	;
+		Component = pragma_c_noop,
+		Livevals1 = Livevals0,
+		DontValueNumber1 = DontValueNumber0
+	),
+	livemap__build_livemap_pragma_components(Components,
+		Livevals1, Livevals, DontValueNumber1, DontValueNumber).
+
+:- pred livemap__build_live_lval_info(c_code_live_lvals::in,
+	lvalset::in, lvalset::out, bool::in, bool::out) is det.
+
+livemap__build_live_lval_info(no_live_lvals_info,
+		Livevals, Livevals, _, yes).
+livemap__build_live_lval_info(live_lvals_info(LiveLvalSet),
+		Livevals0, Livevals, DontValueNumber, DontValueNumber) :-
+	set__to_sorted_list(LiveLvalSet, LiveLvals),
+	livemap__insert_proper_livevals(LiveLvals, Livevals0, Livevals).
+
+:- pred livemap__build_livemap_pragma_inputs(list(pragma_c_input)::in,
+	lvalset::in, lvalset::out) is det.
+
+livemap__build_livemap_pragma_inputs([], Livevals, Livevals).
+livemap__build_livemap_pragma_inputs([Input | Inputs], Livevals0, Livevals) :-
+	Input = pragma_c_input(_, _, Rval),
+	( Rval = lval(Lval) ->
+		livemap__insert_proper_liveval(Lval, Livevals0, Livevals1)
+	;
+		Livevals1 = Livevals0
+	),
+	livemap__build_livemap_pragma_inputs(Inputs, Livevals1, Livevals).
+
+:- pred livemap__look_for_livevals(list(instruction)::in,
+	list(instruction)::out, lvalset::in, lvalset::out, string::in,
+	bool::in, bool::out) is det.
 
 livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 		Site, Compulsory, Found) :-
@@ -397,8 +454,7 @@ livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 
 	% What lval (if any) is consulted when we branch to a code address?
 
-:- pred livemap__special_code_addr(code_addr, maybe(lval)).
-:- mode livemap__special_code_addr(in, out) is det.
+:- pred livemap__special_code_addr(code_addr::in, maybe(lval)::out) is det.
 
 livemap__special_code_addr(label(_), no).
 livemap__special_code_addr(imported(_), no).
@@ -423,8 +479,8 @@ livemap__special_code_addr(do_not_reached, no).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred livemap__make_live_in_rvals(list(rval), lvalset, lvalset).
-:- mode livemap__make_live_in_rvals(in, in, out) is det.
+:- pred livemap__make_live_in_rvals(list(rval)::in, lvalset::in, lvalset::out)
+	is det.
 
 livemap__make_live_in_rvals([], Live, Live).
 livemap__make_live_in_rvals([Rval | Rvals], Live0, Live) :-
@@ -435,8 +491,7 @@ livemap__make_live_in_rvals([Rval | Rvals], Live0, Live) :-
 	% fields, since they are treated specially (the later stages consider
 	% them to be live even if they are not explicitly in the live set).
 
-:- pred livemap__make_live_in_rval(rval, lvalset, lvalset).
-:- mode livemap__make_live_in_rval(in, in, out) is det.
+:- pred livemap__make_live_in_rval(rval::in, lvalset::in, lvalset::out) is det.
 
 livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
 	% XXX maybe we should treat mem_refs the same way as field refs
@@ -462,8 +517,8 @@ livemap__make_live_in_rval(var(_), _, _) :-
 livemap__make_live_in_rval(mem_addr(MemRef), Live0, Live) :-
 	livemap__make_live_in_mem_ref(MemRef, Live0, Live).
 
-:- pred livemap__make_live_in_mem_ref(mem_ref, lvalset, lvalset).
-:- mode livemap__make_live_in_mem_ref(in, in, out) is det.
+:- pred livemap__make_live_in_mem_ref(mem_ref::in, lvalset::in, lvalset::out)
+	is det.
 
 livemap__make_live_in_mem_ref(stackvar_ref(_), Live, Live).
 livemap__make_live_in_mem_ref(framevar_ref(_), Live, Live).
@@ -473,16 +528,15 @@ livemap__make_live_in_mem_ref(heap_ref(Rval, _, _), Live0, Live) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred livemap__filter_livevals(lvalset, lvalset).
-:- mode livemap__filter_livevals(in, out) is det.
+:- pred livemap__filter_livevals(lvalset::in, lvalset::out) is det.
 
 livemap__filter_livevals(Livevals0, Livevals) :-
 	set__to_sorted_list(Livevals0, Livelist),
 	set__init(Livevals1),
 	livemap__insert_proper_livevals(Livelist, Livevals1, Livevals).
 
-:- pred livemap__insert_label_livevals(list(label), livemap, lvalset, lvalset).
-:- mode livemap__insert_label_livevals(in, in, in, out) is det.
+:- pred livemap__insert_label_livevals(list(label)::in, livemap::in,
+	lvalset::in, lvalset::out) is det.
 
 livemap__insert_label_livevals([], _, Livevals, Livevals).
 livemap__insert_label_livevals([Label | Labels], Livemap, Livevals0, Livevals)
@@ -495,8 +549,8 @@ livemap__insert_label_livevals([Label | Labels], Livemap, Livevals0, Livevals)
 	),
 	livemap__insert_label_livevals(Labels, Livemap, Livevals1, Livevals).
 
-:- pred livemap__insert_proper_livevals(list(lval), lvalset, lvalset).
-:- mode livemap__insert_proper_livevals(in, in, out) is det.
+:- pred livemap__insert_proper_livevals(list(lval)::in, lvalset::in,
+	lvalset::out) is det.
 
 livemap__insert_proper_livevals([], Livevals, Livevals).
 livemap__insert_proper_livevals([Live | Livelist], Livevals0, Livevals) :-
@@ -505,8 +559,8 @@ livemap__insert_proper_livevals([Live | Livelist], Livevals0, Livevals) :-
 
 	% Don't insert references to locations on the heap.
 
-:- pred livemap__insert_proper_liveval(lval, lvalset, lvalset).
-:- mode livemap__insert_proper_liveval(in, in, out) is det.
+:- pred livemap__insert_proper_liveval(lval::in, lvalset::in, lvalset::out)
+	is det.
 
 livemap__insert_proper_liveval(Live, Livevals0, Livevals) :-
 	( Live = field(_, _, _) ->
