@@ -2014,19 +2014,11 @@ find_matching_pred_id([PredId | PredIds], MatchPredOrFunc, ModuleInfo,
 		% check that the types of the candidate predicate subsume
 		% the actual argument types
 		%
-		term__vars_list(ArgTypes, ArgTypeVars),
-		map__init(TypeSubst0),
-		type_unify_list(ArgTypes, PredArgTypes, ArgTypeVars, TypeSubst0,
-			_TypeSubst)
+		type_list_subsumes(PredArgTypes, ArgTypes, _TypeSubst)
 	->
 		%
 		% we've found a matching predicate
-		% (if there was more than one matching predicate, type checking
-		% would have reported an ambiguity error, so this must be
-		% the *only* matching predicate)
-		%
-		% XXX BUG! The above comment is wrong. We need to check for
-		% ambiguity here and if necessary report a compile error.
+		% was there was more than one matching predicate?
 		%
 		(
 			find_matching_pred_id(PredIds, MatchPredOrFunc,

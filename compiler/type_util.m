@@ -79,12 +79,21 @@
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
+	% The third argument is a list of type variables which cannot
+	% be bound (i.e. head type variables).
 
 :- pred type_unify(type, type, list(tvar), tsubst, tsubst).
 :- mode type_unify(in, in, in, in, out) is semidet.
 
 :- pred type_unify_list(list(type), list(type), list(tvar), tsubst, tsubst).
 :- mode type_unify_list(in, in, in, in, out) is semidet.
+
+	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
+	% TypesA subsumes (is more general than) TypesB, producing a
+	% type substitution which when applied to TypesA will give TypesB.
+
+:- pred type_list_subsumes(list(type), list(type), tsubst).
+:- mode type_list_subsumes(in, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -226,6 +235,20 @@ substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
 	substitute_type_args_2(Ctors0, TypeParams, TypeArgs, Ctors).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% Check whether TypesA subsumes TypesB, and if so return
+	% a type substitution that will map from TypesA to TypesB.
+
+type_list_subsumes(TypesA, TypesB, TypeSubst) :-
+	%
+	% TypesA subsumes TypesB iff TypesA can be unified with TypesB
+	% without binding any of the type variables in TypesB.
+	%
+	term__vars_list(TypesB, TypesBVars),
+	map__init(TypeSubst0),
+	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
+
 %-----------------------------------------------------------------------------%
 
 	% Types are represented as terms, but we can't just use term__unify
