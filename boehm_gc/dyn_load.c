@@ -279,6 +279,9 @@ GC_FirstDLOpenedLinkMap()
     struct r_debug *r;
     static struct link_map *cachedResult = 0;
 
+    if( _DYNAMIC == 0) {
+        return(0);
+    }
     if( cachedResult == 0 ) {
         int tag;
         for( dp = _DYNAMIC; (tag = dp->d_tag) != 0; dp++ ) {
