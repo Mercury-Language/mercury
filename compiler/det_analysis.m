@@ -326,7 +326,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	;
 		InternalSolns = InternalSolns0
 	),
-	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
 
 	(
 		% If a pure or semipure goal with multiple solutions
@@ -354,11 +353,60 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	determinism_components(Detism, InternalCanFail, Solns),
 	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 
+	% 
+	% The code generators assume that conjunctions containing
+	% multi or nondet goals and if-then-elses containing
+	% multi or nondet conditions can only occur inside other
+	% multi or nondet goals. simplify.m modifies the code to make
+	% these invariants hold. Determinism analysis can be rerun
+	% after simplification, and without this code here the
+	% invariants would not hold after determinism analysis
+	% (the number of solutions of the inner goal would be changed
+	% back from at_most_many to at_most_one or at_most_zero).
+	%
+	(
+		%
+		% If-then-elses that are det or semidet may
+		% nevertheless contain nondet or multidet
+		% conditions. If this happens, the if-then-else
+		% must be put inside a `some' to appease the
+		% code generator.  (Both the MLDS and LLDS
+		% back-ends rely on this.)
+		%
+		Goal1 = if_then_else(_, _ - CondInfo, _, _, _),
+		goal_info_get_determinism(CondInfo, CondDetism),
+		determinism_components(CondDetism, _, at_most_many),
+		Solns \= at_most_many
+	->
+		FinalInternalSolns = at_most_many
+	;
+		%
+		% Conjunctions that cannot produce solutions may nevertheless
+		% contain nondet and multidet goals. If this happens, the
+		% conjunction is put inside a `some' to appease the code
+		% generator.
+		%
+		Goal1 = conj(ConjGoals),
+		Solns = at_most_zero,
+		some [ConjGoalInfo] (
+			list__member(_ - ConjGoalInfo, ConjGoals),
+			goal_info_get_determinism(ConjGoalInfo,
+				ConjGoalDetism),
+			determinism_components(ConjGoalDetism, _, at_most_many)
+		)
+	->
+		FinalInternalSolns = at_most_many
+	;
+		FinalInternalSolns = InternalSolns
+	),
+	determinism_components(FinalInternalDetism, InternalCanFail,
+		FinalInternalSolns),
+
 	% See how we should introduce the commit operator, if one is needed.
 
 	(
 		% do we need a commit?
-		Detism \= InternalDetism,
+		Detism \= FinalInternalDetism,
 
 		% for disjunctions, we want to use a semidet
 		% or cc_nondet disjunction which avoids creating a
@@ -373,7 +421,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		% a commit needed - we must introduce an explicit `some'
 		% so that the code generator knows to insert the appropriate
 		% code for pruning
-		goal_info_set_determinism(GoalInfo0, InternalDetism, InnerInfo),
+		goal_info_set_determinism(GoalInfo0,
+			FinalInternalDetism, InnerInfo),
 		Goal = some([], can_remove, Goal1 - InnerInfo),
 		Msgs = Msgs1
 	;
