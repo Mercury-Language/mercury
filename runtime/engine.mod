@@ -11,7 +11,7 @@
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
-#define LOCALS_SIZE	1024	/* amount of space to reserve for local vars */
+#define LOCALS_SIZE	10024	/* amount of space to reserve for local vars */
 #define MAGIC_MARKER	187	/* a random character */
 #define MAGIC_MARKER_2	142	/* another random character */
 
