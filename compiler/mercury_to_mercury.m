@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -195,7 +195,7 @@
 :- pred mercury_output_quantifier(tvarset, existq_tvars, io__state, io__state).
 :- mode mercury_output_quantifier(in, in, di, uo) is det.
 
-:- pred mercury_output_instance_methods(instance_interface, io__state,
+:- pred mercury_output_instance_methods(instance_methods, io__state,
 	io__state).
 :- mode mercury_output_instance_methods(in, di, uo) is det.
 
@@ -444,7 +444,7 @@ mercury_output_item(typeclass(Constraints, ClassName, Vars, Methods,
 	output_class_methods(Methods),
 	
 	io__write_string("\n].\n").
-mercury_output_item(instance(Constraints, ClassName, Types, Methods, 
+mercury_output_item(instance(Constraints, ClassName, Types, Body, 
 		VarSet), _) --> 
 	io__write_string(":- instance "),
 
@@ -459,11 +459,15 @@ mercury_output_item(instance(Constraints, ClassName, Types, Methods,
 	
 	mercury_output_class_constraint_list(Constraints, VarSet, "<="),
 
-	io__write_string(" where [\n"),
-
-	mercury_output_instance_methods(Methods),
-	
-	io__write_string("\n].\n").
+	(
+		{ Body = abstract }
+	;
+		{ Body = concrete(Methods) },
+		io__write_string(" where [\n"),
+		mercury_output_instance_methods(Methods),
+		io__write_string("\n]")
+	),
+	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,9 +341,9 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_interface(Interface0, Interface, Info2, Info).
 
-module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
+module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet) -
 			Context, 
-		instance(Constraints, Name, Types, Interface, VarSet) -
+		instance(Constraints, Name, Types, Body, VarSet) -
 			Context, 
 		Info0, Info, yes) -->
 	{ list__length(Types0, Arity) },
@@ -354,7 +354,7 @@ module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_name(Id, Name - _, Info2, Info3),
 	qualify_type_list(Types0, Types, Info3, Info),
-	{ qualify_instance_interface(Name, Interface0, Interface) }.
+	{ qualify_instance_body(Name, Body0, Body) }.
 
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
 							bool::out) is det.
@@ -815,10 +815,11 @@ qualify_class_method(
 	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo1),
 	qualify_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo).
 
-:- pred qualify_instance_interface(sym_name::in, instance_interface::in, 
-	instance_interface::out) is det. 
+:- pred qualify_instance_body(sym_name::in, instance_body::in, 
+	instance_body::out) is det. 
 
-qualify_instance_interface(ClassName, M0s, Ms) :-
+qualify_instance_body(_ClassName, abstract, abstract).
+qualify_instance_body(ClassName, concrete(M0s), concrete(Ms)) :-
 	( ClassName = unqualified(_) ->
 		Ms = M0s
 	;
