@@ -22,8 +22,6 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type xxx		= int.
-
 :- type module_info	--->	module(
 					string,		% module name
 					pred_table,
@@ -254,9 +252,9 @@
 %-----------------------------------------------------------------------------%
 
 	% This is how type, modes and constructors are represented.
-	% The parts that are not defined here (eg. type_param, constructor,
-	% type) are represented in the same way as in prog_io.nl,
-	% and are defined there.
+	% The parts that are not defined here (i.e. type_param, constructor,
+	% type, inst, mode, condition) are represented in the same way as
+	% in prog_io.nl, and are defined there.
 
 :- type hlds__type_defn	--->	hlds__type_defn(
 						% names of type vars (empty 

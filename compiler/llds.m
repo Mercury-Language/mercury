@@ -42,10 +42,10 @@
 			;	incr_hp(integer).
 
 :- type lval		--->	reg(reg)
-			;	field(tag, reg, integer).
+			;	field(tag, lval, integer).
 
 :- type rval		--->	lval(lval)
-			;	mkword(tag, reg)
+			;	mkword(tag, rval)
 			;	iconst(integer)		% integer constants
 			;	sconst(string)		% string constants
 			;	binop(operator,rval,rval).

@@ -560,24 +560,32 @@ goedel_output_goal(true, _, _) -->
 	io__write_string("True").
 
 goedel_output_goal(some(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(SOME ["),
-	goedel_output_vars(Vars, VarSet),
-	io__write_string("] "),
-	{ Indent1 is Indent + 1 },
-	goedel_output_newline(Indent1),
-	goedel_output_goal(Goal, VarSet, Indent1),
-	goedel_output_newline(Indent),
-	io__write_string(")").
+	( { Vars = [] } ->
+		goedel_output_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("(SOME ["),
+		goedel_output_vars(Vars, VarSet),
+		io__write_string("] "),
+		{ Indent1 is Indent + 1 },
+		goedel_output_newline(Indent1),
+		goedel_output_goal(Goal, VarSet, Indent1),
+		goedel_output_newline(Indent),
+		io__write_string(")")
+	).
 
 goedel_output_goal(all(Vars, Goal), VarSet, Indent) -->
-	io__write_string("(ALL ["),
-	goedel_output_vars(Vars, VarSet),
-	io__write_string("] "),
-	{ Indent1 is Indent + 1 },
-	goedel_output_newline(Indent1),
-	goedel_output_goal(Goal, VarSet, Indent1),
-	goedel_output_newline(Indent),
-	io__write_string(")").
+	( { Vars = [] } ->
+		goedel_output_goal(Goal, VarSet, Indent)
+	;
+		io__write_string("(ALL ["),
+		goedel_output_vars(Vars, VarSet),
+		io__write_string("] "),
+		{ Indent1 is Indent + 1 },
+		goedel_output_newline(Indent1),
+		goedel_output_goal(Goal, VarSet, Indent1),
+		goedel_output_newline(Indent),
+		io__write_string(")")
+	).
 
 goedel_output_goal(if_then_else(Vars, A, B, C), VarSet, Indent) -->
 	io__write_string("(IF"),
