@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -471,9 +471,36 @@
 :- pred rl__relation_id_to_string(relation_id::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% rl__schemas_to_strings(ModuleInfo, SchemaLists,
+	%	TypeDecls, SchemaStrings)
+	% 
+	% Convert a list of lists of types to a list of schema strings,
+	% with the declarations for the types used in TypeDecls.
+:- pred rl__schemas_to_strings(module_info::in,
+		list(list(type))::in, string::out, list(string)::out) is det.
+			
+	% Convert a list of types to a schema string.
+:- pred rl__schema_to_string(module_info::in,
+		list(type)::in, string::out) is det.
+
+	% Produce names acceptable to Aditi (just wrap single
+	% quotes around non-alphanumeric-and-underscore names).
+:- pred rl__mangle_and_quote_type_name(type_id::in, list(type)::in,
+		string::out) is det.
+:- pred rl__mangle_and_quote_ctor_name(sym_name::in,
+		int::in, string::out) is det.
+
+	% The expression stuff expects that constructor
+	% and type names are unquoted.
+:- pred rl__mangle_type_name(type_id::in, list(type)::in,
+		string::out) is det.
+:- pred rl__mangle_ctor_name(sym_name::in, int::in, string::out) is det.
+
+%-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module globals, options.
+:- import_module globals, options, prog_out, prog_util, type_util.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -637,6 +664,271 @@ rl__label_id_to_string(Label, Str) :-
 rl__relation_id_to_string(RelationId, Str) :-
 	string__int_to_string(RelationId, Str0),
 	string__append("Rel", Str0, Str).
+
+%-----------------------------------------------------------------------------%
+
+
+rl__schemas_to_strings(ModuleInfo, SchemaList, TypeDecls, SchemaStrings) :-
+	map__init(GatheredTypes0),
+	set__init(RecursiveTypes0),
+	rl__schemas_to_strings_2(ModuleInfo, GatheredTypes0, RecursiveTypes0,
+		SchemaList, "", TypeDecls, [], SchemaStrings).
+
+:- pred rl__schemas_to_strings_2(module_info::in, gathered_types::in,
+	set(full_type_id)::in, list(list(type))::in,
+	string::in, string::out, list(string)::in, list(string)::out) is det.
+
+rl__schemas_to_strings_2(_, _, _, [], TypeDecls, TypeDecls,
+		SchemaStrings0, SchemaStrings) :-
+	list__reverse(SchemaStrings0, SchemaStrings).
+rl__schemas_to_strings_2(ModuleInfo, GatheredTypes0, RecursiveTypes0,
+		[Schema0 | Schemas], TypeDecls0, TypeDecls,
+		SchemaStrings0, SchemaStrings) :-
+	strip_prog_contexts(Schema0, Schema),
+	set__init(Parents0),
+	rl__gather_types(ModuleInfo, Parents0, Schema,
+		GatheredTypes0, GatheredTypes1,
+		RecursiveTypes0, RecursiveTypes1,
+		TypeDecls0, TypeDecls1,
+		"", SchemaString),
+	rl__schemas_to_strings_2(ModuleInfo, GatheredTypes1, RecursiveTypes1,
+		Schemas, TypeDecls1, TypeDecls,
+		[SchemaString | SchemaStrings0], SchemaStrings).
+
+rl__schema_to_string(ModuleInfo, Types0, SchemaString) :-
+	map__init(GatheredTypes0),
+	set__init(RecursiveTypes0),
+	set__init(Parents0),
+	strip_prog_contexts(Types0, Types),
+	rl__gather_types(ModuleInfo, Parents0, Types,
+		GatheredTypes0, _, RecursiveTypes0, _, "", Decls,
+		"", SchemaString0),
+	string__append_list([Decls, "(", SchemaString0, ")"], SchemaString).
+
+	% Map from type to name and type definition string
+:- type gathered_types == map(pair(type_id, list(type)), string).
+:- type full_type_id == pair(type_id, list(type)).
+
+	% Go over a list of types collecting declarations for all the
+	% types used in the list.
+:- pred rl__gather_types(module_info::in, set(full_type_id)::in, 
+		list(type)::in, gathered_types::in, gathered_types::out, 
+		set(full_type_id)::in, set(full_type_id)::out, 
+		string::in, string::out, string::in, string::out) is det.
+
+rl__gather_types(_, _, [], GatheredTypes, GatheredTypes, 
+		RecursiveTypes, RecursiveTypes, Decls, Decls,
+		TypeString, TypeString).
+rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0, 
+		GatheredTypes, RecursiveTypes0, RecursiveTypes, 
+		Decls0, Decls, TypeString0, TypeString) :-
+	rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0,
+		GatheredTypes1, RecursiveTypes0, RecursiveTypes1,
+		Decls0, Decls1, ThisTypeString),
+	( Types = [] ->
+		Comma = ""
+	;
+		Comma = ","
+	),
+	string__append_list([TypeString0, ThisTypeString, Comma], TypeString1),
+	rl__gather_types(ModuleInfo, Parents, Types, GatheredTypes1, 
+		GatheredTypes, RecursiveTypes1, RecursiveTypes, 
+		Decls1, Decls, TypeString1, TypeString).
+
+:- pred rl__gather_type(module_info::in, set(full_type_id)::in, (type)::in, 
+		gathered_types::in, gathered_types::out, set(full_type_id)::in, 
+		set(full_type_id)::out, string::in, string::out,
+		string::out) is det.
+
+rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes, 
+		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
+	classify_type(Type, ModuleInfo, ClassifiedType0),
+	( ClassifiedType0 = enum_type ->
+		ClassifiedType = user_type
+	;
+		ClassifiedType = ClassifiedType0
+	),
+	(
+		ClassifiedType = enum_type,
+			% this is converted to user_type above
+		error("rl__gather_type: enum type")
+	;
+		ClassifiedType = polymorphic_type,
+		error("rl__gather_type: polymorphic type")
+	;
+		ClassifiedType = char_type,
+		GatheredTypes = GatheredTypes0,
+		RecursiveTypes = RecursiveTypes0,
+		Decls = Decls0,
+		ThisType = ":I"
+	;
+		ClassifiedType = int_type,
+		GatheredTypes = GatheredTypes0,
+		RecursiveTypes = RecursiveTypes0,
+		Decls = Decls0,
+		ThisType = ":I"
+	;
+		ClassifiedType = float_type,
+		GatheredTypes = GatheredTypes0,
+		RecursiveTypes = RecursiveTypes0,
+		Decls = Decls0,
+		ThisType = ":D"
+	;
+		ClassifiedType = str_type,
+		GatheredTypes = GatheredTypes0,
+		RecursiveTypes = RecursiveTypes0,
+		Decls = Decls0,
+		ThisType = ":S"
+	;
+		ClassifiedType = pred_type,
+		error("rl__gather_type: pred type")
+	;
+		ClassifiedType = user_type,
+		(
+			type_to_type_id(Type, TypeId, Args),
+		 	type_constructors(Type, ModuleInfo, Ctors)
+		->
+			( set__member(TypeId - Args, Parents) ->
+				set__insert(RecursiveTypes0, TypeId - Args,
+					RecursiveTypes1)
+			;
+				RecursiveTypes1 = RecursiveTypes0
+			),
+			(
+				map__search(GatheredTypes0, TypeId - Args,
+					MangledTypeName0) 
+			->
+				GatheredTypes = GatheredTypes0,
+				Decls = Decls0,
+				MangledTypeName = MangledTypeName0,
+				RecursiveTypes = RecursiveTypes1
+			;
+				set__insert(Parents, TypeId - Args,
+					Parents1),
+				rl__mangle_and_quote_type_name(TypeId,
+					Args, MangledTypeName),
+
+				% Record that we have seen this type
+				% before processing the sub-terms.
+				map__det_insert(GatheredTypes0, TypeId - Args,
+					MangledTypeName, GatheredTypes1),
+
+				rl__gather_constructors(ModuleInfo, 
+					Parents1, Ctors, GatheredTypes1, 
+					GatheredTypes, RecursiveTypes1,
+					RecursiveTypes, Decls0, Decls1, 
+					"", CtorDecls),
+
+				% Recursive types are marked by a
+				% second colon before their declaration.
+				( set__member(TypeId - Args, RecursiveTypes) ->
+					RecursiveSpec = ":"
+				;
+					RecursiveSpec = ""
+				),
+				string__append_list(
+					[Decls1, RecursiveSpec, ":",
+					MangledTypeName, "=", CtorDecls, " "],
+					Decls)	
+			),
+			string__append(":T", MangledTypeName, ThisType)
+		;
+			error("rl__gather_type: type_constructors failed")
+		)
+	).
+
+:- pred rl__gather_constructors(module_info::in, set(full_type_id)::in,
+		list(constructor)::in, map(full_type_id, string)::in, 
+		map(full_type_id, string)::out, set(full_type_id)::in, 
+		set(full_type_id)::out, string::in, string::out,
+		string::in, string::out) is det.
+				
+rl__gather_constructors(_, _, [], GatheredTypes, GatheredTypes, 
+		RecursiveTypes, RecursiveTypes, Decls, Decls, 
+		CtorDecls, CtorDecls).
+rl__gather_constructors(ModuleInfo, Parents, [Ctor | Ctors],
+		GatheredTypes0, GatheredTypes, RecursiveTypes0, RecursiveTypes,
+		Decls0, Decls, CtorDecls0, CtorDecls) :-
+	Ctor = ctor(_, _, CtorName, Args),
+	list__length(Args, Arity),
+	rl__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName),
+
+	Snd = lambda([Pair::in, Second::out] is det, Pair = _ - Second),
+	list__map(Snd, Args, ArgTypes),
+	rl__gather_types(ModuleInfo, Parents, ArgTypes, GatheredTypes0, 
+		GatheredTypes1, RecursiveTypes0, RecursiveTypes1, 
+		Decls0, Decls1, "", ArgList),
+	( Ctors = [] ->
+		Sep = ""
+	;
+		Sep = "|"
+	),
+	% Note that [] should be output as '[]'().
+	string__append_list(
+		[CtorDecls0, MangledCtorName, "(", ArgList, ")", Sep],
+		CtorDecls1),
+	rl__gather_constructors(ModuleInfo, Parents, Ctors,
+		GatheredTypes1, GatheredTypes, RecursiveTypes1, RecursiveTypes,
+		Decls1, Decls, CtorDecls1, CtorDecls).
+
+%-----------------------------------------------------------------------------%
+
+rl__mangle_and_quote_type_name(TypeId, Args, MangledTypeName) :-
+	rl__mangle_type_name(TypeId, Args, MangledTypeName0),
+	rl__maybe_quote_name(MangledTypeName0, MangledTypeName).
+
+rl__mangle_type_name(TypeId, Args, MangledTypeName) :-
+	rl__mangle_type_name_2(TypeId, Args, "", MangledTypeName).
+
+:- pred rl__mangle_type_name_2(type_id::in, list(type)::in,
+		string::in, string::out) is det.
+
+rl__mangle_type_name_2(TypeId, Args, MangledTypeName0, MangledTypeName) :-
+	( 
+		TypeId = qualified(Module0, Name) - Arity,
+		prog_out__sym_name_to_string(Module0, Module),
+		string__append_list([MangledTypeName0, Module, "__", Name], 
+			MangledTypeName1)
+	;
+		TypeId = unqualified(TypeName) - Arity,
+		string__append(MangledTypeName0, TypeName, MangledTypeName1)
+	),
+	string__int_to_string(Arity, ArStr),
+	string__append_list([MangledTypeName1, "___", ArStr], 
+		MangledTypeName2),
+	( Args = [] ->
+		MangledTypeName = MangledTypeName2
+	;
+		list__foldl(rl__mangle_type_arg, Args, 
+			MangledTypeName2, MangledTypeName)
+	).
+
+:- pred rl__mangle_type_arg((type)::in, string::in, string::out) is det.
+
+rl__mangle_type_arg(Arg, String0, String) :-
+	string__append(String0, "___", String1),
+	( type_to_type_id(Arg, ArgTypeId, ArgTypeArgs) ->
+		rl__mangle_type_name_2(ArgTypeId, ArgTypeArgs, 
+			String1, String)
+	;
+		error("rl__mangle_type_arg: type_to_type_id failed")
+	).
+
+rl__mangle_ctor_name(CtorName, _Arity, MangledCtorName) :-
+	unqualify_name(CtorName, MangledCtorName).
+
+rl__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName) :-
+	rl__mangle_ctor_name(CtorName, Arity, MangledCtorName0),
+	rl__maybe_quote_name(MangledCtorName0, MangledCtorName).
+
+:- pred rl__maybe_quote_name(string::in, string::out) is det.
+
+rl__maybe_quote_name(Name0, Name) :-
+	( string__is_alnum_or_underscore(Name0) ->
+		Name = Name0
+	;
+		string__append_list(["'", Name0, "'"], Name)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

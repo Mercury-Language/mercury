@@ -5,6 +5,8 @@
 %-----------------------------------------------------------------------------%
 % File: rl_exprn.m
 % Main author: stayl
+%
+% This module should only be imported by rl_out.m. XXX make it a sub-module.
 % 
 % Generate RL "expressions" to evaluate join conditions.
 % 
@@ -1099,8 +1101,8 @@ rl_exprn__cons_id_to_rule_number(ConsId, Type, ExprnTuple, RuleNo) -->
 	->
 		% These names should not be quoted, since they are not
 		% being parsed, just compared against other strings.
-		{ rl_out__mangle_type_name(TypeId, Args, MangledTypeName) },
-		{ rl_out__mangle_ctor_name(ConsName, Arity, MangledConsName) },
+		{ rl__mangle_type_name(TypeId, Args, MangledTypeName) },
+		{ rl__mangle_ctor_name(ConsName, Arity, MangledConsName) },
 		{ Rule = rl_rule(MangledTypeName, MangledConsName, Arity) },
 		rl_exprn_info_lookup_rule(Rule - ExprnTuple, RuleNo)
 	;

@@ -32,7 +32,7 @@
 
 :- import_module code_aux, code_util, det_analysis, hlds_data, hlds_goal.
 :- import_module instmap, llds_out, mode_util, prog_data, prog_out.
-:- import_module rl_relops, rl_info, rl_out.
+:- import_module rl_relops, rl_info.
 :- import_module tree, type_util, dependency_graph.
 :- import_module inst_match, (inst), goal_util, inlining, globals, options.
 

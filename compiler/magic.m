@@ -166,7 +166,7 @@
 
 :- import_module magic_util, context.
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl, rl_out.
+:- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl.
 :- import_module globals, options, hlds_out, prog_out, goal_util, type_util.
 :- import_module polymorphism, quantification.
 
@@ -1206,7 +1206,7 @@ magic__interface_pred_info(CPredProcId, PredProcId,
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
 	{ magic_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
 	{ partition_args(ModuleInfo, ArgModes, ArgTypes, InputArgTypes, _) },
-	{ rl_out__schema_to_string(ModuleInfo, InputArgTypes, InputSchema) }.
+	{ rl__schema_to_string(ModuleInfo, InputArgTypes, InputSchema) }.
 
 :- pred magic__make_type_info_vars(list(type)::in, list(prog_var)::out,
 	list(hlds_goal)::out, pred_info::in, pred_info::out,

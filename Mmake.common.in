@@ -178,6 +178,16 @@ MCFLAGS	= --no-infer-all --halt-at-warn
 # complicating things.
 LIBRARY_INTERMODULE = yes
 
+# Do we want to include the support for Aditi compilation in the compiler?
+# It is not practical to include the code to output Aditi-RL in the alias
+# branch compiler - it currently takes more than an hour to compile
+# compiler/rl_code.m, due to performance problems compiling large disjunctions
+# with the new mode checker.
+# To disable the Aditi support, put `INCLUDE_ADITI_OUTPUT = no'
+# in Mmake.stage.params. Do not put this into Mmake.params - we still
+# want to check that the Aditi code compiles after any changes.
+INCLUDE_ADITI_OUTPUT = yes
+
 #-----------------------------------------------------------------------------#
 
 # The Mmake.params file can be used to override definitions in this file

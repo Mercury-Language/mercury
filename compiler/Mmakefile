@@ -62,6 +62,33 @@ MTAGSFLAGS =
 
 #-----------------------------------------------------------------------------#
 
+# Rules for preprocessing `.pp' files.
+
+ifeq ($(INCLUDE_ADITI_OUTPUT),yes)
+
+# Remove the #if line and everything between the #else and #endif lines.
+%.m: %.pp
+	@-[ ! -f $@ ] || chmod +w $@
+	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/s/.*//' \
+		-e '/^#else/,/^#endif/s/.*//' \
+		$< > $@
+	@-chmod -w $@
+
+else
+
+# Remove everything between the #if line and the #else line,
+# and the #endif line.
+%.m: %.pp
+	@-[ ! -f $@ ] || chmod +w $@
+	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/,/^#else/s/.*//' \
+		-e '/^#endif/s/.*//' \
+		$< > $@
+	@-chmod -w $@
+
+endif
+
+#-----------------------------------------------------------------------------#
+
 # targets
 #
 # mercury_compile
@@ -72,6 +99,10 @@ MTAGSFLAGS =
 
 .PHONY: depend
 depend:		mercury_compile.depend
+
+# we need to make sure the .pp files get converted to .m before
+# we do the make depend
+mercury_compile.depend: rl_file.m rl_out.m
 
 .PHONY: all
 all:		mercury nuprolog sicstus
@@ -138,6 +169,11 @@ cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 #-----------------------------------------------------------------------------#
 
 clean:
+	for file in *.pp; do \
+		if [ "$$file" != "*.pp" ]; then \
+			rm -f `basename $$file .pp`.m; \
+		fi; \
+	done
 
 realclean:
 	rm -f tags mercury_compile.stats

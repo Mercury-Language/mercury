@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,8 +13,7 @@
 
 :- interface.
 
-:- import_module rl_code.
-:- import_module assoc_list, io, list.
+:- import_module io.
 
 :- type byte_writer == (pred(int, io__state, io__state)).
 :- mode byte_writer :: (pred(in, di, uo) is det).
@@ -24,6 +23,10 @@
 	% of bytes written.
 :- pred rl_file__write_binary(byte_writer::byte_writer, rl_file::in, 
 		int::out, io__state::di, io__state::uo) is det. 
+
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
+:- import_module rl_code.
+:- import_module assoc_list, list.
 
 	% Write a text representation of an RL file to the current
 	% text stream output.
@@ -105,7 +108,11 @@
 	;	generate2	% generates two output tuples - used for
 				% B-tree key ranges.
 	.
+#else
+:- import_module std_util.
 
+:- type rl_file == unit.
+#endif
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -119,6 +126,7 @@
 	% 
 	% Write the binary representation of the file to <module>.rlo.
 	%
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
 	Writer =
 	    lambda([Byte::in, Pair0::di, Pair::uo] is det, (
@@ -130,7 +138,17 @@ rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
 	State0 = 0 - IO0,
 	rl_file__write_binary_2(Writer, RLFile, State0, State),
 	State = Length - IO.
+#else
+rl_file__write_binary(_ByteWriter, _RLFile, Length, IO0, IO) :-
+	( semidet_succeed ->
+		error("rl_file.pp: `--aditi' requires `INCLUDE_ADITI_OUTPUT'")
+	;
+		Length = 0,
+		IO = IO0
+	).
+#endif
 
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- pred rl_file__write_binary_2(writer::writer, rl_file::in, 
 		rl_state::di, rl_state::uo) is det. 
 
@@ -492,3 +510,5 @@ rl_file__write_exprn_2(Exprn, ExprnNum) -->
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+#else	/* !INCLUDE_ADITI_OUTPUT */
+#endif

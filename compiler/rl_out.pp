@@ -11,12 +11,21 @@
 % See $ADITI_ROOT/src/rosi/rlo_spec.tex for a partial specification 
 % of the bytecodes. (copy in ~stayl/aditi/src/rosi/rlo_spec.tex)
 %
+% The conditional compilation in this module is done to avoid 
+% major efficiency problems when compiling the large disjunctions
+% in rl_code.m using the alias branch mode checker.
+%
 %-----------------------------------------------------------------------------%
 :- module rl_out.
 
 :- interface.
 
-:- import_module rl, rl_code, rl_file, hlds_data, hlds_module, prog_data, tree.
+:- import_module rl, rl_file, hlds_module, tree.
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
+:- import_module rl_code.
+#else
+#endif
+
 :- import_module list, io, std_util.
 
 	% Output schemas for locally defined base and derived relations to
@@ -33,37 +42,29 @@
 :- pred rl_out__generate_rl_bytecode(module_info::in, list(rl_proc)::in, 
 		maybe(rl_file)::out, io__state::di, io__state::uo) is det.
 
-	% Convert a list of types to a schema string.
-:- pred rl_out__schema_to_string(module_info::in,
-		list(type)::in, string::out) is det.
-
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 	% Given a predicate to update the labels in a bytecode, update
 	% all the labels in a tree of bytecodes.
 :- pred rl_out__resolve_addresses(pred(bytecode, bytecode),
 		byte_tree, byte_tree). 
 :- mode rl_out__resolve_addresses(pred(in, out) is det, in, out) is det.
-			
-	% Produce names acceptable to Aditi (just wrap single
-	% quotes around non-alphanumeric-and-underscore names).
-:- pred rl_out__mangle_and_quote_type_name(type_id::in, list(type)::in,
-		string::out) is det.
-:- pred rl_out__mangle_and_quote_ctor_name(sym_name::in,
-		int::in, string::out) is det.
-
-	% The expression stuff expects that constructor
-	% and type names are unquoted.
-:- pred rl_out__mangle_type_name(type_id::in, list(type)::in,
-		string::out) is det.
-:- pred rl_out__mangle_ctor_name(sym_name::in, int::in, string::out) is det.
 
 :- type byte_tree == tree(list(bytecode)).
+#else
+#endif
 
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module code_util, hlds_data, hlds_pred, prog_out.
+:- import_module code_util, hlds_data, hlds_pred, prog_data, prog_out.
 :- import_module llds, globals, options, rl_code, tree, type_util, passes_aux.
-:- import_module rl_exprn, rl_file, getopt, modules, prog_util, magic_util.
+:- import_module rl_file, getopt, modules, prog_util, magic_util.
+
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
+:- import_module rl_exprn.
+#else
+#endif
+
 :- import_module assoc_list, bool, char, int, map, multi_map, require, set.
 :- import_module string, term, tree, varset.
 
@@ -146,6 +147,8 @@ rl_out__generate_derived_schema(ModuleInfo, Proc) -->
 	).
 	
 %-----------------------------------------------------------------------------%
+
+#if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in,
 
 rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	{ module_info_name(ModuleInfo, ModuleName0) },
@@ -280,7 +283,13 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 		[]
 	),
 	maybe_write_string(Verbose, "done\n").
+#else
+rl_out__generate_rl_bytecode(_, _, _) -->
+	{ error(
+	"rl_out.pp: `--aditi' requires `INCLUDE_ADITI_OUTPUT'") }.
+#endif
 	
+#if INCLUDE_ADITI_OUTPUT
 :- pred rl_out__generate_proc_bytecode(rl_proc::in, 
 		rl_out_info::in, rl_out_info::out) is det.
 
@@ -466,7 +475,7 @@ rl_out__get_perm_rel_info(ModuleInfo, PredProcId, Owner, PredModule,
 	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
 	pred_info_arg_types(PredInfo, ArgTypes0),
 	magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
-	rl_out__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
+	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
 
 %-----------------------------------------------------------------------------%
 
@@ -498,43 +507,45 @@ rl_out__generate_proc_schema(Args, SchemaOffset) -->
 		list(relation_id)::in, string::out) is det.
 
 rl_out__get_proc_schema(ModuleInfo, Relations, Args, SchemaString) :- 
-	map__init(GatheredTypes0),
-	set__init(RecursiveTypes0),
-	rl_out__generate_proc_schema_2(ModuleInfo, Relations, 1, Args,
-		GatheredTypes0, RecursiveTypes0, "", Decls, "", SchemaList),
-	string__append_list([Decls, "(", SchemaList, ")"], SchemaString).
+	list__map(
+		(pred(Arg::in, ArgSchema::out) is det :-
+			map__lookup(Relations, Arg, ArgInfo),
+			ArgInfo = relation_info(_, ArgSchema, _, _)
+		), Args, ArgSchemas),
+	rl__schemas_to_strings(ModuleInfo, ArgSchemas,
+		TypeDecls, ArgSchemaStrings),
+	list__map_foldl(
+		(pred(ArgSchemaString::in, ArgSchemaDecl::out,
+				Index::in, (Index + 1)::out) is det :-
+			ArgPrefix = "__arg_",
+			string__int_to_string(Index, ArgString),
+			string__append_list(
+				[":", ArgPrefix, ArgString, "=",
+				ArgPrefix, ArgString, "(",
+				ArgSchemaString, ") "],
+				ArgSchemaDecl)
+		), ArgSchemaStrings, ArgSchemaDeclList, 1, _),
+	rl_out__generate_proc_schema_2(1, Args, "", SchemaString0),
+	list__condense([[TypeDecls | ArgSchemaDeclList], ["("],
+		[SchemaString0, ")"]], SchemaStrings),
+	string__append_list(SchemaStrings, SchemaString).
 
-:- pred rl_out__generate_proc_schema_2(module_info::in, relation_info_map::in,
-		int::in, list(relation_id)::in, gathered_types::in,
-		set(full_type_id)::in, string::in, string::out, string::in,
-		string::out) is det.
+:- pred rl_out__generate_proc_schema_2(int::in, list(T)::in,
+		string::in, string::out) is det.
 
-rl_out__generate_proc_schema_2(_, _, _, [], _, _, Decls, Decls, 
-		SchemaList, SchemaList). 
-rl_out__generate_proc_schema_2(ModuleInfo, RelInfoMap, ArgNo, [Arg | Args],
-		GatheredTypes0, RecursiveTypes0, Decls0, Decls,
-		SchemaList0, SchemaList) :-
-	map__lookup(RelInfoMap, Arg, ArgInfo),
-	ArgInfo = relation_info(_, ArgSchema, _, _),
-	set__init(Parents),
-	rl_out__gather_types(ModuleInfo, Parents, ArgSchema, 
-		GatheredTypes0, GatheredTypes, RecursiveTypes0, RecursiveTypes,
-		Decls0, Decls1, "", ArgRelSchema),
-	string__int_to_string(ArgNo, ArgString),
+rl_out__generate_proc_schema_2(_, [], SchemaList, SchemaList). 
+rl_out__generate_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
 	ArgPrefix = "__arg_",
-	string__append_list([Decls1, ":", ArgPrefix, ArgString, "=",
-		ArgPrefix, ArgString, "(", ArgRelSchema, ") "], Decls2),
-	NextArg = ArgNo + 1,
 	( Args = [] ->
 		Comma = ""
 	;
 		Comma = ","
 	),
+	string__int_to_string(ArgNo, ArgString),
 	string__append_list([SchemaList0, ":T", ArgPrefix, ArgString, Comma],
 		SchemaList1),
-	rl_out__generate_proc_schema_2(ModuleInfo, RelInfoMap, NextArg, Args,
-		GatheredTypes, RecursiveTypes, Decls2, Decls,
-		SchemaList1, SchemaList).
+	rl_out__generate_proc_schema_2(ArgNo + 1,
+		Args, SchemaList1, SchemaList).
 
 %-----------------------------------------------------------------------------%
 
@@ -546,243 +557,8 @@ rl_out__generate_proc_schema_2(ModuleInfo, RelInfoMap, ArgNo, [Arg | Args],
 
 rl_out__schema_to_string(Types, SchemaOffset) -->
 	rl_out_info_get_module_info(ModuleInfo),
-	{ rl_out__schema_to_string(ModuleInfo, Types, SchemaString) },
+	{ rl__schema_to_string(ModuleInfo, Types, SchemaString) },
 	rl_out_info_assign_const(string(SchemaString), SchemaOffset).
-
-rl_out__schema_to_string(ModuleInfo, Types0, SchemaString) :-
-	map__init(GatheredTypes0),
-	set__init(RecursiveTypes0),
-	set__init(Parents0),
-	strip_prog_contexts(Types0, Types),
-	rl_out__gather_types(ModuleInfo, Parents0, Types,
-		GatheredTypes0, _, RecursiveTypes0, _, "", Decls,
-		"", SchemaList),
-	string__append_list([Decls, "(", SchemaList, ")"], SchemaString).
-
-	% Map from type to name and type definition string
-:- type gathered_types == map(pair(type_id, list(type)), string).
-:- type full_type_id == pair(type_id, list(type)).
-
-	% Go over a list of types collecting declarations for all the
-	% types used in the list.
-:- pred rl_out__gather_types(module_info::in, set(full_type_id)::in, 
-		list(type)::in, gathered_types::in, gathered_types::out, 
-		set(full_type_id)::in, set(full_type_id)::out, 
-		string::in, string::out, string::in, string::out) is det.
-
-rl_out__gather_types(_, _, [], GatheredTypes, GatheredTypes, 
-		RecursiveTypes, RecursiveTypes, Decls, Decls,
-		TypeString, TypeString).
-rl_out__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0, 
-		GatheredTypes, RecursiveTypes0, RecursiveTypes, 
-		Decls0, Decls, TypeString0, TypeString) :-
-	rl_out__gather_type(ModuleInfo, Parents, Type, GatheredTypes0,
-		GatheredTypes1, RecursiveTypes0, RecursiveTypes1,
-		Decls0, Decls1, ThisTypeString),
-	( Types = [] ->
-		Comma = ""
-	;
-		Comma = ","
-	),
-	string__append_list([TypeString0, ThisTypeString, Comma], TypeString1),
-	rl_out__gather_types(ModuleInfo, Parents, Types, GatheredTypes1, 
-		GatheredTypes, RecursiveTypes1, RecursiveTypes, 
-		Decls1, Decls, TypeString1, TypeString).
-
-:- pred rl_out__gather_type(module_info::in, set(full_type_id)::in, (type)::in, 
-		gathered_types::in, gathered_types::out, set(full_type_id)::in, 
-		set(full_type_id)::out, string::in, string::out,
-		string::out) is det.
-
-rl_out__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes, 
-		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
-	classify_type(Type, ModuleInfo, ClassifiedType0),
-	( ClassifiedType0 = enum_type ->
-		ClassifiedType = user_type
-	;
-		ClassifiedType = ClassifiedType0
-	),
-	(
-		ClassifiedType = enum_type,
-			% this is converted to user_type above
-		error("rl_out__gather_type: enum type")
-	;
-		ClassifiedType = polymorphic_type,
-		error("rl_out__gather_type: polymorphic type")
-	;
-		ClassifiedType = char_type,
-		GatheredTypes = GatheredTypes0,
-		RecursiveTypes = RecursiveTypes0,
-		Decls = Decls0,
-		ThisType = ":I"
-	;
-		ClassifiedType = int_type,
-		GatheredTypes = GatheredTypes0,
-		RecursiveTypes = RecursiveTypes0,
-		Decls = Decls0,
-		ThisType = ":I"
-	;
-		ClassifiedType = float_type,
-		GatheredTypes = GatheredTypes0,
-		RecursiveTypes = RecursiveTypes0,
-		Decls = Decls0,
-		ThisType = ":D"
-	;
-		ClassifiedType = str_type,
-		GatheredTypes = GatheredTypes0,
-		RecursiveTypes = RecursiveTypes0,
-		Decls = Decls0,
-		ThisType = ":S"
-	;
-		ClassifiedType = pred_type,
-		error("rl_out__gather_type: pred type")
-	;
-		ClassifiedType = user_type,
-		(
-			type_to_type_id(Type, TypeId, Args),
-		 	type_constructors(Type, ModuleInfo, Ctors)
-		->
-			( set__member(TypeId - Args, Parents) ->
-				set__insert(RecursiveTypes0, TypeId - Args,
-					RecursiveTypes1)
-			;
-				RecursiveTypes1 = RecursiveTypes0
-			),
-			(
-				map__search(GatheredTypes0, TypeId - Args,
-					MangledTypeName0) 
-			->
-				GatheredTypes = GatheredTypes0,
-				Decls = Decls0,
-				MangledTypeName = MangledTypeName0,
-				RecursiveTypes = RecursiveTypes1
-			;
-				set__insert(Parents, TypeId - Args,
-					Parents1),
-				rl_out__mangle_and_quote_type_name(TypeId,
-					Args, MangledTypeName),
-
-				% Record that we have seen this type
-				% before processing the sub-terms.
-				map__det_insert(GatheredTypes0, TypeId - Args,
-					MangledTypeName, GatheredTypes1),
-
-				rl_out__gather_constructors(ModuleInfo, 
-					Parents1, Ctors, GatheredTypes1, 
-					GatheredTypes, RecursiveTypes1,
-					RecursiveTypes, Decls0, Decls1, 
-					"", CtorDecls),
-
-				% Recursive types are marked by a
-				% second colon before their declaration.
-				( set__member(TypeId - Args, RecursiveTypes) ->
-					RecursiveSpec = ":"
-				;
-					RecursiveSpec = ""
-				),
-				string__append_list(
-					[Decls1, RecursiveSpec, ":",
-					MangledTypeName, "=", CtorDecls, " "],
-					Decls)	
-			),
-			string__append(":T", MangledTypeName, ThisType)
-		;
-			error("rl_out__gather_type: type_constructors failed")
-		)
-	).
-
-:- pred rl_out__gather_constructors(module_info::in, set(full_type_id)::in,
-		list(constructor)::in, map(full_type_id, string)::in, 
-		map(full_type_id, string)::out, set(full_type_id)::in, 
-		set(full_type_id)::out, string::in, string::out,
-		string::in, string::out) is det.
-				
-rl_out__gather_constructors(_, _, [], GatheredTypes, GatheredTypes, 
-		RecursiveTypes, RecursiveTypes, Decls, Decls, 
-		CtorDecls, CtorDecls).
-rl_out__gather_constructors(ModuleInfo, Parents, [Ctor | Ctors],
-		GatheredTypes0, GatheredTypes, RecursiveTypes0, RecursiveTypes,
-		Decls0, Decls, CtorDecls0, CtorDecls) :-
-	Ctor = ctor(_, _, CtorName, Args),
-	list__length(Args, Arity),
-	rl_out__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName),
-
-	Snd = lambda([Pair::in, Second::out] is det, Pair = _ - Second),
-	list__map(Snd, Args, ArgTypes),
-	rl_out__gather_types(ModuleInfo, Parents, ArgTypes, GatheredTypes0, 
-		GatheredTypes1, RecursiveTypes0, RecursiveTypes1, 
-		Decls0, Decls1, "", ArgList),
-	( Ctors = [] ->
-		Sep = ""
-	;
-		Sep = "|"
-	),
-	% Note that [] should be output as '[]'().
-	string__append_list(
-		[CtorDecls0, MangledCtorName, "(", ArgList, ")", Sep],
-		CtorDecls1),
-	rl_out__gather_constructors(ModuleInfo, Parents, Ctors,
-		GatheredTypes1, GatheredTypes, RecursiveTypes1, RecursiveTypes,
-		Decls1, Decls, CtorDecls1, CtorDecls).
-
-%-----------------------------------------------------------------------------%
-
-rl_out__mangle_and_quote_type_name(TypeId, Args, MangledTypeName) :-
-	rl_out__mangle_type_name(TypeId, Args, MangledTypeName0),
-	rl_out__maybe_quote_name(MangledTypeName0, MangledTypeName).
-
-rl_out__mangle_type_name(TypeId, Args, MangledTypeName) :-
-	rl_out__mangle_type_name_2(TypeId, Args, "", MangledTypeName).
-
-:- pred rl_out__mangle_type_name_2(type_id::in, list(type)::in,
-		string::in, string::out) is det.
-
-rl_out__mangle_type_name_2(TypeId, Args, MangledTypeName0, MangledTypeName) :-
-	( 
-		TypeId = qualified(Module0, Name) - Arity,
-		prog_out__sym_name_to_string(Module0, Module),
-		string__append_list([MangledTypeName0, Module, "__", Name], 
-			MangledTypeName1)
-	;
-		TypeId = unqualified(TypeName) - Arity,
-		string__append(MangledTypeName0, TypeName, MangledTypeName1)
-	),
-	string__int_to_string(Arity, ArStr),
-	string__append_list([MangledTypeName1, "___", ArStr], 
-		MangledTypeName2),
-	( Args = [] ->
-		MangledTypeName = MangledTypeName2
-	;
-		list__foldl(rl_out__mangle_type_arg, Args, 
-			MangledTypeName2, MangledTypeName)
-	).
-
-:- pred rl_out__mangle_type_arg((type)::in, string::in, string::out) is det.
-
-rl_out__mangle_type_arg(Arg, String0, String) :-
-	string__append(String0, "___", String1),
-	( type_to_type_id(Arg, ArgTypeId, ArgTypeArgs) ->
-		rl_out__mangle_type_name_2(ArgTypeId, ArgTypeArgs, 
-			String1, String)
-	;
-		error("rl_out__mangle_type_arg: type_to_type_id failed")
-	).
-
-rl_out__mangle_ctor_name(CtorName, _Arity, MangledCtorName) :-
-	unqualify_name(CtorName, MangledCtorName).
-
-rl_out__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName) :-
-	rl_out__mangle_ctor_name(CtorName, Arity, MangledCtorName0),
-	rl_out__maybe_quote_name(MangledCtorName0, MangledCtorName).
-
-:- pred rl_out__maybe_quote_name(string::in, string::out) is det.
-
-rl_out__maybe_quote_name(Name0, Name) :-
-	( string__is_alnum_or_underscore(Name0) ->
-		Name = Name0
-	;
-		string__append_list(["'", Name0, "'"], Name)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1774,13 +1550,6 @@ rl_out__package_exprn(ExprnCode, NumParams, ExprnMode, OutputSchemaOffset,
 						% within one rl.m instruction.
 	).
 
-:- type rl_rule
-	---> rl_rule(
-		string,		% mangled type name 
-		string,		% mangled functor name 
-		int		% arity
-	).
-
 	% We only want to generate a single comparison expression for
 	% each combination of attributes and types.
 	% Key:
@@ -2171,6 +1940,9 @@ rl_out_info_set_tmp_vars(TmpVars, Info0, Info) :-
 			N,O,P,Q,R,S,T,U,V,W,X,_),
 	Info = rl_out_info(A,B,C,D,E,F,G,H,I,J,K,L,M,
 			N,O,P,Q,R,S,T,U,V,W,X,TmpVars).
+
+#else	% !INCLUDE_ADITI_OUTPUT
+#endif
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
