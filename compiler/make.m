@@ -12,9 +12,8 @@
 % - `--split-c-files'
 % - fix `--target il'
 %	- check commands for compilation of foreign code files
-%		in mercury_compile.m
+%		in compile_target_code.m
 %	- fix handling of the `.exe' file
-% - library installation
 % - transitive inter-module optimization (probably won't bother since
 %   that is being rewritten anyway)
 % - parallel/distributed builds
