@@ -256,7 +256,7 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs
+realclean: realclean_subdirs realclean_config_cache
 
 .PHONY: realclean_subdirs
 realclean_subdirs:
@@ -266,5 +266,9 @@ realclean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
 	cd scripts; $(SUBDIR_MMAKE) realclean
+
+.PHONY: realclean_config_cache
+realclean_config_cache:
+	rm -f config.cache
 
 #-----------------------------------------------------------------------------#
