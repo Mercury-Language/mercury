@@ -3477,8 +3477,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
 	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
-			ExeFileName, ".exe : ", ExeFileName, ".dll\n",
-			ExeFileName, ".dll : ", "$(", MakeVarName, ".dlls) ",
+			ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
 			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
 	{ MainRule =
@@ -3546,15 +3545,31 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 							SharedLibFileName),
 	module_name_to_lib_file_name("lib", ModuleName,
 		".$(EXT_FOR_SHARED_LIB)", no, MaybeSharedLibFileName),
-	io__write_strings(DepStream, [
-		".PHONY : ", LibTargetName, "\n",
-		LibTargetName, " : ",
-		LibFileName, " ",
+
+	{ ILLibRule = [
+		LibTargetName, " : ", "$(", MakeVarName, ".dlls) ",
+			"$(", MakeVarName, ".foreign_dlls)\n"
+	] },
+	{ LibRule = [
+		LibTargetName, " : ", LibFileName, " ",
 		MaybeSharedLibFileName, " \\\n",
 		"\t\t$(", MakeVarName, ".ints) ",
 		"$(", MakeVarName, ".int3s) ",
 		MaybeOptsVar, MaybeTransOptsVar,
 		InitFileName, "\n\n"
+	] },
+	{ Gmake = yes,
+		LibRules = If ++ ILLibRule ++ Else ++ LibRule ++ EndIf
+	; Gmake = no,
+		( Target = il ->
+			LibRules = ILLibRule
+		;
+			LibRules = LibRule
+		)
+	},
+	io__write_strings(DepStream, [
+		".PHONY : ", LibTargetName, "\n" |
+		LibRules
 	]),
 
 	io__write_strings(DepStream, [
