@@ -86,7 +86,7 @@ Define_entry(mercury__require__error_internal_1_0);
 	fflush(stdout);
 	fprintf(stderr, ""Software error: %s\\n"", Message);
 	MR_trace_report(stderr);
-	MR_dump_stack(MR_succip, MR_sp, MR_curfr);
+	MR_dump_stack(MR_succip, MR_sp, MR_curfr, FALSE);
 	exit(1);
 }
 END_MODULE
