@@ -301,9 +301,7 @@ X // Y = Div :-
 		Div = unchecked_quotient(X, Y)
 	).
 
-% XXX uncomment this line when the change to make `rem' a non-builtin
-% is installed everywhere.
-%:- pragma inline(rem/2).
+:- pragma inline(rem/2).
 X rem Y = Rem :-
 	( domain_checks, Y = 0 ->
 		throw(math__domain_error("int:rem"))

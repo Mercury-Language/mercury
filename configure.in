@@ -100,12 +100,11 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- pred main(io__state::di, io__state::uo) is det.
 
 		:- implementation.
-		:- import_module list, std_util.
+		:- import_module int.
         
-		% Check that the functor for lists is "[[|]]/2"
-		% rather than "./2".
+		% Check for the builtin function int__unchecked_rem/2.
 		main --> 
-			( { functor([[1, 2]], "[[|]]", 2) } ->
+			( { int__unchecked_rem(3, 2) = 1 } ->
 				print("Hello, world\n")
 			;
 				print("Nope.\n")
