@@ -4,8 +4,9 @@
 */
 
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.2 1993-12-01 05:55:38 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.3 1993-12-02 05:17:16 zs Exp $";
 
+#include	<string.h>
 #include	"imp.h"
 #include	"table.h"
 #include	"iface_g.h"
@@ -15,6 +16,7 @@ extern	int	cmdlen;
 extern	int	cmdcur;
 
 #undef	YY_INPUT
+#if 1
 #define	YY_INPUT(buf,result,max_size)	\
 		{ 						\
 			reg	int	more;			\
@@ -23,12 +25,36 @@ extern	int	cmdcur;
 			if (more > max_size)			\
 				more = max_size;		\
 								\
-			strncpy(buf, &cmdline[cmdcur], more);	\
+			strncpy(buf, cmdline+cmdcur, more);	\
+			cmdcur += more;				\
 			if (more > 0)				\
 				result = more;			\
 			else					\
 				result = YY_NULL;		\
+								\
+			buf[more+1] = '\0';			\
+			printf("new buf <%s>\n", buf);		\
+			printf("more %d, max %d, res %d\n",	\
+				more, max_size, result);	\
 		}
+#else
+#define	YY_INPUT(buf,result,max_size)	\
+		{ 						\
+			if (cmdcur < cmdlen)			\
+			{					\
+				buf[0] = cmdline[cmdcur];	\
+				cmdcur += 1;			\
+				result = 1;			\
+				printf("new bufchar <%c>\n",	\
+					buf[0]);		\
+			}					\
+			else					\
+			{					\
+				result = YY_NULL;		\
+				printf("no bufchar\n");		\
+			}					\
+		}
+#endif
 
 typedef	struct	s_kwentry
 {
@@ -97,7 +123,9 @@ alnum	[a-zA-Z_0-9]
 					return ID;
 			}
 
-[ \t\n]			;
+[ \t\n]+		{
+				/* do nothing */
+			}
 
 .			{
 				return GARBAGE;
@@ -124,6 +152,12 @@ yykwinit(void)
 	mkkwentry("create", CREATE);
 	mkkwentry("push", PUSH);
 	mkkwentry("pop", POP);
+}
+
+void
+yyreinit(void)
+{
+	yy_init = 1;
 }
 
 /*

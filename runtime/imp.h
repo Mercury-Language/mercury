@@ -146,7 +146,7 @@ extern	EntryPoint	dofastnegproceed;
 
 /* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
 
-#define	MAXHEAP		0x100000
+#define	MAXHEAP		0x10000
 #define	MAXSTACK	0x10000
 #define	MAXCPSTACK	0x10000
 #define	CACHE_OFFSET	0x200
@@ -553,7 +553,7 @@ extern	void	printregs(const char *);
 extern	void	printframe(const char *);
 extern	void	dumpframe(const Word *);
 extern	void	dumpcpstack(void);
-extern	int	whichlabel(char *name);
+extern	int	whichlabel(const char *name);
 
 extern 	void	init_engine(void);
 extern 	void	call_engine(Code *);

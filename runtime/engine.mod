@@ -188,7 +188,7 @@ void call_engine(Code *entry_point)
 	/*
 	** Now just call the entry point
 	*/
-	call(entry_point, &&engine_done);
+	call(entry_point, LABEL(engine_done));
 
 engine_done:
 	/*

@@ -8,7 +8,7 @@
 */
 
 #ifndef lint
-static  char    rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/table.c,v 1.1 1993-12-01 05:55:49 zs Exp $";
+static  char    rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/table.c,v 1.2 1993-12-02 05:17:19 zs Exp $";
 #endif
 
 #include	<stdio.h>
@@ -36,7 +36,7 @@ tab_init_table(Table *table)
 */
 
 Cast
-tab_lookup_table(Table *table, Cast key)
+tab_lookup_table(const Table *table, const Cast key)
 {
 	reg	List	*ptr;
 	reg	int	h;
@@ -61,7 +61,7 @@ tab_lookup_table(Table *table, Cast key)
 */
 
 bool
-tab_insert_table(Table *table, Cast entry)
+tab_insert_table(const Table *table, const Cast entry)
 {
 	reg	List	*ptr;
 	reg	Cast	key;
@@ -88,7 +88,7 @@ tab_insert_table(Table *table, Cast entry)
 */
 
 List *
-tab_get_all_entries(Table *table)
+tab_get_all_entries(const Table *table)
 {
 	reg	List	*list;
 	reg	int	i;
@@ -111,7 +111,7 @@ tab_hash(Cast cs)
 	reg	char	*s;
 
 	s = (char *) cs;
-	for (h = 0; s != '\0'; s++)
+	for (h = 0; *s != '\0'; s++)
 		h = (h << 1) + *s;
 
 	return ((unsigned) h) % TABLESIZE;

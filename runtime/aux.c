@@ -248,15 +248,17 @@ void printlabel(const Code *w)
 	printf("label UNKNOWN (0x%p)\n", w);
 }
 
-int whichlabel(char *name)
+int whichlabel(const char *name)
 {
 	reg	int	i;
 	reg	bool	found;
 
 	found = FALSE;
 	for (i = 0; i < MAXLABELS; i++)
-		if (streq(optarg, entries[i].e_name))
+	{
+		if (streq(name, entries[i].e_name))
 			return i;
+	}
 
 	return -1;
 }

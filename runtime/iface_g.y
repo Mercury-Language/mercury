@@ -5,7 +5,7 @@
 
 #ifndef	lint
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.2 1993-12-01 05:55:35 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.3 1993-12-02 05:17:15 zs Exp $";
 #endif
 
 #include	<ctype.h>
@@ -74,6 +74,10 @@ line	:	RESET
 			action = Print;
 			act_value = $1;
 		}
+	|	/* empty */
+		{
+			action = Null;
+		}
 	;
 
 cmd	:	TAG NUM expr
@@ -121,7 +125,5 @@ expr_l	:	expr
 void
 yyerror(const char *s)
 {
-	extern	char	yytext[];
-
-	printf("%s at symbol %s", s, yytext);
+	printf("%s\n", s);
 }
