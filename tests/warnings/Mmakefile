@@ -37,7 +37,7 @@ MCFLAGS-inference_test		= --infer-all
 	-rm -f $@
 	diff -c $*.exp $*.err > $@
 
-%.res_compile:	%.exp %.c
+%.res_compile:	%.exp $(cs_subdir)%.c
 	-rm -f $@
 	diff -c $*.exp $*.err > $@
 
