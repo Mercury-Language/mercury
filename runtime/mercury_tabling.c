@@ -432,7 +432,7 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 #define	key_cast		double
 #define	table_type		MR_FloatHashTableSlot
 #define	table_field		float_slot_ptr
-#define	hash(key)		(hash_float(key))
+#define	hash(key)		(MR_hash_float(key))
 #define	equal_keys(k1, k2)	(memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_format

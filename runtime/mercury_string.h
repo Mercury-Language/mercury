@@ -111,7 +111,7 @@
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	incr_hp_atomic_msg(make_aligned_string_tmp,		\
+	  	MR_incr_hp_atomic_msg(make_aligned_string_tmp,		\
 	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
 		    proclabel, "string:string/0");			\
 	    	make_aligned_string_ptr =				\

@@ -416,7 +416,7 @@ MR_init_conservative_GC(void)
 #endif /* CONSERVATIVE_GC */
 
 void 
-do_init_modules(void)
+MR_do_init_modules(void)
 {
 	static	bool	done = FALSE;
 
@@ -428,7 +428,7 @@ do_init_modules(void)
 }
 
 void 
-do_init_modules_type_tables(void)
+MR_do_init_modules_type_tables(void)
 {
 	static	bool	done = FALSE;
 
@@ -442,12 +442,12 @@ do_init_modules_type_tables(void)
 		** invoked by do_init_modules.
 		*/
 
-		do_init_modules();
+		MR_do_init_modules();
 	}
 }
 
 void 
-do_init_modules_debugger(void)
+MR_do_init_modules_debugger(void)
 {
 	static	bool	done = FALSE;
 
@@ -571,7 +571,6 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	*argc_ptr = argc;
 } /* end make_argv() */
 
-
 /*  
 **  process_args() is a function that sets some global variables from the
 **  command line.  `mercury_arg[cv]' are `arg[cv]' without the program name.
@@ -579,13 +578,12 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 */
 
 static void
-process_args( int argc, char ** argv)
+process_args(int argc, char **argv)
 {
-	progname = argv[0];
+	MR_progname = argv[0];
 	mercury_argc = argc - 1;
 	mercury_argv = argv + 1;
 }
-
 
 /*
 **  process_environment_options() is a function to parse the MERCURY_OPTIONS
@@ -1235,7 +1233,7 @@ do_interpreter(void)
   #endif
 
 	/* call the Mercury predicate main/2 */
-	(*program_entry_point)();
+	(*MR_program_entry_point)();
 
   #ifdef  PROFILE_TIME
 	if (MR_profiling) MR_prof_turn_off_time_profiling();
@@ -1268,18 +1266,18 @@ MR_define_entry(do_interpreter);
 	MR_nondet_stack_trace_bottom = MR_maxfr;
 	MR_stack_trace_bottom = MR_LABEL(global_success);
 
-	if (program_entry_point == NULL) {
+	if (MR_program_entry_point == NULL) {
 		MR_fatal_error("no program entry point supplied");
 	}
 
 #ifdef  PROFILE_TIME
-	MR_set_prof_current_proc(program_entry_point);
+	MR_set_prof_current_proc(MR_program_entry_point);
 	if (MR_profiling) {
 		MR_prof_turn_on_time_profiling();
 	}
 #endif
 
-	noprof_call(program_entry_point, MR_LABEL(global_success));
+	MR_noprof_call(MR_program_entry_point, MR_LABEL(global_success));
 
 MR_define_label(global_success);
 #ifdef	MR_LOWLEVEL_DEBUG

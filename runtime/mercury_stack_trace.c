@@ -50,7 +50,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 
 	fprintf(stderr, "Stack dump follows:\n");
 
-	do_init_modules();
+	MR_do_init_modules();
 	label = MR_lookup_internal_by_addr(success_pointer);
 	if (label == NULL) {
 		fprintf(stderr, "internal label not found\n");
@@ -83,7 +83,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 	MR_Word				*old_trace_sp;
 	MR_Word				*old_trace_curfr;
 
-	do_init_modules();
+	MR_do_init_modules();
 	MR_dump_stack_record_init(include_trace_data, include_contexts);
 
 	stack_trace_sp = det_stack_pointer;
@@ -135,7 +135,7 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 		return NULL;
 	}
 
-	do_init_modules();
+	MR_do_init_modules();
 	*problem = NULL;
 	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
 		result = MR_stack_walk_step(label_layout->MR_sll_entry,
@@ -226,7 +226,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr)
 {
 	int	frame_size;
 
-	do_init_modules();
+	MR_do_init_modules();
 
 	/*
 	** The comparison operator in the condition of the while loop

@@ -75,8 +75,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	p = fixed;
 #endif
 	MR_restore_transient_hp();      
-	MR_allocate_aligned_string_msg(result, strlen(p),
-			proclabel);
+	MR_allocate_aligned_string_msg(result, strlen(p), proclabel);
 	MR_save_transient_hp();
 	strcpy(result, p);
 

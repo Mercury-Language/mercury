@@ -334,15 +334,15 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
-Define_extern_entry(MR_do_trace_redo_fail_shallow);
-Define_extern_entry(MR_do_trace_redo_fail_deep);
+MR_define_extern_entry(MR_do_trace_redo_fail_shallow);
+MR_define_extern_entry(MR_do_trace_redo_fail_deep);
 
 MR_BEGIN_MODULE(MR_trace_labels_module)
 	MR_init_entry_ai(MR_do_trace_redo_fail_shallow);
 	MR_init_entry_ai(MR_do_trace_redo_fail_deep);
 MR_BEGIN_CODE
 
-Define_entry(MR_do_trace_redo_fail_shallow);
+MR_define_entry(MR_do_trace_redo_fail_shallow);
 	/*
 	** If this code ever needs changing, you may also need to change
 	** the code in extras/exceptions/exception.m similarly.
@@ -360,7 +360,7 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 	}
 	MR_fail();
 
-Define_entry(MR_do_trace_redo_fail_deep);
+MR_define_entry(MR_do_trace_redo_fail_deep);
 #if 0
 	/* For use in case this ever needs to be debugged again. */
 	printf("MR_curfr = %p\n", MR_curfr);

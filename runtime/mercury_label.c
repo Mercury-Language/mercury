@@ -240,7 +240,7 @@ MR_Internal *
 MR_lookup_internal_by_addr(const MR_Code *addr)
 {
 	MR_do_init_label_tables();
-	do_init_modules();
+	MR_do_init_modules();
 
 #ifdef	MR_LOWLEVEL_DEBUG
 	if (MR_progdebug) {

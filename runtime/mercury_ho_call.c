@@ -221,7 +221,7 @@ MR_define_entry(mercury__unify_2_0);
 	do {								\
 		r1 = (answer);						\
 		MR_succip = saved_succip;				\
-		proceed();						\
+		MR_proceed();						\
 	} while(0)
 
 #define	tailcall_user_pred()						\
@@ -291,7 +291,7 @@ MR_define_entry(mercury__compare_3_3);
 	do {								\
 		r1 = (answer);						\
 		MR_succip = saved_succip;				\
-		proceed();						\
+		MR_proceed();						\
 	} while(0)
 
 #define	tailcall_user_pred()						\
