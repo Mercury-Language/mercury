@@ -119,7 +119,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef struct mercury__private_builtin__typeclass_info_1_s *
   	MR_Mercury_TypeClass_Info;
   typedef struct mercury__private_builtin__base_typeclass_info_1_s *
-  	MR_Base_TypeClass_Info;
+  	MR_Mercury_Base_TypeClass_Info;
 #else
   /* for --no-high-level-data, they're all just `MR_Word' */
   typedef MR_Word MR_Comparison_Result;
