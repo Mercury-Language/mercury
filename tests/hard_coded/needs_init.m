@@ -20,6 +20,7 @@ main -->
 hello --> write_string("hello, ").
 
 :- pragma c_header_code("
+#include <stdio.h>
 void run_at_init_time_init_type_tables(void);
 void run_at_init_time_write_out_proc_statics(FILE *);
 void run_at_init_time_init_debugger(void);
