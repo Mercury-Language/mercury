@@ -225,6 +225,13 @@ mode system to distinguish between different representations.
 :- pred inst_contains_instname(inst, module_info, inst_name).
 :- mode inst_contains_instname(in, in, in) is semidet.
 
+	% Nondeterministically produce all the inst_vars contained
+	% in the specified list of modes.
+
+:- type inst_var == var.
+:- pred mode_list_contains_inst_var(list(mode), module_info, inst_var).
+:- mode mode_list_contains_inst_var(in, in, out) is nondet.
+
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
 	% the elemement is ground or the corresponding element in the liveness
@@ -247,7 +254,7 @@ mode system to distinguish between different representations.
 
 :- implementation.
 :- import_module hlds_data, mode_util, prog_data, inst_util.
-:- import_module list, set, map, std_util, require.
+:- import_module list, set, map, term, std_util, require.
 
 inst_matches_initial(InstA, InstB, ModuleInfo) :-
 	set__init(Expansions),
@@ -1229,6 +1236,79 @@ inst_list_contains_instname([Inst|Insts], ModuleInfo, Expansions, InstName) :-
 		inst_list_contains_instname(Insts, ModuleInfo, Expansions,
 			InstName)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_contains_inst_var(inst, module_info, inst_var).
+:- mode inst_contains_inst_var(in, in, out) is nondet.
+
+inst_contains_inst_var(Inst, ModuleInfo, InstVar) :-
+	set__init(Expansions),
+	inst_contains_inst_var_2(Inst, ModuleInfo, Expansions, InstVar).
+
+:- pred inst_contains_inst_var_2(inst, module_info, set(inst_name), inst_var).
+:- mode inst_contains_inst_var_2(in, in, in, out) is nondet.
+
+inst_contains_inst_var_2(inst_var(InstVar), _, _, InstVar).
+inst_contains_inst_var_2(defined_inst(InstName), ModuleInfo, Expansions0,
+		InstVar) :-
+	\+ set__member(InstName, Expansions0),
+	inst_lookup(ModuleInfo, InstName, Inst),
+	set__insert(Expansions0, InstName, Expansions),
+	inst_contains_inst_var_2(Inst, ModuleInfo, Expansions, InstVar).
+inst_contains_inst_var_2(bound(_Uniq, ArgInsts), ModuleInfo, Expansions,
+		InstVar) :-
+	bound_inst_list_contains_inst_var(ArgInsts, ModuleInfo, Expansions,
+		InstVar).
+inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), ModuleInfo, Expansions,
+		InstVar) :-
+	PredInstInfo = yes(pred_inst_info(_PredOrFunc, Modes, _Det)),
+	mode_list_contains_inst_var_2(Modes, ModuleInfo, Expansions, InstVar).
+inst_contains_inst_var_2(abstract_inst(_Name, ArgInsts), ModuleInfo, Expansions,
+		InstVar) :-
+	inst_list_contains_inst_var(ArgInsts, ModuleInfo, Expansions, InstVar).
+
+:- pred bound_inst_list_contains_inst_var(list(bound_inst), module_info,
+						set(inst_name), inst_var).
+:- mode bound_inst_list_contains_inst_var(in, in, in, out) is nondet.
+
+bound_inst_list_contains_inst_var([BoundInst|BoundInsts], ModuleInfo,
+		Expansions, InstVar) :-
+	BoundInst = functor(_Functor, ArgInsts),
+	(
+		inst_list_contains_inst_var(ArgInsts, ModuleInfo, Expansions,
+			InstVar)
+	;
+		bound_inst_list_contains_inst_var(BoundInsts, ModuleInfo,
+			Expansions, InstVar)
+	).
+
+:- pred inst_list_contains_inst_var(list(inst), module_info, set(inst_name),
+					inst_var).
+:- mode inst_list_contains_inst_var(in, in, in, out) is nondet.
+
+inst_list_contains_inst_var([Inst|Insts], ModuleInfo, Expansions, InstVar) :-
+	(
+		inst_contains_inst_var_2(Inst, ModuleInfo, Expansions, InstVar)
+	;
+		inst_list_contains_inst_var(Insts, ModuleInfo, Expansions,
+			InstVar)
+	).
+
+mode_list_contains_inst_var(Modes, ModuleInfo, InstVar) :-
+	set__init(Expansions),
+	mode_list_contains_inst_var_2(Modes, ModuleInfo, Expansions, InstVar).
+
+:- pred mode_list_contains_inst_var_2(list(mode), module_info, set(inst_name),
+					inst_var).
+:- mode mode_list_contains_inst_var_2(in, in, in, out) is nondet.
+
+mode_list_contains_inst_var_2([Mode|_Modes], ModuleInfo, Expansions, InstVar) :-
+	mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final),
+	( Inst = Initial ; Inst = Final ),
+	inst_contains_inst_var_2(Inst, ModuleInfo, Expansions, InstVar).
+mode_list_contains_inst_var_2([_|Modes], ModuleInfo, Expansions, InstVar) :-
+	mode_list_contains_inst_var_2(Modes, ModuleInfo, Expansions, InstVar).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
