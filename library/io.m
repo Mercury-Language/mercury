@@ -355,23 +355,81 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) :-
 		write_string(VarName)
 	).
 io__write_term_2(term_functor(Functor,Args), VarSet0, N0, VarSet, N) :-
-	io__write_constant_2(Functor),
-	(if some [X,Xs] Args = X.Xs then
+	(if some [PrefixArg] (
+		Args = [PrefixArg],
+		io__unary_prefix_op(Functor)
+	    )
+	then
 		write('('),
-		io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-		io__write_term_4(Xs, VarSet1, N1, VarSet, N),
+		io__write_constant_2(Functor),
+		write(' '),
+		io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
 		write(')')
 	else
-		N = N0,
-		VarSet = VarSet0
+	if some [PostfixArg] (
+		Args = [PostfixArg],
+		io__unary_postfix_op(Functor)
+	    )
+	then
+		write('('),
+		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
+		write(' '),
+		io__write_constant_2(Functor),
+		write(')')
+	else
+	if some [Arg1, Arg2] (
+		Args = [Arg1, Arg2],
+		io__infix_op(Functor)
+	    )
+	then
+		write('('),
+		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
+		write(' '),
+		io__write_constant_2(Functor),
+		write(' '),
+		io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
+		write(')')
+	else
+		io__write_constant_2(Functor),
+		(if some [X,Xs] Args = X.Xs then
+			write('('),
+			io__write_term_2(X, VarSet0, N0, VarSet1, N1),
+			io__write_term_args(Xs, VarSet1, N1, VarSet, N),
+			write(')')
+		else
+			N = N0,
+			VarSet = VarSet0
+		)
+	).
+
+io__current_op(Type, Prec, term_atom(OpName)) :-
+	name(Op, OpName),
+	currentOp(Type, Prec, Op).
+
+io__infix_op(Op) :-
+	some [Type, Prec] (
+		io__current_op(Prec, Type, Op),
+		member(Type, [xfx, xfy, yfx])
+	).
+
+io__unary_prefix_op(Op) :-
+	some [Type, Prec] (
+		io__current_op(Prec, Type, Op),
+		member(Type, [fx, fy])
+	).
+
+io__unary_postfix_op(Op) :-
+	some [Type, Prec] (
+		io__current_op(Prec, Type, Op),
+		member(Type, [xf, yf])
 	).
 
 	% write the remaining arguments
-io__write_term_4([], VarSet, N, VarSet, N).
-io__write_term_4(X.Xs, VarSet0, N0, VarSet, N) :-
+io__write_term_args([], VarSet, N, VarSet, N).
+io__write_term_args(X.Xs, VarSet0, N0, VarSet, N) :-
 	write(', '),
 	io__write_term_2(X, VarSet0, N0, VarSet1, N1),
-	io__write_term_4(Xs, VarSet1, N1, VarSet, N).
+	io__write_term_args(Xs, VarSet1, N1, VarSet, N).
 
 	% write the functor
 io__write_constant(Const) -->
