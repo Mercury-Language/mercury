@@ -1,0 +1,14 @@
+echo on
+register --quiet
+break fib
+continue
+finish -n
+dd
+no
+no
+no
+yes
+yes
+yes
+quit -y
+
