@@ -224,7 +224,15 @@ det_infer_proc(ModuleInfo0, PredId, PredMode, State0, ModuleInfo, State) :-
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
 	MiscInfo = misc_info(ModuleInfo0, PredId, PredMode),
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism),
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1),
+
+		% Take the worst of the old and new detisms.
+		% This is needed to prevent loops on p :- not(p).
+	determinism_components(Detism0, CanFail0, MaxSoln0),
+	determinism_components(Detism1, CanFail1, MaxSoln1),
+	det_conjunction_canfail(CanFail0, CanFail1, CanFail),
+	det_switch_maxsoln(MaxSoln0, MaxSoln1, MaxSoln),
+	determinism_components(Detism, CanFail, MaxSoln),
 
 		% Check whether the determinism of this procedure changed
 	(
