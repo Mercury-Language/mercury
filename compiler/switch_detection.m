@@ -294,7 +294,7 @@ find_bind_var([Goal0 - GoalInfo | Goals0], Var, Substitution0,
 
 switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-
 	Type = term__functor(term__atom("character"), [], _),
-	list__length(CasesList, 127).	% XXX should be 255
+	list__length(CasesList, 127).	% XXX should be 256
 		% NU-Prolog only allows chars '\001' .. '\0177'.
 		% Currently we assume the same set.
 	
