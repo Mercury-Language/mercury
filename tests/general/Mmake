@@ -13,7 +13,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-NONDETPROGS=	commit_bug \
+PROGS=		commit_bug \
 		commit_bug_2 \
 		disj_disj \
 		dnf \
@@ -26,9 +26,9 @@ NONDETPROGS=	commit_bug \
 		nondet_ite_4 \
 		nondetlive \
 		partition \
-		semidet_lambda
-
-DETPROGS=	arithmetic \
+		semidet_lambda \
+		\
+		arithmetic \
 		det_complicated_unify \
 		determinism_inlining \
 		double_error \
@@ -51,21 +51,12 @@ DETPROGS=	arithmetic \
 		string_test \
 		string_test_2 \
 		univ \
-		unreachable
+		unreachable \
+		\
+		nondet_ite_2
 
-NOTWORKING=	nondet_ite_2 \
-		space
-
-#
-# The nondet tests use solutions/2, which is currently implemented only for GC
-# grades.  So only include those tests if the grade is a GC grade.
-#
-
-ifeq ("$(findstring .gc, $(GRADE))","")
-PROGS=$(DETPROGS)
-else
-PROGS=$(DETPROGS) $(NONDETPROGS)
-endif
+# The following test cases do not yet work:
+#		space		# seg faults, except at -O6; reason unknown
 
 # mode_inf_bug needs to be compiled with `--infer-all'.
 MCFLAGS-mode_inf_bug = --infer-all
