@@ -1093,7 +1093,8 @@ options_help_aux_output -->
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds <fields>\n"),
 	io__write_string("\t\tWith `--dump-hlds', dump with each goal the fields\n"),
-	io__write_string("\t\twhose initials are given in the option argument.\n").
+	io__write_string("\t\twhose initials are given in the option argument\n"),
+	io__write_string("\t\t(see the Mercury User's Guide for details).\n").
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
 

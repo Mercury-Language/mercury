@@ -521,7 +521,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		Indent1 is Indent + 1
 	},
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
-	( { string__occurs(Verbose, 'm') } ->
+	( { string__contains_char(Verbose, 'm') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
 		hlds_out__write_intlist(Modes),
@@ -605,7 +605,7 @@ hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent, Follow) -->
 hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			VarSet, Indent, Follow, TypeQual) -->
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
-	( { string__occurs(Verbose, 'c') } ->
+	( { string__contains_char(Verbose, 'c') } ->
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
@@ -622,7 +622,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'n') } ->
+	( { string__contains_char(Verbose, 'n') } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		( { NonLocalsList \= [] } ->
@@ -636,7 +636,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'p') } ->
+	( { string__contains_char(Verbose, 'p') } ->
 		{ goal_info_get_pre_births(GoalInfo, PreBirths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
 		( { PreBirthList \= [] } ->
@@ -660,7 +660,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'f') } ->
+	( { string__contains_char(Verbose, 'f') } ->
 		{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
 		(
 			{ MaybeFollowVars = yes(FollowVars) }
@@ -676,7 +676,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'd') } ->
+	( { string__contains_char(Verbose, 'd') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
@@ -687,7 +687,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	),
 	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent, Follow,
 		TypeQual),
-	( { string__occurs(Verbose, 'i') } ->
+	( { string__contains_char(Verbose, 'i') } ->
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		( { instmap_delta_changed_vars(InstMapDelta, Vars),
 				set__empty(Vars) } ->
@@ -702,7 +702,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'p') } ->
+	( { string__contains_char(Verbose, 'p') } ->
 		{ goal_info_get_post_births(GoalInfo, PostBirths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
 		( { PostBirthList \= [] } ->
@@ -726,7 +726,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	;
 		[]
 	),
-	( { string__occurs(Verbose, 'r') } ->
+	( { string__contains_char(Verbose, 'r') } ->
 		{ goal_info_get_resume_point(GoalInfo, Resume) },
 		(
 			{ Resume = no_resume_point }
@@ -755,7 +755,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		[]
 	),
 	(
-		{ string__occurs(Verbose, 's') },
+		{ string__contains_char(Verbose, 's') },
 		( { Goal = disj(_, SM) }
 		; { Goal = switch(_, _, _, SM) }
 		; { Goal = if_then_else(_, _, _, _, SM) }
@@ -907,7 +907,7 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
 			_ModuleInfo, VarSet, Indent, Follow, _TypeQual) -->
 		% XXX we should print more info here
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
-	( { string__occurs(Verbose, 'b') } ->
+	( { string__contains_char(Verbose, 'b') } ->
 		( { hlds__is_builtin_is_internal(Builtin) } ->
 			hlds_out__write_indent(Indent),
 			io__write_string("% internal\n")
@@ -949,7 +949,7 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	hlds_out__write_unify_rhs_2(B, ModuleInfo, VarSet,
 				Indent, Follow, VarType, TypeQual),
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
-	( { string__occurs(Verbose, 'a') } ->
+	( { string__contains_char(Verbose, 'a') } ->
 		(
 			% don't output bogus info if we haven't been through
 			% mode analysis yet
@@ -1446,7 +1446,7 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 
 	io__write_char('\n'),
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
-	( { string__occurs(Verbose, 'c') } ->
+	( { string__contains_char(Verbose, 'c') } ->
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
 		( { FileName \= "" } ->

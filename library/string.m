@@ -166,9 +166,9 @@
 %	construct a string consisting of `Count' occurrences of `Char'
 %	in sequence.
 
-:- pred string__occurs(string, character).
-:- mode string__occurs(in, in) is semidet.
-%	string__occurs(String, Char):
+:- pred string__contains_char(string, character).
+:- mode string__contains_char(in, in) is semidet.
+%	string__contains_char(String, Char):
 %	succeed if `Char' occurs in `String'.
 
 :- pred string__index(string, int, character).
@@ -1578,15 +1578,11 @@ string__special_precision_and_width(-1).
 /*-----------------------------------------------------------------------*/
 
 /*
-:- pred string__occurs(string, character).
-:- mode string__occurs(in, in) is semidet.
+:- pred string__contains_char(string, character).
+:- mode string__contains_char(in, in) is semidet.
 */
-:- pragma(c_code, string__occurs(Str::in, Ch::in), "
-	if (strchr(Str, Ch) != NULL) {
-		SUCCESS_INDICATOR = TRUE;
-	} else {
-		SUCCESS_INDICATOR = FALSE;
-	}
+:- pragma(c_code, string__contains_char(Str::in, Ch::in), "
+	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);
 ").
 
 /*-----------------------------------------------------------------------*/
