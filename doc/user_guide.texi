@@ -703,6 +703,9 @@ Disable elimination of dead labels and code.
 @item --optimize-value-number
 Perform value numbering.
 
+@item --pred-value-number
+Extend value numbering to whole predicates, rather than just basic blocks.
+
 @item --no-optimize-frames
 Disable stack frame optimizations.
 
