@@ -74,15 +74,16 @@
 	% of that type on the current backend.
 :- func foreign__to_exported_type(module_info, (type)) = exported_type.
 
-	% Given a representation of a type determine the string which
-	% corresponds to that type in the specified foreign language.
+	% Given the exported_type representation for a type,
+	% determine whether or not it is a foreign type.
+:- func foreign__is_foreign_type(exported_type) = bool.
+
+	% Given a representation of a type, determine the string which
+	% corresponds to that type in the specified foreign language,
+	% for use with foreign language interfacing (`pragma export' or
+	% `pragma foreign_proc').
 :- func foreign__to_type_string(foreign_language, exported_type) = string.
 :- func foreign__to_type_string(foreign_language, module_info, (type)) = string.
-
-	% Give a representation of a type determine the string which
-	% corresponds to that type when the type is mentioned via a
-	% pragma export on the llds backend.
-:- func llds_exported_type_string(module_info, (type)) = string.
 
 	% Filter the decls for the given foreign language. 
 	% The first return value is the list of matches, the second is
@@ -632,6 +633,9 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		ExportType = mercury(Type)
 	).
 
+is_foreign_type(foreign(_)) = yes.
+is_foreign_type(mercury(_)) = no.
+
 to_type_string(Lang, ModuleInfo, Type) =
 	to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
 
@@ -674,14 +678,6 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
 
-llds_exported_type_string(ModuleInfo, Type) = TypeString :-
-	ExportedType = to_exported_type(ModuleInfo, Type),
-	( ExportedType = foreign(_),
-		TypeString = "MR_Word"
-	; ExportedType = mercury(_),
-		TypeString = to_type_string(c, ExportedType)
-	).
-	
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

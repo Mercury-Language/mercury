@@ -5492,16 +5492,12 @@ The C @samp{pragma foreign_type} declaration is of the form:
 
 The @var{CForeignType} can be any C type name that obeys the following
 restrictions.
-The C expression @samp{sizeof(CForeignType) == sizeof(void *)} must
-evaluate to true; if not, the result of using the foreign type is
-undefined.
+Function types, array types, and incomplete types are not allowed.
 The type name must be such that when declaring a variable in C of that
 type, that no part of the type name is required after the variable name.
-Function, array and incomplete types are not allowed.
-
-Currently only integer and pointer types are accepted as foreign_types;
-at a later date we plan to lift this restriction and allow enum, struct
-and floating point types.
+(This rule prohibits, for example, function pointer types such as
+@samp{void (*)(void)}.  However, it would be OK to use a typedef name
+which was defined as a function pointer type.)
 
 @c XXX No point documenting this until `--gc accurate'
 @c     is officially supported.
@@ -5513,10 +5509,9 @@ defined using @samp{pragma foreign_proc},
 it will be passed to the foreign_proc's foreign language code
 as @var{CForeignType}.
 
-@c XXX This is not currently true.
-@c Furthermore, any Mercury procedure exported with @samp{pragma export}
-@c will use @var{CForeignType} as the type for any
-@c parameters whose Mercury type is @var{MercuryTypeName}.
+Furthermore, any Mercury procedure exported with @samp{pragma export}
+will use @var{CForeignType} as the type for any
+parameters whose Mercury type is @var{MercuryTypeName}.
 
 Also see the section on using C pointers (@pxref{Using C pointers}) for
 information on how to use the c_pointer type with the C interface.

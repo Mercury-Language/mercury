@@ -650,7 +650,7 @@ mlds_output_pragma_export_type(suffix, _Type) --> [].
 mlds_output_pragma_export_type(prefix, mercury_array_type(_ElemType)) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType)) -->
-	io__write_string(to_type_string(c, ExportedType)).
+	io__write_string(foreign__to_type_string(c, ExportedType)).
 mlds_output_pragma_export_type(prefix, mlds__cont_type(_)) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__commit_type) -->
@@ -663,8 +663,13 @@ mlds_output_pragma_export_type(prefix, mlds__native_float_type) -->
 	io__write_string("MR_Float").
 mlds_output_pragma_export_type(prefix, mlds__native_char_type) -->
 	io__write_string("MR_Char").
-mlds_output_pragma_export_type(prefix, mlds__foreign_type(_)) -->
-	io__write_string("MR_Box").
+mlds_output_pragma_export_type(prefix, mlds__foreign_type(ForeignType)) -->
+	( { ForeignType = c(c(Name)) },
+		io__write_string(Name)
+	; { ForeignType = il(_) },
+		{ unexpected(this_file,
+			"mlds_output_type_prefix: il foreign_type") }
+	).
 mlds_output_pragma_export_type(prefix, mlds__class_type(_, _, _)) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__array_type(_)) -->
@@ -698,53 +703,160 @@ mlds_output_pragma_export_type(prefix, mlds__unknown_type) -->
 mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 	{ Signature = mlds__func_params(Parameters, RetTypes) },
 
-	( { RetTypes = [] } ->
-		io__write_string("\t")
-	; { RetTypes = [RetType] } ->
-		io__write_string("\treturn ("),
-		mlds_output_pragma_export_type(RetType),
-		io__write_string(") ")
+	% Declare local variables corresponding to any foreign_type
+	% parameters
+	{ IsCForeignType = (pred(Arg::in) is semidet :-
+		Arg = mlds__argument(_Name, Type, _GCTraceCode),
+		Type = mlds__foreign_type(c(_))) },
+	{ IsCForeignTypePtr = (pred(Arg::in) is semidet :-
+		Arg = mlds__argument(_Name, Type, _GCTraceCode),
+		Type = mlds__ptr_type(mlds__foreign_type(c(_)))) },
+	{ CForeignTypeInputs = list__filter(IsCForeignType, Parameters) },
+	{ CForeignTypeOutputs = list__filter(IsCForeignTypePtr, Parameters) },
+	io__write_list(CForeignTypeInputs ++ CForeignTypeOutputs, "",
+		(pred(Arg::in, di, uo) is det -->
+			{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
+			io__write_string("\t"),
+			mlds_output_data_decl_ho(mlds_output_type_prefix,
+				mlds_output_type_suffix,
+				qual(ModuleName, boxed_name(Name)), Type),
+			io__write_string(";\n"))),
+
+	% Declare a local variable or two for the return value, if needed
+	( { RetTypes = [RetType1] } ->
+		( { RetType1 = mlds__foreign_type(c(_)) } ->
+			io__write_string("\t"),
+			mlds_output_pragma_export_type(RetType1),
+			io__write_string(" ret_value;\n"),
+			io__write_string("\t"),
+			mlds_output_type(RetType1),
+			io__write_string(" boxed_ret_value;\n")
+		;
+			io__write_string("\t"),
+			mlds_output_pragma_export_type(RetType1),
+			io__write_string(" ret_value;\n")
+		)
 	;
+		[]
+	),
+
+	% Generate code to box any non-word-sized foreign_type input parameters;
+	% these need to be converted to a uniform size before passing them
+	% to Mercury code.
+	io__write_list(CForeignTypeInputs, "",
+		(pred(Arg::in, di, uo) is det -->
+			{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
+			{ QualName = qual(ModuleName, Name) },
+			{ BoxedQualName = qual(ModuleName, boxed_name(Name)) },
+			io__write_string("\tMR_MAYBE_BOX_FOREIGN_TYPE("),
+			mlds_output_pragma_export_type(Type),
+			io__write_string(", "),
+			mlds_output_fully_qualified_name(QualName),
+			io__write_string(", "),
+			mlds_output_fully_qualified_name(BoxedQualName),
+			io__write_string(");\n"))),
+
+	% Generate code to actually call the Mercury procedure which
+	% is being exported
+	( { RetTypes = [] } ->
+		io__write_string("\t"),
+		mlds_output_pragma_export_call(ModuleName, FuncName,
+			Parameters)
+	; { RetTypes = [RetType2] } ->
+		( { RetType2 = mlds__foreign_type(c(_)) } ->
+			io__write_string("\tboxed_ret_value = ")
+		;
+			io__write_string("\tret_value = ("),
+			mlds_output_pragma_export_type(RetType2),
+			io__write_string(")")
+		),
+		mlds_output_pragma_export_call(ModuleName, FuncName,
+			Parameters)
+	;
+		% This is just for MLDS dumps when compiling to non-C targets.
+		% So we don't need to worry about boxing/unboxing foreign types
+		% here.
 		io__write_string("\treturn ("),
 		mlds_output_return_list(RetTypes,
 				mlds_output_pragma_export_type),
 		io__write_string(") ")
 	),
 
+	% Generate code to unbox any foreign_type output parameters,
+	% since we are returning those parameters to C code.
+	io__write_list(CForeignTypeOutputs, "",
+		(pred(Arg::in, di, uo) is det -->
+			{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
+			{ QualName = qual(ModuleName, Name) },
+			{ BoxedQualName = qual(ModuleName, boxed_name(Name)) },
+			io__write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("),
+			mlds_output_pragma_export_type(Type),
+			io__write_string(", "),
+			mlds_output_fully_qualified_name(BoxedQualName),
+			io__write_string(", *"),
+			mlds_output_fully_qualified_name(QualName),
+			io__write_string(");\n"))),
+
+	% Generate the final statement to unbox and return the
+	% return value, if needed.
+	( { RetTypes = [RetType3] } ->
+		( { RetType3 = mlds__foreign_type(c(_)) } ->
+			io__write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("),
+			mlds_output_pragma_export_type(RetType3),
+			io__write_string(", boxed_ret_value, ret_value);\n")
+		;
+			[]
+		),
+		io__write_string("\treturn ret_value;\n")
+	;
+		[]
+	).
+
+:- func boxed_name(mlds__entity_name) = mlds__entity_name.
+boxed_name(Name) = BoxedName :-
+	( Name = data(var(var_name(VarName, Seq))) ->
+		BoxedName = data(var(var_name("boxed_" ++ VarName, Seq)))
+	;
+		unexpected(this_file, "boxed_name called for non-var argument")
+	).
+
+:- pred mlds_output_pragma_export_call(mlds_module_name,
+		mlds__qualified_entity_name, mlds__arguments,
+		io__state, io__state).
+:- mode mlds_output_pragma_export_call(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_call(ModuleName, FuncName, Parameters) -->
 	mlds_output_fully_qualified_name(FuncName),
 	io__write_string("("),
 	io__write_list(Parameters, ", ",
-			mlds_output_name_with_cast(ModuleName)),
+			mlds_output_pragma_export_arg(ModuleName)),
 	io__write_string(");\n").
-
-	%
-	% Write out the arguments to the MLDS function.  Note the last
-	% in the list of the arguments is the return value, so it must
-	% be "&arg"
-	%
-:- pred write_func_args(mlds_module_name::in, mlds__arguments::in,
-		io__state::di, io__state::uo) is det.
-
-write_func_args(_ModuleName, []) -->
-	{ error("write_func_args: empty list") }.
-write_func_args(_ModuleName, [_Arg]) -->
-	io__write_string("&arg").
-write_func_args(ModuleName, [Arg | Args]) -->
-	{ Args = [_|_] },
-	mlds_output_name_with_cast(ModuleName, Arg),
-	io__write_string(", "),
-	write_func_args(ModuleName, Args).
 
 	%
 	% Output a fully qualified name preceded by a cast.
 	%
-:- pred mlds_output_name_with_cast(mlds_module_name::in, mlds__argument::in,
+:- pred mlds_output_pragma_export_arg(mlds_module_name::in, mlds__argument::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_output_name_with_cast(ModuleName, Arg) -->
+mlds_output_pragma_export_arg(ModuleName, Arg) -->
 	{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
-	mlds_output_cast(Type),
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
+	( { Type = mlds__foreign_type(c(_)) } ->
+		% This is a foreign_type input.  Pass in the already-boxed
+		% value.
+		{ BoxedName = boxed_name(Name) },
+		mlds_output_fully_qualified_name(qual(ModuleName, BoxedName))
+	; { Type = mlds__ptr_type(mlds__foreign_type(c(_))) } ->
+		% This is a foreign_type output.  Pass in the address of the
+		% local variable which will hold the boxed value.
+		io__write_string("&"),
+		{ BoxedName = boxed_name(Name) },
+		mlds_output_fully_qualified_name(qual(ModuleName, BoxedName))
+	;
+		% Otherwise, no boxing or unboxing is needed.
+		% Just cast the argument to the right type.
+		mlds_output_cast(Type),
+		mlds_output_fully_qualified_name(qual(ModuleName, Name))
+	).
 
 	%
 	% Generates the signature for det functions in the forward mode.
@@ -1639,13 +1751,11 @@ mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
 mlds_output_type_prefix(mlds__native_bool_type)  -->
 	io__write_string("MR_bool").
 mlds_output_type_prefix(mlds__native_char_type)  --> io__write_string("char").
-mlds_output_type_prefix(mlds__foreign_type(ForeignType)) -->
-	( { ForeignType = c(c(Name)) },
-		io__write_string(Name)
-	; { ForeignType = il(_) },
-		{ unexpected(this_file,
-			"mlds_output_type_prefix: il foreign_type") }
-	).
+mlds_output_type_prefix(mlds__foreign_type(_ForeignType)) -->
+	% for binary compatibility with the --target asm back-end,
+	% we need to output these as a generic type, rather than making
+	% use of the C type name
+	io__write_string("MR_Box").
 mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 	( { ClassKind = mlds__enum } ->
 		%
@@ -2701,6 +2811,17 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo,
 		io__state, io__state).
 :- mode mlds_output_target_code_component(in, in, di, uo) is det.
 
+	% Note: `name(Name)' target_code_components are used to
+	% generate the #define for `MR_PROC_LABEL'.
+	% The fact that they're used in a #define means that we can't do
+	% an mlds_to_c__output_context(Context) here, since #line directives
+	% aren't allowed inside #defines.
+	% Similarly, all the target_code_components except user_target_code
+	% can get emitted inside calls to the MR_BOX_FOREIGN_TYPE
+	% or MR_UNBOX_FOREIGN_TYPE macros, which means that we can't output
+	% the contexts for those either, since #line directives aren't
+	% allowed inside macro invocations in standard C
+	% (although some compilers, e.g. gcc 3.2, do allow it).
 mlds_output_target_code_component(Context,
 		user_target_code(CodeString, MaybeUserContext, _Attrs)) -->
 	( { MaybeUserContext = yes(UserContext) } ->
@@ -2709,25 +2830,18 @@ mlds_output_target_code_component(Context,
 		mlds_to_c__output_context(Context)
 	),
 	io__write_string(CodeString),
-	io__write_string("\n").
-mlds_output_target_code_component(Context, raw_target_code(CodeString,
+	io__write_string("\n"),
+	mlds_to_c__reset_context.
+mlds_output_target_code_component(_Context, raw_target_code(CodeString,
 		_Attrs)) -->
-	mlds_to_c__output_context(Context),
 	io__write_string(CodeString).
-mlds_output_target_code_component(Context, target_code_input(Rval)) -->
-	mlds_to_c__output_context(Context),
+mlds_output_target_code_component(_Context, target_code_input(Rval)) -->
 	mlds_output_rval(Rval),
 	io__write_string("\n").
-mlds_output_target_code_component(Context, target_code_output(Lval)) -->
-	mlds_to_c__output_context(Context),
+mlds_output_target_code_component(_Context, target_code_output(Lval)) -->
 	mlds_output_lval(Lval),
 	io__write_string("\n").
 mlds_output_target_code_component(_Context, name(Name)) -->
-	% Note: `name(Name)' target_code_components are used to
-	% generate the #define for `MR_PROC_LABEL'.
-	% The fact that they're used in a #define means that we can't do
-	% an mlds_to_c__output_context(Context) here, since #line directives
-	% aren't allowed inside #defines.
 	mlds_output_fully_qualified_name(Name),
 	io__write_string("\n").
 
@@ -3290,6 +3404,12 @@ mlds_to_c__output_context(Context) -->
 	{ term__context_file(ProgContext, FileName) },
 	{ term__context_line(ProgContext, LineNumber) },
 	c_util__set_line_num(FileName, LineNumber).
+
+:- pred mlds_to_c__reset_context(io__state, io__state).
+:- mode mlds_to_c__reset_context(di, uo) is det.
+
+mlds_to_c__reset_context -->
+	c_util__reset_line_num.
 
 :- pred mlds_indent(mlds__context, indent, io__state, io__state).
 :- mode mlds_indent(in, in, di, uo) is det.

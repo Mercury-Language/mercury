@@ -223,8 +223,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 
 		% work out which arguments are input, and which are output,
 		% and copy to/from the mercury registers.
-	get_input_args(ArgInfoTypes, 0, InputArgs),
-	copy_output_args(ArgInfoTypes, 0, OutputArgs),
+	get_input_args(ArgInfoTypes, 0, Module, InputArgs),
+	copy_output_args(ArgInfoTypes, 0, Module, OutputArgs),
 	
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
@@ -335,15 +335,27 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 			RetArgMode = top_out,
 			\+ type_util__is_dummy_argument_type(RetType)
 		->
-			C_RetType = llds_exported_type_string(Module, RetType),
+			Export_RetType = foreign__to_exported_type(Module,
+				RetType),
+			C_RetType = foreign__to_type_string(c, Export_RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
 			string__append_list(["\t", C_RetType,
 					" return_value;\n"],
 						MaybeDeclareRetval),
-			string__append_list(["\treturn_value = ", RetArgString,
-						";\n"], MaybeFail),
+			% We need to unbox non-word-sized foreign types
+			% before returning them to C code
+			( foreign__is_foreign_type(Export_RetType) = yes ->
+				string__append_list(
+					["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(",
+					C_RetType, ", ", RetArgString,
+					", return_value);\n"], SetReturnValue)
+			;
+				string__append_list(["\treturn_value = ",
+					RetArgString, ";\n"], SetReturnValue)
+			),
+			MaybeFail = SetReturnValue,
 			string__append_list(["\treturn return_value;\n"],
 				MaybeSucceed),
 			ArgInfoTypes2 = ArgInfoTypes1
@@ -435,7 +447,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 	;
 		ArgName = ""
 	),
-	TypeString0 = llds_exported_type_string(Module, Type),
+	TypeString0 = foreign__to_type_string(c, Module, Type),
 	(
 		Mode = top_out
 	->
@@ -445,11 +457,11 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 		TypeString = TypeString0
 	).
 
-:- pred get_input_args(assoc_list(arg_info, type), int, string).
-:- mode get_input_args(in, in, out) is det.
+:- pred get_input_args(assoc_list(arg_info, type), int, module_info, string).
+:- mode get_input_args(in, in, in, out) is det.
 
-get_input_args([], _, "").
-get_input_args([AT|ATs], Num0, Result) :-
+get_input_args([], _, _, "").
+get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
 	Num is Num0 + 1,
@@ -460,9 +472,20 @@ get_input_args([AT|ATs], Num0, Result) :-
 		string__append("Mercury__argument", NumString, ArgName0),
 		convert_type_to_mercury(ArgName0, Type, ArgName),
 		argloc_to_string(ArgLoc, ArgLocString),
-		string__append_list(
-			["\t", ArgLocString, " = ", ArgName, ";\n" ],
-			InputArg)
+		Export_Type = foreign__to_exported_type(ModuleInfo, Type),
+		% We need to box non-word-sized foreign types
+		% before passing them to Mercury code
+		( foreign__is_foreign_type(Export_Type) = yes ->
+			C_Type = foreign__to_type_string(c, Export_Type),
+			string__append_list(
+				["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
+				C_Type, ", ", ArgName, ", ",
+				ArgLocString, ");\n"], InputArg)
+		;
+			string__append_list(
+				["\t", ArgLocString, " = ", ArgName, ";\n" ],
+				InputArg)
+		)
 	;
 		Mode = top_out,
 		InputArg = ""
@@ -470,14 +493,14 @@ get_input_args([AT|ATs], Num0, Result) :-
 		Mode = top_unused,
 		InputArg = ""
 	),
-	get_input_args(ATs, Num, TheRest),
+	get_input_args(ATs, Num, ModuleInfo, TheRest),
 	string__append(InputArg, TheRest, Result).
 
-:- pred copy_output_args(assoc_list(arg_info, type), int, string).
-:- mode copy_output_args(in, in, out) is det.
+:- pred copy_output_args(assoc_list(arg_info, type), int, module_info, string).
+:- mode copy_output_args(in, in, in, out) is det.
 
-copy_output_args([], _, "").
-copy_output_args([AT|ATs], Num0, Result) :-
+copy_output_args([], _, _, "").
+copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
 	Num is Num0 + 1,
@@ -486,19 +509,29 @@ copy_output_args([AT|ATs], Num0, Result) :-
 		OutputArg = ""
 	;
 		Mode = top_out,
-
 		string__int_to_string(Num, NumString),
 		string__append("Mercury__argument", NumString, ArgName),
 		argloc_to_string(ArgLoc, ArgLocString0),
 		convert_type_from_mercury(ArgLocString0, Type, ArgLocString),
-		string__append_list(
-			["\t*", ArgName, " = ", ArgLocString, ";\n" ],
-			OutputArg)
+		Export_Type = foreign__to_exported_type(ModuleInfo, Type),
+		% We need to unbox non-word-sized foreign types
+		% before returning them to C code
+		( foreign__is_foreign_type(Export_Type) = yes ->
+			C_Type = foreign__to_type_string(c, Export_Type),
+			string__append_list(
+				["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(",
+				C_Type, ", ", ArgLocString, ", ",
+				ArgName, ");\n"], OutputArg)
+		;
+			string__append_list(
+				["\t*", ArgName, " = ", ArgLocString, ";\n" ],
+				OutputArg)
+		)
 	;
 		Mode = top_unused,
 		OutputArg = ""
 	),
-	copy_output_args(ATs, Num, TheRest),
+	copy_output_args(ATs, Num, ModuleInfo, TheRest),
 	string__append(OutputArg, TheRest, Result).
 	
 	% convert an argument location (currently just a register number)

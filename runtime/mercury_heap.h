@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001 The University of Melbourne.
+** Copyright (C) 1995-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -342,4 +342,64 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 		MR_save_transient_hp();				\
 	} while (0)
 
+/*
+** Code to box/unbox types declared with `pragma foreign_type'.
+*/
+
+/*
+** void MR_MAYBE_BOX_FOREIGN_TYPE(type T, const T &value, MR_Box &box);
+**	Copy a value of type T from `value' to `box',
+**	boxing it if necessary (i.e. if type T won't fit in type MR_Box).
+*/
+#define MR_MAYBE_BOX_FOREIGN_TYPE(T, value, box)			\
+   	do {								\
+		MR_CHECK_EXPR_TYPE((value), T);				\
+		MR_CHECK_EXPR_TYPE((box), MR_Box);			\
+		if (sizeof(T) > sizeof(MR_Box)) {			\
+			size_t size_in_words =				\
+				(sizeof(T) + sizeof(MR_Word) - 1)	\
+				 / sizeof(MR_Word);			\
+			/* XXX this assumes that nothing requires */	\
+			/* stricter alignment than MR_Float */		\
+			MR_make_hp_float_aligned();			\
+			MR_incr_hp(MR_LVALUE_CAST(MR_Word, (box)),	\
+					size_in_words);			\
+			*(T *)(box) = (value);				\
+			MR_maybe_record_allocation(size_in_words,	\
+				"", "foreign type: " MR_STRINGIZE(T));	\
+		} else {						\
+			/* We can't take the address of `box' here, */	\
+			/* since it might be a global register. */	\
+			/* Hence we need to use a temporary copy. */	\
+			MR_Box box_copy;				\
+			if (sizeof(T) < sizeof(MR_Box)) {		\
+				/* make sure we don't leave any */	\
+				/* part of it uninitialized */		\
+				box_copy = 0;				\
+			}						\
+			memcpy(&box_copy, &(value), sizeof(T));		\
+			(box) = box_copy;				\
+		}							\
+	} while (0)
+   
+/*
+** void MR_MAYBE_UNBOX_FOREIGN_TYPE(type T, MR_Box box, T &value);
+**	Copy a value of type T from `box' to `value',
+**	unboxing it if necessary.
+*/
+#define MR_MAYBE_UNBOX_FOREIGN_TYPE(T, box, value)			\
+   	do {								\
+		MR_CHECK_EXPR_TYPE((value), T);				\
+		MR_CHECK_EXPR_TYPE((box), MR_Box);			\
+		if (sizeof(T) > sizeof(MR_Word)) {			\
+			(value) = *(T *)(box);				\
+		} else {						\
+			/* We can't take the address of `box' here, */	\
+			/* since it might be a global register. */	\
+			/* Hence we need to use a temporary copy. */	\
+			MR_Box box_copy = (box);			\
+			memcpy(&(value), &box_copy, sizeof(T));		\
+		}							\
+	} while (0)
+   
 #endif /* not MERCURY_HEAP_H */

@@ -1145,7 +1145,7 @@ make_pragma_decls([Arg | Args], Module, Decls) :-
 	(
 		var_is_not_singleton(ArgName, Name)
 	->
-		OrigTypeString = to_type_string(c, Module, OrigType),
+		OrigTypeString = foreign__to_type_string(c, Module, OrigType),
 		Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
 		make_pragma_decls(Args, Module, Decls1),
 		Decls = [Decl | Decls1]

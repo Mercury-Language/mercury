@@ -1632,7 +1632,9 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 
 %-----------------------------------------------------------------------------%
 
-% Currently we return mlds__types that are just the same as Mercury types,
+% There is some special-case handling for arrays and foreign_types here.
+% But apart from that,
+% currently we return mlds__types that are just the same as Mercury types,
 % except that we also store the type category, so that we
 % can tell if the type is an enumeration or not, without
 % needing to refer to the HLDS type_table.
@@ -1676,7 +1678,15 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		; Target = java,
 			sorry(this_file, "foreign types on the java backend")
 		; Target = asm,
-			sorry(this_file, "foreign types on the asm backend")
+			( MaybeC = yes(CForeignType),
+				ForeignType = c(CForeignType)
+			; MaybeC = no,
+				% XXX This ought to be checked by the
+				% front-end, e.g. check_foreign_type
+				% in make_hlds.
+				sorry(this_file,
+				"mercury_type_to_mlds_type: No C foreign type")
+			)
 		),
 		MLDSType = mlds__foreign_type(ForeignType)
 	;

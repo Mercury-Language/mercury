@@ -1979,26 +1979,36 @@ output_pragma_inputs([]) --> [].
 output_pragma_inputs([I|Inputs]) -->
 	{ I = pragma_c_input(VarName, Type, Rval, MaybeForeignType) },
 	io__write_string("\t"),
-	io__write_string(VarName),
-	io__write_string(" = "),
-	(
-        	{ Type = term__functor(term__atom("string"), [], _) }
-	->
-		output_llds_type_cast(string),
-		output_rval_as_type(Rval, word)
+	( { MaybeForeignType = yes(ForeignType) } ->
+		io__write_string("MR_MAYBE_UNBOX_FOREIGN_TYPE("),
+		io__write_string(ForeignType),
+		io__write_string(", "),
+		output_rval(Rval),
+		io__write_string(", "),
+		io__write_string(VarName),
+		io__write_string(")")
 	;
-        	{ Type = term__functor(term__atom("float"), [], _) }
-	->
-		output_rval_as_type(Rval, float)
-	;
-		% Note that for this cast to be correct the foreign type
-		% must be a word sized integer or pointer type.
-		( { MaybeForeignType = yes(ForeignTypeStr) } ->
-			io__write_string("(" ++ ForeignTypeStr ++ ") ")
+		io__write_string(VarName),
+		io__write_string(" = "),
+		(
+			{ Type = term__functor(term__atom("string"), [], _) }
+		->
+			output_llds_type_cast(string),
+			output_rval_as_type(Rval, word)
 		;
-			[]
-		),
-		output_rval_as_type(Rval, word)
+			{ Type = term__functor(term__atom("float"), [], _) }
+		->
+			output_rval_as_type(Rval, float)
+		;
+			% Note that for this cast to be correct the foreign type
+			% must be a word sized integer or pointer type.
+			( { MaybeForeignType = yes(ForeignTypeStr) } ->
+				io__write_string("(" ++ ForeignTypeStr ++ ") ")
+			;
+				[]
+			),
+			output_rval_as_type(Rval, word)
+		)
 	),
 	io__write_string(";\n"),
 	output_pragma_inputs(Inputs).
@@ -2023,28 +2033,31 @@ output_pragma_outputs([]) --> [].
 output_pragma_outputs([O|Outputs]) -->
 	{ O = pragma_c_output(Lval, Type, VarName, MaybeForeignType) },
 	io__write_string("\t"),
-	output_lval_as_word(Lval),
-	io__write_string(" = "),
-	(
-        	{ Type = term__functor(term__atom("string"), [], _) }
-	->
-		output_llds_type_cast(word),
-		io__write_string(VarName)
-	;
-        	{ Type = term__functor(term__atom("float"), [], _) }
-	->
-		io__write_string("MR_float_to_word("),
+	( { MaybeForeignType = yes(ForeignType) } ->
+		io__write_string("MR_MAYBE_BOX_FOREIGN_TYPE("),
+		io__write_string(ForeignType),
+		io__write_string(", "),
 		io__write_string(VarName),
+		io__write_string(", "),
+		output_lval_as_word(Lval),
 		io__write_string(")")
 	;
-		% Note that for this cast to be correct the foreign type
-		% must be a word sized integer or pointer type.
-		( { MaybeForeignType = yes(_) } ->
-			output_llds_type_cast(word)
+		output_lval_as_word(Lval),
+		io__write_string(" = "),
+		(
+			{ Type = term__functor(term__atom("string"), [], _) }
+		->
+			output_llds_type_cast(word),
+			io__write_string(VarName)
 		;
-			[]
-		),
-		io__write_string(VarName)
+			{ Type = term__functor(term__atom("float"), [], _) }
+		->
+			io__write_string("MR_float_to_word("),
+			io__write_string(VarName),
+			io__write_string(")")
+		;
+			io__write_string(VarName)
+		)
 	),
 	io__write_string(";\n"),
 	output_pragma_outputs(Outputs).
