@@ -25,12 +25,12 @@ AC_INIT(runtime/wrapper.mod)
 #
 # Ensure that all messages are saved to a file `configure.log' by
 # invoking ourself recursively without output piped into `tee configure.log'.
-# The environment variable `suppress_log_file_recursion' is used to prevent
+# The environment variable `SUPPRESS_LOG_FILE_RECURSION' is used to prevent
 # infinite recursion.
 #
-if test "$suppress_log_file_recursion" != "yes"; then
-	suppress_log_file_recursion=yes
-	export suppress_log_file_recursion
+if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
+	SUPPRESS_LOG_FILE_RECURSION=yes
+	export SUPPRESS_LOG_FILE_RECURSION
 	trap 0 1 2 3 13 15
 	case $# in
 		0) exec ${CONFIG_SHELL-/bin/sh} "$0"      ;;
