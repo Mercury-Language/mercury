@@ -5,8 +5,8 @@
 */
 
 /*
-** mercury_wrapper.h - defines the interface to wrapper.mod.
-** See wrapper.mod for documentation.
+** mercury_wrapper.h - defines the interface to wrapper.c.
+** See wrapper.c for documentation.
 */
 
 #ifndef	MERCURY_WRAPPER_H
