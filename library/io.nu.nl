@@ -35,9 +35,18 @@
 :- dynamic io__save_args/1.
 :- dynamic io__save_exit_status/1.
 
-:- dynamic io__save_user_globals/1.
-:- dynamic io__save_stream_names/1.
-:- dynamic io__save_putback/1.
+% Note: in C, the io__state is all represented as global variables.
+% But for Prolog, using assert/retract for global variables was
+% found to be much too slow.  So we do actually pass around an io__state.
+
+:- type io__state
+	---> 	io__state(
+			io__stream_names,	% map from stream to stream name
+			io__stream_putback,	% map from input stream to
+						% list of putback characters
+			univ,			% for use by the application
+			io__external_state
+		).
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
@@ -131,7 +140,8 @@ io__init(Args) :-
 	),
 	assert(io__save_exit_status(0)).
 
-:- pred io__gc_init(io__state::di, io__state::uo) is det.
+:- pred io__gc_init(io__state, io__state).
+:- mode io__gc_init(di, uo) is det.
 io__gc_init --> [].
 
 :- pred atoms_to_strings(list(atom), list(string)).
@@ -258,7 +268,7 @@ io__gc_call(Goal) -->
 % input predicates
 
 io__read_char_code(Stream, Code, IO_0, IO) :-
-	io__save_putback(PutBack0),
+	IO_0 = io__state(A, PutBack0, C, D),
  	(
 		map__search(PutBack0, Stream, PutBackChars),
 		PutBackChars = [Char | Chars]
@@ -268,24 +278,22 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 		;
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
-		retractall(io__save_putback(_)),
-		assert(io__save_putback(PutBack)),
+		IO = io__state(A, PutBack, C, D),
 		char__to_int(Char, Code)
  	;
-		get0(Stream, Code)
- 	),
-	IO = IO_0.
+		get0(Stream, Code),
+		IO = IO_0
+ 	).
+	%%% io__update_state.
 
 io__putback_char(Stream, Char, IO_0, IO) :-
-	io__save_putback(PutBack0),
+	IO_0 = io__state(A, PutBack0, C, D),
 	( map__search(PutBack0, Stream, Chars) ->
 		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
 	;
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
-	retractall(io__save_putback(_)),
-	assert(io__save_putback(PutBack)),
-	IO = IO_0.
+	IO = io__state(A, PutBack, C, D).
 
 io__putback_byte(_Stream, _Char, IO, IO) :-
 	error("io__putback_byte: binary IO is not implemented for Prolog.").
@@ -462,7 +470,7 @@ io__get_line_number(LineNumber) -->
 
 io__get_line_number(Stream, LineNumber) -->
 	{ lineCount(Stream, LineNumber0) },
-	{ io__save_putback(PutBack) },
+	=(io__state(_, PutBack, _, _)),
 	{ map__search(PutBack, Stream, Chars) ->
 		io__adjust_line_num(Chars, LineNumber0, LineNumber)
 	;
@@ -488,9 +496,13 @@ io__adjust_line_num([C | Cs], N0, N) :-
 	% to ensure that once an io state has been used it can't be
 	% used again.
 
+
 :- pred io__init_state(io__state).
 io__init_state(IO_State) :-
-	io__init_state(current, IO_State).
+	ExternalState = current,
+	map__init(PutBack),
+	IOState0 = io__state(_Names0, PutBack, _Globals, ExternalState),
+	io__init_state(IOState0, IO_State).
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
@@ -501,14 +513,14 @@ io__update_state(IOState0, IOState) :-
 	;
 		true
 	),
-	%%% ( IOState0 = io__state(_, _, current) ->
+	%%% ( IOState0 = io__state(_, _, _, current) ->
 	%%% 	true
 	%%% ;
 	%%% 	error("io.nu.nl: cannot retry I/O operation")
 	%%% ),
-	%%% IOState0 = io__state(Names, Globals, _),
+	%%% IOState0 = io__state(Names, PutBack, Globals, _),
 	%%% $replacn(2, IOState0, old),
-	%%% IOState = io__state(Names, Globals, current).
+	%%% IOState = io__state(Names, PutBack, Globals, current).
 	IOState = IOState0.
 
 :- pred io__final_state(io__state).
@@ -538,17 +550,19 @@ io__set_exit_status(ExitStatus) -->
 	{ retractall(io__save_exit_status(_)) },
 	{ assert(io__save_exit_status(ExitStatus)) }.
 
-io__get_globals(Globals) -->
-	{ io__save_user_globals(Globals) }.
-io__set_globals(Globals) -->
-	{ retractall(io__save_user_globals(_)) },
-	{ assert(io__save_user_globals(Globals)) }.
+io__get_stream_names(StreamNames, IOState, IOState) :-
+	IOState = io__state(StreamNames, _, _, _).
 
-io__get_stream_names(StreamNames) -->
-	{ io__save_stream_names(StreamNames) }.
-io__set_stream_names(StreamNames) -->
-	{ retractall(io__save_stream_names(_)) },
-	{ assert(io__save_stream_names(StreamNames)) }.
+io__set_stream_names(StreamNames, IOState0, IOState) :-
+	IOState0 = io__state(_, B, C, D),
+	IOState = io__state(StreamNames, B, C, D).
+
+io__get_globals(Globals, IOState, IOState) :-
+	IOState = io__state(_, _, Globals, _).
+
+io__set_globals(Globals, IOState0, IOState) :-
+	IOState0 = io__state(A, B, _, D),
+	IOState = io__state(A, B, Globals, D).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
