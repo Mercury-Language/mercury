@@ -234,8 +234,8 @@ contain position-independent code themselves.
 by the Mercury compiler. The non-standard extensions are necessary
 to avoid conflicts with system header files.
 @file{.s} files and @file{.pic_s} files are assembly language.
-@file{.java} and @file{.class} files are Java source code
-and Java bytecode respectively.
+@file{.java}, @file{.class} and @file{.jar} files are Java source code,
+Java bytecode and Java archives respectively.
 @file{.il} files are Intermediate Language (IL) files
 for the .NET Common Language Runtime.
 @c XXX mention .dll and .exe?
@@ -914,6 +914,7 @@ and, on many platforms, it supports shared object libraries.
 * Building libraries::
 * Installing libraries::
 * Using libraries::
+* Libraries and the Java grade::
 @end menu
 
 @node Writing libraries
@@ -1164,6 +1165,26 @@ then one can declare:
 @example
 EXTRA_LIBRARIES-foo = mylib4foo
 @end example
+
+@node Libraries and the Java grade
+@section Libraries and the Java grade
+@cindex jar files
+@cindex Java libraries
+
+Libraries are handled a little differently for the Java grade.  Instead of
+compiling object code into a static or shared library, the class files are
+added to a jar (Java ARchive) file of the form @file{@var{library-name}.jar}.
+
+To create or install a Java library, simply specify that you want to use the
+java grade, either by setting @samp{GRADE=java} in your Mmakefile, or by
+including @samp{--java} or @samp{--grade java} in your @samp{GRADEFLAGS}, then
+follow the instructions as above.
+
+Java libraries are installed to the directory
+@file{@var{prefix}/lib/mercury/lib/java}.  To include them in a program, in
+addition to the instructions above, you will need to include the installed jar
+file in your @samp{CLASSPATH}, which you can set using
+@samp{--java-classpath @var{jarfile}} in @samp{MCFLAGS}.
 
 @c ----------------------------------------------------------------------------
 
