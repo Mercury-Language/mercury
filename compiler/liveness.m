@@ -677,10 +677,12 @@ detect_resume_points_in_goal_2(some(Vars, Goal0), Liveness0, ResumeVars0,
 detect_resume_points_in_goal_2(not(Goal0), Liveness0, ResumeVars0,
 		not(Goal), Liveness) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, ResumeVars0,
-		Goal1, Liveness),
+		_, Liveness),
+	set__union(Liveness, ResumeVars0, ResumeVars1),
+	detect_resume_points_in_goal(Goal0, Liveness0, ResumeVars1,
+		Goal1, _Liveness),
 	% attach the set of variables alive after the negation
 	% as the resume point set of the negated goal
-	set__union(Liveness, ResumeVars0, ResumeVars1),
 	goal_set_resume_point(Goal1, orig_and_stack(ResumeVars1), Goal).
 
 detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E), Liveness, _,
@@ -714,21 +716,22 @@ detect_resume_points_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0,
 detect_resume_points_in_disj([], Liveness, _, [], Liveness).
 detect_resume_points_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0,
 		[Goal | Goals], LivenessFirst) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, ResumeVars0,
-		Goal1, LivenessFirst),
 	( Goals0 = [_ | _] ->
 		% if there are any more disjuncts, then this disjunct
 		% establishes a resumption point, so we record the set
 		% of variables that may be needed at that point.
 		% The Liveness0 set works, but may be an overestimate.
 		set__union(Liveness0, ResumeVars0, ResumeVars1),
+		detect_resume_points_in_goal(Goal0, Liveness0, ResumeVars1,
+			Goal1, LivenessFirst),
 		goal_set_resume_point(Goal1, orig_and_stack(ResumeVars1), Goal),
 		detect_resume_points_in_disj(Goals0, Liveness0, ResumeVars0,
 			Goals, LivenessRest),
 		require(set__equal(LivenessFirst, LivenessRest),
 			"branches of disjunction disagree on liveness")
 	;
-		Goal = Goal1,
+		detect_resume_points_in_goal(Goal0, Liveness0, ResumeVars0,
+			Goal, LivenessFirst),
 		Goals = Goals0
 	).
 

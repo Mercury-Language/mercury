@@ -603,7 +603,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 	;
 		IsAtomic = no
 	},
-	code_aux__pre_goal_update(GoalInfo, IsAtomic),
+	code_aux__pre_goal_update(GoalInfo, IsAtomic, PreFlushCode),
 	code_info__get_instmap(Instmap),
 	(
 		{ instmap__is_reachable(Instmap) }
@@ -637,7 +637,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
 		code_info__set_instmap(Instmap),
-		code_aux__post_goal_update(GoalInfo),
+		code_aux__post_goal_update(GoalInfo, PostFlushCode),
 		code_info__get_globals(Options),
 		(
 			{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -647,9 +647,10 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			{ error("Eager code unavailable") }
 %%%			code_info__generate_eager_flush(Code1)
 		),
-		{ Code = tree(Code0, Code1) }
+		{ Code = tree(PreFlushCode,
+			tree(Code0, tree(PostFlushCode, Code1))) }
 	;
-		{ Code = empty }
+		{ Code = PreFlushCode }
 	),
 	!.
 
@@ -1151,10 +1152,9 @@ code_gen__generate_negation(Goal, Code) -->
 			% (special-cased, though it may be)
 			% we need to apply the pre- and post-
 			% updates.
-		code_aux__pre_goal_update(GoalInfo, yes),
-		code_info__produce_variable(L, Code0, ValA),
-		code_info__produce_variable(R, Code1, ValB),
-		code_aux__post_goal_update(GoalInfo),
+		code_aux__pre_goal_update(GoalInfo, yes, PreFlushCode),
+		code_info__produce_variable(L, CodeL, ValL),
+		code_info__produce_variable(R, CodeR, ValR),
 		code_info__variable_type(L, Type),
 		{ Type = term__functor(term__atom("string"), [], _) ->
 			Op = str_eq
@@ -1164,10 +1164,12 @@ code_gen__generate_negation(Goal, Code) -->
 			Op = eq
 		},
 		{ TestCode = node([
-			if_val(binop(Op, ValA, ValB), CodeAddr) -
+			if_val(binop(Op, ValL, ValR), CodeAddr) -
 				"test inequality"
 		]) },
-		{ Code = tree(Code0, tree(Code1, TestCode)) }
+		code_aux__post_goal_update(GoalInfo, PostFlushCode),
+		{ Code = tree(PreFlushCode, tree(tree(CodeL, CodeR),
+			tree(TestCode, PostFlushCode))) }
 	;
 		code_gen__generate_negation_general(model_semi, Goal, Code)
 	).

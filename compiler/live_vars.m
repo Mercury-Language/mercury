@@ -84,11 +84,29 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 		Liveness3 = Liveness2
 	),
 
-	goal_info_nondet_lives(GoalInfo, NondetLives),
 	goal_info_get_code_model(GoalInfo, CodeModel),
+	goal_info_nondet_lives(GoalInfo, NondetLives0),
+	goal_info_get_resume_point(GoalInfo, ResumePoint),
+	(
+		ResumePoint = none,
+		NondetLives = NondetLives0,
+		LiveSets1 = LiveSets0
+	;
+		ResumePoint = orig_only(_),
+		NondetLives = NondetLives0,
+		LiveSets1 = LiveSets0
+	;
+		ResumePoint = stack_only(ResumeVars),
+		set__union(NondetLives0, ResumeVars, NondetLives),
+		set__insert(LiveSets0, ResumeVars, LiveSets1)
+	;
+		ResumePoint = orig_and_stack(ResumeVars),
+		set__union(NondetLives0, ResumeVars, NondetLives),
+		set__insert(LiveSets0, ResumeVars, LiveSets1)
+	),
 
-	build_live_sets_in_goal_2(Goal0, NondetLives, Liveness3, LiveSets0,
-		CodeModel, ModuleInfo, ProcInfo, Liveness4, LiveSets1),
+	build_live_sets_in_goal_2(Goal0, NondetLives, Liveness3, LiveSets1,
+		CodeModel, ModuleInfo, ProcInfo, Liveness4, LiveSets2),
 
 	(
 		goal_is_atomic(Goal0)
@@ -110,9 +128,9 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 		% quite right
 	->
 		set__union(PreBirths, PostDeaths, ExtraInterference),
-		set__insert(LiveSets1, ExtraInterference, LiveSets)
+		set__insert(LiveSets2, ExtraInterference, LiveSets)
 	;
-		LiveSets = LiveSets1
+		LiveSets = LiveSets2
 	).
 
 %-----------------------------------------------------------------------------%

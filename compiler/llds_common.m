@@ -169,7 +169,7 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		% unlikely to procedure anything, but why not try?
+		% unlikely to find anything to share, but why not try?
 		Instr0 = computed_goto(Rval0, Labels),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
 		Instr = computed_goto(Rval, Labels)
@@ -178,12 +178,12 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		% unlikely to procedure anything, but why not try?
+		% unlikely to find anything to share, but why not try?
 		Instr0 = if_val(Rval0, Target),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
 		Instr = if_val(Rval, Target)
 	;
-		% unlikely to procedure anything, but why not try?
+		% unlikely to find anything to share, but why not try?
 		Instr0 = incr_hp(Lval, MaybeTag, Rval0),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
 		Instr = incr_hp(Lval, MaybeTag, Rval)
@@ -192,7 +192,7 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		% unlikely to procedure anything, but why not try?
+		% unlikely to find anything to share, but why not try?
 		Instr0 = restore_hp(Rval0),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
 		Instr = restore_hp(Rval)
@@ -201,7 +201,7 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		% unlikely to procedure anything, but why not try?
+		% unlikely to find anything to share, but why not try?
 		Instr0 = restore_ticket(Rval0),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
 		Instr = restore_ticket(Rval)

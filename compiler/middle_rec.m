@@ -118,7 +118,12 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		EntryLabel) },
 
-	code_aux__pre_goal_update(SwitchGoalInfo, no),
+	code_aux__pre_goal_update(SwitchGoalInfo, no, PreFlushCode),
+
+	{ tree__flatten(PreFlushCode, PreFlushListList) },
+	{ list__condense(PreFlushListList, PreFlushList) },
+	{ require(lambda([] is semidet, (PreFlushList = [])),
+		"PreFlushList is not empty in middle_rec") },
 
 	unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
 		BaseLabel, EntryTestCode),
@@ -132,8 +137,13 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	code_gen__generate_forced_goal(model_det, Recursive, StoreMap,
 		RecCodeFrag),
 
-	code_aux__post_goal_update(SwitchGoalInfo),
+	code_aux__post_goal_update(SwitchGoalInfo, PostFlushCode),
 	code_info__remake_with_store_map(StoreMap),
+
+	{ tree__flatten(PostFlushCode, PostFlushListList) },
+	{ list__condense(PostFlushListList, PostFlushList) },
+	{ require(lambda([] is semidet, (PostFlushList = [])),
+		"PostFlushList is not empty in middle_rec") },
 
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),

@@ -197,8 +197,8 @@
 		code_info).
 :- mode code_info__materialize_vars_in_rval(in, out, out, in, out) is det.
 
-:- pred code_info__make_vars_dead(set(var), code_info, code_info).
-:- mode code_info__make_vars_dead(in, in, out) is det.
+:- pred code_info__make_vars_dead(set(var), code_tree, code_info, code_info).
+:- mode code_info__make_vars_dead(in, out, in, out) is det.
 
 :- pred code_info__make_vars_live(set(var), code_info, code_info).
 :- mode code_info__make_vars_live(in, in, out) is det.
@@ -432,6 +432,9 @@
 
 :- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
 :- mode code_info__find_type_infos(in, out, in, out) is det.
+
+:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
+:- mode code_info__current_resume_point_vars(out, in, out) is det.
 
 :- pred code_info__push_resume_point_vars(set(var), code_info, code_info).
 :- mode code_info__push_resume_point_vars(in, in, out) is det.
@@ -670,7 +673,17 @@ code_info__clear_all_registers -->
 
 code_info__get_variable_slot(Var, Slot) -->
 	code_info__get_stack_slots(StackSlots),
-	{ map__lookup(StackSlots, Var, Slot) }.
+	( { map__search(StackSlots, Var, SlotPrime) } ->
+		{ Slot = SlotPrime }
+	;
+		code_info__variable_to_string(Var, Name),
+		{ term__var_to_int(Var, Num) },
+		{ string__int_to_string(Num, NumStr) },
+		{ string__append_list([
+			"code_info__get_variable_slot: variable `",
+			Name, "' (", NumStr, ") not found"], Str) },
+		{ error(Str) }
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -911,11 +924,12 @@ code_info__generate_forced_saves_2([V | Vs], Store, StackSlots, Code) -->
 		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
 		code_info__set_exprn_info(Exprn)
 	;
-		code_info__get_varset(Varset),
-		{ varset__lookup_name(Varset, V, Name) },
-		{ string__format(
-		"code_info__generate_forced_saves: variable `%s' not found",
-		[s(Name)], Str) },
+		code_info__variable_to_string(V, Name),
+		{ term__var_to_int(V, Num) },
+		{ string__int_to_string(Num, NumStr) },
+		{ string__append_list([
+			"code_info__generate_forced_saves: variable `",
+			Name, "' (", NumStr, ") not found"], Str) },
 		{ error(Str) }
 	),
 	code_info__generate_forced_saves_2(Vs, Store, StackSlots, Code1),
@@ -1033,12 +1047,26 @@ code_info__update_deadness_info(Deaths) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__make_vars_dead(Vars0) -->
+code_info__make_vars_dead(Vars0, Code) -->
+	code_info__current_resume_point_vars(ResumeVars),
+	{ set__intersect(Vars0, ResumeVars, FlushVars) },
+	{ set__to_sorted_list(FlushVars, FlushVarList) },
+	code_info__flush_resume_variables(FlushVarList, Code),
 	code_info__get_nondet_lives(NondetLives),
 		% Don't kill off nondet-live variables
 	{ set__difference(Vars0, NondetLives, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__make_vars_dead_2(VarList).
+
+:- pred code_info__flush_resume_variables(list(var), code_tree,
+	code_info, code_info).
+:- mode code_info__flush_resume_variables(in, out, in, out) is det.
+
+code_info__flush_resume_variables([], empty) --> [].
+code_info__flush_resume_variables([Var | Vars], Code) -->
+	code_info__save_variable_on_stack(Var, FirstCode),
+	code_info__flush_resume_variables(Vars, RestCode),
+	{ Code = tree(FirstCode, RestCode) }.
 
 :- pred code_info__make_vars_dead_2(list(var), code_info, code_info).
 :- mode code_info__make_vars_dead_2(in, in, out) is det.
@@ -2634,8 +2662,22 @@ code_info__get_proc_model(CodeModel) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__current_resume_point_vars(ResumeVars) -->
+	code_info__get_resume_point_stack(ResumeStack),
+	{ stack__top(ResumeStack, TopVars) ->
+		ResumeVars = TopVars
+	;
+		set__init(ResumeVars)
+	}.
+
 code_info__push_resume_point_vars(ResumeVars) -->
 	code_info__get_resume_point_stack(ResumeStack0),
+	{ stack__top(ResumeStack0, OldTopVars) ->
+		require(set__subset(OldTopVars, ResumeVars),
+		"new resume point variable set does not include old one")
+	;
+		true
+	},
 	{ stack__push(ResumeStack0, ResumeVars, ResumeStack) },
 	code_info__set_resume_point_stack(ResumeStack).
 
