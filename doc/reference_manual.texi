@@ -86,6 +86,9 @@ into another language, under the above conditions for modified versions.
                       lambda expressions, and currying.
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         An informal semantics for Mercury programs
+* Pragmas::           Pragma declarations give information to the Mercury 
+                      compiler allowing a Mercury-C interface, and the ability 
+                      to inline predicates.
 @end menu
 
 @node Introduction
@@ -298,6 +301,7 @@ The allowed declarations are:
 :- pred
 :- inst
 :- mode
+:- pragma
 :- module
 :- interface
 :- implementation
@@ -308,6 +312,7 @@ The allowed declarations are:
 
 The @samp{type} and @samp{pred} declarations are used for the type system,
 the @samp{inst} and @samp{mode} declarations are for the mode system,
+the @samp{pragma} declarations are for the C interface,
 and the remainder are for the module system.  They are described in
 more detail in their respective chapters.
 
@@ -1896,6 +1901,133 @@ the answers they compute must be true in every model of the theory.
 
 Execution of a legal Mercury program begins with the predicate @samp{main/2}.
 Only one solution is sought, even if @samp{main/2} is declared as @code{multi}.
+
+@node Pragmas
+@chapter Pragmas
+
+There are two main uses for the @code{pragma} declarations:
+@menu
+* C interface::                 The C interface allows C code to be called
+                                from Mercury code.
+* Inlining::                    Calls to Mercury predicates can be inlined
+                                by the compiler to improve efficiency.
+@end menu
+
+@node C interface
+@section C interface
+
+@menu
+* Calling C code::                      How to call C code whenever there is
+                                        a call to a Mercury predicate.
+* Including C headers::			Using functions with prototypes from a
+					non-standard header file.
+* Linking with C object files:: 	Linking with C object files and 
+					libraries.
+* Using C pointers::			Maintaining a reference to C data
+					structures in Mercury code.
+@end menu
+
+@node Calling C code
+@subsection Calling C code
+
+A declaration of the form
+@example
+:- pragma(c_code, Pred(Var1::Mode1, Var2::Mode2, ...), C_Code).
+@end example
+results in any calls to @var{Pred} with variables in modes (@var{Mode1}, 
+@var{Mode2}, ...) being replaced by a call to the C code given in @var{C_Code}.
+
+Any predicate which contains a @code{pragma(c_code, ...)} goal must be 
+deterministic, and must not contain any clauses (although there can be a 
+@code{pragma(c_code, ...)} goal for each mode of the predicate).
+
+For example, the following piece of code gives a predicate, 
+@samp{c_write_string/3}, which has the same semantics as the Mercury library 
+predicate @samp{io__write_string/3}:
+@example
+:- pred c_write_string(string, io__state, io__state).
+:- mode c_write_string(in, di, uo) is det.
+
+:- pragma(c_code, c_write_string(String::in, IO0::di, IO::uo),
+	"puts(String); IO = IO0;").
+@end example
+
+@node Including C headers
+@subsection Including C headers
+
+Mercury will automatically include the header files @file{stddef.h},
+@file{stdio.h}, @file{stdlib.h}, @file{string.h}, @file{assert.h}, and
+@file{sys/types.h}. Prototypes for any other functions must be included using
+a declaration of the form:
+@example
+:- pragma(c_header_code, HeaderCode).
+@end example
+where @var{HeaderCode} is a C @samp{#include} line. For example:
+@example
+:- pragma(c_header_code, "#include <math.h>")
+@end example
+or
+@example
+:- pragma(c_header_code, "#include ""tcl.h""").
+@end example
+
+@node Linking with C object files 
+@subsection Linking with C object files 
+
+To link an existing object file or library into the Mercury executable, give a
+value to the @samp{Mmake} variable @samp{MLLIBS} in the @samp{Mmake} file in 
+the directory in which you are working. For example add the following line to
+the @samp{Mmake} file:
+@example
+MLFLAGS= my_functions.o -L/usr/local/contrib/lib -lfancy_library
+@end example
+
+As illustrated by the example, the values for @samp{MLFLAGS} are similar to
+those taken by the Unix linker.
+
+@node Using C pointers
+@subsection Using C pointers
+
+The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
+between C functions which are called from Mercury. For example:
+@example
+:- module pointer_example.
+
+:- interface.
+
+:- type complicated_c_structure.
+
+% Initialise the abstract C structure that we pass around in Mercury.
+:- pred initialise_complicated_structure(complicated_c_structure::uo) is det.
+
+% Perform a calculation on the C structure.
+:- pred do_calculation(int::in, complicated_structure::di, 
+	complicated_structure::uo) is det.
+
+:- implementation.
+
+% Our C structure is implemented as a c_pointer.
+:- type complicated_c_structure	== c_pointer.
+
+:- pragma(c_code, initialise_complicated_structure(Structure::uo),
+	"perform_initialisation(&Structure);").
+
+:- pragma(c_code, do_calculation(Value::in, Structure0::di, Structure::uo,
+	"Structure = perform_calculation(Value, Structure0);") .
+@end example
+
+@node Inlining
+@section Inlining
+
+For the sake of efficiency, calls to predicates will be inlined by the Mercury
+compiler whenever a declaration of the form
+@example
+:- pragma(inline, Predname/Arity
+@end example
+which results in call to the predicate Predname with arity Arity to be inlined.
+
+@code{pragma(inline, ...)} declarations can only be made for predicates which
+are not imported to a module. ie. Cross module inlining is not yet supported.
 
 @contents
 @bye
