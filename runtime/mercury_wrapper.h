@@ -209,6 +209,9 @@ extern	size_t		MR_debug_heap_zone_size;
 extern	size_t		MR_generatorstack_zone_size;
 extern	size_t		MR_cutstack_zone_size;
 
+/* heap margin for MLDS->C accurate GC (documented in mercury_wrapper.c) */
+extern	size_t		MR_heap_margin_size;
+
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;
 extern	const char	*MR_mdb_out_filename;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -424,6 +424,9 @@ MR_construct_zone(const char *name, int id, MR_Word *base,
 	}
 #endif	/* MR_PROTECTPAGE */
 
+#if defined(NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
+	zone->gc_threshold = (char *) zone->MR_zone_end - MR_heap_margin_size;
+#endif
 
 	return zone;
 } /* end MR_construct_zone() */

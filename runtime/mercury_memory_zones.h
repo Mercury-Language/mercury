@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 University of Melbourne.
+** Copyright (C) 1998-2002 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -124,6 +124,15 @@ struct MR_MemoryZone_Struct {
 	#define MR_zone_end	hardmax
 #else
 	#define MR_zone_end	top
+#endif
+
+#if defined(NATIVE_GC) && defined(MR_HIGHLEVEL_CODE)
+	/*
+	** This field, which is only used for heap zones,
+	** points to MR_heap_margin_size bytes before MR_zone_end.
+	** It is used to decide when to do garbage collection.
+	*/
+	char *gc_threshold;	/* == MR_zone_end - MR_heap_margin_size */
 #endif
 };
 

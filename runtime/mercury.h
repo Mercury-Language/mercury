@@ -514,8 +514,8 @@ MR_Box MR_asm_box_float(MR_Float f);
 */
 #define MR_GC_check()							\
 	do {								\
-		if ((char *) MR_hp + MR_heap_zone_size >=		\
-		    (char *) MR_ENGINE(MR_eng_heap_zone)->MR_zone_end)	\
+		if ((char *) MR_hp >=					\
+		    MR_ENGINE(MR_eng_heap_zone)->gc_threshold)		\
 		{							\
 			MR_save_registers();				\
 			MR_garbage_collect();				\

@@ -137,6 +137,7 @@ MR_init_memory(void)
 	MR_global_heap_zone_size = 0;
 	MR_debug_heap_size	 = 0;
 	MR_debug_heap_zone_size	 = 0;
+	MR_heap_margin_size	 = 0;
 #else
 	MR_heap_size		 = MR_round_up(MR_heap_size * 1024,
 					MR_unit);
@@ -155,6 +156,8 @@ MR_init_memory(void)
 					MR_unit);
 	MR_debug_heap_zone_size	 = MR_round_up(MR_debug_heap_zone_size * 1024,
 					MR_unit);
+	/* Note that there's no need for the heap margin to be rounded up */
+	MR_heap_margin_size	 = MR_heap_margin_size * 1024;
 #endif
 	MR_detstack_size	 = MR_round_up(MR_detstack_size * 1024,
 					MR_unit);

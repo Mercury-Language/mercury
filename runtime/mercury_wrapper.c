@@ -82,6 +82,18 @@ size_t		MR_debug_heap_zone_size =	  16;
 size_t		MR_generatorstack_zone_size =	  16;
 size_t		MR_cutstack_zone_size =		  16;
 
+/*
+** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
+** It is used to decide when to actually do a garbage collection.
+** At each call to MR_GC_check(), which is normally done on entry
+** to each C function, we check whether there is less than this
+** amount of heap space still available, and if not, we call
+** MR_garbage_collect().
+** Like the sizes above, it is measured in kilobytes
+** (but we later multiply by 1024 to convert to bytes).
+*/
+size_t		MR_heap_margin_size =		  16;
+
 /* primary cache size to optimize for, in bytes */
 size_t		MR_pcache_size =	        8192;
 
@@ -735,6 +747,7 @@ enum MR_long_option {
 	MR_NONDETSTACK_REDZONE_SIZE,
 	MR_SOLUTIONS_HEAP_REDZONE_SIZE,
 	MR_TRAIL_REDZONE_SIZE,
+	MR_HEAP_MARGIN_SIZE,
 	MR_MDB_TTY,
 	MR_MDB_IN,
 	MR_MDB_OUT,
@@ -754,6 +767,7 @@ struct MR_option MR_long_opts[] = {
 	{ "nondetstack-redzone-size", 	1, 0, MR_NONDETSTACK_REDZONE_SIZE },
 	{ "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
+	{ "heap-margin-size", 		1, 0, MR_HEAP_MARGIN_SIZE },
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
@@ -843,6 +857,13 @@ process_options(int argc, char **argv)
 				usage();
 
 			MR_trail_zone_size = size;
+			break;
+
+		case MR_HEAP_MARGIN_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_heap_margin_size = size;
 			break;
 
 		case 'i':
