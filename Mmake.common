@@ -1,4 +1,7 @@
 #-----------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# See the file COPYING for copying permission.
+#-----------------------------------------------------------------------------#
 
 # Mmake.common - this is the part of the makefiles
 # for building the Mercury implementation that is shared

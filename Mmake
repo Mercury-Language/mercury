@@ -1,4 +1,7 @@
 #-----------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# See the file COPYING for copying permission.
+#-----------------------------------------------------------------------------#
 
 # Mmake - the top-level Mmake file for the Mercury implementation
 
