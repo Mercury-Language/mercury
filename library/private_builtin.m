@@ -1139,6 +1139,7 @@ unused :-
 
 #include ""mercury_misc.h""		/* for fatal_error(); */
 #include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
+#include ""mercury_tabling.h""		/* for MR_TrieNode, etc. */
 
 extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_int_0;
@@ -1246,8 +1247,15 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, float_to_word(F),
+#ifdef MR_HIGHLEVEL_CODE
+	MR_TABLE_SAVE_ANSWER(table, Offset,
+		MR_box_float(F),
 		&mercury_data___type_ctor_info_float_0);
+#else
+	MR_TABLE_SAVE_ANSWER(table, Offset,
+		float_to_word(F),
+		&mercury_data___type_ctor_info_float_0);
+#endif
 ").
 
 :- pragma c_code(table_save_any_ans(T::in, Offset::in, V::in),
@@ -1287,7 +1295,11 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
+#ifdef MR_HIGHLEVEL_CODE
+	F = MR_unbox_float(MR_TABLE_GET_ANSWER(table, Offset));
+#else
 	F = word_to_float(MR_TABLE_GET_ANSWER(table, Offset));
+#endif
 ").
 
 :- pragma c_code(table_restore_any_ans(T::in, Offset::in, V::out),

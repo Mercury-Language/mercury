@@ -234,7 +234,7 @@ promise_only_solution(Pred) = OutVal :-
 
 :- pragma c_code("
 
-#ifndef HIGHLEVEL_CODE
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , int, 0,
 	MR_TYPECTOR_REP_INT,
@@ -383,18 +383,26 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 :- pragma c_header_code("#include ""mercury_deep_copy.h""").
 
+:- pragma c_header_code("
+#ifdef MR_HIGHLEVEL_CODE
+  void mercury__builtin__copy_2_p_0(MR_Word, MR_Box, MR_Box *);
+  void mercury__builtin__copy_2_p_1(MR_Word, MR_Box, MR_Box *);
+#endif
+").
+
 :- pragma c_code("
 
 #ifdef MR_HIGHLEVEL_CODE
 
 void
-mercury__builtin__copy_2_p_0(Word type_info, MR_Box value, MR_Box * copy)
+mercury__builtin__copy_2_p_0(MR_Word type_info, MR_Box value, MR_Box * copy)
 {
-	*copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
+	MR_Word val = (MR_Word) value;
+	*copy = (MR_Box) deep_copy(&val, (MR_TypeInfo) type_info, NULL, NULL);
 }
 
 void
-mercury__builtin__copy_2_p_1(Word type_info, MR_Box x, MR_Box * y)
+mercury__builtin__copy_2_p_1(MR_Word type_info, MR_Box x, MR_Box * y)
 {
 	mercury__builtin__copy_2_p_0(type_info, x, y);
 }

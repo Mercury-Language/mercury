@@ -813,7 +813,17 @@ XXX Full exception handling support is not yet implemented.
 					% The arguments to the constructor.
 			list(mlds__type)
 					% The types of the arguments to the
-					% constructor.
+					% constructor. 
+					%
+					% Note that currently we store all 
+					% fields as type mlds__generic_type.
+					% But the type here is the actual
+					% argument type, which does not
+					% have to be mlds__generic_type.
+					% It is the responsibility of the
+					% MLDS->target code output phase
+					% to box the arguments if necessary.
+					% 
 		)
 
 	;	mark_hp(mlds__lval)
@@ -931,6 +941,16 @@ XXX Full exception handling support is not yet implemented.
 				% The FieldType is the type of the field.
 				% The ClassType is the type of the object from
 				% which we are fetching the field.
+				%
+				% Note that currently we store all fields
+				% of objects created with new_object
+				% as type mlds__generic_type. For such objects,
+				% the type here should be mlds__generic_type,
+				% not the actual type of the field.
+				% If the actual type is different, then it
+				% is the HLDS->MLDS code generator's
+				% responsibility to insert the necessary
+				% code to handle boxing/unboxing.
 
 	%
 	% values somewhere in memory

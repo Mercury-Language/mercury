@@ -490,6 +490,19 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) :-
 		ArgRval = unop(box(mercury_type(SourceType)), VarRval)
 	;
 		%
+		% if converting from one concrete type to a different
+		% one, then cast
+		%
+		% This is needed to handle construction/deconstruction
+		% unifications for no_tag types.
+		%
+	;
+		\+ type_util__type_unify(SourceType, DestType,
+			[], map__init, _)
+	->
+		ArgRval = unop(cast(mercury_type(DestType)), VarRval)
+	;
+		%
 		% otherwise leave unchanged
 		%
 		ArgRval = VarRval

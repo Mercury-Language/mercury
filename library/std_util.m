@@ -71,7 +71,7 @@
 :- mode det_univ_to_type(in, out) is det.
 
 	% univ_type(Univ):
-	%	returns the type_info for the type stored in `Univ'.
+	%	returns the type_desc for the type stored in `Univ'.
 	%
 :- func univ_type(univ) = type_desc.
 
@@ -1321,12 +1321,12 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 typedef struct ML_Construct_Info_Struct {
     ConstString             functor_name;
     Integer                 arity;
-    MR_PseudoTypeInfo       *arg_pseudo_type_infos;
+    const MR_PseudoTypeInfo *arg_pseudo_type_infos;
     MR_TypeCtorRep          type_ctor_rep;
     union {
-        MR_EnumFunctorDesc  *enum_functor_desc;
-        MR_NotagFunctorDesc *notag_functor_desc;
-        MR_DuFunctorDesc    *du_functor_desc;
+        const MR_EnumFunctorDesc  *enum_functor_desc;
+        const MR_NotagFunctorDesc *notag_functor_desc;
+        const MR_DuFunctorDesc    *du_functor_desc;
     }                       functor_info;
 } ML_Construct_Info;
 
@@ -1341,7 +1341,7 @@ extern	Word		    ML_type_params_vector_to_list(int arity,
                             MR_TypeInfoParams type_params);
 extern	Word		    ML_pseudo_type_info_vector_to_type_info_list(int arity,
                             MR_TypeInfoParams type_params,
-                            MR_PseudoTypeInfo *arg_pseudo_type_infos);
+                            const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 extern  bool    	    ML_get_functors_check_range(int functor_number,
                             MR_TypeInfo type_info,
                             ML_Construct_Info *construct_info);
@@ -1349,7 +1349,7 @@ extern  void    	    ML_copy_arguments_from_list_to_vector(int arity,
                             Word arg_list, Word term_vector);
 extern  bool    	    ML_typecheck_arguments(MR_TypeInfo type_info,
                             int arity, Word arg_list,
-                            MR_PseudoTypeInfo *arg_pseudo_type_infos);
+                            const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 				             Word arg_type_list);
 ").
@@ -1816,7 +1816,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
             {
-                MR_DuFunctorDesc    *functor_desc;
+                const MR_DuFunctorDesc *functor_desc;
                 Word                arg_list;
                 Word                ptag;
                 Word                arity;
@@ -2051,7 +2051,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
 bool
 ML_typecheck_arguments(MR_TypeInfo type_info, int arity, Word arg_list,
-    MR_PseudoTypeInfo *arg_pseudo_type_infos)
+    const MR_PseudoTypeInfo *arg_pseudo_type_infos)
 {
     MR_TypeInfo     arg_type_info;
     MR_TypeInfo     list_arg_type_info;
@@ -2236,7 +2236,7 @@ ML_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 
 Word
 ML_pseudo_type_info_vector_to_type_info_list(int arity,
-    MR_TypeInfoParams type_params, MR_PseudoTypeInfo *arg_pseudo_type_infos)
+    MR_TypeInfoParams type_params, const MR_PseudoTypeInfo *arg_pseudo_type_infos)
 {
     MR_TypeInfo arg_type;
     Word        type_info_list;

@@ -54,7 +54,7 @@ typedef String	MR_String;
 /*
 ** The MR_Box type is used for representing polymorphic types.
 */
-typedef Word	MR_Box;
+typedef void 	*MR_Box;
 
 /*
 ** With the low-level data representation, the MR_Word type
@@ -167,11 +167,36 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_func_0,
 	mercury__array__array__type_ctor_info_array_1,
 	mercury__std_util__std_util__type_ctor_info_univ_0,
-	mercury__std_util__std_util__type_ctor_info_type_info_0,
+	mercury__std_util__std_util__type_ctor_info_type_desc_0,
 	mercury__private_builtin__private_builtin__type_ctor_info_type_ctor_info_1,
 	mercury__private_builtin__private_builtin__type_ctor_info_type_info_1,
 	mercury__private_builtin__private_builtin__type_ctor_info_typeclass_info_1,
 	mercury__private_builtin__private_builtin__type_ctor_info_base_typeclass_info_1;
+
+/*
+** XXX this is a hack
+** Currently we don't get the #includes quite right;
+** this is a work-around to make the standard library compile.
+*/
+extern const MR_TypeCtorInfo_Struct
+	mercury__tree234__tree234__type_ctor_info_tree234_2;
+
+/*
+** XXX this is a bit of a hack: really we should change it so that
+** the generated MLDS code always qualifies things with `builtin:',
+** but currently it doesn't, so we use the following #defines as
+** a work-around.
+*/
+#define mercury__builtin____type_ctor_info_int_0 \
+	mercury__builtin__builtin__type_ctor_info_int_0
+#define mercury__builtin____type_ctor_info_string_0 \
+	mercury__builtin__builtin__type_ctor_info_string_0
+#define mercury__builtin____type_ctor_info_float_0 \
+	mercury__builtin__builtin__type_ctor_info_float_0
+#define mercury__builtin____type_ctor_info_character_0 \
+	mercury__builtin__builtin__type_ctor_info_character_0
+#define mercury__builtin____type_ctor_info_pred_0 \
+	mercury__builtin__builtin__type_ctor_info_pred_0
 
 /*
 ** The compiler generates references to this constant.

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -169,6 +169,48 @@
 		tag_incr_hp_atomic_msg((dest), MR_mktag(0), (count), \
 			proclabel, (type))
 
+#ifdef MR_HIGHLEVEL_CODE
+
+MR_EXTERN_INLINE Word create1(Word w1);
+MR_EXTERN_INLINE Word create2(Word w1, Word w2);
+MR_EXTERN_INLINE Word create3(Word w1, Word w2, Word w3) ;
+
+MR_EXTERN_INLINE Word
+create1(Word w1) 
+{
+	Word *p = (Word *) MR_new_object(Word, 1 * sizeof(Word), "create1");
+	p[0] = w1;
+	return (Word) p;
+}
+
+MR_EXTERN_INLINE Word
+create2(Word w1, Word w2) 
+{
+	Word *p = (Word *) MR_new_object(Word, 2 * sizeof(Word), "create2");
+	p[0] = w1;
+	p[1] = w2;
+	return (Word) p;
+}
+
+MR_EXTERN_INLINE Word
+create3(Word w1, Word w2, Word w3) 
+{
+	Word *p = (Word *) MR_new_object(Word, 3 * sizeof(Word), "create3");
+	p[0] = w1;
+	p[1] = w2;
+	p[2] = w3;
+	return (Word) p;
+}
+
+#define MR_create1_msg(w1, proclabel, type) \
+	create1((w1))
+#define MR_create2_msg(w1, w2, proclabel, type)	\
+	create2((w1), (w2))
+#define MR_create3_msg(w1, w2, w3, proclabel, type) \
+	create3((w1), (w2), (w3))
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'
 ** to `tmp = hp; hp += 2; return tmp;', so we don't need to use
@@ -235,6 +277,8 @@
 		MR_hp[-1] = (Word) (w3),				\
 		/* return */ (Word) (MR_hp - 3)				\
 	)
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 /*
 ** Indended for use in handwritten C code where the Mercury registers

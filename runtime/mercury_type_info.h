@@ -581,7 +581,7 @@ typedef struct {
     MR_int_least8_t         MR_du_functor_primary;
     MR_int_least32_t        MR_du_functor_secondary;
     MR_int_least32_t        MR_du_functor_ordinal;
-    MR_PseudoTypeInfo       *MR_du_functor_arg_types;
+    const MR_PseudoTypeInfo *MR_du_functor_arg_types;
     const ConstString       *MR_du_functor_arg_names;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
 } MR_DuFunctorDesc;
@@ -651,7 +651,7 @@ typedef struct {
 typedef struct {
     MR_int_least32_t        MR_sectag_sharers;
     MR_Sectag_Locn          MR_sectag_locn;
-    const MR_DuFunctorDesc  **MR_sectag_alternatives;
+    const MR_DuFunctorDesc * const * MR_sectag_alternatives;
 } MR_DuPtagLayout;
 
 typedef MR_DuPtagLayout     *MR_DuTypeLayout;
@@ -701,6 +701,22 @@ typedef MR_NotagFunctorDesc *MR_NotagTypeLayout;
 */
 
 typedef MR_PseudoTypeInfo   MR_EquivLayout;
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Some types are defined differently for the MLDS back-end.
+*/
+
+#ifdef MR_HIGHLEVEL_CODE
+  /*
+  ** XXX This should be `MR_Box', but MR_Box is not visible here
+  ** (due to a cyclic dependency problem), so we use `void *' instead.
+  */
+  typedef	void *	MR_ProcAddr;
+#else
+  typedef	Code 	*MR_ProcAddr;
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -763,12 +779,12 @@ typedef union {
 
 struct MR_TypeCtorInfo_Struct {
     Integer             arity;
-    Code                *unify_pred;
-    Code                *new_unify_pred;
-    Code                *compare_pred;
+    MR_ProcAddr         unify_pred;
+    MR_ProcAddr         new_unify_pred;
+    MR_ProcAddr         compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
-    Code                *solver_pred;
-    Code                *init_pred;
+    MR_ProcAddr         solver_pred;
+    MR_ProcAddr         init_pred;
     ConstString         type_ctor_module_name;
     ConstString         type_ctor_name;
     Integer             type_ctor_version;
@@ -780,7 +796,7 @@ struct MR_TypeCtorInfo_Struct {
 /*
 ** The following fields will be added later, once we can exploit them:
 **  union MR_TableNode_Union    **type_std_table;
-**  Code                *prettyprinter;
+**  MR_ProcAddr         prettyprinter;
 */
 };
 

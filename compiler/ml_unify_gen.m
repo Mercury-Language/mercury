@@ -195,9 +195,10 @@ ml_gen_construct_rep(no_tag, _ConsId, Var, Args, Modes, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	( { Args = [Arg], Modes = [Mode] } ->
 		ml_variable_type(Arg, ArgType),
+		ml_variable_type(Var, VarType),
 		ml_gen_var(Arg, ArgLval),
 		ml_gen_var(Var, VarLval),
-		ml_gen_sub_unify(ArgLval, Mode, ArgType, VarLval,
+		ml_gen_sub_unify(Mode, ArgLval, ArgType, VarLval, VarType,
 			Context, [], MLDS_Statements),
 		{ MLDS_Decls = [] }
 	;
@@ -698,7 +699,7 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
 		{ FieldId = offset(const(int_const(ArgNum + Offset))) },
 			% XXX these types might not be right
 		{ FieldLval = field(yes(0), lval(ClosureLval), FieldId,
-			mlds__generic_env_ptr_type, mlds__generic_type) },
+			mlds__generic_type, mlds__generic_env_ptr_type) },
 		%
 		% recursively handle the remaining fields
 		%
@@ -887,7 +888,7 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 			ml_variable_type(Arg, ArgType),
 			ml_gen_var(Arg, ArgLval),
 			ml_gen_var(Var, VarLval),
-			ml_gen_sub_unify(ArgLval, Mode, ArgType, VarLval,
+			ml_gen_sub_unify(Mode, ArgLval, ArgType, VarLval, Type,
 				Context, [], MLDS_Statements)
 		;
 			{ error("ml_code_gen: no_tag: arity != 1") }
@@ -896,28 +897,63 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes, Type,
+		ml_field_types(Type, ConsId, ArgTypes, FieldTypes),
+		ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, Type,
 			VarLval, 0, UnsharedTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
-		ml_gen_unify_args(Args, Modes, ArgTypes, Type,
+		ml_field_types(Type, ConsId, ArgTypes, FieldTypes),
+		ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, Type,
 			VarLval, 1, PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
 	).
 
-:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_type),
-		prog_type, mlds__lval, int, mlds__tag, prog_context,
-		mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, out, in, out) is det.
+	% Given a type and a cons_id, and also the types of the actual
+	% arguments of that cons_id in some particular use of it,
+	% look up the original types of the fields of that cons_id from
+	% the type definition.  Note that the field types need not be
+	% the same as the actual argument types; for polymorphic types,
+	% the types of the actual arguments can be an instance of the
+	% field types.
+	%
+:- pred ml_field_types(prog_type, cons_id, list(prog_type), list(prog_type),
+		ml_gen_info, ml_gen_info).
+:- mode ml_field_types(in, in, in, out, in, out) is det.
 
-ml_gen_unify_args(Args, Modes, ArgTypes, VarType, VarLval, ArgNum,
+ml_field_types(Type, ConsId, ArgTypes, FieldTypes) -->
+	%
+	% Lookup the field types for the arguments of this cons_id
+	%
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
+			_TypeDefn, ConsDefn) },
+	{ ConsDefn = hlds_cons_defn(_, _, FieldTypes0, _, _) },
+	%
+	% Add the types for any type_infos and/or typeclass_infos
+	% inserted for existentially quantified data types.
+	% For these, we just copy the types from the ArgTypes.
+	%
+	{ NumArgs = list__length(ArgTypes) },
+	{ NumFieldTypes0 = list__length(FieldTypes0) },
+	{ NumExtraTypes = NumArgs - NumFieldTypes0 },
+	{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
+	{ FieldTypes = list__append(ExtraFieldTypes, FieldTypes0) }.
+
+:- pred ml_gen_unify_args(prog_vars, list(uni_mode), list(prog_type),
+		list(prog_type), prog_type, mlds__lval, int, mlds__tag,
+		prog_context, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, in, out, in, out)
+		is det.
+
+ml_gen_unify_args(Args, Modes, ArgTypes, FieldTypes, VarType, VarLval, ArgNum,
 		PrimaryTag, Context, MLDS_Statements) -->
 	(
-		ml_gen_unify_args_2(Args, Modes, ArgTypes, VarType,
+		ml_gen_unify_args_2(Args, Modes, ArgTypes, FieldTypes, VarType,
 			VarLval, ArgNum, PrimaryTag, Context,
 			[], MLDS_Statements0)
 	->
@@ -927,63 +963,69 @@ ml_gen_unify_args(Args, Modes, ArgTypes, VarType, VarLval, ArgNum,
 	).
 
 :- pred ml_gen_unify_args_2(prog_vars, list(uni_mode), list(prog_type),
-		prog_type, mlds__lval, int, mlds__tag, prog_context,
-		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, out, in, out)
-		is semidet.
-
-ml_gen_unify_args_2([], [], [], _, _, _, _, _, Statements, Statements) --> [].
-ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
-			VarType, VarLval, ArgNum, PrimaryTag, Context,
-			MLDS_Statements0, MLDS_Statements) -->
-	{ ArgNum1 = ArgNum + 1 },
-	ml_gen_unify_args_2(Args, Modes, ArgTypes, VarType, VarLval, ArgNum1,
-		PrimaryTag, Context, MLDS_Statements0, MLDS_Statements1),
-	ml_gen_unify_arg(Arg, Mode, ArgType, VarType, VarLval, ArgNum,
-		PrimaryTag, Context, MLDS_Statements1, MLDS_Statements).
-
-:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type, prog_type,
-		mlds__lval, int, mlds__tag, prog_context,
-		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, out, in, out)
-		is det.
-
-ml_gen_unify_arg(Arg, Mode, ArgType, VarType, VarLval, ArgNum, PrimaryTag,
-		Context, MLDS_Statements0, MLDS_Statements) -->
-	%
-	% Generate lvals for the LHS and the RHS
-	%
-	{ FieldId = offset(const(int_const(ArgNum))) },
-	{ MLDS_ArgType = mercury_type_to_mlds_type(ArgType) },
-	{ MLDS_VarType = mercury_type_to_mlds_type(VarType) },
-	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
-		MLDS_ArgType, MLDS_VarType) },
-	ml_gen_var(Arg, ArgLval),
-	%
-	% Now generate code to unify them
-	%
-	ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
-		MLDS_Statements0, MLDS_Statements).
-
-:- pred ml_gen_sub_unify(mlds__lval, uni_mode, prog_type, mlds__lval,
+		list(prog_type), prog_type, mlds__lval, int, mlds__tag,
 		prog_context, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_sub_unify(in, in, in, in, in, in, out, in, out) is det.
+:- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, in, out,
+		in, out) is semidet.
 
-ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
-		MLDS_Statements0, MLDS_Statements) -->
+ml_gen_unify_args_2([], [], [], _, _, _, _, _, _, Statements, Statements) -->
+	[].
+ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
+		[FieldType|FieldTypes], VarType, VarLval, ArgNum, PrimaryTag,
+		Context, MLDS_Statements0, MLDS_Statements) -->
+	{ ArgNum1 = ArgNum + 1 },
+	ml_gen_unify_args_2(Args, Modes, ArgTypes, FieldTypes, VarType,
+		VarLval, ArgNum1, PrimaryTag, Context,
+		MLDS_Statements0, MLDS_Statements1),
+	ml_gen_unify_arg(Arg, Mode, ArgType, FieldType, VarType, VarLval,
+		ArgNum, PrimaryTag, Context,
+		MLDS_Statements1, MLDS_Statements).
+
+:- pred ml_gen_unify_arg(prog_var, uni_mode, prog_type, prog_type, prog_type,
+		mlds__lval, int, mlds__tag, prog_context,
+		mlds__statements, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, in, out, in, out)
+		is det.
+
+ml_gen_unify_arg(Arg, Mode, ArgType, _FieldType, VarType, VarLval, ArgNum,
+		PrimaryTag, Context, MLDS_Statements0, MLDS_Statements) -->
 	%
 	% With the current low-level data representation,
-	% we store all fields as boxed, so we need to box
-	% values when storing them into fields and unbox them
-	% when extracting them from fields.
-	% Hence we compute a polymorphic type here, for use in
-	% the calls to ml_gen_box_or_unbox_rval below.
-	% 
+	% we store all fields as boxed, so we ignore _FieldType
+	% and instead generate a polymorphic type BoxedFieldType
+	% here.  This type is used in the calls to
+	% ml_gen_box_or_unbox_rval below to ensure that we
+	% box values when storing them into fields and
+	% unbox them when extracting them from fields.
+	%
 	{ varset__init(TypeVarSet0) },
 	{ varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet) },
 	{ type_util__var(BoxedFieldType, TypeVar) },
 
+	%
+	% Generate lvals for the LHS and the RHS
+	%
+	{ FieldId = offset(const(int_const(ArgNum))) },
+	{ MLDS_FieldType = mercury_type_to_mlds_type(BoxedFieldType) },
+	{ MLDS_VarType = mercury_type_to_mlds_type(VarType) },
+	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
+		MLDS_FieldType, MLDS_VarType) },
+	ml_gen_var(Arg, ArgLval),
+
+	%
+	% Now generate code to unify them
+	%
+	ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, BoxedFieldType,
+		Context, MLDS_Statements0, MLDS_Statements).
+
+:- pred ml_gen_sub_unify(uni_mode, mlds__lval, prog_type, mlds__lval, prog_type,
+		prog_context, mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_sub_unify(in, in, in, in, in, in, in, out, in, out) is det.
+
+ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
+		MLDS_Statements0, MLDS_Statements) -->
 	%
 	% Figure out the direction of data-flow from the mode,
 	% and generate code accordingly
@@ -1013,7 +1055,7 @@ ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
 		{ LeftMode = top_in },
 		{ RightMode = top_out }
 	->
-		{ ml_gen_box_or_unbox_rval(BoxedFieldType, ArgType,
+		{ ml_gen_box_or_unbox_rval(FieldType, ArgType,
 			lval(FieldLval), FieldRval) },
 		{ MLDS_Statement = ml_gen_assign(ArgLval, FieldRval,
 			Context) },
@@ -1023,7 +1065,7 @@ ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
 		{ LeftMode = top_out },
 		{ RightMode = top_in }
 	->
-		{ ml_gen_box_or_unbox_rval(ArgType, BoxedFieldType,
+		{ ml_gen_box_or_unbox_rval(ArgType, FieldType,
 			lval(ArgLval), ArgRval) },
 		{ MLDS_Statement = ml_gen_assign(FieldLval, ArgRval,
 			Context) },
@@ -1140,10 +1182,16 @@ ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), VarType, Rval) =
 	binop(and,
 		binop(eq,	unop(std_unop(tag), Rval),
 				unop(std_unop(mktag), const(int_const(Bits)))), 
-		binop(eq,	lval(field(yes(Bits), Rval,
+		binop(eq,	% Note: with the current low-level data
+				% representation, all fields -- even the
+				% secondary tag -- are boxed, and so we
+				% need to unbox (i.e. cast) it back to 
+				% the right type here.
+				unop(unbox(mlds__native_int_type),
+				     lval(field(yes(Bits), Rval,
 					offset(const(int_const(0))),
-					mlds__native_int_type, 
-					mercury_type_to_mlds_type(VarType))),
+					mlds__generic_type, 
+					mercury_type_to_mlds_type(VarType)))),
 				const(int_const(Num)))).
 ml_gen_tag_test_rval(shared_local_tag(Bits, Num), _, Rval) =
 	binop(eq, Rval,

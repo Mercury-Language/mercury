@@ -1630,7 +1630,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 				ObtainLock,
 				"\t\t{\n",
 				C_Code,
-				"\n\t\t}\n",
+				"\n\t\t;}\n",
 				ReleaseLock,
 				MaybeAssignOutputsCode,
 				UndefSuccessIndicator,
@@ -1758,8 +1758,13 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 				ArgRval),
 			ml_gen_c_code_for_rval(ArgRval, Var_ArgName)
 		},
-		{ string__format("\t%s = %s;\n", [s(ArgName), s(Var_ArgName)],
-			AssignInputString) }
+		{ type_util__var(VarType, _) ->
+			Cast = "(MR_Word) "
+		;
+			Cast = ""
+		},
+		{ string__format("\t%s = %s%s;\n", [s(ArgName), s(Cast),
+			s(Var_ArgName)], AssignInputString) }
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
@@ -1787,8 +1792,13 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ ml_gen_box_or_unbox_rval(OrigType, VarType, lval(VarLval),
 			ArgRval) },
 		{ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) },
-		{ string__format("\t%s = %s;\n", [s(Var_ArgName), s(ArgName)],
-			AssignOutputString) }
+		{ type_util__var(VarType, _) ->
+			Cast = "(MR_Box) "
+		;
+			Cast = ""
+		},
+		{ string__format("\t%s = %s%s;\n", [s(Var_ArgName), s(Cast),
+			s(ArgName)], AssignOutputString) }
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
@@ -1818,7 +1828,7 @@ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
 		% XXX don't complain until run-time
 		% sorry("complicated pragma c_code")
 		Var_ArgName =
-		"*(fatal_error(""complicated pragma c_code""),(Word *)0)"
+		"*(fatal_error(""complicated pragma c_code""),(MR_Word *)0)"
 	).
 
 %-----------------------------------------------------------------------------%

@@ -189,11 +189,12 @@ mlds_output_hdr_start(Indent, ModuleName) -->
 	io__nl,
 	mlds_indent(Indent),
 	io__write_string("#ifndef MR_HEADER_GUARD_"),
-	prog_out__write_sym_name(ModuleName),
+	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	io__write_string(MangledModuleName),
 	io__nl,
 	mlds_indent(Indent),
 	io__write_string("#define MR_HEADER_GUARD_"),
-	prog_out__write_sym_name(ModuleName),
+	io__write_string(MangledModuleName),
 	io__nl,
 	io__nl,
 	mlds_indent(Indent),
@@ -792,7 +793,7 @@ mlds_output_type(mercury_type(Type)) -->
 	;
 		% XXX we ought to use pointers to struct types here,
 		% so that distinct Mercury types map to distinct C types
-		io__write_string("Word")
+		io__write_string("MR_Word")
 	).
 mlds_output_type(mlds__native_int_type)   --> io__write_string("int").
 mlds_output_type(mlds__native_float_type) --> io__write_string("float").
@@ -1393,7 +1394,7 @@ mlds_output_atomic_stmt(Indent, NewObject, Context) -->
 	io__write_string(" = "),
 	( { MaybeTag = yes(Tag0) } ->
 		{ Tag = Tag0 },
-		io__write_string("(Word) MR_mkword("),
+		io__write_string("(MR_Word) MR_mkword("),
 		mlds_output_tag(Tag),
 		io__write_string(", "),
 		{ EndMkword = ")" }
@@ -1466,6 +1467,10 @@ mlds_output_init_args([], [_|_], _, _, _, _, _) -->
 mlds_output_init_args([], [], _, _, _, _, _) --> [].
 mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 		ArgNum, Target, Tag, Indent) -->
+	%
+	% Currently all fields of new_object instructions are
+	% represented as MR_Box, so we need to box them if necessary.
+	%
 	mlds_indent(Context, Indent),
 	io__write_string("MR_field("),
 	mlds_output_tag(Tag),
@@ -1473,7 +1478,7 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 	mlds_output_lval(Target),
 	io__write_string(", "),
 	io__write_int(ArgNum),
-	io__write_string(") = (Word) "),
+	io__write_string(") = (MR_Word) "),
 	mlds_output_boxed_rval(ArgType, Arg),
 	io__write_string(";\n"),
 	mlds_output_init_args(Args, ArgTypes, Context,
@@ -1487,12 +1492,23 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 :- pred mlds_output_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_lval(in, di, uo) is det.
 
-mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval), _, _)) -->
-	% XXX this generated code is ugly;
-	% it would be nicer to use a different macro
-	% than MR_field(), one which had type `MR_Box'
-	% rather than `Word'.
-	io__write_string("(* (MR_Box *) &"),
+mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval),
+		FieldType, _ClassType)) -->
+	(
+		{ FieldType = mlds__generic_type
+		; FieldType = mlds__mercury_type(term__variable(_))
+		}
+	->
+		% XXX this generated code is ugly;
+		% it would be nicer to use a different macro
+		% than MR_field(), one which had type `MR_Box'
+		% rather than `Word'.
+		io__write_string("(* (MR_Box *) &")
+	;
+		% The field type for field(_, _, offset(_), _, _) lvals
+		% must be something that maps to MR_Box.
+		{ error("unexpected field type") }
+	),
 	( { MaybeTag = yes(Tag) } ->
 		io__write_string("MR_field("),
 		mlds_output_tag(Tag),
@@ -1500,7 +1516,7 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval), _, _)) -->
 	;
 		io__write_string("MR_mask_field(")
 	),
-	io__write_string("(Word) "),
+	io__write_string("(MR_Word) "),
 	mlds_output_rval(Rval),
 	io__write_string(", "),
 	mlds_output_rval(OffsetRval),
@@ -1600,7 +1616,7 @@ mlds_output_rval(lval(Lval)) -->
 ****/
 
 mlds_output_rval(mkword(Tag, Rval)) -->
-	io__write_string("(Word) MR_mkword("),
+	io__write_string("(MR_Word) MR_mkword("),
 	mlds_output_tag(Tag),
 	io__write_string(", "),
 	mlds_output_rval(Rval),
@@ -1655,7 +1671,12 @@ mlds_output_boxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	;
-		io__write_string("((MR_Box) ("),
+		% We cast first to MR_Word, and then to MR_Box.
+		% This is done to avoid spurious warnings about "cast from
+		% pointer to integer of different size" from gcc.
+		% XXX The generated code would be more readable if we
+		%     only did this for the cases where it was necessary.
+		io__write_string("((MR_Box) (MR_Word) ("),
 		mlds_output_rval(Exprn),
 		io__write_string("))")
 	).
@@ -1674,9 +1695,14 @@ mlds_output_unboxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	;
+		% We cast first to MR_Word, and then to the desired type.
+		% This is done to avoid spurious warnings about "cast from
+		% pointer to integer of different size" from gcc.
+		% XXX The generated code would be more readable if we
+		%     only did this for the cases where it was necessary.
 		io__write_string("(("),
 		mlds_output_type(Type),
-		io__write_string(") "),
+		io__write_string(") (MR_Word) "),
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	).
