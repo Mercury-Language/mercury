@@ -1088,7 +1088,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	),
 	{ simplify__find_simplifications(no, Globals, Simplifications) },
 	simplify__proc([do_once | Simplifications], PredId, ProcId,
-		ModuleInfo1, ModuleInfo2, ProcInfo1, ProcInfo2, _, _),
+		ModuleInfo1, ModuleInfo2, ProcInfo1, ProcInfo2),
 	{ globals__lookup_bool_option(Globals, optimize_saved_vars,
 		SavedVars) },
 	( { SavedVars = yes } ->
@@ -1334,7 +1334,7 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 		{ Simplifications = Simplifications0 }
 	),
 	process_all_nonimported_procs(
-		update_proc_error(simplify__proc(Simplifications)),
+		update_pred_error(simplify__pred(Simplifications)),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).

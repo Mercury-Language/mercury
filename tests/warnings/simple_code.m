@@ -55,3 +55,44 @@ fail_pred :- fail.
 :- pragma obsolete(obsolete/0).
 
 obsolete.
+
+% This should give a warning about the second disjunct never succeeding.
+:- pred r(int, int).
+:- mode r(in(bound(1)), out(bound(42))) is det.
+
+r(1, 42).
+r(2, 21).
+
+% This should not give a warning, because the second disjunct can
+% succeed in the first mode.
+:- pred q(int, int).
+:- mode q(in, out) is semidet.
+:- mode q(in(bound(1)), out(bound(42))) is det.
+
+q(1, 42).
+q(2, 21).
+
+:- type node ---> a ; b ; c.
+
+:- pred parent(node, node).
+:- mode parent(in, out).
+:- mode parent(out, in).
+parent(a, b).
+parent(b, c).
+parent(a, c).
+
+:- pred node(node).
+:- mode node(out).
+node(a).
+node(b).
+node(c).
+
+:- pred anc(node, node).
+:- mode anc(in, out).
+:- mode anc(out, in).
+anc(X, X) :-
+	node(X).
+anc(X, Z) :-
+	parent(X, Y),
+	anc(Y, Z).
+

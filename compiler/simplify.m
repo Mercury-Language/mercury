@@ -32,10 +32,13 @@
 :- import_module common, instmap, globals.
 :- import_module io, bool, list, map, term, varset.
 
+:- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
+	pred_info, pred_info, int, int, io__state, io__state).
+:- mode simplify__pred(in, in, in, out, in, out, out, out, di, uo) is det.
+
 :- pred simplify__proc(list(simplification), pred_id, proc_id,
-	module_info, module_info, proc_info, proc_info,
-	int, int, io__state, io__state).
-:- mode simplify__proc(in, in, in, in, out, in, out, out, out, di, uo) is det.
+	module_info, module_info, proc_info, proc_info, io__state, io__state).
+:- mode simplify__proc(in, in, in, in, out, in, out, di, uo) is det.
 
 :- pred simplify__process_goal(hlds_goal, hlds_goal,
 		simplify_info, simplify_info).
@@ -74,32 +77,82 @@
 
 %-----------------------------------------------------------------------------%
 
-simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
-		Proc0, Proc, WarnCnt, ErrCnt)  -->
+simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
+		PredInfo0, PredInfo, WarnCnt, ErrCnt) -->
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0),
-	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
-			ModuleInfo, Proc0, Proc, WarnCnt, ErrCnt).
-
-:- pred simplify__proc_2(list(simplification), pred_id, proc_id, module_info,
-		module_info, proc_info, proc_info, int, int, 
-		io__state, io__state).
-:- mode simplify__proc_2(in, in, in, in, out, in, out, 
-		out, out, di, uo) is det.
-
-simplify__proc_2(Simplifications0, PredId, ProcId, ModuleInfo0, ModuleInfo,
-		ProcInfo0, ProcInfo, WarnCnt, ErrCnt, State0, State) :-
-	(
+	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
+	{ MaybeMsgs0 = no },
+	{
 		% Don't warn for compiler-generated procedures.
 		list__member(warn_simple_code, Simplifications0),
-		module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-		code_util__compiler_generated(PredInfo)
+		module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+		code_util__compiler_generated(PredInfo0)
 	->
 		list__delete_all(Simplifications0, warn_simple_code,
 			Simplifications)
 	;
 		Simplifications = Simplifications0
-	),
-	globals__io_get_globals(Globals, State0, State1),
+	},
+	simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo0,
+		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs),
+	( { MaybeMsgs = yes(Msgs0 - Msgs1) } ->
+		{ set__union(Msgs0, Msgs1, Msgs2) },
+		{ set__to_sorted_list(Msgs2, Msgs) },
+		det_report_msgs(Msgs, ModuleInfo, WarnCnt, ErrCnt)
+	;
+		{ WarnCnt = 0 },
+		{ ErrCnt = 0 }
+	).
+
+:- pred simplify__procs(list(simplification), pred_id, list(proc_id),
+		module_info, module_info, pred_info, pred_info,
+		maybe(pair(set(det_msg))), maybe(pair(set(det_msg))),
+		io__state, io__state).
+:- mode simplify__procs(in, in, in, in, out, in, out,
+		in, out, di, uo) is det.
+
+simplify__procs(_, _, [], ModuleInfo, ModuleInfo, PredInfo, PredInfo,
+		Msgs, Msgs) --> [].
+simplify__procs(Simplifications, PredId, [ProcId | ProcIds], ModuleInfo0,
+		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) -->
+	{ pred_info_procedures(PredInfo0, Procs0) },
+	{ map__lookup(Procs0, ProcId, Proc0) },	
+	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
+			ModuleInfo1, Proc0, Proc, Msgs1),
+	{ map__det_update(Procs0, ProcId, Proc, Procs) },
+	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo1) },
+	{ set__to_sorted_list(Msgs1, Msgs2) },
+	{ list__filter(lambda([Msg::in] is semidet,
+		det_msg_is_any_mode_msg(Msg, any_mode)),
+		Msgs2, AnyModeMsgs1, AllModeMsgs1) },
+	{ set__sorted_list_to_set(AnyModeMsgs1, AnyModeMsgs2) },
+	{ set__sorted_list_to_set(AllModeMsgs1, AllModeMsgs2) },
+	{ MaybeMsgs0 = yes(AnyModeMsgs0 - AllModeMsgs0) ->
+		set__union(AnyModeMsgs0, AnyModeMsgs2, AnyModeMsgs),
+		set__intersect(AllModeMsgs0, AllModeMsgs2, AllModeMsgs),
+		MaybeMsgs1 = yes(AllModeMsgs - AnyModeMsgs)
+	;
+		MaybeMsgs1 = yes(AnyModeMsgs2 - AllModeMsgs2)
+	},
+	simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo1, 
+		ModuleInfo, PredInfo1, PredInfo, MaybeMsgs1, MaybeMsgs).
+
+simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
+		Proc0, Proc)  -->
+	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0),
+	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
+			ModuleInfo, Proc0, Proc, _).
+
+:- pred simplify__proc_2(list(simplification), pred_id, proc_id, module_info,
+		module_info, proc_info, proc_info, set(det_msg),
+		io__state, io__state).
+:- mode simplify__proc_2(in, in, in, in, out, in, out, 
+		out, di, uo) is det.
+
+simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
+		ProcInfo0, ProcInfo, Msgs, State0, State) :-
+
+	globals__io_get_globals(Globals, State0, State),
 	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
@@ -111,10 +164,8 @@ simplify__proc_2(Simplifications0, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	simplify__process_goal(Goal0, Goal, Info0, Info),
 
 	simplify_info_get_module_info(Info, ModuleInfo),
-	simplify_info_get_msgs(Info, Msgs0),
-	set__to_sorted_list(Msgs0, Msgs),
-	det_report_msgs(Msgs, ModuleInfo, WarnCnt,
-			ErrCnt, State1, State),
+	simplify_info_get_msgs(Info, Msgs),
+
 	simplify_info_get_varset(Info, VarSet),
 	simplify_info_get_var_types(Info, VarTypes),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
@@ -243,7 +294,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	->
 		pd_cost__goal(Goal0, CostDelta),
 		simplify_info_incr_cost_delta(Info0, CostDelta, Info1),
-		fail_goal(Goal1)
+		goal_info_get_context(GoalInfo0, Context),
+		fail_goal(Context, Goal1)
 	;
 		%
 		% if --no-fully-strict,
@@ -270,7 +322,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	->
 		pd_cost__goal(Goal0, CostDelta),
 		simplify_info_incr_cost_delta(Info0, CostDelta, Info1),
-		true_goal(Goal1)
+		goal_info_get_context(GoalInfo0, Context),
+		true_goal(Context, Goal1)
 	;
 		Goal1 = Goal0,
 		Info1 = Info0
@@ -421,7 +474,8 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		% An empty switch always fails.
 		pd_cost__eliminate_switch(CostDelta),
 		simplify_info_incr_cost_delta(Info1, CostDelta, Info),
-		fail_goal(Goal - GoalInfo)
+		goal_info_get_context(GoalInfo0, Context),
+		fail_goal(Context, Goal - GoalInfo)
 	; Cases = [case(ConsId, SingleGoal)] ->
 		% a singleton switch is equivalent to the goal itself with 
 		% a possibly can_fail unification with the functor on the front.
@@ -640,7 +694,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 
 		RT0 = var(LT0)
 	->
-		true_goal(Goal - GoalInfo),
+		goal_info_get_context(GoalInfo0, Context),
+		true_goal(Context, Goal - GoalInfo),
 		Info = Info0
 	;
 		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
@@ -967,7 +1022,9 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 			% specification, mode analysis does not use inferred
 			% determinism information when deciding what can
 			% never succeed.
-			fail_goal(Fail),
+			Goal0 = _ - GoalInfo0,
+			goal_info_get_context(GoalInfo0, Context),
+			fail_goal(Context, Fail),
 			simplify__conjoin_goal_and_rev_goal_list(Fail,
 				RevGoals1, RevGoals)	
 		),

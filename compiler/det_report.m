@@ -95,6 +95,18 @@
 	io__state, io__state).
 :- mode det_report_msgs(in, in, out, out, di, uo) is det.
 
+
+:- type msg_modes
+	--->    all_modes       % the warning should be reported only
+				% if it occurs in all modes of the predicate
+	;       any_mode	% the warning should be reported 
+				% if it occurs in any mode of the predicate
+	.
+
+	% Return `yes' if the warning should be reported if it occurs in
+	% any mode of the predicate, not only if it occurs in all modes.
+:- pred det_msg_is_any_mode_msg(det_msg::in, msg_modes::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- type det_comparison	--->	tighter ; sameas ; looser.
@@ -992,6 +1004,26 @@ det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
 det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
 det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
 det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
+
+det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
+det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
+det_msg_is_any_mode_msg(semidet_disj(_, _), all_modes).
+det_msg_is_any_mode_msg(zero_soln_disj(_, _), all_modes).
+det_msg_is_any_mode_msg(zero_soln_disjunct(_), all_modes).
+det_msg_is_any_mode_msg(ite_cond_cannot_fail(_), all_modes).
+det_msg_is_any_mode_msg(ite_cond_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(negated_goal_cannot_fail(_), all_modes).
+det_msg_is_any_mode_msg(negated_goal_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(warn_obsolete(_, _), all_modes).
+det_msg_is_any_mode_msg(warn_infinite_recursion(_), any_mode).
+det_msg_is_any_mode_msg(duplicate_call(_, _, _), any_mode).
+det_msg_is_any_mode_msg(cc_unify_can_fail(_, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(cc_unify_in_wrong_context(_, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(cc_pred_in_wrong_context(_, _, _, _), any_mode).
+det_msg_is_any_mode_msg(higher_order_cc_pred_in_wrong_context(_, _), any_mode).
+det_msg_is_any_mode_msg(error_in_lambda(_, _, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(par_conj_not_det(_, _, _, _, _), any_mode).
+det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 
 :- pred det_report_msg(det_msg, module_info, io__state, io__state).
 :- mode det_report_msg(in, in, di, uo) is det.
