@@ -330,8 +330,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% using out-of-line call to  a compiler
 				% generated unification predicate for that
 				% type & mode.
-			;	complicated_unify(uni_mode, term, term,
-					category).
+			;	complicated_unify(uni_mode, category).
 
 :- type unify_context	--->	unify_context(
 					unify_main_context,

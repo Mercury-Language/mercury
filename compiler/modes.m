@@ -2117,7 +2117,6 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, VarTypes,
 		mode_get_insts(ModuleInfo, ModeX, IX, FX),
 		mode_get_insts(ModuleInfo, ModeY, IY, FY),
 		Unification = complicated_unify((IX - IY) -> (FX - FY),
-				term__variable(X), term__variable(Y),
 				Determinism)
 	).
 

@@ -151,7 +151,7 @@ detect_live_vars_in_goal_2(some(_Vars, Goal0), Liveness0, LiveVars0,
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgTerms, Builtin, _SymName, _Follow),
-			Liveness0, LiveVars0, ModuleInfo, Liveness, LiveVars) :-
+			Liveness, LiveVars0, ModuleInfo, Liveness, LiveVars) :-
 	(
 		Builtin = is_builtin
 	->
@@ -159,21 +159,14 @@ detect_live_vars_in_goal_2(
 	;
 		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
-		set__difference(Liveness0, OutVars, NewLiveVars),
+		set__difference(Liveness, OutVars, NewLiveVars),
 		set__union(NewLiveVars, LiveVars0, LiveVars)
-	),
-	Liveness = Liveness0.
-
-detect_live_vars_in_goal_2(unify(_,_,_,Unification,_), Liveness0, LiveVars0,
-				_ModuleInfo, Liveness, LiveVars) :-
-	(
-		Unification = complicated_unify(_, _, _, _)
-	->
-		error("Panic - complicated unification")
-	;
-		Liveness = Liveness0,
-		LiveVars = LiveVars0
 	).
+
+detect_live_vars_in_goal_2(unify(_,_,_,_,_), Liveness, LiveVars,
+				_ModuleInfo, Liveness, LiveVars).
+	% This works even for complicated unifications, since
+	% complicated unifications don't have any top_out parameters.
 
 %-----------------------------------------------------------------------------%
 

@@ -50,11 +50,24 @@
 :- pred make_type_id(const, int, type_id).
 :- mode make_type_id(in, in, out) is semidet.
 
+:- pred type_util__type_id_module(module_info, type_id, module_name).
+:- mode type_util__type_id_module(in, in, out) is det.
+
+:- pred type_util__type_id_name(module_info, type_id, string).
+:- mode type_util__type_id_name(in, in, out) is det.
+
+:- pred type_util__type_id_arity(module_info, type_id, arity).
+:- mode type_util__type_id_arity(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module list, term, require, map, std_util.
+
+type_util__type_id_module(_ModuleInfo, _TypeId, ModuleName) :-
+	% XXX Module qualifiers not yet implemented
+	ModuleName = "xxx".
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),

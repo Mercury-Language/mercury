@@ -21,11 +21,14 @@
 :- pred generate_arg_info(module_info, module_info).
 :- mode generate_arg_info(in, out) is det.
 
+:- pred arg_info__unify_arg_info(category, list(arg_info)).
+:- mode arg_info__unify_arg_info(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, int, mode_util, list.
+:- import_module map, int, mode_util, list, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -104,6 +107,15 @@ make_arg_infos_list([Mode | Modes], RegNum, ModuleInfo,
 	ArgInfo = arg_info(RegNum, ArgMode),
 	RegNum1 is RegNum + 1,
 	make_arg_infos_list(Modes, RegNum1, ModuleInfo, ArgInfos).
+
+%---------------------------------------------------------------------------%
+
+arg_info__unify_arg_info(deterministic,
+				[arg_info(1, top_in), arg_info(2, top_in)]).
+arg_info__unify_arg_info(semideterministic,
+				[arg_info(2, top_in), arg_info(3, top_in)]).
+arg_info__unify_arg_info(nondeterministic, _X) :-
+	error("arg_info: nondet unify!").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

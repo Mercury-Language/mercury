@@ -29,7 +29,7 @@
 :- interface.
 
 :- import_module hlds, llds.
-:- import_module code_util, tree, set, std_util, globals.
+:- import_module code_util, tree, set, std_util, globals, unify_proc.
 
 :- type code_info.
 
@@ -37,10 +37,10 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(varset, liveness_info, call_info, bool, globals,
-				pred_id, proc_id, proc_info, category,
-					follow_vars, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in,
-					in, in, in, in, in, in, out) is det.
+			pred_id, proc_id, proc_info, category,
+			unify_requests, follow_vars, module_info, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
+			is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -278,12 +278,6 @@
 :- pred code_info__generate_commit(label, code_tree, code_info, code_info).
 :- mode code_info__generate_commit(in, out, in, out) is det.
 
-:- pred code_info__get_continuation(unit, code_info, code_info).
-:- mode code_info__get_continuation(out, in, out) is det.
-
-:- pred code_info__set_continuation(unit, code_info, code_info).
-:- mode code_info__set_continuation(in, in, out) is det.
-
 :- pred code_info__save_hp(code_tree, code_info, code_info).
 :- mode code_info__save_hp(out, in, out) is det.
 
@@ -316,6 +310,15 @@
 
 :- pred code_info__current_store_map(map(var, lval), code_info, code_info).
 :- mode code_info__current_store_map(out, in, out) is det.
+
+:- pred code_info__variable_type(var, type, code_info, code_info).
+:- mode code_info__variable_type(in, out, in, out) is det.
+
+:- pred code_info__request_unify(type_id, uni_mode, code_info, code_info).
+:- mode code_info__request_unify(in, in, in, out) is det.
+
+:- pred code_info__get_requests(unify_requests, code_info, code_info).
+:- mode code_info__get_requests(out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -353,7 +356,7 @@
 			stack(map(var, lval)),
 					% Store Map - where to put things
 			category,	% The category of the current procedure
-			unit,		% UNUSED
+			unify_requests, % requested unification procs
 			pair(int),	% The current and maximum (respectively)
 					% number of extra temporary stackslots
 					% that have been pushed during the
@@ -384,7 +387,7 @@
 
 code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 					PredId, ProcId, ProcInfo, Category,
-						_FollowVars, ModuleInfo, C) :-
+					Requests, _FollowVars, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
@@ -410,7 +413,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		Liveness,
 		StoreMapStack,
 		Category,
-		unit,
+		Requests,
 		0 - 0,
 		Globals
 	).
@@ -2244,6 +2247,21 @@ code_info__current_store_map(Map) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__variable_type(Var, Type) -->
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ map__lookup(VarTypes, Var, Type) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__request_unify(TypeId, UniMode) -->
+	code_info__get_requests(Requests0),
+	{ UnifyId = TypeId - UniMode },
+	{ unify_proc__request_unify(UnifyId, Requests0, Requests) },
+	code_info__set_requests(Requests).
+
+%---------------------------------------------------------------------------%
+
 :- pred code_info__get_stackslot_count(int, code_info, code_info).
 :- mode code_info__get_stackslot_count(out, in, out) is det.
 
@@ -2287,6 +2305,9 @@ code_info__current_store_map(Map) -->
 
 :- pred code_info__set_proc_category(category, code_info, code_info).
 :- mode code_info__set_proc_category(in, in, out) is det.
+
+:- pred code_info__set_requests(unify_requests, code_info, code_info).
+:- mode code_info__set_requests(in, in, out) is det.
 
 :- pred code_info__get_push_count(int, code_info, code_info).
 :- mode code_info__get_push_count(out, in, out) is det.
@@ -2403,10 +2424,10 @@ code_info__set_store_map(N, CI0, CI) :-
 code_info__get_proc_category(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _).
 
-code_info__get_continuation(P, CI, CI) :-
+code_info__get_requests(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _).
 
-code_info__set_continuation(P, CI0, CI) :-
+code_info__set_requests(P, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
@@ -2452,7 +2473,9 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_fall_through(J, C1, _),
 	code_info__set_fall_through(J, C4, C5),
 	code_info__get_max_push_count(PC, C1, _),
-	code_info__set_max_push_count(PC, C5, C).
+	code_info__set_max_push_count(PC, C5, C6),
+	code_info__get_requests(R, C1, _),
+	code_info__set_requests(R, C6, C).
 
 %---------------------------------------------------------------------------%
 

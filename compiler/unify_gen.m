@@ -1,6 +1,14 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
+% This module handles code generation for "simple" unifications,
+% i.e. those unifications which are simple enough for us to generate
+% inline code.
+%
+% For "complicated" unifications, we generate a call to an out-of-line
+% unification predicate (the call is handled in call_gen.nl) - and then
+% eventually generate the out-of-line code (unify_proc.nl).
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

@@ -8,6 +8,7 @@
 
 :- interface.
 
+:- import_module list, string.
 :- import_module hlds, llds.
 
 :- pred code_util__make_entry_label(module_info, pred_id, proc_id, code_addr).
@@ -23,8 +24,8 @@
 :- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
 :- mode code_util__make_local_label(in, in, in, in, out) is det.
 
-:- pred code_util__uni_mode_to_unilabel(uni_mode, unilabel).
-:- mode code_util__uni_mode_to_unilabel(in, out) is det.
+:- pred code_util__make_uni_label(module_info, type_id, int, unilabel).
+:- mode code_util__make_uni_label(in, in, in, out) is det.
 
 :- pred code_util__arg_loc_to_register(arg_loc, reg).
 :- mode code_util__arg_loc_to_register(in, out) is det.
@@ -53,6 +54,7 @@
 
 :- implementation.
 :- import_module list, hlds, map, std_util.
+:- import_module type_util.
 
 %---------------------------------------------------------------------------%
 
@@ -90,8 +92,11 @@ code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
 
 %-----------------------------------------------------------------------------%
 
-code_util__uni_mode_to_unilabel(_UniMode,
-				unilabel("xxx","outofline","unification")).
+code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, Label) :-
+	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
+	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
+	type_util__type_id_arity(ModuleInfo, TypeId, Arity),
+	Label = unilabel(ModuleName, TypeName, Arity, UniModeNum).
 
 %-----------------------------------------------------------------------------%
 

@@ -412,13 +412,10 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		    )
 		->
 			Instr = Instr0,
-			peephole__label_elim_instr_list(Moreinstrs0, yes, Usemap, Moreinstrs)
-		; Fallthrough = yes ->
-			peephole__eliminate(Instr0, yes(no), Instr),
-			peephole__label_elim_instr_list(Moreinstrs0, yes, Usemap, Moreinstrs)
-		;
-			peephole__eliminate(Instr0, yes(yes), Instr),
-			peephole__label_elim_instr_list(Moreinstrs0, no, Usemap, Moreinstrs)
+			Fallthrough1 = yes
+		; 
+			peephole__eliminate(Instr0, yes(Fallthrough), Instr),
+			Fallthrough1 = Fallthrough
 		)
 	;
 		( Fallthrough = yes ->
@@ -428,13 +425,13 @@ peephole__label_elim_instr_list([Instr0 | Moreinstrs0],
 		),
 		Instr0 = Uinstr0 - Comment,
 		( peephole__instr_can_fallthrough(Uinstr0) ->
-			peephole__label_elim_instr_list(Moreinstrs0,
-				Fallthrough, Usemap, Moreinstrs)
+			Fallthrough1 = Fallthrough
 		;
-			peephole__label_elim_instr_list(Moreinstrs0,
-				no, Usemap, Moreinstrs)
+			Fallthrough1 = no
 		)
-	).
+	),
+	peephole__label_elim_instr_list(Moreinstrs0, Fallthrough1, Usemap,
+				Moreinstrs).
 
 :- pred peephole__eliminate(instruction, maybe(bool), instruction).
 :- mode peephole__eliminate(in, in, out) is det.
@@ -445,17 +442,19 @@ peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment) :-
 		Uinstr = Uinstr0
 	;
 		(
-			Label = no,
-			Uinstr = comment("eliminated instruction")
-		;
-			Label = yes(Follow),
+			Label = yes(Follow)
+		->
 			(
-				Follow = no,
+				Follow = no
+			->
 				Uinstr = comment("eliminated label only")
 			;
-				Follow = yes,
+				% Follow = yes,
 				Uinstr = comment("eliminated label and block")
 			)
+		;
+			% Label = no,
+			Uinstr = comment("eliminated instruction")
 		),
 		Comment = Comment0
 	).

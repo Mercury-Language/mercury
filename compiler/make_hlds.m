@@ -1133,7 +1133,7 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
-	UnifyInfo = complicated_unify(UMode, A, B, nondeterministic),
+	UnifyInfo = complicated_unify(UMode, nondeterministic),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.

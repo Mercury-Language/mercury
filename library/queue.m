@@ -66,6 +66,13 @@
 :- pred queue__length(queue(T), int).
 :- mode queue__length(in, out) is det.
 
+	% `queue__list_to_queue(List, Queue)' is true iff `Queue' is a queue
+	% containing the elements of List, with the first element of List at
+	% the head of the queue.
+
+:- pred queue__list_to_queue(list(T), queue(T)).
+:- mode queue__list_to_queue(in, out) is det.
+
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -107,5 +114,7 @@ queue__length(On - Off, Length) :-
 	list__length(On, LengthOn),
 	list__length(Off, LengthOff),
 	Length is LengthOn + LengthOff.
+
+queue__list_to_queue(List, [] - List).
 
 %--------------------------------------------------------------------------%

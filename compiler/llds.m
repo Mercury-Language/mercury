@@ -21,9 +21,9 @@
 
 :- type c_procedure	--->	c_procedure(string, int, llds__proc_id,
 						list(instruction)).
+			%	predicate name, arity, mode, code
 :- type llds__proc_id == int.
 
-			%	predicate name, arity, mode, code
 :- type instruction	==	pair(instr, string).
 			%	 instruction, comment
 
@@ -40,6 +40,7 @@
 			;	mkframe(string, int, maybe(label))
 			;	modframe(maybe(label))
 			;	label(label)
+			;	unilabel(unilabel)	% XXX fixme!
 			;	goto(label)
 			;	c_code(string)	% insert arbitrary C code
 			;	if_val(rval, label)
@@ -104,8 +105,8 @@
 			;	label(string, string, int, int, int).
 				% module, predicate, arity, mode #, #
 
-:- type unilabel	--->	unilabel(string, string, string).
-				% XXX
+:- type unilabel	--->	unilabel(string, string, int, int).
+				% module, predicate, arity, mode #
 
 :- type tag		==	int.
 
@@ -325,6 +326,10 @@ output_instruction(label(Label)) -->
 	output_label(Label),
 	io__write_string(":\n\t;").
 	
+output_instruction(unilabel(Label)) -->
+	output_unilabel(Label),
+	io__write_string(":\n\t;").
+
 output_instruction(goto(Label)) -->
 	io__write_string("\t"),
 	io__write_string("GOTO_LABEL("),
@@ -403,12 +408,14 @@ output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 :- pred output_unilabel(unilabel, io__state, io__state).
 :- mode output_unilabel(in, di, uo) is det.
 
-output_unilabel(unilabel(_Module, LeftStr, RightStr)) -->
+output_unilabel(unilabel(_Module, TypeName, TypeArity, ModeNum)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string(LeftStr),
+	io__write_string(TypeName),
 	io__write_string("_"),
-	io__write_string(RightStr).
+	io__write_int(TypeArity),
+	io__write_string("_"),
+	io__write_int(ModeNum).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.

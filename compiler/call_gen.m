@@ -34,10 +34,16 @@
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is det.
 
+:- pred call_gen__generate_complicated_unify(var, var, uni_mode, category,
+					code_tree, code_info, code_info).
+:- mode call_gen__generate_complicated_unify(in, in, in, in, out, in, out)
+	is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module prog_io, tree, list, map, std_util, require.
+:- import_module tree, list, map, std_util, require.
+:- import_module prog_io, arg_info, type_util, unify_proc.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.
@@ -260,6 +266,47 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 
 call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, _Code) -->
 	{ error("Unknown builtin predicate") }.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
+	{ arg_info__unify_arg_info(Det, ArgInfo) },
+	{ Arguments = [Var1, Var2] },
+	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
+	call_gen__save_variables(CodeA),
+	code_info__clear_reserved_registers,
+	code_info__setup_call(Args, Arguments, caller, CodeB),
+	code_info__get_next_label(ReturnLabel),
+	code_info__get_module_info(ModuleInfo),
+	code_info__variable_type(Var1, VarType),
+	( { type_to_type_id(VarType, VarTypeId0, _) } ->
+		{ VarTypeId = VarTypeId0 }
+	;
+		{ error("type_to_type_id failed") }
+	),
+	code_info__get_requests(Requests),
+	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
+	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, Label) },
+	code_info__request_unify(VarTypeId, UniMode),
+	{ CodeC = node([
+		unicall(Label, ReturnLabel) - "branch to unification proc",
+		label(ReturnLabel) - "Continuation label"
+	]) },
+	(
+		{ Det = semideterministic }
+	->
+		code_info__get_next_label(ContLab),
+		code_info__generate_failure(FailCode),
+		{ CodeD = tree(node([
+			if_val(lval(reg(r(1))), ContLab) - "Test for success"
+			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
+	;
+		{ CodeD = empty }
+	),
+
+	{ Code = tree(CodeA, tree(CodeB, tree(CodeC, CodeD))) },
+	call_gen__rebuild_registers(Args).
 
 %---------------------------------------------------------------------------%
 
