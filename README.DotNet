@@ -2,7 +2,7 @@
 
 INTRODUCTION
 
-This release of Mercury contains an port to the Microsoft.NET Common
+This release of Mercury contains a port to the Microsoft.NET Common
 Language Runtime (CLR).  The Mercury compiler will generate code
 in Microsoft's Intermediate Language (IL) that can be assembled into
 bytecode suitable for running in the .NET runtime system.
