@@ -312,7 +312,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
 		*/							      \
-		MR_mkpragmaframe((name), 0,	      		      	      \
+		MR_mkpragmaframe((name), 0,				      \
 			MR_Exception_Handler_Frame_struct,		      \
 			MR_ENTRY(exception_handler_do_fail));		      \
 		/* record the handler's code model */			      \
@@ -325,7 +325,8 @@ typedef struct MR_Exception_Handler_Frame_struct {
 			/* save the heap and solutions heap pointers */	      \
 			MR_EXCEPTION_FRAMEVARS->heap_ptr = MR_hp;	      \
 			MR_EXCEPTION_FRAMEVARS->solns_heap_ptr = MR_sol_hp;   \
-			MR_EXCEPTION_FRAMEVARS->heap_zone = MR_heap_zone;     \
+			MR_EXCEPTION_FRAMEVARS->heap_zone = 		      \
+				MR_ENGINE(heap_zone);			      \
 		)							      \
 		MR_IF_USE_TRAIL(					      \
 			/* save the trail state */			      \

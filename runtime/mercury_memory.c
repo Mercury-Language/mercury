@@ -126,13 +126,9 @@
 /*
 ** Define the memory zones used by the Mercury runtime.
 ** (The trail zone is declared in mercury_trail.c.)
+** XXX All the zones should be in mercury_engine.h
 */
-MR_MemoryZone *MR_detstack_zone;
-MR_MemoryZone *MR_nondetstack_zone;
-#ifndef CONSERVATIVE_GC
-  MR_MemoryZone *MR_heap_zone;
-  MR_MemoryZone *MR_solutions_heap_zone;
-#endif
+
 #ifdef	MR_USE_MINIMAL_MODEL
   MR_MemoryZone *MR_generatorstack_zone;
   MR_MemoryZone *MR_cutstack_zone;
@@ -230,7 +226,7 @@ MR_init_memory(void)
 		MR_solutions_heap_zone_size = MR_unit;
 	}
 	if (MR_global_heap_zone_size >= MR_global_heap_size) {
-		global_heap_zone_size = MR_unit;
+		MR_global_heap_zone_size = MR_unit;
 	}
 #endif
 

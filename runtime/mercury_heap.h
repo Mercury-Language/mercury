@@ -102,7 +102,7 @@
 			(dest) = (MR_Word) MR_mkword(tag, (MR_Word) MR_hp),\
 			MR_debugincrhp(count, MR_hp),			\
 			MR_hp += (count),				\
-			heap_overflow_check(),				\
+			MR_heap_overflow_check(),			\
 			(void) 0					\
 		)
   #define MR_tag_incr_hp_atomic(dest, tag, count) 			\

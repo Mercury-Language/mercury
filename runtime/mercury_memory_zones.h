@@ -198,7 +198,7 @@ extern	MR_MemoryZone	*MR_create_zone(const char *name, int id,
 
 /*
 ** MR_construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
-** has the same behaviour as create_zone, except instread of allocating
+** has the same behaviour as MR_create_zone, except instread of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
 ** least Size + unit[*] bytes, or if MR_PROTECTPAGE is defined, then it
 ** must be at least Size + 2 * unit[*] bytes.

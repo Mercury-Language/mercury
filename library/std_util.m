@@ -841,7 +841,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 "
 #ifndef CONSERVATIVE_GC
     {
-	MemoryZone *temp_zone;
+	MR_MemoryZone *temp_zone;
 	MR_Word *temp_hp;
 
 	temp_zone = MR_ENGINE(heap_zone);

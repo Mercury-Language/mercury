@@ -295,15 +295,6 @@ typedef struct MR_mercury_engine_struct {
 	} while (0)
 
 /*
-** Macros for easy access to heap zones.
-*/
-#ifndef	CONSERVATIVE_GC
-  #define MR_heap_zone			MR_ENGINE(heap_zone)
-  #define MR_solutions_heap_zone	MR_ENGINE(solutions_heap_zone)
-  #define MR_global_heap_zone		MR_ENGINE(global_heap_zone)
-#endif
-
-/*
 ** Functions for creating/destroying a MercuryEngine.
 */
 extern	MercuryEngine	*MR_create_engine(void);

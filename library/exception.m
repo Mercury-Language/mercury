@@ -956,16 +956,19 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 #define swap_heaps()							\\
 {									\\
 	/* save the current heap */					\\
-	MR_Word *swap_heaps_temp_hp = MR_hp;				\\
-	MemoryZone *swap_heaps_temp_hp_zone = MR_heap_zone;		\\
+	MR_Word		*swap_heaps_temp_hp;				\\
+	MR_MemoryZone	*swap_heaps_temp_hp_zone;			\\
+									\\
+	swap_heaps_temp_hp = MR_hp;					\\
+	swap_heaps_temp_hp_zone = MR_ENGINE(heap_zone);			\\
 									\\
 	/* set heap to solutions heap */				\\
 	MR_hp = MR_sol_hp;						\\
-	MR_heap_zone = MR_solutions_heap_zone;				\\
+	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);		\\
 									\\
 	/* set the solutions heap to be the old heap */			\\
 	MR_sol_hp = swap_heaps_temp_hp;					\\
-	MR_solutions_heap_zone = swap_heaps_temp_hp_zone;		\\
+	MR_ENGINE(solutions_heap_zone) = swap_heaps_temp_hp_zone;	\\
 }
 
 MR_define_extern_entry(mercury__exception__builtin_catch_3_0); /* det */
@@ -1362,21 +1365,21 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	MR_Word * saved_solns_heap_ptr;
 
 	/* switch to the solutions heap */
-	if (MR_heap_zone == MR_EXCEPTION_FRAMEVARS->heap_zone) {
+	if (MR_ENGINE(heap_zone) == MR_EXCEPTION_FRAMEVARS->heap_zone) {
 		swap_heaps();
 	}
 
 	saved_solns_heap_ptr = MR_hp;
 
 	/*
-	** deep_copy() the exception to the solutions heap.
+	** MR_deep_copy() the exception to the solutions heap.
 	** Note that we need to save/restore the hp register, if it
-	** is transient, before/after calling deep_copy().
+	** is transient, before/after calling MR_deep_copy().
 	*/
 	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <=
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
 	MR_save_transient_registers();
-	exception = deep_copy(&exception,
+	exception = MR_deep_copy(&exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
 		MR_EXCEPTION_FRAMEVARS->heap_ptr,
 		MR_EXCEPTION_FRAMEVARS->heap_zone->top);
@@ -1389,13 +1392,13 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	assert(MR_EXCEPTION_FRAMEVARS->heap_ptr <= MR_hp);
 	MR_hp = MR_EXCEPTION_FRAMEVARS->heap_ptr;
 
-	/* deep_copy the exception back to the ordinary heap */
+	/* MR_deep_copy the exception back to the ordinary heap */
 	assert(MR_EXCEPTION_FRAMEVARS->solns_heap_ptr <=
-		MR_solutions_heap_zone->top);
+		MR_ENGINE(solutions_heap_zone)->top);
 	MR_save_transient_registers();
-	exception = deep_copy(&exception,
+	exception = MR_deep_copy(&exception,
 		(MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
-		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
+		saved_solns_heap_ptr, MR_ENGINE(solutions_heap_zone)->top);
 	MR_restore_transient_registers();
 
 	/* reset the solutions heap */

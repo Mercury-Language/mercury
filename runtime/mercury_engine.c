@@ -15,8 +15,8 @@ ENDINIT
 #include	<setjmp.h>
 
 #include	"mercury_engine.h"
-#include	"mercury_memory_zones.h"	/* for create_zone() */
-#include	"mercury_memory_handlers.h"	/* for default_handler() */
+#include	"mercury_memory_zones.h"	/* for MR_create_zone() */
+#include	"mercury_memory_handlers.h"	/* for MR_default_handler() */
 
 #include	"mercury_dummy.h"
 
@@ -75,28 +75,31 @@ MR_init_engine(MercuryEngine *eng)
 	*/
 
 #ifndef	CONSERVATIVE_GC
-	eng->heap_zone = create_zone("heap", 1, heap_size, next_offset(),
-			heap_zone_size, default_handler);
+	eng->heap_zone = MR_create_zone("heap", 1, MR_heap_size,
+			MR_next_offset(), MR_heap_zone_size,
+			MR_default_handler);
 	eng->e_hp = eng->heap_zone->min;
 
 #ifdef	NATIVE_GC
-	eng->heap_zone2 = create_zone("heap2", 1, heap_size, next_offset(),
-			heap_zone_size, default_handler);
+	eng->heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
+			MR_next_offset(), MR_heap_zone_size,
+			MR_default_handler);
 
   #ifdef MR_DEBUG_AGC_PRINT_VARS
-	eng->debug_heap_zone = create_zone("debug_heap", 1, debug_heap_size,
-			next_offset(), debug_heap_zone_size, default_handler);
+	eng->debug_heap_zone = MR_create_zone("debug_heap", 1,
+			MR_debug_heap_size, MR_next_offset(),
+			MR_debug_heap_zone_size, MR_default_handler);
   #endif
 #endif
 
-	eng->solutions_heap_zone = create_zone("solutions_heap", 1,
-			solutions_heap_size, next_offset(),
-			solutions_heap_zone_size, default_handler);
+	eng->solutions_heap_zone = MR_create_zone("solutions_heap", 1,
+			MR_solutions_heap_size, MR_next_offset(),
+			MR_solutions_heap_zone_size, MR_default_handler);
 	eng->e_sol_hp = eng->solutions_heap_zone->min;
 
-	eng->global_heap_zone = create_zone("global_heap", 1,
-			global_heap_size, next_offset(),
-			global_heap_zone_size, default_handler);
+	eng->global_heap_zone = MR_create_zone("global_heap", 1,
+			MR_global_heap_size, MR_next_offset(),
+			MR_global_heap_zone_size, MR_default_handler);
 	eng->e_global_hp = eng->global_heap_zone->min;
 #endif
 
@@ -181,8 +184,8 @@ MR_destroy_engine(MercuryEngine *eng)
 **	call_engine() will call MR_save_registers() before returning.
 **	That will copy the real registers we use to the fake_reg array.
 **
-**	Beware, however, that if you are planning to return to C code
-**	that did not #include "mercury_regs.h" (directly or via e.g. "mercury_imp.h"),
+**	Beware, however, that if you are planning to return to C code that did
+**	not #include "mercury_regs.h" (directly or via e.g. "mercury_imp.h"),
 **	and you have fiddled with the Mercury registers or invoked
 **	call_engine() or anything like that, then you will need to
 **	save the real registers that C is using before modifying the
@@ -196,9 +199,9 @@ MR_destroy_engine(MercuryEngine *eng)
 **	invoke call_engine() to invoke invoke Mercury routines (which
 **	in turn invoke C functions which ... etc. ad infinitum.)
 **
-**	call_engine() calls setjmp() and then invokes call_engine_inner()
+**	MR_call_engine() calls setjmp() and then invokes call_engine_inner()
 **	which does the real work.  call_engine_inner() exits by calling
-**	longjmp() to return to call_engine().  There are two 
+**	longjmp() to return to MR_call_engine().  There are two 
 **	different implementations of call_engine_inner(), one for gcc,
 **	and another portable version that works on standard ANSI C compilers.
 */

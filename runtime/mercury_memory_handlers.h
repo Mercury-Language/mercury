@@ -17,7 +17,7 @@
 #include "mercury_memory_zones.h"
 
 /*
-** MR_default_handler is a function that can be passed to create_zone to
+** MR_default_handler is a function that can be passed to MR_create_zone to
 ** unprotect enough of the redzone to allow the access to succeed, or
 ** fail if there is no space left in the zone.
 */
@@ -25,7 +25,7 @@
 extern	MR_ZoneHandler MR_default_handler;
 
 /*
-** MR_null_handler is a function that can be passed to create_zone
+** MR_null_handler is a function that can be passed to MR_create_zone
 ** which always fails.
 */
 
