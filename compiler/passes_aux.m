@@ -523,7 +523,8 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 			report_error(ErrorStream,
 				"error reading command output: "
 					++ io__error_message(TmpFileReadError))
-		)
+		),
+		io__close_input(TmpFileStream)
 	;
 		{ TmpFileRes = error(TmpFileError) },
 		report_error(ErrorStream, "error opening command output: "
