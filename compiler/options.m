@@ -69,6 +69,7 @@
 		;	very_verbose
 		;	verbose_errors
 		;	verbose_recompilation
+		;	verbose_make
 		;	statistics
 		;	debug_types
 		;	debug_modes
@@ -79,6 +80,7 @@
 		;	debug_rl_opt
 		;	debug_il_asm	% il_asm = IL generation via asm
 		;	debug_liveness
+		;	debug_make
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -325,11 +327,18 @@
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	cflags_for_threads
+		;	cflags_for_pic
 		;	pic
 		;	target_debug	
 		;	c_include_directory
 		;	c_flag_to_name_object_file
 		;	object_file_extension
+		;	pic_object_file_extension
+		;	shared_library_extension
+		;	library_extension
+		;	executable_file_extension
+		;	create_archive_command
+		;	create_archive_command_flags
 
 		;	java_compiler
 		;	java_flags
@@ -456,6 +465,9 @@
 		;	link_libraries
 		;	link_objects
 	% Miscellaneous Options
+		;	make
+		;	keep_going
+		;	rebuild
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
@@ -528,6 +540,7 @@ option_defaults_2(verbosity_option, [
 	very_verbose		-	bool(no),
 	verbose_errors		-	bool(no),
 	verbose_recompilation	-	bool(no),
+	verbose_make		-	bool(yes),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
@@ -537,7 +550,8 @@ option_defaults_2(verbosity_option, [
 	debug_rl_gen		-	bool(no),
 	debug_rl_opt		-	bool(no),
 	debug_il_asm		-	bool(no),
-	debug_liveness		-	int(-1)
+	debug_liveness		-	int(-1),
+	debug_make		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -730,8 +744,9 @@ option_defaults_2(code_gen_option, [
 	cflags_for_regs		-	string(""),
 	cflags_for_gotos	-	string(""),
 	cflags_for_threads	-	string(""),
+	cflags_for_pic		-	string(""),
 					% the `mmc' script will override the
-					% above three defaults with values
+					% above four defaults with values
 					% determined at configuration time
 	pic			-	bool(no),
 	target_debug		-	bool(no),
@@ -744,9 +759,15 @@ option_defaults_2(code_gen_option, [
 					% above default with a value determined
 					% at configuration time
 	object_file_extension	-	string("o"),
+	pic_object_file_extension -	string("o"),
+	shared_library_extension -	string("so"),
+	library_extension -		string("a"),
+	executable_file_extension -	string(""),
+	create_archive_command -	string("ar"),
+	create_archive_command_flags -	accumulating([]), % "cr"
 					% the `mmc' script will override the
-					% above default with a value determined
-					% at configuration time
+					% above seven defaults with a value
+					% determined at configuration time
 
 	java_compiler		-	string("javac"),
 	java_flags		-	accumulating([]),
@@ -891,6 +912,9 @@ option_defaults_2(link_option, [
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	filenames_from_stdin	-	bool(no),
+	make			-	bool(no),
+	keep_going		-	bool(no),
+	rebuild			-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
@@ -912,8 +936,10 @@ short_option('h', 			help).
 short_option('H', 			highlevel_code).
 short_option('i', 			make_interface).
 short_option('I', 			search_directories).
+short_option('k',			keep_going).
 short_option('l', 			link_libraries).
 short_option('L', 			link_library_directories).
+short_option('m',			make).
 short_option('M', 			generate_dependencies).
 short_option('n', 			line_numbers).
 short_option('N', 			debug_modes).
@@ -921,6 +947,7 @@ short_option('o', 			output_file_name).
 short_option('O', 			opt_level).
 short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
+short_option('r',			rebuild).
 short_option('s', 			grade).
 short_option('S', 			statistics).
 short_option('T', 			debug_types).
@@ -956,6 +983,7 @@ long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
 long_option("verbose-error-messages",	verbose_errors).
 long_option("verbose-recompilation",	verbose_recompilation).
+long_option("verbose-make",		verbose_make).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
@@ -971,6 +999,7 @@ long_option("debug-rl-opt",		debug_rl_opt).
 	% system built into .NET improves.
 long_option("debug-il-asm",		debug_il_asm).
 long_option("debug-liveness",		debug_liveness).
+long_option("debug-make",		debug_make).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -1161,6 +1190,7 @@ long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("cflags-for-threads",	cflags_for_threads).
+long_option("cflags-for-pic",		cflags_for_pic).
 	% XXX we should consider the relationship between c_debug and
 	% target_debug more carefully.  Perhaps target_debug could imply
 	% C debug if the target is C.  However for the moment they are
@@ -1170,6 +1200,12 @@ long_option("target-debug",		target_debug).
 long_option("c-include-directory",	c_include_directory).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",	object_file_extension).
+long_option("pic-object-file-extension", pic_object_file_extension).
+long_option("shared-library-extension",	shared_library_extension).
+long_option("library-extension",	library_extension).
+long_option("executable-file-extension", executable_file_extension).
+long_option("create-archive-comand",	create_archive_command).
+long_option("create-archive-comand-flags", create_archive_command_flags).
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
@@ -1366,6 +1402,9 @@ long_option("link-object",		link_objects).
 
 % misc options
 long_option("help",			help).
+long_option("make",			make).
+long_option("keep-going",		keep_going).
+long_option("rebuild",			rebuild).
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
@@ -1770,6 +1809,10 @@ options_help_verbosity -->
 		"-E, --verbose-error-messages",
 		"\tExplain error messages.  Asks the compiler to give you a more",
 		"\tdetailed explanation of any errors it finds in your program.",
+% `--make' is not yet implemented.
+%		"--verbose-make",
+%		"\tOutput progress messages about the progress of the",
+%		"\t`--make' option.",
 		"--verbose-recompilation",
 		"\tWhen using `--smart-recompilation', output messages\n",
 		"\texplaining why a module needs to be recompiled.",
@@ -1795,6 +1838,9 @@ options_help_verbosity -->
 		"--debug-liveness <pred_id>",
 		"\tOutput detailed debugging traces of the liveness analysis",
 		"\tof the predicate with the given predicate id."
+% `--make' is not yet implemented.
+%		"--debug-make",
+%		"\tOutput detailed debugging traces of the `--make' option."
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -2449,19 +2495,15 @@ options_help_code_generation -->
 
 		"--cflags <options>",
 		"\tSpecify options to be passed to the C compiler.",
+
 		% The --cflags-for-regs, --cflags-for-gotos,
-		% and --cflags-for-threads options
-		% are reserved for use by the `mmc' script;
+		% --cflags-for-threads, --cflags-for-pic options,
+		% --c-flag-to-name-object-file, --object-file-extension,
+		% --pic-object-file-extension, --shared-library-extension,
+		% --library-extension, --executable-file-extension
+		% --create-archive-command and --create-archive-command-flags
+		% options are are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
-
-
-		"--c-flag-to-name-object-file <flag>",
-		"\tThe flag the C compiler uses to name object files.",
-		"\t('-o ' for gcc and '/Fo' for Visual C.)",
-
-		"--object-file-extension <extension>",
-		"\tThe extension used to signify object files.",
-		"\t('o' under unix and 'obj' under windows.)",
 
 		"--max-jump-table-size",
 		"\tThe maximum number of entries a jump table can have.",
@@ -2884,6 +2926,16 @@ options_help_link -->
 options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	write_tabbed_lines([
+% `--make' is not yet implemented.
+%		"-m, --make",
+%		"\tTreat the non-option arguments to `mmc' as files to",
+%		"\tmake, rather than source files.",
+%		"-r, --rebuild",
+%		"\tSame as `--make', but always rebuild the target files",
+%		"\teven if they are up to date."j
+%		"-k, --keep-going",
+%		"\tWith `--make' or `--rebuild', keep going as far as",
+%		"\tpossible even if an error is detected.",
 		"-I <dir>, --search-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
 		"\timported modules.",
