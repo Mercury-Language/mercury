@@ -17,6 +17,7 @@ ERRORCHECK_PROGS= \
 	inference_test \
 	missing_if \
 	pragma_source_file \
+	purity_warnings \
 	simple_code \
 	singleton_test \
 	state_vars_test \
@@ -43,8 +44,8 @@ $(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
 
 $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
-	# Build the `.analysis' file for unused_args_analysis2
-	# before building unused_args_analysis.c.
+# Build the `.analysis' file for unused_args_analysis2
+# before building unused_args_analysis.c.
 $(cs_subdir)unused_args_analysis.c: $(cs_subdir)unused_args_analysis2.c
 unused_args_analysis.err: $(cs_subdir)unused_args_analysis2.c
 
