@@ -130,6 +130,7 @@ ORDINARY_PROGS=	\
 	random_permutation \
 	random_simple \
 	rational_test \
+	recursive_main \
 	redoip_clobber \
 	relation_test \
 	remove_file \
@@ -210,6 +211,7 @@ JAVA_PASS_PROGS= \
 	nondet_copy_out \
 	pragma_inline \
 	qual_basic_test \
+	recursive_main \
 	reorder_di \
 	rev_arith \
 	reverse_arith \
