@@ -12,15 +12,17 @@
 ** If we don't have gcc, then we can use *(type *)&lval,
 ** but that wouldn't work for gcc since lval might be a global
 ** register in which case we couldn't take it's address.
-** Similarly for comma expressions.
+** Similarly for comma expressions and conditional expressions.
 */
 
 #ifdef __GNUC__
   #define LVALUE_CAST(type, lval)	((type)(lval))
   #define LVALUE_SEQ(expr, lval)	((expr),(lval))
+  #define LVALUE_COND(expr, x, y)	((expr)?(x):(y))
 #else
   #define LVALUE_CAST(type, lval)	(*(type*)&(lval))
   #define LVALUE_SEQ(expr, lval)	(*((expr),&(lval)))
+  #define LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
 #endif
 
 /*
@@ -86,14 +88,16 @@
 
 #include	"regorder.h"
 
-/* regorrder.h defines r1 .. r32; now define r(n) for n > 32 */
+/* regorder.h defines r1 .. r32; now define r(n) for n > 32 */
 
 #define r(n) mr((n) + NUM_SPECIAL_REG - 1)
 
 /* virtual_reg(n) accesses the underlying fake_reg for register n */
 
 #define virtual_reg(n)	\
-	((n) > MAX_REAL_REG ? r(n) : fake_reg[virtual_reg_map[(n) - 1]])
+	LVALUE_COND((n) > MAX_REAL_REG, \
+		r(n), \
+		fake_reg[virtual_reg_map[(n) - 1]])
 
 /*
 ** the following macros define a mapping from registers to indices into the
