@@ -330,7 +330,8 @@
 % This is the same as term_to_type, except that an integer
 % is allowed where a character is expected. This is needed by 
 % extras/aditi/aditi.m because Aditi does not have a builtin
-% character type.
+% character type. This also allows an integer where a float
+% is expected.
 
 :- pred term__term_to_type_with_int_instead_of_char(term(U), T).
 :- mode term__term_to_type_with_int_instead_of_char(in, out) is semidet.
@@ -368,18 +369,18 @@ term__term_to_type(Term, Val) :-
 	term__try_term_to_type(Term, ok(Val)).
 
 term__term_to_type_with_int_instead_of_char(Term, Val) :-
-	IntInsteadOfChar = yes,
-	term__try_term_to_type(IntInsteadOfChar, Term, ok(Val)).
+	IsAditiTuple = yes,
+	term__try_term_to_type(IsAditiTuple, Term, ok(Val)).
 
 term__try_term_to_type(Term, Result) :-
-	IntInsteadOfChar = no,
-	term__try_term_to_type(IntInsteadOfChar, Term, Result).
+	IsAditiTuple = no,
+	term__try_term_to_type(IsAditiTuple, Term, Result).
 
 :- pred term__try_term_to_type(bool, term(U), term_to_type_result(T, U)).
 :- mode term__try_term_to_type(in, in, out) is det.
 
-term__try_term_to_type(IntInsteadOfChar, Term, Result) :-
-	term__try_term_to_univ(IntInsteadOfChar, Term,
+term__try_term_to_type(IsAditiTuple, Term, Result) :-
+	term__try_term_to_univ(IsAditiTuple, Term,
 		type_of(ValTypedVar), UnivResult),
 	(
 		UnivResult = ok(Univ),
@@ -394,8 +395,8 @@ term__try_term_to_type(IntInsteadOfChar, Term, Result) :-
 :- pred term__try_term_to_univ(bool::in, term(T)::in, type_desc::in,
 		term_to_type_result(univ, T)::out) is det.
 
-term__try_term_to_univ(IntInsteadOfChar, Term, Type, Result) :-
-	term__try_term_to_univ_2(IntInsteadOfChar, Term, Type, [], Result).
+term__try_term_to_univ(IsAditiTuple, Term, Type, Result) :-
+	term__try_term_to_univ_2(IsAditiTuple, Term, Type, [], Result).
 	
 :- pred term__try_term_to_univ_2(bool::in, term(T)::in, type_desc::in,
 		term_to_type_context::in,
@@ -403,11 +404,11 @@ term__try_term_to_univ(IntInsteadOfChar, Term, Type, Result) :-
 
 term__try_term_to_univ_2(_, term__variable(Var), _Type, Context,
 		error(mode_error(Var, Context))).
-term__try_term_to_univ_2(IntInsteadOfChar, Term, Type, Context, Result) :-
+term__try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
 	Term = term__functor(Functor, ArgTerms, TermContext),
 	(
 		type_ctor_and_args(Type, TypeCtor, TypeArgs),
-		term__term_to_univ_special_case(IntInsteadOfChar,
+		term__term_to_univ_special_case(IsAditiTuple,
 			type_ctor_module_name(TypeCtor),
 			type_ctor_name(TypeCtor), 
 			TypeArgs, Term, Type, Context, SpecialCaseResult)
@@ -417,7 +418,7 @@ term__try_term_to_univ_2(IntInsteadOfChar, Term, Type, Context, Result) :-
 		Functor = term__atom(FunctorName),
 		list__length(ArgTerms, Arity),
 		find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes),
-		term__term_list_to_univ_list(IntInsteadOfChar, ArgTerms,
+		term__term_list_to_univ_list(IsAditiTuple, ArgTerms,
 			ArgTypes, Functor, 1, Context, TermContext, ArgsResult)
 	->
 		(
@@ -444,14 +445,14 @@ term__try_term_to_univ_2(IntInsteadOfChar, Term, Type, Context, Result) :-
 		type_desc::in, term_to_type_context::in,
 		term_to_type_result(univ, T)::out) is semidet.
 
-term__term_to_univ_special_case(IntInsteadOfChar, "builtin", "character", [],
+term__term_to_univ_special_case(IsAditiTuple, "builtin", "character", [],
 		Term, _, _, ok(Univ)) :-
 	(
-		IntInsteadOfChar = no,
+		IsAditiTuple = no,
 		Term = term__functor(term__atom(FunctorName), [], _),
 		string__first_char(FunctorName, Char, "")
 	;
-		IntInsteadOfChar = yes,
+		IsAditiTuple = yes,
 		Term = term__functor(term__integer(Int), [], _),
 		char__to_int(Char, Int)
 	),
@@ -464,11 +465,17 @@ term__term_to_univ_special_case(_, "builtin", "string", [],
 		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__string(String), [], _),
 	type_to_univ(String, Univ).
-term__term_to_univ_special_case(_, "builtin", "float", [],
+term__term_to_univ_special_case(IsAditiTuple, "builtin", "float", [],
 		Term, _, _, ok(Univ)) :-
-	Term = term__functor(term__float(Float), [], _),
-	type_to_univ(Float, Univ).
-term__term_to_univ_special_case(IntInsteadOfChar, "array", "array", [ElemType],
+	( Term = term__functor(term__float(Float), [], _) ->
+		type_to_univ(Float, Univ)
+	;
+		IsAditiTuple = yes,
+		Term = term__functor(term__integer(Int), [], _),
+		int__to_float(Int, Float),
+		type_to_univ(Float, Univ)
+	).
+term__term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
 		Term, _Type, PrevContext, Result) :-
 	%
 	% arrays are represented as terms of the form
@@ -484,7 +491,7 @@ term__term_to_univ_special_case(IntInsteadOfChar, "array", "array", [ElemType],
 	ListType = type_of([Elem]),
 	ArgContext = arg_context(term__atom("array"), 1, TermContext),
 	NewContext = [ArgContext | PrevContext],
-	term__try_term_to_univ_2(IntInsteadOfChar, ArgList, ListType,
+	term__try_term_to_univ_2(IsAditiTuple, ArgList, ListType,
 		NewContext, ArgResult),
 	(
 		ArgResult = ok(ListUniv),
@@ -534,16 +541,16 @@ term__term_to_univ_special_case(_, "std_util", "type_info", _, _, _, _, _) :-
 		term_to_type_context::in, term__context::in,
 		term_to_type_result(list(univ), T)::out) is semidet.
 term__term_list_to_univ_list(_, [], [], _, _, _, _, ok([])).
-term__term_list_to_univ_list(IntInsteadOfChar, [ArgTerm|ArgTerms],
+term__term_list_to_univ_list(IsAditiTuple, [ArgTerm|ArgTerms],
 		[Type|Types], Functor, ArgNum, PrevContext,
 		TermContext, Result) :-
 	ArgContext = arg_context(Functor, ArgNum, TermContext),
 	NewContext = [ArgContext | PrevContext],
-	term__try_term_to_univ_2(IntInsteadOfChar, ArgTerm, Type,
+	term__try_term_to_univ_2(IsAditiTuple, ArgTerm, Type,
 		NewContext, ArgResult),
 	(
 		ArgResult = ok(Arg),
-		term__term_list_to_univ_list(IntInsteadOfChar, ArgTerms, Types,
+		term__term_list_to_univ_list(IsAditiTuple, ArgTerms, Types,
 			Functor, ArgNum + 1, PrevContext,
 			TermContext, RestResult),
 		(

@@ -1090,7 +1090,8 @@
 % This is the same as io__read_from_string, except that an integer
 % is allowed where a character is expected. This is needed by
 % extras/aditi/aditi.m because Aditi does not have a builtin
-% character type.
+% character type. This also allows an integer where a float
+% is expected.
 
 :- pred io__read_from_string_with_int_instead_of_char(string, string, int,
 			io__read_result(T), posn, posn).
@@ -1731,45 +1732,45 @@ io__read_anything(Result) -->
 io__read(Result) -->
 	term_io__read_term(ReadResult),
 	io__get_line_number(LineNumber),
-	{ IntInsteadOfChar = no },
-	{ io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber,
+	{ IsAditiTuple = no },
+	{ io__process_read_term(IsAditiTuple, ReadResult, LineNumber,
 		Result) }.
 
 io__read_from_string_with_int_instead_of_char(FileName, String, Len, Result,
 		Posn0, Posn) :-
-	IntInsteadOfChar = yes,
-	io__read_from_string(IntInsteadOfChar, FileName, String, Len, Result,
+	IsAditiTuple = yes,
+	io__read_from_string(IsAditiTuple, FileName, String, Len, Result,
 		Posn0, Posn).
 
 io__read_from_string(FileName, String, Len, Result, Posn0, Posn) :-
-	IntInsteadOfChar = no,
-	io__read_from_string(IntInsteadOfChar, FileName, String, Len,
+	IsAditiTuple = no,
+	io__read_from_string(IsAditiTuple, FileName, String, Len,
 		Result, Posn0, Posn). 
 
 :- pred io__read_from_string(bool, string, string, int, io__read_result(T),
 				posn, posn).
 :- mode io__read_from_string(in, in, in, in, out, in, out) is det.
 
-io__read_from_string(IntInsteadOfChar, FileName, String, Len,
+io__read_from_string(IsAditiTuple, FileName, String, Len,
 		Result, Posn0, Posn) :-
 	parser__read_term_from_string(FileName, String, Len,
 		Posn0, Posn, ReadResult),
 	Posn = posn(LineNumber, _, _),
-	io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber, Result).
+	io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result).
 
 :- pred io__process_read_term(bool, read_term, int, io__read_result(T)).
 :- mode io__process_read_term(in, in, in, out) is det.
 
-io__process_read_term(IntInsteadOfChar, ReadResult, LineNumber, Result) :-
+io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
 	(	
 		ReadResult = term(_VarSet, Term),
 		( 
 			(
-				IntInsteadOfChar = yes,
+				IsAditiTuple = yes,
 				term_to_type_with_int_instead_of_char(Term,
 					Type)
 			;
-				IntInsteadOfChar = no,
+				IsAditiTuple = no,
 				term_to_type(Term, Type)
 			)
 		->
