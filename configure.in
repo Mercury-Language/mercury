@@ -1758,10 +1758,10 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 # add `hlc' (--high-level-code, i.e. MLDS back-end) grade
 LIBGRADES="$LIBGRADES hlc.gc"
 
-# If we are using the MS compiler currently the only working grade
-# is hlc.gc, which is what we install by default.
+# Not all grades compile with the MS compiler, only install those grades
+# which do.
 if test $ac_microsoft = yes; then
-	LIBGRADES=
+	LIBGRADES=none.gc
 fi
 
 # remove GRADE from LIBGRADES
