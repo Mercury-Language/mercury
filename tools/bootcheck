@@ -453,8 +453,13 @@ then
 		cd runtime
 		$LN_S $root/runtime/*.h .
 		$LN_S $root/runtime/*.c .
-		$LN_S $root/runtime/*.cpp .
-		$LN_S $root/runtime/mercury_il.il .
+		# We need to use $LN rather than $LN_S for the files
+		# that get processed with Microsoft's tools, since
+		# Microsoft's tools don't understand Cygwin symbolic links
+		# (hard links are OK, Cygwin's ln just makes copies).
+		$LN $root/runtime/*.cpp .
+		$LN $root/runtime/mercury_mcpp.h .
+		$LN $root/runtime/mercury_il.il .
 		$LN_S $root/runtime/*.in .
 		cp $root/runtime/Mmake* .
 		$LN_S $root/runtime/machdeps .
