@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,7 +198,12 @@ pd_util__propagate_constraints(Goal0, Goal) -->
 				Globals, Simplifications) },
 			pd_util__simplify_goal(Simplifications, Goal4, Goal)
 		;
-			{ Goal = Goal1 }
+			% Use Goal0 rather than Goal1 because
+			% constraint propagation can make the
+			% quantification information more
+			% conservative even if it doesn't
+			% optimize anything.
+			{ Goal = Goal0 }
 		)
 	;
 		{ Goal = Goal0 }
