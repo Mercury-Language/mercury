@@ -348,6 +348,11 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				% (gcc -O2 gets an internal error for
 				% the former.)   Similarly for
 				% `r1 = (r1 == 0)' and `r1 = (0 == r1)'.
+				% Apparently this is the only place where
+				% the Mercury compiler generates assignments
+				% like that, otherwise we might need a more
+				% general work-around which handled similar
+				% cases using r2, etc.
 				%
 				(
 					( NewCond = unop(not, lval(reg(r(1))))
