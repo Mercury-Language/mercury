@@ -214,16 +214,44 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, SM, InstMap,
 		inst_is_bound(ModuleInfo, VarInst0),
 		partition_disj(Goals0, Var, GoalInfo, Left, CasesList)
 	->
-		% are there any disjuncts that are not part of the switch?
+		%
+		% A switch needs to have at least two cases.
+		%
+		% But, if there is a complete one-case switch
+		% for a goal, we must leave it as a disjunction
+		% rather than doing an incomplete switch on a
+		% different variable, because otherwise we might
+		% get determinism analysis wrong.  (The complete
+		% one-case switch may be decomposable into other
+		% complete sub-switches on the functor's arguments)
+		%
 		(
+			% are there any disjuncts that are not part of the
+			% switch?
 			Left = []
 		->
-			cases_to_switch(CasesList, Var, VarTypes, GoalInfo,
-				SM, InstMap, ModuleInfo, Goal)
+			( CasesList = [_, _ | _] ->
+				cases_to_switch(CasesList, Var, VarTypes,
+					GoalInfo, SM, InstMap, ModuleInfo,
+					Goal)
+			;
+				detect_sub_switches_in_disj(Goals0, InstMap,
+					VarTypes, ModuleInfo, Goals),
+				Goal = disj(Goals, SM)
+			)
 		;
+			% insert this switch into the list of incomplete
+			% switches only if it has at least two cases
+			%
+			( CasesList = [_, _ | _] ->
+				Again1 = [again(Var, Left, CasesList) | Again0]
+			;
+				Again1 = Again0
+			),
+			% try to find a switch
 			detect_switches_in_disj(Vars, Goals0, GoalInfo,
 				SM, InstMap, VarTypes, AllVars, ModuleInfo,
-				[again(Var, Left, CasesList) | Again0], Goal)
+				Again1, Goal)
 		)
 	;
 		detect_switches_in_disj(Vars, Goals0, GoalInfo, SM, InstMap,
@@ -322,8 +350,8 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 	map__init(Cases0),
 	partition_disj_trial(Goals0, Var, [], Left, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
-	fix_case_list(CasesAssocList, GoalInfo, CasesList),
-	CasesList = [_, _ | _].	% there must be more than one case
+	CasesAssocList \= [], % there must be at least one case
+	fix_case_list(CasesAssocList, GoalInfo, CasesList).
 
 :- pred partition_disj_trial(list(hlds_goal), var,
 	list(hlds_goal), list(hlds_goal), cases, cases).
