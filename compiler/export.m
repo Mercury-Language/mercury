@@ -92,7 +92,7 @@ export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
 export__get_foreign_export_decls_2(_Preds, [], []).
 export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
+	get_export_info(Preds, PredId, ProcId, _HowToDeclare, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
@@ -196,7 +196,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, Exported,
+	get_export_info(Preds, PredId, ProcId, DeclareString,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
@@ -208,12 +208,6 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
-
-	( Exported = yes ->
-		DeclareString = "Declare_entry"
-	;
-		DeclareString = "Declare_static"
-	),
 
 	string__append_list([	"\n",
 				DeclareString, "(", ProcLabelString, ");\n",
@@ -254,24 +248,34 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	ExportedProcsCode = [Code|TheRest].
 
 
-	% get_export_info(Preds, PredId, ProcId,
+	% get_export_info(Preds, PredId, ProcId, DeclareString,
 	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
 	%		ArgInfoTypes):
-	%	Figure out the C return type, the actions on success
-	%	and failure, and the argument locations/modes/types
-	%	for a given procedure.
-:- pred get_export_info(pred_table, pred_id, proc_id, bool,
+	%	For a given procedure, figure out the information about
+	%	that procedure that is needed to export it:
+	%	- how to declare the procedure's entry label,
+	%	- the C return type, and the C declaration for the variable
+	%	  holding the return value (if any),
+	%	- the actions on success and failure, and
+	%	- the argument locations/modes/types.
+
+:- pred get_export_info(pred_table, pred_id, proc_id, string,
 			string, string, string, string,
 			assoc_list(arg_info, type)).
 :- mode get_export_info(in, in, in, out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, Exported, C_RetType,
+get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
 		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
-	( procedure_is_exported(PredInfo, ProcId) ->
-		Exported = yes
+	pred_info_import_status(PredInfo, Status),
+	(
+		( procedure_is_exported(PredInfo, ProcId)
+		; status_defined_in_this_module(Status, no)
+		)
+	->
+		HowToDeclareLabel = "Declare_entry"
 	;
-		Exported = no
+		HowToDeclareLabel = "Declare_static"
 	),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
