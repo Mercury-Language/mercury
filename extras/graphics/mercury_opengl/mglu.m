@@ -5,10 +5,16 @@
 %-----------------------------------------------------------------------------%
 %
 % file: mglu.m
-% main authors: conway, ohutch.
+% main authors: conway, ohutch, juliensf.
 %
 % This file provides bindings to the GLU library.
 %
+% TODO:
+% 	- NURBS
+% 	- Tessellators
+% 	- object-window coordinate mapping (gluProject() and friends).
+% 	- Mipmaps
+
 %-----------------------------------------------------------------------------%
 
 :- module mglu.
@@ -19,74 +25,66 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Viewing transformations
+% Viewing transformations.
 %
 
-:- pred look_at(float, float, float, float, float, float, float, float, float,
-	io, io).
-:- mode look_at(in, in, in, in, in, in, in, in, in, di, uo) is det.
+:- pred look_at(float::in, float::in, float::in, float::in, float::in,
+	float::in, float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred perspective(float, float, float, float, io, io).
-:- mode perspective(in, in, in, in, di, uo) is det.
+:- pred perspective(float::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
 
-:- pred ortho_2d(float, float, float, float, io, io).
-:- mode ortho_2d(in, in, in, in, di, uo) is det.
+:- pred ortho_2d(float::in, float::in, float::in, float::in, io::di, io::uo)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %
-% Quadric functions
+% Quadric functions.
 %
 
 :- type quadric.
 
 :- type quadric_normals
-			--->	smooth 
-			;	flat 
-			;	none.
+		--->	smooth 
+		;	flat 
+		;	none.
 
 :- type quadric_draw_style
-			--->	point
-			;	line
-			;	fill
-			;	silhouette.
+		--->	point
+		;	line
+		;	fill
+		;	silhouette.
 
 :- type quadric_orientation
-			--->	outside
-			;	inside.
+		--->	outside
+		;	inside.
 
+:- pred new_quadric(quadric::out, io::di, io::uo) is det.
 
-:- pred new_quadric(quadric, io, io).
-:- mode new_quadric(out, di, uo) is det.
+:- pred delete_quadric(quadric::in, io::di, io::uo) is det.
 
-:- pred delete_quadric(quadric, io, io).
-:- mode delete_quadric(in, di, uo) is det.
+:- pred quadric_draw_style(quadric::in, quadric_draw_style::in, io::di,
+	io::uo) is det.
 
-:- pred quadric_draw_style(quadric, quadric_draw_style, io, io).
-:- mode quadric_draw_style(in, in, di, uo) is det.
+:- pred quadric_orientation(quadric::in, quadric_orientation::in,
+	io::di, io::uo) is det.
 
-:- pred quadric_orientation(quadric, quadric_orientation, io, io).
-:- mode quadric_orientation(in, in, di, uo) is det.
+:- pred quadric_normals(quadric::in, quadric_normals::in, io::di, io::uo)
+	is det.
 
-:- pred quadric_normals(quadric, quadric_normals, io, io).
-:- mode quadric_normals(in, in, di, uo) is det.
+:- pred quadric_texture(quadric::in, bool::in, io::di, io::uo) is det.
 
-:- pred quadric_texture(quadric, bool, io, io).
-:- mode quadric_texture(in, in, di, uo) is det.
+:- pred cylinder(quadric::in, float::in, float::in, float::in, int::in,
+	int::in, io::di, io::uo) is det.
 
-%%%:- pred quadric_callback(quadric, ???, ???).
-%%%:- mode quadric_callback(in, in, in) is det.
+:- pred sphere(quadric::in, float::in, int::in, int::in, io::di,
+	io::uo) is det.
 
-:- pred cylinder(quadric, float, float, float, int, int, io, io).
-:- mode cylinder(in, in, in, in, in, in, di, uo) is det.
+:- pred disk(quadric::in, float::in, float::in, int::in, int::in,
+	io::di, io::uo) is det.
 
-:- pred sphere(quadric, float, int, int, io, io).
-:- mode sphere(in, in, in, in, di, uo) is det.
-
-:- pred disk(quadric, float, float, int, int, io, io).
-:- mode disk(in, in, in, in, in, di, uo) is det.
-
-:- pred partial_disk(quadric, float, float, int, int, float, float, io, io).
-:- mode partial_disk(in, in, in, in, in, in, in, di, uo) is det.
+:- pred partial_disk(quadric::in, float::in, float::in, int::in, int::in,
+	float::in, float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -100,7 +98,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Viewing transformations
+% Viewing transformations.
 %
 
 :- pragma foreign_proc("C", 
@@ -135,7 +133,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Quadric functions
+% Quadric functions.
 %
 
 :- pragma foreign_type("C", quadric, "GLUquadric *").
@@ -204,8 +202,22 @@ bool_to_int(no) = 0.
 	[will_not_call_mercury, promise_pure],
 "
 	Q = gluNewQuadric();
+	gluQuadricCallback(Q, GLU_ERROR, (void *)MGLU_quadric_error_callback);  
 	IO = IO0;
 ").
+
+:- pragma foreign_decl("C",
+	"static void MGLU_quadric_error_callback(GLenum);
+").
+
+:- pragma foreign_code("C", "
+void MGLU_quadric_error_callback(GLenum error_code)
+{
+	fprintf(stderr, ""mglu: %s\\n"", gluErrorString(error_code));
+	fflush(NULL);
+	
+	exit(EXIT_FAILURE);
+}").
 
 :- pragma foreign_proc("C", 
 	delete_quadric(Q::in, IO0::di, IO::uo), 
@@ -218,9 +230,7 @@ bool_to_int(no) = 0.
 quadric_draw_style(Q, S, !IO) :-
 	quadric_draw_style2(Q, quadric_draw_style_to_int(S), !IO).
 
-:- pred quadric_draw_style2(quadric, int, io, io).
-:- mode quadric_draw_style2(in, in, di, uo) is det.
-
+:- pred quadric_draw_style2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	quadric_draw_style2(Q::in, S::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure], 
@@ -232,9 +242,7 @@ quadric_draw_style(Q, S, !IO) :-
 quadric_orientation(Q, O, !IO) :-
 	quadric_orientation2(Q, quadric_orientation_to_int(O), !IO).
 
-:- pred quadric_orientation2(quadric, int, io, io).
-:- mode quadric_orientation2(in, in, di, uo) is det.
-
+:- pred quadric_orientation2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	quadric_orientation2(Q::in, O::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure], 
@@ -246,9 +254,7 @@ quadric_orientation(Q, O, !IO) :-
 quadric_normals(Q, N, !IO) :-
 	quadric_normals2(Q, quadric_normals_to_int(N), !IO).
 	
-:- pred quadric_normals2(quadric, int, io, io).
-:- mode quadric_normals2(in, in, di, uo) is det.
-
+:- pred quadric_normals2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	quadric_normals2(Q::in, N::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure], 
@@ -260,9 +266,7 @@ quadric_normals(Q, N, !IO) :-
 quadric_texture(Q, B, !IO) :-
 	quadric_texture2(Q, bool_to_int(B), !IO).
 
-:- pred quadric_texture2(quadric, int, io, io).
-:- mode quadric_texture2(in, in, di, uo) is det.
-
+:- pred quadric_texture2(quadric::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	quadric_texture2(Q::in, B::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure], 

@@ -2,15 +2,28 @@
 % Copyright (C) 1997, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % file: mogl.m
-% main author: conway.
+% main authors: conway, juliensf.
 %
 % This file provides a binding to OpenGL 1.1. (It won't work with OpenGL 1.0.)
 %
-% It will work with OpenGL 1.2 - 1.4 but it doesn't (currently)
+% It will work with OpenGL 1.2 - 1.5 but it doesn't (currently)
 % implement any of the extended functionality in those versions.
+%
+% TODO:
+% 	- finish texture mapping stuff
+% 	- finsh pixel rectangle stuff
+% 	- vertex arrays
+% 	- evaluators
+% 	- various state queries
+% 	- stuff from later versions of OpenGL
+%	- break this module up into submodules
+%	- bitmaps
+%	- after the next release the foreign code
+%	  attributes will need to be updated (terminates/does_not_terminate)
+% 	- document all this ;)
 %
 %------------------------------------------------------------------------------%
 
@@ -34,8 +47,7 @@
 	;	stack_underflow
 	;	out_of_memory.
 
-:- pred get_error(mogl__error, io, io).
-:- mode get_error(out, di, uo) is det.
+:- pred get_error(mogl__error::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -54,66 +66,53 @@
 	;	quad_strip
 	;	quads.
 
-:- pred begin(block_mode, io, io).
-:- mode begin(in, di, uo) is det.
+:- pred begin(block_mode::in, io::di, io::uo) is det.
 
-:- pred end(io, io).
-:- mode end(di, uo) is det.
+:- pred end(io::di, io::uo) is det.
 
-:- pred edge_flag(bool, io, io).
-:- mode edge_flag(in, di, uo) is det.
+:- pred edge_flag(bool::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Vertex specification
 %
 
-:- pred vertex2(float, float, io, io).
-:- mode vertex2(in, in, di, uo) is det.
+:- pred vertex2(float::in, float::in, io::di, io::uo) is det.
 
-:- pred vertex3(float, float, float, io, io).
-:- mode vertex3(in, in, in, di, uo) is det.
+:- pred vertex3(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred vertex4(float, float, float, float, io, io).
-:- mode vertex4(in, in, in, in, di, uo) is det.
+:- pred vertex4(float::in, float::in, float::in, float::in, io::di, io::uo)
+	is det.
 
-:- pred rect(float, float, float, float, io, io).
-:- mode rect(in, in, in, in, di, uo) is det.
+:- pred rect(float::in, float::in, float::in, float::in, io::di, io::uo)
+	is det.
 
-:- pred tex_coord1(float, io, io).
-:- mode tex_coord1(in, di, uo) is det.
+:- pred tex_coord1(float::in, io::di, io::uo) is det.
 
-:- pred tex_coord2(float, float, io, io).
-:- mode tex_coord2(in, in, di, uo) is det.
+:- pred tex_coord2(float::in, float::in, io::di, io::uo) is det.
 
-:- pred tex_coord3(float, float, float, io, io).
-:- mode tex_coord3(in, in, in, di, uo) is det.
+:- pred tex_coord3(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred tex_coord4(float, float, float, float, io, io).
-:- mode tex_coord4(in, in, in, in, di, uo) is det.
+:- pred tex_coord4(float::in, float::in, float::in, float::in, io::di, io::uo)
+	is det.
 
-:- pred normal3(float, float, float, io, io).
-:- mode normal3(in, in, in, di, uo) is det.
+:- pred normal3(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred color3(float, float, float, io, io).
-:- mode color3(in, in, in, di, uo) is det.
+:- pred color3(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred color4(float, float, float, float, io, io).
-:- mode color4(in, in, in, in, di, uo) is det.
+:- pred color4(float::in, float::in, float::in, float::in, io::di, io::uo)
+	is det.
 
-:- pred index(float, io, io).
-:- mode index(in, di, uo) is det.
+:- pred index(float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Coordinate transformations.
 %
 
-:- pred depth_range(float, float, io, io).
-:- mode depth_range(in, in, di, uo) is det.
+:- pred depth_range(float::in, float::in, io::di, io::uo) is det.
 
-:- pred viewport(int, int, int, int, io, io).
-:- mode viewport(in, in, in, in, di, uo) is det.
+:- pred viewport(int::in, int::in, int::in, int::in, io::di, io::uo) is det.
 
 :- type matrix_mode
 	--->	texture
@@ -126,87 +125,71 @@
 		  float, float, float, float,	% a[31], a[32], ...
 		  float, float, float, float).	% a[41], a[42], ...
 
-:- pred matrix_mode(matrix_mode, io, io).
-:- mode matrix_mode(in, di, uo) is det.
+:- pred matrix_mode(matrix_mode::in, io::di, io::uo) is det.
 
-:- pred load_matrix(matrix, io, io).
-:- mode load_matrix(in, di, uo) is det.
+:- pred get_matrix_mode(matrix_mode::out, io::di, io::uo) is det.
 
-:- pred mult_matrix(matrix, io, io).
-:- mode mult_matrix(in, di, uo) is det.
+:- pred load_matrix(matrix::in, io::di, io::uo) is det.
 
-:- pred load_identity(io, io).
-:- mode load_identity(di, uo) is det.
+:- pred mult_matrix(matrix::in, io::di, io::uo) is det.
 
-:- pred rotate(float, float, float, float, io, io).
-:- mode rotate(in, in, in, in, di, uo) is det.
+:- pred load_identity(io::di, io::uo) is det.
 
-:- pred translate(float, float, float, io, io).
-:- mode translate(in, in, in, di, uo) is det.
+:- pred rotate(float::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
 
-:- pred scale(float, float, float, io, io).
-:- mode scale(in, in, in, di, uo) is det.
+:- pred translate(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred frustum(float, float, float, float, float, float, io, io).
-:- mode frustum(in, in, in, in, in, in, di, uo) is det.
+:- pred scale(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred ortho(float, float, float, float, float, float, io, io).
-:- mode ortho(in, in, in, in, in, in, di, uo) is det.
+:- pred frustum(float::in, float::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
 
-:- pred push_matrix(io, io).
-:- mode push_matrix(di, uo) is det.
+:- pred ortho(float::in, float::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 
-:- pred pop_matrix(io, io).
-:- mode pop_matrix(di, uo) is det.
+:- pred push_matrix(io::di, io::uo) is det.
 
-:- type texture_coord --->	s ; t ; r ; q.
-
-:- type texture_parameter(T) --->
-		texture_gen_mode(texture_gen_parameter)
-	;	object_plane(T)
-	;	eye_plane(T).
-
-:- type texture_gen_parameter 
-	---> 	object_linear
-	;	eye_linear
-	;	sphere_map.
-
-:- pred tex_gen(texture_coord, texture_parameter(float), io, io).
-:- mode tex_gen(in, in, di, uo) is det.
+:- pred pop_matrix(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Clipping.
 %
 
-:- type	clip_plane --->
-		clip(float, float, float, float).
+:- type clip_plane
+	---> clip(
+		x :: float, 
+		y :: float, 
+		z :: float, 
+		w :: float
+	).
 
-:- pred clip_plane(int, clip_plane, io, io).
-:- mode clip_plane(in, in, di, uo) is det.
+:- pred clip_plane(int::in, clip_plane::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Current raster position.
 %
 
-:- pred raster_pos2(float, float, io, io).
-:- mode raster_pos2(in, in, di, uo) is det.
+:- pred raster_pos2(float::in, float::in, io::di, io::uo) is det.
 
-:- pred raster_pos3(float, float, float, io, io).
-:- mode raster_pos3(in, in, in, di, uo) is det.
+:- pred raster_pos3(float::in, float::in, float::in, io::di, io::uo) is det.
 
-:- pred raster_pos4(float, float, float, float, io, io).
-:- mode raster_pos4(in, in, in, in, di, uo) is det.
+:- pred raster_pos4(float::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Colors and coloring.
 %
 
-:- type face_direction	--->	cw ; ccw .
+:- type face_direction ---> cw ; ccw .
 
-:- type face_side	--->	front ; back ; front_and_back .
+:- type face_side
+	--->	front 
+	;	back 
+	;	front_and_back.
 
 :- type material
 	--->	ambient(float, float, float, float)
@@ -245,42 +228,36 @@
 
 :- type shade_model ---> smooth ; flat.
 
-:- pred front_face(face_direction, io, io).
-:- mode front_face(in, di, uo) is det.
+:- pred front_face(face_direction::in, io::di, io::uo) is det.
 
-:- pred material(face_side, material, io, io).
-:- mode material(in, in, di, uo) is det.
+:- pred material(face_side::in, material::in, io::di, io::uo) is det.
 
-:- pred light(light_no, light, io, io).
-:- mode light(in, in, di, uo) is det.
+:- pred light(light_no::in, light::in, io::di, io::uo) is det.
 
-:- pred light_model(lighting_model, io, io).
-:- mode light_model(in, di, uo) is det.
+:- pred light_model(lighting_model::in, io::di, io::uo) is det.
 
-:- pred color_material(face_side, color_material_mode, io, io).
-:- mode color_material(in, in, di, uo) is det.
+:- pred color_material(face_side::in, color_material_mode::in, io::di,
+	io::uo) is det.
 
-:- pred shade_model(shade_model, io, io).
-:- mode shade_model(in, di, uo) is det.
+:- pred shade_model(shade_model::in, io::di, io::uo) is det.
+
+:- pred get_shade_model(shade_model::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Points.
 %
 
-:- pred point_size(float, io, io).
-:- mode point_size(in, di, uo) is det.
+:- pred point_size(float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Line segments.
 %
 
-:- pred line_width(float, io, io).
-:- mode line_width(in, di, uo) is det.
+:- pred line_width(float::in, io::di, io::uo) is det.
 
-:- pred line_stipple(int, int, io, io).
-:- mode line_stipple(in, in, di, uo) is det.
+:- pred line_stipple(int::in, int::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -294,38 +271,42 @@
 		;	line
 		;	fill.
 
-:- pred cull_face(face_side, io, io).
-:- mode cull_face(in, di, uo) is det.
+:- pred cull_face(face_side::in, io::di, io::uo) is det.
 
-:- pred polygon_stipple(polygon_stipple, io, io).
-:- mode polygon_stipple(in, di, uo) is det.
+:- pred polygon_stipple(polygon_stipple::in, io::di, io::uo) is det.
 
-:- pred polygon_mode(face_side, polygon_mode, io, io).
-:- mode polygon_mode(in, in, di, uo) is det.
+:- pred polygon_mode(face_side::in, polygon_mode::in, io::di, io::uo) is det.
 
-:- pred polygon_offset(float, float, io, io).
-:- mode polygon_offset(in, in, di, uo) is det.
+:- pred polygon_offset(float::in, float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Pixel Rectangles.
 %
 
-/*
-
 :- type pixel_store_parameter
-		--->	unpack_swap_bytes(bool)
+		--->	pack_swap_bytes(bool)
+		;	pack_lsb_first(bool)
+		;	pack_row_length(int)
+		;	pack_image_height(int)
+		;	pack_skip_rows(int)
+		;	pack_skip_pixels(int)
+		;	pack_skip_images(int)
+		;	pack_alignment(int)
+		;	unpack_swap_bytes(bool)
 		;	unpack_lsb_first(bool)
 		;	unpack_row_length(int)
+		;	unpack_image_height(int)
 		;	unpack_skip_rows(int)
 		;	unpack_skip_pixels(int)
-		;	unpack_alignment(int)
-		.
+		;	unpack_skip_images(int)
+		;	unpack_alignment(int).
 
-:- pred pixel_store(pixel_store_parameter, io__state, io__state).
-:- mode pixel_store(in, di, uo) is det.
+:- pred pixel_store(pixel_store_parameter::in, io::di, io::uo) is det.
 
-:- type pixel_transfer_parameter
+:- pred pixel_zoom(float::in, float::in, io::di, io::uo) is det.
+	
+:- type pixel_transfer_mode
 		--->	map_color(bool)
 		;	map_stencil(bool)
 		;	index_shift(int)
@@ -338,11 +319,11 @@
 		;	green_bias(float)
 		;	blue_bias(float)
 		;	alpha_bias(float)
-		;	depth_bias(float)
-		.
+		;	depth_bias(float).
 
-:- pred pixel_transfer(pixel_transfer_parameter, io__state, io__state).
-:- mode pixel_transfer(in, di, uo) is det.
+:- pred pixel_transfer(pixel_transfer_mode::in, io::di, io::uo) is det.
+
+/*
 
 % pixel_map not implemented
 
@@ -388,30 +369,125 @@
 
 %------------------------------------------------------------------------------%
 %
-% Texturing.
+% Texture mapping.
 %
 
-/*
-
 :- type texture_target
-		--->	texture_2d
-		;	proxy_texture_2d
-		.
+	--->	texture_1d
+	;	proxy_texture_1d		
+	;	texture_2d
+	;	proxy_texture_2d.
+
+:- inst texture_1d ---> texture_1d ; proxy_texture_1d.
+:- inst texture_2d ---> texture_2d ; proxy_texture_2d.
+
+:- inst non_proxy_texture_target ---> texture_1d ; texture_2d.
 
 :- type texture_format
-		--->	alpha
-		;	luminance
-		;	luminance_alpha
-		;	intensity
-		;	rgb
-		;	rgba
-		.
+	--->	alpha		% Base formats.
+	;	luminance
+	;	luminance_alpha
+	;	intensity
+	;	rgb
+	;	rgba
+				% Sized formats.
+	;	alpha4
+	;	alpha8
+	;	alpha12
+	;	alpha16
+	;	luminance4
+	;	luminance8
+	;	luminance12
+	;	luminance16
+	;	luminance4_alpha4
+	;	luminance6_alpha2
+	;	luminance8_alpha8
+	;	luminance12_alpha4
+	;	luminance12_alpha12
+	;	luminance16_alpha16
+	;	intensity4
+	;	intensity8
+	;	intensity12
+	;	intensity16
+	;	r3_g3_b2
+	;	rgb4
+	;	rgb5
+	;	rgb10
+	;	rgb12
+	;	rgb16
+	;	rgba2
+	;	rgba4
+	;	rgb5_a1
+	;	rgba8
+	;	rgb10_a2
+	;	rgba12
+	;	rgba16.
 
-:- pred tex_image_2d(texture_target, int, int, int, int, int,
-		texture_format, texture_data, io__state, io__state).
-:- mode tex_image_2d(in, in, in, in, in, in, in, in, di, uo) is det.
+:- type texture_parameter
+	--->	wrap_s(wrap_mode)
+	;	wrap_t(wrap_mode)
+	;	min_filter(min_filter_method)
+	;	mag_filter(mag_filter_method)
+	;	border_color(float, float, float, float)
+	;	priority(float).
 
-*/
+:- type wrap_mode ---> clamp ; repeat.
+
+:- type min_filter_method
+	--->	nearest
+	;	linear
+	;	nearest_mipmap_nearest
+	;	nearest_mipmap_linear
+	;	linear_mipmap_nearest
+	;	linear_mipmap_linear.
+
+:- type mag_filter_method ---> nearest ; linear.
+
+:- pred tex_parameter(texture_target::in(non_proxy_texture_target),
+	texture_parameter::in, io::di, io::uo) is det.
+
+	% XXX We should consider making this type abstract.
+	%
+:- type texture_name == int.
+
+:- pred bind_texture(texture_target::in(non_proxy_texture_target),
+	texture_name::in, io::di, io::uo) is det.
+
+:- pred delete_textures(list(texture_name)::in, io::di, io::uo) is det.
+
+:- pred gen_textures(int::in, list(texture_name)::out, io::di, io::uo) is det.
+
+:- pred is_texture(texture_name::in, bool::out, io::di, io::uo) is det.
+
+:- type texture_env_target ---> texture_env.
+
+:- type texture_function 
+	--->	decal
+	;	replace
+	;	modulate
+	;	blend.
+
+:- type texture_env_parameter 
+	--->	texture_env_mode(texture_function)
+	;	texture_env_color(float, float, float, float).
+
+:- pred tex_env(texture_env_target::in, texture_env_parameter::in, io::di,
+	io::uo) is det.
+
+:- type texture_coord ---> s ; t ; r ; q.
+
+:- type texture_gen_parameter
+	--->	texture_gen_mode(texture_gen_function)
+	;	object_plane(float, float, float, float)
+	;	eye_plane(float, float, float, float).
+
+:- type texture_gen_function
+	---> 	object_linear
+	;	eye_linear
+	;	sphere_map.
+
+:- pred tex_gen(texture_coord::in, texture_gen_parameter::in,
+	io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -422,23 +498,22 @@
 		--->	fog_mode(fog_mode)
 		;	fog_density(float)
 		;	fog_start(float)
-		;	fog_end(float).
+		;	fog_end(float)
+		;	fog_index(float)
+		;	fog_color(float, float, float, float).
 
-:- type fog_mode
-		--->	linear
-		;	exp
-		;	exp2.
+:- type fog_mode ---> linear ; exp ; exp2.
 
-:- pred fog(fog_parameter, io, io).
-:- mode fog(in, di, uo) is det.
+:- pred fog(fog_parameter::in, io::di, io::uo) is det.
+
+:- pred get_fog_mode(fog_mode::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Per-fragment operations.
 %
 
-:- pred scissor(int, int, int, int, io, io).
-:- mode scissor(in, in, in, in, di, uo) is det.
+:- pred scissor(int::in, int::in, int::in, int::in, io::di, io::uo) is det.
 
 :- type test_func
 		--->	never
@@ -450,11 +525,10 @@
 		;	greater
 		;	not_equal.
 
-:- pred alpha_func(test_func, float, io, io).
-:- mode alpha_func(in, in, di, uo) is det.
+:- pred alpha_func(test_func::in, float::in, io::di, io::uo) is det.
 
-:- pred stencil_func(test_func, float, int, io, io).
-:- mode stencil_func(in, in, in, di, uo) is det.
+:- pred stencil_func(test_func::in, float::in, int::in, io::di, io::uo)
+	is det.
 
 :- type stencil_op
 		--->	keep
@@ -464,11 +538,10 @@
 		;	decr
 		;	invert.
 
-:- pred stencil_op(stencil_op, stencil_op, stencil_op, io, io).
-:- mode stencil_op(in, in, in, di, uo) is det.
+:- pred stencil_op(stencil_op::in, stencil_op::in, stencil_op::in, io::di,
+	io::uo) is det.
 
-:- pred depth_func(test_func, io, io).
-:- mode depth_func(in, di, uo) is det.
+:- pred depth_func(test_func::in, io::di, io::uo) is det.
 
 :- type	blend_src
 		--->	zero
@@ -491,8 +564,7 @@
 		;	dst_alpha
 		;	one_minus_dst_alpha.
 
-:- pred blend_func(blend_src, blend_dst, io, io).
-:- mode blend_func(in, in, di, uo) is det.
+:- pred blend_func(blend_src::in, blend_dst::in, io::di, io::uo) is det.
 
 :- type logical_op
 		--->	clear
@@ -512,8 +584,7 @@
 		;	nand
 		;	set.
 
-:- pred logical_op(logical_op, io, io).
-:- mode logical_op(in, di, uo) is det.
+:- pred logical_op(logical_op::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -533,20 +604,16 @@
 	;	front_and_back
 	;	aux(int).
 
-:- pred draw_buffer(buffer, io, io).
-:- mode draw_buffer(in, di, uo) is det.
+:- pred draw_buffer(buffer::in, io::di, io::uo) is det.
 
-:- pred index_mask(int, io, io).
-:- mode index_mask(in, di, uo) is det.
+:- pred index_mask(int::in, io::di, io::uo) is det.
 
-:- pred color_mask(bool, bool, bool, bool, io, io).
-:- mode color_mask(in, in, in, in, di, uo) is det.
+:- pred color_mask(bool::in, bool::in, bool::in, bool::in, io::di, io::uo)
+	is det.
 
-:- pred depth_mask(bool, io, io).
-:- mode depth_mask(in, di, uo) is det.
+:- pred depth_mask(bool::in, io::di, io::uo) is det.
 
-:- pred stencil_mask(int, io, io).
-:- mode stencil_mask(in, di, uo) is det.
+:- pred stencil_mask(int::in, io::di, io::uo) is det.
 
 :- type buffer_bit
 	--->	color
@@ -554,33 +621,28 @@
 	;	stencil
 	;	accum.
 
-:- pred clear(list(buffer_bit), io, io).
-:- mode clear(in, di, uo) is det.
+:- pred clear(list(buffer_bit)::in, io::di, io::uo) is det.
 
-:- pred clear_color(float, float, float, float, io, io).
-:- mode clear_color(in, in, in, in, di, uo) is det.
+:- pred clear_color(float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 
-:- pred clear_index(float, io, io).
-:- mode clear_index(in, di, uo) is det.
+:- pred clear_index(float::in, io::di, io::uo) is det.
 
-:- pred clear_depth(float, io, io).
-:- mode clear_depth(in, di, uo) is det.
+:- pred clear_depth(float::in, io::di, io::uo) is det.
 
-:- pred clear_stencil(int, io, io).
-:- mode clear_stencil(in, di, uo) is det.
+:- pred clear_stencil(int::in, io::di, io::uo) is det.
 
-:- pred clear_accum(float, float, float, float, io, io).
-:- mode clear_accum(in, in, in, in, di, uo) is det.
+:- pred clear_accum(float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 
 :- type accum_op
-		--->	accum
-		;	load
-		;	return
-		;	mult
-		;	add.
+	--->	accum
+	;	load
+	;	return
+	;	mult
+	;	add.
 
-:- pred accum(accum_op, float, io, io).
-:- mode accum(in, in, di, uo) is det.
+:- pred accum(accum_op::in, float::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -594,25 +656,20 @@
 % Selection.
 %
 
-:- pred init_names(io, io).
-:- mode init_names(di, uo) is det.
+:- pred init_names(io::di, io::uo) is det.
 
-:- pred pop_name(io, io).
-:- mode pop_name(di, uo) is det.
+:- pred pop_name(io::di, io::uo) is det.
 
-:- pred push_name(int, io, io).
-:- mode push_name(in, di, uo) is det.
+:- pred push_name(int::in, io::di, io::uo) is det.
 
-:- pred load_name(int, io, io).
-:- mode load_name(in, di, uo) is det.
+:- pred load_name(int::in, io::di, io::uo) is det.
 
 :- type render_mode
 		--->	render
 		;	select
 		;	feedback.
 
-:- pred render_mode(render_mode, int, io, io).
-:- mode render_mode(in, out, di, uo) is det.
+:- pred render_mode(render_mode::in, int::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -623,37 +680,28 @@
 	--->	compile
 	;	compile_and_execute.
 
-:- pred new_list(int, display_list_mode, io, io).
-:- mode new_list(in, in, di, uo) is det.
+:- pred new_list(int::in, display_list_mode::in, io::di, io::uo) is det.
 
-:- pred end_list(io, io).
-:- mode end_list(di, uo) is det.
+:- pred end_list(io::di, io::uo) is det.
 
-:- pred call_list(int, io, io).
-:- mode call_list(in, di, uo) is det.
+:- pred call_list(int::in, io::di, io::uo) is det.
 
-:- pred gen_lists(int, int, io, io).
-:- mode gen_lists(in, out, di, uo) is det.
+:- pred gen_lists(int::in, int::out, io::di, io::uo) is det.
 
-:- pred delete_lists(int, int, io, io).
-:- mode delete_lists(in, in, di, uo) is det.
+:- pred delete_lists(int::in, int::in, io::di, io::uo) is det.
 
-:- pred is_list(int, bool, io, io).
-:- mode is_list(in, out, di, uo) is det.
+:- pred is_list(int::in, bool::out, io::di, io::uo) is det.
 
-:- pred list_base(int, io, io).
-:- mode list_base(in, di, uo) is det.
+:- pred list_base(int::in, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
 % Flush and Finish.
 %
 
-:- pred flush(io, io).
-:- mode flush(di, uo) is det.
+:- pred flush(io::di, io::uo) is det.
 
-:- pred finish(io, io).
-:- mode finish(di, uo) is det.
+:- pred finish(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -661,38 +709,37 @@
 %
 
 :- type	control_flag
-		--->	normalize			
-		;	clip_plane(int)		
-		;	lighting			
-		;	light(int)			
-		;	color_material
-		;	line_stipple		
-		;	cull_face		
-		;	polygon_stipple		
-		;	polygon_offset_point
-		;	polygon_offset_line	
-		;	polygon_offset_fill	
-		;	fog					
-		;	scissor_test		
-		;	alpha_test			
-		;	stencil_test		
-		;	depth_test			
-		;	blend				
-		;	dither				
-		;	index_logic_op		
-		;	color_logic_op
+		--->	alpha_test
 		;	auto_normal
+		;	blend
+		;	clip_plane(int)
+		;	color_logic_op
+		;	color_material
+		;	cull_face
+		;	depth_test
+		;	dither
+		;	fog
+		;	index_logic_op
+		;	light(int)
+		;	lighting
+		;	line_smooth
+		;	line_stipple
+		;	normalize
+		;	point_smooth
+		;	polygon_offset_fill
+		;	polygon_offset_line
+		;	polygon_offset_point
+		;	polygon_stipple
+		;	scissor_test
+		;	stencil_test
 		;	texture_1d
 		;	texture_2d.
 
-:- pred enable(control_flag, io, io).
-:- mode enable(in, di, uo) is det.
+:- pred enable(control_flag::in, io::di, io::uo) is det.
 
-:- pred disable(control_flag, io, io).
-:- mode disable(in, di, uo) is det.
+:- pred disable(control_flag::in, io::di, io::uo) is det.
 
-:- pred is_enabled(control_flag, bool, io, io).
-:- mode is_enabled(in, out, di, uo) is det.
+:- pred is_enabled(control_flag::in, bool::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -711,8 +758,218 @@
 	;       nicest
 	;       do_not_care.
 
-:- pred hint(hint_target, hint_mode, io, io).
-:- mode hint(in, in, di, uo) is det.
+:- pred hint(hint_target::in, hint_mode::in, io::di, io::uo) is det.
+
+:- pred get_hint(hint_target::in, hint_mode::out, io::di, io::uo) is det.
+
+%------------------------------------------------------------------------------%
+%
+% State and state requests.
+%
+
+:- pred get_clip_plane(int::in, clip_plane::out, io::di, io::uo) is det.
+
+:- type single_boolean_state
+	--->	current_raster_position_valid
+	;	depth_writemask
+	;	double_buffer
+	;	edge_flag
+	;	index_mode
+	;	light_model_local_viewer
+	;	light_model_two_side
+	;	map_color
+	;	map_stencil
+	;	pack_lsb_first
+	;	pack_swap_bytes
+	;	rgba_mode
+	;	stereo
+	;	unpack_lsb_first
+	;	unpack_swap_bytes.
+
+:- type quad_boolean_state ---> color_writemask.
+
+:- pred get_boolean(single_boolean_state::in, bool::out, io::di, io::uo)
+	is det.
+
+:- pred get_boolean(quad_boolean_state::in, bool::out, bool::out, bool::out, bool::out,
+	io::di, io::uo) is det.
+
+:- type single_integer_state
+	--->	accum_alpha_bits
+	;	accum_blue_bits
+	;	accum_green_bits
+	;	accum_red_bits
+	;	alpha_bits
+	;	alpha_test_ref
+	;	attrib_stack_depth
+	;	aux_buffers
+	;	blue_bits
+	;	client_attrib_stack_depth
+	;	color_array_size
+	;	color_array_stride
+	;	depth_bits
+	;	depth_clear_value
+	;	edge_flag_array_stride
+	;	feedback_buffer_size
+	;	green_bits
+	;	index_array_stride
+	;	index_bits
+	;	index_offset
+	;	index_shift
+	;	line_stipple_repeat
+	;	list_base
+	;	list_index
+	;	max_attrib_stack_depth
+	;	max_client_attrib_stack_depth
+	;	max_clip_planes
+	;	max_eval_order
+	;	max_lights
+	;	max_list_nesting
+	;	max_modelview_stack_depth
+	;	max_name_stack_depth
+	;	max_pixel_map_table
+	;	max_projection_stack_depth
+	;	max_texture_size
+	;	max_texture_stack_depth
+	;	modelview_stack_depth
+	;	name_stack_depth
+	;	normal_array_stride
+	;	pack_alignment
+	;	pack_row_length
+	;	pack_skip_rows
+	;	projection_stack_depth
+	;	red_bits
+	;	selection_buffer_size
+	;	stencil_bits
+	;	stencil_clear_value
+	;	stencil_ref
+	;	subpixel_bits
+	;	texture_coord_array_size
+	;	texture_coord_array_stride
+	;	texture_stack_depth
+	;	unpack_alignment
+	;	unpack_row_length
+	;	unpack_skip_pixels
+	;	unpack_skip_rows
+	;	vertex_array_size
+	;	vertex_array_stride.
+
+:- type double_integer_state ---> max_viewport_dims.
+
+:- pred get_integer(single_integer_state::in, int::out, io::di, io::uo)
+	is det.
+
+:- pred get_integer(double_integer_state::in, int::out, int::out,
+	io::di, io::uo) is det.
+
+:- type single_float_state
+	---> 	accum_clear_value
+	;	alpha_bias
+	;	alpha_scale
+	;	blue_bias
+	;	blue_scale
+	;	current_index
+	;	current_raster_distance
+	;	current_raster_index
+	;	depth_bias
+	;	depth_scale
+	;	fog_density
+	;	fog_end
+	;	fog_index
+	;	fog_start
+	;	green_bias
+	;	green_scale
+	;	index_clear_value
+	;	line_stipple_repeat
+	;	line_width
+	;	map1_grid_segments
+	;	point_size
+	;	polygon_offset_factor
+	;	polygon_offset_units
+	;	red_bias
+	;	red_scale
+	;	zoom_x
+	;	zoom_y.
+
+:- type double_float_state
+	--->	aliased_point_size_range
+	;	depth_range
+	;	map1_grid_domain
+	;	map2_grid_segments.
+
+:- type triple_float_state ---> current_normal.
+
+:- type quad_float_state
+	--->	color_clear_value
+	;	current_color
+	;	current_raster_color
+	;	current_raster_position
+	;	current_texture_coords
+	;	fog_color
+	;	map2_grid_domain.
+
+:- pred get_float(single_float_state::in, float::out, io::di, io::uo) is det.
+
+:- pred get_float(double_float_state::in, float::out, float::out, io::di,
+	io::uo) is det.
+
+:- pred get_float(triple_float_state::in, float::out, float::out, float::out,
+	io::di, io::uo) is det.
+
+:- pred get_float(quad_float_state::in, float::out, float::out, float::out,
+	float::out, io::di, io::uo) is det.
+
+%------------------------------------------------------------------------------%
+%
+% Server attribute stack.
+%
+
+:- type server_attrib_group
+	--->	accum_buffer
+	;	color_buffer
+	;	current
+	;	depth_buffer
+	;	enable
+	;	eval
+	;	fog
+	;	hint
+	;	lighting
+	;	line
+	;	list
+	;	pixel_mode
+	;	point
+	;	polygon
+	;	polygon_stipple
+	;	scissor
+	;	stencil_buffer
+	;	transform
+	;	viewport.
+
+	% Push *all* server attribute groups onto the stack.
+	%
+:- pred push_attrib(io::di, io::uo) is det.
+
+:- pred push_attrib(list(server_attrib_group)::in, io::di, io::uo) is det.
+
+:- pred pop_attrib(io::di, io::uo) is det.
+
+%------------------------------------------------------------------------------%
+%
+% Client attribute stack.
+%
+	
+	% There are others but these are the only two that can be pushed
+	% onto the client attribute stack.
+:- type client_attrib_group
+	--->	vertex_array
+	;	pixel_store.
+
+:- pred push_client_attrib(io::di, io::uo) is det.
+
+:- pred push_client_attrib(list(client_attrib_group)::in, io::di, io::uo)
+	is det.
+
+:- pred pop_client_attrib(io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -721,6 +978,8 @@
 
 :- import_module list, int, float, require, std_util.
 
+	% XXX Check that this works on Windows.
+	% We may need to #include <windows.h> to make it work.
 :- pragma foreign_decl("C", "
 	#include <stdio.h>
 	#include <math.h>
@@ -745,21 +1004,12 @@ error_to_int(4) = stack_overflow.
 error_to_int(5) = stack_underflow.
 error_to_int(6) = out_of_memory.
 
-get_error(Err, !IO) :-
-	get_error2(ErrNo, !IO),
-	( if	Err0 = error_to_int(ErrNo)
-	  then	Err = Err0
-	  else	error("GetError returned an unexpected value.")
-	).
+:- pragma foreign_decl("C", "
+	extern const GLenum errcodes[];
+").
 
-:- pred get_error2(int, io, io).
-:- mode get_error2(out, di, uo) is det.
-
-:- pragma foreign_proc("C", 
-	get_error2(Err::out, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
-"{
-	static GLenum errcodes[] = {
+:- pragma foreign_code("C", "
+	const GLenum errcodes[] = {
 		GL_NO_ERROR,
 		GL_INVALID_ENUM,
 		GL_INVALID_VALUE,
@@ -768,17 +1018,31 @@ get_error(Err, !IO) :-
 		GL_STACK_UNDERFLOW,
 		GL_OUT_OF_MEMORY
 	};
-	
+").
+
+get_error(Err, !IO) :-
+	get_error_2(ErrNo, !IO),
+	( if	Err0 = error_to_int(ErrNo)
+	  then	Err = Err0
+	  else	error("GetError returned an unexpected value.")
+	).
+
+:- pred get_error_2(int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	get_error_2(Err::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLenum err;
 	MR_Integer i;
 
 	err = glGetError();
 
-	for (i=0; i < 7; i++)
+	for (i=0; i < 7; i++) {
 		if (errcodes[i] == err) {
-			Err =  i;
+			Err = i;
 			break;
 		}
+	}
 	
 	IO = IO0;
 }").
@@ -821,13 +1085,11 @@ block_mode_to_int(quads)	= 9.
 ").
 
 begin(Blk, !IO) :-
-	begin2(block_mode_to_int(Blk), !IO).
+	begin_2(block_mode_to_int(Blk), !IO).
 
-:- pred begin2(int, io, io).
-:- mode begin2(in, di, uo) is det.
-
+:- pred begin_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	begin2(Mode::in, IO0::di, IO::uo), 
+	begin_2(Mode::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glBegin(block_mode_flags[Mode]);
@@ -843,15 +1105,13 @@ begin(Blk, !IO) :-
 ").
 
 edge_flag(no, !IO) :-
-	edge_flag2(0, !IO).
+	edge_flag_2(0, !IO).
 edge_flag(yes, !IO) :- 
-	edge_flag2(1, !IO).
+	edge_flag_2(1, !IO).
 
-:- pred edge_flag2(int, io, io).
-:- mode edge_flag2(in, di, uo) is det.
-
+:- pred edge_flag_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	edge_flag2(F::in, IO0::di, IO::uo), 
+	edge_flag_2(F::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glEdgeFlag((GLboolean) F);
@@ -1041,11 +1301,13 @@ edge_flag(yes, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- func matrix_mode_to_int(matrix_mode) = int.
+:- pred matrix_mode_to_int(matrix_mode, int).
+:- mode matrix_mode_to_int(in, out) is det.
+:- mode matrix_mode_to_int(out, in) is semidet.
 
-matrix_mode_to_int(texture)	= 0.
-matrix_mode_to_int(modelview)	= 1.
-matrix_mode_to_int(projection)	= 2.
+matrix_mode_to_int(texture, 0).
+matrix_mode_to_int(modelview, 1).
+matrix_mode_to_int(projection, 2).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum matrix_mode_flags[];
@@ -1059,19 +1321,38 @@ matrix_mode_to_int(projection)	= 2.
 	};
 ").
 
-matrix_mode(Mode, !IO) :-
-	matrix_mode2(matrix_mode_to_int(Mode), !IO).
+matrix_mode(Mode0, !IO) :-
+	matrix_mode_to_int(Mode0, Mode),
+	matrix_mode_2(Mode, !IO).
 
-:- pred matrix_mode2(int, io, io).
-:- mode matrix_mode2(in, di, uo) is det.
-
+:- pred matrix_mode_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	matrix_mode2(I::in, IO0::di, IO::uo), 
+	matrix_mode_2(I::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glMatrixMode(matrix_mode_flags[I]);
 	IO = IO0;
 ").
+
+get_matrix_mode(Mode, !IO) :-
+	get_matrix_mode_2(Mode0, !IO),
+	( matrix_mode_to_int(Mode1, Mode0) ->
+		Mode = Mode1
+	;
+		error("Cannot convert integer to matrix_mode.")
+	).
+
+:- pred get_matrix_mode_2(int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_matrix_mode_2(Matrix::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
+	GLint v;
+
+	glGetIntegerv(GL_MATRIX_MODE, &v);
+	Matrix = (MR_Integer) v;
+	IO = IO0;
+}").
 
 load_matrix(Matrix, !IO) :-
 	Matrix = m(
@@ -1080,22 +1361,17 @@ load_matrix(Matrix, !IO) :-
 		A3, A7, A11, A15,
 		A4, A8, A12, A16
 	),
-	load_matrix2(A1, A2, A3, A4, A5, A6, A7, A8,
+	load_matrix_2(A1, A2, A3, A4, A5, A6, A7, A8,
 		A9, A10, A11, A12, A13, A14, A15, A16, !IO).
 
-:- pred load_matrix2(
-		float, float, float, float,
-		float, float, float, float,
-		float, float, float, float,
-		float, float, float, float, io, io).
-:- mode load_matrix2(
-		in, in, in, in,
-		in, in, in, in,
-		in, in, in, in,
-		in, in, in, in, di, uo) is det.
-
+:- pred load_matrix_2(
+	float::in, float::in, float::in, float::in,
+	float::in, float::in, float::in, float::in,
+	float::in, float::in, float::in, float::in,
+	float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	load_matrix2(A1::in, A2::in, A3::in, A4::in,
+	load_matrix_2(A1::in, A2::in, A3::in, A4::in,
 		A5::in, A6::in, A7::in, A8::in,
 		A9::in, A10::in, A11::in, A12::in,
 		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
@@ -1140,16 +1416,11 @@ mult_matrix(Matrix, !IO) :-
 		A9, A10, A11, A12, A13, A14, A15, A16, !IO).
 
 :- pred mult_matrix2(
-		float, float, float, float,
-		float, float, float, float,
-		float, float, float, float,
-		float, float, float, float, io, io).
-:- mode mult_matrix2(
-		in, in, in, in,
-		in, in, in, in,
-		in, in, in, in,
-		in, in, in, in, di, uo) is det.
-
+		float::in, float::in, float::in, float::in,
+		float::in, float::in, float::in, float::in,
+		float::in, float::in, float::in, float::in,
+		float::in, float::in, float::in, float::in,
+		io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	mult_matrix2(A1::in, A2::in, A3::in, A4::in,
 		A5::in, A6::in, A7::in, A8::in,
@@ -1265,99 +1536,18 @@ mult_matrix(Matrix, !IO) :-
 	IO = IO0;
 ").
 
-:- func texture_coord_to_int(texture_coord) = int.
-
-texture_coord_to_int(s)	= 0.
-texture_coord_to_int(t)	= 1.
-texture_coord_to_int(r)	= 2.
-texture_coord_to_int(q)	= 3.
-
-:- pragma foreign_decl("C", "
-	extern const GLenum texture_coord_flags[];
-").
-
-:- pragma foreign_code("C", "
-	const GLenum texture_coord_flags[] = {
-		GL_S,
-		GL_T,
-		GL_R,
-		GL_Q
-	};
-").
-
-:- func texture_gen_parameter_to_int(texture_gen_parameter) = int.
-
-texture_gen_parameter_to_int(object_linear) = 0.
-texture_gen_parameter_to_int(eye_linear)    = 1.
-texture_gen_parameter_to_int(sphere_map)    = 2.
-
-:- pragma foreign_decl("C", "
-	extern const GLenum texture_gen_flags[];
-").
-
-:- pragma foreign_code("C", "
-	const GLenum texture_gen_flags[] = {
-		GL_OBJECT_LINEAR,
-		GL_EYE_LINEAR,
-		GL_SPHERE_MAP
-	};
-").
-
-tex_gen(Coord, texture_gen_mode(Param), !IO) :-
-	tex_genf2a(texture_coord_to_int(Coord),
-		texture_gen_parameter_to_int(Param), !IO).
-tex_gen(Coord, object_plane(Param), !IO) :-
-	tex_genf2b(texture_coord_to_int(Coord), Param, !IO).
-tex_gen(Coord, eye_plane(Param), !IO) :-
-	tex_genf2c(texture_coord_to_int(Coord), Param, !IO).
-
-:- pred tex_genf2a(int, int, io, io).
-:- mode tex_genf2a(in, in, di, uo) is det.
-
-:- pragma foreign_proc("C", 
-	tex_genf2a(Coord::in, Param::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
-"
-	glTexGeni(texture_coord_flags[Coord], GL_TEXTURE_GEN_MODE,
-		texture_gen_flags[Param]);
-	IO = IO0;
-").
-
-:- pred tex_genf2b(int, float, io, io).
-:- mode tex_genf2b(in, in, di, uo) is det.
-
-:- pragma foreign_proc("C", 
-	tex_genf2b(Coord::in, Param::in, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
-" 
-	glTexGend(texture_coord_flags[Coord], GL_OBJECT_PLANE, (GLdouble)Param);
-	IO = IO0;
-").
-
-:- pred tex_genf2c(int, float, io, io).
-:- mode tex_genf2c(in, in, di, uo) is det.
-
-:- pragma foreign_proc("C", 
-	tex_genf2c(Coord::in, Param::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
-" 
-	glTexGend(texture_coord_flags[Coord], GL_EYE_PLANE, (GLdouble) Param);
-	IO = IO0;
-").
-
 %------------------------------------------------------------------------------%
 %
 % Clipping.
 %
 
 clip_plane(Num, clip(X, Y, Z, W), !IO) :-
-	clip_plane2(Num, X, Y, Z, W, !IO).
+	clip_plane_2(Num, X, Y, Z, W, !IO).
 
-:- pred clip_plane2(int, float, float, float, float, io, io).
-:- mode clip_plane2(in, in, in, in, in, di, uo) is det.
-
+:- pred clip_plane_2(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
-	clip_plane2(I::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	clip_plane_2(I::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "{
 	GLdouble p[4];
@@ -1474,10 +1664,12 @@ color_material_mode_to_int(emission)		= 4.
 	};
 ").
 
-:- func shade_model_to_int(shade_model) = int.
+:- pred shade_model_to_int(shade_model, int).
+:- mode shade_model_to_int(in, out) is det.
+:- mode shade_model_to_int(out, in) is semidet.
 
-shade_model_to_int(smooth) = 0.
-shade_model_to_int(flat)   = 1.
+shade_model_to_int(smooth, 0).
+shade_model_to_int(flat, 1).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum shade_model_flags[];
@@ -1493,9 +1685,7 @@ shade_model_to_int(flat)   = 1.
 front_face(Face, !IO) :-
 	front_face2(face_direction_to_int(Face), !IO).
 
-:- pred front_face2(int, io, io).
-:- mode front_face2(in, di, uo) is det.
-
+:- pred front_face2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	front_face2(F::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1519,9 +1709,8 @@ material(Face, shininess(S), !IO) :-
 material(Face, color_indexes(R, G, B), !IO) :-
 	material_color_indexes(face_side_to_int(Face), R, G, B, !IO).
 
-:- pred material_ambient(int, float, float, float, float, io, io).
-:- mode material_ambient(in, in, in, in, in, di, uo) is det.
-
+:- pred material_ambient(int::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1536,9 +1725,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_diffuse(int, float, float, float, float, io, io).
-:- mode material_diffuse(in, in, in, in, in, di, uo) is det.
-
+:- pred material_diffuse(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1553,9 +1741,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_ambient_and_diffuse(int, float, float, float, float, io, io).
-:- mode material_ambient_and_diffuse(in, in, in, in, in, di, uo) is det.
-
+:- pred material_ambient_and_diffuse(int::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di,
 		IO::uo), 
@@ -1571,9 +1758,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_specular(int, float, float, float, float, io, io).
-:- mode material_specular(in, in, in, in, in, di, uo) is det.
-
+:- pred material_specular(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1588,9 +1774,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_emission(int, float, float, float, float, io, io).
-:- mode material_emission(in, in, in, in, in, di, uo) is det.
-
+:- pred material_emission(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_emission(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1605,9 +1790,7 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_shininess(int, float, io, io).
-:- mode material_shininess(in, in, di, uo) is det.
-
+:- pred material_shininess(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_shininess(F::in, S::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1616,9 +1799,8 @@ material(Face, color_indexes(R, G, B), !IO) :-
 	IO = IO0;
 }").
 
-:- pred material_color_indexes(int, float, float, float, io, io).
-:- mode material_color_indexes(in, in, in, in, di, uo) is det.
-
+:- pred material_color_indexes(int::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	material_color_indexes(F::in, R::in, G::in, B::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1653,9 +1835,8 @@ light(Num, linear_attenuation(K), !IO) :-
 light(Num, quadratic_attenuation(K), !IO) :-
 	light_quadratic_attenuation(Num, K, !IO).
 
-:- pred light_ambient(int, float, float, float, float, io, io).
-:- mode light_ambient(in, in, in, in, in, di, uo) is det.
-
+:- pred light_ambient(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1670,9 +1851,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_diffuse(int, float, float, float, float, io, io).
-:- mode light_diffuse(in, in, in, in, in, di, uo) is det.
-
+:- pred light_diffuse(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1687,9 +1867,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_specular(int, float, float, float, float, io, io).
-:- mode light_specular(in, in, in, in, in, di, uo) is det.
-
+:- pred light_specular(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1704,9 +1883,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_position(int, float, float, float, float, io, io).
-:- mode light_position(in, in, in, in, in, di, uo) is det.
-
+:- pred light_position(int::in, float::in, float::in, float::in, float::in,
+	io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_position(F::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1721,9 +1899,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_spot_direction(int, float, float, float, io, io).
-:- mode light_spot_direction(in, in, in, in, di, uo) is det.
-
+:- pred light_spot_direction(int::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_spot_direction(F::in, I::in, J::in, K::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1737,9 +1914,7 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_spot_exponent(int, float, io, io).
-:- mode light_spot_exponent(in, in, di, uo) is det.
-
+:- pred light_spot_exponent(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_spot_exponent(F::in, E::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1748,9 +1923,7 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_spot_cutoff(int, float, io, io).
-:- mode light_spot_cutoff(in, in, di, uo) is det.
-
+:- pred light_spot_cutoff(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	light_spot_cutoff(F::in, E::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1759,9 +1932,7 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_constant_attenuation(int, float, io, io).
-:- mode light_constant_attenuation(in, in, di, uo) is det.
-
+:- pred light_constant_attenuation(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	light_constant_attenuation(F::in, E::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1770,9 +1941,7 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_linear_attenuation(int, float, io, io).
-:- mode light_linear_attenuation(in, in, di, uo) is det.
-
+:- pred light_linear_attenuation(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	light_linear_attenuation(F::in, E::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1781,9 +1950,8 @@ light(Num, quadratic_attenuation(K), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_quadratic_attenuation(int, float, io, io).
-:- mode light_quadratic_attenuation(in, in, di, uo) is det.
-
+:- pred light_quadratic_attenuation(int::in, float::in, io::di, io::uo)
+	is det.
 :- pragma foreign_proc("C",
 	light_quadratic_attenuation(F::in, E::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1804,9 +1972,8 @@ light_model(light_model_local_viewer(Bool), !IO) :-
 light_model(light_model_two_side(Bool), !IO) :-
 	light_model_two_side(bool_to_int(Bool), !IO).
 
-:- pred light_model_ambient(float, float, float, float, io, io).
-:- mode light_model_ambient(in, in, in, in, di, uo) is det.
-
+:- pred light_model_ambient(float::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
 :- pragma foreign_proc("C",
 	light_model_ambient(R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1821,9 +1988,7 @@ light_model(light_model_two_side(Bool), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_model_local_viewer(int, io, io).
-:- mode light_model_local_viewer(in, di, uo) is det.
-
+:- pred light_model_local_viewer(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	light_model_local_viewer(F::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1832,9 +1997,7 @@ light_model(light_model_two_side(Bool), !IO) :-
 	IO = IO0;
 }").
 
-:- pred light_model_two_side(int, io, io).
-:- mode light_model_two_side(in, di, uo) is det.
-
+:- pred light_model_two_side(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	light_model_two_side(F::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1847,9 +2010,7 @@ color_material(Face, Mode, !IO) :-
 	color_material2(face_side_to_int(Face),
 		color_material_mode_to_int(Mode), !IO).
 
-:- pred color_material2(int, int, io, io).
-:- mode color_material2(in, in, di, uo) is det.
-
+:- pred color_material2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	color_material2(Face::in, Mode::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1858,19 +2019,38 @@ color_material(Face, Mode, !IO) :-
 	IO = IO0;
 ").
 
-shade_model(Model, !IO) :-
-	shade_model2(shade_model_to_int(Model), !IO).
+shade_model(Model0, !IO) :-
+	shade_model_to_int(Model0, Model),
+	shade_model_2(Model, !IO).
 
-:- pred shade_model2(int, io, io).
-:- mode shade_model2(in, di, uo) is det.
-
+:- pred shade_model_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	shade_model2(Model::in, IO0::di, IO::uo), 
+	shade_model_2(Model::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glShadeModel(shade_model_flags[Model]);
 	IO = IO0;
 ").
+
+get_shade_model(Model, !IO) :-
+	get_shade_model_2(Model0, !IO),
+	( shade_model_to_int(Model1, Model0) ->
+		Model = Model1
+	;
+		error("Cannot convert integer to shade model.")
+	).
+
+:- pred get_shade_model_2(int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_shade_model_2(Value::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
+	GLint v;
+	
+	glGetIntegerv(GL_SHADE_MODEL, &v);
+	Value = (MR_Integer) v;
+	IO = IO0;
+}").
 
 %------------------------------------------------------------------------------%
 %
@@ -1932,9 +2112,7 @@ polygon_mode_to_int(fill)  = 2.
 cull_face(Face, !IO) :-
 	cull_face2(face_side_to_int(Face), !IO).
 
-:- pred cull_face2(int, io, io).
-:- mode cull_face2(in, di, uo) is det.
-
+:- pred cull_face2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	cull_face2(F::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
@@ -1952,9 +2130,7 @@ polygon_stipple(_, _, _) :-
 polygon_mode(Face, Mode, !IO) :-
 	polygon_mode2(face_side_to_int(Face), polygon_mode_to_int(Mode), !IO).
 
-:- pred polygon_mode2(int, int, io, io).
-:- mode polygon_mode2(in, in, di, uo) is det.
-
+:- pred polygon_mode2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	polygon_mode2(Face::in, Mode::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -1976,69 +2152,140 @@ polygon_mode(Face, Mode, !IO) :-
 % Pixel Rectangles.
 %
 
-/*
+:- pragma foreign_decl("C", "
+	extern const GLenum pixel_store_parameter_flags[];
+").
 
-:- type pixel_store_parameter
-		--->	unpack_swap_bytes(bool)
-		;	unpack_lsb_first(bool)
-		;	unpack_row_length(int)
-		;	unpack_skip_rows(int)
-		;	unpack_skip_pixels(int)
-		;	unpack_alignment(int)
-		.
+:- pragma foreign_code("C", "
+	const GLenum pixel_store_parameter_flags[] = {
+		GL_PACK_SWAP_BYTES,
+		GL_PACK_LSB_FIRST,
+		GL_PACK_ROW_LENGTH,
+		GL_PACK_IMAGE_HEIGHT,
+		GL_PACK_SKIP_ROWS,
+		GL_PACK_SKIP_PIXELS,
+		GL_PACK_SKIP_IMAGES,
+		GL_PACK_ALIGNMENT,
+		GL_UNPACK_SWAP_BYTES,
+		GL_UNPACK_LSB_FIRST,
+		GL_UNPACK_ROW_LENGTH,
+		GL_UNPACK_IMAGE_HEIGHT,
+		GL_UNPACK_SKIP_ROWS,
+		GL_UNPACK_SKIP_PIXELS,
+		GL_UNPACK_SKIP_IMAGES,
+		GL_UNPACK_ALIGNMENT
+	};
+").
 
-:- pred pixel_store(pixel_store_parameter, io__state, io__state).
-:- mode pixel_store(in, di, uo) is det.
+:- pred pixel_store_parameter_to_ints(pixel_store_parameter::in, int::out,
+	int::out) is det.
 
-:- type pixel_transfer_parameter
-		--->	map_color(bool)
-		;	map_stencil(bool)
-		;	index_shift(int)
-		;	index_offset(int)
-		;	red_scale(float)
-		;	green_scale(float)
-		;	blue_scale(float)
-		;	alpha_scale(float)
-		;	red_bias(float)
-		;	green_bias(float)
-		;	blue_bias(float)
-		;	alpha_bias(float)
-		;	depth_bias(float)
-		.
+pixel_store_parameter_to_ints(pack_swap_bytes(Param), 0, bool_to_int(Param)).
+pixel_store_parameter_to_ints(pack_lsb_first(Param), 1, bool_to_int(Param)).
+pixel_store_parameter_to_ints(pack_row_length(Param), 2, Param).
+pixel_store_parameter_to_ints(pack_image_height(Param), 3, Param).
+pixel_store_parameter_to_ints(pack_skip_rows(Param), 4, Param).
+pixel_store_parameter_to_ints(pack_skip_pixels(Param), 5, Param).
+pixel_store_parameter_to_ints(pack_skip_images(Param), 6, Param).
+pixel_store_parameter_to_ints(pack_alignment(Param), 7, Param).
+pixel_store_parameter_to_ints(unpack_swap_bytes(Param), 8, bool_to_int(Param)).
+pixel_store_parameter_to_ints(unpack_lsb_first(Param), 9, bool_to_int(Param)).
+pixel_store_parameter_to_ints(unpack_row_length(Param), 10, Param).
+pixel_store_parameter_to_ints(unpack_image_height(Param), 11, Param).
+pixel_store_parameter_to_ints(unpack_skip_rows(Param), 12, Param).
+pixel_store_parameter_to_ints(unpack_skip_pixels(Param), 13, Param).
+pixel_store_parameter_to_ints(unpack_skip_images(Param), 14, Param).
+pixel_store_parameter_to_ints(unpack_alignment(Param), 15, Param).
 
-:- pred pixel_transfer(pixel_transfer_parameter, io__state, io__state).
-:- mode pixel_transfer(in, di, uo) is det.
+pixel_store(Param, !IO) :-
+	pixel_store_parameter_to_ints(Param, PName, Value),
+	pixel_store_2(PName, Value, !IO).
 
-% pixel_map not implemented
+:- pred pixel_store_2(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	pixel_store_2(PName::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPixelStorei(pixel_store_parameter_flags[PName], (GLint) Param);
+	IO = IO0;
+").
 
-:- type draw_mode
-		--->	color_index
-		;	stencil_index
-		;	depth_component
-		;	red
-		;	green
-		;	blue
-		;	alpha
-		;	rgb
-		;	rgba
-		;	luminance
-		;	luminance_alpha
-		.
+:- pragma foreign_proc("C",
+	pixel_zoom(X::in, Y::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPixelZoom((GLfloat) X, (GLfloat) Y);
+	IO = IO0;
+").
 
-:- type draw_data
-		--->	bitmap(list(int))	% 32 bits
-%		;	ubyte(list(int))	% 4 x 8 bits -> 4 x ubyte
-%		;	byte(list(int))		% 4 x 8 bits -> 4 x byte
-%		;	ushort(list(int))	% 2 x 16 bits -> 2 x ushort
-%		;	short(list(int))	% 2 x 16 bits -> 2 x short
-%		;	int(list(int))		% 1 x 32 bits -> 1 x int
-		;	float(list(float))
-		.
+:- pragma foreign_decl("C", "
+	extern const GLenum pixel_transfer_mode_flags[];
+").
 
-:- pred draw_pixels(int, int, draw_mode, draw_data, io__state, io__state).
-:- mode draw_pixels(in, in, in, in, di, uo) is det.
+:- pragma foreign_code("C", "
+	const GLenum pixel_transfer_mode_flags[] = {
+		GL_MAP_COLOR,
+		GL_MAP_STENCIL,
+		GL_INDEX_SHIFT,
+		GL_INDEX_OFFSET,
+		GL_RED_SCALE,
+		GL_GREEN_SCALE,
+		GL_BLUE_SCALE,
+		GL_ALPHA_SCALE,
+		GL_RED_BIAS,
+		GL_GREEN_BIAS,
+		GL_BLUE_BIAS,
+		GL_ALPHA_BIAS,
+		GL_DEPTH_BIAS
+	};
+").
+	
+	% The magic numbers below are indicies into the
+	% `pixel_transfer_mode_flags' array.
+pixel_transfer(map_color(Bool), !IO) :-
+	pixel_transferi(0, bool_to_int(Bool), !IO).
+pixel_transfer(map_stencil(Bool), !IO) :-
+	pixel_transferi(1, bool_to_int(Bool), !IO).
+pixel_transfer(index_shift(Shift), !IO) :-
+	pixel_transferi(2, Shift, !IO).
+pixel_transfer(index_offset(Offset), !IO) :-
+	pixel_transferi(3, Offset, !IO). 
+pixel_transfer(red_scale(Factor), !IO) :-
+	pixel_transferf(4, Factor, !IO).
+pixel_transfer(green_scale(Factor), !IO) :-
+	pixel_transferf(5, Factor, !IO).
+pixel_transfer(blue_scale(Factor), !IO) :-
+	pixel_transferf(6, Factor, !IO).
+pixel_transfer(alpha_scale(Factor), !IO) :-
+	pixel_transferf(7, Factor, !IO).
+pixel_transfer(red_bias(Bias), !IO) :-
+	pixel_transferf(8, Bias, !IO).
+pixel_transfer(green_bias(Bias), !IO) :-
+	pixel_transferf(9, Bias, !IO).
+pixel_transfer(blue_bias(Bias), !IO) :-
+	pixel_transferf(10, Bias, !IO).
+pixel_transfer(alpha_bias(Bias), !IO) :-
+	pixel_transferf(11, Bias, !IO).
+pixel_transfer(depth_bias(Bias), !IO) :-
+	pixel_transferf(12, Bias, !IO).
 
-*/
+:- pred pixel_transferi(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	pixel_transferi(Pname::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPixelTransferi(pixel_transfer_mode_flags[Pname], Param);
+	IO = IO0;
+").
+
+:- pred pixel_transferf(int::in, float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	pixel_transferf(Pname::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPixelTransferf(pixel_transfer_mode_flags[Pname], (GLfloat) Param);
+	IO = IO0;
+").
 
 %------------------------------------------------------------------------------%
 %
@@ -2053,39 +2300,522 @@ polygon_mode(Face, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 %
-% Texturing
+% Texture mapping.
 %
 
-/*
-:- type texture_target
-		--->	texture_2d
-		;	proxy_texture_2d
-		.
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_target_flags[];
+").
 
-:- type texture_format
-		--->	alpha
-		;	luminance
-		;	luminance_alpha
-		;	intensity
-		;	rgb
-		;	rgba
-		.
+:- pragma foreign_code("C", "
+	const GLenum texture_target_flags[] = {
+		GL_TEXTURE_1D,
+		GL_PROXY_TEXTURE_1D,
+		GL_TEXTURE_2D,
+		GL_PROXY_TEXTURE_2D
+	};
+").
 
-:- pred tex_image_2d(texture_target, int, int, int, int, int,
-		texture_format, texture_data, io__state, io__state).
-:- mode tex_image_2d(in, in, in, in, in, in, in, in, di, uo) is det.
-*/
+
+:- pred texture_target_to_int(texture_target, int).
+:- mode texture_target_to_int(in, out) is det.
+%:- mode texture_target_to_int(out, in) is det.
+
+texture_target_to_int(texture_1d, 0).
+texture_target_to_int(proxy_texture_1d, 1).
+texture_target_to_int(texture_2d, 2).
+texture_target_to_int(proxy_texture_2d, 3).
+
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_format_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum texture_format_flags[] = {
+		GL_ALPHA,
+		GL_LUMINANCE,
+		GL_LUMINANCE_ALPHA,
+		GL_INTENSITY,
+		GL_RGB,
+		GL_RGBA,
+		GL_ALPHA4,
+		GL_ALPHA8,
+		GL_ALPHA12,
+		GL_ALPHA16,
+		GL_LUMINANCE4,
+		GL_LUMINANCE8,
+		GL_LUMINANCE12,
+		GL_LUMINANCE16,
+		GL_LUMINANCE4_ALPHA4,
+		GL_LUMINANCE6_ALPHA2,
+		GL_LUMINANCE8_ALPHA8,
+		GL_LUMINANCE12_ALPHA4,
+		GL_LUMINANCE12_ALPHA12,
+		GL_LUMINANCE16_ALPHA16,
+		GL_INTENSITY4,
+		GL_INTENSITY8,
+		GL_INTENSITY12,
+		GL_INTENSITY16,
+		GL_R3_G3_B2,
+		GL_RGB4,
+		GL_RGB5,
+		GL_RGB10,
+		GL_RGB12,
+		GL_RGB16,
+		GL_RGBA2,
+		GL_RGBA4,
+		GL_RGB5_A1,
+		GL_RGBA8,
+		GL_RGB10_A2,
+		GL_RGBA12,
+		GL_RGBA16
+	};
+").
+
+:- pred texture_format_to_int(texture_format, int).
+:- mode texture_format_to_int(in, out) is det.
+%:- mode texture_format_to_int(out, in) is semidet.
+
+texture_format_to_int(alpha, 0).		
+texture_format_to_int(luminance, 1).
+texture_format_to_int(luminance_alpha, 2).
+texture_format_to_int(intensity, 3).
+texture_format_to_int(rgb, 4).
+texture_format_to_int(rgba, 5).
+texture_format_to_int(alpha4, 6).
+texture_format_to_int(alpha8, 7).
+texture_format_to_int(alpha12, 8).
+texture_format_to_int(alpha16, 9).
+texture_format_to_int(luminance4, 10).
+texture_format_to_int(luminance8, 11).
+texture_format_to_int(luminance12, 12).
+texture_format_to_int(luminance16, 13).
+texture_format_to_int(luminance4_alpha4, 14).
+texture_format_to_int(luminance6_alpha2, 15).
+texture_format_to_int(luminance8_alpha8, 16).
+texture_format_to_int(luminance12_alpha4, 17).
+texture_format_to_int(luminance12_alpha12, 18).
+texture_format_to_int(luminance16_alpha16, 19).
+texture_format_to_int(intensity4, 20).
+texture_format_to_int(intensity8, 21).
+texture_format_to_int(intensity12, 22).
+texture_format_to_int(intensity16, 23).
+texture_format_to_int(r3_g3_b2, 24).
+texture_format_to_int(rgb4, 25).
+texture_format_to_int(rgb5, 26).
+texture_format_to_int(rgb10, 27).
+texture_format_to_int(rgb12, 28).
+texture_format_to_int(rgb16, 29).
+texture_format_to_int(rgba2, 30).
+texture_format_to_int(rgba4, 31).
+texture_format_to_int(rgb5_a1, 32).
+texture_format_to_int(rgba8, 33).
+texture_format_to_int(rgb10_a2, 34).
+texture_format_to_int(rgba12, 35).
+texture_format_to_int(rgba16, 36).
+
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_parameter_flags[];
+").
+
+	% NOTE: If you alter this array make sure that you change 
+	% mogl.tex_parameter/5 accordingly.
+:- pragma foreign_code("C", "
+	const GLenum texture_parameter_flags[] = {
+		GL_TEXTURE_WRAP_S,
+		GL_TEXTURE_WRAP_T,
+		GL_TEXTURE_MIN_FILTER,
+		GL_TEXTURE_MAG_FILTER
+		/*
+		 * NOTE: These two cases are handled separately at
+		 * the moment so we don't use them here.
+		 *
+		 * GL_TEXTURE_BORDER_COLOR,
+		 * GL_TEXTURE_PRIORITY
+		 */
+	};
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum wrap_mode_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum wrap_mode_flags[] = {
+		GL_CLAMP,
+		GL_REPEAT
+	};
+").
+
+:- func wrap_mode_to_int(wrap_mode) = int.
+
+wrap_mode_to_int(clamp) = 0.
+wrap_mode_to_int(repeat) = 1.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum filter_method_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum filter_method_flags[] = {
+		GL_NEAREST,
+		GL_LINEAR,
+		GL_NEAREST_MIPMAP_NEAREST,
+		GL_NEAREST_MIPMAP_LINEAR,
+		GL_LINEAR_MIPMAP_NEAREST,
+		GL_LINEAR_MIPMAP_LINEAR
+	};
+").
+
+:- func min_filter_method_to_int(min_filter_method) = int.
+
+min_filter_method_to_int(nearest) = 0.
+min_filter_method_to_int(linear) = 1.
+min_filter_method_to_int(nearest_mipmap_nearest) = 2.
+min_filter_method_to_int(nearest_mipmap_linear) = 3.
+min_filter_method_to_int(linear_mipmap_nearest) = 4.
+min_filter_method_to_int(linear_mipmap_linear) = 5.
+
+:- func mag_filter_method_to_int(mag_filter_method) = int.
+
+mag_filter_method_to_int(nearest) = 0.
+mag_filter_method_to_int(linear) = 1.
+
+tex_parameter(Target0, Param, !IO) :-
+	texture_target_to_int(Target0, Target),
+	tex_parameter_2(Target, Param, !IO).
+
+	% NOTE: The magic numbers below are indicies into the
+	% texture_parameter_flags array.
+:- pred tex_parameter_2(int::in, texture_parameter::in, io::di, io::uo) is det.
+
+tex_parameter_2(Target, wrap_s(WrapMode), !IO) :- 
+	tex_parameter_wrap(Target, 0, wrap_mode_to_int(WrapMode), !IO).
+tex_parameter_2(Target, wrap_t(WrapMode), !IO) :-
+	tex_parameter_wrap(Target, 1, wrap_mode_to_int(WrapMode), !IO).
+tex_parameter_2(Target, min_filter(FilterMethod), !IO) :-
+	tex_parameter_filter(Target, 2, min_filter_method_to_int(FilterMethod),
+		!IO).
+tex_parameter_2(Target, mag_filter(FilterMethod), !IO) :-
+	tex_parameter_filter(Target, 2, mag_filter_method_to_int(FilterMethod),
+		!IO).
+tex_parameter_2(Target, border_color(R, G, B, A), !IO) :-
+	tex_parameter_border_color(Target, R, G, B, A, !IO).
+tex_parameter_2(Target, priority(Priority), !IO) :-
+	tex_parameter_priority(Target, Priority, !IO).
+
+:- pred tex_parameter_wrap(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	tex_parameter_wrap(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glTexParameteri(texture_target_flags[Target],
+		texture_parameter_flags[Pname], wrap_mode_flags[Param]);
+	IO = IO0;
+").
+
+:- pred tex_parameter_filter(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	tex_parameter_filter(Target::in, Pname::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glTexParameteri(texture_target_flags[Target],
+		texture_parameter_flags[Pname], filter_method_flags[Param]);
+	IO = IO0;
+").
+
+:- pred tex_parameter_border_color(int::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	tex_parameter_border_color(Target::in, Red::in, Blue::in, Green::in,
+		Alpha::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
+
+	GLfloat border_color[4] = {
+		(GLfloat) Red,
+		(GLfloat) Blue,
+		(GLfloat) Green,
+		(GLfloat) Alpha
+	};
+
+	glTexParameterfv(texture_target_flags[Target], GL_TEXTURE_BORDER_COLOR,
+		border_color);
+	IO = IO0;
+}").
+
+:- pred tex_parameter_priority(int::in, float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	tex_parameter_priority(Target::in, Priority::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glTexParameterf(texture_target_flags[Target], GL_TEXTURE_PRIORITY,
+		(GLfloat) Priority);
+	IO = IO0;
+").
+
+bind_texture(Target0, TexName, !IO) :-
+	texture_target_to_int(Target0, Target),
+	bind_texture_2(Target, TexName, !IO).
+
+:- pred bind_texture_2(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	bind_texture_2(Target::in, TexName::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glBindTexture(texture_target_flags[Target], (GLuint) TexName);
+	IO = IO0;
+").
+
+delete_textures([], !IO).
+delete_textures(Textures @ [_|_], !IO) :-
+	list__length(Textures, NumTextures),
+	delete_textures_2(Textures, NumTextures, !IO).
+
+:- pred delete_textures_2(list(texture_name)::in, int::in, io::di,
+	io::uo) is det.
+:- pragma foreign_proc("C", 
+	delete_textures_2(Textures::in, NumTextures::in, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+{
+	GLuint *textures;
+	int i = 0;
+
+	textures = MR_GC_NEW_ARRAY(GLuint, NumTextures);
+
+	while(!MR_list_is_empty(Textures)) {
+		textures[i++] = MR_list_head(Textures);
+		Textures = MR_list_tail(Textures);
+	}
+
+	glDeleteTextures((GLsizei) NumTextures, textures);
+	assert(glGetError() == GL_NO_ERROR);
+	
+	MR_GC_free(textures);
+
+	IO = IO0;
+}").	
+
+:- pragma foreign_proc("C",
+	gen_textures(Num::in, Textures::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+{
+	GLuint *new_textures;
+	int i;
+
+	new_textures = MR_GC_NEW_ARRAY(GLuint, Num);
+	
+	glGenTextures((GLsizei) Num, new_textures);
+	assert(glGetError() == GL_NO_ERROR);
+
+	Textures = MR_list_empty();
+	
+	for(i = 0; i < Num; i++) {
+		Textures = MR_list_cons(new_textures[i], Textures);
+	}
+
+	MR_GC_free(new_textures);
+	
+	IO = IO0;
+}").
+	
+:- pragma foreign_proc("C",
+	is_texture(Name::in, IsList::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure], 
+"
+	if(glIsTexture(Name)) {
+		IsList = ML_bool_return_yes();
+	} else {
+		IsList = ML_bool_return_no();
+	}
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_function_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum texture_function_flags[] = {
+		GL_DECAL,
+		GL_REPLACE,
+		GL_MODULATE,
+		GL_BLEND
+	};
+").
+
+:- func texture_function_to_int(texture_function) = int.
+
+texture_function_to_int(decal) = 0.
+texture_function_to_int(replace) = 1.
+texture_function_to_int(modulate) = 2.
+texture_function_to_int(blend) = 3.
+
+tex_env(_, texture_env_mode(Function), !IO) :-
+	tex_env_mode(texture_function_to_int(Function), !IO).
+tex_env(_, texture_env_color(R, G, B, A), !IO) :-
+	tex_env_color(R, G, B, A, !IO).
+
+:- pred tex_env_mode(int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	tex_env_mode(Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,
+		texture_function_flags[Param]);
+	IO = IO0;
+").
+
+:- pred tex_env_color(float::in, float::in, float::in, float::in, io::di, 
+	io::uo) is det.
+:- pragma foreign_proc("C",
+	tex_env_color(Red::in, Green::in, Blue::in, Alpha::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+{	
+	GLfloat env_color[] = {
+		(GLfloat) Red, 
+		(GLfloat) Green, 
+		(GLfloat) Blue, 
+		(GLfloat) Alpha 
+	};
+
+	glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, env_color);
+	IO = IO0;
+}").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_coord_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum texture_coord_flags[] = {
+		GL_S,
+		GL_T,
+		GL_R,
+		GL_Q
+	};
+").
+
+:- func texture_coord_to_int(texture_coord) = int.
+
+texture_coord_to_int(s)	= 0.
+texture_coord_to_int(t)	= 1.
+texture_coord_to_int(r)	= 2.
+texture_coord_to_int(q)	= 3.
+
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_gen_function_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum texture_gen_function_flags[] = {
+		GL_OBJECT_LINEAR,
+		GL_EYE_LINEAR,
+		GL_SPHERE_MAP
+	};
+").
+
+:- func texture_gen_function_to_int(texture_gen_function) = int.
+
+texture_gen_function_to_int(object_linear) = 0.
+texture_gen_function_to_int(eye_linear) = 1.
+texture_gen_function_to_int(sphere_map) = 2.
+
+tex_gen(Coord, texture_gen_mode(Param), !IO) :-
+	tex_geni(texture_coord_to_int(Coord),
+		texture_gen_function_to_int(Param), !IO).
+tex_gen(Coord, object_plane(X, Y, Z, W), !IO) :-
+	tex_genf_object_plane(texture_coord_to_int(Coord), X, Y, Z, W, !IO).
+tex_gen(Coord, eye_plane(X, Y, Z, W), !IO) :-
+	tex_genf_eye_plane(texture_coord_to_int(Coord), X, Y, Z, W, !IO).
+
+:- pred tex_geni(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	tex_geni(Coord::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glTexGeni(texture_coord_flags[Coord], GL_TEXTURE_GEN_MODE,
+		texture_gen_function_flags[Param]);
+	IO = IO0;
+").
+
+:- pred tex_genf_object_plane(int::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	tex_genf_object_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
+		IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		GLfloat coefficients[] = {
+			(GLfloat) X,
+			(GLfloat) Y,
+			(GLfloat) Z,
+			(GLfloat) W
+		};
+
+		glTexGenfv(texture_coord_flags[Coord], GL_OBJECT_PLANE,
+			coefficients);
+	} else {
+		GLdouble coefficients[] = {
+			(GLdouble) X,
+			(GLdouble) Y,
+			(GLdouble) Z,
+			(GLdouble) W
+		};
+
+		glTexGendv(texture_coord_flags[Coord], GL_OBJECT_PLANE,
+			coefficients);
+	}
+	IO = IO0;
+").
+
+:- pred tex_genf_eye_plane(int::in, float::in, float::in, float::in,
+	float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	tex_genf_eye_plane(Coord::in, X::in, Y::in, Z::in, W::in, IO0::di,
+		IO::uo),
+	[will_not_call_mercury, promise_pure],
+" 
+	if (sizeof(MR_Float) == sizeof(GLfloat)) {
+		GLfloat coefficients[] = {
+			(GLfloat) X,
+			(GLfloat) Y,
+			(GLfloat) Z,
+			(GLfloat) W
+		};
+		
+		glTexGenfv(texture_coord_flags[Coord], GL_EYE_PLANE,
+			coefficients);
+	} else {
+		GLdouble coefficients[] = {
+			(GLdouble) X,
+			(GLdouble) Y,
+			(GLdouble) Z,
+			(GLdouble) W
+		};
+
+		glTexGendv(texture_coord_flags[Coord], GL_EYE_PLANE,
+			coefficients);
+	}
+	IO = IO0;
+").
 
 %------------------------------------------------------------------------------%
 %
 % Fog.
 %
 
-:- func fog_mode_to_int(fog_mode) = int.
+:- pred fog_mode_to_int(fog_mode, int).
+:- mode fog_mode_to_int(in, out) is det.
+:- mode fog_mode_to_int(out, in) is semidet.
 
-fog_mode_to_int(linear)	= 0.
-fog_mode_to_int(exp)	= 1.
-fog_mode_to_int(exp2)	= 2.
+fog_mode_to_int(linear, 0).
+fog_mode_to_int(exp, 1).
+fog_mode_to_int(exp2, 2).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum fog_mode_flags[];
@@ -2099,18 +2829,21 @@ fog_mode_to_int(exp2)	= 2.
 	};
 ").
 
-fog(fog_mode(Mode), !IO) :-
-	fog_mode(fog_mode_to_int(Mode), !IO).
+fog(fog_mode(Mode0), !IO) :-
+	fog_mode_to_int(Mode0, Mode),
+	fog_mode(Mode, !IO).
 fog(fog_density(Density), !IO) :-
 	fog_density(Density, !IO).
 fog(fog_start(Start), !IO) :-
 	fog_start(Start, !IO).
-fog(fog_end(End), !IO)  :-
+fog(fog_end(End), !IO) :-
 	fog_end(End, !IO).
+fog(fog_index(Index), !IO) :-
+	fog_index(Index, !IO).
+fog(fog_color(R, G, B, A), !IO) :-
+	fog_color(R, G, B, A, !IO).
 
-:- pred fog_mode(int, io, io).
-:- mode fog_mode(in, di, uo) is det.
-
+:- pred fog_mode(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	fog_mode(M::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -2119,9 +2852,7 @@ fog(fog_end(End), !IO)  :-
 	IO = IO0;
 ").
 
-:- pred fog_density(float, io, io).
-:- mode fog_density(in, di, uo) is det.
-
+:- pred fog_density(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	fog_density(P::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -2130,9 +2861,7 @@ fog(fog_end(End), !IO)  :-
 	IO = IO0;
 ").
 
-:- pred fog_start(float, io, io).
-:- mode fog_start(in, di, uo) is det.
-
+:- pred fog_start(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C", 
 	fog_start(P::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -2141,14 +2870,50 @@ fog(fog_end(End), !IO)  :-
 	IO = IO0;
 ").
 
-:- pred fog_end(float, io, io).
-:- mode fog_end(in, di, uo) is det.
-
+:- pred fog_end(float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	fog_end(P::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glFogf(GL_FOG_END, (GLfloat) P);
+	IO = IO0;
+").
+
+:- pred fog_index(float::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	fog_index(I::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glFogf(GL_FOG_INDEX, (GLfloat) I);
+	IO = IO0;
+").
+
+:- pred fog_color(float::in, float::in, float::in, float::in, io::di,
+	io::uo) is det.
+:- pragma foreign_proc("C",
+	fog_color(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
+	GLfloat fog_color[] = {R, G, B, A};
+	
+	glFogfv(GL_FOG_COLOR, fog_color); 
+	IO = IO0;
+}").
+
+get_fog_mode(Mode, !IO) :-
+	get_fog_mode_2(Mode0, !IO),
+	( fog_mode_to_int(Mode1, Mode0) ->
+		Mode = Mode1
+	;
+		error("Cannot convert into to fog_mode.")
+	).
+
+:- pred get_fog_mode_2(int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	get_fog_mode_2(Mode::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glGetIntegerv(GL_FOG_MODE, &Mode);
 	IO = IO0;
 ").
 
@@ -2438,13 +3203,11 @@ buffer_to_int(aux(I))		= 10 + I.
 ").
 
 draw_buffer(Buffer, !IO) :-
-	draw_buffer2(buffer_to_int(Buffer), !IO).
+	draw_buffer_2(buffer_to_int(Buffer), !IO).
 
-:- pred draw_buffer2(int, io, io).
-:- mode draw_buffer2(in, di, uo) is det.
-
+:- pred draw_buffer_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	draw_buffer2(B::in, IO0::di, IO::uo), 
+	draw_buffer_2(B::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glDrawBuffer(buffer_flags[B]);
@@ -2460,14 +3223,13 @@ draw_buffer(Buffer, !IO) :-
 ").
 
 color_mask(A, B, C, D, !IO) :-
-	color_mask2(bool_to_int(A), bool_to_int(B),
+	color_mask_2(bool_to_int(A), bool_to_int(B),
 		bool_to_int(C), bool_to_int(D), !IO).
 
-:- pred color_mask2(int, int, int, int, io, io).
-:- mode color_mask2(in, in, in, in, di, uo) is det.
-
+:- pred color_mask_2(int::in, int::in, int::in, int::in, io::di, io::uo)
+	is det.
 :- pragma foreign_proc("C",
-	color_mask2(A::in, B::in, C::in, D::in, IO0::di, IO::uo), 
+	color_mask_2(A::in, B::in, C::in, D::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glColorMask((GLboolean) A, (GLboolean) B, (GLboolean) C, (GLboolean) D);
@@ -2475,13 +3237,11 @@ color_mask(A, B, C, D, !IO) :-
 ").
 
 depth_mask(Bool, !IO) :-
-	depth_mask2(bool_to_int(Bool), !IO).
+	depth_mask_2(bool_to_int(Bool), !IO).
 
-:- pred depth_mask2(int, io, io).
-:- mode depth_mask2(in, di, uo) is det.
-
+:- pred depth_mask_2(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	depth_mask2(M::in, IO0::di, IO::uo), 
+	depth_mask_2(M::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
 	glDepthMask((GLboolean) M);
@@ -2497,7 +3257,7 @@ depth_mask(Bool, !IO) :-
 ").
 
 clear(BitList, !IO) :-
-	Mask = list.foldr((\/), list.map(buffer_bit_to_bit, BitList), 0),
+	Mask = list__foldr((\/), list.map(buffer_bit_to_bit, BitList), 0),
 	clear2(Mask, !IO).
 
 :- func buffer_bit_to_bit(buffer_bit) = int.
@@ -2511,7 +3271,7 @@ buffer_bit_to_int(depth)   = 1.
 buffer_bit_to_int(stencil) = 2.
 buffer_bit_to_int(accum)   = 3.
 
-:- func lookup_buffer_bit(int)	= int.
+:- func lookup_buffer_bit(int) = int.
 
 :- pragma foreign_proc("C",
 	lookup_buffer_bit(F::in) = (B::out),
@@ -2602,9 +3362,7 @@ accum_op_to_int(add)	= 4.
 accum(Op, Param, !IO) :-
 	accum2(accum_op_to_int(Op), Param, !IO).
 
-:- pred accum2(int, float, io, io).
-:- mode accum2(in, in, di, uo) is det.
-
+:- pred accum2(int::in, float::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	accum2(Op::in, Param::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -2614,8 +3372,11 @@ accum(Op, Param, !IO) :-
 ").
 
 %------------------------------------------------------------------------------%
+%
+% Evaluators.
+%
 
-% Evalutators not implemented
+% XXX NYI.
 
 %------------------------------------------------------------------------------%
 %
@@ -2708,9 +3469,7 @@ display_list_mode_to_int(compile_and_execute) = 1.
 new_list(Num, Mode, !IO) :-
 	new_list2(Num, display_list_mode_to_int(Mode), !IO).
 
-:- pred new_list2(int, int, io, io).
-:- mode new_list2(in, in, di, uo) is det.
-
+:- pred new_list2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	new_list2(N::in, M::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
@@ -2751,6 +3510,7 @@ new_list(Num, Mode, !IO) :-
 	IO = IO0;
 ").
 
+	% XXX Add `terminates' attribute.
 :- pragma foreign_proc("C",
 	is_list(L::in, R::out, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure],
@@ -2796,29 +3556,31 @@ new_list(Num, Mode, !IO) :-
 :- pred control_flag_to_int_and_offset(control_flag::in, int::out, int::out)
 	is det.
 
-control_flag_to_int_and_offset(normalize, 0, 0).
-control_flag_to_int_and_offset(clip_plane(Plane), 1, Plane).
-control_flag_to_int_and_offset(lighting, 2, 0).
-control_flag_to_int_and_offset(light(LightNumber), 3, LightNumber).
-control_flag_to_int_and_offset(color_material, 4, 0).
-control_flag_to_int_and_offset(line_stipple, 5, 0).
-control_flag_to_int_and_offset(cull_face, 6, 0).
-control_flag_to_int_and_offset(polygon_stipple, 7, 0).
-control_flag_to_int_and_offset(polygon_offset_point, 8, 0).
-control_flag_to_int_and_offset(polygon_offset_line, 9, 0).
-control_flag_to_int_and_offset(polygon_offset_fill, 10, 0).
-control_flag_to_int_and_offset(fog, 11, 0).
-control_flag_to_int_and_offset(scissor_test, 12, 0).
-control_flag_to_int_and_offset(alpha_test, 13, 0).
-control_flag_to_int_and_offset(stencil_test, 14, 0).
-control_flag_to_int_and_offset(depth_test, 15, 0).
-control_flag_to_int_and_offset(blend, 16, 0).
-control_flag_to_int_and_offset(dither, 17, 0).
-control_flag_to_int_and_offset(index_logic_op, 18, 0).
-control_flag_to_int_and_offset(color_logic_op, 19, 0).
-control_flag_to_int_and_offset(auto_normal, 20, 0).
-control_flag_to_int_and_offset(texture_1d, 21, 0).
-control_flag_to_int_and_offset(texture_2d, 22, 0).
+control_flag_to_int_and_offset(alpha_test,           0,  0).
+control_flag_to_int_and_offset(auto_normal,          1,  0).
+control_flag_to_int_and_offset(blend,                2,  0).
+control_flag_to_int_and_offset(clip_plane(Plane),    3,  Plane).
+control_flag_to_int_and_offset(color_logic_op,       4,  0).
+control_flag_to_int_and_offset(color_material,       5,  0).
+control_flag_to_int_and_offset(cull_face,            6,  0).
+control_flag_to_int_and_offset(depth_test,           7,  0).
+control_flag_to_int_and_offset(dither,               8,  0).
+control_flag_to_int_and_offset(fog,                  9,  0).
+control_flag_to_int_and_offset(index_logic_op,       10, 0).
+control_flag_to_int_and_offset(light(LightNo),       11, LightNo).
+control_flag_to_int_and_offset(lighting,             12, 0).
+control_flag_to_int_and_offset(line_smooth,          13, 0).
+control_flag_to_int_and_offset(line_stipple,         14, 0).
+control_flag_to_int_and_offset(normalize,            15, 0).
+control_flag_to_int_and_offset(point_smooth,         16, 0).
+control_flag_to_int_and_offset(polygon_offset_fill,  17, 0).
+control_flag_to_int_and_offset(polygon_offset_line,  18, 0).
+control_flag_to_int_and_offset(polygon_offset_point, 19, 0).
+control_flag_to_int_and_offset(polygon_stipple,      20, 0).
+control_flag_to_int_and_offset(scissor_test,         21, 0).
+control_flag_to_int_and_offset(stencil_test,         22, 0).
+control_flag_to_int_and_offset(texture_1d,           23, 0).
+control_flag_to_int_and_offset(texture_2d,           24, 0).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum control_flag_flags[];
@@ -2826,27 +3588,29 @@ control_flag_to_int_and_offset(texture_2d, 22, 0).
 
 :- pragma foreign_code("C", "
 	const GLenum control_flag_flags[] = {
-		GL_NORMALIZE,
-		GL_CLIP_PLANE0,
-		GL_LIGHTING,
-		GL_LIGHT0,
-		GL_COLOR_MATERIAL,
-		GL_LINE_STIPPLE,
-		GL_CULL_FACE,
-		GL_POLYGON_STIPPLE,
-		GL_POLYGON_OFFSET_POINT,
-		GL_POLYGON_OFFSET_LINE,
-		GL_POLYGON_OFFSET_FILL,
-		GL_FOG,
-		GL_SCISSOR_TEST,
 		GL_ALPHA_TEST,
-		GL_STENCIL_TEST,
-		GL_DEPTH_TEST,
-		GL_BLEND,
-		GL_DITHER,
-		GL_INDEX_LOGIC_OP,
-		GL_COLOR_LOGIC_OP,
 		GL_AUTO_NORMAL,
+		GL_BLEND,
+		GL_CLIP_PLANE0,
+		GL_COLOR_LOGIC_OP,
+		GL_COLOR_MATERIAL,
+		GL_CULL_FACE,
+		GL_DEPTH_TEST,
+		GL_DITHER,
+		GL_FOG,
+		GL_INDEX_LOGIC_OP,
+		GL_LIGHT0,
+		GL_LIGHTING,
+		GL_LINE_SMOOTH,
+		GL_LINE_STIPPLE,
+		GL_NORMALIZE,
+		GL_POINT_SMOOTH,
+		GL_POLYGON_OFFSET_FILL,
+		GL_POLYGON_OFFSET_LINE,
+		GL_POLYGON_OFFSET_POINT,
+		GL_POLYGON_STIPPLE,
+		GL_SCISSOR_TEST,
+		GL_STENCIL_TEST,
 		GL_TEXTURE_1D,
 		GL_TEXTURE_2D
 	};
@@ -2882,6 +3646,7 @@ is_enabled(Flag, IsEnabled, !IO) :-
 	control_flag_to_int_and_offset(Flag, Int, Offset),
 	is_enabled_2(Int, Offset, IsEnabled, !IO).
 
+	% XXX Add `terminates' attribute.
 :- pred is_enabled_2(int::in, int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
 	is_enabled_2(FlagVal::in, Offset::in, R::out, IO0::di, IO::uo), 
@@ -2936,6 +3701,7 @@ hint_target_to_int(fog) = 4.
 
 :- pred hint_mode_to_int(hint_mode, int).
 :- mode hint_mode_to_int(in, out) is det.
+:- mode hint_mode_to_int(out, in) is semidet.
 
 hint_mode_to_int(fastest, 0).
 hint_mode_to_int(nicest, 1).
@@ -2952,6 +3718,702 @@ hint(Target0, Mode0, !IO) :-
 	[will_not_call_mercury, promise_pure], 
 "
 	glHint(hint_target_flags[Target], hint_mode_flags[Mode]);
+	IO = IO0;
+").
+
+get_hint(Target0, Mode, !IO) :-
+	Target = hint_target_to_int(Target0),
+	get_hint_2(Target, Mode0, !IO),
+	( hint_mode_to_int(Mode1, Mode0) ->
+		Mode = Mode1
+	;
+		error("Cannot convert int to hint_mode")
+	).
+
+:- pred get_hint_2(int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_hint_2(Target::in, Mode::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glGetIntegerv(hint_target_flags[Target], &Mode);
+	IO = IO0;
+").
+
+%------------------------------------------------------------------------------%
+%
+% State and state requests.
+%
+
+get_clip_plane(I, clip(X, Y, Z, W), !IO) :-
+	get_clip_plane_2(I, X, Y, Z, W, !IO).
+
+:- pred get_clip_plane_2(int::in, float::out, float::out, float::out,	
+	float::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	get_clip_plane_2(I::in, X::out, Y::out, Z::out, W::out, IO0::di,
+		IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLdouble equation[4];
+	
+	assert(GL_CLIP_PLANE0 + I < GL_MAX_CLIP_PLANES);
+	
+	glGetClipPlane(GL_CLIP_PLANE0 + I, equation);
+
+	X = (MR_Float) equation[0];
+	Y = (MR_Float) equation[1];
+	Z = (MR_Float) equation[2];
+	W = (MR_Float) equation[3];
+
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum single_boolean_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum single_boolean_state_flags[] = {
+		GL_CURRENT_RASTER_POSITION_VALID,
+		GL_DEPTH_WRITEMASK,
+		GL_DOUBLEBUFFER,
+		GL_EDGE_FLAG,
+		GL_INDEX_MODE,
+		GL_LIGHT_MODEL_LOCAL_VIEWER,
+		GL_LIGHT_MODEL_TWO_SIDE,
+		GL_MAP_COLOR,
+		GL_MAP_STENCIL,
+		GL_PACK_LSB_FIRST,
+		GL_PACK_SWAP_BYTES,
+		GL_RGBA_MODE,
+		GL_STEREO,
+		GL_UNPACK_LSB_FIRST,
+		GL_UNPACK_SWAP_BYTES
+	};
+").
+
+:- func single_boolean_state_to_int(single_boolean_state) = int.
+
+single_boolean_state_to_int(current_raster_position_valid) = 0.
+single_boolean_state_to_int(depth_writemask) = 1.
+single_boolean_state_to_int(double_buffer) = 2.
+single_boolean_state_to_int(edge_flag) = 3.
+single_boolean_state_to_int(index_mode) = 4.
+single_boolean_state_to_int(light_model_local_viewer) = 5.
+single_boolean_state_to_int(light_model_two_side) = 6.
+single_boolean_state_to_int(map_color) = 7.
+single_boolean_state_to_int(map_stencil) = 8.
+single_boolean_state_to_int(pack_lsb_first) = 9.
+single_boolean_state_to_int(pack_swap_bytes) = 10.
+single_boolean_state_to_int(rgba_mode) = 11.
+single_boolean_state_to_int(stereo) = 12.
+single_boolean_state_to_int(unpack_lsb_first) = 13.
+single_boolean_state_to_int(unpack_swap_bytes) = 14.
+
+get_boolean(Param, Value, !IO) :-
+	get_boolean_2(single_boolean_state_to_int(Param), Value, !IO).
+
+:- pred get_boolean_2(int::in, bool::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_boolean_2(Param::in, Value::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+	GLboolean value;
+
+	glGetBooleanv(single_boolean_state_flags[Param], &value);
+	
+	if (value == GL_TRUE) {
+		Value = ML_bool_return_yes();
+	} else {
+		Value = ML_bool_return_no();
+	}
+
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum quad_boolean_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum quad_boolean_state_flags[] = {
+		GL_COLOR_WRITEMASK
+	};
+").
+
+:- func quad_boolean_state_to_int(quad_boolean_state) = int.
+
+quad_boolean_state_to_int(color_writemask) = 0.
+
+get_boolean(Param, V0, V1, V2, V3, !IO) :-
+	get_boolean_2(quad_boolean_state_to_int(Param), V0, V1, V2, V3, !IO).
+
+:- pred get_boolean_2(int::in, bool::out, bool::out, bool::out, bool::out,
+	io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_boolean_2(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di,
+		IO::uo),
+	[may_call_mercury, promise_pure],
+"
+	GLboolean values[4];
+
+	glGetBooleanv(quad_boolean_state_flags[Param], values);
+
+	if (values[0] == GL_TRUE) {
+		V0 = ML_bool_return_yes();
+	} else {
+		V0 = ML_bool_return_no();
+	}
+	
+	if (values[1] == GL_TRUE) {
+		V1 = ML_bool_return_yes();
+	} else {
+		V1 = ML_bool_return_no();
+	}
+	
+	if (values[2] == GL_TRUE) {
+		V2 = ML_bool_return_yes();
+	} else {
+		V2 = ML_bool_return_no();
+	}
+	
+	if (values[3] == GL_TRUE) {
+		V3 = ML_bool_return_yes();
+	} else {
+		V3 = ML_bool_return_no();
+	}
+
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum single_integer_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum single_integer_state_flags[] = {
+		GL_ACCUM_ALPHA_BITS,
+		GL_ACCUM_BLUE_BITS,
+		GL_ACCUM_GREEN_BITS,
+		GL_ACCUM_RED_BITS,
+		GL_ALPHA_BITS,
+		GL_ALPHA_TEST_REF,
+		GL_ATTRIB_STACK_DEPTH,
+		GL_AUX_BUFFERS,
+		GL_BLUE_BITS,
+		GL_CLIENT_ATTRIB_STACK_DEPTH,
+		GL_COLOR_ARRAY_SIZE,
+		GL_COLOR_ARRAY_STRIDE,
+		GL_DEPTH_BITS,
+		GL_DEPTH_CLEAR_VALUE,
+		GL_EDGE_FLAG_ARRAY_STRIDE,
+		GL_FEEDBACK_BUFFER_SIZE,
+		GL_GREEN_BITS,
+		GL_INDEX_ARRAY_STRIDE,
+		GL_INDEX_BITS,
+		GL_INDEX_OFFSET,
+		GL_INDEX_OFFSET,
+		GL_INDEX_SHIFT,
+		GL_LINE_STIPPLE_REPEAT,
+		GL_LIST_BASE,
+		GL_LIST_INDEX,
+		GL_MAX_ATTRIB_STACK_DEPTH,
+		GL_MAX_CLIENT_ATTRIB_STACK_DEPTH,
+		GL_MAX_CLIP_PLANES,
+		GL_MAX_EVAL_ORDER,
+		GL_MAX_LIGHTS,
+		GL_MAX_LIST_NESTING,
+		GL_MAX_MODELVIEW_STACK_DEPTH,
+		GL_MAX_NAME_STACK_DEPTH,
+		GL_MAX_PIXEL_MAP_TABLE,
+		GL_MAX_PROJECTION_STACK_DEPTH,
+		GL_MAX_TEXTURE_SIZE,
+		GL_MAX_TEXTURE_STACK_DEPTH,
+		GL_NAME_STACK_DEPTH,
+		GL_NORMAL_ARRAY_STRIDE,
+		GL_PACK_ALIGNMENT,
+		GL_PACK_ROW_LENGTH,
+		GL_PACK_SKIP_ROWS,
+		GL_PROJECTION_STACK_DEPTH,
+		GL_RED_BITS,
+		GL_SELECTION_BUFFER_SIZE,
+		GL_STENCIL_BITS,
+		GL_STENCIL_CLEAR_VALUE,
+		GL_STENCIL_REF,
+		GL_SUBPIXEL_BITS,
+		GL_TEXTURE_COORD_ARRAY_SIZE,
+		GL_TEXTURE_COORD_ARRAY_STRIDE,
+		GL_TEXTURE_STACK_DEPTH,
+		GL_UNPACK_ALIGNMENT,
+		GL_UNPACK_SKIP_PIXELS,
+		GL_UNPACK_SKIP_ROWS,
+		GL_VERTEX_ARRAY_SIZE,
+		GL_VERTEX_ARRAY_STRIDE
+	};
+").
+
+:- func single_integer_state_to_int(single_integer_state) = int.
+
+single_integer_state_to_int(accum_alpha_bits) = 0.
+single_integer_state_to_int(accum_blue_bits) = 1.
+single_integer_state_to_int(accum_green_bits) = 2.
+single_integer_state_to_int(accum_red_bits) = 3.
+single_integer_state_to_int(alpha_bits) = 4.
+single_integer_state_to_int(alpha_test_ref) = 5.
+single_integer_state_to_int(attrib_stack_depth) = 6.
+single_integer_state_to_int(aux_buffers) = 7.
+single_integer_state_to_int(blue_bits) = 8.
+single_integer_state_to_int(client_attrib_stack_depth) = 9.
+single_integer_state_to_int(color_array_size) = 10.
+single_integer_state_to_int(color_array_stride) = 11.
+single_integer_state_to_int(depth_bits) = 12.
+single_integer_state_to_int(depth_clear_value) = 13.
+single_integer_state_to_int(edge_flag_array_stride) = 14.
+single_integer_state_to_int(feedback_buffer_size) = 15.
+single_integer_state_to_int(green_bits) = 16.
+single_integer_state_to_int(index_array_stride) = 17.
+single_integer_state_to_int(index_bits) = 18.
+single_integer_state_to_int(index_offset) = 19.
+single_integer_state_to_int(index_shift) = 20.
+single_integer_state_to_int(line_stipple_repeat) = 21.
+single_integer_state_to_int(list_base) = 22.
+single_integer_state_to_int(list_index) = 23.
+single_integer_state_to_int(max_attrib_stack_depth) = 24.
+single_integer_state_to_int(max_client_attrib_stack_depth) = 25.
+single_integer_state_to_int(max_clip_planes) = 26.
+single_integer_state_to_int(max_eval_order) = 27.
+single_integer_state_to_int(max_lights) = 28.
+single_integer_state_to_int(max_list_nesting) = 29.
+single_integer_state_to_int(max_modelview_stack_depth) = 30.
+single_integer_state_to_int(max_name_stack_depth) = 31.
+single_integer_state_to_int(max_pixel_map_table) = 32.
+single_integer_state_to_int(max_projection_stack_depth) = 33.
+single_integer_state_to_int(max_texture_size) = 34.
+single_integer_state_to_int(max_texture_stack_depth) = 35.
+single_integer_state_to_int(modelview_stack_depth) = 36.
+single_integer_state_to_int(name_stack_depth) = 37.
+single_integer_state_to_int(normal_array_stride) = 38.
+single_integer_state_to_int(pack_alignment) = 39.
+single_integer_state_to_int(pack_row_length) = 40.
+single_integer_state_to_int(pack_skip_rows) = 41.
+single_integer_state_to_int(projection_stack_depth) = 42.
+single_integer_state_to_int(red_bits) = 43.
+single_integer_state_to_int(selection_buffer_size) = 44.
+single_integer_state_to_int(stencil_bits) = 45.
+single_integer_state_to_int(stencil_clear_value) = 46.
+single_integer_state_to_int(stencil_ref) = 47.
+single_integer_state_to_int(subpixel_bits) = 48.
+single_integer_state_to_int(texture_coord_array_size) = 49.
+single_integer_state_to_int(texture_coord_array_stride) = 50.
+single_integer_state_to_int(texture_stack_depth) = 51.
+single_integer_state_to_int(unpack_alignment) = 52.
+single_integer_state_to_int(unpack_row_length) = 53.
+single_integer_state_to_int(unpack_skip_pixels) = 54.
+single_integer_state_to_int(unpack_skip_rows) = 55.
+single_integer_state_to_int(vertex_array_size) = 56.
+single_integer_state_to_int(vertex_array_stride) = 57.
+
+get_integer(Param, Value, !IO) :-
+	get_integer_2(single_integer_state_to_int(Param), Value, !IO).
+
+:- pred get_integer_2(int::in, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_integer_2(Param::in, Value::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLint value;
+	
+	glGetIntegerv(single_integer_state_flags[Param], &value);
+	Value = (MR_Integer) value;
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum single_float_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum single_float_state_flags[] = {
+		GL_ACCUM_CLEAR_VALUE,
+		GL_ALPHA_BIAS,
+		GL_ALPHA_SCALE,
+		GL_BLUE_BIAS,
+		GL_BLUE_SCALE,
+		GL_CURRENT_INDEX,
+		GL_CURRENT_RASTER_DISTANCE,
+		GL_CURRENT_RASTER_INDEX,
+		GL_DEPTH_BIAS,
+		GL_DEPTH_SCALE,
+		GL_FOG_DENSITY,
+		GL_FOG_END,
+		GL_FOG_INDEX,
+		GL_FOG_START,
+		GL_GREEN_BIAS,
+		GL_GREEN_SCALE,
+		GL_INDEX_CLEAR_VALUE,
+		GL_LINE_STIPPLE_REPEAT,
+		GL_LINE_WIDTH,
+		GL_MAP1_GRID_SEGMENTS,
+		GL_POINT_SIZE,
+		GL_POLYGON_OFFSET_FACTOR,
+		GL_POLYGON_OFFSET_UNITS,
+		GL_RED_BIAS,
+		GL_RED_SCALE,
+		GL_ZOOM_X,
+		GL_ZOOM_Y
+	};
+").
+
+:- func single_float_state_to_int(single_float_state) = int.
+
+single_float_state_to_int(accum_clear_value) = 0.
+single_float_state_to_int(alpha_bias) = 1.
+single_float_state_to_int(alpha_scale) = 2.
+single_float_state_to_int(blue_bias) = 3.
+single_float_state_to_int(blue_scale) = 4.
+single_float_state_to_int(current_index) = 5.
+single_float_state_to_int(current_raster_distance) = 6.
+single_float_state_to_int(current_raster_index) = 7.
+single_float_state_to_int(depth_bias) = 8.
+single_float_state_to_int(depth_scale) = 9.
+single_float_state_to_int(fog_density) = 10.
+single_float_state_to_int(fog_end) = 11.
+single_float_state_to_int(fog_index) = 12.
+single_float_state_to_int(fog_start) = 13.
+single_float_state_to_int(green_bias) = 14.
+single_float_state_to_int(green_scale) = 15.
+single_float_state_to_int(index_clear_value) = 16.
+single_float_state_to_int(line_stipple_repeat) = 17.
+single_float_state_to_int(line_width) = 18.
+single_float_state_to_int(map1_grid_segments) = 19.
+single_float_state_to_int(point_size) = 20.
+single_float_state_to_int(polygon_offset_factor) = 21.
+single_float_state_to_int(polygon_offset_units) = 22.
+single_float_state_to_int(red_bias) = 23.
+single_float_state_to_int(red_scale) = 24.
+single_float_state_to_int(zoom_x) = 25.
+single_float_state_to_int(zoom_y) = 26.
+
+get_float(Param, Value, !IO) :-
+	get_float_2(single_float_state_to_int(Param), Value, !IO).
+
+:- pred get_float_2(int::in, float::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_float_2(Param::in, V::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLfloat value;
+
+	glGetFloatv(single_integer_state_flags[Param], &value);
+	V = (MR_Float) value;
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum double_integer_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum double_integer_state_flags[] = {
+		GL_MAX_VIEWPORT_DIMS	
+	};
+").
+
+:- func double_integer_state_to_int(double_integer_state) = int.
+
+double_integer_state_to_int(max_viewport_dims) = 0.
+
+get_integer(Param, V0, V1, !IO) :-
+	get_integer_2(double_integer_state_to_int(Param), V0, V1, !IO).
+
+:- pred get_integer_2(int::in, int::out, int::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_integer_2(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLint values[2];
+
+	glGetIntegerv(double_integer_state_flags[Param], values);
+	V0 = (MR_Integer) values[0];
+	V1 = (MR_Integer) values[1];
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum double_float_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum double_float_state_flags[] = {
+		GL_ALIASED_POINT_SIZE_RANGE,
+		GL_DEPTH_RANGE,
+		GL_MAP1_GRID_DOMAIN,
+		GL_MAP2_GRID_SEGMENTS
+	};
+").
+
+:- func double_float_state_to_int(double_float_state) = int.
+
+double_float_state_to_int(aliased_point_size_range) = 0.
+double_float_state_to_int(depth_range) = 1.
+double_float_state_to_int(map1_grid_domain) = 2.
+double_float_state_to_int(map2_grid_segments) = 3.
+
+get_float(Param, V0, V1, !IO) :-
+	get_float_2(double_float_state_to_int(Param), V0, V1, !IO).
+
+:- pred get_float_2(int::in, float::out, float::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C", 
+	get_float_2(Param::in, V0::out, V1::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLfloat values[2];
+
+	glGetFloatv(double_float_state_flags[Param], values);
+	V0 = (MR_Float) values[0];
+	V1 = (MR_Float) values[1];
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum triple_float_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum triple_float_state_flags[] = {
+		GL_CURRENT_NORMAL	
+	};
+").
+
+:- func triple_float_state_to_int(triple_float_state) = int.
+
+triple_float_state_to_int(current_normal) = 0.
+
+get_float(Param, Val0, Val1, Val2, !IO) :-
+	get_float_2(triple_float_state_to_int(Param), Val0, Val1, Val2, !IO).
+
+:- pred get_float_2(int::in, float::out, float::out, float::out, io::di,
+	io::uo) is det.
+:- pragma foreign_proc("C", 
+	get_float_2(Param::in, V0::out, V1::out, V2::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLfloat value[3];
+	
+	glGetFloatv(triple_float_state_flags[Param], value);
+
+	V0 = (MR_Float) value[0];
+	V1 = (MR_Float) value[1];
+	V2 = (MR_Float) value[2];
+	IO = IO0;
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum quad_float_state_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum quad_float_state_flags[] = {
+		GL_COLOR_CLEAR_VALUE,
+		GL_CURRENT_COLOR,
+		GL_CURRENT_RASTER_COLOR,
+		GL_CURRENT_RASTER_POSITION,
+		GL_CURRENT_TEXTURE_COORDS,
+		GL_FOG_COLOR,
+		GL_MAP2_GRID_DOMAIN
+	};
+").
+
+:- func quad_float_state_to_int(quad_float_state) = int.
+
+quad_float_state_to_int(color_clear_value) = 0.
+quad_float_state_to_int(current_color) = 1.
+quad_float_state_to_int(current_raster_color) = 2.
+quad_float_state_to_int(current_raster_position) = 3.
+quad_float_state_to_int(current_texture_coords) = 4.
+quad_float_state_to_int(fog_color) = 5.
+quad_float_state_to_int(map2_grid_domain) = 6.
+
+get_float(Param, V0, V1, V2, V3, !IO) :-
+	get_float_2(quad_float_state_to_int(Param), V0, V1, V2, V3, !IO).
+
+:- pred get_float_2(int::in, float::out, float::out, float::out, float::out,
+	io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_float_2(Param::in, V0::out, V1::out, V2::out, V3::out, IO0::di,
+		IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	GLfloat values[4];
+
+	glGetFloatv(quad_float_state_flags[Param], values);
+	V0 = (MR_Float) values[0];
+	V1 = (MR_Float) values[1];
+	V2 = (MR_Float) values[2];
+	V3 = (MR_Float) values[3];
+	IO = IO0;
+").
+
+%------------------------------------------------------------------------------%
+%
+% Server attribute stack.
+%
+
+:- pragma foreign_decl("C", "
+	extern const GLbitfield server_attrib_group_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLbitfield server_attrib_group_flags[] = {
+		GL_ACCUM_BUFFER_BIT,
+		GL_COLOR_BUFFER_BIT,
+		GL_CURRENT_BIT,
+		GL_DEPTH_BUFFER_BIT,
+		GL_ENABLE_BIT,
+		GL_EVAL_BIT,
+		GL_FOG_BIT,
+		GL_HINT_BIT,
+		GL_LIGHTING_BIT,
+		GL_LINE_BIT,
+		GL_LIST_BIT,
+		GL_PIXEL_MODE_BIT,
+		GL_POINT_BIT,
+		GL_POLYGON_BIT,
+		GL_POLYGON_STIPPLE_BIT,
+		GL_SCISSOR_BIT,
+		GL_STENCIL_BUFFER_BIT,
+		GL_TRANSFORM_BIT,
+		GL_VIEWPORT_BIT
+	};
+").
+
+:- func server_attrib_group_to_int(server_attrib_group) = int.
+
+server_attrib_group_to_int(accum_buffer) = 0.
+server_attrib_group_to_int(color_buffer) = 1.
+server_attrib_group_to_int(current) = 2.
+server_attrib_group_to_int(depth_buffer) = 3.
+server_attrib_group_to_int(enable) = 4.
+server_attrib_group_to_int(eval) = 5.
+server_attrib_group_to_int(fog) = 6.
+server_attrib_group_to_int(hint) = 7.
+server_attrib_group_to_int(lighting) = 8.
+server_attrib_group_to_int(line) = 9.
+server_attrib_group_to_int(list) = 10.
+server_attrib_group_to_int(pixel_mode) = 11.
+server_attrib_group_to_int(point) = 12.
+server_attrib_group_to_int(polygon) = 13.
+server_attrib_group_to_int(polygon_stipple) = 14.
+server_attrib_group_to_int(scissor) = 15.
+server_attrib_group_to_int(stencil_buffer) = 16.
+server_attrib_group_to_int(transform) = 17.
+server_attrib_group_to_int(viewport) = 18.
+
+:- pragma foreign_proc("C",
+	push_attrib(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	IO = IO0;
+").
+
+push_attrib([], !IO) :- error("No server attribute groups specified").
+push_attrib(Groups @ [_|_], !IO) :-
+	Mask = list__foldr((\/), list__map(server_attrib_group_to_bit, Groups),
+		0),
+	push_attrib_2(Mask, !IO).
+	
+:- func server_attrib_group_to_bit(server_attrib_group) = int.
+
+server_attrib_group_to_bit(Flag) = 
+	lookup_server_attrib_group_bit(server_attrib_group_to_int(Flag)).
+
+:- func lookup_server_attrib_group_bit(int) = int.
+:- pragma foreign_proc("C",
+	lookup_server_attrib_group_bit(Flag::in) = (Mask::out),
+	[will_not_call_mercury, promise_pure],
+"
+	Mask = server_attrib_group_flags[Flag];
+").
+
+:- pragma foreign_proc("C",
+	push_attrib(Mask::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPushAttrib((GLbitfield) Mask);
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	pop_attrib(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPopAttrib();
+	IO = IO0;
+").
+
+%------------------------------------------------------------------------------%
+%
+% Client attribute stack.
+%
+
+:- pragma foreign_decl("C", "
+	extern const GLbitfield client_attrib_group_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLbitfield client_attrib_group_flags[] = {
+		GL_CLIENT_VERTEX_ARRAY_BIT,
+		GL_CLIENT_PIXEL_STORE_BIT
+	};
+").
+
+:- func client_attrib_group_to_int(client_attrib_group) = int.
+
+client_attrib_group_to_int(vertex_array) = 0.
+client_attrib_group_to_int(pixel_store) = 1.
+
+:- pragma foreign_proc("C",
+	push_client_attrib(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPushClientAttrib(GL_ALL_CLIENT_ATTRIB_BITS);
+	IO = IO0;
+").
+
+push_client_attrib([], !IO) :- error("No client attribute groups specified.").
+push_client_attrib(Groups @ [_|_], !IO) :-
+	Mask = list__foldr((\/), list__map(client_attrib_group_to_bit, Groups),
+		0),
+	push_client_attrib_2(Mask, !IO).
+
+:- func client_attrib_group_to_bit(client_attrib_group) = int.
+
+client_attrib_group_to_bit(Flag) = 
+	lookup_client_attrib_group_bit(client_attrib_group_to_int(Flag)).
+
+:- func lookup_client_attrib_group_bit(int) = int.
+:- pragma foreign_proc("C",
+	lookup_client_attrib_group_bit(Flag::in) = (Mask::out),
+	[will_not_call_mercury, promise_pure],
+"
+	Mask = client_attrib_group_flags[Flag];
+").	
+
+:- pred push_client_attrib_2(int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	push_client_attrib_2(Mask::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPushClientAttrib((GLbitfield) Mask);
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	pop_client_attrib(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	glPopClientAttrib();
 	IO = IO0;
 ").
 
