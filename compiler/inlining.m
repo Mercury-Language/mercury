@@ -835,12 +835,16 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		( Detism = nondet ; Detism = multidet )
 	),
 
-	% don't inline foreign_code if we are generating IL
+	% only inline foreign_code if it is appropriate for
+	% the target language
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
-	\+ (
-		Target = il,
-		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _
+	(
+		CalledGoal = pragma_foreign_code(ForeignAttributes,
+			_,_,_,_,_,_) - _,
+		foreign_language(ForeignAttributes, ForeignLanguage)
+	=>
+		ok_to_inline_language(ForeignLanguage, Target)
 	),
 
 	% Don't inline memoed Aditi predicates.
@@ -865,6 +869,20 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	;
 		set__member(proc(PredId, ProcId), InlinedProcs)
 	).
+
+	% Succeed iff it is appropriate to inline `pragma foreign_code'
+	% in the specified language for the given compilation_target.
+	% Generally that will only be the case if the target directly
+	% supports inline code in that language.
+:- pred ok_to_inline_language(foreign_language::in, compilation_target::in)
+	is semidet.
+ok_to_inline_language(c, c).
+% ok_to_inline_language(java, java). % foreign_language = java not implemented
+% ok_to_inline_language(asm, asm).   % foreign_language = asm not implemented
+% We could define a language "C/C++" (c_slash_cplusplus) which was the
+% intersection of "C" and "C++", and then we'd have
+%	ok_to_inline_language(c_slash_cplusplus, c).
+%	ok_to_inline_language(c_slash_cplusplus, cplusplus).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
