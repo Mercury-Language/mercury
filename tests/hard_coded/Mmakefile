@@ -119,6 +119,7 @@ ORDINARY_PROGS=	\
 	type_qual \
 	type_spec_modes \
 	type_to_term_bug \
+	unused_float_box_test \
 	user_defined_equality \
 	user_defined_equality2 \
 	write \
@@ -195,6 +196,7 @@ MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-existential_float = --infer-all
 MCFLAGS-user_defined_equality	= --infer-all
 MCFLAGS-parse		=	--trace deep
+MCFLAGS-unused_float_box_test =	--infer-all
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
