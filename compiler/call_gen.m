@@ -226,7 +226,7 @@ call_gen__save_variables(Args, Code) -->
 		{ GC_Method = accurate }
 	->
 		code_info__get_proc_info(ProcInfo),
-		{ proc_info_get_used_typeinfos_setwise(ProcInfo, Vars1, 
+		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 
 			TypeInfoVars) },
 		{ set__union(Vars1, TypeInfoVars, Vars) }
 	;

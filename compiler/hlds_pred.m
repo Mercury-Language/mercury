@@ -695,8 +695,8 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	% for accurate garbage collection - live variables need to have 
 	% their typeinfos stay live too.
 
-:- pred proc_info_get_used_typeinfos_setwise(proc_info, set(var), set(var)).
-:- mode proc_info_get_used_typeinfos_setwise(in, in, out) is det.
+:- pred proc_info_get_typeinfo_vars_setwise(proc_info, set(var), set(var)).
+:- mode proc_info_get_typeinfo_vars_setwise(in, in, out) is det.
 
 :- pred proc_info_ensure_unique_names(proc_info, proc_info).
 :- mode proc_info_ensure_unique_names(in, out) is det.
@@ -973,17 +973,17 @@ proc_info_set_typeinfo_varmap(ProcInfo0, TVarMap, ProcInfo) :-
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I,
 			J, K, L, M, TVarMap, O).
 
-proc_info_get_used_typeinfos_setwise(ProcInfo, Vars, TypeInfoVars) :-
+proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
-	proc_info_get_used_typeinfos_2(ProcInfo, VarList, TypeInfoVarList),
+	proc_info_get_typeinfo_vars_2(ProcInfo, VarList, TypeInfoVarList),
 	set__list_to_set(TypeInfoVarList, TypeInfoVars).
 
 	% auxiliary predicate - traverses variables and builds a list of
 	% variables that store typeinfos for these variables. 
-:- pred proc_info_get_used_typeinfos_2(proc_info, list(var), list(var)).
-:- mode proc_info_get_used_typeinfos_2(in, in, out) is det.
-proc_info_get_used_typeinfos_2(_, [], []).
-proc_info_get_used_typeinfos_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
+:- pred proc_info_get_typeinfo_vars_2(proc_info, list(var), list(var)).
+:- mode proc_info_get_typeinfo_vars_2(in, in, out) is det.
+proc_info_get_typeinfo_vars_2(_, [], []).
+proc_info_get_typeinfo_vars_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 	proc_info_vartypes(ProcInfo, VarTypeMap),
 	( 
 		map__search(VarTypeMap, Var, Type)
@@ -993,20 +993,20 @@ proc_info_get_used_typeinfos_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 			% Optimize common case
 			TypeVars = []
 		->
-			proc_info_get_used_typeinfos_2(ProcInfo, Vars1, 
+			proc_info_get_typeinfo_vars_2(ProcInfo, Vars1, 
 				TypeInfoVars)
 		;
-			% It's possible there are some complications with
+			% XXX It's possible there are some complications with
 			% higher order pred types here -- if so, maybe
 			% treat them specially.
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			map__apply_to_list(TypeVars, TVarMap, TypeInfoVars0),
-			proc_info_get_used_typeinfos_2(ProcInfo, Vars1,
+			proc_info_get_typeinfo_vars_2(ProcInfo, Vars1,
 				TypeInfoVars1),
 			list__append(TypeInfoVars0, TypeInfoVars1, TypeInfoVars)
 		)
 	;
-		error("proc_info_get_used_typeinfos_2: var not found in typemap")
+		error("proc_info_get_typeinfo_vars_2: var not found in typemap")
 	).
 
 proc_info_ensure_unique_names(ProcInfo0, ProcInfo) :-

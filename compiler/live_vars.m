@@ -467,9 +467,9 @@ maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, OutVars,
 	(
 		GC_Method = accurate
 	->
-		proc_info_get_used_typeinfos_setwise(ProcInfo, LiveVars1,
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, LiveVars1,
 			TypeInfoVarsLive),
-		proc_info_get_used_typeinfos_setwise(ProcInfo, OutVars,
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, OutVars,
 			TypeInfoVarsOut),
 		set__union(LiveVars1, TypeInfoVarsOut, LiveVars2),
 		set__union(LiveVars2, TypeInfoVarsLive, LiveVars)

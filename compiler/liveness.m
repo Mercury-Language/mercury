@@ -318,7 +318,7 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, LiveInfo, Deadness,
 			GCmethod = accurate
 		->
 			live_info_get_proc_info(LiveInfo, ProcInfo),
-			proc_info_get_used_typeinfos_setwise(ProcInfo,
+			proc_info_get_typeinfo_vars_setwise(ProcInfo,
 				NonLocals0, TypeInfoVars),
 			set__union(NonLocals0, TypeInfoVars, NonLocals)
 		;
@@ -790,10 +790,31 @@ initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 		initial_liveness_2(Vars, Modes, Types, ModuleInfo,
 			Liveness0, Liveness1)
 	->
-		Liveness = Liveness1
+		Liveness2 = Liveness1
 	;
 		error("initial_liveness: list length mismatch")
-	).
+	),
+		% If doing accurate garbage collection, the corresponding
+		% typeinfos need to be added to these.
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_gc_method(Globals, GCmethod),
+	(
+		GCmethod = accurate
+	->
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, Liveness2,
+			TypeInfoVars),
+		set__union(Liveness2, TypeInfoVars, Liveness3)
+	;
+		Liveness3 = Liveness2
+	),
+		% If a variable is unused in the goal, it shouldn't be
+		% in the initial liveness. (If we allowed it to start
+		% live, it wouldn't ever become dead, because it would
+		% have to be used to be killed).
+		% So we intersect the headvars with the non-locals.
+	proc_info_goal(ProcInfo, _Goal - GoalInfo),
+	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	set__intersect(Liveness3, NonLocals, Liveness).
 
 :- pred initial_liveness_2(list(var), list(mode), list(type), module_info,
 	set(var), set(var)).
@@ -837,7 +858,7 @@ initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	(
 		GCmethod = accurate
 	->
-		proc_info_get_used_typeinfos_setwise(ProcInfo, Deadness2,
+		proc_info_get_typeinfo_vars_setwise(ProcInfo, Deadness2,
 			TypeInfoVars),
 		set__union(Deadness2, TypeInfoVars, Deadness)
 	;
