@@ -1,2 +1,2 @@
-functor(atom("univ"), [functor(atom(":"), [functor(integer(4), [], context("", 0)), functor(atom(":"), [functor(atom("int"), [], context("", 0)), functor(atom("int"), [], context("", 0))], context("", 0))], context("", 0))], context("", 0))
-univ(4 : (int : int))
+functor(atom("univ_cons"), [functor(integer(4), [], context("", 0))], context("", 0))
+univ_cons(4)

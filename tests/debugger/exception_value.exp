@@ -16,7 +16,7 @@ mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-exception(univ("p exception" : string))
+exception(univ_cons("p exception"))
        7:      5  3 CALL pred exception_value:q/1-0 (det) exception_value.m:35
 mdb> finish
        8:      5  3 EXCP pred exception_value:q/1-0 (det)
@@ -39,4 +39,4 @@ mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-exception(univ("q oops" - [1, 2, 3] : std_util:pair(string, list:list(int))))
+exception(univ_cons("q oops" - [1, 2, 3]))

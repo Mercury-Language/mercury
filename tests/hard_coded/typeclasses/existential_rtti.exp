@@ -41,26 +41,26 @@ multi(10, "multiparameter")
 multi2(11, "multiparameter", 42.0000000000000)
 Writing deconstructed terms:
 myf/1
-univ(1 : int)
+univ_cons(1)
 f/3
-univ(1 : int), univ("hello" : string), univ(42 : int)
+univ_cons(1), univ_cons("hello"), univ_cons(42)
 f/3
-univ(2 : int), univ('w' : character), univ(42 : int)
+univ_cons(2), univ_cons('w'), univ_cons(42)
 f/3
-univ(3 : int), univ(goo : existential_rtti:goo), univ(42 : int)
+univ_cons(3), univ_cons(goo), univ_cons(42)
 f/3
-univ(4 : int), univ(g("hello") : existential_rtti:g), univ(42 : int)
+univ_cons(4), univ_cons(g("hello")), univ_cons(42)
 f/3
-univ(5 : int), univ(g2(12) : existential_rtti:g2), univ(42 : int)
+univ_cons(5), univ_cons(g2(12)), univ_cons(42)
 f/3
-univ(6 : int), univ(foo("hello", "world") : existential_rtti:foo), univ(42 : int)
+univ_cons(6), univ_cons(foo("hello", "world")), univ_cons(42)
 g/3
-univ(7.00000000000000 : float), univ(g("hello") : existential_rtti:g), univ(42.0000000000000 : float)
+univ_cons(7.00000000000000), univ_cons(g("hello")), univ_cons(42.0000000000000)
 f/3
-univ(8 : int), univ(u("hello") : existential_rtti:u(string)), univ(42 : int)
+univ_cons(8), univ_cons(u("hello")), univ_cons(42)
 f2/6
-univ(9 : int), univ("hello" : string), univ(u("hello") : existential_rtti:u(string)), univ(432.100000000000 : float), univ(u("world") : existential_rtti:u(string)), univ(42 : int)
+univ_cons(9), univ_cons("hello"), univ_cons(u("hello")), univ_cons(432.100000000000), univ_cons(u("world")), univ_cons(42)
 multi/2
-univ(10 : int), univ("multiparameter" : string)
+univ_cons(10), univ_cons("multiparameter")
 multi2/3
-univ(11 : int), univ("multiparameter" : string), univ(42.0000000000000 : float)
+univ_cons(11), univ_cons("multiparameter"), univ_cons(42.0000000000000)

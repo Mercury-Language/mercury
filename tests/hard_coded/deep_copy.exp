@@ -87,9 +87,9 @@ TESTING BUILTINS
 4
 4
 4
-univ(["hi! I\'m a univ!"] : list:list(string))
-univ(["hi! I\'m a univ!"] : list:list(string))
-univ(["hi! I\'m a univ!"] : list:list(string))
+univ_cons(["hi! I\'m a univ!"])
+univ_cons(["hi! I\'m a univ!"])
+univ_cons(["hi! I\'m a univ!"])
 {1, "two", '3', {4, '5', "6"}}
 {1, "two", '3', {4, '5', "6"}}
 {1, "two", '3', {4, '5', "6"}}

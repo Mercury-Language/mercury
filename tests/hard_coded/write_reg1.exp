@@ -27,7 +27,7 @@ TESTING BUILTINS
 2.23954899000000e+23
 -65
 4
-univ(["hi! I\'m a univ!"] : list:list(string))
+univ_cons(["hi! I\'m a univ!"])
 '<<predicate>>'
 
 TESTING OTHER TYPES

@@ -28,7 +28,7 @@ mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-exception(univ("Too big" : string))
+exception(univ_cons("Too big"))
       32:      6  2 CALL pred throw:q/1-0 (semidet) throw.m:48
 mdb> finish
       65:      6  2 EXCP pred throw:q/1-0 (semidet)
@@ -50,4 +50,4 @@ mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-exception(univ("Too big" : string))
+exception(univ_cons("Too big"))

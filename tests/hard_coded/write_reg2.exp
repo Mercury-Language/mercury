@@ -1,2 +1,2 @@
-univ(1 - 2 : std_util:pair(int, int))
-univ({1, 2, 3} : {int, int, int})
+univ_cons(1 - 2)
+univ_cons({1, 2, 3})

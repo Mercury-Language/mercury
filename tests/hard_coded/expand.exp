@@ -101,9 +101,9 @@ expand: functor -65 arity 0 arguments []
 no arguments
 expand: functor 4 arity 0 arguments []
 
-./2
-argument 2 of functor . was:[]
-expand: functor . arity 2 arguments ["hi! I\'m a univ!", []]
+univ_cons/1
+argument 1 of functor univ_cons was:["hi! I\'m a univ!"]
+expand: functor univ_cons arity 1 arguments [["hi! I\'m a univ!"]]
 
 <<predicate>>/0
 no arguments

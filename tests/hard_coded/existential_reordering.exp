@@ -1,1 +1,1 @@
-univ([] : list:list(int))
+univ_cons([])
