@@ -70,7 +70,7 @@ Valid? y
 Call u(_)
 Throws "Error"
 Expected? y
-Found unhandled exception:
+Found unhandled or incorrect exception:
 v(_)
 "Error"
 Is this a bug? y
