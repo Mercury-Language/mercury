@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -445,15 +445,12 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         }
 
         pseudo_type_info = MR_var_pti(level_layout, i);
-        if (MR_trace_type_is_ignored(pseudo_type_info,
-            print_optionals))
-        {
+        if (MR_trace_type_is_ignored(pseudo_type_info, print_optionals)) {
             continue;
         }
 
-        if (! MR_get_type_and_value_base(level_layout, i,
-            valid_saved_regs, base_sp, base_curfr,
-            type_params, &type_info, &value))
+        if (! MR_get_type_and_value_base(level_layout, i, valid_saved_regs,
+            base_sp, base_curfr, type_params, &type_info, &value))
         {
             /* this value is not a variable */
             continue;
