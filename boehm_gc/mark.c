@@ -539,8 +539,8 @@ mse * mark_stack_limit;
           /* Large length.					        */
           /* Process part of the range to avoid pushing too much on the	*/
           /* stack.							*/
-	  GC_ASSERT(descr < GC_greatest_plausible_heap_addr
-			    - GC_least_plausible_heap_addr);
+	  GC_ASSERT(descr < (word)GC_greatest_plausible_heap_addr
+			    - (word)GC_least_plausible_heap_addr);
 #	  ifdef PARALLEL_MARK
 #	    define SHARE_BYTES 2048
 	    if (descr > SHARE_BYTES && GC_parallel
@@ -571,6 +571,7 @@ mse * mark_stack_limit;
           while (descr != 0) {
             if ((signed_word)descr < 0) {
               current = *current_p;
+	      FIXUP_POINTER(current);
 	      if ((ptr_t)current >= least_ha && (ptr_t)current < greatest_ha) {
 		PREFETCH(current);
                 HC_PUSH_CONTENTS((ptr_t)current, mark_stack_top,
@@ -645,6 +646,7 @@ mse * mark_stack_limit;
 	  PREFETCH((ptr_t)limit - PREF_DIST*CACHE_LINE_SIZE);
 	  GC_ASSERT(limit >= current_p);
 	  deferred = *limit;
+	  FIXUP_POINTER(deferred);
 	  limit = (word *)((char *)limit - ALIGNMENT);
 	  if ((ptr_t)deferred >= least_ha && (ptr_t)deferred <  greatest_ha) {
 	    PREFETCH(deferred);
@@ -654,6 +656,7 @@ mse * mark_stack_limit;
 	  /* Unroll once, so we don't do too many of the prefetches 	*/
 	  /* based on limit.						*/
 	  deferred = *limit;
+	  FIXUP_POINTER(deferred);
 	  limit = (word *)((char *)limit - ALIGNMENT);
 	  if ((ptr_t)deferred >= least_ha && (ptr_t)deferred <  greatest_ha) {
 	    PREFETCH(deferred);
@@ -668,6 +671,7 @@ mse * mark_stack_limit;
 	/* Since HC_PUSH_CONTENTS expands to a lot of code,	*/
 	/* we don't.						*/
         current = *current_p;
+	FIXUP_POINTER(current);
         PREFETCH((ptr_t)current_p + PREF_DIST*CACHE_LINE_SIZE);
         if ((ptr_t)current >= least_ha && (ptr_t)current <  greatest_ha) {
   	  /* Prefetch the contents of the object we just pushed.  It's	*/
@@ -719,22 +723,33 @@ mse * GC_steal_mark_stack(mse * low, mse * high, mse * local,
     mse *top = local - 1;
     unsigned i = 0;
 
+    /* Make sure that prior writes to the mark stack are visible. */
+    /* On some architectures, the fact that the reads are 	  */
+    /* volatile should suffice.					  */
+#   if !defined(IA64) && !defined(HP_PA) && !defined(I386)
+      GC_memory_barrier();
+#   endif
     GC_ASSERT(high >= low-1 && high - low + 1 <= GC_mark_stack_size);
     for (p = low; p <= high && i <= max; ++p) {
 	word descr = *(volatile word *) &(p -> mse_descr);
+	/* In the IA64 memory model, the following volatile store is	*/
+	/* ordered after this read of descr.  Thus a thread must read 	*/
+	/* the original nonzero value.  HP_PA appears to be similar,	*/
+	/* and if I'm reading the P4 spec correctly, X86 is probably 	*/
+	/* also OK.  In some other cases we need a barrier.		*/
+#       if !defined(IA64) && !defined(HP_PA) && !defined(I386)
+          GC_memory_barrier();
+#       endif
 	if (descr != 0) {
 	    *(volatile word *) &(p -> mse_descr) = 0;
+	    /* More than one thread may get this entry, but that's only */
+	    /* a minor performance problem.				*/
 	    ++top;
 	    top -> mse_descr = descr;
 	    top -> mse_start = p -> mse_start;
 	    GC_ASSERT(  top -> mse_descr & GC_DS_TAGS != GC_DS_LENGTH || 
 			top -> mse_descr < GC_greatest_plausible_heap_addr
 			                   - GC_least_plausible_heap_addr);
-	    /* There is no synchronization here.  We assume that at	*/
-	    /* least one thread will see the original descriptor.	*/
-	    /* Otherwise we need a barrier.				*/
-	    /* More than one thread may get this entry, but that's only */
-	    /* a minor performance problem.				*/
 	    /* If this is a big object, count it as			*/
 	    /* size/256 + 1 objects.					*/
 	    ++i;
@@ -771,7 +786,7 @@ void GC_return_mark_stack(mse * low, mse * high)
       BCOPY(low, my_start, stack_size * sizeof(mse));
       GC_ASSERT(GC_mark_stack_top = my_top);
 #     if !defined(IA64) && !defined(HP_PA)
-        GC_memory_write_barrier();
+        GC_memory_barrier();
 #     endif
 	/* On IA64, the volatile write acts as a release barrier. */
       GC_mark_stack_top = my_top + stack_size;
@@ -1335,8 +1350,8 @@ ptr_t top;
 #   define GC_least_plausible_heap_addr least_ha
 
     if (top == 0) return;
-    /* check all pointers in range and put in push if they appear */
-    /* to be valid.						  */
+    /* check all pointers in range and push if they appear	*/
+    /* to be valid.						*/
       lim = t - 1 /* longword */;
       for (p = b; p <= lim; p = (word *)(((char *)p) + ALIGNMENT)) {
 	q = *p;
@@ -1359,7 +1374,7 @@ ptr_t bottom;
 ptr_t top;
 ptr_t cold_gc_frame;
 {
-  if (GC_all_interior_pointers) {
+  if (!NEED_FIXUP_POINTER && GC_all_interior_pointers) {
 #   define EAGER_BYTES 1024
     /* Push the hot end of the stack eagerly, so that register values   */
     /* saved inside GC frames are marked before they disappear.		*/
@@ -1368,6 +1383,7 @@ ptr_t cold_gc_frame;
 	GC_push_all_stack(bottom, top);
 	return;
     }
+    GC_ASSERT(bottom <= cold_gc_frame && cold_gc_frame <= top);
 #   ifdef STACK_GROWS_DOWN
 	GC_push_all(cold_gc_frame - sizeof(ptr_t), top);
 	GC_push_all_eager(bottom, cold_gc_frame);
@@ -1388,7 +1404,7 @@ void GC_push_all_stack(bottom, top)
 ptr_t bottom;
 ptr_t top;
 {
-  if (GC_all_interior_pointers) {
+  if (!NEED_FIXUP_POINTER && GC_all_interior_pointers) {
     GC_push_all(bottom, top);
   } else {
     GC_push_all_eager(bottom, top);

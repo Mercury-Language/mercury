@@ -63,7 +63,8 @@
 #   define USE_HPUX_TLS
 # endif
 
-# if defined(GC_DGUX386_THREADS) && !defined(USE_PTHREAD_SPECIFIC)
+# if (defined(GC_DGUX386_THREADS) || defined(GC_OSF1_THREADS)) \
+      && !defined(USE_PTHREAD_SPECIFIC)
 #   define USE_PTHREAD_SPECIFIC
 # endif
 
@@ -106,6 +107,10 @@
 # include <sys/stat.h>
 # include <fcntl.h>
 
+#if defined(GC_MACOSX_THREADS)
+# include <sys/sysctl.h>
+#endif /* GC_MACOSX_THREADS */
+
 #if defined(GC_DGUX386_THREADS)
 # include <sys/dg_sys_info.h>
 # include <sys/_int_psem.h>
@@ -136,7 +141,20 @@
 
 void GC_thr_init();
 
-#if 0
+#if DEBUG_THREADS
+
+#ifndef NSIG
+# if defined(MAXSIG)
+#  define NSIG (MAXSIG+1)
+# elif defined(_NSIG)
+#  define NSIG _NSIG
+# elif defined(__SIGRTMAX)
+#  define NSIG (__SIGRTMAX+1)
+# else
+  --> please fix it
+# endif
+#endif
+
 void GC_print_sig_mask()
 {
     sigset_t blocked;
@@ -145,13 +163,20 @@ void GC_print_sig_mask()
     if (pthread_sigmask(SIG_BLOCK, NULL, &blocked) != 0)
     	ABORT("pthread_sigmask");
     GC_printf0("Blocked: ");
-    for (i = 1; i <= MAXSIG; i++) {
+    for (i = 1; i < NSIG; i++) {
         if (sigismember(&blocked, i)) { GC_printf1("%ld ",(long) i); }
     }
     GC_printf0("\n");
 }
 #endif
 
+word GC_stop_count;	/* Incremented at the beginning of GC_stop_world. */
+
+#ifdef GC_OSF1_THREADS
+  GC_bool GC_retry_signals = TRUE;
+#else
+  GC_bool GC_retry_signals = FALSE;
+#endif
 
 /* We use the allocation lock to protect thread-related data structures. */
 
@@ -189,6 +214,9 @@ typedef struct GC_Thread_Rep {
     				/* Used only to avoid premature 	*/
 				/* reclamation of any data it might 	*/
 				/* reference.				*/
+    word last_stop_count;	/* GC_last_stop_count value when thread	*/
+    				/* last successfully handled a suspend	*/
+    				/* signal.				*/
 #   ifdef THREAD_LOCAL_ALLOC
 #	if CPP_WORDSZ == 64 && defined(ALIGN_DOUBLE)
 #	    define GRANULARITY 16
@@ -477,13 +505,25 @@ GC_PTR GC_local_gcj_malloc(size_t bytes,
 
 #ifndef SIG_THR_RESTART
 #  if defined(GC_HPUX_THREADS) || defined(GC_OSF1_THREADS)
-#   define SIG_THR_RESTART _SIGRTMIN + 5
+#    ifdef _SIGRTMIN
+#      define SIG_THR_RESTART _SIGRTMIN + 5
+#    else
+#      define SIG_THR_RESTART SIGRTMIN + 5
+#    endif
 #  else
 #   define SIG_THR_RESTART SIGXCPU
 #  endif
 #endif
 
-sem_t GC_suspend_ack_sem;
+#ifdef GC_MACOSX_THREADS
+#  include <mach/task.h>
+#  include <mach/mach_init.h>
+#  include <mach/semaphore.h>
+
+   semaphore_t GC_suspend_ack_sem;
+#else
+   sem_t GC_suspend_ack_sem;
+#endif
 
 #if 0
 /*
@@ -614,11 +654,12 @@ void GC_suspend_handler(int sig)
 	/* guaranteed to be the mark_no correspending to our 		*/
 	/* suspension, i.e. the marker can't have incremented it yet.	*/
 #   endif
+    word my_stop_count = GC_stop_count;
 
     if (sig != SIG_SUSPEND) ABORT("Bad signal in suspend_handler");
 
 #if DEBUG_THREADS
-    GC_printf1("Suspending 0x%x\n", my_thread);
+    GC_printf1("Suspending 0x%lx\n", my_thread);
 #endif
 
     me = GC_lookup_thread(my_thread);
@@ -626,6 +667,14 @@ void GC_suspend_handler(int sig)
     /* of a thread which holds the allocation lock in order	*/
     /* to stop the world.  Thus concurrent modification of the	*/
     /* data structure is impossible.				*/
+    if (me -> last_stop_count == my_stop_count) {
+	/* Duplicate signal.  OK if we are retrying.	*/
+	if (!GC_retry_signals) {
+	    WARN("Duplicate suspend signal in thread %lx\n",
+		 pthread_self());
+	}
+	return;
+    }
 #   ifdef SPARC
 	me -> stack_ptr = (ptr_t)GC_save_regs_in_stack();
 #   else
@@ -638,7 +687,12 @@ void GC_suspend_handler(int sig)
     /* Tell the thread that wants to stop the world that this   */
     /* thread has been stopped.  Note that sem_post() is  	*/
     /* the only async-signal-safe primitive in LinuxThreads.    */
-    sem_post(&GC_suspend_ack_sem);
+#   ifdef GC_MACOSX_THREADS
+      semaphore_signal(GC_suspend_ack_sem);
+#   else
+      sem_post(&GC_suspend_ack_sem);
+#   endif
+    me -> last_stop_count = my_stop_count;
 
     /* Wait until that thread tells us to restart by sending    */
     /* this thread a SIG_THR_RESTART signal.			*/
@@ -656,9 +710,15 @@ void GC_suspend_handler(int sig)
 	    me->signal = 0;
 	    sigsuspend(&mask);             /* Wait for signal */
     } while (me->signal != SIG_THR_RESTART);
+    /* If the RESTART signal gets lost, we can still lose.  That should be  */
+    /* less likely than losing the SUSPEND signal, since we don't do much   */
+    /* between the sem_post and sigsuspend.	   			    */
+    /* We'd need more handshaking to work around that, since we don't want  */
+    /* to accidentally leave a RESTART signal pending, thus causing us to   */
+    /* continue prematurely in a future round.				    */ 
 
 #if DEBUG_THREADS
-    GC_printf1("Continuing 0x%x\n", my_thread);
+    GC_printf1("Continuing 0x%lx\n", my_thread);
 #endif
 }
 
@@ -685,7 +745,7 @@ void GC_restart_handler(int sig)
     */
 
 #if DEBUG_THREADS
-    GC_printf1("In GC_restart_handler for 0x%x\n", pthread_self());
+    GC_printf1("In GC_restart_handler for 0x%lx\n", pthread_self());
 #endif
 }
 
@@ -710,6 +770,10 @@ volatile GC_thread GC_threads[THREAD_TABLE_SZ];
 void GC_push_thread_structures GC_PROTO((void))
 {
     GC_push_all((ptr_t)(GC_threads), (ptr_t)(GC_threads)+sizeof(GC_threads));
+#   if defined(THREAD_LOCAL_ALLOC) && !defined(DBG_HDRS_ALL)
+      GC_push_all((ptr_t)(&GC_thread_key),
+	  (ptr_t)(&GC_thread_key)+sizeof(&GC_thread_key));
+#   endif
 }
 
 #ifdef THREAD_LOCAL_ALLOC
@@ -860,34 +924,28 @@ void GC_remove_all_threads_but_me(void)
 pthread_t GC_stopping_thread;
 int GC_stopping_pid;
 
-/* Caller holds allocation lock.	*/
-void GC_stop_world()
+/* We hold the allocation lock.  Suspend all threads that might	*/
+/* still be running.  Return the number of suspend signals that	*/
+/* were sent.							*/
+int GC_suspend_all()
 {
+    int n_live_threads = 0;
+    int i;
+    GC_thread p;
+    int result;
     pthread_t my_thread = pthread_self();
-    register int i;
-    register GC_thread p;
-    register int n_live_threads = 0;
-    register int result;
 
     GC_stopping_thread = my_thread;    /* debugging only.      */
     GC_stopping_pid = getpid();                /* debugging only.      */
-    /* Make sure all free list construction has stopped before we start. */
-    /* No new construction can start, since free list construction is	*/
-    /* required to acquire and release the GC lock before it starts,	*/
-    /* and we have the lock.						*/
-#   ifdef PARALLEL_MARK
-      GC_acquire_mark_lock();
-      GC_ASSERT(GC_fl_builder_count == 0);
-      /* We should have previously waited for it to become zero. */
-#   endif /* PARALLEL_MARK */
     for (i = 0; i < THREAD_TABLE_SZ; i++) {
       for (p = GC_threads[i]; p != 0; p = p -> next) {
         if (p -> id != my_thread) {
             if (p -> flags & FINISHED) continue;
+	    if (p -> last_stop_count == GC_stop_count) continue;
 	    if (p -> thread_blocked) /* Will wait */ continue;
             n_live_threads++;
 	    #if DEBUG_THREADS
-	      GC_printf1("Sending suspend signal to 0x%x\n", p -> id);
+	      GC_printf1("Sending suspend signal to 0x%lx\n", p -> id);
 	    #endif
             result = pthread_kill(p -> id, SIG_SUSPEND);
 	    switch(result) {
@@ -903,15 +961,73 @@ void GC_stop_world()
         }
       }
     }
+    return n_live_threads;
+}
+
+/* Caller holds allocation lock.	*/
+void GC_stop_world()
+{
+    register int i;
+    register int n_live_threads;
+
+    /* Make sure all free list construction has stopped before we start. */
+    /* No new construction can start, since free list construction is	*/
+    /* required to acquire and release the GC lock before it starts,	*/
+    /* and we have the lock.						*/
+#   ifdef PARALLEL_MARK
+      GC_acquire_mark_lock();
+      GC_ASSERT(GC_fl_builder_count == 0);
+      /* We should have previously waited for it to become zero. */
+#   endif /* PARALLEL_MARK */
+    ++GC_stop_count;
+    n_live_threads = GC_suspend_all();
+    /* sem_getvalue() is not suppored on OS X, and there does not appear */
+    /* to be a mach equivalent, so we disable this code.		 */
+#   ifndef GC_MACOSX_THREADS
+      if (GC_retry_signals) {
+	  unsigned long wait_usecs = 0;  /* Total wait since retry.	*/
+#	  define WAIT_UNIT 3000
+#	  define RETRY_INTERVAL 100000
+	  for (;;) {
+	      int ack_count;
+
+	      sem_getvalue(&GC_suspend_ack_sem, &ack_count);
+	      if (ack_count == n_live_threads) break;
+	      if (wait_usecs > RETRY_INTERVAL) {
+		  int newly_sent = GC_suspend_all();
+
+#                 ifdef CONDPRINT
+		    if (GC_print_stats) {
+		      GC_printf1("Resent %ld signals after timeout\n",
+				 newly_sent);
+		    }
+#                 endif
+		  sem_getvalue(&GC_suspend_ack_sem, &ack_count);
+		  if (newly_sent < n_live_threads - ack_count) {
+		      WARN("Lost some threads during GC_stop_world?!\n",0);
+		      n_live_threads = ack_count + newly_sent;
+		  }
+		  wait_usecs = 0;
+	      }
+	      usleep(WAIT_UNIT);
+	      wait_usecs += WAIT_UNIT;
+	  }
+      }
+#   endif /* GC_MACOSX_THREADS */
     for (i = 0; i < n_live_threads; i++) {
-    	if (0 != sem_wait(&GC_suspend_ack_sem))
-	    ABORT("sem_wait in handler failed");
+#	ifdef GC_MACOSX_THREADS
+	  if (KERN_SUCCESS != semaphore_wait(GC_suspend_ack_sem))
+	      ABORT("semaphore_wait in handler failed");
+#	else
+	  if (0 != sem_wait(&GC_suspend_ack_sem))
+	      ABORT("sem_wait in handler failed");
+#	endif
     }
 #   ifdef PARALLEL_MARK
       GC_release_mark_lock();
 #   endif
     #if DEBUG_THREADS
-      GC_printf1("World stopped 0x%x\n", pthread_self());
+      GC_printf1("World stopped from 0x%lx\n", pthread_self());
     #endif
     GC_stopping_thread = 0;  /* debugging only */
 }
@@ -937,7 +1053,7 @@ void GC_start_world()
 	    if (p -> thread_blocked) continue;
             n_live_threads++;
 	    #if DEBUG_THREADS
-	      GC_printf1("Sending restart signal to 0x%x\n", p -> id);
+	      GC_printf1("Sending restart signal to 0x%lx\n", p -> id);
 	    #endif
             result = pthread_kill(p -> id, SIG_THR_RESTART);
 	    switch(result) {
@@ -1204,8 +1320,14 @@ void GC_thr_init()
     if (GC_thr_initialized) return;
     GC_thr_initialized = TRUE;
 
-    if (sem_init(&GC_suspend_ack_sem, 0, 0) != 0)
-    	ABORT("sem_init failed");
+#   ifdef GC_MACOSX_THREADS
+      if (semaphore_create(mach_task_self(), &GC_suspend_ack_sem,
+			   SYNC_POLICY_FIFO, 0) != KERN_SUCCESS)
+	  ABORT("semaphore_create failed");
+#   else
+      if (sem_init(&GC_suspend_ack_sem, 0, 0) != 0)
+	  ABORT("sem_init failed");
+#   endif
 
     act.sa_flags = SA_RESTART;
     if (sigfillset(&act.sa_mask) != 0) {
@@ -1240,6 +1362,19 @@ void GC_thr_init()
       t -> stack_ptr = (ptr_t)(&dummy);
       t -> flags = DETACHED | MAIN_THREAD;
 
+    /* Check for GC_RETRY_SIGNALS.	*/
+      if (0 != GETENV("GC_RETRY_SIGNALS")) {
+	  GC_retry_signals = TRUE;
+      }
+      if (0 != GETENV("GC_NO_RETRY_SIGNALS")) {
+	  GC_retry_signals = FALSE;
+      }
+#     ifdef CONDPRINT
+          if (GC_print_stats && GC_retry_signals) {
+              GC_printf0("Will retry suspend signal if necessary.\n");
+	  }
+#     endif
+
     /* Set GC_nprocs.  */
       {
 	char * nprocs_string = GETENV("GC_NPROCS");
@@ -1250,8 +1385,18 @@ void GC_thr_init()
 #       if defined(GC_HPUX_THREADS)
 	  GC_nprocs = pthread_num_processors_np();
 #       endif
-#       if defined(GC_OSF1_THREADS) || defined(GC_FREEBSD_THREADS)
+#	if defined(GC_OSF1_THREADS)
+	  GC_nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	  if (GC_nprocs <= 0) GC_nprocs = 1;
+#	endif
+#       if defined(GC_FREEBSD_THREADS)
           GC_nprocs = 1;
+#       endif
+#       if defined(GC_MACOSX_THREADS)
+	  int ncpus = 1;
+	  size_t len = sizeof(ncpus);
+	  sysctl((int[2]) {CTL_HW, HW_NCPU}, 2, &ncpus, &len, NULL, 0);
+	  GC_nprocs = ncpus;
 #       endif
 #	if defined(GC_LINUX_THREADS) || defined(GC_DGUX386_THREADS)
           GC_nprocs = GC_get_nprocs();
@@ -1392,8 +1537,12 @@ struct start_info {
     void *(*start_routine)(void *);
     void *arg;
     word flags;
+#ifdef GC_MACOSX_THREADS
+    semaphore_t registered;
+#else
     sem_t registered;   	/* 1 ==> in our thread table, but 	*/
 				/* parent hasn't yet noticed.		*/
+#endif
 };
 
 /* Called at thread exit.				*/
@@ -1522,7 +1671,11 @@ void * GC_start_routine(void * arg)
 	GC_printf1("start_routine = 0x%lx\n", start);
 #   endif
     start_arg = si -> arg;
-    sem_post(&(si -> registered));	/* Last action on si.	*/
+#   ifdef GC_MACOSX_THREADS
+      semaphore_signal(si->registered);
+#   else
+      sem_post(&(si -> registered));	/* Last action on si.	*/
+#   endif
     					/* OK to deallocate.	*/
     pthread_cleanup_push(GC_thread_exit_proc, 0);
 #   if defined(THREAD_LOCAL_ALLOC) && !defined(DBG_HDRS_ALL)
@@ -1567,11 +1720,31 @@ WRAP_FUNC(pthread_create)(pthread_t *new_thread,
     UNLOCK();
     if (!parallel_initialized) GC_init_parallel();
     if (0 == si) return(ENOMEM);
-    sem_init(&(si -> registered), 0, 0);
+#   ifdef GC_MACOSX_THREADS
+      semaphore_create(mach_task_self(), &si->registered, SYNC_POLICY_FIFO, 0);
+#   else
+      sem_init(&(si -> registered), 0, 0);
+#   endif
     si -> start_routine = start_routine;
     si -> arg = arg;
     LOCK();
     if (!GC_thr_initialized) GC_thr_init();
+#   ifdef GC_ASSERTIONS
+      {
+	int stack_size;
+	if (NULL == attr) {
+	   pthread_attr_t my_attr;
+	   pthread_attr_init(&my_attr);
+	   pthread_attr_getstacksize(&my_attr, &stack_size);
+	} else {
+	   pthread_attr_getstacksize(attr, &stack_size);
+	}
+	GC_ASSERT(stack_size >= (8*HBLKSIZE*sizeof(word)));
+	/* Our threads may need to do some work for the GC.	*/
+	/* Ridiculously small threads won't work, and they	*/
+	/* probably wouldn't work anyway.			*/
+      }
+#   endif
     if (NULL == attr) {
 	detachstate = PTHREAD_CREATE_JOINABLE;
     } else { 
@@ -1593,10 +1766,15 @@ WRAP_FUNC(pthread_create)(pthread_t *new_thread,
     /* This also ensures that we hold onto si until the child is done	*/
     /* with it.  Thus it doesn't matter whether it is otherwise		*/
     /* visible to the collector.					*/
-        while (0 != sem_wait(&(si -> registered))) {
-	    if (EINTR != errno) ABORT("sem_wait failed");
-	}
-        sem_destroy(&(si -> registered));
+#	ifdef GC_MACOSX_THREADS
+	    semaphore_wait(si->registered);
+	    semaphore_destroy(mach_task_self(), si->registered);
+#	else
+	    while (0 != sem_wait(&(si -> registered))) {
+		if (EINTR != errno) ABORT("sem_wait failed");
+	    }
+	    sem_destroy(&(si -> registered));
+#	endif
 	LOCK();
 	GC_INTERNAL_FREE(si);
 	UNLOCK();
@@ -1749,8 +1927,12 @@ yield:
             return;
         }
 #       define SLEEP_THRESHOLD 12
-		/* nanosleep(<= 2ms) just spins under Linux.  We	*/
-		/* want to be careful to avoid that behavior.		*/
+		/* Under Linux very short sleeps tend to wait until	*/
+		/* the current time quantum expires.  On old Linux	*/
+		/* kernels nanosleep(<= 2ms) just spins under Linux.    */
+		/* (Under 2.4, this happens only for real-time		*/
+		/* processes.)  We want to minimize both behaviors	*/
+		/* here.						*/
         if (i < SLEEP_THRESHOLD) {
             sched_yield();
 	} else {

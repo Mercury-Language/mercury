@@ -80,12 +80,15 @@
 #   define NEED_FIND_LIMIT
 # endif
 
-#ifdef NEED_FIND_LIMIT
-#   include <setjmp.h>
-#endif
-
 #if defined(FREEBSD) && defined(I386)
 #  include <machine/trap.h>
+#  if !defined(PCR)
+#    define NEED_FIND_LIMIT
+#  endif
+#endif
+
+#ifdef NEED_FIND_LIMIT
+#   include <setjmp.h>
 #endif
 
 #ifdef AMIGA
@@ -154,6 +157,11 @@
   /* cover all versions.						*/
 
 # ifdef LINUX
+    /* Some Linux distributions arrange to define __data_start.  Some	*/
+    /* define data_start as a weak symbol.  The latter is technically	*/
+    /* broken, since the user program may define data_start, in which	*/
+    /* case we lose.  Nonetheless, we try both, prefering __data_start.	*/
+    /* We assume gcc-compatible pragmas.	*/
 #   pragma weak __data_start
     extern int __data_start[];
 #   pragma weak data_start
@@ -617,7 +625,8 @@ ptr_t GC_get_stack_base()
     }
 
     /* Return the first nonaddressible location > p (up) or 	*/
-    /* the smallest location q s.t. [q,p] is addressible (!up).	*/
+    /* the smallest location q s.t. [q,p) is addressable (!up).	*/
+    /* We assume that p (up) or p-1 (!up) is addressable.	*/
     ptr_t GC_find_limit(p, up)
     ptr_t p;
     GC_bool up;
@@ -661,6 +670,7 @@ ptr_t GC_get_stack_base()
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 # define STAT_SKIP 27   /* Number of fields preceding startstack	*/
 			/* field in /proc/self/stat			*/
@@ -934,9 +944,10 @@ void GC_register_data_segments()
   /* invalid result.  Under NT, GC_register_data_segments is a noop and	*/
   /* all real work is done by GC_register_dynamic_libraries.  Under	*/
   /* win32s, we cannot find the data segments associated with dll's.	*/
-  /* We rgister the main data segment here.				*/
+  /* We register the main data segment here.				*/
 #  ifdef __GCC__
-  GC_bool GC_no_win32_dlls = TRUE;	 /* GCC can't do SEH, so we can't use VirtualQuery */
+  GC_bool GC_no_win32_dlls = TRUE;
+ 			 /* GCC can't do SEH, so we can't use VirtualQuery */
 #  else
   GC_bool GC_no_win32_dlls = FALSE;	 
 #  endif
@@ -971,36 +982,102 @@ void GC_register_data_segments()
     return(p);
   }
 # endif
+
+# ifndef REDIRECT_MALLOC
+  /* We maintain a linked list of AllocationBase values that we know	*/
+  /* correspond to malloc heap sections.  Currently this is only called */
+  /* during a GC.  But there is some hope that for long running		*/
+  /* programs we will eventually see most heap sections.		*/
+
+  /* In the long run, it would be more reliable to occasionally walk 	*/
+  /* the malloc heap with HeapWalk on the default heap.  But that	*/
+  /* apparently works only for NT-based Windows. 			*/ 
+
+  /* In the long run, a better data structure would also be nice ...	*/
+  struct GC_malloc_heap_list {
+    void * allocation_base;
+    struct GC_malloc_heap_list *next;
+  } *GC_malloc_heap_l = 0;
+
+  /* Is p the base of one of the malloc heap sections we already know	*/
+  /* about?								*/
+  GC_bool GC_is_malloc_heap_base(ptr_t p)
+  {
+    struct GC_malloc_heap_list *q = GC_malloc_heap_l;
+
+    while (0 != q) {
+      if (q -> allocation_base == p) return TRUE;
+      q = q -> next;
+    }
+    return FALSE;
+  }
+
+  void *GC_get_allocation_base(void *p)
+  {
+    MEMORY_BASIC_INFORMATION buf;
+    DWORD result = VirtualQuery(p, &buf, sizeof(buf));
+    if (result != sizeof(buf)) {
+      ABORT("Weird VirtualQuery result");
+    }
+    return buf.AllocationBase;
+  }
+
+  size_t GC_max_root_size = 100000;	/* Appr. largest root size.	*/
+
+  void GC_add_current_malloc_heap()
+  {
+    struct GC_malloc_heap_list *new_l =
+                 malloc(sizeof(struct GC_malloc_heap_list));
+    void * candidate = GC_get_allocation_base(new_l);
+
+    if (new_l == 0) return;
+    if (GC_is_malloc_heap_base(candidate)) {
+      /* Try a little harder to find malloc heap.			*/
+	size_t req_size = 10000;
+	do {
+	  void *p = malloc(req_size);
+	  if (0 == p) { free(new_l); return; }
+ 	  candidate = GC_get_allocation_base(p);
+	  free(p);
+	  req_size *= 2;
+	} while (GC_is_malloc_heap_base(candidate)
+	         && req_size < GC_max_root_size/10 && req_size < 500000);
+	if (GC_is_malloc_heap_base(candidate)) {
+	  free(new_l); return;
+	}
+    }
+#   ifdef CONDPRINT
+      if (GC_print_stats)
+	  GC_printf1("Found new system malloc AllocationBase at 0x%lx\n",
+                     candidate);
+#   endif
+    new_l -> allocation_base = candidate;
+    new_l -> next = GC_malloc_heap_l;
+    GC_malloc_heap_l = new_l;
+  }
+# endif /* REDIRECT_MALLOC */
   
   /* Is p the start of either the malloc heap, or of one of our */
   /* heap sections?						*/
   GC_bool GC_is_heap_base (ptr_t p)
   {
      
-     register unsigned i;
+     unsigned i;
      
 #    ifndef REDIRECT_MALLOC
-       static ptr_t malloc_heap_pointer = 0;
+       static word last_gc_no = -1;
      
-       if (0 == malloc_heap_pointer) {
-         MEMORY_BASIC_INFORMATION buf;
-         void *pTemp = malloc( 1 );
-         register DWORD result = VirtualQuery(pTemp, &buf, sizeof(buf));
-           
-         free( pTemp );
-
-         
-         if (result != sizeof(buf)) {
-             ABORT("Weird VirtualQuery result");
-         }
-         malloc_heap_pointer = (ptr_t)(buf.AllocationBase);
+       if (last_gc_no != GC_gc_no) {
+	 GC_add_current_malloc_heap();
+	 last_gc_no = GC_gc_no;
        }
-       if (p == malloc_heap_pointer) return(TRUE);
+       if (GC_root_size > GC_max_root_size) GC_max_root_size = GC_root_size;
+       if (GC_is_malloc_heap_base(p)) return TRUE;
 #    endif
      for (i = 0; i < GC_n_heap_bases; i++) {
-         if (GC_heap_bases[i] == p) return(TRUE);
+         if (GC_heap_bases[i] == p) return TRUE;
      }
-     return(FALSE);
+     return FALSE ;
   }
 
 # ifdef MSWIN32
@@ -1050,7 +1127,7 @@ void GC_register_data_segments()
 
 # if (defined(SVR4) || defined(AUX) || defined(DGUX) \
       || (defined(LINUX) && defined(SPARC))) && !defined(PCR)
-char * GC_SysVGetDataStart(max_page_size, etext_addr)
+ptr_t GC_SysVGetDataStart(max_page_size, etext_addr)
 int max_page_size;
 int * etext_addr;
 {
@@ -1076,10 +1153,43 @@ int * etext_addr;
     	/* string constants in the text segment, but after etext.	*/
     	/* Use plan B.  Note that we now know there is a gap between	*/
     	/* text and data segments, so plan A bought us something.	*/
-    	result = (char *)GC_find_limit((ptr_t)(DATAEND) - MIN_PAGE_SIZE, FALSE);
+    	result = (char *)GC_find_limit((ptr_t)(DATAEND), FALSE);
     }
-    return((char *)result);
+    return((ptr_t)result);
 }
+# endif
+
+# if defined(FREEBSD) && defined(I386) && !defined(PCR)
+/* Its unclear whether this should be identical to the above, or 	*/
+/* whether it should apply to non-X86 architectures.			*/
+/* For now we don't assume that there is always an empty page after	*/
+/* etext.  But in some cases there actually seems to be slightly more.  */
+/* This also deals with holes between read-only data and writable data.	*/
+ptr_t GC_FreeBSDGetDataStart(max_page_size, etext_addr)
+int max_page_size;
+int * etext_addr;
+{
+    word text_end = ((word)(etext_addr) + sizeof(word) - 1)
+		     & ~(sizeof(word) - 1);
+	/* etext rounded to word boundary	*/
+    VOLATILE word next_page = (text_end + (word)max_page_size - 1)
+			      & ~((word)max_page_size - 1);
+    VOLATILE ptr_t result = (ptr_t)text_end;
+    GC_setup_temporary_fault_handler();
+    if (setjmp(GC_jmp_buf) == 0) {
+	/* Try reading at the address.				*/
+	/* This should happen before there is another thread.	*/
+	for (; next_page < (word)(DATAEND); next_page += (word)max_page_size)
+	    *(VOLATILE char *)next_page;
+	GC_reset_fault_handler();
+    } else {
+	GC_reset_fault_handler();
+	/* As above, we go to plan B	*/
+	result = GC_find_limit((ptr_t)(DATAEND), FALSE);
+    }
+    return(result);
+}
+
 # endif
 
 
@@ -1093,8 +1203,7 @@ int * etext_addr;
 
 void GC_register_data_segments()
 {
-#   if !defined(PCR) && !defined(SRC_M3) && !defined(NEXT) && !defined(MACOS) \
-       && !defined(MACOSX)
+#   if !defined(PCR) && !defined(SRC_M3) && !defined(MACOS)
 #     if defined(REDIRECT_MALLOC) && defined(GC_SOLARIS_THREADS)
 	/* As of Solaris 2.3, the Solaris threads implementation	*/
 	/* allocates the data structure for the initial thread with	*/
@@ -1110,9 +1219,6 @@ void GC_register_data_segments()
          GC_add_roots_inner(DATASTART2, (char *)(DATAEND2), FALSE);
 #       endif
 #     endif
-#   endif
-#   if !defined(PCR) && (defined(NEXT) || defined(MACOSX))
-      GC_add_roots_inner(DATASTART, (char *) get_end(), FALSE);
 #   endif
 #   if defined(MACOS)
     {
@@ -1223,18 +1329,28 @@ word bytes;
 ptr_t GC_unix_get_mem(bytes)
 word bytes;
 {
-    static GC_bool initialized = FALSE;
-    static int fd;
     void *result;
     static ptr_t last_addr = HEAP_START;
 
-    if (!initialized) {
-	fd = open("/dev/zero", O_RDONLY);
-	initialized = TRUE;
-    }
+#   ifndef USE_MMAP_ANON
+      static GC_bool initialized = FALSE;
+      static int fd;
+
+      if (!initialized) {
+	  fd = open("/dev/zero", O_RDONLY);
+	  fcntl(fd, F_SETFD, FD_CLOEXEC);
+	  initialized = TRUE;
+      }
+#   endif
+
     if (bytes & (GC_page_size -1)) ABORT("Bad GET_MEM arg");
-    result = mmap(last_addr, bytes, PROT_READ | PROT_WRITE | OPT_PROT_EXEC,
-		  GC_MMAP_FLAGS, fd, 0/* offset */);
+#   ifdef USE_MMAP_ANON
+      result = mmap(last_addr, bytes, PROT_READ | PROT_WRITE | OPT_PROT_EXEC,
+		    GC_MMAP_FLAGS | MAP_ANON, -1, 0/* offset */);
+#   else
+      result = mmap(last_addr, bytes, PROT_READ | PROT_WRITE | OPT_PROT_EXEC,
+		    GC_MMAP_FLAGS, fd, 0/* offset */);
+#   endif
     if (result == MAP_FAILED) return(0);
     last_addr = (ptr_t)result + bytes + GC_page_size - 1;
     last_addr = (ptr_t)((word)last_addr & ~(GC_page_size - 1));
@@ -1527,6 +1643,7 @@ void GC_remap(ptr_t start, word bytes)
       }
 #   else
       if (-1 == zero_descr) zero_descr = open("/dev/zero", O_RDWR);
+      fcntl(zero_descr, F_SETFD, FD_CLOEXEC);
       if (0 == start_addr) return;
       result = mmap(start_addr, len, PROT_READ | PROT_WRITE | OPT_PROT_EXEC,
 		    MAP_FIXED | MAP_PRIVATE, zero_descr, 0);
@@ -2201,7 +2318,7 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 	char * addr = (char *) (scp -> si_addr);
 #   endif
 #   ifdef LINUX
-#     ifdef I386
+#     if defined(I386) || defined (X86_64)
 	char * addr = (char *) (sc.cr2);
 #     else
 #	if defined(M68K)
@@ -2847,6 +2964,7 @@ void GC_dirty_init()
     }
     GC_proc_fd = syscall(SYS_ioctl, fd, PIOCOPENPD, 0);
     close(fd);
+    syscall(SYS_fcntl, GC_proc_fd, F_SETFD, FD_CLOEXEC);
     if (GC_proc_fd < 0) {
     	ABORT("/proc ioctl failed");
     }
@@ -3151,17 +3269,6 @@ GC_bool is_ptrfree;
 /* callers.  Ignore my frame and my callers frame.			*/
 
 #ifdef LINUX
-# include <features.h>
-# if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 1 || __GLIBC__ > 2
-#   define HAVE_BUILTIN_BACKTRACE
-#   ifdef IA64
-#     define BUILTIN_BACKTRACE_BROKEN
-#   endif
-# endif
-#endif
-
-#include <execinfo.h>
-#ifdef LINUX
 #   include <unistd.h>
 #endif
 
@@ -3170,7 +3277,9 @@ GC_bool is_ptrfree;
 #ifdef SAVE_CALL_CHAIN
 
 #if NARGS == 0 && NFRAMES % 2 == 0 /* No padding */ \
-    && defined(HAVE_BUILTIN_BACKTRACE)
+    && defined(GC_HAVE_BUILTIN_BACKTRACE)
+
+#include <execinfo.h>
 
 void GC_save_callers (info) 
 struct callinfo info[NFRAMES];
@@ -3247,6 +3356,7 @@ struct callinfo info[NFRAMES];
 {
     register int i;
     static int reentry_count = 0;
+    GC_bool stop = FALSE;
 
     LOCK();
       ++reentry_count;
@@ -3257,7 +3367,7 @@ struct callinfo info[NFRAMES];
 #   else
       GC_err_printf0("\tCall chain at allocation:\n");
 #   endif
-    for (i = 0; i < NFRAMES; i++) {
+    for (i = 0; i < NFRAMES && !stop ; i++) {
      	if (info[i].ci_pc == 0) break;
 #	if NARGS > 0
 	{
@@ -3282,20 +3392,18 @@ struct callinfo info[NFRAMES];
 #	  ifdef LINUX
 	    FILE *pipe;
 #	  endif
-#	  if defined(HAVE_BUILTIN_BACKTRACE) && \
-	     !defined(BUILTIN_BACKTRACE_BROKEN)
+#	  if defined(GC_HAVE_BUILTIN_BACKTRACE)
 	    char **sym_name =
 	      backtrace_symbols((void **)(&(info[i].ci_pc)), 1);
 	    char *name = sym_name[0];
-	    GC_bool found_it = (strchr(name, '(') != 0);
 #	  else
 	    char buf[40];
 	    char *name = buf;
-	    GC_bool fount_it = FALSE:
      	    sprintf(buf, "##PC##= 0x%lx", info[i].ci_pc);
 #	  endif
-#	  ifdef LINUX
-	    if (!found_it) {
+#	  if defined(LINUX) && !defined(SMALL_CONFIG)
+	    /* Try for a line number. */
+	    {
 #	        define EXE_SZ 100
 		static char exe_name[EXE_SZ];
 #		define CMD_SZ 200
@@ -3306,8 +3414,6 @@ struct callinfo info[NFRAMES];
 		static GC_bool found_exe_name = FALSE;
 		static GC_bool will_fail = FALSE;
 		int ret_code;
-		/* Unfortunately, this is the common case for the 	*/
-		/* main executable.					*/
 		/* Try to get it via a hairy and expensive scheme.	*/
 		/* First we get the name of the executable:		*/
 		if (will_fail) goto out;
@@ -3324,19 +3430,34 @@ struct callinfo info[NFRAMES];
 		/* Then we use popen to start addr2line -e <exe> <addr>	*/
 		/* There are faster ways to do this, but hopefully this	*/
 		/* isn't time critical.					*/
-		sprintf(cmd_buf, "/usr/bin/addr2line -e %s 0x%lx", exe_name,
+		sprintf(cmd_buf, "/usr/bin/addr2line -f -e %s 0x%lx", exe_name,
 				 (unsigned long)info[i].ci_pc);
 		pipe = popen(cmd_buf, "r");
-		if (pipe < 0 || fgets(result_buf, RESULT_SZ, pipe) == 0) {
+		if (pipe == NULL
+		    || (result_len = fread(result_buf, 1, RESULT_SZ - 1, pipe))
+		       == 0) {
+		  if (pipe != NULL) pclose(pipe);
 		  will_fail = TRUE;
 		  goto out;
 		}
-		result_len = strlen(result_buf);
 		if (result_buf[result_len - 1] == '\n') --result_len;
+		result_buf[result_len] = 0;
 		if (result_buf[0] == '?'
 		    || result_buf[result_len-2] == ':' 
-		       && result_buf[result_len-1] == '0')
+		       && result_buf[result_len-1] == '0') {
+		    pclose(pipe);
 		    goto out;
+		}
+		/* Get rid of embedded newline, if any.  Test for "main" */
+		{
+		   char * nl = strchr(result_buf, '\n');
+		   if (nl != NULL && nl < result_buf + result_len) {
+		     *nl = ':';
+		   }
+		   if (strncmp(result_buf, "main", nl - result_buf) == 0) {
+		     stop = TRUE;
+		   }
+		}
 		if (result_len < RESULT_SZ - 25) {
 		  /* Add in hex address	*/
 		    sprintf(result_buf + result_len, " [0x%lx]",
@@ -3348,7 +3469,9 @@ struct callinfo info[NFRAMES];
 	    }
 #	  endif /* LINUX */
 	  GC_err_printf1("\t\t%s\n", name);
-	  free(sym_name);  /* May call GC_free; that's OK */
+#	  if defined(GC_HAVE_BUILTIN_BACKTRACE)
+	    free(sym_name);  /* May call GC_free; that's OK */
+#         endif
 	}
     }
     LOCK();
@@ -3403,7 +3526,7 @@ void GC_print_address_map()
 	    if (result <= 0) ABORT("Couldn't read /proc/self/maps");
  	    GC_err_write(maps_temp, result);
 	} while (result == sizeof(maps_temp));
-     
+	close(f);     
     GC_err_printf0("---------- End address map ----------\n");
 }
 

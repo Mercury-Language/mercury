@@ -182,7 +182,7 @@ register int k;
     ptr_t result;
     DCL_LOCK_STATE;
 
-    if (GC_debugging_started) GC_print_all_smashed();
+    if (GC_have_errors) GC_print_all_errors();
     GC_INVOKE_FINALIZERS();
     if (SMALL_OBJ(lb)) {
     	DISABLE_SIGNALS();
@@ -295,6 +295,11 @@ DCL_LOCK_STATE;
             return(GENERAL_MALLOC((word)lb, NORMAL));
         }
         /* See above comment on signals.	*/
+	GC_ASSERT(0 == obj_link(op)
+		  || (word)obj_link(op)
+		  	<= (word)GC_greatest_plausible_heap_addr
+		     && (word)obj_link(op)
+		     	>= (word)GC_least_plausible_heap_addr);
         *opp = obj_link(op);
         obj_link(op) = 0;
         GC_words_allocd += lw;
@@ -380,6 +385,7 @@ DCL_LOCK_STATE;
     	/* Required by ANSI.  It's not my fault ...	*/
     h = HBLKPTR(p);
     hhdr = HDR(h);
+    GC_ASSERT(GC_base(p) == p);
 #   if defined(REDIRECT_MALLOC) && \
 	(defined(GC_SOLARIS_THREADS) || defined(GC_LINUX_THREADS) \
 	 || defined(__MINGW32__)) /* Should this be MSWIN32 in general? */
@@ -461,7 +467,10 @@ void GC_free_inner(GC_PTR p)
 }
 #endif /* THREADS */
 
-# ifdef REDIRECT_MALLOC
+# if defined(REDIRECT_MALLOC) && !defined(REDIRECT_FREE)
+#   define REDIRECT_FREE GC_free
+# endif
+# ifdef REDIRECT_FREE
 #   ifdef __STDC__
       void free(GC_PTR p)
 #   else
@@ -470,7 +479,7 @@ void GC_free_inner(GC_PTR p)
 #   endif
   {
 #   ifndef IGNORE_FREE
-      GC_free(p);
+      REDIRECT_FREE(p);
 #   endif
   }
 # endif  /* REDIRECT_MALLOC */

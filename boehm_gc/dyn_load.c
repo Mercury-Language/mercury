@@ -57,7 +57,8 @@
     !defined(HPUX) && !(defined(LINUX) && defined(__ELF__)) && \
     !defined(RS6000) && !defined(SCO_ELF) && !defined(DGUX) && \
     !(defined(FREEBSD) && defined(__ELF__)) && \
-    !(defined(NETBSD) && defined(__ELF__)) && !defined(HURD)
+    !(defined(NETBSD) && defined(__ELF__)) && !defined(HURD) && \
+    !defined(MACOSX)
  --> We only know how to find data segments of dynamic libraries for the
  --> above.  Additional SVR4 variants might not be too
  --> hard to add.
@@ -355,10 +356,6 @@ void GC_register_dynamic_libraries()
 		/* Stack mapping; discard	*/
 		continue;
 	    }
-	    if (start <= datastart && end > datastart && maj_dev != 0) {
-		/* Main data segment; discard	*/
-		continue;
-	    }
 #	    ifdef THREADS
 	      if (GC_segment_is_thread_stack(start, end)) continue;
 #	    endif
@@ -384,6 +381,13 @@ void GC_register_dynamic_libraries()
      }
 }
 
+/* We now take care of the main data segment ourselves: */
+GC_bool GC_register_main_static_data()
+{
+  return FALSE;
+}
+  
+# define HAVE_REGISTER_MAIN_STATIC_DATA
 //
 //  parse_map_entry parses an entry from /proc/self/maps so we can
 //  locate all writable data segments that belong to shared libraries.
@@ -393,21 +397,34 @@ void GC_register_dynamic_libraries()
 //  ^^^^^^^^ ^^^^^^^^ ^^^^          ^^
 //  start    end      prot          maj_dev
 //  0        9        18            32
+//  
+//  For 64 bit ABIs:
+//  0	     17	      34	    56
 //
 //  The parser is called with a pointer to the entry and the return value
 //  is either NULL or is advanced to the next entry(the byte after the
 //  trailing '\n'.)
 //
-#define OFFSET_MAP_START   0
-#define OFFSET_MAP_END     9
-#define OFFSET_MAP_PROT   18
-#define OFFSET_MAP_MAJDEV 32
+#if CPP_WORDSZ == 32
+# define OFFSET_MAP_START   0
+# define OFFSET_MAP_END     9
+# define OFFSET_MAP_PROT   18
+# define OFFSET_MAP_MAJDEV 32
+# define ADDR_WIDTH 	    8
+#endif
+
+#if CPP_WORDSZ == 64
+# define OFFSET_MAP_START   0
+# define OFFSET_MAP_END    17
+# define OFFSET_MAP_PROT   34
+# define OFFSET_MAP_MAJDEV 56
+# define ADDR_WIDTH 	   16
+#endif
 
 static char *parse_map_entry(char *buf_ptr, word *start, word *end,
                              char *prot_buf, unsigned int *maj_dev)
 {
     int i;
-    unsigned int val;
     char *tok;
 
     if (buf_ptr == NULL || *buf_ptr == '\0') {
@@ -420,11 +437,11 @@ static char *parse_map_entry(char *buf_ptr, word *start, word *end,
     if (prot_buf[1] == 'w') { // we can skip all of this if it's not writable
 
         tok = buf_ptr;
-        buf_ptr[OFFSET_MAP_START+8] = '\0';
+        buf_ptr[OFFSET_MAP_START+ADDR_WIDTH] = '\0';
         *start = strtoul(tok, NULL, 16);
 
         tok = buf_ptr+OFFSET_MAP_END;
-        buf_ptr[OFFSET_MAP_END+8] = '\0';
+        buf_ptr[OFFSET_MAP_END+ADDR_WIDTH] = '\0';
         *end = strtoul(tok, NULL, 16);
 
         buf_ptr += OFFSET_MAP_MAJDEV;
@@ -469,13 +486,6 @@ static int GC_register_dynlib_callback(info, size, ptr)
       + sizeof (info->dlpi_phnum))
     return -1;
 
-  /* Skip the first object - it is the main program.  */
-  if (*(int *)ptr == 0)
-    {
-      *(int *)ptr = 1;
-      return 0;
-    }
-
   p = info->dlpi_phdr;
   for( i = 0; i < (int)(info->dlpi_phnum); ((i++),(p++)) ) {
     switch( p->p_type ) {
@@ -491,6 +501,7 @@ static int GC_register_dynlib_callback(info, size, ptr)
     }
   }
 
+  * (int *)ptr = 1;	/* Signal that we were called */
   return 0;
 }     
 
@@ -500,15 +511,31 @@ static int GC_register_dynlib_callback(info, size, ptr)
 
 GC_bool GC_register_dynamic_libraries_dl_iterate_phdr()
 {
-  int tmp = 0;
-
   if (dl_iterate_phdr) {
-    dl_iterate_phdr(GC_register_dynlib_callback, &tmp);
+    int did_something = 0;
+    dl_iterate_phdr(GC_register_dynlib_callback, &did_something);
+    if (!did_something) {
+	/* dl_iterate_phdr may forget the static data segment in	*/
+	/* statically linked executables.				*/
+	GC_add_roots_inner(DATASTART, (char *)(DATAEND), TRUE);
+#       if defined(DATASTART2)
+          GC_add_roots_inner(DATASTART2, (char *)(DATAEND2), TRUE);
+#       endif
+    }
+
     return TRUE;
   } else {
     return FALSE;
   }
 }
+
+/* Do we need to separately register the main static data segment? */
+GC_bool GC_register_main_static_data()
+{
+  return (dl_iterate_phdr == 0);
+}
+
+#define HAVE_REGISTER_MAIN_STATIC_DATA
 
 # else /* !LINUX || version(glibc) < 2.2.4 */
 
@@ -776,10 +803,23 @@ void GC_register_dynamic_libraries()
     }
 # endif
 
-# ifndef MSWINCE
+# ifdef MSWINCE
+  /* Do we need to separately register the main static data segment? */
+  GC_bool GC_register_main_static_data()
+  {
+    return FALSE;
+  }
+# else /* win32 */
   extern GC_bool GC_no_win32_dlls;
-# endif
+
+  GC_bool GC_register_main_static_data()
+  {
+    return GC_no_win32_dlls;
+  }
+# endif /* win32 */
   
+# define HAVE_REGISTER_MAIN_STATIC_DATA
+
   void GC_register_dynamic_libraries()
   {
     MEMORY_BASIC_INFORMATION buf;
@@ -1032,7 +1072,63 @@ void GC_register_dynamic_libraries()
 }
 #endif /* RS6000 */
 
+#ifdef MACOSX
 
+#include <mach-o/dyld.h>
+#include <mach-o/getsect.h>
+
+/*#define MACOSX_DEBUG */
+
+void GC_register_dynamic_libraries() 
+{
+    unsigned long image_count;
+    const struct mach_header *mach_header;
+    const struct section *sec;
+    unsigned long slide;
+    unsigned long filetype;
+    int i,j;
+    unsigned long start;
+    unsigned long end;
+    
+    static struct { 
+        const char *seg;
+        const char *sect;
+    } sections[] = {
+        { SEG_DATA, SECT_DATA },
+        { SEG_DATA, SECT_BSS },
+        { SEG_DATA, SECT_COMMON }
+    };
+    
+    image_count = _dyld_image_count();
+    for(i=0;i<image_count;i++)
+    {
+        mach_header = _dyld_get_image_header(i);
+        slide = _dyld_get_image_vmaddr_slide(i);
+        filetype = mach_header->filetype;
+        
+        for(j=0;j<sizeof(sections)/sizeof(sections[0]);j++) {
+            sec = getsectbynamefromheader(mach_header,sections[j].seg,sections[j].sect);
+            if(sec == NULL || sec->size == 0) continue;
+            start = slide + sec->addr;
+            end = start + sec->size;
+#			ifdef MACOSX_DEBUG
+                GC_printf4("Adding section at %p-%p (%lu bytes) from image %s\n",
+                    start,end,sec->size,_dyld_get_image_name(i));
+#			endif
+
+            GC_add_roots_inner((char*)start,(char*)end,
+                filetype == MH_EXECUTE ? FALSE : TRUE);
+        }
+    }
+}
+
+#define HAVE_REGISTER_MAIN_STATIC_DATA
+GC_bool GC_register_main_static_data()
+{
+  return FALSE;
+}
+
+#endif /* MACOSX */
 
 #else /* !DYNAMIC_LOADING */
 
@@ -1080,4 +1176,15 @@ void GC_register_dynamic_libraries(){}
 int GC_no_dynamic_loading;
 
 #endif /* !PCR */
+
 #endif /* !DYNAMIC_LOADING */
+
+#ifndef HAVE_REGISTER_MAIN_STATIC_DATA
+
+/* Do we need to separately register the main static data segment? */
+GC_bool GC_register_main_static_data()
+{
+  return TRUE;
+}
+#endif /* HAVE_REGISTER_MAIN_STATIC_DATA */
+

@@ -814,7 +814,9 @@ void GC_notify_or_invoke_finalizers GC_PROTO((void))
     if (GC_finalize_now == 0) return;
     if (!GC_finalize_on_demand) {
 	(void) GC_invoke_finalizers();
-	GC_ASSERT(GC_finalize_now == 0);
+#	ifndef THREADS
+	  GC_ASSERT(GC_finalize_now == 0);
+#	endif	/* Otherwise GC can run concurrently and add more */
 	return;
     }
     if (GC_finalizer_notifier != (void (*) GC_PROTO((void)))0
@@ -852,3 +854,17 @@ void GC_notify_or_invoke_finalizers GC_PROTO((void))
     return(result);
 }
 
+#if !defined(NO_DEBUGGING)
+
+void GC_print_finalization_stats()
+{
+    struct finalizable_object *fo = GC_finalize_now;
+    size_t ready = 0;
+
+    GC_printf2("%lu finalization table entries; %lu disappearing links\n",
+	       GC_fo_entries, GC_dl_entries);
+    for (; 0 != fo; fo = fo_next(fo)) ++ready;
+    GC_printf1("%lu objects are eligible for immediate finalization\n", ready);
+}
+
+#endif /* NO_DEBUGGING */

@@ -77,6 +77,14 @@
 #undef STACKBASE
 #endif
 
+/* Dont unnecessarily call GC_register_main_static_data() in case 	*/
+/* dyn_load.c isn't linked in.						*/
+#ifdef DYNAMIC_LOADING
+# define GC_REGISTER_MAIN_STATIC_DATA() GC_register_main_static_data()
+#else
+# define GC_REGISTER_MAIN_STATIC_DATA() TRUE
+#endif
+
 GC_FAR struct _GC_arrays GC_arrays /* = { 0 } */;
 
 
@@ -103,6 +111,10 @@ GC_bool GC_quiet = 0;
 GC_bool GC_print_stats = 0;
 
 GC_bool GC_print_back_height = 0;
+
+#ifndef NO_DEBUGGING
+  GC_bool GC_dump_regularly = 0;  /* Generate regular debugging dumps. */
+#endif
 
 #ifdef FIND_LEAK
   int GC_find_leak = 1;
@@ -131,6 +143,13 @@ GC_PTR GC_default_oom_fn GC_PROTO((size_t bytes_requested))
 GC_PTR (*GC_oom_fn) GC_PROTO((size_t bytes_requested)) = GC_default_oom_fn;
 
 extern signed_word GC_mem_found;
+
+void * GC_project2(arg1, arg2)
+void *arg1;
+void *arg2;
+{
+  return arg2;
+}
 
 # ifdef MERGE_SIZES
     /* Set things up so that GC_size_map[i] >= words(i),		*/
@@ -498,6 +517,15 @@ extern GC_bool GC_no_win32_dlls;
 # define GC_no_win32_dlls FALSE
 #endif
 
+void GC_exit_check GC_PROTO((void))
+{
+   GC_gcollect();
+}
+
+#ifdef SEARCH_FOR_DATA_START
+  extern void GC_init_linux_data_start GC_PROTO((void));
+#endif
+
 void GC_init_inner()
 {
 #   if !defined(THREADS) && defined(GC_ASSERTIONS)
@@ -515,8 +543,16 @@ void GC_init_inner()
     if (0 != GETENV("GC_PRINT_STATS")) {
       GC_print_stats = 1;
     } 
+#   ifndef NO_DEBUGGING
+      if (0 != GETENV("GC_DUMP_REGULARLY")) {
+        GC_dump_regularly = 1;
+      }
+#   endif
     if (0 != GETENV("GC_FIND_LEAK")) {
       GC_find_leak = 1;
+#     ifdef __STDC__
+        atexit(GC_exit_check);
+#     endif
     }
     if (0 != GETENV("GC_ALL_INTERIOR_POINTERS")) {
       GC_all_interior_pointers = 1;
@@ -593,6 +629,16 @@ void GC_init_inner()
 #       if defined(LINUX) && defined(IA64)
 	  GC_register_stackbottom = GC_get_register_stack_base();
 #       endif
+      } else {
+#       if defined(LINUX) && defined(IA64)
+	  if (GC_register_stackbottom == 0) {
+	    WARN("GC_register_stackbottom should be set with GC_stackbottom", 0);
+	    /* The following is likely to fail, since we rely on 	*/
+	    /* alignment properties that may not hold with a user set	*/
+	    /* GC_stackbottom.						*/
+	    GC_register_stackbottom = GC_get_register_stack_base();
+	  }
+#	endif
       }
 #   endif
     GC_ASSERT(sizeof (ptr_t) == sizeof(word));
@@ -621,7 +667,7 @@ void GC_init_inner()
     
     /* Add initial guess of root sets.  Do this first, since sbrk(0)	*/
     /* might be used.							*/
-      GC_register_data_segments();
+      if (GC_REGISTER_MAIN_STATIC_DATA()) GC_register_data_segments();
     GC_init_headers();
     GC_bl_init();
     GC_mark_init();
@@ -634,6 +680,18 @@ void GC_init_inner()
 		 sz_str);
 	  } 
 	  initial_heap_sz = divHBLKSZ(initial_heap_sz);
+	}
+    }
+    {
+	char * sz_str = GETENV("GC_MAXIMUM_HEAP_SIZE");
+	if (sz_str != NULL) {
+	  word max_heap_sz = (word)atol(sz_str);
+	  if (max_heap_sz < initial_heap_sz * HBLKSIZE) {
+	    WARN("Bad maximum heap size %s - ignoring it.\n",
+		 sz_str);
+	  } 
+	  if (0 == GC_max_retries) GC_max_retries = 2;
+	  GC_set_max_heap_size(max_heap_sz);
 	}
     }
     if (!GC_expand_hp_inner(initial_heap_sz)) {
@@ -671,6 +729,7 @@ void GC_init_inner()
     	GC_incremental = TRUE;
       }
 #   endif /* !SMALL_CONFIG */
+    COND_DUMP;
     /* Get black list set up and/or incrmental GC started */
       if (!GC_dont_precollect || GC_incremental) GC_gcollect_inner();
     GC_is_initialized = TRUE;
@@ -926,6 +985,17 @@ GC_warn_proc GC_current_warn_proc = GC_default_warn_proc;
     return(result);
 }
 
+# if defined(__STDC__) || defined(__cplusplus)
+    GC_word GC_set_free_space_divisor (GC_word value)
+# else
+    GC_word GC_set_free_space_divisor (value)
+    GC_word value;
+# endif
+{
+    GC_word old = GC_free_space_divisor;
+    GC_free_space_divisor = value;
+    return old;
+}
 
 #ifndef PCR
 void GC_abort(msg)
@@ -952,17 +1022,18 @@ GC_CONST char * msg;
 }
 #endif
 
-
-/* Needed by SRC_M3, gcj, and should perhaps be the official interface	*/
-/* to GC_dont_gc.							*/
 void GC_enable()
 {
+    LOCK();
     GC_dont_gc--;
+    UNLOCK();
 }
 
 void GC_disable()
 {
+    LOCK();
     GC_dont_gc++;
+    UNLOCK();
 }
 
 #if !defined(NO_DEBUGGING)
@@ -977,6 +1048,8 @@ void GC_dump()
     GC_print_hblkfreelist();
     GC_printf0("\n***Blocks in use:\n");
     GC_print_block_list();
+    GC_printf0("\n***Finalization statistics:\n");
+    GC_print_finalization_stats();
 }
 
 #endif /* NO_DEBUGGING */

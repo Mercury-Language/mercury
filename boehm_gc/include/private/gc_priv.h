@@ -589,9 +589,10 @@ extern GC_warn_proc GC_current_warn_proc;
  */
  
 # ifdef LARGE_CONFIG
-#   define LOG_PHT_ENTRIES  19  /* Collisions likely at 512K blocks,	*/
-				/* which is >= 2GB.  Each table takes	*/
-				/* 64KB.				*/
+#   define LOG_PHT_ENTRIES  20  /* Collisions likely at 1M blocks,	*/
+				/* which is >= 4GB.  Each table takes	*/
+				/* 128KB, some of which may never be	*/
+				/* touched.				*/
 # else
 #   ifdef SMALL_CONFIG
 #     define LOG_PHT_ENTRIES  14 /* Collisions are likely if heap grows	*/
@@ -599,7 +600,7 @@ extern GC_warn_proc GC_current_warn_proc;
 				 /* Each hash table occupies 2K bytes.   */
 #   else /* default "medium" configuration */
 #     define LOG_PHT_ENTRIES  16 /* Collisions are likely if heap grows	*/
-				 /* to more than 16K hblks >= 256MB.	*/
+				 /* to more than 64K hblks >= 256MB.	*/
 				 /* Each hash table occupies 8K bytes.  */
 #   endif
 # endif
@@ -1412,6 +1413,11 @@ GC_bool GC_is_tmp_root GC_PROTO((ptr_t p));
 # endif
 void GC_register_dynamic_libraries GC_PROTO((void));
   		/* Add dynamic library data sections to the root set. */
+
+GC_bool GC_register_main_static_data GC_PROTO((void));
+		/* We need to register the main data segment.  Returns	*/
+		/* TRUE unless this is done implicitly as part of	*/
+		/* dynamic library registration.			*/
   
 /* Machine dependent startup routines */
 ptr_t GC_get_stack_base GC_PROTO((void));	/* Cold end of stack */
@@ -1641,6 +1647,12 @@ void GC_notify_or_invoke_finalizers GC_PROTO((void));
 			/* Call *GC_finalizer_notifier if there are	*/
 			/* finalizers to be run, and we haven't called	*/
 			/* this procedure yet this GC cycle.		*/
+
+GC_API GC_PTR GC_make_closure GC_PROTO((GC_finalization_proc fn, GC_PTR data));
+GC_API void GC_debug_invoke_finalizer GC_PROTO((GC_PTR obj, GC_PTR data));
+			/* Auxiliary fns to make finalization work	*/
+			/* correctly with displaced pointers introduced	*/
+			/* by the debugging allocators.			*/
   			
 void GC_add_to_heap GC_PROTO((struct hblk *p, word bytes));
   			/* Add a HBLKSIZE aligned chunk to the heap.	*/
@@ -1656,13 +1668,30 @@ extern void (*GC_check_heap) GC_PROTO((void));
 extern void (*GC_print_all_smashed) GC_PROTO((void));
 			/* Print GC_smashed if it's not empty.		*/
 			/* Clear GC_smashed list.			*/
+extern void GC_print_all_errors GC_PROTO((void));
+			/* Print smashed and leaked objects, if any.	*/
+			/* Clear the lists of such objects.		*/
 extern void (*GC_print_heap_obj) GC_PROTO((ptr_t p));
   			/* If possible print s followed by a more	*/
   			/* detailed description of the object 		*/
   			/* referred to by p.				*/
+#if defined(LINUX) && defined(__ELF__) && !defined(SMALL_CONFIG)
+  void GC_print_address_map GC_PROTO((void));
+  			/* Print an address map of the process.		*/
+#endif
 
+extern GC_bool GC_have_errors;  /* We saw a smashed or leaked object.	*/
+				/* Call error printing routine 		*/
+				/* occasionally.			*/
 extern GC_bool GC_print_stats;	/* Produce at least some logging output	*/
 				/* Set from environment variable.	*/
+
+#ifndef NO_DEBUGGING
+  extern GC_bool GC_dump_regularly;  /* Generate regular debugging dumps. */
+# define COND_DUMP if (GC_dump_regularly) GC_dump();
+#else
+# define COND_DUMP
+#endif
 
 /* Macros used for collector internal allocation.	*/
 /* These assume the collector lock is held.		*/
@@ -1735,6 +1764,7 @@ void GC_print_block_list GC_PROTO((void));
 void GC_print_hblkfreelist GC_PROTO((void));
 void GC_print_heap_sects GC_PROTO((void));
 void GC_print_static_roots GC_PROTO((void));
+void GC_print_finalization_stats GC_PROTO((void));
 void GC_dump GC_PROTO((void));
 
 #ifdef KEEP_BACK_PTRS
