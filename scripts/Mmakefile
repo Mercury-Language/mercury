@@ -57,6 +57,9 @@ install_mmake: Mmake.vars Mmake.rules
 .PHONY: install_scripts
 install_scripts: $(SCRIPTS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	# we remove the installed `mmake' script before (re)installing it
+	# to avoid overwriting the script while it is running
+	-rm -f $(INSTALL_BINDIR)/mmake
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
