@@ -139,10 +139,10 @@ $(date3s_subdir)%.date3 : %.m
 	$(MCSI) $(ALL_MCSIFLAGS) $(*F)
 
 $(optdates_subdir)%.optdate : %.m
-	$(MCOI) $(ALL_MCOIFLAGS) $(*F)
+	$(MCOI) $(ALL_GRADEFLAGS) $(ALL_MCOIFLAGS) $(*F)
 
 $(trans_opt_dates_subdir)%.trans_opt_date : %.m
-	$(MCTOI) $(ALL_MCTOIFLAGS) $(*F)
+	$(MCTOI) $(ALL_GRADEFLAGS) $(ALL_MCTOIFLAGS) $(*F)
 
 # Be very careful about changing the following rules.
 # The `@:' is a silent do-nothing command.
