@@ -691,7 +691,7 @@ mercury__string__append_3_3_i1:
 	r3 = framevar(1);
 	r4 = framevar(3);
 	if (r4 > framevar(2)) {
-		modframe(do_fail);
+		modframe(ENTRY(do_fail));
 		fail();
 	}
 	incr_hp_atomic(r1, (r4 + sizeof(Word)) / sizeof(Word));
