@@ -421,7 +421,9 @@ case $demangle in
 	umask 022
 	ML_TMPDIR=/tmp/ml$$
 	PIPE=$ML_TMPDIR/pipe
-	if ! mkdir $ML_TMPDIR ; then
+	if mkdir $ML_TMPDIR ; then
+		true
+	else
 		echo "Unable to create temporary pipe" 1>&2
 		exit 1
 	fi
