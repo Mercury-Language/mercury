@@ -167,8 +167,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
         case MR_DATAREP_STRING:
             if (in_range(data_value)) {
                 incr_saved_hp_atomic(new_data, 
-                    (strlen((String) data_value) + sizeof(Word)) 
-                                / sizeof(Word));
+                    (strlen((String) data) + sizeof(Word)) / sizeof(Word));
                 strcpy((String) new_data, (String) data);
                 leave_forwarding_pointer(data_ptr, new_data);
             } else {
