@@ -27,22 +27,81 @@ Description:
 	files.
 
 Options:
-	With no options specified, mtags defaults to creating a vi-style 
-	tags file.  If multiple identical tags are found, only the first
-	occurrence of the tag is placed in the tags file.
+	With no options specified, mtags defaults to creating a vim-style 
+	tags file.  This file format is backwards compatible with vi,
+	but tags contain extra attributes that are used by vim.
+	Duplicate tags are not removed.
 
 	-e, --emacs
-		Produce an emacs-style TAGS file.
+		Produce an emacs-style TAGS file.  If this option is
+		present, all other options are ignored.
 
-	--vim
+	--vim, --ext
+		This option is the default, but is retained for
+		backwards compatibility.
+
+		This option is shorthand for `--keep-duplicates
+		--search-definitions --vim-extended-attributes'.
+
+	--elvis
+		Produces an extended tags file in a format that will
+		work with elvis 2.1+.
+
+		This option is shorthand for `--keep-duplicates
+		--no-search-definitions --elvis-extended-attributes'.
+
+	--traditional-vi
+		Produces a tags file that contains only information
+		useful for traditional vi.  This was the default in
+		previous versions of mtags, but is no longer since
+		vim-style tags files are backwards compatible with vi.
+		You may want to use this option if you only use vi and
+		you want to reduce the size of the tags file.
+		However, we suggest you investigate vim since its
+		tags support is far superior for languages such as
+		Mercury which support overloading.
+
+		This option is shorthand for `--no-keep-duplicates
+		--search-definitions --no-extended-attributes'.
+
+	--simple
 		Produce a dumbed-down vi-style tags file that will work 
 		with versions of vim prior to 5.0, and versions of elvis
-		prior to 2.1.
+		prior to 2.1.  These versions cannot handle multiple
+		commands for a tag.
 
-	--ext
-		Produce a tags file in the extended format supported by 
-		vim 5.0+.  Duplicate tags are allowed in the tags file.
-		Extra attributes are added to each tag to say whether it
+		This option is shorthand for `--keep-duplicates
+		--no-search-definitions --no-extended-attributes'.
+
+	--keep-duplicates
+		Allow multiple definitions for a tag.
+		This option is the default, but is retained for
+		backwards compatibility.
+
+	--no-keep-duplicates.
+		If a tag has multiple definitions, ignore all but the
+		first.  Also ignores typeclass instance tags.
+
+	--search-definitions
+		This option is on by default.
+		Output extra ex commands which place the tag in
+		the search buffer to allow the definition to be found
+		by pressing `n' after a tag lookup.  For predicate and
+		function declarations this will attempt to find the
+		clauses by searching for occurrences of the tag at the
+		start of a line.  For other declarations, just the tag
+		itself will be placed in the search buffer.
+
+	--no-search-definitions
+		Do not output extra commands to allow searching for
+		definitions.
+
+	--no-extended-attributes
+		Do not output the extra tag attributes for vim/elvis.
+
+	--extended-attributes, --vim-extended-attributes
+		This option is the default.
+		Output extra attributes for each tag to say whether it
 		is in the implementation or interface of the source file
 		and to describe the kind of tag.  Tag kinds used are:
 		\`pred' for predicate declarations
@@ -59,21 +118,12 @@ Options:
 		(Vim assumes that the \`kind' attribute has at most 4
 		characters.)
 
-	--elvis
-		Without \`--ext', works the same as \`--vim' and supports 
-		versions of elvis prior to 2.1.  When used in
-		conjunction with \`--ext', produces an extended tags file
-		in a format that will work with elvis 2.1+.
-
-	--keep-duplicates
-		By default, mtags removes duplicate tags from the tags
-		file. With this option, duplicate tags are not removed.
-		Also, with this option, tags are created for typeclass
-		instances.  This option is implied by \`--emacs' and by
-		\`--ext'.
+	--elvis-extended-attributes
+		Output extra attributes as for `--vim-extended-attributes',
+		but in the format required by elvis.
 
 	-h, --help
-		Dislay this help message and exit.
+		Display this help message and exit.
 
 	--
 		Treat all remaining arguments as source file names.  This is
@@ -82,39 +132,78 @@ Options:
 
 $warnings = 0;
 $emacs = 0;
-$vim = 0;
-$ext = 0;
-$elvis = 0;
-$keep_dups = 0;
+$extended_attributes = "vim";
+$keep_dups = 1;
+$search_definitions = 1;
 
 OPTION:
 while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
 	if ($ARGV[0] eq "-e" || $ARGV[0] eq "--emacs") {
 		$emacs = 1;
-		$keep_dups = 1;
 		shift(ARGV);
 		next OPTION;
 	}
-	if ($ARGV[0] eq "--vim") {
-		$vim = 1;
-		$elvis = 0;
-		shift(ARGV);
-		next OPTION;
-	}
-	if ($ARGV[0] eq "--ext") {
-		$ext = 1;
+	if ($ARGV[0] eq "--ext" || $ARGV[0] eq "--vim") {
+		$extended_attributes = "vim";
 		$keep_dups = 1;
+		$search_definitions = 1;
 		shift(ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--elvis") {
-		$elvis = 1;
-		$vim = 0;
+		$extended_attributes = "elvis";
+		$keep_dups = 1;
+		$search_definitions = 0;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--traditional-vi") {
+		$extended_attributes = "none";
+		$keep_dups = 0;
+		$search_definitions = 1;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--simple") {
+		$extended_attributes = "none";
+		$keep_dups = 1;
+		$search_definitions = 0;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--no-keep-duplicates") {
+		$keep_dups = 0;
 		shift(ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--keep-duplicates") {
 		$keep_dups = 1;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--no-search-definitions") {
+		$search_definitions = 0;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--search-definitions") {
+		$search_definitions = 1;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--no-extended-attributes") {
+		$extended_attributes = "none";
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--vim-extended-attributes" ||
+	    $ARGV[0] eq "--extended-attributes") {
+		$extended_attributes = "vim";
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--elvis-extended-attributes") {
+		$extended_attributes = "elvis";
 		shift(ARGV);
 		next OPTION;
 	}
@@ -183,67 +272,36 @@ sub output_single_name() {
 	    if ($emacs) {
 		printf out "%s\177%s\001%d,%d\n",
 		    $_, $name, $., $.;
-	    } elsif ($ext) {
-		# In ``ext'' mode, print the extra attributes used by
-		# vim 5.0+ and elvis 2.1+.
-		if ($context =~ /\bimplementation\b/) {
+	    } else {
+	    	# Output basic tag line for vi/vim/elvis.
+	    	printf out "%s\t%s\t/^%s\$/",
+		    $name, $file, $match_line;
+
+		# Output commands to alter the search buffer.
+		if ($search_definitions) {
+		    if ($kind eq "pred" || $kind eq "func") {
+			printf out ";kq|/^\\<%s\\>/;'q", $name;
+		    } else {
+			printf out ";kq|-;/\\<%s\\>/;'q", $name;
+		    }
+		}
+
+		# Output extended attributes for vim and elvis.
+		if ($extended_attributes ne "none") {
+		    if ($context =~ /\bimplementation\b/) {
 			$static = "\tfile:";
 			$sfile = $file;
-		} else {
+		    } else {
 			$static = "";
 			$sfile = "";
+		    }
+		    printf out ";\"\tkind:%s%s", $kind, $static;
+		    if ($extended_attributes eq "elvis") {
+		    	printf out "%s", $sfile;
+		    }
 		}
-		if ($elvis) {
-		    # Elvis 2.1+
 
-		    # Elvis (as of 2.1i) seems to require `[' to be escaped
-		    # in tag patterns, even though they are supposed to use
-		    # `nomagic' mode.
-		    $match_line =~ s/\[/\\\[/g;
-
-		    # Elvis allows only a single search pattern or line
-		    # number rather than an arbitrary sequence of
-		    # semicolon-separated ex commands.
-		    printf out "%s\t%s\t/^%s\$/;\"\tkind:%s%s%s\n",
-			$name, $file, $match_line, $kind, $static, $sfile;
-		} else {
-		    # Vim 5.0+
-
-		    # Vim 5.0, like vi, allows an arbitrary number of 
-		    # colon-separated ex commands.  However if more than
-		    # one command is given, it seems to ignore the extra
-		    # tag attributes.  For now, we only output a single
-		    # search command so that vim will recognise the
-		    # extra attributes. If you would prefer the more
-		    # complex command used for vi (see below) instead of
-		    # the extra attributes, use `mtags --keep-duplicates'
-		    # instead of `mtags --ext'.
-		    printf out "%s\t%s\t/^%s\$/;\"\tkind:%s%s\n",
-			$name, $file, $match_line, $kind, $static;
-		}
-	    } elsif ($vim || $elvis) {
-	    	# Works with any version of vim, elvis or vi.
-	    	printf out "%s\t%s\t/^%s\$/\n",
-		    $name, $file, $match_line;
-	    } else {
-		# Works with vi or vim 5.0+.  The ex command searches
-		# for the matching line and then places a new search
-		# string in the search buffer.  If this is a pred/func 
-		# declaration, the new search string is the tag name,
-		# anchored to start in column 1.  The lets you type
-		# `n' to go to the pred/func body.  For other declarations,
-		# we just put the (unanchored) tag name in the string
-		# buffer, so typing `n' will take you to uses of that name.
-		# The way it places the tag in the search buffer
-		# is by making a mark, doing a search, and then
-		# returning to the marked position.
-		if ($kind eq "pred" || $kind eq "func") {
-		    printf out "%s\t%s\t/^%s\$/;kq|/^\\<%s\\>/;'q\n",
-		        $name, $file, $match_line, $name;
-		} else {
-		    printf out "%s\t%s\t/^%s\$/;kq|-;/\\<%s\\>/;'q\n",
-		        $name, $file, $match_line, $name;
-		}
+		printf out "\n";
 	    }
 	    $seen{$name} = 1;
 	    $prev_file{$name} = $file;
@@ -256,8 +314,6 @@ sub output_single_name() {
 if ($emacs) {
 	open(out, "> TAGS") || die "mtags: error opening TAGS: $!\n";
 } elsif ($keep_dups) {
-	# Vim 5.0+ and elvis 2.1+ allow multiple matches for a tag, so don't
-	# remove duplicate tags.
 	# Vim and elvis expect the tags file to be sorted so they can do
 	# binary search.
 	open(out, "| sort > tags") ||

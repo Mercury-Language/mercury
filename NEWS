@@ -175,6 +175,14 @@ Changes to the Mercury implementation:
   	- the `--split-c-files' option
   	- the `--introduce-accumulators' option
 
+Changes to the development environment:
+
+* Several improvements have been made to `mtags' to make it easier to
+  find predicate/function definitions and to improve support for
+  enhanced features of Vim.  The command-line options to `mtags' have
+  changed and Vim-style tags files are now output as the default (but
+  will work with Vi as well).  Do `mtags --help' for more information.
+
 NEWS for Mercury release 0.9.1:
 -------------------------------
 
