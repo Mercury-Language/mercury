@@ -47,11 +47,7 @@
 ** changes to compiler/handle_options.m and scripts/mgnuc.in.
 */
 
-#ifdef MR_USE_REDOFR
-  #define MR_GRADE_PART_0	redofr_
-#else
-  #define MR_GRADE_PART_0
-#endif
+#define MR_GRADE_PART_0		redofr_
 
 #ifdef USE_ASM_LABELS
   #define MR_GRADE_PART_1	asm_

@@ -19,8 +19,6 @@
 #ifndef MERCURY_IMP_H
 #define MERCURY_IMP_H
 
-#define	MR_USE_REDOFR
-
 /*
 ** The #include of "mercury_conf.h" must come before the `#ifdef USE_DLLS',
 ** because mercury_conf.h defines the USE_DLLS macro.

@@ -208,21 +208,16 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	*/
 
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
-#ifdef	MR_USE_REDOFR
 		if ((base_maxfr - bt_prevfr(base_maxfr)) < NONDET_FIXED_SIZE) {
 			fprintf(fp, "%p: temp\n", base_maxfr);
 			fprintf(fp, " redoip: ");
 			printlabel(bt_redoip(base_maxfr));
 			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
-		} else
-#endif
-		{
+		} else {
 			fprintf(fp, "%p: ordinary\n", base_maxfr);
 			fprintf(fp, " redoip: ");
 			printlabel(bt_redoip(base_maxfr));
-#ifdef	MR_USE_REDOFR
 			fprintf(fp, " redofr: %p\n", bt_redofr(base_maxfr));
-#endif
 			fprintf(fp, " succip: ");
 			printlabel(bt_succip(base_maxfr));
 			fprintf(fp, " succfr: %p\n", bt_succfr(base_maxfr));
