@@ -210,6 +210,14 @@
 				nondstack_overflow_check();		\
 			} while (0)
 
+/*
+** This should be removed soon - the latest compiler does not generate it.
+*/
+#define modframe(redoip)						\
+			do {						\
+				curredoip = redoip;			\
+			} while (0)
+
 #define	succeed()	do {						\
 				reg	Word	*childfr;		\
 									\
