@@ -45,14 +45,6 @@
 			unify_context,	% original source of the unification
 			side		% LHS or RHS
 		)
-/**** Not yet used
-	;	unify_arg(
-			unify_context,
-			side,
-			cons_id,
-			int
-		)
-****/
 	;	uninitialized.
 
 :- type side ---> left ; right.
@@ -101,6 +93,8 @@
 :- pred mode_info_get_insts(mode_info::in, inst_table::out) is det.
 :- pred mode_info_get_predid(mode_info::in, pred_id::out) is det.
 :- pred mode_info_get_procid(mode_info::in, proc_id::out) is det.
+:- pred mode_info_get_debug_modes(mode_info::in, maybe(pair(bool))::out)
+	is det.
 :- pred mode_info_get_context(mode_info::in, prog_context::out) is det.
 :- pred mode_info_get_mode_context(mode_info::in, mode_context::out) is det.
 :- pred mode_info_get_instmap(mode_info::in, instmap::out) is det.
@@ -116,8 +110,8 @@
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
 :- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
 	is det.
-:- pred mode_info_get_last_checkpoint_insts(mode_info::in,
-	assoc_list(prog_var, inst)::out) is det.
+:- pred mode_info_get_last_checkpoint_insts(mode_info::in, instmap::out)
+	is det.
 :- pred mode_info_get_parallel_vars(mode_info::in,
 	list(pair(set(prog_var)))::out) is det.
 :- pred mode_info_get_changed_flag(mode_info::in, bool::out) is det.
@@ -164,7 +158,7 @@
 	mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_nondet_live_vars(bag(prog_var)::in,
 	mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_last_checkpoint_insts(assoc_list(prog_var, inst)::in,
+:- pred mode_info_set_last_checkpoint_insts(instmap::in,
 	mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_parallel_vars(list(pair(set(prog_var)))::in,
 	mode_info::in, mode_info::out) is det.
@@ -207,7 +201,7 @@
 
 %-----------------------------------------------------------------------------%
 
-        % record a mode error (and associated context info) in the mode_info.
+	% record a mode error (and associated context info) in the mode_info.
 
 :- pred mode_info_error(set(prog_var)::in, mode_error::in,
 	mode_info::in, mode_info::out) is det.
@@ -222,13 +216,13 @@
 	% inserted during mode analysis.
 
 :- pred mode_info_may_initialise_solver_vars(mode_info::in)
-		is semidet.
+	is semidet.
 
 :- pred mode_info_get_may_initialise_solver_vars(bool::out, mode_info::in)
-		is det.
+	is det.
 
 :- pred mode_info_set_may_initialise_solver_vars(bool::in,
-		mode_info::in, mode_info::out) is det.
+	mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -238,39 +232,82 @@
 :- import_module check_hlds__delay_info.
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_util.
+:- import_module libs__globals.
+:- import_module libs__options.
 
-:- import_module svbag, string, term, varset.
+:- import_module svbag, int, string, term, varset.
 :- import_module require, std_util, queue.
+
+:- type mode_sub_info --->
+	mode_sub_info(
+		procid		:: proc_id,
+				% The mode which we are checking.
+
+		varset		:: prog_varset,
+				% The variables in the current proc.
+
+		last_checkpoint_insts :: instmap,
+				% This field is used by the checkpoint
+				% code when debug_modes is on.  It has the
+				% instmap that was current at the last
+				% mode checkpoint, so that checkpoints
+				% do not print out the insts of variables
+				% whose insts have not changed since the
+				% last checkpoint.  This field will always
+				% contain an unreachable instmap if debug_modes
+				% is off, since its information is not
+				% needed then.
+
+		changed_flag	:: bool,
+				% Changed flag: if `yes', then we may need
+				% to repeat mode inference.
+
+		checking_extra_goals :: bool
+				% Are we rechecking a goal after introducing
+				% unifications for complicated sub-unifications
+				% or an implied mode? If so, redoing the
+				% mode check should not introduce more
+				% extra unifications.
+	).
 
 :- type mode_info --->
 	mode_info(
 		module_info	:: module_info,
+
 		predid		:: pred_id,
-				% The pred we are checking
-		procid		:: proc_id,
-				% The mode which we are checking
-		varset		:: prog_varset,
-				% The variables in the current proc
+				% The pred we are checking.
+
 		var_types	:: vartypes,
-				% The types of the variables
+				% The types of the variables.
+
+		debug		:: maybe(pair(bool)),
+				% Is mode debugging of this procedure enabled?
+				% If yes, is verbose mode debugging enabled,
+				% and is statistics printing enabled?
+
 		context		:: prog_context,
 				% The line number of the subgoal we
-				% are currently checking
+				% are currently checking.
+
 		mode_context	:: mode_context,
 				% A description of where in the
-				% goal the error occurred
+				% goal the error occurred.
+
 		instmap		:: instmap,
 				% The current instantiatedness
-				% of the variables
+				% of the variables.
+
 		locked_vars	:: locked_vars,
 				% The "locked" variables,
 				% i.e. variables which cannot be
 				% further instantiated inside a
-				% negated context
+				% negated context.
+
 		delay_info	:: delay_info,
-				% info about delayed goals
+				% Info about delayed goals.
+
 		errors		:: list(mode_error_info),
-				% The mode errors found
+				% The mode errors found.
 
 		live_vars	:: bag(prog_var),
 				% The live variables, i.e. those variables
@@ -298,18 +335,6 @@
 
 		instvarset	:: inst_varset,
 
-		last_checkpoint_insts :: assoc_list(prog_var, inst),
-				% This field is used by the checkpoint
-				% code when debug_modes is on.  It has the
-				% instmap that was current at the last
-				% mode checkpoint, so that checkpoints
-				% do not print out the insts of variables
-				% whose insts have not changed since the
-				% last checkpoint.  This field will always
-				% contain an empty list if debug_modes
-				% is off, since its information is not
-				% needed then.
-
 		parallel_vars	:: list(pair(set(prog_var), set(prog_var))),
 				% A stack of pairs of sets of variables used
 				% to mode-check parallel conjunctions. The
@@ -321,32 +346,19 @@
 				% the stack is for the correct handling
 				% of nested parallel conjunctions.
 
-		changed_flag	:: bool,
-				% Changed flag
-				% If `yes', then we may need
-				% to repeat mode inference.
-
 		how_to_check	:: how_to_check_goal,
 
 		may_change_called_proc :: may_change_called_proc,
-				% Is mode analysis allowed
-				% to change which procedure
-				% is called?
+				% Is mode analysis allowed to change
+				% which procedure is called?
 
-		checking_extra_goals :: bool,
-				% Are we rechecking a goal after
-				% introducing unifications for
-				% complicated sub-unifications
-				% or an implied mode?
-				% If so, redoing the mode check
-				% should not introduce more
-				% extra unifications.
-
-		may_initialise_solver_vars :: bool
+		may_initialise_solver_vars :: bool,
 				% `yes' if calls to the initialisation
 				% predicates for solver vars can be
 				% inserted during mode analysis in order
 				% to make goals schedulable.
+
+		mode_sub_info	:: mode_sub_info
 	).
 
 %-----------------------------------------------------------------------------%
@@ -355,6 +367,25 @@
 
 mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 		HowToCheck, MayChangeProc, ModeInfo) :-
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, debug_modes, DebugModes),
+	globals__lookup_int_option(Globals, debug_modes_pred_id,
+	DebugModesPredId),
+	pred_id_to_int(PredId, PredIdInt),
+	(
+		DebugModes = yes,
+		( DebugModesPredId >= 0 => DebugModesPredId = PredIdInt )
+	->
+		globals__lookup_bool_option(Globals, debug_modes_verbose,
+			DebugVerbose),
+		globals__lookup_bool_option(Globals, statistics,
+			Statistics),
+		Debug = yes(DebugVerbose - Statistics)
+	;
+		Debug = no
+	),
+
+	instmap__init_unreachable(Unreachable),
 	mode_context_init(ModeContext),
 	LockedVars = [],
 	delay_info__init(DelayInfo),
@@ -375,38 +406,45 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 	CheckingExtraGoals = no,
 	MayInitSolverVars = yes,
 
-	ModeInfo = mode_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+	ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable, Changed,
+		CheckingExtraGoals
+	),
+
+	ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
-		ErrorList, LiveVarsBag, NondetLiveVarsBag, InstVarSet,
-		[], [], Changed, HowToCheck, MayChangeProc,
-		CheckingExtraGoals, MayInitSolverVars
+		ErrorList, LiveVarsBag, NondetLiveVarsBag, InstVarSet, [],
+		HowToCheck, MayChangeProc, MayInitSolverVars, ModeSubInfo
 	).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_module_info(MI, MI ^ module_info).
 mode_info_get_predid(MI, MI ^ predid).
-mode_info_get_procid(MI, MI ^ procid).
-mode_info_get_varset(MI, MI ^ varset).
+mode_info_get_procid(MI, MI ^ mode_sub_info ^ procid).
+mode_info_get_debug_modes(MI, MI ^ debug).
+mode_info_get_varset(MI, MI ^ mode_sub_info ^ varset).
 mode_info_get_var_types(MI, MI ^ var_types).
 mode_info_get_context(MI, MI ^ context).
 mode_info_get_mode_context(MI, MI ^ mode_context).
 mode_info_get_instmap(MI, MI ^ instmap).
+mode_info_get_instvarset(ModeInfo, ModeInfo ^ instvarset).
 mode_info_get_locked_vars(MI, MI ^ locked_vars).
 mode_info_get_errors(MI, MI ^ errors).
 mode_info_get_delay_info(MI, MI ^ delay_info).
 mode_info_get_live_vars(MI, MI ^ live_vars).
 mode_info_get_nondet_live_vars(MI, MI ^ nondet_live_vars).
-mode_info_get_last_checkpoint_insts(MI, MI ^ last_checkpoint_insts).
+mode_info_get_last_checkpoint_insts(MI,
+	MI ^ mode_sub_info ^ last_checkpoint_insts).
 mode_info_get_parallel_vars(MI, MI ^  parallel_vars).
-mode_info_get_changed_flag(MI, MI ^ changed_flag).
+mode_info_get_changed_flag(MI, MI ^ mode_sub_info ^ changed_flag).
 mode_info_get_how_to_check(MI, MI ^ how_to_check).
-mode_info_get_may_change_called_proc(MI, MI ^ may_change_called_proc).
+mode_info_get_may_change_called_proc(MI,
+	MI ^ may_change_called_proc).
 
 mode_info_set_module_info(ModuleInfo, MI, MI ^ module_info := ModuleInfo).
 mode_info_set_predid(PredId, MI, MI ^ predid := PredId).
-mode_info_set_procid(ProcId, MI, MI ^ procid := ProcId).
-mode_info_set_varset(VarSet, MI, MI ^ varset := VarSet).
+mode_info_set_procid(ProcId, MI, MI ^ mode_sub_info ^ procid := ProcId).
+mode_info_set_varset(VarSet, MI, MI ^ mode_sub_info ^ varset := VarSet).
 mode_info_set_var_types(VTypes, MI, MI ^ var_types := VTypes).
 mode_info_set_context(Context, MI, MI ^ context := Context).
 mode_info_set_mode_context(ModeContext, MI, MI ^ mode_context := ModeContext).
@@ -417,9 +455,10 @@ mode_info_set_live_vars(LiveVarsList, MI, MI ^ live_vars := LiveVarsList).
 mode_info_set_nondet_live_vars(NondetLiveVars, MI,
 	MI ^ nondet_live_vars := NondetLiveVars).
 mode_info_set_last_checkpoint_insts(LastCheckpointInsts, MI,
-	MI ^ last_checkpoint_insts := LastCheckpointInsts).
+	MI ^ mode_sub_info ^ last_checkpoint_insts := LastCheckpointInsts).
 mode_info_set_parallel_vars(PVars, MI, MI ^ parallel_vars := PVars).
-mode_info_set_changed_flag(Changed, MI, MI ^ changed_flag := Changed).
+mode_info_set_changed_flag(Changed, MI,
+	MI ^ mode_sub_info ^ changed_flag := Changed).
 mode_info_set_how_to_check(How, MI, MI ^ how_to_check := How).
 mode_info_set_may_change_called_proc(MayChange, MI,
 	MI ^ may_change_called_proc := MayChange).
@@ -544,8 +583,6 @@ mode_info_get_liveness(ModeInfo, LiveVars) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_info_get_instvarset(ModeInfo, ModeInfo ^ instvarset).
-
 mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	map__apply_to_list(Vars, VarTypes, TypesOfVars).
@@ -591,7 +628,7 @@ mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
 
 mode_info_set_checking_extra_goals(Checking, !MI) :-
 	(
-		yes = !.MI ^ checking_extra_goals,
+		yes = !.MI ^ mode_sub_info ^ checking_extra_goals,
 		Checking = yes
 	->
 		% This should never happen - once the extra goals are
@@ -600,7 +637,7 @@ mode_info_set_checking_extra_goals(Checking, !MI) :-
 		error("mode analysis: rechecking extra goals " ++
 			"adds more extra goals")
 	;
-		!:MI = !.MI ^ checking_extra_goals := Checking
+		!:MI = !.MI ^ mode_sub_info ^ checking_extra_goals := Checking
 	).
 
 %-----------------------------------------------------------------------------%
@@ -613,15 +650,15 @@ mode_info_get_call_id(ModeInfo, PredId, CallId) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_error(Vars, ModeError, !ModeInfo) :-
-        mode_info_get_context(!.ModeInfo, Context),
-        mode_info_get_mode_context(!.ModeInfo, ModeContext),
-        ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
-        mode_info_add_error(ModeErrorInfo, !ModeInfo).
+	mode_info_get_context(!.ModeInfo, Context),
+	mode_info_get_mode_context(!.ModeInfo, ModeContext),
+	ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
+	mode_info_add_error(ModeErrorInfo, !ModeInfo).
 
 mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
-        mode_info_get_errors(!.ModeInfo, Errors0),
-        list__append(Errors0, [ModeErrorInfo], Errors),
-        mode_info_set_errors(Errors, !ModeInfo).
+	mode_info_get_errors(!.ModeInfo, Errors0),
+	list__append(Errors0, [ModeErrorInfo], Errors),
+	mode_info_set_errors(Errors, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -5137,7 +5137,18 @@ Output detailed debugging traces of the type checking.
 @itemx --debug-modes
 @findex -N
 @findex --debug-modes
+Output debugging traces of the mode checking.
+
+@sp 1
+@item --debug-modes-verbose
+@findex --debug-modes-verbose
 Output detailed debugging traces of the mode checking.
+
+@sp 1
+@item --debug-modes-pred-id @var{predid}
+@findex --debug-modes-pred-id
+With @samp{--debug-modes}, restrict the debugging traces
+to the mode checking of the predicate or function with the specified pred id.
 
 @sp 1
 @item --debug-det

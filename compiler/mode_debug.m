@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 2003-2004 The University of Melbourne.
+% Copyright (C) 1996-1997, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,20 +54,19 @@
 	% This code is used to trace the actions of the mode checker.
 
 mode_checkpoint(Port, Msg, !ModeInfo, !IO) :-
-	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, debug_modes, DoCheckPoint),
-	( DoCheckPoint = yes ->
-		mode_checkpoint_2(Port, Msg, !ModeInfo, !IO)
+	mode_info_get_debug_modes(!.ModeInfo, DebugModes),
+	(
+		DebugModes = yes(Verbose - Statistics),
+		mode_checkpoint_write(Verbose, Statistics, Port, Msg,
+			!ModeInfo, !IO)
 	;
-		true
+		DebugModes = no
 	).
 
-:- pred mode_checkpoint_2(port::in, string::in, mode_info::in, mode_info::out,
-	io::di, io::uo) is det.
+:- pred mode_checkpoint_write(bool::in, bool::in, port::in, string::in,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-mode_checkpoint_2(Port, Msg, !ModeInfo, !IO) :-
-	mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInsts),
+mode_checkpoint_write(Verbose, Statistics, Port, Msg, !ModeInfo, !IO) :-
 	mode_info_get_errors(!.ModeInfo, Errors),
 	( Port = enter ->
 		io__write_string("Enter ", !IO),
@@ -83,48 +82,58 @@ mode_checkpoint_2(Port, Msg, !ModeInfo, !IO) :-
 		Detail = no
 	),
 	io__write_string(Msg, !IO),
-	( Detail = yes ->
+	(
+		Detail = yes,
 		io__write_string(":\n", !IO),
-		globals__io_lookup_bool_option(statistics, Statistics, !IO),
 		maybe_report_stats(Statistics, !IO),
 		maybe_flush_output(Statistics, !IO),
 		mode_info_get_instmap(!.ModeInfo, InstMap),
 		( instmap__is_reachable(InstMap) ->
 			instmap__to_assoc_list(InstMap, NewInsts),
+			mode_info_get_last_checkpoint_insts(!.ModeInfo,
+				OldInstMap),
 			mode_info_get_varset(!.ModeInfo, VarSet),
 			mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-			write_var_insts(NewInsts, OldInsts, VarSet, InstVarSet,
-				!IO)
+			write_var_insts(NewInsts, OldInstMap, VarSet,
+				InstVarSet, Verbose, !IO)
 		;
-			NewInsts = [],
 			io__write_string("\tUnreachable\n", !IO)
 		),
-		mode_info_set_last_checkpoint_insts(NewInsts, !ModeInfo)
+		mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
 	;
-		true
+		Detail = no
 	),
 	io__write_string("\n", !IO),
 	io__flush_output(!IO).
 
-:- pred write_var_insts(assoc_list(prog_var, inst)::in,
-	assoc_list(prog_var, inst)::in, prog_varset::in, inst_varset::in,
-	io::di, io::uo) is det.
+:- pred write_var_insts(assoc_list(prog_var, inst)::in, instmap::in,
+	prog_varset::in, inst_varset::in, bool::in, io::di, io::uo) is det.
 
-write_var_insts([], _, _, _, !IO).
-write_var_insts([Var - Inst | VarInsts], OldInsts, VarSet, InstVarSet, !IO) :-
-	io__write_string("\t", !IO),
-	mercury_output_var(Var, VarSet, no, !IO),
-	io__write_string(" ::", !IO),
+write_var_insts([], _, _, _, _, !IO).
+write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
+		Verbose, !IO) :-
 	(
-		assoc_list__search(OldInsts, Var, OldInst),
+		instmap__lookup_var(OldInstMap, Var, OldInst),
 		Inst = OldInst
 	->
-		io__write_string(" unchanged\n", !IO)
+		(
+			Verbose = yes,
+			io__write_string("\t", !IO),
+			mercury_output_var(Var, VarSet, no, !IO),
+			io__write_string(" ::", !IO),
+			io__write_string(" unchanged\n", !IO)
+		;
+			Verbose = no
+		)
 	;
+		io__write_string("\t", !IO),
+		mercury_output_var(Var, VarSet, no, !IO),
+		io__write_string(" ::", !IO),
 		io__write_string("\n", !IO),
 		mercury_output_structured_inst(Inst, 2, InstVarSet, !IO)
 	),
-	write_var_insts(VarInsts, OldInsts, VarSet, InstVarSet, !IO).
+	write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet, Verbose,
+		!IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
