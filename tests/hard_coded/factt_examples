@@ -1,0 +1,4 @@
+example(1,0,1).
+%to
+example(50,1,50).
+
