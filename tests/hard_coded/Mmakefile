@@ -119,7 +119,8 @@ ORDINARY_PROGS=	\
 	user_defined_equality \
 	user_defined_equality2 \
 	write \
-	write_reg1
+	write_reg1 \
+	write_reg2
 
 # XXX copy_pred does not work in the hl* grades (e.g. hlc.gc),
 # because the MLDS back-end doesn't generate the closure layout

@@ -1502,7 +1502,13 @@ type_name(Type) = TypeName :-
 				UnqualifiedTypeName)
 		;
 			type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
-			string__append_list([Name, "(" | ArgTypeNames],
+			( IsFunc = no ->
+				list__append(ArgTypeNames, [")"], TypeStrings0)
+			;
+				TypeStrings0 = ArgTypeNames
+			),
+			TypeNameStrings = [Name, "(" | TypeStrings0],
+			string__append_list(TypeNameStrings,
 				UnqualifiedTypeName)
 		)
 	),
@@ -1513,6 +1519,14 @@ type_name(Type) = TypeName :-
 			UnqualifiedTypeName], TypeName)
 	).
 
+
+	% Turn the types into a list of strings representing an argument
+	% list, adding commas as separators as required.  For example:
+	% 	["TypeName1", ",", "TypeName2"]
+	% If formatting a function type, we close the parentheses around
+	% the function's input parameters, e.g.
+	% 	["TypeName1", ",", "TypeName2", ") = ", "ReturnTypeName"]
+	% It is the caller's reponsibility to add matching parentheses.
 :- pred type_arg_names(list(type_desc), bool, list(string)).
 :- mode type_arg_names(in, in, out) is det.
 
@@ -1520,7 +1534,7 @@ type_arg_names([], _, []).
 type_arg_names([Type|Types], IsFunc, ArgNames) :-
 	Name = type_name(Type),
 	( Types = [] ->
-		ArgNames = [Name, ")"]
+		ArgNames = [Name]
 	; IsFunc = yes, Types = [FuncReturnType] ->
 		FuncReturnName = type_name(FuncReturnType),
 		ArgNames = [Name, ") = ", FuncReturnName]
