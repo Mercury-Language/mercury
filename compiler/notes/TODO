@@ -73,9 +73,11 @@ module system
   but wrong for types, insts, and modes).
 
 - produce warnings for imports that are not needed
+  	[done by stayl]
 
 - produce warnings for imports that are in the wrong place
   (in the interface instead of the implementation, and vice versa)
+  	[done by stayl]
 
 C interface
 -----------
@@ -142,6 +144,7 @@ source-level transformations
   specialization problem, in particular
 	- cross-module inlining
 	- cross-module specialization of higher-order preds
+	[being done by stayl]
 
 - deforestation
 

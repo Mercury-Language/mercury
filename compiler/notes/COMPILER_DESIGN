@@ -17,14 +17,14 @@ stages:
 	5. low-level optimizations (LLDS -> LLDS)
 	6. output C code (LLDS -> C)
 
-Note that in reality the seperation is not quite as simple as that.
+Note that in reality the separation is not quite as simple as that.
 Although parsing is listed as step 1 and semantic analysis is listed
 as step 2, the last stage of parsing actually includes some semantic checks.
 And although optimization is listed as steps 3 and 5, it also occurs in
 steps 2, 4, and 6.  For example, elimination of assignments to dead
 variables is done in mode analysis; middle-recursion optimization and
 the use of static constants for ground terms is done in code
-generation; and a few low-level optimizations are done in llds.m
+generation; and a few low-level optimizations are done in llds_out.m
 as we are spitting out the C code.
 
 -----------------------------------------------------------------------------
@@ -54,17 +54,17 @@ stored in the io__state, using the type globals defined in globals.m.
 * stage 2 parsing - convert terms to `items' (declarations, clauses, etc.)
 
 	The result of this stage is a parse tree that has a one-to-one
-	correspondence with the source code.  Both the parse tree data
-	structure and code to create it are in prog_io.m.  The module
-	prog_out.m and mercury_to_mercury.m contain predicates for
-	printing the parse tree.
+	correspondence with the source code.  The parse tree data structure
+	definition is in prog_data, while the code to create it is in
+	prog_io.m.  The modules prog_out.m and mercury_to_mercury.m
+	contain predicates for printing the parse tree.
 	prog_util.m contains some utility predicates for manipulating
 	the parse tree.
 
 * imports and exports are handled at this point (modules.m)
 
-	modules.m has the code to write out `.int', `.int2', `.d'
-	and `.dep' files.
+	modules.m has the code to write out `.int', `.int2', `.int3',
+	`.d' and `.dep' files.
 
 * module qualification of types, insts and modes
 
@@ -72,9 +72,9 @@ stored in the io__state, using the type globals defined in globals.m.
 	Adds module qualifiers to all types insts and modes,
 	checking that a given type, inst or mode exists and that 
 	there is only possible match.  This is done here because 
-	it must be done before the interface files are written.
-	This also checks whether imports are really needed in the
-	interface.
+	it must be done before the `.int' and `.int2' interface files
+	are written. This also checks whether imports are really needed
+	in the interface.
 
 * expansion of equivalence types (equiv_type.m)
 
@@ -167,8 +167,8 @@ in an HLDS goal.
 	  the same variable against the same function symbols, and hoists any
 	  such unifications out of the disjunction.
 	  If cse_detection.m modifies the code,
-	  it will re-run mode analysis and switch detection
-	- det_analysis.m does annotations each goal with its determinism;
+	  it will re-run mode analysis and switch detection.
+	- det_analysis.m annotates each goal with its determinism;
 	  it inserts cuts in the form of "some" goals wherever the determinisms
 	  and delta instantiations of the goals involved make it necessary.
 	  Any errors found during determinism analysis are reported by
@@ -232,9 +232,10 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   specialized versions without them (unused_args.m); type_infos are
   often unused
 
-* elimination of dead procedures (dead_proc_elim.m); inlining, higher-order
+* elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
-  even the user doesn't
+  even the user doesn't, and automatically constructed unification and
+  comparison predicates are often dead as well.
 
 * removal of excess assignment unifications (excess.m)
 
@@ -255,8 +256,8 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 	annotate the HLDS with information used for code generation:
 
 		choosing registers for procedure arguments (arg_info.m)
-			Currently uses a very simple algorithm, but
-			we may change this later.
+			Currently uses one of two simple algorithms, but
+			we may add other algorithms later.
 		annotation of goals with liveness information (liveness.m)
 			This records the birth and death of each variable
 			in the HLDS goal_info.
@@ -270,8 +271,8 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			follow_code.m, improves the results of follow_vars.
 		allocating the follow vars (follow_vars.m)
 			Traverses backwards over the HLDS, annotating each
-			call and branched structue with the variable target
-			locations for the following call, so we can generate
+			branched structure with the variable target locations
+			for the following call, so we can generate
 			efficient code by putting variables in the right spot.
 		allocating the store map (store_alloc.m)
 			Allocates locations for variables at the end of
@@ -353,13 +354,20 @@ They are:
 		value numbering. Not generating them in the first place
 		would be better, but would be quite difficult.
 	vn_flush.m
-		Given tables built up by vn_block showing the actions that
-		must be taken, and the current and desired contents of
-		locations, generate code to take these actions and to
-		achieve the desired contents of locations in what is
+		Given the tables built up by vn_block and a list of nodes
+		computed by vn_order, generate code to assign the required
+		values to each temporary and live location in what is
 		hopefully the fastest and most compact way.
 	vn_order.m
-		atsort.m ("approximate topological sort" predicates)
+		Given tables built up by vn_block showing the actions that
+		must be taken, and the current and desired contents of
+		locations, find out which shared subexpressions should
+		have temporaries allocated to them and in what order these
+		temporaries and the live locations should be assigned to.
+		This module uses the module atsort.m to perform an approximate
+		topological sort on the nodes of the location dependency
+		graph it operations on (since the graph may have cycles,
+		a precise topological sort may not exist).
 	vn_table.m
 		Abstract data type showing the current and desired
 		contents of locations.
@@ -385,7 +393,7 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
 
 6. Output C code
 
-Final generation of C code is done in llds.m.
+Final generation of C code is done in llds_out.m.
 
 -----------------------------------------------------------------------------
 
@@ -404,12 +412,14 @@ MISCELLANEOUS
 		module, and to print it out to a file.
 		(The call graph file is used by the profiler.)
 		The call graph may eventually also be used by det_analysis.m,
-		inlining.m, and other parts of the compiler which need
-		to traverse the predicates in a module bottom-up or top-down.
+		inlining.m, and other parts of the compiler which could benefit
+		from traversing the predicates in a module in a bottom-up or
+		top-down fashion with respect to the call graph.
 
 	passes_aux.m
-		Contains write_progress_message, which is called
-		from various places to write progress messages.
+		Contains code to write progress messages, and higher-order
+		code to traverse all the predicates defined in the current
+		module and do something with each one.
 
 	opt_debug.m:
 		Utility routines for debugging the LLDS-to-LLDS optimizations.
@@ -442,6 +452,7 @@ Some of them are obsolete; other are work-in-progress.
 		to high-level C code (without going via LLDS).
 
 	shapes.m, garbage_out.m:
-		These two modules are used for the native garbage collector.
+		These two modules generate information for the
+		native garbage collector.
 
 -----------------------------------------------------------------------------
