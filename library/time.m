@@ -80,7 +80,7 @@
 #else
 	fprintf(stderr, 
 		""Heap: %.3fk]\\n"",
-		((char *) hp - (char *) heapmin) / 1024.0
+		((char *) hp - (char *) heap_zone->min) / 1024.0
 	);
 #endif
 ").
