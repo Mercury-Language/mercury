@@ -16,7 +16,7 @@ main_target: $(MAIN_TARGET)
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .m .nl .no .err \
 		.int0 .int .int2 .int3 .opt .trans_opt \
-		.dep .depend .doit .ugly \
+		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .nu .o .pic_o \
 		.i .s .pic_s \
@@ -81,8 +81,8 @@ $(qls_subdir)%.ql : %.nl
 # I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
-# beware the code for `%.depend' and `%.dep' is duplicated
-$(deps_subdir)%.dep:
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+$(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
@@ -92,7 +92,7 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
 endif
 
-# beware the code for `%.depend' and `%.dep' is duplicated
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 .PHONY: %.depend
 %.depend :
 	$(MCD) $(ALL_MCDFLAGS) $*
@@ -106,7 +106,7 @@ endif
 
 # The `.doit' files are helpful when using Prolog.
 
-%.doit : $(deps_subdir)%.dep
+%.doit : $(deps_subdir)%.dep $(deps_subdir)%.dv
 	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
 	grep '\.ms *=' | \
 	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \

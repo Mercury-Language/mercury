@@ -158,6 +158,8 @@ Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
 Files ending in @file{.dep} are automatically-generated Makefile fragments
 which contain the rules for an entire program.
+Files ending in @file{.dv} are automatically-generated Makefile fragments
+which contain variable definitions for an entire program.
 
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
@@ -360,16 +362,16 @@ based on automatically generated dependency information.
 Most of the dependencies are stored in @file{.d} files that are
 automatically recomputed every time you recompile,
 so they are never out-of-date.
-A little bit of the dependency information is stored in @file{.dep} files
-which are more expensive to recompute.
-The @samp{mmake @var{main-module}.depend} command
-which recreates the @file{@var{main-module}.dep} file
-needs to be repeated only when you add or remove a module from your program,
-and there is no danger of getting an inconsistent executable
-if you forget this step --- instead you will get a compile or link error.
+A little bit of the dependency information is stored in @file{.dep}
+and @file{.dv} files which are more expensive to recompute.
+The @samp{mmake @var{main-module}.depend} command which recreates the
+@file{@var{main-module}.dep} and @file{@var{main-module}.dv} files needs
+to be repeated only when you add or remove a module from your program,
+and there is no danger of getting an inconsistent executable if you forget
+this step --- instead you will get a compile or link error.
 
 @samp{mmake} allows you to build more than one program in the same directory.
-Each program must have its own @file{.dep} file,
+Each program must have its own @file{.dep} and @file{.dv} files,
 and therefore you must run @samp{mmake @var{program}.depend}
 for each program.
 
@@ -384,12 +386,14 @@ Mmake's builtin rules are defined by the file
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
 (where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
 and @var{version} is the version number, e.g. @samp{0.6}),
-as well as the rules in the automatically-generated @file{.dep} files.
+as well as the rules and variables in the automatically-generated
+@file{.dep} and @file{.dv} files.
 These rules define the following targets:
 
 @table @file
 @item @var{main-module}.depend
-Creates the file @file{@var{main-module}.dep} from @file{@var{main-module}.m}
+Creates the files @file{@var{main-module}.dep} and
+@file{@var{main-module}.dv} from @file{@var{main-module}.m}
 and the modules it imports.
 This step must be performed first.
 
@@ -434,8 +438,8 @@ Removes files that need updating when changing compilation model
 (@pxref{Compilation model options}) or
 when enabling inter-module optimization.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.dep} and executable files belonging to the named @var{main-module}
-or its imported modules.
+@samp{.dep}, @samp{.dv} and executable files belonging to the named
+@var{main-module} or its imported modules.
 
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
@@ -447,7 +451,8 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @ifset aditi
 @samp{.rlo},
 @end ifset
-@samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
+@samp{.d}, @samp{.dep} and @samp{.dv}
+belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}},
 @samp{@var{main-module}.nu},
@@ -517,8 +522,14 @@ that you are building.
 
 @item C2INITFLAGS and EXTRA_C2INITFLAGS
 Options to pass to the c2init program.
-(Note that compilation model options should be
-specified in @code{GRADEFLAGS}, not in @code{C2INITFLAGS}.)
+(Note that compilation model options and extra files to be processed by
+c2init should not be specified in @code{C2INITFLAGS} - they should be
+specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
+
+@item C2INITARGS and EXTRA_C2INITARGS
+Extra files to be processed by c2init.  These variables should not be
+used for specifying flags to c2init (that's what @code{C2INITFLAGS} is for)
+since they are also used to derive extra dependency information.
 @end table
 
 Other variables also exist - see
@@ -717,7 +728,7 @@ library.
 @section Using libraries
 
 To use a library, you need to set the Mmake variables @samp{VPATH},
-@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITFLAGS}
+@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITARGS}
 to specify the name and location of the library or libraries that you
 wish to use. If you are using @samp{--intermodule-optimization}, you
 may also need to set @samp{MGNUCFLAGS} if the library uses the C interface.
@@ -737,8 +748,8 @@ MCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MCFLAGS)
 MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
           -L$(MYPACKAGE_DIR) -L$(MYOTHERLIB_DIR)
 MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
-C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
-              $(MYOTHERLIB_DIR)/myotherlib.init
+C2INITARGS = $(MYPACKAGE_DIR)/mypackage.init \
+             $(MYOTHERLIB_DIR)/myotherlib.init
 
 # This line may be needed if @samp{--intermodule-optimization}
 # is in @samp{MCFLAGS}. @samp{-I} options should be added for any other
@@ -754,9 +765,11 @@ the loader where to find shared libraries, and the @samp{-L}
 options tell the linker where to find libraries.
 (Note that the @samp{-R} options must precede the @samp{-L} options.)
 The @samp{-l} options tell the linker which libraries to link with.
-The extra arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
-variable tell @samp{c2init} where to find the @samp{.init} files for the
-libraries, so that it can generate appropriate initialization code.
+The extra arguments to @samp{c2init} specified in the @samp{C2INITARGS}
+variable tell @samp{c2init} where to find the @samp{.init} files for
+the libraries (so that it can generate appropriate initialization code)
+as well as telling Mmake that any @samp{_init.c} files generated depend
+on these files.
 The @samp{-I} options in @samp{MGNUCFLAGS} tell the C preprocessor where
 to find the header files for the libraries.
 
@@ -2436,8 +2449,9 @@ an executable.
 @table @code
 @item -M
 @itemx --generate-dependencies
-Output ``Make''-style dependencies for the module
-and all of its dependencies to @file{@var{module}.dep}.
+Output ``Make''-style dependencies for the module and all of its
+dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
+relevant @samp{.d} files.
 
 @item --generate-module-order
 Output the strongly connected components of the module
@@ -2544,10 +2558,10 @@ string and print it on the standard output.
 @section Auxiliary output options
 @table @code
 @item --no-assume-gmake
-When generating @file{.dep} files, generate Makefile
-fragments that use only the features of standard make;
+When generating @file{.d}, @file{.dep} and @file{.dv} files,
+generate Makefile fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
-This makes these files significantly larger.
+This can make these files significantly larger.
 
 @item --trace-level @var{level}
 Generate code that includes the specified level of execution tracing.

@@ -78,6 +78,10 @@ ALL_C2INITFLAGS	= $(C2INITFLAGS) $(EXTRA_C2INITFLAGS) $(TARGET_C2INITFLAGS)
 C2INITFLAGS	=
 EXTRA_C2INITFLAGS =
 
+ALL_C2INITARGS	= $(C2INITARGS) $(EXTRA_C2INITARGS) $(TARGET_C2INITARGS)
+C2INITARGS	=
+EXTRA_C2INITARGS =
+
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
 		  $(ALL_CFLAGS)
@@ -203,6 +207,16 @@ TARGET_C2INITFLAGS = \
 		$(origin C2INITFLAGS-$(patsubst %_init.c,%,$@))))
 maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-C2INITFLAGS-undefined =
+
+TARGET_C2INITARGS = \
+  $(maybe-base-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$*))) \
+  $(maybe-target-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$(patsubst %_init.c,%,$@))))
+maybe-base-C2INITARGS- = $(C2INITARGS-$*)
+maybe-base-C2INITARGS-undefined =
+maybe-target-C2INITARGS- = $(C2INITARGS-$(patsubst %_init.c,%,$@))
+maybe-target-C2INITARGS-undefined =
 
 TARGET_MGNUCFLAGS = \
   $(maybe-base-MGNUCFLAGS-$(findstring undefined,$(origin MGNUCFLAGS-$*)))
