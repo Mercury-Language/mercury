@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module float, int, list, map, string, set.
+:- import_module float, int, list, map, string.
 
 
 %-----------------------------------------------------------------------------%

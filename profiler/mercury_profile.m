@@ -151,10 +151,10 @@ main_2(no, Args) -->
 		maybe_write_string(Verbose, " done\n"),
 		
 		maybe_write_string(Verbose, "% Generating output..."),
-		generate_output__main(Prof, OutputProf),
+		generate_output__main(Prof, IndexMap, OutputProf),
 		maybe_write_string(Verbose, " done\n"),
 
-		output__main(OutputProf)
+		output__main(OutputProf, IndexMap)
         ).
 
 
