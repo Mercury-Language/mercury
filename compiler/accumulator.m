@@ -1589,7 +1589,6 @@ acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
 	ModuleName = pred_info_module(PredInfo),
 	Name = pred_info_name(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	Cond = true,
 	pred_info_context(PredInfo, PredContext),
 	pred_info_get_markers(PredInfo, Markers),
 	pred_info_get_class_context(PredInfo, ClassContext),
@@ -1606,9 +1605,9 @@ acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
 	make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
 		Line, Counter, SymName),
 
-	pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types,
-		Cond, PredContext, local, Markers, PredOrFunc, ClassContext,
-		Owner, Assertions, NewProcInfo, NewProcId, NewPredInfo).
+	pred_info_create(ModuleName, SymName, PredOrFunc, PredContext,
+		local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
+		Assertions, Owner, NewProcInfo, NewProcId, NewPredInfo).
 
 %-----------------------------------------------------------------------------%
 

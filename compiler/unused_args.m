@@ -1043,9 +1043,9 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(_PredId, ProcId),
 	pred_info_get_class_context(!.PredInfo, ClassContext),
 	pred_info_get_aditi_owner(!.PredInfo, Owner),
 	map__init(EmptyProofs),
-	pred_info_init(PredModule, Name, Arity, Tvars, ExistQVars, ArgTypes,
-		true, Context, ClausesInfo, Status, Markers, GoalType,
-		PredOrFunc, ClassContext, EmptyProofs, Owner, !:PredInfo),
+	pred_info_init(PredModule, Name, Arity, PredOrFunc, Context,
+		Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
+		ClassContext, EmptyProofs, Owner, ClausesInfo, !:PredInfo),
 	pred_info_set_typevarset(TypeVars, !PredInfo).
 
 	% Replace the goal in the procedure with one to call the given

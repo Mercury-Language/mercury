@@ -2511,9 +2511,9 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
 		EmptyTVarNameMap, EmptyVarTypes, [], [],
 		EmptyTIMap, EmptyTCIMap, no),
-	pred_info_init(PredModule, SymName, Arity, ArgTVarSet, ExistQVars,
-		Types, true, Context, ClausesInfo, Status, MarkerList, GoalType,
-		PredOrFunc, ClassContext, EmptyProofs, Owner, NewPredInfo0),
+	pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context,
+		Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
+		ClassContext, EmptyProofs, Owner, ClausesInfo, NewPredInfo0),
 	pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),

@@ -285,6 +285,9 @@ hlds_out__type_ctor_to_string(Name - Arity) = Str :-
 hlds_out__write_class_id(class_id(Name, Arity), !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).
 
+hlds_out__write_cons_id(ConsId, !IO) :-
+	io__write_string(hlds_out__cons_id_to_string(ConsId), !IO).
+
 hlds_out__cons_id_to_string(cons(SymName, Arity)) = String :-
 	prog_out__sym_name_to_string(SymName, SymNameString0),
 	( string__contains_char(SymNameString0, '*') ->
@@ -297,59 +300,37 @@ hlds_out__cons_id_to_string(cons(SymName, Arity)) = String :-
 				string__append(Str0, CharStr, Str)
 			)
 		),
-		string__foldl(Stuff, SymNameString0, "", SymNameString)
+		string__foldl(Stuff, SymNameString0, "", SymNameString1)
 	;
-		SymNameString = SymNameString0
+		SymNameString1 = SymNameString0
 	),
+	SymNameString = term_io__escaped_string(SymNameString1),
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
-
 hlds_out__cons_id_to_string(int_const(Int)) = String :-
 	string__int_to_string(Int, String).
-
-hlds_out__cons_id_to_string(string_const(String)) = S :-
-	string__append_list(["""", String, """"], S).
-
-hlds_out__cons_id_to_string(float_const(_)) = "<float>".
-hlds_out__cons_id_to_string(pred_const(_, _, _)) = "<pred>".
-hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _)) =
-	"<type_ctor_info>".
+hlds_out__cons_id_to_string(string_const(String)) =
+	term_io__quoted_string(String).
+hlds_out__cons_id_to_string(float_const(Float)) =
+	float_to_string(Float).
+hlds_out__cons_id_to_string(pred_const(PredId, ProcId, _)) =
+	"<pred " ++ int_to_string(pred_id_to_int(PredId)) ++
+	" proc " ++ int_to_string(proc_id_to_int(ProcId)) ++ ">".
+hlds_out__cons_id_to_string(type_ctor_info_const(Module, Ctor, Arity)) =
+	"<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
+	Ctor ++ "/" ++ int_to_string(Arity) ++ ">".
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _)) =
 	"<base_typeclass_info>".
 hlds_out__cons_id_to_string(type_info_cell_constructor(_)) =
 	"<type_info_cell_constructor>".
 hlds_out__cons_id_to_string(typeclass_info_cell_constructor) =
 	"<typeclass_info_cell_constructor>".
-hlds_out__cons_id_to_string(tabling_pointer_const(_, _)) =
-	"<tabling_pointer>".
+hlds_out__cons_id_to_string(tabling_pointer_const(PredId, ProcId)) =
+	"<tabling_pointer " ++ int_to_string(pred_id_to_int(PredId)) ++
+	", " ++ int_to_string(proc_id_to_int(ProcId)) ++ ">".
 hlds_out__cons_id_to_string(deep_profiling_proc_layout(_)) =
 	"<deep_profiling_proc_layout>".
 hlds_out__cons_id_to_string(table_io_decl(_)) = "<table_io_decl>".
-
-hlds_out__write_cons_id(cons(SymName, Arity)) -->
-	prog_out__write_sym_name_and_arity(SymName / Arity).
-hlds_out__write_cons_id(int_const(Int)) -->
-	io__write_int(Int).
-hlds_out__write_cons_id(string_const(String)) -->
-	term_io__quote_string(String).
-hlds_out__write_cons_id(float_const(Float)) -->
-	io__write_float(Float).
-hlds_out__write_cons_id(pred_const(_PredId, _ProcId, _)) -->
-	io__write_string("<pred>").
-hlds_out__write_cons_id(type_ctor_info_const(_, _, _)) -->
-	io__write_string("<type_ctor_info>").
-hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
-	io__write_string("<base_typeclass_info>").
-hlds_out__write_cons_id(type_info_cell_constructor(_)) -->
-	io__write_string("<type_info_cell_constructor>").
-hlds_out__write_cons_id(typeclass_info_cell_constructor) -->
-	io__write_string("<typeclass_info_cell_constructor>").
-hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
-	io__write_string("<tabling_pointer>").
-hlds_out__write_cons_id(deep_profiling_proc_layout(_)) -->
-	io__write_string("<deep_profiling_proc_layout>").
-hlds_out__write_cons_id(table_io_decl(_)) -->
-	io__write_string("<table_io_decl>").
 
 	% The code of this predicate duplicates the functionality of
 	% hlds_error_util__describe_one_pred_name. Changes here should be made
@@ -1002,15 +983,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 			VarTypes, TVarSet, !IO),
 
 		( Clauses \= [] ->
-			% XXX FIXME Never write the clauses out verbosely -
-			% disable the dump_hlds_options option before writing
-			% them, and restore its initial value afterwards
-			% globals__io_set_option(dump_hlds_options, string("")),
+			set_dump_opts_for_clauses(SavedDumpString, !IO),
 			hlds_out__write_clauses(Indent, ModuleInfo, PredId,
 				VarSet, AppendVarnums, HeadVars, PredOrFunc,
-				Clauses, no, !IO)
-			% globals__io_set_option(dump_hlds_options,
-			%	string(Verbose), !IO)
+				Clauses, no, !IO),
+			globals__io_set_option(dump_hlds_options,
+				string(SavedDumpString), !IO)
 		;
 			true
 		),
@@ -1056,6 +1034,28 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 	hlds_out__write_procs(Indent, AppendVarnums, ModuleInfo, PredId,
 		ImportStatus, PredInfo, !IO),
 	io__write_string("\n", !IO).
+
+:- pred set_dump_opts_for_clauses(string::out, io::di, io::uo) is det.
+
+set_dump_opts_for_clauses(SavedDumpStr, !IO) :-
+	globals__io_lookup_string_option(dump_hlds_options, SavedDumpStr, !IO),
+	DumpStr0 = "",
+	( string__contains_char(SavedDumpStr, 'c') ->
+		DumpStr1 = DumpStr0 ++ "c"
+	;
+		DumpStr1 = DumpStr0
+	),
+	( string__contains_char(SavedDumpStr, 'n') ->
+		DumpStr2 = DumpStr1 ++ "n"
+	;
+		DumpStr2 = DumpStr1
+	),
+	( string__contains_char(SavedDumpStr, 'v') ->
+		DumpStr = DumpStr2 ++ "v"
+	;
+		DumpStr = DumpStr2
+	),
+	globals__io_set_option(dump_hlds_options, string(DumpStr), !IO).
 
 :- pred hlds_out__write_marker_list(list(marker)::in, io::di, io::uo) is det.
 
@@ -1126,17 +1126,30 @@ hlds_out__write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
 
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 		HeadVars, PredOrFunc, Clauses0, TypeQual, !IO) :-
+	hlds_out__write_clauses_2(Indent, ModuleInfo, PredId, VarSet,
+		AppendVarnums, HeadVars, PredOrFunc, Clauses0, TypeQual,
+		1, !IO).
+
+:- pred hlds_out__write_clauses_2(int::in, module_info::in, pred_id::in,
+	prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
+	list(clause)::in, maybe_vartypes::in, int::in, io::di, io::uo) is det.
+
+hlds_out__write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
+		HeadVars, PredOrFunc, Clauses0, TypeQual, ClauseNum, !IO) :-
 	(
 		Clauses0 = [Clause | Clauses]
 	->
 		term__var_list_to_term_list(HeadVars, HeadTerms),
 		UseDeclaredModes = no,
+		io__write_string("% clause ", !IO),
+		io__write_int(ClauseNum, !IO),
+		io__write_string("\n", !IO),
 		hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadTerms, PredOrFunc,
 			Clause, UseDeclaredModes, TypeQual, !IO),
-		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
+		hlds_out__write_clauses_2(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadVars, PredOrFunc, Clauses, TypeQual,
-			!IO)
+			ClauseNum + 1, !IO)
 	;
 		true
 	).

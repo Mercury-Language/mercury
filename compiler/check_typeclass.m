@@ -683,7 +683,6 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
-	Cond = true,
 	map__init(Proofs),
 	add_marker(class_instance_method, Markers0, Markers1),
 	( InstancePredDefn = name(_) ->
@@ -710,10 +709,10 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !IO),
 
-	pred_info_init(InstanceModuleName, PredName, PredArity, ArgTypeVars,
-		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
-		Markers, none, PredOrFunc, ClassContext, Proofs, User,
-		PredInfo0),
+	pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
+		Context, Status, none, Markers,
+		ArgTypes, ArgTypeVars, ExistQVars, ClassContext, Proofs,
+		User, ClausesInfo, PredInfo0),
 	pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
 
 	% Fill in some information in the pred_info which is

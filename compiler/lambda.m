@@ -561,10 +561,10 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 		set__init(Assertions),
 
-		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
-			ArgTypes, true, LambdaContext, local, LambdaMarkers,  
-			PredOrFunc, Constraints, Owner, Assertions, ProcInfo,
-			ProcId, PredInfo),
+		pred_info_create(ModuleName, PredName, PredOrFunc,
+			LambdaContext, local, LambdaMarkers,  
+			ArgTypes, TVarSet, ExistQVars, Constraints,
+			Assertions, Owner, ProcInfo, ProcId, PredInfo),
 
 		% save the new predicate in the predicate table
 

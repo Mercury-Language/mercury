@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,6 +55,7 @@
 	%	the standard Mercury module qualifier operator.
 :- pred prog_out__sym_name_to_string(sym_name, string).
 :- mode prog_out__sym_name_to_string(in, out) is det.
+:- func prog_out__sym_name_to_string(sym_name) = string.
 
 	% sym_name_to_string(SymName, String):
 	%	convert a symbol name and arity to a "<Name>/<Arity>" string,
@@ -62,12 +63,14 @@
 	%	the standard Mercury module qualifier operator.
 :- pred prog_out__sym_name_and_arity_to_string(sym_name_and_arity, string).
 :- mode prog_out__sym_name_and_arity_to_string(in, out) is det.
+:- func prog_out__sym_name_and_arity_to_string(sym_name_and_arity) = string.
 
 	% sym_name_to_string(SymName, Separator, String):
 	%	convert a symbol name to a string,
 	%	with module qualifiers separated by Separator.
 :- pred prog_out__sym_name_to_string(sym_name, string, string).
 :- mode prog_out__sym_name_to_string(in, in, out) is det.
+:- func prog_out__sym_name_to_string(sym_name, string) = string.
 
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
 :- mode prog_out__write_module_spec(in, di, uo) is det.
@@ -181,9 +184,15 @@ prog_out__write_quoted_sym_name(SymName) -->
 prog_out__sym_name_to_string(SymName, String) :-
 	prog_out__sym_name_to_string(SymName, ".", String).
 
+prog_out__sym_name_to_string(SymName) = String :-
+	prog_out__sym_name_to_string(SymName, String).
+
 prog_out__sym_name_to_string(SymName, Separator, String) :-
 	prog_out__sym_name_to_string_2(SymName, Separator, Parts, []),
 	string__append_list(Parts, String).
+
+prog_out__sym_name_to_string(SymName, Separator) = String :-
+	prog_out__sym_name_to_string(SymName, Separator, String).
 	
 :- pred prog_out__sym_name_to_string_2(sym_name, string,
 				list(string), list(string)).
@@ -199,6 +208,9 @@ prog_out__sym_name_and_arity_to_string(SymName/Arity, String) :-
 	prog_out__sym_name_to_string(SymName, SymNameString),
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
+
+prog_out__sym_name_and_arity_to_string(SymName/Arity) = String :-
+	prog_out__sym_name_and_arity_to_string(SymName/Arity, String).
 
 	% write out a module specifier
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001, 2003 The University of Melbourne.
+% Copyright (C) 1999-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,8 +90,7 @@
 :- type array_elem_type
 	--->	elem_type_string	% ml_string_type
 	;	elem_type_int		% mlds__native_int_type
-	;	elem_type_generic	% mlds__generic_type
-	.
+	;	elem_type_generic.	% mlds__generic_type
 
 	% translate_builtin:
 	%
@@ -105,9 +104,8 @@
 	% in the code returned -- see below for details.
 	% (bytecode_gen.m depends on these guarantees.)
 	%
-:- pred translate_builtin(module_name, string, proc_id, list(T),
-		simple_code(T)).
-:- mode translate_builtin(in, in, in, in, out(simple_code)) is semidet.
+:- pred translate_builtin(module_name::in, string::in, proc_id::in,
+	list(T)::in, simple_code(T)::out(simple_code)) is semidet.
 
 :- type simple_code(T)
 	--->	assign(T, simple_expr(T))
@@ -159,17 +157,17 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
 	FullyQualifiedModule = unqualified(ModuleName),
 	builtin_translation(ModuleName, PredName, ProcInt, Args, Code).
 
-:- pred builtin_translation(string, string, int, list(T), simple_code(T)).
-:- mode builtin_translation(in, in, in, in, out) is semidet.
+:- pred builtin_translation(string::in, string::in, int::in, list(T)::in,
+	simple_code(T)::out) is semidet.
 
 	% Note that the code we generate for unsafe_type_cast is not
 	% type-correct.  Back-ends that require type-correct intermediate
 	% code (e.g. the MLDS back-end) must handle unsafe_type_cast
 	% separately, rather than by calling builtin_translation.
-builtin_translation("private_builtin", "unsafe_type_cast", 0,
-		[X, Y], assign(Y, leaf(X))).
-builtin_translation("builtin", "unsafe_promise_unique", 0,
-		[X, Y], assign(Y, leaf(X))).
+builtin_translation("private_builtin", "unsafe_type_cast", 0, [X, Y],
+	assign(Y, leaf(X))).
+builtin_translation("builtin", "unsafe_promise_unique", 0, [X, Y],
+	assign(Y, leaf(X))).
 
 builtin_translation("private_builtin", "builtin_int_gt", 0, [X, Y],
 	test(binary((>), leaf(X), leaf(Y)))).
@@ -217,6 +215,7 @@ builtin_translation("int", "-", 0, [X, Y],
 	assign(Y, binary((-), int_const(0), leaf(X)))).
 builtin_translation("int", "\\", 0, [X, Y],
 	assign(Y, unary(bitwise_complement, leaf(X)))).
+
 builtin_translation("int", ">", 0, [X, Y],
 	test(binary((>), leaf(X), leaf(Y)))).
 builtin_translation("int", "<", 0, [X, Y],
@@ -238,6 +237,7 @@ builtin_translation("float", "+", 0, [X, Y],
 	assign(Y, leaf(X))).
 builtin_translation("float", "-", 0, [X, Y],
 	assign(Y, binary(float_minus, float_const(0.0), leaf(X)))).
+
 builtin_translation("float", ">", 0, [X, Y],
 	test(binary(float_gt, leaf(X), leaf(Y)))).
 builtin_translation("float", "<", 0, [X, Y],

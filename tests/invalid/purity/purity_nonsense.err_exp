@@ -8,32 +8,32 @@ purity_nonsense.m:018:   type error: variable `P' has type `(pred)',
 purity_nonsense.m:018:   expected type was `(impure (pred))'.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense.e12/0':
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure/1':
-purity_nonsense.m:012:   error: the language construct \\+/1 should be
+purity_nonsense.m:012:   error: the language construct \+/1 should be
 purity_nonsense.m:012:   used as a goal, not as an expression.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense.e12/0':
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure/1':
-purity_nonsense.m:012:   in argument 1 of functor `\\+/1':
+purity_nonsense.m:012:   in argument 1 of functor `\+/1':
 purity_nonsense.m:012:   error: the language construct impure/1 should be
 purity_nonsense.m:012:   used as a goal, not as an expression.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense.e12/0':
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure/1':
-purity_nonsense.m:012:   in argument 1 of functor `\\+/1':
+purity_nonsense.m:012:   in argument 1 of functor `\+/1':
 purity_nonsense.m:012:   in argument 1 of functor `impure/1':
 purity_nonsense.m:012:   error: undefined symbol `imp/0'.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense.e12/0':
 purity_nonsense.m:012:   error: `impure' marker in an inappropriate place.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
 purity_nonsense.m:013:   in argument 1 of call to predicate `semipure/1':
-purity_nonsense.m:013:   error: the language construct \\+/1 should be
+purity_nonsense.m:013:   error: the language construct \+/1 should be
 purity_nonsense.m:013:   used as a goal, not as an expression.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
 purity_nonsense.m:013:   in argument 1 of call to predicate `semipure/1':
-purity_nonsense.m:013:   in argument 1 of functor `\\+/1':
+purity_nonsense.m:013:   in argument 1 of functor `\+/1':
 purity_nonsense.m:013:   error: the language construct semipure/1 should be
 purity_nonsense.m:013:   used as a goal, not as an expression.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
 purity_nonsense.m:013:   in argument 1 of call to predicate `semipure/1':
-purity_nonsense.m:013:   in argument 1 of functor `\\+/1':
+purity_nonsense.m:013:   in argument 1 of functor `\+/1':
 purity_nonsense.m:013:   in argument 1 of functor `semipure/1':
 purity_nonsense.m:013:   error: undefined symbol `semi/0'.
 purity_nonsense.m:013: In clause for predicate `purity_nonsense.e13/0':
