@@ -571,11 +571,14 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 
 mlds_output_class_decl(_Indent, Name, ClassDefn) -->
 	( { ClassDefn^kind = mlds__enum } ->
-		io__write_string("enum ")
+		io__write_string("enum "),
+		mlds_output_fully_qualified_name(Name),
+		io__write_string("_e")
 	;
-		io__write_string("struct ")
-	),
-	mlds_output_fully_qualified_name(Name).
+		io__write_string("struct "),
+		mlds_output_fully_qualified_name(Name),
+		io__write_string("_s")
+	).
 
 :- pred mlds_output_class(indent, mlds__qualified_entity_name, mlds__context,
 		mlds__class_defn, io__state, io__state).
@@ -1155,7 +1158,7 @@ mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 		%
 		io__write_string("MR_Integer /* actually `enum "),
 		mlds_output_fully_qualified(Name, io__write_string),
-		io__format("_%d", [i(Arity)]),
+		io__format("_%d_e", [i(Arity)]),
 		io__write_string("' */")
 	;
 		% For struct types it's OK to output an incomplete type,
@@ -1163,7 +1166,7 @@ mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 		% use pointers to them.
 		io__write_string("struct "),
 		mlds_output_fully_qualified(Name, io__write_string),
-		io__format("_%d", [i(Arity)])
+		io__format("_%d_s", [i(Arity)])
 	).
 mlds_output_type_prefix(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),

@@ -92,17 +92,17 @@ typedef Word	MR_Word;
 #ifdef MR_HIGHLEVEL_DATA
   typedef MR_Integer /* really `enum mercury__builtin__comparison_result_0' */
   	MR_Comparison_Result;
-  typedef struct mercury__builtin__void_0 * MR_Void;
-  typedef struct mercury__builtin__c_pointer_0 * MR_C_Pointer;
+  typedef struct mercury__builtin__void_0_s * MR_Void;
+  typedef struct mercury__builtin__c_pointer_0_s * MR_C_Pointer;
   typedef MR_ClosurePtr MR_Pred;
   typedef MR_ClosurePtr MR_Func;
-  typedef struct mercury__array__array_1 * MR_Array;
-  typedef struct mercury__std_util__univ_0 * MR_Univ;
-  typedef struct mercury__std_util__type_desc_0 * MR_Type_Desc;
-  typedef struct mercury__private_builtin__type_info_1 * MR_Type_Info;
-  typedef struct mercury__private_builtin__type_ctor_info_1 * MR_Type_Ctor_Info;
-  typedef struct mercury__private_builtin__typeclass_info_1 * MR_TypeClass_Info;
-  typedef struct mercury__private_builtin__base_typeclass_info_1 *
+  typedef struct mercury__array__array_1_s * MR_Array;
+  typedef struct mercury__std_util__univ_0_s * MR_Univ;
+  typedef struct mercury__std_util__type_desc_0_s * MR_Type_Desc;
+  typedef struct mercury__private_builtin__type_info_1_s * MR_Type_Info;
+  typedef struct mercury__private_builtin__type_ctor_info_1_s * MR_Type_Ctor_Info;
+  typedef struct mercury__private_builtin__typeclass_info_1_s * MR_TypeClass_Info;
+  typedef struct mercury__private_builtin__base_typeclass_info_1_s *
   	MR_Base_TypeClass_Info;
 #else
   /* for --no-high-level-data, they're all just `MR_Word' */
