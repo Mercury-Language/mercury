@@ -327,7 +327,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
 
 	(
-		% If a goal with multiple solutions has no output variables,
+		% If a pure or semipure goal with multiple solutions
+		% has no output variables,
 		% then it really it has only one solution
 		% (we will need to do pruning)
 
@@ -784,8 +785,15 @@ det_infer_disj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, CanFail0,
 	determinism_components(Detism1, CanFail1, MaxSolns1),
 	det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
 	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
+	% if we're in a single-solution context,
+	% convert `at_most_many' to `at_most_many_cc'
+	( SolnContext = first_soln, MaxSolns2 = at_most_many ->
+		MaxSolns3 = at_most_many_cc
+	;
+		MaxSolns3 = MaxSolns2
+	),
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo, CanFail2,
-		MaxSolns2, Goals1, Detism, Msgs2),
+		MaxSolns3, Goals1, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs).
 
 :- pred det_infer_switch(list(case), instmap, soln_context, det_info,
