@@ -1354,8 +1354,8 @@ type_unify(term_functor(F, As, C), term_variable(X), HeadTypeParams, Bindings0,
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
-type_unify(term_functor(FX, AsX, _), term_functor(FY, AsY, _), HeadTypeParams,
-		Bindings0, Bindings) :-
+type_unify(term_functor(FX, AsX, _CX), term_functor(FY, AsY, _CY),
+		HeadTypeParams, Bindings0, Bindings) :-
 	length(AsX, ArityX),
 	length(AsY, ArityY),
 	(
@@ -1364,10 +1364,50 @@ type_unify(term_functor(FX, AsX, _), term_functor(FY, AsY, _), HeadTypeParams,
 	->
 		type_unify_list(AsX, AsY, HeadTypeParams, Bindings0, Bindings)
 	;
-		% YYY we should check here if these types have been defined
-		% to be equivalent using equivalence types
 		fail
 	).
+
+	% XXX Instead of just failing if the functors' name/arity is different,
+	% we should check here if these types have been defined
+	% to be equivalent using equivalence types.  But this
+	% is difficult because (1) it causes typevarset synchronization
+	% problems, and (2) the relevant variables TypeInfo, TVarSet0, TVarSet
+	% haven't been passed in to here.
+
+/*******
+	...
+	;
+		replace_eqv_type(FX, ArityX, AsX, EqvType)
+	->
+		type_unify(EqvType, term_functor(FY, AsY, CY), HeadTypeParams,
+				Bindings0, Bindings)
+	;
+		replace_eqv_type(FY, ArityY, AsY, EqvType)
+	->
+		type_unify(term_functor(FX, AsX, CX), EqvType, HeadTypeParams,
+				Bindings0, Bindings)
+	;
+		fail
+	).
+
+:- pred replace_eqv_type(const, int, list(term), type).
+:- mode replace_eqv_type(in, in, in, out) is semidet.
+
+replace_eqv_type(Functor, Arity, Args, EqvType) :-
+
+	% XXX magically_obtain(TypeTable, TVarSet0, TVarSet)
+
+	make_type_id(Functor, Arity, TypeId),
+	map__search(TypeTable, TypeId, TypeDefn),
+	TypeDefn = hlds__type_defn(TypeVarSet, TypeParams0,
+			eqv_type(EqvType0), _Condition, Context),
+	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
+			TVarSet, [EqvType1, TypeParams1]),
+	type_param_to_var_list(TypeParams1, TypeParams),
+	term__substitute_corresponding(EqvType1, TypeParams, AsX,
+		EqvType).
+
+******/
 
 :- pred type_unify_list(list(type), list(type), headtypes, substitution,
 			substitution).
@@ -1428,7 +1468,7 @@ JUNK ****/
 %-----------------------------------------------------------------------------%
 
 	% Check for any possible undefined types.
-	% XXX should we add a definition for undefined types?
+	% Should we add a definition for undefined types?
 
 :- pred check_undefined_types(module_info, module_info, io__state, io__state).
 :- mode check_undefined_types(in, out, di, uo).
