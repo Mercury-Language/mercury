@@ -11,7 +11,7 @@
 :- module atsort.
 
 :- interface.
-:- import_module llds, value_number, map, list.
+:- import_module map, list.
 
 :- type relmap(T) == map(T, list(T)).
 
