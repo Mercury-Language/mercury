@@ -1018,7 +1018,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 			% hlds_instance_defn for two reasons:
 			% - That would require storing a renamed version of
 			%   the constraint_proofs for *every* use of an
-			%   instance declaration. This would't even get GCed
+			%   instance declaration. This wouldn't even get GCed
 			%   for a long time because it would be stored in
 			%   the pred_info.
 			% - The superclass proofs stored in the
