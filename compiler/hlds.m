@@ -57,7 +57,7 @@
 					string,		% module name
 					predicate_table,
 					unify_requests,
-					junk,		% unused
+					unify_pred_map,
 					type_table,
 					inst_table,
 					mode_table,
@@ -66,9 +66,9 @@
 					int		% number of warnings
 				).
 
-:- type junk ---> junk.
-
 :- interface.
+
+:- type unify_pred_map	==	map(type_id, pred_id).
 
 :- type unify_requests.
 
@@ -517,6 +517,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_get_unify_requests(module_info, unify_requests).
 :- mode module_info_get_unify_requests(in, out) is det.
 
+:- pred module_info_get_unify_pred_map(module_info, unify_pred_map).
+:- mode module_info_get_unify_pred_map(in, out) is det.
+
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
 
@@ -561,6 +564,10 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 					module_info).
 :- mode module_info_set_unify_requests(in, in, out) is det.
 
+:- pred module_info_set_unify_pred_map(module_info, unify_pred_map,
+					module_info).
+:- mode module_info_set_unify_pred_map(in, in, out) is det.
+
 :- pred module_info_set_types(module_info, type_table, module_info).
 :- mode module_info_set_types(in, in, out) is det.
 
@@ -594,10 +601,11 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, module(Name, PredicateTable, Requests, junk, Types,
-		Insts, Modes, Ctors, 0, 0)) :-
-	unify_proc__init_requests(Requests),
+module_info_init(Name, module(Name, PredicateTable, Requests, UnifyPredMap,
+				Types, Insts, Modes, Ctors, 0, 0)) :-
 	predicate_table_init(PredicateTable),
+	unify_proc__init_requests(Requests),
+	map__init(UnifyPredMap),
 	map__init(Types),
 	inst_table_init(Insts),
 	map__init(Modes),
@@ -637,6 +645,9 @@ module_info_reverse_predids(ModuleInfo0, ModuleInfo) :-
 
 module_info_get_unify_requests(ModuleInfo, Requests) :-
 	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _).
+
+module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap) :-
+	ModuleInfo = module(_, _, _, UnifyPredMap, _, _, _, _, _, _).
 
 module_info_types(ModuleInfo, Types) :-
 	ModuleInfo = module(_, _, _, _, Types, _, _, _, _, _).
@@ -692,6 +703,10 @@ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 module_info_set_unify_requests(ModuleInfo0, Requests, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, _, D, E, F, G, H, I, J),
 	ModuleInfo = module(A, B, Requests, D, E, F, G, H, I, J).
+
+module_info_set_unify_pred_map(ModuleInfo0, UnifyPredMap, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, C, _, E, F, G, H, I, J),
+	ModuleInfo = module(A, B, C, UnifyPredMap, E, F, G, H, I, J).
 
 module_info_set_types(ModuleInfo0, Types, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J),

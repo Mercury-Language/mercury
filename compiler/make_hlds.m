@@ -309,8 +309,8 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
 				{ TypeFunctor = term__atom(UnqualifiedName) },
 				{ Type = term__functor(TypeFunctor, Args,
 					Context) },
-				add_unify_pred(Module1, VarSet, Type, ConsList,
-					Context, Status, Module2)
+				add_unify_pred(Module1, VarSet, Type, TypeId,
+					ConsList, Context, Status, Module2)
 			;
 				{ Module2 = Module1 }
 			)
@@ -431,12 +431,13 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 
-:- pred add_unify_pred(module_info, varset, type, list(constructor),
+:- pred add_unify_pred(module_info, varset, type, type_id, list(constructor),
 			term__context, import_status,
 			module_info, io__state, io__state).
-:- mode add_unify_pred(in, in, in, in, in, in, out, di, uo) is det.
+:- mode add_unify_pred(in, in, in, in, in, in, in, out, di, uo) is det.
 
-add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
+add_unify_pred(Module0, VarSet, Type, TypeId, Ctors, Context, Status, Module)
+		-->
 	{ module_info_name(Module0, ModuleName) },
 	{ PredName = unqualified("=") },
 	{ Arity = 2 },
@@ -446,9 +447,8 @@ add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0) },
 
-	% XXX Does it matter if Status = imported???
 	{ ArgModes = [ground -> ground, ground -> ground] },
-	{ Det = unspecified },	% let determinism analysis infer it
+	{ Det = semidet },
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ next_mode_id(Procs0, Det, ModeId) },
 	{ proc_info_init(ArgModes, Det, Context, NewProc) },
@@ -460,10 +460,13 @@ add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
 	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo) },
 
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
-	{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
+	{ predicate_table_insert(PredicateTable0, PredInfo, PredId,
 		PredicateTable) },
 	{ module_info_set_predicate_table(Module0, PredicateTable,
-		Module) }.
+		Module1) },
+	{ module_info_get_unify_pred_map(Module1, UnifyPredMap0) },
+	{ map__set(UnifyPredMap0, TypeId, PredId, UnifyPredMap) },
+	{ module_info_set_unify_pred_map(Module1, UnifyPredMap, Module) }.
 
 %-----------------------------------------------------------------------------%
 
