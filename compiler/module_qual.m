@@ -108,7 +108,7 @@
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
 	globals__io_get_globals(Globals),
-	{ init_mq_info(Items0, Globals, ReportErrors, Info0) },
+	{ init_mq_info(Items0, Globals, ReportErrors, ModuleName, Info0) },
 	{ collect_mq_info(Items0, Info0, Info1) },
 	do_module_qualify_items(Items0, Items, Info1, Info),
 	{ mq_info_get_type_error_flag(Info, UndefTypes) },
@@ -136,27 +136,39 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 				% i.e. ones for which there was a
 				% `:- import_module' or `:- use_module'
 				% declaration in this module.
-			set(module_name),
+			imported_modules::set(module_name),
 
 				% Sets of all modules, types, insts, modes,
 				% and typeclasses visible in this module.
-			module_id_set,
-			type_id_set,
-			inst_id_set,
-			mode_id_set,
-			class_id_set,
+			modules::module_id_set,
+			types::type_id_set,
+			insts::inst_id_set,
+			modes::mode_id_set,
+			classes::class_id_set,
 
-			set(module_name), % modules imported in the
+			unused_interface_modules::set(module_name), 
+				% modules imported in the
 				% interface that are not definitely
 				% needed in the interface.
-			import_status, % import status of the current item.
-			int,	% number of errors found.
-			bool,	% are there any undefined types or typeclasses.
-			bool,	% are there any undefined insts or modes.
-			bool, 	% do we want to report errors.
-			error_context,	% context of the current item.
-			need_qualifier	% must uses of the current item be 
+
+				% import status of the current item.
+			import_status::import_status, 
+
+			num_errors::int,% number of errors found.
+
+				% are there any undefined types or typeclasses.
+			type_error_flag::bool,	
+				% are there any undefined insts or modes.
+			mode_error_flag::bool,	
+				% do we want to report errors.
+			report_error_flag::bool, 	
+				% context of the current item.
+			error_context::error_context,	
+				% name of the current module
+			this_module::module_name,  
+				% must uses of the current item be 
 				% explicitly module qualified.
+			need_qual_flag::need_qualifier	
 	).
 
 :- type partial_qualifier_info --->
@@ -1208,7 +1220,8 @@ report_undefined(Info, Id, IdType) -->
 		%
 		{ Id = qualified(ModuleName, _) - _Arity },
 		{ mq_info_get_imported_modules(Info, ImportedModules) },
-		{ \+ set__member(ModuleName, ImportedModules) }
+		{ \+ set__member(ModuleName, ImportedModules) },
+		{ \+ ModuleName = Info^this_module }
 	->
 		io__write_string("\n"),
 		prog_out__write_context(Context),
@@ -1393,10 +1406,10 @@ is_builtin_atomic_type(unqualified("character") - 0).
 %-----------------------------------------------------------------------------%
 % Access and initialisation predicates.
 
-:- pred init_mq_info(item_list::in, globals::in, bool::in, mq_info::out)
-	is det.
+:- pred init_mq_info(item_list::in, globals::in, bool::in, module_name::in,
+	mq_info::out) is det.
 
-init_mq_info(Items, Globals, ReportErrors, Info0) :-
+init_mq_info(Items, Globals, ReportErrors, ModuleName, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
@@ -1405,7 +1418,8 @@ init_mq_info(Items, Globals, ReportErrors, Info0) :-
 	id_set_init(Empty),
 	Info0 = mq_info(ImportedModules, Empty, Empty, Empty, Empty,
 			Empty, InterfaceModules0, not_exported, 0, no, no,
-			ReportErrors, ErrorContext, may_be_unqualified).
+			ReportErrors, ErrorContext, ModuleName,
+			may_be_unqualified).
 
 :- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
@@ -1422,28 +1436,20 @@ init_mq_info(Items, Globals, ReportErrors, Info0) :-
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_error_context(mq_info::in, error_context::out) is det.
 
-mq_info_get_imported_modules(mq_info(ImportedModules, _,_,_,_,_,_,_,_,_,_,_,
-	_,_), ImportedModules).
-mq_info_get_modules(mq_info(_, Modules, _,_,_,_,_,_,_,_,_,_,_,_), Modules).
-mq_info_get_types(mq_info(_,_, Types, _,_,_,_,_,_,_,_,_,_,_), Types).
-mq_info_get_insts(mq_info(_,_,_, Insts, _,_,_,_,_,_,_,_,_,_), Insts).
-mq_info_get_modes(mq_info(_,_,_,_, Modes, _,_,_,_,_,_,_,_,_), Modes).
-mq_info_get_classes(mq_info(_,_,_,_,_, Classes, _,_,_,_,_,_,_,_), Classes).
-mq_info_get_unused_interface_modules(mq_info(_,_,_,_,_,_, Modules, _,_,_,_,_,
-	_,_), Modules).
-mq_info_get_import_status(mq_info(_,_,_,_,_,_,_, Status, _,_,_,_,_,_), Status).
-mq_info_get_num_errors(mq_info(_,_,_,_,_,_,_,_, NumErrors, _,_,_,_,_),
-	NumErrors).
-mq_info_get_type_error_flag(mq_info(_,_,_,_,_,_,_,_,_, TypeErrs, _,_,_,_),
-	TypeErrs).
-mq_info_get_mode_error_flag(mq_info(_,_,_,_,_,_,_,_,_,_, ModeError, _,_,_),
-	ModeError).
-mq_info_get_report_error_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_, Report, _,_),
-	Report).
-mq_info_get_error_context(mq_info(_,_,_,_,_,_,_,_,_,_,_,_, Context, _),
-	Context).
-mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
-	UseModule).
+mq_info_get_imported_modules(MQInfo, MQInfo^imported_modules).
+mq_info_get_modules(MQInfo, MQInfo^modules).
+mq_info_get_types(MQInfo, MQInfo^types).
+mq_info_get_insts(MQInfo, MQInfo^insts).
+mq_info_get_modes(MQInfo, MQInfo^modes).
+mq_info_get_classes(MQInfo, MQInfo^classes).
+mq_info_get_unused_interface_modules(MQInfo, MQInfo^unused_interface_modules).
+mq_info_get_import_status(MQInfo, MQInfo^import_status).
+mq_info_get_num_errors(MQInfo, MQInfo^num_errors).
+mq_info_get_type_error_flag(MQInfo, MQInfo^type_error_flag).
+mq_info_get_mode_error_flag(MQInfo, MQInfo^mode_error_flag).
+mq_info_get_report_error_flag(MQInfo, MQInfo^report_error_flag).
+mq_info_get_error_context(MQInfo, MQInfo^error_context).
+mq_info_get_need_qual_flag(MQInfo, MQInfo^need_qual_flag).
 
 :- pred mq_info_set_imported_modules(mq_info::in, set(module_name)::in,
 		mq_info::out) is det.
@@ -1462,38 +1468,24 @@ mq_info_get_need_qual_flag(mq_info(_,_,_,_,_,_,_,_,_,_,_,_,_, UseModule),
 :- pred mq_info_set_error_context(mq_info::in, error_context::in,
 						mq_info::out) is det.
 
-mq_info_set_imported_modules(mq_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N),
-		ImportedModules,
-		mq_info(ImportedModules, B,C,D,E,F,G,H,I,J,K,L,M,N)).
-mq_info_set_modules(mq_info(A, _, C,D,E,F,G,H,I,J,K,L,M,N), Modules,
-		mq_info(A, Modules, C,D,E,F,G,H,I,J,K,L,M,N)).
-mq_info_set_types(mq_info(A,B, _, D,E,F,G,H,I,J,K,L,M,N), Types,
-		mq_info(A,B, Types, D,E,F,G,H,I,J,K,L,M,N)).
-mq_info_set_insts(mq_info(A,B,C, _, E,F,G,H,I,J,K,L,M,N), Insts,
-		mq_info(A,B,C, Insts, E,F,G,H,I,J,K,L,M,N)).
-mq_info_set_modes(mq_info(A,B,C,D, _, F,G,H,I,J,K,L,M,N), Modes,
-		mq_info(A,B,C,D, Modes, F,G,H,I,J,K,L,M,N)).
-mq_info_set_classes(mq_info(A,B,C,D,E, _, G,H,I,J,K,L,M,N), Classes,
-		mq_info(A,B,C,D,E, Classes, G,H,I,J,K,L,M,N)).
-mq_info_set_unused_interface_modules(mq_info(A,B,C,D,E,F, _, H,I,J,K,L,M,N),
-		Modules,
-		mq_info(A,B,C,D,E,F, Modules, H,I,J,K,L,M,N)).
-mq_info_set_import_status(mq_info(A,B,C,D,E,F,G, _, I,J,K,L,M,N), Status,
-		mq_info(A,B,C,D,E,F,G, Status, I,J,K,L,M,N)).
-mq_info_set_type_error_flag(mq_info(A,B,C,D,E,F,G,H,I, _, K,L,M,N),
-		mq_info(A,B,C,D,E,F,G,H,I, yes, K,L,M,N)).
-mq_info_set_mode_error_flag(mq_info(A,B,C,D,E,F,G,H,I,J, _, L,M,N),
-		mq_info(A,B,C,D,E,F,G,H,I,J, yes, L,M,N)).
-mq_info_set_error_context(mq_info(A,B,C,D,E,F,G,H,I,J,K,L, _, N), Context,
-		mq_info(A,B,C,D,E,F,G,H,I,J,K,L, Context, N)).
-mq_info_set_need_qual_flag(mq_info(A,B,C,D,E,F,G,H,I,J,K,L,M, _), Flag,
-		mq_info(A,B,C,D,E,F,G,H,I,J,K,L,M, Flag)).
+mq_info_set_imported_modules(MQInfo,
+		ImportedModules, MQInfo^imported_modules := ImportedModules).
+mq_info_set_modules(MQInfo, Modules, MQInfo^modules := Modules).
+mq_info_set_types(MQInfo, Types, MQInfo^types := Types).
+mq_info_set_insts(MQInfo, Insts, MQInfo^insts := Insts).
+mq_info_set_modes(MQInfo, Modes, MQInfo^modes := Modes).
+mq_info_set_classes(MQInfo, Classes, MQInfo^classes := Classes).
+mq_info_set_unused_interface_modules(MQInfo, 
+		Modules, MQInfo^unused_interface_modules := Modules).
+mq_info_set_import_status(MQInfo, Status, MQInfo^import_status := Status).
+mq_info_set_type_error_flag(MQInfo, MQInfo^type_error_flag := yes).
+mq_info_set_mode_error_flag(MQInfo, MQInfo^mode_error_flag := yes).
+mq_info_set_error_context(MQInfo, Context, MQInfo^error_context := Context).
+mq_info_set_need_qual_flag(MQInfo, Flag, MQInfo^need_qual_flag := Flag).
 
 :- pred mq_info_incr_errors(mq_info::in, mq_info::out) is det.
 
-mq_info_incr_errors(mq_info(A,B,C,D,E,F,G,H, NumErrors0, J,K,L,M,N), 
-		mq_info(A,B,C,D,E,F,G,H, NumErrors, J,K,L,M,N)) :-
-	NumErrors is NumErrors0 + 1.
+mq_info_incr_errors(MQInfo, MQInfo^num_errors := (MQInfo^num_errors +1)).
 
 :- pred mq_info_set_error_flag(mq_info::in, id_type::in, mq_info::out) is det.
 

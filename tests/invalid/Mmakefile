@@ -97,6 +97,7 @@ SINGLEMODULE_SOURCES= \
 	undef_mode_and_no_clauses.m \
 	undef_symbol.m \
 	undef_type.m \
+	undef_type_mod_qual.m \
 	unify_mode_error.m \
 	uniq_modes.m \
 	uniq_neg.m \
