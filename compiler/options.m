@@ -82,6 +82,7 @@
 		;	c_include_directory
 		;	gcc_non_local_gotos
 		;	gcc_global_registers
+		;	asm_labels
 	% Optimisation Options
 		;	optimize
 		;	optimize_peep
@@ -182,7 +183,8 @@ option_defaults_2(code_gen_option, [
 	c_include_directory	-	string(""),
 	link			-	bool(no),
 	gcc_non_local_gotos	-	bool(yes),
-	gcc_global_registers	-	bool(yes)
+	gcc_global_registers	-	bool(yes),
+	asm_labels		-	bool(yes)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
@@ -292,14 +294,22 @@ long_option("c-include-directory",	c_include_directory).
 long_option("link",			link).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
+long_option("asm-labels",		asm_labels).
 long_option("mod-comments",		mod_comments).
 long_option("optimize",			optimize).
+long_option("optimise",			optimize).
 long_option("optimize-peep",		optimize_peep).
+long_option("optimise-peep",		optimize_peep).
 long_option("optimize-jumps",		optimize_jumps).
+long_option("optimise-jumps",		optimize_jumps).
 long_option("optimize-labels",		optimize_labels).
+long_option("optimise-labels",		optimize_labels).
 long_option("optimize-value-number",	optimize_value_number).
+long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
+long_option("optimise-frames",		optimize_frames).
 long_option("optimize-repeat",		optimize_repeat).
+long_option("optimise-repeat",		optimize_repeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 long_option("req-density",		req_density).
@@ -386,12 +396,15 @@ options_help -->
 	io__write_string("\t\tDon't handle test unifications for variables of polymorphic types.\n"),
 	io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
 	io__write_string("\t\t(polymorphism from working except in special cases.)\n"),
-	io__write_string("\t-s {debug, none, reg, jump, fast}\n"),
-	io__write_string("\t--grade {debug, none, reg, jump, fast}\n"),
+	io__write_string("\t-s <grade>, --grade <grade>\n"),
 	io__write_string("\t\tSelect the compilation model.  This is a convenient way of\n"),
-	io__write_string("\t\tselecting a setting for the --c-optimize,\n"),
+	io__write_string("\t\tselecting a setting for the --c-optimize, --gc,\n"),
 	io__write_string("\t\t--gcc-global-registers, --gcc-non-local-gotos,\n"),
-	io__write_string("\t\tand --debug options simultaneously.\n"),
+	io__write_string("\t\t--asm-labels, and --debug options simultaneously.\n"),
+	io__write_string("\t\t<grade> should be one of\n"),
+	io__write_string("\t\t\tdebug, none, reg, jump, asm_jump, fast, asm_fast\n"),
+	io__write_string("\t\tor one of those with `.gc' appended.\n"),
+	io__write_string("\t\t(See the mgnuc shell script source code for details).\n"),
 
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
@@ -409,6 +422,9 @@ options_help -->
 	io__write_string("\t\tDon't use GNU C's global register variables extension.\n"),
 	io__write_string("\t--no-gcc-non-local-gotos\n"),
 	io__write_string("\t\tDon't use GNU C's ""labels as values"" extension.\n"),
+	io__write_string("\t--no-asm-labels\n"),
+	io__write_string("\t\tDon't use inline assembler labels.\n"),
+	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t--tags {none, low, high}\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
