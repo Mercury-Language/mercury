@@ -287,9 +287,17 @@ Changes to the Mercury standard library:
   See the "benchmarking" chapter of the Mercury Library Reference Manual
   for details.
 
-* Miscellaneous new predicates: bag__least_upper_bound/3,
-  bag__remove_list/3, bag__det_remove_list/3, list__take_upto/3,
-  set__count/2, set_ordlist__count/2, and store__new_cyclic_mutvar/4.
+* Miscellaneous new predicates.
+
+  The Mercury standard library now includes the following new predicates:
+  bag__least_upper_bound/3, bag__remove_list/3, bag__det_remove_list/3,
+  list__take_upto/3, set__count/2, set_ordlist__count/2,
+  store__new_cyclic_mutvar/4, relation__add_values/4,
+  relation__from_assoc_list/2, and relation__compose/3.
+
+  Also the old relation__to_assoc_list/2 predicate has been renamed as
+  relation__to_key_assoc_list/2; there is a new relation__to_assoc_list/2
+  predicate with a different type for the second argument.
 
   See the Mercury Library Reference Manual for details.
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -58,6 +58,17 @@
 :- pred relation__add(relation(T), relation_key, relation_key, relation(T)).
 :- mode relation__add(in, in, in, out) is det.
 
+	% relation__add_values adds an pair of values to the relation's
+	% domain and adds an element to the relation.
+	%
+	% relation__add_values(R0, X, Y, R) :-
+	%	 relation__add_element(R0, X, XKey, R1),
+	%	 relation__add_element(R1, Y, YKey, R2),
+	%	 relation__add(R1, XKey, YKey, R).
+	%
+:- pred relation__add_values(relation(T), T, T, relation(T)).
+:- mode relation__add_values(in, in, in, out) is det.
+
 	% relation__add_assoc_list adds a list of elements to a
 	% relation.
 :- pred relation__add_assoc_list(relation(T),
@@ -99,14 +110,19 @@
 
 	% relation__to_assoc_list turns a relation into a list of
 	% pairs of elements.
-:- pred relation__to_assoc_list(relation(T),
-	assoc_list(relation_key, relation_key)).
+:- pred relation__to_assoc_list(relation(T), assoc_list(T, T)).
 :- mode relation__to_assoc_list(in, out) is det.
+
+	% relation__to_key_assoc_list turns a relation into a list of
+	% pairs of relation keys.
+:- pred relation__to_key_assoc_list(relation(T),
+	assoc_list(relation_key, relation_key)).
+:- mode relation__to_key_assoc_list(in, out) is det.
 
 	% relation__from_assoc_list turns a list of pairs of
 	% elements into a relation.
-% :- pred relation__from_assoc_list(assoc_list(T, T), relation(T)).
-% :- mode relation__from_assoc_list(in, out) is det.
+:- pred relation__from_assoc_list(assoc_list(T, T), relation(T)).
+:- mode relation__from_assoc_list(in, out) is det.
 
 	% relation__domain finds the set of all elements in the
 	% domain of a relation.
@@ -120,8 +136,8 @@
 
 	% relation__compose(R1, R2, R) is true if R is the
 	% composition of the relations R1 and R2.
-% :- pred relation__compose(relation(T), relation(T), relation(T)).
-% :- mode relation__compose(in, in, out) is det.
+:- pred relation__compose(relation(T), relation(T), relation(T)).
+:- mode relation__compose(in, in, out) is det.
 
 	% relation__dfs(Rel, X, Dfs) is true if Dfs is a
 	% depth-first sorting of Rel starting at X.  The
@@ -298,6 +314,11 @@ relation__lookup_key(Rel, Key, Elem) :-
 
 %------------------------------------------------------------------------------%
 
+relation__add_values(R0, X, Y, R) :-
+	relation__add_element(R0, X, XKey, R1),
+	relation__add_element(R1, Y, YKey, R2),
+	relation__add(R2, XKey, YKey, R).
+
 	% relation__add adds an element to the relation.
 relation__add(relation(Key, ElMap, FwdIn, BwdIn), U, V,
 		relation(Key, ElMap, FwdOut, BwdOut)) :-
@@ -396,23 +417,43 @@ relation__lookup_to(relation(_Key, _ElMap, _Fwd, Bwd), V, Us) :-
 
 	% relation__to_assoc_list turns a relation into a list of
 	% pairs of elements.
-relation__to_assoc_list(relation(_Key, _ElMap, Fwd, _Bwd), List) :-
+relation__to_assoc_list(relation(_Key, ElMap, Fwd, _Bwd), List) :-
 	map__keys(Fwd, FwdKeys),
-	relation__to_assoc_list_2(Fwd, FwdKeys, List).
+	relation__to_assoc_list_2(Fwd, FwdKeys, ElMap, List).
 
 :- pred relation__to_assoc_list_2(map(relation_key, set(relation_key)),
-	list(relation_key), assoc_list(relation_key, relation_key)).
-:- mode relation__to_assoc_list_2(in, in, out) is det.
-relation__to_assoc_list_2(_Fwd, [], []).
-relation__to_assoc_list_2(Fwd, [Key | Keys], List) :-
-	relation__to_assoc_list_2(Fwd, Keys, List1),
+	list(relation_key), bimap(T, relation_key), assoc_list(T, T)).
+:- mode relation__to_assoc_list_2(in, in, in, out) is det.
+relation__to_assoc_list_2(_Fwd, [], _, []).
+relation__to_assoc_list_2(Fwd, [Key | Keys], ElementMap, AssocList) :-
+	relation__to_assoc_list_2(Fwd, Keys, ElementMap, AssocList1),
 	map__lookup(Fwd, Key, Set),
-	set__to_sorted_list(Set, List2),
-	relation__append_to(Key, List2, List3),
-	list__append(List1, List3, List).
+	set__to_sorted_list(Set, List),
+	bimap__reverse_lookup(ElementMap, KeyEl, Key),
+	Lookup = lambda([U::in, V::out] is det,
+			bimap__reverse_lookup(ElementMap, V, U)),
+	list__map(Lookup, List, ListEls),
+	relation__append_to(KeyEl, ListEls, AssocList2),
+	list__append(AssocList1, AssocList2, AssocList).
 
-:- pred relation__append_to(relation_key, list(relation_key),
-	assoc_list(relation_key, relation_key)).
+	% relation__to_key_assoc_list turns a relation into a list of
+	% pairs of elements.
+relation__to_key_assoc_list(relation(_Key, _ElMap, Fwd, _Bwd), List) :-
+	map__keys(Fwd, FwdKeys),
+	relation__to_key_assoc_list_2(Fwd, FwdKeys, List).
+
+:- pred relation__to_key_assoc_list_2(map(relation_key, set(relation_key)),
+	list(relation_key), assoc_list(relation_key, relation_key)).
+:- mode relation__to_key_assoc_list_2(in, in, out) is det.
+relation__to_key_assoc_list_2(_Fwd, [], []).
+relation__to_key_assoc_list_2(Fwd, [Key | Keys], AssocList) :-
+	relation__to_key_assoc_list_2(Fwd, Keys, AssocList1),
+	map__lookup(Fwd, Key, Set),
+	set__to_sorted_list(Set, List),
+	relation__append_to(Key, List, AssocList2),
+	list__append(AssocList1, AssocList2, AssocList).
+
+:- pred relation__append_to(T1, list(T2), assoc_list(T1, T2)).
 :- mode relation__append_to(in, in, out) is det.
 relation__append_to(_U, [], []).
 relation__append_to(U, [V | Vs], [U - V | UVs]) :-
@@ -420,13 +461,13 @@ relation__append_to(U, [V | Vs], [U - V | UVs]) :-
 
 %------------------------------------------------------------------------------%
 
-% 	% relation__from_assoc_list turns a list of pairs of
-% 	% elements into a relation.
-% relation__from_assoc_list([], Rel) :-
-% 	relation__init(Rel).
-% relation__from_assoc_list([U - V | List], Rel) :-
-% 	relation__from_assoc_list(List, Rel1),
-% 	relation__add(Rel1, U, V, Rel).
+	% relation__from_assoc_list turns a list of pairs of
+	% elements into a relation.
+relation__from_assoc_list([], Rel) :-
+	relation__init(Rel).
+relation__from_assoc_list([U - V | List], Rel) :-
+	relation__from_assoc_list(List, Rel1),
+	relation__add_values(Rel1, U, V, Rel).
 
 %------------------------------------------------------------------------------%
 
@@ -452,35 +493,44 @@ relation__inverse(relation(Key, ElMap, Fwd, Bwd),
 
 %------------------------------------------------------------------------------%
 
-% 	% relation__compose(R1, R2, R) is true iff R is the
-% 	% composition of the relations R1 and R2.
-% relation__compose(R1, R2, Compose) :-
-% 	relation__domain(R1, Dom),
-% 	set__to_sorted_list(Dom, Dom1),
-% 	relation__init(Comp0),
-% 	relation__compose_2(Dom1, R1, R2, Comp0, Compose).
-% 
-% :- pred relation__compose_2(list(T), relation(T), 
-% 		relation(T), relation(T), relation(T)).
-% :- mode relation__compose_2(in, in, in, in, out) is det.
-% relation__compose_2([], _R1, _R2, Comp, Comp).
-% relation__compose_2([X | Xs], R1, R2, Comp0, Comp) :-
-% 	relation__lookup_from(R1, X, R1XSet),
-% 	set__to_sorted_list(R1XSet, R1XList),
-% 	set__init(CXSet0),
-% 	relation__compose_3(R1XList, R2, CXSet0, CXSet),
-% 	set__to_sorted_list(CXSet, CXList),
-% 	relation__append_to(X, CXList, XCX),
-% 	relation__add_assoc_list(Comp0, XCX, Comp1),
-% 	relation__compose_2(Xs, R1, R2, Comp1, Comp).
-% 
-% :- pred relation__compose_3(list(T), relation(T), set(T), set(T)).
-% :- mode relation__compose_3(in, in, in, out) is det.
-% relation__compose_3([], _R2, CX, CX).
-% relation__compose_3([Y | Ys], R2, CX0, CX) :-
-% 	relation__lookup_from(R2, Y, ZsSet),
-% 	set__union(ZsSet, CX0, CX1),
-% 	relation__compose_3(Ys, R2, CX1, CX).
+	% relation__compose(R1, R2, R) is true iff R is the
+	% composition of the relations R1 and R2.
+relation__compose(R1, R2, Compose) :-
+	relation__domain(R1, DomainSet),
+	set__to_sorted_list(DomainSet, DomainList),
+	relation__init(Compose0),
+	list__foldl(relation__compose_2(R1, R2), DomainList,
+		Compose0, Compose).
+
+	% relation__compose_2(R1, R2, X, Comp0, Comp):
+	%	Comp is the union of Comp0 and CompX,
+	%	where CompX = { (X, Z) : some [Y] (X R1 Y, Y R2 Z) }.
+:- pred relation__compose_2(relation(T), relation(T), T,
+			relation(T), relation(T)).
+:- mode relation__compose_2(in, in, in, in, out) is det.
+relation__compose_2(R1, R2, X, Comp0, Comp) :-
+	relation__lookup_element(R1, X, X_R1Key),
+	relation__lookup_from(R1, X_R1Key, Ys_R1KeysSet),
+	set__to_sorted_list(Ys_R1KeysSet, Ys_R1Keys),
+	list__map(relation__lookup_key(R1), Ys_R1Keys, Ys),
+	list__foldl(relation__compose_3(R2, X), Ys, Comp0, Comp).
+
+	% relation__compose_3(R2, X, Y, Comp0, Comp):
+	%	Comp is the union of Comp0 and CompXY,
+	%	where CompXY = { (X, Z) : Y R2 Z }.
+:- pred relation__compose_3(relation(T), T, T, relation(T), relation(T)).
+:- mode relation__compose_3(in, in, in, in, out) is det.
+relation__compose_3(R2, X, Y, Comp0, Comp) :-
+	( relation__search_element(R2, Y, Y_R2Key) ->
+		relation__lookup_from(R2, Y_R2Key, Zs_R2Keys_Set),
+		set__to_sorted_list(Zs_R2Keys_Set, Zs_R2Keys),
+		list__map(relation__lookup_key(R2), Zs_R2Keys, Zs),
+		AddValue = lambda([Z::in, Rel0::in, Rel::out] is det,
+				relation__add_values(Rel0, X, Z, Rel)),
+		list__foldl(AddValue, Zs, Comp0, Comp)
+	;
+		Comp = Comp0
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -726,7 +776,7 @@ relation__reduced(Rel, Red) :-
 	relation__init(Red0),
 	map__init(CliqMap0),
 	relation__make_clique_map(Rel, CliqList, CliqMap0, CliqMap, Red0, Red1),
-	relation__to_assoc_list(Rel, RelAL),
+	relation__to_key_assoc_list(Rel, RelAL),
 	relation__make_reduced_graph(CliqMap, RelAL, Red1, Red).
 
 :- pred relation__make_clique_map(relation(T), list(set(relation_key)),
@@ -887,7 +937,7 @@ relation__atsort_2([H | T], RelInv, Visit0, ATsort0, ATsort) :-
 	% a relation.
 relation__sc(Rel, Sc) :-
 	relation__inverse(Rel, Inv),
-	relation__to_assoc_list(Inv, InvList),
+	relation__to_key_assoc_list(Inv, InvList),
 	relation__add_assoc_list(Rel, InvList, Sc).
 
 %------------------------------------------------------------------------------%
