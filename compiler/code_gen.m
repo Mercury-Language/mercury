@@ -327,10 +327,12 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	->
 		{ CodeB = CodeA }
 	;
+		{ predicate_module(ModuleInfo, PredId, ModuleName) },
 		{ predicate_name(ModuleInfo, PredId, PredName) },
+		{ string__append_list([ModuleName, ":", PredName], PushMsg) },
 		{ CodeB = tree(
 			CodeA,
-			node([incr_sp(NS, PredName) - "Allocate stack frame"])
+			node([incr_sp(NS, PushMsg) - "Allocate stack frame"])
 		) }
 	),
 	{ PStart = node([comment("Start of procedure prologue") - ""]) },
@@ -428,10 +430,12 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	->
 		{ CodeB = CodeA }
 	;
+		{ predicate_module(ModuleInfo, PredId, ModuleName) },
 		{ predicate_name(ModuleInfo, PredId, PredName) },
+		{ string__append_list([ModuleName, ":", PredName], PushMsg) },
 		{ CodeB = tree(
 			CodeA,
-			node([incr_sp(NS, PredName) - "Allocate stack frame"])
+			node([incr_sp(NS, PushMsg) - "Allocate stack frame"])
 		) }
 	),
 	{ PStart = node([comment("Start of procedure prologue") - ""]) },

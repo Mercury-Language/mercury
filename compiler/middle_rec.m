@@ -28,6 +28,7 @@
 :- import_module hlds_module, hlds_data.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -114,7 +115,6 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		EntryLabel) },
 
@@ -182,7 +182,10 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 				label(Loop2Label))
 				- "test on upward loop"]
 	;
-		MaybeIncrSp = [incr_sp(FrameSize, PredName) - ""],
+		predicate_module(ModuleInfo, PredId, ModuleName),
+		predicate_name(ModuleInfo, PredId, PredName),
+		string__append_list([ModuleName, ":", PredName], PushMsg),
+		MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
 		MaybeDecrSp = [decr_sp(FrameSize) - ""],
 		InitAuxReg =  [assign(AuxReg, lval(sp))
 				- "initialize counter register"],
