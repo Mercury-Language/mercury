@@ -933,6 +933,10 @@ save_state(MR_SavedState *saved_state,
 {
 	restore_transient_registers();
 
+  #ifdef MR_HIGHLEVEL_CODE
+	fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+  #else
 	saved_state->succ_ip = MR_succip;
 	saved_state->s_p = MR_sp;
 	saved_state->cur_fr = MR_curfr;
@@ -964,6 +968,8 @@ save_state(MR_SavedState *saved_state,
 		saved_state->det_stack_block = NULL;
 	}
 
+  #endif /* ! MR_HIGHLEVEL_CODE */
+
 	saved_state->gen_next = MR_gen_next;
 	saved_state->generator_stack_block = table_allocate_bytes(
 			MR_gen_next * sizeof(MR_GeneratorStackFrame));
@@ -976,7 +982,7 @@ save_state(MR_SavedState *saved_state,
 	table_copy_bytes(saved_state->cut_stack_block,
 		MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
 
-#ifdef MR_USE_TRAIL
+  #ifdef MR_USE_TRAIL
 	/*
 	** Saving the trail state here would not be sufficient to handle
 	** the combination of trailing and minimal model tabling.
@@ -1001,9 +1007,9 @@ save_state(MR_SavedState *saved_state,
 
 	fatal_error("Sorry, not implemented: "
 		"can't have both minimal model tabling and trailing");
-#endif
+  #endif
 
-#ifdef	MR_TABLE_DEBUG
+  #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("\n%s saves %s stacks: ", who, what);
 		printf("%d non, %d det, %d generator, %d cut\n",
@@ -1011,6 +1017,10 @@ save_state(MR_SavedState *saved_state,
 			saved_state->det_stack_block_size,
 			MR_gen_next, MR_cut_next);
 
+    #ifdef MR_HIGHLEVEL_CODE
+		fatal_error("sorry, not implemented: "
+			"minimal model tabling with --high-level-code");
+    #else
 		printf("non region from ");
 		MR_printnondstackptr(saved_state->non_stack_block_start);
 		printf(" to ");
@@ -1038,14 +1048,17 @@ save_state(MR_SavedState *saved_state,
 		printf(", curfr = ");
 		MR_printnondstackptr(MR_curfr);
 		printf("\n\n");
+    #endif
 
 		MR_print_gen_stack(stdout);
 
+    #ifndef MR_HIGHLEVEL_CODE
 		if (MR_tablestackdebug) {
 			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
 		}
+    #endif
 	}
-#endif
+  #endif /* MR_TABLE_DEBUG */
 
 	save_transient_registers();
 }
@@ -1058,6 +1071,13 @@ static void
 restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 {
 	restore_transient_registers();
+
+  #ifdef MR_HIGHLEVEL_CODE
+
+	fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+
+  #else
 
 	MR_succip = saved_state->succ_ip;
 	MR_sp = saved_state->s_p;
@@ -1072,6 +1092,8 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 		saved_state->det_stack_block,
 		saved_state->det_stack_block_size);
 
+  #endif
+
 	MR_gen_next = saved_state->gen_next;
 	table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
 		saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
@@ -1080,7 +1102,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 	table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
 		saved_state->cut_next * sizeof(MR_CutStackFrame));
 
-#ifdef	MR_TABLE_DEBUG
+  #ifdef MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("\n%s restores %s stacks: ", who, what);
 		printf("%d non, %d det, %d generator, %d cut\n",
@@ -1124,7 +1146,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
 		}
 	}
-#endif
+  #endif /* MR_table_debug */
 
 	save_transient_registers();
 }

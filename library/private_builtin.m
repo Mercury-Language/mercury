@@ -825,14 +825,17 @@ unused :-
 			fatal_error(""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
-
+#ifdef MR_HIGHLEVEL_CODE
+ 		fatal_error(""sorry, not implemented: ""
+			""minimal_model tabling with --high-level-code"");
+#else
 		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
 		subgoal->generator_sp = MR_sp;
-
+#endif
 		table->MR_subgoal = subgoal;
 	}
 	T = T0;
-#endif
+#endif /* MR_USE_MINIMAL_MODEL */
 ").
 
 	% The definitions of these two predicates are in the runtime system,
