@@ -133,18 +133,29 @@ generate_output__cycle(ProfNode, Prof, OutputProf0, OutputProf) :-
 	% descendents as a percentage.
 	% 
 	int__to_float(Initial, InitialFloat),
-	DescPercentage is (InitialFloat + Prop) / TotalCounts * 100.0,
+	(
+		TotalCounts = 0.0
+	->
+		DescPercentage = 0.0
+	;
+		DescPercentage is (InitialFloat + Prop) / TotalCounts * 100.0
+	),
 
 	% Calculate the self time spent in the current predicate.
-	int__to_float(Hertz, HertzFloat),
-	int__to_float(ClockTicks, ClockTicksFloat),
-	Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
-
 	% Calculate the descendant time, which is the time spent in the 
 	% current predicate and its descendants
-	DescTime is (InitialFloat+Prop) / HertzFloat * ClockTicksFloat,
+	int__to_float(Hertz, HertzFloat),
+	int__to_float(ClockTicks, ClockTicksFloat),
+	(
+		HertzFloat = 0.0
+	->
+		Selftime = 0.0,
+		DescTime = 0.0
+	;
+		Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
+		DescTime is (InitialFloat+Prop) / HertzFloat * ClockTicksFloat
+	),
 
-	
 	OutputProfNode = output_cycle_prof(	Name, CycleNum, Selftime, 
 						DescPercentage,
 						DescTime, TotalCalls, SelfCalls,
@@ -187,22 +198,36 @@ generate_output__single_predicate(ProfNode, Prof, OutputProf0, OutputProf) :-
 
 		% Calculate proportion of time in current predicate and its
 		% descendents as a percentage.
-		% 
-		int__to_float(Initial, InitialFloat),
-		DescPercentage is (InitialFloat + Prop) / TotalCounts * 100.0,
-
 		% Calculate proportion of time in current predicate 
 		% as a percentage.
-		FlatPercentage is InitialFloat / TotalCounts * 100.0,
+		int__to_float(Initial, InitialFloat),
+		(
+			TotalCounts = 0.0
+		->
+			DescPercentage = 0.0,
+			FlatPercentage = 0.0
+
+		;
+			DescPercentage is (InitialFloat + Prop) / TotalCounts 
+								* 100.0,
+			FlatPercentage is InitialFloat / TotalCounts * 100.0
+		),
 
 		% Calculate the self time spent in the current predicate.
-		int__to_float(Hertz, HertzFloat),
-		int__to_float(ClockTicks, ClockTicksFloat),
-		Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
-
 		% Calculate the descendant time, which is the time spent in the 
 		% current predicate and its descendants
-		DescTime is (InitialFloat+Prop) / HertzFloat * ClockTicksFloat,
+		int__to_float(Hertz, HertzFloat),
+		int__to_float(ClockTicks, ClockTicksFloat),
+		(
+			HertzFloat = 0.0
+		->
+			Selftime = 0.0,
+			DescTime = 0.0
+		;
+			Selftime is InitialFloat / HertzFloat * ClockTicksFloat,
+			DescTime is (InitialFloat+Prop) / HertzFloat 
+							* ClockTicksFloat
+		),
 
 		process_prof_node_parents(ParentList, Selftime, DescTime, 
 				TotalCalls, CycleNum, CycleMap, 

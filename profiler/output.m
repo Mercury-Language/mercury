@@ -355,7 +355,7 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 						_Percentage,
 						Percentage,	Self,
 						Descendant,	TotalCalls,
-						_SelfCalls,	_ParentList,
+						SelfCalls,	_ParentList,
 						_ChildList,     _,
 						_
 					)
@@ -366,7 +366,12 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	),
 
 	{
-	int__to_float(TotalCalls, FloatTotalCalls),
+	int__to_float(SelfCalls, FloatSelfCalls),
+	int__to_float(TotalCalls, FloatTotalCalls0),
+
+	FloatTotalCalls is FloatTotalCalls0 + FloatSelfCalls,
+	Calls is SelfCalls + TotalCalls,
+
 
 	builtin_float_plus(Self, CumTime0, CumTime),
 	checked_float_divide(Self, FloatTotalCalls, Self1),
@@ -379,7 +384,7 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	string__append_list(["[", IndexStr0, "] "], IndexStr),
 	string__format("%5.1f %10.2f %8.2f %8d %8.2f %8.2f %s %s\n",
 				[ f(Percentage),	f(CumTime),
-				  f(Self),		i(TotalCalls),
+				  f(Self),		i(Calls),
 				  f(SelfMs),		f(DescMs),
 				  s(FullName),		s(IndexStr)
 				],

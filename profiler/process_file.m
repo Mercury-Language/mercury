@@ -44,7 +44,7 @@ process_file__main(Prof, DynamicCallGraph) -->
 	globals__io_lookup_string_option(declfile, DeclFile),
 	globals__io_lookup_string_option(countfile, CountFile),
 	globals__io_lookup_string_option(pairfile, PairFile),
-	globals__io_lookup_string_option(libraryfile, LibFile),
+	% globals__io_lookup_string_option(libraryfile, LibFile),
 	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 
         maybe_write_string(VVerbose, "\n\t% Processing "),
@@ -73,11 +73,14 @@ process_file__main(Prof, DynamicCallGraph) -->
 	(
 		{ Dynamic = no }
 	->
-		maybe_write_string(VVerbose, " done.\n\t% Processing "),
-		maybe_write_string(VVerbose, LibFile),
-		maybe_write_string(VVerbose, "..."),
+		maybe_write_string(VVerbose, " done.\n"),
+		% maybe_write_string(VVerbose, "\t% Processing "),
+		% maybe_write_string(VVerbose, LibFile),
+		% maybe_write_string(VVerbose, "..."),
 
-		process_library_callgraph(_, _)
+		% process_library_callgraph(_, _),
+		{ true }
+
 	;
 		{ true }
 	).
@@ -110,13 +113,13 @@ process_addr_decl(AddrDeclMap, ProfNodeMap) -->
 	;
 		{ Result = error(Error) },
                 { io__error_message(Error, ErrorMsg) },
-                io__stderr_stream(StdErr),
-                io__write_strings(StdErr,
-			["mprof: error opening declaration file `",
-                        DeclFile, "': ", ErrorMsg, "\n"]),
 
-		{ ProfNodeMap = ProfNodeMap0 },
-		{ AddrDeclMap = AddrDeclMap0 }
+		{ string__append("error opening declaration file `", DeclFile, 
+					Str0) },
+		{ string__append(Str0, "': ", Str1) },
+		{ string__append(Str1, ErrorMsg, Str2) },
+		{ string__append(Str2, "\n", ErrorStr) },
+		{ error(ErrorStr) }
 	).
 
 :- pred process_addr_decl_2(addrdecl, prof_node_map, addrdecl, prof_node_map,
@@ -176,14 +179,12 @@ process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
 	;
 		{ Result = error(Error) },
 		{ io__error_message(Error, ErrorMsg) },
-		io__stderr_stream(StdErr),
-		io__write_strings(StdErr, ["mprof: error opening count file `",
-			CountFile, "': ", ErrorMsg, "\n"]),
-
-		{ ProfNodeMap = ProfNodeMap0 },
-		{ Hertz = 1 },
-		{ ClockTicks = 1 },
-		{ TotalCounts = 0 }
+		{ string__append("error opening count file `", CountFile, 
+					Str0) },
+		{ string__append(Str0, "': ", Str1) },
+		{ string__append(Str1, ErrorMsg, Str2) },
+		{ string__append(Str2, "\n", ErrorStr) },
+		{ error(ErrorStr) }
 	).
 
 :- pred process_addr_2(int, prof_node_map, int, prof_node_map, 
@@ -249,12 +250,12 @@ process_addr_pair(ProfNodeMap0, DynamicCallGraph, ProfNodeMap) -->
 	;
 		{ Result = error(Error) },
                 { io__error_message(Error, ErrorMsg) },
-                io__stderr_stream(StdErr),
-                io__write_strings(StdErr, ["mprof: error opening pair file `",
-                        PairFile, "': ", ErrorMsg, "\n"]),
-
-		{ DynamicCallGraph = DynamicCallGraph0 },
-		{ ProfNodeMap = ProfNodeMap0 }
+		{ string__append("error opening pair file `", PairFile, 
+					Str0) },
+		{ string__append(Str0, "': ", Str1) },
+		{ string__append(Str1, ErrorMsg, Str2) },
+		{ string__append(Str2, "\n", ErrorStr) },
+		{ error(ErrorStr) }
 	).
 
 :- pred process_addr_pair_2(relation(string), prof_node_map, bool, 
