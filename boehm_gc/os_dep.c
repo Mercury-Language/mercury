@@ -18,9 +18,6 @@
 # include "gc_priv.h"
 # include "mercury_boehm_gc_conf.h"
 
-# include <stdio.h>
-# include <signal.h>
-
 # if defined(LINUX) && !defined(POWERPC)
 #   include <linux/version.h>
 #   if (LINUX_VERSION_CODE <= 0x10400)
@@ -60,6 +57,9 @@
 #   	include <unistd.h>
 #   endif
 # endif
+
+# include <stdio.h>
+# include <signal.h>
 
 /* Blatantly OS dependent routines, except for those that are related 	*/
 /* dynamic loading.							*/
