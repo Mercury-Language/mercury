@@ -655,7 +655,8 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 :- mode polymorphism__process_clause(in, in, in, in, in, in,
 		in, out, in, out) is det.
 
-polymorphism__process_clause(PredInfo0, HeadVars0, HeadVars, UnconstrainedTVars,
+polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
+			UnconstrainedTVars,
 			ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars,
 			Clause0, Clause) -->
 	(
@@ -674,13 +675,13 @@ polymorphism__process_clause(PredInfo0, HeadVars0, HeadVars, UnconstrainedTVars,
 		% and type-infos for existentially quantified type vars
 		%
 		polymorphism__produce_existq_tvars(
-			PredInfo0, HeadVars0,
+			PredInfo0, OldHeadVars,
 			UnconstrainedTVars, ExtraTypeInfoHeadVars,
 			ExistTypeClassInfoHeadVars,
 			Goal1, Goal2),
 
 		{ pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars) },
-		polymorphism__fixup_quantification(HeadVars, ExistQVars,
+		polymorphism__fixup_quantification(NewHeadVars, ExistQVars,
 			Goal2, Goal),
 		{ Clause = clause(ProcIds, Goal, Context) }
 	).
