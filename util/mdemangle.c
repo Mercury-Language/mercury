@@ -91,7 +91,7 @@ static void demangle(char *name) {
 	int mode_num;
 	int mode_num2;
 	int arity;
-	char *pred_or_func;	/* either "predicate" or "function" */
+	const char *pred_or_func; /* either "predicate" or "function" */
 	bool unused_args = FALSE; /* does this proc have any unused arguments */
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
