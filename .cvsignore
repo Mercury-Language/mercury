@@ -9,3 +9,4 @@ so_locations
 Mmake.common
 Mmake.params
 stage1 stage2 stage3
+Mercury.options
