@@ -2,8 +2,8 @@
 
 INTRODUCTION
 
-This release of Mercury contains a port to Sun Microsystems' Java 2 Platform,
-Standard Edition (J2SE).
+This release of Mercury contains a port to Java,
+in particular to Sun Microsystems' Java 2 Platform, Standard Edition (J2SE).
 The Mercury compiler will generate Java source code that can be compiled into
 Java bytecode suitable for running in the J2SE runtime system.
 
@@ -37,17 +37,17 @@ The Mercury compiler currently supports the grade 'java' to target Java
 bytecode.  Support for building and installation of this grade
 is still somewhat rudimentary.
 
-To run a Mercury program using the java grade, you need to build the
+To run a Mercury program using the java grade, you need to build the Mercury
 library and runtime in the java grade, using the Mercury source distribution.
 
 You will also need to set the environment variable CLASSPATH to include the
 mercury standard and runtime libraries for java, as well as the current
 directory.  You should use a command of the form:
 
-	CLASSPATH=<prefix>/mer_std.jar:<prefix>/mer_std.runtime.jar:. ; \
+	CLASSPATH=<prefix>/mer_std.jar:<prefix>/mer_std.runtime.jar:.
 	export CLASSPATH
 
-Where <prefix> is the location of the installed jar files, which will probably
+where <prefix> is the location of the installed jar files, which will probably
 be /usr/local/mercury/lib/mercury/lib/java or something similar.
 
 You can now build programs such as hello.m or calculator.m in the samples
@@ -84,7 +84,7 @@ The implementation will include this Java code in the module's .java file, and
 you can then call the predicate to_string exactly the same as if it were
 implemented using pure mercury code.
 
-For more information about the foreign language interface, refer to the Mercury
+For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
 	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
 
@@ -141,13 +141,18 @@ Q. So how do I enable Java-level debugging?
 
 A. By default, javac already generates line number and source file debugging
    information.  You can include local variable debugging information by
-   specifying "-g" as part of the "--java-flags" flag when invoking the
-   mercury compiler.  eg:
+   specifying "--target-debug" when invoking the Mercury compiler, or by
+   setting the JAVACFLAGS variable to include "-g" when invoking mmake,
+   e.g.
 
-   mmc --make --grade java --java-flags "-g" <progname>
+        mmc --make --grade java --target-debug <progname>
+
+   or
+   	
+	mmake GRADE=java JAVACFLAGS=-g <progname>
 
    You can then use Sun's "jdb" debugging tool, which comes
-   as part of the Java SDK distribution, to debug your program.  For more
-   information, refer to the documentation for javac and jdb.
+   as part of the Java SDK distribution, to debug your program.
+   For more information, see the documentation for javac and jdb.
 
 -----------------------------------------------------------------------------
