@@ -39,7 +39,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_pred, prog_data.
-:- import_module bool, list, set.
+:- import_module list, set.
 
 	%
 	% When the compiler performs structure reuse, using
@@ -74,35 +74,31 @@
 :- pred implicitly_quantify_clause_body(
 	nonlocals_to_recompute::in, list(prog_var)::in,
 	hlds_goal::in, prog_varset::in, vartypes::in,
-	type_info_varmap::in, bool::in,
 	hlds_goal::out, prog_varset::out, vartypes::out,
 	list(quant_warning)::out) is det.
 	
 	% As above, with `ordinary_nonlocals' passed as the first argument.
 :- pred implicitly_quantify_clause_body(list(prog_var)::in,
 	hlds_goal::in, prog_varset::in, vartypes::in,
-	type_info_varmap::in, bool::in,
 	hlds_goal::out, prog_varset::out, vartypes::out,
 	list(quant_warning)::out) is det.
 
 :- pred implicitly_quantify_goal(nonlocals_to_recompute::in,
-	hlds_goal::in, prog_varset::in, vartypes::in,
-	type_info_varmap::in, bool::in, set(prog_var)::in,
+	hlds_goal::in, prog_varset::in, vartypes::in, set(prog_var)::in,
 	hlds_goal::out, prog_varset::out, vartypes::out,
 	list(quant_warning)::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
 :- pred implicitly_quantify_goal(
-	hlds_goal::in, prog_varset::in, vartypes::in,
-	type_info_varmap::in, bool::in, set(prog_var)::in,
+	hlds_goal::in, prog_varset::in, vartypes::in, set(prog_var)::in,
 	hlds_goal::out, prog_varset::out, vartypes::out,
 	list(quant_warning)::out) is det.
 
-:- pred requantify_proc(nonlocals_to_recompute::in, bool::in,
+:- pred requantify_proc(nonlocals_to_recompute::in,
 	proc_info::in, proc_info::out) is det.
 
 	% As above, with `ordinary_nonlocals' passed as the first argument.
-:- pred requantify_proc(bool::in, proc_info::in, proc_info::out) is det.
+:- pred requantify_proc(proc_info::in, proc_info::out) is det.
 
 	% We return a list of warnings back to make_hlds.m.
 	% Currently the only thing we warn about is variables with
@@ -146,8 +142,6 @@
 			seen			:: set(prog_var),
 			varset			:: prog_varset,
 			vartypes		:: vartypes,
-			type_info_varmap	:: type_info_varmap,
-			typeinfo_liveness	:: bool,
 			warnings		:: list(quant_warning)
 		).
 
@@ -181,48 +175,40 @@
 %-----------------------------------------------------------------------------%
 
 implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, Goal, Varset, VarTypes, Warnings) :-
+		Goal, Varset, VarTypes, Warnings) :-
 	implicitly_quantify_clause_body(ordinary_nonlocals,
-		HeadVars, Goal0, Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
+		HeadVars, Goal0, Varset0, VarTypes0,
 		Goal, Varset, VarTypes, Warnings).
 
 implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, Goal0,
-		Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
-		Goal, Varset, VarTypes, Warnings) :-
+		Varset0, VarTypes0, Goal, Varset, VarTypes, Warnings) :-
 	set__list_to_set(HeadVars, OutsideVars),
 	implicitly_quantify_goal(RecomputeNonLocals, Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, OutsideVars,
-		Goal, Varset, VarTypes, Warnings).
+		OutsideVars, Goal, Varset, VarTypes, Warnings).
 
-requantify_proc(TypeInfoLiveness, ProcInfo0, ProcInfo) :-
-	requantify_proc(ordinary_nonlocals, TypeInfoLiveness,
-		ProcInfo0, ProcInfo).
+requantify_proc(ProcInfo0, ProcInfo) :-
+	requantify_proc(ordinary_nonlocals, ProcInfo0, ProcInfo).
 
-requantify_proc(RecomputeNonLocals, TypeInfoLiveness, ProcInfo0, ProcInfo) :-
+requantify_proc(RecomputeNonLocals, ProcInfo0, ProcInfo) :-
 	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_goal(ProcInfo0, Goal0),
 	implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars,
-		Goal0, Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
-		Goal, Varset, VarTypes, _),
+		Goal0, Varset0, VarTypes0, Goal, Varset, VarTypes, _),
 	proc_info_set_varset(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo).
 
-implicitly_quantify_goal(Goal0, Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
-		OutsideVars, Goal, Varset, VarTypes, Warnings) :-
+implicitly_quantify_goal(Goal0, Varset0, VarTypes0, OutsideVars,
+		Goal, Varset, VarTypes, Warnings) :-
 	implicitly_quantify_goal(ordinary_nonlocals, Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, OutsideVars,
-		Goal, Varset, VarTypes, Warnings).
+		OutsideVars, Goal, Varset, VarTypes, Warnings).
 
 implicitly_quantify_goal(RecomputeNonLocals, Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, OutsideVars,
-		Goal, Varset, VarTypes, Warnings) :-
+		OutsideVars, Goal, Varset, VarTypes, Warnings) :-
 	implicitly_quantify_goal_2(ordinary_nonlocals,
-		Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, OutsideVars,
+		Goal0, Varset0, VarTypes0, OutsideVars,
 		Goal1, Varset1, VarTypes1, Warnings),
 	(
 		RecomputeNonLocals = code_gen_nonlocals,
@@ -233,8 +219,7 @@ implicitly_quantify_goal(RecomputeNonLocals, Goal0, Varset0, VarTypes0,
 		goal_contains_reconstruction(Goal1)
 	->
 		implicitly_quantify_goal_2(code_gen_nonlocals,
-			Goal1, Varset1, VarTypes1,
-			TVarMap, TypeInfoLiveness, OutsideVars,
+			Goal1, Varset1, VarTypes1, OutsideVars,
 			Goal, Varset, VarTypes, _)
 	;
 		Goal = Goal1,
@@ -243,17 +228,15 @@ implicitly_quantify_goal(RecomputeNonLocals, Goal0, Varset0, VarTypes0,
 	).
 
 :- pred implicitly_quantify_goal_2(nonlocals_to_recompute::in,
-	hlds_goal::in, prog_varset::in, vartypes::in,
-	type_info_varmap::in, bool::in, set(prog_var)::in,
+	hlds_goal::in, prog_varset::in, vartypes::in, set(prog_var)::in,
 	hlds_goal::out, prog_varset::out, vartypes::out,
 	list(quant_warning)::out) is det.
 		
 implicitly_quantify_goal_2(RecomputeNonLocals,
-		Goal0, Varset0, VarTypes0,
-		TVarMap, TypeInfoLiveness, OutsideVars,
+		Goal0, Varset0, VarTypes0, OutsideVars,
 		Goal, Varset, VarTypes, Warnings) :-
 	quantification__init(RecomputeNonLocals, OutsideVars,
-		Varset0, VarTypes0, TVarMap, TypeInfoLiveness, QuantInfo0),
+		Varset0, VarTypes0, QuantInfo0),
 	implicitly_quantify_goal(Goal0, Goal, QuantInfo0, QuantInfo),
 	quantification__get_varset(Varset, QuantInfo, _),
 	quantification__get_vartypes(VarTypes, QuantInfo, _),
@@ -292,14 +275,8 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	% to become local when previously it was non-local),
 	% then we may need to likewise shrink the instmap delta.
 	%
-	quantification__get_typeinfo_liveness(TypeInfoLiveness),
-	quantification__get_vartypes(VarTypes),
-	quantification__get_type_info_varmap(TVarMap),
-	{ proc_info_maybe_complete_with_typeinfo_vars(NonLocalVars,
-		TypeInfoLiveness, VarTypes, TVarMap, CompletedNonLocalVars) },
 	{ goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0) },
-	{ instmap_delta_restrict(InstMapDelta0, CompletedNonLocalVars,
-		InstMapDelta) },
+	{ instmap_delta_restrict(InstMapDelta0, NonLocalVars, InstMapDelta) },
 	{ goal_info_set_instmap_delta(GoalInfo2, InstMapDelta, GoalInfo) }.
 
 :- pred implicitly_quantify_goal_2(hlds_goal_expr::in, prog_context::in,
@@ -1161,11 +1138,10 @@ quantification__set_goal_nonlocals(GoalInfo0, NonLocals, GoalInfo) -->
 %-----------------------------------------------------------------------------%
 
 :- pred quantification__init(nonlocals_to_recompute::in, set(prog_var)::in,
-	prog_varset::in, vartypes::in, type_info_varmap::in, bool::in,
-	quant_info::out) is det.
+	prog_varset::in, vartypes::in, quant_info::out) is det.
 
 quantification__init(RecomputeNonLocals, OutsideVars,
-		Varset, VarTypes, TVarMap, TypeInfoLiveness, QuantInfo) :-
+		Varset, VarTypes, QuantInfo) :-
 	set__init(QuantVars),
 	set__init(NonLocals),
 	set__init(LambdaOutsideVars),
@@ -1173,102 +1149,77 @@ quantification__init(RecomputeNonLocals, OutsideVars,
 	OverlapWarnings = [],
 	QuantInfo = quant_info(RecomputeNonLocals, OutsideVars, QuantVars,
 		LambdaOutsideVars, NonLocals, Seen, Varset, VarTypes,
-		TVarMap, TypeInfoLiveness, OverlapWarnings).
+		OverlapWarnings).
 
 :- pred quantification__get_nonlocals_to_recompute(nonlocals_to_recompute::out,
 	quant_info::in, quant_info::out) is det.
 
-quantification__get_nonlocals_to_recompute(Q ^ nonlocals_to_recompute, Q, Q).
-
 :- pred quantification__get_outside(set(prog_var)::out,
 	quant_info::in, quant_info::out) is det.
-
-quantification__get_outside(Q ^ outside, Q, Q).
-
-:- pred quantification__set_outside(set(prog_var)::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_outside(Outside, Q0, Q0 ^ outside := Outside).
 
 :- pred quantification__get_quant_vars(set(prog_var)::out,
 	quant_info::in, quant_info::out) is det.
 
-quantification__get_quant_vars(Q ^ quant_vars, Q, Q).
-
-:- pred quantification__set_quant_vars(set(prog_var)::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_quant_vars(QuantVars, Q0, Q0 ^ quant_vars := QuantVars).
-
 :- pred quantification__get_lambda_outside(set(prog_var)::out,
 	quant_info::in, quant_info::out) is det.
-
-quantification__get_lambda_outside(Q ^ lambda_outside, Q, Q).
-
-:- pred quantification__set_lambda_outside(set(prog_var)::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_lambda_outside(LambdaOutsideVars, Q0,
-	Q0 ^ lambda_outside := LambdaOutsideVars).
 
 :- pred quantification__get_nonlocals(set(prog_var)::out,
 	quant_info::in, quant_info::out) is det.
 
-quantification__get_nonlocals(Q ^ nonlocals, Q, Q).
-
-:- pred quantification__set_nonlocals(set(prog_var)::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_nonlocals(NonLocals, Q0, Q0 ^ nonlocals := NonLocals).
-
 :- pred quantification__get_seen(set(prog_var)::out,
 	quant_info::in, quant_info::out) is det.
-
-quantification__get_seen(Q ^ seen, Q, Q).
-
-:- pred quantification__set_seen(set(prog_var)::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_seen(Seen, Q0, Q0 ^ seen := Seen).
 
 :- pred quantification__get_varset(prog_varset::out,
 	quant_info::in, quant_info::out) is det.
 
-quantification__get_varset(Q ^ varset, Q, Q).
-
-:- pred quantification__set_varset(prog_varset::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_varset(Varset, Q0, Q0 ^ varset := Varset).
-
 :- pred quantification__get_vartypes(vartypes::out,
 	quant_info::in, quant_info::out) is det.
-
-quantification__get_vartypes(Q ^ vartypes, Q, Q).
-
-:- pred quantification__set_vartypes(vartypes::in,
-	quant_info::in, quant_info::out) is det.
-
-quantification__set_vartypes(VarTypes, Q0, Q0 ^ vartypes := VarTypes).
-
-:- pred quantification__get_type_info_varmap(type_info_varmap::out,
-	quant_info::in, quant_info::out) is det.
-
-quantification__get_type_info_varmap(Q ^ type_info_varmap, Q, Q).
-
-:- pred quantification__get_typeinfo_liveness(bool::out,
-	quant_info::in, quant_info::out) is det.
-
-quantification__get_typeinfo_liveness(Q ^ typeinfo_liveness, Q, Q).
 
 :- pred quantification__get_warnings(list(quant_warning)::out,
 	quant_info::in, quant_info::out) is det.
 
-quantification__get_warnings(Q ^ warnings, Q, Q).
+:- pred quantification__set_outside(set(prog_var)::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_quant_vars(set(prog_var)::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_lambda_outside(set(prog_var)::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_nonlocals(set(prog_var)::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_seen(set(prog_var)::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_varset(prog_varset::in,
+	quant_info::in, quant_info::out) is det.
+
+:- pred quantification__set_vartypes(vartypes::in,
+	quant_info::in, quant_info::out) is det.
 
 :- pred quantification__set_warnings(list(quant_warning)::in,
 	quant_info::in, quant_info::out) is det.
 
+quantification__get_nonlocals_to_recompute(Q ^ nonlocals_to_recompute, Q, Q).
+quantification__get_outside(Q ^ outside, Q, Q).
+quantification__get_quant_vars(Q ^ quant_vars, Q, Q).
+quantification__get_lambda_outside(Q ^ lambda_outside, Q, Q).
+quantification__get_nonlocals(Q ^ nonlocals, Q, Q).
+quantification__get_seen(Q ^ seen, Q, Q).
+quantification__get_varset(Q ^ varset, Q, Q).
+quantification__get_vartypes(Q ^ vartypes, Q, Q).
+quantification__get_warnings(Q ^ warnings, Q, Q).
+
+quantification__set_outside(Outside, Q0, Q0 ^ outside := Outside).
+quantification__set_quant_vars(QuantVars, Q0, Q0 ^ quant_vars := QuantVars).
+quantification__set_lambda_outside(LambdaOutsideVars, Q0,
+	Q0 ^ lambda_outside := LambdaOutsideVars).
+quantification__set_nonlocals(NonLocals, Q0, Q0 ^ nonlocals := NonLocals).
+quantification__set_seen(Seen, Q0, Q0 ^ seen := Seen).
+quantification__set_varset(Varset, Q0, Q0 ^ varset := Varset).
+quantification__set_vartypes(VarTypes, Q0, Q0 ^ vartypes := VarTypes).
 quantification__set_warnings(Warnings, Q0, Q0 ^ warnings := Warnings).
 
 %-----------------------------------------------------------------------------%

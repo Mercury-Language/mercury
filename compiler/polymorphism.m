@@ -1825,15 +1825,8 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_get_varset(Info0, VarSet0),
 		poly_info_get_var_types(Info0, VarTypes0),
 		set__list_to_set(HeadVars, OutsideVars),
-		poly_info_get_type_info_map(Info0, TVarMap),
-		poly_info_get_pred_info(Info0, PredInfo),
-		poly_info_get_module_info(Info0, ModuleInfo),
-		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(PredInfo, Globals,
-			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			TVarMap, TypeInfoLiveness, OutsideVars,
-			Goal, VarSet, VarTypes, _Warnings),
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
@@ -1876,15 +1869,8 @@ polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
 			TypeClassVarMap, VarTypes0, ExistQVars,
 			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
-		poly_info_get_type_info_map(Info0, TVarMap),
-		poly_info_get_pred_info(Info0, PredInfo),
-		poly_info_get_module_info(Info0, ModuleInfo),
-		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(PredInfo, Globals,
-			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			TVarMap, TypeInfoLiveness, OutsideVars,
-			Goal, VarSet, VarTypes, _Warnings),
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 

@@ -735,11 +735,7 @@
 				% says a goal is unreachable then it is.
 				%
 				% Normally the instmap_delta will list only
-				% the nonlocal variables of the goal. However,
-				% with typeinfo liveness, it may also list
-				% typeinfo or typeclass info variables that
-				% describe (part of) the type of a nonlocal
-				% variable.
+				% the nonlocal variables of the goal.
 
 		context :: prog_context,
 
@@ -955,6 +951,9 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- pred goal_info_set_goal_path(hlds_goal_info, goal_path, hlds_goal_info).
 :- mode goal_info_set_goal_path(in, in, out) is det.
+
+:- pred goal_get_nonlocals(hlds_goal, set(prog_var)).
+:- mode goal_get_nonlocals(in, out) is det.
 
 :- pred goal_set_follow_vars(hlds_goal, maybe(follow_vars), hlds_goal).
 :- mode goal_set_follow_vars(in, in, out) is det.
@@ -1259,6 +1258,9 @@ goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
 goal_info_has_feature(GoalInfo, Feature) :-
 	goal_info_get_features(GoalInfo, Features),
 	set__member(Feature, Features).
+
+goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
 goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
 	goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo).

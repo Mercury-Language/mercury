@@ -442,9 +442,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	globals__io_get_globals(Globals, IoState0, IoState),
 	(
 		Requantify = yes,
-		body_should_use_typeinfo_liveness(PredInfo1, Globals,
-			TypeInfoLiveness),
-		requantify_proc(TypeInfoLiveness, ProcInfo4, ProcInfo)
+		requantify_proc(ProcInfo4, ProcInfo)
 	;
 		Requantify = no,
 		ProcInfo = ProcInfo4

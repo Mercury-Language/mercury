@@ -56,7 +56,10 @@
 %
 % When using accurate gc or execution tracing, liveness is computed
 % slightly differently.  The runtime system needs access to the
-% typeinfo variables of any variable that is live at a continuation.
+% typeinfo variables of any variable that is live at a continuation or event.
+% (This includes typeclass info variables that hold typeinfos;
+% in the following "typeinfo variables" also includes typeclass info
+% variables.)
 % 
 % Hence, the invariant needed for typeinfo-liveness calculation:
 % 	a variable holding a typeinfo must be live at any continuation
@@ -82,11 +85,25 @@
 %	    variable.
 % 
 % (1) happens without any changes to the liveness computation (it is
-%     the normal condition for variables becoming dead). This more
+%     the normal condition for variables becoming dead). This is more
 %     conservative than what is required for the invariant, but is
 %     required for code generation, so we should keep it ;-)
 % (2) is implemented by adding the typeinfo variables for the types of the
 %     nonlocals to the nonlocals for the purposes of computing liveness.
+%
+% In some circumstances, one of which is tests/debugger/resume_typeinfos.m,
+% it is possible for a typeinfo variable to be born in a goal without that
+% typeinfo variable appearing anywhere else in the procedure body.
+% Nevertheless, with typeinfo liveness, we must consider such variables
+% to be born in such goals even though they do not appear in the nonlocals set
+% or in the instmap delta. (If they were not born, it would be an error for
+% them to die, and die they will, at the last occurrence of a variable whose
+% type they (partially) describe.) The special case solution we adopt for
+% such situations is that we consider the first appearance of a typeinfo
+% variable in the typeinfo-completed nonlocals set of a goal to be a value
+% giving occurrence, even if the typeinfo does not appear in the instmap delta.
+% This is safe, since with our current scheme for handling polymorphism,
+% the first appearance will in fact always ground the typeinfo.
 %
 % So typeinfo variables will always be born before they are needed, and
 % die only when no other variable needing them will be live, so the
@@ -152,15 +169,15 @@
 :- import_module string.
 
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
-	module_info_globals(ModuleInfo, Globals),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-	requantify_proc(TypeInfoLiveness, ProcInfo0, ProcInfo1),
+	requantify_proc(ProcInfo0, ProcInfo1),
 
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
 	proc_info_typeinfo_varmap(ProcInfo1, TVarMap),
+	module_info_globals(ModuleInfo, Globals),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, TVarMap, Varset,
 		LiveInfo),
 
@@ -194,8 +211,9 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 		Liveness, Goal - GoalInfo) :-
 
 		% work out which variables get born in this goal
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0, NonLocals),
-	set__difference(NonLocals, Liveness0, NewVarsSet),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
+		BaseNonLocals, CompletedNonLocals),
+	set__difference(CompletedNonLocals, Liveness0, NewVarsSet),
 	set__to_sorted_list(NewVarsSet, NewVarsList),
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	set__init(Empty),
@@ -204,12 +222,14 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 	;
 		set__init(Births0),
 		find_value_giving_occurrences(NewVarsList, LiveInfo,
-			InstMapDelta, Births0, Births)
+			InstMapDelta, Births0, Births1),
+		set__difference(CompletedNonLocals, BaseNonLocals,
+			TypeInfos),
+		set__difference(TypeInfos, Liveness0, NewTypeInfos),
+		set__union(Births1, NewTypeInfos, Births)
 	),
 	set__union(Liveness0, Births, Liveness),
-	(
-		goal_is_atomic(Goal0)
-	->
+	( goal_is_atomic(Goal0) ->
 		PreDeaths = Empty,
 		PreBirths = Births,
 		PostDeaths = Empty,
@@ -218,9 +238,10 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 	;
 		PreDeaths = Empty,
 		PreBirths = Empty,
-		detect_liveness_in_goal_2(Goal0, Liveness0, NonLocals,
+		detect_liveness_in_goal_2(Goal0, Liveness0, CompletedNonLocals,
 			LiveInfo, ActualLiveness, Goal),
-		set__intersect(NonLocals, ActualLiveness, NonLocalLiveness),
+		set__intersect(CompletedNonLocals, ActualLiveness,
+			NonLocalLiveness),
 		set__union(NonLocalLiveness, Liveness0, FinalLiveness),
 		set__difference(FinalLiveness, Liveness, PostDeaths),
 		set__difference(Liveness, FinalLiveness, PostBirths)
@@ -414,11 +435,10 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, LiveInfo, Deadness,
 	set__difference(Deadness0, PostBirths0, Deadness1),
 	set__union(Deadness1, PostDeaths0, Deadness2),
 
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
+		_BaseNonLocals, CompletedNonLocals),
 	set__init(Empty),
-	(
-		goal_is_atomic(Goal0)
-	->
+	( goal_is_atomic(Goal0) ->
 		% 
 		% The code below is slightly dodgy: the new postdeaths really
 		% ought to be computed as the difference between the liveness
@@ -436,7 +456,7 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, LiveInfo, Deadness,
 		% some extra code in the third pass (detect_resume_points)
 		% to delete any such untimely deaths.]
 		% 
-		set__difference(NonLocals, Deadness2, NewPostDeaths),
+		set__difference(CompletedNonLocals, Deadness2, NewPostDeaths),
 		set__union(Deadness2, NewPostDeaths, Deadness3),
 		Goal = Goal0
 	;
@@ -464,23 +484,26 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 detect_deadness_in_goal_2(par_conj(Goals0, SM), GoalInfo, Deadness0, LiveInfo,
 		Deadness, par_conj(Goals, SM)) :-
 	set__init(Union0),
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
-	detect_deadness_in_par_conj(Goals0, Deadness0, NonLocals,
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+		_, CompletedNonLocals),
+	detect_deadness_in_par_conj(Goals0, Deadness0, CompletedNonLocals,
 		LiveInfo, Union0, Union, Goals),
 	set__union(Union, Deadness0, Deadness).
 
 detect_deadness_in_goal_2(disj(Goals0, SM), GoalInfo, Deadness0,
 		LiveInfo, Deadness, disj(Goals, SM)) :-
 	set__init(Union0),
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
-	detect_deadness_in_disj(Goals0, Deadness0, NonLocals,
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+		_, CompletedNonLocals),
+	detect_deadness_in_disj(Goals0, Deadness0, CompletedNonLocals,
 		LiveInfo, Union0, Deadness, Goals).
 
 detect_deadness_in_goal_2(switch(Var, Det, Cases0, SM), GoalInfo, Deadness0,
 		LiveInfo, Deadness, switch(Var, Det, Cases, SM)) :-
 	set__init(Union0),
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
-	detect_deadness_in_cases(Var, Cases0, Deadness0, NonLocals,
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+		_, CompletedNonLocals),
+	detect_deadness_in_cases(Var, Cases0, Deadness0, CompletedNonLocals,
 		LiveInfo, Union0, Deadness, Cases).
 
 detect_deadness_in_goal_2(not(Goal0), _, Deadness0, LiveInfo,
@@ -497,9 +520,10 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	detect_deadness_in_goal(Cond0, DeadnessThen, LiveInfo,
 		DeadnessCond, Cond1),
 
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+		_, CompletedNonLocals),
 	set__union(DeadnessCond, DeadnessElse, Deadness),
-	set__intersect(Deadness, NonLocals, NonLocalDeadness),
+	set__intersect(Deadness, CompletedNonLocals, NonLocalDeadness),
 
 	set__difference(NonLocalDeadness, DeadnessCond, ResidueCond),
 	set__difference(NonLocalDeadness, DeadnessElse, ResidueElse),
@@ -1114,14 +1138,14 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 	% Get the nonlocals, and, if doing typeinfo liveness, add the
 	% typeinfo vars for the nonlocals.
 
-:- pred liveness__get_nonlocals_and_typeinfos(live_info::in, hlds_goal_info::in,
-	set(prog_var)::out) is det.
+:- pred liveness__get_nonlocals_and_typeinfos(live_info::in,
+	hlds_goal_info::in, set(prog_var)::out, set(prog_var)::out) is det.
 
 liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, 
-		NonLocals) :-
-	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
+		NonLocals, CompletedNonLocals) :-
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals),
 	liveness__maybe_complete_with_typeinfos(LiveInfo,
-		NonLocals0, NonLocals).
+		NonLocals, CompletedNonLocals).
 
 :- pred liveness__maybe_complete_with_typeinfos(live_info::in,
 	set(prog_var)::in, set(prog_var)::out) is det.

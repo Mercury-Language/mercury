@@ -5104,15 +5104,8 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 				transform_info(ModuleInfo, Info)),
 		{
 		map__init(EmptyVarTypes),
-			% Since the we haven't done mode analysis yet, the
-			% instmap_delta fields in goal_infos are not yet
-			% meaningful. Therefore there no point in clipping
-			% them to the set of typeinfo-liveness-completed
-			% nonlocals.
-		map__init(EmptyTVarMap),
-		TypeInfoLiveness = no,
-		implicitly_quantify_clause_body(HeadVars, HldsGoal1,
-			VarSet2, EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
+		implicitly_quantify_clause_body(HeadVars,
+			HldsGoal1, VarSet2, EmptyVarTypes,
 			HldsGoal, VarSet, _, _Warnings),
 		NewClause = clause([ModeId], HldsGoal, Context),
 		ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1,
@@ -5166,16 +5159,8 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
 			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
 	),
 	{ map__init(EmptyVarTypes) },
-		% Since the we haven't done mode analysis yet, the
-		% instmap_delta fields in goal_infos are not yet
-		% meaningful. Therefore there no point in clipping
-		% them to the set of typeinfo-liveness-completed
-		% nonlocals.
-	{ map__init(EmptyTVarMap) },
-	{ TypeInfoLiveness = no },
-	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2,
-		EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
-		Goal, VarSet, _, Warnings) }.
+	{ implicitly_quantify_clause_body(HeadVars,
+		Goal2, VarSet2, EmptyVarTypes, Goal, VarSet, _, Warnings) }.
 
 %-----------------------------------------------------------------------------%
 

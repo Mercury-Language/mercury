@@ -708,15 +708,8 @@ unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses) -->
 unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause) -->
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-		% Since the we haven't done mode analysis yet, the
-		% instmap_delta fields in goal_infos are not yet
-		% meaningful. Therefore there no point in clipping
-		% them to the set of typeinfo-liveness-completed
-		% nonlocals.
-	{ TypeInfoLiveness = no },
 	{ implicitly_quantify_clause_body(HeadVars, Goal, Varset0, Types0,
-		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
+		Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) }.
