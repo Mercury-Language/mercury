@@ -155,7 +155,7 @@ then
 		rm -f $logfile.errs
 		echo "test passed"
 	fi
-	if [ ! -s $logfile.test_errs ]; then
+	if [ -s $logfile.test_errs ]; then
 		test_status="FAILED"
 		echo "Error: test passed but $logfile.test_errs not empty"
 	else
@@ -181,7 +181,9 @@ else
 	echo test FAILED
 	echo log file in $logfile
 	echo log file summary in $logfile.errs
-	echo test failure summary in $logfile.test_errs
+	if [ -s $logfile.test_errs ]; then
+		echo test failure summary in $logfile.test_errs
+	fi
 fi
 
 if [ -s $logfile.errs -o -s $logfile.test_errs ]; then
