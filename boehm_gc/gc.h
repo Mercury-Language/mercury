@@ -129,8 +129,13 @@ extern GC_word GC_free_space_divisor;
  * do so.  The same applies to dropping stubborn objects that are still
  * changeable.
  */
+#if defined(__STDC__) || defined(__cplusplus)
+void GC_change_stubborn(void *p);
+void GC_end_stubborn_change(void *p);
+#else
 void GC_change_stubborn(/* p */);
 void GC_end_stubborn_change(/* p */);
+#endif
 
 /* Return a pointer to the base (lowest address) of an object given	*/
 /* a pointer to a location within the object.				*/
@@ -168,13 +173,21 @@ void GC_end_stubborn_change(/* p */);
 
 /* Explicitly increase the heap size.	*/
 /* Returns 0 on failure, 1 on success.  */
+# if defined(__STDC__) || defined(__cplusplus)
+extern int GC_expand_hp(size_t number_of_bytes);
+# else
 extern int GC_expand_hp(/* number_of_bytes */);
+# endif
 
 /* Clear the set of root segments */
 extern void GC_clear_roots(NO_PARAMS);
 
 /* Add a root segment */
+# if defined(__STDC__) || defined(__cplusplus)
+extern void GC_add_roots(void * low_address, void * high_address_plus_1);
+# else
 extern void GC_add_roots(/* low_address, high_address_plus_1 */);
+# endif
 
 /* Add a displacement to the set of those considered valid by the	*/
 /* collector.  GC_register_displacement(n) means that if p was returned */
@@ -188,7 +201,11 @@ extern void GC_add_roots(/* low_address, high_address_plus_1 */);
 /* retention.								*/
 /* This is a no-op if the collector was compiled with recognition of	*/
 /* arbitrary interior pointers enabled, which is now the default.	*/
+# if defined(__STDC__) || defined(__cplusplus)
+void GC_register_displacement(int n);
+# else
 void GC_register_displacement(/* n */);
+# endif
 
 /* Explicitly trigger a full, world-stop collection. 	*/
 void GC_gcollect(NO_PARAMS);
@@ -267,8 +284,15 @@ int GC_collect_a_little(NO_PARAMS);
   extern char * GC_debug_realloc(/* old_object, new_size_in_bytes,
   			            descr_string, descr_int */);
 # endif
+
+# if defined(__STDC__) || defined(__cplusplus)
+void GC_debug_change_stubborn(void * p);
+void GC_debug_end_stubborn_change(void * p);
+#else
 void GC_debug_change_stubborn(/* p */);
 void GC_debug_end_stubborn_change(/* p */);
+#endif
+
 # ifdef GC_DEBUG
 #   define GC_MALLOC(sz) GC_debug_malloc(sz, __FILE__, __LINE__)
 #   define GC_MALLOC_ATOMIC(sz) GC_debug_malloc_atomic(sz, __FILE__, __LINE__)
@@ -371,7 +395,11 @@ void GC_debug_end_stubborn_change(/* p */);
 /* where p is a pointer that is not followed by finalization	*/
 /* code, and should not be considered in determining 		*/
 /* finalization order.						*/ 
+# if defined(__STDC__) || defined(__cplusplus)
+int GC_register_disappearing_link(void ** link);
+# else
 int GC_register_disappearing_link(/* void ** link */);
+# endif
 	/* Link should point to a field of a heap allocated 	*/
 	/* object obj.  *link will be cleared when obj is	*/
 	/* found to be inaccessible.  This happens BEFORE any	*/
@@ -390,7 +418,11 @@ int GC_register_disappearing_link(/* void ** link */);
 	/* Returns 1 if link was already registered, 0		*/
 	/* otherwise.						*/
 	/* Only exists for backward compatibility.  See below:	*/
+# if defined(__STDC__) || defined(__cplusplus)
+int GC_general_register_disappearing_link(void ** link, void * obj);
+# else
 int GC_general_register_disappearing_link(/* void ** link, void * obj */);
+# endif
 	/* A slight generalization of the above. *link is	*/
 	/* cleared when obj first becomes inaccessible.  This	*/
 	/* can be used to implement weak pointers easily and	*/
@@ -406,7 +438,11 @@ int GC_general_register_disappearing_link(/* void ** link, void * obj */);
 	/* the object containing link.  Explicitly deallocating */
 	/* obj may or may not cause link to eventually be	*/
 	/* cleared.						*/
+# if defined(__STDC__) || defined(__cplusplus)
+int GC_unregister_disappearing_link(void ** link);
+# else
 int GC_unregister_disappearing_link(/* void ** link */);
+# endif
 	/* Returns 0 if link was not actually registered.	*/
 	/* Undoes a registration by either of the above two	*/
 	/* routines.						*/
