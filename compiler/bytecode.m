@@ -1075,8 +1075,8 @@ output_two_byte(Val) -->
 
 output_int(Val) -->
 	{ Val1 is Val >> 24 },
-	{ Val2 is Val >> 16 mod 256 },
-	{ Val3 is Val >> 8 mod 256 },
+	{ Val2 is (Val >> 16) mod 256 },
+	{ Val3 is (Val >> 8) mod 256 },
 	{ Val4 is Val mod 256 },
 	( { Val1 < 256 } ->
 		io__write_byte(Val1),
