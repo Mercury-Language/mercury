@@ -12,6 +12,10 @@ complex_numbers
 		A Mercury library package containing support for
 		complex and imaginary numbers.
 
+concurrency	Support for coroutining and concurrent execution of
+		deterministic (or cc_multi) goals, and some data structures
+		for communicating between different concurrent threads.
+
 curs		A Mercury library providing a somewhat more complete
 		and more faithful binding to the curses and panel
 		libraries (the latter is used to provide elementary
@@ -24,9 +28,6 @@ curses		A Mercury library providing a (partial) binding to
 dynamic_linking
 		An interface to the C functions dlopen(), dlsym(), etc.
 		that are supported by most modern Unix systems.
-
-exceptions	A library module containing a (tentative)
-		exception handling interface for Mercury.
 
 graphics	A couple of packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to tcl/tk
@@ -50,8 +51,13 @@ moose		A parser generator for Mercury.  Moose works much like
 		Currently you need to write your own lexer to interface
 		to moose.
 
+morphine	A trace analysis system for Mercury.
+
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
+
+posix		A Mercury interface to some of the POSIX
+		(Portable Operating System Interface) APIs.
 
 quickcheck	An autotesting tool similar to Haskell's QuickCheck.
 
@@ -59,3 +65,9 @@ references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 
 stream		Generic IO interface using typeclasses.
+
+trailed_update	Some library modules that make use of backtrackable
+		destructive update, including a module which provides
+		some support for Prolog-style unification constraints.
+
+xml		An XML parsing library.
