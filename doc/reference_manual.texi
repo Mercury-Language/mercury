@@ -3460,11 +3460,18 @@ the Mercury language.  However, as an extension, implementations may
 also choose to support additional pragmas with implementation-dependent
 semantics.
 
-The University of Melbourne Mercury implemenation supports the following
+The University of Melbourne Mercury implementation supports the following
 additional pragmas:
 
 @menu
-* Fact tables::         Support for very large tables of facts
+* Fact tables::         	Support for very large tables of facts.
+* Termination properties::	Information about the termination properties 
+				of a predicate or function can be given
+				to the compiler.  Pragmas are also
+				available to require the compiler to prove
+				termination of a given predicate or
+				function, or to give an error message if
+				it cannot do so.
 @end menu
 
 @node Fact tables
@@ -3501,6 +3508,88 @@ is invoked.
 The main limitation of the @samp{fact_table} pragma is that
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
+
+@node Termination Analysis
+@subsection Termination Analysis
+
+The compiler includes a termination analyser which can be used to prove 
+termination of predicates and functions.  Details of the analysis is
+available in "Termination Analysis for Mercury" by Chris Speirs, Zoltan
+Somogyi and Harald Sondergaard. In P. Van Hentenryck, editor, "Static
+Analysis: Proceedings of the 4th International Symposium", Lecture Notes
+in Computer Science. Springer, 1997.  A longer version is available for
+download from http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz
+
+The analysis is based around an algorithm proposed by Gerhard Groger
+and Lutz Plumer in their paper "Handling of mutual recursion in
+automatic termination proofs for logic programs." in K. Apt, editor,
+The Proceedings of the Joint International Conference and Symposium on
+Logic Programming, pager 336-350. MIT Press, 1992.
+
+For an introduction to termination analysis for logic programs, please
+refer to "Termination Analysis for Logic Programs" by Chris Speirs.
+Technical Report 97/23, Department of Computer Science, The University
+of Melbourne, Melbourne, Australia, 1997.  Available from
+http://www.cs.mu.oz.au/mercury/papers/mu_97_23.ps.gz
+
+The analyser is enabled by the option @samp{--enable-termination}, which
+can be abbreviated to @samp{--enable-term}.  When termination analysis
+is enabled, any predicates or functions with a @samp{check_termination}
+pragma defined on them will have their termination checked, and if
+termination cannot be proved, the compiler will emit an error message
+detailing the reason that termination could not be proved.
+
+The option @samp{--check-termination} option, which may be abbreviated
+to @samp{--check-term} or @samp{--chk-term}, forces the compiler to
+check the termination of all predicates in the module.  
+It is common for the compiler to be unable to prove termination of some
+predicates and functions because they call other predicates which could
+not be proved to terminate or because they use language features (such
+as higher order calls) which cannot be usefully analysed.  
+In this case, the compiler only emits a warning for these
+predicates and functions if the @samp{--verbose-check-termination}
+option is enabled.  For every predicate or function that the compiler
+cannot prove the termination of, a warning message is emitted, but
+compilation continues.  The @samp{--check-termination} option implies
+the @samp{--enable-termination} option.
+
+The accuracy of the termination analysis is substantially degraded if
+intermodule optimization is not enabled.  Unless intermodule
+optimization is enabled, the compiler must assume that any imported
+predicate may not terminate.  
+
+Currently the compiler assumes that all procedures defined using the C
+interface (@samp{pragma c_code}) terminate for all input.
+If this is not the case, a @samp{pragma does_not_terminate} declaration
+should be used to inform the compiler that this C code may not terminate.
+
+The following declarations can be used to inform the compiler of the
+termination properties of a predicate or function, or to force the
+compiler to prove termination of a given predicate or function. 
+
+@example
+:- pragma terminates(@var{Name}/@var{Arity}).
+@end example
+This declaration may be used to inform the compiler that this predicate
+or function is guaranteed to terminate for any input.  This is useful
+when the compiler cannot prove termination of some predicates or 
+functions which are in turn preventing the compiler from proving
+termination of other predicates or functions.
+
+@example
+:- pragma does_not_terminate(@var{Name}/@var{Arity}).
+@end example
+This declaration may be used to inform the compiler that this predicate
+does not necessarily terminate.  This is useful for procedures defined
+using the C interface, which the compiler assumes to terminate by
+default.
+
+@example
+:- pragma check_termination(@var{Name}/@var{Arity}).
+@end example
+This pragma forces the compiler to prove termination of this predicate.
+If it cannot prove the termination of the specified predicate or
+function then the compiler will quit with an error message.
 
 @contents
 @bye

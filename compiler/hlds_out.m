@@ -47,6 +47,15 @@
 :- pred hlds_out__cons_id_to_string(cons_id, string).
 :- mode hlds_out__cons_id_to_string(in, out) is det.
 
+	% hlds_out__write_pred_id/4 writes out a message such as
+	% 	predicate `foo:bar/3'
+	% or	function `foo:myfoo/5'
+	% unless the predicate name begins with a double underscore "__",
+	% in which case mercury_output_term is used to print out the
+	% predicate's (or function's) name and argument types (since for
+	% `__Unify__' predicates, the module, name and arity are not
+	% sufficient to indentify the predicate).
+
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
 
@@ -170,6 +179,8 @@
 
 :- import_module bool, int, string, list, set, map, std_util, assoc_list.
 :- import_module term, term_io, varset, require, getopt.
+:- import_module termination, term_errors.
+
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),
@@ -504,6 +515,9 @@ hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(memo, "memo").
+hlds_out__marker_name(terminates, "terminates").
+hlds_out__marker_name(check_termination, "check_termination").
+hlds_out__marker_name(does_not_terminate, "does_not_terminate").
 
 hlds_out__write_marker(Marker) -->
 	{ hlds_out__marker_name(Marker, Name) },
@@ -1848,6 +1862,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_argmodes(Proc, HeadModes) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
+	{ proc_info_termination(Proc, Termination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ Indent1 is Indent + 1 },
 
@@ -1860,6 +1875,21 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	io__write_string(" ("),
 	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
+	hlds_out__write_indent(Indent),
+
+	
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__contains_char(Verbose, 't') } ->
+		io__write_string("% Inferred termination: "),
+		termination__out(Termination),
+		io__nl,
+		io__write_string("% Termination - used args: "),
+		termination__out_used_args(Termination),
+		io__nl,
+		term_errors__output_hlds(PredId, ProcId, ModuleInfo)
+	;
+		[]
+	),
 
 	hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
 		VarTypes, TVarSet),

@@ -248,11 +248,16 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
 		report_warning("Warning: clause in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
 	;
-		% `pragma obsolete' declarations are supposed to go
-		% in the interface, but all other pragma declarations
-		% should go in the implementation.
+		% pragma `obsolete', `terminates', `does_not_terminate' 
+		% `termination_info' and `check_termination' declarations
+		% are supposed to go in the interface, but all other pragma
+		% declarations should go in the implementation.
 		{ Item0 = pragma(Pragma) },
-		{ Pragma \= obsolete(_, _) }
+		{ Pragma \= obsolete(_, _) },
+		{ Pragma \= terminates(_, _) },
+		{ Pragma \= does_not_terminate(_, _) },
+		{ Pragma \= check_termination(_, _) },
+		{ Pragma \= termination_info(_, _, _, _) }
 	->
 		prog_out__write_context(Context),
 		report_warning("Warning: pragma in module interface.\n"),

@@ -156,7 +156,7 @@
 :- implementation.
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
-:- import_module globals, options.
+:- import_module globals, options, termination.
 :- import_module bool, int, string, set, term_io, lexer, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -303,6 +303,20 @@ mercury_output_item(pragma(Pragma), Context) -->
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
+	;
+		{ Pragma = termination_info(PredOrFunc, PredName, 
+			ModeList, Termination) },
+		termination__output_pragma_termination_info(PredOrFunc,
+			PredName, ModeList, Termination, Context)
+	;
+		{ Pragma = terminates(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, "terminates")
+	;
+		{ Pragma = does_not_terminate(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, "does_not_terminate")
+	;
+		{ Pragma = check_termination(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, "check_termination")
 	).
 
 mercury_output_item(nothing, _) --> [].

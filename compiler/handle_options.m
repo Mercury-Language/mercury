@@ -71,6 +71,8 @@ handle_options(MaybeError, Args, Link) -->
 						MakeShortInterface),
 		globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptimizationInt),
+		globals__io_lookup_bool_option(make_transitive_opt_interface,
+						MakeTransOptInt),
 		globals__io_lookup_bool_option(convert_to_mercury,
 			ConvertToMercury),
 		globals__io_lookup_bool_option(convert_to_goedel,
@@ -79,7 +81,7 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
-		{ bool__or_list([GenerateDependencies,
+		{ bool__or_list([GenerateDependencies, MakeTransOptInt,
 			MakeInterface, MakeShortInterface, MakeOptimizationInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
 			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
@@ -145,10 +147,21 @@ postprocess_options(ok(OptionTable), Error) -->
 				    { Percent >= 1 },
 				    { Percent =< 100 }
 				->
-				    postprocess_options_2(OptionTable,
-				    	GC_Method, TagsMethod, ArgsMethod,
-				    	TypeInfoMethod, PrologDialect),
-				    { Error = no }
+				    { map__lookup(OptionTable,
+				    	termination_norm, TermNorm0) },
+				    ( 
+					{ TermNorm0 = string(TermNormStr) },
+					{ convert_termination_norm(
+						TermNormStr, TermNorm) }
+				    ->
+				    	postprocess_options_2(OptionTable,
+				    	    GC_Method, TagsMethod, ArgsMethod,
+				    	    TypeInfoMethod, PrologDialect,
+					    TermNorm),
+				        { Error = no }
+				    ;
+				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+				    )
 				;
 				    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n                 (must be an integer between 1 and 100)") }
 				)
@@ -168,12 +181,13 @@ postprocess_options(ok(OptionTable), Error) -->
                 { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
             ).
 
-:- pred postprocess_options_2(option_table, gc_method, tags_method, args_method,
-	type_info_method, prolog_dialect, io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
+:- pred postprocess_options_2(option_table, gc_method, tags_method, 
+	args_method, type_info_method, prolog_dialect, termination_norm,
+	io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect) -->
+		TypeInfoMethod, PrologDialect, TermNorm) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -184,16 +198,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ copy(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect),
+		TypeInfoMethod, PrologDialect, TermNorm),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
 		globals__io_set_option(
-			reclaim_heap_on_semidet_failure, bool(no)
-		),
+			reclaim_heap_on_semidet_failure, bool(no)),
 		globals__io_set_option(
-			reclaim_heap_on_nondet_failure, bool(no)
-		)
+			reclaim_heap_on_nondet_failure, bool(no))
 	;
 		[]
 	),
@@ -235,21 +247,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
+	% --verbose-check-termination implies --check-termination
+	option_implies(verbose_check_termination, check_termination,bool(yes)),
+	% --check-termination implies --enable-termination
+	option_implies(check_termination, termination, bool(yes)),
+
 	% --split-c-files implies --procs-per-c-function 1
-	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
-	( { Split_C_Files = yes } ->
-		globals__io_set_option(procs_per_c_function, int(1))
-	;	
-		[]
-	),
+	option_implies(split_c_files, procs_per_c_function, int(1)),
 
 	% --very-verbose implies --verbose
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	( { VeryVerbose = yes } ->
-		globals__io_set_option(verbose, bool(yes))
-	;	
-		[]
-	),
+	option_implies(very_verbose, verbose, bool(yes)),
 
 	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
@@ -287,22 +294,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
-	globals__io_lookup_bool_option(intermod_unused_args, Intermod),
-	( { Intermod = yes } ->
-		globals__io_set_option(intermodule_optimization, bool(yes)),
-		globals__io_set_option(optimize_unused_args, bool(yes))
-	;
-		[]
-	),
+	option_implies(intermod_unused_args, intermodule_optimization, 
+		bool(yes)),
+	option_implies(intermod_unused_args, optimize_unused_args, bool(yes)),
 
 	% Don't do the unused_args optimization when making the
 	% optimization interface.
-	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
-	( { MakeOpt = yes } ->
-		globals__io_set_option(optimize_unused_args, bool(no))
-	;
-		[]
-	),
+	option_implies(make_optimization_interface, optimize_unused_args,
+		bool(no)),
 
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
@@ -320,12 +319,19 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
-
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
-	globals__io_lookup_bool_option(optimize_frames, OptFrames),
-	( { OptFrames = yes } ->
-		globals__io_set_option(optimize_labels, bool(yes)),
-		globals__io_set_option(optimize_jumps, bool(yes))
+	option_implies(optimize_frames, optimize_labels, bool(yes)),
+	option_implies(optimize_frames, optimize_jumps, bool(yes)).
+
+% option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue, IO0, IO).
+% If the SourceBoolOption is set to yes, then the ImpliedOption is set
+% to ImpliedOptionValue.
+:- pred option_implies(option::in, option::in, option_data::in, 
+	io__state::di, io__state::uo) is det.
+option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
+	( { SourceOptionValue = yes } ->
+		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
 	;
 		[]
 	).

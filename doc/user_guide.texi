@@ -136,6 +136,9 @@ Files ending in @file{.opt} are
 interface files used in inter-module optimization,
 and are created using the @samp{--make-optimization-interface} 
 (or @samp{--make-opt-int}) option.
+@c Files ending in @file{.trans_opt} are interface files used in 
+@c transitive inter-module optimization, and are created using the 
+@c @samp{--make-transitive-optimization-interface} option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
@@ -222,6 +225,13 @@ then you also need to create the optimization interface files.
 mmc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
+@c If you are going to compile with @samp{--transitive-intermodule-optimization}
+@c enabled, then you also need to create the transitive optimization files.
+
+@c @example
+@c mmc -make-trans-opt @var{module1}.m @var{module2}.m ...
+@c @end example
+@c 
 Given that you have made all the interface files,
 one way to create an executable for a multi-module program
 is to compile all the modules at the same time
@@ -613,7 +623,8 @@ or its imported modules.
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
-@samp{.opt}, @samp{.optdate},
+@samp{.opt}, @samp{.optdate}, @samp{.date3}, 
+@c @samp{.trans_opt}, @samp{.trans_optdate}, 
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}}, 
@@ -831,7 +842,7 @@ C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
 
 Here @samp{VPATH} is a colon-separated list of path names specifying
 directories that Mmake will search for interface files.
-The @samp{-I} options in @samp{MCFLAGS} tell @samp{mc} where to find
+The @samp{-I} options in @samp{MCFLAGS} tell @samp{mmc} where to find
 the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
 the loader where to find shared libraries, and the @samp{-L}
 options tell the linker where to find libraries. 
@@ -1225,7 +1236,7 @@ Output progress messages at each stage in the compilation.
 
 @sp 1
 @item -V
-@itemx --very_verbose
+@itemx --very-verbose
 Output very verbose progress messages.
 
 @sp 1
@@ -1300,6 +1311,16 @@ Write the unqualified version of the short interface to
 Write information used for inter-module optimization to
 @file{@var{module}.opt}.
 
+@c @sp 1
+@c @item --make-transitive-optimization-interface
+@c @itemx --make-trans-opt
+@c Write the @file{@var{module}.trans_opt} file.  This file is used to store
+@c information used for inter-module optimization. The information is read 
+@c in when the compiler is invoked with the @samp{--transitive-optimization} 
+@c option.  The file is called ``transitive'' because a 
+@c @file{@var{module}.trans_opt} file may depend on other 
+@c @file{@var{module}.trans_opt} files.
+@c
 @sp 1
 @item -G
 @itemx --convert-to-goedel
@@ -1422,6 +1443,7 @@ n - nonlocal variables of goals,
 p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
 s - store maps of goals,
+t - results of termination analysis,
 u - unification categories,
 v - variable numbers in variable names.
 The special argument value ``all''
@@ -1791,7 +1813,7 @@ that require special treatment by @samp{mmake}.
 
 @sp 1
 @item --opt-space
-@item --optimize-space
+@itemx --optimize-space
 Turn on optimizations that reduce code size
 and turn off optimizations that significantly increase code size.
 @end table
@@ -1800,6 +1822,45 @@ and turn off optimizations that significantly increase code size.
 @item --intermodule-optimization
 Perform inlining and higher-order specialization of the code for
 predicates or functions imported from other modules.
+
+@c @sp 1
+@c @item --transitive-intermodule-optimization
+@c @item --trans-intermod-opt
+@c Use the information stored in other @file{@var{module}.trans_opt} files
+@c to make intermodule optimizations.  The @file{@var{module}.trans_opt} is
+@c different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
+@c files may depend on other @file{@var{module}.trans_opt} files.
+@c @file{@var{module}.opt} files may only depend on the
+@c @file{@var{module}.m} file.  
+@c
+@sp 1
+@item --enable-termination
+@itemx --enable-term
+Enable termination analysis.  Termination analysis analyses each mode of
+each predicate to see whether it terminates.  @samp{pragma terminates},
+@samp{pragma does_not_terminate} and @samp{pragma check_termination}
+pragmas have no effect unless termination analysis is enabled.  When
+using termination, @samp{--intermodule-optimization} should be enabled,
+as it greatly improves the accuracy of the analysis.
+
+@sp 1
+@item --check-termination
+@itemx --check-term
+@itemx --chk-term
+Enable termination analysis, and emit warnings for some predicates or
+functions that cannot be proved to terminate.  In many cases the
+compiler is unable to prove termination the problem is either a lack of
+information about the termination properties of other predicates, or
+because the program used language constructs (such as higher order
+calls) which could not be analysed.  In these cases the compiler does
+not emit a warning of non-termination, as it is likely to be spurious.
+
+@sp 1
+@item --verbose-check-termination
+@itemx --verb-check-term
+@itemx --verb-chk-term
+Enable termination analysis, and emit warnings for all predicates or 
+functions that cannot be proved to terminate.  
 
 @sp 1
 @item --split-c-files

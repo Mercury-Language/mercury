@@ -1407,18 +1407,14 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
 	).
 
+	% People never seem to remember what the right operator to use in a
+	% `:- mode' declaration is, so the syntax is forgiving.  We allow
+	% `::', the standard one which has the right precedence, but we
+	% also allow `==' just to be nice.
 :- pred mode_op(term, term, term).
 :- mode mode_op(in, out, out) is semidet.
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
-		% People never seem to remember what the right
-		% operator to use in a `:- mode' declaration is,
-		% so the syntax is forgiving.
-		% We allow `::', the standard one which has the right
-		% precedence, but we also allow `==' just to be nice.
-	(	Op = "::"
-	->	true
-	;	Op = "=="
-	).
+	( Op = "::" ; Op = "==" ).
 
 :- pred convert_mode_defn(string, term, term, maybe1(mode_defn)).
 :- mode convert_mode_defn(in, in, in, out) is det.

@@ -23,8 +23,20 @@
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
+
 :- pred special_handler(option::in, special_data::in, option_table::in,
 	maybe_option_table::out) is semidet.
+%	special_handler(Option, ValueForThatOption, OptionTableIn,
+%			MaybeOptionTableOut).
+%	This predicate is invoked whenever getopt finds an option
+%	(long or short) designated as special, with special_data holding
+%	the argument of the option (if any). The predicate can change the
+%	option table in arbitrary ways in the course of handling the option,
+%	or it can return an error message.
+%	The canonical examples of special options are -O options in compilers,
+%	which set many other options at once.
+%	The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
+%	be error(ErrorString).
 
 :- pred options_help(io__state::di, io__state::uo) is det.
 
@@ -60,6 +72,7 @@
 		;	make_short_interface
 		;	make_interface
 		;	make_optimization_interface
+		;	make_transitive_opt_interface
 		;	generate_dependencies
 		;	convert_to_mercury
 		;	convert_to_goedel
@@ -151,6 +164,7 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	transitive_optimization
 		;	split_c_files
 	%	- HLDS
 		;	inlining
@@ -174,6 +188,11 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
+		;	termination
+		;	check_termination
+		;	verbose_check_termination
+		;	termination_single_args
+		;	termination_norm
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -285,6 +304,7 @@ option_defaults_2(output_option, [
 	make_short_interface	-	bool(no),
 	make_interface		-	bool(no),
 	make_optimization_interface -	bool(no),
+	make_transitive_opt_interface -	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	typecheck_only		-	bool(no),
@@ -396,6 +416,12 @@ option_defaults_2(special_optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 	intermodule_optimization -	bool(no),
+	transitive_optimization -	bool(no),
+	check_termination	-	bool(no),
+	verbose_check_termination -	bool(no),
+	termination		-	bool(no),
+	termination_single_args	-	bool(no),
+	termination_norm	-	string("total"),
 	split_c_files		-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -561,6 +587,11 @@ long_option("make-optimization-interface",
 long_option("make-optimisation-interface",
 					make_optimization_interface).
 long_option("make-opt-int",		make_optimization_interface).
+long_option("make-transitive-optimization-interface",
+					make_transitive_opt_interface).
+long_option("make-transitive-optimisation-interface",
+					make_transitive_opt_interface).
+long_option("make-trans-opt", 		make_transitive_opt_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
@@ -660,6 +691,11 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
+long_option("transitive-intermodule-optimization", 
+					transitive_optimization).
+long_option("transitive-intermodule-optimisation", 
+					transitive_optimization).
+long_option("trans-intermod-opt", 	transitive_optimization).
 
 % HLDS->HLDS optimizations
 long_option("inlining", 		inlining).
@@ -691,6 +727,19 @@ long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
+long_option("enable-termination",	termination).
+long_option("enable-term",		termination).
+long_option("check-termination",	check_termination).
+long_option("check-term",		check_termination).
+long_option("chk-term",			check_termination).
+long_option("verbose-check-termination",verbose_check_termination).
+long_option("verb-check-term",		verbose_check_termination).
+long_option("verb-chk-term",		verbose_check_termination).
+long_option("termination-single-argument-analysis",
+					termination_single_args).
+long_option("term-single-arg", 		termination_single_args).
+long_option("termination-norm",		termination_norm).
+long_option("term-norm",		termination_norm).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -1106,6 +1155,10 @@ options_help_output -->
 	io__write_string("\t\tWrite inter-module optimization information to\n"),
 	io__write_string("\t\t`<module>.opt'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
+%	io__write_string("\t--make-transitive-optimization-interface\n"),
+%	io__write_string("\t--make-trans-opt\n"),
+%	io__write_string("\t\tOutput transitive optimization information\n"),
+%	io__write_string("\t\tinto the <module>.trans_opt file.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
@@ -1389,6 +1442,36 @@ options_help_optimization -->
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
 	io__write_string("\t\tThis option must be set throughout the compilation process.\n"),
+%	io__write_string("\t--transitive-intermodule-optimization\n"),
+%	io__write_string("\t--trans-intermod-opt\n"),
+%	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
+%	io__write_string("\t\tThis data is imported from <module>.trans_opt files.\n"),
+	io__write_string("\t--enable-termination"),
+	io__write_string("\t--enable-term"),
+	io__write_string("\t\tAnalyse each predicate to discover if it terminates.\n"),
+	io__write_string("\t--check-termination"),
+	io__write_string("\t--check-term"),
+	io__write_string("\t--chk-term"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for some\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.  In\n"),
+	io__write_string("\t\tmany cases where the compiler is unable to prove termination\n"),
+	io__write_string("\t\tthe problem is either a lack of information about the\n"),
+	io__write_string("\t\ttermination properties of other predicates, or because language\n"),
+	io__write_string("\t\tconstructs (such as higher order calls) were used which could\n"),
+	io__write_string("\t\tnot be analysed.  In these cases the compiler does not emit a\n"),
+	io__write_string("\t\twarning of non-termination, as it is likely to be spurious.\n"),
+	io__write_string("\t--verbose-check-termination"),
+	io__write_string("\t--verb-check-term"),
+	io__write_string("\t--verb-chk-term"),
+	io__write_string("\t\tEnable termination analysis, and emit warnings for all\n"),
+	io__write_string("\t\tpredicates or functions that cannot be proved to terminate.\n"),
+	io__write_string("\t--termination-norm {simple, total, num-data-elems}"),
+	io__write_string("\t\tThe norm defines how termination analysis measures the size\n"),
+	io__write_string("\t\tof a memory cell. The simple norm says that size is always one.\n"),
+	io__write_string("\t\tThe total norm says that it is the number of words in the cell.\n"),
+	io__write_string("\t\tThe num-data-elems norm says that it is the number of words in\n"),
+	io__write_string("\t\tthe cell that contain something other than pointers to cells of\n"),
+	io__write_string("\t\tthe same type.\n"),
 	io__write_string("\t--split-c-files\n"),
 	io__write_string("\t\tGenerate each C function in its own C file,\n"),
 	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
