@@ -80,6 +80,7 @@
 			;	(-)
 			;	(*)
 			;	(/)
+			;	(mod)
 			;	and	% logical and
 			;	or	% logical or
 			;	eq	% ==
@@ -209,7 +210,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 :- mode output_instruction(in, di, uo) is det.
 
 output_instruction(comment(Comment)) -->
-	io__write_strings(["/*\n\t",Comment,"\n*/"]).
+	io__write_strings(["/*\n**\t",Comment,"\n*/"]).
 
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t"),
@@ -509,6 +510,8 @@ output_operator(*) -->
 	io__write_string("*").
 output_operator(/) -->
 	io__write_string("/").
+output_operator(mod) -->
+	io__write_string("%").
 output_operator(eq) -->
 	io__write_string("==").
 output_operator(ne) -->

@@ -67,6 +67,7 @@ atom_to_operator("builtin_plus", (+)).
 atom_to_operator("builtin_minus", (-)).
 atom_to_operator("builtin_times", (*)).
 atom_to_operator("builtin_div", (/)).
+atom_to_operator("builtin_mod", (mod)).
 atom_to_operator(">", (>)).
 atom_to_operator("<", (<)).
 atom_to_operator(">=", (>=)).

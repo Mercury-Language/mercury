@@ -715,6 +715,32 @@ parse_goal_2("some", [Vars0,A0], some(Vars,A) ):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, A).
 
+	% The following is a temporary and gross hack to handle `is' in
+	% the parser - we ought to handle it in the code generation -
+	% but then `is/2' itself is a bit of a hack
+	%
+parse_goal_2("is", [Destination, Expression] , Goal) :-
+	parse_is(Expression, Destination, Goal).
+
+:- pred parse_is(term, term, goal).
+:- mode parse_is(in, in, out) is semidet.
+
+parse_is(Expression, Destination, Goal) :-
+	Expression = term__functor(term__atom(Operator), Args0, Context),
+	list__length(Args0, Arity),
+	parse_arith_expression(Operator, Arity, BuiltinPredName),
+	list__append(Args0, [Destination], Args),
+	Goal = call(term__functor(term__atom(BuiltinPredName), Args, Context)).
+
+:- pred parse_arith_expression(string, int, string).
+:- mode parse_arith_expression(in, in, out) is semidet.
+
+parse_arith_expression("+", 2, "builtin_plus").
+parse_arith_expression("-", 2, "builtin_minus").
+parse_arith_expression("*", 2, "builtin_times").
+parse_arith_expression("//", 2, "builtin_div").
+parse_arith_expression("mod", 2, "builtin_mod").
+
 :- pred parse_some_vars_goal(term, vars, goal).
 :- mode parse_some_vars_goal(in, out, out) is det.
 parse_some_vars_goal(A0, Vars, A) :-

@@ -55,16 +55,9 @@
 
 :- pred is(int :: out, int__simple_expr :: in) is det.
 
-:- implementation.
-
-:- import_module require.
-
-/*
-:- external("NU-Prolog", (is)/2).
-:- external("NU-Prolog", (<)/2).
-:- external("NU-Prolog", (=<)/2).
-:- external("NU-Prolog", (>)/2).
-:- external("NU-Prolog", (>=)/2).
+/* NB: calls to `is' get automagically converted into
+   calls to builtin_whatever by the (wait for it...) *parser*.
+   That is a quick hack to allow us to generate efficient code for it.
 */
 
 :- pred builtin_plus(int, int, int).
@@ -78,6 +71,21 @@
 
 :- pred builtin_div(int, int, int).
 :- mode builtin_div(in, in, out) is det.
+
+:- pred builtin_mod(int, int, int).
+:- mode builtin_mod(in, in, out) is det.
+
+:- implementation.
+
+:- import_module require.
+
+/*
+:- external("NU-Prolog", (is)/2).
+:- external("NU-Prolog", (<)/2).
+:- external("NU-Prolog", (=<)/2).
+:- external("NU-Prolog", (>)/2).
+:- external("NU-Prolog", (>=)/2).
+*/
 
 int__abs(I0, I) :-
 	(
