@@ -1755,6 +1755,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	MR_Word				exception;
 	MR_Word				handler;
 	enum MR_HandlerCodeModel	catch_code_model;
+	MR_bool				trace_from_full;
 	MR_Word				*orig_curfr;
 	MR_Unsigned			exception_event_number;
 
@@ -1855,6 +1856,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	catch_code_model = MR_EXCEPTION_STRUCT->MR_excp_code_model;
 	handler = MR_EXCEPTION_STRUCT->MR_excp_handler;
+	trace_from_full = (MR_bool) MR_EXCEPTION_STRUCT->MR_excp_full_trace;
 
 	/*
 	** Reset the success ip (i.e. return address).
@@ -2003,11 +2005,10 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	MR_r4 = exception;	/* This is our one input argument */
 
 	/*
-	** The handler is effectively being called from try/2 or one of
-	** its variants.  Since this caller is in the standard library,
-	** it won't be deep traced.
+	** Restore the value of MR_trace_from_full that we saved at the
+	** start of builtin_catch.
 	*/
-	MR_trace_from_full = MR_FALSE;
+	MR_trace_from_full = trace_from_full;
 
 	/*
 	** If the catch was semidet, we need to set the success indicator

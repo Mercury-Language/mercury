@@ -345,6 +345,13 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	MR_Word MR_excp_handler;
 
 	/*
+	** The value of MR_trace_from_full, saved at the time the frame was
+	** created.  This holds a value of type MR_bool, but it is declared
+	** to have type MR_Word to ensure that everything remains word-aligned.
+	*/
+	MR_Word MR_excp_full_trace;
+
+	/*
 	** The remaining fields hold stuff that must be saved in order
 	** to unwind the Mercury stacks.
 	*/
@@ -397,6 +404,9 @@ typedef struct MR_Exception_Handler_Frame_struct {
 			(handler_code_model);				      \
 		/* save the handler's closure */			      \
 		MR_EXCEPTION_STRUCT->MR_excp_handler = (handler_closure);     \
+		/* save the full tracing flag */			      \
+		MR_EXCEPTION_STRUCT->MR_excp_full_trace =		      \
+			(MR_Word) MR_trace_from_full;			      \
 		/* save the det stack pointer */			      \
 		MR_EXCEPTION_STRUCT->MR_excp_stack_ptr = MR_sp;		      \
 		MR_IF_NOT_CONSERVATIVE_GC(				      \
