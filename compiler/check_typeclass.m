@@ -122,7 +122,6 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 		InstanceDefns0, InstanceDefns, 
 		ModuleInfo0, ModuleInfo).
 
-
 	% check one instance of one class
 :- pred check_class_instance(class_id, list(class_constraint), list(tvar),
 	hlds_class_interface, tvarset, list(pred_id), 
@@ -139,7 +138,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 	InstanceDefn0 = hlds_instance_defn(_, _, _, _, InstanceBody, _, _, _),
 	(
 		InstanceBody = abstract,
-		InstanceDefn1 = InstanceDefn0,
+		InstanceDefn2 = InstanceDefn0,
 		ModuleInfo1 = ModuleInfo0,
 		Errors2 = Errors0
 	;
@@ -149,12 +148,29 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 			PredIds, InstanceDefn0, InstanceDefn1,
 			Errors0 - ModuleInfo0, Errors1 - ModuleInfo1),
 		%
+		% We need to make sure that the MaybePredProcs field is
+		% set to yes(_) after this pass.  Normally that will be
+		% handled by check_instance_pred, but we also need to handle
+		% it below, in case the class has no methods.
+		%
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E, 
+				MaybePredProcs1, G, H),
+		(
+			MaybePredProcs1 = yes(_),
+			MaybePredProcs2 = MaybePredProcs1
+		;
+			MaybePredProcs1 = no,
+			MaybePredProcs2 = yes([])
+		),
+		InstanceDefn2 = hlds_instance_defn(A, B, C, D, E, 
+				MaybePredProcs2, G, H),
+		%
 		% Check if there are any instance methods left over,
 		% for which we did not produce a pred_id/proc_id;
 		% if there are any, the instance declaration must have
 		% specified some methods that don't occur in the class.
 		%
-		InstanceDefn1 = hlds_instance_defn(_, Context, _, _,
+		InstanceDefn2 = hlds_instance_defn(_, Context, _, _,
 				_, MaybePredProcs, _, _),
 		(
 			MaybePredProcs = yes(PredProcs),
@@ -178,7 +194,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		% check that the superclass constraints are satisfied for the
 		% types in this instance declaration
 	check_superclass_conformance(ClassId, SuperClasses, Vars, ClassVarSet,
-		InstanceDefn1, InstanceDefn,
+		InstanceDefn2, InstanceDefn,
 		Errors2 - ModuleInfo1, Errors - ModuleInfo).
 
 %----------------------------------------------------------------------------%
