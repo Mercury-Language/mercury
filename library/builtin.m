@@ -296,6 +296,8 @@ const struct mercury_data___type_ctor_layout_void_0_struct {
 		mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
 };
 
+#ifdef	NATIVE_GC
+
 	/* type_ctor_layout for `succip' (only used by accurate gc) */
 
 MR_MODULE_STATIC_OR_EXTERN
@@ -356,6 +358,8 @@ const struct mercury_data___type_ctor_layout_redoip_0_struct {
 		mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
 };
 
+#endif /* NATIVE_GC */
+
 	/* type_ctor_functors definitions */
 
 	/* type_ctor_functors for `int' */
@@ -402,6 +406,8 @@ const struct mercury_data___type_ctor_functors_void_0_struct {
 } mercury_data___type_ctor_functors_void_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
+
+#ifdef	NATIVE_GC
 
 	/* type_ctor_functors for `succip' (only used by accurate gc) */
 
@@ -456,6 +462,8 @@ const struct mercury_data___type_ctor_functors_redoip_0_struct {
 } mercury_data___type_ctor_functors_redoip_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
+
+#endif /* NATIVE_GC */
 
 #endif /* USE_TYPE_LAYOUT */
 
@@ -614,6 +622,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	(const Word *) string_const(""void"", 4)
 #endif
 };
+
+#ifdef	NATIVE_GC
 
 	/* type_ctor_info for `succip' (only used by accurate gc) */
 
@@ -788,6 +798,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redofr_0_struct {
 	(const Word *) string_const(""redofr"", 6)
 #endif
 };
+
+#endif /* NATIVE_GC */
 
 BEGIN_MODULE(builtin_types_module)
 
