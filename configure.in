@@ -221,6 +221,11 @@ case "$host" in
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
+if test "$HAVE_SYS_WAIT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_WAIT)
+fi
+#-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
 if test "$HAVE_SYS_SIGINFO_H" = 1; then
 	AC_DEFINE(HAVE_SYS_SIGINFO)
@@ -876,6 +881,62 @@ if test "$mercury_cv_is_littleender" = yes; then
 	AC_DEFINE(MR_LITTLE_ENDIAN)
 fi
 AC_SUBST(MR_LITTLE_ENDIAN)
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(return values of system)
+AC_CACHE_VAL(mercury_cv_normal_system_retval,
+	AC_TRY_RUN([
+	#include <stdlib.h>
+	#ifdef HAVE_SYS_WAIT
+	#include <sys/wait.h>
+	#endif
+	int main() {
+		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+			defined (WIFSIGNALED) && defined (WTERMSIG)
+		/* 
+		** All the necessary macros for handling the return values of
+		** system() are defined, so we do not need to test the return
+		** value of system()
+		*/
+		exit(0);
+	
+		#else
+		/*
+		** Normal return values from system() are considered to be
+		** when high 8 bits of the return value give the exit
+		** status, and the low 8 bits give the signal number which
+		** killed the process.
+		*/
+			if( system("exit 0") == 0 &&
+					system("exit 42") == 42 << 8 ) {
+					/* && system("kill -9 $$") == 9 */
+				exit(0);
+			} else {
+				exit(1);
+			}
+		#endif
+	}],
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no],
+	AC_TRY_COMPILE([#include <sys/wait.h>], [
+	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+		defined (WIFSIGNALED) && defined (WTERMSIG)
+
+	#else
+	/* 
+	** As these macros are not defined the compilation must fail.
+	** Unmatched brackets should do that for us.
+	*/
+		}
+	#endif
+	], 
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no]))
+)
+AC_MSG_RESULT($mercury_cv_normal_system_retval)
+if test "$mercury_cv_normal_system_retval" = no; then
+	AC_MSG_ERROR(Unable to interpret return values from system)
+	exit 1
+fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for tempnam)
 AC_CACHE_VAL(mercury_cv_has_tempnam,

@@ -69,6 +69,10 @@ NEWS since Mercury release 0.7
   solutions and then aggregating them.  This allows you
   to print out solutions as they are found, for example.
 
+* We've changed the result produced by io__call_system/4 so that it returns 
+  the exit code of the system call. If a signal causes the system call to
+  exit, then io__call_system/4 returns an error.
+
 * We've improved the C interface.
 
   We now handle the case when `main' is defined in C rather than in Mercury

@@ -876,6 +876,10 @@
 %		Invokes the operating system shell with the specified
 %		Command.  Result is either `ok(ExitStatus)', if it was
 %		possible to invoke the command, or `error(ErrorCode)' if not.
+%		The ExitStatus will be 0 if the command completed
+%		successfully or the return value of the system call.  If a
+%		signal kills the system call, then Result will be an error
+%		indicating which signal occured.
 
 :- pred io__error_message(io__error, string).
 :- mode io__error_message(in, out) is det.
@@ -987,9 +991,11 @@
 
 :- pred io__call_system_code(string, int, io__state, io__state).
 :- mode io__call_system_code(in, out, di, uo) is det.
-%	io__call_system(Command, Status, IO0, IO1).
+%	io__call_system_code(Command, Status, IO0, IO1).
 %		Invokes the operating system shell with the specified
-%		Command.  Returns Status = -1 on failure.
+%		Command.  Returns Status = 127 on failure.  Otherwise
+%		returns the exit status as a positive integer, or the
+%		signal which killed the command as a negative integer.
 
 :- pred io__do_open(string, string, int, io__input_stream,
 			io__state, io__state).
@@ -1954,9 +1960,15 @@ io__insert_std_stream_names -->
 
 io__call_system(Command, Result) -->
 	io__call_system_code(Command, Status),
-	{ Status = -1 ->
+	{ Status = 127 ->
 		% XXX improve error message
 		Result = error("can't invoke system command")
+	; Status < 0 ->
+		Signal is - Status,
+		string__int_to_string(Signal, SignalStr),
+		string__append("system command killed by signal number ",
+			SignalStr, ErrMsg),
+		Result = error(ErrMsg)
 	;
 		Result = ok(Status)
 	}.
@@ -1993,6 +2005,10 @@ io__set_op_table(_OpTable) --> [].
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+
+#ifdef HAVE_SYS_WAIT
+#include <sys/wait.h>
+#endif
 
 /*
 ** Mercury files are not quite the same as C stdio FILEs,
@@ -2554,6 +2570,33 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__call_system_code(Command::in, Status::out, IO0::di, IO::uo),
 "
 	Status = system(Command);
+	if ( Status == -1 || Status == 127 ) {
+		/* 
+		** Return values of 127 or -1 from system() indicate that
+		** the system call failed.  Dont return -1, as -1 indicates
+		** that the system call was killed by signal number 1. 
+		*/
+		Status = 127;
+	} else {
+		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+			defined (WIFSIGNALED) && defined (WTERMSIG)
+		if (WIFEXITED(Status))
+			Status = WEXITSTATUS(Status);
+		else if (WIFSIGNALED(Status))
+			Status = -WTERMSIG(Status);
+		else
+			Status = 127;
+	
+		#else
+		if (Status & 0xff != 0) 
+			/* the process was killed by a signal */
+			Status = -(Status & 0xff);
+		else 
+			/* the process terminated normally */
+			Status = (Status & 0xff00) >> 8;
+	
+		#endif
+	}
 	update_io(IO0, IO);
 ").
 
