@@ -7,11 +7,17 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 mdemangle_test.out: mdemangle_test.inp
-	mdemangle < mdemangle_test.inp > mdemangle_test.out
+	mdemangle < mdemangle_test.inp > mdemangle_test.out 2>&1
+
+debugger_test.out: debugger_test debugger_test.inp
+	debugger_test debugger_test.m < debugger_test.inp \
+		> debugger_test.out 2>&1
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	
+PROGS=	debugger_test
+
+MCFLAGS-debugger_test = --generate-trace
 
 #-----------------------------------------------------------------------------#
 
