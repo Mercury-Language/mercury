@@ -130,7 +130,7 @@ prog_out__write_module_list([]) -->
 /**************************
 
 % Please note that this code is the property of
-% the The University of Melbourne and is Copyright 1985, 1986, 1987, 1988 by it.
+% the University of Melbourne and is Copyright 1985, 1986, 1987, 1988 by it.
 % 
 % All rights are reserved.
 %
