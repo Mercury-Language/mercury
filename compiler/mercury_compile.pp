@@ -762,9 +762,11 @@ read_mod(ModuleName, Extension, Descr, Items, Error) -->
 	{ string__append(ModuleName, Extension, FileName) },
 	prog_io__read_module(FileName, Module, Error, Messages, Items),
 	( { Error = fatal } ->
-		maybe_write_string(VeryVerbose, "fatal error(s).\n")
+		maybe_write_string(VeryVerbose, "fatal error(s).\n"),
+		io__set_exit_status(1)
 	; { Error = yes } ->
-		maybe_write_string(VeryVerbose, "parse error(s).\n")
+		maybe_write_string(VeryVerbose, "parse error(s).\n"),
+		io__set_exit_status(1)
 	;
 		maybe_write_string(VeryVerbose, "successful parse.\n")
 	),
