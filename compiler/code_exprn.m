@@ -960,20 +960,27 @@ code_exprn__place_evaled(Rvals0, Var, Lval, Code) -->
 			_, Code)
 	).
 
-:- pred code_exprn__place_arg(rval, lval, code_tree, exprn_info, exprn_info).
-:- mode code_exprn__place_arg(in, out, out, in, out) is det.
+:- pred code_exprn__place_arg(rval, maybe(lval), lval, code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__place_arg(in, in, out, out, in, out) is det.
 
-code_exprn__place_arg(Rval0, Lval, Code) -->
+code_exprn__place_arg(Rval0, MaybeLval, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
 	(
-			% if the variable already has its value stored,
-			% we don't need to generate any code
+			% If the variable already has its value stored in an
+			% acceptable place, we don't need to generate any code.
 		{ Rval0 = var(Var1) },
 		{ map__search(Vars0, Var1, Stat0) },
 		{ Stat0 = evaled(VarRvals) },
 		{ set__to_sorted_list(VarRvals, RvalList) },
-		{ code_exprn__select_rval(RvalList, BestVarRval) },
-		{ BestVarRval = lval(Lval0) }
+		{
+			MaybeLval = no,
+			code_exprn__select_rval(RvalList, BestVarRval),
+			BestVarRval = lval(Lval0)
+		;
+			MaybeLval = yes(Lval0),
+			list__member(lval(Lval0), RvalList)
+		}
 	->
 		{ Lval = Lval0 },
 		code_exprn__add_lval_reg_dependencies(Lval),
@@ -981,13 +988,15 @@ code_exprn__place_arg(Rval0, Lval, Code) -->
 	;
 			% If the value of the variable is a constant or
 			% is built up by operations involving only constants,
-			% get the constant form and assign that
+			% get the constant form and assign that.
 		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__expr_is_constant(Rval0, Vars0, ExprnOpts, Rval) }
 	->
-		code_exprn__place_exprn(no, no, Rval, yes, yes, Lval, Code)
+		code_exprn__place_exprn(MaybeLval, no, Rval, yes, yes, Lval,
+			Code)
 	;
-		code_exprn__place_exprn(no, no, Rval0, no, no, Lval, Code)
+		code_exprn__place_exprn(MaybeLval, no, Rval0, no, no, Lval,
+			Code)
 	).
 
 :- pred code_exprn__place_exprn(maybe(lval), maybe(var), rval, bool, bool,
@@ -1166,27 +1175,44 @@ code_exprn__construct_cell(Lval, VarName, Tag, Arity, Rvals, Code) -->
 	{ Code0 = node([
 		incr_hp(Lval, yes(Tag), const(int_const(Arity))) - Comment
 	]) },
-	code_exprn__construct_args(Rvals, Tag, Lval, 0, Code1),
+	code_exprn__construct_args(Rvals, Tag, Lval, 0, Targets, Code1),
+	code_exprn__free_arg_dependenciess(Targets),
 	{ Code = tree(Code0, Code1) }.
 
 :- pred code_exprn__construct_args(list(maybe(rval)), int, lval, int,
-	code_tree, exprn_info, exprn_info).
-:- mode code_exprn__construct_args(in, in, in, in, out, in, out) is det.
+	list(lval), code_tree, exprn_info, exprn_info).
+:- mode code_exprn__construct_args(in, in, in, in, out, out, in, out) is det.
 
-code_exprn__construct_args([], _, _, _, empty) --> [].
-code_exprn__construct_args([R | Rs], Tag, Lval, N0, Code) -->
+code_exprn__construct_args([], _, _, _, [], empty) --> [].
+code_exprn__construct_args([R | Rs], Tag, Lval, N0, Targets, Code) -->
 	(
 		{ R = yes(Rval) }
 	->
-		code_exprn__construct_code(
-			field(Tag, lval(Lval), const(int_const(N0))),
-			"unknown argument", Rval, Code0)
+		{ Target0 = field(Tag, lval(Lval), const(int_const(N0))) },
+		{ MaybeTarget = yes(Target0) },
+		code_exprn__place_arg(Rval, yes(Target0), _, Code0)
 	;
-		{ Code0 = empty }
+		{ Code0 = empty },
+		{ MaybeTarget = no }
 	),
 	{ N1 is N0 + 1 },
+	code_exprn__construct_args(Rs, Tag, Lval, N1, Targets1, Code1),
 	{ Code = tree(Code0, Code1) },
-	code_exprn__construct_args(Rs, Tag, Lval, N1, Code1).
+	{
+		MaybeTarget = yes(Target),
+		Targets = [Target | Targets1]
+	;
+		MaybeTarget = no,
+		Targets = Targets1
+	}.
+
+:- pred code_exprn__free_arg_dependenciess(list(lval), exprn_info, exprn_info).
+:- mode code_exprn__free_arg_dependenciess(in, in, out) is det.
+
+code_exprn__free_arg_dependenciess([]) --> [].
+code_exprn__free_arg_dependenciess([Target | Targets]) -->
+	code_exprn__rem_lval_reg_dependencies(Target),
+	code_exprn__free_arg_dependenciess(Targets).
 
 %------------------------------------------------------------------------------%
 
@@ -1263,7 +1289,7 @@ code_exprn__produce_args([Arg | Args], [Arg - Loc | ArgLocs], Code) -->
 :- mode code_exprn__produce_arg(in, out, out, in, out) is det.
 
 code_exprn__produce_arg(Rval0, Rval, Code) -->
-	code_exprn__place_arg(Rval0, Lval, Code),
+	code_exprn__place_arg(Rval0, no, Lval, Code),
 	{ Rval = lval(Lval) }.
 
 :- pred code_exprn__release_arglocs(assoc_list(rval, rval),
