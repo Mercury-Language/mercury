@@ -63,11 +63,12 @@
 %	corresponding types and default values.
 %
 % :- pred special_handler(option::in, special_data::in,
-%	option_table::in, option_table::out) is semidet.
+%	option_table::in, maybe_option_table::out) is semidet.
 %	This predicate is invoked whenever getopt finds an option
 %	(long or short) designated as special, with special_data holding
 %	the argument of the option (if any). The predicate can change the
-%	option table in arbitrary ways in the course of handling the option.
+%	option table in arbitrary ways in the course of handling the option,
+%	or it can return an error message.
 %	The canonical examples of special options are -O options in compilers,
 %	which set many other options at once.
 
@@ -90,7 +91,7 @@
 			pred(OptionType, option_data),	% option_default
 			pred(OptionType, special_data,	% special option handler
 				option_table(OptionType),
-				option_table(OptionType))
+				maybe_option_table(OptionType))
 		).
 
 :- inst option_ops =
@@ -487,9 +488,9 @@ getopt__process_special(Option, Flag, OptionData, OptionOps,
 		OptionTable0, Result) :-
 	(
 		getopt__get_special_handler(OptionOps, Handler),
-		call(Handler, Flag, OptionData, OptionTable0, OptionTable)
+		call(Handler, Flag, OptionData, OptionTable0, Result0)
 	->
-		Result = ok(OptionTable)
+		Result = Result0
 	;
 		string__append_list(["option `", Option, "' has no handler"],
 			ErrorMsg),
@@ -539,7 +540,7 @@ getopt__get_option_defaults(option_ops(_, _, OptionDefs, _), OptionDefs).
 
 :- pred getopt__get_special_handler(option_ops(OptionType)::in(option_ops),
 	pred(OptionType, special_data,
-		option_table(OptionType), option_table(OptionType))::
+		option_table(OptionType), maybe_option_table(OptionType))::
 		out(pred(in, in, in, out) is semidet)) is semidet.
 
 getopt__get_special_handler(option_ops(_, _, _, SpecHandler), SpecHandler).
