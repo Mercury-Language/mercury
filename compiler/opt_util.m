@@ -476,7 +476,7 @@ opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
 		opt_util__straight_alternative_2(Instrs0, [Instr0 | Between0],
 			Between, After)
 	;
-		Uinstr0 = goto(do_succeed(no), do_succeed(no))
+		Uinstr0 = goto(do_succeed(no), _)
 	->
 		Between = Between0,
 		After = Instrs0
@@ -524,6 +524,18 @@ opt_util__lval_refers_stackvars(framevar(_), _) :-
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curfr, no).
+opt_util__lval_refers_stackvars(succfr(_Rval), _Refers) :-
+	% I'm not 100% sure of what we should do here, so
+	% to be safe, just abort. I don't think this code
+	% is used anyway. -fjh.
+	error("found succfr in lval_refers_stackvars").
+	%%% opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__lval_refers_stackvars(prevfr(_Rval), _Refers) :-
+	% I'm not 100% sure of what we should do here, so
+	% to be safe, just abort. I don't think this code
+	% is used anyway. -fjh.
+	error("found prevfr in lval_refers_stackvars").
+	%%% opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(redoip(Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__lval_refers_stackvars(hp, no).
@@ -988,6 +1000,8 @@ opt_util__touches_nondet_ctrl_lval(framevar(_), no).
 opt_util__touches_nondet_ctrl_lval(succip, no).
 opt_util__touches_nondet_ctrl_lval(maxfr, yes).
 opt_util__touches_nondet_ctrl_lval(curfr, yes).
+opt_util__touches_nondet_ctrl_lval(succfr(_), yes).
+opt_util__touches_nondet_ctrl_lval(prevfr(_), yes).
 opt_util__touches_nondet_ctrl_lval(redoip(_), yes).
 opt_util__touches_nondet_ctrl_lval(hp, no).
 opt_util__touches_nondet_ctrl_lval(sp, no).
@@ -1024,9 +1038,13 @@ opt_util__lval_access_rvals(succip, []).
 opt_util__lval_access_rvals(maxfr, []).
 opt_util__lval_access_rvals(curfr, []).
 opt_util__lval_access_rvals(redoip(Rval), [Rval]).
+opt_util__lval_access_rvals(prevfr(Rval), [Rval]).
+opt_util__lval_access_rvals(succfr(Rval), [Rval]).
 opt_util__lval_access_rvals(hp, []).
 opt_util__lval_access_rvals(sp, []).
 opt_util__lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
 opt_util__lval_access_rvals(temp(_), []).
 opt_util__lval_access_rvals(lvar(_), _) :-
 	error("lvar detected in opt_util__lval_access_rvals").
+
+%-----------------------------------------------------------------------------%

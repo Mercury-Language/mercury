@@ -134,6 +134,8 @@
 			;	curfr		% nondet stack frame pointer
 			;	redoip(rval)	% the redoip of the named
 						% nondet stack frame
+			;	succfr(rval)	
+			;	prevfr(rval)	
 			;	hp		% heap pointer
 			;	sp		% top of det stack
 			;	field(tag, rval, rval)
@@ -548,7 +550,7 @@ output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
-	( { Inst = comment(_) } ->
+	( { PrintModComments = no, Inst = comment(_) } ->
 		[]
 	;
 		output_instruction(Inst),
@@ -856,6 +858,10 @@ output_lval_decls(framevar(_)) --> [].
 output_lval_decls(succip) --> [].
 output_lval_decls(maxfr) --> [].
 output_lval_decls(curfr) --> [].
+output_lval_decls(succfr(Rval)) -->
+	output_rval_decls(Rval).
+output_lval_decls(prevfr(Rval)) -->
+	output_rval_decls(Rval).
 output_lval_decls(redoip(Rval)) -->
 	output_rval_decls(Rval).
 output_lval_decls(hp) --> [].
@@ -1388,6 +1394,14 @@ output_lval(maxfr) -->
 	io__write_string("LVALUE_CAST(Word,maxfr)").
 output_lval(curfr) -->
 	io__write_string("LVALUE_CAST(Word,curfr)").
+output_lval(succfr(Rval)) -->
+	io__write_string("LVALUE_CAST(Word,bt_succfr("),
+	output_rval(Rval),
+	io__write_string("))").
+output_lval(prevfr(Rval)) -->
+	io__write_string("LVALUE_CAST(Word,bt_prevfr("),
+	output_rval(Rval),
+	io__write_string("))").
 output_lval(redoip(Rval)) -->
 	io__write_string("LVALUE_CAST(Word,bt_redoip("),
 	output_rval(Rval),
@@ -1405,6 +1419,9 @@ output_lval(lvar(_)) -->
 output_lval(temp(N)) -->
 	io__write_string("temp"),
 	io__write_int(N).
+
+% output_rval_lval is the same as output_lval,
+% except that the result is cast to (Integer).
 
 :- pred output_rval_lval(lval, io__state, io__state).
 :- mode output_rval_lval(in, di, uo) is det.
@@ -1440,6 +1457,14 @@ output_rval_lval(maxfr) -->
 	io__write_string("(Integer) maxfr").
 output_rval_lval(curfr) -->
 	io__write_string("(Integer) curfr").
+output_rval_lval(succfr(Rval)) -->
+	io__write_string("(Integer) bt_succfr("),
+	output_rval(Rval),
+	io__write_string(")").
+output_rval_lval(prevfr(Rval)) -->
+	io__write_string("(Integer) bt_prevfr("),
+	output_rval(Rval),
+	io__write_string(")").
 output_rval_lval(redoip(Rval)) -->
 	io__write_string("(Integer) bt_redoip("),
 	output_rval(Rval),
@@ -1455,7 +1480,7 @@ output_rval_lval(field(Tag, Rval, FieldNum)) -->
 output_rval_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
 output_rval_lval(temp(N)) -->
-	io__write_string("temp"),
+	io__write_string("(Integer) temp"),
 	io__write_int(N).
 
 %-----------------------------------------------------------------------------%

@@ -43,6 +43,8 @@ vn__find_specials(vn_succip, [vn_succip]).
 vn__find_specials(vn_maxfr, [vn_maxfr]).
 vn__find_specials(vn_curfr, [vn_curfr]).
 vn__find_specials(vn_redoip(Vn), [vn_redoip(Vn)]).
+vn__find_specials(vn_succfr(Vn), [vn_succfr(Vn)]).
+vn__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn__find_specials(vn_hp, [vn_hp]).
 vn__find_specials(vn_sp, [vn_sp]).
 vn__find_specials(vn_field(_, _, _), []).
@@ -346,6 +348,12 @@ vn__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables1),
 		vn__rval_to_vn(Rval2, Vn2, VnTables1, VnTables),
 		Vnlval = vn_field(Tag, Vn1, Vn2)
+	; Lval = succfr(Rval1) ->
+		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_succfr(Vn1)
+	; Lval = prevfr(Rval1) ->
+		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_prevfr(Vn1)
 	; Lval = redoip(Rval1) ->
 		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_redoip(Vn1)
@@ -363,6 +371,8 @@ vn__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
 vn__no_access_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
 vn__no_access_lval_to_vnlval(curfr,		yes(vn_curfr)).
 vn__no_access_lval_to_vnlval(redoip(_),		no).
+vn__no_access_lval_to_vnlval(prevfr(_),		no).
+vn__no_access_lval_to_vnlval(succfr(_),		no).
 vn__no_access_lval_to_vnlval(hp,		yes(vn_hp)).
 vn__no_access_lval_to_vnlval(sp,		yes(vn_sp)).
 vn__no_access_lval_to_vnlval(field(_, _, _),	no).
@@ -376,6 +386,8 @@ vn__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
 vn__no_access_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
 vn__no_access_vnlval_to_lval(vn_curfr,		yes(curfr)).
+vn__no_access_vnlval_to_lval(vn_succfr(_),	no).
+vn__no_access_vnlval_to_lval(vn_prevfr(_),	no).
 vn__no_access_vnlval_to_lval(vn_redoip(_),	no).
 vn__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
@@ -389,6 +401,8 @@ vn__vnlval_access_vns(vn_framevar(_), []).
 vn__vnlval_access_vns(vn_succip, []).
 vn__vnlval_access_vns(vn_maxfr, []).
 vn__vnlval_access_vns(vn_curfr, []).
+vn__vnlval_access_vns(vn_succfr(Vn), [Vn]).
+vn__vnlval_access_vns(vn_prevfr(Vn), [Vn]).
 vn__vnlval_access_vns(vn_redoip(Vn), [Vn]).
 vn__vnlval_access_vns(vn_hp, []).
 vn__vnlval_access_vns(vn_sp, []).
@@ -409,6 +423,8 @@ vn__find_sub_vns_vnlval(vn_framevar(_), []).
 vn__find_sub_vns_vnlval(vn_succip, []).
 vn__find_sub_vns_vnlval(vn_maxfr, []).
 vn__find_sub_vns_vnlval(vn_curfr, []).
+vn__find_sub_vns_vnlval(vn_succfr(Vn), [Vn]).
+vn__find_sub_vns_vnlval(vn_prevfr(Vn), [Vn]).
 vn__find_sub_vns_vnlval(vn_redoip(Vn), [Vn]).
 vn__find_sub_vns_vnlval(vn_hp, []).
 vn__find_sub_vns_vnlval(vn_sp, []).

@@ -392,6 +392,8 @@ vn__classify_loc_cost(vn_framevar(_), 1).
 vn__classify_loc_cost(vn_succip, 0).
 vn__classify_loc_cost(vn_maxfr, 0).
 vn__classify_loc_cost(vn_curfr, 0).
+vn__classify_loc_cost(vn_succfr(_), 1).
+vn__classify_loc_cost(vn_prevfr(_), 1).
 vn__classify_loc_cost(vn_redoip(_), 1).
 vn__classify_loc_cost(vn_hp, 0).
 vn__classify_loc_cost(vn_sp, 0).
@@ -945,6 +947,18 @@ vn__flush_access_path(Vnlval, Srcs, Lval, VnTables0, VnTables,
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		AccessInstrs = []
+	;
+		Vnlval = vn_succfr(Vn1),
+		vn__flush_vn(Vn1, [src_access(Vnlval) | Srcs], Rval,
+			VnTables0, VnTables,
+			Templocs0, Templocs, AccessInstrs),
+		Lval = succfr(Rval)
+	;
+		Vnlval = vn_prevfr(Vn1),
+		vn__flush_vn(Vn1, [src_access(Vnlval) | Srcs], Rval,
+			VnTables0, VnTables,
+			Templocs0, Templocs, AccessInstrs),
+		Lval = prevfr(Rval)
 	;
 		Vnlval = vn_redoip(Vn1),
 		vn__flush_vn(Vn1, [src_access(Vnlval) | Srcs], Rval,

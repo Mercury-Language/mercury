@@ -95,93 +95,78 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 %---------------------------------------------------------------------------%
 
 disj_gen__generate_non_disj(Goals0, Code) -->
+	{ disj_gen__sort_cases(Goals0, Goals1) },
+
 		% Sanity check
-	{ Goals0 = [] ->
+	{ Goals1 = [] ->
 		error("empty disjunction shouldn't be non-det")
-	; Goals0 = [_]  ->
+	; Goals1 = [_]  ->
 		error("singleton disjunction")
 	;
 		true
 	},
-	{ disj_gen__sort_cases(Goals0, Goals1) },
+
 	code_info__generate_nondet_saves(SaveVarsCode),
-	code_info__failure_cont(Cont),
-	(
-		{ Cont = unknown }
-	->
-		code_info__save_redoip(RedoIpCode),
-		{ RedoSaved = yes }
-	;
-		{ RedoIpCode = empty },
-		{ RedoSaved = no }
-	),
+
+	disj_gen__hijack_failure_cont(ContLabel, HijackCode),
+
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
+
 	code_info__get_next_label(EndLab, yes),
-	disj_gen__generate_non_disj_2(Goals1, EndLab, RedoSaved, GoalsCode),
-	{ Code = tree(tree(SaveVarsCode, RedoIpCode),
+	disj_gen__generate_non_disj_2(Goals1, EndLab, ContLabel, GoalsCode),
+	{ Code = tree(tree(SaveVarsCode, HijackCode),
 			tree(SaveHeapCode, GoalsCode)) },
+
 		% since we don't know which disjunct we have come from
 		% we must set the current failure continuation to unkown.
 	code_info__pop_failure_cont,
 	code_info__push_failure_cont(unknown).
 
-:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, bool,
+:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, label,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_non_disj_2(in, in, in, out, in, out) is det.
 
-disj_gen__generate_non_disj_2([], _EndLab, _MRedoIp, _EndCode) -->
+disj_gen__generate_non_disj_2([], _EndLab, _ContLabel, _Code) -->
 	{ error("disj_gen__generate_non_disj_2") }.
-disj_gen__generate_non_disj_2([Goal|Goals], EndLab, MRedoIp, DisjCode) -->
+disj_gen__generate_non_disj_2([Goal|Goals], EndLab, ContLab0, DisjCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
-	(
-		{ Goals = [_|_] }
-	->
-		code_info__get_next_label(ContLab0, yes),
-		code_info__push_failure_cont(known(ContLab0)),
-			% Set the failure continuation for the
-			% maxfr to point to the start of the next
-			% disjunct. If the failure continuation is
-			% known(_) then this is equivalent to a
-			% modframe.
-		{ ContCode = node([
-			assign(redoip(lval(maxfr)),
-				const(address_const(label(ContLab0)))) -
-				"Set failure continuation"
-		]) },
-		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_non_goal(Goal, GoalCode),
-		{ SuccCode = node([
-			goto(label(EndLab), label(EndLab)) -
-				"Jump to end of disj",
-			label(ContLab0) - "Start of next disjunct"
-		]) },
+	code_info__grab_code_info(CodeInfo),
+	code_gen__generate_forced_non_goal(Goal, GoalCode),
+	code_info__slap_code_info(CodeInfo),
+	{ SuccCode = node([
+		goto(label(EndLab), label(EndLab)) -
+			"Jump to end of disj",
+		label(ContLab0) - "Start of next disjunct"
+	]) },
+	( { Goals = [] } ->
+		{ error("disj_gen__generate_non_disj_2 #2") }
+	; { Goals = [Goal2] } ->
+		disj_gen__restore_failure_cont(RestoreAfterFailureCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
-		code_info__slap_code_info(CodeInfo),
 		code_info__remake_with_call_info,
-		code_info__pop_failure_cont,
-		{ DisjCode = tree(tree(ContCode, GoalCode),
-			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
-		disj_gen__generate_non_disj_2(Goals, EndLab, MRedoIp, RestCode)
-	;
 		code_info__maybe_pop_stack(ReclaimHeap, PopCode),
-		(
-			{ MRedoIp = no }
-		->
-			code_info__restore_failure_cont(ContCode)
-		;
-			code_info__restore_redoip(ContCode)
-		),
-		code_gen__generate_forced_non_goal(Goal, GoalCode),
+		code_gen__generate_forced_non_goal(Goal2, Goal2Code),
 		{ EndCode = node([
 			label(EndLab) - "End of disj"
 		]) },
-		{ DisjCode = tree(tree(PopCode, ContCode),
-				tree(GoalCode, EndCode)) }
+		{ DisjCode = tree(tree(GoalCode, SuccCode),
+				tree(RestoreAfterFailureCode,
+				tree(RestoreHeapCode, tree(PopCode,
+				tree(Goal2Code, EndCode))))) }
+	;
+		disj_gen__modify_failure_cont(ContLab1, ModifyFailureContCode),
+		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
+		code_info__remake_with_call_info,
+		disj_gen__generate_non_disj_2(Goals, EndLab, ContLab1,
+				RestCode),
+		{ DisjCode = tree(tree(GoalCode, SuccCode),
+				tree(ModifyFailureContCode,
+				tree(RestoreHeapCode, RestCode))) }
 	).
 
 :- pred disj_gen__sort_cases(list(hlds__goal), list(hlds__goal)).
@@ -205,6 +190,78 @@ disj_gen__sort_cases_2([Goal0 - GoalInfo0 | Goals0], CanFail, CannotFail) :-
 	;
 		CannotFail = CannotFail0,
 		CanFail = [Goal0 - GoalInfo0 | CanFail0]
+	).
+
+:- pred disj_gen__hijack_failure_cont(label, code_tree,
+					code_info, code_info).
+:- mode disj_gen__hijack_failure_cont(out, out, in, out) is det.
+
+	% Set the failure continuation for the
+	% maxfr to point to the start of the next
+	% disjunct. If the failure continuation is
+	% known(_) then this is equivalent to a
+	% modframe.
+disj_gen__hijack_failure_cont(ContLab, HijackCode) -->
+	code_info__failure_cont(OrigCont),
+	code_info__get_next_label(ContLab, yes),
+	code_info__push_failure_cont(known(ContLab)),
+	( { OrigCont = unknown } ->
+			% efficiency of this code could be improved
+		{ HijackCode = node([
+			mkframe("hijack", 1, label(ContLab)) -
+				"create a temporary frame",
+			assign(curfr, lval(succfr(lval(maxfr)))) -
+				"restore curfr (which was clobbered by mkframe)"
+		]) }
+	;
+		{ HijackCode = node([
+			assign(redoip(lval(maxfr)),
+				const(address_const(label(ContLab)))) -
+				"Set failure continuation"
+		]) }
+	).
+
+:- pred disj_gen__modify_failure_cont(label, code_tree,
+					code_info, code_info).
+:- mode disj_gen__modify_failure_cont(out, out, in, out) is det.
+
+disj_gen__modify_failure_cont(ContLab, ModifyCode) -->
+	code_info__pop_failure_cont,
+	code_info__failure_cont(OrigCont),
+	( { OrigCont = unknown } ->
+		{ RestoreCurfrCode = node([
+			assign(curfr, lval(succfr(lval(maxfr)))) -
+				"restore curfr from temporary frame"
+		]) }
+	;
+		{ RestoreCurfrCode = empty }
+	),
+	code_info__get_next_label(ContLab, yes),
+	code_info__push_failure_cont(known(ContLab)),
+	{ ContCode = node([
+		assign(redoip(lval(maxfr)),
+			const(address_const(label(ContLab)))) -
+			"Set failure continuation"
+	]) },
+	{ ModifyCode = tree(RestoreCurfrCode, ContCode) }.
+
+:- pred disj_gen__restore_failure_cont(code_tree,
+					code_info, code_info).
+:- mode disj_gen__restore_failure_cont(out, in, out) is det.
+
+disj_gen__restore_failure_cont(RestoreCode) -->
+	code_info__pop_failure_cont,
+	code_info__failure_cont(OrigCont),
+	( { OrigCont = unknown } ->
+		{ RestoreCode = node([
+			assign(curfr, lval(succfr(lval(maxfr)))) -
+				"restore curfr from temporary frame",
+			assign(maxfr, lval(prevfr(lval(maxfr)))) -
+				"pop the temporary frame"
+		]) }
+	;
+		% this generates a modframe
+		code_info__restore_failure_cont(RestoreCode)
 	).
 
 %---------------------------------------------------------------------------%

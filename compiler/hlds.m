@@ -1178,6 +1178,9 @@ invalid_pred_id(-1).
 
 :- interface.
 
+:- pred cons_id_to_const(cons_id, const, arity).
+:- mode cons_id_to_const(in, out, out) is semidet.
+
 :- pred make_functor_cons_id(const, arity, cons_id).
 :- mode make_functor_cons_id(in, in, out) is det.
 
@@ -1187,6 +1190,11 @@ invalid_pred_id(-1).
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+cons_id_to_const(cons(Name, Arity), term__atom(Name), Arity).
+cons_id_to_const(int_const(Int), term__integer(Int), 0).
+cons_id_to_const(string_const(String), term__string(String), 0).
+cons_id_to_const(float_const(Float), term__float(Float), 0).
 
 make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).

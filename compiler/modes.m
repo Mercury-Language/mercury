@@ -112,12 +112,15 @@ modecheck(Module0, Module) -->
 
 	maybe_write_string(Verbose,
 		"% Checking for undefined insts and modes...\n"),
-	check_undefined_modes(Module0, Module1),
+	check_undefined_modes(Module0, Module1, FoundUndefError),
 	maybe_report_stats(Statistics),
-
-	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
-	check_pred_modes(Module1, Module),
-	maybe_report_stats(Statistics),
+	( { FoundUndefError = yes } ->
+		{ module_info_incr_errors(Module1, Module) }
+	;
+		maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
+		check_pred_modes(Module1, Module),
+		maybe_report_stats(Statistics)
+	),
 
 	io__set_output_stream(OldStream, _).
 
@@ -727,8 +730,18 @@ modecheck_case_list([Case0 | Cases0], Var,
 	{ Case0 = case(ConsId, Goal0) },
 	{ Case = case(ConsId, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
-		% XXX technically we should probably record
-		% that Var was bound to ConsId in the instmap here
+
+		% record the fact that Var was bound to ConsId in the
+		% instmap before processing this case
+	( { cons_id_to_const(ConsId, Const, Arity) } ->
+		{ list__duplicate(Arity, free, ArgInsts) },
+		modecheck_set_var_inst(Var, bound([functor(Const, ArgInsts)]))
+	;
+		% cons_id_to_const will fail for pred_consts and
+		% address_consts; we don't worry about them.
+		[]
+	),
+
 	modecheck_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),

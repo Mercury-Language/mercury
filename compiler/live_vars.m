@@ -152,7 +152,13 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
 	% `Liveness' is the set of live variables, i.e. vars which
-	% have been referenced and will be referenced again.
+	% have been referenced and may be referenced again (during
+	% forward execution).
+	% `ExtraLives' is the set of "nondet live" variables, i.e.
+	% vars which may become live on backtracking (and which hence
+	% need to be saved in preparation for backtracking).
+	% `LiveSets' is the interference graph, i.e. the set of sets
+	% of variables which need to be on the stack at the same time.
 
 :- pred detect_live_vars_in_goal_2(hlds__goal_expr, set(var), liveness_info,
 			set(set(var)), code_model, module_info,
@@ -166,8 +172,16 @@ detect_live_vars_in_goal_2(conj(Goals0), ExtraLives0, Liveness0, LiveSets0,
 
 detect_live_vars_in_goal_2(disj(Goals0), ExtraLives0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		% All the currently live variables need to be saved
+		% on the stack at the start of a disjunction, since we
+		% may need them on backtracking.  Therefore they need to
+		% be on the stack at the same time, and hence we insert
+		% them as an interference set into LiveSets.
 	set__insert(LiveSets0, Liveness0, LiveSets1),
-	detect_live_vars_in_disj(Goals0, ExtraLives0, Liveness0, LiveSets1,
+		% They may also become live on backtracking, so we need
+		% to insert them into ExtraLives.
+	set__union(ExtraLives0, Liveness0, ExtraLives1),
+	detect_live_vars_in_disj(Goals0, ExtraLives1, Liveness0, LiveSets1,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), ExtraLives0, Liveness0,
@@ -208,11 +222,19 @@ detect_live_vars_in_goal_2(
 		LiveSets = LiveSets0,
 		ExtraLives = ExtraLives0
 	;
+		% The variables which need to be saved onto the stack
+		% before the call are all the variables that are live
+		% after the call, except for the output arguments produced
+		% by the call, plus all the variables that are nondet
+		% live at the call.
 		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
 		set__difference(Liveness, OutVars, LiveVars0),
 		set__union(LiveVars0, ExtraLives0, LiveVars),
 		set__insert(LiveSets0, LiveVars, LiveSets),
+		% If the call is nondeterministic, we might resume here
+		% after backtracking, so everything that we had to save
+		% on the stack is nondet live.
 		(
 			CodeModel = model_non
 		->
@@ -231,6 +253,8 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), ExtraLives0, Liveness, LiveSets0,
 			% across complicated unifications. 
 		set__union(Liveness, ExtraLives0, LiveVars),
 		set__insert(LiveSets0, LiveVars, LiveSets),
+			% unifications should never be nondet at the
+			% moment, but in case we change that in the future...
 		(
 			CodeModel = model_non
 		->

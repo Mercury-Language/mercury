@@ -293,7 +293,11 @@ garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) -->
 garbage_out__write_liveval(hp) --> io__write_string("hp").
 garbage_out__write_liveval(sp) --> io__write_string("sp").
 garbage_out__write_liveval(succip) --> io__write_string("succip").
+	% XXX the next three lines are wrong - they should not
+	% ignore the argument of redoip/succfr/prevfr
 garbage_out__write_liveval(redoip(_)) --> io__write_string("redoip").
+garbage_out__write_liveval(succfr(_)) --> io__write_string("succfr").
+garbage_out__write_liveval(prevfr(_)) --> io__write_string("prevfr").
 garbage_out__write_liveval(curfr) --> io__write_string("curfr").
 garbage_out__write_liveval(maxfr) --> io__write_string("maxfr").
 garbage_out__write_liveval(stackvar(X)) --> 

@@ -14,10 +14,11 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, io.
+:- import_module hlds, io, std_util.
 
-:- pred check_undefined_types(module_info, module_info, io__state, io__state).
-:- mode check_undefined_types(in, out, di, uo) is det.
+:- pred check_undefined_types(module_info, module_info, bool,
+				io__state, io__state).
+:- mode check_undefined_types(in, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -26,7 +27,9 @@
 :- import_module globals, options.
 :- import_module prog_out, prog_util, hlds_out, type_util, mercury_to_mercury.
 
-check_undefined_types(Module, Module) -->
+check_undefined_types(Module, Module, FoundError) -->
+	io__get_exit_status(ExitStatus0),
+	io__set_exit_status(0),
 	{ module_info_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
@@ -34,7 +37,14 @@ check_undefined_types(Module, Module) -->
 	maybe_report_stats(Statistics),
 	{ module_info_preds(Module, Preds) },
 	{ module_info_predids(Module, PredIds) },
-	find_undef_pred_types(PredIds, Preds, TypeDefns).
+	find_undef_pred_types(PredIds, Preds, TypeDefns),
+	io__get_exit_status(ExitStatus1),
+	( { ExitStatus1 = 0 } ->
+		{ FoundError = no }
+	;
+		{ FoundError = yes }
+	),
+	io__set_exit_status(ExitStatus0).
 
 	% Find any undefined types used in `:- pred' declarations.
 

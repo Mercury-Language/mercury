@@ -11,7 +11,7 @@
 % 
 % The predicates in this module are named as follows:
 % 
-% 	Predicates that type checking a particular language
+% 	Predicates that type check a particular language
 % 	construct (goal, clause, etc.) are called typecheck_*.
 % 	These will eventually have to iterate over every type
 % 	assignment in the type assignment set.
@@ -163,18 +163,21 @@ typecheck(Module0, Module, FoundError) -->
 	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Checking for undefined types...\n"),
-	check_undefined_types(Module0, Module1),
+	check_undefined_types(Module0, Module1, FoundUndefError),
 	maybe_report_stats(Statistics),
+	( { FoundUndefError = yes } ->
+		{ Module = Module1 },
+		{ FoundError = yes }
+	;
+		%%% maybe_write_string(Verbose,
+		%%% 	"% Checking for circular type definitions...\n"),
+		check_circular_types(Module1, Module2),
+		%%% maybe_report_stats(Statistics),
 
-	%%% maybe_write_string(Verbose,
-	%%% 	"% Checking for circular type definitions...\n"),
-	check_circular_types(Module1, Module2),
-	%%% maybe_report_stats(Statistics),
-
-	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
-	check_pred_types(Module2, Module, FoundError),
-	maybe_report_stats(Statistics),
-
+		maybe_write_string(Verbose, "% Type-checking clauses...\n"),
+		check_pred_types(Module2, Module, FoundError),
+		maybe_report_stats(Statistics)
+	),
 	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%

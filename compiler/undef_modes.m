@@ -14,10 +14,11 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds, io.
+:- import_module hlds, io, std_util.
 
-:- pred check_undefined_modes(module_info, module_info, io__state, io__state).
-:- mode check_undefined_modes(in, out, di, uo) is det.
+:- pred check_undefined_modes(module_info, module_info, bool,
+				io__state, io__state).
+:- mode check_undefined_modes(in, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,7 +28,9 @@
 	% Check for any possible undefined insts/modes.
 	% Should we add a definition for undefined insts/modes?
 
-check_undefined_modes(Module, Module) -->
+check_undefined_modes(Module, Module, FoundError) -->
+	io__get_exit_status(ExitStatus0),
+	io__set_exit_status(0),
 	{ module_info_insts(Module, InstDefns) },
 	{ inst_table_get_user_insts(InstDefns, UserInstDefns) },
 	{ map__keys(UserInstDefns, InstIds) },
@@ -37,7 +40,14 @@ check_undefined_modes(Module, Module) -->
 	find_undef_mode_bodies(ModeIds, ModeDefns, UserInstDefns),
 	{ module_info_preds(Module, Preds) },
 	{ module_info_predids(Module, PredIds) },
-	find_undef_pred_modes(PredIds, Preds, ModeDefns, UserInstDefns).
+	find_undef_pred_modes(PredIds, Preds, ModeDefns, UserInstDefns),
+	io__get_exit_status(ExitStatus1),
+	( { ExitStatus1 = 0 } ->
+		{ FoundError = no }
+	;	
+		{ FoundError = yes }
+	),
+	io__set_exit_status(ExitStatus0).
 
 	% Find any undefined insts/modes used in predicate mode declarations.
 

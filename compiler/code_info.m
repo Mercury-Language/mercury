@@ -1153,27 +1153,48 @@ code_info__failure_cont_address(unknown, do_redo).
 	% generated in the goal.
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
-	code_info__get_next_label(FailLabel, yes),
-	code_info__push_temp(curfr, CurfrSlot),
-	code_info__push_temp(redoip(lval(curfr)), RedoipSlot),
+	code_info__get_globals(Globals),
+	{ globals__get_gc_method(Globals, GC_Method) },
+	( { GC_Method = accurate } ->
+		% the pushes and pops on the det stack below will cause
+		% problems for accurate garbage collection.
+		{ error("code_info__generate_pre_commit: gc=accurate not supported") }
+	;
+		[]
+	),
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		{ PushCode = node([incr_sp(3) -
+			"push space for curfr, maxfr, and redoip"]) },
+		{ CurfrSlot = stackvar(1) },
+		{ MaxfrSlot = stackvar(2) },
+		{ RedoipSlot = stackvar(3) }
+	;
+		{ PushCode = empty },
+		code_info__push_temp(curfr, CurfrSlot),
+		code_info__push_temp(maxfr, MaxfrSlot),
+		code_info__push_temp(redoip(lval(maxfr)), RedoipSlot)
+	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
-				"Save nondet frame pointer",
-		assign(curfr, lval(maxfr)) - "Point to top of nondet stack",
-		assign(RedoipSlot, lval(redoip(lval(curfr)))) -
+				"Save current nondet frame pointer",
+		assign(MaxfrSlot, lval(maxfr)) -
+				"Save top of nondet stack",
+		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
 				"Save the top redoip"
 	]) },
+	code_info__get_next_label(FailLabel, yes),
 	code_info__push_failure_cont(known(FailLabel)),
-	{ SetRedoIp = node([
-		assign(redoip(lval(curfr)),
+	{ SetRedoip = node([
+		assign(redoip(lval(maxfr)),
 		 		const(address_const(label(FailLabel)))) -
 			"Hijack the failure continuation"
 	]) },
-	{ PreCommit = tree(SaveCode, SetRedoIp) }.
+	{ PreCommit = tree(tree(PushCode, SaveCode), SetRedoip) }.
 
 code_info__generate_commit(FailLabel, Commit) -->
 	code_info__get_next_label(SuccLabel, yes),
-	{ GotoSuccCode = node([
+	{ GotoSuccLabel = node([
 		goto(label(SuccLabel), label(SuccLabel)) -
 			"Jump to success continuation",
 		label(FailLabel) - "Failure continuation"
@@ -1182,14 +1203,24 @@ code_info__generate_commit(FailLabel, Commit) -->
 		label(SuccLabel) - "Success continuation"
 	]) },
 	code_info__pop_failure_cont,
-	code_info__pop_temp(RedoIpSlot),
-	code_info__pop_temp(CurfrSlot),
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		{ PopCode = node([decr_sp(3) - "pop redoip & curfr"]) },
+		{ RedoipSlot = stackvar(3) },
+		{ MaxfrSlot = stackvar(2) },
+		{ CurfrSlot = stackvar(1) }
+	;
+		{ PopCode = empty },
+		code_info__pop_temp(RedoipSlot),
+		code_info__pop_temp(MaxfrSlot),
+		code_info__pop_temp(CurfrSlot)
+	),
 	{ RestoreMaxfr = node([
-		assign(maxfr, lval(curfr)) -
+		assign(maxfr, lval(MaxfrSlot)) -
 			"Prune away unwanted choice-points"
 	]) },
-	{ RestoreRedoIp = node([
-		assign(redoip(lval(maxfr)), lval(RedoIpSlot)) -
+	{ RestoreRedoip = node([
+		assign(redoip(lval(maxfr)), lval(RedoipSlot)) -
 			"Restore the top redoip"
 	]) },
 	{ RestoreCurfr = node([
@@ -1197,10 +1228,10 @@ code_info__generate_commit(FailLabel, Commit) -->
 			"Prune nondet frame pointer"
 	]) },
 	code_info__generate_failure(Fail),
-	{ SuccessCode = tree(RestoreMaxfr, tree(RestoreRedoIp, RestoreCurfr)) },
-	{ FailCode = tree(RestoreRedoIp, tree(RestoreCurfr, Fail)) },
-	{ Commit = tree(GotoSuccCode, tree(FailCode,
-		tree(SuccLabelCode, SuccessCode))) }.
+	{ SuccessCode = tree(RestoreMaxfr, tree(RestoreRedoip, RestoreCurfr)) },
+	{ FailCode = tree(RestoreRedoip, tree(RestoreCurfr, Fail)) },
+	{ Commit = tree(tree(SuccessCode, GotoSuccLabel),
+			tree(FailCode, SuccLabelCode)) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1363,6 +1394,8 @@ code_info__get_shape_num(succip, -1).
 code_info__get_shape_num(hp, -2).
 code_info__get_shape_num(maxfr, -3).
 code_info__get_shape_num(curfr, -7).	% XXX magic numbers! is this one right?
+code_info__get_shape_num(succfr(_), -7). % XXX magic numbers! is this one right?
+code_info__get_shape_num(prevfr(_), -7). % XXX magic numbers! is this one right?
 code_info__get_shape_num(redoip(_), -4). % And this one?
 code_info__get_shape_num(sp, -5).
 code_info__get_shape_num(lvar(_), -6).

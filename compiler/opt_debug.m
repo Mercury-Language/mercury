@@ -421,6 +421,12 @@ opt_debug__dump_vnlval(vn_maxfr, Str) :-
 	string__append_list(["vn_maxfr"], Str).
 opt_debug__dump_vnlval(vn_curfr, Str) :-
 	string__append_list(["vn_curfr"], Str).
+opt_debug__dump_vnlval(vn_prevfr(V), Str) :-
+	string__int_to_string(V, V_str),
+	string__append_list(["vn_prevfr(", V_str, "("], Str).
+opt_debug__dump_vnlval(vn_succfr(V), Str) :-
+	string__int_to_string(V, V_str),
+	string__append_list(["vn_succfr(", V_str, "("], Str).
 opt_debug__dump_vnlval(vn_redoip(V), Str) :-
 	string__int_to_string(V, V_str),
 	string__append_list(["vn_redoip(", V_str, "("], Str).
@@ -480,6 +486,12 @@ opt_debug__dump_lval(maxfr, Str) :-
 	string__append_list(["maxfr"], Str).
 opt_debug__dump_lval(curfr, Str) :-
 	string__append_list(["curfr"], Str).
+opt_debug__dump_lval(succfr(R), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__append_list(["succfr(", R_str, ")"], Str).
+opt_debug__dump_lval(prevfr(R), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__append_list(["prevfr(", R_str, ")"], Str).
 opt_debug__dump_lval(redoip(R), Str) :-
 	opt_debug__dump_rval(R, R_str),
 	string__append_list(["redoip(", R_str, ")"], Str).

@@ -461,6 +461,10 @@ exprn_aux__lval_code_addrs(framevar(_Int), []).
 exprn_aux__lval_code_addrs(succip, []).
 exprn_aux__lval_code_addrs(maxfr, []).
 exprn_aux__lval_code_addrs(curfr, []).
+exprn_aux__lval_code_addrs(prevfr(Rval), CodeAddrs) :-
+	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
+exprn_aux__lval_code_addrs(succfr(Rval), CodeAddrs) :-
+	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
 exprn_aux__lval_code_addrs(redoip(Rval), CodeAddrs) :-
 	exprn_aux__rval_code_addrs(Rval, CodeAddrs).
 exprn_aux__lval_code_addrs(hp, []).

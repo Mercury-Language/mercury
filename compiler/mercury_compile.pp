@@ -1221,7 +1221,8 @@ mercury_compile__make_hlds(Module, Items, HLDS, FoundSemanticError) -->
 	parse_tree_to_hlds(Prog, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
-		{ FoundSemanticError = yes }
+		{ FoundSemanticError = yes },
+		io__set_exit_status(1)
 	;
 		{ FoundSemanticError = no }
 	),
@@ -1327,7 +1328,8 @@ mercury_compile__typecheck(HLDS0, HLDS, FoundTypeError) -->
 	typecheck(HLDS0, HLDS, FoundTypeError),
 	( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
-			"% Program contains type error(s).\n")
+			"% Program contains type error(s).\n"),
+		io__set_exit_status(1)
 	;
 		maybe_write_string(Verbose, "% Program is type-correct.\n")
 	).
@@ -1345,7 +1347,8 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 	( { NumErrors \= NumErrors0 } ->
 		{ FoundModeError = yes },
 		maybe_write_string(Verbose,
-			"% Program contains mode error(s).\n")
+			"% Program contains mode error(s).\n"),
+		io__set_exit_status(1)
 	;
 		{ FoundModeError = no },
 		maybe_write_string(Verbose,
@@ -1574,7 +1577,8 @@ mercury_compile__check_determinism(HLDS0, HLDS, FoundDeterminismError) -->
 	( { NumErrors \= NumErrors0 } ->
 		{ FoundDeterminismError = yes },
 		maybe_write_string(Verbose,
-			"% Program contains determinism error(s).\n")
+			"% Program contains determinism error(s).\n"),
+		io__set_exit_status(1)
 	;
 		{ FoundDeterminismError = no },
 		maybe_write_string(Verbose,

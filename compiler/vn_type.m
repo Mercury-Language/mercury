@@ -23,6 +23,8 @@
 			;	vn_succip
 			;	vn_maxfr
 			;	vn_curfr
+			;	vn_succfr(vn)
+			;	vn_prevfr(vn)
 			;	vn_redoip(vn)
 			;	vn_hp
 			;	vn_sp

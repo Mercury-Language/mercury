@@ -169,6 +169,12 @@ vn__lval_cost(Lval, Cost) :-
 		Lval = framevar(_),
 		Cost = StackrefCost
 	;
+		Lval = succfr(_),
+		Cost = StackrefCost
+	;
+		Lval = prevfr(_),
+		Cost = StackrefCost
+	;
 		Lval = succip,
 		Cost = 0
 	;

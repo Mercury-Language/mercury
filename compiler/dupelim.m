@@ -184,6 +184,10 @@ dupelim__replace_labels_lval(maxfr, _, maxfr).
 dupelim__replace_labels_lval(curfr, _, curfr).
 dupelim__replace_labels_lval(redoip(Rval0), Replmap, redoip(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
+dupelim__replace_labels_lval(succfr(Rval0), Replmap, succfr(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
+dupelim__replace_labels_lval(prevfr(Rval0), Replmap, prevfr(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_lval(hp, _, hp).
 dupelim__replace_labels_lval(sp, _, sp).
 dupelim__replace_labels_lval(field(Tag, Base0, Offset0), Replmap,
