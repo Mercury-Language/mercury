@@ -110,14 +110,14 @@ Mercury 0.5, 15 Febuary 1996
   trouble with this, we'll be happy to help you.)
   We have also added "mostly unique" modes, which provide support
   for backtrackable destructive update.
-  See the Mercury language reference manual.
+  See the Mercury Language Reference Manual.
 
 * We now provide genuinue arrays with destructive update.
   See the library module `uniq_array'.  (Warning: this has not had
   much testing.  The interface is not yet stable.)
 
 * We now support interfacing to C code.
-  See the documentation in the Mercury language reference manual.
+  See the documentation in the Mercury Language Reference Manual.
 
 * There is now an `inline' pragma which you can use as a hint to the
   compiler to inline a particular predicate.
@@ -205,7 +205,7 @@ Mercury 0.6, 2 August 1996
 	pi = 3.14159265359.
 
   We also support higher-order functions and function lambda expressions.
-  See the Mercury language reference manual for details.
+  See the Mercury Language Reference Manual for details.
   
   The support for functions is not quite complete; there is one minor
   limitation and one major one.  The minor limitation is that the C
@@ -340,8 +340,8 @@ Mercury 0.6, 2 August 1996
   (Thanks to Andreas Kuehlmann.)
 
 * We have made a few changes to the Mercury standard library.
-  The changes are listed here, but see the library reference manual for
-  details such as documentation on the new predicates.
+  The changes are listed here, but see the Mercury Library Reference Manual
+  for details such as documentation on the new predicates.
 
   - The getopt library is now more flexible.  It can handle command
     line switches (such as `-O2') that affect the values of many
@@ -458,7 +458,7 @@ Mercury 0.7, 15 August 1997
 
   See the documentation for `pragma fact_table' in the
   "implementation-dependent pragmas" section of the Mercury
-  language reference manual.
+  Language Reference Manual.
 
 * We have fixed quite a few bugs.
 
@@ -493,8 +493,8 @@ Mercury 0.7, 15 August 1997
 
 * We have made quite a few changes to the Mercury standard library.
 
-  The changes are listed here, but see the library reference manual for
-  details such as documentation on the new predicates.
+  The changes are listed here, but see the Mercury Library Reference Manual
+  for details such as documentation on the new predicates.
 
   - The std_util.m module now contains functions and predicates for
     traversing and constructing terms of arbitrary type, and for
