@@ -333,7 +333,7 @@ output_sub_init_functions(void)
 
 	fputs("}\n", stdout);
 	if (! need_initialization_code) {
-		fputs("\n#endif\n\n", stdout);
+		fputs("\n#endif\n", stdout);
 	}
 }
 
@@ -342,7 +342,7 @@ output_main_init_function(void)
 {
 	int i;
 
-	fputs("static void init_modules(void)\n", stdout);
+	fputs("\nstatic void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
 
 	if (! need_initialization_code) {
