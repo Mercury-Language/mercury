@@ -173,10 +173,14 @@ extensions, and will work in their absence.
 
 The current Mercury system runs on Unix machines. It is known to run on
 Solaris 2.x, IRIX 5.x, Ultrix 4.3, OSF/1.1, BSDI 1.1, and Linux. It
-should run without too many changes on other Unix variants as well. The
-current distribution uses gcc as the compiler. We require gcc version
-2.6.3 or higher, due to a bug in some earlier versions of gcc. You will
-also need GNU make.
+should run without too many changes on other Unix variants as well.  If
+you do encounter any problems, please check our WWW page at
+<http://www.cs.mu.oz.au/~zs/mercury.html> to see if the bug has been
+encountered already; if not, send us mail at <mercury-bugs@cs.mu.oz.au>.
+
+The current distribution uses gcc as the compiler. We require gcc
+version 2.6.3 or higher, due to a bug in some earlier versions of gcc.
+You will also need GNU make.
 
 The Mercury distribution contains:
 
