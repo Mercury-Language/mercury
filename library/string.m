@@ -572,7 +572,7 @@ string__stringf_2( [A|Bs], Vars, Ostring) :-
 		A = '%'
 	->	
 		(
-			string__stringf_3(Bs, Cs, Vars, Vo, String_1)
+			string___sf_top_convert_varible(Bs, Cs, Vars, Vo, String_1)
 		->
 			string__stringf_2(Cs, Vo, String_2),
 			string__append(String_1, String_2, Ostring)
@@ -585,31 +585,31 @@ string__stringf_2( [A|Bs], Vars, Ostring) :-
 	).
 
 
-:- pred string__stringf_3( list(char), list(char), list(io__poly_type), list(io__poly_type), string).
-:- mode string__stringf_3(in, out, in, out, out) is semidet.
+:- pred string___sf_top_convert_varible( list(char), list(char), list(io__poly_type), list(io__poly_type), string).
+:- mode string___sf_top_convert_varible(in, out, in, out, out) is semidet.
 %
-%	string__stringf_3( formated string in, out, var in, out, Out string)
+%    string___sf_top_convert_varible( formated string in, out, var in, out, Out string)
 %		Return a string of the formatted varible.
 %
-string__stringf_3(['%'|Bs], Bs, [], [], Out_string) :-
+string___sf_top_convert_varible(['%'|Bs], Bs, [], [], Out_string) :-
 	string__char_to_string( '%', Out_string ).
+string___sf_top_convert_varible( As, Cs, [V|Va], Vso, Out_string ) :-
+	string___sf_takewhile1( As, [C|Cs], Fmt),
+	string___sf_get_optional_args( Fmt, Flags, Int_width, Int_precis, Char_mods),
+	string___sf_mod_conv_char( Precision, V, T, C),
+	string___sf_do_mod_char( Char_mods, B, T),
+	string___sf_read_star( Vs, Va, Width, Int_width, Precision, Int_precis),
+	string___sf_do_conversion(B, Vso, Vs, V, Ostring, Precision, Flags, Mv_width1),
+	string___sf_add_sign( Ostring2, Ostring, Flags, V, Mv_width1, Mv_width2),
+	string___sf_pad_width( Ostring2, Width, Flags, Out_string, Mv_width2).
+
+
 %
+%	Change conversion character.
 %
-string__stringf_3( As, Cs, [V|Va], Vso, Out_string ) :-
-	string__stringf_takewhile1( As, [C|Cs], Fmt),
-	string__stringf_4( Fmt, Char_list_flags, Int_width, Int_precis, Char_mods),
-	string__stringf_ds0( Precision, V, T, C),
-	string__stringf_ds1( Char_mods, B, T),
-	string__stringf_ds2( Vs, Va, Width, Int_width, Precision, Int_precis),
-	string__stringf_ds3(B, Vso, Vs, V, Ostring, Precision, Char_list_flags, Mv_width1),
-	string__stringf_ds4( Ostring2, Ostring, Char_list_flags, V, Mv_width1, Mv_width2),
-	string__stringf_ds6( Ostring2, Width, Char_list_flags, Out_string, Mv_width2).
-
-
-
-:- pred string__stringf_ds0( int, io__poly_type, char, char).
-:- mode string__stringf_ds0( in, in, out, in) is det.
-string__stringf_ds0( Precision, V, B, C) :- 
+:- pred string___sf_mod_conv_char( int, io__poly_type, char, char).
+:- mode string___sf_mod_conv_char( in, in, out, in) is det.
+string___sf_mod_conv_char( Precision, V, B, C) :- 
 	(
 		C = 'i'
 	->
@@ -654,9 +654,12 @@ string__stringf_ds0( Precision, V, B, C) :-
 
 
 
-:- pred string__stringf_ds1( char, char, char).
-:- mode string__stringf_ds1( in, out, in) is det.
-string__stringf_ds1( Char_mods, B, C) :- 
+%	This function glances at the input-modification flags, only applicable
+%	with a more complicated type system
+%
+:- pred string___sf_do_mod_char( char, char, char).
+:- mode string___sf_do_mod_char( in, out, in) is det.
+string___sf_do_mod_char( Char_mods, B, C) :- 
 	(
 		Char_mods = 'h'
 	->
@@ -674,9 +677,12 @@ string__stringf_ds1( Char_mods, B, C) :-
 	).
 
 
-:- pred string__stringf_ds2( list(io__poly_type), list(io__poly_type), int, int, int, int).
-:- mode string__stringf_ds2( out, in, out, in, out, in) is semidet.
-string__stringf_ds2( Vs, Va, Width, Int_width, Precision, Int_precis) :-
+%
+%	Change Width or Precision vaalue, if '*' was spcified
+%
+:- pred string___sf_read_star( list(io__poly_type), list(io__poly_type), int, int, int, int).
+:- mode string___sf_read_star( out, in, out, in, out, in) is semidet.
+string___sf_read_star( Vs, Va, Width, Int_width, Precision, Int_precis) :-
 	(Int_width = -1
 	->
 		Va = [ i(Width) |  Vb]
@@ -694,14 +700,17 @@ string__stringf_ds2( Vs, Va, Width, Int_width, Precision, Int_precis) :-
 
 
 
-:- pred string__stringf_ds3( char, list(io__poly_type), list(io__poly_type), io__poly_type, string, int, list(char), int).
-:- mode string__stringf_ds3( in, out, in, in, out, in, in, out) is semidet.
-string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_width) :-
+%
+%	This function does the varible conversion to string.
+%
+:- pred string___sf_do_conversion( char, list(io__poly_type), list(io__poly_type), io__poly_type, string, int, list(char), int).
+:- mode string___sf_do_conversion( in, out, in, in, out, in, in, out) is semidet.
+string___sf_do_conversion( B, Vso, Vso, V, Ostring, Precision, Flags, Mv_width) :-
 	(
-		B is 'd' ,
+		B = 'd' ,
 			V = i(I),
 			string__int_to_string(I, S),
-			string__stringf_int_precision(S, Ostring, Precision, _),
+			string___sf_int_precision(S, Ostring, Precision, _),
 			(
 			I < 0
 			->
@@ -711,17 +720,17 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 			)
 				
 	; 
-		B is 'o',
+		B = 'o',
 			V = i(I),
 			( I = 0
 			->
 				S = "0",
-				string__stringf_int_precision(S, Ostring, Precision, _),
+				string___sf_int_precision(S, Ostring, Precision, _),
 				Tw = 0
 			;
 				string__int_to_base_string(I, 8, S),
-				string__stringf_int_precision(S, SS, Precision, _),
-				( list__member('#', Char_list_flags)
+				string___sf_int_precision(S, SS, Precision, _),
+				( list__member('#', Flags)
 				->
 					string__first_char(Ostring, '0', SS),
 					Tw = 1
@@ -732,17 +741,17 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 			),
 			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw)
 	;
-		B is 'x' ,
+		B = 'x' ,
 			V = i(I),
 			( I = 0
 			->
 				SS = "0",
 				Tw = 0,
-				string__stringf_int_precision(SS, Ostring, Precision, _)
+				string___sf_int_precision(SS, Ostring, Precision, _)
 			;
 				string__int_to_base_string(I, 16, S),
-				string__stringf_int_precision(S, SS, Precision, _),
-				( list__member( '#', Char_list_flags)
+				string___sf_int_precision(S, SS, Precision, _),
+				( list__member( '#', Flags)
 				->
 					string__append( "0x", SS, Ostring),
 					Tw = 2
@@ -753,19 +762,19 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 			),
 			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw)
 	;
-		B is 'X',
+		B = 'X',
 			V = i(I),
 			(
 			I = 0
 			->
 				SS = "0",
 				Tw = 0,
-				string__stringf_int_precision(SS, Ostring, Precision, _)
+				string___sf_int_precision(SS, Ostring, Precision, _)
 			;
 				string__int_to_base_string(I, 16, Otemp),
 				string__to_upper(Otemp, S),
-				string__stringf_int_precision(S, SS, Precision, _),
-				( list__member( '#', Char_list_flags)
+				string___sf_int_precision(S, SS, Precision, _),
+				( list__member( '#', Flags)
 				->
 					string__append( "0X", SS, Ostring),
 					Tw = 2
@@ -776,19 +785,19 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 			),
 			(I < 0 -> Mv_width is Tw + 1 ; Mv_width is Tw )
 	;
-		B is 'u' ,
+		B = 'u' ,
 			V = i(I),
 			int__abs(I, J),
 			string__int_to_string(J, S),
-			string__stringf_int_precision(S, Ostring, Precision, Mvt),
+			string___sf_int_precision(S, Ostring, Precision, Mvt),
 			Mv_width = Mvt
 	;	
-		B is 'c' ,
+		B = 'c' ,
 			V = c(C),
 			string__char_to_string( C, Ostring),
 			Mv_width = 0
 	;
-		B is 's' ,
+		B = 's' ,
 			V = s(S),
 			(
 			Precision = -6
@@ -799,24 +808,24 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 			),
 			Mv_width = 0
 	;
-		B is 'f' ,
+		B = 'f' ,
 			V = f(F),
 			string__float_to_string(F, Fstring),
-			string__stringf_calc_prec(Fstring, Ostring, Precision),
+			string___sf_calc_prec(Fstring, Ostring, Precision),
 			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;	
-		B is 'e',
+		B = 'e',
 			V = f(F),
-			string__stringf_calc_exp(F, Ostring, Precision, 0),
+			string___sf_calc_exp(F, Ostring, Precision, 0),
 			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;
-		B is 'E' ,
+		B = 'E' ,
 			V = f(F),
 			string__to_upper(Otemp, Ostring),
-			string__stringf_calc_exp(F, Otemp, Precision, 0),
+			string___sf_calc_exp(F, Otemp, Precision, 0),
 			(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;
-		B is 'p' ,
+		B = 'p' ,
 			V = i(I),
 			string__int_to_string(I, Ostring),
 			((I < 0) -> Mv_width = 1 ; Mv_width = 0)
@@ -825,11 +834,13 @@ string__stringf_ds3( B, Vso, Vso, V, Ostring, Precision, Char_list_flags, Mv_wid
 	).
 
 
+%
+%	Use precision information to modify string.  - for integers
+%
 
-
-:- pred string__stringf_int_precision(string, string, int, int).
-:- mode string__stringf_int_precision( in, out, in, out) is semidet.
-string__stringf_int_precision(S, Ostring, Precision, Added_width) :-
+:- pred string___sf_int_precision(string, string, int, int).
+:- mode string___sf_int_precision( in, out, in, out) is semidet.
+string___sf_int_precision(S, Ostring, Precision, Added_width) :-
 	(
 	Precision = -6
 	->
@@ -863,14 +874,15 @@ string__stringf_int_precision(S, Ostring, Precision, Added_width) :-
 		Ostring = S
 	).
 
-
-:- pred string__stringf_calc_exp(float, string, int, int).
-:- mode string__stringf_calc_exp(in, out, in, in) is det.
-string__stringf_calc_exp(F, Fstring, Precision, Exp) :-
+%	Function  to calculate exponent for a %e conversion of a float
+%
+:- pred string___sf_calc_exp(float, string, int, int).
+:- mode string___sf_calc_exp(in, out, in, in) is det.
+string___sf_calc_exp(F, Fstring, Precision, Exp) :-
 	builtin_float_lt(F, 0.0)
 	-> 	
 		builtin_float_minus( 0.0, F, Tf),
-		string__stringf_calc_exp( Tf, Tst, Precision, Exp),
+		string___sf_calc_exp( Tf, Tst, Precision, Exp),
 		string__first_char(Fstring, '-', Tst)
 	;
 		(
@@ -878,17 +890,17 @@ string__stringf_calc_exp(F, Fstring, Precision, Exp) :-
 		->
 			Texp is Exp - 1,
 			builtin_float_times(F, 10.0, FF),
-			string__stringf_calc_exp( FF, Fstring, Precision, Texp)
+			string___sf_calc_exp( FF, Fstring, Precision, Texp)
 		;
 		(
 		builtin_float_ge(F, 10.0)
 		->
 			Texp is Exp + 1,
 			builtin_float_divide(F, 10.0, FF),
-			string__stringf_calc_exp( FF, Fstring, Precision, Texp)
+			string___sf_calc_exp( FF, Fstring, Precision, Texp)
 		;
 			string__float_to_string(F, Fs),
-			string__stringf_calc_prec(Fs, Fs2, Precision),
+			string___sf_calc_prec(Fs, Fs2, Precision),
 			string__int_to_string(Exp, Exps),
 			(Exp < 0
 			->
@@ -900,10 +912,12 @@ string__stringf_calc_exp(F, Fstring, Precision, Exp) :-
 		).
 
 	
-
-:- pred string__stringf_calc_prec(string, string, int).
-:- mode string__stringf_calc_prec(in, out, in) is det.
-string__stringf_calc_prec(Istring, Ostring, Precision) :-
+%
+%	This precision output-modification predicate handles ints.
+%
+:- pred string___sf_calc_prec(string, string, int).
+:- mode string___sf_calc_prec(in, out, in) is det.
+string___sf_calc_prec(Istring, Ostring, Precision) :-
 	(Precision = -6
 	->
 		Prec is 6
@@ -936,6 +950,9 @@ string__stringf_calc_prec(Istring, Ostring, Precision) :-
 
 
 
+%	string__find_index is a funky little predicate to find the first
+%	occourance of a particular character in a string.
+%
 :- pred string__find_index( string, char, int, int).
 :- mode string__find_index( in, in, in, out) is semidet.
 string__find_index( A, Ch, Check, Ret) :-
@@ -959,9 +976,10 @@ string__find_index( A, Ch, Check, Ret) :-
 
 %	Add a '+' or ' ' sign, if it is needed in this output.
 %
-:- pred string__stringf_ds4( string, string, list(char), io__poly_type, int, int).
-:- mode string__stringf_ds4( out, in, in, in, in, out) is det.
-string__stringf_ds4( Ostring, Istring, Char_list_flags, _V, Mvw1, Mvw2) :-
+:- pred string___sf_add_sign( string, string, list(char), io__poly_type, int, int).
+:- mode string___sf_add_sign( out, in, in, in, in, out) is det.
+%			Mvw is the prefix-length in front of the number.
+string___sf_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 	T1 is Mvw1 - 1,
 	(
 	string__index(Istring, T1, '-')
@@ -971,12 +989,12 @@ string__stringf_ds4( Ostring, Istring, Char_list_flags, _V, Mvw1, Mvw2) :-
 	;
 		string__split(Istring, Mvw1, Lstring, Rstring),
 		(
-		list__member(('+'), Char_list_flags)
+		list__member(('+'), Flags)
 		->
 			string__append_list( [Lstring, "+", Rstring], Ostring),
 			Mvw2 is Mvw1 + 1
 		;
-			list__member(' ', Char_list_flags)
+			list__member(' ', Flags)
 			->
 				string__append_list( [Lstring, " ", Rstring], Ostring),
 				Mvw2 is Mvw1 + 1
@@ -992,17 +1010,17 @@ string__stringf_ds4( Ostring, Istring, Char_list_flags, _V, Mvw1, Mvw2) :-
 % This function pads some characters to the left or right of a string that is
 % shorter than it's width.
 %
-:- pred string__stringf_ds6( string, int, list(char), string, int).
-:- mode string__stringf_ds6( in, in, in, out, in) is det.
-%			( String in, width, flags, Output string, #Moveables).
-string__stringf_ds6( O_string, Width, Char_list_flags, Out_string, Mv_cs) :-
-	string__length(O_string, Len),
+:- pred string___sf_pad_width( string, int, list(char), string, int).
+:- mode string___sf_pad_width( in, in, in, out, in) is det.
+%		( String in, width, flags, Output string, #Moveables).
+string___sf_pad_width( Istring, Width, Flags, Out_string, Mv_cs) :-
+	string__length(Istring, Len),
 	(Len < Width
 	->
 		% time for some FLAG tests
 		Xspace is Width - Len,
 		(
-		list__member('0', Char_list_flags)
+		list__member('0', Flags)
 		->
 			Pad_char = '0'
 		;
@@ -1010,59 +1028,59 @@ string__stringf_ds6( O_string, Width, Char_list_flags, Out_string, Mv_cs) :-
 		),
 		string__duplicate_char(Pad_char, Xspace, Pad_string),
 		(
-		list__member('-', Char_list_flags)
+		list__member('-', Flags)
 		->
-			string__append(O_string, Pad_string, Out_string)
+			string__append(Istring, Pad_string, Out_string)
 		;
-			list__member('0', Char_list_flags)
+			list__member('0', Flags)
 			->
-				string__split(O_string, Mv_cs, B4, After),
+				string__split(Istring, Mv_cs, B4, After),
 				string__append_list( [B4, Pad_string, After], Out_string)
 			;
-			string__append( Pad_string, O_string,  Out_string)
+			string__append( Pad_string, Istring,  Out_string)
 		)
 	;
-		Out_string is O_string
+		Out_string is Istring
 	).
 
 
-:- pred string__stringf_4( list(char), list(char), int, int, char).
-:- mode string__stringf_4( in, out, out, out, out) is det.
-%	string__stringf_4( format info, flags, width, precision, modifier)
+:- pred string___sf_get_optional_args( list(char), list(char), int, int, char).
+:- mode string___sf_get_optional_args( in, out, out, out, out) is det.
+%	string___sf_get_optional_args( format info, flags, width, precision, modifier)
 %		format is assumed to be in ANSI C format.
 %		p243-4 of Kernighan & Ritchie 2nd Ed. 1988
 %		"Parse" format informtion.
 %
 % A function to do some basic parsing on the optional printf arguements.
 %
-string__stringf_4( [], Flags, Width, Precision, Mods) :-
+string___sf_get_optional_args( [], Flags, Width, Precision, Mods) :-
 		Flags = [],
 		Width = 0,
 		Precision = -6,
 		Mods = ' '.
-string__stringf_4( [A|As], Flags, Width, Precision, Mods) :-
+string___sf_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 		(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
 	->
-		string__stringf_4( As, Oflags, Width, Precision, Mods),
+		string___sf_get_optional_args( As, Oflags, Width, Precision, Mods),
 		UFlags = [A | Oflags],
 		list__sort(UFlags, Flags)
 	;
 		( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
 		  A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
 	->
-		string__stringf_to_intchar([A|As], Bs, Numl1, Numl2, yes),
-		string__stringf_int_from_char_list( Numl1, Width),
-		string__stringf_int_from_char_list( Numl2, Precision),
-		string__stringf_4( Bs, Flags, _, _, Mods)
+		string___sf_string_to_ints([A|As], Bs, Numl1, Numl2, yes),
+		string___sf_int_from_char_list( Numl1, Width),
+		string___sf_int_from_char_list( Numl2, Precision),
+		string___sf_get_optional_args( Bs, Flags, _, _, Mods)
 	;
 		( A = 'h' ; A = 'l' ; A = 'L' )
 	->
 		Mods = A,
-		string__stringf_4( As, Flags, Width, Precision, _)
+		string___sf_get_optional_args( As, Flags, Width, Precision, _)
 	;
 		A = ('*')
 	->
-		string__stringf_4( As, Flags, _W, P, Mods),
+		string___sf_get_optional_args( As, Flags, _W, P, Mods),
 		(P = -6
 			->
 		Precision = -1
@@ -1073,64 +1091,66 @@ string__stringf_4( [A|As], Flags, Width, Precision, Mods) :-
 		error("string__stringf:  Unrecognised formatting information\n")
 	.
 
-:- pred string__stringf_takewhile1(list(char), list(char), list(char)).
-:- mode string__stringf_takewhile1(in, out, out) is det.
-%	string__stringf_takewhile(formatted string in, out, format info).
+:- pred string___sf_takewhile1(list(char), list(char), list(char)).
+:- mode string___sf_takewhile1(in, out, out) is det.
+%	string___sf_takewhile(formatted string in, out, format info).
 %		A HACK.  Would be much nicer with a proper string__takewhile.
 %		Looses the format info from the front of the first arguement,
 %		puts this in the last arguement, while the second is the
 %		remainder of the string.
 %
-string__stringf_takewhile1([], [], []).
-string__stringf_takewhile1( [A|As], Rem, Finf) :-
-	if	( A = 'd';A = 'i';A = 'o';A = 'x';A = 'X';A = 'u';A = 's';
-		  A = 'c';A = 'f';A = 'e';A = 'E';A = 'g';A = 'G';A = 'p')
-	then	
+string___sf_takewhile1([], [], []).
+string___sf_takewhile1( [A|As], Rem, Finf) :-
+	( A = 'd';A = 'i';A = 'o';A = 'x';A = 'X';A = 'u';A = 's';
+	  A = 'c';A = 'f';A = 'e';A = 'E';A = 'g';A = 'G';A = 'p')
+	->	
 		Rem = [A|As],
 		Finf = []
-	else
-		string__stringf_takewhile1(As, Rem, F),
+	;
+		string___sf_takewhile1(As, Rem, F),
 		Finf = [A|F].
+
+
 	
-:- pred string__stringf_to_intchar(list(char), list(char), list(char), list(char), bool).
-:- mode string__stringf_to_intchar(in, out, out, out, in) is det.
-%	string__stringf_to_intchar( String in, out, Number1, Number2, seen '.' yet?)
-%		Takes in a char list and splits off the rational at the 
+:- pred string___sf_string_to_ints(list(char), list(char), list(char), list(char), bool).
+:- mode string___sf_string_to_ints(in, out, out, out, in) is det.
+%	string___sf_string_to_ints( String in, out, Number1, Number2, seen '.' yet?)
+%		Takes in a char list and splits off the rational number at the 
 %		start of the list.  This is split into 2 parts - an int and a
 %		fraction.
 %
-string__stringf_to_intchar( [A|As], Bs, Int1, Int2, Bool) :-
+string___sf_string_to_ints( [], [], [], [], _).
+string___sf_string_to_ints( [A|As], Bs, Int1, Int2, Bool) :-
 	char__is_digit(A)
 	->
 	(	Bool = yes
 		->
-			string__stringf_to_intchar( As, Bs, I1, Int2, yes),
+			string___sf_string_to_ints( As, Bs, I1, Int2, yes),
 			Int1 = [A|I1]
 		;
-			string__stringf_to_intchar(As, Bs, Int1, I2, no),
+			string___sf_string_to_ints(As, Bs, Int1, I2, no),
 			Int2 = [A|I2]
 	)
 	;
 	(	A = ('.')
 		->
-			string__stringf_to_intchar( As, Bs, Int1, Int2, no)
+			string___sf_string_to_ints( As, Bs, Int1, Int2, no)
 		;
 			Bs = [A|As],
 			Int1 = [],
 			Int2 = []
 	).
-string__stringf_to_intchar( [], [], [], [], _).
 
 			
 			
 
 
-	:- pred string__stringf_int_from_char_list( list(char), int).
-	:- mode string__stringf_int_from_char_list( in, out) is det.
-	%		Convert a char_list to an int
+:- pred string___sf_int_from_char_list( list(char), int).
+:- mode string___sf_int_from_char_list( in, out) is det.
+%		Convert a char_list to an int
 %
-string__stringf_int_from_char_list( [], 0).
-string__stringf_int_from_char_list( [L|Ls], I) :-
+string___sf_int_from_char_list( [], 0).
+string___sf_int_from_char_list( [L|Ls], I) :-
 	string__from_char_list( [L|Ls], S),
 	string__to_int( S, I_hack)
 		->
