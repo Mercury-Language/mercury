@@ -817,65 +817,77 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef __GNUC__
-
 /*
 ** Provide definitions for functions declared `extern inline'.
 ** Note that this code duplicates the code in mercury.h/mercury_heap.h.
 */
 
-MR_Word
-MR_create1(MR_Word w1) 
-{
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-		1 * sizeof(MR_Word), "create1");
-	p[0] = w1;
-	return (MR_Word) p;
-}
+MR_OUTLINE_DEFN(
+	MR_Word
+	MR_create1(MR_Word w1) 
+,
+	{
+		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
+			1 * sizeof(MR_Word), "create1");
+		p[0] = w1;
+		return (MR_Word) p;
+	}
+)
 
-MR_Word
-MR_create2(MR_Word w1, MR_Word w2) 
-{
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-		2 * sizeof(MR_Word), "create2");
-	p[0] = w1;
-	p[1] = w2;
-	return (MR_Word) p;
-}
+MR_OUTLINE_DEFN(
+	MR_Word
+	MR_create2(MR_Word w1, MR_Word w2) 
+,
+	{
+		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
+			2 * sizeof(MR_Word), "create2");
+		p[0] = w1;
+		p[1] = w2;
+		return (MR_Word) p;
+	}
+)
 
-MR_Word
-MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) 
-{
-	MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
-		3 * sizeof(MR_Word), "create3");
-	p[0] = w1;
-	p[1] = w2;
-	p[2] = w3;
-	return (MR_Word) p;
-}
+MR_OUTLINE_DEFN(
+	MR_Word
+	MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) 
+,
+	{
+		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
+			3 * sizeof(MR_Word), "create3");
+		p[0] = w1;
+		p[1] = w2;
+		p[2] = w3;
+		return (MR_Word) p;
+	}
+)
 
-#ifdef MR_AVOID_MACROS
+#if defined(MR_AVOID_MACROS) || !defined(__GNUC__)
 
-MR_Box
-MR_box_float(MR_Float f)
-{
-	MR_Float *ptr;
+MR_OUTLINE_DEFN(
+	MR_Box
+	MR_box_float(MR_Float f)
+,
+	{
+		MR_Float *ptr;
 
-	MR_make_hp_float_aligned();
-	ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float), "float");
-	*ptr = f;
-	return (MR_Box) ptr;
-}
+		MR_make_hp_float_aligned();
+		ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float),
+			"float");
+		*ptr = f;
+		return (MR_Box) ptr;
+	}
+)
 
-MR_Float
-MR_unbox_float(MR_Box b)
-{
-	return *(MR_Float *)b;
-}
+MR_OUTLINE_DEFN(
+	MR_Float
+	MR_unbox_float(MR_Box b)
+,
+	{
+		return *(MR_Float *)b;
+	}
+)
 
-#endif /* MR_AVOID_MACROS */
-
-#endif /* __GNUC__ */
+#endif /* MR_AVOID_MACROS || !__GNUC__ */
 
 /*
 ** This is exactly the same as MR_box_float(), except that

@@ -126,20 +126,77 @@
 
 /*---------------------------------------------------------------------------*/
 
-/* Macros for inlining */
+/*
+** Macros for inlining.
+**
+** Inlining is treated differently by C++, C99, and GNU C.
+** We also need to make it work for C89, which doesn't have
+** any explicit support for inlining.
+**
+** To make a function inline, you should declare it as either
+** `MR_INLINE', `MR_EXTERN_INLINE', or `MR_STATIC_INLINE'.
+** You should not use `extern' or `static' in combination with these macros.
+**
+** `MR_STATIC_INLINE' should be used for functions that are defined and
+** used only in a single translation unit (i.e. a single C source file).
+**
+** If the inline function is to be used from more than one translation unit,
+** then the function definition (not just declaration) should go in
+** a header file, and you should use either MR_INLINE or MR_EXTERN_INLINE;
+** the difference between these two is explained below.
+**
+** MR_INLINE creates an inline definition of the function, and
+** if needed it also creates an out-of-line definition of the function
+** for the current translation unit, in case the function can't be inlined
+** (e.g. because the function's address was taken, or because the
+** file is compiled with the C compiler's optimizations turned off.)
+** For C++, these definitions will be shared between different
+** compilation units, but for C, each compilation unit that needs
+** an out-of-line definition will gets its own definition.
+** Generally that is not much of a problem, but if the C compiler
+** doesn't optimize away such out-of-line definitions when they're
+** not needed, this can get quite bad.
+**
+** MR_EXTERN_INLINE creates an inline definition of the function,
+** but it does NOT guarantee to create an out-of-line definition,
+** even if one might be needed.  You need to explicitly provide
+** an out-of-line definition for the function in one of the C files.
+** This should be done using the MR_OUTLINE_DEFN(decl,body) macro,
+** e.g. `MR_OUTLINE_DEFN(int foo(int x), { return x; })'.
+**
+** The advantage of MR_EXTERN_INLINE is that it is more code-space-efficient,
+** especially in the case where you are compiling with C compiler optimizations
+** turned off.
+**
+** It is OK to take the address of an inline function,
+** but you should not assume that the address of a function declared
+** MR_INLINE or MR_EXTERN_INLINE will be the same in all translation units.
+*/
 
-#if defined(__GNUC__) 
+#if defined(__cplusplus)
+  /* C++ */
+  #define MR_STATIC_INLINE		static inline
+  #define MR_INLINE			inline
+  #define MR_EXTERN_INLINE		inline
+  #define MR_OUTLINE_DEFN(DECL,BODY)
+#elif defined(__GNUC__) 
   /* GNU C */
-  #define MR_INLINE __inline__
-  #define MR_EXTERN_INLINE extern __inline__
-#elif defined(__cplusplus) || __STDC_VERSION__ >= 199901
-  /* C++ or C99 */
-  #define MR_INLINE inline
-  #define MR_EXTERN_INLINE extern inline
+  #define MR_STATIC_INLINE		static __inline__
+  #define MR_INLINE			static __inline__
+  #define MR_EXTERN_INLINE		extern __inline__
+  #define MR_OUTLINE_DEFN(DECL,BODY)	DECL BODY
+#elif __STDC_VERSION__ >= 199901
+  /* C99 */
+  #define MR_STATIC_INLINE		static inline
+  #define MR_INLINE			static inline
+  #define MR_EXTERN_INLINE		inline
+  #define MR_OUTLINE_DEFN(DECL,BODY)	extern DECL;
 #else
   /* C89 */
-  #define MR_INLINE static
-  #define MR_EXTERN_INLINE static
+  #define MR_STATIC_INLINE		static
+  #define MR_INLINE			static
+  #define MR_EXTERN_INLINE		static
+  #define MR_OUTLINE_DEFN(DECL,BODY)
 #endif
 
 /*---------------------------------------------------------------------------*/
