@@ -543,7 +543,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	globals__io_lookup_bool_option(target_debug, Target_Debug),
 	( { Target_Debug = yes } ->
 		globals__io_lookup_string_option(cflags_for_debug,
-			Target_DebugOpt)
+			Target_DebugOpt0),
+		{ string__append(Target_DebugOpt0, " ", Target_DebugOpt) }
 	;
 		{ Target_DebugOpt = "" }
 	),
