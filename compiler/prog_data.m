@@ -83,6 +83,8 @@
 
 	;	pragma(pragma_type)
 
+	;	assertion(goal, prog_varset)
+
 	;	typeclass(list(class_constraint), class_name, list(tvar),
 			class_interface, tvarset)
 		%	Constraints, ClassName, ClassParams, 

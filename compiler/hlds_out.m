@@ -271,7 +271,7 @@ hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
 	io__write_string("<tabling_pointer>").
 
 	% The code of this predicate duplicates the functionality of
-	% term_errors__describe_one_pred_name. Changes here should be made
+	% error_util__describe_one_pred_name. Changes here should be made
 	% there as well.
 
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
@@ -298,6 +298,10 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 			check_typeclass__introduced_pred_name_prefix) } 
 	->
 		io__write_string("type class method implementation")
+	;
+		{ pred_info_get_goal_type(PredInfo, assertion) }
+	->
+		io__write_string("assertion")
 	;
 		hlds_out__write_pred_or_func(PredOrFunc),
 		io__write_string(" `"),

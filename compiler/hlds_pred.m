@@ -179,6 +179,7 @@
 
 :- type goal_type 	--->	pragmas		% pragma c_code(...)
 			;	clauses		
+			;	(assertion)
 			;	none.
 
 	% Note: `liveness' and `liveness_info' record liveness in the sense

@@ -3885,7 +3885,8 @@ type_assign_set_constraint_proofs(type_assign(A, B, C, D, E, _),
 %-----------------------------------------------------------------------------%
 
 	% write out the inferred `pred' or `func' declarations
-	% for a list of predicates.
+	% for a list of predicates.  Don't write out the inferred types
+	% for assertions.
 
 :- pred write_inference_messages(list(pred_id), module_info,
 				io__state, io__state).
@@ -3898,7 +3899,8 @@ write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	(
 		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
-		{ list__member(PredId, ValidPredIds) }
+		{ list__member(PredId, ValidPredIds) },
+		{ \+ pred_info_get_goal_type(PredInfo, assertion) }
 	->
 		write_inference_message(PredInfo)
 	;

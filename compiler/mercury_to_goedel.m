@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -200,7 +200,12 @@ goedel_output_item(func_clause(VarSet, PredName, Args, Result, Body), Context)
 goedel_output_item(pragma(_Pragma), _Context) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
-			"warning: C header declarations not allowed. Ignoring\n").
+			"warning: pragma declarations not allowed. Ignoring\n").
+
+goedel_output_item(assertion(_, _), _Context) -->
+	io__stderr_stream(Stderr),
+	io__write_string(Stderr, 
+			"warning: assertion declarations not allowed. Ignoring\n").
 
 goedel_output_item(nothing, _) --> [].
 goedel_output_item(typeclass(_, _, _, _, _), _) -->

@@ -427,6 +427,13 @@ mercury_output_item(pragma(Pragma), Context) -->
 			"check_termination")
 	).
 
+mercury_output_item(assertion(Goal, VarSet), _) -->
+	io__write_string(":- assertion "),
+	{ Indent = 1 },
+	mercury_output_newline(Indent),
+	mercury_output_goal(Goal, VarSet, Indent),
+	io__write_string(".\n").
+
 mercury_output_item(nothing, _) --> [].
 mercury_output_item(typeclass(Constraints, ClassName, Vars, Methods, 
 		VarSet), _) --> 
@@ -1758,13 +1765,29 @@ mercury_output_goal_2(fail, _, _) -->
 mercury_output_goal_2(true, _, _) -->
 	io__write_string("true").
 
-	% Implication and equivalence should have been transformed out
-	% by now
-mercury_output_goal_2(implies(_G1,_G2), _VarSet, _Indent) -->
-	{ error("mercury_to_mercury: implies/2 in mercury_output_goal")}.
+mercury_output_goal_2(implies(G1,G2), VarSet, Indent) -->
+	{ Indent1 is Indent + 1 },
+	io__write_string("("),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G1, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("=>"),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G2, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
-mercury_output_goal_2(equivalent(_G1,_G2), _VarSet, _Indent) -->
-	{ error("mercury_to_mercury: equivalent/2 in mercury_output_goal")}.
+mercury_output_goal_2(equivalent(G1,G2), VarSet, Indent) -->
+	{ Indent1 is Indent + 1 },
+	io__write_string("("),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G1, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("<=>"),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G2, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
 mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
@@ -1904,7 +1927,8 @@ mercury_output_disj(Goal, VarSet, Indent) -->
 		mercury_output_goal(Goal, VarSet, Indent1)
 	).
 
-:- pred mercury_output_par_conj(goal, prog_varset, int, io__state, io__state).
+:- pred mercury_output_par_conj(goal, prog_varset, int,
+		io__state, io__state).
 :- mode mercury_output_par_conj(in, in, in, di, uo) is det.
 
 mercury_output_par_conj(Goal, VarSet, Indent) -->
@@ -2805,6 +2829,7 @@ mercury_unary_prefix_op("::").
 mercury_unary_prefix_op("?-").
 mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
+mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("end_module").

@@ -323,16 +323,22 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 		PredOrFuncPart = "function",
 		OrigArity is Arity - 1
 	),
-	string__int_to_string(OrigArity, ArityPart),
-	string__append_list([
-		PredOrFuncPart,
-		" `",
-		ModuleNameString,
-		":",
-		PredName,
-		"/",
-		ArityPart,
-		"'"], Piece).
+	(
+		pred_info_get_goal_type(PredInfo, assertion)
+	->
+		Piece = "assertion"
+	;
+		string__int_to_string(OrigArity, ArityPart),
+		string__append_list([
+			PredOrFuncPart,
+			" `",
+			ModuleNameString,
+			":",
+			PredName,
+			"/",
+			ArityPart,
+			"'"], Piece)
+	).
 
 error_util__describe_one_proc_name(Module, proc(PredId, ProcId), Piece) :-
 	error_util__describe_one_pred_name(Module, PredId, PredPiece),

@@ -220,6 +220,8 @@ add_item_decl_pass_1(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
+add_item_decl_pass_1(assertion(_, _), _, Status, Module, Status, Module) --> [].
+
 add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		Status0, Module0, Status, Module) -->
 	( { module_defn_update_import_status(ModuleDefn, Status1) } ->
@@ -514,6 +516,7 @@ add_item_decl_pass_2(func(_TypeVarSet, _InstVarSet, _ExistQVars, FuncName,
 		{ error("make_hlds.m: can't find func declaration") }
 	).
 
+add_item_decl_pass_2(assertion(_, _), _, Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(func_clause(_, _, _, _, _), _, Status, Module, Status,
 		Module) --> [].
 add_item_decl_pass_2(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
@@ -605,13 +608,15 @@ maybe_enable_aditi_compilation(Status, Context, Module0, Module) -->
 add_item_clause(func_clause(VarSet, PredName, Args, Result, Body), Status,
 		Status, Context, Module0, Module, Info0, Info) -->
 	check_not_exported(Status, Context, "clause"),
+	{ IsAssertion = no },
 	module_add_func_clause(Module0, VarSet, PredName, Args, Result, Body,
-		Status, Context, Module, Info0, Info).
+		Status, Context, IsAssertion, Module, Info0, Info).
 add_item_clause(pred_clause(VarSet, PredName, Args, Body), Status, Status,
 		Context, Module0, Module, Info0, Info) -->
 	check_not_exported(Status, Context, "clause"),
+	{ IsAssertion = no },
 	module_add_pred_clause(Module0, VarSet, PredName, Args, Body, Status,
-		Context, Module, Info0, Info).
+		Context, IsAssertion, Module, Info0, Info).
 add_item_clause(type_defn(_, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
 add_item_clause(inst_defn(_, _, _), Status, Status, _,
@@ -687,6 +692,48 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 		{ Module = Module0 },
 		{ Info = Info0 }	
 	).
+add_item_clause(assertion(Goal0, VarSet),
+		Status, Status, Context, Module0, Module, Info0, Info) -->
+
+		%
+		% If the outermost existentially quantified variables
+		% are placed in the head of the assertion, the
+		% typechecker will avoid warning about unbound
+		% type variables as this implicity adds a universal
+		% quantification of the typevariables needed.
+		%
+	(
+		{ Goal0 = all(Vars, AllGoal) - _Context }
+	->
+		{ term__var_list_to_term_list(Vars, HeadVars) },
+		{ Goal = AllGoal }
+	;
+		{ HeadVars = [] },
+		{ Goal = Goal0 }
+	),
+
+	{ term__context_line(Context, Line) },
+	{ term__context_file(Context, File) },
+	{ string__format("assertion__%d__%s", [i(Line), s(File)], Name) },
+
+		%
+		% The assertions are recorded as a predicate whose
+		% goal_type is set to assertion.  This allows us to
+		% leverage off all the other checks in the compiler that
+		% operate on predicates.
+		%
+		% :- assertion all [A,B,R] ( R = A + B <=> R = B + A ).
+		%
+		% becomes
+		%
+		% assertion__lineno_filename(A, B, R) :-
+		% 	( R = A + B <=> R = B + A ).
+		%
+	{ IsAssertion = yes },
+	module_add_pred_clause(Module0, VarSet, unqualified(Name),
+			HeadVars, Goal, Status, Context, IsAssertion, Module,
+			Info0, Info).
+
 add_item_clause(nothing, Status, Status, _, Module, Module, Info, Info) --> [].
 add_item_clause(typeclass(_, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
@@ -2679,12 +2726,13 @@ next_mode_id(Procs, _MaybeDet, ModeId) :-
 
 :- pred module_add_pred_clause(module_info, prog_varset, sym_name,
 		list(prog_term), goal, import_status, prog_context,
-		module_info, qual_info, qual_info, io__state, io__state).
-:- mode module_add_pred_clause(in, in, in, in, in, in, in, out,
+		bool, module_info, qual_info, qual_info, io__state, io__state).
+:- mode module_add_pred_clause(in, in, in, in, in, in, in, in, out,
 		in, out, di, uo) is det.
 
 module_add_pred_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
-			Status, Context, ModuleInfo, Info0, Info) -->
+			Status, Context, IsAssertion, ModuleInfo,
+			Info0, Info) -->
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
@@ -2696,16 +2744,18 @@ module_add_pred_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
 		[]
 	),
 	module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
-		Status, Context, predicate, ModuleInfo, Info0, Info).
+		Status, Context, predicate, IsAssertion, ModuleInfo,
+		Info0, Info).
 
 :- pred module_add_func_clause(module_info, prog_varset, sym_name,
 		list(prog_term), prog_term, goal, import_status, prog_context,
-		module_info, qual_info, qual_info, io__state, io__state).
+		bool, module_info, qual_info, qual_info, io__state, io__state).
 :- mode module_add_func_clause(in, in, in, in, in,
-	in, in, in, out, in, out, di, uo) is det.
+	in, in, in, in, out, in, out, di, uo) is det.
 
 module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
-			Status, Context, ModuleInfo, Info0, Info) -->
+			Status, Context, IsAssertion, ModuleInfo,
+			Info0, Info) -->
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
@@ -2718,16 +2768,18 @@ module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
 	),
 	{ list__append(Args0, [Result], Args) },
 	module_add_clause(ModuleInfo0, ClauseVarSet, FuncName, Args, Body,
-		Status, Context, function, ModuleInfo, Info0, Info).
+		Status, Context, function, IsAssertion, ModuleInfo,
+		Info0, Info).
 
 :- pred module_add_clause(module_info, prog_varset, sym_name, list(prog_term),
-		goal, import_status, prog_context, pred_or_func,
+		goal, import_status, prog_context, pred_or_func, bool,
 		module_info, qual_info, qual_info, io__state, io__state).
-:- mode module_add_clause(in, in, in, in, in, in, in, in,
+:- mode module_add_clause(in, in, in, in, in, in, in, in, in,
 		out, in, out, di, uo) is det.
 
 module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
-			Context, PredOrFunc, ModuleInfo, Info0, Info) -->
+			Context, PredOrFunc, IsAssertion, ModuleInfo,
+			Info0, Info) -->
 		% Lookup the pred declaration in the predicate table.
 		% (If it's not there, call maybe_undefined_pred_error
 		% and insert an implicit declaration for the predicate.)
@@ -2739,11 +2791,30 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 				PredOrFunc, PredName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
-		{ PredicateTable1 = PredicateTable0 }
+		{ PredicateTable1 = PredicateTable0 },
+		(
+			{ IsAssertion = yes }
+		->
+			{ prog_out__sym_name_to_string(PredName, NameString) },
+			{ string__format("%s %s %s (%s).\n",
+				[s("Attempted to introduce a predicate"),
+				s("for an assertion with an identical"),
+				s("name to an existing predicate"),
+				s(NameString)], String) },
+			{ error(String) }
+		;
+			[]
+		)
 	;
-
-		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
-			Context, "clause"),
+		(
+				% An assertion will not have a
+				% corresponding pred declaration.
+			{ IsAssertion = yes }
+		;
+			{ IsAssertion = no },
+			maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
+					Context, "clause")
+		),
 		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
 				ModuleName, PredName, Arity, Status, Context,
 				PredOrFunc,
@@ -2791,11 +2862,19 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		map__keys(Procs, ModeIds)
 		},
 		clauses_info_add_clause(Clauses0, PredId, ModeIds,
-			ClauseVarSet, TVarSet0, Args, Body, Context, Goal,
-			VarSet, TVarSet, Clauses, Warnings, Info0, Info),
+			ClauseVarSet, TVarSet0, Args, Body, Context,
+			IsAssertion, Goal,
+			VarSet, TVarSet, Clauses, Warnings,
+			ModuleInfo0, ModuleInfo1, Info0, Info),
 		{
 		pred_info_set_clauses_info(PredInfo2, Clauses, PredInfo3),
-		pred_info_set_goal_type(PredInfo3, clauses, PredInfo4),
+		(
+			IsAssertion = yes
+		->
+			pred_info_set_goal_type(PredInfo3, assertion, PredInfo4)
+		;
+			pred_info_set_goal_type(PredInfo3, clauses, PredInfo4)
+		),
 		pred_info_set_typevarset(PredInfo4, TVarSet, PredInfo5),
 		pred_info_arg_types(PredInfo5, _ArgTVarSet,
 				ExistQVars, ArgTypes),
@@ -2816,7 +2895,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		map__det_update(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
-		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 		},
 		( { Status \= opt_imported } ->
@@ -4197,21 +4276,23 @@ clauses_info_init(Arity, ClausesInfo) :-
 
 :- pred clauses_info_add_clause(clauses_info::in, pred_id::in, 
 		list(proc_id)::in, prog_varset::in, tvarset::in,
-		list(prog_term)::in, goal::in, prog_context::in,
+		list(prog_term)::in, goal::in, prog_context::in, bool::in,
 		hlds_goal::out, prog_varset::out, tvarset::out,
-		clauses_info::out, list(quant_warning)::out, qual_info::in,
+		clauses_info::out, list(quant_warning)::out, 
+		module_info::in, module_info::out, qual_info::in,
 		qual_info::out, io__state::di, io__state::uo) is det.
 
 clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
-		Args, Body, Context, Goal, VarSet, TVarSet0,
-		ClausesInfo, Warnings, Info0, Info) -->
+		Args, Body, Context, IsAssertion, Goal, VarSet, TVarSet0,
+		ClausesInfo, Warnings, Module0, Module, Info0, Info) -->
 	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes0, VarTypes1,
 					HeadVars, ClauseList0,
 					TI_VarMap, TCI_VarMap) },
 	{ update_qual_info(Info0, TVarSet0, VarTypes0, PredId, Info1) },
 	{ varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst) },
-	transform(Subst, HeadVars, Args, Body, VarSet1, Context,
-				Goal, VarSet, Warnings, Info1, Info),
+	transform(Subst, HeadVars, Args, Body, VarSet1, Context, IsAssertion,
+				Goal, VarSet, Warnings, Module0, Module,
+				Info1, Info),
 		% XXX we should avoid append - this gives O(N*N)
 	{ list__append(ClauseList0, [clause(ModeIds, Goal, Context)],
 							ClauseList) },
@@ -4284,21 +4365,85 @@ allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
 %-----------------------------------------------------------------------------
 
 :- pred transform(prog_substitution, list(prog_var), list(prog_term), goal,
-		prog_varset, prog_context, hlds_goal, prog_varset, 
-		list(quant_warning), qual_info, qual_info,
-		io__state, io__state).
-:- mode transform(in, in, in, in, in, in, out, out, out,
+		prog_varset, prog_context, bool, hlds_goal, prog_varset, 
+		list(quant_warning), module_info, module_info,
+		qual_info, qual_info, io__state, io__state).
+:- mode transform(in, in, in, in, in, in, in, out, out, out, in, out,
 			in, out, di, uo) is det.
 
-transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
-		Goal, VarSet, Warnings, Info0, Info) -->
+transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
+		Goal, VarSet, Warnings, Module0, Module, Info0, Info) -->
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1, Info0, Info1),
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
 	insert_arg_unifications(HeadVars, Args, Context, head, no,
 		Goal1, VarSet1, Goal2, VarSet2, Info1, Info),
 	{ map__init(Empty) },
+		
+		%
+		% Currently every variable in an assertion must be
+		% explicitly quantified, as it has not been determined
+		% what the correct implicit quantification should be for
+		% assertions.
+		%
+	(
+		{ IsAssertion = yes }
+	->
+			% Use Goal1, since HeadVar__* not yet introduced.
+		report_implicit_quant_errs(Goal1, Args, VarSet0,
+				Context, Module0, Module)
+	;
+		{ Module = Module0 }
+	),
 	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
 				Goal, VarSet, _, Warnings) }.
+
+	%
+	% report_implicit_quant_errs(G, A, VS, C, M0, M)
+	%
+	% Given a goal, G, which has not yet undergone the
+	% insert_arg_unifications transformation and the list of args, A,
+	% report any variable that isn't explicitly quantified.
+	%
+:- pred report_implicit_quant_errs(hlds_goal::in, list(prog_term)::in,
+		prog_varset::in, prog_context::in, module_info::in,
+		module_info::out, io__state::di, io__state::uo) is det.
+
+report_implicit_quant_errs(Goal, Args, VarSet, Context,
+		Module0, Module) -->
+	{ quantification__goal_vars(Goal, Unquantified) },
+	{ set__to_sorted_list(Unquantified, ProblemVars0) },
+
+		% The Args are implicitly universally
+		% quantified.
+	{ term__term_list_to_var_list(Args, ArgVars) },
+	{ list__delete_elems(ProblemVars0, ArgVars, ProblemVars) },
+
+	{ list__length(ProblemVars, L) },
+	(
+		{ L > 0 }
+	->
+		prog_out__write_context(Context),
+		(
+			{ L = 1 }
+		->
+			io__write_string("Error: the variable `")
+		;
+			io__write_string("Error: the variables `")
+		),
+		io__write_list(ProblemVars, ",", write_var(VarSet)),
+		io__write_string("' were not explicitly quantified.\n"),
+		{ module_info_incr_errors(Module0, Module) }
+	;
+		{ Module = Module0 }
+	).
+
+
+	% Allow use of term_io__write_variable in io__write_list
+:- pred write_var(prog_varset::in, prog_var::in,
+		io__state::di, io__state::uo) is det.
+
+write_var(VarSet, Var) -->
+	term_io__write_variable(Var, VarSet).
 
 %-----------------------------------------------------------------------------%
 

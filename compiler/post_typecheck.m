@@ -50,6 +50,9 @@
 	% constraints, and if ReportErrors = yes, print appropriate
 	% warning/error messages.
 	% Also bind any unbound type variables to the type `void'.
+	% Note that when checking assertions we take the conservative
+	% approach of warning about unbound type variables.  There may
+	% be cases for which this doesn't make sense.
 	%
 :- pred post_typecheck__check_type_bindings(pred_id, pred_info, module_info,
 		bool, pred_info, int, io__state, io__state).
@@ -81,11 +84,19 @@
 		pred_info, pred_info, io__state, io__state).
 :- mode post_typecheck__finish_ill_typed_pred(in, in, in, out, di, uo) is det.
 
+	% Now that the assertion has finished being typechecked,
+	% remove it from further processing and store it in the
+	% assertion_table.
+:- pred post_typecheck__finish_assertion(module_info, pred_id,
+		module_info) is det.
+:- mode post_typecheck__finish_assertion(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module typecheck, clause_to_proc, mode_util, inst_match.
-:- import_module mercury_to_mercury, prog_out, hlds_out, type_util.
+:- import_module mercury_to_mercury, prog_out, hlds_data, hlds_out, type_util.
 :- import_module globals, options.
 
 :- import_module map, set, assoc_list, bool, std_util, term.
@@ -363,6 +374,13 @@ post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 		PredInfo0, PredInfo).
+
+post_typecheck__finish_assertion(Module0, PredId, Module) :-
+	module_info_assertion_table(Module0, AssertionTable0),
+	assertion_table_add_assertion(PredId, AssertionTable0, AssertionTable),
+	module_info_set_assertion_table(Module0, AssertionTable, Module1),
+	module_info_remove_predid(Module1, PredId, Module).
+	
 
 	% 
 	% Ensure that all constructors occurring in predicate mode

@@ -144,6 +144,7 @@ collect_mq_info_2(func(_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
 collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
+collect_mq_info_2(assertion(_, _), Info, Info).
 collect_mq_info_2(nothing, Info, Info).
 collect_mq_info_2(typeclass(_, Name, Vars, _, _), Info0, Info) :-
 	add_typeclass_defn(Name, Vars, Info0, Info).
@@ -329,6 +330,8 @@ module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 						Info0, Info, yes) -->
 	{ mq_info_set_error_context(Info0, (pragma) - Context, Info1) },
 	qualify_pragma(Pragma0, Pragma, Info1, Info).
+module_qualify_item(assertion(G, V) - Context, assertion(G, V) - Context,
+						Info, Info, yes) --> [].
 module_qualify_item(nothing - Context, nothing - Context,
 						Info, Info, yes) --> [].
 module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -

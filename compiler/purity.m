@@ -135,7 +135,7 @@
 
 :- implementation.
 
-:- import_module make_hlds, hlds_data, hlds_pred, prog_io_util.
+:- import_module make_hlds, hlds_pred, prog_io_util.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
@@ -290,7 +290,16 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
 					  ModuleInfo1) },
-	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo1, ModuleInfo,
+
+	(
+		{ pred_info_get_goal_type(PredInfo0, assertion) }
+	->
+		{ post_typecheck__finish_assertion(ModuleInfo1,
+				PredId, ModuleInfo2) }
+	;
+		{ ModuleInfo2 = ModuleInfo1 }
+	),
+	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo2, ModuleInfo,
 				  NumErrors1, NumErrors).
 
 	% Purity-check the code for single predicate, reporting any errors.
