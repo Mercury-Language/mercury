@@ -1,5 +1,5 @@
 /*
- *	$Id: disasm.c,v 1.7 1997-02-11 07:40:53 aet Exp $
+ *	$Id: disasm.c,v 1.8 1997-02-11 07:52:16 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -16,6 +16,9 @@
 #include	<disasm.h>
 
 /* Local declarations */
+
+static char
+rcs_id[]	= "$Id: disasm.c,v 1.8 1997-02-11 07:52:16 aet Exp $";
 
 static void
 print_bytecode(Bytecode bytecode);

@@ -1,5 +1,5 @@
 /*
- *	$Id: mbi.c,v 1.1 1997-01-24 07:10:19 aet Exp $
+ *	$Id: mbi.c,v 1.2 1997-02-11 07:52:16 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -18,6 +18,10 @@ heapsize	= 0;
 
 
 /* Local declarations */
+
+static char
+rcs_id[]	= "$Id";
+
 static void
 usage(void);
 
@@ -25,6 +29,8 @@ static char*
 program_name	= NULL;
 
 /* Implementation */
+
+#if	! defined(UNIT_TESTING)
 
 void
 main(int argc, char* argv[])
@@ -56,6 +62,8 @@ main(int argc, char* argv[])
 
 	exit(EXIT_SUCCESS);
 }
+
+#endif	/* ! UNIT_TESTING */
 
 void
 usage()

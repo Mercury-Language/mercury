@@ -1,5 +1,5 @@
 /*
- *	$Id: mdis.c,v 1.1 1997-01-24 07:10:56 aet Exp $
+ *	$Id: mdis.c,v 1.2 1997-02-11 07:51:24 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -13,6 +13,8 @@
 #include	<disasm.h>
 #include	<mdis.h>
 
+static char
+rcs_id[]	= "$Id: mdis.c,v 1.2 1997-02-11 07:51:24 aet Exp $";
 
 /* Local declarations */
 static void
@@ -22,6 +24,8 @@ static char*
 program_name	= NULL;
 
 /* Implementation */
+
+#if	! defined(UNIT_TESTING)
 
 void
 main(int argc, char* argv[])
@@ -72,6 +76,8 @@ main(int argc, char* argv[])
 
 	exit(EXIT_SUCCESS);
 }
+
+#endif	/* UNIT_TESTING */
 
 void
 usage()
