@@ -2,9 +2,14 @@
 /^mercury_compile/	{
 				if ($1 != cur_version && cur_version != "")
 				{
-					printf "%s %9.2f\n",
-						cur_version,
-						cur_total / cur_counter;
+					raw = cur_total / cur_counter;
+					if (cur_counter > 2)
+						refined = (cur_total - cur_min - cur_max) / (cur_counter - 2);
+					else
+						refined = raw;
+
+					printf "%s %9.2f %9.2f\n\n",
+						cur_version, raw, refined;
 					cur_version = "";
 					cur_counter = 0.0;
 					cur_total = 0.0;
@@ -12,6 +17,19 @@
 
 				time = substr($2, 1, length($2) - 1);
 				# printf "%9.2f\n", time;
+
+				if (cur_counter == 0)
+				{
+					cur_min = time;
+					cur_max = time;
+				}
+				else
+				{
+					if (time < cur_min)
+						cur_min = time;
+					if (time > cur_max)
+						cur_max = time;
+				}
 
 				cur_version = $1;
 				cur_counter++;
@@ -22,9 +40,14 @@
 			{
 				if ($1 != cur_version && cur_version != "")
 				{
-					printf "%s %9.2f\n",
-						cur_version,
-						cur_total / cur_counter;
+					raw = cur_total / cur_counter;
+					if (cur_counter > 2)
+						refined = (cur_total - cur_min - cur_max) / (cur_counter - 2);
+					else
+						refined = raw;
+
+					printf "%s %9.2f %9.2f\n\n",
+						cur_version, raw, refined;
 					cur_version = "";
 					cur_counter = 0.0;
 					cur_total = 0.0;
@@ -35,8 +58,14 @@
 END			{
 				if (cur_version != "")
 				{
-					printf "%s %9.2f\n",
-						cur_version,
-						cur_total / cur_counter;
+					raw = cur_total / cur_counter;
+					if (cur_counter > 2)
+						refined = (cur_total - cur_min - cur_max) / (cur_counter - 2);
+					else
+						refined = raw;
+
+					printf "%s %9.2f %9.2f\n\n",
+						cur_version, raw, refined;
 				}
+
 			}
