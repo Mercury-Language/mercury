@@ -124,6 +124,8 @@ rbtree__insert_2(Tree0, K, V, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
+rbtree__search(empty, _K, _V) :-
+	fail.
 rbtree__search(rbtree(_Color, K0, V0, Left, Right), K, V) :-
 	compare(Result, K, K0),
 	(
