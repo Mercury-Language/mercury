@@ -1378,7 +1378,7 @@ io__write_univ(Univ, Priority) -->
 		% we can't use io__write_uniq_array below... instead we
 		% use the following, which is a bit of a hack.
 		%
-		{ type_to_term(Univ, Term) },
+		{ term__univ_to_term(Univ, Term) },
 		{ varset__init(VarSet) },
 		term_io__write_term(VarSet, Term)
 	;

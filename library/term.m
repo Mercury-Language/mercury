@@ -34,17 +34,59 @@
 
 %-----------------------------------------------------------------------------%
 
-	% The following three predicates can convert values of (almost)
+	% The following predicates can convert values of (almost)
 	% any type to the type `term' and back again.
+
+:- type term_to_type_result(T)
+	--->	ok(T)
+	;	error(term_to_type_error).
+
+:- pred term__try_term_to_type(term, term_to_type_result(T)).
+:- mode term__try_term_to_type(in, out) is det.
+	% term__try_term_to_type(Term, Result):
+	% Try to convert the given term to a ground value of type T.
+	% If successful, return `ok(X)' where X is the converted value.
+	% If Term is not ground, return `mode_error(Var, Context)',
+	% where Var is a variable occurring in Term.
+	% If Term is not a valid term of the specified type, return
+	% `type_error(SubTerm, ExpectedType, Context, ArgContexts)',
+	% where SubTerm is a sub-term of Term and ExpectedType is
+	% the type expected for that part of Term. 
+	% Context specifies the file and line number where the
+	% offending part of the term was read in from, if available.
+	% ArgContexts specifies the path from the root of the term
+	% to the offending subterm.
+
+:- type term_to_type_error
+	--->	type_error(term, type_info, term__context,
+			term_to_type_context)
+	;	mode_error(var, term_to_type_context).
+
+:- type term_to_type_context == list(term_to_type_arg_context).
+
+:- type term_to_type_arg_context
+	--->	arg_context(
+			const,		% functor
+			int,		% argument number (starting from 1)
+			term__context	% filename & line number
+		).
 
 :- pred term__term_to_type(term, T).
 :- mode term__term_to_type(in, out) is semidet.
+	% term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
 
 :- pred term__det_term_to_type(term, T).
 :- mode term__det_term_to_type(in, out) is det.
+	% like term_to_type, but calls error/1 rather than failing.
 
 :- pred term__type_to_term(T, term).
 :- mode term__type_to_term(in, out) is det.
+	% converts a value to a term representation of that value
+
+:- pred term__univ_to_term(univ, term).
+:- mode term__univ_to_term(in, out) is det.
+	% calls term__type_to_term on the value stored in the univ
+	% (as distinct from the univ itself).
 
 %-----------------------------------------------------------------------------%
 
@@ -175,8 +217,7 @@
 
 :- pred term__is_ground(term).
 :- mode term__is_ground(in) is semidet.
-%	term__is_ground(Term, Bindings) is true iff Term contains no
-%		variables.
+%	term__is_ground(Term) is true iff Term contains no variables.
 
 :- pred term__compare(comparison_result, term, term, substitution).
 :- mode term__compare(out, in, in, in) is semidet.
@@ -259,33 +300,164 @@
 %-----------------------------------------------------------------------------%
 
 term__term_to_type(Term, Val) :-
-	term__term_to_type_2(Term, type_of(Val), Univ),
-	univ_to_type(Univ, Val).
+	term__try_term_to_type(Term, ok(Val)).
 
-:- pred term__term_to_type_2(term::in, type_info::in, univ::out) is semidet.
+term__try_term_to_type(Term, Result) :-
+	term__try_term_to_univ(Term, type_of(ValTypedVar), UnivResult),
+	(
+		UnivResult = ok(Univ),
+		det_univ_to_type(Univ, Val),
+		same_type(Val, ValTypedVar),
+		Result = ok(Val)
+	;
+		UnivResult = error(Error),
+		Result = error(Error)
+	).
 
-term__term_to_type_2(term__variable(_), _Val, _) :-
+:- pred term__try_term_to_univ(term::in, type_info::in,
+		term_to_type_result(univ)::out) is det.
+
+term__try_term_to_univ(Term, Type, Result) :-
+	term__try_term_to_univ_2(Term, Type, [], Result).
+	
+:- pred term__try_term_to_univ_2(term::in, type_info::in,
+		term_to_type_context::in,
+		term_to_type_result(univ)::out) is det.
+
+term__try_term_to_univ_2(term__variable(Var), _Type, Context,
+		error(mode_error(Var, Context))).
+term__try_term_to_univ_2(Term, Type, Context, Result) :-
+	Term = term__functor(Functor, ArgTerms, TermContext),
+	(
+		type_ctor_and_args(Type, TypeCtor, TypeArgs),
+		term__term_to_univ_special_case(
+			type_ctor_name(TypeCtor), TypeArgs,
+			Term, Type, Context, SpecialCaseResult)
+	->
+		Result = SpecialCaseResult
+	;
+		Functor = term__atom(FunctorName),
+		list__length(ArgTerms, Arity),
+		find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes),
+		term__term_list_to_univ_list(ArgTerms, ArgTypes,
+			Functor, 1, Context, TermContext, ArgsResult)
+	->
+		(
+			ArgsResult = ok(ArgValues),
+			( Value = construct(Type, FunctorNumber, ArgValues) ->
+				Result = ok(Value)
+			;
+				error("term_to_type: construct/3 failed")
+			)
+		;
+			ArgsResult = error(Error),
+			Result = error(Error)
+		)
+	;
+		% the arg contexts are built up in reverse order,
+		% so we need to reverse them here
+		list__reverse(Context, RevContext),
+		Result = error(type_error(Term, Type, TermContext, RevContext))
+	).
+
+:- pred term__term_to_univ_special_case(string::in, list(type_info)::in,
+		term::in(bound(term__functor(ground, ground, ground))),
+		type_info::in, term_to_type_context::in,
+		term_to_type_result(univ)::out) is semidet.
+term__term_to_univ_special_case("character", [], Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__atom(FunctorName), [], _),
+	string__first_char(FunctorName, Char, ""),
+	type_to_univ(Char, Univ).
+term__term_to_univ_special_case("int", [], Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__integer(Int), [], _),
+	type_to_univ(Int, Univ).
+term__term_to_univ_special_case("string", [], Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__string(String), [], _),
+	type_to_univ(String, Univ).
+term__term_to_univ_special_case("float", [], Term, _, _, ok(Univ)) :-
+	Term = term__functor(term__float(Float), [], _),
+	type_to_univ(Float, Univ).
+term__term_to_univ_special_case("uniq_array", [ElemType], Term, _Type,
+		PrevContext, Result) :-
+	%
+	% uniq_arrays are represented as terms of the form
+	%	uniq_array([elem1, elem2, ...])
+	%
+	Term = term__functor(term__atom("uniq_array"), [ArgList], TermContext),
+
+	% To convert such terms back to uniq_arrays, we first
+	% convert the term representing the list of elements back to a list,
+	% and then (if successful) we just call the uniq_array/1 function.
+	%
+	ListTypeCtor = type_ctor(type_of([0])),
+	ListType = det_make_type(ListTypeCtor, [ElemType]),
+	ArgContext = arg_context(term__atom("uniq_array"), 1, TermContext),
+	NewContext = [ArgContext | PrevContext],
+	term__try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
+	(
+		ArgResult = ok(ListUniv),
+/***************
+% XXX existential types not yet implemented...
+		% :- some [T] pred has_type(T::unused, type_info::in) is det.
+		has_type(List, ListType),
+		det_univ_to_type(ListUniv, List),
+		Array = uniq_array(List),
+		Result = ok(univ(Array))
+****************/
+		% since we don't have existential types, we have to use
+		% some unsafe casts...
+		require_equal(univ_type(ListUniv), ListType),
+		list_of_any(List),   % explicit type qualification
+				     % to avoid unbound type variables
+		List = unsafe_cast(univ_value_as_type_any(ListUniv)),
+		Array = uniq_array(List),
+		ArrayTypeCtor = type_ctor(type_of(Array)),
+		ArrayType = det_make_type(ArrayTypeCtor, [ElemType]),
+		Result = ok(unsafe_any_to_univ(ArrayType, unsafe_cast(Array)))
+	;
+		ArgResult = error(Error),
+		Result = error(Error)
+	).
+term__term_to_univ_special_case("c_pointer", _, _, _, _, _) :-
 	fail.
-term__term_to_type_2(term__functor(term__integer(Int), _, _), _Type, Value) :-
-	type_to_univ(Int, Value).
-term__term_to_type_2(term__functor(term__float(Float), _, _), _Type, Value) :-
-	type_to_univ(Float, Value).
-term__term_to_type_2(term__functor(term__string(String), _, _), _Type, Value) :-
-	type_to_univ(String, Value).
-term__term_to_type_2(term__functor(term__atom(Functor), ArgTerms, _), Type,
-		Value) :-
-	list__length(ArgTerms, Arity),
-	find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes),
-	term__term_list_to_type_list(ArgTerms, ArgTypes, Args),
-	Value = construct(Type, FunctorNumber, Args).
+term__term_to_univ_special_case("univ", _, _, _, _, _) :-
+	% Implementing this properly would require keeping a
+	% global table mapping from type names to type_infos
+	% for all of the types in the program...
+	% so for the moment, we don't allow it.
+	fail.
+term__term_to_univ_special_case("type_info", _, _, _, _, _) :-
+	% ditto
+	fail.
 
-:- pred term__term_list_to_type_list(list(term)::in, list(type_info)::in,
-				list(univ)::out) is semidet.
+:- pred same_type(T::unused, T::unused) is det.
+same_type(_, _).
 
-term__term_list_to_type_list([], [], []).
-term__term_list_to_type_list([Term|Terms], [Type|Types], [Value|Values]) :-
-	term__term_to_type_2(Term, Type, Value),
-	term__term_list_to_type_list(Terms, Types, Values).
+:- pred term__term_list_to_univ_list(list(term)::in, list(type_info)::in,
+		term__const::in, int::in, term_to_type_context::in,
+		term__context::in, term_to_type_result(list(univ))::out)
+		is semidet.
+term__term_list_to_univ_list([], [], _, _, _, _, ok([])).
+term__term_list_to_univ_list([ArgTerm|ArgTerms], [Type|Types],
+		Functor, ArgNum, PrevContext, TermContext, Result) :-
+	ArgContext = arg_context(Functor, ArgNum, TermContext),
+	NewContext = [ArgContext | PrevContext],
+	term__try_term_to_univ_2(ArgTerm, Type, NewContext, ArgResult),
+	(
+		ArgResult = ok(Arg),
+		term__term_list_to_univ_list(ArgTerms, Types, Functor,
+			ArgNum + 1, PrevContext, TermContext, RestResult),
+		(
+			RestResult = ok(Rest),
+			Result = ok([Arg | Rest])
+		;
+			RestResult = error(Error),
+			Result = error(Error)
+		)
+	;
+		ArgResult = error(Error),
+		Result = error(Error)
+	).
 
 :- pred term__find_functor(type_info::in, string::in, int::in, int::out,
 		list(type_info)::out) is semidet.
@@ -311,50 +483,183 @@ term__find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
 term__det_term_to_type(Term, X) :-
 	( term__term_to_type(Term, X1) ->
 		X = X1
+	; \+ term__is_ground(Term) ->
+		error("term__det_term_to_type failed, because the term wasn't ground")
 	;
-		error("term__det_term_to_type failed as term doesn't represent a valid ground value of the appropriate type")
+		string__append_list([
+			"term__det_term_to_type failed, due to a type error:\n",
+			"the term wasn't a valid term for type `",
+			type_name(type_of(X)),
+			"'"], Message),
+		error(Message)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred det_univ_to_type(univ::in, T::out) is det.
+det_univ_to_type(Univ, Value) :-
+	( univ_to_type(Univ, Value1) ->
+		Value = Value1
+	;
+		error("det_univ_to_type: univ_to_type failed")
+	).
+
+%-----------------------------------------------------------------------------%
+
+/**********
+XXX existential types not yet implemented
+:- some [T] pred has_type(T::unused, type_info::in) is det.
+:- pragma c_code(has_type(Arg::unused, TypeInfo::in), will_not_call_mercury,
+	"TypeInfo_for_T = TypeInfo;"
+).
+**********/
+
+:- func unsafe_cast(T1::in) = (T2::out) is det.
+:- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out), will_not_call_mercury,
+	"VarOut = VarIn;").
+
+:- type any == c_pointer.
+
+:- pred array_of_any(uniq_array(any)::unused) is det.
+array_of_any(_).
+
+:- pred list_of_any(list(any)::unused) is det.
+list_of_any(_).
+
+:- func univ_value_as_type_any(univ) = any.
+:- pragma c_code(univ_value_as_type_any(Univ::in) = (Val::out),
+		will_not_call_mercury,
+"
+	Val = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+").
+
+:- func unsafe_any_to_univ(type_info, any) = univ.
+	% Forward mode - convert from type to univ.
+	% Allocate heap space, set the first field to contain the address
+	% of the type_info for this type, and then store the input argument
+	% in the second field.
+:- pragma c_code(unsafe_any_to_univ(TypeInfo::in, Value::in) = (Univ::out),
+		will_not_call_mercury,
+"
+	incr_hp(Univ, 2);
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO) = (Word) TypeInfo;
+	field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA) = (Word) Value;
+").
+
+%-----------------------------------------------------------------------------%
 
 term__type_to_term(Val, Term) :-
 	type_to_univ(Val, Univ),
-	term__type_to_term_2(Univ, Term).
+	term__univ_to_term(Univ, Term).
 
-:- pred type_to_term_2(univ::in, term::out) is det.
-
-term__type_to_term_2(Univ, Term) :-
+term__univ_to_term(Univ, Term) :-
 	term__context_init(Context),
-	(
-		% NU-Prolog barfs on `num_functors(univ_type(Univ)) < 0'
-		num_functors(univ_type(Univ)) = N, N < 0
-	->
-		( univ_to_type(Univ, Int) ->
-			Term = term__functor(term__integer(Int), [], Context)
-		; univ_to_type(Univ, Float) ->
-			Term = term__functor(term__float(Float), [], Context)
-		; univ_to_type(Univ, String) ->
-			Term = term__functor(term__string(String), [], Context)
-		; univ_to_type(Univ, Character) ->
-			string__char_to_string(Character, String),
-			Term = term__functor(term__string(String), [], Context)
+	Type = univ_type(Univ),
+	% NU-Prolog barfs on `num_functors(Type) < 0'
+	( num_functors(Type) = N, N < 0 ->
+		(
+			type_ctor_and_args(Type, TypeCtor, TypeArgs),
+			TypeName = type_ctor_name(TypeCtor),
+			term__univ_to_term_special_case(TypeName, TypeArgs,
+				Univ, Context, SpecialCaseTerm)
+		->
+			Term = SpecialCaseTerm
 		;
-			string__append("term__type_to_term: unknown type ",
-				type_name(univ_type(Univ)), Message),
+			string__append_list(
+				["term__type_to_term: unknown type `",
+				type_name(univ_type(Univ)),
+				"'"],
+				Message),
 			error(Message)
 		)
 	;
 		deconstruct(Univ, FunctorString, _FunctorArity, FunctorArgs),
-		term__type_list_to_term_list(FunctorArgs, TermArgs),
+		term__univ_list_to_term_list(FunctorArgs, TermArgs),
 		Term = term__functor(term__atom(FunctorString), TermArgs,
 			Context)
 	).
 
-:- pred term__type_list_to_term_list(list(univ)::in, 
+:- pred term__univ_to_term_special_case(string::in, list(type_info)::in,
+		univ::in, term__context::in, term::out) is semidet.
+
+term__univ_to_term_special_case("int", [], Univ, Context,
+		term__functor(term__integer(Int), [], Context)) :-
+	det_univ_to_type(Univ, Int).
+term__univ_to_term_special_case("float", [], Univ, Context,
+		term__functor(term__float(Float), [], Context)) :-
+	det_univ_to_type(Univ, Float).
+term__univ_to_term_special_case("character", [], Univ, Context,
+		term__functor(term__atom(CharName), [], Context)) :-
+	det_univ_to_type(Univ, Character),
+	string__char_to_string(Character, CharName).
+term__univ_to_term_special_case("string", [], Univ, Context,
+		term__functor(term__string(String), [], Context)) :-
+	det_univ_to_type(Univ, String).
+term__univ_to_term_special_case("type_info", [], Univ, Context,
+		term__functor(term__atom("type_info"), [Term], Context)) :-
+	det_univ_to_type(Univ, TypeInfo),
+	type_info_to_term(Context, TypeInfo, Term).
+term__univ_to_term_special_case("univ", [], Univ, Context, Term) :-
+	Term = term__functor(term__atom("univ"),
+			% XXX what operator should we use for type
+			% qualification?
+			[term__functor(term__atom(":"),	 % TYPE_QUAL_OP
+				[ValueTerm, TypeTerm],
+				Context)], Context),
+/****
+XXX existential types not implemented
+	det_univ_to_type(univ_value(Univ), UnivValue),
+****/
+	% instead, we use some unsafe casts...
+	require_equal(univ_type(Univ), type_of(UnivValue)),
+	UnivValue = unsafe_cast(univ_value_as_type_any(Univ)),
+
+	type_info_to_term(Context, univ_type(UnivValue), TypeTerm),
+	term__univ_to_term(UnivValue, ValueTerm).
+
+term__univ_to_term_special_case("uniq_array", [ElemType], Univ, Context,
+		Term) :-
+	Term = term__functor(term__atom("uniq_array"), [ArgsTerm], Context),
+	ListTypeCtor = type_ctor(type_of([0])),
+	ListType = det_make_type(ListTypeCtor, [ElemType]),
+/***
+XXX existential types not yet implemented
+	has_type(List, ListType),
+	det__univ_to_type(Univ, Array),	
+	uniq_array__to_list(Array, List),
+	term__type_to_term(List, ArgsTerm).
+***/
+	% instead, we need to use some unsafe casts...
+	array_of_any(Array), % explicit type qualification
+			     % to avoid unbound type variables
+	Array = unsafe_cast(univ_value_as_type_any(Univ)),	
+	uniq_array__to_list(Array, List),
+	ListUniv = unsafe_any_to_univ(ListType, unsafe_cast(List)),
+	term__univ_to_term(ListUniv, ArgsTerm).
+
+:- pred term__univ_list_to_term_list(list(univ)::in,
 				list(term)::out) is det.
 
-term__type_list_to_term_list([], []).
-term__type_list_to_term_list([Value|Values], [Term|Terms]) :-
-	term__type_to_term_2(Value, Term),
-	term__type_list_to_term_list(Values, Terms).
+term__univ_list_to_term_list([], []).
+term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
+	term__univ_to_term(Value, Term),
+	term__univ_list_to_term_list(Values, Terms).
+
+% given a type_info, return a term that represents the name of that type.
+:- pred type_info_to_term(term__context::in, type_info::in, term::out) is det.
+type_info_to_term(Context, TypeInfo, Term) :-
+	type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
+	TypeName = type_ctor_name(TypeCtor),
+	list__map(type_info_to_term(Context), ArgTypes, ArgTerms),
+	Term = term__functor(term__atom(TypeName), ArgTerms, Context).
+
+:- pred require_equal(T::in, T::in) is det.
+require_equal(X, Y) :-
+	( X = Y ->
+		true
+	;
+		error("require_equal failed")
+	).
 
 %-----------------------------------------------------------------------------%
 
