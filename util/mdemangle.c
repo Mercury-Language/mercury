@@ -510,7 +510,7 @@ demangle(const char *orig_name)
 			lambda_line = 0;
 
 			if (start >= end || !MR_isdigit(*start)) {
-				category == ORDINARY;
+				category = ORDINARY;
 				start = name_before_prefixes;
 			}
 
@@ -531,7 +531,7 @@ demangle(const char *orig_name)
 				}
 				*end_of_lambda_pred_name = '\0';
 			    } else {
-				category == ORDINARY;
+				category = ORDINARY;
 				start = name_before_prefixes;
 			    }
 			} else {
