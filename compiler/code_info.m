@@ -1398,9 +1398,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
 		% Use the variable to determine the type_id
 		%
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ map__lookup(VarTypes, Var, Type) },
+	code_info__variable_type(Var, Type),
 	(
 		% handle the `character' type specially
 		{ Type = term__functor(term__atom("character"), [], _) },

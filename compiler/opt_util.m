@@ -306,9 +306,12 @@ opt_util__instr_labels(incr_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
 
-opt_util__livevals_addr(label(local(_)), yes).
-opt_util__livevals_addr(label(local(_, _)), no).
-opt_util__livevals_addr(label(exported(_)), yes).
+opt_util__livevals_addr(label(Label), Result) :-
+	( Label = local(_,_) ->
+		Result = no
+	;	
+		Result = yes
+	).
 opt_util__livevals_addr(imported(_), yes).
 opt_util__livevals_addr(succip, yes).
 opt_util__livevals_addr(do_succeed, yes).
