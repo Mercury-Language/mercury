@@ -242,6 +242,10 @@ EXTRA_LIBGRADES	=
 # position-independent code.)
 CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 
+# $(GCCFLAGS_FOR_PIC) is passed to the GCC back-end when creating
+# `.pic_s' files.
+GCCFLAGS_FOR_PIC	= -fpic
+
 # $(EXT_FOR_PIC_OBJECTS) will be either `.o', if $(CFLAGS_FOR_PIC) is empty,
 # or `.pic_o', if special flags are required for compiling files that
 # will be put in shared libraries.
