@@ -32,7 +32,7 @@
 :- implementation.
 :- import_module io, require.
 :- import_module list, bool, std_util.
-:- import_module interactive_query.
+:- import_module interactive_query, util.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
@@ -43,32 +43,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 :- type determinism == int. 
 	% encoded as specified in ../runtime/mercury_stack_layout.h
 	% and ../compiler/stack_layout.m.
-
-% The stuff defined below is similar to types goal_path and trace_port
-% defined in modules compiler/hlds_goal.m and compiler/trace.m.
-% This enumeration must be EXACTLY the same as the MR_trace_port enum in
-% runtime/mercury_trace_base.h, and in the same order, since the code
-% assumes the representation is the same.
-
-:- type trace_port_type
-	--->	call
-	;	exit
-	;	redo
-	;	fail
-	;	ite_cond
-	;	ite_then
-	;	ite_else
-	;	neg_enter
-	;	neg_success
-	;	neg_failure
-	;	disj
-	;	switch
-	;	nondet_pragma_first
-	;	nondet_pragma_later
-	;	exception
-	.
-
-:- type goal_path_string == string.
 
 % This enumeration must be EXACTLY the same as the MR_PredFunc enum in
 % runtime/mercury_stack_layout.h, and in the same order, since the code

@@ -153,10 +153,6 @@ void	(*MR_address_of_trace_init_external)(void);
 void	(*MR_address_of_trace_final_external)(void);
 #endif
 
-#ifdef	MR_USE_DECLARATIVE_DEBUGGER
-void	(*MR_address_of_edt_root_node)(Word, Word *);
-#endif
-
 #ifdef CONSERVATIVE_GC
 void	(*address_of_init_gc)(void);
 #endif

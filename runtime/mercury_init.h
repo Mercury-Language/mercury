@@ -120,9 +120,6 @@ extern	void	ML_io_print_to_stream(Word, Word, Word);
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
 
-/* in trace/mercury_trace_declarative.h */
-extern	void	MR_edt_root_node(Word EDT, Word *Node);
-
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);

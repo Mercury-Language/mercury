@@ -7,103 +7,15 @@
 #ifndef MERCURY_TRACE_DECLARATIVE_H
 #define MERCURY_TRACE_DECLARATIVE_H
 
-/*
-** This file defines the MR_Edt_Node data type, which stores nodes
-** of an Evaluation Dependency Tree (EDT), used for declarative
-** debugging.  This is the underlying implementation of mercury_edt,
-** which is an instance of the evaluation_tree typeclass.  These
-** are defined in browser/declarative_debugger.m.
-*/
-
 #include "mercury_imp.h"
 #include "mercury_trace.h"
 
 /*
-** Each node in an EDT has a tag to denote its type.  At the moment
-** the only type of analysis is wrong answer analysis, so the tag
-** is just used to distinguish between implicitly and explicitly
-** represented nodes.
-**
-** Implicit nodes are similar to explicit nodes, but they do not
-** store their children.  They do, however, store enough information
-** to allow execution to be resumed at that point, so children can
-** be created by re-executing the events in the stored range and
-** collecting a new EDT.  XXX this is not yet implemented, though.
-**
-** In the future there will also be nodes to handle:
-** 	- missing answer analysis
-** 	- calls to solutions/2 and related predicates
-** 	- exceptions
-** and possibly other things as well.
-*/
-
-typedef enum {
-	MR_EDT_WRONG_ANSWER_EXPLICIT,
-	MR_EDT_WRONG_ANSWER_IMPLICIT
-} MR_Edt_Node_Type;
-
-/*
-** Wrong answer analysis is currently the only type of analysis available.
-** Consequently, the EDT nodes only contain enough information to support
-** this type of analysis.
-*/
-
-typedef struct MR_Edt_Node_Struct MR_Edt_Node;
-
-struct MR_Edt_Node_Struct {
-		/*
-		** Type of EDT node.
-		*/
-	MR_Edt_Node_Type		MR_edt_node_tag;
-		/*
-		** The layout of the EXIT port.
-		*/
-	const MR_Stack_Layout_Label	*MR_edt_node_layout;
-		/*
-		** The arguments.
-		*/
-	Word				*MR_edt_node_arg_values;
-	Word				*MR_edt_node_arg_types;
-		/*
-		** This goal path gives the location, in the calling
-		** procedure, of the call that this proof is for.
-		*/
-	const char			*MR_edt_node_path;
-		/*
-		** The event numbers of the CALL and EXIT events for
-		** this proof.
-		*/
-	Unsigned			MR_edt_node_start_event;
-	Unsigned			MR_edt_node_end_event;
-		/*
-		** The sequence number of the CALL and EXIT events.
-		*/
-	Unsigned			MR_edt_node_seqno;
-		/*
-		** The rightmost child of this node, or NULL if there
-		** are no children.
-		*/
-	MR_Edt_Node			*MR_edt_node_children;
-		/*
-		** The next sibling to the left of this node, or NULL
-		** if this is the leftmost.
-		*/
-	MR_Edt_Node			*MR_edt_node_sibling;
-};
-
-/*
-** The following function is part of an interface to the EDT that can be
-** used by a front end written in Mercury (see browser/declarative_debugger.m).
-*/
-
-extern	void	MR_edt_root_node(Word EDT, Word *Node);
-
-/*
 ** When in declarative debugging mode, the internal debugger calls
-** MR_trace_decl_wrong_answer for each event.  
+** MR_trace_decl_debug for each event.  
 */
 
-extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
+extern	Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info);
 
 /*
@@ -113,8 +25,36 @@ extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 ** being entered.
 */
 
-extern	bool	MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd,
-			MR_Event_Info *event_info,
+extern	bool	MR_trace_start_decl_debug(const char *out,
+			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, Code **jumpaddr);
+
+/*
+** The following macros are provided to help C code manipulate the
+** Mercury data structure.  The values here must match the corresponding
+** values in the definitions in browser/declarative_execution.m.
+*/
+
+typedef Word MR_Trace_Node;
+
+#define	MR_trace_call_node_answer(node)					\
+		MR_field(MR_mktag(0), (node), (Integer) 1)
+
+#define MR_trace_cond_node_status(node)					\
+		MR_field(MR_mktag(3), (node), (Integer) 3)
+
+#define MR_trace_neg_node_status(node)					\
+		MR_field(MR_mktag(3), (node), (Integer) 3)
+
+#define MR_TRACE_STATUS_SUCCEEDED	(Word) 0
+#define MR_TRACE_STATUS_FAILED		(Word) 1
+#define MR_TRACE_STATUS_UNDECIDED	(Word) 2
+
+#define MR_trace_atom(atom, name, args)					\
+	do {								\
+		tag_incr_hp((atom), MR_mktag(0), 2);			\
+		MR_field(MR_mktag(0), (atom), 0) = (Word) (name);       \
+		MR_field(MR_mktag(0), (atom), 1) = (args);              \
+	} while(0)
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

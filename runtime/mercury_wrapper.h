@@ -83,15 +83,6 @@ extern	void		(*MR_address_of_trace_init_external)(void);
 extern	void		(*MR_address_of_trace_final_external)(void);
 
 /*
-** MR_edt_root_node(Word, Word *) is defined in
-** trace/mercury_trace_declarative.c but is referenced in
-** browser/declarative_debugger.m.  As we can not do direct calls from
-** browse/ to trace/, we do an indirect call via the following pointer.
-*/
-
-extern void		(*MR_address_of_edt_root_node)(Word, Word *);
-
-/*
 ** XXX This is obsolete too.
 ** This variable has been replaced by MR_io_print_to_*_stream,
 ** but the installed mkinit executable may still generate references to it.

@@ -10,6 +10,32 @@
 
 :- import_module list, string, io.
 
+% The stuff defined below is similar to types goal_path and trace_port
+% defined in modules compiler/hlds_goal.m and compiler/trace.m.
+% This enumeration must be EXACTLY the same as the MR_trace_port enum in
+% runtime/mercury_trace_base.h, and in the same order, since the code
+% assumes the representation is the same.
+
+:- type trace_port_type
+	--->	call
+	;	exit
+	;	redo
+	;	fail
+	;	ite_cond
+	;	ite_then
+	;	ite_else
+	;	neg_enter
+	;	neg_success
+	;	neg_failure
+	;	disj
+	;	switch
+	;	nondet_pragma_first
+	;	nondet_pragma_later
+	;	exception
+	.
+
+:- type goal_path_string == string.
+
 	% Get user input via the same method used by the internal
 	% debugger.
 :- pred util__trace_getline(string, io__result(string), io__state,

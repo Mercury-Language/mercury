@@ -15,20 +15,17 @@
 /*
 ** The following enum gives the possible modes that the declarative
 ** debugger can be in (see trace/mercury_trace_declarative.{c,h}).
-** MR_TRACE_INTERACTIVE indicates the usual operation of the internal
-** debugger.  The other modes refer to what type of analysis is
-** being performed.
 */
 
 typedef enum {
-	MR_TRACE_INTERACTIVE,
-	MR_TRACE_WRONG_ANSWER
+	MR_TRACE_INTERACTIVE,	 	/* Use internal debugger. */
+	MR_TRACE_DECL_DEBUG,		/* Normal declarative debugging. */
+	MR_TRACE_DECL_DEBUG_TEST	/* Test mode declarative debugging. */
 } MR_Trace_Mode;
 
 /*
 ** This variable is modified whenever we start or stop collecting
-** an EDT for a particular type of analysis (see
-** trace/mercury_trace_declarative.c).
+** an execution tree.
 */
 
 extern	MR_Trace_Mode	MR_trace_decl_mode;

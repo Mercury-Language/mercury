@@ -49,7 +49,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module util.
+:- import_module declarative_execution, util.
 :- import_module std_util, io, bool, list, char, string.
 
 query_user(Node, Answer) -->
@@ -137,7 +137,15 @@ command_chars(['?' | _], help).
 
 
 write_edt_node(Node) -->
-	{ Node = wrong_answer(Name, Args) },
+	{
+		Node = wrong_answer(atom(Name, Args))
+	;
+		% XXX this is wrong, but most of the module is
+		% going to be re-written again soon anyway, so I
+		% won't fix it yet.
+		%
+		Node = missing_answer(atom(Name, Args), _)
+	},
 	io__write_string(Name),
 	(
 		{ Args = [Arg1 | Args0] }

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,8 +36,10 @@ main -->
 		{ assoc_list__from_corresponding_lists(Words, Words,
 			AssocList) },
 		{ tree234__assoc_list_to_tree234(AssocList, Tree) },
-		{ type_to_univ(Tree, Univ) },
-		browse__browse(Univ),
+		io__stdin_stream(StdIn),
+		io__stdout_stream(StdOut),
+		browse__init_state(State),
+		browse__browse(Tree, StdIn, StdOut, State, _),
 		io__set_exit_status(EXIT_SUCCESS)
 	).
 

@@ -84,10 +84,11 @@ endif
 # targets
 
 .PHONY: all
-all : library browse_test
+all : library browse_test declarative_test
 
 .PHONY: depend
-depend		: browser_library.depend browse_test.depend
+depend		: browser_library.depend browse_test.depend \
+		  declarative_test.depend
 
 .PHONY: check
 check		: browser_library.check
@@ -96,7 +97,7 @@ check		: browser_library.check
 all-ints: ints int3s
 
 .PHONY: ints 
-ints		: browser_library.ints browse_test.ints
+ints		: browser_library.ints browse_test.ints declarative_test.ints
 
 .PHONY: int3s 
 int3s		: browser_library.int3s

@@ -209,8 +209,10 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	}
 
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
-	if (MR_trace_decl_mode == MR_TRACE_WRONG_ANSWER) {
-		return MR_trace_decl_wrong_answer(cmd, event_info);
+	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG
+		|| MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_TEST)
+	{
+		return MR_trace_decl_debug(cmd, event_info);
 	}
 #endif	MR_USE_DECLARATIVE_DEBUGGER
 
@@ -1577,23 +1579,57 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("misc", "quit");
 		}
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
-        } else if (streq(words[0], "dd_wrong")) {
+	} else if (streq(words[0], "dd")) {
+		MR_Trace_Port	port = event_info->MR_trace_port;
+
 		if (word_count != 1) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
-				"mdb: dd_wrong requires no arguments.\n");
-		} else if (event_info->MR_trace_port != MR_PORT_EXIT) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err,
-				"mdb: wrong answer analysis is only "
-				"available from EXIT events.\n");
-		} else if (MR_trace_start_wrong_answer(cmd, event_info,
-				event_details, jumpaddr)) {
-			return STOP_INTERACTING;
+				"mdb: dd requires no arguments.\n");
+		} else if (port == MR_PORT_EXIT || port == MR_PORT_FAIL) {
+			if (MR_trace_start_decl_debug((const char *) NULL, cmd,
+						event_info, event_details,
+						jumpaddr))
+			{
+				return STOP_INTERACTING;
+			}
+			else
+			{
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: unable to start "
+						"declarative debugging.\n");
+			}
 		} else {
 			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "mdb: unable to start declarative "
-				"debugging.\n");
+			fprintf(MR_mdb_err,
+				"mdb: declarative debugging is only "
+				"available from EXIT or FAIL events.\n");
+		}
+        } else if (streq(words[0], "dd_dd")) {
+		MR_Trace_Port	port = event_info->MR_trace_port;
+
+		if (word_count != 2) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
+				"mdb: dd_dd requires one argument.\n");
+		} else if (port == MR_PORT_EXIT || port == MR_PORT_FAIL) {
+			if (MR_trace_start_decl_debug((const char *) words[1],
+						cmd, event_info, event_details,
+						jumpaddr))
+			{
+				return STOP_INTERACTING;
+			}
+			else
+			{
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: unable to start "
+						"declarative debugging.\n");
+			}
+		} else {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
+				"mdb: declarative debugging is only "
+				"available from EXIT or FAIL events.\n");
 		}
 #endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 	} else {
