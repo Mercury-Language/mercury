@@ -595,14 +595,14 @@ string__from_char_list(CharList, String) :-
 :- pragma c_code(string__from_rev_char_list(Chars::in, Str::out),
 		[will_not_call_mercury, thread_safe], "
 {
-	Word list_ptr;
-	Word size, len;
-	Word str_ptr;
+	MR_Word list_ptr;
+	MR_Word size, len;
+	MR_Word str_ptr;
 /*
-** loop to calculate list length + sizeof(Word) in `size' using list in
+** loop to calculate list length + sizeof(MR_Word) in `size' using list in
 ** `list_ptr' and separately count the length of the string
 */
-	size = sizeof(Word);
+	size = sizeof(MR_Word);
 	len = 1;
 	list_ptr = Chars;
 	while (!MR_list_is_empty(list_ptr)) {
@@ -612,12 +612,12 @@ string__from_char_list(CharList, String) :-
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
 */
-	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
+	incr_hp_atomic_msg(str_ptr, size / sizeof(MR_Word),
 		MR_PROC_LABEL,
 		""string:string/0"");
-	Str = (char *) str_ptr;
+	Str = (MR_String) str_ptr;
 /*
 ** set size to be the offset of the end of the string
 ** (ie the \\0) and null terminate the string.
@@ -629,7 +629,7 @@ string__from_char_list(CharList, String) :-
 */
 	list_ptr = Chars;
 	while (!MR_list_is_empty(list_ptr)) {
-		Str[--len] = (char) MR_list_head(list_ptr);
+		Str[--len] = (MR_Char) MR_list_head(list_ptr);
 		list_ptr = MR_list_tail(list_ptr);
 	}
 }").
@@ -1568,11 +1568,12 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__float_to_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
-	Word tmp;
+	MR_Word tmp;
 	sprintf(buf, ""%#.15g"", FloatVal);
-	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
+	incr_hp_atomic_msg(tmp,
+		(strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	FloatString = (char *)tmp;
+	FloatString = (MR_String) tmp;
 	strcpy(FloatString, buf);
 }").
 
@@ -1584,11 +1585,12 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__float_to_f_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
-	Word tmp;
+	MR_Word tmp;
 	sprintf(buf, ""%.15f"", FloatVal);
-	incr_hp_atomic_msg(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word),
+	incr_hp_atomic_msg(tmp,
+		(strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	FloatString = (char *)tmp;
+	FloatString = (MR_String) tmp;
 	strcpy(FloatString, buf);
 }").
 
@@ -1624,14 +1626,14 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__to_int_list(Str::out, IntList::in),
 		[will_not_call_mercury, thread_safe], "{
 		/* mode (out, in) is det */
-	Word int_list_ptr;
+	MR_Word int_list_ptr;
 	size_t size;
-	Word str_ptr;
+	MR_Word str_ptr;
 /*
-** loop to calculate list length + sizeof(Word) in `size' using list in
+** loop to calculate list length + sizeof(MR_Word) in `size' using list in
 ** `int_list_ptr'
 */
-	size = sizeof(Word);
+	size = sizeof(MR_Word);
 	int_list_ptr = IntList;
 	while (! MR_list_is_empty(int_list_ptr)) {
 		size++;
@@ -1639,9 +1641,9 @@ string__special_precision_and_width(-1).
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
-** i.e. (length + 1 + sizeof(Word) - 1) / sizeof(Word) words
+** i.e. (length + 1 + sizeof(MR_Word) - 1) / sizeof(MR_Word) words
 */
-	incr_hp_atomic_msg(str_ptr, size / sizeof(Word),
+	incr_hp_atomic_msg(str_ptr, size / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
 	Str = (char *) str_ptr;
 /*
@@ -1678,7 +1680,7 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__index(Str::in, Index::in, Ch::out),
 		[will_not_call_mercury, thread_safe], "
-	if ((Word) Index >= strlen(Str)) {
+	if ((MR_Word) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		SUCCESS_INDICATOR = TRUE;
@@ -1731,7 +1733,7 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__append(S1::in, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
+	MR_Word tmp;
 	size_t len_1, len_2, len_3;
 
 	len_1 = strlen(S1);
@@ -1744,9 +1746,10 @@ string__special_precision_and_width(-1).
 		** We need to make a copy to ensure that the pointer is
 		** word-aligned.
 		*/
-		incr_hp_atomic_msg(tmp, (len_2 + sizeof(Word)) / sizeof(Word),
+		incr_hp_atomic_msg(tmp,
+			(len_2 + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		S2 = (char *) tmp;
+		S2 = (MR_String) tmp;
 		strcpy(S2, S3 + len_1);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1758,10 +1761,11 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__append(S1::in, S2::in, S3::out),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2;
-	Word tmp;
+	MR_Word tmp;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
-	incr_hp_atomic_msg(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word),
+	incr_hp_atomic_msg(tmp,
+		(len_1 + len_2 + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
 	S3 = (char *) tmp;
 	strcpy(S3, S1);
@@ -1771,7 +1775,7 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__append(S1::out, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe],
 	local_vars("
-		String s;
+		MR_String s;
 		size_t len;
 		size_t count;
 	"),
@@ -1784,19 +1788,19 @@ string__special_precision_and_width(-1).
 		LOCALS->count++;
 	"),
 	common_code("
-		Word	temp;
+		MR_Word	temp;
 
 		incr_hp_atomic_msg(temp,
-			(LOCALS->count + sizeof(Word)) / sizeof(Word),
+			(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		S1 = (String) temp;
+		S1 = (MR_String) temp;
 		memcpy(S1, LOCALS->s, LOCALS->count);
 		S1[LOCALS->count] = '\\0';
 		incr_hp_atomic_msg(temp,
-			(LOCALS->len - LOCALS->count + sizeof(Word))
-				/ sizeof(Word),
+			(LOCALS->len - LOCALS->count + sizeof(MR_Word))
+				/ sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		S2 = (String) temp;
+		S2 = (MR_String) temp;
 		strcpy(S2, LOCALS->s + LOCALS->count);
 
 		if (LOCALS->count < LOCALS->len) {
@@ -1819,8 +1823,8 @@ string__special_precision_and_width(-1).
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	Integer len;
-	Word tmp;
+	MR_Integer len;
+	MR_Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
 		MR_make_aligned_string(LVALUE_CAST(ConstString, SubString),
@@ -1829,9 +1833,10 @@ string__special_precision_and_width(-1).
 		len = strlen(Str);
 		if (Start > len) Start = len;
 		if (Count > len - Start) Count = len - Start;
-		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+		incr_hp_atomic_msg(tmp,
+			(Count + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		SubString = (char *) tmp;
+		SubString = (MR_String) tmp;
 		memcpy(SubString, Str + Start, Count);
 		SubString[Count] = '\\0';
 	}
@@ -1848,11 +1853,11 @@ string__special_precision_and_width(-1).
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	Integer len;
-	Word tmp;
-	incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+	MR_Integer len;
+	MR_Word tmp;
+	incr_hp_atomic_msg(tmp, (Count + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	SubString = (char *) tmp;
+	SubString = (MR_String) tmp;
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
 }").
@@ -1870,15 +1875,16 @@ string__special_precision_and_width(-1).
 
 :- pragma c_code(string__split(Str::in, Count::in, Left::out, Right::out),
 		[will_not_call_mercury, thread_safe], "{
-	Integer len;
-	Word tmp;
+	MR_Integer len;
+	MR_Word tmp;
 	if (Count <= 0) {
 		MR_make_aligned_string(LVALUE_CAST(ConstString, Left), """");
 		Right = Str;
 	} else {
 		len = strlen(Str);
 		if (Count > len) Count = len;
-		incr_hp_atomic_msg(tmp, (Count + sizeof(Word)) / sizeof(Word),
+		incr_hp_atomic_msg(tmp,
+			(Count + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
 		Left = (char *) tmp;
 		memcpy(Left, Str, Count);
@@ -1888,9 +1894,9 @@ string__special_precision_and_width(-1).
 		** word-aligned.
 		*/
 		incr_hp_atomic_msg(tmp,
-			(len - Count + sizeof(Word)) / sizeof(Word),
+			(len - Count + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		Right = (char *) tmp;
+		Right = (MR_String) tmp;
 		strcpy(Right, Str + Count);
 	}
 }").
@@ -1935,7 +1941,7 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__first_char(Str::in, First::in, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
+	MR_Word tmp;
 	if (Str[0] != First || First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
@@ -1945,9 +1951,9 @@ string__special_precision_and_width(-1).
 		** word-aligned.
 		*/
 		incr_hp_atomic_msg(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word),
+			(strlen(Str) + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		Rest = (char *) tmp;
+		Rest = (MR_String) tmp;
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1958,7 +1964,7 @@ string__special_precision_and_width(-1).
 */
 :- pragma c_code(string__first_char(Str::in, First::out, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
-	Word tmp;
+	MR_Word tmp;
 	First = Str[0];
 	if (First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
@@ -1969,9 +1975,9 @@ string__special_precision_and_width(-1).
 		** word-aligned.
 		*/
 		incr_hp_atomic_msg(tmp,
-			(strlen(Str) + sizeof(Word)) / sizeof(Word),
+			(strlen(Str) + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		Rest = (char *) tmp;
+		Rest = (MR_String) tmp;
 		strcpy(Rest, Str);
 		SUCCESS_INDICATOR = TRUE;
 	}
@@ -1983,10 +1989,10 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__first_char(Str::out, First::in, Rest::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len = strlen(Rest) + 1;
-	Word tmp;
-	incr_hp_atomic_msg(tmp, (len + sizeof(Word)) / sizeof(Word),
+	MR_Word tmp;
+	incr_hp_atomic_msg(tmp, (len + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	Str = (char *) tmp;
+	Str = (MR_String) tmp;
 	Str[0] = First;
 	strcpy(Str + 1, Rest);
 }").
