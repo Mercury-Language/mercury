@@ -5898,11 +5898,21 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 		** allocating more space if necessary.
 		*/
 		line = MR_trace_getline("> ", mdb_in, mdb_out);
+		if (line == NULL) {
+			/*
+			** We got an EOF... we need to stop processing
+			** the input, even though it is not syntactically
+			** correct, otherwise we might get into an infinite
+			** loop if we keep getting EOF.
+			*/
+			break;
+		}
 		extra_len = strlen(line);
 		/* cmd_char_max is always > 0 */
 		MR_ensure_big_enough(len + extra_len + 1, cmd_char, char, 0);
 		ptr = cmd_chars + len;
 		strcpy(ptr, line);
+		MR_free(line);
 		len = len + extra_len;
 	}
 
@@ -6084,7 +6094,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 						break;
 
 					case 'q':
-						free(buf);
+						MR_free(buf);
 						return MR_trace_event_internal(
 								cmd, MR_TRUE,
 								event_info);
@@ -6094,12 +6104,12 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 						fprintf(MR_mdb_err,
 							"unknown command, "
 							"try again\n");
-						free(buf);
+						MR_free(buf);
 						goto try_again;
 				}
 			}
 
-			free(buf);
+			MR_free(buf);
 		}
 
 		MR_scroll_next = 0;
