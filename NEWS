@@ -282,7 +282,26 @@ Changes to the Mercury language:
   XXX These features are not yet documented.
   XXX (See tests/hard_coded/pragma_import.m for some examples.)
 
-* We have added tabling. XXX
+* We have added support for automatic tabling (memoization).
+
+  See the "Tabled evaluation" subsection of the "Implementation-dependent
+  pragmas" section of the "Pragmas" chapter of the Mercury language
+  reference manual.
+
+* We have added (tentative) support for exception handling.
+
+  The interface to exception handling is actually via an `exception.m'
+  library module rather than a new language construct.  
+  For now, this module is located in the `extras/exceptions'
+  directory, which is part of the `mercury-extras' distribution,
+  but our intent is to eventually migrate this into the Mercury
+  standard library if experience with its use proves positive.
+
+  The exception handling interface uses committed choice nondeterminism
+  to avoid some semantic problems with previous exception handling
+  proposals.
+
+  See the documentation in the interface of `exception.m' for details.
 
 Changes to the Mercury standard library:
 ****************************************
