@@ -39,15 +39,15 @@ gc_call(Goal) :-
 */
 :- pred my_member(T, list(T)).
 :- mode my_member(out, in).
-my_member(X, H.T) :-
+my_member(X, [H|T]) :-
 	my_member_2(T, H, X).
 
 :- pred my_member_2(list(T), T, T).
 :- mode my_member_2(in, in, out).
 
 my_member_2([], X, X).
-my_member_2(_._, X, X).
-my_member_2(H.T, _, X) :-
+my_member_2([_|_], X, X).
+my_member_2([H|T], _, X) :-
 	my_member_2(T, H, X).
 
 %-----------------------------------------------------------------------------%

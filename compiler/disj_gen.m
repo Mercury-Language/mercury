@@ -29,7 +29,7 @@ disj_gen__generate_semi_disj(Goals, GoalsCode) -->
 	code_info__get_failure_cont(FallThrough),
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode),
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label, label,
 					code_tree, code_info, code_info).
@@ -72,6 +72,13 @@ disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 %---------------------------------------------------------------------------%
 
 disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
+	{ Goals = [] ->
+		error("empty disjunction shouldn't be non-det")
+	; Goals = [_]  ->
+		error("singleton disjunction")
+	;
+		true
+	},
 	code_info__generate_nondet_saves(SaveCode),
 	code_info__get_next_label(ContLab),
 	code_info__push_failure_cont(ContLab),
@@ -91,10 +98,8 @@ disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
 						code_info, code_info).
 :- mode disj_gen__generate_non_disj_2(in, in, out, in, out) is det.
 
-disj_gen__generate_non_disj_2([], EndLab, EndCode) -->
-	{ EndCode = node([
-		label(EndLab) - "End of disj"
-	]) }.
+disj_gen__generate_non_disj_2([], _EndLab, _EndCode) -->
+	{ error("disj_gen__generate_non_disj_2") }.
 disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	(
 		{ Goals = [_|_] }
@@ -111,39 +116,43 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 				label(ContLab0) - "Start of next disjunct"
 			]) }
 		;
-			{ error("Missing failure continuation") }
-		)
+			{ error("generate_non_disj_2: missing failure continuation (1)") }
+		),
+		code_info__grab_code_info(CodeInfo),
+		code_gen__generate_forced_non_goal(Goal, GoalCode),
+		code_info__slap_code_info(CodeInfo),
+		( code_info__pop_failure_cont(_) ->
+			[]
+		;
+			{ error("generate_non_disj_2: missing failure continuation (2)") }
+		),
+		(
+			{ Goals = [_,_|_] }
+		->
+			code_info__get_next_label(NextCont),
+			code_info__push_failure_cont(NextCont)
+		;
+			[]
+		),
+		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
 		(
-			code_info__pop_failure_cont(_),
 			code_info__failure_cont(ContLab1)
 		->
-			{ ContCode = node([
-				modframe(yes(ContLab1)) -
-						"Set failure continuation"
-			]) },
-			{ FailCode = empty }
+			{ Label = yes(ContLab1) }
 		;
-			{ ContCode = node([
-				modframe(no) -
-					"Failure continuation is fail()"
-			]) },
-			{ FailCode = empty }
-		)
+			{ Label = no }
+		),
+		{ ContCode = node([
+			modframe(Label) - "Restore failure continuation"
+		]) },
+		{ FailCode = empty },
+		code_info__grab_code_info(CodeInfo),
+		code_gen__generate_forced_non_goal(Goal, GoalCode),
+		{ RestCode = node([
+			label(EndLab) - "End of disj"
+		]) }
 	),
-	code_info__grab_code_info(CodeInfo),
-	code_gen__generate_forced_non_goal(Goal, GoalCode),
-	(
-		{ Goals = [_|_] },
-		code_info__slap_code_info(CodeInfo),
-		code_info__pop_failure_cont(_)
-	->
-		code_info__get_next_label(NextCont),
-		code_info__push_failure_cont(NextCont)
-	;
-		{ true }
-	),
-	disj_gen__generate_non_disj_2(Goals, EndLab, RestCode),
 	{ DisjCode = tree(tree(ContCode, GoalCode), tree(FailCode, RestCode)) }.
 
 %---------------------------------------------------------------------------%

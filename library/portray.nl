@@ -24,12 +24,12 @@ portray(Term) :-
 	write(')').
 
 portray_args([]).
-portray_args(X.Xs) :-
+portray_args([X|Xs]) :-
 	portray2(X),
 	portray_args_2(Xs).
 
 portray_args_2([]).
-portray_args_2(X.Xs) :-
+portray_args_2([X|Xs]) :-
 	write(', '),
 	portray2(X),
 	portray_args_2(Xs).
@@ -42,7 +42,7 @@ portray2(Term) :-
 		write(Term)
 	).
 
-spyHook(A,Term) :-
+spyHook(_, Term) :-
 	interactive_display(1, Term).
 
 interactive_display(Depth, Term) :-

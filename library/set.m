@@ -49,7 +49,7 @@
 :- pred set__equal(set(T), set(T)).
 :- mode set__equal(in, in) is semidet.
 
-:- pred set__empty(set(T)).
+:- pred set__empty(set(_T)).
 :- mode set__empty(in) is semidet.
 
 	% `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.

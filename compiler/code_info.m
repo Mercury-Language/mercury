@@ -231,8 +231,11 @@
 :- pred code_info__set_succip_used(bool, code_info, code_info).
 :- mode code_info__set_succip_used(in, in, out) is det.
 
-:- pred code_info__remake_code_info(code_info, code_info).
-:- mode code_info__remake_code_info(in, out) is det.
+:- pred code_info__remake_with_store_map(code_info, code_info).
+:- mode code_info__remake_with_store_map(in, out) is det.
+
+:- pred code_info__remake_with_call_info(code_info, code_info).
+:- mode code_info__remake_with_call_info(in, out) is det.
 
 :- pred code_info__update_liveness_info(delta_liveness, code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
@@ -361,7 +364,8 @@
 					% after this goal
 			stack(map(var, lval)),
 					% Store Map - where to put things
-			category,	% The category of the current procedure
+			pair(category),	% The category of the current procedure
+					% and the current context (respectively)
 			maybe(label),	% The first failure continuation for
 					% nondet code
 			int,		% The number of extra stackslots
@@ -417,7 +421,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 		ModuleInfo,
 		Liveness,
 		StoreMapStack,
-		Category,
+		Category - Category,
 		no,
 		0,
 		Options
@@ -1558,7 +1562,7 @@ code_info__generate_nondet_saves(Code) -->
 	code_info__get_call_info(CallInfo),
 	{ map__to_assoc_list(CallInfo, CallList) },
 	code_info__generate_nondet_saves_2(CallList, Code),
-	code_info__remake_code_info.
+	code_info__remake_with_call_info.
 
 :- pred code_info__generate_nondet_saves_2(assoc_list(var, lval), code_tree,
 							code_info, code_info).
@@ -1618,12 +1622,12 @@ code_info__get_headvars(HeadVars) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__remake_code_info -->
+code_info__remake_with_store_map -->
 	code_info__current_store_map(StoreMap),
 	{ map__to_assoc_list(StoreMap, StoreList) },
 	{ map__init(Variables0) },
 	code_info__set_variables(Variables0),
-	code_info__remake_code_info_2(StoreList),
+	code_info__remake_with_store_map_2(StoreList),
 	code_info__get_variables(Variables1),
 	{ map__to_assoc_list(Variables1, VarList) },
 	{ map__init(Registers) },
@@ -1632,12 +1636,12 @@ code_info__remake_code_info -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__remake_code_info_2(assoc_list(var, lval),
+:- pred code_info__remake_with_store_map_2(assoc_list(var, lval),
 						code_info, code_info).
-:- mode code_info__remake_code_info_2(in, in, out) is det.
+:- mode code_info__remake_with_store_map_2(in, in, out) is det.
 
-code_info__remake_code_info_2([]) --> [].
-code_info__remake_code_info_2([V - ST|VSs]) -->
+code_info__remake_with_store_map_2([]) --> [].
+code_info__remake_with_store_map_2([V - ST|VSs]) -->
 	(
 		code_info__variable_is_live(V)
 	->
@@ -1659,7 +1663,38 @@ code_info__remake_code_info_2([V - ST|VSs]) -->
 	;
 		{ true }
 	),
-	code_info__remake_code_info_2(VSs).
+	code_info__remake_with_store_map_2(VSs).
+
+%---------------------------------------------------------------------------%
+
+code_info__remake_with_call_info -->
+	code_info__get_call_info(CallInfo),
+	{ map__to_assoc_list(CallInfo, CallList) },
+	{ map__init(Variables0) },
+	code_info__set_variables(Variables0),
+	code_info__remake_with_call_info_2(CallList),
+	code_info__get_variables(Variables1),
+	{ map__to_assoc_list(Variables1, VarList) },
+	{ map__init(Registers) },
+	code_info__set_registers(Registers),
+	code_info__reconstruct_registers(VarList).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__remake_with_call_info_2(assoc_list(var, lval),
+						code_info, code_info).
+:- mode code_info__remake_with_call_info_2(in, in, out) is det.
+
+code_info__remake_with_call_info_2([]) --> [].
+code_info__remake_with_call_info_2([V - ST|VSs]) -->
+	(
+		code_info__variable_is_live(V)
+	->
+		code_info__add_lvalue_to_variable(ST, V)
+	;
+		{ true }
+	),
+	code_info__remake_with_call_info_2(VSs).
 
 %---------------------------------------------------------------------------%
 
@@ -1986,7 +2021,7 @@ code_info__pop_stack(Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__stack_variable(Num0, Lval) -->
-	code_info__get_category(Cat),
+	code_info__get_proc_category(Cat),
 	code_info__get_push_count(Count),
 	{ Num is Num0 + Count },
 	(
@@ -2003,7 +2038,7 @@ code_info__stack_variable(Num0, Lval) -->
 :- mode code_info__push_rval(in, out, in, out) is det.
 
 code_info__push_rval(Rval, Code) -->
-	code_info__get_category(Cat),
+	code_info__get_proc_category(Cat),
 	(
 		{ Cat = nondeterministic }
 	->
@@ -2025,7 +2060,7 @@ code_info__push_rval(Rval, Code) -->
 :- mode code_info__pop_lval(in, out, in, out) is det.
 
 code_info__pop_lval(Lval, Code) -->
-	code_info__get_category(Cat),
+	code_info__get_proc_category(Cat),
 	(
 		{ Cat = nondeterministic }
 	->
@@ -2044,41 +2079,40 @@ code_info__pop_lval(Lval, Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
-	code_info__get_category(Category),
+	code_info__get_context_category(Category),
 	(
+		{ Category = nondeterministic }
+	->
+		{ Code = node([ redo - "" ]) }
+	;
 		code_info__failure_cont(Cont)
 	->
 		{ Code = node([ goto(Cont) -
 					"Branch to failure continuation" ]) }
 	;
-		{ Category = nondeterministic }
-	->
-		{ Code = node([ fail - "Fail" ]) }
-	;
-		{ error("missing failure continuation") }
+		{ error("code_info__generate_failure: missing failure continuation") }
 	).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_test_and_fail(Rval, Code) -->
-	code_info__get_category(Category),
+	code_info__get_context_category(Category),
 	(
-		code_info__failure_cont(Cont)
-	->
-		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
-	;
 		{ Category = nondeterministic }
 	->
 		code_info__get_next_label(Success),
 		{ Code = node([
 			if_val(Rval, Success) - "",
-			fail - "",
+			redo - "",
 			label(Success) - ""
 		]) }
 	;
-		{ error("missing failure continuation") }
+		code_info__failure_cont(Cont)
+	->
+		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
+	;
+		{ error("code_info__generate_test_and_fail: missing failure continuation") }
 	).
-
 
 %---------------------------------------------------------------------------%
 
@@ -2232,11 +2266,17 @@ code_info__current_store_map(Map) -->
 :- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
 :- mode code_info__set_liveness_info(in, in, out) is det.
 
-:- pred code_info__get_category(category, code_info, code_info).
-:- mode code_info__get_category(out, in, out) is det.
+:- pred code_info__get_proc_category(category, code_info, code_info).
+:- mode code_info__get_proc_category(out, in, out) is det.
 
-:- pred code_info__set_category(category, code_info, code_info).
-:- mode code_info__set_category(in, in, out) is det.
+:- pred code_info__get_context_category(category, code_info, code_info).
+:- mode code_info__get_context_category(out, in, out) is det.
+
+:- pred code_info__set_proc_category(category, code_info, code_info).
+:- mode code_info__set_proc_category(in, in, out) is det.
+
+:- pred code_info__set_context_category(category, code_info, code_info).
+:- mode code_info__set_context_category(in, in, out) is det.
 
 :- pred code_info__get_push_count(int, code_info, code_info).
 :- mode code_info__get_push_count(out, in, out) is det.
@@ -2344,12 +2384,19 @@ code_info__set_store_map(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
-code_info__get_category(O, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _).
+code_info__get_proc_category(OP, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, OP - _, _, _,
+		_).
 
-code_info__set_category(O, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P, Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+code_info__get_context_category(OC, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _ - OC, _, _,
+		_).
+
+code_info__set_context_category(OC, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, OP - _, P,
+		Q, R),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, OP - OC, P,
+		Q, R).
 
 code_info__get_continuation(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _).

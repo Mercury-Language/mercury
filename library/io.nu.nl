@@ -111,7 +111,7 @@ io__call(Goal, IOState0, IOState) :-
 
 :- pred atoms_to_strings(list(atom), list(string)).
 atoms_to_strings([],[]).
-atoms_to_strings(A.As,S.Ss) :-
+atoms_to_strings([A|As],[S|Ss]) :-
 	name(A,S),
 	atoms_to_strings(As,Ss).
 

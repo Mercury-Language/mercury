@@ -4,6 +4,11 @@
 :- module live_vars.
 % Main author: conway.
 
+% Computes the `live_vars', i.e. which variables are either live across a
+% call or live at the start of a disjunction, allocates a stack slot for
+% each of these variables, and stores this information in the call_info
+% structure in the proc_info.
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -99,6 +104,11 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
+	% `Liveness' is the set of live variables, i.e. vars which
+	% have been referenced and will be referenced again.
+	% `LiveVars' is the accumulated set of variables which need a
+	% stack slot, i.e. they are live across calls or at the start of
+	% a disjunction.
 
 :- pred detect_live_vars_in_goal_2(hlds__goal_expr, liveness_info, set(var),
 				module_info, liveness_info, set(var)).
@@ -145,15 +155,14 @@ detect_live_vars_in_goal_2(
 	(
 		Builtin = is_builtin
 	->
-		Liveness = Liveness0,
 		LiveVars = LiveVars0
 	;
 		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
 		set__difference(Liveness0, OutVars, NewLiveVars),
-		set__union(NewLiveVars, LiveVars0, LiveVars),
-		Liveness = Liveness0
-	).
+		set__union(NewLiveVars, LiveVars0, LiveVars)
+	),
+	Liveness = Liveness0.
 
 detect_live_vars_in_goal_2(unify(_,_,_,Unification,_), Liveness0, LiveVars0,
 				_ModuleInfo, Liveness, LiveVars) :-
@@ -244,7 +253,7 @@ detect_initial_live_vars_2([], _ModuleInfo, Liveness, Liveness).
 detect_initial_live_vars_2([V - M|VAs], ModuleInfo,
 						Liveness0, Liveness) :-
 	(
-		mode_is_output(ModuleInfo, M)
+		mode_is_input(ModuleInfo, M)
 	->
 		set__insert(Liveness0, V, Liveness1)
 	;
@@ -296,7 +305,7 @@ allocate_live_vars([Var|Vars], N0, Category, CallInfo0, CallInfo) :-
 	;
 		Lval = stackvar(N0)
 	),
-	map__insert(CallInfo0, Var, Lval, CallInfo1),
+	map__set(CallInfo0, Var, Lval, CallInfo1),
 	N1 is N0 + 1,
 	allocate_live_vars(Vars, N1, Category, CallInfo1, CallInfo).
 

@@ -13,16 +13,16 @@
 :- interface.
 :- import_module int.
 
-:- type stack(T).
+:- type stack(_T).
 
 	% `stack__init(Stack)' is true iff `Stack' is an empty stack.
 
-:- pred stack__init(stack(T)).
+:- pred stack__init(stack(_T)).
 :- mode stack__init(out) is det.
 
 	% `stack__is_empty(Stack)' is true iff `Stack' is an empty stack.
 
-:- pred stack__is_empty(stack(T)).
+:- pred stack__is_empty(stack(_T)).
 :- mode stack__is_empty(in) is semidet.
 
 	% `stack__is_full(Stack)' is intended to be true iff `Stack'
@@ -30,7 +30,7 @@
 	% implement allows arbitrary-sized stacks, so stack__is_full
 	% always fails.
 
-:- pred stack__is_full(stack(T)).
+:- pred stack__is_full(stack(_T)).
 :- mode stack__is_full(in) is semidet.
 
 	% `stack__push(Stack0, Elem, Stack)' is true iff `Stack' is
@@ -62,7 +62,7 @@
 	% `stack__depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
 
-:- pred stack__depth(stack(T), int).
+:- pred stack__depth(stack(_T), int).
 :- mode stack__depth(in, out) is det.
 
 %--------------------------------------------------------------------------%

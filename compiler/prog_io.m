@@ -1845,7 +1845,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head arg variables are distinct
 		%%% some [Arg2, OtherArgs]
 		(
-			list__member(Arg2, Args, Arg2.OtherArgs),
+			list__member(Arg2, Args, [Arg2|OtherArgs]),
 			list__member(Arg2, OtherArgs)
 		)
 	->
@@ -2085,7 +2085,7 @@ parse_module_spec_list(Term, Result) :-
 :- pred parse_module_spec_list_2(list(term), maybe1(list(module_specifier))).
 :- mode parse_module_spec_list_2(in, out) is det.
 parse_module_spec_list_2([], ok([])).
-parse_module_spec_list_2(X.Xs, Result) :-
+parse_module_spec_list_2([X|Xs], Result) :-
 	parse_module_specifier(X, X_Result),
 	parse_module_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2134,7 +2134,7 @@ parse_pred_spec_list(Term, Result) :-
 :- pred parse_pred_spec_list_2(list(term), maybe1(list(pred_specifier))).
 :- mode parse_pred_spec_list_2(in, out) is det.
 parse_pred_spec_list_2([], ok([])).
-parse_pred_spec_list_2(X.Xs, Result) :-
+parse_pred_spec_list_2([X|Xs], Result) :-
 	parse_predicate_specifier(X, X_Result),
 	parse_pred_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2159,7 +2159,7 @@ parse_cons_spec_list(Term, Result) :-
 :- pred parse_cons_spec_list_2(list(term), maybe1(list(cons_specifier))).
 :- mode parse_cons_spec_list_2(in, out) is det.
 parse_cons_spec_list_2([], ok([])).
-parse_cons_spec_list_2(X.Xs, Result) :-
+parse_cons_spec_list_2([X|Xs], Result) :-
 	parse_constructor_specifier(X, X_Result),
 	parse_cons_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2184,7 +2184,7 @@ parse_type_spec_list(Term, Result) :-
 :- pred parse_type_spec_list_2(list(term), maybe1(list(sym_name_specifier))).
 :- mode parse_type_spec_list_2(in, out) is det.
 parse_type_spec_list_2([], ok([])).
-parse_type_spec_list_2(X.Xs, Result) :-
+parse_type_spec_list_2([X|Xs], Result) :-
 	parse_type_specifier(X, X_Result),
 	parse_type_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2209,7 +2209,7 @@ parse_adt_spec_list(Term, Result) :-
 :- pred parse_adt_spec_list_2(list(term), maybe1(list(sym_name_specifier))).
 :- mode parse_adt_spec_list_2(in, out) is det.
 parse_adt_spec_list_2([], ok([])).
-parse_adt_spec_list_2(X.Xs, Result) :-
+parse_adt_spec_list_2([X|Xs], Result) :-
 	parse_adt_specifier(X, X_Result),
 	parse_adt_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
@@ -2234,7 +2234,7 @@ parse_op_spec_list(Term, Result) :-
 :- pred parse_op_spec_list_2(list(term), maybe1(list(op_specifier))).
 :- mode parse_op_spec_list_2(in, out) is det.
 parse_op_spec_list_2([], ok([])).
-parse_op_spec_list_2(X.Xs, Result) :-
+parse_op_spec_list_2([X|Xs], Result) :-
 	parse_op_specifier(X, X_Result),
 	parse_op_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).

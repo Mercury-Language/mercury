@@ -250,9 +250,9 @@ term__contains_var(term__variable(V), V).
 term__contains_var(term__functor(_, Args, _), V) :-
 	term__contains_var_list(Args, V).
 
-term__contains_var_list(T._, V) :-
+term__contains_var_list([T|_], V) :-
 	term__contains_var(T, V).
-term__contains_var_list(_.Ts, V) :-
+term__contains_var_list([_|Ts], V) :-
 	term__contains_var_list(Ts, V).
 
 %-----------------------------------------------------------------------------%

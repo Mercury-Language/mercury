@@ -40,7 +40,7 @@ switch_gen__generate_det_switch(CaseVar, Cases, Instr) -->
 	switch_gen__generate_det_cases(Cases, CaseVar, 
 					Lval, EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 	% To generate a case for a deterministic switch we generate
 	% code to do a tag-test and fall through to the next case in
@@ -101,7 +101,7 @@ switch_gen__generate_semi_switch(CaseVar, Cases, Instr) -->
 	switch_gen__generate_semi_cases(Cases, CaseVar, Lval,
 						EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 :- pred switch_gen__generate_semi_cases(list(case), var, lval, label,
 					code_tree, code_info, code_info).
@@ -157,7 +157,7 @@ switch_gen__generate_non_switch(CaseVar, Cases, Instr) -->
 	switch_gen__generate_non_cases(Cases, CaseVar, Lval,
 						EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 :- pred switch_gen__generate_non_cases(list(case), var, lval, label,
 					code_tree, code_info, code_info).
@@ -168,7 +168,7 @@ switch_gen__generate_non_switch(CaseVar, Cases, Instr) -->
 	% by the end of switch label to which the cases branch.
 switch_gen__generate_non_cases([], _Var, _Lval, EndLabel, Code) -->
 	{ Code = node([
-		fail - "fail",
+		redo - "",
 		label(EndLabel) - "End of switch"
 	]) }.
 

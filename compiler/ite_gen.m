@@ -81,7 +81,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		tree(HPSaveCode, TestCode),
 		tree(ThenCode, ElseCode)
 	) },
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 %---------------------------------------------------------------------------%
 
@@ -116,7 +116,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	) },
 		% generate the then condition
 	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
-	code_info__remake_code_info.
+	code_info__remake_with_store_map.
 
 %---------------------------------------------------------------------------%
 

@@ -146,10 +146,11 @@ output_c_file(c_file(Name, Modules)) -->
 		io__told
 	;
 		io__progname("llds.nl", ProgName),
+		io__write_string("\n"),
 		io__write_string(ProgName),
 		io__write_string(": can't open '"),
 		io__write_string(FileName),
-		io__write_string(" for output")
+		io__write_string(" for output\n")
 	).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
@@ -188,8 +189,8 @@ output_c_procedure_list([P|Ps]) -->
 :- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
-	io__write_string("/*------------------------------------"),
-	io__write_string("-------------------------------------*/"),
+	io__write_string("/*-------------------------------------"),
+	io__write_string("------------------------------------*/\n"),
 	io__write_string("/* code for predicate "),
 	io__write_string(Name),
 	io__write_string("/"),
@@ -266,6 +267,10 @@ output_instruction(proceed) -->
 output_instruction(succeed) -->
 	io__write_string("\t"),
 	io__write_string("succeed();").
+
+output_instruction(redo) -->
+	io__write_string("\t"),
+	io__write_string("redo();").
 
 output_instruction(fail) -->
 	io__write_string("\t"),

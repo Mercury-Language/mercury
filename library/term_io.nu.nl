@@ -29,7 +29,7 @@ term_io__current_ops(Ops) -->
 term_io__read_term(Result) -->
 	io__input_stream(Stream),
 	io__stream_name(Stream, StreamName),
-	{
+	{ nuprolog ->
 	    io__get_token_list(Tokens0, LineNumber),
 	    term__context_init(StreamName, LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
@@ -49,8 +49,29 @@ term_io__read_term(Result) -->
 		% This is the best we can do:
 		Result = error("syntax error", LineNumber)
 	    )
+	;
+	    lineCount(Stream, LineNumber),
+	    term__context_init(StreamName, LineNumber, Context),
+	    ( read_variables(Term1, NameVarList) ->
+		split_var_names(NameVarList, NameList, VarList),
+		( nonvar(Term1), eof(Term1) ->
+			Result = eof
+		;
+			convert_term(Term1, NameList, VarList, Context,
+					VarSet, Term),
+			Result = term(VarSet, Term)
+		)
+	    ;
+		% NU-Prolog just dumps to error message to stderr.
+		% This is the best we can do:
+		Result = error("syntax error", LineNumber)
+	    )
 	},
 	io__update_state.
+
+split_var_names([], [], []).
+split_var_names([Name=Var|Rest], [Name|Names], [Var|Vars]) :-
+	split_var_names(Rest, Names, Vars).
 
 	% convert "double-quoted string" tokens into
 	% '$string'("double_quoted string") so that they don't get
@@ -62,14 +83,15 @@ magic_string_atom(Name) :-
 	name(Name, "$string").
 
 convert_tokens([], []).
-convert_tokens(Tok0.Toks0, Toks) :-
-	Tok0 = Val.Type,
+convert_tokens([Tok0|Toks0], Toks) :-
+	Tok0 = [Val|Type],
 	( Type = atom, Val = '[]' ->
 		magic_string_atom(String),
-		Toks = [String.atom, '('.atom, "".string, ')'.atom | Toks1]
+		Toks = [[String|atom], ['('|atom], [""|string], [')'|atom]
+			| Toks1]
 	; Type = string ->
 		magic_string_atom(String),
-		Toks = [String.atom, '('.atom, Tok0, ')'.atom | Toks1]
+		Toks = [[String|atom], ['('|atom], Tok0, [')'|atom] | Toks1]
 	;
 		Toks = [Tok0 | Toks1]
 	),
@@ -86,10 +108,10 @@ io__get_token_list(Tokens, LineNumber) :-
 	currentInput(Stream),
 	lineCount(Stream, LineNumber),
 	( Type = end_of_file ->
-		Tokens = [(Token.Type)]
+		Tokens = [[Token|Type]]
 	;
 		getTokenList(Tokens0),
-		Tokens = [(Token.Type) | Tokens0]
+		Tokens = [[Token|Type] | Tokens0]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -108,13 +130,13 @@ io__get_token_list(Tokens, LineNumber) :-
 	% of their corresponding names.
 :- pred varmap__init(list(prolog_free_var), list(string), varmap).
 varmap__init([], [], []).
-varmap__init(Var.Vars, Name.Names, var(Var,name(Name),no_id).Rest) :-
+varmap__init([Var|Vars], [Name|Names], [var(Var,name(Name),no_id)|Rest]) :-
 	varmap__init(Vars, Names, Rest).
 
 	% Set the id for a variable.
 :- pred varmap__set_id(varmap, prolog_free_var, var, varmap).
 varmap__set_id([], Var, Id, [var(Var, no_name, id(Id))]).
-varmap__set_id(V0.VarMap0, Var, Id, V.VarMap) :-
+varmap__set_id([V0|VarMap0], Var, Id, [V|VarMap]) :-
 	V0 = var(ThisVar, Name, OldId),
 	( Var == ThisVar ->
 		require(OldId = no_id, "io.nl: internal error (varmap)"),
@@ -128,7 +150,7 @@ varmap__set_id(V0.VarMap0, Var, Id, V.VarMap) :-
 	% Lookup the name and id of a variable.
 :- pred varmap__lookup(varmap, prolog_free_var, maybe_name, maybe_id).
 varmap__lookup([], _, no_name, no_id).
-varmap__lookup(var(V,N,I).Rest, Var, Name, Id) :-
+varmap__lookup([var(V,N,I)|Rest], Var, Name, Id) :-
 	( Var == V ->
 		Name = N,
 		Id = I
@@ -177,7 +199,8 @@ convert_term_2(Term0, VarSet0, VarMap0, Context, Term, VarSet, VarMap) :-
 
 	% convert a list of terms
 convert_term_2_list([], VarSet, VarMap, _Context, [], VarSet, VarMap).
-convert_term_2_list(X0.Xs0, VarSet0, VarMap0, Context, X.Xs, VarSet, VarMap) :-
+convert_term_2_list([X0|Xs0], VarSet0, VarMap0, Context, [X|Xs], VarSet,
+		VarMap) :-
 	convert_term_2(X0, VarSet0, VarMap0, Context, X, VarSet1, VarMap1),
 	convert_term_2_list(Xs0, VarSet1, VarMap1, Context, Xs, VarSet, VarMap).
 
