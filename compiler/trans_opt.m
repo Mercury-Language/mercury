@@ -34,20 +34,15 @@
 % All these items should be module qualified.
 % Constructors should be explicitly type qualified.
 %
+% Note that the .trans_opt file does not (yet) include clauses,
+% `pragma c_code' declarations, or any of the other information
+% that would be needed for inlining or other optimizations;
+% currently it is used *only* for termination analysis.
+%
 % This module also contains predicates to read in the .trans_opt files.
-% 
-% Transitive intermodule optimization is currently a work in progress.
-% The current implementation correctly outputs the trans_opt file when the
-% --make-trans-opt option is given, and also correctly imports other
-% trans_opt files.  What is not finished is as follows:
 %
-% -	The system for ensuring that circular dependencies do not occur
-% 	needs to be decided upon and then implemented.
+% See also intermod.m, which handles `.opt' files.
 %
-% -	The Makefile rules need to be modifed to force .trans_opt files to
-% 	be remade when necessary.  This will depend on the method chosen to
-% 	prevent circular dependencies from occuring.
-% 
 %-----------------------------------------------------------------------------%
 
 :- module trans_opt.
