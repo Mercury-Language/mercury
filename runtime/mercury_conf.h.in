@@ -88,67 +88,67 @@
 #undef	MR_UINT_LEAST32_MAX
 
 /*
-** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
+** MR_LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
 ** we can use.  Normally this is the base-2 log of the word size in bytes.
 */
-#undef	LOW_TAG_BITS
+#undef	MR_LOW_TAG_BITS
 
 /*
-** BOXED_FLOAT: defined if double precision floats might not fit
+** MR_BOXED_FLOAT: defined if double precision floats might not fit
 ** in a Word, and hence must be boxed.
 ** Note that when bootstrapping from the source distribution,
-** we initially build things without BOXED_FLOAT even on machines
+** we initially build things without MR_BOXED_FLOAT even on machines
 ** for which sizeof(MR_Float) <= sizeof(MR_Word).
-** Conversely if BOXED_FLOAT is undefined, it implies that
+** Conversely if MR_BOXED_FLOAT is undefined, it implies that
 ** sizeof(MR_Float) <= sizeof(MR_Word).
 */
-#undef	BOXED_FLOAT
+#undef	MR_BOXED_FLOAT
 
 /*
 ** The following macros are defined iff the corresponding header file
 ** is available:
 **
-**	HAVE_SYS_SIGINFO	we have <sys/siginfo.h>
-**	HAVE_SYS_SIGNAL		we have <sys/signal.h>
-**	HAVE_UCONTEXT		we have <ucontext.h>
-**	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
-**	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
-**	HAVE_SYS_TIME		we have <sys/time.h>
-**	HAVE_UNISTD_H		we have <unistd.h>
-**	HAVE_SYS_PARAM		we have <sys/param.h>
-**	HAVE_SYS_WAIT		we have <sys/wait.h>
-**	HAVE_SYS_STAT_H		we have <sys/stat.h>
-**	HAVE_SYS_TYPES_H	we have <sys/types.h>
-**	HAVE_SYS_TIMES_H	we have <sys/times.h>
-**	HAVE_DLFCN_H		we have <dlfcn.h>
-**	HAVE_FCNTL_H		we have <fcnt.h>
-**	HAVE_TERMIOS_H		we have <termios.h>
-**	HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
-**	HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
+**	MR_HAVE_SYS_SIGINFO_H	we have <sys/siginfo.h>
+**	MR_HAVE_SYS_SIGNAL_H	we have <sys/signal.h>
+**	MR_HAVE_UCONTEXT_H	we have <ucontext.h>
+**	MR_HAVE_SYS_UCONTEXT_H	we have <sys/ucontext.h>
+**	MR_HAVE_ASM_SIGCONTEXT_H we have <asm/sigcontext.h> (e.g. i386 Linux)
+**	MR_HAVE_SYS_TIME_H	we have <sys/time.h>
+**	MR_HAVE_UNISTD_H	we have <unistd.h>
+**	MR_HAVE_SYS_PARAM_H	we have <sys/param.h>
+**	MR_HAVE_SYS_WAIT_H	we have <sys/wait.h>
+**	MR_HAVE_SYS_STAT_H	we have <sys/stat.h>
+**	MR_HAVE_SYS_TYPES_H	we have <sys/types.h>
+**	MR_HAVE_SYS_TIMES_H	we have <sys/times.h>
+**	MR_HAVE_DLFCN_H		we have <dlfcn.h>
+**	MR_HAVE_FCNTL_H		we have <fcnt.h>
+**	MR_HAVE_TERMIOS_H	we have <termios.h>
+**	MR_HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
+**	MR_HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
 */
-#undef	HAVE_SYS_SIGINFO
-#undef	HAVE_SYS_SIGNAL
-#undef	HAVE_UCONTEXT
-#undef	HAVE_SYS_UCONTEXT
-#undef	HAVE_ASM_SIGCONTEXT
-#undef	HAVE_SYS_TIME
-#undef	HAVE_UNISTD_H
-#undef	HAVE_SYS_PARAM
-#undef	HAVE_SYS_WAIT
-#undef	HAVE_SYS_STAT_H
-#undef	HAVE_SYS_TIMES_H
-#undef	HAVE_SYS_TYPES_H
-#undef	HAVE_DLFCN_H
-#undef	HAVE_FCNTL_H
-#undef	HAVE_TERMIOS_H
-#undef	HAVE_SYS_IOCTL_H
-#undef	HAVE_SYS_STROPTS_H
+#undef	MR_HAVE_SYS_SIGINFO_H
+#undef	MR_HAVE_SYS_SIGNAL_H
+#undef	MR_HAVE_UCONTEXT_H
+#undef	MR_HAVE_SYS_UCONTEXT_H
+#undef	MR_HAVE_ASM_SIGCONTEXT_H
+#undef	MR_HAVE_SYS_TIME_H
+#undef	MR_HAVE_UNISTD_H
+#undef	MR_HAVE_SYS_PARAM_H
+#undef	MR_HAVE_SYS_WAIT_H
+#undef	MR_HAVE_SYS_STAT_H
+#undef	MR_HAVE_SYS_TIMES_H
+#undef	MR_HAVE_SYS_TYPES_H
+#undef	MR_HAVE_DLFCN_H
+#undef	MR_HAVE_FCNTL_H
+#undef	MR_HAVE_TERMIOS_H
+#undef	MR_HAVE_SYS_IOCTL_H
+#undef	MR_HAVE_SYS_STROPTS_H
 
 /*
-** HAVE_DEV_PTMX is defined if /dev/ptmx (used to allocate
+** MR_HAVE_DEV_PTMX is defined if /dev/ptmx (used to allocate
 ** pseudo-terminals) exists.
 */
-#undef HAVE_DEV_PTMX
+#undef MR_HAVE_DEV_PTMX
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -175,90 +175,84 @@
 ** The following macros are defined iff the corresponding function or
 ** system call is available:
 **
-** 	HAVE_GETPID		we have the getpid() function.
-** 	HAVE_SETPGID		we have the setpgid() function.
-**	HAVE_FORK		we have the fork() function.
-**	HAVE_EXECLP		we have the execlp() function.
-**	HAVE_WAIT		we have the wait() function.
-**	HAVE_KILL		we have the kill() function.
-** 	HAVE_GETHOSTNAME	we have the gethostname() function.
-**	HAVE_SNPRINTF 		we have the snprintf() function.
-**	HAVE_VSNPRINTF 		we have the vsnprintf() function.
-**	HAVE__VSNPRINTF 	we have the _vsnprintf() function.
-**	HAVE_SYSCONF     	we have the sysconf() system call.
-**	HAVE_SIGACTION		we have the sigaction() system call.
-**	HAVE_GETPAGESIZE 	we have the getpagesize() system call.
-**	HAVE_MPROTECT    	we have the mprotect() system call.
-**	HAVE_MEMALIGN    	we have the memalign() function.
-**	HAVE_STRERROR    	we have the strerror() function.
-**	HAVE_SETITIMER   	we have the setitimer() function.
-**	HAVE_MEMMOVE   		we have the memmove() function.
-**	HAVE_DLOPEN   		we have the dlopen() function.
-**	HAVE_DLCLOSE   		we have the dlclose() function.
-**	HAVE_DLSYM   		we have the dlsym() function.
-**	HAVE_DLERROR   		we have the dlerror() function.
-**	HAVE_STAT 		we have the stat() function.
-**	HAVE_FSTAT 		we have the fstat() function.
-**	HAVE_FDOPEN 		we have the fdopen() function.
-**	HAVE_OPEN		we have the open() function.
-**	HAVE_CLOSE		we have the close() function.
-**	HAVE_DUP		we have the dup() function.
-**	HAVE_DUP2		we have the dup2() function.
-**	HAVE_FILENO 		we have the fileno() function.
+** 	MR_HAVE_GETPID		we have the getpid() function.
+** 	MR_HAVE_SETPGID		we have the setpgid() function.
+**	MR_HAVE_FORK		we have the fork() function.
+**	MR_HAVE_EXECLP		we have the execlp() function.
+**	MR_HAVE_WAIT		we have the wait() function.
+**	MR_HAVE_KILL		we have the kill() function.
+** 	MR_HAVE_GETHOSTNAME	we have the gethostname() function.
+**	MR_HAVE_SNPRINTF 		we have the snprintf() function.
+**	MR_HAVE_VSNPRINTF 		we have the vsnprintf() function.
+**	MR_HAVE__VSNPRINTF 	we have the _vsnprintf() function.
+**	MR_HAVE_SYSCONF     	we have the sysconf() system call.
+**	MR_HAVE_SIGACTION		we have the sigaction() system call.
+**	MR_HAVE_GETPAGESIZE 	we have the getpagesize() system call.
+**	MR_HAVE_MPROTECT    	we have the mprotect() system call.
+**	MR_HAVE_MEMALIGN    	we have the memalign() function.
+**	MR_HAVE_STRERROR    	we have the strerror() function.
+**	MR_HAVE_SETITIMER   	we have the setitimer() function.
+**	MR_HAVE_MEMMOVE   		we have the memmove() function.
+**	MR_HAVE_DLOPEN   		we have the dlopen() function.
+**	MR_HAVE_DLCLOSE   		we have the dlclose() function.
+**	MR_HAVE_DLSYM   		we have the dlsym() function.
+**	MR_HAVE_DLERROR   		we have the dlerror() function.
+**	MR_HAVE_STAT 		we have the stat() function.
+**	MR_HAVE_FSTAT 		we have the fstat() function.
+**	MR_HAVE_FDOPEN 		we have the fdopen() function.
+**	MR_HAVE_OPEN		we have the open() function.
+**	MR_HAVE_CLOSE		we have the close() function.
+**	MR_HAVE_DUP		we have the dup() function.
+**	MR_HAVE_DUP2		we have the dup2() function.
+**	MR_HAVE_FILENO 		we have the fileno() function.
 **				Note that fileno() may be a macro
 **				rather than a function, so you should use
-**				#if defined(fileno) || defined(HAVE_FILENO)
-**	HAVE_ISATTY 		we have the isatty() function.
-**	HAVE_GRANTPT		we have the grantpt() function.
-**	HAVE_UNLOCKPT		we have the unlockpt() function.
-**	HAVE_PTSNAME		we have the ptsname() function.
-**	HAVE_TCGETATTR		we have the tcgetattr() function.
-**	HAVE_TCSETATTR		we have the tcsetattr() function.
-**	HAVE_IOCTL		we have the ioctl() function.
+**				#if defined(fileno) || defined(MR_HAVE_FILENO)
+**	MR_HAVE_ISATTY 		we have the isatty() function.
+**	MR_HAVE_GRANTPT		we have the grantpt() function.
+**	MR_HAVE_UNLOCKPT		we have the unlockpt() function.
+**	MR_HAVE_PTSNAME		we have the ptsname() function.
+**	MR_HAVE_TCGETATTR		we have the tcgetattr() function.
+**	MR_HAVE_TCSETATTR		we have the tcsetattr() function.
+**	MR_HAVE_IOCTL		we have the ioctl() function.
 */
-#undef	HAVE_GETPID
-#undef	HAVE_SETPGID
-#undef	HAVE_FORK
-#undef	HAVE_EXECLP
-#undef	HAVE_WAIT
-#undef	HAVE_KILL
-#undef	HAVE_GETHOSTNAME
-#undef	HAVE_SNPRINTF
-#undef	HAVE_VSNPRINTF
-#undef	HAVE__VSNPRINTF
-#undef	HAVE_SYSCONF
-#undef	HAVE_SIGACTION
-#undef	HAVE_GETPAGESIZE
-#undef	HAVE_MEMALIGN
-#undef	HAVE_MPROTECT
-#undef	HAVE_STRERROR
-#undef	HAVE_SETITIMER
-#undef	HAVE_MEMMOVE
-#undef	HAVE_DLOPEN
-#undef	HAVE_DLCLOSE
-#undef	HAVE_DLSYM
-#undef	HAVE_DLERROR
-#undef	HAVE_STAT
-#undef	HAVE_FSTAT
-#undef	HAVE_FDOPEN
-#undef	HAVE_OPEN
-#undef	HAVE_CLOSE
-#undef	HAVE_DUP
-#undef	HAVE_DUP2
-#undef	HAVE_FILENO
-#undef	HAVE_ISATTY
-#undef	HAVE_GRANTPT
-#undef	HAVE_UNLOCKPT
-#undef	HAVE_PTSNAME
-#undef	HAVE_TCGETATTR
-#undef	HAVE_TCSETATTR
-#undef	HAVE_IOCTL
-
-/*
-** RETSIGTYPE: the return type of signal handlers.
-** Either `int' or `void'.
-*/
-#undef	RETSIGTYPE
+#undef	MR_HAVE_GETPID
+#undef	MR_HAVE_SETPGID
+#undef	MR_HAVE_FORK
+#undef	MR_HAVE_EXECLP
+#undef	MR_HAVE_WAIT
+#undef	MR_HAVE_KILL
+#undef	MR_HAVE_GETHOSTNAME
+#undef	MR_HAVE_SNPRINTF
+#undef	MR_HAVE_VSNPRINTF
+#undef	MR_HAVE__VSNPRINTF
+#undef	MR_HAVE_SYSCONF
+#undef	MR_HAVE_SIGACTION
+#undef	MR_HAVE_GETPAGESIZE
+#undef	MR_HAVE_MEMALIGN
+#undef	MR_HAVE_MPROTECT
+#undef	MR_HAVE_STRERROR
+#undef	MR_HAVE_SETITIMER
+#undef	MR_HAVE_MEMMOVE
+#undef	MR_HAVE_DLOPEN
+#undef	MR_HAVE_DLCLOSE
+#undef	MR_HAVE_DLSYM
+#undef	MR_HAVE_DLERROR
+#undef	MR_HAVE_STAT
+#undef	MR_HAVE_FSTAT
+#undef	MR_HAVE_FDOPEN
+#undef	MR_HAVE_OPEN
+#undef	MR_HAVE_CLOSE
+#undef	MR_HAVE_DUP
+#undef	MR_HAVE_DUP2
+#undef	MR_HAVE_FILENO
+#undef	MR_HAVE_ISATTY
+#undef	MR_HAVE_GRANTPT
+#undef	MR_HAVE_UNLOCKPT
+#undef	MR_HAVE_PTSNAME
+#undef	MR_HAVE_TCGETATTR
+#undef	MR_HAVE_TCSETATTR
+#undef	MR_HAVE_IOCTL
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.
@@ -268,50 +262,52 @@
 ** it has to be done differently on different systems.
 ** The following macros specify whether we can do it and if so, how.
 **
-**	HAVE_SIGINFO		defined iff we can _somehow_ figure out the
+**	MR_HAVE_SIGINFO		defined iff we can _somehow_ figure out the
 **				fault address for SIGSEGVs.
-**	HAVE_SIGINFO_T		defined iff we can figure out the
+**	MR_HAVE_SIGINFO_T	defined iff we can figure out the
 **				fault address for SIGSEGVs using sigaction
 **				and siginfo_t.
-**	HAVE_SIGCONTEXT_STRUCT	defined iff normal signal handlers are given
+**	MR_HAVE_SIGCONTEXT_STRUCT
+**				defined iff normal signal handlers are given
 **				sigcontext_struct arguments that we can use to
 **				figure out the fault address for SIGSEGVs.
-**	HAVE_SIGCONTEXT_STRUCT_3ARG
+**	MR_HAVE_SIGCONTEXT_STRUCT_3ARG
 **				defined iff signal handlers have three
 **				parameters, the third being the
 **				sigcontext struct.
-**	HAVE_SIGCONTEXT_STRUCT_2ARG
+**	MR_HAVE_SIGCONTEXT_STRUCT_2ARG
 **				defined iff signal handlers have two
 **				parameters, the second being the
 **				sigcontext struct. 
 */
-#undef	HAVE_SIGINFO
-#undef	HAVE_SIGINFO_T
-#undef	HAVE_SIGCONTEXT_STRUCT
-#undef	HAVE_SIGCONTEXT_STRUCT_3ARG
-#undef	HAVE_SIGCONTEXT_STRUCT_2ARG
+#undef	MR_HAVE_SIGINFO
+#undef	MR_HAVE_SIGINFO_T
+#undef	MR_HAVE_SIGCONTEXT_STRUCT
+#undef	MR_HAVE_SIGCONTEXT_STRUCT_3ARG
+#undef	MR_HAVE_SIGCONTEXT_STRUCT_2ARG
 
 /*
 ** For debugging purposes, if we get a fatal signal, we print out the
 ** program counter (PC) at which the signal occurred.
 **
-** PC_ACCESS, PC_ACCESS_GREG: the way to access the saved PC in ucontexts.
+** MR_PC_ACCESS, MR_PC_ACCESS_GREG: the way to access the saved
+** PC in ucontexts.
 **
-** If PC_ACCESS_GREG is defined, then PC_ACCESS specifies an index into
+** If MR_PC_ACCESS_GREG is defined, then MR_PC_ACCESS specifies an index into
 ** the `gregs' (general registers) array, which is a field of the `ucontext'
-** struct.  Otherwise, if PC_ACCESS is defined then it is a field name
-** in the `ucontext' struct.  If PC_ACCESS is not defined, then we don't
+** struct.  Otherwise, if MR_PC_ACCESS is defined then it is a field name
+** in the `ucontext' struct.  If MR_PC_ACCESS is not defined, then we don't
 ** have any way of getting the saved PC.
 */
-#undef	PC_ACCESS
-#undef	PC_ACCESS_GREG
+#undef	MR_PC_ACCESS
+#undef	MR_PC_ACCESS_GREG
 
 /*
-** SIGACTION_FIELD: the name of the field in the sigaction struct
-** (either sa_handler or sa_sigaction).  Defined only if HAVE_SIGACTION
+** MR_SIGACTION_FIELD: the name of the field in the sigaction struct
+** (either sa_handler or sa_sigaction).  Defined only if MR_HAVE_SIGACTION
 ** is defined.
 */
-#undef	SIGACTION_FIELD
+#undef	MR_SIGACTION_FIELD
 
 /*
 ** Configuration parameters for multithreaded execution support.
@@ -363,7 +359,7 @@
 /*
 ** Should we build the Mercury libraries as Windows DLLs?
 */
-#undef USE_DLLS
+#undef MR_USE_DLLS
 
 /*
 ** For SPARC systems, does `as' not allow `.type' in inline asm?
@@ -410,14 +406,14 @@
 **	The autoconfiguration script sets this if it can't find a termcap
 **	library.
 **
-** HAVE_READLINE_READLINE
-** HAVE_READLINE_HISTORY
+** MR_HAVE_READLINE_READLINE_H
+** MR_HAVE_READLINE_HISTORY_H
 **	Defined if the header files readline/readline.h and
 **	readline/history.h are available.
 */
 #undef  MR_NO_USE_READLINE
-#undef  HAVE_READLINE_READLINE
-#undef  HAVE_READLINE_HISTORY
+#undef  MR_HAVE_READLINE_READLINE_H
+#undef  MR_HAVE_READLINE_HISTORY_H
 
 /*
 ** MR_MKFIFO
@@ -446,5 +442,6 @@
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"
+#include "mercury_conf_bootstrap.h"
 
 #endif /* MERCURY_CONF_H */

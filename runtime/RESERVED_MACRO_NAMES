@@ -46,9 +46,6 @@ NO_RETURN
 # by mercury_conf.h and/or mercury_conf_param.h and/or
 # on the command-line or by scripts/mgnuc.
 # XXX we ought to add MR_ prefixes to all of these.
-# XXX USE_TYPE_LAYOUT is defined in mercury_type_info.h
-# but it ought to be defined in mercury_conf_param.h,
-# or just deleted, since it is not used at all
 # XXX TAG_BITS is defined in mercury_tags.h
 pid_t
 BOXED_FLOAT
@@ -63,7 +60,6 @@ PIC
 PROFILE_CALLS
 PROFILE_MEMORY
 PROFILE_TIME
-RETSIGTYPE
 SIGACTION_FIELD
 TAG_BITS
 USE_ASM_LABELS
@@ -71,7 +67,6 @@ USE_DLLS
 USE_GCC_GLOBAL_REGISTERS
 USE_GCC_NONLOCAL_GOTOS
 USE_SINGLE_PREC_FLOAT
-USE_TYPE_LAYOUT
 HAVE_ASM_SIGCONTEXT
 HAVE_CLOSE
 HAVE_DEV_PTMX

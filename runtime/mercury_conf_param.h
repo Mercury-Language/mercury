@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,16 +42,19 @@
 ** MR_HIGHLEVEL_CODE
 ** MR_HIGHLEVEL_DATA
 ** MR_USE_GCC_NESTED_FUNCTIONS
-** USE_GCC_GLOBAL_REGISTERS
-** USE_GCC_NONLOCAL_GOTOS
-** USE_ASM_LABELS
-** CONSERVATIVE_GC
-** NATIVE_GC		[not yet working]
-** NO_TYPE_LAYOUT
-** BOXED_FLOAT
+** MR_USE_GCC_GLOBAL_REGISTERS
+** MR_USE_GCC_NONLOCAL_GOTOS
+** MR_USE_ASM_LABELS
+** MR_CONSERVATIVE_GC
+** MR_NATIVE_GC		[not yet working]
+** MR_NO_TYPE_LAYOUT
+** MR_BOXED_FLOAT
 ** MR_USE_TRAIL
 ** MR_RESERVE_TAG
 ** MR_USE_MINIMAL_MODEL
+** MR_SPLIT_C_FILES
+** MR_INLINE_ALLOC
+** MR_PIC_REG
 **	See the documentation for
 **		--high-level-code
 **		--high-level-data
@@ -66,9 +69,11 @@
 **		--use-trail
 **		--reserve-tag
 **		--use-minimal-model
+**		--split-c-files
+**		--pic-reg
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
-** USE_SINGLE_PREC_FLOAT:
+** MR_USE_SINGLE_PREC_FLOAT:
 **	Use C's `float' rather than C's `double' for the
 **	Mercury floating point type (`MR_Float').
 **
@@ -92,11 +97,65 @@
 **	constructs, e.g. referring to variables and macros without their MR_
 **	prefixes.
 **
+** MR_NO_CONF_BACKWARDS_COMPAT
+**	Disable backwards compatibility with C code using obsolete
+**	configuration macros without MR_ prefixes.
+**
 ** MR_EXTRA_BACKWARDS_COMPAT
 **	Add extra backwards compatibility with C code using obsolete low-level
 **	constructs, e.g. referring to variables and macros without their MR_
 **	prefixes.
 */
+
+/*
+** XXX Allow the non-prefixed versions of these macros to be used on
+** the command line until mgnuc and mercury_compile are fixed to
+** use the prefixed versions.
+*/
+#ifdef USE_GCC_GLOBAL_REGISTERS
+  #define MR_USE_GCC_GLOBAL_REGISTERS 1
+  #undef USE_GCC_GLOBAL_REGISTERS
+#endif
+#ifdef USE_GCC_NONLOCAL_GOTOS
+  #define MR_USE_GCC_NONLOCAL_GOTOS 1
+  #undef USE_GCC_NONLOCAL_GOTOS
+#endif
+#ifdef USE_ASM_LABELS
+  #define MR_USE_ASM_LABELS 1
+  #undef USE_ASM_LABELS
+#endif
+#ifdef CONSERVATIVE_GC
+  #define MR_CONSERVATIVE_GC 1
+  #undef CONSERVATIVE_GC
+#endif
+#ifdef NATIVE_GC
+  #define MR_NATIVE_GC 1
+  #undef NATIVE_GC
+#endif
+#ifdef NO_TYPE_LAYOUT
+  #define MR_NO_TYPE_LAYOUT 1
+  #undef NO_TYPE_LAYOUT
+#endif
+#ifdef BOXED_FLOAT
+  #define MR_BOXED_FLOAT 1
+  #undef BOXED_FLOAT
+#endif
+#ifdef USE_SINGLE_PREC_FLOAT
+  #define MR_USE_SINGLE_PREC_FLOAT 1
+  #undef USE_SINGLE_PREC_FLOAT
+#endif
+#ifdef SPLIT_C_FILES
+  #define MR_SPLIT_C_FILES 1
+  #undef SPLIT_C_FILES
+#endif
+#ifdef INLINE_ALLOC
+  #define MR_INLINE_ALLOC 1
+  #undef INLINE_ALLOC
+#endif
+#ifdef PIC_REG
+  #define MR_PIC_REG 1
+  #undef PIC_REG
+#endif
 
 /*
 ** Runtime checking options:
@@ -285,12 +344,12 @@
 */
 
 /*
-** MR_HIGHLEVEL_CODE implies BOXED_FLOAT,
+** MR_HIGHLEVEL_CODE implies MR_BOXED_FLOAT,
 ** since unboxed float is currently not yet implemented for the MLDS back-end.
 ** XXX we really ought to fix that...
 */
 #ifdef MR_HIGHLEVEL_CODE
-  #define BOXED_FLOAT 1
+  #define MR_BOXED_FLOAT 1
 #endif
 
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */
@@ -341,7 +400,7 @@
 #ifdef MR_STATIC_CODE_ADDRESSES
   #error "MR_STATIC_CODE_ADDRESSES should not be defined on the command line"
 #endif
-#if !defined(USE_GCC_NONLOCAL_GOTOS) || defined(USE_ASM_LABELS)
+#if !defined(MR_USE_GCC_NONLOCAL_GOTOS) || defined(MR_USE_ASM_LABELS)
   #define MR_STATIC_CODE_ADDRESSES
 #endif
 
@@ -374,8 +433,9 @@
 #ifdef MR_INSERT_LABELS
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
-	|| defined(MR_BYTECODE_CALLABLE) || defined(MR_DEBUG_LABEL_NAMES)
+#if defined(MR_STACK_TRACE) || defined(MR_NATIVE_GC) \
+	|| defined(MR_DEBUG_GOTOS) || defined(MR_BYTECODE_CALLABLE) \
+	|| defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_LABELS
 #endif
 
@@ -429,7 +489,7 @@
 ** layout of stack frames.
 */
 
-#if defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
+#if defined(MR_NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
 	|| defined(MR_INSERT_ENTRY_LABEL_NAMES)
   #define MR_NEED_ENTRY_LABEL_ARRAY
 #endif
@@ -481,7 +541,7 @@
 **				  to be compiled with the flag `--trace-decl'.
 */
 
-#if defined(CONSERVATIVE_GC) && !defined(MR_DISABLE_DECLARATIVE_DEBUGGER)
+#if defined(MR_CONSERVATIVE_GC) && !defined(MR_DISABLE_DECLARATIVE_DEBUGGER)
   #define MR_USE_DECLARATIVE_DEBUGGER
 #endif
 
@@ -491,7 +551,7 @@
 ** Memory protection and signal handling.
 */
 
-#if defined(HAVE_SIGINFO) && defined(PC_ACCESS)
+#if defined(MR_HAVE_SIGINFO) && defined(MR_PC_ACCESS)
   #define MR_CAN_GET_PC_AT_SIGNAL
 #endif
 
@@ -500,7 +560,7 @@
 **					memory zones using mprotect() like
 **					functionality.
 */
-#if (defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)) || defined(_WIN32)
+#if (defined(MR_HAVE_MPROTECT) && defined(MR_HAVE_SIGINFO)) || defined(_WIN32)
   #define MR_CHECK_OVERFLOW_VIA_MPROTECT
 #endif
 
@@ -508,7 +568,7 @@
 ** MR_PROTECTPAGE   -- 	MR_protect_pages() can be defined to provide the same
 **			functionality as the system call mprotect().
 */
-#if defined(HAVE_MPROTECT) || defined(_WIN32)
+#if defined(MR_HAVE_MPROTECT) || defined(_WIN32)
   #define MR_PROTECTPAGE
 #endif
 
