@@ -267,10 +267,15 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 #define	tag_incr_hp(dest,tag,count) \
 	((dest) = mkword(tag, (Word)GC_MALLOC(count * sizeof(Word))))
+#define	tag_incr_hp_atomic(dest,tag,count) \
+	((dest) = mkword(tag, (Word)GC_MALLOC_ATOMIC(count * sizeof(Word))))
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
-#define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
+
 			/* we use `hp' as a convenient temporary here */
+#define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
+#define hp_alloc_atomic(count) \
+			(incr_hp_atomic(hp,(count)), hp += (count), (void)0)
 
 #else
 
@@ -281,6 +286,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				heap_overflow_check(),		\
 				(void)0				\
 			)
+#define tag_incr_hp_atomic(dest,tag,count) tag_incr_hp((dest),(tag),(count))
 
 #define	mark_hp(dest)	(					\
 				(dest) = (Word)hp,		\
@@ -293,10 +299,13 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 			)
 
 #define hp_alloc(count)  incr_hp(hp,count)
+#define hp_alloc_atomic(count) incr_hp_atomic(count)
 
 #endif
 
 #define	incr_hp(dest,count)	tag_incr_hp((dest),mktag(0),(count))
+#define	incr_hp_atomic(dest,count) \
+				tag_incr_hp_atomic((dest),mktag(0),(count))
 
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'

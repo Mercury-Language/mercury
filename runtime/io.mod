@@ -8,9 +8,10 @@
 **  Main author: fjh.
 ** 
 **  This file implements parts of the Mercury standard library
-**  modules `io', `require', and `std_util'.
+**  modules `io', `require', `std_util', and `string'.
 */
 
+#include <string.h>
 #include "io.h"
 #include "imp.h"
 #include "wrapper.h"
@@ -500,7 +501,7 @@ mercury__semidet_fail_0_0:
 mercury__string__float_to_string_2_0:
 	{ char buf[100];
 	  sprintf(buf, "%f", word_to_float(r1));
-	  incr_hp(r2, (strlen(buf) + 1 + sizeof(Word) - 1 / sizeof(Word)));
+	  incr_hp_atomic(r2, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	  strcpy((char *)r2, buf);
 	}
 	proceed();
@@ -548,7 +549,7 @@ mercury__string__to_int_list_2_1_i4:
 ** allocate (length + 1) bytes of heap space for string
 ** i.e. (length + 4) / 4 words
 */
-	incr_hp(r1, r4 / sizeof(Word));
+	incr_hp_atomic(r1, r4 / sizeof(Word));
 /*
 ** loop to copy the characters from the int_list to the string
 */
@@ -584,9 +585,122 @@ mercury__string__to_int_list_2_2_i1:
 	decr_sp(1);
 	proceed();
 
+/*-----------------------------------------------------------------------*/
+
 mercury__builtin_strcmp_3_0:
 	r1 = strcmp((char *)r2, (char *)r3);
 	proceed();
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__index(string, int, character).
+:- mode string__index(in, in, out) is semidet.
+*/
+mercury__string__index_3_0:
+	if ((Word) r3 >= strlen((char *) r2))
+		GOTO_LABEL(mercury__string__index_3_0_i1);
+	r1 = TRUE;
+	r4 = ((char *)r2)[r3];
+	proceed();
+mercury__string__index_3_0_i1:
+	r1 = FALSE;
+	proceed();
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__length(string, int).
+:- mode string__length(in, out) is det.
+*/
+
+mercury__string__length_2_0:
+	r2 = strlen((char *) r1);
+	proceed();
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__append(string, string, string).
+:- mode string__append(in, in, out) is det.
+:- mode string__append(in, in, in) is semidet.	% implied
+:- mode string__append(in, out, in) is semidet.
+:- mode string__append(out, out, in) is multidet.
+*/
+
+/*
+:- mode string__append(in, in, out) is det.
+*/
+mercury__string__append_3_0:
+	{ size_t len_1, len_2;
+	  len_1 = strlen((char *)r1);
+	  len_2 = strlen((char *)r2);
+	  incr_hp_atomic(r3, (len_1 + len_2 + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r3, (char *)r1);
+	  strcpy((char *)r3 + len_1, (char *)r2);
+	}
+	proceed();
+
+/*
+:- mode string__append(in, in, in) is semidet.
+*/
+mercury__string__append_3_1:
+	{ size_t len_1;
+	  len_1 = strlen((char *)r2);
+	  if (strncmp((char*)r2, (char*)r4, len_1) != 0)
+		GOTO_LABEL(mercury__string__append_3_1_i1);
+	  if (strcmp((char*)r3, (char*)r4 + len_1) != 0)
+		GOTO_LABEL(mercury__string__append_3_1_i1);
+	}
+	r1 = TRUE;
+	proceed();
+mercury__string__append_3_1_i1:
+	r1 = FALSE;
+	proceed();
+
+/*
+:- mode string__append(in, out, in) is semidet.
+*/
+mercury__string__append_3_2:
+	{ size_t len_1, len_2, len_3;
+	  len_1 = strlen((char *)r2);
+	  if (strncmp((char*)r2, (char*)r4, len_1) != 0)
+		GOTO_LABEL(mercury__string__append_3_2_i1);
+	  len_3 = strlen((char *)r4);
+	  len_2 = len_3 - len_1;
+	  incr_hp_atomic(r3, (len_2 + sizeof(Word)) / sizeof(Word));
+	  strcpy((char *)r3, (char *)r4 + len_1);
+	}
+	r1 = TRUE;
+	proceed();
+mercury__string__append_3_2_i1:
+	r1 = FALSE;
+	proceed();
+
+/*
+:- mode string__append(out, out, in) is multidet.
+*/
+mercury__string__append_3_3:
+	mkframe("list__append/3", 4, LABEL(mercury__string__append_3_3_i1));
+	mark_hp(framevar(0));
+	framevar(1) = r3;
+	framevar(2) = strlen((char *)r3);
+	framevar(3) = 0;
+mercury__string__append_3_3_i1:
+	restore_hp(framevar(0));
+	r3 = framevar(1);
+	r4 = framevar(3);
+	if (r4 > framevar(2)) {
+		modframe(do_fail);
+		fail();
+	}
+	incr_hp_atomic(r1, (r4 + sizeof(Word)) / sizeof(Word));
+	memcpy((char *)r1, (char *)r3, r4);
+	((char *)r1)[r4] = '\0';
+	incr_hp_atomic(r2, (framevar(2) - r4 + sizeof(Word)) / sizeof(Word));
+	strcpy((char *)r2, (char *)r3 + r4);
+	framevar(3) = r4 + 1;
+	succeed();
 
 /*-----------------------------------------------------------------------*/
 
