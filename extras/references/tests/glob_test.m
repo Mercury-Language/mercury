@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 Monash University, University of Melbourne &
+% Copyright (C) 1999-2000 Monash University,, 2003 The University of Melbourne &
 % KU Leuven.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -54,11 +54,17 @@ ME_Reference HAL_glob_Optimise;
 ME_NbReference HAL_glob_TargetLang;
 ").
 
-:- pragma c_code(glob_Optimise = (X::out), will_not_call_mercury, "
+glob_Optimise = reference__from_c_pointer(glob_Optimise_2).
+
+:- func glob_Optimise_2 = c_pointer.
+:- pragma c_code(glob_Optimise_2 = (X::out), will_not_call_mercury, "
 	X = (Word) &HAL_glob_Optimise;
 ").
 
-:- pragma c_code(glob_TargetLang = (X::out), will_not_call_mercury, "
+glob_TargetLang = nb_reference__from_c_pointer(glob_TargetLang_2).
+
+:- func glob_TargetLang_2 = c_pointer.
+:- pragma c_code(glob_TargetLang_2 = (X::out), will_not_call_mercury, "
 	X = (Word) &HAL_glob_TargetLang;
 ").
 

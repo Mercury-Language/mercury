@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,13 @@
 :- pragma c_header_code("#include ""mercury_deep_copy.h""").
 
 :- pragma inline(new_nb_reference/2).
-:- pragma c_code(new_nb_reference(X::in, Ref::out), will_not_call_mercury, "
+
+new_nb_reference(X, nb_reference(Ref)) :-
+	impure new_nb_reference_2(X, Ref).
+
+:- impure pred new_nb_reference_2(T::in, c_pointer::out) is det.
+:- pragma inline(new_nb_reference_2/2).
+:- pragma c_code(new_nb_reference_2(X::in, Ref::out), will_not_call_mercury, "
 	MR_incr_hp(Ref, 1);
 #ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
@@ -72,12 +78,24 @@
 ").
 
 :- pragma inline(value/2).
-:- pragma c_code(value(Ref::in, X::out), will_not_call_mercury, "
+
+value(nb_reference(Ref), X) :-
+	semipure value_2(Ref, X).
+
+:- semipure pred value_2(c_pointer::in, T::out) is det.
+:- pragma inline(value_2/2).
+:- pragma c_code(value_2(Ref::in, X::out), will_not_call_mercury, "
 	X = *(MR_Word *) Ref;
 ").
 
 :- pragma inline(update/2).
-:- pragma c_code(update(Ref::in, X::in), will_not_call_mercury, "
+
+update(nb_reference(Ref), X) :-
+	impure update_2(Ref, X).
+
+:- impure pred update_2(c_pointer::in, T::in) is det.
+:- pragma inline(update_2/2).
+:- pragma c_code(update_2(Ref::in, X::in), will_not_call_mercury, "
 #ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
 #endif
@@ -99,9 +117,24 @@
 
 :- impure pred init(nb_reference(T)::in, T::in) is det.
 
+% from_c_pointer(CPointer) = Ref
+%	Convert a c_pointer to a nb_reference.
+
+:- func nb_reference__from_c_pointer(c_pointer) = nb_reference(T).
+
+% to_c_pointer(Ref) = CPointer
+%	Convert a nb_reference to a c_pointer.
+
+:- func nb_reference__to_c_pointer(nb_reference(T)) = c_pointer.
+
 :- implementation.
 
 :- pragma inline(init/2).
 init(Ref, X) :-
 	impure update(Ref, X).
 
+:- pragma inline(nb_reference__from_c_pointer/1).
+nb_reference__from_c_pointer(CPointer) = nb_reference(CPointer).
+
+:- pragma inline(nb_reference__to_c_pointer/1).
+nb_reference__to_c_pointer(nb_reference(CPointer)) = CPointer.

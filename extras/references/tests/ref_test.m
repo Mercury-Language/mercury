@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998,2000 University of Melbourne.
+% Copyright (C) 1998,2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,13 @@ main(IO, IO) :-
 
 :- func globalvar = nb_reference(int).
 :- pragma inline(globalvar/0).
-:- pragma c_code(globalvar = (Ref::out), will_not_call_mercury, "
+
+globalvar = nb_reference__from_c_pointer(globalvar_2).
+
+:- func globalvar_2 = c_pointer.
+:- pragma inline(globalvar_2/0).
+
+:- pragma c_code(globalvar_2 = (Ref::out), will_not_call_mercury, "
 	Ref = (Word) &globalvar;
 ").
 
@@ -74,7 +80,9 @@ scope_test :-
 	semipure value(globalvar, V0),
 	impure update(globalvar, V0 + I),
 	impure scope_test_message("before", V0, V0 + I),
-	impure enter_scope(globalvar, Handle),
+		% enter_scope needs to be passed the c_pointer since it is the
+		% value this points to that needs to be saved.
+	impure enter_scope(globalvar_2, Handle),
 	small_int(J),
 	semipure value(globalvar, V1),
 	impure scope_test_message("inside", V1, V1 + (J * 10)),
@@ -93,11 +101,15 @@ scope_test2 :-
 	semipure value(globalvar, V0),
 	impure update(globalvar, 0),
 	impure scope_test_message("outside", V0, 0),
-	impure enter_scope(globalvar, Handle1),
+		% enter_scope needs to be passed the c_pointer since it is the
+		% value this points to that needs to be saved.
+	impure enter_scope(globalvar_2, Handle1),
 	semipure value(globalvar, V1),
 	impure update(globalvar, 1),
 	impure scope_test_message("inside 1", V1, 1),
-	impure enter_scope(globalvar, Handle2),
+		% enter_scope needs to be passed the c_pointer since it is the
+		% value this points to that needs to be saved.
+	impure enter_scope(globalvar_2, Handle2),
 	semipure value(globalvar, V2),
 	impure update(globalvar, 2),
 	impure scope_test_message("inside 2", V2, 2),
