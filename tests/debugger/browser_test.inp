@@ -1,7 +1,7 @@
 echo on
 goto 3
 print *
-browse 0
+browse 1
 print
 quit
 browse HeadVar__1
