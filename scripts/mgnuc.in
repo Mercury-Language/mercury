@@ -187,6 +187,15 @@ while : ; do
 done
 
 #
+# .debug grade implies --use-trail
+#	(see comment in compiler/handle_options.m for rationale)
+#
+case $stack_trace,$require_tracing in
+	true,true)
+		use_trail=true ;;
+esac
+
+#
 # convert mgnuc options into gcc options
 #
 # IMPORTANT: any changes here will require similar changes to

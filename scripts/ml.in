@@ -250,6 +250,14 @@ case $all_libs in static)
 	esac
 esac
 
+#
+# .debug grade implies --use-trail
+#	(see comment in compiler/handle_options.m for rationale)
+#
+case $stack_trace,$require_tracing in
+	true,true)
+		use_trail=true ;;
+esac
 
 #
 # compute the grade from the options settings

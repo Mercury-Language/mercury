@@ -14,8 +14,9 @@ Usage:	mdb <executable> [<options>]...
 Description:
 	The arguments of this command form a command line.
 	If the executable named by this command line is a Mercury program
-	compiled with \`--generate-trace', mdb will cause this program to be
-	executed under the supervision of the Mercury internal debugger.
+	compiled with debugging enabled (e.g. via the \`--debug' option),
+	or if it invokes such a program, then mdb will cause the program
+	to be executed under the supervision of the Mercury internal debugger.
 	Otherwise, mdb will execute the command line as if the mdb prefix
 	weren't there.
 Environment variables:
