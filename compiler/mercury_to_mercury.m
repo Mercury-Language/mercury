@@ -1532,6 +1532,7 @@ mercury_infix_op("then").
 mercury_infix_op(";").
 mercury_infix_op("->").
 mercury_infix_op(",").
+mercury_infix_op("&").
 mercury_infix_op("to").		/* NU-Prolog */
 mercury_infix_op("<=").
 mercury_infix_op("<=>").

@@ -118,6 +118,7 @@ ops__op_table("**", after, xfy, 300).
 ops__op_table("+", after, yfx, 500).
 ops__op_table("+", before, fx, 500).
 ops__op_table(",", after, xfy, 1000).
+ops__op_table("&", after, xfy, 1025).
 ops__op_table("-", after, yfx, 500).
 ops__op_table("-", before, fx, 500).
 ops__op_table("--->", after, xfy, 1179).
