@@ -30,6 +30,13 @@
 **
 ** For documentation on accurate collection in the MLDS back-end,
 ** see compiler/ml_elim_nested.m.
+**
+** TODO for the LLDS back-end:
+**  - add code to support tracing the stack frames left by builtin__catch
+**  - fix issue with tight loops via tail calls (see XXX above)
+**  - fix issue with tight loops via retries (see XXX above)
+**  - handle semidet existentially typed procedures properly (see XXX below)
+**  - use write() rather than fprintf() in signal handler (see XXX below)
 */
 
 #include "mercury_imp.h"
