@@ -925,8 +925,8 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 		),
 
 		mercury_compile__maybe_polymorphism(HLDS2, HLDS3),
-		common__optimise_common_subexpressions(HLDS3, HLDS3a),
-		mercury_compile__detect_switches(HLDS3a, HLDS4),
+		mercury_compile__detect_switches(HLDS3, HLDS3a),
+		common__optimise_common_subexpressions(HLDS3a, HLDS4),
 		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),
 
 		(

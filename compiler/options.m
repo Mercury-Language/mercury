@@ -201,7 +201,7 @@ option_defaults_2(optimization_option, [
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(8),
 	inlining		-	bool(yes),
-	common_subexpression	-	bool(no)
+	common_subexpression	-	bool(yes)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
