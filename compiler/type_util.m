@@ -65,6 +65,7 @@
 	
 :- pred type_util__var(type, var).
 :- mode type_util__var(in, out) is semidet.
+:- mode type_util__var(out, in) is det.
 
 	% Given a type_id, a list of argument types and maybe a context,
 	% construct a type.
@@ -148,6 +149,15 @@
 						 map(var, type)).
 :- mode apply_rec_substitution_to_type_map(in, in, out) is det.
 
+	% Update a map from tvar to var, using the type substititon to
+	% rename tvars and a variable substition to rename vars.
+	%
+	% If tvar maps to a another type variable, we keep the new
+	% variable, if it maps to a type, we remove it from the map.
+
+:- pred apply_substitutions_to_var_map(map(tvar, var), tsubst, map(var, var), 
+		map(tvar, var)).
+:- mode apply_substitutions_to_var_map(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -617,7 +627,53 @@ apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
 	map__det_update(VarTypes0, Var, VarType, VarTypes1),
 	apply_rec_substitution_to_type_map_2(Vars, VarTypes1, Subst, VarTypes).
 
+%-----------------------------------------------------------------------------%
 
+apply_substitutions_to_var_map(VarMap0, TSubst, Subst, VarMap) :-
+	% optimize the common case of empty substitutions
+	( map__is_empty(Subst), map__is_empty(TSubst) ->
+		VarMap = VarMap0
+	;
+		map__keys(VarMap0, TVars),
+		map__init(NewVarMap),
+		apply_substitutions_to_var_map_2(TVars, VarMap0, TSubst,
+			Subst, NewVarMap, VarMap)
+	).
+
+
+:- pred apply_substitutions_to_var_map_2(list(var)::in, map(tvar, var)::in,
+		tsubst::in, map(var, var)::in, map(tvar, var)::in, 
+		map(tvar, var)::out) is det.
+
+apply_substitutions_to_var_map_2([], _VarMap0, _, _, NewVarMap, NewVarMap).
+apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TSubst, Subst, 
+		NewVarMap0, NewVarMap) :-
+	map__lookup(VarMap0, TVar, Var),
+
+		% find the new tvar, if there is one, otherwise just
+		% create the old var as a type variable.
+	( map__search(TSubst, TVar, NewTerm0) ->
+		NewTerm = NewTerm0 
+	; 
+		type_util__var(NewTerm, TVar)
+	),
+
+		% find the new var, if there is one
+	( map__search(Subst, Var, NewVar0) ->
+		NewVar = NewVar0
+	;
+		NewVar = Var
+	),
+
+		% if the tvar is still a variable, insert it into the
+		% map with the new var.
+	( type_util__var(NewTerm, NewTVar) ->
+		map__det_insert(NewVarMap0, NewTVar, NewVar, NewVarMap1)
+	;
+		NewVarMap1 = NewVarMap0
+	),
+	apply_substitutions_to_var_map_2(TVars, VarMap0, TSubst, Subst, 
+		NewVarMap1, NewVarMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
