@@ -17,6 +17,8 @@
 ** problem occurring.
 */
 
+#include "mercury_imp.h"
+
 #include <stdio.h>
 
 #include "mercury_prof_mem.h"

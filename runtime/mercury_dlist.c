@@ -8,6 +8,7 @@
 **	Linked list module.
 */
 
+#include	"mercury_imp.h"
 #include	<stdio.h>
 #include	"mercury_memory.h"
 #include	"mercury_dlist.h"
