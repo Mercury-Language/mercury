@@ -226,8 +226,22 @@
 	% type) are represented in the same way as in prog_io.nl,
 	% and are defined there.
 
-:- type hlds__type_defn	--->	hlds__type_defn(varset, list(type_param),
-					hlds__type_body, condition).
+:- type hlds__type_defn	--->	hlds__type_defn(
+						% names of type vars (empty 
+						% except for polymorphic types)
+					varset,	
+						% formal type parameters
+					list(type_param),
+						% the definition of the type
+					hlds__type_body,
+						% a class invariant for the
+						% type (not used)
+					condition
+				).
+
+	% du = discriminated union, uu = undiscriminated union,
+	% eqv_type = equivalence type (a type defined to be eqv to some
+	% other type)
 
 :- type hlds__type_body	--->	du_type(list(constructor))
 			;	uu_type(list(type))
