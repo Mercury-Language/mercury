@@ -161,7 +161,7 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 code_util__builtin(PredName, Arity) :-
 	( code_util__builtin_binop(PredName, Arity, _)
 	; code_util__builtin_unop(PredName, Arity, _)
-	; PredName = "call"
+	; PredName = "call", Arity = 1
 	).
 
 code_util__builtin_binop("builtin_plus", 3, (+)).

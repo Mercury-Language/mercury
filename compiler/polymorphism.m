@@ -248,7 +248,9 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 			{ map__lookup(UnifyProcMap, TypeVar, UnifyProcVar) },
 			{ SymName = unqualified("call") },
 			{ Args = [term__variable(UnifyProcVar), X, Y] },
-			{ Goal = call(PredId, ProcId, Args, is_builtin,
+			{ code_util__is_builtin(ModuleInfo, PredId, ProcId,
+				IsBuiltin) },
+			{ Goal = call(PredId, ProcId, Args, IsBuiltin,
 					SymName, FollowVars) - GoalInfo }
 
 		; { type_to_type_id(Type, TypeId, _) } ->

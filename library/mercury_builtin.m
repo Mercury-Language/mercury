@@ -92,9 +92,10 @@
 % calls to call/1.
 
 :- pred call(pred).
-:- mode call(det_pred) is det.
-:- mode call(semidet_pred) is semidet.
-:- mode call(nondet_pred) is nondet.
+:- mode call(in) is semidet.
+
+:- pred call(pred(T), T).
+:- mode call(in, in) is semidet.
 
 :- pred call(pred(T1, T2), T1, T2).
 :- mode call(in, in, in) is semidet.
@@ -124,6 +125,15 @@
 
 % All the predicates defined in this module are builtin.
 % The compiler generates code for them inline.
+
+	% A temporary hack until we implement call/N (N>1) properly
+	% The way this works is magic ;-)
+
+call(Pred, T) :-
+	call(call(Pred, T)).
+
+call(Pred, T1, T2) :-
+	call(call(Pred, T1, T2)).
 
 :- end_module mercury_builtin.
 
