@@ -543,8 +543,8 @@ generate_deps_map([], DepsMap, DepsMap) --> [].
 generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% Look up the module's dependencies, and determine whether
 		% it has been processed yet.
-	lookup_dependencies(Module, DepsMap0, no, Done, Error, ImplDeps, 
-				IntDeps, FactDeps, DepsMap1),
+	lookup_dependencies(Module, DepsMap0, no, Done, Error, IntDeps, 
+				ImplDeps, FactDeps, DepsMap1),
 		% If the module hadn't been processed yet, compute its
 		% transitive dependencies (we already know its primary ones),
 		% (1) output this module's dependencies to its `.d' file
@@ -1067,7 +1067,7 @@ lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps,
 		{ FactDeps = FactDeps0 },
 		{ DepsMap = DepsMap0 }
 	;
-		read_dependencies(Module, Search, ImplDeps, IntDeps, FactDeps, 
+		read_dependencies(Module, Search, IntDeps, ImplDeps, FactDeps, 
 				Error),
 		{ map__set(DepsMap0, Module, 
 		    deps(no, Error, IntDeps, ImplDeps, FactDeps), DepsMap) },
@@ -1093,7 +1093,8 @@ read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps,
 	),
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, no, InterfaceItems) },
-	{ get_dependencies(InterfaceItems, InterfaceDeps) },
+	{ get_dependencies(InterfaceItems, InterfaceDeps0) },
+	{ InterfaceDeps = ["mercury_builtin" | InterfaceDeps0] },
 	{ ImplementationDeps = ["mercury_builtin" | ImplementationDeps0] },
 	{ get_fact_table_dependencies(Items, FactTableDeps) }.
 
