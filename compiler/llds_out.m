@@ -1806,7 +1806,9 @@ output_rval(var(_)) -->
 
 output_rval_as_float(Rval) -->
 	( { Rval = const(float_const(FloatVal)) } ->
-		io__write_float(FloatVal)
+		io__write_string("((Float) "),
+		io__write_float(FloatVal),
+		io__write_string(")")
 	; { Rval = binop(Op, X, Y) }, { llds_out__float_op(Op, OpStr) } ->
 		io__write_string("("),
 		output_rval_as_float(X),
