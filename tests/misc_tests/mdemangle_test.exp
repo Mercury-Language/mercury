@@ -85,10 +85,10 @@ mercury_data_foo
 mercury_data_foo
 
 	some lambda goals
-<pred goal from 'simplex' line 262 label 5>
-<pred goal from 'simplex' line 262 label 5>
-<func goal from 'collect_vars' line 153>
-<func goal from 'collect_vars' line 153>
+<pred goal (#9) from 'simplex' in module 'lp' line 262 label 5>
+<pred goal (#9) from 'simplex' in module 'lp' line 262 label 5>
+<func goal (#4) from 'collect_vars' in module 'lp' line 153>
+<func goal (#4) from 'collect_vars' in module 'lp' line 153>
 
 	A realistic test
 ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \

@@ -29,9 +29,18 @@
 :- implementation.
 :- import_module int, list, char, std_util, bool, require.
 
-:- type pred_category ---> index ; unify ; compare ; ordinary ;
-		lambda(int, string).
-:- type data_category ---> common ; info ; layout ; functors.
+:- type pred_category
+	--->	index
+	;	unify
+	;	compare
+	;	ordinary
+	;	lambda(int, int, string). % line, sequence number, pred name
+
+:- type data_category
+	--->	common
+	;	info
+	;	layout
+	;	functors.
 
 demangle(MangledName, Name) :-
 	( demangle_from_asm(MangledName, DemangledName) ->
@@ -214,7 +223,9 @@ demangle_proc -->
 		remove_maybe_module_prefix(MPredName),
 		{ MPredName = yes(PredName) },
 		remove_int(Line),
-		{ Category = lambda(Line, LambdaPredOrFunc) }
+		remove_prefix("__"),
+		remove_int(Seq),
+		{ Category = lambda(Line, Seq, LambdaPredOrFunc) }
 	;
 		{ Category = Category0 },
 		{ PredName = PredName0 }
@@ -258,10 +269,10 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 			[s(PredOrFunc), s(QualifiedName), i(Arity), i(ModeNum)],
 			MainPart)
 	;
-		Category = lambda(Line, LambdaPredOrFunc),
-		string__format("%s goal from %s, line %d",
-			[s(LambdaPredOrFunc), s(QualifiedName), i(Line)],
-				MainPart)
+		Category = lambda(Line, Seq, LambdaPredOrFunc),
+		string__format("%s goal (#%d) from %s line %d",
+			[s(LambdaPredOrFunc), i(Seq), s(QualifiedName),
+			i(Line)], MainPart)
 	},
 	[MainPart],
 	( { HigherOrder = yes } ->
