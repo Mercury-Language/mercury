@@ -292,8 +292,7 @@ get_specialization_requests(_Params, [], _NewPreds, Requests, Requests,
 		Sizes, Sizes, ModuleInfo, ModuleInfo).
 get_specialization_requests(Params, [PredId | PredIds], NewPreds, Requests0,
 		Requests, GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, Preds0),
-	map__lookup(Preds0, PredId, PredInfo0),
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
 	pred_info_non_imported_procids(PredInfo0, NonImportedProcs),
 	(
 		NonImportedProcs = [],
@@ -320,8 +319,8 @@ get_specialization_requests(Params, [PredId | PredIds], NewPreds, Requests0,
 			ModuleInfo1, ModuleInfo2, PredInfo1, PredInfo2,
 			NewPreds, Requests1, Requests2, Procs1, Procs),
 		pred_info_set_procedures(PredInfo2, Procs, PredInfo),
-		map__det_update(Preds0, PredId, PredInfo, Preds),
-		module_info_set_preds(ModuleInfo2, Preds, ModuleInfo3)
+		module_info_set_pred_info(ModuleInfo2,
+			PredId, PredInfo, ModuleInfo3)
 	),
 	get_specialization_requests(Params, PredIds, NewPreds,
 		Requests2, Requests, GoalSizes1, GoalSizes,
@@ -739,10 +738,14 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 			map__lookup(Instances, ClassId, InstanceList),
 			list__index1_det(InstanceList, Instance, InstanceDefn),
 			InstanceDefn = hlds_instance_defn(_, _,
-				InstanceConstraints, _, _,
+				InstanceConstraints, InstanceTypes0, _,
 				yes(ClassInterface), _, _),
-			list__length(InstanceConstraints, InstanceArity),
-			list__take(InstanceArity, OtherTypeClassArgs,
+			term__vars_list(InstanceTypes0, InstanceTvars),
+			get_unconstrained_tvars(InstanceTvars,
+				InstanceConstraints, UnconstrainedTVars),
+			NumArgsToExtract = list__length(InstanceConstraints)
+					+ list__length(UnconstrainedTVars),
+			list__take(NumArgsToExtract, OtherTypeClassArgs,
 				InstanceConstraintArgs)
 		->
 			list__index1_det(ClassInterface, Method,
@@ -782,37 +785,31 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 		pred_info_typevarset(CallerPredInfo0, TVarSet0),
 		find_matching_instance_method(Instances, Method,
 			ClassArgs, PredId, ProcId, InstanceConstraints,
-			TVarSet0, TVarSet)
+			UnconstrainedTVarTypes, TVarSet0, TVarSet)
 	->
 		pred_info_set_typevarset(CallerPredInfo0,
 			TVarSet, CallerPredInfo),
 		% Pull out the argument typeclass_infos.
-		( InstanceConstraints = [] ->
+		( InstanceConstraints = [], UnconstrainedTVarTypes = [] ->
 			ExtraGoals = [],
 			CallerProcInfo = CallerProcInfo0,
 			AllArgs = Args
 		;
-			mercury_private_builtin_module(PrivateBuiltin),
-			module_info_get_predicate_table(ModuleInfo, PredTable),
-			ExtractArgSymName = qualified(PrivateBuiltin,
-				"instance_constraint_from_typeclass_info"),
-			(
-				predicate_table_search_pred_sym_arity(
-					PredTable, ExtractArgSymName,
-					3, [ExtractArgPredId0])
-			->
-				ExtractArgPredId = ExtractArgPredId0
-			;
-				error(
-	"higher_order.m: can't find `instance_constraint_from_typeclass_info'")
-			),
-			hlds_pred__initial_proc_id(ExtractArgProcId),
-			get_arg_typeclass_infos(PredVar, ExtractArgPredId,
-				ExtractArgProcId, ExtractArgSymName,
-				InstanceConstraints, 1,
-				ExtraGoals, ArgTypeClassInfos,
-				CallerProcInfo0, CallerProcInfo),
-			list__append(ArgTypeClassInfos, Args, AllArgs)
+			get_unconstrained_instance_type_infos(ModuleInfo,
+				PredVar, UnconstrainedTVarTypes, 1,
+				ArgTypeInfoGoals, ArgTypeInfoVars,
+				CallerProcInfo0, CallerProcInfo1),
+			FirstArgTypeclassInfo =
+				list__length(UnconstrainedTVarTypes) + 1,
+			get_arg_typeclass_infos(ModuleInfo, PredVar, 
+				InstanceConstraints, FirstArgTypeclassInfo,
+				ArgTypeClassInfoGoals, ArgTypeClassInfoVars,
+				CallerProcInfo1, CallerProcInfo),
+			list__condense(
+				[ArgTypeInfoVars, ArgTypeClassInfoVars, Args],
+				AllArgs),
+			list__append(ArgTypeInfoGoals,
+				ArgTypeClassInfoGoals, ExtraGoals)
 		),
 		Info1 = info(PredVars, Requests0, NewPreds, PredProcId,
 			CallerPredInfo, CallerProcInfo, ModuleInfo,
@@ -828,16 +825,20 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 
 :- pred find_matching_instance_method(list(hlds_instance_defn)::in, int::in,
 	list(type)::in, pred_id::out, proc_id::out,
-	list(class_constraint)::out, tvarset::in, tvarset::out) is semidet.
+	list(class_constraint)::out, list(type)::out,
+	tvarset::in, tvarset::out) is semidet.
 
 find_matching_instance_method([Instance | Instances], MethodNum,
-		ClassTypes, PredId, ProcId, Constraints, TVarSet0, TVarSet) :-
+		ClassTypes, PredId, ProcId, Constraints,
+		UnconstrainedTVarTypes, TVarSet0, TVarSet) :-
         (
 		instance_matches(ClassTypes, Instance,
-			Constraints0, TVarSet0, TVarSet1)
+			Constraints0, UnconstrainedTVarTypes0,
+			TVarSet0, TVarSet1)
 	->
 		TVarSet = TVarSet1,
 		Constraints = Constraints0,
+		UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
 		Instance = hlds_instance_defn(_, _, _,
 			_, _, yes(ClassInterface), _, _),
 		list__index1_det(ClassInterface, MethodNum,
@@ -845,59 +846,128 @@ find_matching_instance_method([Instance | Instances], MethodNum,
 	;
 		find_matching_instance_method(Instances, MethodNum,
 			ClassTypes, PredId, ProcId, Constraints,
-			TVarSet0, TVarSet)
+			UnconstrainedTVarTypes, TVarSet0, TVarSet)
 	).
 
 :- pred instance_matches(list(type)::in, hlds_instance_defn::in,
-	list(class_constraint)::out, tvarset::in, tvarset::out) is semidet.
+	list(class_constraint)::out, list(type)::out,
+	tvarset::in, tvarset::out) is semidet.
 
-instance_matches(ClassTypes, Instance, Constraints, TVarSet0, TVarSet) :-
+instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
+		TVarSet0, TVarSet) :-
 	Instance = hlds_instance_defn(_, _, Constraints0,
 		InstanceTypes0, _, _, InstanceTVarSet, _),
 	varset__merge_subst(TVarSet0, InstanceTVarSet, TVarSet,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0,
 		RenameSubst, InstanceTypes),
-	type_list_subsumes(InstanceTypes, ClassTypes, Subst),
 	apply_subst_to_constraint_list(RenameSubst,
 		Constraints0, Constraints1),
+	term__vars_list(InstanceTypes, InstanceTVars),
+	get_unconstrained_tvars(InstanceTVars, Constraints1,
+		UnconstrainedTVars0),
+
+	type_list_subsumes(InstanceTypes, ClassTypes, Subst),
 	apply_rec_subst_to_constraint_list(Subst,
-		Constraints1, Constraints).
+		Constraints1, Constraints),
+
+	term__var_list_to_term_list(UnconstrainedTVars0,
+		UnconstrainedTVarTypes0),
+	term__apply_rec_substitution_to_list(UnconstrainedTVarTypes0,
+		Subst, UnconstrainedTVarTypes).
 
 	% Build calls to
 	% `private_builtin:instance_constraint_from_typeclass_info/3'
 	% to extract the typeclass_infos for the constraints on an instance.
 	% This simulates the action of `do_call_class_method' in
 	% runtime/mercury_ho_call.c.
-:- pred get_arg_typeclass_infos(prog_var::in, pred_id::in, proc_id::in,
-		sym_name::in, list(class_constraint)::in, int::in,
-		list(hlds_goal)::out, list(prog_var)::out,
-		proc_info::in, proc_info::out) is det.
+:- pred get_arg_typeclass_infos(module_info::in, prog_var::in,
+		list(class_constraint)::in, int::in, list(hlds_goal)::out,
+		list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
-get_arg_typeclass_infos(_, _, _, _, [], _, [], [], ProcInfo, ProcInfo).
-get_arg_typeclass_infos(TypeClassInfoVar, PredId, ProcId, SymName,
-		[InstanceConstraint | InstanceConstraints],
-		ConstraintNum, [ConstraintNumGoal, CallGoal | Goals],
-		[ArgTypeClassInfoVar | Vars], ProcInfo0, ProcInfo) :-
-	polymorphism__build_typeclass_info_type(InstanceConstraint,
-		ArgTypeClassInfoType),
-	proc_info_create_var_from_type(ProcInfo0, ArgTypeClassInfoType,
-		ArgTypeClassInfoVar, ProcInfo1),
+get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar,
+		InstanceConstraints, Index, Goals, Vars,
+		ProcInfo0, ProcInfo) :-
+
+	MakeResultType = polymorphism__build_typeclass_info_type,
+	get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
+		"instance_constraint_from_typeclass_info", MakeResultType,
+		InstanceConstraints, Index, Goals, Vars, ProcInfo0, ProcInfo).
+
+	% Build calls to
+	% `private_builtin:unconstrained_type_info_from_typeclass_info/3'
+	% to extract the type-infos for the unconstrained type variables
+	% of an instance declaration.
+	% This simulates the action of `do_call_class_method' in
+	% runtime/mercury_ho_call.c.
+:- pred get_unconstrained_instance_type_infos(module_info::in,
+		prog_var::in, list(type)::in, int::in, list(hlds_goal)::out,
+		list(prog_var)::out, proc_info::in, proc_info::out) is det.
+
+get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
+		UnconstrainedTVarTypes, Index, Goals, Vars,
+		ProcInfo0, ProcInfo) :-
+	MakeResultType = polymorphism__build_type_info_type,
+	get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
+		"unconstrained_type_info_from_typeclass_info",
+		MakeResultType, UnconstrainedTVarTypes,
+		Index, Goals, Vars, ProcInfo0, ProcInfo).
+
+:- pred get_typeclass_info_args(module_info::in, prog_var::in, string::in,
+		pred(T, type)::(pred(in, out) is det),
+		list(T)::in, int::in, list(hlds_goal)::out,
+		list(prog_var)::out, proc_info::in, proc_info::out) is det.
+
+get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
+		Args, Index, Goals, Vars, ProcInfo0, ProcInfo) :-
+	mercury_private_builtin_module(PrivateBuiltin),
+	SymName = qualified(PrivateBuiltin, PredName),
+	module_info_get_predicate_table(ModuleInfo, PredTable),
+	(
+		predicate_table_search_pred_sym_arity(PredTable,
+			SymName, 3, [ExtractArgPredId0])
+	->
+		ExtractArgPredId = ExtractArgPredId0
+	;
+		string__append("higher_order.m: can't find private_builtin__",
+			PredName, Msg),
+		error(Msg)
+	),
+	hlds_pred__initial_proc_id(ExtractArgProcId),
+	get_typeclass_info_args_2(TypeClassInfoVar, ExtractArgPredId,
+		ExtractArgProcId, SymName, MakeResultType,
+		Args, Index, Goals, Vars, ProcInfo0, ProcInfo).
+
+:- pred get_typeclass_info_args_2(prog_var::in, pred_id::in, proc_id::in,
+		sym_name::in, pred(T, type)::(pred(in, out) is det),
+		list(T)::in, int::in, list(hlds_goal)::out,
+		list(prog_var)::out, proc_info::in, proc_info::out) is det.
+
+get_typeclass_info_args_2(_, _, _, _, _, [], _, [], [], ProcInfo, ProcInfo).
+get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
+		MakeResultType, [Arg | Args], Index,
+		[IndexGoal, CallGoal | Goals],
+		[ResultVar | Vars], ProcInfo0, ProcInfo) :-
+	MakeResultType(Arg, ResultType),
+	proc_info_create_var_from_type(ProcInfo0, ResultType,
+		ResultVar, ProcInfo1),
 	MaybeContext = no,
-	make_int_const_construction(ConstraintNum, ConstraintNumGoal,
-		ConstraintNumVar, ProcInfo1, ProcInfo2),
-	Args = [TypeClassInfoVar, ConstraintNumVar, ArgTypeClassInfoVar],
+	make_int_const_construction(Index, IndexGoal,
+		IndexVar, ProcInfo1, ProcInfo2),
+	CallArgs = [TypeClassInfoVar, IndexVar, ResultVar],
 
-	set__list_to_set(Args, NonLocals),
+	set__list_to_set(CallArgs, NonLocals),
 	instmap_delta_init_reachable(InstMapDelta0),
-	instmap_delta_insert(InstMapDelta0, ArgTypeClassInfoVar,
+	instmap_delta_insert(InstMapDelta0, ResultVar,
 		ground(shared, no), InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
-	CallGoal = call(PredId, ProcId, Args, not_builtin,
+	CallGoal = call(PredId, ProcId, CallArgs, not_builtin,
 		MaybeContext, SymName) - GoalInfo,
-	get_arg_typeclass_infos(TypeClassInfoVar, PredId, ProcId, SymName,
-		InstanceConstraints, ConstraintNum + 1, Goals,
-		Vars, ProcInfo2, ProcInfo).
+	get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
+		MakeResultType, Args, Index + 1, Goals, Vars,
+		ProcInfo2, ProcInfo).
+
+%-----------------------------------------------------------------------------%
 
 :- pred construct_specialized_higher_order_call(module_info::in,
 	pred_id::in, proc_id::in, list(prog_var)::in, hlds_goal_info::in,
@@ -931,7 +1001,8 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 	;
 		error("higher_order.m: call expected")
 	),
-	module_info_pred_info(Module0, CalledPred, CalleePredInfo),
+	module_info_pred_proc_info(Module0, CalledPred, CalledProc,
+		CalleePredInfo, CalleeProcInfo),
 	module_info_globals(Module0, Globals),
 	globals__lookup_bool_option(Globals, special_preds, HaveSpecialPreds),
 	(
@@ -966,8 +1037,12 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 		Info = Info0,
 		Goal = Goal0
 	;
-		pred_info_arg_types(CalleePredInfo, CalleeArgTypes),
 		pred_info_import_status(CalleePredInfo, CalleeStatus),
+		proc_info_vartypes(CalleeProcInfo, CalleeVarTypes),
+		proc_info_headvars(CalleeProcInfo, CalleeHeadVars),
+		map__apply_to_list(CalleeHeadVars,
+			CalleeVarTypes, CalleeArgTypes),
+
 		proc_info_vartypes(ProcInfo0, VarTypes),
 		find_higher_order_args(Module0, CalleeStatus, Args0,
 			CalleeArgTypes, VarTypes, PredVars, 1, [],
@@ -1006,9 +1081,12 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 				pred_info_get_exist_quant_tvars(CalleePredInfo,
 					CalleeExistQTVars),
 				pred_info_typevarset(PredInfo0, TVarSet),
+				pred_info_get_univ_quant_tvars(PredInfo0,
+					CallerUnivQTVars),
 				type_subst_makes_instance_known(
 					Module0, CalleeUnivConstraints0,
-					TVarSet, ArgTypes, CalleeTVarSet,
+					TVarSet, CallerUnivQTVars,
+					ArgTypes, CalleeTVarSet,
 					CalleeExistQTVars, CalleeArgTypes)
 			)
 		->
@@ -1133,11 +1211,13 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 	% the class constraints match an instance which was not matched
 	% before.
 :- pred type_subst_makes_instance_known(module_info::in,
-		list(class_constraint)::in, tvarset::in, list(type)::in,
-		tvarset::in, existq_tvars::in, list(type)::in) is semidet.
+		list(class_constraint)::in, tvarset::in, list(tvar)::in,
+		list(type)::in, tvarset::in, existq_tvars::in,
+		list(type)::in) is semidet.
 
 type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
-		ArgTypes, CalleeTVarSet, CalleeExistQVars, CalleeArgTypes0) :-
+		CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
+		CalleeExistQVars, CalleeArgTypes0) :-
 	CalleeUnivConstraints0 \= [],
 	varset__merge_subst(TVarSet0, CalleeTVarSet,
 		TVarSet, TypeRenaming),
@@ -1145,11 +1225,8 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 		CalleeArgTypes1),
 
 	% Substitute the types in the callee's class constraints.
-	% Typechecking has already succeeded, so none of the head type
-	% variables will be bound by the substitution.
-	HeadTypeParams = [],
 	inlining__get_type_substitution(CalleeArgTypes1, ArgTypes,
-		HeadTypeParams, CalleeExistQVars, TypeSubn),
+		CallerHeadTypeParams, CalleeExistQVars, TypeSubn),
 	apply_subst_to_constraint_list(TypeRenaming,
 		CalleeUnivConstraints0, CalleeUnivConstraints1),
 	apply_rec_subst_to_constraint_list(TypeSubn,
@@ -1167,8 +1244,8 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__search(InstanceTable, class_id(ClassName, ClassArity), Instances),
 	list__member(Instance, Instances),
-	instance_matches(ConstraintArgs, Instance, _, TVarSet, _),
-	\+ instance_matches(ConstraintArgs0, Instance, _, TVarSet, _).
+	instance_matches(ConstraintArgs, Instance, _, _, TVarSet, _),
+	\+ instance_matches(ConstraintArgs0, Instance, _, _, TVarSet, _).
 
 :- type find_result
 	--->	match(match)
@@ -2265,14 +2342,14 @@ create_new_proc(ModuleInfo, NewPred, NewProcInfo0, NewPredInfo0, NewPredInfo,
 
 	proc_info_headvars(NewProcInfo0, HeadVars0),
 	proc_info_argmodes(NewProcInfo0, ArgModes0),
-	pred_info_arg_types(NewPredInfo0, _, ExistQVars0, _),
+	pred_info_get_exist_quant_tvars(NewPredInfo0, ExistQVars0),
 	pred_info_typevarset(NewPredInfo0, TypeVarSet0),
 
 	Caller = proc(CallerPredId, CallerProcId),
 	module_info_pred_proc_info(ModuleInfo, CallerPredId, CallerProcId,
 		CallerPredInfo, CallerProcInfo),
 	pred_info_arg_types(CallerPredInfo, CallerTypeVarSet, _, _),
-	pred_info_get_head_type_params(CallerPredInfo, CallerHeadParams),
+	pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
 	proc_info_typeinfo_varmap(CallerProcInfo, CallerTypeInfoVarMap0),
 
 	%

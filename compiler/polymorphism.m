@@ -384,27 +384,69 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	%
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	clauses_info_vartypes(ClausesInfo, VarTypes),
-	clauses_info_headvars(ClausesInfo, HeadVars),
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	clauses_info_headvars(ClausesInfo0, HeadVars),
 
 	pred_info_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
 	list__length(ArgTypes0, NumOldArgs),
 	list__length(HeadVars, NumNewArgs),
 	NumExtraArgs is NumNewArgs - NumOldArgs,
 	(
-		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars,
-				_OldHeadVars)
+		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars0,
+				OldHeadVars0)
 	->
-		map__apply_to_list(ExtraHeadVars, VarTypes,
-			ExtraArgTypes),
-		list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
+		ExtraHeadVars = ExtraHeadVars0,
+		OldHeadVars = OldHeadVars0
 	;
 		error("polymorphism.m: list__split_list failed")
 	),
 
+	map__apply_to_list(ExtraHeadVars, VarTypes0, ExtraArgTypes),
+	list__append(ExtraArgTypes, ArgTypes0, ArgTypes),
 	pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars,
-		ArgTypes, PredInfo),
+		ArgTypes, PredInfo1),
+
+	%
+	% If the clauses binds some existentially quantified
+	% type variables, make sure the types of the type-infos
+	% for those type variables in the variable types map
+	% are as specific as possible. The predicate argument
+	% types shouldn't be substituted, because the binding
+	% should not be visible to calling predicates.
+	%
+	(
+		ExistQVars \= [],
+		% This can fail for unification procedures
+		% of equivalence types.
+		map__apply_to_list(OldHeadVars, VarTypes0, OldHeadVarTypes),
+		type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
+		\+ map__is_empty(Subn)
+	->
+		list__foldl(
+			(pred(HeadVar::in, Types0::in, Types::out) is det :-
+				map__lookup(Types0, HeadVar, HeadVarType0),
+				term__apply_rec_substitution(HeadVarType0,
+					Subn, HeadVarType),
+				map__set(Types0, HeadVar, HeadVarType, Types)
+			), ExtraHeadVars, VarTypes0, VarTypes),
+		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
+		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+
+		% Fix up the var-types in the procedures as well.
+		% It would be better if this were done before copying
+		% clauses to procs, but that's difficult to arrange. 
+		pred_info_procedures(PredInfo2, Procs0),
+		map__map_values(
+			(pred(_::in, ProcInfo0::in, ProcInfo::out) is det :- 
+				proc_info_set_vartypes(ProcInfo0,
+					VarTypes, ProcInfo)
+			), Procs0, Procs),
+		pred_info_set_procedures(PredInfo2, Procs, PredInfo)
+	;				
+		PredInfo = PredInfo1
+	),
+
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 
