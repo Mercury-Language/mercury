@@ -1984,15 +1984,40 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		io__close_output(DepStream),
 		io__rename_file(TmpDependencyFileName, DependencyFileName,
 			Result3),
-		( { Result3 = error(Error) } ->
-			maybe_write_string(Verbose, " failed.\n"),
-			maybe_flush_output(Verbose),
-			{ io__error_message(Error, ErrorMsg) },
-			{ string__append_list(["can't rename file `",
-				TmpDependencyFileName, "' as `",
-				DependencyFileName, "': ", ErrorMsg],
-				Message) },
-			report_error(Message)
+		( { Result3 = error(_) } ->
+			% On some systems, we need to remove the existing file
+			% first, if any.  So try again that way.
+			io__remove_file(DependencyFileName, Result4),
+			( { Result4 = error(Error4) } ->
+				maybe_write_string(Verbose, " failed.\n"),
+				maybe_flush_output(Verbose),
+				{ io__error_message(Error4, ErrorMsg) },
+				{ string__append_list(["can't remove file `",
+					DependencyFileName, "': ", ErrorMsg],
+					Message) },
+				report_error(Message)
+			;
+				io__rename_file(TmpDependencyFileName,
+					DependencyFileName, Result5),
+				( { Result5 = error(Error5) } ->
+					maybe_write_string(Verbose,
+						" failed.\n"),
+					maybe_flush_output(Verbose),
+					{ io__error_message(Error5,
+						ErrorMsg) },
+					{ string__append_list(
+						["can't rename file `",
+						TmpDependencyFileName,
+						"' as `",
+						DependencyFileName,
+						"': ",
+						ErrorMsg],
+						Message) },
+					report_error(Message)
+				;
+					maybe_write_string(Verbose, " done.\n")
+				)
+			)
 		;
 			maybe_write_string(Verbose, " done.\n")
 		)
