@@ -68,7 +68,10 @@ TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
 
 #-----------------------------------------------------------------------------#
 
-MCTRANSOPTFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
+MCTERMFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
+MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
+	      --no-optimize-higher-order
+MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 
 $(trans_opts_subdir)%.trans_opt: %.m
 	$(MC) $(MCFLAGS) --make-trans-opt $(MCTRANSOPTFLAGS) $< \
