@@ -27,7 +27,8 @@
 :- type instruction	==	pair(instr, string).
 			%	 instruction, comment
 
-:- type instr		--->	assign(lval, rval)
+:- type instr		--->	comment(string)
+			;	assign(lval, rval)
 			;	call(code_addr, label)  % pred, continuation
 			;	tailcall(code_addr)
 			;	proceed
@@ -67,6 +68,8 @@
 			;	sconst(string)		% string constants
 			;       field(int, rval, int)
 			;	binop(operator, rval, rval)
+			;	true
+			;	false
 			;	unused.
 
 :- type operator	--->	(+)
@@ -203,6 +206,9 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 :- pred output_instruction(instr, io__state, io__state).
 :- mode output_instruction(in, di, uo).
 
+output_instruction(comment(Comment)) -->
+	io__write_strings(["/*\n\t",Comment,"\n*/"]).
+
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t"),
 	output_lval(Lval),
@@ -275,7 +281,7 @@ output_instruction(if_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if( "),
 	output_rval(Rval),
-	io__write_string(" ) GOTO(LABEL("),
+	io__write_string(" ) \n\t\tGOTO(LABEL("),
 	output_label(Label),
 	io__write_string("));").
 
@@ -283,7 +289,7 @@ output_instruction(if_not_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if(!( "),
 	output_rval(Rval),
-	io__write_string(" )) GOTO(LABEL("),
+	io__write_string(" )) \n\t\tGOTO(LABEL("),
 	output_label(Label),
 	io__write_string("));").
 
@@ -374,8 +380,22 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(", "),
 	output_rval(Exprn),
 	io__write_string(")").
+output_rval(field(Tag, Rval, Field)) -->
+	io__write_string("field("),
+	io__write_int(Tag),
+	io__write_string(","),
+	output_rval(Rval),
+	io__write_string(","),
+	io__write_int(Field),
+	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
+output_rval(true) -->
+	io__write_string("1").
+output_rval(false) -->
+	io__write_string("0").
+output_rval(var(_)) -->
+	{ error("Cannot output a var(_) expression in code") }.
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo).

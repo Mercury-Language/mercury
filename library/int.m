@@ -11,25 +11,25 @@
 :- interface.
 
 :- pred <(int, int).
-:- mode <(in, in).
+:- mode <(in, in) is semidet.
 
 :- pred =<(int, int).
-:- mode =<(in, in).
+:- mode =<(in, in) is semidet.
 
 :- pred >(int, int).
-:- mode >(in, in).
+:- mode >(in, in) is semidet.
 
 :- pred >=(int, int).
-:- mode >=(in, in).
+:- mode >=(in, in) is semidet.
 
 :- pred int__abs(int, int).
-:- mode int__abs(in, out).
+:- mode int__abs(in, out) is det.
 
 :- pred int__max(int, int, int).
-:- mode int__max(in, in, out).
+:- mode int__max(in, in, out) is det.
 
 :- pred int__min(int, int, int).
-:- mode int__min(in, in, out).
+:- mode int__min(in, in, out) is det.
 
 /*
 

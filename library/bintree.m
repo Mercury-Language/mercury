@@ -102,6 +102,8 @@ bintree__init(empty).
 
 %-----------------------------------------------------------------------------%
 
+:- bintree__insert(A, B, _, _) when A and B.
+
 bintree__insert(empty, Key, Value, tree(Key, Value, empty, empty)).
 bintree__insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
@@ -166,6 +168,8 @@ bintree__update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
+:- bintree__set(A, B, _, _) when A and B.
+
 bintree__set(empty, Key, Value, tree(Key, Value, empty, empty)).
 bintree__set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
@@ -185,6 +189,8 @@ bintree__set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
+:- bintree__search(A, B, _) when A and B.
+
 bintree__search(tree(K0, V0, Left, Right), K, V) :-
 	compare(Result, K0, K),
 	(
@@ -200,6 +206,8 @@ bintree__search(tree(K0, V0, Left, Right), K, V) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- bintree__delete(A, B, _) when A and B.
 
 bintree__delete(empty, _K, empty).
 bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-

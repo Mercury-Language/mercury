@@ -921,6 +921,9 @@ proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 :- pred goal_info_set_liveness(hlds__goal_info, liveness, hlds__goal_info).
 :- mode goal_info_set_liveness(in, in, out).
 
+:- pred goal_info_determinism(hlds__goal_info, category).
+:- mode goal_info_determinism(in, out).
+
 :- pred goal_info_declared_determinism(hlds__goal_info, determinism).
 :- mode goal_info_declared_determinism(in, out).
 
@@ -981,6 +984,9 @@ goal_info_liveness(GoalInfo, Liveness) :-
 goal_info_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
 	GoalInfo0 = goal_info(_, B, C, D, E, F),
 	GoalInfo = goal_info(Liveness, B, C, D, E, F).
+
+goal_info_determinism(GoalInfo, Determinism) :-
+	goal_info_inferred_determinism(GoalInfo, Determinism).
 
 goal_info_declared_determinism(GoalInfo, DeclaredDeterminism) :-
 	GoalInfo = goal_info(_, DeclaredDeterminism, _, _, _, _).
