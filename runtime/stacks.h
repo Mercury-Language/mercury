@@ -96,7 +96,7 @@
 #define	curprednm	bt_prednm(MR_curfr)
 #define	curredoip	bt_redoip(MR_curfr)
 #define	curprevfr	bt_prevfr(MR_curfr)
-#define	curMR_succip	bt_succip(MR_curfr)
+#define	cursuccip	bt_succip(MR_curfr)
 #define	cursuccfr	bt_succfr(MR_curfr)
 #define	framevar(n)	bt_var(MR_curfr,n)
 
@@ -120,7 +120,7 @@
 				MR_curfr = MR_maxfr;			\
 				curredoip = redoip;		\
 				curprevfr = prevfr;		\
-				curMR_succip = MR_succip;		\
+				cursuccip = MR_succip;		\
 				cursuccfr = succfr;		\
 				mkframe_save_prednm(prednm);	\
 				debugmkframe();			\
