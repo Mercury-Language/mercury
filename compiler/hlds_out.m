@@ -793,6 +793,8 @@ hlds_out__write_hlds(Indent, Module, !IO) :-
 	is det.
 
 hlds_out__write_header(Indent, Module, !IO) :-
+	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% vim: ts=2 sw=2\n\n", !IO),
 	module_info_name(Module, Name),
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string(":- module ", !IO),
