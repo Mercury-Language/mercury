@@ -219,17 +219,21 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 
 call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
 	code_info__get_module_info(ModuleInfo),
-	{ predicate_name(ModuleInfo, PredId, OpStr) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
-		{ code_util__builtin_binop(OpStr, 3, BinOp) },
+		{ code_util__builtin_binop(PredName, 3, BinOp) },
 		{ Args = [ X, Y, Var ] }
 	->
 		code_info__cache_expression(Var, binop(BinOp, var(X), var(Y)))
 	;
-		{ code_util__builtin_unop(OpStr, 2, UnOp) },
+		{ code_util__builtin_unop(PredName, 2, UnOp) },
 		{ Args = [ X, Var ] }
 	->
 		code_info__cache_expression(Var, unop(UnOp, var(X)))
+	;
+		PredName = "call"
+	->
+		{ error("XXX") }
 	;
 		{ error("Unknown builtin predicate") }
 	).
@@ -238,9 +242,9 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
 
 call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	{ predicate_name(ModuleInfo, PredId, OpStr) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
-		{ code_util__builtin_binop(OpStr, 2, BinOp) },
+		{ code_util__builtin_binop(PredName, 2, BinOp) },
 		{ Args = [ X, Y ] }
 	->
 		code_info__produce_variable(X, CodeX, XRval),
@@ -249,7 +253,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 			binop(BinOp, XRval, YRval), TestCode),
 		{ Code = tree(tree(CodeX,CodeY), TestCode) }
 	;
-		{ code_util__builtin_unop(OpStr, 1, UnOp) },
+		{ code_util__builtin_unop(PredName, 1, UnOp) },
 		{ Args = [ X ] }
 	->
 		code_info__produce_variable(X, CodeX, XRval),
@@ -257,14 +261,25 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 			unop(UnOp, XRval), TestCode),
 		{ Code = tree(CodeX, TestCode) }
 	;
+		PredName = "call"
+	->
+		{ error("XXX") }
+	;
 		{ error("Unknown builtin predicate") }
 	).
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, Code) -->
-	{ Code = empty },
-	{ error("Unknown nondet builtin predicate") }.
+call_gen__generate_nondet_builtin(PredId, _ProcId, _Args, Code) -->
+	code_info__get_module_info(ModuleInfo),
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	(
+		PredName = "call"
+	->
+		{ error("XXX") }
+	;
+		{ error("Unknown nondet builtin predicate") }
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
