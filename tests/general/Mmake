@@ -13,17 +13,43 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-NONDETPROGS=	commit_bug disj_disj dnf hello_again interpreter \
-		nasty_nondet nondet_disj nondet_ite nondet_ite_2 \
-		nondetlive partition semidet_lambda
+NONDETPROGS=	commit_bug \
+		commit_bug_2 \
+		disj_disj \
+		dnf \
+		hello_again \
+		interpreter \
+		nasty_nondet \
+		nondet_disj \
+		nondet_ite \
+		nondet_ite_2 \
+		nondet_ite_3 \
+		nondetlive \
+		partition \
+		semidet_lambda
 
-DETPROGS=	arithmetic det_complicated_unify double_error duplicate_label \
-		environment higher_order liveness parse_list petdr1 \
-		semidet_map set_test string__format_test string_test \
-		string_test_2 univ unreachable float_test \
-		mode_inf_bug liveness2
+DETPROGS=	arithmetic \
+		det_complicated_unify \
+		double_error \
+		double_error2 \
+		duplicate_label \
+		environment \
+		float_test \
+		higher_order \
+		liveness \
+		liveness2 \
+		mode_inf_bug \
+		parse_list \
+		petdr1 \
+		semidet_map \
+		set_test \
+		string__format_test \
+		string_test \
+		string_test_2 \
+		univ \
+		unreachable
 
-NOTWORKING=	double_error2 frameopt_mkframe_bug
+NOTWORKING=	frameopt_mkframe_bug
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
