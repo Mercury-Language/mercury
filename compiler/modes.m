@@ -2156,7 +2156,7 @@ get_arg_insts(not_reached, _Name, Arity, ArgInsts) :-
 get_arg_insts(ground(Uniq, _PredInst), _Name, Arity, ArgInsts) :-
 	list__duplicate(Arity, ground(Uniq, no), ArgInsts).
 get_arg_insts(bound(_Uniq, List), Name, Arity, ArgInsts) :-
-	( get_arg_insts_2(List, Name, ArgInsts0) ->
+	( get_arg_insts_2(List, Name, Arity, ArgInsts0) ->
 		ArgInsts = ArgInsts0
 	;
 		% the code is unreachable
@@ -2167,14 +2167,17 @@ get_arg_insts(free, _Name, Arity, ArgInsts) :-
 get_arg_insts(free(_Type), _Name, Arity, ArgInsts) :-
 	list__duplicate(Arity, free, ArgInsts).
 
-:- pred get_arg_insts_2(list(bound_inst), const, list(inst)).
-:- mode get_arg_insts_2(in, in, out) is semidet.
+:- pred get_arg_insts_2(list(bound_inst), const, arity, list(inst)).
+:- mode get_arg_insts_2(in, in, in, out) is semidet.
 
-get_arg_insts_2([BoundInst | BoundInsts], Name, ArgInsts) :-
-	( BoundInst = functor(Name, ArgInsts0) ->
+get_arg_insts_2([BoundInst | BoundInsts], Name, Arity, ArgInsts) :-
+	(
+		BoundInst = functor(Name, ArgInsts0),
+		list__length(ArgInsts0, Arity)
+	->
 		ArgInsts = ArgInsts0
 	;
-		get_arg_insts_2(BoundInsts, Name, ArgInsts)
+		get_arg_insts_2(BoundInsts, Name, Arity, ArgInsts)
 	).
 
 % get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
