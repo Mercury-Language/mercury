@@ -8,6 +8,53 @@
 
 :- module inlining.
 
+	% This module inlines
+	%	- procedures that are flat (ie contain no branched structures)
+	%	  and are composed of inline builtins (eg arithmetic)
+	%	- procedures where the product of the number of calls to them
+	%	  and their size is below a given threshold.
+	%	- procedures which are called only once (if the appropriate
+	%	  option is enabled).
+	% 	- procedures which have a `:- pragma inline(name/arity).'
+	% If inlining a procedure takes the total number of variables over
+	% a given threshold (from a command-line option), then the procedure
+	% is not inlined - note that this means that some calls to a
+	% procedure may inlined while others are not.
+	% It builds the call-graph (if necessary) works from the bottom of
+	% the call-graph towards the top, first perfoming inlining on a
+	% procedure then deciding if calls to it (higher in the call-graph)
+	% should be inlined. SCCs get flattend and processed in the order
+	% returned by hlds__dependency_info_get_dependency_ordering.
+	%
+	% There are a couple of classes of procedure that we clearly want
+	% to inline because doing so *reduces* the size of the generated
+	% code:
+	%	- access predicates that get or set one or more fields
+	%	  of a structure (Inlining these is almost always a win
+	%	  because the infrastructure for the call to the procedure
+	%	  is almost always larger than the code to do the access.
+	%	  In the case of `get' accessors, the call usually becomes
+	%	  a single `field' expression to get the relevant field of
+	%	  the structure. In the case of `set' accessors, it is a bit
+	%	  more complicated since the code to copy the fields can be
+	%	  quite big if there are lots of fields, however in the case
+	%	  where several `set' accessors get called one after the other,
+	%	  inlining them enables the code generator to avoid creating
+	%	  the intermediate structures which is often a win).
+	%	- arithmetic predicates where the as above, the cost of the
+	%	  call will often outweigh the cost of the arithmetic.
+	%	- pragma C code, where often the C operation is very small,
+	%	  inlining avoids a call and allows the C compiler to do a
+	%	  better job of optimizing it.
+	% The threshold on the size of simple goals (which covers both of the
+	% first two cases above), is to prevent the inlining of large goals
+	% such as those that construct big terms where the duplication is
+	% usually inappropriate (for example in nrev).
+	% The threshold on the number of variables in a procedure is to prevent
+	% the problem of inlining lots of calls and having a resulting
+	% procedure with so many variables that the back end of the compiler
+	% gets bogged down (for example in the pseudoknot benchmark).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -27,54 +74,79 @@
 :- import_module passes_aux, code_aux.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util.
-:- import_module term, varset, require.
+:- import_module term, varset, require, hlds_data, dependency_graph.
 
 %-----------------------------------------------------------------------------%
 
-:- type inline_params	--->	params(bool, bool, int).
-				% simple, single_use, threshold
-
-	% Traverse the module structure, calling `inlining__do_inlining'
-	% for each procedure body.
+:- type inline_params	--->	params(bool, bool, int, int, int).
+				% simple, single_use,
+				%	size-threshold, simple-goal-threshold
+				%		var-threshold
 
 inlining(ModuleInfo0, ModuleInfo) -->
+		% Get the usage counts for predicates
 	{ dead_proc_elim__analyze(ModuleInfo0, NeededMap) },
-	{ module_info_predids(ModuleInfo0, PredIds) },
-	{ set__init(InlinedProcs0) },
+		% Package up all the inlining options
+		% - whether to inline simple conj's of builtins
+		% - whether to inline predicates that are
+		%   only called once
+		% - the threshold for determining whether to
+		%   inline more complicated goals
+		% - the threshold for determining whether to
+		%   inline the simple conj's
+		% - the upper limit on the number of variables
+		%   we want in procedures - if inlining a procedure
+		%   would cause the number of variables to exceed
+		%   this threshold then we don't inline it.
 	globals__io_lookup_bool_option(inline_simple, Simple),
 	globals__io_lookup_bool_option(inline_single_use, SingleUse),
-	globals__io_lookup_int_option(inline_threshold, Threshold),
-	{ Params = params(Simple, SingleUse, Threshold) },
-	inlining__mark_in_preds(PredIds, ModuleInfo0, NeededMap, Params,
-		InlinedProcs0, InlinedProcs),
-	{ inlining__in_preds(PredIds, InlinedProcs, ModuleInfo0, ModuleInfo) }.
+	globals__io_lookup_int_option(inline_compound_threshold, Threshold),
+	globals__io_lookup_int_option(inline_simple_threshold, SimpleThreshold),
+	globals__io_lookup_int_option(inline_vars_threshold, VarThreshold),
+	{ Params = params(Simple, SingleUse, Threshold, SimpleThreshold,
+			VarThreshold) },
+		% build the call graph and extract the topological sort
+		% Note: the topological sort returns a list of SCCs.
+		% Clearly, we want to process the SCCs bottom to top
+		% (which is the order that they are returned), but it
+		% is not easy to guess the best way to flatten each SCC
+		% to achieve the best result. The current implementation
+		% just uses the ordering of the list returned by the
+		% topological sort. A more sophisticated approach would be
+		% to break the cycle so that the procedure(s) that are called
+		% by higher SCCs are processed last, but we do not implement
+		% that yet.
+	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
+	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
+	{ hlds__dependency_info_get_dependency_ordering(DepInfo, SCCs) },
+	{ list__condense(SCCs, PredProcs) },
+	{ set__init(InlinedProcs0) },
+	inlining__do_inlining(PredProcs, NeededMap, Params, InlinedProcs0,
+		ModuleInfo1, ModuleInfo).
 
-:- pred inlining__mark_in_preds(list(pred_id), module_info, needed_map,
-	inline_params, set(pred_proc_id), set(pred_proc_id),
-	io__state, io__state).
-:- mode inlining__mark_in_preds(in, in, in, in, in, out, di, uo) is det.
+:- pred inlining__do_inlining(list(pred_proc_id), needed_map, inline_params,
+		set(pred_proc_id), module_info, module_info,
+		io__state, io__state).
+:- mode inlining__do_inlining(in, in, in, in, in, out, di, uo) is det.
 
-inlining__mark_in_preds([], _, _, _, InlinedProcs, InlinedProcs) --> [].
-inlining__mark_in_preds([PredId | PredIds], ModuleInfo, NeededMap, Params,
+inlining__do_inlining([], _Needed, _Params, _Inlined, Module, Module) --> [].
+inlining__do_inlining([PPId|PPIds], Needed, Params, Inlined0,
+		Module0, Module) -->
+	{ inlining__in_predproc(PPId, Inlined0, Params, Module0, Module1) },
+	inlining__mark_predproc(PPId, Needed, Params, Module1,
+		Inlined0, Inlined1),
+	inlining__do_inlining(PPIds, Needed, Params, Inlined1, Module1, Module).
+
+:- pred inlining__mark_predproc(pred_proc_id, needed_map, inline_params,
+		module_info, set(pred_proc_id), set(pred_proc_id),
+		io__state, io__state).
+:- mode inlining__mark_predproc(in, in, in, in, in, out, di, uo) is det.
+
+inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, 
 		InlinedProcs0, InlinedProcs) -->
-	{ module_info_preds(ModuleInfo, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap, Params,
-		InlinedProcs0, InlinedProcs1),
-	inlining__mark_in_preds(PredIds, ModuleInfo, NeededMap, Params,
-		InlinedProcs1, InlinedProcs).
-
-:- pred inlining__mark_in_procs(list(proc_id), pred_id, module_info,
-	needed_map, inline_params, set(pred_proc_id), set(pred_proc_id),
-	io__state, io__state).
-:- mode inlining__mark_in_procs(in, in, in, in, in, in, out, di, uo) is det.
-
-inlining__mark_in_procs([], _, _, _, _, InlinedProcs, InlinedProcs) --> [].
-inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
-		NeededMap, Params, InlinedProcs0, InlinedProcs) -->
 	(
-		{ Params = params(Simple, SingleUse, Threshold) },
+		{ Params = params(Simple, SingleUse, CompoundThreshold,
+				SimpleThreshold, _VarThreshold) },
 		{ PredProcId = proc(PredId, ProcId) },
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_procedures(PredInfo, Procs) },
@@ -84,12 +156,13 @@ inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
 				% this heuristic could be improved
 			(
 				{ Simple = yes },
-				{ inlining__simple_goal(CalledGoal) }
+				{ inlining__simple_goal(CalledGoal,
+					SimpleThreshold) }
 			;
 				{ map__search(NeededMap, PredProcId, Needed) },
 				{ Needed = yes(NumUses) },
 				{ goal_size(CalledGoal, Size) },
-				{ Size * NumUses =< Threshold }
+				{ Size * NumUses =< CompoundThreshold }
 			)
 		;
 			{ SingleUse = yes },
@@ -101,23 +174,21 @@ inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
 		{ \+ goal_calls(CalledGoal, PredProcId) }
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
-			InlinedProcs0, InlinedProcs1)
+			InlinedProcs0, InlinedProcs)
 	;
-		{ InlinedProcs1 = InlinedProcs0 }
-	),
-	inlining__mark_in_procs(ProcIds, PredId, ModuleInfo, NeededMap, Params,
-		InlinedProcs1, InlinedProcs).
+		{ InlinedProcs = InlinedProcs0 }
+	).
 
-:- pred inlining__simple_goal(hlds__goal).
-:- mode inlining__simple_goal(in) is semidet.
+:- pred inlining__simple_goal(hlds__goal, int).
+:- mode inlining__simple_goal(in, in) is semidet.
 
-inlining__simple_goal(Goal) :-
+inlining__simple_goal(Goal, GoalThreshold) :-
 	(
 		code_aux__contains_only_builtins(Goal),
 		code_aux__goal_is_flat(Goal)
 	;
 		goal_size(Goal, Size),
-		Size < 5
+		Size < GoalThreshold
 	).
 
 :- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
@@ -137,26 +208,16 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred inlining__in_preds(list(pred_id), set(pred_proc_id),
-	module_info, module_info).
-:- mode inlining__in_preds(in, in, in, out) is det.
+:- pred inlining__in_predproc(pred_proc_id, set(pred_proc_id),
+		inline_params, module_info, module_info).
+:- mode inlining__in_predproc(in, in, in, in, out) is det.
 
-inlining__in_preds([], _, ModuleInfo, ModuleInfo).
-inlining__in_preds([PredId | PredIds], InlinedProcs, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	inlining__in_procs(ProcIds, PredId, InlinedProcs,
-		ModuleInfo0, ModuleInfo1),
-	inlining__in_preds(PredIds, InlinedProcs, ModuleInfo1, ModuleInfo).
-
-:- pred inlining__in_procs(list(proc_id), pred_id, set(pred_proc_id),
-	module_info, module_info).
-:- mode inlining__in_procs(in, in, in, in, out) is det.
-
-inlining__in_procs([], _PredId, _, ModuleInfo, ModuleInfo).
-inlining__in_procs([ProcId | ProcIds], PredId, InlinedProcs,
+inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		ModuleInfo0, ModuleInfo) :-
+	Params = params(_Simple, _SingleUse, _CompoundThreshold,
+			_SimpleThreshold, VarThresh),
+	PredProcId = proc(PredId, ProcId),
+
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
@@ -168,7 +229,7 @@ inlining__in_procs([ProcId | ProcIds], PredId, InlinedProcs,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TypeVarSet,
-		ModuleInfo0, InlinedProcs, Goal, Varset, VarTypes),
+		ModuleInfo0, InlinedProcs, VarThresh, Goal, Varset, VarTypes),
 
 	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
@@ -177,85 +238,99 @@ inlining__in_procs([ProcId | ProcIds], PredId, InlinedProcs,
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	inlining__in_procs(ProcIds, PredId, InlinedProcs,
-		ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_goal(hlds__goal, varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), hlds__goal,
+	tvarset, module_info, set(pred_proc_id), int, hlds__goal,
 	varset, map(var, type)).
-:- mode inlining__inlining_in_goal(in, in, in, in, in, in, out, out, out)
+:- mode inlining__inlining_in_goal(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
 inlining__inlining_in_goal(Goal0 - GoalInfo, Varset0, VarTypes0, TypeVarSet,
-		ModuleInfo, InlinedProcs, Goal - GoalInfo, Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, VarThresh,
+			Goal - GoalInfo, Varset, VarTypes) :-
 	inlining__inlining_in_goal_2(Goal0, Varset0, VarTypes0, TypeVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, VarThresh, Goal, Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_goal_2(hlds__goal_expr, varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), hlds__goal_expr,
+	tvarset, module_info, set(pred_proc_id), int, hlds__goal_expr,
 	varset, map(var, type)).
-:- mode inlining__inlining_in_goal_2(in, in, in, in, in, in, out, out, out)
+:- mode inlining__inlining_in_goal_2(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
 inlining__inlining_in_goal_2(conj(Goals0), Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, conj(Goals), Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Thresh,
+		conj(Goals), Varset, VarTypes) :-
 	inlining__inlining_in_conj(Goals0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goals, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Goals, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(disj(Goals0, FV), Varset0, VarTypes0, TVarset,
-		ModuleInfo, InlinedProcs, disj(Goals, FV), Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Thresh,
+		disj(Goals, FV), Varset, VarTypes) :-
 	inlining__inlining_in_disj(Goals0, Varset0, VarTypes0, TVarset,
-		ModuleInfo, InlinedProcs, Goals, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Goals, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(switch(Var, Det, Cases0, FV),
-		Varset0, VarTypes0, TVarset, ModuleInfo, InlinedProcs,
+		Varset0, VarTypes0, TVarset, ModuleInfo, InlinedProcs, Thresh,
 		switch(Var, Det, Cases, FV), Varset, VarTypes) :-
 	inlining__inlining_in_cases(Cases0, Varset0, VarTypes0, TVarset,
-		ModuleInfo, InlinedProcs, Cases, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Cases, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
-		Varset0, VarTypes0, TVarSet, ModuleInfo, InlinedProcs,
+		Varset0, VarTypes0, TVarSet, ModuleInfo, InlinedProcs, Thresh,
 		if_then_else(Vars, Cond, Then, Else, FV), Varset, VarTypes) :-
 	inlining__inlining_in_goal(Cond0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Cond, Varset1, VarTypes1),
+		ModuleInfo, InlinedProcs, Thresh, Cond, Varset1, VarTypes1),
 	inlining__inlining_in_goal(Then0, Varset1, VarTypes1, TVarSet,
-		ModuleInfo, InlinedProcs, Then, Varset2, VarTypes2),
+		ModuleInfo, InlinedProcs, Thresh, Then, Varset2, VarTypes2),
 	inlining__inlining_in_goal(Else0, Varset2, VarTypes2, TVarSet,
-		ModuleInfo, InlinedProcs, Else, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Else, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(not(Goal0), Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, not(Goal), Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Thresh,
+		not(Goal), Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, some(Vars, Goal), Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Thresh,
+		some(Vars, Goal), Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Thresh, Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Context, Sym, Follow),
 		Varset0, VarTypes0, TypeVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Thresh, Goal, Varset, VarTypes) :-
 
 	% should we inline this call?
 	(
 		inlining__should_inline_proc(PredId, ProcId, Builtin,
-			InlinedProcs, ModuleInfo)
-	->
-		% Yes.  So look up the info for the called procedure.
-
+				InlinedProcs, ModuleInfo),
+			% okay, but will we exceed the number-of-variables
+			% threshold?
+		varset__vars(Varset0, ListOfVars),
+		list__length(ListOfVars, ThisMany),
+			% We need to find out how many variables the
+			% Callee has
 		module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			PredInfo, ProcInfo),
+        	proc_info_variables(ProcInfo, CalleeVarset),
+		varset__vars(CalleeVarset, CalleeListOfVars),
+		list__length(CalleeListOfVars, CalleeThisMany),
+		TotalVars is ThisMany + CalleeThisMany,
+		TotalVars =< Thresh
+	->
+		% Yes.  So look up the rest of the info for the
+		% called procedure.
+
 		pred_info_typevarset(PredInfo, CalleeTypeVarSet),
 		proc_info_headvars(ProcInfo, HeadVars),
 		proc_info_goal(ProcInfo, CalledGoal),
-        	proc_info_variables(ProcInfo, CalleeVarset),
 		proc_info_vartypes(ProcInfo, CalleeVarTypes0),
 
 		% Substitute the appropriate types into the type
@@ -312,68 +387,71 @@ inlining__inlining_in_goal_2(
 	).
 
 inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E, F),
-		Varset, VarTypes,
-		_, _, _, higher_order_call(A, B, C, D, E, F), Varset, VarTypes).
+		Varset, VarTypes, _, _, _, _,
+		higher_order_call(A, B, C, D, E, F), Varset, VarTypes).
 
 inlining__inlining_in_goal_2(unify(A, B, C, D, E), Varset, VarTypes,
-		_, _, _, unify(A, B, C, D, E), Varset, VarTypes).
+		_, _, _, _, unify(A, B, C, D, E), Varset, VarTypes).
 
 inlining__inlining_in_goal_2(pragma_c_code(A, B, C, D, E, F), Varset, VarTypes,
-		_, _, _, pragma_c_code(A, B, C, D, E, F), Varset, VarTypes).
+		_, _, _, _, pragma_c_code(A, B, C, D, E, F), Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_disj(list(hlds__goal), varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), list(hlds__goal),
+	tvarset, module_info, set(pred_proc_id), int, list(hlds__goal),
 	varset, map(var, type)).
-:- mode inlining__inlining_in_disj(in, in, in, in, in, in, out, out, out)
+:- mode inlining__inlining_in_disj(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
-inlining__inlining_in_disj([], Varset, VarTypes, _, _, _, [], Varset, VarTypes).
+inlining__inlining_in_disj([], Varset, VarTypes, _, _, _, _,
+		[], Varset, VarTypes).
 inlining__inlining_in_disj([Goal0 | Goals0], Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, [Goal | Goals], Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Threshold, [Goal | Goals],
+		Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset1, VarTypes1),
+		ModuleInfo, InlinedProcs, Threshold, Goal, Varset1, VarTypes1),
 	inlining__inlining_in_disj(Goals0, Varset1, VarTypes1, TVarSet,
-		ModuleInfo, InlinedProcs, Goals, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Threshold, Goals, Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_cases(list(case), varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), list(case),
+	tvarset, module_info, set(pred_proc_id), int, list(case),
 	varset, map(var, type)).
-:- mode inlining__inlining_in_cases(in, in, in, in, in, in, out, out, out)
+:- mode inlining__inlining_in_cases(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
-inlining__inlining_in_cases([], Varset, VarTypes, _, _, _,
+inlining__inlining_in_cases([], Varset, VarTypes, _, _, _, _,
 				[], Varset, VarTypes).
 inlining__inlining_in_cases([case(Cons, Goal0) | Goals0],
 		Varset0, VarTypes0, TVarSet, ModuleInfo, InlinedProcs,
-		[case(Cons, Goal) | Goals], Varset, VarTypes) :-
+		Threshold, [case(Cons, Goal) | Goals], Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goal, Varset1, VarTypes1),
+		ModuleInfo, InlinedProcs, Threshold, Goal, Varset1, VarTypes1),
 	inlining__inlining_in_cases(Goals0, Varset1, VarTypes1, TVarSet,
-		ModuleInfo, InlinedProcs, Goals, Varset, VarTypes).
+		ModuleInfo, InlinedProcs, Threshold, Goals, Varset, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
 :- pred inlining__inlining_in_conj(list(hlds__goal), varset, map(var, type),
-	tvarset, module_info, set(pred_proc_id), list(hlds__goal),
+	tvarset, module_info, set(pred_proc_id), int, list(hlds__goal),
 	varset, map(var, type)).
-:- mode inlining__inlining_in_conj(in, in, in, in, in, in, out, out, out)
+:- mode inlining__inlining_in_conj(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
 	% Since a single goal may become a conjunction,
 	% we flatten the conjunction as we go.
 
-inlining__inlining_in_conj([], Varset, VarTypes, _, _, _, [], Varset, VarTypes).
+inlining__inlining_in_conj([], Varset, VarTypes, _, _, _, _,
+		[], Varset, VarTypes).
 inlining__inlining_in_conj([Goal0 | Goals0], Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goals, Varset, VarTypes) :-
+		ModuleInfo, InlinedProcs, Threshold, Goals, Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, TVarSet,
-		ModuleInfo, InlinedProcs, Goal1, Varset1, VarTypes1),
+		ModuleInfo, InlinedProcs, Threshold, Goal1, Varset1, VarTypes1),
 	goal_to_conj_list(Goal1, Goal1List),
 	inlining__inlining_in_conj(Goals0, Varset1, VarTypes1, TVarSet,
-		ModuleInfo, InlinedProcs, Goals1, Varset, VarTypes),
+		ModuleInfo, InlinedProcs, Threshold, Goals1, Varset, VarTypes),
 	list__append(Goal1List, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%

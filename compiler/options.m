@@ -132,7 +132,9 @@
 		;	inlining
 		;	inline_simple
 		;	inline_single_use
-		;	inline_threshold
+		;	inline_compound_threshold
+		;	inline_simple_threshold
+		;	inline_vars_threshold
 		;	common_struct
 		;	common_goal
 		;	constraint_propagation
@@ -355,7 +357,9 @@ option_defaults_2(optimization_option, [
 	inlining		-	bool_special,
 	inline_simple		-	bool(no),
 	inline_single_use	-	bool(no),
-	inline_threshold	-	int(0),
+	inline_compound_threshold	-	int(0),
+	inline_simple_threshold	-	int(0),
+	inline_vars_threshold	-	int(100),
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
 		% commmon_goal is not really an optimization, since
@@ -568,7 +572,9 @@ long_option("optimise-space",		opt_space).
 long_option("inlining", 		inlining).
 long_option("inline-simple",		inline_simple).
 long_option("inline-single-use",	inline_single_use).
-long_option("inline-threshold",		inline_threshold).
+long_option("inline-compound-threshold",	inline_compound_threshold).
+long_option("inline-simple-threshold",		inline_simple_threshold).
+long_option("inline-vars-threshold",		inline_vars_threshold).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
@@ -653,10 +659,12 @@ special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),
 	(
 		Value = yes,
-		map__set(OptionTable2, inline_threshold, int(10), OptionTable)
+		map__set(OptionTable2, inline_compound_threshold,
+			int(10), OptionTable)
 	;
 		Value = no,
-		map__set(OptionTable2, inline_threshold, int(0), OptionTable)
+		map__set(OptionTable2, inline_compound_threshold,
+			int(0), OptionTable)
 	).
 special_handler(everything_in_one_c_function, none, OptionTable0,
 		ok(OptionTable)) :-
@@ -804,8 +812,7 @@ opt_level(2, _, [
 	follow_code		-	bool(yes),
 	inline_simple		-	bool(yes),
 	inline_single_use	-	bool(yes),
-	inline_threshold	-	int(0),		% 10 when various
-							% bugs are fixed
+	inline_compound_threshold -	int(10),
 	common_struct		-	bool(yes),
 	simple_neg		-	bool(yes)
 ]).
