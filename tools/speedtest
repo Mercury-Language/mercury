@@ -6,6 +6,7 @@ usage="Usage: speedtest [-c cmd] [-dns] batchname"
 limit=12
 cmd="mmc -C -O2 --grade asm_fast.gc llds_out.m typecheck.m make_hlds.m modules.m code_info.m polymorphism.m"
 debug=false
+table_io=false
 size=false
 framesizefile=""
 
@@ -20,6 +21,9 @@ do
 
 	-d)
 		debug=true ;;
+
+	-t)
+		table_io=true ;;
 
 	-f)
 		framesizefile="$2" ; shift ;;
@@ -99,7 +103,12 @@ do
 		$ECHO -n "$briefname "
 		if $debug
 		then
-			echo "c" | $root/tools/dotime mdb $cmd
+			if $table_io
+			then
+				(echo "table_io start" ; echo "c" ) | $root/tools/dotime mdb $cmd
+			else
+				echo "c" | $root/tools/dotime mdb $cmd
+			fi
 		else
 			$root/tools/dotime $cmd
 		fi
