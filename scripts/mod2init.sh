@@ -9,7 +9,7 @@
 # Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS.
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
-MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*.mod}
+MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*}
 
 defentry=mercury__io__run_0_0
 while getopts w: c
