@@ -44,7 +44,8 @@ ALLPROGS=	$(PROGS)
 debugger_regs.out: debugger_regs debugger_regs.inp
 	mdb ./debugger_regs < debugger_regs.inp > debugger_regs.out
 
-existential_type_classes.out: existential_type_classes queens.inp
+existential_type_classes.out: existential_type_classes \
+			existential_type_classes.inp
 	mdb ./existential_type_classes < existential_type_classes.inp > existential_type_classes.out
 
 implied_instance.out: implied_instance implied_instance.inp
