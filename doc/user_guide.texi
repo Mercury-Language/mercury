@@ -1170,9 +1170,10 @@ Multiple dump options accumulate.
 @sp 1
 @item -D @var{fields}
 @itemx --verbose-dump-hlds @var{fields}
-With @samp{--dump-hlds}, dump with each goal or type
-the fields whose initials are given in the option argument.
-These fields are:
+With @samp{--dump-hlds}, include extra detail in the dump.
+Each type of detail is included in the dump
+if its corresponding letter occurs in the option argument.
+These details are:
 a - argument modes in unifications,
 b - builtin flags on calls,
 c - contexts of goals and types,
@@ -1182,7 +1183,8 @@ i - instmap deltas of goals,
 n - nonlocal variables of goals,
 p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
-s - store maps of goals.
+s - store maps of goals,
+v - variable numbers in variable names.
 The special argument value ``all''
 will cause the printing of all these fields.
 
