@@ -1170,24 +1170,15 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs,
 :- mode load(in, out, in, out) is det.
 
 load(lval(Lval), Instrs, Info0, Info) :- 
-	( Lval = var(Var, _),
+	( Lval = var(Var, VarType),
 		mangle_mlds_var(Var, MangledVarStr),
 		( is_local(MangledVarStr, Info0) ->
 			Instrs = instr_node(ldloc(name(MangledVarStr)))
 		; is_argument(Var, Info0) ->
 			Instrs = instr_node(ldarg(name(MangledVarStr)))
 		;
-			% XXX RTTI generates vars which are references
-			% to other modules!
-			Var = qual(ModuleName, _),
-			mangle_dataname_module(no, ModuleName,
-				NewModuleName),
-			ClassName = mlds_module_name_to_class_name(
-				NewModuleName),
-			GlobalType = mlds_type_to_ilds_type(
-				mlds_type_for_rtti_global),
-			FieldRef = make_fieldref(GlobalType, ClassName, 
-				MangledVarStr),
+			FieldRef = make_fieldref_for_handdefined_var(Var,
+				VarType),
 			Instrs = instr_node(ldsfld(FieldRef))
 		),
 		Info0 = Info
@@ -1263,13 +1254,17 @@ load(binop(BinOp, R1, R2), Instrs) -->
 	{ Instrs = tree__list([R1LoadInstrs, R2LoadInstrs, BinaryOpInstrs]) }.
 
 load(mem_addr(Lval), Instrs, Info0, Info) :- 
-	( Lval = var(Var, _VarType),
+	( Lval = var(Var, VarType),
 		mangle_mlds_var(Var, MangledVarStr),
 		Info0 = Info,
 		( is_local(MangledVarStr, Info) ->
 			Instrs = instr_node(ldloca(name(MangledVarStr)))
-		;
+		; is_argument(Var, Info) ->
 			Instrs = instr_node(ldarga(name(MangledVarStr)))
+		;
+			FieldRef = make_fieldref_for_handdefined_var(Var,
+				VarType),
+			Instrs = instr_node(ldsfld(FieldRef))
 		)
 	; Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
 		get_fieldref(FieldNum, FieldType, ClassType, FieldRef),
@@ -1299,12 +1294,15 @@ store(mem_ref(_Rval, _Type), _Instrs, Info, Info) :-
 		% instruction.  Annoying, eh?
 	unexpected(this_file, "store into mem_ref").
 
-store(var(Var, _VarType), Instrs, Info, Info) :- 
+store(var(Var, VarType), Instrs, Info, Info) :- 
 	mangle_mlds_var(Var, MangledVarStr),
 	( is_local(MangledVarStr, Info) ->
 		Instrs = instr_node(stloc(name(MangledVarStr)))
-	;
+	; is_argument(Var, Info) ->
 		Instrs = instr_node(starg(name(MangledVarStr)))
+	;
+		FieldRef = make_fieldref_for_handdefined_var(Var, VarType),
+		Instrs = instr_node(stsfld(FieldRef))
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1892,6 +1890,23 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 			[s(MaybeModuleStr), s(PredName), s(TypeName), i(Arity),
 				i(ProcIdInt), s(MaybeSeqNumStr)], UnMangledId),
 		llds_out__name_mangle(UnMangledId, Id).
+
+
+	% If an mlds__var is not an argument or a local, what is it?
+	% We assume the given variable is a handwritten RTTI reference or a
+	% reference to some hand-written code in the
+	% modulename__c_code class.  This is OK so long as the
+	% code generator uses real 'field' lvals to reference
+	% fields in the modulename class.
+
+:- func make_fieldref_for_handdefined_var(mlds__var, mlds__type) = fieldref.
+make_fieldref_for_handdefined_var(Var, VarType) = FieldRef :-
+	Var = qual(ModuleName, _),
+	mangle_mlds_var(Var, MangledVarStr),
+	mangle_dataname_module(no, ModuleName, NewModuleName),
+	ClassName = mlds_module_name_to_class_name(NewModuleName),
+	FieldRef = make_fieldref(
+		mlds_type_to_ilds_type(VarType), ClassName, MangledVarStr).
 
 	% When generating references to RTTI, we need to mangle the
 	% module name if the RTTI is defined in C code by hand.

@@ -115,6 +115,17 @@
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
 
+:- pragma foreign_code("MC++", "
+
+// The dummy_var is used to represent io__states and other Mercury
+// parameters that are not really passed around.  Occasionally a dummy variable
+// will be used by the code generator as an lval, so we use
+// private_builtin:dummy_var as that lval.
+
+MR_Word dummy_var;
+
+").
+
 :- pragma inline(builtin_compare_int/3).
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
