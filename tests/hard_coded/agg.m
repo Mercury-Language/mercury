@@ -64,7 +64,7 @@
 :- import_module list.
 
 aggregate(P, agg(S0, F), S) :-
-	A = (pred(Val::in, Acc::in, F(Acc, Val)::out) is det),
+	A = (pred(Val::in, Acc0::in, Acc::out) is det :- Acc = F(Acc0, Val)),
 	solutions(P, L), list__foldl(A, L, S0, S).
 
 agg_pair(agg(S1, F1), agg(S2, F2)) = agg(S1-S2, F) :-
