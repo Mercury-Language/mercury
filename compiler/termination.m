@@ -57,24 +57,23 @@
 	% Perform termination analysis on the module.
 
 :- pred termination__pass(module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Write the given arg size info; verbose if the second arg is yes.
 
 :- pred termination__write_maybe_arg_size_info(maybe(arg_size_info)::in,
-	bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 	% Write the given termination info; verbose if the second arg is yes.
 
 :- pred termination__write_maybe_termination_info(maybe(termination_info)::in,
-	bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 	% Write out a termination_info pragma for the predicate if it
 	% is exported, it is not a builtin and it is not a predicate used
 	% to force type specialization.
-:- pred termination__write_pred_termination_info(module_info, pred_id,
-	io__state, io__state).
-:- mode termination__write_pred_termination_info(in, in, di, uo) is det.
+:- pred termination__write_pred_termination_info(module_info::in, pred_id::in,
+	io::di, io::uo) is det.
 
 	% This predicate outputs termination_info pragmas;
 	% such annotations can be part of .opt and .trans_opt files.
@@ -82,8 +81,9 @@
 :- pred termination__write_pragma_termination_info(pred_or_func::in,
 	sym_name::in, list(mode)::in, prog_context::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
+%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- implementation.
@@ -115,37 +115,37 @@
 
 %----------------------------------------------------------------------------%
 
-termination__pass(Module0, Module) -->
+termination__pass(!Module, !IO) :-
 
 		% Find out what norm we should use, and set up for using it
-	globals__io_get_termination_norm(TermNorm),
-	{ set_functor_info(TermNorm, Module0, FunctorInfo) },
-	globals__io_lookup_int_option(termination_error_limit, MaxErrors),
-	globals__io_lookup_int_option(termination_path_limit, MaxPaths),
-	{ PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths) },
+	globals__io_get_termination_norm(TermNorm, !IO),
+	set_functor_info(TermNorm, !.Module, FunctorInfo),
+	globals__io_lookup_int_option(termination_error_limit, MaxErrors, !IO),
+	globals__io_lookup_int_option(termination_path_limit, MaxPaths, !IO),
+	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
 
 		% Process builtin and compiler-generated predicates,
 		% and user-supplied pragmas.
-	{ module_info_predids(Module0, PredIds) },
-	check_preds(PredIds, Module0, Module1),
+	module_info_predids(!.Module, PredIds),
+	check_preds(PredIds, !Module, !IO),
 
 		% Process all the SCCs of the call graph in a bottom up order.
-	{ module_info_ensure_dependency_info(Module1, Module2) },
-	{ module_info_dependency_info(Module2, DepInfo) },
-	{ hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs) },
+	module_info_ensure_dependency_info(!Module),
+	module_info_dependency_info(!.Module, DepInfo),
+	hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
 		
 		% Ensure that termination pragmas for a proc. do conflict
 		% with termination pragmas for other procs. in the same SCC. 
-	check_pragmas_are_consistent(SCCs, Module2, Module3),
-	
-	termination__process_all_sccs(SCCs, Module3, PassInfo, Module),
+	check_pragmas_are_consistent(SCCs, !Module, !IO),
+
+	list__foldl2(process_scc(PassInfo), SCCs, !Module, !IO),	
 
 	globals__io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt),
-	( { MakeOptInt = yes } ->
-		termination__make_opt_int(PredIds, Module)
+		MakeOptInt, !IO),
+	( MakeOptInt = yes ->
+		termination__make_opt_int(PredIds, !.Module, !IO)
 	;
-		[]
+		true	
 	).
 
 %----------------------------------------------------------------------------%
@@ -165,26 +165,23 @@ termination__pass(Module0, Module) -->
 % procs. whose termination status is unknown to be the same as those whose
 % termination status is known.
 
-:- pred check_pragmas_are_consistent(list(list(pred_proc_id)), module_info,
-	module_info, io__state, io__state).
-:- mode check_pragmas_are_consistent(in, in, out, di, uo) is det.
+:- pred check_pragmas_are_consistent(list(list(pred_proc_id))::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_pragmas_are_consistent(SCCs, Module0, Module) -->
-	list__foldl2(check_scc_pragmas_are_consistent, SCCs, Module0, Module).
+check_pragmas_are_consistent(SCCs, !Module, !IO) :-
+	list__foldl2(check_scc_pragmas_are_consistent, SCCs, !Module, !IO).
 
-:- pred check_scc_pragmas_are_consistent(list(pred_proc_id), module_info, 
-	module_info, io__state, io__state).
-:- mode check_scc_pragmas_are_consistent(in, in, out, di, uo) is det.
+:- pred check_scc_pragmas_are_consistent(list(pred_proc_id)::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
-	list__filter(is_termination_known(Module0), SCC, SCCTerminationKnown, 
+check_scc_pragmas_are_consistent(SCC, !Module, !IO) :-
+	list__filter(is_termination_known(!.Module), SCC, SCCTerminationKnown, 
 		SCCTerminationUnknown),
 	( 
-		SCCTerminationKnown = [],
-		Module = Module0
+		SCCTerminationKnown = []
 	;
 		SCCTerminationKnown = [KnownPPId | _],
-		module_info_pred_proc_info(Module0, KnownPPId, _, 
+		module_info_pred_proc_info(!.Module, KnownPPId, _, 
 			KnownProcInfo),
 		proc_info_get_maybe_termination_info(KnownProcInfo, 
 			MaybeKnownTerm),
@@ -196,28 +193,27 @@ check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
 		),
 		( 
 			check_procs_known_term(KnownTermStatus, 
-				SCCTerminationKnown, Module0)
+				SCCTerminationKnown, !.Module)
 		->
 			    % Force any procs. in the SCC whose termination 
 			    % status is unknown to have the same termination 
 			    % status as those that are known.
 			set_termination_infos(SCCTerminationUnknown, 
-				KnownTermStatus, Module0, Module)
+				KnownTermStatus, !Module)
 		;
 			    % There is a conflict between the user-supplied 
 			    % termination information for two or more procs. 
 			    % in this SCC.  Emit a warning and then assume 
 			    % that they all loop.
-			get_context_from_scc(SCCTerminationKnown, Module0, 
+			get_context_from_scc(SCCTerminationKnown, !.Module, 
 				Context),
 			NewTermStatus = 
 				can_loop([Context - inconsistent_annotations]),
-			set_termination_infos(SCC, NewTermStatus, Module0, 
-				Module),
+			set_termination_infos(SCC, NewTermStatus, !Module),
 			
 			PredIds = list__map((func(proc(PredId, _)) = PredId), 
 				SCCTerminationKnown),
-			error_util__describe_several_pred_names(Module, 
+			error_util__describe_several_pred_names(!.Module, 
 				PredIds, PredNames),	
 			Piece1 = words(
 				"are mutually recursive but some of their"),
@@ -231,13 +227,12 @@ check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
 
 	% Check that all procedures in an SCC whose termination status is known
 	% have the same termination status. 
-:- pred check_procs_known_term(termination_info, list(pred_proc_id), 
-	module_info). 
-:- mode check_procs_known_term(in, in, in) is semidet.
+:- pred check_procs_known_term(termination_info::in, list(pred_proc_id)::in, 
+	module_info::in) is semidet.
 
 check_procs_known_term(_, [], _).
-check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
-	module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+check_procs_known_term(Status, [PPId | PPIds], Module) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
 	proc_info_get_maybe_termination_info(ProcInfo, MaybeTerm),
 	(
 		MaybeTerm = no,		
@@ -252,11 +247,10 @@ check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
 		Status = can_loop(_),
 		PPIdStatus = can_loop(_)
 	),
-	check_procs_known_term(Status, PPIds, ModuleInfo).
+	check_procs_known_term(Status, PPIds, Module).
 
 	% Succeeds iff the termination status of a procedure is known.
-:- pred is_termination_known(module_info, pred_proc_id).
-:- mode is_termination_known(in, in) is semidet.
+:- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
 
 is_termination_known(Module, PPId) :-
 	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
@@ -264,90 +258,76 @@ is_termination_known(Module, PPId) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred termination__process_all_sccs(list(list(pred_proc_id)), module_info,
-	pass_info, module_info, io__state, io__state).
-:- mode termination__process_all_sccs(in, in, in, out, di, uo) is det.
-
-termination__process_all_sccs([], Module, _, Module) --> [].
-termination__process_all_sccs([SCC | SCCs], Module0, PassInfo, Module) -->
-	termination__process_scc(SCC, Module0, PassInfo, Module1),
-	termination__process_all_sccs(SCCs, Module1, PassInfo, Module).
-
 	% For each SCC, we first find out the relationships among
 	% the sizes of the arguments of the procedures of the SCC,
 	% and then attempt to prove termination of the procedures.
 
-:- pred termination__process_scc(list(pred_proc_id), module_info, pass_info,
-	module_info, io__state, io__state).
-:- mode termination__process_scc(in, in, in, out, di, uo) is det.
+:- pred termination__process_scc(pass_info::in, list(pred_proc_id)::in,
+	module_info::in, module_info::out, io::di, io::uo) is det. 
 
-termination__process_scc(SCC, Module0, PassInfo, Module) -->
-	{ IsArgSizeKnown = (pred(PPId::in) is semidet :- 
-		PPId = proc(PredId, ProcId),
-		module_info_pred_proc_info(Module0, PredId, ProcId,
-			_, ProcInfo),
+termination__process_scc(PassInfo, SCC, !Module, !IO) :-
+	IsArgSizeKnown = (pred(PPId::in) is semidet :- 
+		module_info_pred_proc_info(!.Module, PPId, _, ProcInfo),
 		proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
-	) },
-	{ list__filter(IsArgSizeKnown, SCC,
-		_SCCArgSizeKnown, SCCArgSizeUnknown) },
-	( { SCCArgSizeUnknown = [] } ->
-		{ ArgSizeErrors = [] },
-		{ TermErrors = [] },
-		{ Module1 = Module0 }
+	),
+	list__filter(IsArgSizeKnown, SCC, _SCCArgSizeKnown, SCCArgSizeUnknown),
+	( SCCArgSizeUnknown = [] ->
+		ArgSizeErrors = [],
+		TermErrors = []
 	;
-		find_arg_sizes_in_scc(SCCArgSizeUnknown, Module0, PassInfo,
-			ArgSizeResult, TermErrors),
-		{
+		find_arg_sizes_in_scc(SCCArgSizeUnknown, !.Module, PassInfo,
+			ArgSizeResult, TermErrors, !IO),
+		(
 			ArgSizeResult = ok(Solutions, OutputSupplierMap),
 			set_finite_arg_size_infos(Solutions,
-				OutputSupplierMap, Module0, Module1),
+				OutputSupplierMap, !Module),
 			ArgSizeErrors = []
 		;
 			ArgSizeResult = error(Errors),
 			set_infinite_arg_size_infos(SCCArgSizeUnknown,
-				infinite(Errors), Module0, Module1),
+				infinite(Errors), !Module),
 			ArgSizeErrors = Errors
-		}
+		)
 	),
-	{ list__filter(is_termination_known(Module1), SCC,
-		_SCCTerminationKnown, SCCTerminationUnknown) },
-	( { SCCTerminationUnknown = [] } ->
+	list__filter(is_termination_known(!.Module), SCC,
+		_SCCTerminationKnown, SCCTerminationUnknown),
+	( SCCTerminationUnknown = [] ->
 			%
 			% We may possibly have encountered inconsistent
 			% terminates/does_not_terminate pragmas for this SCC,
 			% so we need to report errors here as well.
-		{ Module = Module1 }
+		true
 	;
-		{ IsFatal = (pred(ContextError::in) is semidet :-
+		IsFatal = (pred(ContextError::in) is semidet :-
 			ContextError = _Context - Error,
 			( Error = horder_call
 			; Error = horder_args(_, _)
 			; Error = imported_pred
 			)
-		) },
-		{ list__filter(IsFatal, ArgSizeErrors, FatalErrors) },
-		{ list__append(TermErrors, FatalErrors, BothErrors) },
-		( { BothErrors = [_ | _] } ->
+		),
+		list__filter(IsFatal, ArgSizeErrors, FatalErrors),
+		list__append(TermErrors, FatalErrors, BothErrors),
+		( BothErrors = [_ | _] ->
 			% These errors prevent pass 2 from proving termination
 			% in any case, so we may as well not prove it quickly.
-			{ PassInfo = pass_info(_, MaxErrors, _) },
-			{ list__take_upto(MaxErrors, BothErrors,
-				ReportedErrors) },
-			{ TerminationResult = can_loop(ReportedErrors) }
+			PassInfo = pass_info(_, MaxErrors, _),
+			list__take_upto(MaxErrors, BothErrors,
+				ReportedErrors),
+			TerminationResult = can_loop(ReportedErrors)
 		;
 			globals__io_lookup_int_option(termination_single_args,
-				SingleArgs),
-			{ prove_termination_in_scc(SCCTerminationUnknown,
-				Module1, PassInfo, SingleArgs,
-				TerminationResult) }
+				SingleArgs, !IO),
+			prove_termination_in_scc(SCCTerminationUnknown,
+				!.Module, PassInfo, SingleArgs,
+				TerminationResult)
 		),
-		{ set_termination_infos(SCCTerminationUnknown,
-			TerminationResult, Module1, Module2) },
-		( { TerminationResult = can_loop(TerminationErrors) } -> 
+		set_termination_infos(SCCTerminationUnknown,
+			TerminationResult, !Module),
+		( TerminationResult = can_loop(TerminationErrors) -> 
 			report_termination_errors(SCC, TerminationErrors, 
-				Module2, Module)
+				!Module, !IO)
 		;
-			{ Module = Module2 }
+			true
 		)
 	).
 
@@ -359,7 +339,7 @@ termination__process_scc(SCC, Module0, PassInfo, Module) -->
 :- pred set_finite_arg_size_infos(list(pair(pred_proc_id, int))::in,
 	used_args::in, module_info::in, module_info::out) is det.
 
-set_finite_arg_size_infos([], _, Module, Module).
+set_finite_arg_size_infos([], _, !Module).
 set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !Module) :-
 	Soln = PPId - Gamma,
 	PPId = proc(PredId, ProcId),
@@ -417,40 +397,36 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !Module) :-
 
 :- pred report_termination_errors(list(pred_proc_id)::in,
 	list(term_errors__error)::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-report_termination_errors(SCC, Errors, Module0, Module) -->
+report_termination_errors(SCC, Errors, !Module, !IO) :-
 	globals__io_lookup_bool_option(check_termination,
-		NormalErrors),
+		NormalErrors, !IO),
 	globals__io_lookup_bool_option(verbose_check_termination,
-		VerboseErrors),
+		VerboseErrors, !IO),
 	( 
-		{ IsCheckTerm = (pred(PPId::in) is semidet :-
-			PPId = proc(PredId, ProcId),
-			module_info_pred_proc_info(Module0, PredId, ProcId,
-				PredInfo, _),
+		IsCheckTerm = (pred(PPId::in) is semidet :-
+			module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
 			\+ pred_info_is_imported(PredInfo),
 			pred_info_get_markers(PredInfo, Markers),
 			check_marker(Markers, check_termination)
-		) },
-		{ list__filter(IsCheckTerm, SCC, CheckTermPPIds) },
-		{ CheckTermPPIds = [_ | _] }
+		),
+		list__filter(IsCheckTerm, SCC, CheckTermPPIds),
+		CheckTermPPIds = [_ | _]
 	->
 		% If any procedure in the SCC has a check_terminates pragma,
 		% print out one error message for the whole SCC and indicate
 		% an error.
-		term_errors__report_term_errors(SCC, Errors, Module0),
-		io__set_exit_status(1),
-		{ module_info_incr_errors(Module0, Module) }
+		term_errors__report_term_errors(SCC, Errors, !.Module, !IO),
+		io__set_exit_status(1, !IO),
+		module_info_incr_errors(!Module)
 	;
-		{ IsNonImported = (pred(PPId::in) is semidet :-
-			PPId = proc(PredId, ProcId),
-			module_info_pred_proc_info(Module0, PredId, ProcId,
-				PredInfo, _),
+		IsNonImported = (pred(PPId::in) is semidet :-
+			module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
 			\+ pred_info_is_imported(PredInfo)
-		) },
-		{ list__filter(IsNonImported, SCC, NonImportedPPIds) },
-		{ NonImportedPPIds = [_ | _] },
+		),
+		list__filter(IsNonImported, SCC, NonImportedPPIds),
+		NonImportedPPIds = [_ | _],
 		
 		% Only output warnings of non-termination for direct
 		% errors.  If there are no direct errors then output
@@ -460,7 +436,7 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 		% (See term_errors.m for details of direct and indirect
 		%  errors).
 		
-		{ VerboseErrors = yes ->
+		( VerboseErrors = yes ->
 			PrintErrors = Errors
 		; NormalErrors = yes ->
 			IsNonSimple = (pred(ContextError::in) is semidet :-
@@ -476,19 +452,17 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 			)  
 		;
 			fail
-		}
+		)
 	->
-		term_errors__report_term_errors(SCC, PrintErrors, Module0),
-		{ Module = Module0 }
+		term_errors__report_term_errors(SCC, PrintErrors, !.Module, !IO)
 	;
-		{ Module = Module0 }
+		true
 	).
 
 %----------------------------------------------------------------------------%
 
-:- pred check_preds(list(pred_id), module_info, module_info, 
-	io__state, io__state).
-:- mode check_preds(in, in, out, di, uo) is det.
+:- pred check_preds(list(pred_id)::in, module_info::in, module_info::out, 
+	io::di, io::uo) is det.
 
 % This predicate processes each predicate and sets the termination property
 % if possible.  This is done as follows:  Set the termination to yes if:
@@ -506,7 +480,7 @@ report_termination_errors(SCC, Errors, Module0, Module) -->
 % 	check_termination pragmas, builtin/compiler generated).
 
 check_preds([], !Module, !IO).
-check_preds([PredId | PredIds] , !Module, !IO) :-
+check_preds([PredId | PredIds], !Module, !IO) :-
 	write_pred_progress_message("% Checking ", PredId, !.Module, !IO),
 	globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt, !IO),
@@ -589,17 +563,16 @@ check_preds([PredId | PredIds] , !Module, !IO) :-
 % XXX This does the wrong thing for calls to unify/2,
 % which might not terminate in the case of user-defined equality predicates.
 
-:- pred set_compiler_gen_terminates(pred_info, list(proc_id), pred_id,
-	module_info, proc_table, proc_table).
-:- mode set_compiler_gen_terminates(in, in, in, in, in, out) is semidet.
+:- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
+	pred_id::in, module_info::in, proc_table::in, proc_table::out) 
+	is semidet.
 
-set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
-		ProcTable0, ProcTable) :-
+set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module, !ProcTable) :-
 	(
 		pred_info_is_builtin(PredInfo)
 	->
 		set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
-			ProcTable0, ProcTable)
+			!ProcTable)
 	;
 		(
 			ModuleName = pred_info_module(PredInfo),
@@ -615,29 +588,25 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
 			MaybeSpecial = yes(SpecialPredId - _)
 		)
 	->
-		set_generated_terminates(ProcIds, SpecialPredId,
-			ProcTable0, ProcTable)
+		set_generated_terminates(ProcIds, SpecialPredId, !ProcTable)
 	;
 		fail
 	).
 
-:- pred set_generated_terminates(list(proc_id), special_pred_id,
-	proc_table, proc_table).
-:- mode set_generated_terminates(in, in, in, out) is det.
+:- pred set_generated_terminates(list(proc_id)::in, special_pred_id::in,
+	proc_table::in, proc_table::out) is det.
 
-set_generated_terminates([], _, ProcTable, ProcTable).
-set_generated_terminates([ProcId | ProcIds], SpecialPredId,
-		ProcTable0, ProcTable) :-
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
+set_generated_terminates([], _, !ProcTable).
+set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
+	map__lookup(!.ProcTable, ProcId, ProcInfo0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	special_pred_id_to_termination(SpecialPredId, HeadVars,
 		ArgSize, Termination),
 	proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
 	proc_info_set_maybe_termination_info(yes(Termination),
 		ProcInfo1, ProcInfo),
-	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
-	set_generated_terminates(ProcIds, SpecialPredId,
-		ProcTable1, ProcTable).
+	map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
+	set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
 
 :- pred special_pred_id_to_termination(special_pred_id::in, 
 	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
@@ -658,14 +627,13 @@ special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 % The list of proc_ids must refer to builtin predicates.  This predicate
 % sets the termination information of builtin predicates.
 
-:- pred set_builtin_terminates(list(proc_id), pred_id, pred_info, module_info, 
-	proc_table, proc_table).
-:- mode set_builtin_terminates(in, in, in, in, in, out) is det.
+:- pred set_builtin_terminates(list(proc_id)::in, pred_id::in, pred_info::in,
+	module_info::in, proc_table::in, proc_table::out) is det.
 
-set_builtin_terminates([], _, _, _, ProcTable, ProcTable).
-set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
-		ProcTable0, ProcTable) :-
-	map__lookup(ProcTable0, ProcId, ProcInfo0), 
+set_builtin_terminates([], _, _, _, !ProcTable).
+set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module, 
+		!ProcTable) :-
+	map__lookup(!.ProcTable, ProcId, ProcInfo0),
 	( all_args_input_or_zero_size(Module, PredInfo, ProcInfo0) ->
 		% The size of the output arguments will all be 0,
 		% independent of the size of the input variables.
@@ -679,28 +647,27 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 		ArgSizeInfo = yes(infinite([Context - Error]))
 	),
 	proc_info_set_maybe_arg_size_info(ArgSizeInfo, ProcInfo0, ProcInfo1),
-	proc_info_set_maybe_termination_info(yes(cannot_loop),
-		ProcInfo1, ProcInfo),
-	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
-	set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
-		ProcTable1, ProcTable).
+	proc_info_set_maybe_termination_info(yes(cannot_loop), ProcInfo1,
+		ProcInfo),
+	map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
+	set_builtin_terminates(ProcIds, PredId, PredInfo, Module, !ProcTable).
 
-:- pred all_args_input_or_zero_size(module_info, pred_info, proc_info).
-:- mode all_args_input_or_zero_size(in, in, in) is semidet.
+:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
+	proc_info::in) is semidet.
 
 all_args_input_or_zero_size(Module, PredInfo, ProcInfo) :-
 	pred_info_arg_types(PredInfo, TypeList),
 	proc_info_argmodes(ProcInfo, ModeList),
 	all_args_input_or_zero_size_2(TypeList, ModeList, Module). 
 
-:- pred all_args_input_or_zero_size_2(list(type), list(mode), module_info).
-:- mode all_args_input_or_zero_size_2(in, in, in) is semidet.
+:- pred all_args_input_or_zero_size_2(list(type)::in, list(mode)::in,
+	module_info::in) is semidet.
 
 all_args_input_or_zero_size_2([], [], _).
 all_args_input_or_zero_size_2([], [_|_], _) :- 
-	error("all_args_input_or_zero_size_2: Unmatched variables.").
+	unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
 all_args_input_or_zero_size_2([_|_], [], _) :- 
-	error("all_args_input_or_zero_size_2: Unmatched variables").
+	unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
 all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], Module) :-
 	( mode_is_input(Module, Mode) ->
 		% The variable is an input variables, so its size is
@@ -727,10 +694,9 @@ all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], Module) :-
 :- pred change_procs_arg_size_info(list(proc_id)::in, bool::in,
 	arg_size_info::in, proc_table::in, proc_table::out) is det.
 
-change_procs_arg_size_info([], _, _, ProcTable, ProcTable).
-change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
-		ProcTable0, ProcTable) :-
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
+change_procs_arg_size_info([], _, _, !ProcTable).
+change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize, !ProcTable) :-
+	map__lookup(!.ProcTable, ProcId, ProcInfo0),
 	( 
 		( 
 			Override = yes
@@ -740,12 +706,11 @@ change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
 	->
 		proc_info_set_maybe_arg_size_info(yes(ArgSize),
 			ProcInfo0, ProcInfo),
-		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1)
+		map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable)
 	;
-		ProcTable1 = ProcTable0
+		true
 	),
-	change_procs_arg_size_info(ProcIds, Override, ArgSize,
-		ProcTable1, ProcTable).
+	change_procs_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
 
 % This predicate sets the termination_info property of the given list
 % of procedures.
@@ -761,10 +726,10 @@ change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
 :- pred change_procs_termination_info(list(proc_id)::in, bool::in,
 	termination_info::in, proc_table::in, proc_table::out) is det.
 
-change_procs_termination_info([], _, _, ProcTable, ProcTable).
+change_procs_termination_info([], _, _, !ProcTable).
 change_procs_termination_info([ProcId | ProcIds], Override, Termination,
-		ProcTable0, ProcTable) :-
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
+		!ProcTable) :-
+	map__lookup(!.ProcTable, ProcId, ProcInfo0),
 	( 
 		( 
 			Override = yes
@@ -774,12 +739,12 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 	->
 		proc_info_set_maybe_termination_info(yes(Termination),
 			ProcInfo0, ProcInfo),
-		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable1)
+		map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable)
 	;
-		ProcTable1 = ProcTable0
+		true
 	),
 	change_procs_termination_info(ProcIds, Override, Termination,
-		ProcTable1, ProcTable).
+		!ProcTable).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -789,85 +754,86 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 % much better accuracy.  The two files are not mutually exclusive, and
 % termination information may be stored in both.
 
-:- pred termination__make_opt_int(list(pred_id), module_info, io__state, 
-		io__state).
-:- mode termination__make_opt_int(in, in, di, uo) is det.
+:- pred termination__make_opt_int(list(pred_id)::in, module_info::in,
+	io::di, io::uo) is det.
 
-termination__make_opt_int(PredIds, Module) -->
-	{ module_info_name(Module, ModuleName) },
-	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName),
-	globals__io_lookup_bool_option(verbose, Verbose),
+termination__make_opt_int(PredIds, Module, !IO) :-
+	module_info_name(Module, ModuleName),
+	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
+	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	maybe_write_string(Verbose,
-		"% Appending termination_info pragmas to `"),
-	maybe_write_string(Verbose, OptFileName),
-	maybe_write_string(Verbose, "'..."),
-	maybe_flush_output(Verbose),
+		"% Appending termination_info pragmas to `", !IO),
+	maybe_write_string(Verbose, OptFileName, !IO),
+	maybe_write_string(Verbose, "'...", !IO),
+	maybe_flush_output(Verbose, !IO),
 
-	io__open_append(OptFileName, OptFileRes),
-	( { OptFileRes = ok(OptFile) },
-		io__set_output_stream(OptFile, OldStream),
+	io__open_append(OptFileName, OptFileRes, !IO),
+	( 
+		OptFileRes = ok(OptFile),
+		io__set_output_stream(OptFile, OldStream, !IO),
 		list__foldl(termination__write_pred_termination_info(Module),
-			PredIds),
-		io__set_output_stream(OldStream, _),
-		io__close_output(OptFile),
-		maybe_write_string(Verbose, " done.\n")
-	; { OptFileRes = error(IOError) },
+			PredIds, !IO),
+		io__set_output_stream(OldStream, _, !IO),
+		io__close_output(OptFile, !IO),
+		maybe_write_string(Verbose, " done.\n", !IO)
+	;
+		OptFileRes = error(IOError),
 		% failed to open the .opt file for processing
-		maybe_write_string(Verbose, " failed!\n"),
-		{ io__error_message(IOError, IOErrorMessage) },
+		maybe_write_string(Verbose, " failed!\n", !IO),
+		io__error_message(IOError, IOErrorMessage),
 		io__write_strings(["Error opening file `",
-			OptFileName, "' for output: ", IOErrorMessage]),
-		io__set_exit_status(1)
+			OptFileName, "' for output: ", IOErrorMessage], !IO),
+		io__set_exit_status(1, !IO)
 	).
 
-termination__write_pred_termination_info(Module, PredId) -->
-	{ module_info_pred_info(Module, PredId, PredInfo) },
-	{ pred_info_import_status(PredInfo, ImportStatus) },
-	{ module_info_type_spec_info(Module, TypeSpecInfo) },
-	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
+termination__write_pred_termination_info(Module, PredId, !IO) :-
+	module_info_pred_info(Module, PredId, PredInfo),
+	pred_info_import_status(PredInfo, ImportStatus),
+	module_info_type_spec_info(Module, TypeSpecInfo),
+	TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
 
 	( 
-		{
+		(
 			ImportStatus = exported
 		;
 			ImportStatus = opt_exported
-		},
-		{ \+ is_unify_or_compare_pred(PredInfo) },
+		),
+		\+ is_unify_or_compare_pred(PredInfo),
 
 		% XXX These should be allowed, but the predicate
 		% declaration for the specialized predicate is not produced
 		% before the termination pragmas are read in, resulting
 		% in an undefined predicate error.
-		\+ { set__member(PredId, TypeSpecForcePreds) }
+		\+ set__member(PredId, TypeSpecForcePreds)
 	->
-		{ PredName = pred_info_name(PredInfo) },
-		{ ProcIds = pred_info_procids(PredInfo) },
-		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
-		{ ModuleName = pred_info_module(PredInfo) },
-		{ pred_info_procedures(PredInfo, ProcTable) },
-		{ pred_info_context(PredInfo, Context) },
-		{ SymName = qualified(ModuleName, PredName) },
+		PredName = pred_info_name(PredInfo),
+		ProcIds = pred_info_procids(PredInfo),
+		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+		ModuleName = pred_info_module(PredInfo),
+		pred_info_procedures(PredInfo, ProcTable),
+		pred_info_context(PredInfo, Context),
+		SymName = qualified(ModuleName, PredName),
 		termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
-			PredOrFunc, SymName, Context)
+			PredOrFunc, SymName, Context, !IO)
 	;
-		[]
+		true	
 	).
 
-:- pred termination__make_opt_int_procs(pred_id, list(proc_id), proc_table,
-	pred_or_func, sym_name, prog_context, io__state, io__state).
-:- mode termination__make_opt_int_procs(in, in, in, in, in, in, di, uo) is det.
+:- pred termination__make_opt_int_procs(pred_id::in, list(proc_id)::in,
+	proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
+	io::di, io::uo) is det.
 
-termination__make_opt_int_procs(_PredId, [], _, _, _, _) --> [].
+termination__make_opt_int_procs(_PredId, [], _, _, _, _, !IO).
 termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable, 
-		PredOrFunc, SymName, Context) -->
-	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	{ proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize) },
-	{ proc_info_get_maybe_termination_info(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, ModeList) },
+		PredOrFunc, SymName, Context, !IO) :-
+	map__lookup(ProcTable, ProcId, ProcInfo),
+	proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
+	proc_info_get_maybe_termination_info(ProcInfo, Termination),
+	proc_info_declared_argmodes(ProcInfo, ModeList),
 	termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Context, ArgSize, Termination),
+		ModeList, Context, ArgSize, Termination, !IO),
 	termination__make_opt_int_procs(PredId, ProcIds, ProcTable, 
-		PredOrFunc, SymName, Context).
+		PredOrFunc, SymName, Context, !IO).
 
 %----------------------------------------------------------------------------%
 
@@ -875,85 +841,83 @@ termination__make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
 % If they are changed, then prog_io_pragma.m must also be changed so that
 % it can parse the resulting pragma termination_info declarations.
 
-termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ModeList, Context, MaybeArgSize, MaybeTermination) -->
-	io__write_string(":- pragma termination_info("),
-	{ varset__init(InitVarSet) },
+termination__write_pragma_termination_info(PredOrFunc, SymName, ModeList,
+		Context, MaybeArgSize, MaybeTermination, !IO) :-
+	io__write_string(":- pragma termination_info(", !IO),
+	varset__init(InitVarSet),
 	( 
-		{ PredOrFunc = predicate },
+		PredOrFunc = predicate,
 		mercury_output_pred_mode_subdecl(InitVarSet, SymName, 
-			ModeList, no, Context)
+			ModeList, no, Context, !IO)
 	;
-		{ PredOrFunc = function },
-		{ pred_args_to_func_args(ModeList, FuncModeList, RetMode) },
+		PredOrFunc = function,
+		pred_args_to_func_args(ModeList, FuncModeList, RetMode),
 		mercury_output_func_mode_subdecl(InitVarSet, SymName, 
-			FuncModeList, RetMode, no, Context)
+			FuncModeList, RetMode, no, Context, !IO)
 	),
-	io__write_string(", "),
-	termination__write_maybe_arg_size_info(MaybeArgSize, no),
-	io__write_string(", "),
-	termination__write_maybe_termination_info(MaybeTermination, no),
-	io__write_string(").\n").
+	io__write_string(", ", !IO),
+	termination__write_maybe_arg_size_info(MaybeArgSize, no, !IO),
+	io__write_string(", ", !IO),
+	termination__write_maybe_termination_info(MaybeTermination, no, !IO),
+	io__write_string(").\n", !IO).
 
-termination__write_maybe_arg_size_info(MaybeArgSizeInfo, Verbose) -->
+termination__write_maybe_arg_size_info(MaybeArgSizeInfo, Verbose, !IO) :-
 	( 	
-		{ MaybeArgSizeInfo = no },
-		io__write_string("not_set") 
+		MaybeArgSizeInfo = no,
+		io__write_string("not_set", !IO) 
 	;
-		{ MaybeArgSizeInfo = yes(infinite(Error)) },
-		io__write_string("infinite"),
-		( { Verbose = yes } ->
-			io__write_string("("),
-			io__write(Error),
-			io__write_string(")")
+		MaybeArgSizeInfo = yes(infinite(Error)),
+		io__write_string("infinite", !IO),
+		( Verbose = yes ->
+			io__write_string("(", !IO),
+			io__write(Error, !IO),
+			io__write_string(")", !IO)
 		;
-			[]
+			true	
 		)
 	;
-		{ MaybeArgSizeInfo = yes(finite(Const, UsedArgs)) },
-		io__write_string("finite("),
-		io__write_int(Const),
-		io__write_string(", "),
-		termination__write_used_args(UsedArgs),
-		io__write_string(")")
+		MaybeArgSizeInfo = yes(finite(Const, UsedArgs)),
+		io__write_string("finite(", !IO),
+		io__write_int(Const, !IO),
+		io__write_string(", ", !IO),
+		termination__write_used_args(UsedArgs, !IO),
+		io__write_string(")", !IO)
 	).
 
-:- pred termination__write_used_args(list(bool)::in,
-	io__state::di, io__state::uo) is det.
+:- pred termination__write_used_args(list(bool)::in, io::di, io::uo) is det.
 
-termination__write_used_args([]) -->
-	io__write_string("[]").
-termination__write_used_args([UsedArg | UsedArgs]) -->
-	io__write_string("["),
-	io__write(UsedArg),
-	termination__write_used_args_2(UsedArgs),
-	io__write_string("]").
+termination__write_used_args([], !IO) :-
+	io__write_string("[]", !IO).
+termination__write_used_args([UsedArg | UsedArgs], !IO) :-
+	io__write_string("[", !IO),
+	io__write(UsedArg, !IO),
+	termination__write_used_args_2(UsedArgs, !IO),
+	io__write_string("]", !IO).
 
-:- pred termination__write_used_args_2(list(bool)::in,
-	io__state::di, io__state::uo) is det.
+:- pred termination__write_used_args_2(list(bool)::in, io::di, io::uo) is det.
 
-termination__write_used_args_2([]) --> [].
-termination__write_used_args_2([ UsedArg | UsedArgs ]) -->
-	io__write_string(", "),
-	io__write(UsedArg),
-	termination__write_used_args_2(UsedArgs).
+termination__write_used_args_2([], !IO).
+termination__write_used_args_2([ UsedArg | UsedArgs ], !IO) :-
+	io__write_string(", ", !IO),
+	io__write(UsedArg, !IO),
+	termination__write_used_args_2(UsedArgs, !IO).
 
-termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose) -->
+termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
 	( 	
-		{ MaybeTerminationInfo = no },
-		io__write_string("not_set") 
+		MaybeTerminationInfo = no,
+		io__write_string("not_set", !IO) 
 	;
-		{ MaybeTerminationInfo = yes(cannot_loop) },
-		io__write_string("cannot_loop")
+		MaybeTerminationInfo = yes(cannot_loop),
+		io__write_string("cannot_loop", !IO)
 	;
-		{ MaybeTerminationInfo = yes(can_loop(Error)) },
-		io__write_string("can_loop"),
-		( { Verbose = yes } ->
-			io__write_string("("),
-			io__write(Error),
-			io__write_string(")")
+		MaybeTerminationInfo = yes(can_loop(Error)),
+		io__write_string("can_loop", !IO),
+		( Verbose = yes ->
+			io__write_string("(", !IO),
+			io__write(Error, !IO),
+			io__write_string(")", !IO)
 		;
-			[]
+			true	
 		)
 	).
 
@@ -962,3 +926,7 @@ termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose) -->
 :- func this_file = string.
 
 this_file = "termination.m".
+
+%----------------------------------------------------------------------------%
+:- end_module termination.
+%----------------------------------------------------------------------------%
