@@ -57,12 +57,6 @@ io__gc_call(Goal) -->
 :- mode main(in) is det.
 
 main(Args) :-
-	( io__main_has_been_executed ->
-		true
-	;
-		write('Mercury Interpreter 0.1\n'),
-		assert(io__main_has_been_executed)
-	),
 	( io__exit_on_abort ->
 		write('Mercury aborting.\n'),
 		exit(1)
@@ -121,6 +115,12 @@ main_predicate(Args) -->
 :- mode io__main_predicate(in, di, uo) is det.
 
 io__main_predicate(_) -->
+	{ io__main_has_been_executed ->
+		true
+	;
+		write('Mercury Interpreter 0.1\n'),
+		assert(io__main_has_been_executed)
+	},
 	{ retractall(io__inhibit_user_main_predicate) },
 	{ assert(io__inhibit_user_main_predicate) },
 	{ retractall(io__exit_on_abort) },
