@@ -4,12 +4,12 @@ singleton_test.m:026: In clause for function `singleton_test.my_append_func/2':
 singleton_test.m:026:   warning: variables `L1, L2' occur only once in this scope.
 singleton_test.m:027: In clause for function `singleton_test.my_append_func/2':
 singleton_test.m:027:   warning: variable `T' occurs only once in this scope.
-singleton_test.m:032: In the C# code for predicate `singleton_test.my_c_pred/3':
-singleton_test.m:032:   warning: variable `Y' does not occur in the C# code.
-singleton_test.m:044: In the C# code for function `singleton_test.my_c_func/2':
-singleton_test.m:044:   warning: variable `X' does not occur in the C# code.
-singleton_test.m:060: In the C# code for predicate `singleton_test.c_hello_world/3':
-singleton_test.m:060:   warning: variable `Msg' does not occur in the C# code.
+singleton_test.m:036: In the Java code for predicate `singleton_test.my_c_pred/3':
+singleton_test.m:036:   warning: variable `Y' does not occur in the Java code.
+singleton_test.m:048: In the Java code for function `singleton_test.my_c_func/2':
+singleton_test.m:048:   warning: variable `X' does not occur in the Java code.
+singleton_test.m:065: In the Java code for predicate `singleton_test.c_hello_world/3':
+singleton_test.m:065:   warning: variable `Msg' does not occur in the Java code.
 singleton_test.m:008: In function `singleton_test.my_append_func/2':
 singleton_test.m:008:   warning: unresolved polymorphism.
 singleton_test.m:008:   The variables with unbound types were:

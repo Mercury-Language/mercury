@@ -6,10 +6,10 @@ singleton_test.m:027: In clause for function `singleton_test.my_append_func/2':
 singleton_test.m:027:   warning: variable `T' occurs only once in this scope.
 singleton_test.m:029: In the C code for predicate `singleton_test.my_c_pred/3':
 singleton_test.m:029:   warning: variable `Y' does not occur in the C code.
-singleton_test.m:037: In the C code for function `singleton_test.my_c_func/2':
-singleton_test.m:037:   warning: variable `X' does not occur in the C code.
-singleton_test.m:047: In the C code for predicate `singleton_test.c_hello_world/3':
-singleton_test.m:047:   warning: variable `Msg' does not occur in the C code.
+singleton_test.m:041: In the C code for function `singleton_test.my_c_func/2':
+singleton_test.m:041:   warning: variable `X' does not occur in the C code.
+singleton_test.m:055: In the C code for predicate `singleton_test.c_hello_world/3':
+singleton_test.m:055:   warning: variable `Msg' does not occur in the C code.
 singleton_test.m:008: In function `singleton_test.my_append_func/2':
 singleton_test.m:008:   warning: unresolved polymorphism.
 singleton_test.m:008:   The variables with unbound types were:
