@@ -20,15 +20,15 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module io, std_util.
 
 	% an abstract data type that holds persistent browser settings,
 	% e.g. the maximum print depth
 :- type browser_state.
 
 	% initialize the browser state with default values
-:- pred browse__init_state(browser_state, io__state, io__state).
-:- mode browse__init_state(out, di, uo) is det.
+:- pred browse__init_state(browser_state).
+:- mode browse__init_state(out) is det.
 
 	% The interactive term browser.
 :- pred browse__browse(T, io__input_stream, io__output_stream,
@@ -44,6 +44,24 @@
 			io__state, io__state).
 :- mode browse__print(in, in, in, di, uo) is det.
 
+	% Estimate the total term size, in characters,
+	% We count the number of characters in the functor,
+	% plus two characters for each argument: "(" and ")"
+	% for the first, and ", " for each of the rest,
+	% plus the sizes of the arguments themselves.
+	% This is only approximate since it doesn't take into
+	% account all the special cases such as operators.
+	%
+	% This predicate returns not the estimated total term size,
+	% but the difference between the given maximum size the caller
+	% is interested in and the estimated total term size.
+	% This difference is positive if the term is smaller than the
+	% maximum and negative if it is bigger. If the difference is
+	% negative, term_size_left_from_max will return a negative difference
+	% but the value will usually not be accurate, since in such cases
+	% by definition the caller is not interested in the accurate value.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
@@ -56,7 +74,7 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__init_state(out, di, uo),
+:- pragma export(browse__init_state(out),
 	"ML_BROWSE_init_state").
 :- pragma export(browse__browse(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse").
@@ -90,15 +108,28 @@
 
 %---------------------------------------------------------------------------%
 
-browse__init_state(State) -->
-	{ default_state(State) }.
+browse__init_state(State) :-
+	% We need to supply an object to initialize the state,
+	% but this object won't be used, since the first call
+	% to browse__browse will overwrite it.  So we just supply
+	% a dummy object -- it doesn't matter what its type or value is.
+	DummyObject = "",
+	type_to_univ(DummyObject, Univ),
+	default_depth(DefaultDepth),
+	MaxTermSize = 10,
+	DefaultFormat = verbose,
+	ClipX = 79,
+	ClipY = 25,
+	State = browser_state(Univ, DefaultDepth, MaxTermSize, [],
+			DefaultFormat, ClipX, ClipY).
+
 
 % return the type_info for a browser_state type
 :- pred browse__browser_state_type(type_desc).
 :- mode browse__browser_state_type(out) is det.
 
 browse__browser_state_type(Type) :-
-	default_state(State),
+	browse__init_state(State),
 	Type = type_of(State).
 
 %---------------------------------------------------------------------------%
@@ -160,23 +191,6 @@ term_size(Univ, TotalSize) :-
 	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
 	TotalSize = TotalArgsSize + FunctorSize.
 
-	% Estimate the total term size, in characters,
-	% We count the number of characters in the functor,
-	% plus two characters for each argument: "(" and ")"
-	% for the first, and ", " for each of the rest,
-	% plus the sizes of the arguments themselves.
-	% This is only approximate since it doesn't take into
-	% account all the special cases such as operators.
-	%
-	% This predicate returns not the estimated total term size,
-	% but the difference between the given maximum size the caller
-	% is interested in and the estimated total term size.
-	% This difference is positive if the term is smaller than the
-	% maximum and negative if it is bigger. If the difference is
-	% negative, term_size_left_from_max will return a negative difference
-	% but the value will usually not be accurate, since in such cases
-	% by definition the caller is not interested in the accurate value.
-:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
 term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 	( MaxSize < 0 ->
 		RemainingSize = MaxSize
@@ -718,23 +732,6 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 		).
 
 	% access predicates
-
-:- pred default_state(browser_state).
-:- mode default_state(out) is det.
-default_state(State) :-
-	% We need to supply an object to initialize the state,
-	% but this object won't be used, since the first call
-	% to browse__browse will overwrite it.  So we just supply
-	% a dummy object -- it doesn't matter what its type or value is.
-	DummyObject = "",
-	type_to_univ(DummyObject, Univ),
-	default_depth(DefaultDepth),
-	MaxTermSize = 10,
-	DefaultFormat = verbose,
-	ClipX = 79,
-	ClipY = 25,
-	State = browser_state(Univ, DefaultDepth, MaxTermSize, [],
-			DefaultFormat, ClipX, ClipY).
 
 :- pred get_term(browser_state, univ).
 :- mode get_term(in, out) is det.

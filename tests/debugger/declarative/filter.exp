@@ -50,7 +50,10 @@ mdb> continue
 mdb> finish
       50:      2  2 EXIT pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
-my_append([1, 2, 3], [7, 8, 9], [1, 2, 3, 7, 8, 9])
+my_append
+	[1, 2, 3]
+	[7, 8, 9]
+	[1, 2, 3, 7, 8, 9]
 Valid? yes
 Found incorrect contour:
 p([1, 2, 3, 7, 8, 9])
