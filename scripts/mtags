@@ -6,39 +6,131 @@ eval "exec perl -S $0 $*"
     if $running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1997 The University of Melbourne.
+# Copyright (C) 1994-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 
-# This script creates a vi style `tags' file or (if the `-e' or `--emacs'
-# option is specified) an emacs style `TAGS' file for Mercury programs.
-# It takes its list of filenames from the command line.
+$usage = "\
+Usage: mtags [<options>] <source files>
+Use \`mtags --help' for help.";
 
-# Note that `vim' does not properly support vi-style tags files,
-# at least not as of vim 4.2.  If you're using vim rather than real vi,
-# you need to specify the `--vim' option, which causes mtags to generate
-# a dumbed-down tags file that vim can understand.
+$help = "\
+Usage:
+	mtags [<options>] <source files>
+
+Description:
+	This script creates tags files for Mercury programs that can be
+	used with Vi, Vim, Elvis or Emacs (depending on the options
+	specified). It takes a list of filenames from the command line
+	and produces a tags file for the Mercury declarations in those
+	files.
+
+Options:
+	With no options specified, mtags defaults to creating a vi-style 
+	tags file.  If multiple identical tags are found, only the first
+	occurrence of the tag is placed in the tags file.
+
+	-e, --emacs
+		Produce an emacs-style TAGS file.
+
+	--vim
+		Produce a dumbed-down vi-style tags file that will work 
+		with versions of vim prior to 5.0, and versions of elvis
+		prior to 2.1.
+
+	--ext
+		Produce a tags file in the extended format supported by 
+		vim 5.0+.  Duplicate tags are allowed in the tags file.
+		Extra attributes are added to each tag to say whether it
+		is in the implementation or interface of the source file
+		and to describe the kind of tag.  Tag kinds used are:
+		\`pred' for predicate declarations
+		\`func' for function declarations
+		\`type' for type definitions
+		\`cons' for type constructors
+		\`inst' for inst definitions
+		\`mode' for mode definitions
+		\`tc'   for typeclass declarations
+		\`tci'  for typeclass instance declarations
+		\`tcm'  for typeclass methods
+		\`tcim' for typeclass instance methods
+
+		(Vim assumes that the \`kind' attribute has at most 4
+		characters.)
+
+	--elvis
+		Without \`--ext', works the same as \`--vim' and supports 
+		versions of elvis prior to 2.1.  When used in
+		conjunction with \`--ext', produces an extended tags file
+		in a format that will work with elvis 2.1+.
+
+	--keep-duplicates
+		By default, mtags removes duplicate tags from the tags
+		file. With this option, duplicate tags are not removed.
+		Also, with this option, tags are created for typeclass
+		instances.  This option is implied by \`--emacs' and by
+		\`--ext'.
+
+	-h, --help
+		Dislay this help message and exit.
+
+	--
+		Treat all remaining arguments as source file names.  This is
+		useful if you have file names starting with \`-'.
+";
 
 $warnings = 0;
 $emacs = 0;
 $vim = 0;
+$ext = 0;
+$elvis = 0;
+$keep_dups = 0;
 
 OPTION:
 while ($#ARGV >= 0 && $ARGV[0] =~ /^-/) {
 	if ($ARGV[0] eq "-e" || $ARGV[0] eq "--emacs") {
 		$emacs = 1;
+		$keep_dups = 1;
 		shift(ARGV);
 		next OPTION;
 	}
 	if ($ARGV[0] eq "--vim") {
 		$vim = 1;
+		$elvis = 0;
 		shift(ARGV);
 		next OPTION;
 	}
+	if ($ARGV[0] eq "--ext") {
+		$ext = 1;
+		$keep_dups = 1;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--elvis") {
+		$elvis = 1;
+		$vim = 0;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "--keep-duplicates") {
+		$keep_dups = 1;
+		shift(ARGV);
+		next OPTION;
+	}
+	if ($ARGV[0] eq "-h" || $ARGV[0] eq "--help") {
+		print "$help";
+		exit(0);
+	}
+	if ($ARGV[0] eq "--") {
+		shift(ARGV);
+		break;
+	}
+	die "mtags: unrecognized option \`$ARGV[0]'\n" .
+		"Use \`mtags --help' for help.\n";
 }
 
-die "Usage: mtags [--vim] [-e] [--emacs] file1.m ...\n" if $#ARGV < 0;
+die $usage if $#ARGV < 0;
 
 #---------------------------------------------------------------------------#
 
@@ -56,7 +148,11 @@ sub output_name {
 	    $name =~ s/ .*//;
 	}
 
-	if (!$emacs && $seen{$name}) {
+	$match_line = $_;
+	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
+	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
+
+	if (!$emacs && !$keep_dups && $seen{$name}) {
 	    if ($warnings &&
 		$file ne $prev_file{$name} &&
 		$. != $prev_line{$name})
@@ -71,12 +167,56 @@ sub output_name {
 	    if ($emacs) {
 		printf out "%s\177%s\001%d,%d\n",
 		    $_, $name, $., $.;
-	    } elsif ($vim) {
-		printf out "%s\t%s\t/^%s\$/\n",
-		    $name, $file, $_, $name;
+	    } elsif ($ext) {
+		# In ``ext'' mode, print the extra attributes used by
+		# vim 5.0+ and elvis 2.1+.
+		if ($context =~ /implementation/) {
+			$static = "\tfile:";
+			$sfile = $file;
+		} else {
+			$static = "";
+			$sfile = "";
+		}
+		if ($elvis) {
+		    # Elvis 2.1+
+
+		    # Elvis (as of 2.1i) seems to require `[' to be escaped
+		    # in tag patterns, even though they are supposed to use
+		    # `nomagic' mode.
+		    $match_line =~ s/\[/\\\[/g;
+
+		    # Elvis allows only a single search pattern or line number
+		    # rather than an arbitrary sequence of colon-separated ex
+		    # commands.
+		    printf out "%s\t%s\t/^%s\$/;\"\tkind:%s%s%s\n",
+			$name, $file, $match_line, $kind, $static, $sfile;
+		} else {
+		    # Vim 5.0+
+
+		    # Vim 5.0, like vi, allows an arbitrary number of 
+		    # colon-separated ex commands.  However if more than
+		    # one command is given, it seems to ignore the extra
+		    # tag attributes.  For now, we only output a single
+		    # search command so that vim will recognise the
+		    # extra attributes. If you would prefer the more
+		    # complex command used for vi (see below) instead of
+		    # the extra attributes, use `mtags --keep-duplicates'
+		    # instead of `mtags --ext'.
+		    printf out "%s\t%s\t/^%s\$/;\"\tkind:%s%s\n",
+			$name, $file, $match_line, $kind, $static;
+		}
+	    } elsif ($vim || $elvis) {
+	    	# Works with any version of vim, elvis or vi.
+	    	printf out "%s\t%s\t/^%s\$/\n",
+		    $name, $file, $match_line;
 	    } else {
+		# Works with vi or vim 5.0+.  The ex command searches
+		# for the matching line and then places the tag in the 
+		# search buffer so that if this is a pred/func 
+		# declaration you can do `n' to go to the pred/func 
+		# body.
 		printf out "%s\t%s\t/^%s\$/;-;/%s/\n",
-		    $name, $file, $_, $name;
+		    $name, $file, $match_line, $name;
 	    }
 	    $seen{$name} = 1;
 	    $prev_file{$name} = $file;
@@ -88,10 +228,19 @@ sub output_name {
 
 if ($emacs) {
 	open(out, "> TAGS") || die "mtags: error opening TAGS: $!\n";
+} elsif ($keep_dups) {
+	# Vim 5.0+ and elvis 2.1+ allow multiple matches for a tag, so don't
+	# remove duplicate tags.
+	# Vim and elvis expect the tags file to be sorted so they can do
+	# binary search.
+	open(out, "| sort > tags") ||
+		die "mtags: error opening pipe: $!\n";
 } else {
+	# Remove duplicate tags for vi.
 	open(out, "| sort -u +0 -1 > tags") ||
 		die "mtags: error opening pipe: $!\n";
 }
+$context = "implementation";
 while ($#ARGV >= 0)
 {
     $file = shift(ARGV);
@@ -115,21 +264,36 @@ while ($#ARGV >= 0)
 	($cmd, $decl, @rest) = split;
 	$body = join(' ', @rest);
 
-	# skip lines which are not pred, func, type, inst, or mode
-	# declarations.
+	# Is this an "interface" or "implementation" declaration?
+	# If so, change context.
+	if ($decl =~ "\binterface\b" || $decl =~ "\bimplementation\b") {
+		$context = $decl;
+	}
+
+	# Skip lines which are not pred, func, type, inst, mode,
+	# typeclass or instance declarations.
+	# Also skip instance declarations if we're producing a normal vi
+	# tags file since vi doesn't allow duplicate tags and the
+	# typeclass tags are probably more important than the instance
+	# tags.
 	next unless (
 	    $decl eq "pred" ||
 	    $decl eq "func" ||
 	    $decl eq "type" ||
 	    $decl eq "inst" ||
-	    ($decl eq "mode" && $body =~ /::/)
+	    ($decl eq "mode" && $body =~ /::/) ||
+	    $decl eq "typeclass" ||
+	    ($decl eq "instance" && $keep_dups)
 	);
 
 	# skip declarations which are not definitions
 	next unless (
-	    # pred and func declarations are always definitions
+	    # pred, func, typeclass and instance declarations are always
+	    # definitions
 	    $decl eq "pred" ||
 	    $decl eq "func" ||
+	    $decl eq "typeclass" ||
+	    $decl eq "instance"  ||
 
 	    # if it doesn't end in a `.' (i.e if it doesn't fit on one line),
 	    # then it's probably a definition
@@ -143,53 +307,114 @@ while ($#ARGV >= 0)
 	);
 
 	$name = $body;
+	$kind = $decl;
+	# Shorten $kind for typeclass and instance so they display better in
+	# vim which assumes the kind attribute has at most 4 chars.
+	if ($kind eq "typeclass") { $kind = "tc"; }
+	if ($kind eq "instance") { $kind = "tci"; }
 	do output_name();
 	
-	# for everything except type declarations, we're done
-	next unless ($decl eq "type");
+	# for everything except type, typeclass and instance declarations,
+	# we're done
+	next unless ($decl eq "type" || $decl eq "typeclass" || 
+			$decl eq "instance");
 
-	# make sure we're at the line with the `--->'
-	if ($body !~ /--->/) {
-		next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-		$_ = <srcfile>;
-		chop;
-		$body = $_;
-	}
-	next unless ($body =~ /--->/);
-
-	# replace everything up to the `--->' with `;'
-	$body =~ s/.*--->/;/;
-
-	for(;;) {
-	    # if the body starts with `;', we assume it must be the start of a
-	    # constructor definition
-	    if ($body =~ /^[ \t]*;/) {
-
-		# delete the leading `;'
-		$body =~ s/[^;]*;[ \t]*//;
-
-		if ($body =~ /^[ \t]*$/) {
+	if ($decl eq "type") {
+	    # make sure we're at the line with the `--->'
+	    if ($body !~ /--->/) {
+		    next if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
 		    $_ = <srcfile>;
 		    chop;
 		    $body = $_;
-		}
-
-		$name = $body;
-		$name =~ s/[;.%].*//;
-		do output_name();
-
-		# if there are more constructor definitions on the same line,
-		# process the next one
-	        if ($body =~ /;/) {
-			$body =~ s/[^;]*;/;/;
-			next;
-		}
 	    }
-		
-	    last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
-	    $_ = <srcfile>;
-	    chop;
-	    $body = $_;
+	    next unless ($body =~ /--->/);
+
+	    # replace everything up to the `--->' with `;'
+	    $body =~ s/.*--->/;/;
+
+	    for(;;) {
+		# if the body starts with `;', we assume it must be the
+		# start of a constructor definition
+		if ($body =~ /^[ \t]*;/) {
+
+		    # delete the leading `;'
+		    $body =~ s/[^;]*;[ \t]*//;
+
+		    if ($body =~ /^[ \t]*$/) {
+			$_ = <srcfile>;
+			chop;
+			$body = $_;
+		    }
+
+		    $name = $body;
+		    $name =~ s/[;.%].*//;
+		    $kind  = "cons";
+		    do output_name();
+
+		    # if there are more constructor definitions on the
+		    # same line, process the next one
+		    if ($body =~ /;/) {
+			    $body =~ s/[^;]*;/;/;
+			    next;
+		    }
+		}
+		    
+		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
+		$_ = <srcfile>;
+		chop;
+		$body = $_;
+	    }
+	} elsif ($decl eq "typeclass") {
+
+	    for(;;) {
+
+		# Assume each method declaration starts on a new line.
+		if ($body =~ /^.*\b(pred|func)[ \t]*/) {
+		    $body =~ s/^.*\b(pred|func)[ \t]*//;
+
+		    if ($body =~ /^[ \t]*$/) {
+		    	$_ = <srcfile>;
+		    	chop;
+		    	$body = $_;
+		    }
+
+		    $name = $body;
+		    $name =~ s/[(,%].*//;
+		    $kind = "tcm";	# tcm == type class method
+		    do output_name();
+		}
+
+		last if $_ =~ /\]/;
+
+		$_ = <srcfile>;
+		chop;
+		$body = $_;
+	    }
+	} else { # instance declaration
+	    for(;;) {
+
+		# Assume each method declaration starts on a new line.
+		if ($body =~ /^.*\b(pred\(|func\()/) {
+		    $body =~ s/.*\b(pred\(|func\()//;
+
+		    if ($body =~ /^[ \t]*$/) {
+		    	$_ = <srcfile>;
+		    	chop;
+		    	$body = $_;
+		    }
+
+		    $name = $body;
+		    $name =~ s/[\/)].*//;
+		    $kind = "tcim";	# tcim == type class instance method
+		    do output_name();
+		}
+
+		last if $_ =~ /\]/;
+
+		$_ = <srcfile>;
+		chop;
+		$body = $_;
+	    }
 	}
     }
     close(srcfile) || die "mtags: error closing `$file': $!\n";
