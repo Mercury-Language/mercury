@@ -194,9 +194,6 @@ DRAFT NEWS for Mercury release 0.7
   - We've added io__read_file/{3,4} and io__read_binary_file/{3,4} which read
     whole files (until error or eof).
 
-  - We've added io__lock_file and io__unlock_file which perform advisory
-    file locking with the POSIX flock call.
-
   - We've added a double accumulator version of list__foldl/4 called
     list__foldl2/6, which is a convenient generalisation for accumulators
     that also do I/O. Also, we've added have list__map_foldl/5, which is an
