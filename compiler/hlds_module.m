@@ -519,78 +519,98 @@
 
 :- type module_info --->
 	module(
-		sub_info ::			module_sub_info,
-		predicate_table ::		predicate_table,
-		proc_requests :: 		proc_requests,
-		special_pred_map ::		special_pred_map,
-		partial_qualifier_info ::	partial_qualifier_info,
-		type_table ::			type_table,
-		inst_table ::			inst_table,
-		mode_table ::			mode_table,
-		cons_table ::			cons_table,
-		class_table ::			class_table,
-		instance_table ::		instance_table,
-		superclass_table ::		superclass_table,
-		assertion_table ::		assertion_table,
-		exclusive_table ::		exclusive_table,
-		ctor_field_table ::		ctor_field_table,
-		maybe_recompilation_info ::	maybe(recompilation_info)
+		sub_info			:: module_sub_info,
+		predicate_table			:: predicate_table,
+		proc_requests			:: proc_requests,
+		special_pred_map		:: special_pred_map,
+		partial_qualifier_info		:: partial_qualifier_info,
+		type_table			:: type_table,
+		inst_table			:: inst_table,
+		mode_table			:: mode_table,
+		cons_table			:: cons_table,
+		class_table			:: class_table,
+		instance_table			:: instance_table,
+		superclass_table		:: superclass_table,
+		assertion_table			:: assertion_table,
+		exclusive_table			:: exclusive_table,
+		ctor_field_table		:: ctor_field_table,
+		maybe_recompilation_info	:: maybe(recompilation_info)
 	).
 
 :- type module_sub_info --->
 	module_sub(
-		module_name ::			module_name,
-		globals ::			globals,
-		contains_foreign_type ::	bool,
-		foreign_decl_info ::		foreign_decl_info,
-		foreign_body_info ::		foreign_body_info,
-		foreign_import_module_info ::	foreign_import_module_info,
+		module_name			:: module_name,
+		globals				:: globals,
+		contains_foreign_type		:: bool,
+		foreign_decl_info		:: foreign_decl_info,
+		foreign_body_info		:: foreign_body_info,
+		foreign_import_module_info	:: foreign_import_module_info,
 			
-			% This dependency info is constrained to be only
-			% for between procedures which have clauses
-			% defined for them in this compilation unit
-			% (that includes opt_imported procedures).
-		maybe_dependency_info ::	maybe(dependency_info),
-		num_errors ::			int,
-		pragma_exported_procs ::	list(pragma_exported_proc),
-					% list of the procs for which
-					% there is a pragma export(...)
-					% declaration
-		type_ctor_gen_infos ::		list(type_ctor_gen_info),
-					% info about the types defined here
-		must_be_stratified_preds ::	set(pred_id),
-		unused_arg_info ::		unused_arg_info,
-					% unused argument info about
-					% predicates in the current
-					% module which has been exported
-					% in .opt files.
-		lambda_number_counter ::	counter,
-		model_non_pragma_counter ::	counter,
-					% number of the structure types defined
-					% so far for model_non pragma C codes
-		imported_module_specifiers ::	set(module_specifier),
-					% All the directly imported module
-					% specifiers (used during type
-					% checking, and by the MLDS back-end)
-		indirectly_imported_module_specifiers :: set(module_specifier),
-					% All the indirectly imported modules
-					% (used by the MLDS back-end)
-		do_aditi_compilation ::		do_aditi_compilation,
-					% are there any local Aditi predicates
-					% for which Aditi-RL must be produced.
-		type_spec_info ::		type_spec_info,
-					% data used for user-guided type
-					% specialization.
-		no_tag_type_table ::		no_tag_type_table,
-					% Information about no tag
-					% types. This information is
-					% also in the type_table,
-					% but lookups in this table
-					% will be much faster.
+		maybe_dependency_info		:: maybe(dependency_info),
+						% This dependency info is
+						% constrained to be only for
+						% between procedures which
+						% have clauses defined for
+						% them in this compilation
+						% unit (that includes
+						% opt_imported procedures).
 
-		analysis_info ::		analysis_info
-					% Information for the inter-module
-					% analysis framework.
+		num_errors			:: int,
+
+		pragma_exported_procs		:: list(pragma_exported_proc),
+						% list of the procs for which
+						% there is a pragma export(...)
+						% declaration
+
+		type_ctor_gen_infos		:: list(type_ctor_gen_info),
+		must_be_stratified_preds	:: set(pred_id),
+
+		unused_arg_info			:: unused_arg_info,
+						% unused argument info about
+						% predicates in the current
+						% module which has been
+						% exported in .opt files.
+
+		lambda_number_counter		:: counter,
+
+		model_non_pragma_counter	:: counter,
+						% Used to ensure uniqueness of
+						% the structure types defined
+						% so far for model_non
+						% foreign_procs.
+
+		imported_module_specifiers	:: set(module_specifier),
+						% All the directly
+						% imported module specifiers
+						% (used during type
+						% checking, and by the
+						% MLDS back-end)
+
+		indirectly_imported_module_specifiers :: set(module_specifier),
+						% All the indirectly imported
+						% modules (used by the MLDS
+						% back-end).
+
+		do_aditi_compilation		:: do_aditi_compilation,
+						% are there any local Aditi
+						% predicates for which
+						% Aditi-RL must be produced?
+
+		type_spec_info			:: type_spec_info,
+						% data used for user-guided
+						% type specialization.
+
+		no_tag_type_table		:: no_tag_type_table,
+						% Information about no tag
+						% types. This information is
+						% also in the type_table,
+						% but lookups in this table
+						% will be much faster.
+
+		analysis_info			:: analysis_info
+						% Information for the
+						% inter-module analysis
+						% framework.
 	).
 
 	% A predicate which creates an empty module
