@@ -13,11 +13,21 @@ include $(MERCURY_DIR)/Mmake.common
 
 INSTALL_WEB_SUBDIR=$(INSTALL_WEBDIR)/developer
 
-#DOCS_TEXT=ALLOCATION AUTHORS CODING_STANDARDS COMPILER_DESIGN \
-#	GC_AND_C_CODE GLOSSARY MODULE_SYSTEM RELEASE_CHECKLIST \
-#	REVIEWS TODO
-DOCS_TEXT=
-DOC_HTML=ALLOCATION.html AUTHORS.html CODING_STANDARDS.html \
+HTML_TO_TEXT=lynx -dump
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .html .text
+
+.html.text:
+	$(HTML_TO_TEXT) $< > $@
+
+#-----------------------------------------------------------------------------#
+
+DOCS_TEXT=ALLOCATION.text AUTHORS.text CODING_STANDARDS.text \
+	COMPILER_DESIGN.text GC_AND_C_CODE.text GLOSSARY.text \
+	MODULE_SYSTEM.text RELEASE_CHECKLIST.text REVIEWS.text TODO.text
+DOCS_HTML=ALLOCATION.html AUTHORS.html CODING_STANDARDS.html \
 	COMPILER_DESIGN.html GC_AND_C_CODE.html GLOSSARY.html \
 	MODULE_SYSTEM.html RELEASE_CHECKLIST.html REVIEWS.html TODO.html
 DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
@@ -32,5 +42,8 @@ DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
 install: $(DOCS_ALL)
 	[ -d $(INSTALL_WEB_SUBDIR) ] || mkdir -p $(INSTALL_WEB_SUBDIR)
 	cp $(DOCS_ALL) $(INSTALL_WEB_SUBDIR)
+
+clean:
+	rm -f $(DOCS_TEXT)
 
 #-----------------------------------------------------------------------------#
