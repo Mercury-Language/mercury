@@ -218,14 +218,14 @@ io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 		io__write_term_2(Term, VarSet0, N0, VarSet, N)
 	).
 
-:- pred io__infix_op(const, io__state, io__state).
-:- mode io__infix_op(in, di, uo).
+:- pred io__infix_op(const, bool, io__state, io__state).
+:- mode io__infix_op(in, out, di, uo).
 
-:- pred io__unary_prefix_op(const, io__state, io__state).
-:- mode io__unary_prefix_op(in, di, uo).
+:- pred io__unary_prefix_op(const, bool, io__state, io__state).
+:- mode io__unary_prefix_op(in, out, di, uo).
 
-:- pred io__unary_postfix_op(const, io__state, io__state).
-:- mode io__unary_postfix_op(in, di, uo).
+:- pred io__unary_postfix_op(const, bool, io__state, io__state).
+:- mode io__unary_postfix_op(in, out, di, uo).
 
 /*
 :- external("NU-Prolog", io__infix_op/3).
