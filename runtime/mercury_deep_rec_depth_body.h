@@ -32,7 +32,7 @@
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
-	csd = (MR_CallSiteDynamic *) CSD;
+	csd = CSD;
 	MR_deep_assert(csd, NULL, csd == MR_current_call_site_dynamic);
 	pd = csd->MR_csd_callee_ptr;
 	MR_deep_assert(csd, NULL, pd != NULL);

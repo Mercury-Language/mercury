@@ -794,8 +794,8 @@ option_defaults_2(compilation_model_option, [
 				-	bool(yes),
 	use_lots_of_ho_specialization
 				-	bool(no),
-	deep_profile_tail_recursion	-	bool(no),
-					% XXX doesn't work at the moment
+	deep_profile_tail_recursion
+				-	bool(yes),
 		% (c) Miscellaneous optional features
 	gc			-	string("boehm"),
 	parallel		-	bool(no),

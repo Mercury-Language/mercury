@@ -135,7 +135,7 @@ void MR_CALL mercury__builtin__compare_3_p_2(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_3(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
-void MR_CALL mercury__std_util__compare_representation_3_p_0(
+void MR_CALL mercury__builtin__compare_representation_3_p_0(
 	MR_Mercury_Type_Info, MR_Comparison_Result *, MR_Box, MR_Box);
 
 #else	/* ! MR_HIGHLEVEL_CODE */
@@ -145,7 +145,7 @@ MR_declare_entry(mercury__compare_3_0);
 MR_declare_entry(mercury__compare_3_1);
 MR_declare_entry(mercury__compare_3_2);
 MR_declare_entry(mercury__compare_3_3);
-MR_declare_entry(mercury__std_util__compare_representation_3_0);
+MR_declare_entry(mercury__compare_representation_3_0);
 
 #endif	/* MR_HIGHLEVEL_CODE */
 

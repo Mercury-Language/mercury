@@ -292,6 +292,27 @@
 :-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
 		out, di, uo) is det.
 
+% compare_representation(Result, X, Y)
+%
+% compare_representation is similar to the builtin predicate
+% compare/3, except that it does not abort when asked to compare
+% non-canonical terms.
+%
+% The declarative semantics of compare_representation for unequal
+% non-canonical terms is that the result is either (<) or (>).  For
+% equal non-canonical terms the result can be anything.
+%
+% Operationally, the result of compare_representation for
+% non-canonical terms is the same as that for comparing the internal
+% representations of the terms, where the internal representation is
+% that which would be produced by deconstruct__cc.
+%
+% XXX This predicate is not yet implemented for highlevel code.  This
+% is the reason it is not in the official part of the interface.
+
+:- pred compare_representation(comparison_result, T, T).
+:- mode compare_representation(uo, in, in) is cc_multi.
+
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
 
@@ -367,6 +388,7 @@ cc_cast_io(_) = _ :-
 
 :- external(unify/2).
 :- external(compare/3).
+:- external(compare_representation/3).
 
 ordering(X, Y) = R :-
 	compare(R, X, Y).

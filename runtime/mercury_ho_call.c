@@ -78,41 +78,29 @@ ENDINIT
 		MR_proc_static_user_builtin_name(predname, 3, 0),	\
 		MR_own_exits)
 
-  MR_proc_static_user_builtin_empty(integer_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(integer_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(float_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(float_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(string_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(string_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typectorinfo_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typectorinfo_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typedesc_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typedesc_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typectordesc_unify, 2, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
-  MR_proc_static_user_builtin_empty(typectordesc_compare, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
+  #define MR_define_unify_compare_proc_statics(builtin)			\
+	MR_proc_static_user_builtin_empty(				\
+		MR_PASTE2(builtin, _unify), 2, 0,			\
+		"mercury_ho_call.c", 0, MR_TRUE);			\
+	MR_proc_static_user_builtin_empty(				\
+		MR_PASTE2(builtin, _compare), 3, 0,			\
+		"mercury_ho_call.c", 0, MR_TRUE);			\
+	MR_proc_static_user_builtin_empty(				\
+		MR_PASTE2(builtin, _compare_representation), 3, 0,	\
+		"mercury_ho_call.c", 0, MR_TRUE)
 
-  MR_proc_static_user_empty(std_util, compare_representation, 3, 0,
-	"mercury_ho_call.c", 0, MR_TRUE);
+  MR_define_unify_compare_proc_statics(user);
+  MR_define_unify_compare_proc_statics(integer);
+  MR_define_unify_compare_proc_statics(float);
+  MR_define_unify_compare_proc_statics(string);
+  MR_define_unify_compare_proc_statics(c_pointer);
+  MR_define_unify_compare_proc_statics(typeinfo);
+  MR_define_unify_compare_proc_statics(typectorinfo);
+  MR_define_unify_compare_proc_statics(typedesc);
+  MR_define_unify_compare_proc_statics(typectordesc);
+  MR_define_unify_compare_proc_statics(tuple);
+  MR_define_unify_compare_proc_statics(func);
+  MR_define_unify_compare_proc_statics(pred);
 
 #endif
 
@@ -335,7 +323,7 @@ mercury__builtin__compare_3_p_3(
 }
 
 void MR_CALL
-mercury__std_util__compare_representation_3_p_0(MR_Mercury_Type_Info ti,
+mercury__builtin__compare_representation_3_p_0(MR_Mercury_Type_Info ti,
 	MR_Comparison_Result *res, MR_Box x, MR_Box y)
 {
 	MR_SORRY("compare_representation/3 for HIGHLEVEL_CODE");
@@ -400,7 +388,7 @@ MR_define_extern_entry(mercury__compare_3_1);
 MR_define_extern_entry(mercury__compare_3_2);
 MR_define_extern_entry(mercury__compare_3_3);
 MR_declare_label(mercury__compare_3_0_i1);
-MR_define_extern_entry(mercury__std_util__compare_representation_3_0);
+MR_define_extern_entry(mercury__compare_representation_3_0);
 
 MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__do_call_closure);
@@ -410,7 +398,7 @@ MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__compare_3_1);
 	MR_init_entry_an(mercury__compare_3_2);
 	MR_init_entry_an(mercury__compare_3_3);
-	MR_init_entry_an(mercury__std_util__compare_representation_3_0);
+	MR_init_entry_an(mercury__compare_representation_3_0);
 MR_BEGIN_CODE
 
 /*
@@ -543,7 +531,7 @@ MR_define_entry(mercury__unify_2_0);
 		saved_succip = MR_succip;				\
 	} while(0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
 		MR_succip = saved_succip;				\
@@ -564,7 +552,7 @@ MR_define_entry(mercury__unify_2_0);
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	tailcall_user_pred
 #undef	start_label
 #undef	call_user_code_label
@@ -616,7 +604,7 @@ MR_define_entry(mercury__compare_3_3);
 		saved_succip = MR_succip;				\
 	} while(0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
 		MR_succip = saved_succip;				\
@@ -638,7 +626,7 @@ MR_define_entry(mercury__compare_3_3);
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	tailcall_user_pred
 #undef	start_label
 #undef	call_user_code_label
@@ -650,12 +638,12 @@ MR_define_entry(mercury__compare_3_3);
 }
 
 /*
-** mercury__std_util__compare_representation_3_0 is called as
+** mercury__compare_representation_3_0 is called as
 ** `compare_representation(TypeInfo, Result, X, Y)' in the mode
 ** `compare_representation(in, uo, in, in) is cc_multi'.
 */
 
-MR_define_entry(mercury__std_util__compare_representation_3_0);
+MR_define_entry(mercury__compare_representation_3_0);
 {
 
 #define	DECLARE_LOCALS							\
@@ -672,7 +660,7 @@ MR_define_entry(mercury__std_util__compare_representation_3_0);
 		saved_succip = MR_succip;				\
 	} while(0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_r1 = (answer);					\
 		MR_succip = saved_succip;				\
@@ -691,7 +679,7 @@ MR_define_entry(mercury__std_util__compare_representation_3_0);
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	start_label
 #undef	call_user_code_label
 #undef	type_stat_struct
@@ -716,7 +704,7 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 		MR_restore_transient_registers();			\
 	} while (0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_save_transient_registers();				\
 		return (answer);					\
@@ -740,7 +728,7 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	tailcall_user_pred
 #undef	start_label
 #undef	call_user_code_label
@@ -759,7 +747,7 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 		MR_restore_transient_registers();			\
 	} while (0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_save_transient_registers();				\
 		return (answer);					\
@@ -784,7 +772,7 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	tailcall_user_pred
 #undef	start_label
 #undef	call_user_code_label
@@ -804,7 +792,7 @@ MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 		MR_restore_transient_registers();			\
 	} while (0)
 
-#define return_answer(answer)						\
+#define raw_return_answer(answer)					\
 	do {								\
 		MR_save_transient_registers();				\
 		return (answer);					\
@@ -821,7 +809,7 @@ MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #undef	DECLARE_LOCALS
 #undef	initialize
-#undef	return_answer
+#undef	raw_return_answer
 #undef	start_label
 #undef	call_user_code_label
 #undef	type_stat_struct

@@ -151,7 +151,7 @@ MR_Word		*MR_watch_addr = NULL;
 MR_CallSiteDynamic
 		*MR_watch_csd_addr = NULL;
 MR_bool		MR_watch_csd_started = MR_FALSE;
-char		*MR_watch_csd_start_name = NULL;
+const char	*MR_watch_csd_start_name = "";	/* must not be NULL */
 
 unsigned long	MR_lld_cur_call = 0;
 MR_bool		MR_lld_print_enabled = MR_FALSE;
@@ -159,7 +159,7 @@ MR_bool		MR_lld_print_name_enabled = MR_FALSE;
 MR_bool		MR_lld_print_csd_enabled = MR_FALSE;
 MR_bool		MR_lld_print_region_enabled = MR_FALSE;
 
-char		*MR_lld_start_name = NULL;
+const char	*MR_lld_start_name = "";	/* must not be NULL */
 unsigned	MR_lld_start_block = 100;	/* by default, print stuff */
 						/* for a block of 100 calls */
 unsigned long	MR_lld_start_until = (unsigned long) -1;

@@ -201,7 +201,7 @@ typedef enum {
 
 #define	MR_new_proc_dynamic(pd, ps)					\
 	do {								\
-		int	i;						\
+		int	npdi;						\
 									\
 		(pd) = MR_PROFILING_MALLOC(MR_ProcDynamic);		\
 		(pd)->MR_pd_proc_static = (ps);				\
@@ -209,8 +209,8 @@ typedef enum {
 			MR_PROFILING_MALLOC_ARRAY(MR_CallSiteDynamic *,	\
 				(ps)->MR_ps_num_call_sites);		\
 									\
-		for (i = 0; i < (ps)->MR_ps_num_call_sites; i++) {	\
-			(pd)->MR_pd_call_site_ptr_ptrs[i] = NULL;	\
+		for (npdi = 0; npdi < (ps)->MR_ps_num_call_sites; npdi++) { \
+			(pd)->MR_pd_call_site_ptr_ptrs[npdi] = NULL;	\
 		}							\
 	} while (0)
 

@@ -235,6 +235,16 @@
 :- type proc_dynamic		---> proc_dynamic(c_pointer).
 :- type call_site_dynamic	---> call_site_dynamic(c_pointer).
 
+:- pragma foreign_type("C", proc_static, 	"MR_ProcStatic *").
+:- pragma foreign_type("C", proc_dynamic,	"MR_ProcDynamic *").
+:- pragma foreign_type("C", call_site_dynamic,	"MR_CallSiteDynamic *").
+
+% The IL type definitions are dummies. They are needed to compile the library
+% in IL grades, but deep profiling is not (yet) supported in IL grades.
+:- pragma foreign_type(il, proc_static,       "class [mscorlib]System.Object").
+:- pragma foreign_type(il, proc_dynamic,      "class [mscorlib]System.Object").
+:- pragma foreign_type(il, call_site_dynamic, "class [mscorlib]System.Object").
+
 :- pragma foreign_decl("C", "
 #ifndef	MR_DEEP_PROFILING_GUARD
 #define	MR_DEEP_PROFILING_GUARD
@@ -281,8 +291,10 @@
 % Procedures that prepare for calls
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", prepare_for_normal_call(N::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	prepare_for_normal_call(N::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
@@ -316,8 +328,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", prepare_for_special_call(CSN::in, TypeInfo::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	prepare_for_special_call(CSN::in, TypeInfo::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
@@ -362,12 +376,15 @@
 
 	MR_leave_instrumentation();
 #else
-	MR_fatal_error(""prepare_for_special_call: deep profiling not enabled"");
+	MR_fatal_error(
+		""prepare_for_special_call: deep profiling not enabled"");
 #endif
 }").
 
-:- pragma foreign_proc("C", prepare_for_ho_call(CSN::in, Closure::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	prepare_for_ho_call(CSN::in, Closure::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
@@ -420,7 +437,8 @@
 
 :- pragma foreign_proc("C",
 	prepare_for_method_call(CSN::in, TypeClassInfo::in, MethodNum::in),
-		[thread_safe, will_not_call_mercury], "{
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
@@ -465,8 +483,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", prepare_for_callback(CSN::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	prepare_for_callback(CSN::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
@@ -489,8 +509,10 @@
 % Procedures needed for handling tail recursive procedures
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", prepare_for_tail_call(CSN::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	prepare_for_tail_call(CSN::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
 	MR_CallSiteDynamic	*child_csd;
 	MR_CallSiteDynamic	*csd;
@@ -535,7 +557,8 @@
 
 :- pragma foreign_proc("C",
 	save_and_zero_activation_info_ac(Count::out, Ptr::out),
-		[thread_safe, will_not_call_mercury], "{
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -551,7 +574,7 @@
 
 	Count = ps->MR_ps_activation_count;
 	ps->MR_ps_activation_count = 0;
-	Ptr = (MR_Word) ps->MR_ps_outermost_activation_ptr;
+	Ptr = ps->MR_ps_outermost_activation_ptr;
 	ps->MR_ps_outermost_activation_ptr = NULL;
 	MR_leave_instrumentation();
   #else
@@ -562,8 +585,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", save_and_zero_activation_info_sr(Ptr::out),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	save_and_zero_activation_info_sr(Ptr::out),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -577,7 +602,7 @@
 	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
-	Ptr = (MR_Word) ps->MR_ps_outermost_activation_ptr;
+	Ptr = ps->MR_ps_outermost_activation_ptr;
 	ps->MR_ps_outermost_activation_ptr = NULL;
 	MR_leave_instrumentation();
   #else
@@ -588,8 +613,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", rezero_activation_info_ac,
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	rezero_activation_info_ac,
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -614,8 +641,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", rezero_activation_info_sr,
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	rezero_activation_info_sr,
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -639,8 +668,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", reset_activation_info_ac(Count::in, Ptr::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	reset_activation_info_ac(Count::in, Ptr::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -655,7 +686,7 @@
 	ps = pd->MR_pd_proc_static;
 
 	ps->MR_ps_activation_count = Count;
-	ps->MR_ps_outermost_activation_ptr = (MR_ProcDynamic *) Ptr;
+	ps->MR_ps_outermost_activation_ptr = Ptr;
 	MR_leave_instrumentation();
   #else
 	MR_fatal_error(""reset_activation_info_ac called when not using activation counts!"");
@@ -665,8 +696,10 @@
 #endif
 }").
 
-:- pragma foreign_proc("C", reset_activation_info_sr(Ptr::in),
-		[thread_safe, will_not_call_mercury], "{
+:- pragma foreign_proc("C",
+	reset_activation_info_sr(Ptr::in),
+	[thread_safe, will_not_call_mercury],
+"{
 #ifdef MR_DEEP_PROFILING
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
@@ -680,7 +713,7 @@
 	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
-	ps->MR_ps_outermost_activation_ptr = (MR_ProcDynamic *) Ptr;
+	ps->MR_ps_outermost_activation_ptr = Ptr;
 	MR_leave_instrumentation();
   #else
 	MR_fatal_error(""reset_activation_info_sr called when using activation counts!"");

@@ -1428,7 +1428,8 @@ compress_filename(Deep, FileName0, FileName) :-
 :- type call_class
 			% For normal first order calls
 	--->	normal(pred_proc_id)
-			% For calls to unify/2 and compare/3
+			% For calls to unify/2, compare/3 and
+			% compare_representation/3
 	;	special(pred_proc_id, prog_var)
 			% For higher order and typeclass method calls
 	;	generic(generic_call).
@@ -1449,6 +1450,13 @@ classify_call(ModuleInfo, Expr, Class) :-
 		;
 			predicate_table_search_pred_m_n_a(PredTable,
 				MercuryBuiltin, "compare", 3, [PredId]),
+			Args = [TypeInfoVar | _]
+		->
+			Class = special(proc(PredId, ProcId), TypeInfoVar)
+		;
+			predicate_table_search_pred_m_n_a(PredTable,
+				MercuryBuiltin, "compare_representation", 3,
+				[PredId]),
 			Args = [TypeInfoVar | _]
 		->
 			Class = special(proc(PredId, ProcId), TypeInfoVar)

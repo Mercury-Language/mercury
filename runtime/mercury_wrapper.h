@@ -227,7 +227,7 @@ extern	MR_Word		*MR_watch_addr;
 extern	MR_CallSiteDynamic
 			*MR_watch_csd_addr;
 extern	MR_bool		MR_watch_csd_started;
-extern	char		*MR_watch_csd_start_name;
+extern	const char	*MR_watch_csd_start_name;
 
 extern	unsigned long	MR_lld_cur_call;
 extern	MR_bool		MR_lld_print_enabled;
@@ -235,7 +235,7 @@ extern	MR_bool		MR_lld_print_name_enabled;
 extern	MR_bool		MR_lld_print_csd_enabled;
 extern	MR_bool		MR_lld_print_region_enabled;
 
-extern	char		*MR_lld_start_name;
+extern	const char	*MR_lld_start_name;
 extern	unsigned	MR_lld_start_block;
 extern	unsigned long	MR_lld_start_until;
 extern	unsigned long	MR_lld_csd_until;

@@ -90,12 +90,11 @@ Options:
 	--compile-times
 		Report information about compilation times in the stage 2
 		library and compiler directories.
-	--write-out-profile-data
-		When doing bootcheck in a deep profiling grade, enable the
-		writing out of profile data files. Since all compilations save
-		their profiling data in the same file, this is useful mainly to
-		check that we don't get fatal errors during the writing out
-		process.
+	--no-write-out-profile-data
+		When doing bootcheck in a deep profiling grade, disable the
+		writing out of profile data files. This makes the bootcheck
+		faster, but avoiding writing out the profiling data also avoids
+		the checks on its integrity.
 	--type-stats TYPE_STATS_FILE_NAME
 		Collect statistics about the builtin operations (unify, index
 		and compare) performed on various types. The argument of this
@@ -156,7 +155,7 @@ else
 fi
 use_mmc_make=no
 compile_times=false
-write_out_profile_data=false
+write_out_profile_data=true
 type_stats=""
 
 if test -r .KEEP_OBJS
@@ -169,9 +168,9 @@ then
 	grade=`cat .BOOT_GRADE`
 fi
 
-if test -f .WRITE_DEEP
+if test -f .NO_WRITE_DEEP
 then
-	write_out_profile_data=true
+	write_out_profile_data=false
 fi
 
 # If you change these, you will also need to change scripts/ml.in,
@@ -286,8 +285,8 @@ while [ $# -gt 0 ]; do
 	--no-compile-times)
 		compile_times=false ;;
 
-	--write-out-profile-data)
-		write_out_profile_data=true ;;
+	--no-write-out-profile-data)
+		write_out_profile_data=false ;;
 
 	--type-stats)
 		type_stats="$2"; shift ;;

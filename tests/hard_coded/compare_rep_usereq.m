@@ -30,8 +30,7 @@ test(SA - A, SB - B) -->
 	io__nl,
 	io__write_string(SB),
 	io__nl,
-	{ std_util__compare_representation(Res, A, B) },
+	{ compare_representation(Res, A, B) },
 	io__write_string("Result = "),
 	io__write(Res),
 	io__write_string(".\n\n").
-

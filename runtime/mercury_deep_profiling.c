@@ -10,6 +10,9 @@
 **	Authors: conway, zs
 */
 
+/* turn on assertions, to protect the integrity of the generated data files */
+#define	MR_DEEP_CHECKS
+
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
 #include "mercury_stack_layout.h"

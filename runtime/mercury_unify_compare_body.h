@@ -43,6 +43,42 @@
 ** they support unifications but not comparisons. Since we cannot do it
 ** for such types, it is simplest not to do it for any types.
 */
+#ifdef  select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+    #ifdef include_compare_rep_code
+      #define return_compare_answer(kind, answer)                           \
+        do {                                                                \
+            compare_call_exit_code(MR_PASTE2(kind, _compare_representation)); \
+            raw_return_answer(answer);                                      \
+        } while (0)
+    #else
+      #define return_compare_answer(kind, answer)                           \
+        do {                                                                \
+            compare_call_exit_code(MR_PASTE2(kind, _compare));              \
+            raw_return_answer(answer);                                      \
+        } while (0)
+    #endif
+  #else
+    #define return_compare_answer(kind, answer)                             \
+        raw_return_answer(answer)
+  #endif
+#else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+    #define return_unify_answer(kind, answer)                               \
+        do {                                                                \
+            if (answer) {                                                   \
+                unify_call_exit_code(MR_PASTE2(kind, _unify));              \
+                raw_return_answer(MR_TRUE);                                 \
+            } else {                                                        \
+                unify_call_fail_code(MR_PASTE2(kind, _unify));              \
+                raw_return_answer(MR_FALSE);                                \
+            }                                                               \
+        } while (0)
+  #else
+    #define return_unify_answer(kind, answer)                               \
+        raw_return_answer(answer)
+  #endif
+#endif
 
     DECLARE_LOCALS
     initialize();
@@ -176,9 +212,9 @@ start_label:
                     if (x_functor_desc->MR_du_functor_ordinal <
                         y_functor_desc->MR_du_functor_ordinal)
                     {
-                        return_answer(MR_COMPARE_LESS);
+                        return_compare_answer(user, MR_COMPARE_LESS);
                     } else {
-                        return_answer(MR_COMPARE_GREATER);
+                        return_compare_answer(user, MR_COMPARE_GREATER);
                     }
                 }
 
@@ -188,7 +224,7 @@ start_label:
                 y_ptag = MR_tag(y);
 
                 if (x_ptag != y_ptag) {
-                    return_answer(MR_FALSE);
+                    return_unify_answer(user, MR_FALSE);
                 }
 
                 ptaglayout = &MR_type_ctor_layout(type_ctor_info).
@@ -202,7 +238,7 @@ start_label:
                         y_sectag = MR_unmkbody(y_data_value);
 
                         if (x_sectag != y_sectag) {
-                            return_answer(MR_FALSE);
+                            return_unify_answer(user, MR_FALSE);
                         }
 
                         break;
@@ -212,7 +248,7 @@ start_label:
                         y_sectag = y_data_value[0];
 
                         if (x_sectag != y_sectag) {
-                            return_answer(MR_FALSE);
+                            return_unify_answer(user, MR_FALSE);
                         }
 
                         break;
@@ -271,9 +307,9 @@ start_label:
                         MR_restore_transient_registers();
                         if (result != MR_COMPARE_EQUAL) {
   #ifdef  select_compare_code
-                            return_answer(result);
+                            return_compare_answer(user, result);
   #else
-                            return_answer(MR_FALSE);
+                            return_unify_answer(user, MR_FALSE);
   #endif
                         }
                     }
@@ -306,7 +342,7 @@ start_label:
     #endif
                     MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
-                        return_answer(result);
+                        return_compare_answer(user, result);
                     }
   #else
                     MR_save_transient_registers();
@@ -314,16 +350,16 @@ start_label:
                         x_data_value[cur_slot], y_data_value[cur_slot]);
                     MR_restore_transient_registers();
                     if (! result) {
-                        return_answer(MR_FALSE);
+                        return_unify_answer(user, MR_FALSE);
                     }
   #endif
                     cur_slot++;
                 }
 
   #ifdef  select_compare_code
-                return_answer(MR_COMPARE_EQUAL);
+                return_compare_answer(user, MR_COMPARE_EQUAL);
   #else
-                return_answer(MR_TRUE);
+                return_unify_answer(user, MR_TRUE);
   #endif
             }
 
@@ -426,7 +462,7 @@ start_label:
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
                     MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
-                        return_answer(result);
+                        return_compare_answer(tuple, result);
                     }
 #else
                     MR_save_transient_registers();
@@ -434,14 +470,14 @@ start_label:
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
                     MR_restore_transient_registers();
                     if (! result) {
-                        return_answer(MR_FALSE);
+                        return_unify_answer(tuple, MR_FALSE);
                     }
 #endif
                 }
 #ifdef  select_compare_code
-                return_answer(MR_COMPARE_EQUAL);
+                return_compare_answer(tuple, MR_COMPARE_EQUAL);
 #else
-                return_answer(MR_TRUE);
+                return_unify_answer(tuple, MR_TRUE);
 #endif
             }
 
@@ -454,28 +490,15 @@ start_label:
         case MR_TYPECTOR_REP_CHAR:
 
 #ifdef  select_compare_code
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-            compare_call_exit_code(integer_compare);
-  #endif
             if ((MR_Integer) x == (MR_Integer) y) {
-                return_answer(MR_COMPARE_EQUAL);
+                return_compare_answer(integer, MR_COMPARE_EQUAL);
             } else if ((MR_Integer) x < (MR_Integer) y) {
-                return_answer(MR_COMPARE_LESS);
+                return_compare_answer(integer, MR_COMPARE_LESS);
             } else {
-                return_answer(MR_COMPARE_GREATER);
+                return_compare_answer(integer, MR_COMPARE_GREATER);
             }
 #else
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-            if ((MR_Integer) x == (MR_Integer) y) {
-                unify_call_exit_code(integer_unify);
-                return_answer(MR_TRUE);
-            } else {
-                unify_call_fail_code(integer_unify);
-                return_answer(MR_FALSE);
-            }
-  #else
-            return_answer((MR_Integer) x == (MR_Integer) y);
-  #endif
+            return_unify_answer(integer, (MR_Integer) x == (MR_Integer) y);
 #endif
 
         case MR_TYPECTOR_REP_FLOAT:
@@ -485,28 +508,15 @@ start_label:
                 fx = MR_word_to_float(x);
                 fy = MR_word_to_float(y);
 #ifdef  select_compare_code
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(float_compare);
-  #endif
                 if (fx == fy) {
-                    return_answer(MR_COMPARE_EQUAL);
+                    return_compare_answer(float, MR_COMPARE_EQUAL);
                 } else if (fx < fy) {
-                    return_answer(MR_COMPARE_LESS);
+                    return_compare_answer(float, MR_COMPARE_LESS);
                 } else {
-                    return_answer(MR_COMPARE_GREATER);
+                    return_compare_answer(float, MR_COMPARE_GREATER);
                 }
 #else
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (fx == fy) {
-                    unify_call_exit_code(float_unify);
-                    return_answer(MR_TRUE);
-                } else {
-                    unify_call_fail_code(float_unify);
-                    return_answer(MR_FALSE);
-                }
-  #else
-                return_answer(fx == fy);
-  #endif
+                return_unify_answer(float, fx == fy);
 #endif
             }
 
@@ -517,55 +527,29 @@ start_label:
                 result = strcmp((char *) x, (char *) y);
 
 #ifdef  select_compare_code
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(string_compare);
-  #endif
                 if (result == 0) {
-                    return_answer(MR_COMPARE_EQUAL);
+                    return_compare_answer(string, MR_COMPARE_EQUAL);
                 } else if (result < 0) {
-                    return_answer(MR_COMPARE_LESS);
+                    return_compare_answer(string, MR_COMPARE_LESS);
                 } else {
-                    return_answer(MR_COMPARE_GREATER);
+                    return_compare_answer(string, MR_COMPARE_GREATER);
                 }
 #else
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result == 0) {
-                    unify_call_exit_code(string_unify);
-                    return_answer(MR_TRUE);
-                } else {
-                    unify_call_fail_code(string_unify);
-                    return_answer(MR_FALSE);
-                }
-  #else
-                return_answer(result == 0);
-  #endif
+                return_unify_answer(string, result == 0);
 #endif
             }
 
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef  select_compare_code
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-            compare_call_exit_code(c_pointer_compare);
-  #endif
             if ((void *) x == (void *) y) {
-                return_answer(MR_COMPARE_EQUAL);
+                return_compare_answer(c_pointer, MR_COMPARE_EQUAL);
             } else if ((void *) x < (void *) y) {
-                return_answer(MR_COMPARE_LESS);
+                return_compare_answer(c_pointer, MR_COMPARE_LESS);
             } else {
-                return_answer(MR_COMPARE_GREATER);
+                return_compare_answer(c_pointer, MR_COMPARE_GREATER);
             }
 #else
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-            if ((void *) x == (void *) y) {
-                unify_call_exit_code(c_pointer_unify);
-                return_answer(MR_TRUE);
-            } else {
-                unify_call_fail_code(c_pointer_unify);
-                return_answer(MR_FALSE);
-            }
-  #else
-            return_answer((void *) x == (void *) y);
-  #endif
+            return_unify_answer(c_pointer, (void *) x == (void *) y);
 #endif
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -577,10 +561,7 @@ start_label:
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(typeinfo_compare);
-  #endif
-                return_answer(result);
+                return_compare_answer(typeinfo, result);
 #else
                 MR_bool result;
 
@@ -588,14 +569,7 @@ start_label:
                 result = MR_unify_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result) {
-                    unify_call_exit_code(typeinfo_unify);
-                } else {
-                    unify_call_fail_code(typeinfo_unify);
-                }
-  #endif
-                return_answer(result);
+                return_unify_answer(typeinfo, result);
 #endif
             }
 
@@ -613,10 +587,7 @@ start_label:
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(typedesc_compare);
-  #endif
-                return_answer(result);
+                return_compare_answer(typedesc, result);
 #else
                 MR_bool result;
 
@@ -624,14 +595,7 @@ start_label:
                 result = MR_unify_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result) {
-                    unify_call_exit_code(typedesc_unify);
-                } else {
-                    unify_call_fail_code(typedesc_unify);
-                }
-  #endif
-                return_answer(result);
+                return_unify_answer(typedesc, result);
 #endif
             }
 
@@ -644,10 +608,7 @@ start_label:
                 result = MR_compare_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(typectorinfo_compare);
-  #endif
-                return_answer(result);
+                return_compare_answer(typectorinfo, result);
 #else
                 MR_bool result;
 
@@ -655,14 +616,7 @@ start_label:
                 result = MR_unify_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result) {
-                    unify_call_exit_code(typectorinfo_unify);
-                } else {
-                    unify_call_fail_code(typectorinfo_unify);
-                }
-  #endif
-                return_answer(result);
+                return_unify_answer(typectorinfo, result);
 #endif
             }
 
@@ -675,10 +629,7 @@ start_label:
                 result = MR_compare_type_ctor_desc(
                     (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                compare_call_exit_code(typectordesc_compare);
-  #endif
-                return_answer(result);
+                return_compare_answer(typectordesc, result);
 #else
                 MR_bool result;
 
@@ -686,14 +637,7 @@ start_label:
                 result = MR_unify_type_ctor_desc(
                     (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
                 MR_restore_transient_registers();
-  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result) {
-                    unify_call_exit_code(typectordesc_unify);
-                } else {
-                    unify_call_fail_code(typectordesc_unify);
-                }
-  #endif
-                return_answer(result);
+                return_unify_answer(typectordesc, result);
 #endif
             }
 
@@ -710,7 +654,12 @@ start_label:
                 result = MR_compare_closures((MR_Closure *) x,
                             (MR_Closure *) y);
                 MR_restore_transient_registers();
-                return_answer(result);
+
+                if (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_FUNC) {
+                    return_compare_answer(func, result);
+                } else {
+                    return_compare_answer(pred, result);
+                }
 #else
                 MR_fatal_error(attempt_msg "higher-order terms");
 #endif
@@ -731,3 +680,9 @@ start_label:
         default:
             MR_fatal_error(attempt_msg "terms of unknown representation");
     }
+
+#ifdef  select_compare_code
+  #undef    return_compare_answer
+#else
+  #undef    return_unify_answer
+#endif
