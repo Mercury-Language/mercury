@@ -898,8 +898,8 @@ struct MR_TypeCtorInfo_Struct {
     MR_ProcAddr         new_unify_pred;
     MR_ProcAddr         compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
-    MR_ProcAddr         solver_pred;
-    MR_ProcAddr         init_pred;
+    MR_ProcAddr         unused1;	/* spare */
+    MR_ProcAddr         unused2;	/* spare */
     MR_ConstString      type_ctor_module_name;
     MR_ConstString      type_ctor_name;
     MR_Integer          type_ctor_version;
