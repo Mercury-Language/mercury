@@ -3543,9 +3543,20 @@ transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
 
 transform_goal_2(not(A0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
 	transform_goal(A0, VarSet0, Subst, A, VarSet, Info0, Info),
-	% eliminate double negations
-	{ A = not(Goal1) - _ ->
+	{
+		% eliminate double negations
+		A = not(Goal1) - _
+	->
 		Goal = Goal1
+	;
+		% convert negated conjunctions of negations
+		% into disjunctions
+		A = conj(NegatedGoals) - _,
+		all_negated(NegatedGoals, UnnegatedGoals)
+	->
+		goal_info_init(GoalInfo),
+		map__init(StoreMap),
+		Goal = disj(UnnegatedGoals, StoreMap) - GoalInfo
 	;
 		goal_info_init(GoalInfo),
 		Goal = not(A) - GoalInfo
@@ -3653,6 +3664,13 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	{ term__apply_substitution(B0, Subst, B) },
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
+
+:- pred all_negated(list(hlds_goal), list(hlds_goal)).
+:- mode all_negated(in, out) is semidet.
+
+all_negated([], []).
+all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
+	all_negated(NegatedGoals, Goals).
 
 %-----------------------------------------------------------------------------
 

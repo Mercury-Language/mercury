@@ -781,8 +781,14 @@ implication, and logical equivalence as abbreviations
 can cause the introduction of double negations
 which could make otherwise well-formed code mode-incorrect.
 To avoid this problem, the language specifies that
-double negations are removed after syntax analysis,
-before mode analysis is performed.
+after syntax analysis, and before mode analysis is performed,
+the implementation must delete any double negations
+and must replace any negations of conjunctions of negations
+with disjunctions.  (Both of these transformations
+preserve the logical meaning and type-correctness of the code,
+and they preserve or improve mode-correctness:
+they never transform code fragments that would be
+well-moded into ones that would be ill-moded.)
 
 @node Types
 @chapter Types
