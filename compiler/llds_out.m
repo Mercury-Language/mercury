@@ -595,7 +595,7 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	io__write_string("\t\treturn;\n"),
 	io__write_string("\t}\n"),
 	io__write_string("\tdone = TRUE;\n"),
-	output_type_tables_init_list(Datas),
+	output_type_tables_init_list(Datas, SplitFiles),
 	io__write_string("}\n\n"),
 
 	io__write_string("void "),
@@ -694,18 +694,18 @@ output_c_data_init_list([Data | Datas]) -->
 	% Output code to register each type_ctor_info defined in this module.
 
 :- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
-	io__state::di, io__state::uo) is det.
+	bool::in, io__state::di, io__state::uo) is det.
 
-output_type_tables_init_list([]) --> [].
-output_type_tables_init_list([Data | Datas]) -->
+output_type_tables_init_list([], _) --> [].
+output_type_tables_init_list([Data | Datas], SplitFiles) -->
 	(
 		{ Data = rtti_data(RttiData) }
 	->
-		rtti_out__register_rtti_data_if_nec(RttiData)
+		rtti_out__register_rtti_data_if_nec(RttiData, SplitFiles)
 	;
 		[]
 	),
-	output_type_tables_init_list(Datas).
+	output_type_tables_init_list(Datas, SplitFiles).
 
 	% Output declarations for each module layout defined in this module
 	% (there should only be one, of course).

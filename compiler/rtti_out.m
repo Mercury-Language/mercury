@@ -47,9 +47,11 @@
 
 	% Output C code (e.g. a call to MR_register_type_ctor_info())
 	% to register the rtti_data in the type tables, if it represents a data
-	% structure that should be so registered.
+	% structure that should be so registered. The bool should be the value
+	% of the --split-c-files option; it governs whether the rtti_data is
+	% declared in the generated code or not.
 :- pred rtti_out__register_rtti_data_if_nec(rtti_data::in,
-	io__state::di, io__state::uo) is det.
+	bool::in, io__state::di, io__state::uo) is det.
 
 	% Output the C name of the rtti_data specified by the given
 	% rtti_type_id and rtti_name.
@@ -682,17 +684,27 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		[]
 	).
 
-rtti_out__register_rtti_data_if_nec(Data) -->
+rtti_out__register_rtti_data_if_nec(Data, SplitFiles) -->
 	(
 		{ Data = type_ctor_info(RttiTypeId,
 			_,_,_,_,_,_,_,_,_,_,_,_) }
 	->
-		io__write_string("\t{\n\t"),
-		output_rtti_addr_storage_type_name(RttiTypeId, type_ctor_info,
-			no),
-		io__write_string(";\n\tMR_register_type_ctor_info(\n\t\t&"),
-		output_rtti_addr(RttiTypeId, type_ctor_info),
-		io__write_string(");\n\t}\n")
+		(
+			{ SplitFiles = yes },
+			io__write_string("\t{\n\t"),
+			output_rtti_addr_storage_type_name(RttiTypeId,
+				type_ctor_info, no),
+			io__write_string(
+				";\n\tMR_register_type_ctor_info(\n\t\t&"),
+			output_rtti_addr(RttiTypeId, type_ctor_info),
+			io__write_string(");\n\t}\n")
+		;
+			{ SplitFiles = no },
+			io__write_string(
+				"\tMR_register_type_ctor_info(\n\t\t&"),
+			output_rtti_addr(RttiTypeId, type_ctor_info),
+			io__write_string(");\n")
+		)
 	;
 		{ Data = base_typeclass_info(_ClassId, _InstanceString,
 			_BaseTypeClassInfo) }
