@@ -42,7 +42,7 @@ disj_gen__generate_semi_disj(Goals, Code) -->
 		RestoreHeap = no
 	},
 	code_info__maybe_save_hp(RestoreHeap, HPSaveCode),
-	code_info__get_next_label(EndLabel),
+	code_info__get_next_label(EndLabel, no),
 	disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode),
 	code_info__remake_with_store_map,
 	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
@@ -69,7 +69,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 		])) }
 	;
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ElseLab),
+		code_info__get_next_label(ElseLab, no),
 		code_info__push_failure_cont(known(ElseLab)),
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
@@ -106,7 +106,7 @@ disj_gen__generate_non_disj(Goals0, Code) -->
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, yes),
 	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
 	{ Code = tree(SaveVarsCode, tree(SaveHeapCode, GoalsCode)) }.
 
@@ -120,7 +120,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	(
 		{ Goals = [_|_] }
 	->
-		code_info__get_next_label(ContLab0),
+		code_info__get_next_label(ContLab0, yes),
 		code_info__push_failure_cont(known(ContLab0)),
 		{ ContCode = node([
 			modframe(label(ContLab0)) -

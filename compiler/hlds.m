@@ -112,7 +112,6 @@
 :- type category	--->	deterministic		% functional & total
 			;	semideterministic	% just functional
 			;	nondeterministic.	% neither
-
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
 :- type liveness_info   ==      set(var).	% The live variables

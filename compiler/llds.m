@@ -192,10 +192,23 @@
 :- type reg		--->	r(int)		% integer regs
 			;	f(int).		% floating point regs
 
+	% local(proc_label)
+	%	local entry label
+	% local(proc_label, int, bool)
+	%	internal local label which can only be accessed externaly if
+	%	it is a continuation label.  The cont_type is if it is a cont
+	%	label, and whether the predicate is exported
+	% exported(proc_label)
+	%	entry label, which can be accessed from any where.
 :- type label
 	--->		local(proc_label)
-	;		local(proc_label, int)
+	;		local(proc_label, int, cont_type)
 	;		exported(proc_label).
+
+:- type cont_type
+	--->		no
+	;		local
+	;		exported.
 
 :- type code_addr
 	--->		label(label)
@@ -416,7 +429,8 @@ output_instruction(modframe(FailureContinuation)) -->
 
 output_instruction(label(Label)) -->
 	output_label(Label),
-	io__write_string(":\n\t;").
+	io__write_string(":\n\t;"),
+	maybe_output_update_prof_counter(Label).
 	
 output_instruction(goto(CodeAddr, CallerAddr)) -->
 	io__write_string("\t{ "),
@@ -646,6 +660,30 @@ output_code_addr_decls(imported(ProcLabel)) -->
 	output_proc_label(ProcLabel),
 	io__write_string(");\n\t  ").
 
+:- pred maybe_output_update_prof_counter(label, io__state, io__state).
+:- mode maybe_output_update_prof_counter(in, in, out) is det.
+
+maybe_output_update_prof_counter(Label) -->
+	(
+		{ Label = local(ProcLabel, _, exported) }
+	->
+		{ Label2 = exported(ProcLabel) },
+		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
+		output_label(Label2),
+		io__write_string("))\n"),
+		io__write_string("\t\t/* restore prof_current_proc */\n")
+	;
+		{ Label = local(ProcLabel, _, local) }
+	->
+		{ Label2 = local(ProcLabel) },
+		io__write_string("\n\tupdate_prof_current_proc((LABEL"),
+		output_label(Label2),
+		io__write_string("))\n"),
+		io__write_string("\t\t/* restore prof_current_proc */\n")
+	;
+		{ true }
+	).
+
 :- pred output_goto(code_addr, code_addr, io__state, io__state).
 :- mode output_goto(in, in, di, uo) is det.
 
@@ -683,7 +721,7 @@ output_goto(label(Label), CallerAddr) -->
 		output_code_addr(CallerAddr),
 		io__write_string(");")
 	;
-		{ Label = local(_,_) }
+		{ Label = local(_,_,_) }
 	->
 		io__write_string("GOTO_LABEL("),
 		output_label(Label),
@@ -791,7 +829,7 @@ output_label(exported(ProcLabel)) -->
 output_label(local(ProcLabel)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_l").		% l for "local".
-output_label(local(ProcLabel, Num)) -->
+output_label(local(ProcLabel, Num, _)) -->
 	output_proc_label(ProcLabel),
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).

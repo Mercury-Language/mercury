@@ -39,7 +39,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		ReclaimHeap = no
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-	code_info__get_next_label(ElseLab),
+	code_info__get_next_label(ElseLab, no),
 	code_info__push_failure_cont(known(ElseLab)),
 	code_info__generate_nondet_saves(SaveCode),
 		% Grab the instmap
@@ -58,7 +58,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_det_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 		% place the label marking the start of the then code,
 		% then execute the then goal, and then mark the end
 		% of the if-then-else
@@ -95,7 +95,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		ReclaimHeap = no
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-	code_info__get_next_label(ElseLab),
+	code_info__get_next_label(ElseLab, no),
 	code_info__push_failure_cont(known(ElseLab)),
 	code_info__generate_nondet_saves(SaveCode),
 		% generate the semi-deterministic test goal
@@ -111,7 +111,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_semi_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 	{ TestCode = tree(
 		tree(HPSaveCode, SaveCode),
 		CondCode
@@ -152,7 +152,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		ReclaimHeap = no
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-	code_info__get_next_label(ElseLab),
+	code_info__get_next_label(ElseLab, no),
 	code_info__push_failure_cont(known(ElseLab)),
 	code_info__generate_nondet_saves(SaveCode),
 	{ CondGoal = _ - GoalInfo },
@@ -182,7 +182,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_non_goal(ElseGoal, ElseGoalCode),
-	code_info__get_next_label(EndLab),
+	code_info__get_next_label(EndLab, no),
 	{ TestCode = tree(
 		tree(
 			tree(HPSaveCode, SaveCode),

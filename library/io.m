@@ -100,6 +100,18 @@
 %		The term read had better be of the right type!
 %		This is a hack!
 
+:- pred io__ignore_whitespace(io__result(list(character)), io__state,
+				io__state).
+:- mode io__ignore_whitespace(out, di, uo) is det.
+%		Discards all the whitespace from the current stream.
+
+:- pred io__ignore_whitespace(io__input_stream, io__result(list(character)),
+				io__state, io__state).
+:- mode io__ignore_whitespace(in, out, di, uo) is det.
+%		Discards all the whitespace from the specified stream.
+
+
+
 %-----------------------------------------------------------------------------%
 
 % Output predicates.
@@ -599,6 +611,49 @@ io__putback_char(Stream, Char, IO_0, IO) :-
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
 	IO = io__state(A, PutBack, C, D, E).
+
+io__ignore_whitespace(Result) -->
+	io__input_stream(Stream),
+	io__ignore_whitespace(Stream, Result).
+
+io__ignore_whitespace(Stream, Result) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = error(Error) },
+		{ Result = error(Error) }
+	;
+		{ CharResult = eof },
+		{ Result = eof }
+	;
+		{ CharResult = ok(Char) },
+		(
+			(
+				% XXX Need to add the rest of the ws chars
+				{ Char = '\n' } 
+			;
+				{ Char = '\t' }
+			;	
+				{ Char = ' ' }
+			)
+		->
+			io__ignore_whitespace(Stream, Result0),
+			(
+				{ Result0 = ok(Chars) },
+				{ Result = ok([Char | Chars]) }
+			;
+				{ Result0 = error(_) },
+				{ Result = Result0 }
+			;
+				{ Result0 = eof },
+				{ Result = ok([Char]) }
+			)
+		;
+			io__putback_char(Stream, Char),
+			{ Result = ok([]) }
+		)	
+	).
+			
+			
 
 %-----------------------------------------------------------------------------%
 

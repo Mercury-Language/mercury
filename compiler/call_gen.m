@@ -66,7 +66,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
 	code_info__setup_call(Args, Arguments, caller, CodeB),
-	code_info__get_next_label(ReturnLabel),
+	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
@@ -128,7 +128,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
 	code_info__setup_call(Args, Arguments, caller, CodeB),
-	code_info__get_next_label(ReturnLabel),
+	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
@@ -144,7 +144,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 			"branch to semidet procedure",
 		label(ReturnLabel) - "Continuation label"
 	]) },
-	code_info__get_next_label(ContLab),
+	code_info__get_next_label(ContLab, no),
 	code_info__generate_failure(FailCode),
 	{ CodeD = tree(node([
 		if_val(lval(reg(r(1))), label(ContLab)) -
@@ -162,7 +162,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
 	code_info__setup_call(Args, Arguments, caller, CodeB),
-	code_info__get_next_label(ReturnLabel),
+	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(InputArguments, CodeC0),
@@ -388,7 +388,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	call_gen__save_variables(CodeA),
 	code_info__clear_reserved_registers,
 	code_info__setup_call(Args, Arguments, caller, CodeB),
-	code_info__get_next_label(ReturnLabel),
+	code_info__get_next_label(ReturnLabel, yes),
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
@@ -443,7 +443,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	(
 		{ Det = semideterministic }
 	->
-		code_info__get_next_label(ContLab),
+		code_info__get_next_label(ContLab, no),
 		code_info__generate_failure(FailCode),
 		{ CodeD = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
@@ -589,7 +589,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 				"Assign number of output arguments"
 		])
 	) },
-	code_info__get_next_label(ReturnLabel),
+	code_info__get_next_label(ReturnLabel, yes),
 	(
 		{ PredDet = deterministic },
 		{ CallCode = node([
@@ -607,7 +607,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 			label(ReturnLabel) - "Continuation label"
 		]) },
 		code_info__generate_failure(FailCode),
-		code_info__get_next_label(ContLab),
+		code_info__get_next_label(ContLab, no),
 		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"

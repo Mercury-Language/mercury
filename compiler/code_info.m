@@ -43,8 +43,9 @@
 			is det.
 
 		% Generate the next local label in sequence.
-:- pred code_info__get_next_label(label, code_info, code_info).
-:- mode code_info__get_next_label(out, in, out) is det.
+		% Bool option is if the label can be accessed externally.
+:- pred code_info__get_next_label(label, bool, code_info, code_info).
+:- mode code_info__get_next_label(out, in, in, out) is det.
 
 		% Generate the next local label number in sequence.
 :- pred code_info__get_next_label_number(int, code_info, code_info).
@@ -1535,12 +1536,28 @@ code_info__reserve_register(Reg) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__get_next_label(Label) -->
+code_info__get_next_label(Label, Cont0) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_next_label_number(N),
 	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	(
+		{ Cont0 = yes }
+	->
+		(
+			{ pred_info_is_exported(PredInfo) }
+		->
+			{ Cont = exported }
+		;
+			{ Cont = local }
+		)
+	;
+		{ Cont = no }
+	),
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Cont,
+		Label) 
+	}.
 
 code_info__get_next_label_number(N) -->
 	code_info__get_label_count(N0),
@@ -2658,7 +2675,7 @@ code_info__failure_cont_address(unknown, do_redo).
 	% generated in the goal.
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
-	code_info__get_next_label(FailLabel),
+	code_info__get_next_label(FailLabel, yes),
 	code_info__push_temp(curfr, CurfrSlot),
 	code_info__push_temp(redoip(lval(curfr)), RedoipSlot),
 	{ SaveCode = node([
@@ -2675,7 +2692,8 @@ code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	{ PreCommit = tree(SaveCode, SetRedoIp) }.
 
 code_info__generate_commit(FailLabel, Commit) -->
-	code_info__get_next_label(SuccLabel),
+	% XXX Not sure if this label can be accessed externally
+	code_info__get_next_label(SuccLabel, yes),
 	{ GotoSuccCode = node([
 		goto(label(SuccLabel), label(SuccLabel)) -
 			"jump to success continuation",

@@ -64,7 +64,7 @@ tag_switch__generate(Cases, Var, Det, LocalDet, EndLabel, Code) -->
 	{ tag_switch__group_tags(Cases, TagCaseMap0, TagCaseMap) },
 	{ tag_switch__order_tags(TagCountList, TagCaseMap, TagCaseList) },
 
-	code_info__get_next_label(FailLabel),
+	code_info__get_next_label(FailLabel, no),
 	code_info__produce_variable(Var, VarCode, Rval),
 	tag_switch__generate_primary_tag_codes(TagCaseList, Var, Rval,
 		Det, LocalDet, EndLabel, FailLabel, TagCountMap, CasesCode),
@@ -107,7 +107,7 @@ tag_switch__generate_primary_tag_codes([TagGroup | TagGroups], Var, Rval,
 		{ TagGroups = [_|_] ; LocalDet = semideterministic }
 	->
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ElseLabel),
+		code_info__get_next_label(ElseLabel, no),
 		% XXX may be able to dispense with the tag operation
 		{ TestRval = binop(ne, unop(tag, Rval),
 			unop(mktag, const(int_const(Primary)))) },
@@ -191,7 +191,7 @@ tag_switch__generate_secondary_tag_tests([Case0 | Cases0], Rval, Primary,
 	{ Case0 = Secondary - Goal },
 	( { Cases0 = [_|_] ; Det = semideterministic } ->
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ElseLabel),
+		code_info__get_next_label(ElseLabel, no),
 		{ StagLoc = remote ->
 			TestCode = node([if_val(binop(ne,
 				lval(field(Primary, Rval, const(int_const(0)))),
@@ -242,7 +242,7 @@ tag_switch__generate_secondary_tag_codes(CaseList, CurSecondary, MaxSecondary,
 	;
 		{ NextSecondary is CurSecondary + 1 },
 		( { CaseList = [CurSecondary - Goal | CaseList1] } ->
-			code_info__get_next_label(NewLabel),
+			code_info__get_next_label(NewLabel, no),
 			( { CaseList1 = [] } ->
 				code_gen__generate_forced_goal(Det, Goal, GoalCode)
 			;

@@ -695,7 +695,7 @@ opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 
 opt_util__new_label_no([], N, N).
 opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
-	( Instr0 = label(local(_, K)) - _Comment ->
+	( Instr0 = label(local(_, K, _)) - _Comment ->
 		( K < N0 ->
 			N1 = N0
 		;
@@ -772,7 +772,7 @@ opt_util__instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
 	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
 opt_util__livevals_addr(label(Label), Result) :-
-	( Label = local(_,_) ->
+	( Label = local(_,_,_) ->
 		Result = no
 	;	
 		Result = yes
@@ -837,7 +837,7 @@ opt_util__count_temps_rval(_, N, N).
 
 opt_util__format_label(local(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
-opt_util__format_label(local(ProcLabel, _), Str) :-
+opt_util__format_label(local(ProcLabel, _, _), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
 opt_util__format_label(exported(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).

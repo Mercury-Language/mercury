@@ -275,8 +275,8 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		%	P = call(P0, ...)
 		% as a special case.
 		%
-		code_info__get_next_label(LoopEnd),
-		code_info__get_next_label(LoopStart),
+		code_info__get_next_label(LoopEnd, no),
+		code_info__get_next_label(LoopStart, no),
 		code_info__get_free_register(LoopCounter),
 		code_info__get_free_register(NumOldArgs),
 		code_info__get_free_register(NewClosure),

@@ -169,7 +169,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, Det, EndLabel,
 		{ Code = node([ label(EndLabel) - "End of dense switch" ]) },
 		{ Labels = [] }
 	;
-		code_info__get_next_label(ThisLabel),
+		code_info__get_next_label(ThisLabel, no),
 		dense_switch__generate_case(Cases0, NextVal, Det,
 					Cases1, ThisCode, Comment),
 		{ ThisCaseCode = tree(

@@ -71,7 +71,7 @@
 
 switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
-	code_info__get_next_label(EndLabel),
+	code_info__get_next_label(EndLabel, no),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
 	{ list__sort(TaggedCases0, TaggedCases) },
 	code_info__get_globals(Globals),
@@ -211,7 +211,7 @@ switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
 		{ Cases = [Case1, Case2] }
 	->
 		{ Case1 = case(_, _, Cons1, Goal1) },
-		code_info__get_next_label(ElseLab),
+		code_info__get_next_label(ElseLab, no),
 		code_info__push_failure_cont(known(ElseLab)),
 		unify_gen__generate_tag_test(Var, Cons1, TestCode),
 		code_info__pop_failure_cont,
@@ -272,7 +272,7 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, Det, LocalDet,
 		{ Cases = [_|_] ; LocalDet = semideterministic }
 	->
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ElseLabel),
+		code_info__get_next_label(ElseLabel, no),
 		code_info__push_failure_cont(known(ElseLabel)),
 		unify_gen__generate_tag_test(Var, Cons, TestCode),
 		code_info__pop_failure_cont,

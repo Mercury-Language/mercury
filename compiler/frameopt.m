@@ -466,7 +466,8 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 			FrameSize, Tail, _Teardown, Goto, After)
 	->
 		N1 is N0 + 1,
-		NewLabel = local(ProcLabel, N0),
+		% XXX What do I need to have here in the bool field.
+		NewLabel = local(ProcLabel, N0, local),
 		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
 		list__condense([[NewLabelInstr], Tail, Goto], Extra1),
 		map__set(TeardownMap0, Label, NewLabel, TeardownMap1),
@@ -761,7 +762,8 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 				IfCode = [Instr0]
 			;
 				N1 is N0 + 1,
-				NewLabel = local(ProcLabel, N0),
+				% XXX What option does the bool need to be?
+				NewLabel = local(ProcLabel, N0, local),
 				code_util__neg_rval(Rval, Neg),
 				list__condense([
 					[
@@ -907,7 +909,8 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 			SetupCodes = SetupCodes1
 		;
 			N is N1 + 1,
-			NewLabel = local(ProcLabel, N1),
+			% XXX What option does the bool need to be?
+			NewLabel = local(ProcLabel, N1, local),
 			LabelCode = [
 				label(NewLabel)
 					- "setup bridging label"

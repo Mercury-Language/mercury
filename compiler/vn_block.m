@@ -483,9 +483,9 @@ vn__record_label(Label, Livemap, VnTables0, VnTables, Livevals0, Livevals,
 			LabelNo = LabelNo0,
 			Parallels = []
 		;
-			( Label = local(ProcLabel, _) ->
+			( Label = local(ProcLabel, _, Cont) ->
 				LabelNo is LabelNo0 + 1,
-				NewLabel = local(ProcLabel, LabelNo),
+				NewLabel = local(ProcLabel, LabelNo, Cont),
 				Parallels = [parallel(Label, NewLabel,
 					ParEntries)]
 			;

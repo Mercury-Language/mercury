@@ -590,7 +590,7 @@ opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
 opt_debug__dump_label(local(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__append_list([P_str], Str).
-opt_debug__dump_label(local(ProcLabel, N), Str) :-
+opt_debug__dump_label(local(ProcLabel, N, _), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__int_to_string(N, N_str),
 	string__append_list([P_str, "_", N_str], Str).

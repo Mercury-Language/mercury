@@ -293,7 +293,7 @@ generate_category_code_2(deterministic, Goal, Instrs, Used) -->
 
 generate_category_code_2(semideterministic, Goal, Instrs, Used) -->
 		% Create a label for fall through on failure.
-	code_info__get_next_label(FallThrough),
+	code_info__get_next_label(FallThrough, no),
 	code_info__push_failure_cont(known(FallThrough)),
 		% generate the code for the body of the clause
 	code_gen__generate_semi_goal(Goal, Instr1),
@@ -943,7 +943,7 @@ code_gen__generate_negation(Goal, Code) -->
 	;
 		Reclaim = no
 	},
-	code_info__get_next_label(SuccLab),
+	code_info__get_next_label(SuccLab, no),
 	code_info__push_failure_cont(known(SuccLab)),
 	code_info__maybe_save_hp(Reclaim, SaveHeapCode),
 	code_info__generate_nondet_saves(SaveCode),

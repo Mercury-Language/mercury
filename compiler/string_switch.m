@@ -32,9 +32,9 @@ string_switch__generate(Cases, Var, Det, _LocalDet, EndLabel, Code) -->
 	{ SlotReg = reg(SlotR) },
 	code_info__get_free_register(StringR),
 	{ StringReg = reg(StringR) },
-	code_info__get_next_label(LoopLabel),
-	code_info__get_next_label(FailLabel),
-	code_info__get_next_label(JumpLabel),
+	code_info__get_next_label(LoopLabel, no),
+	code_info__get_next_label(FailLabel, no),
+	code_info__get_next_label(JumpLabel, no),
 	code_info__get_next_label_number(NextSlotsTableLabel),
 	code_info__get_next_label_number(StringTableLabel),
 	{
@@ -272,7 +272,7 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, Det, FailLabel, EndLabe
 			error("string_switch__gen_hash_slots: string expected")
 		},
 		{ StringRval = const(string_const(String)) },
-		code_info__get_next_label(Label),
+		code_info__get_next_label(Label, no),
 		{ string__append_list(["case """, String, """"], Comment) },
 		{ LabelCode = node([
 			label(Label) - Comment
