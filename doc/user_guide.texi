@@ -2282,12 +2282,12 @@ Whenever a command line has @var{name} as its first word,
 the debugger will substitute the given command and parameters for this word
 before executing the command line.
 @sp 1
-If @var{command} is the upper-case word @samp{EMPTY},
+If @var{name} is the upper-case word @samp{EMPTY},
 the debugger will substitute the given command and parameters
 whenever the user types in an empty command line.
 @sp 1
 @sp 1
-If @var{command} is the upper-case word @samp{NUMBER},
+If @var{name} is the upper-case word @samp{NUMBER},
 the debugger will insert the given command and parameters
 before the command line
 whenever the user types in a command line that consists of a single number.
