@@ -1629,6 +1629,22 @@ Declare_label(mercury__table_resume_1_0_SkipAns);
 Declare_label(mercury__table_resume_1_0_RedoPoint);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_ChangeLoop, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_ChangeLoopDone, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_SolutionsListLoop, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_AnsListLoop, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_AnsListLoopDone1, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_AnsListLoopDone2, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_SkipAns, mercury__table_resume_1_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
+	mercury__table_resume_1_0_RedoPoint, mercury__table_resume_1_0);
 
 BEGIN_MODULE(table_resume_module)
 	init_entry_sl(mercury__table_resume_1_0);
