@@ -1827,7 +1827,7 @@ END_MODULE
 
 :- pragma(c_code, io__getenv(Var::in, Value::out), "{
 	Value = getenv(Var);
-	SUCCESS_INDICATOR == (Value != 0);
+	SUCCESS_INDICATOR = (Value != 0);
 }").
 
 :- pragma(c_code, io__putenv(VarAndValue::in), "
