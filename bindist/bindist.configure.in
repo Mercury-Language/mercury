@@ -7,7 +7,6 @@
 AC_INIT(./build_vars)
 AC_PREFIX_DEFAULT(/usr/local/mercury-0.6alpha)
 AC_CANONICAL_HOST
-AC_SUBST(FULLARCH)
 if test "$prefix" = "NONE"; then
 	PREFIX="$ac_default_prefix"
 else
@@ -29,16 +28,22 @@ AC_SUBST(LIBDIR)
 #
 # Pass on the inherited variables
 
+AC_SUBST(FULLARCH)
 AC_SUBST(LIBGRADES)
 AC_SUBST(DEFAULT_GRADE)
 AC_SUBST(NUM_REAL_R_REGS)
+AC_SUBST(NUM_REAL_TEMPS)
+AC_SUBST(BITS_PER_BYTE)
+AC_SUBST(BITS_PER_WORD)
+AC_SUBST(LOW_TAG_BITS)
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
-AC_SUBST(LOW_TAG_BITS)
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(CFLAGS_FOR_PIC)
+AC_SUBST(HAVE_DELAY_SLOT)
+
 #-----------------------------------------------------------------------------#
 GNU_MAKE=
 echo looking for GNU Make...
