@@ -9,6 +9,10 @@ print *
 print *
 
 print *
+print_optionals on
+print *
+print_optionals off
+print *
 
 print *
 

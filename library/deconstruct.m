@@ -54,7 +54,7 @@
 	%	  the functors [|]/2 and []/0 are used, even if the list uses
 	%	  the [....] shorthand.
 	%	- for user-defined types with user-defined equality, the
-	%	  functor will be of the form <<module:type/arity>>/0, except
+	%	  functor will be of the form <<module:type/arity>>, except
 	%	  with include_details_cc, in which case the type will be
 	%	  handled as if it had standard equality.
 	%	- for integers, the string is a base 10 number;

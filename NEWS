@@ -206,6 +206,11 @@ Changes to the Mercury implementation:
 
 * The debugger can now print higher order values.
 
+* The debugger can now print type_info structures. However, since such
+  structures are normally of interest to implementors only, the debugger
+  will print such values only if the user gives the command "print_optionals
+  on".
+
 * The debugger can now perform command line completion when compiled
   with GNU Readline support enabled.
 

@@ -2614,8 +2614,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (MR_streq(words[0], "print_optionals")) {
 		if (word_count == 2 && MR_streq(words[1], "off")) {
 			MR_print_optionals = MR_FALSE;
+			MR_trace_set_level(MR_trace_current_level(),
+				MR_print_optionals);
 		} else if (word_count == 2 && MR_streq(words[1], "on")) {
 			MR_print_optionals = MR_TRUE;
+			MR_trace_set_level(MR_trace_current_level(),
+				MR_print_optionals);
 		} else if (word_count != 1)  {
 			MR_trace_usage("developer", "print_optionals");
 		}

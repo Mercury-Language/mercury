@@ -162,7 +162,17 @@
             do {                                                        \
                 MR_ConstString  name;                                   \
                                                                         \
-                name = MR_expand_type_name(tci);                        \
+                name = MR_expand_type_name(tci, MR_TRUE);               \
+                MR_restore_transient_hp();                              \
+                MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
+                    name);                                              \
+                MR_save_transient_hp();                                 \
+            } while (0)
+  #define handle_type_ctor_name(tci)                                    \
+            do {                                                        \
+                MR_ConstString  name;                                   \
+                                                                        \
+                name = MR_expand_type_name(tci, MR_FALSE);              \
                 MR_restore_transient_hp();                              \
                 MR_make_aligned_string(expand_info->EXPAND_FUNCTOR_FIELD,\
                     name);                                              \
@@ -172,6 +182,8 @@
   #define handle_functor_name(name)                                     \
             ((void) 0)
   #define handle_noncanonical_name(tci)                                 \
+            ((void) 0)
+  #define handle_type_ctor_name(tci)                                    \
             ((void) 0)
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
@@ -982,36 +994,14 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             {
                 MR_TypeCtorInfo data_type_ctor_info; 
 
-                /*
-                ** The only source of noncanonicality in typeinfos is due
-                ** to type equivalences, Unfortunately, for type_ctor_infos,
-                ** there is another source: after expanding out equivalences,
-                ** the resulting `type' may be a type variable. Since the
-                ** printable representation of this type variable is arbitrary,
-                ** we avoid noncanonicality by always printing it the same way.
-                ** Note that the outermost type_ctor_info cannot be a variable.
-                */
-
                 if (noncanon == MR_NONCANON_ABORT) {
                     /* XXX should throw an exception */
                     MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                         ": attempt to deconstruct noncanonical term");
                 }
 
-
                 data_type_ctor_info = (MR_TypeCtorInfo) *data_word_ptr;
-
-                if (noncanon == MR_NONCANON_ALLOW) {
-                    data_type_ctor_info =
-                        MR_collapse_ctor_equivalences(data_type_ctor_info);
-                }
-
-                if (data_type_ctor_info == NULL) {
-                    handle_functor_name("<<typevariable>>");
-                } else {
-                    handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
-                }
-
+                handle_type_ctor_name(data_type_ctor_info);
                 handle_zero_arity_args();
             }
 
@@ -1145,6 +1135,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #undef  EXPAND_ONE_ARG
 #undef  handle_functor_name
 #undef  handle_noncanonical_name
+#undef  handle_type_ctor_name
 #undef  handle_zero_arity_args
 #undef  handle_zero_arity_all_args
 #undef  handle_zero_arity_one_arg

@@ -247,29 +247,6 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 	return maybe_equiv_type_info;
 }
 
-MR_TypeCtorInfo
-MR_collapse_ctor_equivalences(MR_TypeCtorInfo type_ctor_info) 
-{
-	MR_PseudoTypeInfo	pseudo_type_info;
-	
-		/* Look past equivalences */
-	while (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV_GROUND
-		|| MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_EQUIV)
-	{
-
-		pseudo_type_info = MR_type_ctor_layout(type_ctor_info).
-			layout_equiv;
-		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
-			return NULL;
-		}
-
-		type_ctor_info =
-			MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
-	}
-
-	return type_ctor_info;
-}
-
 /*
 ** MR_deallocate() frees up a list of memory cells
 */

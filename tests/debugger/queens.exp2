@@ -21,6 +21,15 @@ mdb>
        5:      4  3 CALL pred queens:qperm/2-0 (nondet) queens.m:45 (queens.m:42)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
+mdb> print_optionals on
+optional values are  being printed
+mdb> print *
+       HeadVar__1             	[1, 2, 3, 4, 5]
+       TypeInfo_for_T         	int
+mdb> print_optionals off
+optional values are not being printed
+mdb> print *
+       HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
        6:      4  3 SWTC pred queens:qperm/2-0 (nondet) s2; queens.m:46
 mdb> print *

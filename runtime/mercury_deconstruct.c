@@ -18,7 +18,7 @@
 #include "mercury_deconstruct.h"
 #include "mercury_deconstruct_macros.h"
 
-static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci);
+static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool);
 
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_args
 #define EXPAND_TYPE_NAME            MR_Expand_Functor_Args_Info
@@ -265,19 +265,20 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 }
 
 static MR_ConstString
-MR_expand_type_name(MR_TypeCtorInfo tci)
+MR_expand_type_name(MR_TypeCtorInfo tci, MR_bool wrap)
 {
     MR_String   str;
     int         len;
 
     len = 0;
-    len += 2;   /* << */
     len += strlen(tci->MR_type_ctor_module_name);
     len += 1;   /* : */
     len += strlen(tci->MR_type_ctor_name);
     len += 1;   /* / */
     len += 4;   /* arity; we do not support arities above 1024 */
-    len += 2;   /* >> */
+    if (wrap) {
+        len += 4;   /* <<>> */
+    }
     len += 1;   /* NULL */
 
     if (tci->MR_type_ctor_arity > 9999) {
@@ -288,11 +289,10 @@ MR_expand_type_name(MR_TypeCtorInfo tci)
     MR_allocate_aligned_string_msg(str, len, "MR_expand_type_name");
     MR_save_transient_hp();
 
-    sprintf(str, "<<%s:%s/%d>>",
+    sprintf(str, wrap? "<<%s:%s/%d>>" : "%s:%s/%d",
         tci->MR_type_ctor_module_name,
         tci->MR_type_ctor_name,
         tci->MR_type_ctor_arity);
 
-
-   return (MR_ConstString) str;
+    return (MR_ConstString) str;
 }
