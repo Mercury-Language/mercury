@@ -112,6 +112,7 @@ library.pic_os=$(library.os:.o=.$(EXT_FOR_PIC_OBJECTS))
 libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) library.init
 
 libmercury.a : $(library.os)
+	rm -f libmercury.a
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
 
