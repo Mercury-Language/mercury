@@ -10,30 +10,86 @@
 %
 % Floating point support.
 %
-% The interface provided here is rather low-level and not
-% syntactically elegant.  It's a building block, not a finished tool.
-%
 % XXX - What should we do about unification of two Nan's?
 %
 %---------------------------------------------------------------------------%
 
 :- module float.
 :- interface.
-:- import_module int, require.
+
+:- type float.
+
+/*****
+The following operators will not be supported until we implement
+predicate overloading.  Use the builtin_float_lt etc. versions instead.
+
+	% less than
+:- pred <(float, float).
+:- mode <(in, in) is semidet.
+
+	% greater than
+:- pred >(float, float).
+:- mode >(in, in) is semidet.
+
+	% less than or equal
+:- pred =<(float, float).
+:- mode =<(in, in) is semidet.
+
+	% greater than or equal
+:- pred >=(float, float).
+:- mode >=(in, in) is semidet.
+
+****/
+
+	% absolute value
+:- pred float__abs(float, float).
+:- mode float__abs(in, out) is det.
+
+	% maximum
+:- pred float__max(float, float, float).
+:- mode float__max(in, in, out) is det.
+
+	% minumim
+:- pred float__min(float, float, float).
+:- mode float__min(in, in, out) is det.
+
+	% addition
+:- func float + float = float.
+:- mode in    + in    = uo  is det.
+
+	% subtraction
+:- func float - float = float.
+:- mode in    - in    = uo  is det.
+
+	% multiplication
+:- func float * float = float.
+:- mode in    * in    = uo  is det.
+
+	% division
+:- func float / float = float.
+:- mode in    / in    = uo  is det.
+
+	% unary plus
+:- func + float = float.
+:- mode + in    = uo  is det.
+
+	% unary minus
+:- func - float = float.
+:- mode - in    = uo  is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred builtin_float_plus(float, float, float).
-:- mode builtin_float_plus(in, in, out) is det.
+:- mode builtin_float_plus(in, in, uo) is det.
 
 :- pred builtin_float_minus(float, float, float).
-:- mode builtin_float_minus(in, in, out) is det.
+:- mode builtin_float_minus(in, in, uo) is det.
 
 :- pred builtin_float_times(float, float, float).
-:- mode builtin_float_times(in, in, out) is det.
+:- mode builtin_float_times(in, in, uo) is det.
 
 :- pred builtin_float_divide(float, float, float).
-:- mode builtin_float_divide(in, in, out) is det.
+:- mode builtin_float_divide(in, in, uo) is det.
 
 :- pred builtin_float_gt(float, float).
 :- mode builtin_float_gt(in, in) is semidet.
@@ -74,8 +130,63 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module int, require.
 
-/* All the buitlin_float_* are builtins, which the compiler expands inline. */
+/*
+these are builtins
+X + Y = Z :- builtin_float_plus(X, Y, Z).
+X - Y = Z :- builtin_float_minus(X, Y, Z).
+X * Y = Z :- builtin_float_times(X, Y, Z).
+X / Y = Z :- builtin_float_divide(X, Y, Z).
+*/
+
+/* these ought to be builtins */
++ X = 0.0 + X.
+- X = 0.0 - X.
+
+/*
+these are builtins
+float:(X < Y) :- builtin_float_lt(X, Y).
+float:(X > Y) :- builtin_float_gt(X, Y).
+float:(X =< Y) :- builtin_float_le(X, Y).
+float:(X >= Y) :- builtin_float_ge(X, Y).
+*/
+
+/* All the builtin_float_* are builtins, which the compiler expands inline. */
+
+%---------------------------------------------------------------------------%
+
+float__abs(Num, Abs) :-
+	(
+		% (Num =< 0.0)
+		builtin_float_le(Num, 0.0)
+	->
+		Abs = - Num
+	;
+		Abs = Num
+	).
+
+float__max(X, Y, Max) :-
+	(
+		% X >= Y
+		builtin_float_ge(X, Y)
+	->
+		Max = X
+	;
+		Max = Y
+	).
+
+float__min(X, Y, Min) :-
+	(
+		% X =< Y
+		builtin_float_le(X, Y)
+	->
+		Min = X
+	;
+		Min = Y
+	).
+
+%---------------------------------------------------------------------------%
 
 % float_pow(Base, Exponent, Answer).
 %	XXXX This function could be more efficient, with an int_mod pred, to

@@ -54,115 +54,119 @@
 	% int__log2(X, N): N is the least integer such that 2 to the power N
 	% is greater than or equal to X.  X must be positive.
 
-/*
+	% addition
+:- func int + int = int.
+:- mode in  + in  = uo  is det.
 
-% If Mercury had undiscriminated unions (like the NU-Prolog type checker)
-% we could handle is/2 better:
+	% multiplication
+:- func int * int = int.
+:- mode in  * in  = uo  is det.
 
-:- type int__expr 	= 	int__expr_2 + int.
-:- type int__expr_2	--->	(int__expr + int__expr)
-			;	(int__expr * int__expr)
-			;	(int__expr - int__expr)
-			;	(- int__expr)
-			;	(+ int__expr)
-			;	(int__expr mod int__expr)
-			;	(int__expr // int__expr)
-			;	(int__expr << int__expr)
-			;	(int__expr >> int__expr)
-			;	(int__expr /\ int__expr)
-			;	(int__expr \/ int__expr)
-			;	(int__expr ^ int__expr)
-			;	(\ int__expr).
+	% subtraction
+:- func int - int = int.
+:- mode in  - in  = uo  is det.
 
-:- pred is(int, int__expr) is det.
-:- mode is(uo, in) is det.
+	% modulus (or is it remainder?)
+:- func int mod int = int.
+:- mode in  mod in  = uo  is det.
+
+	% truncating integer division
+	% should round toward zero
+	% (if it doesn't, file a bug report)
+:- func int // int = int.
+:- mode in  // in  = uo  is det.
+
+	% left shift
+:- func int << int = int.
+:- mode in  << in  = uo  is det.
+
+	% (arithmetic) right shift
+:- func int >> int = int.
+:- mode in  >> in  = uo  is det.
+
+	% bitwise and
+:- func int /\ int = int.
+:- mode in  /\ in  = uo  is det.
+
+	% bitwise or
+:- func int \/ int = int.
+:- mode in  \/ in  = uo  is det.
+
+	% bitwise exclusive or (xor)
+:- func int ^ int = int.
+:- mode in  ^ in  = uo  is det.
+
+	% bitwise complement
+:- func \ int = int.
+:- mode \ in  = uo  is det.
+
+	% is/2, for backwards compatiblity with Prolog (and with
+	% early implementations of Mercury)
+:- pred is(T, T) is det.
+:- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-*/
-
-% Instead, we use some hacks in the parser.
-
-:- type int__simple_expr --->	(int + int)
-			;	(int * int)
-			;	(int - int)
-			;	(- int)
-			;	(+ int)
-			;	(int mod int)	% modulus
-			;	(int // int)	% integer division
-						% (should round towards zero)
-			;	(int << int)	% left shift
-			;	(int >> int)	% right shift
-			;	(int /\ int)	% bitwise and
-			;	(int \/ int)	% bitwise or
-			;	(int ^ int)	% bitwise exclusive or
-			;	(\ int).	% bitwise complement
-
-:- pred is(int, int__simple_expr) is det.
-:- mode is(uo, in) is det.
-:- mode is(out, in) is det.
-
-/* NB: calls to `is' get automagically converted into
-   calls to builtin_whatever by the parser.
-   That is a quick hack to allow us to generate efficient code for it.
-*/
+/* The following routines are builtins that the compiler knows about. */
 
 :- pred builtin_plus(int, int, int).
 :- mode builtin_plus(in, in, uo) is det.
-:- mode builtin_plus(in, in, out) is det.
+:- mode builtin_plus(in, in, uo) is det.
 
 :- pred builtin_unary_plus(int, int).
-:- mode builtin_unary_plus(in, out) is det.
+:- mode builtin_unary_plus(in, uo) is det.
 
 :- pred builtin_minus(int, int, int).
-:- mode builtin_minus(in, in, out) is det.
+:- mode builtin_minus(in, in, uo) is det.
 
 :- pred builtin_unary_minus(int, int).
-:- mode builtin_unary_minus(in, out) is det.
+:- mode builtin_unary_minus(in, uo) is det.
 
 :- pred builtin_times(int, int, int).
-:- mode builtin_times(in, in, out) is det.
+:- mode builtin_times(in, in, uo) is det.
 
 :- pred builtin_div(int, int, int).
-:- mode builtin_div(in, in, out) is det.
+:- mode builtin_div(in, in, uo) is det.
 
 :- pred builtin_mod(int, int, int).
-:- mode builtin_mod(in, in, out) is det.
+:- mode builtin_mod(in, in, uo) is det.
 
 :- pred builtin_left_shift(int, int, int).
-:- mode builtin_left_shift(in, in, out) is det.
+:- mode builtin_left_shift(in, in, uo) is det.
 
 :- pred builtin_right_shift(int, int, int).
-:- mode builtin_right_shift(in, in, out) is det.
+:- mode builtin_right_shift(in, in, uo) is det.
 
 :- pred builtin_bit_or(int, int, int).
-:- mode builtin_bit_or(in, in, out) is det.
+:- mode builtin_bit_or(in, in, uo) is det.
 
 :- pred builtin_bit_and(int, int, int).
-:- mode builtin_bit_and(in, in, out) is det.
+:- mode builtin_bit_and(in, in, uo) is det.
 
 :- pred builtin_bit_xor(int, int, int).
-:- mode builtin_bit_xor(in, in, out) is det.
+:- mode builtin_bit_xor(in, in, uo) is det.
 
 :- pred builtin_bit_neg(int, int).
-:- mode builtin_bit_neg(in, out) is det.
+:- mode builtin_bit_neg(in, uo) is det.
 
 :- implementation.
 
 :- import_module require.
 
-:- external((is)/2).
+:- pragma(c_code, is(X::uo, Y::di),  "X = Y;").
+:- pragma(c_code, is(X::out, Y::in), "X = Y;").
+
 /*
-Z is (X + Y)	:-	builtin_plus(X, Y, Z).
-Z is (X * Y)	:-	builtin_times(X, Y, Z).
-Z is (X - Y)	:-	builtin_minus(X, Y, Z).
-Z is (X mod Y)	:-	builtin_mod(X, Y, Z).
-Z is (X // Y)	:-	builtin_div(X, Y, Z).
-Z is (X << Y)	:-	builtin_left_shift(X, Y, Z).
-Z is (X >> Y)	:-	builtin_right_shift(X, Y, Z).
-Z is (X /\ Y)	:-	builtin_bit_and(X, Y, Z).
-Z is (X \/ Y)	:-	builtin_bit_or(X, Y, Z).
-Z is (X ^ Y)	:-	builtin_bit_xor(X, Y, Z).
-Z is (\ X)	:-	builtin_bit_neg(X, Z).
+(X + Y) = Z	:-	builtin_plus(X, Y, Z).
+(X * Y) = Z	:-	builtin_times(X, Y, Z).
+(X - Y) = Z	:-	builtin_minus(X, Y, Z).
+(X mod Y) = Z	:-	builtin_mod(X, Y, Z).
+(X // Y) = Z	:-	builtin_div(X, Y, Z).
+(X << Y) = Z	:-	builtin_left_shift(X, Y, Z).
+(X >> Y) = Z	:-	builtin_right_shift(X, Y, Z).
+(X /\ Y) = Z	:-	builtin_bit_and(X, Y, Z).
+(X \/ Y) = Z	:-	builtin_bit_or(X, Y, Z).
+(X ^ Y) = Z	:-	builtin_bit_xor(X, Y, Z).
+(\ X) = Z	:-	builtin_bit_neg(X, Z).
 */
 
 int__abs(Num, Abs) :-
@@ -212,10 +216,10 @@ int__pow_2(Val, Exp, Result0, Result) :-
 	).
 
 int__log2(X, N) :-
-	( X =< 0 ->
-		error("int__log2: cannot take log of a non-positive number")
-	;
+	( X > 0 ->
 		int__log2_2(X, 0, N)
+	;
+		error("int__log2: cannot take log of a non-positive number")
 	).
 
 :- pred int__log2_2(int, int, int).
@@ -239,7 +243,8 @@ int__log2_2(X, N0, N) :-
 builtin_unary_minus(X, Y) :-
 	Y is 0 - X.
 
-builtin_unary_plus(X, X).
+builtin_unary_plus(X, Y) :-
+	Y is 0 + X.
 
 %-----------------------------------------------------------------------------%
 
