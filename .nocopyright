@@ -4,3 +4,4 @@ config.sub
 config.guess
 NEWS
 .mode-constraints-sync-tag
+.reuse_trunk_sync_tag
