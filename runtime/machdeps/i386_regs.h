@@ -13,7 +13,9 @@
 ** The others are just slots in a global array.
 **
 ** At the moment we're only using the callee-save registers
-** (ebx, esi, edi).
+** (ebx, esi, edi).  If we're using position-independent code (PIC),
+** i.e. if this code is being compiled with `-fpic' or `-fPIC',
+** then ebx is reserved, so we use only esi and edi.
 **
 ** For the 386, if `ebp' is not used as a global register variable,
 ** then the code *must not* be compiled with `-fomit-frame-pointer'.
@@ -32,11 +34,40 @@
 ** the frame pointer.  (E.g. the one containing io__init_state/2.)
 */
 
-#define NUM_REAL_REGS 3
+#if (defined(__PIC__) || defined(__pic__)) && !defined(PIC)
+  #define PIC 1
+#endif
+
+#if PIC
+  #define NUM_REAL_REGS 2
+#else
+  #define NUM_REAL_REGS 3
+#endif
 
 register	Word	mr0 __asm__("esi");	/* sp */
-register	Word	mr1 __asm__("ebx");	/* succip */
-register	Word	mr2 __asm__("edi");	/* r1 */
+register	Word	mr1 __asm__("edi");	/* succip */
+
+#if PIC
+  #define mr2	fake_reg[2]
+#else
+  register	Word	mr2 __asm__("ebx");	/* r1 */
+#endif
+
+#if PIC
+
+#define save_regs_to_mem(save_area) (		\
+	save_area[0] = mr0,			\
+	save_area[1] = mr1,			\
+	(void)0					\
+)
+
+#define restore_regs_from_mem(save_area) (	\
+	mr0 = save_area[0],			\
+	mr1 = save_area[1],			\
+	(void)0					\
+)
+
+#else /* ! PIC */
 
 #define save_regs_to_mem(save_area) (		\
 	save_area[0] = mr0,			\
@@ -51,6 +82,8 @@ register	Word	mr2 __asm__("edi");	/* r1 */
 	mr2 = save_area[2],			\
 	(void)0					\
 )
+
+#endif	/* ! PIC */
 
 #define save_transient_regs_to_mem(save_area)		((void)0)
 #define restore_transient_regs_from_mem(save_area)	((void)0)
