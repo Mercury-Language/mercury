@@ -274,7 +274,7 @@ associative(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
 	% ordering.
 
 :- pred reorder(hlds_goals::in, hlds_goals::in,
-	hlds_goals::out, hlds_goals::out) is nondet.
+	hlds_goals::out, hlds_goals::out) is multi.
 
 reorder(PCalls, QCalls, LHSCalls, RHSCalls) :-
 	list__perm(PCalls, LHSCalls),

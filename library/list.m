@@ -299,7 +299,7 @@
 	% list__perm(List0, List):
 	%	True iff `List' is a permutation of `List0'.
 	%
-:- pred	list__perm(list(T)::in, list(T)::out) is nondet.
+:- pred	list__perm(list(T)::in, list(T)::out) is multi.
 
 	% list__nth_member_search(List, Elem, Position):
 	%	Elem is the Position'th member of List.
