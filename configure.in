@@ -613,8 +613,8 @@ fi
 # grades won't work in grade jump.gc or fast.gc.
 
 if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
-	if test $BOOTSTRAP_MC = ""; then
-		DESIRED_GRADE=GRADE
+	if test "$BOOTSTRAP_MC" = ""; then
+		DESIRED_GRADE=$GRADE
 		if test "$DESIRED_GRADE" = jump.gc; then
 			GRADE=none.gc
 		else
