@@ -586,11 +586,17 @@ quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
 		Varset, VarTypes, RenameMap) },
 	{ goal_util__rename_vars_in_goal(Goal0, RenameMap, Goal) },
 	quantification__set_varset(Varset),
-	quantification__set_vartypes(VarTypes),
+	quantification__set_vartypes(VarTypes).
+/****
+	We don't need to add the newly created vars to the seen vars
+	because we won't find them anywhere else in the enclosing goal.
+	This is a performance improvement because it keeps the size of
+	the seen var set down.
 	quantification__get_seen(SeenVars0),
 	{ map__values(RenameMap, NewVarsList) },
 	{ set__insert_list(SeenVars0, NewVarsList, SeenVars) },
 	quantification__set_seen(SeenVars).
+***/
 
 %-----------------------------------------------------------------------------%
 
