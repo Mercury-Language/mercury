@@ -5,7 +5,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module int, std_util.
+:- import_module int.
 
 :- func curry((func(V_3, V_2) = V_1)) = ((func V_3) = ((func V_2) = V_1)).
 :- func uncurry(((func V_3) = ((func V_2) = T4)), V_3, V_2) = T4.
