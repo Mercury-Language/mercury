@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -184,11 +184,13 @@ MLPICOBJS_DEPS =
 # undefined variables is enabled.
 
 TARGET_GRADEFLAGS = \
-  $(maybe-base-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$*))) \
-  $(maybe-target-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$@)))
-maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$*)
+  $(maybe-base-GRADEFLAGS-$(findstring undefined,\
+		$(origin GRADEFLAGS-$(patsubst %_init,%,$*)))) \
+  $(maybe-target-GRADEFLAGS-$(findstring undefined,\
+  		$(origin GRADEFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init,%,$*))
 maybe-base-GRADEFLAGS-undefined =
-maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$@)
+maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-GRADEFLAGS-undefined =
 
 TARGET_MCFLAGS = \
@@ -197,8 +199,9 @@ maybe-base-MCFLAGS- = $(MCFLAGS-$*)
 maybe-base-MCFLAGS-undefined =
 
 TARGET_C2INITFLAGS = \
-  $(maybe-target-C2INITFLAGS-$(findstring undefined,$(origin C2INITFLAGS-$@)))
-maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$@)
+  $(maybe-target-C2INITFLAGS-$(findstring undefined,\
+		$(origin C2INITFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-C2INITFLAGS-undefined =
 
 TARGET_MGNUCFLAGS = \
