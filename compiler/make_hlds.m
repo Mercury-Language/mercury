@@ -259,6 +259,14 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 			report_warning("Warning: `external' declaration requires arity.\n"),
 			io__set_output_stream(OldStream, _)
 		)
+	; { ModuleDefn = module(_ModuleName) } ->
+		report_unexpected_decl("module", Context),
+		{ Status = Status0 },
+		{ Module = Module0 }
+	; { ModuleDefn = end_module(_ModuleName) } ->
+		report_unexpected_decl("end_module", Context),
+		{ Status = Status0 },
+		{ Module = Module0 }
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
@@ -4759,6 +4767,16 @@ qual_info_get_var_types(qual_info(_,_,_,_,VarTypes,_,_), VarTypes).
 %-----------------------------------------------------------------------------%
 
 	% Predicates to write out the different warning and error messages.
+
+:- pred report_unexpected_decl(string, prog_context, io__state, io__state).
+:- mode report_unexpected_decl(in, in, di, uo) is det.
+
+report_unexpected_decl(Descr, Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: unexpected or incorrect `"),
+	io__write_string(Descr),
+	io__write_string("' declaration.\n").
 
 :- pred multiple_def_error(sym_name, int, string, prog_context, prog_context,
 				io__state, io__state).

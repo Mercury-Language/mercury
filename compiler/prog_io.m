@@ -288,11 +288,18 @@ search_for_file([Dir | Dirs], FileName, R) -->
 
 :- type module_end ---> no ; yes(module_name, prog_context).
 
-:- pred get_end_module(item_list, item_list, module_end).
-:- mode get_end_module(in, out, out) is det.
+:- pred get_end_module(item_list, module_name, item_list, module_end).
+:- mode get_end_module(in, in, out, out) is det.
 
-get_end_module(RevItems0, RevItems, EndModule) :-
+get_end_module(RevItems0, ModuleName, RevItems, EndModule) :-
 	(
+		%
+		% Note: if the module name in the end_module declaration
+		% does not match what we expect, given the source file name,
+		% then we assume that it is for a nested module, and so
+		% we leave it alone.  If it is not for a nested module,
+		% the error will be caught by make_hlds.m.
+		%
 		RevItems0 = [
 			module_defn(_VarSet, end_module(ModuleName)) - Context
 			    | RevItems1]
@@ -403,7 +410,7 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error) -->
 	% check that it matches the initial module declaration (if any),
 	% and remove both of them from the final item list.
 	%
-	{ get_end_module(RevItems0, RevItems, EndModule) },
+	{ get_end_module(RevItems0, ModuleName, RevItems, EndModule) },
 	{ list__reverse(RevMessages, Messages0) },
 	{ list__reverse(RevItems, Items0) },
 	check_end_module(EndModule,
