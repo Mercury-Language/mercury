@@ -5,13 +5,13 @@
 % Main author: fjh.
 %
 % This file contains a mode-checker.
-% Still very incomplete.
+% Still somewhat incomplete.
 
 % XXX we need to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 
 %     dead (causes problems handling e.g. `same_length').
-
 % XXX break unifications into "micro-unifications"
+% XXX would even the above fixes be enough?
 
 /*************************************
 To mode-check a clause:
@@ -46,11 +46,12 @@ If goal is
 	(d) a unification
 		Check that the unification doesn't attempt to unify
 		two free variables (or in general two free sub-terms)
-		unless one of them is dead.
+		unless one of them is dead. (Also split unifications
+		up if necessary to avoid complicated sub-unifications.)
 	(e) a predicate call
 		Check that there is a mode declaration for the
 		predicate which matches the current instantiation of
-		the arguments.
+		the arguments.  (Also handle calls to implied modes.)
 	(f) an if-then-else
 		Attempt to schedule the condition.  If successful,
 		then check that it doesn't further instantiate any
@@ -337,7 +338,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo).
 
 :- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
-:- mode modecheck_final_insts(in, in, in, out) is det.
+:- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
 
 modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -518,7 +519,8 @@ modecheck_goal_2(switch(_, _, _), _, _) -->
 :- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)), set(var),
 			list(term), list(term), mode_info, mode_info,
 			hlds__goal_expr).
-:- mode handle_extra_goals(in, in, in, in, in, in, in, out) is det.
+:- mode handle_extra_goals(in, in, in, in, in, mode_info_ui, mode_info_ui, out)
+	is det.
 
 handle_extra_goals(MainGoal, ExtraGoals, NonLocals0, Args0, Args,
 		ModeInfo0, ModeInfo, Goal) :-
@@ -1092,9 +1094,11 @@ inst_matches_initial_3(bound(List), abstract_inst(_,_), ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 inst_matches_initial_3(ground, free, _, _).
 inst_matches_initial_3(ground, bound(_List), _, _ModuleInfo) :-
-	true.	% XXX BUG! should fail if 
+	fail.	% XXX BUG! should fail only if 
 		% List does not include all the constructors for the type,
 		% or if List contains some not_reached insts.
+		% Should succeed if List contains all the constructors
+		% for the type.  Problem is we don't know what the type was :-(
 inst_matches_initial_3(ground, ground, _, _).
 inst_matches_initial_3(ground, abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
@@ -1551,7 +1555,7 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
 	%	but not everything matches_final with not_reached -
 	%	in fact only not_reached matches_final with not_reached.
 
-	% It would be a good idea to fold inst_matches_initial and
+	% It might be a good idea to fold inst_matches_initial and
 	% inst_matches_final into a single predicate inst_matches(When, ...)
 	% where When is either `initial' or `final'.
 
@@ -1817,7 +1821,6 @@ modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 			% to avoid cascading errors
 		Inst = not_reached
 	),
-	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Mode = ModeX - ModeY,
@@ -1826,13 +1829,14 @@ modecheck_unification(term__variable(X), term__functor(Name, Args0, Context),
 	;
 		error("get_mode_of_args failed")
 	),
-	mode_info_get_module_info(ModeInfo2, ModuleInfo),
-	mode_info_get_var_types(ModeInfo2, VarTypes),
+	mode_info_get_module_info(ModeInfo1, ModuleInfo),
+	mode_info_get_var_types(ModeInfo1, VarTypes),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
 			VarTypes, ModuleInfo, Unification0),
 	split_complicated_subunifies(Unification0, Args0, ArgVars0,
 			Unification, Args, ArgVars,
-			ExtraGoals, ModeInfo2, ModeInfo3),
+			ExtraGoals, ModeInfo1, ModeInfo2),
+	modecheck_set_var_inst(X, Inst, ModeInfo2, ModeInfo3),
 	( bind_args(Inst, ArgVars, ModeInfo3, ModeInfo4) ->
 		ModeInfo = ModeInfo4
 	;
@@ -1855,8 +1859,8 @@ modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
 :- pred split_complicated_subunifies(unification, list(term), list(var),
 			unification, list(term), list(var),
 			pair(list(hlds__goal)), mode_info, mode_info).
-:- mode split_complicated_subunifies(in, in, in, out, out, out, out, in, out)
-	is det.
+:- mode split_complicated_subunifies(in, in, in, out, out, out, out,
+		mode_info_di, mode_info_uo) is det.
 
 split_complicated_subunifies(Unification0, Args0, ArgVars0,
 				Unification, Args, ArgVars, ExtraGoals) -->
@@ -1886,8 +1890,8 @@ split_complicated_subunifies(Unification0, Args0, ArgVars0,
 :- pred split_complicated_subunifies_2(list(var), list(uni_mode),
 			list(var), list(uni_mode), pair(list(hlds__goal)),
 			mode_info, mode_info).
-:- mode split_complicated_subunifies_2(in, in, out, out, out, in, out)
-	is semidet.
+:- mode split_complicated_subunifies_2(in, in, out, out, out,
+		mode_info_di, mode_info_uo) is semidet.
 
 split_complicated_subunifies_2([], [], [], [], [] - []) --> [].
 split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0], 
@@ -1904,8 +1908,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		ExtraGoals0 = BeforeGoals - AfterGoals0,
 
 		% introduce a new variable `Var'
-		mode_info_get_varset(ModeInfo0, VarSet0),
-		mode_info_get_var_types(ModeInfo0, VarTypes0),
+		mode_info_get_varset(ModeInfo1, VarSet0),
+		mode_info_get_var_types(ModeInfo1, VarTypes0),
 		varset__new_var(VarSet0, Var, VarSet),
 		map__lookup(VarTypes0, Var0, VarType),
 		map__set(VarTypes0, Var, VarType, VarTypes),

@@ -262,7 +262,7 @@ write_merge_context(if_then_else) -->
 
 :- pred report_mode_error_bind_var(mode_info, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_bind_var(in, in, in, in, di, uo) is det.
+:- mode report_mode_error_bind_var(mode_info_ui, in, in, in, di, uo) is det.
 
 report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -298,7 +298,7 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 
 :- pred report_mode_error_no_matching_mode(mode_info, list(var), list(inst),
 					io__state, io__state).
-:- mode report_mode_error_no_matching_mode(in, in, in, di, uo) is det.
+:- mode report_mode_error_no_matching_mode(mode_info_ui, in, in, di, uo) is det.
 
 report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -325,7 +325,7 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 
 :- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_var_has_inst(in, in, in, in, di, uo) is det.
+:- mode report_mode_error_var_has_inst(mode_info_ui, in, in, in, di, uo) is det.
 
 report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -345,7 +345,7 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 
 :- pred report_mode_error_implied_mode(mode_info, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_implied_mode(in, in, in, in, di, uo) is det.
+:- mode report_mode_error_implied_mode(mode_info_ui, in, in, in, di, uo) is det.
 
 report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 		%
@@ -381,7 +381,8 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 
 :- pred report_mode_error_unify_var_var(mode_info, var, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_unify_var_var(in, in, in, in, in, di, uo) is det.
+:- mode report_mode_error_unify_var_var(mode_info_ui, in, in, in, in, di, uo)
+	is det.
 
 report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -411,8 +412,8 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 
 :- pred report_mode_error_unify_var_functor(mode_info, var, const, list(term),
 					inst, list(inst), io__state, io__state).
-:- mode report_mode_error_unify_var_functor(in, in, in, in, in, in, di, uo)
-	is det.
+:- mode report_mode_error_unify_var_functor(mode_info_ui, in, in, in, in, in,
+			di, uo) is det.
 
 report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 		-->
@@ -486,7 +487,8 @@ mode_info_write_context(ModeInfo) -->
 
 :- pred report_mode_error_final_inst(mode_info, int, var, inst, inst,
 				final_inst_error, io__state, io__state).
-:- mode report_mode_error_final_inst(in, in, in, in, in, in, di, uo) is det.
+:- mode report_mode_error_final_inst(mode_info_ui, in, in, in, in, in,
+				di, uo) is det.
 
 report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst, Reason) -->
 	{ mode_info_get_context(ModeInfo, Context) },
