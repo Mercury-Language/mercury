@@ -1,15 +1,14 @@
-/* mips_regs.h - global register variables for the mips architecture. */
-
 /*
-** This file is included by machregs.h.
-** It defines the machine registers mr0 - mr31.
-** The first NUMBER_REAL_REGS of them are actually real machine
-** registers with much faster access time than the rest, which
-** are just global variables.
+** Machine registers mr0 - mr36 for the MIPS architecture.
+**
+** The first NUM_REAL_REGS of these are real machine registers.
+** The others are just slots in a global array.
 **
 ** At the moment we're only using the callee-save registers.
 ** We should modify this to optionally use the caller-save registers.
 */
+
+#define NUM_REAL_REGS 8
 
 reg 	Word	mr0 __asm__("s0");
 reg	Word	mr1 __asm__("s1");
@@ -20,9 +19,35 @@ reg	Word	mr5 __asm__("s5");
 reg	Word	mr6 __asm__("s6");
 reg	Word	mr7 __asm__("s7");
 
-#define NUM_REAL_REGS 8
+#define save_registers()	((void)0)
+#define restore_registers()	((void)0)
 
-extern Word mr8,  mr9,  mr10, mr11, mr12, mr13, mr14, mr15;
-extern Word mr16, mr17, mr18, mr19, mr20, mr21, mr22, mr23;
-extern Word mr24, mr25, mr26, mr27, mr28, mr29, mr30, mr31;
-extern Word mr32, mr33, mr34, mr35, mr36;
+#define	mr8	unreal_reg_8
+#define	mr9	unreal_reg_9
+#define	mr10	unreal_reg_10
+#define	mr11	unreal_reg_11
+#define	mr12	unreal_reg_12
+#define	mr13	unreal_reg_13
+#define	mr14	unreal_reg_14
+#define	mr15	unreal_reg_15
+#define	mr16	unreal_reg_16
+#define	mr17	unreal_reg_17
+#define	mr18	unreal_reg_18
+#define	mr19	unreal_reg_19
+#define	mr20	unreal_reg_20
+#define	mr21	unreal_reg_21
+#define	mr22	unreal_reg_22
+#define	mr23	unreal_reg_23
+#define	mr24	unreal_reg_24
+#define	mr25	unreal_reg_25
+#define	mr26	unreal_reg_26
+#define	mr27	unreal_reg_27
+#define	mr28	unreal_reg_28
+#define	mr29	unreal_reg_29
+#define	mr30	unreal_reg_30
+#define	mr31	unreal_reg_31
+#define	mr32	unreal_reg_32
+#define	mr33	unreal_reg_33
+#define	mr34	unreal_reg_34
+#define	mr35	unreal_reg_35
+#define	mr36	unreal_reg_36
