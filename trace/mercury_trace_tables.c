@@ -174,7 +174,8 @@ MR_dump_module_tables(FILE *fp)
 		fprintf(fp, "====================\n");
 		for (cur = MR_module_infos[i].MR_module_procs; cur != NULL;
 				cur = cur->MR_proc_next) {
-			MR_print_proc_id(fp, cur->MR_proc_layout, NULL);
+			MR_print_proc_id(fp, cur->MR_proc_layout, NULL,
+				NULL, NULL);
 		}
 	}
 }
@@ -204,7 +205,8 @@ MR_dump_module_procs(FILE *fp, const char *name)
 		fprintf(fp, "List of procedures in module `%s'\n\n", name);
 		for (cur = module->MR_module_procs; cur != NULL;
 				cur = cur->MR_proc_next) {
-			MR_print_proc_id(fp, cur->MR_proc_layout, NULL);
+			MR_print_proc_id(fp, cur->MR_proc_layout, NULL,
+				NULL, NULL);
 		}
 	}
 }
