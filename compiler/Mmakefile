@@ -178,7 +178,8 @@ mercury_compile: $(MC_PROG)
 
 libmercury_compile.a: lib$(MC_PROG).a
 	rm -f libmercury_compile.a
-	$(LN) lib$(MC_PROG).a libmercury_compile.a
+	cp lib$(MC_PROG).a libmercury_compile.a
+	ar d libmercury_compile.a main.o
 
 mercury_compile_init.$O: $(MC_PROG)_init.$O
 	rm -f mercury_compile_init.$O
