@@ -33,9 +33,6 @@
 /* The initial size of the spy points table. */
 #define	MR_INIT_SPY_POINTS	10
 
-/* The initial size of arrays of argument values. */
-#define	MR_INIT_ARG_COUNT	20
-
 /* The initial size of arrays of words. */
 #define	MR_INIT_WORD_COUNT	20
 
@@ -165,8 +162,6 @@ static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
-static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
-			Word *saved_regs, const char *name, bool *succeeded);
 static	void	MR_trace_internal_add_spy_point(MR_Spy_When when,
 			MR_Spy_Action action,
 			const MR_Stack_Layout_Entry *entry,
@@ -666,6 +661,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "retry")) {
 		int	stop_depth;
+		char   *message;
 
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			stop_depth = depth - n;
@@ -677,8 +673,10 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 
 		if (stop_depth == depth && MR_port_is_final(port)) {
-			MR_trace_retry(layout, saved_regs, event_details,
+			message = MR_trace_retry(layout, saved_regs, event_details,
 				seqno, depth, max_mr_num, jumpaddr);
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "%s\n", message);
 
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
@@ -1518,160 +1516,6 @@ MR_trace_usage(const char *cat, const char *item)
 		item, item);
 }
 
-void
-MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
-	MR_Event_Details *event_details, int seqno, int depth,
-	int *max_mr_num, Code **jumpaddr)
-{
-	const MR_Stack_Layout_Entry	*entry;
-	const MR_Stack_Layout_Label	*call_label;
-	const MR_Stack_Layout_Vars	*input_args;
-	Word				*args;
-	int				arg_max;
-	int				arg_num;
-	Word				arg_value;
-	int				i;
-	bool				succeeded;
-
-	entry = this_label->MR_sll_entry;
-	call_label = entry->MR_sle_call_label;
-
-	if (call_label->MR_sll_var_count < 0) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err,
-			"Cannot perform retry, because information about "
-			"the input arguments is not available.\n");
-		return;
-	}
-
-	input_args = &call_label->MR_sll_var_info;
-
-	/*
-	** With the Boehm collector, args need not be considered a root, 
-	** since its contents are just copies of values from elsewhere,
-	** With the native collector, it need not be considered a root
-	** because its lifetime spans only this function, in which
-	** no native garbage collection can be triggered.
-	*/
-
-	args = NULL;
-	arg_max = 0;
-
-	for (i = 0; i < call_label->MR_sll_var_count; i++) {
-		arg_value = MR_trace_find_input_arg(this_label, saved_regs,
-				input_args->MR_slvs_names[i], &succeeded);
-
-		if (! succeeded) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err,
-				"Cannot perform retry because the values of "
-				"some input arguments are missing.\n");
-			return;
-		}
-
-		arg_num = MR_get_register_number(
-			input_args->MR_slvs_pairs[i].MR_slv_locn);
-		if (arg_num > 0) {
-			MR_ensure_big_enough(arg_num, arg, Word,
-				MR_INIT_ARG_COUNT);
-			args[arg_num] = arg_value;
-		} else {
-			fatal_error("illegal location for input argument");
-		}
-	}
-
-	MR_trace_call_seqno = seqno - 1;
-	MR_trace_call_depth = depth - 1;
-
-	MR_trace_from_full = TRUE;
-
-	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-		MR_Live_Lval	location;
-		Word		*this_frame;
-
-		/*
-		** We are at a final port, so both curfr and maxfr
-		** must already have been reset to their original values.
-		** We only need to set up the succip register for the "call",
-		** and then remove this frame from the det stack.
-		*/
-
-		location = entry->MR_sle_succip_locn;
-		if (MR_LIVE_LVAL_TYPE(location) != MR_LVAL_TYPE_STACKVAR) {
-			fatal_error("illegal location for stored succip");
-		}
-
-		this_frame = MR_saved_sp(saved_regs);
-		MR_saved_succip(saved_regs) = (Word *)
-				MR_based_stackvar(this_frame,
-				MR_LIVE_LVAL_NUMBER(location));
-		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
-		MR_trace_event_number = MR_event_num_stackvar(this_frame);
-	} else {
-		Word	*this_frame;
-
-		/*
-		** We are at a final port, so sp must already have been reset
-		** to its original value. We only need to set up the succip
-		** and curfr registers for the "call", and remove this frame,
-		** and any other frames above it, from the nondet stack.
-		*/
-
-		this_frame = MR_saved_curfr(saved_regs);
-
-		MR_saved_succip(saved_regs) = MR_succip_slot(this_frame);
-		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
-		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
-		MR_trace_event_number = MR_event_num_framevar(this_frame);
-	}
-
-	for (i = 1; i < arg_max; i++) {
-		saved_reg(saved_regs, i) = args[i];
-	}
-
-	if (args != NULL) {
-		free(args);
-	}
-
-	*max_mr_num = max(*max_mr_num, arg_max);
-	*jumpaddr = entry->MR_sle_code_addr;
-
-	/*
-	** Overriding MR_trace_call_seqno etc is not enough, because
-	** we will restore the values of those variables later. We must
-	** also override the saved copies.
-	*/
-
-	event_details->MR_call_seqno = MR_trace_call_seqno;
-	event_details->MR_call_depth = MR_trace_call_depth;
-	event_details->MR_event_number = MR_trace_event_number;
-}
-
-static Word
-MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
-	const char *name, bool *succeeded)
-{
-	const MR_Stack_Layout_Vars	*vars;
-	int				i;
-
-	vars = &label->MR_sll_var_info;
-	if (vars->MR_slvs_names == NULL) {
-		*succeeded = FALSE;
-		return 0;
-	}
-
-	for (i = 0; i < label->MR_sll_var_count; i++) {
-		if (streq(vars->MR_slvs_names[i], name)) {
-			return MR_lookup_live_lval_base(
-				vars->MR_slvs_pairs[i].MR_slv_locn, saved_regs,
-				MR_saved_sp(saved_regs),
-				MR_saved_curfr(saved_regs), succeeded);
-		}
-	}
-
-	*succeeded = FALSE;
-	return 0;
-}
 
 static void
 MR_trace_internal_add_spy_point(MR_Spy_When when, MR_Spy_Action action,

@@ -10,12 +10,6 @@
 #include "mercury_types.h"
 #include "mercury_trace.h"
 
-typedef struct MR_Event_Details_Struct {
-	int			MR_call_seqno;
-	int			MR_call_depth;
-	int			MR_event_number;
-} MR_Event_Details;
-
 #ifdef  MR_USE_DECLARATIVE_DEBUGGER
 
 /*
@@ -48,10 +42,6 @@ extern	Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
 			int seqno, int depth,
 			const char *path, int *max_mr_num);
 
-extern	void	MR_trace_retry(const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
 
 extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 			const MR_Stack_Layout_Label *layout, Word *saved_regs,

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,22 @@
 
 #ifndef MERCURY_TRACE_H
 #define MERCURY_TRACE_H
+
+typedef struct MR_Event_Details_Struct {
+	int			MR_call_seqno;
+	int			MR_call_depth;
+	int			MR_event_number;
+} MR_Event_Details;
+
+/* The initial size of arrays of argument values. */
+#define	MR_INIT_ARG_COUNT	20
+
+char *	MR_trace_retry(const MR_Stack_Layout_Label *layout,
+			Word *saved_regs, MR_Event_Details *event_details,
+			int seqno, int depth, int *max_mr_num,
+			Code **jumpaddr);
+Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
+			Word *saved_regs, const char *name, bool *succeeded);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be

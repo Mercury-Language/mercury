@@ -1,6 +1,5 @@
-
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +17,10 @@
 :- interface. 
 
 % This module exports the following C functions:
-%	ML_DI_output_current
+% 	ML_DI_output_current_slots
+% 	ML_DI_output_current_vars
+% 	ML_DI_output_current_nth_var
+% 	ML_DI_output_current_live_var_names
 %	ML_DI_found_match
 %	ML_DI_read_request_from_socket
 % These are used by runtime/mercury_trace_external.c.
@@ -109,13 +111,16 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 		% A 'current_nth_var' request instructs the debuggee to 
 		% retrieve the specified live variable.
 	;	current_nth_var(int)
-	;	abort_prog
 			% just abort the program
-	;	no_trace
+	;	abort_prog
 			% stop tracing, and run the program to completion
-	;	error(string)
+	;	no_trace
+			% restarts execution at the call port of the call 
+			% corresponding to the current event
+	;	retry
 			% something went wrong when trying to get the
 			% next request
+	;	error(string)
 	.
 
 :- type event_number == int.
@@ -206,7 +211,8 @@ output_current_slots(EventNumber, CallNumber, DepthNumber, Port,
 % output_current_vars "ML_DI_output_current_vars":
 %	send to the debugger the list of the live variables of the current event.
 
-:- pragma export(output_current_vars(in, in, in, di, uo), "ML_DI_output_current_vars").
+:- pragma export(output_current_vars(in, in, in, di, uo), 
+	"ML_DI_output_current_vars").
 			
 :- pred output_current_vars(list(univ), list(string), 
 	io__output_stream, io__state, io__state).
@@ -223,7 +229,8 @@ output_current_vars(VarList, StringList, OutputStream) -->
 % output_current_nth_var "ML_DI_output_current_nth_var":
 %	send to the debugger the requested live variable of the current event.
 
-:- pragma export(output_current_nth_var(in, in, di, uo), "ML_DI_output_current_nth_var").
+:- pragma export(output_current_nth_var(in, in, di, uo), 
+	"ML_DI_output_current_nth_var").
 			
 :- pred output_current_nth_var(univ, io__output_stream, io__state, io__state).
 :- mode output_current_nth_var(in, in, di, uo) is det.
@@ -375,6 +382,7 @@ classify_request(abort_prog, 5).
 classify_request(error(_), 6).
 classify_request(current_live_var_names, 7).
 classify_request(current_nth_var(_), 8).
+classify_request(retry, 9).
 
 
 %-----------------------------------------------------------------------------%

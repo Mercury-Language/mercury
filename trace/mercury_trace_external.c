@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,8 +55,10 @@ typedef enum {
 				 = 7, /* report data for 
 					 current_live_var_names query */
 	MR_REQUEST_CURRENT_NTH_VAR 
-				 = 8  /* report data for 
+				 = 8, /* report data for 
 					 current_nth_var query */
+	MR_REQUEST_RETRY	 = 9  /* restart the execution to the call 
+					 port of the current event	      */
 
 } MR_debugger_request_type;
 
@@ -64,6 +66,8 @@ static MercuryFile MR_debugger_socket_in;
 static MercuryFile MR_debugger_socket_out;
 
 static void	MR_send_message_to_socket(const char *message);
+static void	MR_send_message_to_socket_format(const char *format, 
+			const char *message);
 static void	MR_read_request_from_socket(
 			Word *debugger_request_ptr, 
 			Integer *debugger_request_type_ptr);
@@ -202,7 +206,8 @@ MR_trace_init_external(void)
 		** It should be in the format "<hostname> <port>",
 		** where <hostname> is numeric (e.g. "123.456.78.90").
 		*/
-		if (sscanf(inet_socket, "%254s %254s", hostname, port_string)
+
+		if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
 			!= 2)
 		{
 			fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
@@ -321,16 +326,28 @@ MR_trace_final_external(void)
 	*/
 }
 
-void
+Code *
 MR_trace_event_external(MR_Trace_Cmd_Info *cmd, 
 	const MR_Stack_Layout_Label *layout, Word *saved_regs,
-	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
+	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path, 
+	int *max_mr_num)
 {
-	static bool searching = FALSE;
-	static Word search_data;
-	Word debugger_request;
-	Integer debugger_request_type, live_var_number;
-	Word var_list, var_names_list, type_list, var;
+	static bool	searching = FALSE;
+	static Word	search_data;
+	Integer		debugger_request_type;
+	Integer		live_var_number;
+	Word		debugger_request;
+	Word		var_list;
+	Word		var_names_list;
+	Word		type_list;
+	Word		var;
+	Code		*jumpaddr = NULL;
+	MR_Event_Details	event_details;
+	char		*message;
+
+	event_details.MR_call_seqno = MR_trace_call_seqno;
+	event_details.MR_call_depth = MR_trace_call_depth;
+	event_details.MR_event_number = MR_trace_event_number;
 
 	if (searching) {
 		/* XXX should also pass registers here,
@@ -342,7 +359,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 			MR_send_message_to_socket("forward_move_match_found");
 			searching = FALSE;
 		} else {
-			return;
+			return jumpaddr;
 		}
 	}
 
@@ -362,7 +379,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 				}
 				search_data = debugger_request;
 			        searching = TRUE;
-				return;
+				return jumpaddr;
 
 			case MR_REQUEST_CURRENT_LIVE_VAR_NAMES:
 				if (MR_debug_socket) {
@@ -408,15 +425,44 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 							depth, path);
 				break;
 
+			case MR_REQUEST_RETRY:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_RETRY\n");
+				}
+				message = MR_trace_retry(layout, saved_regs, 
+					&event_details, seqno, depth, 
+					max_mr_num, &jumpaddr);
+				if (message == NULL) {
+					MR_send_message_to_socket("ok");
+					cmd->MR_trace_cmd = MR_CMD_GOTO;
+					cmd->MR_trace_stop_event = 
+						MR_trace_event_number + 1;
+					return jumpaddr;
+				} else {
+					MR_send_message_to_socket_format(
+						"error(\"%s\").\n", message);
+				}
+				break;
+
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
-				return;
+				return jumpaddr;
 
 			default:
 				fatal_error("unexpected request read from "
 					"debugger socket");
 		}
 	}
+
+	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
+			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+
+	MR_trace_call_seqno = event_details.MR_call_seqno;
+	MR_trace_call_depth = event_details.MR_call_depth;
+	MR_trace_event_number = event_details.MR_event_number;
+
+	return jumpaddr;
 }
 
 
@@ -536,6 +582,15 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 }
 
 static void
+MR_send_message_to_socket_format(const char *format, const char *message)
+{
+	fprintf(MR_debugger_socket_out.file, format, message);
+	fflush(MR_debugger_socket_out.file);
+	MR_debugger_socket_out.line_number++;
+}
+
+
+static void
 MR_send_message_to_socket(const char *message)
 {
 	fprintf(MR_debugger_socket_out.file, "%s.\n", message);
@@ -610,7 +665,7 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 		}
 
 		MR_TRACE_CALL_MERCURY(
-			type_info_string = MR_type_name(type_info);
+			type_info_string = ML_type_name(type_info);
 		);
 	        MR_TRACE_USE_HP(
 			type_list = list_cons(type_info_string, type_list);
