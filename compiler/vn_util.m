@@ -514,6 +514,30 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			fail
 		)
 	;	
+		Binop = (>>),
+		(
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 >> I2,
+			Vnrval = vn_const(int_const(I)),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;	
+		Binop = (<<),
+		(
+			Vnrval1 = vn_const(int_const(I1)),
+			Vnrval2 = vn_const(int_const(I2))
+		->
+			I is I1 << I2,
+			Vnrval = vn_const(int_const(I)),
+			VnTables = VnTables0
+		;
+			fail
+		)
+	;	
 		Binop = eq,
 		(
 			Vn1 = Vn2
