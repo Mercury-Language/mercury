@@ -25,8 +25,10 @@ MNL	=	MERCURY_NU_LIB_DIR=. \
 		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
-MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=$(SP) \
-MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
+MSL	=	MERCURY_SP_LIB_DIR=. \
+		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
+		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
+				$(library.qls) $(NU_LIBRARY_QLS)`" \
 		$(SCRIPTS_DIR)/msl
 
 MCD	=	MERCURY_INT_DIR=. \
@@ -137,21 +139,32 @@ $(library.nos) $(NU_LIBRARY_NOS) error.no debug.no portray.no: nc_builtin.nl
 
 #-----------------------------------------------------------------------------#
 
-sicstus_compile: sp_builtin.pl
-	{ echo "on_exception(Error, (				"; \
-	  echo "  (prolog_flag(compiling, _, fastcode) -> true ; true),"; \
-	  echo "  compile(sp_builtin),				"; \
-	  echo "  garbage_collect,				"; \
-	  echo "  save('$@', 1),				"; \
-	  echo "  (prolog_flag(argv,Args)->                     "; \
-	  echo "         prolog_flag(character_escapes, _, off) "; \
-	  echo "  ;unix(argv(Args))),                           "; \
-	  echo "  ( Args = [CompileMode|Files] ->		"; \
-	  echo "(prolog_flag(compiling, _, CompileMode) -> true ; true),"; \
-	  echo "      fcompile(Files)				"; \
-	  echo "  ; true )					"; \
-	  echo "), print_message(error, Error)), halt ; halt.	"; \
-	} | $(SP)
+sicstus_saved_state:
+	echo "save('$@')." | $(SP)
+
+sicstus_compile: sp_builtin.pl sicstus_saved_state
+	echo "\
+on_exception(Error, (						\
+	/* if we are using Sicstus 3, we need to turn off */	\
+	/* character escapes */					\
+	( prolog_flag(argv,_) ->				\
+		prolog_flag(character_escapes, _, off) 		\
+	;							\
+  		true                           			\
+	),                           				\
+	( prolog_flag(compiling, _, fastcode) -> true ; true ),	\
+	compile(sp_builtin),					\
+	garbage_collect,					\
+	save('$@', 1),						\
+	( prolog_flag(argv,Args) -> true ; unix(argv(Args)) ), 	\
+	( Args = [CompileMode|Files] ->				\
+		( prolog_flag(compiling, _, CompileMode) -> true ; true ), \
+		fcompile(Files)					\
+	;							\
+		true						\
+	)							\
+), print_message(error, Error)), halt ; halt.			\
+	" | ./sicstus_saved_state
 
 #-----------------------------------------------------------------------------#
 
