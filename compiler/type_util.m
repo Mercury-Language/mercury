@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -266,7 +266,7 @@ type_util__var(term__variable(Var), Var).
 
 type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "base_type_info") - 1) :-
+type_id_is_hand_defined(qualified(PrivateBuiltin, "type_ctor_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
@@ -436,7 +436,7 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-	% The checks for type_info and base_type_info
+	% The checks for type_info and type_ctor_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
 	% private_builtin.m, but that would cause some
@@ -453,7 +453,7 @@ type_is_no_tag_type(Ctors, Ctor, Type) :-
 	ExistQVars = [],
 	unqualify_name(Ctor, Name),
 	Name \= "type_info",
-	Name \= "base_type_info",
+	Name \= "type_ctor_info",
 	Name \= "typeclass_info",
 	Name \= "base_typeclass_info".
 

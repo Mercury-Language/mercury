@@ -19,28 +19,28 @@ ENDINIT
 
 /*---------------------------------------------------------------------------*/
 
-	/* base_type_layout for `pred' */
+	/* type_ctor_layout for `pred' */
 	/* (this is used for all higher-order types) */
 
-const struct mercury_data___base_type_layout_pred_0_struct {
+const struct mercury_data___type_ctor_layout_pred_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_pred_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(MR_TYPELAYOUT_PREDICATE_VALUE))
+} mercury_data___type_ctor_layout_pred_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE))
 };
 
-	/* base_type_functors for `pred' */
+	/* type_ctor_functors for `pred' */
 	/* (this is used for all higher-order types) */
 
-const struct mercury_data___base_type_functors_pred_0_struct {
+const struct mercury_data___type_ctor_functors_pred_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_pred_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_pred_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
 
 	/* 
-	** base_type_info for `func' 
+	** type_ctor_info for `func' 
 	** (this is used for all higher-order func types) 
 	**
 	** Note: we use the special predicates, functors and layout for
@@ -50,7 +50,7 @@ const struct mercury_data___base_type_functors_pred_0_struct {
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_func_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -64,27 +64,27 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_func_0_struct {
 	const Word *f8;
 	const Word *f9;
 #endif
-} mercury_data___base_type_info_func_0 = {
+} mercury_data___type_ctor_info_func_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_pred_0,
-	(const Word *) & mercury_data___base_type_functors_pred_0,
+	(const Word *) & mercury_data___type_ctor_layout_pred_0,
+	(const Word *) & mercury_data___type_ctor_functors_pred_0,
 	(const Word *) string_const("func", 4)
 #endif
 };
 
 	/*
-	** base_type_info for `pred' 
+	** type_ctor_info for `pred' 
 	** (this is used for all higher-order pred types) 
 	*/
 
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -98,14 +98,14 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 	const Word *f8;
 	const Word *f9;
 #endif
-} mercury_data___base_type_info_pred_0 = {
+} mercury_data___type_ctor_info_pred_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_pred_0,
-	(const Word *) & mercury_data___base_type_functors_pred_0,
+	(const Word *) & mercury_data___type_ctor_layout_pred_0,
+	(const Word *) & mercury_data___type_ctor_functors_pred_0,
 	(const Word *) string_const("pred", 4)
 #endif
 };
@@ -149,10 +149,10 @@ END_MODULE
 	** MR_create_type_info():
 	**
 	** Given a type_info (term_type_info) which contains a
-	** base_type_info pointer and possibly other type_infos
+	** type_ctor_info pointer and possibly other type_infos
 	** giving the values of the type parameters of this type,
 	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** base_type_info pointer and possibly other type_infos
+	** type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
 	** 	- the values of the type parameters of this type,
 	** or	- an indication of the type parameter of the
@@ -167,11 +167,11 @@ END_MODULE
 	** and restore_transient_hp() around calls to this function.
 	**
 	** In the case where the argument's pseudo_type_info is a
-	** base_type_info with no arguments, we don't copy the
-	** base_type_info - we just return a pointer to it - no memory
+	** type_ctor_info with no arguments, we don't copy the
+	** type_ctor_info - we just return a pointer to it - no memory
 	** is allocated. The caller can check this by looking at the
 	** first cell of the returned pointer - if it is zero, this is a
-	** base_type_info. Otherwise, it is an allocated copy of a
+	** type_ctor_info. Otherwise, it is an allocated copy of a
 	** type_info.
 	**
 	** NOTE: If you are changing this code, you might also need
@@ -184,7 +184,7 @@ Word *
 MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	int i, arity, extra_args;
-	Word *base_type_info;
+	Word *type_ctor_info;
 	Word *arg_type_info;
 	Word *type_info;
 
@@ -204,18 +204,18 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		return arg_type_info;
 	}
 
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(arg_pseudo_type_info);
 
 	/* no arguments - optimise common case */
-	if (base_type_info == arg_pseudo_type_info) {
+	if (type_ctor_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	}
 
-	if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
 		arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
 		extra_args = 2;
 	} else {
-		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		arity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor_info);
 		extra_args = 1;
 	}
 
@@ -259,7 +259,7 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 ** MR_compare_type_info(type_info_1, type_info_2):
 **
 ** Compare two type_info structures, using an arbitrary ordering
-** (based on the addresses of the base_type_infos, or in
+** (based on the addresses of the type_ctor_infos, or in
 ** the case of higher order types, the arity).
 **
 ** You need to wrap save/restore_transient_hp() around
@@ -270,7 +270,7 @@ int
 MR_compare_type_info(Word t1, Word t2)
 {
 	Word	*type_info_1, *type_info_2;
-	Word	*base_type_info_1, *base_type_info_2;
+	Word	*type_ctor_info_1, *type_ctor_info_2;
 	int	num_arg_types;
 	int	i;
 
@@ -297,7 +297,7 @@ MR_compare_type_info(Word t1, Word t2)
 	}
 
 	/*
-	** Otherwise find the addresses of the base_type_infos,
+	** Otherwise find the addresses of the type_ctor_infos,
 	** and compare those.
 	**
 	** Note: this is an arbitrary ordering. It doesn't matter
@@ -308,24 +308,24 @@ MR_compare_type_info(Word t1, Word t2)
 	** The casts to (Word) here are in the hope of increasing
 	** the chance that this will work on a segmented architecture.
 	*/
-	base_type_info_1 = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info_1);
-	base_type_info_2 = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info_2);
-	if ((Word) base_type_info_1 < (Word) base_type_info_2) {
+	type_ctor_info_1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_1);
+	type_ctor_info_2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_2);
+	if ((Word) type_ctor_info_1 < (Word) type_ctor_info_2) {
 		return COMPARE_LESS;
 	}
-	if ((Word) base_type_info_1 > (Word) base_type_info_2) {
+	if ((Word) type_ctor_info_1 > (Word) type_ctor_info_2) {
 		return COMPARE_GREATER;
 	}
 
 	/*
-	** If the base_type_info addresses are equal, we don't need to
+	** If the type_ctor_info addresses are equal, we don't need to
 	** compare the arity of the types - they must be the same -
 	** unless they are higher-order (which are all mapped to
 	** pred/0). 
 	** But we need to recursively compare the argument types, if any.
 	*/
 		/* Check for higher order */
-	if (MR_BASE_TYPEINFO_IS_HO(base_type_info_1)) 
+	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info_1)) 
 	{
 		int num_arg_types_2;
 
@@ -351,7 +351,7 @@ MR_compare_type_info(Word t1, Word t2)
 		type_info_1++;
 		type_info_2++;
 	} else {
-		num_arg_types = field(mktag(0), base_type_info_1,
+		num_arg_types = field(mktag(0), type_ctor_info_1,
 				OFFSET_FOR_COUNT);
 	}
 		/* compare the argument types */
@@ -384,18 +384,18 @@ MR_collapse_equivalences(Word maybe_equiv_type_info)
 {
 	Word *functors, equiv_type_info;
 	
-	functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
-			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
+	functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
+			MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
 					maybe_equiv_type_info));
 
 		/* Look past equivalences */
-	while (MR_TYPEFUNCTORS_INDICATOR(functors) == MR_TYPEFUNCTORS_EQUIV) {
-		equiv_type_info = (Word) MR_TYPEFUNCTORS_EQUIV_TYPE(functors);
+	while (MR_TYPE_CTOR_FUNCTORS_INDICATOR(functors) == MR_TYPE_CTOR_FUNCTORS_EQUIV) {
+		equiv_type_info = (Word) MR_TYPE_CTOR_FUNCTORS_EQUIV_TYPE(functors);
 		equiv_type_info = (Word) MR_create_type_info(
 				(Word *) maybe_equiv_type_info, 
 				(Word *) equiv_type_info);
-		functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
-			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
+		functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(
+			MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) 
 				equiv_type_info));
 		maybe_equiv_type_info = equiv_type_info;
 	}
@@ -420,10 +420,10 @@ MR_deallocate(MR_MemoryList allocated)
 
 	/* 
 	** Given a type_info (term_type_info) which contains a
-	** base_type_info pointer and possibly other type_infos
+	** type_ctor_info pointer and possibly other type_infos
 	** giving the values of the type parameters of this type,
 	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** base_type_info pointer and possibly other type_infos
+	** type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
 	** 	- the values of the type parameters of this type,
 	** or	- an indication of the type parameter of the
@@ -456,7 +456,7 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated) 
 {
 	int i, arity, extra_args;
-	Word *base_type_info;
+	Word *type_ctor_info;
 	Word *arg_type_info;
 	Word *type_info;
 
@@ -474,18 +474,18 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 		return arg_type_info;
 	}
 
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(arg_pseudo_type_info);
 
 	/* no arguments - optimise common case */
-	if (base_type_info == arg_pseudo_type_info) {
-		return base_type_info;
+	if (type_ctor_info == arg_pseudo_type_info) {
+		return type_ctor_info;
 	} 
 
-	if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
 		arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
 			extra_args = 2;
 	} else {
-		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		arity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor_info);
 			extra_args = 1;
 	}
 
@@ -546,61 +546,61 @@ enum MR_DataRepresentation
 MR_categorize_data(Word functors_indicator, Word layout_entry)
 {
 	switch ((int) functors_indicator) { 
-		case MR_TYPEFUNCTORS_ENUM: 
+		case MR_TYPE_CTOR_FUNCTORS_ENUM: 
 			return MR_DATAREP_ENUM;
-		case MR_TYPEFUNCTORS_DU: 
+		case MR_TYPE_CTOR_FUNCTORS_DU: 
 			switch ((int) tag(layout_entry)) {
-				case TYPELAYOUT_SIMPLE_TAG:
+				case TYPE_CTOR_LAYOUT_SIMPLE_TAG:
 					return MR_DATAREP_SIMPLE;
-				case TYPELAYOUT_COMPLICATED_TAG:
+				case TYPE_CTOR_LAYOUT_COMPLICATED_TAG:
 					return MR_DATAREP_COMPLICATED;
-				case TYPELAYOUT_CONST_TAG:
+				case TYPE_CTOR_LAYOUT_CONST_TAG:
 					return MR_DATAREP_COMPLICATED_CONST;
 				default:
 					return MR_DATAREP_UNKNOWN;
 			}
-		case MR_TYPEFUNCTORS_NO_TAG:
+		case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
 			return MR_DATAREP_NOTAG;
-		case MR_TYPEFUNCTORS_EQUIV:
+		case MR_TYPE_CTOR_FUNCTORS_EQUIV:
 			if (TYPEINFO_IS_VARIABLE(strip_tag(layout_entry))) {
 				return MR_DATAREP_EQUIV_VAR;
 			} else {
 				return MR_DATAREP_EQUIV;
 			}
-		case MR_TYPEFUNCTORS_SPECIAL:
+		case MR_TYPE_CTOR_FUNCTORS_SPECIAL:
 		{
 			int builtin_type = unmkbody(strip_tag(layout_entry));
 
 			switch (builtin_type) {
-				case MR_TYPELAYOUT_UNASSIGNED_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_UNASSIGNED_VALUE:
 					return MR_DATAREP_UNKNOWN;
-				case MR_TYPELAYOUT_UNUSED_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_UNUSED_VALUE:
 					return MR_DATAREP_UNKNOWN;
-				case MR_TYPELAYOUT_STRING_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_STRING_VALUE:
 					return MR_DATAREP_STRING;
-				case MR_TYPELAYOUT_FLOAT_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE:
 					return MR_DATAREP_FLOAT;
-				case MR_TYPELAYOUT_INT_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_INT_VALUE:
 					return MR_DATAREP_INT;
-				case MR_TYPELAYOUT_CHARACTER_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE:
 					return MR_DATAREP_CHAR;
-				case MR_TYPELAYOUT_PREDICATE_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE:
 					return MR_DATAREP_PRED;
-				case MR_TYPELAYOUT_VOID_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_VOID_VALUE:
 					return MR_DATAREP_VOID;
-				case MR_TYPELAYOUT_ARRAY_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE:
 					return MR_DATAREP_ARRAY;
-				case MR_TYPELAYOUT_TYPEINFO_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE:
 					return MR_DATAREP_TYPEINFO;
-				case MR_TYPELAYOUT_C_POINTER_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE:
 					return MR_DATAREP_C_POINTER;
-				case MR_TYPELAYOUT_TYPECLASSINFO_VALUE:
+				case MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE:
 					return MR_DATAREP_TYPECLASSINFO;
 				default: 
 					return MR_DATAREP_UNKNOWN;
 			}
 		}
-		case MR_TYPEFUNCTORS_UNIV:
+		case MR_TYPE_CTOR_FUNCTORS_UNIV:
 			return MR_DATAREP_UNIV;
 		default:
 			return MR_DATAREP_UNKNOWN;
@@ -617,7 +617,7 @@ void mercury_sys_init_type_info(void) {
 	mercury__builtin_index_pred_module();
 	mercury__builtin_compare_pred_module();
 
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_pred_0, _pred_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_pred_0, _pred_);
 }
 

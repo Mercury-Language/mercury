@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -267,18 +267,18 @@ Define_extern_entry(mercury____Compare___array__array_1_0);
 #ifdef  USE_TYPE_LAYOUT
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__base_type_layout_array_1_struct {
+const struct mercury_data_array__type_ctor_layout_array_1_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data_array__base_type_layout_array_1 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_ARRAY_VALUE))
+} mercury_data_array__type_ctor_layout_array_1 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__base_type_functors_array_1_struct {
+const struct mercury_data_array__type_ctor_functors_array_1_struct {
 	Integer f1;
-} mercury_data_array__base_type_functors_array_1 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data_array__type_ctor_functors_array_1 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
 #endif

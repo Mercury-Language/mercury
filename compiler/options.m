@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1736,7 +1736,7 @@ your program compiled with different options.
 
 		"--no-type-layout",
 		"(This option is not for general use.)",
-		"\tDon't output base_type_layout structures or references",
+		"\tDon't output type_ctor_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
 		"\t`-DNO_TYPE_LAYOUT').",
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -624,8 +624,8 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ByteConsId = code_addr_const(ModuleName, PredName, Arity,
 			ProcInt)
 	;
-		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
-		ByteConsId = base_type_info_const(ModuleName, TypeName,
+		ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
+		ByteConsId = type_ctor_info_const(ModuleName, TypeName,
 			TypeArity)
 	;
 		ConsId = base_typeclass_info_const(ModuleName, ClassId,
@@ -654,8 +654,8 @@ bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
 	error("pred_closure_tag cons tag for non-pred_const cons id").
 bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
 	error("code_addr_constant cons tag for non-address_const cons id").
-bytecode_gen__map_cons_tag(base_type_info_constant(_, _, _), _) :-
-	error("base_type_info_constant cons tag for non-base_type_info_constant cons id").
+bytecode_gen__map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
+	error("type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
 bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
 	error("base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
 bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-

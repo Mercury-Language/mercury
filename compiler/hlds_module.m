@@ -52,7 +52,7 @@
 		).
 
 	% This structure contains the information we need to generate
-	% a base_type_info structure for a type defined in this module.
+	% a type_ctor_info structure for a type defined in this module.
 
 :- type base_gen_info
 	--->	base_gen_info(
@@ -66,11 +66,11 @@
 			list(pred_proc_id)
 					% the ids of the procs
 					% referred to from the
-					% base_type_info
+					% type_ctor_info
 		).
 
 	% This structure contains the information we need to generate
-	% a base_type_layout structure for a type defined in this module.
+	% a type_ctor_layout structure for a type defined in this module.
 	
 :- type base_gen_layout
 	--->	base_gen_layout(

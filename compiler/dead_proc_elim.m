@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,15 +183,15 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		%
 		% We need to do more thorough analysis of the
 		% reachability of the special predicates, in general,
-		% because using arg/3 allows us to get at base_type_info
-		% via the base_type_layout. The base_type_infos of
+		% because using arg/3 allows us to get at type_ctor_info
+		% via the type_ctor_layout. The type_ctor_infos of
 		% arguments of functors may have had their special preds
 		% eliminated, but they can still be called. In addition,
 		% it would be nice for pragma C code to have some
 		% support for using compiler generated data structures
 		% and preds, so that they aren't just eliminated.
 		%
-		% So presently, all base_type_infos will be treated
+		% So presently, all type_ctor_infos will be treated
 		% as exported, and hence no special preds will be
 		% eliminated.
 		semidet_succeed
@@ -477,7 +477,7 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 			ConsId = code_addr_const(PredId, ProcId),
 			Entity = proc(PredId, ProcId)
 		;
-			ConsId = base_type_info_const(Module, TypeName, Arity),
+			ConsId = type_ctor_info_const(Module, TypeName, Arity),
 			Entity = base_gen_info(Module, TypeName, Arity)
 		)
 	->

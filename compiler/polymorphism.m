@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,15 +37,15 @@
 % TO THE TYPE SPECIALIZATION CODE IN "compiler/higher_order.m".
 %
 % Type information is represented using one or two cells. The cell which
-% is always present is the base_type_info structure, laid out like this:
+% is always present is the type_ctor_info structure, laid out like this:
 %
 %	word 0		<arity of type constructor>
 %			e.g. 0 for `int', 1 for `list(T)', 2 for `map(K, V)'.
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
-%	word 4		<base_type_layout for type>
-%	word 5		<base_type_functors for type>
+%	word 4		<type_ctor_layout for type>
+%	word 5		<type_ctor_functors for type>
 %	word 6		<string name of type constructor>
 %			e.g. "int" for `int', "list" for `list(T)',
 %			"map" for `map(K,V)'
@@ -53,7 +53,7 @@
 %
 % The other cell is the type_info structure, laid out like this:
 %
-%	word 0		<pointer to the base_type_info structure>
+%	word 0		<pointer to the type_ctor_info structure>
 %	word 1+		<the type_infos for the type params, at least one>
 %
 %	(but see note below for how higher order types differ)
@@ -64,38 +64,38 @@
 %
 % The type_info structure itself is redundant if the type has no type
 % parameters (i.e. its arity is zero). Therefore if the arity is zero,
-% we pass the address of the base_type_info structure directly, instead of
+% we pass the address of the type_ctor_info structure directly, instead of
 % wrapping it up in another cell. The runtime system will look at the first
 % field of the cell it is passed. If this field is zero, the cell is a
-% base_type_info structure for an arity zero type. If this field is not zero,
+% type_ctor_info structure for an arity zero type. If this field is not zero,
 % the cell is a new type_info structure, with the first field being the
-% pointer to the base_type_info structure.
+% pointer to the type_ctor_info structure.
 %
 %-----------------------------------------------------------------------------%
 %
 % Higher order types:
 %
 % There is a slight variation on this for higher-order types. Higher
-% order type_infos always have a pointer to the pred/0 base_type_info,
+% order type_infos always have a pointer to the pred/0 type_ctor_info,
 % regardless of their true arity, so we store the real arity in the
 % type-info as well.
 %
-%	word 0		<pointer to the base_type_info structure (pred/0)>
+%	word 0		<pointer to the type_ctor_info structure (pred/0)>
 %	word 1		<arity of predicate>
 %	word 2+		<the type_infos for the type params, at least one>
 %
 %-----------------------------------------------------------------------------%
 %
-% Sharing base_type_info structures:
+% Sharing type_ctor_info structures:
 %
 % For compilation models that can put code addresses in static ground terms,
-% we can arrange to create one copy of the base_type_info structure statically,
+% we can arrange to create one copy of the type_ctor_info structure statically,
 % avoiding the need to create other copies at runtime. For compilation models
 % that cannot put code addresses in static ground terms, there are a couple
 % of things we could do:
 %
 % 	1. allocate all cells at runtime.
-%	2. use a shared static base_type_info, but initialize its code
+%	2. use a shared static type_ctor_info, but initialize its code
 %	   addresses during startup (that is, during the module
 %	   initialization code).
 %
@@ -123,32 +123,32 @@
 % We transform the body of p to this:
 %
 %	p(TypeInfoT1, X) :-
-%		BaseTypeInfoT2 = base_type_info(
+%		TypeCtorInfoT2 = type_ctor_info(
 %			1,
 %			'__Unify__'<list/1>,
 %			'__Index__'<list/1>,
 %			'__Compare__'<list/1>,
-%			<base_type_layout for list/1>,
-%			<base_type_functors for list/1>,
+%			<type_ctor_layout for list/1>,
+%			<type_ctor_functors for list/1>,
 %			"list",
 %			"list"),
 %		TypeInfoT2 = type_info(
-%			BaseTypeInfoT2,
+%			TypeCtorInfoT2,
 %			TypeInfoT1),
 %		q(TypeInfoT2, [X]),
-%		TypeInfoT3 = base_type_info(
+%		TypeInfoT3 = type_ctor_info(
 %			0,
 %			builtin_unify_int,
 %			builtin_index_int,
 %			builtin_compare_int,
-%			<base_type_layout for int/0>,
-%			<base_type_functors for int/0>,
+%			<type_ctor_layout for int/0>,
+%			<type_ctor_functors for int/0>,
 %			"int",
 %			"builtin"),
 %		r(TypeInfoT3, 0).
 %
-% Note that base_type_infos are actually generated as references to a
-% single shared base_type_info.
+% Note that type_ctor_infos are actually generated as references to a
+% single shared type_ctor_info.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -166,7 +166,7 @@
 %	The typeclass_info is represented in two parts (the typeclass_info
 %	itself, and a base_typeclass_info), in a similar fashion to the
 %	type_info being represented in two parts (the type_info and the
-%	base_type_info).
+%	type_ctor_info).
 %
 %		The base_typeclass_info contains:
 %		  * the number of constraints on the instance decl.
@@ -2306,7 +2306,7 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 	poly_info_get_var_types(Info1, VarTypes1),
 	poly_info_get_module_info(Info1, ModuleInfo),
 
-	polymorphism__init_const_base_type_info_var(Type,
+	polymorphism__init_const_type_ctor_info_var(Type,
 		TypeId, ModuleInfo, VarSet1, VarTypes1, 
 		BaseVar, BaseGoal, VarSet2, VarTypes2),
 	polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
@@ -2341,9 +2341,9 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 	->
 		Var = BaseVar,
 
-		% Since this base_type_info is pretending to be
+		% Since this type_ctor_info is pretending to be
 		% a type_info, we need to adjust its type.
-		% Since base_type_info_const cons_ids are handled
+		% Since type_ctor_info_const cons_ids are handled
 		% specially, this should not cause problems.
 		mercury_private_builtin_module(MercuryBuiltin),
 		construct_type(qualified(MercuryBuiltin, "type_info") - 1,
@@ -2355,7 +2355,7 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 	;
 		% Unfortunately, if we have higher order terms, we
 		% can no longer just optimise them to be the actual
-		% base_type_info
+		% type_ctor_info
 		(
 			IsHigherOrder = yes
 		->
@@ -2480,7 +2480,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 		error("polymorphism__get_builtin_pred_id: pred_id lookup failed")
 	).
 
-	% Create a unification for a type_info or base_type_info variable:
+	% Create a unification for a type_info or type_ctor_info variable:
 	%
 	%	TypeInfoVar = type_info(CountVar,
 	%				SpecialPredVars...,
@@ -2488,7 +2488,7 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	%
 	% or
 	%
-	%	BaseTypeInfoVar = base_type_type_info(CountVar,
+	%	TypeCtorInfoVar = base_type_type_info(CountVar,
 	%				SpecialPredVars...)
 	%
 	% These unifications WILL lead to the creation of cells on the
@@ -2538,52 +2538,52 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 
 	TypeInfoGoal = Unify - GoalInfo.
 
-	% Create a unification for a type_info or base_type_info variable:
+	% Create a unification for a type_info or type_ctor_info variable:
 	%
-	%	BaseTypeInfoVar = base_type_type_info(CountVar,
+	%	TypeCtorInfoVar = base_type_type_info(CountVar,
 	%				SpecialPredVars...)
 	%
 	% This unification will NOT lead to the creation of a cell on the
-	% heap at runtime; it will cause BaseTypeInfoVar to refer to the
-	% statically allocated base_type_info cell for the type, allocated
+	% heap at runtime; it will cause TypeCtorInfoVar to refer to the
+	% statically allocated type_ctor_info cell for the type, allocated
 	% in the module that defines the type.
 
-:- pred polymorphism__init_const_base_type_info_var(type, type_id,
+:- pred polymorphism__init_const_type_ctor_info_var(type, type_id,
 	module_info, prog_varset, map(prog_var, type), prog_var, hlds_goal,
 	prog_varset, map(prog_var, type)).
-:- mode polymorphism__init_const_base_type_info_var(in, in, in, in, in,
+:- mode polymorphism__init_const_type_ctor_info_var(in, in, in, in, in,
 	out, out, out, out) is det.
 
-polymorphism__init_const_base_type_info_var(Type, TypeId,
-		ModuleInfo, VarSet0, VarTypes0, BaseTypeInfoVar,
-		BaseTypeInfoGoal, VarSet, VarTypes) :-
+polymorphism__init_const_type_ctor_info_var(Type, TypeId,
+		ModuleInfo, VarSet0, VarTypes0, TypeCtorInfoVar,
+		TypeCtorInfoGoal, VarSet, VarTypes) :-
 
 	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
 	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
 	TypeId = _ - Arity,
-	ConsId = base_type_info_const(ModuleName, TypeName, Arity),
+	ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
 	TypeInfoTerm = functor(ConsId, []),
 
 	% introduce a new variable
-	polymorphism__new_type_info_var(Type, "base_type_info",
-		VarSet0, VarTypes0, BaseTypeInfoVar, VarSet, VarTypes),
+	polymorphism__new_type_info_var(Type, "type_ctor_info",
+		VarSet0, VarTypes0, TypeCtorInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
-	Unification = construct(BaseTypeInfoVar, ConsId, [], []),
+	Unification = construct(TypeCtorInfoVar, ConsId, [], []),
 	UnifyMode = (free -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
-	Unify = unify(BaseTypeInfoVar, TypeInfoTerm, UnifyMode,
+	Unify = unify(TypeCtorInfoVar, TypeInfoTerm, UnifyMode,
 			Unification, UnifyContext),
 
 	% create a goal_info for the unification
-	set__list_to_set([BaseTypeInfoVar], NonLocals),
-	instmap_delta_from_assoc_list([BaseTypeInfoVar - ground(shared, no)],
+	set__list_to_set([TypeCtorInfoVar], NonLocals),
+	instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, no)],
 		InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
 
-	BaseTypeInfoGoal = Unify - GoalInfo.
+	TypeCtorInfoGoal = Unify - GoalInfo.
 
 %---------------------------------------------------------------------------%
 

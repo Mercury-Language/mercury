@@ -1,11 +1,11 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % This module generates the LLDS code that defines global variables
-% to hold the base_type_info structures of the types defined by the
+% to hold the type_ctor_info structures of the types defined by the
 % current module.
 %
 % These global variables are needed only with when we are using the
@@ -15,7 +15,7 @@
 % compilation time and executable size.)
 %
 % See polymorphism.m for a description of the various ways to represent
-% type information, including a description of the base_type_info structures.
+% type information, including a description of the type_ctor_info structures.
 %
 % Author: zs.
 %
@@ -104,7 +104,7 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 	;
 		SymName = unqualified(TypeName),
 		string__append_list(["unqualified type ", TypeName,
-			"found in base_type_info"], Msg),
+			"found in type_ctor_info"], Msg),
 		error(Msg)
 	).
 
@@ -124,18 +124,18 @@ base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 
 base_type_info__generate_llds(ModuleInfo, CModules) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
-	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
+	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
 		CModules1),
 	base_typeclass_info__generate_llds(ModuleInfo, CModules2),
 		% XXX make this use an accumulator
 	list__append(CModules1, CModules2, CModules).
 
-:- pred base_type_info__construct_base_type_infos(list(base_gen_info),
+:- pred base_type_info__construct_type_ctor_infos(list(base_gen_info),
 	module_info, list(comp_gen_c_data)).
-:- mode base_type_info__construct_base_type_infos(in, in, out) is det.
+:- mode base_type_info__construct_type_ctor_infos(in, in, out) is det.
 
-base_type_info__construct_base_type_infos([], _, []).
-base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
+base_type_info__construct_type_ctor_infos([], _, []).
+base_type_info__construct_type_ctor_infos([BaseGenInfo | BaseGenInfos],
 		ModuleInfo, [CModule | CModules]) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
 		_Status, Elim, Procs),
@@ -144,7 +144,7 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	ArityArg = yes(const(int_const(TypeArity))),
 
 /******
-It would be more efficient if we could make base_type_infos local,
+It would be more efficient if we could make type_ctor_infos local,
 but linkage/2 in llds_out.m requires that we make them all exported
 if any of them are exported, so that we can compute the linkage
 from the data_name, for use in forward declarations.
@@ -169,10 +169,10 @@ from the data_name, for use in forward declarations.
 	;
 		FinalArgs = PredAddrArgs
 	),
-	DataName = base_type(info, TypeName, TypeArity),
+	DataName = type_ctor(info, TypeName, TypeArity),
 	CModule = comp_gen_c_data(ModuleName, DataName, Exported,
 		[ArityArg | FinalArgs], Procs),
-	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
+	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
 		CModules).
 
 :- pred	base_type_info__construct_layout(module_info, string, int, maybe(rval)).
@@ -180,7 +180,7 @@ from the data_name, for use in forward declarations.
 base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type(layout, TypeName, TypeArity))))).
+		type_ctor(layout, TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_functors(module_info, string, int, 
 	maybe(rval)).
@@ -188,7 +188,7 @@ base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 base_type_info__construct_functors(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type(functors, TypeName, TypeArity))))).
+		type_ctor(functors, TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_pred_addrs(list(pred_proc_id), maybe(int), 
 	module_info, list(maybe(rval))).

@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -359,20 +359,20 @@ Define_entry(mercury__unify_2_0);
 	Word	x, y;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = mercury__unify__x;
 	y = mercury__unify__y;
 
-	base_type_info = field(0, mercury__unify__typeinfo, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, mercury__unify__typeinfo, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		unify_pred = (Code *) field(0, mercury__unify__typeinfo,
 				OFFSET_FOR_UNIFY_PRED);
 		/* args_base will not be needed */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		unify_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		unify_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_UNIFY_PRED);
 		args_base = mercury__unify__typeinfo;
 	}
@@ -420,17 +420,17 @@ Define_entry(mercury__index_2_0);
 	Word	x;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = r2;
-	base_type_info = field(0, r1, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, r1, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
 		/* args_base will not be needed */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		index_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		index_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_INDEX_PRED);
 		args_base = r1;
 	}
@@ -516,20 +516,20 @@ Define_entry(mercury__compare_3_3);
 	Word	x, y;
 	int	i;
 
-	Word	base_type_info;
+	Word	type_ctor_info;
 
 	x = mercury__compare__x;
 	y = mercury__compare__y;
 
-	base_type_info = field(0, mercury__compare__typeinfo, 0);
-	if (base_type_info == 0) {
+	type_ctor_info = field(0, mercury__compare__typeinfo, 0);
+	if (type_ctor_info == 0) {
 		type_arity = 0;
 		compare_pred = (Code *) field(0, mercury__compare__typeinfo,
 				OFFSET_FOR_COMPARE_PRED);
 		/* args_base will not be needed */
 	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		compare_pred = (Code *) field(0, base_type_info,
+		type_arity = field(0, type_ctor_info, OFFSET_FOR_COUNT);
+		compare_pred = (Code *) field(0, type_ctor_info,
 				OFFSET_FOR_COMPARE_PRED);
 		args_base = mercury__compare__typeinfo;
 	}

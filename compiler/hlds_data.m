@@ -34,7 +34,7 @@
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas a code_addr_const is just an address.
-			;	base_type_info_const(module_name, string, int)
+			;	type_ctor_info_const(module_name, string, int)
 				% module name, type name, type arity
 			;	base_typeclass_info_const(module_name,
 					class_id, int, string)
@@ -77,13 +77,13 @@
 
 	% Given a cons_id and a list of argument terms, convert it into a
 	% term. Fails if the cons_id is a pred_const, code_addr_const or
-	% base_type_info_const.
+	% type_ctor_info_const.
 
 :- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
-	% and base_type_info_const.
+	% and type_ctor_info_const.
 
 :- pred cons_id_arity(cons_id, arity).
 :- mode cons_id_arity(in, out) is det.
@@ -128,8 +128,8 @@ cons_id_arity(pred_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
 cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
-cons_id_arity(base_type_info_const(_, _, _), _) :-
-	error("cons_id_arity: can't get arity of base_type_info_const").
+cons_id_arity(type_ctor_info_const(_, _, _), _) :-
+	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 cons_id_arity(tabling_pointer_const(_, _), _) :-
@@ -262,8 +262,8 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% (used for constructing type_infos).
 			% The word just contains the address of the
 			% specified procedure.
-	;	base_type_info_constant(module_name, string, arity)
-			% This is how we refer to base_type_info structures
+	;	type_ctor_info_constant(module_name, string, arity)
+			% This is how we refer to type_ctor_info structures
 			% represented as global data. The args are
 			% the name of the module the type is defined in,
 			% and the name of the type, and its arity.

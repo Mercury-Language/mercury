@@ -80,7 +80,7 @@
 					arity, byte_proc_id)
 			;	code_addr_const(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
-			;	base_type_info_const(byte_module_id, string,
+			;	type_ctor_info_const(byte_module_id, string,
 					int)
 			;	base_typeclass_info_const(byte_module_id,
 					class_id, string)
@@ -718,7 +718,7 @@ output_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	output_pred_id(PredId),
 	output_length(Arity),
 	output_proc_id(ProcId).
-output_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
+output_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity)) -->
 	output_byte(6),
 	output_module_id(ModuleId),
 	output_string(TypeName),
@@ -763,8 +763,8 @@ debug_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	debug_pred_id(PredId),
 	debug_length(Arity),
 	debug_proc_id(ProcId).
-debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
-	debug_string("base_type_info_const"),
+debug_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity)) -->
+	debug_string("type_ctor_info_const"),
 	debug_module_id(ModuleId),
 	debug_string(TypeName),
 	debug_int(TypeArity).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -340,7 +340,7 @@ dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
 	;
 		DepGraph = DepGraph0
 	).
-dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
+dependency_graph__add_arcs_in_cons(type_ctor_info_const(_, _, _), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
 				_Caller, DepGraph, DepGraph).

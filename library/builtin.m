@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -244,115 +244,115 @@ promise_only_solution(Pred) = OutVal :-
 
 #ifdef  USE_TYPE_LAYOUT
 
-	/* base_type_layout definitions */ 
+	/* type_ctor_layout definitions */ 
 
-	/* base_type_layout for `int' */
+	/* type_ctor_layout for `int' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_layout_int_0_struct {
+const struct mercury_data___type_ctor_layout_int_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_int_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_INT_VALUE))
+} mercury_data___type_ctor_layout_int_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_INT_VALUE))
 };
 
-	/* base_type_layout for `character' */
+	/* type_ctor_layout for `character' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_layout_character_0_struct {
+const struct mercury_data___type_ctor_layout_character_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_character_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_CHARACTER_VALUE))
+} mercury_data___type_ctor_layout_character_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE))
 };
 
-	/* base_type_layout for `string' */
+	/* type_ctor_layout for `string' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_layout_string_0_struct {
+const struct mercury_data___type_ctor_layout_string_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_string_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_STRING_VALUE))
+} mercury_data___type_ctor_layout_string_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_STRING_VALUE))
 };
 
-	/* base_type_layout for `float' */
+	/* type_ctor_layout for `float' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_layout_float_0_struct {
+const struct mercury_data___type_ctor_layout_float_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_float_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_FLOAT_VALUE))
+} mercury_data___type_ctor_layout_float_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE))
 };
 
-	/* base_type_layout for `void' */
+	/* type_ctor_layout for `void' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_layout_void_0_struct {
+const struct mercury_data___type_ctor_layout_void_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data___base_type_layout_void_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_VOID_VALUE))
+} mercury_data___type_ctor_layout_void_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
 };
 
-	/* base_type_functors definitions */
+	/* type_ctor_functors definitions */
 
-	/* base_type_functors for `int' */
+	/* type_ctor_functors for `int' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_functors_int_0_struct {
+const struct mercury_data___type_ctor_functors_int_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_int_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_int_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-	/* base_type_functors for `character' */
+	/* type_ctor_functors for `character' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_functors_character_0_struct {
+const struct mercury_data___type_ctor_functors_character_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_character_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_character_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-	/* base_type_functors for `string' */
+	/* type_ctor_functors for `string' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_functors_string_0_struct {
+const struct mercury_data___type_ctor_functors_string_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_string_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_string_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-	/* base_type_functors for `float' */
+	/* type_ctor_functors for `float' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_functors_float_0_struct {
+const struct mercury_data___type_ctor_functors_float_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_float_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_float_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-	/* base_type_functors for `void' */
+	/* type_ctor_functors for `void' */
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data___base_type_functors_void_0_struct {
+const struct mercury_data___type_ctor_functors_void_0_struct {
 	Integer f1;
-} mercury_data___base_type_functors_void_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data___type_ctor_functors_void_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
 #endif /* USE_TYPE_LAYOUT */
 
-	/* base_type_infos definitions */
+	/* type_ctor_infos definitions */
 
-	/* base_type_info for `int' */
+	/* type_ctor_info for `int' */
 
 Declare_entry(mercury__builtin_unify_int_2_0);
 Declare_entry(mercury__builtin_index_int_2_0);
 Declare_entry(mercury__builtin_compare_int_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -363,26 +363,26 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 	const Word *f7;
 	const Word *f8;
 #endif
-} mercury_data___base_type_info_int_0 = {
+} mercury_data___type_ctor_info_int_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_int_0,
-	(const Word *) & mercury_data___base_type_functors_int_0,
+	(const Word *) & mercury_data___type_ctor_layout_int_0,
+	(const Word *) & mercury_data___type_ctor_functors_int_0,
 	(const Word *) string_const(""builtin"", 15),
 	(const Word *) string_const(""int"", 3)
 #endif
 };
 
-	/* base_type_info for `character' */
+	/* type_ctor_info for `character' */
 
 Declare_entry(mercury__builtin_unify_character_2_0);
 Declare_entry(mercury__builtin_index_character_2_0);
 Declare_entry(mercury__builtin_compare_character_3_0);
 MR_STATIC_CODE_CONST struct 
-mercury_data___base_type_info_character_0_struct {
+mercury_data___type_ctor_info_character_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -393,25 +393,25 @@ mercury_data___base_type_info_character_0_struct {
 	const Word *f7;
 	const Word *f8;
 #endif
-} mercury_data___base_type_info_character_0 = {
+} mercury_data___type_ctor_info_character_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_character_0,
-	(const Word *) & mercury_data___base_type_functors_character_0,
+	(const Word *) & mercury_data___type_ctor_layout_character_0,
+	(const Word *) & mercury_data___type_ctor_functors_character_0,
 	(const Word *) string_const(""builtin"", 15),
 	(const Word *) string_const(""character"", 9)
 #endif
 };
 
-	/* base_type_info for `string' */
+	/* type_ctor_info for `string' */
 
 Declare_entry(mercury__builtin_unify_string_2_0);
 Declare_entry(mercury__builtin_index_string_2_0);
 Declare_entry(mercury__builtin_compare_string_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -422,25 +422,25 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 	const Word *f7;
 	const Word *f8;
 #endif
-} mercury_data___base_type_info_string_0 = {
+} mercury_data___type_ctor_info_string_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_string_0,
-	(const Word *) & mercury_data___base_type_functors_string_0,
+	(const Word *) & mercury_data___type_ctor_layout_string_0,
+	(const Word *) & mercury_data___type_ctor_functors_string_0,
 	(const Word *) string_const(""builtin"", 15),
 	(const Word *) string_const(""string"", 6)
 #endif
 };
 
-	/* base_type_info for `float' */
+	/* type_ctor_info for `float' */
 
 Declare_entry(mercury__builtin_unify_float_2_0);
 Declare_entry(mercury__builtin_index_float_2_0);
 Declare_entry(mercury__builtin_compare_float_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -451,23 +451,23 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	const Word *f7;
 	const Word *f8;
 #endif
-} mercury_data___base_type_info_float_0 = {
+} mercury_data___type_ctor_info_float_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_float_0,
-	(const Word *) & mercury_data___base_type_functors_float_0,
+	(const Word *) & mercury_data___type_ctor_layout_float_0,
+	(const Word *) & mercury_data___type_ctor_functors_float_0,
 	(const Word *) string_const(""builtin"", 15),
 	(const Word *) string_const(""float"", 5)
 #endif
 };
 
-	/* base_type_info for `void' */
+	/* type_ctor_info for `void' */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -478,14 +478,14 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
 	const Word *f7;
 	const Word *f8;
 #endif
-} mercury_data___base_type_info_void_0 = {
+} mercury_data___type_ctor_info_void_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___base_type_layout_void_0,
-	(const Word *) & mercury_data___base_type_functors_void_0,
+	(const Word *) & mercury_data___type_ctor_layout_void_0,
+	(const Word *) & mercury_data___type_ctor_functors_void_0,
 	(const Word *) string_const(""builtin"", 15),
 	(const Word *) string_const(""void"", 4)
 #endif
@@ -511,21 +511,21 @@ void sys_init_builtin_types_module(void) {
 	** We had better call this init() because we use the
 	** labels for the special preds of int, float, pred, 
 	** character and string. If they aren't initialized,
-	** we might initialize the base_type_info with
+	** we might initialize the type_ctor_info with
 	** garbage
 	*/
 	mercury__private_builtin__init();
 
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_int_0, _int_);
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_float_0, _float_);
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_character_0, _character_);
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_string_0, _string_);
-	MR_INIT_BASE_TYPE_INFO_WITH_PRED(
-		mercury_data___base_type_info_void_0, mercury__unused_0_0);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_int_0, _int_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_float_0, _float_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_character_0, _character_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_string_0, _string_);
+	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
+		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
 }
 
 ").
@@ -627,19 +627,19 @@ void sys_init_copy_module(void) {
 #ifdef  USE_TYPE_LAYOUT
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_builtin__base_type_layout_c_pointer_0_struct {
+const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
-} mercury_data_builtin__base_type_layout_c_pointer_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_C_POINTER_VALUE))
+} mercury_data_builtin__type_ctor_layout_c_pointer_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
 const struct
-mercury_data_builtin__base_type_functors_c_pointer_0_struct {
+mercury_data_builtin__type_ctor_functors_c_pointer_0_struct {
 	Integer f1;
-} mercury_data_builtin__base_type_functors_c_pointer_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
+} mercury_data_builtin__type_ctor_functors_c_pointer_0 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
 #endif
