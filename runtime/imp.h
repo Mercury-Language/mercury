@@ -55,6 +55,8 @@ typedef void	Code;		/* should be `typedef function_t Code' */
     #define Declare_entry(label)	\
 	extern void label(void) __asm__("entry_" stringify(label))
 
+    #define Define_extern_entry(label)	Declare_entry(label)
+
     #define Define_entry(label)	\
 	}	\
 	label:	\
@@ -75,6 +77,9 @@ typedef void	Code;		/* should be `typedef function_t Code' */
     #define Declare_entry(label)	\
 	extern Code * entry(label)
 
+    #define Define_extern_entry(label)	\
+	Code * entry(label)
+
     #define Define_entry(label)	\
 	}	\
 	label:	\
@@ -93,14 +98,14 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	}	\
 	label:	\
 	{
-  #define init_local(label)	make_local(stringify(label), label)
+  #define init_local(label)	make_local(stringify(label), &&label)
 
   #define Declare_label(label)	/* no declaration required */
   #define Define_label(label)	\
 	}	\
 	label:	\
 	{
-  #define init_label(label)	make_label(stringify(label), label)
+  #define init_label(label)	make_label(stringify(label), &&label)
 
 
   #define LOCAL(label)		(&&label)
@@ -122,7 +127,8 @@ typedef void	Code;		/* should be `typedef function_t Code' */
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
-  #define Declare_entry(label)	void *label(void)
+  #define Declare_entry(label)		extern void *label(void)
+  #define Define_extern_entry(label)	void *label(void)
   #define Define_entry(label)	\
 		GOTO(label);	\
 	}			\
