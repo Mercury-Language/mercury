@@ -1,37 +1,40 @@
 
-On Irix 5, it is not possible to use both gcc's non-local gotos
-and shared libraries.  The Mercury auto-configuration script does
-not (yet) detect or resolve this problem.
+On Irix 5, it is not possible to use both gcc's non-local gotos and
+shared libraries.  The Mercury auto-configuration script will usually
+resolve this problem by disabling the use of gcc's non-local gotos.
+That works fine, but the resulting `reg.gc' grade compiler is
+considerably less efficient that the `asm_fast.gc' grade compiler that
+uses non-local gotos.  It's about 30% larger (3.3M vs 2.5M stripped),
+and probably about 20-100% slower (at a very rough guess).
 
-If you do not have the non-shared version of the IRIX 5 C libraries
-installed, you must use shared libraries (without gcc's non-local gotos).
-To to so, apply the following patch to `configure':
+To use non-local gotos, your Irix machine needs to have the nonshared
+versions of the C standard library installed (in /usr/lib/nonshared),
+and you need also need a version of `libgcc.a' that has been compiled
+with `-mno-abicalls' in /usr/lib/nonshared.  To create that, you need
+to replace the `-g1' with `-mno-abicalls' in the definition of
+LIBGCC2_CFLAGS in the Makefile in the gcc source directory, then type
+`make libgcc.a', and then copy libgcc.a to /usr/lib/nonshared.
+[To use a different directory than /usr/lib/nonshared, you will
+have to edit `configure', `scripts/ml.in', and `scripts/mgnuc.in'.]
 
---- /home/pgrad/fjh/mercury/configure   Tue Jul 18 15:11:20 1995
-+++ configure   Tue Jul 18 03:14:57 1995
-@@ -1580,9 +1580,10 @@
-                GRADE=none.gc
-        fi
- fi
-+GRADE=reg.gc
- echo "using GRADE=$GRADE to compile the compiler"
- 
--DEFAULT_GRADE=$GRADE
-+DEFAULT_GRADE=reg.gc
- echo "using DEFAULT_GRADE=$GRADE as the default grade for applications"
- 
-If you do have the non-shared C libraries installed, then
-the simplest fix for this problem is to disable shared libraries,
-by adding the following line to Mmake.params.
+Once you have done that, you can reinstall Mercury;
+`configure' should detect that using gcc labels now works. 
+(If it doesn't, examine config.log to work out what went wrong.) 
+`configure' will also disable shared libraries, so that
+the installation process doesn't attempt to build shared
+versions of the `asm_fast.gc' grade libraries (and others).
+However, the linker will still pick up the shared libraries
+for `reg.gc' and the other grades installed initially
+(before creating a nonshared libgcc.a).
+The default grade will be set to `reg.gc', since shared libraries
+give you small executables and short link times.  But for
+large programs, you should set GRADE=asm_fast.gc in your Mmake file
+for considerably improved performance.
 
-	SO=a
-
-The ideal solution would be to get the best of both worlds -
-make grade reg.gc use shared libraries and be the default,
-but make grade asm_fast.gc use non-shared libraries and use that
-for compiling the compiler and other large programs.
-However, this would require a little bit of fiddling about,
-and we do not have an IRIX 5 machine with the non-shared C libraries
-installed to test this.  If you have such a machine, send us email
-at mercury@cs.mu.oz.au
+XXX
+You will also need to change
+	AS=as
+to
+	AS=as -non_shared
+in boehm_gc/Makefile to get asm_fast.gc working.
 
