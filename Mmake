@@ -153,15 +153,16 @@ tar:
 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
 	cd library && $(SUBDIR_MMAKE) tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
+	cd bindist && $(SUBDIR_MMAKE) bindist.configure bindist.build_vars
 	# clean up
 	cd scripts && mmake realclean
 	cd util && mmake realclean
 	cd doc && mmake distclean
-	-rm -f errs errs2
-	-rm -f config.status config.log config.cache
-	-rm -f runtime/conf.h # XXX compiler/conf.m
+	-rm -f errs errs2 update.log
+	-rm -f config.status config.cache config.log configure.log
+	-rm -f runtime/conf.h
 	-rm -f Mmake.common
-	cd .. && (tar -cf - mercury | gzip -9 > mercury.tar.gz)
+	cd .. && (tar -cf - mercury-0.5 | gzip -9 > mercury-0.5.tar.gz)
 
 #-----------------------------------------------------------------------------#
 
