@@ -79,10 +79,13 @@ typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr[];
 
 /*
 ** XXX Currently we hard-code the declarations of the first
-** few of these type-info struct types; this imposes a fixed
-** limit on the arity of types.  Fortunately types with a high
-** arity tend not to be used very often, so this is probably OK
-** for now...
+** five of these type-info struct types; this imposes a fixed
+** limit of 5 on the arity of types.  (If this is exceeded,
+** you'll get an undeclared type error in the generated C code.)
+** Note that the code for compare and unify in runtime/mercury.c
+** also has a fixed limit of 5 on the arity of types.
+** Fortunately types with a high arity tend not to be used very
+** often, so this is probably OK for now...
 */
 
 #ifndef MR_HO_PseudoTypeInfo_Struct1_GUARD
@@ -105,6 +108,11 @@ MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct3, 3);
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct4, 4);
 #endif
 
+#ifndef MR_HO_PseudoTypeInfo_Struct5_GUARD
+#define MR_HO_PseudoTypeInfo_Struct5_GUARD
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct5, 5);
+#endif
+
 #ifndef MR_FO_PseudoTypeInfo_Struct1_GUARD
 #define MR_FO_PseudoTypeInfo_Struct1_GUARD
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct1, 1);
@@ -125,15 +133,22 @@ MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct3, 3);
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct4, 4);
 #endif
 
+#ifndef MR_FO_PseudoTypeInfo_Struct5_GUARD
+#define MR_FO_PseudoTypeInfo_Struct5_GUARD
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct5, 5);
+#endif
+
 typedef struct MR_HO_PseudoTypeInfo_Struct1 MR_HO_PseudoTypeInfo_Struct1;
 typedef struct MR_HO_PseudoTypeInfo_Struct2 MR_HO_PseudoTypeInfo_Struct2;
 typedef struct MR_HO_PseudoTypeInfo_Struct3 MR_HO_PseudoTypeInfo_Struct3;
 typedef struct MR_HO_PseudoTypeInfo_Struct4 MR_HO_PseudoTypeInfo_Struct4;
+typedef struct MR_HO_PseudoTypeInfo_Struct5 MR_HO_PseudoTypeInfo_Struct5;
 
 typedef struct MR_FO_PseudoTypeInfo_Struct1 MR_FO_PseudoTypeInfo_Struct1;
 typedef struct MR_FO_PseudoTypeInfo_Struct2 MR_FO_PseudoTypeInfo_Struct2;
 typedef struct MR_FO_PseudoTypeInfo_Struct3 MR_FO_PseudoTypeInfo_Struct3;
 typedef struct MR_FO_PseudoTypeInfo_Struct4 MR_FO_PseudoTypeInfo_Struct4;
+typedef struct MR_FO_PseudoTypeInfo_Struct5 MR_FO_PseudoTypeInfo_Struct5;
 
 /*---------------------------------------------------------------------------*/
 /*

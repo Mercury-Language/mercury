@@ -719,7 +719,7 @@ output_addr_of_rtti_addr(RttiTypeId, RttiName) -->
 	% we need to use `&' to take its address
 	%
 	(
-		{ rtti_name_c_type(RttiName, _, "[]" ) }
+		{ rtti_name_has_array_type(RttiName) = yes }
 	->
 		[]
 	;

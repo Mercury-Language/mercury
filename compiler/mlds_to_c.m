@@ -1850,23 +1850,6 @@ mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
 		io__write_string(")")
 	).
 
-:- func rtti_name_has_array_type(rtti_name) = bool.
-rtti_name_has_array_type(exist_locns(_))		= yes.
-rtti_name_has_array_type(exist_info(_))			= no.
-rtti_name_has_array_type(field_names(_))		= yes.
-rtti_name_has_array_type(field_types(_))		= yes.
-rtti_name_has_array_type(enum_functor_desc(_))		= no.
-rtti_name_has_array_type(notag_functor_desc)		= no.
-rtti_name_has_array_type(du_functor_desc(_))		= no.
-rtti_name_has_array_type(enum_name_ordered_table)	= yes.
-rtti_name_has_array_type(enum_value_ordered_table)	= yes.
-rtti_name_has_array_type(du_name_ordered_table)		= yes.
-rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
-rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
-rtti_name_has_array_type(type_ctor_info)		= no.
-rtti_name_has_array_type(pseudo_type_info(_))		= no.
-rtti_name_has_array_type(type_hashcons_pointer)		= no.
-
 :- pred mlds_output_data_var_name(mlds_module_name, mlds__data_name,
 		io__state, io__state).
 :- mode mlds_output_data_var_name(in, in, di, uo) is det.

@@ -324,6 +324,9 @@
 :- pred rtti_data_to_name(rtti_data::in, rtti_type_id::out, rtti_name::out)
 	is det.
 
+	% return yes iff the specified rtti_name is an array
+:- func rtti_name_has_array_type(rtti_name) = bool.
+
 	% return yes iff the specified rtti_name should be exported
 	% for use by other modules.
 :- func rtti_name_is_exported(rtti_name) = bool.
@@ -429,6 +432,22 @@ pti_get_rtti_type_id(type_info(RttiTypeId, _)) = RttiTypeId.
 pti_get_rtti_type_id(higher_order_type_info(RttiTypeId, _, _)) = RttiTypeId.
 pti_get_rtti_type_id(type_var(_)) = _ :-
 	error("rtti_data_to_name: type_var").
+
+rtti_name_has_array_type(exist_locns(_))		= yes.
+rtti_name_has_array_type(exist_info(_))			= no.
+rtti_name_has_array_type(field_names(_))		= yes.
+rtti_name_has_array_type(field_types(_))		= yes.
+rtti_name_has_array_type(enum_functor_desc(_))		= no.
+rtti_name_has_array_type(notag_functor_desc)		= no.
+rtti_name_has_array_type(du_functor_desc(_))		= no.
+rtti_name_has_array_type(enum_name_ordered_table)	= yes.
+rtti_name_has_array_type(enum_value_ordered_table)	= yes.
+rtti_name_has_array_type(du_name_ordered_table)		= yes.
+rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
+rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
+rtti_name_has_array_type(type_ctor_info)		= no.
+rtti_name_has_array_type(pseudo_type_info(_))		= no.
+rtti_name_has_array_type(type_hashcons_pointer)		= no.
 
 rtti_name_is_exported(exist_locns(_))		= no.
 rtti_name_is_exported(exist_info(_))            = no.
