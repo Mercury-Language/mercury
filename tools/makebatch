@@ -179,7 +179,7 @@ do
 	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
 	then
 		echo bootcheck of version $visn succeeded
-		if "$compile_times" = ""
+		if test "$compile_times" = ""
 		then
 			echo bootcheck succeeded > batch/$batch.out.$visn
 		fi
