@@ -166,7 +166,7 @@ MP_delete_timeout_files_and_exit_failure(void)
 
 :- pragma foreign_proc("C",
 	setup_exit(File1::in, File2::in, File3::in, IO0::di, IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	int	i;
 	void	(*handler)(void);
@@ -195,7 +195,7 @@ MP_delete_timeout_files_and_exit_failure(void)
 
 :- pragma foreign_proc("C",
 	setup_timeout(Minutes::in, IO0::di, IO::uo),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	int	seconds;
 

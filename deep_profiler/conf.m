@@ -69,7 +69,7 @@ server_name(ServerName) -->
 :- pred mkfifo_cmd(string::out) is det.
 
 :- pragma foreign_proc("C", mkfifo_cmd(Mkfifo::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	/* shut up warnings about casting away const */
 	Mkfifo = (MR_String) (MR_Integer) MR_MKFIFO;
@@ -78,7 +78,7 @@ server_name(ServerName) -->
 :- pred hostname_cmd(string::out) is det.
 
 :- pragma foreign_proc("C", hostname_cmd(Hostname::out),
-	[will_not_call_mercury],
+	[will_not_call_mercury, promise_pure],
 "
 	/* shut up warnings about casting away const */
 	Hostname = (MR_String) (MR_Integer) MR_HOSTNAMECMD;

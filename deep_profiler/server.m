@@ -111,7 +111,7 @@ server(TimeOut, Debug, CanonicalClique, Deep) -->
 :- pred detach_server_loop(io__state::di, io__state::uo) is cc_multi.
 
 :- pragma foreign_proc("C", detach_server_loop(S0::di, S::uo),
-	[will_not_call_mercury], "
+	[will_not_call_mercury, promise_pure], "
 {
 	int	status;
 
