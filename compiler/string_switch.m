@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,8 +85,10 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 
 		% Generate code which does the hash table lookup
 	{
-		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableNo),
-		StringTable = create(0, Strings, no, StringTableNo),
+		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableNo,
+			"string_switch_next_slots_table"),
+		StringTable = create(0, Strings, no, StringTableNo,
+			"string_switch_string_table"),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",

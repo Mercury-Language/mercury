@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,9 +30,10 @@
 
 	% the main compiler passes (in order of execution)
 :- import_module handle_options, prog_io, modules, module_qual, equiv_type.
-:- import_module make_hlds, typecheck, modes.
+:- import_module make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module simplify, intermod, trans_opt, bytecode_gen, bytecode.
+:- import_module check_typeclass, simplify, intermod, trans_opt.
+:- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
 :- import_module lco, liveness, stratify.
@@ -87,6 +88,12 @@ main_2(no, Args, Link) -->
 			;
 				[]
 			)
+		),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		( { Statistics = yes } ->
+			io__report_full_memory_stats
+		;
+			[]
 		)
 	).
 
@@ -193,18 +200,20 @@ process_module_2(ModuleName) -->
 :- mode mercury_compile(in, in, di, uo) is det.
 
 mercury_compile(Module, FactDeps) -->
-	{ Module = module_imports(ModuleName, _, _, _, _) },
-	mercury_compile__pre_hlds_pass(Module, FactDeps, HLDS1, UndefTypes,
-						UndefModes, Errors1), !,
+	globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
+	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
+	{ bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile) },
+	% If we are only typechecking or error checking, then we should not
+	% modify any files, this includes writing to .d files.
+	mercury_compile__pre_hlds_pass(Module, FactDeps, DontWriteDFile,
+		HLDS1, UndefTypes, UndefModes, Errors1), !,
 	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
-						UndefModes, Errors2), !,
+		UndefModes, Errors2), !,
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
 	    mercury_compile__maybe_write_dependency_graph(HLDS20,
 		Verbose, Stats, HLDS21),
-	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
-	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	    globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
 	    globals__io_lookup_bool_option(make_transitive_opt_interface,
@@ -222,6 +231,7 @@ mercury_compile(Module, FactDeps) -->
 	    ; { MakeTransOptInt = yes } ->
 	    	mercury_compile__output_trans_opt_file(HLDS21)
 	    ;
+		{ Module = module_imports(ModuleName, _, _, _, _) },
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
@@ -251,21 +261,33 @@ mercury_compile(Module, FactDeps) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, list(string),
-		module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out,
+		bool, module_info, bool, bool, bool, io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, in, out, out, out, out,
 		di, uo) is det.
 
-mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
-		UndefModes, FoundError) -->
+mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, DontWriteDFile,
+		HLDS1, UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
 	{ ModuleImports0 = module_imports(Module, LongDeps, ShortDeps, _, _) },
-	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps), !,
+	
+
+	( { DontWriteDFile = yes } ->
+		% The only time the TransOptDeps are required is when
+		% creating the .trans_opt file.  If DontWriteDFile is yes,
+		% then error check only or type-check only is enabled, so
+		% we cant be creating the .trans_opt file.
+		{ MaybeTransOptDeps = no }
+	;
+		maybe_read_dependency_file(Module, MaybeTransOptDeps), !,
+		write_dependency_file(Module, LongDeps, ShortDeps, FactDeps, 
+			MaybeTransOptDeps), !
+	),
 
 	% Errors in .opt and .trans_opt files result in software errors.
 	mercury_compile__maybe_grab_optfiles(ModuleImports0, Verbose,
-				 ModuleImports1, IntermodError), !,
+		MaybeTransOptDeps, ModuleImports1, IntermodError), !,
 
 	{ ModuleImports1 = module_imports(_, _, _, Items1, _) },
 	mercury_compile__module_qualify_items(Items1, Items2, Module, Verbose,
@@ -292,7 +314,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 		globals__io_lookup_bool_option(make_optimization_interface,
 			MakeOptInt),
 		( { Intermod = yes, MakeOptInt = no } ->
-			% Eliminate unnecessary clauses from `.opt' files.
+			% Eliminate unnecessary clauses from `.opt' files,
+			% to speed up compilation.
 			{ dead_pred_elim(HLDS0, HLDS1) }
 		;
 			{ HLDS1 = HLDS0 }
@@ -314,14 +337,18 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__maybe_grab_optfiles(module_imports, bool,
-	 module_imports, bool, io__state, io__state).
-:- mode mercury_compile__maybe_grab_optfiles(in, in, out, out, di, uo) is det.
+	 maybe(list(string)), module_imports, bool, io__state, io__state).
+:- mode mercury_compile__maybe_grab_optfiles(in, in, in, out, out, 
+	di, uo) is det.
 
-mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
+mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, 
+		Imports, Error) -->
 	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
 	globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptInt),
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
+	globals__io_lookup_bool_option(make_transitive_opt_interface,
+		MakeTransOptInt),
 	( { UseOptInt = yes, MakeOptInt = no } ->
 		maybe_write_string(Verbose, "% Reading .opt files...\n"),
 		maybe_flush_output(Verbose),
@@ -331,15 +358,45 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
 		{ Imports1 = Imports0 },
 		{ Error1 = no }
 	),
-	( { TransOpt = yes } ->
-		maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
-		maybe_flush_output(Verbose),
-		trans_opt__grab_optfiles(Imports1, Imports, Error2),
-		maybe_write_string(Verbose, "% Done.\n")
+	( { MakeTransOptInt = yes } ->
+		( { MaybeTransOptDeps = yes(TransOptDeps) } ->
+			% When creating the trans_opt file, only import the
+			% trans_opt files which are lower in the ordering.
+			trans_opt__grab_optfiles(Imports1, TransOptDeps, 
+				Imports, Error2)
+		;
+			{ Imports = Imports1 },
+			{ Error2 = no },
+			{ Imports = module_imports(ModuleName, _, _, _, _) },
+			globals__io_lookup_bool_option(
+				warn_missing_trans_opt_deps,
+				WarnNoTransOptDeps),
+			( { WarnNoTransOptDeps = yes } ->
+				io__write_strings([
+				    "Warning: Cannot read dependencies for `",
+				    ModuleName, ".trans_opt'.\n",
+				    "  run `mmake main_module.depend' ",
+				    "to remake the dependencies\n"])
+			;
+				[]
+			)
+		)
 	;
-		{ Imports = Imports1 },
-		{ Error2 = no }
+		( { TransOpt = yes } ->
+			% If transitive optimization is enabled, but we are
+			% not creating the trans opt file, then import the
+			% trans_opt files for all the modules that are
+			% imported (or used).
+			{ Imports0 = module_imports(_Module, DirectImports, 
+				_IndirectImports, _Items, _) },
+			trans_opt__grab_optfiles(Imports1, DirectImports,
+				Imports, Error2)
+		;
+			{ Imports = Imports1 },
+			{ Error2 = no }
+		)
 	),
+
 	{ bool__or(Error1, Error2, Error) }.
 
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
@@ -421,12 +478,22 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		{ HLDS = HLDS3 },
 		{ FoundError = FoundTypeError }
 	    ;
+		% only write out the `.opt' file if there are no type errors
+		globals__io_lookup_bool_option(make_optimization_interface,
+			MakeOptInt),
 		( { FoundTypeError = no } ->
-		    mercury_compile__maybe_write_optfile(MakeOptInt,
-		    		HLDS3, HLDS4), !,
-		    ( { MakeOptInt = no } ->
+			mercury_compile__maybe_write_optfile(MakeOptInt,
+		    		HLDS3, HLDS4), !
+		;
+			{ HLDS4 = HLDS3 }
+		),
+		% if our job was to write out the `.opt' file, then we're done
+		( { MakeOptInt = yes } ->
+		    	{ HLDS = HLDS4 },
+		    	{ FoundError = FoundTypeError }
+		;
 			%
-			% We can't continue after an undefined insts/mode
+			% We can't continue after an undefined inst/mode
 			% error, since mode analysis would get internal errors
 			%
 			( { FoundUndefModeError = yes } ->
@@ -445,25 +512,14 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
 					FoundError) }
 			)
-		    ;
-		    	{ HLDS = HLDS4 },
-		    	{ FoundError = FoundTypeError }
-		    )
-		;
-			{ FoundError = yes },
-			{ HLDS = HLDS3 }
 		)
 	    )
 	).
 
-
-
-:- pred mercury_compile__maybe_write_optfile(bool::out, module_info::in,
+:- pred mercury_compile__maybe_write_optfile(bool::in, module_info::in,
 		module_info::out, io__state::di, io__state::uo) is det.
 
 mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(make_optimization_interface,
-		MakeOptInt),
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -510,7 +566,6 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
-
 :- pred mercury_compile__output_trans_opt_file(module_info, 
 	io__state, io__state).
 :- mode mercury_compile__output_trans_opt_file(in, di, uo) is det.
@@ -526,7 +581,6 @@ mercury_compile__output_trans_opt_file(HLDS25) -->
 
 	trans_opt__write_optfile(HLDS28).
 	
-
 :- pred mercury_compile__frontend_pass_2(module_info, module_info,
 	bool, io__state, io__state).
 % :- mode mercury_compile__frontend_pass_2(di, uo, out, di, uo) is det.
@@ -550,9 +604,12 @@ mercury_compile__frontend_pass_2(HLDS0, HLDS, FoundError) -->
 % is det.
 :- mode mercury_compile__frontend_pass_2_by_phases(in, out, out, di, uo) is det.
 
-mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
+mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
+	mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
 		FoundModeError, UnsafeToContinue),
@@ -560,7 +617,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS12 = HLDS5 }
+		{ HLDS13 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		!,
@@ -590,6 +647,11 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 			Verbose, Stats, HLDS11), !,
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"), !,
 
+		maybe_write_string(Verbose, 
+			"% Mode and type checking typeclass instances...\n"),
+		check_typeclass__check_instance_decls(HLDS11, HLDS12,
+			FoundTypeclassError),
+
 		%
 		% work out whether we encountered any errors
 		%
@@ -599,6 +661,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 			{ FoundDetError = no },
 			{ FoundUniqError = no },
 			{ FoundStratError = no },
+			{ FoundTypeclassError = no },
 			% Strictly speaking, we shouldn't need to check
 			% the exit status.  But the values returned for
 			% FoundModeError etc. aren't always correct.
@@ -610,18 +673,18 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 			globals__io_lookup_bool_option(
 				make_optimization_interface, MakeOptInt),
 			{ Intermod = yes, MakeOptInt = no ->
-				intermod__adjust_pred_import_status(HLDS11,
-					HLDS12), !
+				intermod__adjust_pred_import_status(HLDS12,
+					HLDS13), !
 			;
-				HLDS12 = HLDS11
+				HLDS13 = HLDS12
 			}
 		;
 			{ FoundError = yes },
-			{ HLDS12 = HLDS11 }
+			{ HLDS13 = HLDS12 }
 		)
 	),
 
-	{ HLDS20 = HLDS12 },
+	{ HLDS20 = HLDS13 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,
@@ -896,13 +959,14 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ globals__lookup_bool_option(Globals, stack_layout, StackLayout) },
-	( { StackLayout = yes } ->
-		{ Proc = c_procedure(_, _, _, PredProcId, Instructions) },
+	{ globals__lookup_bool_option(Globals, basic_stack_layout,
+		BasicStackLayout) },
+	( { BasicStackLayout = yes } ->
+		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
 		write_proc_progress_message(
-			"% Generating stack layout information for ",
-					PredId, ProcId, ModuleInfo5),
+		   "% Generating stack layout continuation information for ",
+				PredId, ProcId, ModuleInfo5),
 		{ continuation_info__process_instructions(PredProcId,
 			Instructions, ContInfo2, ContInfo3) },
 		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
@@ -911,9 +975,26 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ModuleInfo = ModuleInfo5 }
 	).
 	
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+:- pred mercury_compile__puritycheck(module_info, bool, bool,
+				module_info, io__state, io__state).
+:- mode mercury_compile__puritycheck(in, in, in, out, di, uo) is det.
+
+mercury_compile__puritycheck(HLDS0, Verbose, Stats, HLDS) -->
+	{ module_info_num_errors(HLDS0, NumErrors0) },
+	puritycheck(HLDS0, HLDS),
+	{ module_info_num_errors(HLDS, NumErrors) },
+	( { NumErrors \= NumErrors0 } ->
+		maybe_write_string(Verbose,
+			"% Program contains purity error(s).\n"),
+		io__set_exit_status(1)
+	;
+		maybe_write_string(Verbose,
+			"% Program is purity-correct.\n")
+	),
+	maybe_report_stats(Stats).
 
 :- pred mercury_compile__modecheck(module_info, bool, bool,
 				module_info, bool, bool, io__state, io__state).
@@ -1011,19 +1092,18 @@ mercury_compile__maybe_termination(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__check_unique_modes(HLDS0, Verbose, Stats, HLDS, FoundError) -->
 	maybe_write_string(Verbose,
 		"% Checking for backtracking over unique modes...\n"),
-	io__get_exit_status(OldStatus),
-	io__set_exit_status(0),
+	{ module_info_num_errors(HLDS0, NumErrors0) },
 	unique_modes__check_module(HLDS0, HLDS),
-	io__get_exit_status(NewStatus),
-	( { NewStatus \= 0 } ->
+	{ module_info_num_errors(HLDS, NumErrors) },
+	( { NumErrors \= NumErrors0 } ->
 		{ FoundError = yes },
 		maybe_write_string(Verbose,
-			"% Program contains unique mode error(s).\n")
+			"% Program contains unique mode error(s).\n"),
+		io__set_exit_status(1)
 	;
 		{ FoundError = no },
 		maybe_write_string(Verbose,
-			"% Program is unique-mode-correct.\n"),
-		io__set_exit_status(OldStatus)
+			"% Program is unique-mode-correct.\n")
 	),
 	maybe_report_stats(Stats).
 
@@ -1084,7 +1164,7 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	process_all_nonimported_procs(
 		update_proc_error(simplify__proc(Simplify)),
 		HLDS0, HLDS),
-	maybe_write_string(Verbose, "% done\n"),
+	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
 %-----------------------------------------------------------------------------%
@@ -1192,11 +1272,9 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_base_type_layouts(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_get_type_info_method(TypeInfoMethod),
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	( 
-		{ TypeInfoMethod = shared_one_or_two_cell, 
-		  TypeLayoutOption = yes } 
+		{ TypeLayoutOption = yes } 
 	->
 		maybe_write_string(Verbose,
 			"% Generating base_type_layout structures..."),
@@ -1382,11 +1460,9 @@ mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Mapping args to regs..."),
 	maybe_flush_output(Verbose),
-	globals__io_get_args_method(Args),
-	{ generate_arg_info(HLDS0, Args, HLDS) },
+	{ generate_arg_info(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
-
 
 :- pred mercury_compile__maybe_saved_vars(module_info, bool, bool,
 	module_info, io__state, io__state).
@@ -1500,7 +1576,7 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 		maybe_write_string(Verbose,
 			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
-		optimize__main(LLDS0, LLDS),
+		optimize_main(LLDS0, LLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1514,10 +1590,10 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 
 mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
 		Stats, ModuleInfo) -->
-	globals__io_lookup_bool_option(stack_layout, StackLayout),
+	globals__io_lookup_bool_option(agc_stack_layout, StackLayout),
 	( { StackLayout = yes } ->
 		maybe_write_string(Verbose,
-			"% Generating stack layout information..."),
+			"% Generating stack layout continuation information..."),
 		maybe_flush_output(Verbose),
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
 		{ continuation_info__process_llds(LLDS0, ContInfo0,
@@ -1542,12 +1618,17 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+	globals__io_lookup_bool_option(basic_stack_layout, BasicStackLayout),
 
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
-	{ stack_layout__generate_llds(HLDS1, HLDS, StackLayouts) },
-
-	{ list__append(StackLayouts, BaseTypeLayouts, StaticData0) },
+	{ BasicStackLayout = yes ->
+		stack_layout__generate_llds(HLDS1, HLDS, StackLayouts),
+		list__append(StackLayouts, BaseTypeLayouts, StaticData0)
+	;
+		HLDS = HLDS1,
+		StaticData0 = BaseTypeLayouts
+	},
 
 	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
@@ -1820,6 +1901,12 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		ProfileTimeOpt = ""
 	},
+	globals__io_lookup_bool_option(profile_memory, ProfileMemory),
+	{ ProfileMemory = yes ->
+		ProfileMemoryOpt = "-DPROFILE_MEMORY "
+	;
+		ProfileMemoryOpt = ""
+	},
 	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
 	{ PIC_Reg = yes ->
 		PIC_Reg_Opt = "-DPIC_REG "
@@ -1860,11 +1947,6 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		ArgsOpt = "-DCOMPACT_ARGS "
 	;
 		ArgsOpt = ""
-	},
-	globals__io_get_type_info_method(TypeInfoMethod),
-	{ 
-		TypeInfoMethod = shared_one_or_two_cell,
-		TypeInfoOpt = "-DSHARED_ONE_OR_TWO_CELL_TYPEINFO "
 	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
@@ -1910,9 +1992,9 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
-		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, PIC_Reg_Opt,
-		TagsOpt, NumTagBitsOpt, DebugOpt,
-		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
+		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
+		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		UseTrailOpt, ArgsOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
@@ -2061,9 +2143,15 @@ join_module_list([Module0 | Modules0], Separator, Terminator,
 mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	(
-		{ list__member(StageNum, DumpStages)
-		; list__member(StageName, DumpStages)
-		; list__member("all", DumpStages)
+		{
+			list__member(StageNum, DumpStages)
+		;
+			list__member(StageName, DumpStages)
+		;
+			list__member("all", DumpStages)
+		;
+			string__append("0", StrippedStageNum, StageNum),
+			list__member(StrippedStageNum, DumpStages)
 		}
 	->
 		{ module_info_name(HLDS, ModuleName) },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,9 +138,9 @@ llds_common__process_procs([Proc0 | Procs0], Info0, Info, [Proc | Procs]) :-
 :- mode llds_common__process_proc(in, in, out, out) is det.
 
 llds_common__process_proc(Proc0, Info0, Info, Proc) :-
-	Proc0 = c_procedure(Name, Arity, Mode, PredProcId, Instrs0),
+	Proc0 = c_procedure(Name, Arity, PredProcId, Instrs0),
 	llds_common__process_instrs(Instrs0, Info0, Info, Instrs),
-	Proc = c_procedure(Name, Arity, Mode, PredProcId, Instrs).
+	Proc = c_procedure(Name, Arity, PredProcId, Instrs).
 
 :- pred llds_common__process_instrs(list(instruction),
 	common_info, common_info, list(instruction)).
@@ -177,7 +177,7 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = mkframe(_, _, _),
+		Instr0 = mkframe(_, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	;
@@ -208,9 +208,9 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = if_val(Rval, Target)
 	;
 		% unlikely to find anything to share, but why not try?
-		Instr0 = incr_hp(Lval, MaybeTag, Rval0),
+		Instr0 = incr_hp(Lval, MaybeTag, Rval0, Msg),
 		llds_common__process_rval(Rval0, Info0, Info, Rval),
-		Instr = incr_hp(Lval, MaybeTag, Rval)
+		Instr = incr_hp(Lval, MaybeTag, Rval, Msg)
 	;
 		Instr0 = mark_hp(_),
 		Instr = Instr0,
@@ -250,7 +250,7 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
-		Instr0 = pragma_c(_, _, _, _, _),
+		Instr0 = pragma_c(_, _, _, _),
 		Instr = Instr0,
 		Info = Info0
 	).
@@ -267,7 +267,7 @@ llds_common__process_rval(Rval0, Info0, Info, Rval) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, Unique, _LabelNo),
+		Rval0 = create(Tag, Args, Unique, _LabelNo, _Msg),
 		( Unique = no ->
 			llds_common__process_create(Tag, Args, Info0,
 				Info, Rval)

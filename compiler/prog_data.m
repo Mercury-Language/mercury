@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,8 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst).
-:- import_module term_util, list, map, varset, term, std_util.
+:- import_module hlds_data, hlds_pred, (inst), purity, term_util.
+:- import_module list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -51,26 +51,38 @@
 	; 	mode_defn(varset, mode_defn, condition)
 	; 	module_defn(varset, module_defn)
 
-	; 	pred(varset, sym_name, list(type_and_mode),
-			maybe(determinism), condition)
+	; 	pred(varset, sym_name, types_and_modes,
+			maybe(determinism), condition, purity,
+			list(class_constraint))
 		%     VarNames, PredName, ArgTypes, Deterministicness, Cond
 
-	; 	func(varset, sym_name, list(type_and_mode), type_and_mode,
-			maybe(determinism), condition)
+	; 	func(varset, sym_name, types_and_modes, type_and_mode,
+			maybe(determinism), condition, purity,
+			list(class_constraint))
 		%       VarNames, PredName, ArgTypes, ReturnType,
 		%       Deterministicness, Cond
 
-	; 	pred_mode(varset, sym_name, list(mode), maybe(determinism),
+	; 	pred_mode(varset, sym_name, argument_modes, maybe(determinism),
 			condition)
 		%       VarNames, PredName, ArgModes, Deterministicness,
 		%       Cond
 
-	; 	func_mode(varset, sym_name, list(mode), mode,
+	; 	func_mode(varset, sym_name, argument_modes, mode,
 			maybe(determinism), condition)
 		%       VarNames, PredName, ArgModes, ReturnValueMode,
 		%       Deterministicness, Cond
 
 	;	pragma(pragma_type)
+
+	;	typeclass(list(class_constraint), class_name, list(var),
+			class_interface, varset)
+		%	Constraints, ClassName, ClassParams, 
+		%	ClassMethods, VarNames
+
+	;	instance(list(class_constraint), class_name, list(type),
+			instance_interface, varset)
+		%	DerivingClass, ClassName, Types, 
+		%	MethodInstances, VarNames
 
 	;	nothing.
 		% used for items that should be ignored (currently only
@@ -81,24 +93,19 @@
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
 
+:- type types_and_modes
+	--->	types_and_modes(inst_table, list(type_and_mode)).
+
 :- type pragma_type 
 	--->	c_header_code(string)
 
 	;	c_code(string)
 
 	;	c_code(may_call_mercury, sym_name, pred_or_func,
-			list(pragma_var), varset, string)
+			list(pragma_var), varset, pragma_c_code_impl)
 			% Whether or not the C code may call Mercury,
 			% PredName, Predicate or Function, Vars/Mode, 
-			% VarNames, C Code
-
-	;	c_code(may_call_mercury, sym_name,
-			pred_or_func, list(pragma_var),
-			list(string), list(string),
-			varset, string)
-			% Whether or not the C code may call Mercury,
-			% PredName, Predicate or Function, Vars/Mode, 
-			% SavedeVars, LabelNames, VarNames, C Code
+			% VarNames, C Code Implementation Info
 
 	;	memo(sym_name, arity)
 			% Predname, Arity
@@ -112,9 +119,15 @@
 	;	obsolete(sym_name, arity)
 			% Predname, Arity
 
-	;	export(sym_name, pred_or_func, list(mode),
+	;	export(sym_name, pred_or_func, argument_modes,
 			string)
 			% Predname, Predicate/function, Modes,
+			% C function name.
+
+	;	import(sym_name, pred_or_func, argument_modes,
+			may_call_mercury, string)
+			% Predname, Predicate/function, Modes,
+			% whether or not the C function may call Mercury,
 			% C function name.
 
 	;	source_file(string)
@@ -130,9 +143,12 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
-	;	termination_info(pred_or_func, sym_name, list(mode),
-			termination)
-			% the list(mode) is the declared argmodes of the
+	;	promise_pure(sym_name, arity)
+			% Predname, Arity
+
+	;	termination_info(pred_or_func, sym_name, argument_modes,
+			maybe(arg_size_info), maybe(termination_info))
+			% the argument_modes is the declared argmodes of the
 			% procedure, unless there are no declared argmodes,
 			% in which case the inferred argmodes are used.
 			% This pragma is used to define information about a
@@ -151,6 +167,109 @@
 
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
+
+	% This type holds information about the implementation details
+	% of procedures defined via `pragma c_code'.
+
+	% All the strings in this type may be accompanied by the context
+	% of their appearance in the source code. These contexts are
+	% used to tell the C compiler where the included C code comes from,
+	% to allow it to generate error messages that refer to the original
+	% appearance of the code in the Mercury program.
+	% The context is missing if the C code was constructed by the compiler.
+:- type pragma_c_code_impl
+	--->	ordinary(		% This is a C definition of a model_det
+					% or model_semi procedure. (We also
+					% allow model_non, until everyone has
+					% had time to adapt to the new way
+					% of handling model_non pragmas.)
+			string,		% The C code of the procedure.
+			maybe(term__context)
+		)
+	;	nondet(			% This is a C definition of a model_non
+					% procedure.
+			string,
+			maybe(term__context),
+					% The info saved for the time when
+					% backtracking reenters this procedure
+					% is stored in a C struct. This arg
+					% contains the field declarations.
+
+			string,
+			maybe(term__context),
+					% Gives the code to be executed when
+					% the procedure is called for the first 
+					% time. This code may access the input
+					% variables.
+
+			string,	
+			maybe(term__context),
+					% Gives the code to be executed when
+					% control backtracks into the procedure.
+					% This code may not access the input
+					% variables.
+
+			pragma_shared_code_treatment,
+					% How should the shared code be
+					% treated during code generation.
+			string,	
+			maybe(term__context)
+					% Shared code that is executed after
+					% both the previous code fragments.
+					% May not access the input variables.
+		).
+
+	% The use of this type is explained in the comment at the top of
+	% pragma_c_gen.m.
+:- type pragma_shared_code_treatment
+	--->	duplicate
+	;	share
+	;	automatic.
+
+:- type class_constraint	---> constraint(class_name, list(type)).
+
+:- type class_name == sym_name.
+
+:- type class_interface  == list(class_method).	
+
+:- type class_method	--->	pred(varset, sym_name, types_and_modes,
+					maybe(determinism), condition,
+					list(class_constraint), term__context)
+				%       VarNames, PredName, ArgTypes,
+				%	Determinism, Cond
+				%	ClassContext, Context
+
+			; 	func(varset, sym_name, types_and_modes,
+					type_and_mode,
+					maybe(determinism), condition,
+					list(class_constraint), term__context)
+				%       VarNames, PredName, ArgTypes,
+				%	ReturnType,
+				%	Determinism, Cond
+				%	ClassContext, Context
+
+			; 	pred_mode(varset, sym_name, argument_modes,
+					maybe(determinism), condition,
+					term__context)
+				%       VarNames, PredName, ArgModes,
+				%	Determinism, Cond
+				%	Context
+
+			; 	func_mode(varset, sym_name, argument_modes,
+					mode, maybe(determinism), condition,
+					term__context)
+				%       VarNames, PredName, ArgModes,
+				%	ReturnValueMode,
+				%	Determinism, Cond
+				%	Context
+			.
+
+:- type instance_method	--->	func_instance(sym_name, sym_name, arity)
+			;	pred_instance(sym_name, sym_name, arity)
+				% Method, Instance, Arity
+			.
+
+:- type instance_interface ==	list(instance_method).
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
@@ -190,7 +309,7 @@
 	;	equivalent(goal,goal)
 	;	if_then(vars,goal,goal)
 	;	if_then_else(vars,goal,goal,goal)
-	;	call(sym_name, list(term))
+	;	call(sym_name, list(term), purity)
 	;	unify(term, term).
 
 :- type goals		==	list(goal).

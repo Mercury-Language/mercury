@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,13 +8,13 @@
 % main author: fjh
 
 % This module contains all the code for handling module imports and exports,
-% for computing module dependencies, and for generate makefile fragments to
+% for computing module dependencies, and for generating makefile fragments to
 % record those dependencies.
 %
 %
 % The interface system works as follows:
 %
-% 1. a .int3 file is written, which contains all the types, insts
+% 1. a .int3 file is written, which contains all the types, typeclasses, insts
 % and modes defined in the interface. Equivalence types, insts and
 % modes are written in full, others are written in abstract form.
 % These are module qualified as far as possible given the information
@@ -87,15 +87,28 @@
 			module_error, io__state, io__state).
 :- mode grab_imported_modules(in, in, out, out, out, di, uo) is det.
 
-	% write_dependency_file(ModuleName, LongDeps, ShortDeps, FactDeps):
+	% write_dependency_file(ModuleName, LongDeps, ShortDeps, FactDeps
+	% 		MaybeTransOptDeps):
 	%	Write out the per-module makefile dependencies (`.d') file
 	%	for a module `ModuleName' which depends directly on the
 	% 	modules `LongDeps' and indirectly on the modules `ShortDeps'.
 	%	FactDeps is the list of filenames of fact tables in the module.
+	%	MaybeTransOptDeps is a list of filenames which the
+	%	.trans_opt file may depend on.  This is set to no if the
+	%	dependency list is not available.
 	%
 :- pred write_dependency_file(string, list(string), list(string), list(string),
-				io__state, io__state).
-:- mode write_dependency_file(in, in, in, in, di, uo) is det.
+				maybe(list(string)), io__state, io__state).
+:- mode write_dependency_file(in, in, in, in, in, di, uo) is det.
+
+	%	maybe_read_dependency_file(ModuleName, MaybeTransOptDeps).
+	%	If transitive intermodule optimization has been enabled,
+	%	then read <ModuleName>.d to find the modules which
+	%	<ModuleName>.trans_opt may depend on.  Otherwise return
+	%	`no'.
+:- pred maybe_read_dependency_file(string, maybe(list(string)), io__state,
+	io__state).
+:- mode maybe_read_dependency_file(in, out, di, uo) is det.
 
 	% generate_dependencies(ModuleName):
 	%	Generate the per-program makefile dependencies (`.dep') file
@@ -116,8 +129,14 @@
 :- pred get_dependencies(item_list, list(string), list(string)).
 :- mode get_dependencies(in, out, out) is det.
 
-	% Do the importing of the interface files of imported modules.
 
+	% process_module_interfaces(DirectImports, IndirectImports, 
+	% 			Module0, Module)
+	%  	Read the long interfaces for the modules in DirectImports
+	%	then read the short interfaces for modules in IndirectImports
+	% 	and modules indirectly imported from DirectImports, taking
+	%	care not to read both the long and short interfaces for 
+	%	a module.
 :- pred process_module_interfaces(list(string), list(string),
 				module_imports, module_imports,
 				io__state, io__state).
@@ -140,6 +159,12 @@
 :- pred update_interface(string, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
+	% Check whether a particular `pragma' declaration is allowed
+	% in the interface section of a module.
+
+:- pred pragma_allowed_in_interface(pragma_type, bool).
+:- mode pragma_allowed_in_interface(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -147,7 +172,7 @@
 :- import_module passes_aux, prog_out, mercury_to_mercury.
 :- import_module prog_io_util, globals, options, intermod, module_qual.
 :- import_module bool, string, set, map, term, varset, dir, std_util, library.
-:- import_module assoc_list, relation.
+:- import_module assoc_list, relation, char, require.
 
 	% Read in the .int3 files that the current module depends on,
 	% and use these to qualify all items in the interface as much as
@@ -248,25 +273,45 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
 		report_warning("Warning: clause in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
 	;
-		% pragma `obsolete', `terminates', `does_not_terminate' 
-		% `termination_info' and `check_termination' declarations
-		% are supposed to go in the interface, but all other pragma
-		% declarations should go in the implementation.
 		{ Item0 = pragma(Pragma) },
-		{ Pragma \= obsolete(_, _) },
-		{ Pragma \= terminates(_, _) },
-		{ Pragma \= does_not_terminate(_, _) },
-		{ Pragma \= check_termination(_, _) },
-		{ Pragma \= termination_info(_, _, _, _) }
+		{ pragma_allowed_in_interface(Pragma, no) }
 	->
 		prog_out__write_context(Context),
 		report_warning("Warning: pragma in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
-
 	;
 		{ Items = [ItemAndContext0 | Items1] },
 		check_for_clauses_in_interface(Items0, Items1)
 	).
+
+% pragma `obsolete', `terminates', `does_not_terminate' 
+% `termination_info' and `check_termination' declarations
+% are supposed to go in the interface,
+% but all other pragma declarations are implementation
+% details only, and should go in the implementation.
+
+% XXX we should allow c_header_code;
+% but if we do allow it, we should put it in the generated
+% header file, which currently we don't.
+
+pragma_allowed_in_interface(c_header_code(_), no).
+pragma_allowed_in_interface(c_code(_), no).
+pragma_allowed_in_interface(c_code(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(memo(_, _), no).
+pragma_allowed_in_interface(inline(_, _), no).
+pragma_allowed_in_interface(no_inline(_, _), no).
+pragma_allowed_in_interface(obsolete(_, _), yes).
+pragma_allowed_in_interface(export(_, _, _, _), no).
+pragma_allowed_in_interface(import(_, _, _, _, _), no).
+pragma_allowed_in_interface(source_file(_), yes).
+	% yes, but the parser will strip out `source_file' pragmas anyway...
+pragma_allowed_in_interface(fact_table(_, _, _), no).
+pragma_allowed_in_interface(promise_pure(_, _), no).
+pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
+pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
+pragma_allowed_in_interface(terminates(_, _), yes).
+pragma_allowed_in_interface(does_not_terminate(_, _), yes).
+pragma_allowed_in_interface(check_termination(_, _), yes).
 
 :- pred check_for_no_exports(item_list, string, io__state, io__state).
 :- mode check_for_no_exports(in, in, di, uo) is det.
@@ -427,7 +472,7 @@ grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
 
-		% we add a pseudo-declarations `:- imported' at the end
+		% We add a pseudo-declarations `:- imported' at the end
 		% of the item list. Uses of the items with declarations 
 		% following this do not need module qualifiers.
 	{ varset__init(VarSet) },
@@ -436,24 +481,32 @@ grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
 	{ dir__basename(ModuleName, BaseModuleName) },
 	{ Module1 = module_imports(BaseModuleName, [], [], Items1, no) },
 
-	process_module_interfaces(["mercury_builtin" | ImportedModules], 
-		[], Module1, Module2),
+		% Process the modules imported using `import_module'.
+	process_module_interfaces_2(["mercury_builtin" | ImportedModules], 
+		[], IndirectImports, Module1, Module2),
 	{ Module2 = module_imports(_, Direct2, Indirect2, Items2, Error2) },
 
-		% we add a pseudo-declarations `:- used' at the end
+		% We add a pseudo-declarations `:- used' at the end
 		% of the item list. Uses of the items with declarations 
 		% following this must be module qualified.
 	{ list__append(Items2,
 		[module_defn(VarSet, used) - Context], Items3) },
 	{ Module3 = module_imports(BaseModuleName, Direct2, Indirect2, 
 		Items3, Error2) },
-	process_module_interfaces(UsedModules, [], Module3, Module),
+
+		% Process the modules imported using `use_module' 
+		% and the short interfaces for indirectly imported
+		% modules. The short interfaces are treated as if
+		% they are imported using `use_module'.
+	process_module_interfaces(UsedModules, IndirectImports,
+		Module3, Module),
 
 	{ Module = module_imports(_, _, _, _, Error) }.
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
+write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
+		MaybeTransOptDeps) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
@@ -462,28 +515,48 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
-		{ list__sort_and_remove_dups(LongDeps0, LongDeps1) },
-		{ list__delete_all(LongDeps1, ModuleName, LongDeps) },
-		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps1) },
-		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
-		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
+		{ set__list_to_set(LongDeps0, LongDepsSet0) },
+		{ set__delete(LongDepsSet0, ModuleName, LongDepsSet) },
+		{ set__list_to_set(ShortDeps0, ShortDepsSet0) },
+		{ set__difference(ShortDepsSet0, LongDepsSet, ShortDepsSet1) },
+		{ set__delete(ShortDepsSet1, ModuleName, ShortDepsSet) },
+		{ set__to_sorted_list(LongDepsSet, LongDeps) },
+		{ set__to_sorted_list(ShortDepsSet, ShortDeps) },
 		{ list__sort_and_remove_dups(FactDeps0, FactDeps) },
+
+		( { MaybeTransOptDeps = yes(TransOptDeps0) } ->
+			{ set__list_to_set(TransOptDeps0, TransOptDepsSet0) },
+			{ set__intersect(TransOptDepsSet0, LongDepsSet,
+				TransOptDepsSet) },
+			{ set__to_sorted_list(TransOptDepsSet, 
+				TransOptDateDeps) },
+			%
+			% note that maybe_read_dependency_file searches for
+			% this exact pattern
+			%
+			io__write_strings(DepStream,
+				[ModuleName, ".trans_opt_date :"]),
+			write_dependencies_list(TransOptDateDeps, ".trans_opt", 
+				DepStream)
+		;
+			[]
+		),
 
 		( { FactDeps \= [] } ->
 			io__write_strings(DepStream, 
-				[ModuleName, ".fact_tables = "]),
+				["\n\n", ModuleName, ".fact_tables ="]),
 			write_dependencies_list(FactDeps, "", DepStream),
 			io__nl(DepStream),
 			globals__io_lookup_bool_option(assume_gmake,
 				AssumeGmake),
-			( { AssumeGmake = no} ->
+			( { AssumeGmake = no } ->
 				io__write_strings(DepStream,
-					[ModuleName, ".fact_tables.os = "]),
+					[ModuleName, ".fact_tables.os ="]),
 				write_dependencies_list(FactDeps, ".o",
 					DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
-					ModuleName, ".fact_tables.cs = "]),
+					ModuleName, ".fact_tables.cs ="]),
 				write_dependencies_list(FactDeps, ".c",
 					DepStream),
 				io__nl(DepStream)
@@ -501,9 +574,9 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			[]
 		),
 
-
-		io__write_strings(DepStream, [
+		io__write_strings(DepStream, ["\n\n",
 			ModuleName, ".optdate ",
+			ModuleName, ".trans_opt_date ",
 			ModuleName, ".c ",
 			ModuleName, ".err ",
 			ModuleName, ".o : ",
@@ -526,11 +599,14 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 		),
 
 		globals__io_lookup_bool_option(intermodule_optimization,
-							Intermod),
+			Intermod),
 		( { Intermod = yes } ->
 			io__write_strings(DepStream, [
-				"\n\n", ModuleName, ".c ",
-				ModuleName, ".err ", ModuleName, ".o :"
+				"\n\n", 
+				ModuleName, ".c ",
+				ModuleName, ".trans_opt_date ",
+				ModuleName, ".err ", 
+				ModuleName, ".o :"
 			]),
 			% The .c file only depends on the .opt files from 
 			% the current directory, so that inter-module
@@ -543,9 +619,27 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			% modules.
 			globals__io_lookup_accumulating_option(
 				intermod_directories, IntermodDirs),
-			get_opt_deps(LongDeps, IntermodDirs, [], OptDeps),
-			write_dependencies_list([ModuleName | OptDeps],
-				".opt", DepStream)
+			globals__io_lookup_bool_option(transitive_optimization,
+				TransOpt),
+			( { TransOpt = yes } ->
+				get_both_opt_deps(LongDeps, IntermodDirs, 
+					OptDeps, TransOptDeps),
+				write_dependencies_list([ModuleName | OptDeps],
+					".opt", DepStream),
+				io__write_strings(DepStream, [
+					"\n\n", 
+					ModuleName, ".c ",
+					ModuleName, ".err ", 
+					ModuleName, ".o :"
+				]),
+				write_dependencies_list(TransOptDeps,
+					".trans_opt", DepStream)
+			;
+				get_opt_deps(LongDeps, IntermodDirs, ".opt", 
+					OptDeps),
+				write_dependencies_list([ModuleName | OptDeps],
+					".opt", DepStream)
+			)
 		;
 			[]
 		),
@@ -559,7 +653,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 
 		io__write_strings(DepStream, [
 			"\n\n",
-			ModuleName, ".dir/", ModuleName, "_000.o: ",
+			ModuleName, ".dir/", ModuleName, "_000.o : ",
 				ModuleName, ".m\n",
 			"\trm -rf ", ModuleName, ".dir\n",
 			"\t$(MCS) $(GRADEFLAGS) $(MCSFLAGS) ",
@@ -574,100 +668,263 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 		report_error(Message)
 	).
 
-	% For each dependency, search intermod_directories for a .opt
-	% file or a .m file, filtering out those for which the search fails.
-:- pred get_opt_deps(list(string)::in, list(string)::in, list(string)::in, 
-		list(string)::out, io__state::di, io__state::uo) is det.
+maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
+	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
+	( { TransOpt = yes } ->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		{ string__append(ModuleName, ".d", DependencyFileName) },
+		maybe_write_string(Verbose, "% Reading auto-dependency file `"),
+		maybe_write_string(Verbose, DependencyFileName),
+		maybe_write_string(Verbose, "'..."),
+		maybe_flush_output(Verbose),
+		io__open_input(DependencyFileName, OpenResult),
+		( { OpenResult = ok(Stream) } ->
+			io__set_input_stream(Stream, OldStream),
+			{ string__append(ModuleName, ".trans_opt_date :", 
+				TransOptFileName0) },
+			{ string__to_char_list(TransOptFileName0, 
+				TransOptFileName) },
+			read_dependency_file_find_start(TransOptFileName, 
+				FindResult),
+			( { FindResult = yes } ->
+				read_dependency_file_get_modules(TransOptDeps),
+				{ MaybeTransOptDeps = yes(TransOptDeps) }
+			;
+				% error reading .d file
+				{ MaybeTransOptDeps = no }
+			),
+			io__set_input_stream(OldStream, _),	
+			io__close_input(Stream)
+		;
+			{ string__append_list(["can't open file `", 
+				DependencyFileName,
+				"' for input."], Message) },
+			{ MaybeTransOptDeps = no },
+			report_error(Message)
+		),
+		maybe_write_string(Verbose, " done.\n")
+	;
+			{ MaybeTransOptDeps = no }
+	).
+			
+	% Read lines from the dependency file (module.d) until one is found
+	% which begins with TransOptFileName.
+:- pred read_dependency_file_find_start(list(char)::in, bool::out, 
+	io__state::di, io__state::uo) is det.
+read_dependency_file_find_start(TransOptFileName, Success) -->
+	io__read_line(Result),
+	( { Result = ok(CharList) } ->
+		( { list__append(TransOptFileName, _, CharList) } ->
+			% Have found the start
+			{ Success = yes }
+		;
+			read_dependency_file_find_start(TransOptFileName, 
+				Success)
+		)
+	; 
+		{ Success = no }
+	).
+		
+	% Read lines until one is found which does not contain whitespace
+	% followed by a word which ends in .trans_opt.  Remove the
+	% .trans_opt ending from all the words which are read in and return
+	% the resulting list of modules..
+:- pred read_dependency_file_get_modules(list(string)::out, io__state::di,
+	io__state::uo) is det.
+read_dependency_file_get_modules(TransOptDeps) -->
+	io__read_line(Result),
+	( 
+		{ Result = ok(CharList0) },
+		% Remove any whitespace from the beginning of the line,
+		% then take all characters until another whitespace occurs.
+		{ list__takewhile(char__is_whitespace, CharList0, _, 
+			CharList1) },
+		{ NotIsWhitespace = lambda([Char::in] is semidet, (
+			\+ char__is_whitespace(Char)
+		)) },
+		{ list__takewhile(NotIsWhitespace, CharList1, CharList, _) },
+		% Remove the ".trans_opt" suffix from the word which was
+		% read in.
+		{ list__remove_suffix(CharList, 
+			['.','t','r','a','n','s','_','o','p','t'], 
+			ModuleCharList) }
+	->
+		{ string__from_char_list(ModuleCharList, Module) },
+		read_dependency_file_get_modules(TransOptDeps0),
+		{ TransOptDeps = [ Module | TransOptDeps0 ] }
+	;
+		{ TransOptDeps = [] }
+	).
 
-get_opt_deps([], _, OptDeps, OptDeps) --> [].
-get_opt_deps([Dep | Deps], IntermodDirs, OptDeps0, OptDeps) -->
+	% get_both_opt_deps(Deps, Directories, OptDeps, TransOptDeps).
+	% For each dependency, search intermod_directories for a .m file.
+	% If it exists, add it to both output lists. Otherwise, if a .opt
+	% file exists, add it to the OptDeps list, and if a .trans_opt
+	% file exists, add it to the TransOptDeps list.
+:- pred get_both_opt_deps(list(string)::in, list(string)::in, 
+	list(string)::out, list(string)::out, 
+	io__state::di, io__state::uo) is det.
+get_both_opt_deps([], _, [], []) --> [].
+get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
 	{ string__append(Dep, ".m", DepName) },
 	search_for_file(IntermodDirs, DepName, Result1),
+	get_both_opt_deps(Deps, IntermodDirs, OptDeps0, TransOptDeps0),
 	( { Result1 = yes } ->
-		{ OptDeps1 = [Dep | OptDeps0] },
+		{ OptDeps = [Dep | OptDeps0] },
+		{ TransOptDeps = [Dep | TransOptDeps0] },
 		io__seen
 	;
 		{ string__append(Dep, ".opt", OptName) },
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
-			{ OptDeps1 = [Dep | OptDeps0] },
+			{ OptDeps = [Dep | OptDeps0] },
 			io__seen
 		;
-			{ OptDeps1 = OptDeps0 }
+			{ OptDeps = OptDeps0 }
+		),
+		{ string__append(Dep, ".trans_opt", TransOptName) },
+		search_for_file(IntermodDirs, TransOptName, Result3),
+		( { Result3 = yes } ->
+			{ TransOptDeps = [Dep | TransOptDeps0] },
+			io__seen
+		;
+			{ TransOptDeps = TransOptDeps0 }
 		)
-	),
-	get_opt_deps(Deps, IntermodDirs, OptDeps1, OptDeps).
+	).
+
+	% For each dependency, search intermod_directories for a .Suffix
+	% file or a .m file, filtering out those for which the search fails.
+:- pred get_opt_deps(list(string)::in, list(string)::in, string::in,
+	list(string)::out, io__state::di, io__state::uo) is det.
+get_opt_deps([], _, _, []) --> [].
+get_opt_deps([Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
+	{ string__append(Dep, ".m", DepName) },
+	search_for_file(IntermodDirs, DepName, Result1),
+	get_opt_deps(Deps, IntermodDirs, Suffix, OptDeps0),
+	( { Result1 = yes } ->
+		{ OptDeps = [Dep | OptDeps0] },
+		io__seen
+	;
+		{ string__append(Dep, Suffix, OptName) },
+		search_for_file(IntermodDirs, OptName, Result2),
+		( { Result2 = yes } ->
+			{ OptDeps = [Dep | OptDeps0] },
+			io__seen
+		;
+			{ OptDeps = OptDeps0 }
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 
 generate_dependencies(Module) -->
-	%
-	% first, build up a map of the dependencies (writing `.d' files as
-	% we go)
-	%
+	% first, build up a map of the dependencies.
 	{ map__init(DepsMap0) },
 	generate_deps_map([Module], DepsMap0, DepsMap),
 	%
-	% check whether we couldn't read the main `.m' file
+	% check whether we could read the main `.m' file
 	%
 	{ map__lookup(DepsMap, Module, deps(_, Error, _, _, _)) },
-	globals__io_lookup_bool_option(verbose, Verbose),
 	( { Error = fatal } ->
-	    { string__append_list(["fatal error reading module `",
-				Module, "'."], Message) },
-	    report_error(Message)
+		{ string__append_list(["fatal error reading module `",
+			Module, "'."], Message) },
+		report_error(Message)
 	;
-	    %
-	    % now, write the `.dep' file
-	    %
-	    { string__append(Module, ".dep", DepFileName) },
-	    maybe_write_string(Verbose, "% Creating auto-dependency file `"),
-	    maybe_write_string(Verbose, DepFileName),
-	    maybe_write_string(Verbose, "'...\n"),
-	    io__open_output(DepFileName, DepResult),
-	    ( { DepResult = ok(DepStream) } ->
-		generate_dep_file(Module, DepsMap, DepStream),
-		io__close_output(DepStream),
-		maybe_write_string(Verbose, "% done\n")
-	    ;
-		{ string__append_list(["can't open file `", DepFileName,
-				"' for output."], DepMessage) },
-		report_error(DepMessage)
-	    ),
-	    globals__io_lookup_bool_option(generate_module_order, Order),
-	    ( { Order = yes } ->
-	  	{ string__append(Module, ".order", OrdFileName) },
+		globals__io_lookup_accumulating_option(intermod_directories, 
+			IntermodDirs),
+		generate_dependencies_write_dep_file(Module, DepsMap),
+		{ relation__init(DepsRel0) },
+		{ map__to_assoc_list(DepsMap, DepsList) },
+		{ deps_map_to_deps_rel(DepsList, DepsMap, 
+			DepsRel0, DepsRel) },
+		{ relation__atsort(DepsRel, DepsOrdering0) },
+		maybe_output_module_order(Module, DepsOrdering0),
+		{ list__map(set__to_sorted_list, DepsOrdering0, 
+			DepsOrdering) },
+		{ list__condense(DepsOrdering, TransOptDepsOrdering0) },
+		get_opt_deps(TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
+			TransOptDepsOrdering),
+		generate_dependencies_write_d_files(DepsOrdering,
+			TransOptDepsOrdering, DepsMap)
+	).
+
+:- pred maybe_output_module_order(string::in, list(set(string))::in,
+	io__state::di, io__state::uo) is det.
+maybe_output_module_order(Module, DepsOrdering) -->
+	globals__io_lookup_bool_option(generate_module_order, Order),
+	globals__io_lookup_bool_option(verbose, Verbose),
+	( { Order = yes } ->
+		{ string__append(Module, ".order", OrdFileName) },
 		maybe_write_string(Verbose, "% Creating module order file `"),
 		maybe_write_string(Verbose, OrdFileName),
 		maybe_write_string(Verbose, "'...\n"),
 		io__open_output(OrdFileName, OrdResult),
 		( { OrdResult = ok(OrdStream) } ->
-		    { relation__init(DepsRel0) },
-		    { map__to_assoc_list(DepsMap, DepsList) },
-		    { deps_map_to_deps_rel(DepsList, DepsMap, 
-				DepsRel0, DepsRel) },
-		    { relation__atsort(DepsRel, DepsOrdering) },
-		    io__write_list(OrdStream, DepsOrdering, "\n\n", 
-		    		write_module_scc(OrdStream)),
-		    io__close_output(OrdStream),
-		    maybe_write_string(Verbose, "% done\n")
+			io__write_list(OrdStream, DepsOrdering, "\n\n", 
+					write_module_scc(OrdStream)),
+			io__close_output(OrdStream),
+			maybe_write_string(Verbose, "% done.\n")
 		;
-		    { string__append_list(["can't open file `", 
-				OrdFileName, "' for output."], OrdMessage) },
-		    report_error(OrdMessage)
+			{ string__append_list(["can't open file `", 
+	    			OrdFileName, "' for output."], OrdMessage) },
+			report_error(OrdMessage)
 		)
-	    ;
+	;
 		[]
-	    )
 	).
 
 :- pred write_module_scc(io__output_stream::in, set(module_name)::in,
 		io__state::di, io__state::uo) is det.
-
 write_module_scc(Stream, SCC0) -->
 	{ set__to_sorted_list(SCC0, SCC) },
 	io__write_list(Stream, SCC, "\n", io__write_string).
 
+% generate_dependencies_write_d_files(Sccs, TransOptOrder, DepsMap, IO0, IO).
+%		This predicate writes out the .d files for all the modules
+%		in the Sccs list.  
+%		Sccs is a list of lists of modules.  Each list of
+%		modules represents a set of strongly connected components
+%		of the module call graph.  
+%		TransOptOrder gives the ordering that is used to determine
+%		which other modules the .trans_opt files may depend on.
+:- pred generate_dependencies_write_d_files(list(list(string))::in, 
+	list(string)::in, deps_map::in, io__state::di, io__state::uo) is det.
+generate_dependencies_write_d_files([], _, _) --> [].
+generate_dependencies_write_d_files([Scc | Sccs], TransOptOrder, DepsMap) --> 
+	{ list__condense([Scc | Sccs], TransDeps) },
+	generate_dependencies_write_d_files_2(Scc, TransDeps, TransOptOrder,
+		DepsMap),
+	generate_dependencies_write_d_files(Sccs, TransOptOrder, DepsMap).
+
+:- pred generate_dependencies_write_d_files_2(list(string)::in, 
+	list(string)::in, list(string)::in, deps_map::in, 
+	io__state::di, io__state::uo) is det.
+generate_dependencies_write_d_files_2([], _, _TransOptOrder, _DepsMap) --> [].
+generate_dependencies_write_d_files_2([ModuleName | ModuleNames], TransDeps,
+		TransOptOrder, DepsMap) --> 
+	{ map__lookup(DepsMap, ModuleName, 
+		deps(_, Error, _IntDeps, ImplDeps, FactDeps)) },
+	
+	{ FindModule = lambda([Module::in] is semidet, ( 
+		ModuleName \= Module )) },
+	{ list__takewhile(FindModule, TransOptOrder, _, TransOptDeps0) },
+	( { TransOptDeps0 = [ _ | TransOptDeps1 ] } ->
+		% The module was found in the list
+		{ TransOptDeps = TransOptDeps1 }
+	;
+		{ TransOptDeps = [] }
+	),
+	% Note that even if a fatal error occured for one of the files that
+	% the current Module depends on, a .d file is still produced, even
+	% though it probably contains incorrect information.
+	( { Error \= fatal } ->
+		write_dependency_file(ModuleName, ImplDeps, TransDeps,
+			FactDeps, yes(TransOptDeps))
+	;
+		[]
+	),
+	generate_dependencies_write_d_files_2(ModuleNames, TransDeps,
+		TransOptOrder, DepsMap).
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
@@ -697,31 +954,20 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% it has been processed yet.
 	lookup_dependencies(Module, DepsMap0, no, Done, Error, IntDeps, 
 				ImplDeps, FactDeps, DepsMap1),
-		% If the module hadn't been processed yet, compute its
-		% transitive dependencies (we already know its primary ones),
-		% (1) output this module's dependencies to its `.d' file
-		% (if the `.m' file exists), (2) add its imports to the list of
-		% dependencies we need to generate, and (3) mark it as having
-		% been processed.
+		% If the module hadn't been processed yet, then add its
+		% imports to the list of dependencies we need to generate
+		% and mark it as having been processed.
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module,
 			deps(yes, Error, IntDeps, ImplDeps, FactDeps), 
-			DepsMap2) },
-		transitive_dependencies(ImplDeps, DepsMap2, no, SecondaryDeps,
-			DepsMap3),
-		( { Error \= fatal } ->
-			write_dependency_file(Module, ImplDeps, SecondaryDeps,
-			FactDeps)
-		;
-			[]
-		),
-		{ list__append(ImplDeps, Modules, Modules2) }
+				DepsMap2) },
+		{ list__append(ImplDeps, Modules, Modules1) }
 	;
-		{ DepsMap3 = DepsMap1 },
-		{ Modules2 = Modules }
+		{ DepsMap2 = DepsMap1 },
+		{ Modules1 = Modules }
 	),
 		% Recursively process the remaining modules
-	generate_deps_map(Modules2, DepsMap3, DepsMap).
+	generate_deps_map(Modules1, DepsMap2, DepsMap).
 
 
 	% Construct a dependency relation of all the modules in the program.
@@ -738,8 +984,8 @@ deps_map_to_deps_rel([Module - Deps | DepsList], DepsMap, Rel0, Rel) :-
 		    lambda([Dep::in, Relation0::in, Relation::out] is det, (
 			relation__add_element(Relation0, Dep,
 				DepRelKey, Relation1),
-			relation__add(Relation1, DepRelKey,
-				ModuleRelKey, Relation)
+			relation__add(Relation1, ModuleRelKey,
+				DepRelKey, Relation)
 		    )),
 		list__foldl(AddDeps, IntDeps, Rel1, Rel2),
 		list__foldl(AddDeps, ImplDeps, Rel2, Rel3)
@@ -748,8 +994,27 @@ deps_map_to_deps_rel([Module - Deps | DepsList], DepsMap, Rel0, Rel) :-
 	),
 	deps_map_to_deps_rel(DepsList, DepsMap, Rel3, Rel).
 
-% Write out the `.dep' file, using the information collected in the
-% deps_map data structure.
+%-----------------------------------------------------------------------------%
+	% Write out the `.dep' file, using the information collected in the
+	% deps_map data structure.
+:- pred generate_dependencies_write_dep_file(string::in, deps_map::in, 
+	io__state::di, io__state::uo) is det.
+generate_dependencies_write_dep_file(Module, DepsMap) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	{ string__append(Module, ".dep", DepFileName) },
+	maybe_write_string(Verbose, "% Creating auto-dependency file `"),
+	maybe_write_string(Verbose, DepFileName),
+	maybe_write_string(Verbose, "'...\n"),
+	io__open_output(DepFileName, DepResult),
+	( { DepResult = ok(DepStream) } ->
+		generate_dep_file(Module, DepsMap, DepStream),
+		io__close_output(DepStream),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ string__append_list(["can't open file `", DepFileName,
+			"' for output."], DepMessage) },
+		report_error(DepMessage)
+	).
 
 :- pred generate_dep_file(string, deps_map, io__output_stream,
 			io__state, io__state).
@@ -850,6 +1115,12 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".trans_opt_dates = "),
+	write_compact_dependencies_list(Modules, ".trans_opt_date", Basis,
+								DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ds = "),
 	write_compact_dependencies_list(Modules, ".d", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
@@ -874,14 +1145,25 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".opts = "),
 	write_compact_dependencies_list(Modules, ".opt", Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".trans_opts = "),
+	write_compact_dependencies_list(Modules, ".trans_opt", Basis,
+								DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".profs = "),
+	write_compact_dependencies_list(Modules, ".prof", Basis, DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_strings(DepStream, [
 		ModuleName, " : $(", ModuleName, ".os) ",
-		ModuleName, "_init.o\n",
+		ModuleName, "_init.o $(MLOBJS)\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, " ",
 		ModuleName, "_init.o \\\n",
-		"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
+		"\t	$(", ModuleName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -889,13 +1171,14 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 				ModuleName, "_init.o\n",
 		"\t$(ML) $(GRADEFLAGS) $(MLFLAGS) -o ", ModuleName, ".split ",
 			ModuleName, "_init.o \\\n",
-			"\t", ModuleName, ".split.a $(MLLIBS)\n\n"
+		"\t	", ModuleName, ".split.a $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		ModuleName, ".split.a : $(", ModuleName, ".dir_os)\n",
+		ModuleName, ".split.a : $(", ModuleName, ".dir_os) ",
+				"$(MLOBJS)\n",
 		"\trm -f ", ModuleName, ".split.a\n",
-		"\t$(AR) $(ARFLAGS) ", ModuleName, ".split.a\n",
+		"\t$(AR) $(ARFLAGS) ", ModuleName, ".split.a $(MLOBJS)\n",
 		"\tfor dir in $(", ModuleName, ".dirs); do \\\n",
 		"\t	$(AR) q ", ModuleName, ".split.a $$dir/*.o; \\\n",
 		"\tdone\n",
@@ -912,17 +1195,18 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
+		"lib", ModuleName, ".so : $(", ModuleName, ".pic_os) ",
+				"$(MLPICOBJS)\n",
 		"\t$(ML) --make-shared-lib $(GRADEFLAGS) $(MLFLAGS) -o ",
 			"lib", ModuleName, ".so \\\n",
-		"\t\t$(", ModuleName, ".pic_os) $(MLLIBS)\n\n"
+		"\t\t$(", ModuleName, ".pic_os) $(MLPICOBJS) $(MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
-		"lib", ModuleName, ".a : $(", ModuleName, ".os)\n",
+		"lib", ModuleName, ".a : $(", ModuleName, ".os) $(MLOBJS)\n",
 		"\trm -f ", ModuleName, ".a\n",
 		"\t$(AR) $(ARFLAGS) lib", ModuleName, ".a ",
-			"$(", ModuleName, ".os)\n",
+			"$(", ModuleName, ".os) $(MLOBJS)\n",
 		"\t$(RANLIB) $(RANLIBFLAGS) lib", ModuleName, ".a\n\n"
 	]),
 
@@ -968,7 +1252,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"clean: ", ModuleName, ".clean\n"
+		"clean : ", ModuleName, ".clean\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -977,6 +1261,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
 		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
+		"\t-rm -f $(", ModuleName, ".pic_os) ",
+						ModuleName, "_init.pic_o\n",
+		"\t-rm -f $(", ModuleName, ".trans_opt_dates)\n",
+		"\t-rm -f $(", ModuleName, ".trans_opts)\n",
+		"\t-rm -f $(", ModuleName, ".profs)\n",
 		"\t-rm -f $(", ModuleName, ".nos)\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n",
 		"\t-rm -f $(", ModuleName, ".errs)\n"
@@ -1002,7 +1291,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		"realclean: ", ModuleName, ".realclean\n"
+		"realclean : ", ModuleName, ".realclean\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -1033,11 +1322,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 			ModuleName, ".dep\n\n"
 	]),
 	io__write_strings(DepStream, [
-		"clean_nu: ", ModuleName, ".clean_nu\n",
+		"clean_nu : ", ModuleName, ".clean_nu\n",
 		ModuleName, ".clean_nu :\n",
 		"\t-rm -f $(", ModuleName, ".nos)\n\n",
 
-		"clean_sicstus: ", ModuleName, ".clean_sicstus\n",
+		"clean_sicstus : ", ModuleName, ".clean_sicstus\n",
 		ModuleName, ".clean_sicstus :\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n\n"
 	]).
@@ -1120,81 +1409,6 @@ write_compact_dependencies_separator(yes(_), DepStream) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Given a list of modules, return a list of those modules
-	% and all their transitive interface dependencies.
-
-:- pred transitive_dependencies(list(string), deps_map, bool, list(string), 
-				deps_map, io__state, io__state).
-:- mode transitive_dependencies(in, in, in, out, out, di, uo) is det.
-
-transitive_dependencies(Modules, DepsMap0, Search, Dependencies, DepsMap) -->
-	{ set__init(Dependencies0) },
-	transitive_dependencies_2(Modules, Dependencies0, DepsMap0, Search,
-		Dependencies1, DepsMap),
-	{ set__to_sorted_list(Dependencies1, Dependencies) }.
-
-:- pred transitive_dependencies_2(list(string), set(string), deps_map, bool,
-				set(string), deps_map,
-				io__state, io__state).
-:- mode transitive_dependencies_2(in, in, in, in, out, out, di, uo) is det.
-
-transitive_dependencies_2([], Deps, DepsMap, _Search, Deps, DepsMap) --> [].
-transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps, 
-		DepsMap)
-		-->
-	( { set__member(Module, Deps0) } ->
-		{ Deps1 = Deps0 },
-		{ DepsMap1 = DepsMap0 },
-		{ Modules1 = Modules0 }
-	;
-		{ set__insert(Deps0, Module, Deps1) },
-		lookup_dependencies(Module, DepsMap0, Search, _, _, 
-			IntDeps, _ImplDeps, _FactDeps, DepsMap1),
-		{ list__append(IntDeps, Modules0, Modules1) }
-	),
-	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Search, Deps, 
-		DepsMap).
-
-%-----------------------------------------------------------------------------%
-
-        % Given a list of modules, return a list of those modules
-        % and all their transitive implementation dependencies.
-
-:- pred trans_impl_dependencies(list(string), deps_map, bool,
-                        list(string), deps_map, io__state, io__state).
-:- mode trans_impl_dependencies(in, in, in, out, out, di, uo) is det.
-
-trans_impl_dependencies(Modules, DepsMap0, Search, Dependencies, DepsMap) -->
-        { set__init(Dependencies0) },
-        trans_impl_dependencies_2(Modules, Dependencies0, DepsMap0, Search,
-                Dependencies1, DepsMap),
-        { set__to_sorted_list(Dependencies1, Dependencies) }.
-
-:- pred trans_impl_dependencies_2(list(string), set(string), deps_map, bool,
-                                set(string), deps_map,
-                                io__state, io__state).
-:- mode trans_impl_dependencies_2(in, in, in, in, out, out, di, uo) is det.
-
-trans_impl_dependencies_2([], Deps, DepsMap, _Search, Deps, DepsMap) --> [].
-trans_impl_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
-                DepsMap)
-                -->
-        ( { set__member(Module, Deps0) } ->
-                { Deps1 = Deps0 },
-                { DepsMap1 = DepsMap0 },
-                { Modules2 = Modules0 }
-        ;
-                { set__insert(Deps0, Module, Deps1) },
-                lookup_dependencies(Module, DepsMap0, Search, _, _, IntDeps, 
-                	ImplDeps, _FactDeps, DepsMap1),
-                { list__append(IntDeps, Modules0, Modules1) },
-                { list__append(ImplDeps, Modules1, Modules2) }
-        ),
-        trans_impl_dependencies_2(Modules2, Deps1, DepsMap1, Search, Deps,
-                DepsMap).
-
-%-----------------------------------------------------------------------------%
-
 	% Look up a module in the dependency map
 	% If we don't know its dependencies, read the
 	% module and save the dependencies in the dependency map.
@@ -1206,8 +1420,7 @@ trans_impl_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
 		di, uo) is det.
 
 lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps, 
-		ImplDeps, FactDeps, DepsMap)
-		-->
+		ImplDeps, FactDeps, DepsMap) -->
 	(
 		{ map__search(DepsMap0, Module,
 			deps(Done0, Error0, IntDeps0, ImplDeps0, FactDeps0)) }
@@ -1220,7 +1433,7 @@ lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps,
 		{ DepsMap = DepsMap0 }
 	;
 		read_dependencies(Module, Search, IntDeps, ImplDeps, FactDeps, 
-				Error),
+			Error),
 		{ map__det_insert(DepsMap0, Module, 
 		    deps(no, Error, IntDeps, ImplDeps, FactDeps), DepsMap) },
 		{ Done = no }
@@ -1317,11 +1530,19 @@ read_mod_interface(Module, Descr, Search, Items, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-process_module_interfaces([], IndirectImports, Module0, Module) -->
-	process_module_short_interfaces(IndirectImports, Module0, Module).
+process_module_interfaces(Imports, IndirectImports0, Module0, Module) -->
+	process_module_interfaces_2(Imports, IndirectImports0,
+		IndirectImports, Module0, Module1),
+	process_module_short_interfaces(IndirectImports, Module1, Module).
 
-process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
-		-->
+:- pred process_module_interfaces_2(list(string), list(string), 
+	list(string), module_imports, module_imports, io__state, io__state).
+:- mode process_module_interfaces_2(in, in, out, in, out, di, uo) is det.
+
+process_module_interfaces_2([], IndirectImports, IndirectImports, 
+		Module, Module) --> [].
+process_module_interfaces_2([Import | Imports], IndirectImports0,
+		IndirectImports, Module0, Module) -->
 	{ Module0 = module_imports(ModuleName, DirectImports0,
 				OldIndirectImports, Items0, Error0) },
 	(
@@ -1341,13 +1562,13 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 				[]
 			)
 		),
-		process_module_interfaces(Imports, IndirectImports0,
-					Module0, Module)
+		process_module_interfaces_2(Imports, IndirectImports0,
+				IndirectImports, Module0, Module)
 	;
 		{ list__member(Import, DirectImports0) }
 	->
-		process_module_interfaces(Imports, IndirectImports0,
-					Module0, Module)
+		process_module_interfaces_2(Imports, IndirectImports0,
+				IndirectImports, Module0, Module)
 	;
 		read_mod_interface(Import,
 			"Reading interface for module", yes, 
@@ -1382,9 +1603,9 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 			IndirectImports3) },
 		{ list__append(Items0, Items1, Items2) },
 		{ Module1 = module_imports(ModuleName, DirectImports1, 
-					OldIndirectImports, Items2, Error2) },
-		process_module_interfaces(Imports, IndirectImports3,
-				Module1, Module)
+				OldIndirectImports, Items2, Error2) },
+		process_module_interfaces_2(Imports, IndirectImports3,
+				IndirectImports, Module1, Module)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1449,13 +1670,14 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 
-		{ get_dependencies(Items1, Imports1, _Uses1) },
+		{ get_dependencies(Items1, Imports1, Uses1) },
 		{ list__append(Imports, Imports1, Imports2) },
+		{ list__append(Imports2, Uses1, Imports3) },
 		{ list__append(Items0, Items1, Items2) },
 		{ IndirectImports1 = [Import | IndirectImports0] },
 		{ Module1 = module_imports(ModuleName, DirectImports,
 			IndirectImports1, Items2, Error2) },
-		process_module_short_interfaces(Imports2, Ext, Module1, Module)
+		process_module_short_interfaces(Imports3, Ext, Module1, Module)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1562,7 +1784,7 @@ get_interface_2([Item - Context | Rest], InInterface0,
 
 	% Given a module interface (well, a list of items), extract the
 	% short interface part of that module, i.e. the exported
-	% type/inst/mode declarations, but not the exported pred or
+	% type/typeclass/inst/mode declarations, but not the exported pred or
 	% constructor declarations.  If the module interface imports
 	% other modules, then the short interface only needs to include
 	% those import_module declarations only if the short interface
@@ -1626,6 +1848,7 @@ include_in_short_interface(type_defn(_, _, _)).
 include_in_short_interface(inst_defn(_, _, _)).
 include_in_short_interface(mode_defn(_, _, _)).
 include_in_short_interface(module_defn(_, _)).
+include_in_short_interface(typeclass(_, _, _, _, _)).
 
 :- pred make_abstract_type_defn(item, item).
 :- mode make_abstract_type_defn(in, out) is semidet.

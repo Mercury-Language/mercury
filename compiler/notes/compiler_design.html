@@ -32,12 +32,12 @@ The basic design is that compilation is broken into the following
 stages:
 
 <ol>
-<li> parsing (source files -> HLDS)
-<li> semantic analysis and error checking (HLDS -> annotated HLDS)
-<li> high-level transformations (annotated HLDS -> annotated HLDS)
-<li> code generation (annotated HLDS -> LLDS)
-<li> low-level optimizations (LLDS -> LLDS)
-<li> output C code (LLDS -> C)
+<li> parsing (source files -&gt; HLDS)
+<li> semantic analysis and error checking (HLDS -&gt; annotated HLDS)
+<li> high-level transformations (annotated HLDS -&gt; annotated HLDS)
+<li> code generation (annotated HLDS -&gt; LLDS)
+<li> low-level optimizations (LLDS -&gt; LLDS)
+<li> output C code (LLDS -&gt; C)
 </ol>
 
 <p>
@@ -97,9 +97,10 @@ stored in the io__state, using the type globals defined in globals.m.
 	definition is in prog_data.m, while the code to create it is in
 	prog_io.m and its submodules prog_io_dcg.m (which handles clauses
 	using Definite Clause Grammar notation), prog_io_goal.m (which handles
-	goals), prog_io_pragma.m (which handles pragma declarations) and
-	prog_io_util.m (which defines predicates and types needed by the other
-	prog_io*.m modules.  The data structure for insts is stored in
+	goals), prog_io_pragma.m (which handles pragma declarations),
+	prog_io_typeclass.m (which handles typeclass and instance declarations)
+	and prog_io_util.m (which defines predicates and types needed by the
+	other prog_io*.m modules.  The data structure for insts is stored in 
 	its own module, inst.m.
 	
 	<p>
@@ -125,8 +126,9 @@ stored in the io__state, using the type globals defined in globals.m.
 	<br>
  	Notes on module qualification:
 	<ul>
- 	<li> all types, insts and modes occuring in pred, func, type and
- 	  mode declarations are module qualified by module_qual.m.
+	<li> all types, typeclasses, insts and modes occuring in pred, func,
+	  type, typeclass and mode declarations are module qualified by
+	  module_qual.m.
  	<li> all types, insts and modes occuring in lambda expressions and
  	  explicit type qualifications are module qualified in
  	  make_hlds.m.
@@ -134,6 +136,8 @@ stored in the io__state, using the type globals defined in globals.m.
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
  	  are module qualified during mode analysis.
+ 	<li> predicate and function names in typeclass instance declarations
+	  are qualified in check_typeclass.m (after mode analysis).
 	</ul>
  
 
@@ -154,6 +158,8 @@ stored in the io__state, using the type globals defined in globals.m.
 
 	make_hlds.m transforms the code into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
+	It converts `pragma import' and `pragma c_code' declarations
+	into clauses with HLDS `pragma_c_code' instructions for bodies.
 	make_hlds.m also calls make_tags.m which chooses the data
 	representation for each discriminated union type by
 	assigning tags to each functor.
@@ -185,6 +191,13 @@ in an HLDS goal.
 
 <p>
 
+Any pass which can report errors or warnings must be part of this stage,
+so that the compiler does the right thing for options such as
+`--halt-at-warn' (which turns warnings into errors) and
+`--error-check-only' (which makes the compiler only compile up to this stage).
+
+<p>
+
 <dl>
 
 <dt> implicit quantification
@@ -203,13 +216,24 @@ in an HLDS goal.
 	  pred_info.  However, typecheck.m doesn't figure out the pred_id
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
-	  later on in modes.m.  When it has finished, typecheck.m calls
-	  clause_to_proc.m to make duplicate copies of the clauses for
-	  each different mode of a predicate; all later stages work on
-	  procedures, not predicates.
+	  later on in modes.m.  Typeclass constraints are checked here, and
+	  any redundant constraints that are eliminated are recorded (as
+	  constraint_proofs) in the pred_info for future reference. When it has
+	  finished, typecheck.m calls clause_to_proc.m to make duplicate copies
+	  of the clauses for each different mode of a predicate; all later
+	  stages work on procedures, not predicates.
 	<li> type_util.m contains utility predicates dealing with types
 	  that are used in a variety of different places within the compiler
 	</ul>
+
+<dt> purity analysis
+	
+	<dd>
+	purity.m is responsible for purity checking, as well as
+	defining the <CODE>purity</CODE> type and a few public
+	operations on it.  It also completes the handling of predicate
+	overloading for cases which typecheck.m is unable to handle,
+	and checks for unbound type variables.
 
 <dt> mode analysis
 
@@ -224,9 +248,7 @@ in an HLDS goal.
 	  unification goals. It also converts higher-order pred terms
 	  into lambda expressions and module qualifies data constructors.
 	<li> modecheck_call.m is the sub-module which analyses calls.
-	  It also converts function calls into predicate calls, and
-	  does the final step of figuring out which pred_id to use
-	  for a call to an overloaded predicate.
+	  It also converts function calls into predicate calls.
 
 		<p>
 
@@ -295,6 +317,19 @@ in an HLDS goal.
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
 
+<dt> checking typeclass instances (check_typeclass.m)
+	<dd>
+	check_typeclass.m checks that, each instance declaration, that the
+	types, modes and determinism of each predicate/function that is a
+	method of the class is correct (ie. that it matches the typeclass
+	declaration). This pass is performed at the end of semantic analysis
+	because it needs mode and determinism information. In this pass,
+	pred_ids and proc_ids are assigned to the methods for each instance. In
+	addition, while checking that the superclasses of a class are satisfied
+	by the instance declaration, a set of constraint_proofs are built up 
+	for the superclass constraints. These are used by polymorphism.m when
+	generating the base_typeclass_info for the instance.
+
 <dt> simplification (simplify.m)
 
 	<dd>
@@ -303,7 +338,8 @@ in an HLDS goal.
 	massage the code into a form the code generator will accept.
 	It also warns the programmer about any constructs that are so simple
 	that they should not have been included in the program in the first
-	place.
+	place.  (That's why this pass needs to be part of semantic analysis:
+	because it can report warnings.)
 	simplify.m calls common.m which looks for (a) construction unifications
 	that construct a term that is the same as one that already exists,
 	or (b) repeated calls to a predicate with the same inputs, and replaces
@@ -320,8 +356,9 @@ in an HLDS goal.
 The first two passes of this stage are code simplifications.
 
 <ul>
-<li> introduction of type_info arguments for polymorphic predicates and
-  transformation of complicated unifications into predicate calls
+<li> introduction of type_info arguments for polymorphic predicates, 
+  introduction of typeclass_info arguments for typeclass-constrained predicates
+  and transformation of complicated unifications into predicate calls
   (polymorphism.m)
 
 <li> removal of lambda expressions (lambda.m) <br>
@@ -342,6 +379,30 @@ one - polymorphism.m calls calls lambda__transform_lambda directly.
 
 <p>
 
+The next pass is termination analysis. The various modules involved are:
+
+<ul>
+<li>
+termination.m is the control module. It sets the argument size and
+termination properties of builtin and compiler generated procedures,
+invokes term_pass1.m and term_pass2.m
+and writes .trans_opt files and error messages as appropriate.
+<li>
+term_pass1.m analyzes the argument size properties of user-defined procedures,
+<li>
+term_pass2.m analyzes the termination properties of user-defined procedures.
+<li>
+term_traversal.m contains code common to the two passes.
+<li>
+term_errors.m defines the various kinds of termination errors
+and prints the messages appropriate for each.
+<li>
+term_util.m defines the main types used in termination analysis
+and contains utility predicates.
+</ul>
+
+<p>
+
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
@@ -350,10 +411,8 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> inlining (i.e. unfolding) of simple procedures (inlining.m)
 
-<li> constraint propagation (constraint.m) <br>
-	<p>
-
-	Not yet working.
+<li> pushing constraints as far left as possible (constraint.m);
+  this does not yet work.
 
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
@@ -367,11 +426,12 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 <li> elimination of useless assignments, assignments that merely introduce
   another name for an already existing variable (excess.m).
 
-<li> reducing the number of variables that have to be saved across procedure calls
-  (saved_vars.m). We do this by putting the code that generates the value of
-  a variable just before the use of that variable, duplicating the variable
-  and the code that produces it if necessary, provided the cost of doing so
-  is smaller than the cost of saving and restoring the variable would be.
+<li> reducing the number of variables that have to be saved across
+  procedure calls (saved_vars.m). We do this by putting the code that
+  generates the value of a variable just before the use of that variable,
+  duplicating the variable and the code that produces it if necessary,
+  provided the cost of doing so is smaller than the cost of saving and
+  restoring the variable would be.
 
 </ul>
 
@@ -395,7 +455,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 <p>
 
 <dl>
- <dt> pre-passes to annotate the HLDS
+<dt> pre-passes to annotate the HLDS
 
 	<dd>
 	Before code generation there are a few more passes which 
@@ -493,13 +553,19 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			and saves information about procedures.
 		</dl>
 
+<dt> code generation for `pragma export' declarations (export.m)
+<dd> This is handled seperately from the other parts of code generation.
+     mercury_compile.m calls the procedures `export__produce_header_file'
+     and `export__get_pragma_exported_procs' to produce C code fragments
+     which declare/define the C functions which are the interface stubs
+     for procedures exported to C.
 </dl>
 
 <p>
 
 The result of code generation is the Low Level Data Structure (llds.m).
-The code is generated as a tree of code fragments which is then
-flattened (tree.m).
+The code for each procedure is generated as a tree of code fragments
+which is then flattened (tree.m).
 
 <p>
 
@@ -600,8 +666,10 @@ optimize.m may invoke many of these passes multiple times.
 
 <p>
 
-Some of the low-level optimization passes use opt_util.m, which
-contains miscellaneous predicates for LLDS-to-LLDS optimization.
+Some of the low-level optimization passes use basic_block.m,
+which defines predicates for converting sequences of instructions to
+basic block format and back, as well as opt_util.m, which contains
+miscellaneous predicates for LLDS-to-LLDS optimization.
 
 <p>
 
@@ -617,6 +685,10 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
   creates base_type_functors structures that give information on 
   the functors of a given type. The base_type_layout and base_type_functors
   structures of each declared type constructor are added to the LLDS.
+
+<li> base_typeclass_info.m generates the base_typeclass_info structures that 
+  list the methods of a class for each instance declaration. These are added to
+  the LLDS.
 
 <li> stack_layout.m generates the stack_layout structures for
   accurate garbage collection. Tables are created from the data
@@ -669,10 +741,8 @@ completed.
 		<dd>
 		These modules contain stuff for handling the special
 		compiler-generated predicates which are generated for
-		each type: unify/2, compare/3, index/1 (used in the
-		implementation of compare/3), and also type_to_term/2
-		and term_to_type/2 (but those last two are disabled
-		at the moment).
+		each type: unify/2, compare/3, and index/1 (used in the
+		implementation of compare/3).
 
 	<dt> dependency_graph.m:
 		<dd>
@@ -693,6 +763,10 @@ completed.
 	<dt> opt_debug.m:
 		<dd>
 		Utility routines for debugging the LLDS-to-LLDS optimizations.
+
+	<dt> error_util.m:
+		<dd>
+		Utility routines for printing nicely formatted error messages.
 	</dl>
 
 
@@ -735,6 +809,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-11-28 06:10:12 $ by $Author: bromage $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-03-03 00:34:08 $ by $Author: bromage $@cs.mu.oz.au. <br>
 </body>
 </html>

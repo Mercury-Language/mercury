@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
 			;	vn_succip(vn)
 			;	vn_hp
 			;	vn_sp
-			;	vn_field(tag, vn, vn)		% lval
+			;	vn_field(maybe(tag), vn, vn)
 			;	vn_mem_ref(vn).
 
 			% these lvals do not have vnlval parallels
@@ -40,7 +40,8 @@
 :- type vnrval		--->	vn_origlval(vnlval)
 			;	vn_mkword(tag, vn)
 			;	vn_const(rval_const)
-			;	vn_create(tag, list(maybe(rval)), bool, int)
+			;	vn_create(tag, list(maybe(rval)),
+					bool, int, string)
 			;	vn_unop(unary_op, vn)
 			;	vn_binop(binary_op, vn, vn)
 			;	vn_stackvar_addr(int)
@@ -69,7 +70,8 @@
 :- type vn_instr	--->	vn_livevals(lvalset)
 			;	vn_call(code_addr, code_addr,
 					list(liveinfo), call_model)
-			;	vn_mkframe(string, int, code_addr)
+			;	vn_mkframe(string, int, maybe(pragma_c_struct),
+					code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr)
 			;	vn_computed_goto(vn, list(label))
@@ -175,7 +177,7 @@ vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
 
 vn_type__vnrval_type(vn_origlval(Lval), Type) :-
 	vn_type__vnlval_type(Lval, Type).
-vn_type__vnrval_type(vn_create(_, _, _, _), data_ptr).
+vn_type__vnrval_type(vn_create(_, _, _, _, _), data_ptr).
 vn_type__vnrval_type(vn_mkword(_, _), data_ptr). % see comment in llds.m
 vn_type__vnrval_type(vn_const(Const), Type) :-
 	llds__const_type(Const, Type).

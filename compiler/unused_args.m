@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,11 @@
 %	- used to instantiate an output variable
 %	- involved in a simple test, switch or a semidet deconstruction 
 %	- used as an argument to another predicate in this module which is used.
+%  When using alternate liveness calculation, the following variables are 
+%  also considered used
+%	- a type-info (or part of a type-info) of a type parameter of the 
+%	  type of a variable that is used (for example, if a variable
+%	  of type list(T) is used, then TypeInfo_for_T is used)
 %
 %  The first step is to determine which arguments of which predicates are
 %	used locally to their predicate. For each unused argument, a set of
@@ -52,7 +57,7 @@
 :- import_module options, prog_data, prog_out, quantification, special_pred.
 :- import_module passes_aux, inst_match, (inst).
 
-:- import_module bool, char, int, list, map, require.
+:- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string, term, varset. 
 
 		% Information about the dependencies of a variable
@@ -248,9 +253,22 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		initialise_vardep(VarDep0, Vars, VarDep1),
 		setup_output_args(ModuleInfo, HeadVars, ArgInstTable, ArgModes,
 			VarDep1, VarDep2),
+
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_bool_option(Globals, typeinfo_liveness, 
+			TypeinfoLiveness),
+		( TypeinfoLiveness = yes ->
+			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+			setup_typeinfo_deps(Vars, VarTypes, 
+				proc(PredId, ProcId), TVarMap, VarDep2,
+				VarDep3)
+		;
+			VarDep2 = VarDep3
+		),
+
 		proc_info_goal(ProcInfo, Goal - _),
 		proc_info_inst_table(ProcInfo, InstTable),
-		traverse_goal(InstTable, ModuleInfo, Goal, VarDep2, VarDep),
+		traverse_goal(InstTable, ModuleInfo, Goal, VarDep3, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
 		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
 		OptProcs1 = OptProcs0
@@ -271,8 +289,37 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 %-------------------------------------------------------------------------------
 	% Predicates for manipulating the var_usage and var_dep structures.
 
+	% For each variable ensure the typeinfos describing the
+	% type parameters of the type of the variable depend on the
+	% head variable.
+	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
+	% is used if HeadVar1 is used.
+:- pred setup_typeinfo_deps(list(var)::in, map(var, type)::in, pred_proc_id::in,
+			map(tvar, type_info_locn)::in, 
+			var_dep::in, var_dep::out) is det.
+
+setup_typeinfo_deps([], _, _, _, VarDep, VarDep). 
+setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0, 
+		VarDep) :-
+	map__lookup(VarTypeMap, Var, Type),
+	type_util__vars(Type, TVars),
+	list__map(lambda([TVar::in, TypeInfoVar::out] is det, 
+		(
+			map__lookup(TVarMap, TVar, Locn),
+			type_info_locn_var(Locn, TypeInfoVar)
+		)), 
+		TVars, TypeInfoVars),
+	AddArgDependency = 
+		lambda([TVar::in, VarDepA::in, VarDepB::out] is det, (
+			add_arg_dep(VarDepA, TVar, PredProcId, Var, VarDepB)
+		)),
+	list__foldl(AddArgDependency, TypeInfoVars, VarDep0, VarDep1),
+	setup_typeinfo_deps(Vars, VarTypeMap, PredProcId, TVarMap, 
+		VarDep1, VarDep).
+
+
 	% Get output arguments for a procedure given the headvars and the
-	% argument modes.
+	% argument modes, and set them as used.
 :- pred setup_output_args(module_info::in, list(var)::in, inst_table::in,
 		list(mode)::in, var_dep::in, var_dep::out) is det.
 
@@ -400,10 +447,22 @@ traverse_goal(InstTable, ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
 traverse_goal(_, _, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
-% handle pragma(c_code, ...) - pragma_c_code uses all its args
-traverse_goal(_, _, pragma_c_code(_, _, _, _, Args, _, _, _), UseInf0, UseInf)
-		:-
-	set_list_vars_used(UseInf0, Args, UseInf).
+% we assume that class method calls use all variables involved
+traverse_goal(_, _, class_method_call(PredVar,_,Args,_,_,_), UseInf0, UseInf) :-
+	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
+
+% handle pragma c_code(...) -
+% only those arguments which have C names can be used in the C code.
+traverse_goal(_, _, pragma_c_code(_, _, _, Args, ArgNames, _, _),
+				UseInf0, UseInf) :-
+	ArgNames = pragma_c_code_arg_info(_, Names),
+	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
+	ArgIsUsed = lambda([ArgAndName::in, Arg::out] is semidet, (
+				ArgAndName = Arg - MaybeName,
+				MaybeName = yes(_)
+			)),
+	list__filter_map(ArgIsUsed, ArgsAndNames, UsedArgs),
+	set_list_vars_used(UseInf0, UsedArgs, UseInf).
 
 % cases to handle all the different types of unification
 traverse_goal(_, _, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
@@ -900,11 +959,13 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_goal_type(PredInfo0, GoalType),
+	pred_info_get_class_context(PredInfo0, ClassContext),
+	map__init(EmptyProofs),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
 		ArgTypes, true, Context, ClausesInfo, Status, Markers,
-		GoalType, PredOrFunc, PredInfo1),
+		GoalType, PredOrFunc, ClassContext, EmptyProofs, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 
@@ -924,7 +985,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	map__from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
 		% the varset should probably be fixed up, but it
 		% shouldn't make too much difference
-	proc_info_variables(OldProc0, Varset0),
+	proc_info_varset(OldProc0, Varset0),
 	remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 	GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
 		      not_builtin, no, qualified(PredModule, PredName)),
@@ -1086,7 +1147,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	proc_info_argmodes(ProcInfo0, argument_modes(ArgInstTable, ArgModes0)),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_inst_table(ProcInfo0, InstTable),
 	remove_listof_elements(HeadVars0, 1, UnusedArgs, HeadVars),
@@ -1219,7 +1280,11 @@ fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = pragma_c_code(_, _, _, _, _, _, _, _).
+	GoalExpr = class_method_call(_, _, _, _, _, _).
+
+fixup_goal_expr(_InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
+			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
+	GoalExpr = pragma_c_code(_, _, _, _, _, _, _).
 
 	% Remove useless unifications from a list of conjuncts.
 :- pred fixup_conjuncts(inst_table::in, module_info::in, list(var)::in,

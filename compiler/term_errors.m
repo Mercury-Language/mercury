@@ -1,6 +1,5 @@
 %-----------------------------------------------------------------------------%
-%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,565 +8,577 @@
 % Main author: crs.
 % 
 % This module prints out the various error messages that are produced by
-% termination.m
+% the various modules of termination analysis.
 %
 %-----------------------------------------------------------------------------%
 
 :- module term_errors.
 
 :- interface.
-:- import_module io, bag, std_util, term, list, bool.
+
 :- import_module hlds_module.
 
-% term_errors__output(PredId, ProcId, Module, Success, IO0, IO).
-% 	This is used to print out the errors found by termination analysis.
-% 	Success returns yes if an error was successfully printed out.
-% 	Success will be no if there was no termination error for that
-% 	procedure.
-:- pred term_errors__output(pred_id, proc_id, module_info, bool,
-		io__state, io__state).
-:- mode term_errors__output(in, in, in, out, di, uo) is det.
+:- import_module io, bag, std_util, list, assoc_list, term.
 
+:- type termination_error
+	--->	pragma_c_code
+			% The analysis result depends on the change constant
+			% of a piece of pragma C code, (which cannot be
+			% obtained without analyzing the C code, which is
+			% something we cannot do).
+			% Valid in both passes.
 
-% term_errors__output_const_error(PredId, ProcId, Module, Success, IO0, IO).
-% 	This prints out any errors which occured when trying to set the
-% 	termination constant.  An error message will only be available if
-% 	the termination constant is set to 'inf'.
-% 	Success returns yes if an error was successfully printed out.
-% 	Success will be no if there was no termination error for that
-% 	procedure.
-:- pred term_errors__output_const_error(pred_id, proc_id, module_info, bool,
-		io__state, io__state).
-:- mode term_errors__output_const_error(in, in, in, out, di, uo) is det.
+	;	imported_pred
+			% The SCC contains some imported procedures,
+			% whose code is not accessible.
 
-% This is used to print out error messages for the hlds dumps.  These are
-% much more concise than the normal error messages.
-:- pred term_errors__output_hlds(pred_id, proc_id, module_info, 
-	io__state, io__state).
-:- mode term_errors__output_hlds(in, in, in, di, uo) is det.
+	;	can_loop_proc_called(pred_proc_id, pred_proc_id)
+			% can_loop_proc_called(Caller, Callee, Context)  
+			% The call from Caller to Callee at the associated
+			% context is to a procedure (Callee) whose termination
+			% info is set to can_loop.
+			% Although this error does not prevent us from
+			% producing argument size information, it would
+			% prevent us from proving termination.
+			% We look for this error in pass 1; if we find it,
+			% we do not perform pass 2.
+
+	;	horder_args(pred_proc_id, pred_proc_id)
+			% horder_args(Caller, Callee, Context)
+			% The call from Caller to Callee at the associated
+			% context has some arguments of a higher order type.
+			% Valid in both passes.
+
+	;	horder_call
+			% horder_call
+			% There is a higher order call at the associated
+			% context.
+			% Valid in both passes.
+
+	;	inf_termination_const(pred_proc_id, pred_proc_id)
+			% inf_termination_const(Caller, Callee, Context)
+			% The call from Caller to Callee at the associated
+			% context is to a procedure (Callee) whose arg size
+			% info is set to infinite.
+			% Valid in both passes.
+
+	;	not_subset(pred_proc_id, bag(var), bag(var))
+			% not_subset(Proc, SupplierVariables, InHeadVariables)
+			% This error occurs when the bag of active variables
+			% is not a subset of the input head variables.
+			% Valid error only in pass 1.
+
+	;	inf_call(pred_proc_id, pred_proc_id)
+			% inf_call(Caller, Callee)
+			% The call from Caller to Callee at the associated
+			% context has infinite weight.
+			% Valid error only in pass 2.
+
+	;	cycle(pred_proc_id, assoc_list(pred_proc_id, term__context))
+			% cycle(StartPPId, CallSites)
+			% In the cycle of calls starting at StartPPId and
+			% going through the named call sites may be an
+			% infinite loop.
+			% Valid error only in pass 2.
+
+	;	no_eqns
+			% There are no equations in this SCC.
+			% This has 2 possible causes. (1) If the predicate has
+			% no output arguments, no equations will be created
+			% for them. The change constant of the predicate is
+			% undefined, but it will also never be used.
+			% (2) If the procedure is a builtin predicate, with
+			% an empty body, traversal cannot create any equations.
+			% Valid error only in pass 1.
+
+	;	too_many_paths
+			% There were too many distinct paths to be analyzed.
+			% Valid in both passes (which analyze different sets
+			% of paths).
+
+	;	solver_failed
+			% The solver could not find finite termination
+			% constants for the procedures in the SCC.
+			% Valid only in pass 1.
+
+	;	is_builtin(pred_id)
+			% The termination constant of the given builtin is
+			% set to infinity; this happens when the type of at
+			% least one output argument permits a norm greater
+			% than zero.
+
+	;	does_not_term_pragma(pred_id).
+			% The given procedure has a does_not_terminate pragma.
 
 :- type term_errors__error == pair(term__context, termination_error).
-% With these error messages, they do not necessarily need to involve the
-% procedure that they are assigned to.  It is possible that an error
-% occured when processing other predicates in the same SCC, and therefore
-% the termination (or termination constant) of this predicate was set to
-% dont_know (or infinity), even though the error occured in a different
-% predicate.
-:- type termination_error
-			% A recursive call is made with variables that are 
-			% strictly larger than in the head.  Note that 
-			% the recursive call may be indirect, so this does 
-			% not neccessarily indicate non-termination.
-			% The first PPId is the calling proc.  The second
-			% PPId is the called procedure.
-	--->	positive_value(pred_proc_id, pred_proc_id)
-	;	horder_call
-	;	pragma_c_code
-	;	imported_pred
-			% dont_know_proc_called(CallerProc, CalleeProc)  
-			% A call was made from CallerProc to CalleeProc,
-			% where the termination constant of the CalleeProc
-			% is set to dont_know.
-	;	dont_know_proc_called(pred_proc_id, pred_proc_id)
-			% horder_args(CallerProc, CalleeProc)
-			% This error message indicates that the CallerProc
-			% called the CalleeProc where some of the arguments
-			% are of a higher order type.
-	;	horder_args(pred_proc_id, pred_proc_id)
-	;	inf_termination_const(pred_proc_id, pred_proc_id)
-			% not_subset(Proc, SupplierVariables, InHeadVariables)
-			% This error occurs when the Supplier variables
-			% (either Recursive-input suppliers or Output
-			% suppliers, depending on whether the error was
-			% associated with a dont_know or with a constant of
-			% infinity) is not a subset of the input head
-			% variables.
-	;	not_subset(pred_proc_id, bag(var), bag(var))
-	;	not_dag
-	;	no_eqns
-	;	lpsolve_failed
-	;	call_in_single_arg(pred_proc_id)
-			% single argument analysis did not find a head
-			% variable that was decreasing in size. 
-	;	single_arg_failed(term_errors__error)
-			% single_arg_failed(ReasonForNormalAnalysisFailing,
-			% 	ReasonForSingleArgAnalysisFailing)
-	;	single_arg_failed(term_errors__error, term_errors__error)
-			% the termination constant of a builtin predicate
-			% is set to infinity if the types of the builtin
-			% predicate may have a norm greater than 0.
-	;	is_builtin
-	;	does_not_term_pragma(pred_id).
 
-% eqn_soln are used to report the results from solving the equations
-% created in the first pass.  The first 4 (optimal - failure) represent
-% output states from lp_solve. 
-:- type eqn_soln
-	---> 	optimal		
-	;	infeasible
-	;	unbounded
-	;	failure
-	;	fatal_error 	% unable to open a file, or make a system call
-	;	parse_error	% unable to parse the output from lp_solve
-	;	solved(list(pair(pred_proc_id, int))).
+:- pred term_errors__report_term_errors(list(pred_proc_id)::in,
+	list(term_errors__error)::in, module_info::in,
+	io__state::di, io__state::uo) is det.
 
-% An error is considered a simple error if it is likely that the error is
-% caused by the analysis failing, instead of being due to a programming
-% error.
-:- pred simple_error(term_errors__termination_error).
-:- mode simple_error(in) is semidet.
+% An error is considered an indirect error if it is due either to a
+% language feature we cannot analyze or due to an error in another part
+% of the code. By default, we do not issue warnings about indirect errors,
+% since in the first case, the programmer cannot do anything about it,
+% and in the second case, the piece of code that the programmer *can* do
+% something about is not this piece.
+
+:- pred indirect_error(term_errors__termination_error).
+:- mode indirect_error(in) is semidet.
 
 :- implementation.
 
-:- import_module hlds_out, prog_out, hlds_pred, passes_aux, require.
-:- import_module mercury_to_mercury, term_util, bag, options, globals.
+:- import_module hlds_out, prog_out, hlds_pred, passes_aux, error_util.
+:- import_module mercury_to_mercury, term_util, options, globals.
 
-simple_error(horder_call).
-simple_error(pragma_c_code).
-simple_error(imported_pred).
-simple_error(dont_know_proc_called(_, _)).
-simple_error(call_in_single_arg(_)).
-simple_error(horder_args(_, _)).
-simple_error(single_arg_failed(_Context - Error)) :- simple_error(Error).
-simple_error(single_arg_failed(_Con1 - Err1, _Con2 - Err2)) :-
-	simple_error(Err1), simple_error(Err2).
-simple_error(does_not_term_pragma(_)).
+:- import_module bool, int, string, map, bag, require, varset.
 
-term_errors__output(PredId, ProcId, Module, Success) -->
-	{ module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_termination(ProcInfo, Termination) },
-	{ Termination = term(_Const, _Terminates, _UsedArgs, MaybeError) },
-	( { MaybeError = yes(Context - Error) } ->
-		prog_out__write_context(Context),
-		io__write_string("Termination of "),
-		hlds_out__write_pred_id(Module, PredId),
-		io__nl,
-		prog_out__write_context(Context),
-		io__write_string("  not proved because "),
-		{ ConstErrorOutput = no },
-		{ ForHLDSDump = no },
-		term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput,
-			ForHLDSDump, Context - Error),
-		{ Success = yes }
+indirect_error(horder_call).
+indirect_error(pragma_c_code).
+indirect_error(imported_pred).
+indirect_error(can_loop_proc_called(_, _)).
+indirect_error(horder_args(_, _)).
+indirect_error(does_not_term_pragma(_)).
+
+term_errors__report_term_errors(SCC, Errors, Module) -->
+	{ get_context_from_scc(SCC, Module, Context) },
+	( { SCC = [PPId] } ->
+		{ Pieces0 = ["Termination", "of"] },
+		{ term_errors__describe_one_proc_name(PPId, Module, PredName) },
+		{ list__append(Pieces0, [PredName], Pieces1) },
+		{ Single = yes(PPId) }
 	;
-		{ Success = no }
+		{ Pieces0 = ["Termination", "of", "the",
+			"mutually", "recursive", "procedures"] },
+		{ term_errors__describe_several_proc_names(SCC, Module, Context,
+			PredNames) },
+		{ list__append(Pieces0, PredNames, Pieces1) },
+		{ Single = no }
+	),
+	(
+		{ Errors = [] },
+		% XXX this should never happen
+		% XXX but for some reason, it often does
+		% { error("empty list of errors") }
+		{ Pieces2 = ["not", "proven,", "for", "unknown",
+			"reason(s)."] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces)
+	;
+		{ Errors = [Error] },
+		{ Pieces2 = ["not", "proven", "for", "the",
+			"following", "reason:"] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces),
+		term_errors__output_error(Error, Single, no, 0, Module)
+	;
+		{ Errors = [_, _ | _] },
+		{ Pieces2 = ["not", "proven", "for", "the",
+			"following", "reasons:"] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces),
+		term_errors__output_errors(Errors, Single, 1, 0, Module)
 	).
 
-term_errors__output_const_error(PredId, ProcId, Module, Success) -->
-	{ module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_termination(ProcInfo, Termination) },
-	{ Termination = term(Const, _Terminates, _UsedArgs, _MaybeError) },
-	( { Const = inf(Context - Error) } ->
-		prog_out__write_context(Context),
-		io__write_string("Termination constant of "),
-		hlds_out__write_pred_id(Module, PredId),
-		io__nl,
-		prog_out__write_context(Context),
-		io__write_string("  set to infinity because "),
-		{ ConstErrorOutput = yes },
-		{ ForHLDSDump = no },
-		term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput,
-			ForHLDSDump, Context - Error),
-		{ Success = yes }
-	; 
-		{ Success = no }
+:- pred term_errors__report_arg_size_errors(list(pred_proc_id)::in,
+	list(term_errors__error)::in, module_info::in,
+	io__state::di, io__state::uo) is det.
+
+term_errors__report_arg_size_errors(SCC, Errors, Module) -->
+	{ get_context_from_scc(SCC, Module, Context) },
+	( { SCC = [PPId] } ->
+		{ Pieces0 = ["Termination", "constant", "of"] },
+		{ term_errors__describe_one_proc_name(PPId, Module, PredName) },
+		{ list__append(Pieces0, [PredName], Pieces1) },
+		{ Single = yes(PPId) }
+	;
+		{ Pieces0 = ["Termination", "constants", "of", "the",
+			"mutually", "recursive", "procedures"] },
+		{ term_errors__describe_several_proc_names(SCC, Module, Context,
+			PredNames) },
+		{ list__append(Pieces0, PredNames, Pieces1) },
+		{ Single = no }
+	),
+	(
+		{ Errors = [] },
+		{ error("empty list of errors") }
+	;
+		{ Errors = [Error] },
+		{ Pieces2 = ["set", "to", "infinity", "for", "the",
+			"following", "reason:"] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces),
+		term_errors__output_error(Error, Single, no, 0, Module)
+	;
+		{ Errors = [_, _ | _] },
+		{ Pieces2 = ["set", "to", "infinity", "for", "the",
+			"following", "reasons:"] },
+		{ list__append(Pieces1, Pieces2, Pieces) },
+		write_error_pieces(Context, 0, Pieces),
+		term_errors__output_errors(Errors, Single, 1, 0, Module)
 	).
 
-term_errors__output_hlds(PredId, ProcId, Module) -->
-	{ module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_termination(ProcInfo, Termination) },
-	{ Termination = term(Const, _Terminates, _UsedArgs, MaybeError) },
-	{ ForHLDSDump = yes },
-	( { MaybeError = yes(TermContext - TermError) } ->
-		io__write_string("% "),
-		prog_out__write_context(TermContext),
-		io__write_string("Termination not proved because "),
-		{ ConstErrorOutput0 = no },
-		term_errors__output_2(PredId,ProcId, Module, ConstErrorOutput0,
-			ForHLDSDump, TermContext - TermError)
+:- pred term_errors__output_errors(list(term_errors__error)::in,
+	maybe(pred_proc_id)::in, int::in, int::in, module_info::in,
+	io__state::di, io__state::uo) is det.
+
+term_errors__output_errors([], _, _, _, _) --> [].
+term_errors__output_errors([Error | Errors], Single, ErrNum0, Indent, Module)
+		-->
+	term_errors__output_error(Error, Single, yes(ErrNum0), Indent, Module),
+	{ ErrNum1 is ErrNum0 + 1 },
+	term_errors__output_errors(Errors, Single, ErrNum1, Indent, Module).
+
+:- pred term_errors__output_error(term_errors__error::in,
+	maybe(pred_proc_id)::in, maybe(int)::in, int::in, module_info::in,
+	io__state::di, io__state::uo) is det.
+
+term_errors__output_error(Context - Error, Single, ErrorNum, Indent, Module) -->
+	{ term_errors__description(Error, Single, Module, Pieces0, Reason) },
+	{ ErrorNum = yes(N) ->
+		string__int_to_string(N, Nstr),
+		string__append_list(["Reason ", Nstr, ":"], Preamble),
+		Pieces = [Preamble | Pieces0]
 	;
-		[]
-	),
-	( { Const = inf(ConstContext - ConstError) } ->
-		io__write_string("% "),
-		prog_out__write_context(ConstContext),
-		io__write_string("Termination const set to inf because "),
-		{ ConstErrorOutput1 = yes },
-		term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput1,
-			ForHLDSDump, ConstContext - ConstError)
-	;
-		[]
-	).
-	
-
-:- pred term_errors__output_same_SCC(pred_id, module_info, term__context,
-	bool, io__state, io__state).
-:- mode term_errors__output_same_SCC(in, in, in, in, di, uo) is det.
-term_errors__output_same_SCC(PredId, Module, Context, ForHLDSDump) -->
-	io__write_string("it is in the same SCC as the\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	hlds_out__write_pred_id(Module, PredId).
-
-
-% term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput,
-% 	ForHLDSDump, Error, IO0, IO).
-% If this predicate is called from term_errors__output_const_error, then
-% ConstErrorOutput should be set to `yes' to indicate that the error
-% message should describe why the constant was set to infinity.
-% If ConstErrorOutput is set to `no' then term_errors__output_2 describes
-% why the analysis could not prove termination.
-%
-% If ForHLDSDump is set to yes, then a % must be placed at the beginning of
-% each line, because the output is for the HLDS dump.
-% 
-% This predicate is used by both term_errors__output() and
-% term_errors__output_const_error() to print out the reason for the error.
-% Before calling output_2, term_errors__output prints out:
-% myfile.m:300: Termination of predicate `myfile:yourpredicate/3' 
-% myfile.m:300:   not proved because 
-%
-% and term_errors__output_const_error prints out:
-% myfile.m:300: Termination constant of function `myfile:myfunction/6' 
-% myfile.m:300:   set to infinity because 
-%
-:- pred term_errors__output_2(pred_id, proc_id, module_info, bool, bool,
-	term_errors__error, io__state, io__state).
-:- mode term_errors__output_2(in, in, in, in, in, in, di, uo) is det.
-term_errors__output_2(PredId, _ProcId, Module, _ConstErrorOutput, ForHLDSDump,
-		Context - positive_value(CallerPPId, CalledPPId)) -->	
-	{ CalledPPId = proc(CalledPredId, _CalledProcId) },
-	{ CallerPPId = proc(CallerPredId, _CallerProcId) },
-	( { PredId = CallerPredId } ->
-		io__write_string("it contains a ")
-	;
-		term_errors__output_same_SCC(PredId, Module, Context, 
-			ForHLDSDump),
-		io__write_string(" which contains a ")
-	),
-	( { PredId = CalledPredId } ->
-		io__write_string("directly\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string("  recursive call ")
-	;
-		io__write_string("recursive\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string("call to "),
-		hlds_out__write_pred_id(Module, CalledPredId),
-		io__nl,
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string("  ")
-	),
-	io__write_string("with the size of the variables increased.\n").
-
-term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrOutput, _ForHLDSDump,
-		_Context - horder_call) -->
-	io__write_string("it contains a higher order call\n").
-
-term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrOutput, _ForHLDSDump,
-		_Context - pragma_c_code) -->
-	io__write_string("it contains a pragma c_code() declaration\n").
-
-term_errors__output_2(PredId, _ProcId, Module, _ConstErrorOutput, ForHLDSDump,
-		Context - dont_know_proc_called(CallerPPId, CalleePPId)) -->
-	{ CallerPPId = proc(CallerPredId, _CallerProcId) },
-	{ CalleePPId = proc(CalleePredId, _CalleeProcId) },
-	( { PredId = CallerPredId } ->
-		io__write_string("it calls the ")
-	;
-		term_errors__output_same_SCC(CallerPredId, Module, Context,
-			ForHLDSDump),
-		io__write_string("which calls the ")
-	),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	hlds_out__write_pred_id(Module, CalleePredId),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  which could not be proved to terminate\n").
-
-term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrOutput, _ForHLDSDump,
-		_Context - imported_pred) -->
-	io__write_string("it was imported.\n").
-
-term_errors__output_2(PredId, _ProcId, Module, _ConstErrorOutput, ForHLDSDump,
-		Context - horder_args(CallerPPId, CalleePPId)) -->
-	% OtherPPId may refer to the current Predicate, or it may refer to
-	% another predicate in the same SCC
-	{ CallerPPId = proc(CallerPredId, _CallerProcId) },
-	{ CalleePPId = proc(CalleePredId, _CalleeProcId) },
-
-	( { PredId = CallerPredId } ->
-		io__write_string("it calls the ")
-	;
-		term_errors__output_same_SCC(CallerPredId, Module, Context,
-			ForHLDSDump),
-		io__write_string("which calls the")
-	),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	hlds_out__write_pred_id(Module, CalleePredId),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  where the call contains higher order argument(s)\n").
-
-term_errors__output_2(PredId, _ProcId, Module, ConstErrorOutput, ForHLDSDump,
-		Context - inf_termination_const(CallerPPId, CalleePPId)) -->
-	{ CallerPPId = proc(CallerPredId, _CallerProcId) },
-	{ CalleePPId = proc(CalleePredId, CalleeProcId) },
-	( { PredId = CallerPredId } ->
-		io__write_string("it calls the ")
-	;
-		term_errors__output_same_SCC(CallerPredId, Module, Context,
-			ForHLDSDump),
-		io__write_string("which calls the ")
-	),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	hlds_out__write_pred_id(Module, CalleePredId),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  which has a termination constant of infinity\n"),
-	( 
-		{ ForHLDSDump = no },
-		{ ConstErrorOutput = no }
-	->
-		{ module_info_pred_proc_info(Module, CalleePredId, 
-			CalleeProcId, _, CalleeProcInfo) },
-		{ proc_info_termination(CalleeProcInfo, CalleeTermination) },
-		{ CalleeTermination = term(CalleeConst, _, _, _) },
-		globals__io_lookup_bool_option(verbose_check_termination, 
-			VerboseErrors),
-		(
-			{ CalleeConst = inf(CalleeContext - CalleeConstError)},
-			( 
-				{ \+ simple_error(CalleeConstError) }
-			;	
-				{ VerboseErrors = yes }
-			)
-		->
-			maybe_write_string(ForHLDSDump, "% "),
-			prog_out__write_context(CalleeContext),
-			io__write_string("  The termination constant of that predicate was set to\n"),
-			maybe_write_string(ForHLDSDump, "% "),
-			prog_out__write_context(CalleeContext),
-			io__write_string("  infinity because "),
-			{ NewConstErrorOutput = yes },
-			term_errors__output_2(CalleePredId, CalleeProcId, 
-				Module, NewConstErrorOutput, ForHLDSDump, 
-				CalleeContext - CalleeConstError)
+		Pieces = Pieces0
+	},
+	write_error_pieces(Context, Indent, Pieces),
+	( { Reason = yes(InfArgSizePPId) } ->
+		{ lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize) },
+		( { ArgSize = yes(infinite(ArgSizeErrors)) } ->
+			% XXX the next line is cheating
+			{ ArgSizePPIdSCC = [InfArgSizePPId] },
+			term_errors__report_arg_size_errors(ArgSizePPIdSCC,
+				ArgSizeErrors, Module)
 		;
-			[]
-		) 
-	;
-		[]
-	).
-
-% If hlds dump, should print out variables in numerical form
-% If verbose errors requested (-E), should list variables
-term_errors__output_2(PredId, _ProcId, Module, ConstErrorOutput, ForHLDSDump,
-		Context - not_subset(OtherPPId, 
-		SupplierVarsBag, HeadVarsBag)) -->
-	{ OtherPPId = proc(OtherPredId, OtherProcId) },
-	{ module_info_pred_proc_info(Module, OtherPredId, OtherProcId, 
-		OtherPredInfo, OtherProcInfo) },
-	{ pred_info_get_is_pred_or_func(OtherPredInfo, OtherPredOrFunc) },
-	( { OtherPredId = PredId } ->
-		[]
-	;
-		term_errors__output_same_SCC(OtherPredId, Module, Context,
-			ForHLDSDump),
-		( { ConstErrorOutput = yes } ->
-			io__write_string(
-				". The termination constant of that\n"),
-			maybe_write_string(ForHLDSDump, "% "),
-			prog_out__write_context(Context),
-			io__write_string("  "),
-			hlds_out__write_pred_or_func(OtherPredOrFunc),
-			io__write_string(" was set to infinity because ")
-		;
-			io__write_string(". Termination of that\n"),
-			maybe_write_string(ForHLDSDump, "% "),
-			prog_out__write_context(Context),
-			io__write_string("  "),
-			hlds_out__write_pred_or_func(OtherPredOrFunc),
-			io__write_string(" could not be proved because ")
+			{ error("inf arg size procedure does not have inf arg size") }
 		)
-	),
-	io__write_string("the analysis\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  found that the set of "),
-	( { ConstErrorOutput = yes } ->
-		io__write_string("output ")
-	;
-		io__write_string("recursive input ")
-	),
-	io__write_string("supplier variables\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  was not a subset of the head variables of the "),
-	hlds_out__write_pred_or_func(OtherPredOrFunc),
-	io__write_string(".\n"),
-		% Print out the variables as calculated.
-	{ proc_info_variables(OtherProcInfo, VarSet) },
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  The "),
-	( { ConstErrorOutput = yes } ->
-		io__write_string("output ")
-	;
-		io__write_string("recursive input ")
-	),
-	io__write_string("supplier variables are\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	{ bag__to_list(SupplierVarsBag, SupplierVars) },
-	mercury_output_vars(SupplierVars, VarSet, no),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  The input head variables are\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	{ bag__to_list(HeadVarsBag, HeadVars) },
-	mercury_output_vars(HeadVars, VarSet, no),
-	io__nl.
-
-term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrorOutput, ForHLDSDump,
-		Context - not_dag) -->
-	io__write_string("there was a cycle in the call graph of\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  this SCC where the variables did not decrease in size\n").
-
-term_errors__output_2(_PredId, _ProcId, _Module, ConstErrorOutput, ForHLDSDump,
-		Context - no_eqns)-->
-	{ require(unify(ConstErrorOutput, yes),
-		"Unexpected value in term_errors__output_2(no_eqns)") },
-	io__write_string("the analysis was unable to form any\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  constraints between the arguments of the predicates\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  and functions in this SCC\n").
-
-term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrorOutput, ForHLDSDump,
-		Context - lpsolve_failed) -->
-	io__write_string("the constraint solver "),
-	io__write_string("found the\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  constraints that the analysis produced to be infeasible\n").
-
-% call_in_single_arg will only be printed out as the second part of the
-% single_arg_failed(NormErr, SingleErr) error.  Therefore, the following
-% lines have already been printed out:
-% Single argument termination analysis failed to
-% prove termination because 
-term_errors__output_2(_PredId, _ProcId, Module, _ConstErrorOutput, ForHLDSDump,
-		Context - call_in_single_arg(PPId)) -->
-	{ PPId = proc(CallPredId, _CallProcId) },
-	io__write_string("it encountered a call to\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	hlds_out__write_pred_id(Module, CallPredId),
-	io__nl,
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  which could not be processed.\n").
-
-term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput, ForHLDSDump,
-		Context - single_arg_failed(Error)) -->
-	term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput, 
-		ForHLDSDump, Error),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  Single argument analysis failed to find a head variable\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  that was always decreasing in size.\n").
-
-term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput, ForHLDSDump, 
-		_Context - single_arg_failed(NormErr, SingleArgErr)) -->
-	{ NormErr = NormalContext - NormalError }, 
-	{ SingleArgErr = SingleArgContext - SingleArgError },
-
-		% single argument analysis is independent of finding the
-		% termination constant.  The error for a termination
-		% constant should never be single_arg_failed.
-	{ require(unify(ConstErrorOutput, no),
-		"Unexpected value in term_errors__output_2") },
-
-	term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput, 
-		ForHLDSDump, NormalContext - NormalError),
-	globals__io_lookup_bool_option(verbose_check_termination,
-		VerboseErrors),
-	( 
-		{ SingleArgError \= NormalError },
-		{ VerboseErrors = yes }
-	->
-		% Only output a single argument error if verbose errors are
-		% enabled, and it is different from the normal error
-		% message.
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(SingleArgContext),
-		io__write_string(
-			"  Single argument termination analysis failed to\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(SingleArgContext),
-		io__write_string("  prove termination because "),
-		term_errors__output_2(PredId, ProcId, Module, ConstErrorOutput, 
-			ForHLDSDump, SingleArgContext - SingleArgError)
 	;
 		[]
 	).
 
-term_errors__output_2(_PredId, _ProcId, _Module, ConstErrorOutput, _ForHLDSDump,
-		_Context - is_builtin) -->
-	{ require(unify(ConstErrorOutput, yes), 
-		"Unexpected value in term_errors:output_2") },
-	io__write_string("it is a builtin predicate\n").
+:- pred term_errors__description(termination_error::in,
+	maybe(pred_proc_id)::in, module_info::in, list(string)::out,
+	maybe(pred_proc_id)::out) is det.
 
-term_errors__output_2(PredId, _ProcId, Module, ConstErrorOutput, ForHLDSDump,
-		Context - does_not_term_pragma(OtherPredId)) -->
-	{ require(unify(ConstErrorOutput, no), 
-		"Unexpected value in term_errors:output_2") },
-	io__write_string("there was a `does_not_terminate'\n"),
-	maybe_write_string(ForHLDSDump, "% "),
-	prog_out__write_context(Context),
-	io__write_string("  pragma defined on "),
-	( { PredId = OtherPredId } ->
-		{ module_info_pred_info(Module, PredId, PredInfo) },
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-		io__write_string("this "),
-		hlds_out__write_pred_or_func(PredOrFunc),
-		io__nl
+term_errors__description(horder_call, _, _, Pieces, no) :-
+	Pieces = ["It", "contains", "a", "higher", "order", "call."].
+
+term_errors__description(pragma_c_code, _, _, Pieces, no) :-
+	Pieces = ["It", "depends", "on", "the", "properties", "of",
+		"foreign", "language", "code", "included", "via", "a",
+		"`pragma c_code'", "declaration."].
+
+term_errors__description(inf_call(CallerPPId, CalleePPId),
+		Single, Module, Pieces, no) :-
+	(
+		Single = yes(PPId),
+		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		Piece1 = "It"
 	;
-		io__write_string("the "),
-		hlds_out__write_pred_id(Module, OtherPredId),
-		io__nl
+		Single = no,
+		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+	),
+	Piece2 = "calls",
+	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	Pieces3 = ["with", "an", "unbounded", "increase", "in", "the",
+		"size", "of", "the", "input", "arguments."],
+	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+
+term_errors__description(can_loop_proc_called(CallerPPId, CalleePPId),
+		Single, Module, Pieces, no) :-
+	(
+		Single = yes(PPId),
+		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		Piece1 = "It"
+	;
+		Single = no,
+		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+	),
+	Piece2 = "calls",
+	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	Pieces3 = ["which", "could", "not", "be", "proven", "to", "terminate."],
+	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+
+term_errors__description(imported_pred, _, _, Pieces, no) :-
+	Pieces = ["It", "contains", "one", "or", "more",
+		"predicates", "and/or", "functions",
+		"imported", "from", "another", "module."].
+
+term_errors__description(horder_args(CallerPPId, CalleePPId), Single, Module,
+		Pieces, no) :-
+	(
+		Single = yes(PPId),
+		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		Piece1 = "It"
+	;
+		Single = no,
+		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+	),
+	Piece2 = "calls",
+	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	Pieces3 = ["with", "one", "or", "more",
+		"higher", "order", "arguments."],
+	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+
+term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
+		Single, Module, Pieces, yes(CalleePPId)) :-
+	(
+		Single = yes(PPId),
+		require(unify(PPId, CallerPPId), "caller outside this SCC"),
+		Piece1 = "It"
+	;
+		Single = no,
+		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+	),
+	Piece2 = "calls",
+	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	Pieces3 = ["which", "has", "a", "termination", "constant", "of",
+		"infinity."],
+	Pieces = [Piece1, Piece2, CalleePiece | Pieces3].
+
+term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
+		Single, Module, Pieces, no) :-
+	(
+		Single = yes(PPId),
+		( PPId = ProcPPId ->
+			Pieces1 = ["The", "set", "of", "its", "output",
+				"supplier", "variables"]
+		;
+			% XXX this should never happen (but it does)
+			% error("not_subset outside this SCC"),
+			term_errors__describe_one_proc_name(ProcPPId, Module,
+				PPIdPiece),
+			Pieces1 = ["The", "set", "of", "output", "supplier",
+				"variables", "of", PPIdPiece]
+		)
+	;
+		Single = no,
+		term_errors__describe_one_proc_name(ProcPPId, Module,
+			PPIdPiece),
+		Pieces1 = ["The", "set", "of", "output", "supplier",
+			"variables", "of", PPIdPiece]
+	),
+	ProcPPId = proc(PredId, ProcId),
+	module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
+	proc_info_varset(ProcInfo, Varset),
+	term_errors_var_bag_description(OutputSuppliers, Varset,
+		OutputSuppliersPieces),
+	Pieces3 = ["was", "not", "a", "subset", "of", "the", "head",
+		"variables"],
+	term_errors_var_bag_description(HeadVars, Varset, HeadVarsPieces),
+	list__condense([Pieces1, OutputSuppliersPieces, Pieces3,
+		HeadVarsPieces], Pieces).
+
+term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
+	( CallSites = [DirectCall] ->
+		term_errors__describe_one_call_site(DirectCall, Module, Site),
+		Pieces = ["At", "the", "recursive", "call", "to", Site,
+			"the", "arguments", "are", "not", "guaranteed",
+			"to", "decrease", "in", "size."]
+	;
+		Pieces1 = ["In", "the", "recursive", "cycle",
+			"through", "the", "calls", "to"],
+		term_errors__describe_several_call_sites(CallSites, Module,
+			Sites),
+		Pieces2 = ["the", "arguments", "are", "not", "guaranteed",
+			"to", "decrease", "in", "size."],
+		list__condense([Pieces1, Sites, Pieces2], Pieces)
+	).
+	% Pieces = ["there", "was", "a", "cycle", "in", "the", "call", "graph",
+	% "of", "this", "SCC", "where", "the", "variables", "did", "not",
+	% "decrease", "in", "size."].
+
+% term_errors__description(positive_value(CallerPPId, CalleePPId),
+% 		Single, Module, Pieces, no) :-
+% 	(
+% 		Single = yes(PPId),
+% 		PPId = CallerPPId,
+% 		Piece1 = "it"
+% 	;
+% 		Single = no,
+% 		term_errors__describe_one_proc_name(CallerPPId, Module, Piece1)
+% 	),
+% 	( CallerPPId = CalleePPId ->
+% 		Pieces2 = ["contains", "a", "directly", "recursive", "call"]
+% 	;
+% 		term_errors__describe_one_proc_name(CalleePPId, Module,
+% 			CalleePiece),
+% 		Pieces2 = ["recursive", "call", "to", CalleePiece]
+% 	),
+% 	Pieces3 = ["with", "the", "size", "of", "the", "inputs", "increased."],
+% 	list__append([Piece1 | Pieces2], Pieces3, Pieces).
+
+term_errors__description(too_many_paths, _, _, Pieces, no) :-
+	Pieces = ["There", "were", "too", "many", "execution", "paths",
+		"for", "the", "analysis", "to", "process."].
+
+term_errors__description(no_eqns, _, _, Pieces, no) :-
+	Pieces = ["The", "analysis", "was", "unable", "to", "form", "any",
+		"constraints", "between", "the", "arguments", "of", "this",
+		"group", "of", "procedures."].
+
+term_errors__description(solver_failed, _, _, Pieces, no)  :-
+	Pieces = ["The", "solver", "found", "the", "constraints", "produced",
+		"by", "the", "analysis", "to", "be", "infeasible."].
+
+term_errors__description(is_builtin(_PredId), _Single, _, Pieces, no) :-
+	% XXX require(unify(Single, yes(_)), "builtin not alone in SCC"),
+	Pieces = ["It", "is", "a", "builtin", "predicate."].
+
+term_errors__description(does_not_term_pragma(PredId), Single, Module,
+		Pieces, no) :-
+	Pieces1 = ["There", "was", "a", "`does_not_terminate'", "pragma",
+		"defined", "on"],
+	(
+		Single = yes(PPId),
+		PPId = proc(SCCPredId, _),
+		require(unify(PredId, SCCPredId), "does not terminate pragma outside this SCC"),
+		Piece2 = "it."
+	;
+		Single = no,
+		term_errors__describe_one_pred_name(PredId, Module,
+			Piece2Nodot),
+		string__append(Piece2Nodot, ".", Piece2)
+	),
+	list__append(Pieces1, [Piece2], Pieces).
+
+%----------------------------------------------------------------------------%
+
+:- pred term_errors_var_bag_description(bag(var)::in, varset::in,
+	list(string)::out) is det.
+
+term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
+	bag__to_assoc_list(HeadVars, HeadVarCountList),
+	term_errors_var_bag_description_2(HeadVarCountList, Varset, yes,
+		Pieces).
+
+:- pred term_errors_var_bag_description_2(assoc_list(var, int)::in, varset::in,
+	bool::in, list(string)::out) is det.
+
+term_errors_var_bag_description_2([], _, _, ["{}"]).
+term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
+		[Piece | Pieces]) :-
+	varset__lookup_name(Varset, Var, VarName),
+	( Count > 1 ->
+		string__append(VarName, "*", VarCountPiece0),
+		string__int_to_string(Count, CountStr),
+		string__append(VarCountPiece0, CountStr, VarCountPiece)
+	;
+		VarCountPiece = VarName
+	),
+	( First = yes ->
+		string__append("{", VarCountPiece, Piece0)
+	;
+		Piece0 = VarCountPiece
+	),
+	( VarCounts = [] ->
+		string__append(Piece0, "}.", Piece),
+		Pieces = []
+	;
+		Piece = Piece0,
+		term_errors_var_bag_description_2(VarCounts, Varset, First,
+			Pieces)
 	).
 
+%----------------------------------------------------------------------------%
+
+:- pred term_errors__describe_one_pred_name(pred_id::in, module_info::in,
+	string::out) is det.
+
+	% The code of this predicate duplicates the functionality of
+	% hlds_out__write_pred_id. Changes here should be made there as well.
+
+term_errors__describe_one_pred_name(PredId, Module, Piece) :-
+	module_info_pred_info(Module, PredId, PredInfo),
+	pred_info_module(PredInfo, ModuleName),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	(
+		PredOrFunc = predicate,
+		PredOrFuncPart = "predicate ",
+		OrigArity = Arity
+	;
+		PredOrFunc = function,
+		PredOrFuncPart = "function ",
+		OrigArity is Arity - 1
+	),
+	string__int_to_string(OrigArity, ArityPart),
+	string__append_list([
+		PredOrFuncPart,
+		ModuleName,
+		":",
+		PredName,
+		"/",
+		ArityPart
+		], Piece).
+
+:- pred term_errors__describe_one_proc_name(pred_proc_id::in, module_info::in,
+	string::out) is det.
+
+term_errors__describe_one_proc_name(proc(PredId, ProcId), Module, Piece) :-
+	term_errors__describe_one_pred_name(PredId, Module, PredPiece),
+	proc_id_to_int(ProcId, ProcIdInt),
+	string__int_to_string(ProcIdInt, ProcIdPart),
+	string__append_list([
+		PredPiece,
+		" mode ",
+		ProcIdPart
+		], Piece).
+
+:- pred term_errors__describe_several_proc_names(list(pred_proc_id)::in,
+	module_info::in, term__context::in, list(string)::out) is det.
+
+term_errors__describe_several_proc_names([], _, _, []).
+term_errors__describe_several_proc_names([PPId | PPIds], Module,
+		Context, Pieces) :-
+	term_errors__describe_one_proc_name(PPId, Module, Piece0),
+	( PPIds = [] ->
+		Pieces = [Piece0]
+	; PPIds = [LastPPId] ->
+		term_errors__describe_one_proc_name(LastPPId, Module,
+			LastPiece),
+		Pieces = [Piece0, "and", LastPiece]
+	;
+		string__append(Piece0, ",", Piece),
+		term_errors__describe_several_proc_names(PPIds, Module,
+			Context, Pieces1),
+		Pieces = [Piece | Pieces1]
+	).
+
+:- pred term_errors__describe_one_call_site(pair(pred_proc_id,
+	term__context)::in, module_info::in, string::out) is det.
+
+term_errors__describe_one_call_site(PPId - Context, Module, Piece) :-
+	term_errors__describe_one_proc_name(PPId, Module, ProcName),
+	Context = term__context(FileName, LineNumber),
+	string__int_to_string(LineNumber, LineNumberPart),
+	string__append_list([
+		ProcName,
+		" at ",
+		FileName,
+		":",
+		LineNumberPart
+		], Piece).
+
+:- pred term_errors__describe_several_call_sites(assoc_list(pred_proc_id,
+	term__context)::in, module_info::in, list(string)::out) is det.
+
+term_errors__describe_several_call_sites([], _, []).
+term_errors__describe_several_call_sites([Site | Sites], Module, Pieces) :-
+	term_errors__describe_one_call_site(Site, Module, Piece0),
+	( Sites = [] ->
+		Pieces = [Piece0]
+	; Sites = [LastSite] ->
+		term_errors__describe_one_call_site(LastSite, Module,
+			LastPiece),
+		Pieces = [Piece0, "and", LastPiece]
+	;
+		string__append(Piece0, ",", Piece),
+		term_errors__describe_several_call_sites(Sites, Module,
+			Pieces1),
+		Pieces = [Piece | Pieces1]
+	).
+
+%----------------------------------------------------------------------------%

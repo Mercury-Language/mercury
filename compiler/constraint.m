@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,7 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
 constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
 	constraint__propagate_in_proc(Pred, Proc, ModuleInfo0, ModuleInfo1),
-	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs),
+	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs, _Changed),
 	( { Errs \= 0 } ->
 	    { error("constraint_propagation3") }
 	;
@@ -88,7 +88,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_varset(ProcInfo0, VarSet0),
 	varset__vars(VarSet0, VarList),
 	set__list_to_set(VarList, VarSet1),
 
@@ -106,7 +106,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	mode_info_get_inst_table(ModeInfo, InstTable),
 	mode_info_get_module_info(ModeInfo, ModuleInfo1),
 
-	proc_info_set_variables(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
 	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo),
@@ -185,7 +185,14 @@ constraint__propagate_goal_2(
 		higher_order_call(A, B, C, D, E, F),
 		higher_order_call(A, B, C, D, E, F)) -->
 %	mode_checkpoint(enter, "higher-order call"),
-%	mode_checkpoint(exit, "higher-order call"),
+%	mode_checkpoint(exit, "higher-order call").
+	[].
+
+constraint__propagate_goal_2(
+		class_method_call(A, B, C, D, E, F),
+		class_method_call(A, B, C, D, E, F)) -->
+%	mode_checkpoint(enter, "class method call"),
+%	mode_checkpoint(exit, "class method call").
 	[].
 
 constraint__propagate_goal_2(
@@ -201,10 +208,10 @@ constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
 	[].
 
 constraint__propagate_goal_2(
-		pragma_c_code(A, B, C, D, E, F, G, H), 
-		pragma_c_code(A, B, C, D, E, F, G, H)) -->
+		pragma_c_code(A, B, C, D, E, F, G), 
+		pragma_c_code(A, B, C, D, E, F, G)) -->
 %	mode_checkpoint(enter, "pragma_c_code"),
-%	mode_checkpoint(exit, "pragma_c_code"),
+%	mode_checkpoint(exit, "pragma_c_code").
 	[].
 
 %-----------------------------------------------------------------------------%

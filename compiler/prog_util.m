@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -175,8 +175,8 @@ prog_util__rename_in_goal_expr(if_then_else(Vars0, Cond0, Then0, Else0),
 	prog_util__rename_in_goal(Cond0, OldVar, NewVar, Cond),
 	prog_util__rename_in_goal(Then0, OldVar, NewVar, Then),
 	prog_util__rename_in_goal(Else0, OldVar, NewVar, Else).
-prog_util__rename_in_goal_expr(call(SymName, Terms0), OldVar, NewVar,
-		call(SymName, Terms)) :-
+prog_util__rename_in_goal_expr(call(SymName, Terms0, Purity), OldVar, NewVar,
+		call(SymName, Terms, Purity)) :-
 	term__substitute_list(Terms0, OldVar, term__variable(NewVar), Terms).
 prog_util__rename_in_goal_expr(unify(TermA0, TermB0), OldVar, NewVar,
 		unify(TermA, TermB)) :-

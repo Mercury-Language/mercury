@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -309,8 +309,20 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
 		pred_info_typevarset(ThisPredInfo, TVarSet),
 		map__apply_to_list(Args, VarTypes, ArgTypes),
-		get_pred_id_and_proc_id(PName, PredOrFunc, TVarSet, ArgTypes,
-			ModuleInfo0, PredId, ProcId),
+		(
+			% If we are redoing mode analysis, use the
+			% pred_id and proc_id found before, to avoid aborting
+			% in get_pred_id_and_proc_id if there are multiple
+			% matching procedures.
+			Unification0 = construct(_, 
+				pred_const(PredId0, ProcId0), _, _)
+		->
+			PredId = PredId0,
+			ProcId = ProcId0
+		;
+			get_pred_id_and_proc_id(PName, PredOrFunc, TVarSet, 
+				ArgTypes, ModuleInfo0, PredId, ProcId)
+		),
 		module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 					PredInfo, ProcInfo),
 
@@ -344,7 +356,8 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% work out the modes of the introduced lambda variables
 		% and the determinism of the lambda goal
 		%
-		proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes)),
+		proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable,
+					ArgModes)),
 
 		( list__drop(Arity, ArgModes, LambdaModes0) ->
 			LambdaModes = LambdaModes0
@@ -363,7 +376,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% and modecheck this unification in its new form
 		%
 		instmap_delta_init_reachable(IMDelta),
-		Functor0 = lambda_goal(PredOrFunc, LambdaVars,
+		Functor0 = lambda_goal(PredOrFunc, ArgVars0, LambdaVars, 
 				argument_modes(ArgInstTable, LambdaModes),
 				LambdaDet, IMDelta, LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
@@ -380,14 +393,17 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 			Goal, ModeInfo0, ModeInfo)
 	).
 
-modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
-			Unification0, UnifyContext, _GoalInfo, HowToCheckGoal,
-			unify(X, RHS, Mode, Unification, UnifyContext),
-			ModeInfo0, ModeInfo) :-
+modecheck_unification(X, 
+		lambda_goal(PredOrFunc, ArgVars, Vars, Modes0, Det,
+				_, LambdaGoal0),
+		Unification0, UnifyContext,
+		GoalInfo0, HowToCheckGoal, Goal, ModeInfo0, ModeInfo) :-
 	%
 	% First modecheck the lambda goal itself:
 	%
 	% initialize the initial insts of the lambda variables,
+	% check that the non-local vars are ground (XXX or any),
+	% mark the non-local vars as shared,
 	% lock the non-local vars,
 	% mark the non-clobbered lambda variables as live,
 	% modecheck the goal,
@@ -406,6 +422,18 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	% initial instmap, variables will be considered as unique
 	% even if they become shared or clobbered in the lambda goal!
 	%
+	% However even this may not be enough.  If a unique non-local
+	% variable is used in its unique inst (e.g. it's used in a ui
+	% mode) and then shared within the lambda body, this is unsound.
+	% This variable should be marked as shared at the _top_ of the
+	% lambda goal.  As for implementing this, it probably means that
+	% the lambda goal should be re-modechecked, or even modechecked
+	% to a fixpoint. 
+	%
+	% For the moment, since doing all that properly seems too hard,
+	% we just share all non-local variables at the top of the lambda goal.
+	% This is safe, but perhaps too conservative.
+	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
@@ -415,8 +443,8 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 		% This only needs to be done once.
 		Modes0 = argument_modes(ArgInstTable0, ArgModes0),
 		mode_info_get_types_of_vars(ModeInfo0, Vars, VarTypes),
-		propagate_types_into_mode_list(VarTypes, ArgInstTable0, ModuleInfo0,
-			ArgModes0, ArgModes1),
+		propagate_types_into_mode_list(VarTypes, ArgInstTable0,
+			ModuleInfo0, ArgModes0, ArgModes1),
 		Modes = argument_modes(ArgInstTable0, ArgModes1)
  	;
 		Modes = Modes0
@@ -445,46 +473,133 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
  
 	% lock the non-locals
 	% (a lambda goal is not allowed to bind any of the non-local
-	% variables, since it could get called more than once)
-	Goal0 = _ - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	% variables, since it could get called more than once, or
+	% from inside a negation)
+	LambdaGoal0 = _ - LambdaGoalInfo0,
+	goal_info_get_nonlocals(LambdaGoalInfo0, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
-	mode_info_lock_vars(NonLocals, ModeInfo3, ModeInfo4),
- 
-	mode_checkpoint(enter, "lambda goal", GoalInfo0, ModeInfo4, ModeInfo5),
-	% if we're being called from unique_modes.m, then we need to 
-	% call unique_modes__check_goal rather than modecheck_goal.
-	( HowToCheckGoal = check_unique_modes ->
-		unique_modes__check_goal(Goal0, Goal, ModeInfo5, ModeInfo6)
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	instmap__lookup_vars(NonLocalsList, InstMap1, NonLocalInsts),
+	mode_info_get_module_info(ModeInfo3, ModuleInfo3),
+	mode_info_get_inst_table(ModeInfo3, InstTable3),
+	(
+		% XXX This test is too conservative.
+		%
+		%     We should allow non-local variables to be non-ground
+		%     sometimes, possibly dependent on whether or not they
+		%     are dead after this unification.  In addition, we
+		%     should not "share" a unique non-local variable if
+		%     these two conditions hold:
+		%
+		%	- It is dead after this unification.
+		%	- It is not shared within the lambda body.
+		%
+		%     Unfortunately, we can't test the latter condition
+		%     until after we've mode-checked the lambda body.
+		%     (See the above comment on merging the initial and
+		%     final instmaps.)
+
+		% XXX This test is also not conservative enough!
+		%
+		%     We should not allow non-local vars to have inst `any';
+		%     because that can lead to unsoundness.
+		%     However, disallowing that idiom would break
+		%     extras/trailed_update/samples/vqueens.m, and
+		%     would make freeze/3 basically useless...
+		%     so for now at least, let's not disallow it,
+		%     even though it is unsafe.
+
+		inst_list_is_ground_or_any(NonLocalInsts, InstTable3,
+				ModuleInfo3)
+	->
+		map__init(ShareSub0),
+		make_shared_inst_list(NonLocalInsts, InstTable3, ModuleInfo3,
+			ShareSub0, SharedNonLocalInsts, InstTable4, ModuleInfo4,
+			ShareSub),
+		mode_info_apply_inst_key_sub(ShareSub, ModeInfo3, ModeInfo4),
+		instmap__set_vars(InstMap1, NonLocalsList, SharedNonLocalInsts,
+			InstMap2),
+		mode_info_set_module_info(ModeInfo4, ModuleInfo4, ModeInfo5),
+		mode_info_set_inst_table(InstTable4, ModeInfo5, ModeInfo6),
+		mode_info_set_instmap(InstMap2, ModeInfo6, ModeInfo7),
+
+		mode_info_lock_vars(lambda(PredOrFunc), NonLocals,
+				ModeInfo7, ModeInfo8),
+
+		mode_checkpoint(enter, "lambda goal", GoalInfo0,
+			ModeInfo8, ModeInfo9),
+		% if we're being called from unique_modes.m, then we need to 
+		% call unique_modes__check_goal rather than modecheck_goal.
+		(
+			HowToCheckGoal = check_unique_modes
+		->
+			unique_modes__check_goal(LambdaGoal0, LambdaGoal,
+				ModeInfo9, ModeInfo10)
+		;
+			modecheck_goal(LambdaGoal0, LambdaGoal,
+				ModeInfo9, ModeInfo10)
+		),
+		mode_list_get_final_insts(ArgModesX, ModuleInfo4, FinalInsts),
+		modecheck_final_insts(Vars, FinalInsts, ModeInfo10, ModeInfo11),
+		mode_checkpoint(exit, "lambda goal", GoalInfo0,
+				ModeInfo11, ModeInfo12),
+
+		mode_info_remove_live_vars(LiveVars, ModeInfo12, ModeInfo13),
+		mode_info_unlock_vars(lambda(PredOrFunc), NonLocals,
+			ModeInfo13, ModeInfo14),
+
+		%
+		% Ensure that the non-local vars are shared OUTSIDE the
+		% lambda unification as well as inside.
+		%
+
+		instmap__set_vars(InstMap0, NonLocalsList, SharedNonLocalInsts,
+			InstMap14),
+		mode_info_set_instmap(InstMap14, ModeInfo14, ModeInfo15),
+
+		%
+		% Now modecheck the unification of X with the lambda-expression.
+		%
+
+		RHS0 = lambda_goal(PredOrFunc, ArgVars, Vars, Modes, Det,
+				IMDelta, LambdaGoal),
+		modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
+				Det, RHS0, Unification0, Mode,
+				RHS, Unification, ModeInfo15, ModeInfo)
 	;
-		modecheck_goal(Goal0, Goal, ModeInfo5, ModeInfo6)
+		ModeInfo3 = ModeInfo4,
+		list__filter(lambda([Var :: in] is semidet,
+			( instmap__lookup_var(InstMap1, Var, Inst),
+			  \+ inst_is_ground(Inst, InstTable3, ModuleInfo3)
+			)),
+			NonLocalsList, NonGroundNonLocals),
+		( NonGroundNonLocals = [BadVar | _] ->
+			instmap__lookup_var(InstMap1, BadVar, BadInst),
+			set__singleton_set(WaitingVars, BadVar),
+			mode_info_error(WaitingVars,
+				mode_error_non_local_lambda_var(BadVar,
+						BadInst),
+				ModeInfo4, ModeInfo)
+		;
+			error("modecheck_unification(lambda): very strange var")
+		),
+			% return any old garbage
+		RHS = lambda_goal(PredOrFunc, ArgVars, Vars,
+				Modes0, Det, IMDelta, LambdaGoal0),
+		Mode = (free -> free) - (free -> free),
+		Unification = Unification0
 	),
-	mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
-	modecheck_final_insts(Vars, FinalInsts, ModeInfo6, ModeInfo7),
-	mode_checkpoint(exit, "lambda goal", GoalInfo0, ModeInfo7, ModeInfo8),
- 
-	mode_info_remove_live_vars(LiveVars, ModeInfo8, ModeInfo9),
-	mode_info_unlock_vars(NonLocals, ModeInfo9, ModeInfo10),
-	mode_info_set_instmap(InstMap0, ModeInfo10, ModeInfo11),
- 
-	%
-	% Now modecheck the unification of X with the lambda-expression.
-	%
- 
-	set__to_sorted_list(NonLocals, ArgVars),
-	modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes,
-			Det, Unification0, Mode, Unification,
-			ModeInfo11, ModeInfo),
-	RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal).
+	Goal = unify(X, RHS, Mode, Unification, UnifyContext).
 
 :- pred modecheck_unify_lambda(var, pred_or_func, list(var),
-			argument_modes, determinism, unification,
-			pair(mode), unification, mode_info, mode_info).
-:- mode modecheck_unify_lambda(in, in, in, in, in, in,
-			out, out, mode_info_di, mode_info_uo) is det.
+		argument_modes, determinism, unify_rhs, unification,
+		pair(mode), unify_rhs, unification, mode_info, mode_info).
+:- mode modecheck_unify_lambda(in, in, in, in, in, in, in,
+			out, out, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
-		Unification0, Mode, Unification, ModeInfo0, ModeInfo) :-
+modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, 
+		LambdaDet, RHS0, Unification0, Mode, RHS, Unification, 
+		ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
@@ -494,8 +609,8 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 	(
 		map__init(Sub0),
 		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
-			InstTable0, ModuleInfo0, Sub0, UnifyInst, _Det, InstTable1,
-			ModuleInfo1, Sub)
+			InstTable0, ModuleInfo0, Sub0, UnifyInst, _Det,
+			InstTable1, ModuleInfo1, Sub)
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1),
@@ -511,8 +626,8 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes),
 		categorize_unify_var_lambda(ModeOfX, ArgModes,
 				X, ArgVars, PredOrFunc,
-				Unification0, ModeInfo3,
-				Unification, ModeInfo4),
+				RHS0, Unification0, ModeInfo3,
+				RHS, Unification, ModeInfo4),
 		map__init(Sub1),
 		modecheck_set_var_inst(X, Inst, Sub1, Sub2, ModeInfo4,
 			ModeInfo5),
@@ -537,7 +652,8 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
 			% return any old garbage
-		Unification = Unification0
+		Unification = Unification0,
+		RHS = RHS0
 	).
 
 :- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
@@ -719,14 +835,16 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		%
 		% modecheck_unification sometimes needs to introduce
 		% new goals to handle complicated sub-unifications
-		% in deconstructions.  But this should never happen
-		% during unique mode analysis.
-		% (If it did, the code would be wrong since it
+		% in deconstructions. The only time this can happen
+		% during unique mode analysis is if the instmap is 
+		% unreachable, since inst_is_bound succeeds for not_reached.
+		% (If it did in other cases, the code would be wrong since it
 		% wouldn't have the correct determinism annotations.)
 		%
 		(
 			HowToCheckGoal = check_unique_modes,
-			ExtraGoals \= no_extra_goals
+			ExtraGoals \= no_extra_goals,
+			instmap__is_reachable(InstMap0)
 		->
 			error("unique_modes.m: re-modecheck of unification encountered complicated sub-unifies")
 		;
@@ -861,8 +979,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 
 		% insert the new unification at
 		% the start of the extra goals
-		ExtraGoals0 = extra_goals(InstMapAfterMain,
-					[NewUnifyGoal - GoalInfo]),
+		ExtraGoals0 = extra_goals([], after_goals(InstMapAfterMain,
+					[NewUnifyGoal - GoalInfo])),
 
 		% recursive call to handle the remaining variables...
 		split_complicated_subunifies_2(Vars0, UniModes0,
@@ -927,22 +1045,30 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 			determinism_components(Det, CanFail, _),
 			UniMode0 = ((IX - IY) -> (FX - FY)),
 			Unification = complicated_unify(UniMode0, CanFail),
+			mode_info_get_instmap(ModeInfo0, InstMap0),
 			(
 				type_is_higher_order(Type, PredOrFunc, _)
 			->
-				% we do not want to report this as an error
+				% We do not want to report this as an error
 				% if it occurs in a compiler-generated
 				% predicate - instead, we delay the error
 				% until runtime so that it only occurs if
-				% the compiler-generated predicate gets called
+				% the compiler-generated predicate gets called.
+				% not_reached is considered bound, so the 
+				% error message would be spurious if the 
+				% instmap is unreachable.
 				mode_info_get_predid(ModeInfo0, PredId),
 				module_info_pred_info(ModuleInfo0, PredId,
 						PredInfo),
-				( code_util__compiler_generated(PredInfo) ->
-					ModeInfo = ModeInfo0
+				( 
+				    ( code_util__compiler_generated(PredInfo) 
+				    ; instmap__is_unreachable(InstMap0)
+				    )
+				->
+				    ModeInfo = ModeInfo0
 				;
-					set__init(WaitingVars),
-					mode_info_error(WaitingVars,
+				    set__init(WaitingVars),
+				    mode_info_error(WaitingVars,
 			mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
 						ModeInfo0, ModeInfo)
 				)
@@ -1015,14 +1141,16 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_lambda(mode, list(mode),
-			var, list(var), pred_or_func,
-			unification, mode_info, unification, mode_info).
-:- mode categorize_unify_var_lambda(in, in, in, in, in,
-			in, mode_info_di, out, mode_info_uo) is det.
+			var, list(var), pred_or_func, unify_rhs, unification, 
+			mode_info, unify_rhs, unification, mode_info).
+:- mode categorize_unify_var_lambda(in, in, in, in, in, in,
+			in, mode_info_di, out, out, mode_info_uo) is det.
 
-categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
-		Unification0, ModeInfo0, Unification, ModeInfo) :-
+categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
+		PredOrFunc, RHS0, Unification0, ModeInfo0, RHS, 
+		Unification, ModeInfo) :-
 	% if we are re-doing mode analysis, preserve the existing cons_id
+	list__length(ArgVars, Arity),
 	( Unification0 = construct(_, ConsId0, _, _) ->
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
@@ -1030,20 +1158,59 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 	;
 		% the real cons_id will be computed by polymorphism.m;
 		% we just put in a dummy one for now
-		list__length(ArgVars, Arity),
 		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_inst_table(ModeInfo0, InstTable),
 	mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
 						ModuleInfo, ArgModes),
+	mode_info_get_instmap(ModeInfo0, InstMap),
 	(
 		mode_is_output(InstTable, ModuleInfo, ModeOfX)
 	->
+		( 
+			% If pred_consts are present, lambda expansion
+			% has already been done. Rerunning mode analysis
+			% should not produce a lambda_goal which cannot
+			% be directly converted back into a higher-order
+			% predicate constant.
+			% If the instmap is not reachable, the call
+			% may have been handled as an implied mode,
+			% since not_reached is considered to be bound. 
+			% In this case the lambda_goal may not be 
+			% converted back to a predicate constant, but
+			% that doesn't matter since the code will be
+			% pruned away later by simplify.m.
+			ConsId = pred_const(PredId, ProcId),
+			instmap__is_reachable(InstMap)
+		->
+			( 
+				RHS0 = lambda_goal(_, _, _, _, _, _, Goal),
+				Goal = call(PredId, ProcId, _, _, _, _) - _
+			->
+				module_info_pred_info(ModuleInfo,
+					PredId, PredInfo),
+				pred_info_module(PredInfo, PredModule),
+				pred_info_name(PredInfo, PredName),
+				RHS = functor(
+					cons(qualified(PredModule, PredName),
+						Arity),
+					ArgVars)	
+			;
+				error("categorize_unify_var_lambda - \
+					reintroduced lambda goal")
+			)
+		;
+			RHS = RHS0
+		),
 		Unification = construct(X, ConsId, ArgVars, ArgModes),
 		ModeInfo = ModeInfo0
 	;
-		% If it's a deconstruction, it is a mode error
+		instmap__is_reachable(InstMap)
+	->
+		% If it's a deconstruction, it is a mode error.
+		% The error message would be incorrect in unreachable
+		% code, since not_reached is considered bound.
 		set__init(WaitingVars),
 		mode_info_get_var_types(ModeInfo0, VarTypes0),
 		map__lookup(VarTypes0, X, Type),
@@ -1053,7 +1220,12 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 					Type, PredOrFunc),
 				ModeInfo0, ModeInfo),
 		% return any old garbage
-		Unification = Unification0
+		Unification = Unification0,
+		RHS = RHS0
+	;
+		ModeInfo = ModeInfo0,
+		Unification = Unification0,
+		RHS = RHS0
 	).
 
 % categorize_unify_var_functor works out which category a unification
@@ -1120,7 +1292,11 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		;
 			% Otherwise, it can fail
 			CanFail = can_fail,
-			( type_is_higher_order(TypeOfX, PredOrFunc, _) ->
+			mode_info_get_instmap(ModeInfo0, InstMap0),
+			( 
+				type_is_higher_order(TypeOfX, PredOrFunc, _),
+				instmap__is_reachable(InstMap0)
+			->
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
 			mode_error_unify_pred(X,

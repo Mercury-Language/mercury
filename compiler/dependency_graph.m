@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,8 @@
 	% it if necessary.
 
 module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
-	( module_info_dependency_info_built(ModuleInfo0) ->
+	module_info_get_maybe_dependency_info(ModuleInfo0, MaybeDepInfo),
+	( MaybeDepInfo = yes(_) ->
 	    ModuleInfo = ModuleInfo0
 	;
 	    dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo)
@@ -170,10 +171,6 @@ dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The call_info structure (map(var, lval)) is threaded through the traversal
-% of the goal. The liveness information is computed from the liveness
-% delta annotations.
-
 :- pred dependency_graph__add_arcs_in_goal(hlds_goal, relation_key,
 					dependency_graph, dependency_graph).
 :- mode dependency_graph__add_arcs_in_goal(in, in, in, out) is det.
@@ -183,9 +180,6 @@ dependency_graph__add_arcs_in_goal(Goal - _GoalInfo, PPId,
 	dependency_graph__add_arcs_in_goal_2(Goal, PPId, DepGraph0, DepGraph).
 
 %-----------------------------------------------------------------------------%
-	% Here we process each of the different sorts of goals.
-	% `Liveness' is the set of live variables, i.e. vars which
-	% have been referenced and will be referenced again.
 
 :- pred dependency_graph__add_arcs_in_goal_2(hlds_goal_expr, relation_key,
 					dependency_graph, dependency_graph).
@@ -217,6 +211,9 @@ dependency_graph__add_arcs_in_goal_2(some(_Vars, Goal), Caller,
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _, _),
+		_Caller, DepGraph, DepGraph).
+
+dependency_graph__add_arcs_in_goal_2(class_method_call(_, _, _, _, _, _),
 		_Caller, DepGraph, DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
@@ -256,7 +253,7 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	).
 
 % There can be no dependencies within a pragma_c_code
-dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _, _), _,
+dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _, _), _,
 	DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%
@@ -321,6 +318,8 @@ dependency_graph__add_arcs_in_cons(code_addr_const(Pred, Proc), Caller,
 		DepGraph = DepGraph0
 	).
 dependency_graph__add_arcs_in_cons(base_type_info_const(_, _, _), _Caller,
+				DepGraph, DepGraph).
+dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _), _Caller,
 				DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%

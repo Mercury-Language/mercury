@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997 The University of Melbourne.
+% Copyright (C) 1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,9 +22,25 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type what_to_profile
+	--->	memory_words
+	;	memory_cells
+	;	user_plus_system_time
+	;	user_time
+	;	real_time.
+
+:- pred what_to_profile(string, what_to_profile) is semidet.
+:- mode what_to_profile(in, out) is semidet.
+:- mode what_to_profile(out, in) is det.
+
 	% Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::in, globals::out) is det.
+
+:- pred globals__get_what_to_profile(globals::in, what_to_profile::out) is det.
+
+:- pred globals__set_what_to_profile(globals::in, what_to_profile::in,
+	globals::out) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 
@@ -83,16 +99,28 @@
 
 %-----------------------------------------------------------------------------%
 
+what_to_profile("memory-words", memory_words).
+what_to_profile("memory-cells", memory_cells).
+what_to_profile("user-plus-system-time", user_plus_system_time).
+what_to_profile("user-time", user_time).
+what_to_profile("real-time", real_time).
+
 :- type globals
 	--->	globals(
+			what_to_profile,
 			option_table
 		).
 
-globals__init(Options, globals(Options)).
+globals__init(Options, globals(user_plus_system_time, Options)).
 
-globals__get_options(globals(Options), Options).
+globals__get_what_to_profile(globals(WhatToProfile, _), WhatToProfile).
 
-globals__set_options(globals(_), Options, globals(Options)).
+globals__set_what_to_profile(globals(_, A), WhatToProfile,
+				globals(WhatToProfile, A)).
+
+globals__get_options(globals(_, Options), Options).
+
+globals__set_options(globals(A, _), Options, globals(A, Options)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),

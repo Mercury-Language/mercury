@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,8 +48,6 @@
 :- op(1199, fx, (pragma)).
 
 :- op(1199, fx, (type)).
-:- op(1199, fx, (pred)).
-:- op(1199, fx, (func)).
 :- op(1199, fx, (mode)).
 :- op(1199, fx, (inst)).
 :- op(1179, xfy, (--->)).
@@ -63,6 +61,13 @@
 :- op(900, fy, (not)).
 
 :- op(900, xfx, (when)).
+
+:- op(800, fx, (pred)).
+:- op(800, fx, (func)).
+:- op(800, fy, (impure)).
+:- op(800, fy, (semipure)).
+
+
 :- op(740, xfy, (or)).
 :- op(720, xfy, (and)).
 

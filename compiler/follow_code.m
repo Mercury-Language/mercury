@@ -43,6 +43,8 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
 	Flags = FollowCode - PrevCode,
 	proc_info_goal(ProcInfo0, Goal0),
+	proc_info_varset(ProcInfo0, Varset0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
 	(
 		move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),
 			% did the goal change?
@@ -50,8 +52,6 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	->
 			% we need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
-		proc_info_variables(ProcInfo0, Varset0),
-		proc_info_vartypes(ProcInfo0, VarTypes0),
 		proc_info_headvars(ProcInfo0, HeadVars),
 		implicitly_quantify_clause_body(HeadVars, Goal1,
 			Varset0, VarTypes0, Goal2, Varset, VarTypes, _Warnings),
@@ -110,12 +110,15 @@ move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Flags, R0, R) :-
 move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E,F),
 			higher_order_call(A,B,C,D,E,F), _, R, R).
 
+move_follow_code_in_goal_2(class_method_call(A,B,C,D,E,F),
+			class_method_call(A,B,C,D,E,F), _, R, R).
+
 move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
 
-move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), 
-			pragma_c_code(A,B,C,D,E,F,G,H), _, R, R).
+move_follow_code_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), 
+			pragma_c_code(A,B,C,D,E,F,G), _, R, R).
 
 %-----------------------------------------------------------------------------%
 

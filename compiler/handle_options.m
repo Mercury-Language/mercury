@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,13 +125,6 @@ postprocess_options(ok(OptionTable), Error) -->
                         { ArgsMethod0 = string(ArgsMethodStr) },
                         { convert_args_method(ArgsMethodStr, ArgsMethod) }
                     ->
-                        { map__lookup(OptionTable, type_info,
-                            TypeInfoMethod0) },
-                        (
-                            { TypeInfoMethod0 = string(TypeInfoMethodStr) },
-                            { convert_type_info_method(TypeInfoMethodStr,
-                                TypeInfoMethod) }
-                        ->
                             { map__lookup(OptionTable, prolog_dialect,
                                 PrologDialect0) },
                             (
@@ -156,8 +149,7 @@ postprocess_options(ok(OptionTable), Error) -->
 				    ->
 				    	postprocess_options_2(OptionTable,
 				    	    GC_Method, TagsMethod, ArgsMethod,
-				    	    TypeInfoMethod, PrologDialect,
-					    TermNorm),
+				    	    PrologDialect, TermNorm),
 				        { Error = no }
 				    ;
 				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
@@ -168,9 +160,6 @@ postprocess_options(ok(OptionTable), Error) -->
                             ;
                                 { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                             )
-                        ;
-                            { Error = yes("Invalid type-info option (must be `shared-one-or-two-cell' or `default')") }
-                        )
                     ;
                         { Error = yes("Invalid args option (must be `simple' or `compact')") }
                     )
@@ -182,12 +171,12 @@ postprocess_options(ok(OptionTable), Error) -->
             ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, 
-	args_method, type_info_method, prolog_dialect, termination_norm,
+	args_method, prolog_dialect, termination_norm,
 	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
+:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect, TermNorm) -->
+		PrologDialect, TermNorm) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -198,7 +187,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect, TermNorm),
+		PrologDialect, TermNorm),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
@@ -247,28 +236,33 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
-	% --verbose-check-termination implies --check-termination
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
-	% --check-termination implies --enable-termination
 	option_implies(check_termination, termination, bool(yes)),
+	option_implies(make_transitive_opt_interface, transitive_optimization,
+		bool(yes)),
+	option_implies(transitive_optimization, intermodule_optimization,
+		bool(yes)),
+	option_implies(very_verbose, verbose, bool(yes)),
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
-
-	% --very-verbose implies --verbose
-	option_implies(very_verbose, verbose, bool(yes)),
 
 	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
 	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
 	( { VerboseDump = "all" } ->
 		globals__io_set_option(verbose_dump_hlds,
-			string("abcdefghijklmnopqrstuvwxyz"))
+			string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 	;	
 		[]
 	),
 
-	% --generate-trace requires disabling optimizations
-	% that would change the trace being generated
+	% --generate-trace requires 
+	% 	- disabling optimizations that would change 
+	% 	  the trace being generated
+	%	- enabling excess_assign to exclude junk vars from the trace
+	%	  (and to ensure consistent paths across optimization levels)
+	% 	- enabling stack layouts
+	% 	- enabling typeinfo liveness
 	globals__io_lookup_bool_option(generate_trace, Trace),
 	( { Trace = yes } ->
 		globals__io_set_option(inline_simple, bool(no)),
@@ -278,10 +272,31 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(optimize_higher_order, bool(no)),
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
-			bool(no))
+			bool(no)),
+		globals__io_set_option(excess_assign, bool(yes)),
+		globals__io_set_option(trace_stack_layout, bool(yes)),
+		globals__io_set_option(typeinfo_liveness, bool(yes))
 	;
 		[]
 	),
+
+	% --stack-trace requires `procid' stack layouts
+	option_implies(stack_trace, procid_stack_layout, bool(yes)),
+
+	% `trace' stack layouts need `procid' stack layouts
+	option_implies(trace_stack_layout, procid_stack_layout, bool(yes)),
+
+	% --gc accurate requires `agc' stack layouts and typeinfo liveness.
+	( { GC_Method = accurate } ->
+		globals__io_set_option(agc_stack_layout, bool(yes)),
+		globals__io_set_option(typeinfo_liveness, bool(yes)) 
+	;
+		[]
+	),
+
+	% `procid' and `agc' stack layouts need `basic' stack layouts
+	option_implies(procid_stack_layout, basic_stack_layout, bool(yes)),
+	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
@@ -353,6 +368,7 @@ compute_grade(Globals, Grade) :-
 	globals__get_gc_method(Globals, GC_Method),
 	globals__lookup_bool_option(Globals, profile_time, ProfileTime),
 	globals__lookup_bool_option(Globals, profile_calls, ProfileCalls),
+	globals__lookup_bool_option(Globals, profile_memory, ProfileMemory),
 	globals__lookup_bool_option(Globals, use_trail, UseTrail),
 /*
 % These vary from machine to machine, and (for backwards compatibility,
@@ -392,15 +408,33 @@ compute_grade(Globals, Grade) :-
 	),
 	( ProfileTime = yes ->
 		( ProfileCalls = yes ->
-			Part4 = ".prof"
-		; 
-			Part4 = ".proftime"
+			( ProfileMemory = yes ->
+				Part4 = ".profall"
+			; 
+				Part4 = ".prof"
+			)
+		;
+			( ProfileMemory = yes ->
+				Part4 = ".profmemtime" /* not allowed */
+					/* `ml' will catch the error */
+			; 
+				Part4 = ".proftime" /* currently useless */
+			)
 		)
 	;
 		( ProfileCalls = yes ->
-			Part4 = ".profcalls"
+			( ProfileMemory = yes ->
+				Part4 = ".memprof"
+			; 
+				Part4 = ".profcalls"
+			)
 		; 
-			Part4 = ""
+			( ProfileMemory = yes ->
+				Part4 = ".profmem" /* not allowed */
+					/* `ml' will catch the error */
+			; 
+				Part4 = ""
+			)
 		)
 	),
 	( UseTrail = yes ->
@@ -496,19 +530,33 @@ convert_grade_option(Grade0) -->
 	( { string__remove_suffix(Grade12, ".prof", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, yes)
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, no)
 	; { string__remove_suffix(Grade12, ".proftime", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, yes),
-		set_bool_opt(profile_calls, no)
+		set_bool_opt(profile_calls, no),
+		set_bool_opt(profile_memory, no)
 	; { string__remove_suffix(Grade12, ".profcalls", Grade13) } ->
 		{ Grade14 = Grade13 },
 		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, yes)
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, no)
+	; { string__remove_suffix(Grade12, ".profall", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, yes),
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, yes)
+	; { string__remove_suffix(Grade12, ".memprof", Grade13) } ->
+		{ Grade14 = Grade13 },
+		set_bool_opt(profile_time, no),
+		set_bool_opt(profile_calls, yes),
+		set_bool_opt(profile_memory, yes)
 	;
 		{ Grade14 = Grade12 },
 		set_bool_opt(profile_time, no),
-		set_bool_opt(profile_calls, no)
+		set_bool_opt(profile_calls, no),
+		set_bool_opt(profile_memory, no)
 	),
 	% part 3
 	( { string__remove_suffix(Grade14, ".gc", Grade15) } ->
@@ -525,8 +573,7 @@ convert_grade_option(Grade0) -->
 	% 'accurate' is now set in the grade, so we can override it here.
 	( 
 		{ GC = accurate }, 
-		set_string_opt(gc, "accurate"), 
-		set_bool_opt(stack_layout, yes) 
+		set_string_opt(gc, "accurate")
 	; 
 		{ GC = conservative },
 		set_string_opt(gc, "conservative")
@@ -618,7 +665,7 @@ usage -->
  	io__write_strings(StdErr,
 			["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string(StdErr,
-			"Copyright (C) 1993-1997 The University of Melbourne\n"),
+			"Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] <module(s)>\n"),
@@ -630,7 +677,7 @@ long_usage -->
 	io__progname_base("mercury_compile", ProgName),
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-1997 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
 	io__write_string(" [<options>] <module(s)>\n"),

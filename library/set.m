@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -182,6 +182,11 @@
 :- pred set__difference(set(T), set(T), set(T)).
 :- mode set__difference(in, in, out) is det.
 
+	% `set__count(Set, Count)' is true iff `Set' has `Count' elements.
+
+:- pred set__count(set(T), int).
+:- mode set__count(in, out) is det.
+
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -258,6 +263,9 @@ set__power_intersect(Sets, Set) :-
 
 set__difference(SetA, SetB, Set) :-
 	set_ordlist__difference(SetA, SetB, Set).
+
+set__count(Set, Count) :-
+	set_ordlist__count(Set, Count).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -227,7 +227,7 @@ vn_verify__subst_sub_vns(vn_origlval(Vnlval), _, VnTables, lval(Lval)) :-
 	vn_verify__lval(Vnlval, VnTables, Lval).
 vn_verify__subst_sub_vns(vn_mkword(Tag, _), [R], _, mkword(Tag, R)).
 vn_verify__subst_sub_vns(vn_const(Const), [], _, const(Const)).
-vn_verify__subst_sub_vns(vn_create(T, A, U, L), [], _, create(T, A, U, L)).
+vn_verify__subst_sub_vns(vn_create(T,A,U,L,M), [], _, create(T,A,U,L,M)).
 vn_verify__subst_sub_vns(vn_unop(Op, _), [R], _, unop(Op, R)).
 vn_verify__subst_sub_vns(vn_binop(Op, _, _), [R1, R2], _, binop(Op, R1, R2)).
 
@@ -298,7 +298,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = mkframe(_, _, _),
+		Instr = mkframe(_, _, _, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
@@ -325,7 +325,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		vn_verify__tags_cond(Rval, NoDeref0, NoDeref,
 			Tested0, Tested)
 	;
-		Instr = incr_hp(Lval, _, Rval),
+		Instr = incr_hp(Lval, _, Rval, _),
 		vn_verify__tags_lval(Lval, NoDeref0),
 		vn_verify__tags_rval(Rval, NoDeref0),
 		NoDeref = NoDeref0,
@@ -373,7 +373,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = pragma_c(_, _, _, _, _),
+		Instr = pragma_c(_, _, _, _),
 		error("found c_code in vn_verify__tags_instr")
 	).
 
@@ -411,7 +411,7 @@ vn_verify__tags_rval(lval(Lval), NoDeref) :-
 	vn_verify__tags_lval(Lval, NoDeref).
 vn_verify__tags_rval(var(_), _) :-
 	error("found var in vn_verify__tags_rval").
-vn_verify__tags_rval(create(_, _, _, _), _).
+vn_verify__tags_rval(create(_, _, _, _, _), _).
 vn_verify__tags_rval(mkword(_, Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
 vn_verify__tags_rval(const(_), _).

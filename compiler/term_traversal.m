@@ -84,9 +84,9 @@
 
 :- type traversal_params.
 
-:- pred init_traversal_params(module_info::in, functor_info::in,
-	pred_proc_id::in, term__context::in, map(var, type)::in,
-	used_args::in, used_args::in, int::in, int::in,
+:- pred init_traversal_params(module_info::in, inst_table::in,
+	functor_info::in, pred_proc_id::in, term__context::in,
+	map(var, type)::in, used_args::in, used_args::in, int::in, int::in,
 	traversal_params::out) is det.
 
 :- pred traverse_goal(hlds_goal::in, traversal_params::in,
@@ -184,8 +184,10 @@ traverse_goal_2(pragma_c_code(_, CallPredId, CallProcId, Args, _, _, _),
 	params_get_module_info(Params, Module),
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
-	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
+	proc_info_argmodes(CallProcInfo,
+			argument_modes(CallArgInstTable, CallArgModes)),
+	partition_call_args(Module, CallArgInstTable, CallArgModes, Args,
+			_InVars, OutVars),
 	goal_info_get_context(GoalInfo, Context),
 	error_if_intersect(OutVars, Context, pragma_c_code, Info0, Info).
 
@@ -213,11 +215,13 @@ traverse_goal_2(call(CallPredId, CallProcId, Args, _, _, _),
 
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
-	proc_info_argmodes(CallProcInfo, CallArgModes),
+	proc_info_argmodes(CallProcInfo,
+			argument_modes(CallArgInstTable, CallArgModes)),
 	proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
 	proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),
 
-	partition_call_args(Module, CallArgModes, Args, InVars, OutVars),
+	partition_call_args(Module, CallArgInstTable, CallArgModes, Args,
+			InVars, OutVars),
 
 	% Handle existing paths
 	(
@@ -421,20 +425,23 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
 	% input or output bags. The predicate fails if invoked on a higher
 	% order unification.
 
-:- pred unify_change(var::in, cons_id::in, list(var)::in, list(uni_mode)::in,
-	traversal_params::in, int::out, bag(var)::out, bag(var)::out)
-	is semidet.
+:- pred unify_change(var::in, cons_id::in, list(var)::in,
+	list(uni_mode)::in, traversal_params::in, int::out,
+	bag(var)::out, bag(var)::out) is semidet.
 
-unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
+unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma,
+		InVars, OutVars) :-
 	params_get_functor_info(Params, FunctorInfo),
 	params_get_var_types(Params, VarTypes),
 	map__lookup(VarTypes, OutVar, Type),
 	\+ type_is_higher_order(Type, _, _),
 	( type_to_type_id(Type, TypeId, _) ->
 		params_get_module_info(Params, Module),
+		params_get_inst_table(Params, InstTable),
 		functor_norm(FunctorInfo, TypeId, ConsId, Module,
 			Gamma, Args0, Args, Modes0, Modes),
-		split_unification_vars(Args, Modes, Module, InVars, OutVars)
+		split_unification_vars(Args, Modes, InstTable, Module,
+				InVars, OutVars)
 	;
 		error("variable type in traverse_goal_2")
 	).
@@ -516,6 +523,7 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 :- type traversal_params
 	--->	traversal_params(
 			module_info,
+			inst_table,
 			functor_info,
 			pred_proc_id,	% The procedure we are tracing through.
 			term__context,	% The context of the procedure.
@@ -530,14 +538,16 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 			int		% Max number of paths to analyze.
 		).
 
-init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
-		OutputSuppliers, RecInputSuppliers, MaxErrors, MaxPaths,
-		Params) :-
-	Params = traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context,
-		VarTypes, OutputSuppliers, RecInputSuppliers,
-		MaxErrors, MaxPaths).
+init_traversal_params(ModuleInfo, InstTable, FunctorInfo, PredProcId, Context,
+		VarTypes, OutputSuppliers, RecInputSuppliers, MaxErrors,
+		MaxPaths, Params) :-
+	Params = traversal_params(ModuleInfo, InstTable, FunctorInfo,
+		PredProcId, Context, VarTypes, OutputSuppliers,
+		RecInputSuppliers, MaxErrors, MaxPaths).
 
 :- pred params_get_module_info(traversal_params::in, module_info::out)
+	is det.
+:- pred params_get_inst_table(traversal_params::in, inst_table::out)
 	is det.
 :- pred params_get_functor_info(traversal_params::in, functor_info::out)
 	is det.
@@ -555,30 +565,33 @@ init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
 :- pred params_get_max_paths(traversal_params::in, int::out) is det.
 
 params_get_module_info(Params, A) :-
-	Params = traversal_params(A, _, _, _, _, _, _, _, _).
+	Params = traversal_params(A, _, _, _, _, _, _, _, _, _).
 
-params_get_functor_info(Params, B) :-
-	Params = traversal_params(_, B, _, _, _, _, _, _, _).
+params_get_inst_table(Params, B) :-
+	Params = traversal_params(_, B, _, _, _, _, _, _, _, _).
 
-params_get_ppid(Params, C) :-
-	Params = traversal_params(_, _, C, _, _, _, _, _, _).
+params_get_functor_info(Params, C) :-
+	Params = traversal_params(_, _, C, _, _, _, _, _, _, _).
 
-params_get_context(Params, D) :-
-	Params = traversal_params(_, _, _, D, _, _, _, _, _).
+params_get_ppid(Params, D) :-
+	Params = traversal_params(_, _, _, D, _, _, _, _, _, _).
 
-params_get_var_types(Params, E) :-
-	Params = traversal_params(_, _, _, _, E, _, _, _, _).
+params_get_context(Params, E) :-
+	Params = traversal_params(_, _, _, _, E, _, _, _, _, _).
 
-params_get_output_suppliers(Params, F) :-
-	Params = traversal_params(_, _, _, _, _, F, _, _, _).
+params_get_var_types(Params, F) :-
+	Params = traversal_params(_, _, _, _, _, F, _, _, _, _).
 
-params_get_rec_input_suppliers(Params, G) :-
-	Params = traversal_params(_, _, _, _, _, _, G, _, _).
+params_get_output_suppliers(Params, G) :-
+	Params = traversal_params(_, _, _, _, _, _, G, _, _, _).
 
-params_get_max_errors(Params, H) :-
-	Params = traversal_params(_, _, _, _, _, _, _, H, _).
+params_get_rec_input_suppliers(Params, H) :-
+	Params = traversal_params(_, _, _, _, _, _, _, H, _, _).
 
-params_get_max_paths(Params, I) :-
-	Params = traversal_params(_, _, _, _, _, _, _, _, I).
+params_get_max_errors(Params, I) :-
+	Params = traversal_params(_, _, _, _, _, _, _, _, I, _).
+
+params_get_max_paths(Params, J) :-
+	Params = traversal_params(_, _, _, _, _, _, _, _, _, J).
 
 %-----------------------------------------------------------------------------%

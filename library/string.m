@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 :- import_module list, char.
 
 :- pred string__length(string, int).
-:- mode string__length(in, out) is det.
+:- mode string__length(in, uo) is det.
 	% Determine the length of a string.
 	% An empty string has length zero.
 
@@ -1647,7 +1647,7 @@ string__special_precision_and_width(-1).
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
 */
-:- pragma(c_code, string__length(Str::in, Length::out), "
+:- pragma(c_code, string__length(Str::in, Length::uo), "
 	Length = strlen(Str);
 ").
 
@@ -1720,6 +1720,8 @@ string__special_precision_and_width(-1).
 
 Define_extern_entry(mercury__string__append_3_3_xx);
 Declare_label(mercury__string__append_3_3_xx_i1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__string__append_3_3_xx);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__string__append_3_3_xx, 1);
 
 BEGIN_MODULE(string_append_module)
 	init_entry(mercury__string__append_3_3_xx);
@@ -1733,6 +1735,7 @@ Define_entry(mercury__string__append_3_3_xx);
 	framevar(2) = strlen((char *) string__append_ooi_input_reg);
 	framevar(3) = 0;
 Define_label(mercury__string__append_3_3_xx_i1);
+	update_prof_current_proc(LABEL(mercury__string__append_3_3_xx));
 {
 	String	s3;
 	size_t	s3_len;
@@ -1789,10 +1792,22 @@ void sys_init_string_append_module(void) {
 	maxfr = curprevfr;
 	curfr = cursuccfr;
 	{
+		/*
+		** We need to use `tailcall' to get the profiling
+		** information right.  The caller is guaranteed
+		** to be string__append_3_3 only because we
+		** have a `pragma no_inline' declaration for
+		** string__append.
+		*/
 		Declare_entry(mercury__string__append_3_3_xx);
-		GOTO(ENTRY(mercury__string__append_3_3_xx));
+		tailcall(ENTRY(mercury__string__append_3_3_xx),
+			LABEL(mercury__string__append_3_3));
 	}
 ").
+
+% The following is required to ensure that the caller label
+% in the above hand-coded C is correct.
+:- pragma no_inline(string__append/3).
 
 /*-----------------------------------------------------------------------*/
 

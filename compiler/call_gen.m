@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,6 +26,12 @@
 			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, in, out,
 				in, out) is det.
+
+:- pred call_gen__generate_class_method_call(code_model, var, int, list(var),
+			list(type), argument_modes, determinism, hlds_goal_info,
+			code_tree, code_info, code_info).
+:- mode call_gen__generate_class_method_call(in, in, in, in, in, in, in, in,
+				out, in, out) is det.
 
 :- pred call_gen__generate_call(code_model, pred_id, proc_id, list(var),
 			hlds_goal_info, code_tree, code_info, code_info).
@@ -73,9 +79,9 @@
 
 :- import_module hlds_module, hlds_goal, hlds_data, prog_data, code_util.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
-:- import_module trace, globals.
+:- import_module trace, globals, options.
 :- import_module bool, int, list, assoc_list, tree, set, map.
-:- import_module std_util, require.
+:- import_module varset, std_util, require.
 
 %---------------------------------------------------------------------------%
 
@@ -152,23 +158,23 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 	% for a higher-order call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by do_call_<detism>_closure in
-	% runtime/call.mod, generate the call to do_call_<detism>_closure,
-	% and pick up the outputs from the locations that we know
-	% runtime/call.mod leaves them in.
+	% runtime/mercury_ho_call.c, generate the call to 
+	% do_call_<detism>_closure, and pick up the outputs from the 
+	% locations that we know runtime/mercury_ho_call.c leaves them in.
 	%
-	% lambda.m transforms the generated lambda predicates to
-	% make sure that all inputs come before all outputs, so that
-	% runtime/call.mod doesn't have trouble figuring out which registers
-	% the arguments go in.
+	% lambda.m ensures that procedures which are directly 
+	% higher-order-called use the compact argument convertion,
+	% so that runtime/mercury_ho_call.c doesn't have trouble 
+	% figuring out which registers the arguments go in.
 	%
 
 call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		Modes, Det, GoalInfo, Code) -->
 	{ Modes = argument_modes(ArgIKT, ArgModes) },
 	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
-	{ globals__get_args_method(Globals, ArgsMethod) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ arg_info__ho_call_args_method(Globals, ArgsMethod) },
 	{ make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, ArgIKT,
 		ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
@@ -257,6 +263,143 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 
 %---------------------------------------------------------------------------%
 
+	%
+	% for a class method call,
+	% we split the arguments into inputs and outputs, put the inputs
+	% in the locations expected by do_call_<detism>_class_method in
+	% runtime/mercury_ho_call.c, generate the call to 
+	% do_call_<detism>_class_method, and pick up the outputs from the 
+	% locations that we know runtime/mercury_ho_call.c leaves them in.
+	%
+call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
+		Types, ArgModes, Det, GoalInfo, Code) -->
+	{ determinism_to_code_model(Det, InnerCodeModel) },
+	code_info__get_globals(Globals),
+	code_info__get_module_info(ModuleInfo),
+
+	{ globals__get_args_method(Globals, ArgsMethod) },
+	( { ArgsMethod = compact } ->
+		[]
+	;
+		{ error("Sorry, typeclasses with simple args_method not yet implemented") }
+	),
+	{ ArgModes = argument_modes(InstTable, Modes) },
+	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel, InstTable,
+		ModuleInfo, ArgInfo) },
+	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
+	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
+	call_gen__generate_class_method_call_2(InnerCodeModel, TCVar, 
+		MethodNum, InVars, OutVars, GoalInfo, Code).
+
+:- pred call_gen__generate_class_method_call_2(code_model, var, int, list(var),
+		list(var), hlds_goal_info, code_tree, code_info, code_info).
+:- mode call_gen__generate_class_method_call_2(in, in, in, in, in, in, out, in,
+		out) is det.
+
+call_gen__generate_class_method_call_2(CodeModel, TCVar, Index, 
+		InVars, OutVars, GoalInfo, Code) -->
+	code_info__succip_is_used,
+	{ set__list_to_set(OutVars, OutArgs) },
+	call_gen__save_variables(OutArgs, SaveCode),
+	(
+		{ CodeModel = model_det },
+		{ CallModel = det },
+		{ RuntimeAddr = do_det_class_method },
+		{ FlushCode = empty }
+	;
+		{ CodeModel = model_semi },
+		{ CallModel = semidet },
+		{ RuntimeAddr = do_semidet_class_method },
+		{ FlushCode = empty }
+	;
+		{ CodeModel = model_non },
+		code_info__may_use_nondet_tailcall(TailCall),
+		{ CallModel = nondet(TailCall) },
+		{ RuntimeAddr = do_nondet_class_method },
+		code_info__unset_failure_cont(FlushCode)
+	),
+		% place the immediate input arguments in registers
+		% starting at r5.
+	call_gen__generate_immediate_args(InVars, 5, InLocs, ImmediateCode),
+	code_info__generate_stack_livevals(OutArgs, LiveVals0),
+	{ set__insert_list(LiveVals0,
+		[reg(r, 1), reg(r, 2), reg(r, 3), reg(r, 4) | InLocs], 
+			LiveVals) },
+	(
+		{ CodeModel = model_semi }
+	->
+		{ FirstArg = 2 }
+	;
+		{ FirstArg = 1 }
+	),
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
+
+	code_info__get_instmap(InstMap),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
+		AfterCallInstMap) },
+
+	call_gen__generate_return_livevals(OutArgs, OutLocs, AfterCallInstMap, 
+		OutLiveVals),
+	code_info__produce_variable(TCVar, TCVarCode, TCVarRVal),
+	(
+		{ TCVarRVal = lval(reg(r, 1)) }
+	->
+		{ CopyCode = empty }
+	;
+		{ CopyCode = node([
+			assign(reg(r, 1), TCVarRVal) - "Copy typeclass info"
+		])}
+	),
+	{ list__length(InVars, NInVars) },
+	{ list__length(OutVars, NOutVars) },
+	{ SetupCode = tree(CopyCode, node([
+			assign(reg(r, 2), const(int_const(Index))) -
+				"Index of class method in typeclass info",
+			assign(reg(r, 3), const(int_const(NInVars))) -
+				"Assign number of immediate input arguments",
+			assign(reg(r, 4), const(int_const(NOutVars))) -
+				"Assign number of output arguments"
+		])
+	) },
+	code_info__get_next_label(ReturnLabel),
+	{ TryCallCode = node([
+		livevals(LiveVals) - "",
+		call(RuntimeAddr, label(ReturnLabel), OutLiveVals, CallModel)
+			- "setup and call class method",
+		label(ReturnLabel) - "Continuation label"
+	]) },
+	call_gen__rebuild_registers(OutArguments),
+	(
+		{ CodeModel = model_semi }
+	->
+		code_info__generate_failure(FailCode),
+		code_info__get_next_label(ContLab),
+		{ TestSuccessCode = node([
+			if_val(lval(reg(r, 1)), label(ContLab)) -
+				"Test for success"
+		]) },
+		{ ContLabelCode = node([label(ContLab) - ""]) },
+		{ CallCode =
+			tree(TryCallCode,
+			tree(TestSuccessCode,
+			tree(FailCode,
+			     ContLabelCode))) }
+	;
+		{ CallCode = TryCallCode }
+	),
+	{ Code =
+		tree(SaveCode,
+		tree(FlushCode,
+		tree(ImmediateCode,
+		tree(TCVarCode,
+		tree(SetupCode,
+		     CallCode)))))
+	}.
+
+%---------------------------------------------------------------------------%
+
 :- pred call_gen__prepare_for_call(code_model, code_tree, call_model,
 	code_addr, code_info, code_info).
 :- mode call_gen__prepare_for_call(in, out, out, out, in, out) is det.
@@ -315,9 +458,10 @@ call_gen__save_variables(Args, Code) -->
 	{ set__list_to_set(Variables0, Vars0) },
 	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
+	{ globals__lookup_bool_option(Globals, typeinfo_liveness, 
+		TypeinfoLiveness) },
 	( 
-		{ GC_Method = accurate }
+		{ TypeinfoLiveness = yes }
 	->
 		code_info__get_proc_info(ProcInfo),
 		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 
@@ -639,6 +783,8 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap,
 call_gen__insert_arg_livelvals([], _, _, LiveVals, LiveVals) --> [].
 call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap, 
 		LiveVals0, LiveVals) -->
+	code_info__get_varset(VarSet),
+	{ varset__lookup_name(VarSet, Var, Name) },
 	(
 		{ GC_Method = accurate }
 	->
@@ -650,9 +796,9 @@ call_gen__insert_arg_livelvals([Var - L | As], GC_Method, AfterCallInstMap,
 		code_info__get_inst_table(InstTable),
 		{ QualifiedInst = qualified_inst(InstTable, Inst) },
 		{ LiveVal = live_lvalue(R, var(Type, QualifiedInst),
-			TypeParams) }
+			Name, TypeParams) }
 	;
-		{ LiveVal = live_lvalue(R, unwanted, []) }
+		{ LiveVal = live_lvalue(R, unwanted, Name, []) }
 	),
 	{ code_util__arg_loc_to_register(L, R) },
 	call_gen__insert_arg_livelvals(As, GC_Method, AfterCallInstMap, 

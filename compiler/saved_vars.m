@@ -47,7 +47,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	write_proc_progress_message("% Minimizing saved vars in ",
 		PredId, ProcId, ModuleInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ proc_info_variables(ProcInfo0, Varset0) },
+	{ proc_info_varset(ProcInfo0, Varset0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
 	{ init_slot_info(Varset0, VarTypes0, SlotInfo0) },
 
@@ -69,7 +69,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo1) },
-	{ proc_info_set_variables(ProcInfo1, Varset, ProcInfo2) },
+	{ proc_info_set_varset(ProcInfo1, Varset, ProcInfo2) },
 	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
 	{ proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo) }.
 
@@ -112,6 +112,10 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
+		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		Goal = GoalExpr0 - GoalInfo0,
+		SlotInfo = SlotInfo0
+	;
 		GoalExpr0 = call(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
@@ -120,7 +124,7 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	),
@@ -276,7 +280,16 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
-			Goal0Expr = pragma_c_code(_, _, _, _, _, _, _, _),
+			Goal0Expr = class_method_call(_, _, _, _, _, _),
+			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
+			goal_util__rename_vars_in_goal(Construct, Subst,
+				NewConstruct),
+			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
+			saved_vars_delay_goal(Goals0, Construct, Var,
+				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+			Goals = [NewConstruct, Goal1 | Goals1]
+		;
+			Goal0Expr = pragma_c_code(_, _, _, _, _, _, _),
 			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),

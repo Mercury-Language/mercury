@@ -79,6 +79,14 @@ in the general case.
 	% original inst but with all occurrences of `unique' replaced
 	% with `mostly_unique'.
 
+:- pred make_shared_inst_list(list(inst), inst_table, module_info, inst_key_sub,
+		list(inst), inst_table, module_info, inst_key_sub).
+:- mode make_shared_inst_list(in, in, in, in, out, out, out, out) is det.
+
+	% Given an inst, return a new inst which is the same as the
+	% original inst but with all occurrences of `unique' or
+	% `mostly_uniq' replaced % with `shared'.
+
 %-----------------------------------------------------------------------------%
 
 :- pred inst_merge(inst, inst, inst_table, module_info, inst,
@@ -459,7 +467,7 @@ abstractly_unify_inst_3(live, Real, ground(UniqX, yes(_)),
 			bound(UniqY, BoundInsts0), UI0,
 			bound(Uniq, BoundInsts), Det, UI) :-
 	% check `Real = fake_unify' ?
-	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq),
+	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, UI0,
 			BoundInsts, Det1, UI),
 	det_par_conjunction_detism(Det1, semidet, Det).
@@ -1182,8 +1190,8 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, UI0,
 	unify_inst_info_get_inst_table(UI, FinalInstTable),
 	unify_inst_info_get_module_info(UI, FinalModuleInfo),
 	(
-		inst_contains_instname(AnyInst, FinalInstTable, FinalModuleInfo,
-			AnyInstKey)
+		inst_contains_instname(AnyInst, FinalInstTable,
+			FinalModuleInfo, AnyInstKey)
 	->
 		Inst = defined_inst(AnyInstKey)
 	;
@@ -1247,6 +1255,14 @@ make_shared_inst_list([], UI, [], UI).
 make_shared_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI) :-
 	make_shared_inst(Inst0, UI0, Inst, UI1),
 	make_shared_inst_list(Insts0, UI1, Insts, UI).
+
+	% This is a wrapper for the above predicate, since this
+	% operation is exported (used in modecheck_unify.m).
+make_shared_inst_list(Insts0, InstTable0, ModuleInfo0, Sub0,
+		Insts, InstTable, ModuleInfo, Sub) :-
+	UI0 = unify_inst_info(ModuleInfo0, InstTable0, Sub0),
+	make_shared_inst_list(Insts0, UI0, Insts, UI),
+	UI  = unify_inst_info(ModuleInfo, InstTable, Sub).
 
 % make an inst shared; replace all occurrences of `unique' or `mostly_unique'
 % in the inst with `shared'.
@@ -1360,8 +1376,16 @@ make_shared(clobbered, clobbered).
 make_shared_bound_inst_list([], UI, [], UI).
 make_shared_bound_inst_list([Bound0 | Bounds0], UI0, [Bound | Bounds], UI) :-
 	Bound0 = functor(ConsId, ArgInsts0),
+/*###1367 [cc] In clause for predicate `inst_util:make_shared_bound_inst_list/4':%%%*/
+/*###1367 [cc] in argument 2 of call to pred `make_shared_inst_list/4':%%%*/
+/*###1367 [cc] type error: variable `UI0' has type `(inst_util:unify_inst_info)',%%%*/
+/*###1367 [cc] expected type was `(hlds_module:module_info)'.%%%*/
 	make_shared_inst_list(ArgInsts0, UI0, ArgInsts, UI1),
 	Bound = functor(ConsId, ArgInsts),
+/*###1369 [cc] In clause for predicate `inst_util:make_shared_bound_inst_list/4':%%%*/
+/*###1369 [cc] in argument 2 of call to pred `make_shared_bound_inst_list/4':%%%*/
+/*###1369 [cc] type error: variable `UI1' has type `(hlds_module:module_info)',%%%*/
+/*###1369 [cc] expected type was `(inst_util:unify_inst_info)'.%%%*/
 	make_shared_bound_inst_list(Bounds0, UI1, Bounds, UI).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,12 +83,15 @@ lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
 lco_in_goal_2(higher_order_call(A,B,C,D,E,F), _ModuleInfo,
 		higher_order_call(A,B,C,D,E,F)).
 
+lco_in_goal_2(class_method_call(A,B,C,D,E,F), _ModuleInfo,
+		class_method_call(A,B,C,D,E,F)).
+
 lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 
 lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).
 
-lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), _,
-		pragma_c_code(A,B,C,D,E,F,G,H)).
+lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _,
+		pragma_c_code(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 

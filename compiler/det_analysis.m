@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,20 +116,22 @@
 
 determinism_pass(ModuleInfo0, ModuleInfo) -->
 	{ determinism_declarations(ModuleInfo0, DeclaredProcs,
-		UndeclaredProcs) },
+		UndeclaredProcs, NoInferProcs) },
+	{ list__foldl(set_non_inferred_proc_determinism, NoInferProcs,
+		ModuleInfo0, ModuleInfo1) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(debug_det, Debug),
 	( { UndeclaredProcs = [] } ->
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ ModuleInfo2 = ModuleInfo1 }
 	;
 		maybe_write_string(Verbose,
 			"% Doing determinism inference...\n"),
-		global_inference_pass(ModuleInfo0, UndeclaredProcs, Debug,
-			ModuleInfo1),
+		global_inference_pass(ModuleInfo1, UndeclaredProcs, Debug,
+			ModuleInfo2),
 		maybe_write_string(Verbose, "% done.\n")
 	),
 	maybe_write_string(Verbose, "% Doing determinism checking...\n"),
-	global_final_pass(ModuleInfo1, DeclaredProcs, Debug, ModuleInfo),
+	global_final_pass(ModuleInfo2, DeclaredProcs, Debug, ModuleInfo),
 	maybe_write_string(Verbose, "% done.\n").
 
 determinism_check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
@@ -462,7 +464,31 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det)],
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
+		% Code elsewhere relies on the assumption that
+		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
+		% so we need to enforce that here.
+		determinism_components(Det, CanFail, at_most_many)
+	;
+		Msgs = [],
+		Det = Det0
+	).
+
+det_infer_goal_2(class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
+		GoalInfo, _InstMap0, SolnContext,
+		_MiscInfo, _NonLocalVars, _DeltaInstMap,
+		class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
+		Det, Msgs) :-
+	determinism_components(Det0, CanFail, NumSolns),
+	(
+		NumSolns = at_most_many_cc,
+		SolnContext \= first_soln
+	->
+			% If called, this would give a slightly misleading
+			% error message. class_method_calls are introduced
+			% after det_analysis, though, so it doesn't really
+			% matter.
+		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
 		% Code elsewhere relies on the assumption that
 		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
 		% so we need to enforce that here.
@@ -477,8 +503,8 @@ det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
 det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
-		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-				InstMapDelta, Goal0)
+		RT0 = lambda_goal(PredOrFunc, NonLocalVars, Vars,
+			Modes, LambdaDeclaredDet, InstMapDelta, Goal0)
 	->
 		(
 			determinism_components(LambdaDeclaredDet, _,
@@ -494,8 +520,8 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs3),
-		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-				InstMapDelta, Goal)
+		RT = lambda_goal(PredOrFunc, NonLocalVars, Vars,
+			Modes, LambdaDeclaredDet, InstMapDelta, Goal)
 	;
 		RT = RT0,
 		Msgs3 = []
@@ -598,19 +624,19 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
 		Goal, Det, Msgs).
 
 	% pragma c_codes are handled in the same way as predicate calls
-det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, Extra), 
+det_infer_goal_2(pragma_c_code(IsRecursive, PredId, ProcId, Args,
+			ArgNameMap, OrigArgTypes, PragmaCode), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
-		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, Extra),
+		pragma_c_code(IsRecursive, PredId, ProcId, Args,
+			ArgNameMap, OrigArgTypes, PragmaCode),
 		Detism, Msgs) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	( MaybeDetism = yes(Detism0) ->
 		determinism_components(Detism0, CanFail, NumSolns0),
-		( Extra = extra_pragma_info(_, _) ->
-			% pragma C codes that specify saved variables and labels
+		( PragmaCode = nondet(_, _, _, _, _, _, _, _, _) ->
+			% pragma C codes of this form
 			% can have more than one solution
 			NumSolns1 = at_most_many
 		;
@@ -753,11 +779,11 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 			_TypeContext)
 	->
 		( CanFail = can_fail ->
-			proc_info_variables(ProcInfo, VarSet),
+			proc_info_varset(ProcInfo, VarSet),
 			Msgs = [cc_unify_can_fail(GoalInfo, Var, Type,
 				VarSet, GoalContext) | Msgs0]
 		; SolnContext \= first_soln ->
-			proc_info_variables(ProcInfo, VarSet),
+			proc_info_varset(ProcInfo, VarSet),
 			Msgs = [cc_unify_in_wrong_context(GoalInfo, Var,
 				Type, VarSet, GoalContext) | Msgs0]
 		;
@@ -964,15 +990,19 @@ det_negation_det(failure,	yes(det)).
 	% returns two lists of procedure ids, the first being those
 	% with determinism declarations, and the second being those without.
 
-:- pred determinism_declarations(module_info, pred_proc_list, pred_proc_list).
-:- mode determinism_declarations(in, out, out) is det.
+:- pred determinism_declarations(module_info, pred_proc_list,
+		pred_proc_list, pred_proc_list).
+:- mode determinism_declarations(in, out, out, out) is det.
 
-determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
+determinism_declarations(ModuleInfo, DeclaredProcs,
+		UndeclaredProcs, NoInferProcs) :-
 	get_all_pred_procs(ModuleInfo, PredProcs),
-	segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs).
+	segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
+		UndeclaredProcs, NoInferProcs).
 
 	% get_all_pred_procs takes a module_info and returns a list
-	% of all the procedures ids for that module.
+	% of all the procedures ids for that module (except class methods,
+	% which do not need to be checked since we generate the code ourselves).
 
 :- pred get_all_pred_procs(module_info, pred_proc_list).
 :- mode get_all_pred_procs(in, out) is det.
@@ -989,7 +1019,7 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
-	pred_info_non_imported_procids(Pred, ProcIds),
+	pred_info_procids(Pred, ProcIds),
 	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
@@ -1006,37 +1036,86 @@ fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
 	% UndeclaredProcs.
 
 :- pred segregate_procs(module_info, pred_proc_list, pred_proc_list,
-	pred_proc_list).
-:- mode segregate_procs(in, in, out, out) is det.
+	pred_proc_list, pred_proc_list).
+:- mode segregate_procs(in, in, out, out, out) is det.
 
-segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs) :-
+segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
+		UndeclaredProcs, NoInferProcs) :-
 	segregate_procs_2(ModuleInfo, PredProcs, [], DeclaredProcs,
-					[], UndeclaredProcs).
+			[], UndeclaredProcs, [], NoInferProcs).
 
 :- pred segregate_procs_2(module_info, pred_proc_list, pred_proc_list,
-			pred_proc_list, pred_proc_list, pred_proc_list).
-:- mode segregate_procs_2(in, in, in, out, in, out) is det.
+			pred_proc_list, pred_proc_list, pred_proc_list,
+			pred_proc_list, pred_proc_list).
+:- mode segregate_procs_2(in, in, in, out, in, out, in, out) is det.
 
 segregate_procs_2(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
-				UndeclaredProcs, UndeclaredProcs).
+		UndeclaredProcs, UndeclaredProcs, NoInferProcs, NoInferProcs).
 segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 		DeclaredProcs0, DeclaredProcs,
-		UndeclaredProcs0, UndeclaredProcs) :-
+		UndeclaredProcs0, UndeclaredProcs,
+		NoInferProcs0, NoInferProcs) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, Pred),
-	pred_info_procedures(Pred, Procs),
-	map__lookup(Procs, ProcId, Proc),
-	proc_info_declared_determinism(Proc, MaybeDetism),
-	(
-		MaybeDetism = no,
-		UndeclaredProcs1 = [proc(PredId, ProcId) | UndeclaredProcs0],
-		DeclaredProcs1 = DeclaredProcs0
+	( 
+		(
+			pred_info_is_imported(Pred)
+		;
+			pred_info_is_pseudo_imported(Pred),
+			hlds_pred__in_in_unification_proc_id(ProcId)
+		;
+			pred_info_get_markers(Pred, Markers),
+			check_marker(Markers, class_method)
+		)
+	->
+		UndeclaredProcs1 = UndeclaredProcs0,
+		DeclaredProcs1 = DeclaredProcs0,
+		NoInferProcs1 = [proc(PredId, ProcId) | NoInferProcs0]
 	;
-		MaybeDetism = yes(_),
-		DeclaredProcs1 = [proc(PredId, ProcId) | DeclaredProcs0],
-		UndeclaredProcs1 = UndeclaredProcs0
+		pred_info_procedures(Pred, Procs),
+		map__lookup(Procs, ProcId, Proc),
+		proc_info_declared_determinism(Proc, MaybeDetism),
+		(
+			MaybeDetism = no,
+			UndeclaredProcs1 =
+				[proc(PredId, ProcId) | UndeclaredProcs0],
+			DeclaredProcs1 = DeclaredProcs0
+		;
+			MaybeDetism = yes(_),
+			DeclaredProcs1 =
+				[proc(PredId, ProcId) | DeclaredProcs0],
+			UndeclaredProcs1 = UndeclaredProcs0
+		),
+		NoInferProcs1 = NoInferProcs0
 	),
 	segregate_procs_2(ModuleInfo, PredProcs, DeclaredProcs1, DeclaredProcs,
-		UndeclaredProcs1, UndeclaredProcs).
+		UndeclaredProcs1, UndeclaredProcs,
+		NoInferProcs1, NoInferProcs).
+
+	% We can't infer a tighter determinism for imported procedures or
+	% for class methods, so set the inferred determinism to be the
+	% same as the declared determinism. This can't be done easily in 
+	% make_hlds.m since inter-module optimization means that the
+	% import_status of procedures isn't determined until after all
+	% items are processed.
+:- pred set_non_inferred_proc_determinism(pred_proc_id,
+		module_info, module_info).
+:- mode set_non_inferred_proc_determinism(in, in, out) is det.
+
+set_non_inferred_proc_determinism(proc(PredId, ProcId),
+		ModuleInfo0, ModuleInfo) :-
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+	pred_info_procedures(PredInfo0, Procs0),
+	map__lookup(Procs0, ProcId, ProcInfo0),
+	proc_info_declared_determinism(ProcInfo0, MaybeDet),
+	( MaybeDet = yes(Det) ->
+		proc_info_set_inferred_determinism(ProcInfo0, Det, ProcInfo),
+		map__det_update(Procs0, ProcId, ProcInfo, Procs),
+		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+		module_info_set_pred_info(ModuleInfo0,
+			PredId, PredInfo, ModuleInfo)
+	;
+		ModuleInfo = ModuleInfo0
+	).
 
 %-----------------------------------------------------------------------------%

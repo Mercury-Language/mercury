@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -85,6 +85,7 @@ into another language, under the above conditions for modified versions.
 * Higher-order::      Mercury supports higher-order predicates and functions,
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
+* Type classes::      Constrained polymorphism
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Various compiler directives, used for the C interface
                       and to control optimization.
@@ -335,6 +336,8 @@ The allowed declarations are:
 :- func
 :- inst
 :- mode
+:- typeclass
+:- instance
 :- pragma
 :- module
 :- interface
@@ -783,7 +786,8 @@ before mode analysis is performed.
 @node Types
 @chapter Types
 
-The type system is based on polymorphic many-sorted logic.
+The type system is based on many-sorted logic, with polymorphism and
+type classes (@pxref{Type classes}).
 
 Certain special types are builtin, or are defined in the Mercury library:
 
@@ -1408,13 +1412,13 @@ values, just as it does for unique values:
 
 @example
 % mostly unique output
-:- mode muo :: free -> unique.
+:- mode muo :: free -> mostly_unique.
 
 % mostly unique input
-:- mode mui :: unique -> unique.
+:- mode mui :: mostly_unique -> mostly_unique.
 
 % mostly destructive input
-:- mode mdi :: unique -> dead.
+:- mode mdi :: mostly_unique -> mostly_dead.
 @end example
 
 @node Limitations of the current implementation
@@ -2438,8 +2442,9 @@ Each module must start with a @code{module} declaration,
 specifying the name of the module. 
 An @code{interface} declaration specifies
 the start of the module's interface section:
-this section contains declarations for the types, data constructors,
-instantiation states, modes, functions and predicates exported by this module.
+this section contains declarations for the types, typeclasses, typeclass
+instances, data constructors, instantiation states, modes, functions and
+predicates exported by this module.
 Mercury provides support for abstract data types,
 since the definition of a type may be kept hidden,
 with only the type name being exported.  
@@ -2563,6 +2568,278 @@ you follow it in your code too.  (Eventually, these names will be converted
 to names of the form @code{module.name}; this will allow you to omit the
 prefix in places where it does not improve readability.)
 
+@node Type classes
+@chapter Type classes
+
+Mercury supports constrained polymorphism in the form of type classes.  
+Type classes allow the programmer to write predicates and functions which 
+operate on variables of any type (or set of types) for which a certain set
+of operations is defined.  
+
+@menu
+* Typeclass declarations::
+* Instance declarations::
+* Type class constraints on predicates and functions::
+* Type class constraints on typeclass declarations::
+* Type class constraints on instance declarations::
+@end menu
+
+@node Typeclass declarations
+@section Typeclass declarations
+
+A @samp{typeclass} declaration specifies a set of predicates and/or functions
+that must be defined on a type (or set of types) for it (them) to be
+considered to be a member of that type class.
+
+The @code{typeclass} declaration gives the name of the type class, the
+names of the type variables which are parameters to the type class, and the
+operations ("methods") which form the interface of the type class.
+
+For example,
+
+@example
+:- typeclass point(T) where [
+	% coords(Point, X, Y):
+	%       X and Y are the cartesian coordinates of Point
+	pred coords(T, float, float),
+	mode coords(in, out, out) is det,
+
+	% translate(Point, X_Offset, Y_Offset) = NewPoint:
+	%       NewPoint is Point translated X_Offset units in the X direction
+	%       and Y_Offset units in the Y direction
+	func translate(T, float, float) = T
+].
+@end example
+
+@noindent
+declares the typeclass @code{point}, which refers to points in two dimensional
+space. 
+
+@code{pred}, @code{func} and @code{mode} declarations are the only legal
+declarations inside a @code{typeclass} declaration.  The number of parameters 
+to the type class (e.g. @code{T}) is not limited.  For example, the following 
+is allowed:
+
+@example
+:- typeclass a(T1, T2) where [@dots{}].
+@end example
+
+The only restriction is that the parameters be distinct variables.
+
+@node Instance declarations
+@section Instance declarations
+
+Once the interface of the typeclass has been declared in the @code{typeclass}
+declaration, we can use an @code{instance} declaration to specify how a
+particular type satisfies the interface declared in the @code{typeclass}
+declaration.
+
+An @samp{instance} declaration gives a type for each parameter of the
+typeclass.  Each of these types must be either a type with no arguments, or 
+a polymorphic type whose arguments are all distinct type variables.  e.g. 
+@code{int}, @code{list(T)} and @code{map(K,V)} are allowed but
+@code{T}, @code{list(int)} and @code{map(T,T)} are not.
+
+A program may not contain more than one @code{instance} declaration for a
+particular type (or set of types, in the case of a multi-parameter
+typeclass).  These restrictions ensure that there are no overlapping instance
+declarations, ie. there is at most one instance declaration that may be 
+applied to any type (or set of types).
+
+For example:
+
+@example
+:- type coordinate
+	---> coordinate(
+		float,		% X coordinate
+		float		% Y coordinate
+	).
+
+:- instance point(coordinate) where [
+        pred(coords/3) is coordinate_coords,
+        func(translate/3) is coordinate_translate
+].
+
+
+:- pred coordinate_coords(coordinate, float, float).
+:- mode coordinate_coords(in, out, out) is det.
+
+coordinate_coords(coordinate(X, Y), X, Y).
+
+:- func coordinate_translate(coordinate, float, float) = coordinate.
+
+coordinate_translate(coordinate(X, Y), Dx, Dy) = coordinate(X + Dx, Y + Dy).
+@end example
+
+We have now made the @code{coordinate} type an instance of the @code{point}
+typeclass.  If we introduce a new type, @code{coloured_coordinate} which
+represents a point in two dimensional space with a colour associated with it, 
+it can also become an instance of the typeclass:
+
+@example
+:- type rgb
+	---> rgb(
+		int,
+		int,
+		int
+	).
+
+:- type coloured_coordinate
+	---> coloured_coordinate(
+		float,
+		float,
+		rgb
+	).
+
+:- instance point(coloured_coordinate) where [
+        pred(coords/3) is coloured_coordinate_coords,
+        func(translate/3) is coloured_coordinate_translate
+].
+
+
+:- pred coloured_coordinate_coords(coloured_coordinate, float, float).
+:- mode coloured_coordinate_coords(in, out, out) is det.
+
+coloured_coordinate_coords(coloured_coordinate(X, Y, _), X, Y).
+
+:- func coloured_coordinate_translate(coloured_coordinate, float, float) 
+	= coloured_coordinate.
+
+coloured_coordinate_translate(coloured_coordinate(X, Y, Colour), Dx, Dy) 
+	= coloured_coordinate(X + Dx, Y + Dy, Colour).
+@end example
+
+Further instances of the typeclass could be made, e.g. a type which represents
+the point using polar coordinates.
+
+@node Type class constraints on predicates and functions
+@section Type class constraints on predicates and functions
+
+Mercury allows a typeclass constraint to appear as part of a predicate or
+functions's type signature.  This constrains the values that can be taken
+by type variables in the signature to belong to particular typeclasses.
+
+A typeclass constraint is of the form:
+
+@example
+	<= @var{Typeclass}(@var{TypeVariable}, @dots{}), @dots{}
+@end example
+
+where @var{Typeclass} is the name of a typeclass and @var{TypeVariable} is 
+a type variable that appears in the predicate's or function's type signature.
+
+For example
+
+@example
+:- pred distance(P1, P2, float) <= (point(P1), point(P2)).
+:- mode distance(in, in, out) is det.
+
+distance(A, B, Distance) :-
+	coords(A, Xa, Ya),
+	coords(B, Xb, Yb),
+	XDist = Xa - Xb,
+	YDist = Ya - Yb,
+	Distance = sqrt(XDist*XDist + YDist*YDist).
+@end example
+
+In the above example, the @code{distance} predicate is able to calculate the
+distance between any two points, regardless of their representation, as long
+as the @code{x_coord} and @code{y_coord} operations have been defined.  These
+constraints are checked at compile time.
+
+@node Type class constraints on typeclass declarations
+@section Type class constraints on typeclass declarations
+
+Type class constraints may also appear in @code{typeclass} declarations, 
+meaning that one typeclass is a ``superclass'' of another. 
+
+The variables that appear as arguments to the typeclasses in the constraints
+must also be arguments to the typeclass in question.
+
+For example, the following declares the @samp{ring} typeclass, which describes
+types with a particular set of numerical operations defined:
+
+@example
+:- typeclass ring(T) where [
+        func zero = (T::out) is det,                    % '+' identity
+        func one = (T::out) is det,                     % '*' identity
+        func plus(T::in, T::in) = (T::out) is det,      % '+'/2 (forward mode)
+        func mult(T::in, T::in) = (T::out) is det,      % '*'/2 (forward mode)
+        func negative(T::in) = (T::out) is det,         % '-'/1 (forward mode)
+        func inverse(T::in) = (T::out) is semidet       % multiplicative 
+							% inverse
+].
+@end example
+
+We can now add the following declaration:
+
+@example
+:- typeclass euclidean(T) <= ring(T) where [
+        func div(T::in, T::in) = (T::out) is det,
+        func mod(T::in, T::in) = (T::out) is det
+].
+@end example
+
+This introduces a new typeclass, @code{euclidean}, of which @code{ring} is a
+superclass.  The operations defined by the @code{euclidean} typeclass are
+@code{div}, @code{mod}, as well as all those defined by the @code{ring}
+typeclass.  Any type declared to be an instance of @code{euclidean} must also 
+be declared to be an instance of @code{ring}.
+
+Typeclass constraints on typeclass declarations gives rise to a superclass
+relation.  This relation must be acyclic.  That is, it is an error if a type 
+class is its own (direct or indirect) superclass.
+
+@node Type class constraints on instance declarations
+@section Type class constraints on instance declarations
+
+Typeclass constraints may also be placed upon instance declarations.  The
+variables that appear as arguments to the typeclasses in the constraints must
+all be type variables that appear in the types in the instance declarations.
+
+For example, consider the following declaration of a typeclass of types that 
+may be printed:
+
+@example
+:- typeclass portrayable(T) where [
+	pred portray(T::in, io__state::di, io__state::uo) is det
+].
+@end example
+
+The programmer could declare instances such as
+
+@example
+:- instance portrayable(int) where [
+	pred(portray/3) is io__write_int
+].
+
+:- instance portrayable(char) where [
+	pred(portray/3) is io__write_char
+].
+@end example
+
+However, when it comes to writing the instance declaration for a type such as
+@code{list(T)}, we want to be able print out the list elements using the
+@code{portray/3} for the particular type of the list elements.  This can be
+achieved by placing a typeclass constraint on the @code{instance} declaration,
+as in the following example:
+
+@example
+:- instance portrayable(list(T)) <= portrayable(T) where [
+	pred(portray/3) is portray_list
+].
+
+:- pred portray_list(list(T), io__state, io__state) <= portrayable(T).
+:- mode portray_list(in, di, uo) is det.
+
+portray_list([]) --> 
+	[].
+portray_list([X|Xs]) --> 
+	print(X),
+	io__write_char(' '),
+	portray_list(Xs).
+@end example
+
 @node Semantics
 @chapter Semantics
 
@@ -2614,11 +2891,11 @@ operational semantics.
 
 There is another operational semantics of Mercury programs called
 the @dfn{strict commutative} operational semantics.  This semantics
-is equivalent to the strict sequential operation semantics except
+is equivalent to the strict sequential operational semantics except
 that there is no requirement that function calls, conjunctions and disjunctions 
-be executed left-to-right; they may be executed in any order.
-(The order may even be different each time a particular goal
-is entered.)
+be executed left-to-right; they may be executed in any order, and may
+even be interleaved.  Furthermore, the order may even be different each
+time a particular goal is entered.
 
 As well as providing the strict sequential operational semantics,
 Mercury implementations may optionally provide additional
@@ -2700,6 +2977,7 @@ There are several uses for @code{pragma} declarations:
 @menu
 * C interface::                 The C interface allows C code to be called
                                 from Mercury code, and vice versa.
+* Impurity::                    Users can write impure Mercury code
 * Inlining::                    Pragmas can be used to suggest or prevent
                                 procedure inlining.
 * Obsolescence::                Library developers can declare old versions
@@ -2764,10 +3042,18 @@ or
 
 @noindent
 means that any calls to the specified mode of @var{Pred} or @var{Func}
-will be replaced by the C code given in @var{C_Code}.
+will result in execution of the C code given in @var{C_Code}.
 The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.
+
+The C code fragment may declare local variables, but it should not
+declare any static variables unless there is also a Mercury
+@samp{pragma no_inline} declaration (@pxref{Inlining}) for the procedure.
+The reason for this is that otherwise the Mercury implementation may
+inline the procedure by duplicating the C code fragment for each call,
+which would result in the program having multiple instances of the
+static variable, rather than a single shared instance.
 
 If there is a @code{pragma c_code} declaration for a mode of a predicate
 or function, then that mode of the predicate may not have determinism
@@ -2775,17 +3061,14 @@ or function, then that mode of the predicate may not have determinism
 predicate or function, and there must be a @code{pragma c_code} declaration
 for every mode of the predicate or function.
 
-For example, the following piece of code gives a predicate, 
-@samp{c_write_string/3}, which has a similar effect to the Mercury library 
-predicate @samp{io__write_string/3}:
+For example, the following piece of code defines a Mercury function
+@samp{sin/1} which calls the C function @samp{sin()} of the same name.
 
 @example
-:- pred c_write_string(string, io__state, io__state).
-:- mode c_write_string(in, di, uo) is det.
-
-:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
-        may_call_mercury,
-        "puts(S); IO = IO0;").
+:- func sin(float) = float.
+:- pragma c_code(sin(X::in) = Sin::out),
+	may_call_mercury,
+	"Sin = sin(X);").
 @end example
 
 If the C code does not recursively invoke Mercury code,
@@ -2821,6 +3104,47 @@ Mercury implementation on entry to the C code.  If the procedure
 succeeds, the C code must set the values of all output arguments
 before returning.  If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
+
+Note that procedures implemented in C must still be ``pure'',
+unless declared otherwise (@pxref{Impurity}), and they must
+be type-correct and mode-correct.  (Determinism-correctness
+is also required, but it follows from the rules already stated
+above.)  They may perform destructive update on their
+arguments only if those arguments have an appropriate
+unique mode declaration.
+They may perform I/O only if their arguments
+include an @samp{io__state} pair (see the @samp{io} chapter
+of the Mercury Library Reference Manual).
+The Mercury implementation is allowed to assume that
+these rules are followed, and to optimize accordingly.
+If the C code is not type-correct, mode-correct,
+determinism-correct, and purity-correct with respect
+to its Mercury declaration, then the behaviour is
+undefined.
+
+For example, the following code defines a predicate
+@samp{c_write_string/3}, which has a similar effect to
+the Mercury library predicate @samp{io__write_string/3}:
+
+@example
+:- pred c_write_string(string, io__state, io__state).
+:- mode c_write_string(in, di, uo) is det.
+
+:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
+        may_call_mercury,
+        "puts(S); IO = IO0;").
+@end example
+
+@noindent
+In this example, the I/O is done via side effects inside the C code,
+but the Mercury interface includes @samp{io__state} arguments
+to ensure that the predicate has a proper declarative
+semantics.  If the @samp{io__state} arguments were
+left off, then the Mercury implementation might apply
+undesirable optimizations (e.g. reordering, duplicate
+call elimination, tabling, lazy evaluation...)
+to this procedure, which could effect the behaviour
+of the program in unpredictable ways.
 
 @node Including C headers
 @subsection Including C headers
@@ -2955,17 +3279,25 @@ The exact mechanism for linking with C object files is
 implementation-dependent.  The following text describes how
 it is done for the University of Melbourne Mercury implementation.
 
-To link an existing object file or library into the Mercury executable,
-set the @samp{Mmake} variable @samp{MLLIBS} in the
-@samp{Mmake} file in the directory in which you are working.  For
-example add the following line to the @samp{Mmake} file:
+To link an existing object file into your Mercury code,
+set the @samp{Mmake} variable @samp{MLOBJS} in the
+@samp{Mmake} file in the directory in which you are working.
+To link an existing library into your Mercury code,
+set the @samp{Mmake} variable @samp{MLLIBS}.
+For example, the following will link in the object file
+@samp{my_functions.o} from the current directory and
+the library file @samp{libfancy_library.a}, or perhaps its
+shared version @samp{fancy_library.so}, from the directory
+@samp{/usr/local/contrib/lib}.
 
 @example
-MLLIBS = my_functions.o -L/usr/local/contrib/lib -lfancy_library
+MLOBJS = my_functions.o
+MLFLAGS = -R/usr/local/contrib/lib -L/usr/local/contrib/lib
+MLLIBS = -lfancy_library
 @end example
 
-As illustrated by the example, the values for @samp{MLLIBS} are similar to
-those taken by the Unix linker.
+As illustrated by the example, the values for @samp{MLFLAGS} and
+@samp{MLLIBS} variables are similar to those taken by the Unix linker.
 
 For more information, see the ``Libraries'' chapter of the
 Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
@@ -3348,6 +3680,220 @@ outweigh these costs will depend on your application.
 @c There is probably little need for user code to call this function,
 @c but it might be needed if you're doing certain low-level things
 @c such as implementing your own exception handling.
+
+@node Impurity
+@section Impurity declarations
+
+In order to efficiently implement certain predicates, it is occasionally
+necessary to venture outside pure logic programming.  Other predicates
+cannot be implemented at all within the paradigm of logic programming,
+for example, all solutions predicates.  Such predicates are often
+written using the C interface.  Sometimes, however, it would be more
+convenient, or more efficient, to write such predicates using the
+facilities of Mercury.  For example, it is much more convenient to
+access arguments of compound Mercury terms in Mercury than in C, and the
+ability of the Mercury compiler to specialize code can make higher-order
+predicates written in Mercury significantly more efficient than similar
+C code.
+
+One important aim of Mercury's impurity system is to make the
+distinction between the pure and impure code very clear.  This is done
+by requiring every impure predicate to be so declared, and by requiring
+every call to an impure predicate to be flagged as such.  Predicates
+that are implemented in terms of impure predicates are assumed to be
+impure themselves unless they are explicitly promised to be pure.
+
+Please note that the facilities described here are needed only very
+rarely.  The main intent is for implementing language primitives such as
+the all solutions predicates.  Any use of @samp{impure} or @samp{semipure}
+probably indicates either a weakness in the Mercury standard library, or
+the programmer's lack of familiarity with the standard library.
+Newcomers to Mercury are hence encouraged to @strong{skip this section}.
+
+
+
+@menu
+* Purity levels::       Choosing the right level of purity
+* Impurity semantics::  What impure code means
+* Declaring impurity::  Declaring predicates impure
+* Impure calls::        Marking a call as impure
+* Promising purity::    Promising that a predicate is pure
+* Impurity Example::    A simple example using impurity
+@end menu
+
+
+@node Purity levels
+@subsection Choosing the right level of purity
+
+Mercury distinguishes three ``levels'' of purity:
+
+@table @dfn
+@item pure
+Pure predicates and functions always return the same outputs given the
+same inputs.  They do not interact with the ``real'' world (i.e., do any
+input/output) without taking an io__state (@pxref{Types}) as input and
+returning one as output, and do not make any changes to any data
+structure that will not be undone on backtracking (unless the data
+structure would be unreachable on backtracking).  The behavior of other
+predicates is never affected by the invocation of pure predicates, nor
+is the behavior of pure predicates ever affected by the invocation of
+other predicates.
+
+The vast majority of Mercury predicates are pure.  
+
+@item semipure
+Semipure predicates are just like pure predicates, except that their
+behavior may be affected by the invocation of impure predicates.  That
+is, they are sensitive to the state of the computation other than as
+reflected by their input arguments, though they do not affect the state
+themselves.
+
+@item impure
+Impure predicates may do anything, including changing the state of the
+computation.
+
+@end table
+
+
+@node Impurity semantics
+@subsection Semantics
+
+It is important to the proper operation of impure and semipure code, to
+the flexibility of the compiler to optimize pure code, and to the
+semantics of the Mercury language, that a clear distinction be drawn
+between ordinary Mercury code and imperative code written with Mercury
+syntax.  How this distinction is drawn will be explained below; the
+purpose of this section is to explain the semantics of programs with
+impure predicates.
+
+A @emph{declarative} semantics of impure Mercury code would be largely
+useless, because the declarative semantics cannot capture the intent of
+the programmer.  Impure predicates are executed for their side-effects,
+which by definition are not part of their declarative semantics.  Thus
+it is the @emph{operational} semantics of impure predicates that Mercury
+must specify, and Mercury compilers must respect.
+
+The operational semantics of a Mercury predicate which invokes impure
+code is a modified form of the @emph{strict sequential} semantics
+(@pxref{Semantics}).  @emph{Impure} goals may not be reordered relative
+to any other goals; not even ``minimal'' reordering as implied by the
+modes is permitted.  If any such reordering is needed, this is a mode
+error.  However, @emph{pure} and @emph{semipure} goals may be reordered
+as long as they are not moved across an impure goal.  Execution of
+impure goals is strict: they must be executed if they are reached, even
+if it can be determined that that computation cannot lead to successful
+termination.
+
+Semipure goals can be given a ``contextual'' declarative semantics.
+They cannot have any side-effects, so it is expected that, given the
+context in which they are called (relative to any impure goals in the
+program), their declarative semantics fully captures the intent of the
+programmer.  Thus a semipure goal has a perfectly consistent declarative
+semantics, until an impure goal is reached.  After that, it has another
+(possibly different) declarative semantics, until the next impure goal
+is executed, and so on.  Mercury compilers must respect this contextual
+nature of the semantics of semipure goals; within a single context, a
+compiler may treat a semipure goal as if it were pure.
+
+
+@node Declaring impurity
+@subsection Declaring predicate impurity
+
+A predicate is declared to be impure or semipure by preceding the word
+@code{pred} in its @code{pred} declaration with @code{impure}
+or @code{semipure}, respectively.  That is, a declaration of the form:
+
+@example
+:- impure pred @var{Pred}(@var{Arguments...}).
+@end example
+
+@noindent
+or
+
+@example
+:- semipure pred @var{Pred}(@var{Arguments...}).
+@end example
+
+@noindent
+declares the predicate @var{Pred} to be impure or semipure, respectively.
+
+
+@node Impure calls
+@subsection Marking a call as impure
+
+If a predicate is impure or semipure, all calls to it must be preceded
+with the word @code{impure} or @code{semipure}, respectively.  Note
+that only predicate calls need to (and are permitted to) be prefixed
+with @code{impure} or @code{semipure}, compound goals never need this.
+See @ref{Impurity Example} for an example of this.
+
+The requiremment that impure or semipure calls be marked with
+@code{impure} or @code{semipure} allows someone 
+reading the code to tell which goals are not pure, making code which
+relies on side effects somewhat less mysterious.  Furthermore, it means
+that if a call is @emph{not} preceded by @code{impure} or
+@code{semipure}, then the reader can rely on the call having a proper
+declarative semantics, without hidden side-effects.  
+
+
+@node Promising purity
+@subsection Promising that a predicate is pure
+
+Some predicates which call impure or semipure predicates are themselves
+pure.  In fact, the main purpose of the Mercury impurity system is to
+allow programmers to write pure predicates using impure ones, while protecting
+the procedural implementation from aggressive compiler optimizations.
+Of course, the Mercury compiler cannot verify that a predicate is pure,
+so it is the programmer's responsibility to ensure this.  If a predicate
+is promised pure and is not, the behavior of the program is undefined.
+
+The programmer may promise that a predicate is pure using the
+@code{promise_pure} pragma:
+
+@example
+:- pragma promise_pure(@var{Name}/@var{Arity}).
+@end example
+
+
+@node Impurity Example
+@subsection An example using impurity
+
+The following example illustrates how a pure predicate may be
+implemented using impure code.  Note that this code is not reentrant,
+and so is not useful as is.  It is meant only as an example.
+
+@example
+:- pragma c_header_code("#include <limits.h>").
+:- pragma c_header_code("Integer max;").
+
+:- impure pred init_max is det.
+:- pragma c_code(init_max,
+        will_not_call_mercury,
+        "max = INT_MIN;").
+
+:- impure pred set_max(int::in) is det.
+:- pragma c_code(set_max(X::in),
+        will_not_call_mercury,
+        "if (X > max) max = X;").
+
+:- semipure pred get_max(int::out) is det.
+:- pragma c_code(get_max(X::out),
+        will_not_call_mercury,
+        "X = max;").
+
+:- pragma promise_pure(max_solution/2).
+:- pred max_solution(pred(int), int).
+:- mode max_solution(pred(out) is multi, out) is det.
+
+max_solution(Generator, Max) :-
+        impure init_max,
+        (   Generator(X),
+            impure set_max(X),
+            fail
+        ;   semipure get_max(Max)
+        ).
+@end example
+
 
 @node Inlining
 @section Inlining

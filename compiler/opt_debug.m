@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -296,7 +296,7 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
+opt_debug__dump_vninstr(vn_mkframe(_, _, _, _), "mkframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
@@ -511,8 +511,12 @@ opt_debug__dump_vnlval(vn_hp, Str) :-
 	string__append_list(["vn_hp"], Str).
 opt_debug__dump_vnlval(vn_sp, Str) :-
 	string__append_list(["vn_sp"], Str).
-opt_debug__dump_vnlval(vn_field(T, N, F), Str) :-
-	string__int_to_string(T, T_str),
+opt_debug__dump_vnlval(vn_field(MT, N, F), Str) :-
+	( MT = yes(T) ->
+		string__int_to_string(T, T_str)
+	;
+		T_str = "no"
+	),
 	string__int_to_string(N, N_str),
 	string__int_to_string(F, F_str),
 	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
@@ -531,7 +535,7 @@ opt_debug__dump_vnrval(vn_mkword(T, N), Str) :-
 opt_debug__dump_vnrval(vn_const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["vn_const(", C_str, ")"], Str).
-opt_debug__dump_vnrval(vn_create(T, MA, _U, L), Str) :-
+opt_debug__dump_vnrval(vn_create(T, MA, _U, L, _M), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	string__int_to_string(L, L_str),
@@ -591,8 +595,12 @@ opt_debug__dump_lval(hp, Str) :-
 	string__append_list(["hp"], Str).
 opt_debug__dump_lval(sp, Str) :-
 	string__append_list(["sp"], Str).
-opt_debug__dump_lval(field(T, N, F), Str) :-
-	string__int_to_string(T, T_str),
+opt_debug__dump_lval(field(MT, N, F), Str) :-
+	( MT = yes(T) ->
+		string__int_to_string(T, T_str)
+	;
+		T_str = "no"
+	),
 	opt_debug__dump_rval(N, N_str),
 	opt_debug__dump_rval(F, F_str),
 	string__append_list(["field(", T_str, ", ", N_str, ", ",
@@ -618,7 +626,7 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, U, L), Str) :-
+opt_debug__dump_rval(create(T, MA, U, L, _), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	(
@@ -687,6 +695,8 @@ opt_debug__dump_data_name(common(N), Str) :-
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_type(BaseData, TypeName, TypeArity), Str) :-
 	llds_out__make_base_type_name(BaseData, TypeName, TypeArity, Str).
+opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
+	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
 opt_debug__dump_data_name(stack_layout(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["stack_layout(", LabelStr, ")"], Str).
@@ -738,6 +748,9 @@ opt_debug__dump_code_addr(do_fail, "do_fail").
 opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
 opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
 opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
+opt_debug__dump_code_addr(do_det_class_method, "do_det_class_method").
+opt_debug__dump_code_addr(do_semidet_class_method, "do_semidet_class_method").
+opt_debug__dump_code_addr(do_nondet_class_method, "do_nondet_class_method").
 opt_debug__dump_code_addr(do_not_reached, "do_not_reached").
 
 opt_debug__dump_code_addrs([], "").
@@ -815,11 +828,17 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(mkframe(Name, Size, Redoip), Str) :-
+opt_debug__dump_instr(mkframe(Name, Size, MaybePragma, Redoip), Str) :-
 	string__int_to_string(Size, S_str),
+	( MaybePragma = yes(pragma_c_struct(StructName, StructFields, _)) ->
+		string__append_list(["yes(", StructName, ", ",
+			StructFields, ")"], P_str)
+	;
+		P_str = "no"
+	),
 	opt_debug__dump_code_addr(Redoip, R_str),
-	string__append_list(["mkframe(", Name, ", ", S_str, ", ", R_str, ")"],
-		Str).
+	string__append_list(["mkframe(", Name, ", ", S_str, ", ",
+		P_str, ", ", R_str, ")"], Str).
 opt_debug__dump_instr(modframe(Redoip), Str) :-
 	opt_debug__dump_code_addr(Redoip, R_str),
 	string__append_list(["modframe(", R_str, ")"], Str).
@@ -839,7 +858,7 @@ opt_debug__dump_instr(if_val(Rval, CodeAddr), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["if_val(", R_str, ", ", C_str, ")"], Str).
-opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size), Str) :-
+opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size, _), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	(
 		MaybeTag = no,
@@ -877,8 +896,26 @@ opt_debug__dump_instr(decr_sp(Size), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["decr_sp(", S_str, ")"], Str).
 % XXX  should probably give more info than this
-opt_debug__dump_instr(pragma_c(_, _, Code, _, _), Str) :-
-	string__append_list(["pragma_c(", Code, ")"], Str).
+opt_debug__dump_instr(pragma_c(_, Comps, _, _), Str) :-
+	opt_debug__dump_components(Comps, C_str),
+	string__append_list(["pragma_c(", C_str, ")"], Str).
+
+:- pred opt_debug__dump_components(list(pragma_c_component), string).
+:- mode opt_debug__dump_components(in, out) is det.
+
+opt_debug__dump_components([], "").
+opt_debug__dump_components([Comp | Comps], Str) :-
+	opt_debug__dump_component(Comp, Str1),
+	opt_debug__dump_components(Comps, Str2),
+	string__append(Str1, Str2, Str).
+
+:- pred opt_debug__dump_component(pragma_c_component, string).
+:- mode opt_debug__dump_component(in, out) is det.
+
+opt_debug__dump_component(pragma_c_inputs(_), "").
+opt_debug__dump_component(pragma_c_outputs(_), "").
+opt_debug__dump_component(pragma_c_user_code(_, Code), Code).
+opt_debug__dump_component(pragma_c_raw_code(Code), Code).
 
 opt_debug__dump_fullinstr(Uinstr - Comment, Str) :-
 	opt_debug__dump_instr(Uinstr, U_str),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,15 +91,8 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-
-		%%% YYY
-		% { module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
-		% 	_PredInfo, ProcInfo) },
-		% hlds_out__write_proc(1, yes, ModuleInfo1, PredId, ProcId,
-		% 	local, ProcInfo),
-		%%% YYY
-
-		modecheck_proc(ProcId, PredId, ModuleInfo1, ModuleInfo2, Errs),
+		modecheck_proc(ProcId, PredId, ModuleInfo1,
+				ModuleInfo2, Errs, _Changed),
 		{ Errs > 0 ->
 			error("mode check fails when repeated")
 		;
@@ -149,7 +142,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_inst_table(ProcInfo0, InstTable0),
 	CseInfo0 = cse_info(Varset0, VarTypes0, InstTable0, ModuleInfo0),
@@ -169,7 +162,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 			VarTypes1, Goal, Varset, VarTypes, _Warnings),
 
 		proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-		proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
+		proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
 		proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
 
 		map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -215,22 +208,29 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 	cse_info, cse_info, bool, hlds_goal_expr).
 :- mode detect_cse_in_goal_2(in, in, in, in, out, out, out) is det.
 
-detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), _, _, CseInfo, CseInfo,
-	no, pragma_c_code(A,B,C,D,E,F,G,H)).
+detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, CseInfo, CseInfo,
+	no, pragma_c_code(A,B,C,D,E,F,G)).
 
 detect_cse_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo,
 	no, higher_order_call(A,B,C,D,E,F)).
+
+detect_cse_in_goal_2(class_method_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, 
+	no, class_method_call(A,B,C,D,E,F)).
 
 detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 	call(A,B,C,D,E,F)).
 
 detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap0, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-
-	( B0 = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal0) ->
+	( 
+		B0 = lambda_goal(PredOrFunc, NonLocalVars,
+			Vars, Modes, Det, IMDelta, Goal0)
+	->
 		instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap),
 		detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo,
 			Goal),
-		B = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal)
+		B = lambda_goal(PredOrFunc, NonLocalVars, 
+			Vars, Modes, Det, IMDelta, Goal)
 	;
 		B = B0,
 		CseInfo = CseInfo0,

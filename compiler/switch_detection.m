@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,29 +173,37 @@ detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0,
 detect_switches_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, _, _, _,
 		higher_order_call(A,B,C,D,E,F)).
 
+detect_switches_in_goal_2(class_method_call(A,B,C,D,E,F), _, _, _, _, _,
+		class_method_call(A,B,C,D,E,F)).
+
 detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _, _,
 		call(A,B,C,D,E,F)).
 
 detect_switches_in_goal_2(unify(A,RHS0,C,D,E), __GoalInfo, InstMap0,
 		VarTypes, InstTable, ModuleInfo, unify(A,RHS,C,D,E)) :-
-	( RHS0 = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal0) ->
+	(
+		RHS0 = lambda_goal(PredOrFunc, NonLocals,
+				Vars, Modes, Det, IMDelta, Goal0)
+	->
 		% we need to insert the initial insts for the lambda
 		% variables in the instmap before processing the lambda goal
 		instmap__apply_instmap_delta(InstMap0, IMDelta, InstMap1),
 		detect_switches_in_goal(Goal0, InstMap1, VarTypes, InstTable,
 			ModuleInfo, Goal),
-		RHS = lambda_goal(PredOrFunc, Vars, Modes, Det, IMDelta, Goal)
+		RHS = lambda_goal(PredOrFunc, NonLocals, 
+			Vars, Modes, Det, IMDelta, Goal)
 	;
 		RHS = RHS0
 	).
 
 detect_switches_in_goal_2(switch(Var, CanFail, Cases0, SM), _, InstMap,
-		VarTypes, InstTable, ModuleInfo, switch(Var, CanFail, Cases, SM)) :-
-	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable, ModuleInfo,
-		Cases).
+		VarTypes, InstTable, ModuleInfo,
+		switch(Var, CanFail, Cases, SM)) :-
+	detect_switches_in_cases(Cases0, InstMap, VarTypes, InstTable,
+		ModuleInfo, Cases).
 
-detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G,H), _, _, _, _, _,
-		pragma_c_code(A,B,C,D,E,F,G,H)).
+detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), _, _, _, _, _,
+		pragma_c_code(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 

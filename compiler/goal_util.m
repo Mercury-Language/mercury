@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +178,8 @@ goal_util__rename_vars_in_goals([Goal0 | Goals0], Must, Subn, [Goal | Goals]) :-
 		hlds_goal).
 :- mode goal_util__rename_vars_in_goal(in, in, in, out) is det.
 
-goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo) :-
+goal_util__rename_vars_in_goal(Goal0 - GoalInfo0, Must, Subn, Goal - GoalInfo)
+		:-
 	goal_util__name_apart_2(Goal0, Must, Subn, Goal),
 	goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo).
 
@@ -226,6 +227,15 @@ goal_util__name_apart_2(
 	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
 goal_util__name_apart_2(
+		class_method_call(TypeClassInfoVar0, Num, Args0, Types, Modes,
+			Det),
+		Must, Subn,
+		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
+			Det)) :-
+	goal_util__rename_var(TypeClassInfoVar0, Must, Subn, TypeClassInfoVar),
+	goal_util__rename_var_list(Args0, Must, Subn, Args).
+
+goal_util__name_apart_2(
 		call(PredId, ProcId, Args0, Builtin, Context, Sym),
 		Must, Subn,
 		call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
@@ -237,18 +247,9 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,F,G,Extra0), Must, Subn,
-		pragma_c_code(A,B,C,D,Vars,F,G,Extra)) :-
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
-	(
-		Extra0 = none,
-		Extra = none
-	;
-		Extra0 = extra_pragma_info(SavedVars0, LabelNames),
-		goal_util__rename_var_pair_list(SavedVars0, Must, Subn,
-			SavedVars),
-		Extra = extra_pragma_info(SavedVars, LabelNames)
-	).
+goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,E,F,G), Must, Subn,
+		pragma_c_code(A,B,C,Vars,E,F,G)) :-
+	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -305,13 +306,13 @@ goal_util__rename_unify_rhs(functor(Functor, ArgVars0), Must, Subn,
 			functor(Functor, ArgVars)) :-
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
-		lambda_goal(PredOrFunc, Vars0, Modes, Det, InstMapDelta0,
-				Goal0),
-		Must, Subn,
-		lambda_goal(PredOrFunc, Vars, Modes, Det, InstMapDelta,
-				Goal)
-		) :-
-	instmap_delta_apply_sub(InstMapDelta0, Must, Subn, InstMapDelta),
+	    lambda_goal(PredOrFunc, NonLocals0, Vars0, Modes, Det, IMDelta0,
+	    			Goal0),
+	    Must, Subn, 
+	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, IMDelta,
+	    		Goal)) :-
+	instmap_delta_apply_sub(IMDelta0, Must, Subn, IMDelta),
+	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
@@ -424,6 +425,10 @@ goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
+goal_util__goal_vars_2(class_method_call(PredVar, _, ArgVars, _, _, _),
+		Set0, Set) :-
+	set__insert_list(Set0, [PredVar | ArgVars], Set).
+
 goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
@@ -450,17 +455,9 @@ goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _, _), Set0, Set) :-
 	goal_util__goal_vars_2(B, Set2, Set3),
 	goal_util__goal_vars_2(C, Set3, Set).
 
-goal_util__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _, Extra),
+goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
-	set__insert_list(Set0, ArgVars, Set1),
-	(
-		Extra = none,
-		Set = Set1
-	;
-		Extra = extra_pragma_info(SavedVarNames, _),
-		assoc_list__keys(SavedVarNames, SavedVars),
-		set__insert_list(Set1, SavedVars, Set)
-	).
+	set__insert_list(Set0, ArgVars, Set).
 
 :- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
 :- mode goal_util__goals_goal_vars(in, in, out) is det.
@@ -485,10 +482,13 @@ goal_util__rhs_goal_vars(var(X), Set0, Set) :-
 	set__insert(Set0, X, Set).
 goal_util__rhs_goal_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
-goal_util__rhs_goal_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Detism,
-		_IMDelta, Goal - _), Set0, Set) :-
-	set__insert_list(Set0, LambdaVars, Set1),
-	goal_util__goal_vars_2(Goal, Set1, Set).
+goal_util__rhs_goal_vars(
+		lambda_goal(_POrF, NonLocals, LambdaVars, _M, _D, _IMDelta,
+				Goal - _), 
+		Set0, Set) :-
+	set__insert_list(Set0, NonLocals, Set1),
+	set__insert_list(Set1, LambdaVars, Set2),
+	goal_util__goal_vars_2(Goal, Set2, Set).
 
 %-----------------------------------------------------------------------------%
 
@@ -543,8 +543,9 @@ goal_expr_size(some(_, Goal), Size) :-
 	Size is Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
+goal_expr_size(class_method_call(_, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(pragma_c_code(_, _, _, _, _, _, _, _), 1).
+goal_expr_size(pragma_c_code(_, _, _, _, _, _, _), 1).
 
 %-----------------------------------------------------------------------------%
 

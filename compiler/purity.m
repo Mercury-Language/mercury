@@ -569,8 +569,8 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 		pure, NumErrors0, NumErrors) -->
 	{ Unif0 = unify(A,RHS0,C,D,E) },
 	{ Unif  = unify(A,RHS,C,D,E) },
-	(   { RHS0 = lambda_goal(F, G, H, I, J, Goal0 - Info0) } ->
-		{ RHS = lambda_goal(F, G, H, I, J, Goal - Info0) },
+	(   { RHS0 = lambda_goal(F, G, H, I, J, K, Goal0 - Info0) } ->
+		{ RHS = lambda_goal(F, G, H, I, J, K, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
 				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,

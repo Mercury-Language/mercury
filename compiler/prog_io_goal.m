@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,7 +113,7 @@
 
 :- implementation.
 
-:- import_module hlds_data.
+:- import_module hlds_data, purity.
 :- import_module int, string, std_util.
 
 	% Parse a goal.
@@ -146,12 +146,13 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 			sym_name_and_args(Term, SymName, Args)
 		->
 			VarSet = VarSet0,
-			Goal = call(SymName, Args) - Context
+			Goal = call(SymName, Args, pure) - Context
 		;
 		% A call to a free variable, or to a number or string.
 		% Just translate it into a call to call/1 - the typechecker
 		% will catch calls to numbers and strings.
-			Goal = call(unqualified("call"), [Term]) - Context,
+			Goal = call(unqualified("call"), [Term], pure)
+					- Context,
 			VarSet = VarSet0
 		)
 	).
@@ -236,6 +237,27 @@ parse_goal_2("some", [Vars0, A0], V0, some(Vars, A), V):-
 	% but then `is/2' itself is a bit of a hack
 	%
 parse_goal_2("is", [A, B], V, unify(A, B), V).
+parse_goal_2("impure", [A0], V0, A, V) :-
+	parse_goal_with_purity(A0, V0, (impure), A, V).
+parse_goal_2("semipure", [A0], V0, A, V) :-
+	parse_goal_with_purity(A0, V0, (semipure), A, V).
+
+
+:- pred parse_goal_with_purity(term, varset, purity, goal_expr, varset).
+:- mode parse_goal_with_purity(in, in, in, out, out) is det.
+
+parse_goal_with_purity(A0, V0, Purity, A, V) :-
+	parse_goal(A0, V0, A1, V),
+	(   A1 = call(Pred, Args, pure) - _ ->
+		A = call(Pred, Args, Purity)
+	;
+		% Inappropriate placement of an impurity marker, so we treat
+		% it like a predicate call.  typecheck.m prints out something
+		% descriptive for these errors.
+		purity_name(Purity, PurityString),
+		A = call(unqualified(PurityString), [A0], pure)
+	).
+
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = call(_, _, _, _),
 		Cost = 0
 	;
-		Uinstr = mkframe(_, _, _),
+		Uinstr = mkframe(_, _, _, _),
 		Cost = 0
 	;
 		Uinstr = modframe(_),
@@ -134,7 +134,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;
-		Uinstr = incr_hp(Lval, MaybeTag, Rval),
+		Uinstr = incr_hp(Lval, MaybeTag, Rval, _),
 		vn_type__costof_assign(Params, AssignCost),
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
@@ -181,7 +181,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = decr_sp(_),
 		Cost = 0
 	;
-		Uinstr = pragma_c(_, _, _, _, _),
+		Uinstr = pragma_c(_, _, _, _),
 		error("pragma_c found in vn_block_cost")
 	).
 
@@ -292,7 +292,7 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		Rval = var(_),
 		error("var found in rval_cost")
 	;
-		Rval = create(_, _, _, _),
+		Rval = create(_, _, _, _, _),
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),

@@ -32,7 +32,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, instmap, (inst), inst_util.
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
-:- import_module type_util, options, prog_data, quantification, (lambda).
+:- import_module type_util, options, prog_data, quantification.
 :- import_module mercury_to_mercury.
 
 :- import_module hlds_out.	% XXX
@@ -87,7 +87,7 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 			% necessary in profiling grades, since otherwise
 			% the dependency graph isn't built before here). 
 		{ fixup_preds(PredProcs, NewPreds1, ModuleInfo3, ModuleInfo4) },
-		{ SpecializedPreds = [] ->
+		{ SpecializedPreds \= [] ->
 			module_info_clobber_dependency_info(ModuleInfo4,
 				ModuleInfo5)
 		;
@@ -96,7 +96,6 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 		process_requests(NewRequests, GoalSizes, NextHOid1,
 			NextHOid, NewPreds1, NewPreds, ModuleInfo5, ModuleInfo)
 	).
-
 
 :- pred recompute_instmap_delta_new_preds(new_preds::in, module_info::in,
 			module_info::out) is det.
@@ -148,7 +147,6 @@ recompute_instmap_delta_new_preds_2([NewPred | NewPreds],
 :- pred max_specialized_goal_size(int::out) is det.
 
 max_specialized_goal_size(20).
-
 
 :- type request --->
 	request(
@@ -209,7 +207,6 @@ max_specialized_goal_size(20).
 			list(higher_order_arg)	% specialized args
 		).
 
-
 	% Returned by traverse_goal. 
 :- type changed --->
 		changed		% Need to requantify goal + check other procs
@@ -226,7 +223,6 @@ get_specialization_requests(Requests, GoalSizes, ModuleInfo0, ModuleInfo) :-
 	set__init(Requests0),
 	get_specialization_requests_2(PredIds, Requests0, Requests,
 			GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo).
-
 
 :- pred get_specialization_requests_2(list(pred_id)::in, set(request)::in, 
 		set(request)::out, goal_sizes::in, goal_sizes::out, 
@@ -305,17 +301,16 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	traverse_goal(Goal0, Goal1, proc(PredId, ProcId), _, _,
 					Info0, info(_, Requests1,_,_,_)),
 	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	implicitly_quantify_clause_body(HeadVars, Goal1, Varset0, VarTypes0,
 						Goal, Varset, VarTypes, _),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
+	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
 	traverse_other_procs(PredId, ProcIds, ModuleInfo, Requests1,
 						Requests, Procs1, Procs).
 	
-
 %-------------------------------------------------------------------------------
 	% Goal traversal
 
@@ -349,6 +344,10 @@ traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 	{ Goal0 = higher_order_call(_,_,_,_,_,_) - _ }, 
 	maybe_specialize_higher_order_call(Goal0, Goal, PredProcId, Changed).
 
+		% XXX For now, we do not specialize class method calls
+traverse_goal(Goal, Goal, _, unchanged, 1) -->
+	{ Goal = class_method_call(_,_,_,_,_,_) - _ }.
+
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
 	{ Goal0 = call(_,_,_,_,_,_) - _ }, 
@@ -378,12 +377,11 @@ traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info,
 	traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize).
 
 traverse_goal(Goal, Goal, _, unchanged, 1) -->
-	{ Goal = pragma_c_code(_, _, _, _, _, _, _, _) - _ }.
+	{ Goal = pragma_c_code(_, _, _, _, _, _, _) - _ }.
 
 traverse_goal(Goal, Goal, _, unchanged, 1) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ }, 
 	check_unify(Unify).
-
 
 :- pred traverse_conj(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
@@ -414,7 +412,6 @@ traverse_disj([Goal0 | Goals0], [Goal | Goals], PredProcId,
 	traverse_disj_2(Goals0, Goals, PredProcId,
 			Changed0, Changed, GoalSize0, GoalSize, Info0).
 
-
 :- pred traverse_disj_2(hlds_goals::in, hlds_goals::out, pred_proc_id::in,
 	changed::in, changed::out, int::in, int::out, higher_order_info::in,
 	higher_order_info::in, higher_order_info::out) is det.
@@ -429,7 +426,6 @@ traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 	merge_higher_order_infos(Info0, ThisGoalInfo, Info1),
 	traverse_disj_2(Goals0, Goals, PredProcId, Changed1, Changed,
 				GoalSize1, GoalSize, InitialInfo, Info1, Info).
-
 
 				% The dependencies have changed, so the
 				% dependency graph needs to rebuilt for
@@ -467,7 +463,6 @@ traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
 	traverse_cases_2(Cases0, Cases, PredProcId, Changed1, Changed,
 				GoalSize1, GoalSize, InitialInfo, Info1, Info).
 
-
 	% This is used in traversing disjunctions. We save the initial
 	% accumulator, then traverse each disjunct starting with the initial
 	% info. We then merge the resulting infos.
@@ -492,7 +487,6 @@ merge_pred_vars(PredVars1, PredVars2, PredVars) :-
 	merge_pred_var_lists(PredVarList1, PredVarList2, PredVarList),
 	map__from_assoc_list(PredVarList, PredVars). 
 	
-	
 		% find out which variables after a disjunction cannot
 		% be specialized
 :- pred merge_pred_var_lists(assoc_list(var, maybe_pred_and_args)::in,  	
@@ -503,7 +497,6 @@ merge_pred_var_lists([], List, List).
 merge_pred_var_lists([PredVar | PredVars], List2, MergedList) :-
 	merge_pred_var_with_list(PredVar, List2, MergedList1),
 	merge_pred_var_lists(PredVars, MergedList1, MergedList).
-
 
 :- pred merge_pred_var_with_list(pair(var, maybe_pred_and_args)::in,
 			assoc_list(var, maybe_pred_and_args)::in,
@@ -531,7 +524,6 @@ merge_pred_var_with_list(Var1 - Value1, [Var2 - Value2 | Vars], MergedList) :-
 		merge_pred_var_with_list(Var1 - Value1, Vars, MergedList1)
 	).	
 			
-
 :- pred check_unify(unification::in, higher_order_info::in,
 				higher_order_info::out) is det.
 
@@ -587,12 +579,11 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module, InstTable),
 	(
-		Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0,
+		Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes0,
 				_Det, _IsPredOrFunc)
 	->
 		PredVar = PredVar0,
-		Args = Args0,
-		Modes = Modes0
+		Args = Args0
 	;
 		error("higher_order.m: higher_order_call expected")
 	),
@@ -607,14 +598,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		pred_info_name(PredInfo, PredName),
 		code_util__builtin_state(Module, PredId, ProcId, Builtin),
 
-		% We need to permute the arguments so that inputs come before
-		% outputs, since lambda.m will have done that to the arguments
-		% of the closure.
-		Modes = argument_modes(ArgInstTable, ArgModes),
-		lambda__permute_argvars(Args, ArgModes, ArgInstTable, Module,
-			PermutedArgs, _),
-
-		list__append(CurriedArgs, PermutedArgs, AllArgs),
+		list__append(CurriedArgs, Args, AllArgs),
 		MaybeContext = no,
 		Goal1 = call(PredId, ProcId, AllArgs,
 			Builtin, MaybeContext,
@@ -764,7 +748,6 @@ maybe_add_alias(LVar, RVar,
 		PredVars = PredVars0
 	).
 		
-
 :- pred update_changed_status(changed::in, changed::in, changed::out) is det.
 
 update_changed_status(changed, _, changed).
@@ -856,7 +839,6 @@ create_new_preds([Request | Requests], NewPreds0, NewPreds, PredsToFix0,
 	create_new_preds(Requests, NewPreds1, NewPreds, PredsToFix1, PredsToFix,
 			NextHOid1, NextHOid, Module1, Module, IO1, IO).
 
-
 		% Here we create the pred_info for the new predicate.
 :- pred create_new_pred(request::in, new_pred::out, int::in, int::out,
 	module_info::in, module_info::out, io__state::di, io__state::uo) is det.
@@ -900,9 +882,11 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 		% When we start specialising class method calls, this
 		% context will need to be updated. 
 		% cf.  remove_listof_higher_order_args.
+	pred_info_get_class_context(PredInfo0, ClassContext),
 	Name = qualified(PredModule, PredName),
 	varset__init(EmptyVarSet),
 	map__init(EmptyVarTypes),
+	map__init(EmptyProofs),
 	
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
@@ -910,14 +894,13 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 		EmptyVarTypes, [], []),
 	pred_info_init(PredModule, Name, Arity, Tvars,
 		Types, true, Context, ClausesInfo, local, MarkerList, GoalType,
-		PredOrFunc, PredInfo1),
+		PredOrFunc, ClassContext, EmptyProofs, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),
 	next_mode_id(Procs0, no, NewProcId),
 	predicate_table_insert(PredTable0, PredInfo2, NewPredId, PredTable),
 	module_info_set_predicate_table(ModuleInfo0, PredTable, ModuleInfo).
 	
-
 :- pred output_higher_order_args(module_info::in, int::in,
 	list(higher_order_arg)::in, io__state::di, io__state::uo) is det.
 
@@ -940,7 +923,6 @@ output_higher_order_args(ModuleInfo, NumToDrop, [HOArg | HOArgs]) -->
 	io__write_string(" curried arguments\n"),
 	output_higher_order_args(ModuleInfo, NumToDrop, HOArgs).
 	
-
 :- pred remove_listof_higher_order_args(list(T)::in, int::in,
 			list(higher_order_arg)::in, list(T)::out) is det.
 
@@ -987,20 +969,19 @@ fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
 	traverse_goal(Goal0, Goal1, PredProcId, _, _,
 		info(PredVars0, Requests0, NewPreds, ModuleInfo0, InstTable),
 		_),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	implicitly_quantify_clause_body(HeadVars, Goal1, Varset0, VarTypes0,
 					Goal, Varset, VarTypes, _),
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
+	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
 	fixup_preds(PredProcIds, NewPreds, ModuleInfo1, ModuleInfo).
-
 
 :- pred create_specialized_versions(list(pred_proc_id)::in, new_preds::in, 
 		set(request)::in, set(request)::out, goal_sizes::in,
@@ -1018,7 +999,6 @@ create_specialized_versions([PredProc | PredProcs], NewPreds, Requests0,
 			ModuleInfo0, ModuleInfo1),
 	create_specialized_versions(PredProcs, NewPreds, Requests1, Requests, 
 			GoalSizes1, GoalSizes, ModuleInfo1, ModuleInfo).
-
 
 	% Create specialized versions of a single procedure.
 :- pred create_specialized_versions_2(list(new_pred)::in, new_preds::in, 
@@ -1078,7 +1058,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 					InstTable0),
 			info(_, Requests1, _, _, _)),
 	map__set(GoalSizes0, NewPredId, GoalSize, GoalSizes1),
-	proc_info_variables(NewProcInfo1, Varset0),
+	proc_info_varset(NewProcInfo1, Varset0),
 					
 	implicitly_quantify_clause_body(HeadVars, Goal2, Varset0, VarTypes1,
 					Goal3, Varset, VarTypes, _),
@@ -1104,7 +1084,6 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 			Requests1, Requests, GoalSizes1, GoalSizes,
 			ModuleInfo1, ModuleInfo).
 
-	
 		% Returns a list of hlds_goals which construct the list of
 		% higher order arguments which have been specialized. Traverse
 		% goal will then recognize these as having a unique possible
@@ -1151,9 +1130,9 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	;
 		error("list__split_list_failed")
 	),
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	varset__new_vars(Varset0, NumArgs, NewHeadVars0, Varset1),
-	proc_info_set_variables(ProcInfo0, Varset1, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, Varset1, ProcInfo1),
 
 	% Find the type substitution and work out the types
 	% of the new variables.
@@ -1176,16 +1155,12 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes)
 	->
 		(
-			type_list_subsumes(LVarArgTypes, UnCurriedArgTypes,
-							NewSubstitution)
+			type_unify_list(LVarArgTypes, UnCurriedArgTypes, [],
+				Substitution0, Substitution1)
 		->
-			% Add the substitution found for this higher-order
-			% term to the substitution to be applied to the type
-			% map.
-			map__overlay(Substitution0, NewSubstitution,
-							Substitution1)
+			Substitution2 = Substitution1
 		;
-			Substitution1 = Substitution0
+			error("type error in specialized higher-order argument")
 		)
 	;
 		error("specialized argument not of higher-order type")
@@ -1197,8 +1172,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	% Recursively construct the curried higher-order arguments.
 	construct_higher_order_terms(ModuleInfo, NewHeadVars0, NewHeadVars1,
 		CurriedArgModes0, CurriedArgModes1, CurriedHOArgs,
-		ProcInfo2, ProcInfo3, PredInfo1, PredInfo2, Substitution1,
-		Substitution2, CurriedGoals),
+		ProcInfo2, ProcInfo3, PredInfo1, PredInfo2, Substitution2,
+		Substitution3, CurriedGoals),
 
 	% Fix up the argument lists.
 	remove_listof_higher_order_args(CurriedArgModes1, 1,
@@ -1231,7 +1206,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	goal_info_init(NonLocals, InstmapDelta, det, Info),
 	construct_higher_order_terms(ModuleInfo, HeadVars1, HeadVars, ArgModes1,
 		ArgModes, HOArgs, ProcInfo3, ProcInfo, PredInfo2, PredInfo,
-		Substitution2, Substitution, Goals1),
+		Substitution3, Substitution, Goals1),
 	list__condense([CurriedGoals, [Goal - Info], Goals1], Goals).
 
 %-----------------------------------------------------------------------------%

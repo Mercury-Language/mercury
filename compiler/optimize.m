@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,9 +16,9 @@
 
 :- import_module llds, io.
 
-:- pred optimize__main(list(c_procedure), list(c_procedure),
+:- pred optimize_main(list(c_procedure), list(c_procedure),
 	io__state, io__state).
-:- mode optimize__main(in, out, di, uo) is det.
+:- mode optimize_main(in, out, di, uo) is det.
 
 :- pred optimize__proc(c_procedure, c_procedure, io__state, io__state).
 :- mode optimize__proc(in, out, di, uo) is det.
@@ -33,13 +33,13 @@
 :- import_module frameopt, delay_slot, value_number, options.
 :- import_module globals, passes_aux, opt_util, opt_debug, vn_debug.
 
-optimize__main([], []) --> [].
-optimize__main([Proc0|Procs0], [Proc|Procs]) -->
+optimize_main([], []) --> [].
+optimize_main([Proc0|Procs0], [Proc|Procs]) -->
 	optimize__proc(Proc0, Proc), !,
-	optimize__main(Procs0, Procs).
+	optimize_main(Procs0, Procs).
 
-optimize__proc(c_procedure(Name, Arity, Mode, PredProcId, Instrs0),
-		   c_procedure(Name, Arity, Mode, PredProcId, Instrs)) -->
+optimize__proc(c_procedure(Name, Arity, PredProcId, Instrs0),
+		   c_procedure(Name, Arity, PredProcId, Instrs)) -->
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	opt_debug__msg(DebugOpt, "before optimization"),
 	opt_debug__dump_instrs(DebugOpt, Instrs0),
@@ -105,7 +105,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		value_number__main(Instrs0, Instrs1),
+		value_number_main(Instrs0, Instrs1),
 		( { Instrs1 = Instrs0 } ->
 			[]
 		;
@@ -125,7 +125,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ jumpopt__main(Instrs1, FullJumpopt, Final, Instrs2, Mod1) },
+		{ jumpopt_main(Instrs1, FullJumpopt, Final, Instrs2, Mod1) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after jump optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs2)
@@ -165,7 +165,7 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instrs3, Final, Instrs4, Mod3) },
+		{ labelopt_main(Instrs3, Final, Instrs4, Mod3) },
 		( { Mod3 = yes } ->
 			opt_debug__msg(DebugOpt, "after label optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs4)
@@ -222,7 +222,7 @@ optimize__middle(Instrs0, Final, Instrs) -->
 		;
 			[]
 		),
-		{ frameopt__main(Instrs0, Instrs1, Mod1, Jumps) },
+		{ frameopt_main(Instrs0, Instrs1, Mod1, Jumps) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after frame optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs1)
@@ -238,7 +238,7 @@ optimize__middle(Instrs0, Final, Instrs) -->
 			;
 				[]
 			),
-			{ jumpopt__main(Instrs1, FullJumpopt, Final, Instrs2, Mod2) },
+			{ jumpopt_main(Instrs1, FullJumpopt, Final, Instrs2, Mod2) },
 			( { Mod2 = yes } ->
 				opt_debug__msg(DebugOpt, "after jump optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs2)
@@ -256,7 +256,7 @@ optimize__middle(Instrs0, Final, Instrs) -->
 			;
 				[]
 			),
-			{ labelopt__main(Instrs2, Final, Instrs, Mod3) },
+			{ labelopt_main(Instrs2, Final, Instrs, Mod3) },
 			( { Mod3 = yes } ->
 				opt_debug__msg(DebugOpt, "after label optimization"),
 				opt_debug__dump_instrs(DebugOpt, Instrs)
@@ -292,7 +292,7 @@ optimize__last(Instrs0, Instrs) -->
 		;
 			[]
 		),
-		{ labelopt__main(Instrs0, no, Instrs1, Mod1) },
+		{ labelopt_main(Instrs0, no, Instrs1, Mod1) },
 		( { Mod1 = yes } ->
 			opt_debug__msg(DebugOpt, "after label optimization"),
 			opt_debug__dump_instrs(DebugOpt, Instrs1)

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -402,6 +402,10 @@ term_io__quote_atom(S) -->
 		io__write_char('''')
 	).
 
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
+
 term_io__quote_string(S) -->
 	io__write_char('"'),
 	term_io__write_escaped_string(S),
@@ -412,6 +416,10 @@ term_io__write_escaped_string(String) -->
 
 term_io__quote_single_char(Char) -->
 	term_io__write_escaped_char(Char).
+
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
 
 term_io__write_escaped_char(Char) -->
 	( { mercury_escape_special_char(Char, QuoteChar) } ->
@@ -436,6 +444,10 @@ term_io__write_escaped_char(Char) -->
 	% ok so long as you don't have two escaped characters
 	% in a row :-(
 
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
+
 mercury_escape_char(Char, EscapeCode) :-
 	char__to_int(Char, Int),
 	string__int_to_base_string(Int, 8, OctalString0),
@@ -448,6 +460,10 @@ mercury_escape_char(Char, EscapeCode) :-
 	% Succeed if Char is a character which is allowed in
 	% Mercury string and character literals.
 
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
+
 is_mercury_source_char(Char) :-
 	( char__is_alnum(Char) ->
 		true
@@ -459,6 +475,10 @@ is_mercury_source_char(Char) :-
 
 	% Currently we only allow the following characters.
 	% XXX should we just use is_printable(Char) instead?
+
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
 
 :- pred is_mercury_punctuation_char(char).
 :- mode is_mercury_punctuation_char(in) is semidet.
@@ -503,6 +523,10 @@ is_mercury_punctuation_char('|').
 	% is true iff Char is character for which there is a special
 	% backslash-escape character EscapeChar that can be used
 	% after a backslash in string literals or atoms to represent Char.
+
+	% Note: the code here is similar to code in
+	% compiler/mercury_to_mercury.m; any changes here
+	% may require similar changes there.
 
 :- pred mercury_escape_special_char(char, char).
 :- mode mercury_escape_special_char(in, out) is semidet.

@@ -1,28 +1,42 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: continuation_info.m.
 % Main author: trd.
-
+%
 % This file defines the continuation_info data structure, which is used
-% to hold the information we need to output stack_layout tables for
+% to hold the information we need to output stack_layout tables, 
+% are for
 % accurate garbage collection.
 %
-% Information is collected in two passes. 
-% 	1. After the code for a procedure has been generated, a
-% 	   proc_layout_info is added to the continuation info (using
-% 	   continuation_info__add_proc_layout_info). 
-% 	2. After code has been optimized, a pass is made over the
-% 	   final LLDS instructions. Information about internal labels,
-% 	   is collected. The liveness information in call instructions
-% 	   is stored with the corresponding continuation label.
+% Information is collected in several passes. 
+%	- If trace_stack_layouts are needed, 
+%		- during the generation of the procedure's prolog code 
+%		  (in code_gen.m) we add the information about live values
+%		  at entry.
+%		- during the generation of the procedure's epilog code 
+%		  (in code_gen.m) we add the information about live
+%		  values at exit.
+%
+% 	- If basic_stack_layouts are needed, after code for a procedure
+% 	  has been generated, the proc_layout_general_info is added to
+% 	  the continuation_info, and some internal label information
+% 	  is initialized (but not filled in with live values).
+%
+% 	- If agc_stack_layouts are needed, after the code has been
+% 	  optimized a pass is made over the final LLDS instructions.
+% 	  Information about internal labels, is collected.  The liveness
+% 	  information in call instructions is stored with the
+% 	  corresponding continuation label.
 %
 % stack_layout.m converts the information collected in this module into
 % stack_layout tables.
 %		
+% The data structures in this module could do with a re-design when it
+% becomes more stable.
 
 %-----------------------------------------------------------------------------%
 
@@ -30,7 +44,8 @@
 
 :- interface.
 
-:- import_module list, llds, hlds_pred.
+:- import_module llds, hlds_pred, hlds_data.
+:- import_module list.
 
 	%
 	% Information used by the continuation_info module.
@@ -44,15 +59,36 @@
 	% Information for any procedure, includes information about the
 	% procedure itself, and any internal labels within it.
 	%
+	% The maybe(data) are needed because the data is collected
+	% in a roundabout fashion from various phases of compilation.
+	% In some compilation grades, they are not even needed.
+	% Before data is collected, the field is set to `no'. If
+	% the data is needed (according to various stack_layout
+	% options) it will later be set to a `yes(....)'.
+	% The map is initialized to an empty map, and is later filled
+	% with entries (if required).
+	%
 :- type proc_layout_info
-	--->
-		proc_layout_info(
+	--->	proc_layout_info(
+			maybe(proc_layout_general_info),
+					% information on the procedure,
+					% needed for basic_stack_layouts
+			map(label, internal_layout_info),
+					% info for each internal label,
+					% needed for basic_stack_layouts
+			maybe(continuation_label_info),  % entry
+			maybe(continuation_label_info)	 % exit
+					% live data information about
+					% entry and exit points,
+					% needed for trace_stack_layouts
+		).
+
+:- type proc_layout_general_info
+	--->	proc_layout_general_info(
 			proc_label,	% the proc label
+			determinism,	% which stack is used
 			int,		% number of stack slots
-			code_model,	% which stack is used
-			maybe(int),	% location of succip on stack
-			map(label, internal_layout_info)
-					% info for each internal label
+			maybe(int)	% location of succip on stack
 		).
 
 	%
@@ -60,9 +96,9 @@
 	% (Continuation labels are a special case of internal labels).
 	%
 :- type internal_layout_info
-	--->
-		internal_layout_info(
+	--->	internal_layout_info(
 			maybe(continuation_label_info)
+				% needed for agc_stack_layouts
 		).
 
 	%
@@ -76,15 +112,19 @@
 	% is easy if we represent the live values and type infos as
 	% sets.
 :- type continuation_label_info
-	--->
-		continuation_label_info(
-			set(pair(lval, live_value_type)),
-					% live values and their
-					% locations
+	--->	continuation_label_info(
+			set(var_info),
+				% live vars and their locations/names
 			set(pair(tvar, lval))
 				% locations of polymorphic type vars
 		).
 
+:- type var_info
+	--->	var_info(
+			lval,		% the location of the variable
+			live_value_type,% pseudo-typeinfo giving the var's type
+			string		% the var's name
+		).
 
 	% Return an initialized continuation info structure.
 
@@ -99,16 +139,24 @@
 	% in this proc (if there is one).
 	%
 :- pred continuation_info__add_proc_layout_info(pred_proc_id, proc_label,
-		int, code_model, maybe(int), continuation_info,
+		int, determinism, maybe(int), continuation_info,
 		continuation_info).
 :- mode continuation_info__add_proc_layout_info(in, in, in, in, in, in,
 		out) is det.
 
+:- pred continuation_info__add_proc_entry_info(pred_proc_id, 
+		list(var_info), assoc_list(var, lval),
+		continuation_info, continuation_info).
+:- mode continuation_info__add_proc_entry_info(in, in, in, in, out) is det.
+
+:- pred continuation_info__add_proc_exit_info(pred_proc_id, 
+		list(var_info), assoc_list(var, lval),
+		continuation_info, continuation_info).
+:- mode continuation_info__add_proc_exit_info(in, in, in, in, out) is det.
 
 :- pred continuation_info__process_llds(list(c_procedure),
 		continuation_info, continuation_info) is det.
 :- mode continuation_info__process_llds(in, in, out) is det.
-
 
 	%
 	% Add the information for all the labels within a
@@ -121,7 +169,6 @@
 :- pred continuation_info__process_instructions(pred_proc_id,
 	list(instruction), continuation_info, continuation_info).
 :- mode continuation_info__process_instructions(in, in, in, out) is det.
-
 
 	%
 	% Get the finished list of proc_layout_infos.
@@ -150,7 +197,6 @@
 				% in the current procedure
 			).
 
-
 %-----------------------------------------------------------------------------%
 
 	% Exported predicates.
@@ -164,9 +210,31 @@ continuation_info__init(ContInfo) :-
 	map__init(Internals),
 	ContInfo = continuation_info(LabelMap, Internals).
 
+continuation_info__add_proc_entry_info(PredProcId, TypeLvals, TypeInfos) -->
+	continuation_info__get_proc_layout(PredProcId, ProcLayout0),
+	{ ProcLayout0 = proc_layout_info(MaybeProcGeneral, InternalMap, _,
+		ExitInfo) },
+	{ set__list_to_set(TypeLvals, TypeLvalSet) },
+	{ set__list_to_set(TypeInfos, TypeInfoSet) },
+	{ EntryInfo = yes(continuation_label_info(TypeLvalSet, TypeInfoSet)) },
+	{ ProcLayout = proc_layout_info(MaybeProcGeneral, InternalMap, 
+		EntryInfo, ExitInfo) },
+	continuation_info__update_proc_layout(PredProcId, ProcLayout).
+
+continuation_info__add_proc_exit_info(PredProcId, TypeLvals, TypeInfos) -->
+	continuation_info__get_proc_layout(PredProcId, ProcLayout0),
+	{ ProcLayout0 = proc_layout_info(MaybeProcGeneral, InternalMap, 
+		EntryInfo, _) },
+	{ set__list_to_set(TypeLvals, TypeLvalSet) },
+	{ set__list_to_set(TypeInfos, TypeInfoSet) },
+	{ ExitInfo = yes(continuation_label_info(TypeLvalSet, TypeInfoSet)) },
+	{ ProcLayout = proc_layout_info(MaybeProcGeneral, InternalMap, 
+		EntryInfo, ExitInfo) },
+	continuation_info__update_proc_layout(PredProcId, ProcLayout).
+	
 continuation_info__process_llds([]) --> [].
 continuation_info__process_llds([Proc|Procs]) -->
-	{ Proc = c_procedure(_, _, _, PredProcId, Instrs) },
+	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
 	continuation_info__process_instructions(PredProcId, Instrs),
 	continuation_info__process_llds(Procs).
 
@@ -203,20 +271,24 @@ continuation_info__process_instructions(PredProcId, Instructions) -->
 	continuation_info__get_internal_info(InternalInfo),
 	continuation_info__add_internal_info_to_proc(PredProcId, InternalInfo).
 
-
 	%
 	% Add the info for this proc (a proc_layout_info) to the
 	% continuation_info. 
 	%
 continuation_info__add_proc_layout_info(PredProcId, ProcLabel, StackSize,
-		CodeModel, SuccipLocation, ContInfo0, ContInfo) :-
-
-		% We don't know anything about the internals yet.
-	map__init(InternalMap),
-	ProcLayoutInfo = proc_layout_info(ProcLabel, StackSize, CodeModel,
-		SuccipLocation, InternalMap),
-	continuation_info__insert_proc_layout(PredProcId, ProcLayoutInfo,
-		ContInfo0, ContInfo).
+		Detism, SuccipLocation) -->
+	continuation_info__get_proc_layout(PredProcId, ProcLayoutInfo0),
+	{ 
+		ProcLayoutInfo0 = proc_layout_info(no, InternalMap, 
+			EntryInfo, ExitInfo) 
+	->
+		ProcLayoutInfo = proc_layout_info(yes(proc_layout_general_info(
+			ProcLabel, Detism, StackSize, SuccipLocation)), 
+			InternalMap, EntryInfo, ExitInfo)
+	;
+		error("continuation_info__add_proc_layout_info: general information already done.")
+	},
+	continuation_info__update_proc_layout(PredProcId, ProcLayoutInfo).
 
 	%
 	% Get all the proc_layout_infos.
@@ -240,7 +312,6 @@ continuation_info__add_non_continuation_labels(Labels) -->
 	{ list__foldl(continuation_info__ensure_label_is_present, Labels,
 		InternalInfo0, InternalInfo) },
 	continuation_info__set_internal_info(InternalInfo).
-
 
 	%
 	% Add a label to the internals, if it isn't already there.
@@ -268,23 +339,23 @@ continuation_info__ensure_label_is_present(Label, InternalMap0, InternalMap) :-
 
 continuation_info__process_internal_info(Label - LiveInfoList, ContInfo0,
 		ContInfo) :-
+	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
+		LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
+		VarInfo = var_info(Lval, LiveValueType, Name)
+	)),
+	list__map(GetVarInfo, LiveInfoList, VarInfoList),
 	GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
-		LiveLval = live_lvalue(_, _, TypeInfos)
-		)),
-	GetLvalPair = lambda([LiveLval::in, LvalPair::out] is det, (
-		LiveLval = live_lvalue(Lval, LiveValueType, _),
-		LvalPair = Lval - LiveValueType
-		)),
-	list__map(GetLvalPair, LiveInfoList, LvalPairList),
+		LiveLval = live_lvalue(_, _, _, TypeInfos)
+	)),
 	list__map(GetTypeInfo, LiveInfoList, TypeInfoListList),
 	list__condense(TypeInfoListList, TypeInfoList),
 	list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
 	set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
-	set__list_to_set(LvalPairList, LvalPairSet),
+	set__list_to_set(VarInfoList, VarInfoSet),
 	NewInternal = internal_layout_info(
-		yes(continuation_label_info(LvalPairSet, TypeInfoSet))),
-	continuation_info__add_internal_info(Label, NewInternal, ContInfo0,
-		ContInfo).
+		yes(continuation_label_info(VarInfoSet, TypeInfoSet))),
+	continuation_info__add_internal_info(Label, NewInternal,
+		ContInfo0, ContInfo).
 
 	%
 	% Merge the continuation label information of two labels.
@@ -320,7 +391,6 @@ continuation_info__merge_internal_labels(
 
 	% Procedures to manipulate continuation_info
 
-
 	%
 	% Add the given proc_layout_info to the continuation_info.
 	%
@@ -333,6 +403,39 @@ continuation_info__insert_proc_layout(PredProcId, ProcLayoutInfo,
 	ContInfo0 = continuation_info(ProcLayoutMap0, Internals),
 	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayoutInfo,
 		ProcLayoutMap),
+	ContInfo = continuation_info(ProcLayoutMap, Internals).
+
+	%
+	% Get the proc layout if it exists, otherwise return an 
+	% empty one.
+	%
+:- pred continuation_info__get_proc_layout(pred_proc_id, proc_layout_info,
+		continuation_info, continuation_info).
+:- mode continuation_info__get_proc_layout(in, out, in, out) is det.
+
+continuation_info__get_proc_layout(PredProcId, ProcLayoutInfo,
+		ContInfo, ContInfo) :-
+	ContInfo = continuation_info(ProcLayoutMap, _Internals),
+	( 
+		map__search(ProcLayoutMap, PredProcId, ProcLayoutInfo0)
+	->
+		ProcLayoutInfo = ProcLayoutInfo0
+	;
+		map__init(InternalMap),
+		ProcLayoutInfo = proc_layout_info(no, InternalMap, no, no)
+	).
+
+	%
+	% Update a proc layout.
+	%
+:- pred continuation_info__update_proc_layout(pred_proc_id, proc_layout_info,
+		continuation_info, continuation_info).
+:- mode continuation_info__update_proc_layout(in, in, in, out) is det.
+
+continuation_info__update_proc_layout(PredProcId, ProcLayoutInfo,
+		ContInfo0, ContInfo) :-
+	ContInfo0 = continuation_info(ProcLayoutMap0, Internals),
+	map__set(ProcLayoutMap0, PredProcId, ProcLayoutInfo, ProcLayoutMap),
 	ContInfo = continuation_info(ProcLayoutMap, Internals).
 
 	%
@@ -351,10 +454,10 @@ continuation_info__add_internal_info_to_proc(PredProcId, InternalLayout,
 		ContInfo0, ContInfo) :-
 	ContInfo0 = continuation_info(ProcLayoutMap0, Internals),
 	map__lookup(ProcLayoutMap0, PredProcId, ProcLayoutInfo0),
-	ProcLayoutInfo0 = proc_layout_info(ProcLabel, StackSize, CodeModel,
-		SuccipLocation, _),
-	ProcLayoutInfo = proc_layout_info(ProcLabel, StackSize, CodeModel,
-		SuccipLocation, InternalLayout),
+	ProcLayoutInfo0 = proc_layout_info(MaybeProcGeneral, _, EntryInfo,
+		ExitInfo),
+	ProcLayoutInfo = proc_layout_info(MaybeProcGeneral, InternalLayout,
+		EntryInfo, ExitInfo),
 	map__set(ProcLayoutMap0, PredProcId, ProcLayoutInfo, ProcLayoutMap),
 	ContInfo = continuation_info(ProcLayoutMap, Internals).
 

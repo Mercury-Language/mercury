@@ -257,14 +257,14 @@ dyn_load_sunos53.o: dyn_load.c
 
 # shared library version of the collector
 libgc$(PROF).so: $(OBJS) if_mach if_not_there # dyn_load_sunos53.o
-	rm -f on_sparc_sunos5
-	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
+	rm -f on_sparc_sunos5_so
+	./if_mach SPARC SUNOS5 touch on_sparc_sunos5_so
 	./if_mach SPARC SUNOS5 $(MAKE) dyn_load_sunos53.o
 	./if_mach SPARC SUNOS5 \
 	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o \
 		-ldl
-	./if_not_there on_sparc_sunos5 $(MAKE) dyn_load.o
-	./if_not_there on_sparc_sunos5 \
+	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
+	./if_not_there on_sparc_sunos5_so \
 	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load.o -lc
 
 mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_sgi_mach_dep.s $(srcdir)/mips_ultrix_mach_dep.s $(srcdir)/rs6000_mach_dep.s $(UTILS)
@@ -425,7 +425,7 @@ ifeq ($(USE_DLLS),yes)
 LIBGC_DLL_H = libgc_dll.h 
 LIBGC_GLOBALS_H = libgc_globals.h 
 
-DLL_CFLAGS = -DGC_DEFINE_DLL
+DLL_CFLAGS = -DUSE_DLLS -DGC_DEFINE_DLL
 
 .PHONY: dll
 dll: libgc.dll libgc.a libgc_dll.h libgc_globals.h

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -186,33 +186,33 @@
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
-:- pred builtin_compare_int(comparison_result::out, int::in, int::in) is det.
+:- pred builtin_compare_int(comparison_result::uo, int::in, int::in) is det.
 
 :- pred builtin_unify_character(character::in, character::in) is semidet.
 :- pred builtin_index_character(character::in, int::out) is det.
-:- pred builtin_compare_character(comparison_result::out, character::in,
+:- pred builtin_compare_character(comparison_result::uo, character::in,
 	character::in) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_index_string(string::in, int::out) is det.
-:- pred builtin_compare_string(comparison_result::out, string::in, string::in)
+:- pred builtin_compare_string(comparison_result::uo, string::in, string::in)
 	is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_index_float(float::in, int::out) is det.
-:- pred builtin_compare_float(comparison_result::out, float::in, float::in)
+:- pred builtin_compare_float(comparison_result::uo, float::in, float::in)
 	is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_index_pred((pred)::in, int::out) is det.
-:- pred builtin_compare_pred(comparison_result::out, (pred)::in, (pred)::in)
+:- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
 	is det.
 
 % The following two preds are used for index/1 or compare/3 on
 % non-canonical types (types for which there is a `where equality is ...'
 % declaration).
 :- pred builtin_index_non_canonical_type(T::in, int::out) is det.
-:- pred builtin_compare_non_canonical_type(comparison_result::out,
+:- pred builtin_compare_non_canonical_type(comparison_result::uo,
 		T::in, T::in) is det.
 
 :- pred unused is det.
@@ -229,9 +229,35 @@
 	% they depend on the number of type parameters of the type represented
 	% by the type_info, and how many predicates we associate with each
 	% type.
+	%
+	% Note that, since these types look to the compiler as though they
+	% are candidates to become no_tag types, special code is required in
+	% type_util:type_is_no_tag_type/3.
 
 :- type type_info(T) ---> type_info(base_type_info(T) /*, ... */).
 :- type base_type_info(T) ---> base_type_info(int /*, ... */).
+
+	% Note that, since these types look to the compiler as though they
+	% are candidates to become no_tag types, special code is required in
+	% type_util:type_is_no_tag_type/3.
+
+:- type typeclass_info ---> typeclass_info(base_typeclass_info /*, ... */). 
+:- type base_typeclass_info ---> typeclass_info(int /*, ... */). 
+
+	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)  
+	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
+	% type_info in the typeclass_info
+	% 
+	% Note: Index must be equal to the number of the desired type_info 
+	% plus the number of superclasses for this class.
+:- pred type_info_from_typeclass_info(typeclass_info, int, type_info(T)).
+:- mode type_info_from_typeclass_info(in, in, out) is det.
+
+	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)  
+	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
+	% superclass of the class.
+:- pred superclass_from_typeclass_info(typeclass_info, int, typeclass_info).
+:- mode superclass_from_typeclass_info(in, in, out) is det.
 
 	% the builtin < operator on ints, used in the code generated
 	% for compare/3 preds
@@ -252,6 +278,19 @@
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
+
+:- pragma c_code(type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
+	TypeInfo::out), will_not_call_mercury,
+" 
+	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
+").
+
+:- pragma c_code(superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
+	TypeClassInfo::out), will_not_call_mercury,
+" 
+	TypeClassInfo = 
+		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -512,7 +551,7 @@ mercury_data___base_type_info_character_0_struct {
 	(const Word *) & mercury_data___base_type_layout_character_0,
 	(const Word *) & mercury_data___base_type_functors_character_0,
 	(const Word *) string_const(""mercury_builtin"", 15),
-	(const Word *) string_const(""char"", 4)
+	(const Word *) string_const(""character"", 9)
 #endif
 };
 
@@ -631,8 +670,6 @@ void sys_init_builtin_types_module(void) {
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_float_0, _float_);
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
-		mercury_data___base_type_info_pred_0, _pred_);
-	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_character_0, _character_);
 	MR_INIT_BUILTIN_BASE_TYPE_INFO(
 		mercury_data___base_type_info_string_0, _string_);
@@ -661,6 +698,7 @@ compare_error :-
 :- external(unsafe_promise_unique/2).
 :- pragma c_code("
 Define_extern_entry(mercury__unsafe_promise_unique_2_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unsafe_promise_unique_2_0);
 
 BEGIN_MODULE(unsafe_promise_unique_module)
 	init_entry(mercury__unsafe_promise_unique_2_0);
@@ -719,6 +757,8 @@ aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code("
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_1);
 
 BEGIN_MODULE(copy_module)
 	init_entry(mercury__copy_2_0);
@@ -741,7 +781,7 @@ Define_entry(mercury__copy_2_1);
 	value = r2;
 
 	save_transient_registers();
-	copy = deep_copy(value, type_info, NULL, NULL);
+	copy = deep_copy(value, (Word *) type_info, NULL, NULL);
 	restore_transient_registers();
 
 #ifdef	COMPACT_ARGS
@@ -799,6 +839,9 @@ mercury_data_mercury_builtin__base_type_functors_c_pointer_0_struct {
 Define_extern_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___mercury_builtin__c_pointer_0_0);
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,13 +12,15 @@
 
 /*
 The handling of `any' insts is not complete.  (See also inst_util.m)
-It would be nice to allow `free' to match `any', but right now we don't.
+It would be nice to allow `free' to match `any', but right now we
+only allow a few special cases of that.
 The reason is that although the mode analysis would be pretty
 straight-forward, generating the correct code is quite a bit trickier.
 modes.m would have to be changed to handle the implicit
 conversions from `free'/`bound'/`ground' to `any' at
 
 	(1) procedure calls (this is just an extension of implied modes)
+		currently we support only the easy cases of this
 	(2) the end of branched goals
 	(3) the end of predicates.
 
@@ -243,7 +245,7 @@ mode system to distinguish between different representations.
 
 :- type inst_var == var.
 :- pred mode_list_contains_inst_var(list(mode), inst_table, module_info,
-	inst_var).
+		inst_var).
 :- mode mode_list_contains_inst_var(in, in, in, out) is nondet.
 
 	% Given a list of insts, and a corresponding list of livenesses,
@@ -308,22 +310,12 @@ inst_matches_initial_2(InstA, InstB, InstTable, ModuleInfo, Expansions) :-
 inst_matches_initial_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
 inst_matches_initial_3(any(_), free, _, _, _).
-inst_matches_initial_3(free, any(Uniq), _, _, _) :-
-	/* we do not yet allow `free' to match `any',
-	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
-	( Uniq = clobbered ; Uniq = mostly_clobbered ).
+inst_matches_initial_3(free, any(_), _, _, _).
 inst_matches_initial_3(free, free, _, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo,
 		_) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo),
-	/* we do not yet allow `free' to match `any',
-	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
-	( ( UniqB = clobbered ; UniqB = mostly_clobbered ) ->
-		true
-	;
-		bound_inst_list_is_ground_or_any(ListA, InstTable, ModuleInfo)
-	).
+	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo).
 inst_matches_initial_3(bound(_Uniq, _List), free, _, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), 
 			InstTable, ModuleInfo, Expansions) :-
@@ -570,18 +562,22 @@ inst_matches_final_2(InstA, InstB, InstTable, ModuleInfo, Expansions) :-
 inst_matches_final_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(free, any(Uniq), _, _, _) :-
-	/* we do not yet allow `free' to match `any',
-	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
+	% We do not yet allow `free' to match `any',
+	% unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
+	% Among other things, changing this would break compare_inst
+	% in modecheck_call.m.
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_matches_final_3(free, free, _, _, _).
 inst_matches_final_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo,
 		_) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo),
-	/* we do not yet allow `free' to match `any' */
+	% We do not yet allow `free' to match `any'.
+	% Among other things, changing this would break compare_inst
+	% in modecheck_call.m.
 	bound_inst_list_is_ground_or_any(ListA, InstTable, ModuleInfo).
-inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), 
-			InstTable, ModuleInfo, Expansions) :-
+inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB),
+		InstTable, ModuleInfo, Expansions) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_final(ListA, ListB, InstTable, ModuleInfo,
 			Expansions).

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne. 
+# Copyright (C) 1995-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -19,6 +19,12 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../scripts \
 		../scripts/mmake $(MMAKEFLAGS)
+
+#-----------------------------------------------------------------------------#
+
+# For Windows 95 or Windows NT, uncomment the following two lines:
+# PREINSTALL_HACK = preinstall_hack_for_windows
+# POSTINSTALL_HACK = postinstall_hack_for_windows
 
 #-----------------------------------------------------------------------------#
 
@@ -175,7 +181,7 @@ tar: README INSTALL
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
 	-rm -f config.status config.cache config.log configure.log
-	-rm -f runtime/mercury_conf.h
+	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
 	# Package up the mercury directory and the tests directory, 
 	# but with some subdirectories excluded, into a gzipped tar
@@ -305,12 +311,6 @@ install_split_library: scripts dep_library
 #
 # Various horrible hacks for gnu-win32 on Windows.
 #
-
-
-# For Windows 95 or Windows NT, uncomment the following two lines:
-# PREINSTALL_HACK = preinstall_hack_for_windows
-# POSTINSTALL_HACK = postinstall_hack_for_windows
-
 
 # `make touch_files' is a work-around for the broken gnu-win32 `tar'
 # that loses all the file dates.

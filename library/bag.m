@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, assoc_list.
 
 :- type bag(T).
 
@@ -36,13 +36,20 @@
 :- pred bag__from_list(list(T), bag(T)).
 :- mode bag__from_list(in, out) is det.
 
-	 % Given a bag, produce a sorted list containing all the values in
-	 % the bag.  Each value will appear in the list the same number of
-	 % times that it appears in the bag.
+	% Given a bag, produce a sorted list containing all the values in
+	% the bag.  Each value will appear in the list the same number of
+	% times that it appears in the bag.
 :- pred bag__to_list(bag(T), list(T)).
 :- mode bag__to_list(in, out) is det.
 
-	% Given a bag, produce a sorted list with no duplicates 
+	% Given a bag, produce a sorted list containing all the values in
+	% the bag.  Each value will appear in the list once, with the
+	% associated integer giving the number of times that it appears
+	% in the bag.
+:- pred bag__to_assoc_list(bag(T), assoc_list(T, int)).
+:- mode bag__to_assoc_list(in, out) is det.
+
+	% Given a bag, produce a sorted list with no duplicates
 	% containing all the values in the bag.
 :- pred bag__to_list_without_duplicates(bag(T), list(T)).
 :- mode bag__to_list_without_duplicates(in, out) is det.
@@ -80,7 +87,7 @@
 	% each element in SubBag is removed from Bag0 to produce Bag.
 	% If an element exists in SubBag, but not in Bag, then that
 	% element is not removed.
-	% e.g. bag__subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}). 
+	% e.g. bag__subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
 :- pred bag__subtract(bag(T), bag(T), bag(T)).
 :- mode bag__subtract(in, in, out) is det.
 
@@ -103,6 +110,16 @@
 :- pred bag__intersect(bag(T), bag(T)).
 :- mode bag__intersect(in, in) is semidet.
 
+	% The third bag is the smallest bag that has both the first two bags
+	% as subbags. If an element X is present N times in one of the first
+	% two bags, X will be present at least N times in the third bag.
+	% E.g. {1, 1, 2} upper_bound {2, 2, 3} = {1, 1, 2, 2, 3}
+	% If the two input bags are known to be unequal in size, then
+	% making the first bag the larger bag will usually be more
+	% efficient.
+:- pred bag__least_upper_bound(bag(T), bag(T), bag(T)).
+:- mode bag__least_upper_bound(in, in, out) is det.
+
 	% Fails if the first bag is not a subbag of the second.
 	% bag__is_subbag(A, B). implies that every element in the bag A
 	% is also in the bag B.  If an element is in bag A multiple times, it
@@ -120,7 +137,7 @@
 :- pred bag__remove_smallest(bag(T), T, bag(T)).
 :- mode bag__remove_smallest(in, out, out) is semidet.
 
-	% Compares the two bags, and returns whether the first bag is a 
+	% Compares the two bags, and returns whether the first bag is a
 	% subset (<), is equal (=), or is a superset (>) of the second.
 	% bag__subset_compare(<, {apple, orange}, {apple, apple, orange}).
 	% bag__subset_compare(=, {apple, orange}, {apple, orange}).
@@ -131,9 +148,10 @@
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module map, int, require, assoc_list, std_util.
+:- import_module map, int, require, std_util.
 
 :- type bag(T)		==	map(T, int).
 
@@ -167,15 +185,13 @@ bag__from_list(List, Bag) :-
 	bag__init(Bag0),
 	bag__insert_list(Bag0, List, Bag).
 
-bag__to_list_without_duplicates(Bag, List) :-
-	map__keys(Bag, List).
-
 bag__to_list(Bag, List) :-
 	map__to_assoc_list(Bag, AssocList),
 	bag__to_list_2(AssocList, List).
 
 :- pred bag__to_list_2(assoc_list(T, int), list(T)).
 :- mode bag__to_list_2(in, out) is det.
+
 bag__to_list_2([], []).
 bag__to_list_2([X - Int | Xs ], Out) :-
 	( Int =< 0 ->
@@ -185,7 +201,12 @@ bag__to_list_2([X - Int | Xs ], Out) :-
 		bag__to_list_2([X - NewInt | Xs], Out0),
 		Out = [X | Out0]
 	).
-		
+
+bag__to_assoc_list(Bag, AssocList) :-
+	map__to_assoc_list(Bag, AssocList).
+
+bag__to_list_without_duplicates(Bag, List) :-
+	map__keys(Bag, List).
 
 %---------------------------------------------------------------------------%
 
@@ -245,11 +266,10 @@ bag__subtract(Bag0, SubBag, Bag) :-
 		Bag = Bag0
 	).
 
-	
 bag__union(A, B, Out) :-
 	( map__remove_smallest(B, Key, BVal, B0) ->
 		( map__search(A, Key, AVal) ->
-			NewVal = AVal + BVal,
+			NewVal is AVal + BVal,
 			map__det_update(A, Key, NewVal, A0)
 		;
 			map__det_insert(A, Key, BVal, A0)
@@ -258,8 +278,6 @@ bag__union(A, B, Out) :-
 	;
 		Out = A
 	).
-			
-		
 
 bag__intersect(A, B, Out) :-
 	bag__init(Out0),
@@ -267,6 +285,7 @@ bag__intersect(A, B, Out) :-
 
 :- pred bag__intersect_2(bag(T), bag(T), bag(T), bag(T)).
 :- mode bag__intersect_2(in, in, in, out) is det.
+
 bag__intersect_2(A, B, Out0, Out) :-
 	( map__remove_smallest(A, Key, AVal,A0) ->
 		( map__search(B, Key, BVal) ->
@@ -286,6 +305,19 @@ bag__intersect(A, B) :-
 		true
 	;
 		bag__intersect(A0, B)
+	).
+
+bag__least_upper_bound(A, B, Out) :-
+	( map__remove_smallest(B, Key, BVal, B0) ->
+		( map__search(A, Key, AVal) ->
+			int__max(AVal, BVal, NewVal),
+			map__det_update(A, Key, NewVal, A0)
+		;
+			map__det_insert(A, Key, BVal, A0)
+		),
+		bag__least_upper_bound(A0, B0, Out)
+	;
+		Out = A
 	).
 
 %---------------------------------------------------------------------------%
@@ -310,7 +342,7 @@ bag__remove_smallest(Bag0, Item, Bag) :-
 		Bag = Bag1
 	).
 
-	% compares the two bags, and returns whether the first bag is a 
+	% compares the two bags, and returns whether the first bag is a
 	% subset (<), is equal (=), or is a superset (>) of the second
 	% bag__subset_compare(<, {apple, orange}, {apple, apple, orange}).
 	% bag__subset_compare(=, {apple, orange}, {apple, orange}).
@@ -322,7 +354,7 @@ bag__subset_compare(Res, A, B) :-
 	( map__remove_smallest(A, Key, AVal, A0) ->
 		( map__remove(B, Key, BVal, B0) ->
 			compare(ValRes, AVal, BVal),
-			( 
+			(
 				ValRes = (>),
 				bag__is_subbag(B0, A0),
 				Res = (>)

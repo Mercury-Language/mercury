@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,7 @@
 						% Used by dead_proc_elim.
 		)
 
-		% some C code from a pragma(c_code) declaration
+		% some C code from a `pragma c_code' declaration
 	;	c_code(
 			string,			% C code
 			term__context		% source code location
@@ -74,7 +74,6 @@
 	--->	c_procedure(
 			string,			% predicate name
 			int,			% arity
-			llds_proc_id,		% mode number
 			pred_proc_id,		% the pred_proc_id this code
 			list(instruction)	% the code for this procedure
 		).
@@ -127,9 +126,17 @@
 			% says whether tail recursion elimination is
 			% potentially applicable to the call.
 
-	;	mkframe(string, int, code_addr)
-			% mkframe(Comment, SlotCount, FailureContinuation)
-			% creates a nondet stack frame.
+	;	mkframe(string, int, maybe(pragma_c_struct), code_addr)
+			% mkframe(Comment, SlotCount, MaybePragmaStruct,
+			% FailureContinuation) creates a nondet stack frame.
+			% Comment says what predicate creates the frame.
+			% SlotCount says how many ordinary framevar slots
+			% it ought to have. If MaybePragmaStruct is yes,
+			% the argument gives the details of the structure
+			% which occupies the rest of the framevar slots.
+			% CodeAddr is the code address to branch to when
+			% trying to generate the next solution from this
+			% choice point.
 
 	;	modframe(code_addr)
 			% modframe(FailureContinuation) is the same as
@@ -160,10 +167,12 @@
 	;	if_val(rval, code_addr)
 			% If rval is true, then goto code_addr.
 
-	;	incr_hp(lval, maybe(tag), rval)
+	;	incr_hp(lval, maybe(tag), rval, string)
 			% Get a memory block of a size given by an rval
 			% and put its address in the given lval,
 			% possibly after tagging it with a given tag.
+			% The string gives the name of the type constructor
+			% of the memory cell for use in memory profiling.
 
 	;	mark_hp(lval)
 			% Tell the heap sub-system to store a marker
@@ -221,26 +230,75 @@
 	;	decr_sp(int)
 			% Decrement the det stack pointer.
 
-	;	pragma_c(list(pragma_c_decl), list(pragma_c_input),
-			string, list(pragma_c_output), term__context).
-			% The local variable declarations, the info required
-			% for placing the inputs in the variables, the c code,
-			% the info required for picking up the outputs, and
-			% the context of the original appearance of the C code
-			% in the Mercury source.
+	;	pragma_c(list(pragma_c_decl), list(pragma_c_component),
+				may_call_mercury, maybe(label)).
+			% The first argument says what local variable
+			% declarations are required for the following
+			% components, which in turn can specify how
+			% the inputs should be placed in their variables,
+			% how the outputs should be picked up from their
+			% variables, and C code both from the program
+			% and the compiler. These components can be
+			% sequenced in various ways. This flexibility
+			% is needed for nondet pragma C codes, which
+			% need different copies of several components
+			% for different paths tthrough the code.
+			%
+			% The third argument says whether the user C code
+			% components may call Mercury; certain optimizations
+			% can be performed across pragma_c instructions that
+			% cannot call Mercury.
+			%
+			% Some components in some pragma_c instructions
+			% refer to a Mercury label. If they do, we must
+			% prevent the label from being optimized away.
+			% To make it known to labelopt, we mention it in
+			% the fourth arg.
 
-%	;	frame_pragma_c(list(pragma_c_decl), list(pragma_c_input),
-%			string, list(pragma_c_output), list(label), term__context).
-%			% The same as above, plus the list of labels to use
-%			% in LABEL_1 and DEFINE_LABEL_1 style macros.
-%			% For use in model_non pragma_c_codes, where it
-%			% should be preceded by a mkframe.
+	% Procedures defined by nondet pragma C codes must have some way of
+	% preserving information after a success, so that when control
+	% backtracks to the procedure, the C code knows what to do.
+	% Our implementation saves this information in a C struct.
+	% Programmers must include the declaration of the fields of this
+	% C struct in the `pragma c_code' declaration itself.
+	% A pragma_c_struct holds information about this C struct.
+:- type pragma_c_struct
+	--->	pragma_c_struct(
+			string,		% The name of the struct tag.
+			string,		% The field declarations, supplied
+					% by the user in the `pragma c_code'
+					% declaration.
+			maybe(term__context)
+					% Where the field declarations
+					% originally appeared.
+		).
 
-	% pragma_c_decl holds the information needed for a variable
-	% declaration for a pragma_c instruction.
+	% A pragma_c_decl holds the information needed for the declaration
+	% of a local variable in a block of C code emitted for a pragma_c
+	% instruction.
 :- type pragma_c_decl
-	--->	pragma_c_decl(type, string).
-				% Type name, variable name.
+	--->	pragma_c_arg_decl(
+			% This local variable corresponds to a procedure arg.
+			type,	% The Mercury type of the argument.
+			string	% The name of the local variable that
+				% will hold the value of that argument
+				% inside the C block.
+		)
+	;	pragma_c_struct_ptr_decl(
+			% This local variable holds the address of the
+			% save struct.
+			string,	% The name of the C struct tag of the save
+				% struct; the type of the local variable
+				% will be a pointer to a struct with this tag.
+			string	% The name of the local variable.
+		).
+
+	% A pragma_c_component holds one component of a pragma_c instruction.
+:- type pragma_c_component
+	--->	pragma_c_inputs(list(pragma_c_input))
+	;	pragma_c_outputs(list(pragma_c_output))
+	;	pragma_c_user_code(maybe(term__context), string)
+	;	pragma_c_raw_code(string).
 
 	% A pragma_c_input represents the code that initializes one
 	% of the input variables for a pragma_c instruction.
@@ -276,6 +334,10 @@
 				% refer to?
 			live_value_type,
 				% What is the type of this live value?
+			string,
+				% What is the name of the variable stored here?
+				% The empty string if this lval does not
+				% store a variable.
 			assoc_list(tvar, lval)
 				% Where are the typeinfos that determine the
 				% types of the actual parameters of the type
@@ -310,20 +372,26 @@
 	/* virtual machine registers */
 
 		reg(reg_type, int)
-				% one of the general-purpose virtual machine
-				% registers (either an int or float reg)
-	;	succip		% virtual machine register holding the
-				% return address for det/semidet code
-	;	maxfr		% virtual machine register holding a pointer
-				% to the top of nondet stack
-	;	curfr		% virtual machine register holding a pointer
-				% to the current nondet stack frame
-	;	hp		% virtual machine register holding the heap
-				% pointer
-	;	sp		% virtual machine register point to the
-				% top of det stack
+				% One of the general-purpose virtual machine
+				% registers (either an int or float reg).
+
+	;	succip		% Virtual machine register holding the
+				% return address for det/semidet code.
+
+	;	maxfr		% Virtual machine register holding a pointer
+				% to the top of nondet stack.
+
+	;	curfr		% Virtual machine register holding a pointer
+				% to the current nondet stack frame.
+
+	;	hp		% Virtual machine register holding the heap
+				% pointer.
+
+	;	sp		% Virtual machine register point to the
+				% top of det stack.
+
 	;	temp(reg_type, int)
-				% a local temporary register
+				% A local temporary register.
 				% These temporary registers are actually
 				% local variables declared in `block'
 				% instructions.  They may only be
@@ -337,43 +405,58 @@
 
 	/* values on the stack */
 
-	;	stackvar(int)	% det stack slots (numbered starting from 1)
-				% relative to the current value of `sp'
-				% these are used for both det and semidet code
-	;	framevar(int)	% nondet stack slots (numbered starting from 0)
-				% relative to the current value of `curfr'
+	;	stackvar(int)	% A det stack slot. The number is the offset
+				% relative to the current value of `sp'.
+				% These are used in both det and semidet code.
+				% Stackvar slot numbers start at 1.
 
-	;	succip(rval)	% the succip slot of the specified
+	;	framevar(int)	% A nondet stack slot. The reference is
+				% relative to the current value of `curfr'.
+				% These are used in nondet code.
+				% Framevar slot numbers start at 0.
+
+	;	succip(rval)	% The succip slot of the specified
 				% nondet stack frame; holds the code address
 				% to jump to on successful exit from this
-				% nondet procedure
-	;	redoip(rval)	% the redoip slot of the specified
+				% nondet procedure.
+
+	;	redoip(rval)	% The redoip slot of the specified
 				% nondet stack frame; holds the code address
-				% to jump to on failure
-	;	succfr(rval)	% the succfr slot of the specified
+				% to jump to on failure.
+
+	;	succfr(rval)	% The succfr slot of the specified
 				% nondet stack frame; holds the address of
 				% caller's nondet stack frame.  On successful
 				% exit from this nondet procedure, we will
 				% set curfr to this value.
-	;	prevfr(rval)	% the prevfr slot of the specified
+
+	;	prevfr(rval)	% The prevfr slot of the specified
 				% nondet stack frame; holds the address of
 				% the previous frame on the nondet stack.
 
 	/* values on the heap */
 
-	;	field(tag, rval, rval)
+	;	field(maybe(tag), rval, rval)
 				% field(Tag, Address, FieldNum)
-				% selects a field of a compound term
+				% selects a field of a compound term.
+				% Address is a tagged pointer to a cell
+				% on the heap; the offset into the cell
+				% is FieldNum words. If Tag is yes, the
+				% arg gives the value of the tag; if it is
+				% no, the tag bits will have to be masked off.
+				% The value of the tag should be given if
+				% it is known, since this will lead to
+				% faster code.
 
 	/* values somewhere in memory */
 
-	;	mem_ref(rval)	% a word in the heap, in the det stack or
+	;	mem_ref(rval)	% A word in the heap, in the det stack or
 				% in the nondet stack. The rval should have
 				% originally come from a mem_addr rval.
 
 	/* pseudo-values */
 
-	;	lvar(var).	% the location of the specified variable
+	;	lvar(var).	% The location of the specified variable.
 				% `var' lvals are used during code generation,
 				% but should not be present in the LLDS at any
 				% stage after code generation.
@@ -383,13 +466,15 @@
 	--->	lval(lval)
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
+
 	;	var(var)
 		% The value of a `var' rval is just the value of the
 		% specified variable.
 		% `var' rvals are used during code generation,
 		% but should not be present in the LLDS at any
 		% stage after code generation.
-	;	create(tag, list(maybe(rval)), bool, int)
+
+	;	create(tag, list(maybe(rval)), bool, int, string)
 		% create(Tag, Arguments, IsUnique, LabelNumber):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
@@ -408,14 +493,22 @@
 		% The label number is needed for the case when
 		% we can construct the term at compile-time
 		% and just reference the label.
+		%
+		% The last argument gives the name of the type constructor
+		% of the function symbol of which this is a cell, for use
+		% in memory profiling.
+
 	;	mkword(tag, rval)
-		% given a pointer and a tag,
-		% mkword returns a tagged pointer
+		% Given a pointer and a tag, mkword returns a tagged pointer.
+
 	;	const(rval_const)
+
 	;	unop(unary_op, rval)
+
 	;	binop(binary_op, rval, rval)
+
 	;	mem_addr(mem_ref).
-		% The addess of a word in the heap, the det stack or
+		% The address of a word in the heap, the det stack or
 		% the nondet stack.
 
 :- type mem_ref
@@ -444,6 +537,9 @@
 	--->	common(int)
 	;	base_type(base_data, string, arity)
 			% base_data, type name, type arity
+	;	base_typeclass_info(class_id, string)
+			% class name & class arity, names and arities of the
+			% types
 	;	stack_layout(label).	
 			% stack_layout for a given label
 
@@ -529,6 +625,9 @@
 	;	do_det_closure
 	;	do_semidet_closure
 	;	do_nondet_closure
+	;	do_det_class_method
+	;	do_semidet_class_method
+	;	do_nondet_class_method
 	;	do_not_reached.		% we should never jump to this address
 
 	% A proc_label is a label used for the entry point to a procedure.
@@ -623,7 +722,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing

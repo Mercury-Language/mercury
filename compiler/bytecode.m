@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -82,6 +82,8 @@
 					arity, byte_proc_id)
 			;	base_type_info_const(byte_module_id, string,
 					int)
+			;	base_typeclass_info_const(byte_module_id,
+					class_id, string)
 			;	char_const(char)
 			.
 
@@ -661,15 +663,13 @@ debug_pred_id(PredId) -->
 :- mode output_proc_id(in, di, uo) is det.
 
 output_proc_id(ProcId) -->
-	{ ModeId is ProcId mod 10000 },
-	output_byte(ModeId).
+	output_byte(ProcId).
 
 :- pred debug_proc_id(byte_proc_id, io__state, io__state).
 :- mode debug_proc_id(in, di, uo) is det.
 
 debug_proc_id(ProcId) -->
-	{ ModeId is ProcId mod 10000 },
-	debug_int(ModeId).
+	debug_int(ProcId).
 
 %---------------------------------------------------------------------------%
 
@@ -727,6 +727,11 @@ output_cons_id(char_const(Char)) -->
 	{ char__to_int(Char, Byte) },
 	output_byte(Byte).
 
+	% XXX
+output_cons_id(base_typeclass_info_const(_, _, _)) -->
+	{ error("Sorry, bytecode for typeclass not yet implemented") },
+	output_byte(8).
+
 :- pred debug_cons_id(byte_cons_id, io__state, io__state).
 :- mode debug_cons_id(in, di, uo) is det.
 
@@ -762,6 +767,15 @@ debug_cons_id(base_type_info_const(ModuleId, TypeName, TypeArity)) -->
 	debug_module_id(ModuleId),
 	debug_string(TypeName),
 	debug_int(TypeArity).
+debug_cons_id(base_typeclass_info_const(ModuleId, 
+		class_id(ClassName, ClassArity), Instance)) -->
+	debug_string("base_typeclass_info_const"),
+	debug_module_id(ModuleId),
+	debug_string("class_id"),
+	debug_sym_name(ClassName),
+	debug_string("/"),
+	debug_int(ClassArity),
+	debug_string(Instance).
 debug_cons_id(char_const(Char)) -->
 	debug_string("char_const"),
 	{ string__from_char_list([Char], String) },
@@ -1206,9 +1220,10 @@ output_float(Val) -->
 :- pred float_to_float64_bytes(float::in, 
 		int::out, int::out, int::out, int::out, 
 		int::out, int::out, int::out, int::out) is det.
-:- pragma(c_code, 
+:- pragma c_code(
 	float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out, B3::out,
 		B4::out, B5::out, B6::out, B7::out),
+	will_not_call_mercury,
 	"
 
 	{
@@ -1265,6 +1280,18 @@ debug_int(Val) -->
 
 debug_float(Val) -->
 	io__write_float(Val),
+	io__write_char(' ').
+
+:- pred debug_sym_name(sym_name, io__state, io__state).
+:- mode debug_sym_name(in, di, uo) is det.
+
+debug_sym_name(unqualified(Val)) -->
+	io__write_string(Val),
+	io__write_char(' ').
+debug_sym_name(qualified(Module, Val)) -->
+	io__write_string(Module),
+	io__write_char(':'),
+	io__write_string(Val),
 	io__write_char(' ').
 
 %---------------------------------------------------------------------------%

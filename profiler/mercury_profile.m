@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,9 +12,13 @@
 %
 % Notes:
 %	Processes the Prof.* and the *.prof files to produce an output very
-%	similar to 'gprof'
+%	similar to `gprof'
 %
-%	Based on the profiling scheme described in XXX
+%	Based on the profiling scheme described in [1].
+%
+%	[1]	Graham, Kessler and McKusick "Gprof: a call graph execution
+%		profiler". In Proceedings of the 1982 SIGPLAN Symposium
+%		on Compiler Construction, pages 120-126.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,18 +38,17 @@
 :- implementation.
 
 :- import_module process_file, call_graph, generate_output, propagate, output.
-:- import_module prof_info.
-:- import_module bool, list, std_util, string, library.
-:- import_module options, getopt, globals.
-:- import_module relation.
-:- import_module prof_debug.
+:- import_module prof_info, prof_debug, options, globals.
+
+:- import_module bool, list, std_util, string, getopt, relation, library.
 
 %-----------------------------------------------------------------------------%
 
 
 main -->
 	io__command_line_arguments(Args0),
-	{ OptionOps = option_ops(short_option, long_option, option_defaults) },
+	{ OptionOps = option_ops(short_option, long_option, option_defaults,
+				special_handler) },
 	{ getopt__process_options(OptionOps, Args0, Args, Result0) },
 	postprocess_options(Result0, Args, Result),
 	main_2(Result, Args).
@@ -102,7 +105,7 @@ usage -->
 	{ library__version(Version) },
         io__write_strings(StdErr,
 		["Mercury Profiler, version ", Version, "\n"]),
-        io__write_string(StdErr, "Copyright (C) 1995-1997 The University of Melbourne\n"),
+        io__write_string(StdErr, "Copyright (C) 1995-1998 The University of Melbourne\n"),
         io__write_string(StdErr, "Usage: "),
         io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] [<files>]\n"),
@@ -115,7 +118,7 @@ long_usage -->
         io__progname_base("mprof", ProgName),
 	{ library__version(Version) },
         io__write_strings(["Mercury Profiler, version ", Version, "\n"]),
-        io__write_string("Copyright (C) 1995-1997 The University of Melbourne\n"),
+        io__write_string("Copyright (C) 1995-1998 The University of Melbourne\n"),
 	io__write_string("\n"),
         io__write_string("Usage: "),
         io__write_string(ProgName),

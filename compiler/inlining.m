@@ -196,10 +196,11 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		{ map__lookup(Procs, ProcId, ProcInfo) },
 		{ proc_info_goal(ProcInfo, CalledGoal) },
 		{ Entity = proc(PredId, ProcId) },
-	%
-	% the heuristic represented by the following code
-	% could be improved
-	%
+
+		%
+		% the heuristic represented by the following code
+		% could be improved
+		%
 		(
 			{ Simple = yes },
 			{ inlining__is_simple_goal(CalledGoal,
@@ -219,17 +220,10 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		% Don't inline recursive predicates
 		{ \+ goal_calls(CalledGoal, PredProcId) },
 
-		% Don't inline model_non pragma c that doesn't have an
-		% `extra_pragma_info'.  
-		%
-		% XXX  model_non pragma c without `extra_pragma_info' should
-		% not be accepted by the compiler, but at the moment it's
-		% the only way to get model_non pragma c (the ``correct''
-		% way of doing it hasn't been implemented yet).  We just
-		% have to make sure it doesn't get inlined because that stops
-		% it from working.
+		% Under no circumstances inline model_non pragma c codes.
+		% The resulting code would not work properly.
 		\+ {
-			CalledGoal = pragma_c_code(_,_,_,_,_,_,_,none) - _,
+			CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
 			proc_info_interface_code_model(ProcInfo, model_non)
 		}
 	->
@@ -312,7 +306,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		varset,			% varset
 		map(var, type),		% variable types
 		tvarset,		% type variables
-		map(tvar, var),		% type_info varset, a mapping from 
+		map(tvar, type_info_locn),% type_info varset, a mapping from 
 					% type variables to variables
 					% where their type_info is
 					% stored.
@@ -339,7 +333,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet0),
+	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
 
@@ -373,7 +367,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
-	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
+	proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
 	proc_info_set_typeinfo_varmap(ProcInfo3, TypeInfoVarMap, ProcInfo4),
 	proc_info_set_goal(ProcInfo4, Goal, ProcInfo),
@@ -446,7 +440,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			% Callee has
 		module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			PredInfo, ProcInfo),
-        	proc_info_variables(ProcInfo, CalleeVarset),
+        	proc_info_varset(ProcInfo, CalleeVarset),
 		varset__vars(CalleeVarset, CalleeListOfVars),
 		list__length(CalleeListOfVars, CalleeThisMany),
 		TotalVars is ThisMany + CalleeThisMany,
@@ -543,11 +537,14 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
 		higher_order_call(A, B, C, D, E, F) - GoalInfo) --> [].
 
+inlining__inlining_in_goal(class_method_call(A, B, C, D, E, F) - GoalInfo,
+		class_method_call(A, B, C, D, E, F) - GoalInfo) --> [].
+
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].
 
-inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo,
-		pragma_c_code(A, B, C, D, E, F, G, H) - GoalInfo) --> [].
+inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
+		pragma_c_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 

@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -49,7 +49,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Ross
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1997 The University of Melbourne.
+Copyright @copyright{} 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -132,21 +132,22 @@ Files ending in @file{.int}, @file{.int2} and @file{.int3} are interface files;
 these are generated automatically by the compiler,
 using the @samp{--make-interface} (or @samp{--make-int})
 and @samp{--make-short-interface} (or @samp{--make-short-int}) options.
-Files ending in @file{.opt} are 
+Files ending in @file{.opt} are
 interface files used in inter-module optimization,
-and are created using the @samp{--make-optimization-interface} 
+and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
-@c Files ending in @file{.trans_opt} are interface files used in 
-@c transitive inter-module optimization, and are created using the 
-@c @samp{--make-transitive-optimization-interface} option.
+Similarly, files ending in @file{.trans_opt} are interface files used in
+transitive inter-module optimization, and are created using the
+@samp{--make-transitive-optimization-interface}
+(or @samp{--make-trans-opt-int}) option.
 
 Since the interface of a module changes less often than its implementation,
-the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
+the @file{.int}, @file{.int2}, @file{.int3}, @file{.opt}, and @file{.trans_opt}
 files will remain unchanged on many compilations.
 To avoid unnecessary recompilations of the clients of the module,
 the timestamps on the these files are updated only if their contents change.
-@file{.date}, @file{.date3} and @file{.optdate} files associated with the
-module are used as date stamps;
+@file{.date}, @file{.date3}, @file{.optdate}, and @file{.trans_opt_date}
+files associated with the module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
 
 Files ending in @file{.d} are automatically-generated Makefile fragments
@@ -219,13 +220,13 @@ then you also need to create the optimization interface files.
 mmc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
-@c If you are going to compile with @samp{--transitive-intermodule-optimization}
-@c enabled, then you also need to create the transitive optimization files.
+If you are going to compile with @samp{--transitive-intermodule-optimization}
+enabled, then you also need to create the transitive optimization files.
 
-@c @example
-@c mmc -make-trans-opt @var{module1}.m @var{module2}.m ...
-@c @end example
-@c 
+@example
+mmc --make-trans-opt @var{module1}.m @var{module2}.m ...
+@end example
+
 Given that you have made all the interface files,
 one way to create an executable for a multi-module program
 is to compile all the modules at the same time
@@ -459,7 +460,7 @@ sicstus_conv @var{module}.m
 @end example
 
 By default, @samp{msc} compiles files to machine code using
-SICStus Prolog's @samp{fastcode} mode. If space is more important
+SICStus Prolog's @samp{fastcode} mode.  If space is more important
 than speed, you can use the @samp{--mode compactcode} option,
 which instructs @code{msc} to use SICStus Prolog's @samp{compactcode}
 mode, which compiles files to a bytecode format.
@@ -684,7 +685,7 @@ and consequently the test always fails.
 NU-Prolog has logical alternatives
 to the non-logical Prolog operations,
 and since Mercury supports both syntaxes,
-you can use NU-Prolog's logical alternatives to avoid this problem. 
+you can use NU-Prolog's logical alternatives to avoid this problem.
 However, during the development of the Mercury compiler
 we had to abandon their use for efficiency reasons.
 
@@ -807,15 +808,15 @@ or its imported modules.
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
-@samp{.opt}, @samp{.optdate}, @samp{.date3}, 
-@c @samp{.trans_opt}, @samp{.trans_optdate}, 
+@samp{.opt}, @samp{.optdate}, @samp{.date3},
+@samp{.trans_opt}, @samp{.trans_opt_date},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
-@samp{@var{main-module}}, 
-@samp{@var{main-module}.nu}, 
-@samp{@var{main-module}.nu.save}, 
-@samp{@var{main-module}.nu.debug}, 
-@samp{@var{main-module}.nu.debug.save}, 
+@samp{@var{main-module}},
+@samp{@var{main-module}.nu},
+@samp{@var{main-module}.nu.save},
+@samp{@var{main-module}.nu.debug},
+@samp{@var{main-module}.nu.debug.save},
 @samp{@var{main-module}.sicstus}, and
 @samp{@var{main-module}.sicstus.debug}.
 
@@ -833,7 +834,7 @@ directory.
 
 The variables used by the builtin rules (and their default values) are
 defined in the file @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
-these may be overridden by user @samp{Mmake} files. Some of the more
+these may be overridden by user @samp{Mmake} files.  Some of the more
 useful variables are:
 
 @table @code
@@ -860,16 +861,23 @@ The executable that invokes the linker.
 @item MLFLAGS and EXTRA_MLFLAGS
 Flags to pass to the linker.
 
+@item MLLIBS
+A list of @samp{-l} options specifying libraries used by the program
+(or library) that you are building.  @xref{Using libraries}.
+
+@item MLOBJS
+A list of extra object files to link into any programs or libraries
+that you are building.
 @end table
 
 Other variables also exist - see
-@file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list. 
+@file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list.
 
 If you wish to temporarily change the flags passed to an executable,
 rather than setting the various @samp{FLAGS} variables directly, one can
-supply a @samp{EXTRA_} variable. When defining a @samp{FLAGS} option
+supply a @samp{EXTRA_} variable.  When defining a @samp{FLAGS} option
 directly (in your own @samp{Mmake} file), it is recommended you include
-the @samp{EXTRA_} version at the end. This is particularly intended for
+the @samp{EXTRA_} version at the end.  This is particularly intended for
 use where a shell script needs to call mmake and add an extra parameter,
 without interfering with the flag settings in the @samp{Mmake} file.
 
@@ -886,7 +894,7 @@ which is very useful if you have a machine with more than one CPU.
 @chapter Libraries
 
 Often you will want to use a particular set of Mercury modules
-in more than one program. The Mercury implementation 
+in more than one program.  The Mercury implementation
 includes support for developing libraries, i.e. sets of Mercury modules
 intended for reuse.  It allows separate compilation of libraries
 and, on many platforms, it supports shared object libraries.
@@ -934,7 +942,7 @@ libraries (DLLs) on Windows.
 Static libraries are created using the standard tools @samp{ar}
 and @samp{ranlib}.
 Shared libraries are created using the @samp{--make-shared-lib}
-option to @samp{ml}. 
+option to @samp{ml}.
 The automatically-generated Make rules for @samp{libmypackage}
 will look something like this:
 
@@ -944,12 +952,12 @@ libmypackage: libmypackage.a libmypackage.so \
 
 libmypackage.a: $(mypackage.os)
 	rm -f libmypackage.a
-	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os)
+	$(AR) $(ARFLAGS) libmypackage.a $(mypackage.os) $(MLOBJS)
 	$(RANLIB) $(RANLIBFLAGS) mypackage.a
 
 libmypackage.so: $(mypackage.pic_os)
 	$(ML) $(MLFLAGS) --make-shared-lib -o libmypackage.so \
-		$(mypackage.pic_os) $(MLLIBS)
+		$(mypackage.pic_os) $(MLPICOBJS) $(MLLIBS)
 
 libmypackage.init:
 	...
@@ -958,41 +966,56 @@ clean:
 	rm -f libmypackage.a libmypackage.so
 @end example
 
-If necessary, you can override the default definitions of the
-variables such as @samp{ML}, @samp{MLFLAGS}, and @samp{MLLIBS}
-to customize the way shared libraries are built.  Similarly
-@samp{AR}, @samp{ARFLAGS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
-control the way static libraries are built.
+If necessary, you can override the default definitions of the variables
+such as @samp{ML}, @samp{MLFLAGS}, @samp{MLPICOBJS}, and @samp{MLLIBS}
+to customize the way shared libraries are built.  Similarly @samp{AR},
+@samp{ARFLAGS}, @samp{MLOBJS}, @samp{RANLIB}, and @samp{RANLIBFLAGS}
+control the way static libraries are built.  (The @samp{MLOBJS} variable
+is supposed to contain a list of additional object files to link into
+the library, while the @samp{MLLIBS} variable should contain a list of
+@samp{-l} options naming other libraries used by this library.
+@samp{MLPICOBJS} is described below.)
 
 Note that to use a library, as well as the shared or static object library,
 you also need the interface files.  That's why the
 @samp{libmypackage} target builds @samp{$(mypackage.ints)}.
-Also, if the people using the library are going to use intermodule
-optimization, you need the intermodule optimization interfaces.
+If the people using the library are going to use intermodule
+optimization, you will also need the intermodule optimization interfaces.
 That's why the @samp{libmypackage} target builds @samp{$(mypackage.opts)}.
+If the people using the library are going to use transitive intermodule
+optimization, you will also need the transitive intermodule optimization
+interfaces.  Currently these are @emph{not} built by default; if
+you want to build them, you will need to include @samp{--trans-intermod-opt}
+in your @samp{MCFLAGS} variable.
+
 In addition, with certain compilation grades, programs will need to
 execute some startup code to initialize the library; the
 @samp{mypackage.init} file contains information about initialization
-code for the library.
+code for the library.  The @samp{libmypackage} target will build this file.
 
 On some platforms, shared objects must be created using position independent
 code (PIC), which requires passing some special options to the C compiler.
 On these platforms, @code{Mmake} will create @file{.pic_o} files,
 and @samp{$(mypackage.pic_os)} will contain a list of the @file{.pic_o} files
 for the library whose top-level module is @samp{mypackage}.
+In addition, @samp{$(MLPICOBJS)} will be set to @samp{$MLOBJS} with
+all occurrences of @samp{.o} replaced with @samp{.pic_o}.
 On other platforms, position independent code is the default,
-and @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
-which contains a list of the @file{.o} files for that module.
+so @samp{$(mypackage.pic_os)} will just be the same as @samp{$(mypackage.os)},
+which contains a list of the @file{.o} files for that module,
+and @samp{$(MLPICOBJS)} will be the same as @samp{$(MLOBJS)}.
 
 @node Installing libraries
 @section Installing libraries
 
 If you want, once you have built a library, you could then install
 (i.e. copy) the shared object library, the static object library,
-the interface files and the initialization file into a different directory,
-or into several different directories, for that matter --- though it
-is probably easiest for the users of the library if you keep them
-in a single directory.
+the interface files (possibly including the optimization interface
+files and the transitive optimization interface files), and the
+initialization file into a different directory, or into several
+different directories, for that matter --- though it is probably
+easiest for the users of the library if you keep them in a single
+directory.
 Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
 @samp{zip} archive and ship them to the people who will use the
 library.
@@ -1029,9 +1052,9 @@ directories that Mmake will search for interface files.
 The @samp{-I} options in @samp{MCFLAGS} tell @samp{mmc} where to find
 the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
 the loader where to find shared libraries, and the @samp{-L}
-options tell the linker where to find libraries. 
+options tell the linker where to find libraries.
 (Note that the @samp{-R} options must precede the @samp{-L} options.)
-The @samp{-l} options tell the linker which libraries to link with. 
+The @samp{-l} options tell the linker which libraries to link with.
 The extras arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
 variable tell @samp{c2init} where to find the @samp{.init} files for the
 libraries, so that it can generate appropriate initialization code.
@@ -1052,6 +1075,7 @@ Mercury implementation does not require that.
 * Creating the profile::            How to create profile data.
 * Displaying the profile::          How to display the profile data.
 * Analysis of results::             How to interpret the output.
+* Memory profiling::                Profiling memory usage rather than time.
 @end menu
 
 @node Profiling introduction
@@ -1124,11 +1148,11 @@ so on Windows you must explicitly specify @samp{-Tr}.
 
 The next step is to run your program.  The profiling version of your
 program will collect profiling information during execution, and
-save this information in the files @samp{Prof.Counts}, @samp{Prof.Decls},
-and @samp{Prof.CallPair}.
-(@samp{Prof.Decl} contains the names of the procedures and their
-associated addresses, @samp{Prof.CallPair} records the number of times
-each procedure was called by each different caller, and @samp{Prof.Counts}
+save this information in the files @file{Prof.Counts}, @file{Prof.Decls},
+and @file{Prof.CallPair}.
+(@file{Prof.Decl} contains the names of the procedures and their
+associated addresses, @file{Prof.CallPair} records the number of times
+each procedure was called by each different caller, and @file{Prof.Counts}
 records the number of times that execution was in each procedure
 when a profiling interrupt occurred.)
 
@@ -1143,8 +1167,8 @@ If this happens, just run it again --- the problem occurs only very rarely.
 @node Displaying the profile
 @section Displaying the profile
 
-To display the profile, just type @samp{mprof}.  This will read the 
-@file{Prof.*} files and display the flat profile in a nice human-readable 
+To display the profile, just type @samp{mprof}.  This will read the
+@file{Prof.*} files and display the flat profile in a nice human-readable
 format.  If you also want to see the call graph profile, which takes a lot
 longer to generate, type @samp{mprof -c}.
 
@@ -1156,7 +1180,7 @@ redirect the output into a file with a command such as
 @node Analysis of results
 @section Analysis of results
 
-The profile output consists of three major sections.  These are 
+The profile output consists of three major sections.  These are
 named the call graph profile, the flat profile and the alphabetic listing.
 
 The call graph profile presents the local call graph of each
@@ -1198,26 +1222,26 @@ index  %time    self descendents  called+self    name           index
                                   called/total       children
 
                                                      <spontaneous>
-[1]    100.0    0.00        0.75       0         call_engine_label [1] 
+[1]    100.0    0.00        0.75       0         call_engine_label [1]
                 0.00        0.75       1/1           do_interpreter [3]
 
 -----------------------------------------------
 
                 0.00        0.75       1/1           do_interpreter [3]
-[2]    100.0    0.00        0.75       1         io__run/0(0) [2] 
+[2]    100.0    0.00        0.75       1         io__run/0(0) [2]
                 0.00        0.00       1/1           io__init_state/2(0) [11]
                 0.00        0.74       1/1           main/2(0) [4]
 
 -----------------------------------------------
 
                 0.00        0.75       1/1           call_engine_label [1]
-[3]    100.0    0.00        0.75       1         do_interpreter [3] 
+[3]    100.0    0.00        0.75       1         do_interpreter [3]
                 0.00        0.75       1/1           io__run/0(0) [2]
 
 -----------------------------------------------
 
                 0.00        0.74       1/1           io__run/0(0) [2]
-[4]     99.9    0.00        0.74       1         main/2(0) [4] 
+[4]     99.9    0.00        0.74       1         main/2(0) [4]
                 0.00        0.74       1/1           sort/2(0) [5]
                 0.00        0.00       1/1           print_list/3(0) [16]
                 0.00        0.00       1/10          io__write_string/3(0) [18]
@@ -1225,7 +1249,7 @@ index  %time    self descendents  called+self    name           index
 -----------------------------------------------
 
                 0.00        0.74       1/1           main/2(0) [4]
-[5]     99.9    0.00        0.74       1         sort/2(0) [5] 
+[5]     99.9    0.00        0.74       1         sort/2(0) [5]
                 0.05        0.65       1/1           list__perm/2(0) [6]
                 0.00        0.09   40320/40320       sorted/1(0) [10]
 
@@ -1233,35 +1257,35 @@ index  %time    self descendents  called+self    name           index
 
                                        8             list__perm/2(0) [6]
                 0.05        0.65       1/1           sort/2(0) [5]
-[6]     86.6    0.05        0.65       1+8      list__perm/2(0) [6] 
+[6]     86.6    0.05        0.65       1+8      list__perm/2(0) [6]
                 0.00        0.60    5914/5914        list__insert/3(2) [7]
                                        8             list__perm/2(0) [6]
 
 -----------------------------------------------
 
                 0.00        0.60    5914/5914        list__perm/2(0) [6]
-[7]     80.0    0.00        0.60    5914         list__insert/3(2) [7] 
+[7]     80.0    0.00        0.60    5914         list__insert/3(2) [7]
                 0.60        0.60    5914/5914        list__delete/3(3) [8]
 
 -----------------------------------------------
 
                                    40319             list__delete/3(3) [8]
                 0.60        0.60    5914/5914        list__insert/3(2) [7]
-[8]     80.0    0.60        0.60    5914+40319  list__delete/3(3) [8] 
+[8]     80.0    0.60        0.60    5914+40319  list__delete/3(3) [8]
                                    40319             list__delete/3(3) [8]
 
 -----------------------------------------------
 
                 0.00        0.00       3/69283       tree234__set/4(0) [15]
                 0.09        0.09   69280/69283       sorted/1(0) [10]
-[9]     13.3    0.10        0.10   69283         compare/3(0) [9] 
+[9]     13.3    0.10        0.10   69283         compare/3(0) [9]
                 0.00        0.00       3/3           __Compare___io__stream/0(0) [20]
                 0.00        0.00   69280/69280       builtin_compare_int/3(0) [27]
 
 -----------------------------------------------
 
                 0.00        0.09   40320/40320       sort/2(0) [5]
-[10]    13.3    0.00        0.09   40320         sorted/1(0) [10] 
+[10]    13.3    0.00        0.09   40320         sorted/1(0) [10]
                 0.09        0.09   69280/69283       compare/3(0) [9]
 
 -----------------------------------------------
@@ -1274,29 +1298,29 @@ and @samp{io__run/0} are all part of the Mercury runtime;
 @samp{main/2} is the entry point to the user's program.)
 
 Each entry of the call graph profile consists of three sections, the parent
-procedures, the current procedure and the children procedures.  
+procedures, the current procedure and the children procedures.
 
 Reading across from the left, for the current procedure the fields are:
 
 @itemize @bullet
 @item
-The unique index number for the current procedure. 
+The unique index number for the current procedure.
 (The index numbers are used only to make it easier to find
 a particular entry in the call graph.)
 
 @item
 The percentage of total execution time spent in the current procedure
-and all its descendents. 
+and all its descendents.
 As noted above, this is only a statistical approximation.
 
 @item
-The ``self'' time: the time spent executing code that is 
-part of current procedure.  
+The ``self'' time: the time spent executing code that is
+part of current procedure.
 As noted above, this is only a statistical approximation.
 
 @item
 The descendent time: the time spent in the
-current procedure and all its descendents.  
+current procedure and all its descendents.
 As noted above, this is only a statistical approximation.
 
 @item
@@ -1307,7 +1331,7 @@ a plus sign, and then the number of recursive calls.
 These numbers are exact, not approximate.
 
 @item
-The name of the procedure followed by its index number. 
+The name of the procedure followed by its index number.
 @end itemize
 
 The predicate or function names are not just followed by their arity but
@@ -1318,10 +1342,42 @@ of @samp{list__delete/3}.
 
 Now for the parent and child procedures the self and descendent time have
 slightly different meanings.  For the parent procedures the self and descendent
-time represent the proportion of the current procedure's self and descendent 
+time represent the proportion of the current procedure's self and descendent
 time due to that parent.  These times are obtained using the assumption that
 each call contributes equally to the total time of the current procedure.
-@c XXX is that really true? Do we really make that assumption?
+
+@node Memory profiling
+@section Memory profiling
+
+It is also possible to profile memory allocation.  To enable memory
+profiling, your program must be built with memory profiling enabled,
+using the @samp{--memory-profiling} option.  Then, as with time
+profiling, you run your program to create the profiling data.
+This will be stored in the files @file{Prof.MemoryWords}
+@file{Prof.MemoryCells}, @file{Prof.Decls}, and @file{Prof.CallPair}.
+
+To create the profile, you need to invoke @samp{mprof} with the
+@samp{-m} (@samp{--profile memory-words}) option.  This will profile
+the amount of memory allocated, measured in units of words. 
+(A word is 4 bytes on a 32-bit architecture, and 8 bytes on a 64-bit
+architecture.)
+
+Alternatively, you can use @samp{mprof}'s @samp{-M}
+(@samp{--profile memory-cells}) option.  This will profile memory in
+units of ``cells''.  A cell is a group of words allocated together in a
+single allocation, to hold a single object.  Selecting this option this
+will therefore profile the number of memory allocations, while ignoring
+the size of each memory allocation.
+
+With memory profiling, just as with time profiling,
+you can use the @samp{-c} (@samp{--call-graph}) option to display
+call graph profiles in addition to flat profiles.
+
+Note that Mercury's memory profiler will only tell you about
+allocation, not about deallocation (garbage collection).
+It can tell you how much memory was allocated by each procedure,
+but it won't tell you how long the memory was live for,
+or how much of that memory was garbage-collected.
 
 @node Invocation
 @chapter Invocation
@@ -1333,16 +1389,17 @@ use @samp{mmc --help} to get the most up-to-date list.
 
 @menu
 * Invocation overview::
-* Verbosity options::           
-* Warning options::   
-* Output options::   
-* Auxiliary output options::   
+* Verbosity options::
+* Warning options::
+* Output options::
+* Auxiliary output options::
 * Language semantics options::
+* Termination analysis options::
 * Compilation model options::
-* Code generation options::   
-* Optimization options::   
-* Link options::   
-* Miscellaneous options::   
+* Code generation options::
+* Optimization options::
+* Link options::
+* Miscellaneous options::
 @end menu
 
 @node Invocation overview
@@ -1423,7 +1480,7 @@ Warn about @samp{.opt} files that cannot be opened.
 
 @sp 1
 @item --warn-non-stratification
-Warn about possible non-stratification of the predicates/functions in the 
+Warn about possible non-stratification of the predicates/functions in the
 module.
 Non-stratification occurs when a predicate/function can call itself
 negatively through some path along its call graph.
@@ -1437,6 +1494,16 @@ simple that they are likely to be programming errors.
 @item --warn-duplicate-calls
 Warn about multiple calls to a predicate with the same
 input arguments.
+
+@sp 1
+@item --no-warn-missing-module-name
+Disable warnings for modules that do not start with a
+@samp{:- module} declaration.
+
+@sp 1
+@item --no-warn-wrong-module-name
+Disable warnings for modules whose @samp{:- module} declaration
+does not match the module's file name.
 
 @end table
 
@@ -1506,7 +1573,7 @@ Output ``Make''-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 
 @item --generate-module-order
-Output the strongly connected components of the module 
+Output the strongly connected components of the module
 dependency graph in top-down order to @file{@var{module}.order}.
 Implies @samp{--generate-dependencies}.
 
@@ -1529,20 +1596,23 @@ Write the unqualified version of the short interface to
 Write information used for inter-module optimization to
 @file{@var{module}.opt}.
 
-@c @sp 1
-@c @item --make-transitive-optimization-interface
-@c @itemx --make-trans-opt
-@c Write the @file{@var{module}.trans_opt} file.  This file is used to store
-@c information used for inter-module optimization. The information is read 
-@c in when the compiler is invoked with the @samp{--transitive-optimization} 
-@c option.  The file is called ``transitive'' because a 
-@c @file{@var{module}.trans_opt} file may depend on other 
-@c @file{@var{module}.trans_opt} files.
-@c
+@sp 1
+@item --make-trans-opt
+@itemx --make-transitive-optimization-interface
+Write the @file{@var{module}.trans_opt} file.  This file is used to store
+information used for inter-module optimization.  The information is read 
+in when the compiler is invoked with the
+@samp{--transitive-intermodule-optimization} option. 
+The file is called the ``transitive'' optimization interface file
+because a @samp{.trans_opt} file may depend on other 
+@samp{.trans_opt} and @samp{.opt} files.  In contrast,
+a @samp{.opt} file can only hold information derived directly
+from the corresponding @samp{.m} file.
+
 @sp 1
 @item -G
 @itemx --convert-to-goedel
-Convert the Mercury code to Goedel. Output to file @file{@var{module}.loc}.
+Convert the Mercury code to Goedel.  Output to file @file{@var{module}.loc}.
 The translation is not perfect; some Mercury constructs cannot be easily
 translated into Goedel.
 
@@ -1550,8 +1620,8 @@ translated into Goedel.
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury
-Convert to Mercury. Output to file @file{@var{module}.ugly}.
-This option acts as a Mercury ugly-printer. 
+Convert to Mercury.  Output to file @file{@var{module}.ugly}.
+This option acts as a Mercury ugly-printer.
 (It would be a pretty-printer, except that comments are stripped
 and nested if-then-elses are indented too much --- so the result
 is rather ugly.)
@@ -1607,7 +1677,7 @@ Output a bytecode form of the module for use
 by an experimental debugger.
 
 @item --generate-prolog
-Convert the program to Prolog. Output to file @file{@var{module}.pl}
+Convert the program to Prolog.  Output to file @file{@var{module}.pl}
 or @file{@var{module}.nl} (depending the the dialect).
 
 @item --prolog-dialect @var{dialect}
@@ -1663,7 +1733,12 @@ r - resume points of goals,
 s - store maps of goals,
 t - results of termination analysis,
 u - unification categories,
-v - variable numbers in variable names.
+v - variable numbers in variable names,
+T - type and typeclass information,
+M - mode and inst information,
+C - clause information,
+U - unify predicates,
+P - path information.
 The special argument value ``all''
 will cause the printing of all these fields.
 
@@ -1712,6 +1787,71 @@ Perform at most @var{n} passes of mode inference (default: 60).
 Perform at most @var{n} passes of mode inference (default: 30).
 @end table
 
+@node Termination analysis options
+@section Termination analysis options
+
+For detailed explanations, see the ``Termination analysis'' section
+in Mercury Language Reference Manual.  (It is listed under
+``Implementation dependent pragmas'' in the ``Pragmas'' chapter.)
+
+@table @code
+@item --enable-term
+@itemx --enable-termination
+Enable termination analysis.  Termination analysis analyses each mode of
+each predicate to see whether it terminates.  The @samp{terminates},
+@samp{does_not_terminate} and @samp{check_termination}
+pragmas have no effect unless termination analysis is enabled.  When
+using termination, @samp{--intermodule-optimization} should be enabled,
+as it greatly improves the accuracy of the analysis.
+
+@sp 1
+@item --chk-term
+@itemx --check-term
+@itemx --check-termination
+Enable termination analysis, and emit warnings for some predicates or
+functions that cannot be proved to terminate.  In many cases in which the
+compiler is unable to prove termination, the problem is either a lack of
+information about the termination properties of other predicates, or the
+fact that the program used language constructs (such as higher order
+calls) which cannot be analysed.  In these cases the compiler does
+not emit a warning of non-termination, as it is likely to be spurious.
+
+@sp 1
+@item --verb-chk-term
+@itemx --verb-check-term
+@itemx --verbose-check-termination
+Enable termination analysis, and emit warnings for all predicates or
+functions that cannot be proved to terminate.
+
+@sp 1
+@item --term-single-arg @var{limit}
+@itemx --termination-single-argument-analysis @var{limit}
+When performing termination analysis, try analyzing
+recursion on single arguments in strongly connected
+components of the call graph that have up to @var{limit} procedures.
+Setting this limit to zero disables single argument analysis.
+
+@sp 1
+@item --termination-norm @var{norm}
+The norm defines how termination analysis measures the size
+of a memory cell.  The @samp{simple} norm says that size is always one.
+The @samp{total} norm says that it is the number of words in the cell.
+The @samp{num-data-elems} norm says that it is the number of words in
+the cell that contain something other than pointers to cells of
+the same type.
+
+@sp 1
+@item --term-err-limit @var{limit}
+@itemx --termination-error-limit @var{limit}
+Print at most @var{n} reasons for any single termination error.
+
+@sp 1
+@item --term-path-limit @var{limit}
+@itemx --termination-path-limit @var{limit}
+Perform termination analysis only on predicates with at most @var{n} paths.
+
+@end table
+
 @node Compilation model options
 @section Compilation model options
 
@@ -1733,7 +1873,7 @@ them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
 @table @asis
 @item @code{-s @var{grade}}
 @itemx @code{--grade @var{grade}}
-Select the compilation model. The @var{grade} should be a base
+Select the compilation model.  The @var{grade} should be a base
 grade with zero or more grade modifiers appended.
 The base grades are @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
 @samp{fast}, and @samp{asm_fast}.
@@ -1747,7 +1887,7 @@ order they are listed here.
 
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
-with the @samp{MERCURY_DEFAULT_GRADE} environment variable if desired.
+with the environment variable @samp{MERCURY_DEFAULT_GRADE} if desired.
 Depending on your particular installation, only a subset
 of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
@@ -1792,12 +1932,24 @@ None.
 @item @samp{.prof}
 @code{--profiling}.
 
-@item @samp{.proftime}
-@code{--profile-time}.
+@item @samp{.memprof}
+@code{--memory-profiling}.
 
-@item @samp{.profcalls}
-@code{--profile-calls}.
-
+@c The following are undocumented because
+@c they are basically useless... documenting
+@c them would just confuse people.
+@c
+@c @item @samp{.profall}
+@c @code{--profile-calls --profile-time --profile-memory}.
+@c (not recommended because --profile-memory interferes with
+@c --profile-time)
+@c 
+@c @item @samp{.proftime}
+@c @code{--profile-time}.
+@c 
+@c @item @samp{.profcalls}
+@c @code{--profile-calls}.
+@c 
 @item @samp{.tr}
 @code{--use-trail}.
 
@@ -1845,24 +1997,35 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--profiling} (grades: any grade containing @samp{.prof})
-Enable profiling.  Insert profiling hooks in the
+@item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
+Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
 @sp 1
+@item @code{--memory-profiling} (grades: any grade containing @samp{.memprof})
+Enable memory profiling.  Insert memory profiling hooks in the
+generated code, and also output some profiling
+information (the static call graph) to the file
+@samp{@var{module}.prof}.  @xref{Memory profiling}.
+
+@ignore
+	The following are basically useless, hence undocumented.
+
+@sp 1
 @item @code{--profile-calls} (grades: any grade containing @samp{.profcalls})
 Similar to @samp{--profiling}, except that this option only gathers
 call counts, not timing information.  Useful on systems where time
-profiling is not supported (e.g. MS Windows).
+profiling is not supported -- but not as useful as @samp{--memory-profiling}.
 
 @sp 1
 @item @code{--profile-time} (grades: any grade containing @samp{.proftime})
 Similar to @samp{--profiling}, except that this option only gathers
 timing information, not call counts.  For the results to be useful,
 call counts for an identical run of your program need to be gathered
-using @samp{--profiling} or @samp{--profile-calls}. 
+using @samp{--profiling} or @samp{--profile-calls}.
+XXX this doesn't work, because the code addresses change.
 The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
 to gather timing information and call counts in seperate runs,
 rather than just using @samp{--profiling} to gather them both at once,
@@ -1870,11 +2033,13 @@ is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
 has a small effect on the execution speed.
 
+@end ignore
+
 @sp 1
 @item @code{--debug} (grades: any grade containing @samp{.debug})
 Enable debugging.
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
-to enable debugging of the generated C code. 
+to enable debugging of the generated C code.
 This option also implies @samp{--no-c-optimize}.
 Debugging support is currently extremely primitive -
 this option is probably not useful to anyone except the Mercury implementors.
@@ -1900,9 +2065,9 @@ generally leads to more efficient code.
 (This option is not intended for general use.)
 Don't output base_type_layout structures or references to them.
 This option will generate smaller executables, but will not allow the
-use of code that uses the layout information (e.g. @samp{functor}, 
+use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
-runtime. The C code also needs to be compiled with
+runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
 
 @sp 1
@@ -1954,7 +2119,7 @@ Specify options to be passed to the C compiler.
 
 @sp 1
 @item --fact-table-max-array-size @var{size}
-Specify the maximum number of elements in a single 
+Specify the maximum number of elements in a single
 @samp{pragma fact_table} data array (default: 1024).
 The data for fact tables is placed into multiple C arrays, each with a
 maximum size given by this option.  The reason for doing this is that
@@ -2083,11 +2248,13 @@ calls) which could not be analysed.  In these cases the compiler does
 not emit a warning of non-termination, as it is likely to be spurious.
 
 @sp 1
-@item --verbose-check-termination
-@itemx --verb-check-term
-@itemx --verb-chk-term
-Enable termination analysis, and emit warnings for all predicates or 
-functions that cannot be proved to terminate.  
+@item --trans-intermod-opt
+@itemx --transitive-intermodule-optimization
+Use the information stored in @file{@var{module}.trans_opt} files
+to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
+are differents to the @file{@var{module}.opt} files as @samp{.trans_opt}
+files may depend on other @samp{.trans_opt} files, whereas each
+@samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
 @sp 1
 @item --split-c-files
@@ -2137,7 +2304,7 @@ Inline a procedure if its size is less than the given threshold.
 
 @item --intermod-inline-simple-threshold @var{threshold}
 Similar to --inline-simple-threshold, except used to determine which
-predicates should be included in @samp{.opt} files. Note that changing this 
+predicates should be included in @samp{.opt} files.  Note that changing this
 between writing the @samp{.opt} file and compiling to C may cause link errors,
 and too high a value may result in reduced performance.
 
@@ -2167,7 +2334,7 @@ Don't migrate builtin goals into branched goals.
 
 @sp 1
 @item --optimize-unused-args
-Remove unused predicate arguments. The compiler will
+Remove unused predicate arguments.  The compiler will
 generate more efficient code for polymorphic predicates.
 
 @sp 1
@@ -2265,6 +2432,11 @@ must be at least this number (default: 3).
 @item --try-switch-size @var{size}
 The number of alternatives in a try-chain switch
 must be at least this number (default: 3).
+
+@sp 1
+@item --binary-switch-size @var{size}
+The number of alternatives in a binary search switch
+must be at least this number (default: 4).
 
 @sp 1
 @item --no-middle-rec
@@ -2396,7 +2568,7 @@ is not set or if the C compiler is not GNU C.
 @table @code
 @item -I @var{dir}
 @itemx --search-directory @var{dir}
-Append @var{dir} to the list of directories to be searched for 
+Append @var{dir} to the list of directories to be searched for
 imported modules.
 
 @item --intermod-directory @var{dir}
@@ -2466,12 +2638,16 @@ The default grade to use if no @samp{--grade} option is specified.
 A list of options for the Mercury runtime that gets
 linked into every Mercury program.
 Options are available to set the size of the different memory
-areas, and to enable various debugging traces. 
+areas, and to enable various debugging traces.
 Set @samp{MERCURY_OPTIONS} to @samp{-h} for help.
 
 @sp 1
 @item MERCURY_C_INCL_DIR
-Directory for the Mercury C header files (@file{*.h}).
+Directory for the C header files for the Mercury runtime system (@file{*.h}).
+
+@sp 1
+@item MERCURY_GC_INCL_DIR
+Directory for the C header files for the Mercury garbage collector (@file{*.h}).
 
 @sp 1
 @item MERCURY_INT_DIR
@@ -2559,7 +2735,7 @@ However, if for some reason you wish to use another compiler,
 it is possible to do so.  Here's what you need to do.
 
 @itemize @bullet
-@item You must specify the name of the new compiler. 
+@item You must specify the name of the new compiler.
 You can do this either by setting the @samp{MERCURY_C_COMPILER}
 environment variable, by adding
 @samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
@@ -2571,7 +2747,7 @@ pass @samp{--cc="cc -std"} to @samp{mmc} so that it will pass the
 @samp{-std} option to @samp{cc}).
 
 @item
-You must use the grade @samp{none} or @samp{none.gc}. 
+You must use the grade @samp{none} or @samp{none.gc}.
 You can specify the grade in one of three ways: by setting the
 @samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
 @samp{GRADE=@dots{}} to your @samp{Mmake} file, or by using the

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 % :- op(1199, fx, (import_adt)).
 % :- op(1199, fx, (import_op)).
 
-% :- op(1199, fx, (use_module)).
+:- op(1199, fx, (use_module)).
 % :- op(1199, fx, (use_sym)).
 % :- op(1199, fx, (use_pred)).
 % :- op(1199, fx, (use_cons)).
@@ -41,8 +41,6 @@
 % :- op(1199, fx, (use_op)).
 
 % :- op(1199, fx, (rule)).
-% :- op(1199, fx, (pred)).
-:- op(1199, fx, (func)).
 
 :- op(1199, fx, (pragma)).
 :- op(1199, fx, (mode)).
@@ -51,6 +49,13 @@
 :- op(1175, xfx, (::)).
 
 :- op(950, fxy, (lambda)).
+
+:- $setOpField((pred), []).			% remove `pred' as an operator
+:- op(800, fx, (pred)).				% and then replace it with
+						% lower precedence.
+:- op(800, fx, (func)).
+:- op(800, fy, (impure)).
+:- op(800, fy, (semipure)).
 
 :- op(400, yfx, (rem)).
 :- op(400, yfx, (div)).
@@ -115,7 +120,7 @@ termExpansion((:- import_module(_)), (:- fail)).
 % termExpansion((:- export_adt(_)), (:- fail)).
 % termExpansion((:- export_op(_)), (:- fail)).
 
-% termExpansion((:- use_module(_)), (:- fail)).
+termExpansion((:- use_module(_)), (:- fail)).
 % termExpansion((:- use_sym(_)), (:- fail)).
 % termExpansion((:- use_pred(_)), (:- fail)).
 % termExpansion((:- use_cons(_)), (:- fail)).

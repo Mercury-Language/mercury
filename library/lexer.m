@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -128,13 +128,6 @@ lexer__get_token_list(Tokens) -->
 		lexer__get_token_list(Tokens1)
 	).
 
-:- pred lexer__get_token(token, token_context, io__state, io__state).
-:- mode lexer__get_token(out, out, di, uo) is det.
-
-lexer__get_token(Token, Context) -->
-	lexer__get_token_1(Token),
-	lexer__get_context(Context).
-
 :- pred lexer__get_context(token_context, io__state, io__state).
 :- mode lexer__get_context(out, di, uo) is det.
 
@@ -143,88 +136,112 @@ lexer__get_context(Context) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred lexer__get_token_1(token, io__state, io__state).
-:- mode lexer__get_token_1(out, di, uo) is det.
+:- pred lexer__get_token(token, token_context, io__state, io__state).
+:- mode lexer__get_token(out, out, di, uo) is det.
 
-lexer__get_token_1(Token) -->
+lexer__get_token(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
 		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
-			lexer__get_token_2(Token)
+			lexer__get_token_2(Token, Context)
 		; { char__is_upper(Char) ; Char = '_' } ->
+			lexer__get_context(Context),
 			lexer__get_variable([Char], Token)
 		; { char__is_lower(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_name([Char], Token)
 		; { Char = '0' } ->
+			lexer__get_context(Context),
 			lexer__get_zero(Token)
 		; { char__is_digit(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_number([Char], Token)
 		; { lexer__special_token(Char, SpecialToken) } ->
+			lexer__get_context(Context),
 			{ SpecialToken = open ->
 				Token = open_ct
 			;
 				Token = SpecialToken
 			}
 		; { Char = ('.') } ->
+			lexer__get_context(Context),
 			lexer__get_dot(Token)
 		; { Char = ('%') } ->
-			lexer__skip_to_eol(Token)
+			lexer__skip_to_eol(Token, Context)
 		; { Char = '"' ; Char = '''' } ->
+			lexer__get_context(Context),
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = ('/') } ->
-			lexer__get_slash(Token)
+			lexer__get_slash(Token, Context)
 		; { Char = ('#') } ->
-			lexer__get_source_line_number([], Token)
+			lexer__get_source_line_number([], Token, Context)
 		; { lexer__graphic_token_char(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_graphic([Char], Token)
 		;
+			lexer__get_context(Context),
 			{ Token = junk(Char) }
 		)
 	).
 
-:- pred lexer__get_token_2(token, io__state, io__state).
-:- mode lexer__get_token_2(out, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-	% This is just like get_token_1, except that we have already
+:- pred lexer__get_token_2(token, token_context, io__state, io__state).
+:- mode lexer__get_token_2(out, out, di, uo) is det.
+
+	% This is just like get_token, except that we have already
 	% scanned past some whitespace, so '(' gets scanned as `open'
 	% rather than `open_ct'.
 
-lexer__get_token_2(Token) -->
+lexer__get_token_2(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
 		( { Char = ' ' ; Char = '\t' ; Char = '\n' } ->
-			lexer__get_token_2(Token)
+			lexer__get_token_2(Token, Context)
 		; { char__is_upper(Char) ; Char = '_' } ->
+			lexer__get_context(Context),
 			lexer__get_variable([Char], Token)
 		; { char__is_lower(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_name([Char], Token)
 		; { Char = '0' } ->
+			lexer__get_context(Context),
 			lexer__get_zero(Token)
 		; { char__is_digit(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_number([Char], Token)
 		; { lexer__special_token(Char, SpecialToken) } ->
+			lexer__get_context(Context),
 			{ Token = SpecialToken }
 		; { Char = ('.') } ->
+			lexer__get_context(Context),
 			lexer__get_dot(Token)
 		; { Char = ('%') } ->
-			lexer__skip_to_eol(Token)
+			lexer__skip_to_eol(Token, Context)
 		; { Char = '"' ; Char = '''' } ->
+			lexer__get_context(Context),
 			lexer__get_quoted_name(Char, [], Token)
 		; { Char = ('/') } ->
-			lexer__get_slash(Token)
+			lexer__get_slash(Token, Context)
 		; { Char = ('#') } ->
-			lexer__get_source_line_number([], Token)
+			lexer__get_source_line_number([], Token, Context)
 		; { lexer__graphic_token_char(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_graphic([Char], Token)
 		;
+			lexer__get_context(Context),
 			{ Token = junk(Char) }
 		)
 	).
@@ -298,76 +315,86 @@ lexer__whitespace_after_dot('%').
 
 	% comments
 
-:- pred lexer__skip_to_eol(token, io__state, io__state).
-:- mode lexer__skip_to_eol(out, di, uo) is det.
+:- pred lexer__skip_to_eol(token, token_context, io__state, io__state).
+:- mode lexer__skip_to_eol(out, out, di, uo) is det.
 
-lexer__skip_to_eol(Token) -->
+lexer__skip_to_eol(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = eof }
 	; { Result = ok(Char) },
 		( { Char = '\n' } ->
-			lexer__get_token_2(Token)
+			lexer__get_token_2(Token, Context)
 		;
-			lexer__skip_to_eol(Token)
+			lexer__skip_to_eol(Token, Context)
 		)
 	).
 
-:- pred lexer__get_slash(token, io__state, io__state).
-:- mode lexer__get_slash(out, di, uo) is det.
+:- pred lexer__get_slash(token, token_context, io__state, io__state).
+:- mode lexer__get_slash(out, out, di, uo) is det.
 
-lexer__get_slash(Token) -->
+lexer__get_slash(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = name("/") }
 	; { Result = ok(Char) },
 		( { Char = ('*') } ->
-			lexer__get_comment(Token)
+			lexer__get_comment(Token, Context)
 		; { lexer__graphic_token_char(Char) } ->
+			lexer__get_context(Context),
 			lexer__get_graphic([Char, '/'], Token)
 		;
+			lexer__get_context(Context),
 			io__putback_char(Char),
 			{ Token = name("/") }
 		)
 	).
 
-:- pred lexer__get_comment(token, io__state, io__state).
-:- mode lexer__get_comment(out, di, uo) is det.
+:- pred lexer__get_comment(token, token_context, io__state, io__state).
+:- mode lexer__get_comment(out, out, di, uo) is det.
 
-lexer__get_comment(Token) -->
+lexer__get_comment(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
 		( { Char = ('*') } ->
-			lexer__get_comment_2(Token)
+			lexer__get_comment_2(Token, Context)
 		;
-			lexer__get_comment(Token)
+			lexer__get_comment(Token, Context)
 		)
 	).
 
-:- pred lexer__get_comment_2(token, io__state, io__state).
-:- mode lexer__get_comment_2(out, di, uo) is det.
+:- pred lexer__get_comment_2(token, token_context, io__state, io__state).
+:- mode lexer__get_comment_2(out, out, di, uo) is det.
 
-lexer__get_comment_2(Token) -->
+lexer__get_comment_2(Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = error("unterminated '/*' comment") }
 	; { Result = ok(Char) },
 		( { Char = ('/') } ->
-			lexer__get_token_2(Token)
+			lexer__get_token_2(Token, Context)
 		; { Char = ('*') } ->
-			lexer__get_comment_2(Token)
+			lexer__get_comment_2(Token, Context)
 		;
-			lexer__get_comment(Token)
+			lexer__get_comment(Token, Context)
 		)
 	).
 
@@ -593,19 +620,23 @@ lexer__get_name(Chars, Token) -->
 	% declaration.)
 	%
 
-:- pred lexer__get_source_line_number(list(char), token, io__state, io__state).
-:- mode lexer__get_source_line_number(in, out, di, uo) is det.
+:- pred lexer__get_source_line_number(list(char), token, token_context,
+	io__state, io__state).
+:- mode lexer__get_source_line_number(in, out, out, di, uo) is det.
 
-lexer__get_source_line_number(Chars, Token) -->
+lexer__get_source_line_number(Chars, Token, Context) -->
 	io__read_char(Result),
 	( { Result = error(Error) }, !,
+		lexer__get_context(Context),
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
+		lexer__get_context(Context),
 		{ Token = error(
 			"unexpected end-of-file in `#' line number directive") }
 	; { Result = ok(Char) },
 		( { char__is_digit(Char) } ->
-			lexer__get_source_line_number([Char | Chars], Token)
+			lexer__get_source_line_number([Char | Chars],
+				Token, Context)
 		; { Char = '\n' } ->
 			{ lexer__rev_char_list_to_string(Chars, String) },
 			(
@@ -613,8 +644,9 @@ lexer__get_source_line_number(Chars, Token) -->
 				{ Int > 0 }
 			->
 				io__set_line_number(Int),
-				lexer__get_token_1(Token)
+				lexer__get_token(Token, Context)
 			;
+				lexer__get_context(Context),
 				{ string__append_list([
 					"invalid line number `", String,
 					"' in `#' line number directive"],
@@ -622,12 +654,13 @@ lexer__get_source_line_number(Chars, Token) -->
 				{ Token = error(Message) }
 			)
 		;
+			lexer__get_context(Context),
 			{ string__from_char_list([Char], String) },
 			{ string__append_list([
 				"invalid character `", String,
 				"' in `#' line number directive"],
-				Message),
-			Token = error(Message) }
+				Message) },
+			{ Token = error(Message) }
 		)
 	).
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -392,12 +392,12 @@ det_diagnose_goal_2(conj(Goals), _GoalInfo, Desired, _Actual, Context, DetInfo,
 det_diagnose_goal_2(disj(Goals, _), GoalInfo, Desired, Actual, SwitchContext,
 		DetInfo, Diagnosed) -->
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo, 0,
-		Clauses, Diagnosed1),
+		ClausesWithSoln, Diagnosed1),
 	{ determinism_components(Desired, _, DesSolns) },
 	(
 		{ DesSolns \= at_most_many },
 		{ DesSolns \= at_most_many_cc },
-		{ Clauses > 1 }
+		{ ClausesWithSoln > 1 }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
 		prog_out__write_context(Context),
@@ -423,7 +423,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 			DetInfo),
 		prog_out__write_context(Context),
 		{ det_get_proc_info(DetInfo, ProcInfo) },
-		{ proc_info_variables(ProcInfo, Varset) },
+		{ proc_info_varset(ProcInfo, Varset) },
 		{ det_info_get_module_info(DetInfo, ModuleInfo) },
 		(
 			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
@@ -463,7 +463,16 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
 		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
+	det_diagnose_atomic_goal(Desired, Actual,
+		report_higher_order_call_context(Context), Context).
+
+	% There's probably no point in this code being here: we only
+	% insert class_method_calls by hand, so they're gauranteed to be right,
+	% and in any case, we insert them after determinism analysis.
+	% Nonetheless, it's probably safer to include the code.
+det_diagnose_goal_2(class_method_call(_, _, _, _, _, _), GoalInfo,
+		Desired, Actual, _, _MiscInfo, yes) -->
+	{ goal_info_get_context(GoalInfo, Context) },
 	det_diagnose_atomic_goal(Desired, Actual,
 		report_higher_order_call_context(Context), Context).
 
@@ -534,7 +543,7 @@ det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo,
 		Diagnosed).
 
-det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _, _), GoalInfo, Desired, 
+det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired, 
 		_, _, _, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),
@@ -542,12 +551,12 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _, _), GoalInfo, Desired,
 	prog_out__write_context(Context),
 	io__write_string("  determinism is "),
 	hlds_out__write_determinism(Desired),
-	io__write_string(".\n"),
-	prog_out__write_context(Context),
-	io__write_string("  pragma c_code declarations only allowed\n"),
-	prog_out__write_context(Context),
-	io__write_string("  for modes which don't succeed more than once.\n").
-	% XXX
+	io__write_string(".\n").
+	% The "clarification" below is now incorrect.
+	% prog_out__write_context(Context),
+	% io__write_string("  pragma c_code declarations only allowed\n"),
+	% prog_out__write_context(Context),
+	% io__write_string("  for modes which don't succeed more than once.\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -620,9 +629,9 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
 :- mode det_diagnose_disj(in, in, in, in, in, in, out, out, di, uo) is det.
 
 det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
-		Clauses, Clauses, no) --> [].
+		ClausesWithSoln, ClausesWithSoln, no) --> [].
 det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
-		Clauses0, Clauses, Diagnosed) -->
+		ClausesWithSoln0, ClausesWithSoln, Diagnosed) -->
 	{ determinism_components(Actual, ActualCanFail, _) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
 	{ DesiredCanFail = cannot_fail, ActualCanFail = can_fail ->
@@ -641,9 +650,17 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 	{ determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns) },
 	det_diagnose_goal(Goal, ClauseDesired, SwitchContext, DetInfo,
 		Diagnosed1),
-	{ Clauses1 is Clauses0 + 1 },
+	(
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_determinism(GoalInfo, GoalDetism) },
+		{ determinism_components(GoalDetism, _, at_most_zero) }
+	->
+		{ ClausesWithSoln1 = ClausesWithSoln0 }
+	;
+		{ ClausesWithSoln1 is ClausesWithSoln0 + 1 }
+	),
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo,
-		Clauses1, Clauses, Diagnosed2),
+		ClausesWithSoln1, ClausesWithSoln, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 :- pred det_diagnose_switch(var, list(case), determinism,
@@ -704,7 +721,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 		DetInfo) -->
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
+	{ proc_info_varset(ProcInfo, Varset) },
 	{ SwitchContext = switch_context(Var, ConsId) },
 	io__write_string("  Inside the case "),
 	hlds_out__write_cons_id(ConsId),
@@ -786,7 +803,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	hlds_out__write_unify_context(First0, UnifyContext, Context, First),
 	prog_out__write_context(Context),
 	{ det_get_proc_info(DetInfo, ProcInfo) },
-	{ proc_info_variables(ProcInfo, Varset) },
+	{ proc_info_varset(ProcInfo, Varset) },
 	{ proc_info_inst_table(ProcInfo, InstTable) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
 	( { First = yes } ->

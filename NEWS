@@ -35,9 +35,18 @@ Changes to the Mercury language:
   reference manual (it's at the end of the "C interface" section,
   which is in the chapter on "Pragmas").
 
+* It is now possible to stop the compiler from optimizing "impure"
+  Mercury code inappropriately.
+
+  This is accomplished by declaring impure predicates to be impure,
+  allowing the compiler to treat them cautiously.  The compiler tracks
+  impurity, and requires all impure predicates, and calls to them, to
+  be declared.  For more information, see "Impurity" section of the
+  "Pragmas" chapter of the Mercury Language Reference Manual.
+
 * We now support user-defined equality predicates.
 
-  See the Mercury language reference manual for details.
+  See the Mercury Language Reference Manual for details.
 
   However, until we have support for type classes (coming soon :-),
   you will probably run into trouble if you try to use compare/3,
@@ -53,7 +62,7 @@ Changes to the Mercury language:
 
   For details, see the "Data-terms" section of the "Syntax" chapter
   and/or the "Creating higher-order terms" section of the "Higher-order"
-  chapter in the Mercury language reference manual.
+  chapter in the Mercury Language Reference Manual.
 
 
 Changes to the Mercury standard library:
@@ -139,7 +148,7 @@ Changes to the Mercury compiler:
 
   For details, see the "Termination analysis" subsection of the
   "Implementation-dependent pragmas" section of the "Pragmas" chapter
-  of the Mercury language reference manual.
+  of the Mercury Language Reference Manual.
 
   This implementation is experimental, but our tests show that it is
   capable of proving the termination of most predicates and functions
@@ -210,6 +219,90 @@ But as well as bug fixes, there are a few minor improvements:
 NEWS since release 0.7.3:
 -------------------------
 
+Changes to the Mercury language:
+********************************
+
+* The type system now includes support for Haskell-style type classes.
+
+  Type classes let you specify an interface and then provide multiple
+  different implementations of that interface.  They're similar to
+  abstract base classes in C++ or "interfaces" in Java.
+  See the "Type classes" chapter of the Mercury Language Reference Manual
+  for details.
+
+  Unlike Haskell 1.4, Mercury supports multi-parameter type classes,
+  but we do not (yet) support constructor classes, and nor do we
+  support default methods.
+
+* Mode inference can now infer "mostly-unique" modes as well as
+  "unique" modes.
+
+* We've made more improvements to the C interface.
+
+  The C interface now includes support for defining procedures
+  that can have multiple solutions (i.e. those whose determinism
+  is `nondet' or `multi') in C.
+
+  Also there's a new declaration, `pragma import', which is a bit
+  like the existing `pragma c_code' declaration except that
+  instead of giving a C code fragment, you just give the name
+  of a C function.  `pragma import' is like the inverse of the
+  existing `pragma export' declaration.
+
+  XXX These features are not yet documented.
+  XXX (See tests/hard_coded/pragma_import.m for some examples.)
+
+
+Changes to the Mercury standard library:
+****************************************
+
+* The getopt module now supports a new type of option data, namely
+  `maybe_int(maybe(int))', to allow optional arguments with integer values.
+  There is also a new corresponding lookup predicate,
+  getopt__lookup_maybe_int_option/3. 
+
+  See the "getopt" chapter of the Mercury Library Reference Manual for details.
+
+* Support for memory profiling: new predicates report_full_memory_stats/0
+  in benchmarking.m and io__report_full_memory_stats/2 in io.m.
+
+  See the "benchmarking" chapter of the Mercury Library Reference Manual
+  for details.
+
+* Miscellaneous new predicates: bag__least_upper_bound/3,
+  list__take_upto/3, set__count/2, set_ordlist__count/2,
+  and store__new_cyclic_mutvar/4.
+
+  See the Mercury Library Reference Manual for details.
+
+* A few library procedures that have implicit side effects and are thus 
+  intended for debugging use only have been declared `impure'.
+  You will need to write `impure' before every call to these procedures
+  and typically you will need to add a `pragma promise_pure' declaration
+  for the callers.
+
+  The predicates affected are report_stats/0 and report_full_memory_stats/0
+  in library/benchmarking.m; unsafe_dump/2, unsafe_dump_float/1, and
+  unsafe_dump_tableaus/0 in extras/clpr/dump.m; and debug_freeze/3
+  and debug_freeze/4 in extras/trailed_update/var.m.
+
+
+Changes to the Mercury implementation:
+**************************************
+
+* We've added support for "transitive" inter-module analysis.
+
+  With the previous support for inter-module optimization, when
+  analysing a module, the compiler could make use of information
+  about the modules that it imports directly, but not about
+  modules that are imported indirectly.  "Transitive" inter-module
+  analysis gives the compiler information about indirectly
+  imported modules.
+
+  However, currently this is only used for termination analysis;
+  optimizations such as inlining still use only ordinary inter-module
+  analysis, not transitive inter-module analysis.
+
 * Array bounds checking can now be disabled.
 
   To disable array bounds checking, you must compile with
@@ -218,13 +311,34 @@ NEWS since release 0.7.3:
   `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmake file). 
   [XXX we also need to fix problems with intermodule inlining heuristics.]
 
+* We've added some primitive debugging support.
+
+  The runtime system now includes a *very* rudimentary "four-port" debugger
+  (actually with seven ports).
+  To use this debugger, you need to compile the modules that
+  you wish to debug with the `--generate-trace' option enabled.
+
+  The debugger supports the following commands:
+	a: abort the current execution.
+	c: continue to end, not printing the trace.
+	d: continue to end, printing the trace.
+	n: go to the next trace event.
+	s: skip the current call, not printing trace.
+	p: print the values of the arguments for the current procedure call.
+	j: jump to end of current call, printing trace.
+
+  XXX We should document this in the Mercury User's Guide.
+
 * The support for debugging using Prolog now includes support for
   detailed control over how terms are printed out during debugging.
 
   See the "Using Prolog" section of the Mercury User's Guide for details.
 
-* The profiler now supports profiling just user time, or profiling
+* The Mercury profiler has a number of new features.
+
+  The profiler now supports profiling just user time, or profiling
   real (elapsed) time, rather than profiling user + system time.
+  We've also added support for memory profiling.
 
   See the "Profiling" chapter of the Mercury User's Guide for details.
 
@@ -247,7 +361,11 @@ NEWS since release 0.7.3:
   `GRADEFLAGS = --profiling' in your Mmakefile, rather than having to
   use the more obscure incantation `GRADE = asm_fast.gc.prof'.
 
-* Ported to Linux/PPC.
+* We've made a few small improvements to the efficiency of the generated code.
+
+* The system has been ported to Linux/PPC.
 
 * We've updated to version 4.12 of the Boehm garbage collector.
+
+* Numerous bug fixes.
 

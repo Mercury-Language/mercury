@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -848,10 +848,17 @@
 
 % Memory management predicates.
 
-	% Write some memory/time usage statistics to stdout.
+	% Write memory/time usage statistics to stdout.
 
 :- pred io__report_stats(io__state, io__state).
 :- mode io__report_stats(di, uo) is det.
+
+	% Write complete memory usage statistics to stdout,
+	% including information about all procedures and types.
+	% (You need to compile with memory profiling enabled.)
+
+:- pred io__report_full_memory_stats(io__state, io__state).
+:- mode io__report_full_memory_stats(di, uo) is det.
 
 	% Preallocate heap space (to avoid NU-Prolog panic).
 
@@ -1893,15 +1900,15 @@ io__set_environment_var(Var, Value) -->
 
 % memory management predicates
 
-% The implementation of io__report_stats/2 in terms of the non-logical
-% report_stats/0 causes problems with --optimize-duplicate-calls.
-% So we need to prevent inlining.  (If/when we support `impure' declarations,
-% it would probably be better to declare `report_stats' as `impure'.)
-
-:- pragma no_inline(io__report_stats/2).
+:- pragma promise_pure(io__report_stats/2).
 
 io__report_stats -->
-	{ report_stats }.
+	{ impure report_stats }.
+
+:- pragma promise_pure(io__report_full_memory_stats/2).
+
+io__report_full_memory_stats -->
+	{ impure report_full_memory_stats }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2670,7 +2677,7 @@ io__tmpnam(Name) -->
 	if (tmp  == NULL) {
 		fatal_error(""unable to create temporary filename"");
 	}
-	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+	incr_hp_atomic(LVALUE_CAST(Word *,FileName),
 		(strlen(tmp) + sizeof(Word)) / sizeof(Word));
 	strcpy(FileName, tmp);
 	free(tmp);
@@ -2688,7 +2695,7 @@ io__tmpnam(Name) -->
 	struct stat buf;
 
 	len = strlen(Dir) + 1+ 5 + 3 + 1; /* Dir + / + Prefix + counter + \\0 */
-	incr_saved_hp_atomic(LVALUE_CAST(Word *,FileName),
+	incr_hp_atomic(LVALUE_CAST(Word *,FileName),
 		(len + sizeof(Word)) / sizeof(Word));
 	if (ML_io_tempnam_counter == 0)
 		ML_io_tempnam_counter = getpid();
@@ -2739,7 +2746,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 		buf = strerror(errno);
 		incr_hp_atomic(tmp,(strlen(buf)+sizeof(Word)) / sizeof(Word));
 		RetStr = (char *)tmp;
-		strcpy(RetStr, (char *)tmp);
+		strcpy(RetStr, buf);
 	} else {
 		RetStr = NULL;
 	}

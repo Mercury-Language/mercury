@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,9 +20,9 @@
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
 
-:- pred value_number__main(list(instruction), list(instruction),
+:- pred value_number_main(list(instruction), list(instruction),
 	io__state, io__state).
-:- mode value_number__main(in, out, di, uo) is det.
+:- mode value_number_main(in, out, di, uo) is det.
 
 	% The main value numbering pass introduces references to temporary
 	% variables whose values need be preserved only within an extended
@@ -50,7 +50,7 @@
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
 
-value_number__main(Instrs0, Instrs) -->
+value_number_main(Instrs0, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel,
 		LabelInstr, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
@@ -141,7 +141,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			LabelInstr = label(FalseLabel) - "vn false label",
 			list__append(IfInstrs, [LabelInstr | Instrs1], Instrs)
 		)
-	; Uinstr0 = incr_hp(_, _, _) ->
+	; Uinstr0 = incr_hp(_, _, _, _) ->
 		( SeenAlloc = yes ->
 			N1 is N0 + 1,
 			NewLabel = local(ProcLabel, N0),
@@ -172,7 +172,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				Target = succfr(_)
 			)
 		;
-			Uinstr0 = mkframe(_, _, _)
+			Uinstr0 = mkframe(_, _, _, _)
 		)
 	->
 		N1 is N0 + 1,
@@ -1075,14 +1075,14 @@ value_number__boundary_instr(livevals(_), no).
 value_number__boundary_instr(block(_, _, _), no).
 value_number__boundary_instr(assign(_,_), no).
 value_number__boundary_instr(call(_, _, _, _), yes).
-value_number__boundary_instr(mkframe(_, _, _), yes).
+value_number__boundary_instr(mkframe(_, _, _, _), yes).
 value_number__boundary_instr(modframe(_), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).
 value_number__boundary_instr(computed_goto(_, _), yes).
 value_number__boundary_instr(c_code(_), yes).
 value_number__boundary_instr(if_val(_, _), yes).
-value_number__boundary_instr(incr_hp(_, _, _), no).
+value_number__boundary_instr(incr_hp(_, _, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
 value_number__boundary_instr(restore_hp(_), no).
 value_number__boundary_instr(store_ticket(_), no).
@@ -1092,7 +1092,7 @@ value_number__boundary_instr(mark_ticket_stack(_), no).
 value_number__boundary_instr(discard_tickets_to(_), no).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
-value_number__boundary_instr(pragma_c(_, _, _, _, _), yes).
+value_number__boundary_instr(pragma_c(_, _, _, _), yes).
 
 %-----------------------------------------------------------------------------%
 

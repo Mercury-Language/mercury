@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Main author: zs.
+% Main authors: zs, stayl.
 %
 % The two jobs of the simplification module are
 %
@@ -23,6 +23,7 @@
 % works properly.
 %
 %-----------------------------------------------------------------------------%
+
 :- module simplify.
 
 :- interface.
@@ -65,7 +66,7 @@
 :- import_module code_aux, det_analysis, follow_code, goal_util, const_prop.
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
-:- import_module code_util, quantification, modes, unify_proc.
+:- import_module code_util, quantification, modes, purity, unify_proc.
 :- import_module bool, list, set, map, require, std_util, term, varset, int.
 
 %-----------------------------------------------------------------------------%
@@ -74,7 +75,7 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		Proc0, Proc, WarnCnt, ErrCnt, State0, State) :-
 	globals__io_get_globals(Globals, State0, State1),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
-	proc_info_variables(Proc0, VarSet0),
+	proc_info_varset(Proc0, VarSet0),
 	proc_info_vartypes(Proc0, VarTypes0),
 	proc_info_inst_table(Proc0, InstTable0),
 	det_info_init(ModuleInfo0, PredId, ProcId, InstTable0, Globals, DetInfo0),
@@ -93,7 +94,7 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		simplify__proc_2(Proc0, Proc2, Info1, Info2, State2, State3),
 		simplify_info_get_msgs(Info2, Msgs2),
 		simplify_info_get_det_info(Info2, DetInfo2),
-		proc_info_variables(Proc2, VarSet2),
+		proc_info_varset(Proc2, VarSet2),
 		proc_info_vartypes(Proc2, VarTypes2),
 			% YYY Is it OK to use ModuleInfo0 here?
 		proc_info_get_initial_instmap(Proc2, ModuleInfo0, InstMap2),
@@ -130,7 +131,7 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	),
 		% We may have created some new complicated unify procs
 		% during this pass, so mode check any new ones.
-	modecheck_unify_procs(check_unique_modes, ModuleInfo5, ModuleInfo,
+	modecheck_queued_procs(check_unique_modes, ModuleInfo5, ModuleInfo, _,
 		State6, State).
 
 :- pred simplify__proc_2(proc_info::in, proc_info::out,
@@ -143,7 +144,7 @@ simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 	simplify_info_get_varset(Info1, VarSet),
 	simplify_info_get_var_types(Info1, VarTypes),
 	proc_info_set_goal(Proc0, Goal, Proc1),
-	proc_info_set_variables(Proc1, VarSet, Proc2),
+	proc_info_set_varset(Proc1, VarSet, Proc2),
 	proc_info_set_vartypes(Proc2, VarTypes, Proc3),
 	( simplify_info_requantify(Info1) ->
 		requantify_proc(Proc3, Proc4),
@@ -180,6 +181,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% XXX we should warn about this (if the goal wasn't `fail')
 		%
 		Detism = failure,
+		% ensure goal is pure or semipure
+		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
@@ -204,6 +207,8 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		simplify_info_get_inst_table(Info0, InstTable),
 		instmap__no_output_vars(InstMap0, InstMapDelta, NonLocalVars,
 		                InstTable, ModuleInfo),
+		% ensure goal is pure or semipure
+		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
@@ -438,6 +443,11 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Info = Info0
 	).
 
+	% XXX We ought to do duplicate call elimination for class 
+	% XXX method calls here.
+simplify__goal_2(Goal, GoalInfo, Goal, GoalInfo, Info, Info) :-
+	Goal = class_method_call(_, _, _, _, _, _).
+
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
 
@@ -521,10 +531,14 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	%
 	% check for duplicate calls to the same procedure
 	%
-	( simplify_do_calls(Info2) ->
+	( simplify_do_calls(Info2),
+	  goal_info_is_pure(GoalInfo0)
+	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
 			Goal1, Info2, Info3)
-	; simplify_do_warn_calls(Info0) ->
+	; simplify_do_warn_calls(Info0),
+	  goal_info_is_pure(GoalInfo0)
+	->	
 		% we need to do the pass, for the warnings, but we ignore
 		% the optimized goal and instead use the original one
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
@@ -566,8 +580,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = unify(LT0, RT0, M, U0, C),
 	(
-		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			IMDelta, LambdaGoal0)
+		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
+			Modes, LambdaDeclaredDet, IMDelta, LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
 		simplify_info_get_common_info(Info1, Common1),
@@ -579,15 +593,15 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		% since that could change the curried non-locals of the 
 		% lambda_goal, and that would be difficult to fix up.
 		common_info_init(Common2),
-		simplify_info_set_common_info(Info2, Common2, Info4),
+		simplify_info_set_common_info(Info2, Common2, Info3),
 
 		% Don't attempt to pass structs out of lambda_goals.
-		simplify__goal(LambdaGoal0, LambdaGoal, Info4, Info5),
-		simplify_info_set_common_info(Info5, Common1, Info6),
-		simplify_info_set_instmap(Info6, InstMap1, Info7),
-		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
-			IMDelta, LambdaGoal),
-		simplify_info_leave_lambda(Info7, Info),
+		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
+		simplify_info_set_common_info(Info4, Common1, Info5),
+		simplify_info_set_instmap(Info5, InstMap1, Info6),
+		RT = lambda_goal(PredOrFunc, NonLocals, Vars, Modes, 
+			LambdaDeclaredDet, IMDelta, LambdaGoal),
+		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
 	;
@@ -789,8 +803,11 @@ simplify__goal_2(some(Vars1, Goal1), SomeInfo, Goal, SomeInfo, Info0, Info) :-
 	Goal = some(Vars, Goal3).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = pragma_c_code(_, _, PredId, ProcId, Args, _, _, _),
-	( simplify_do_calls(Info0) ->
+	Goal0 = pragma_c_code(_, PredId, ProcId, Args, _, _, _),
+	(
+		simplify_do_calls(Info0),
+		goal_info_is_pure(GoalInfo)
+	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0,
 			GoalInfo, Goal, Info0, Info)
 	;
@@ -885,7 +902,25 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 	    ->
 		Info = Info2,
 		simplify__conjoin_goal_and_rev_goal_list(Goal1,
-			RevGoals0, RevGoals),
+			RevGoals0, RevGoals1),
+
+		( (Goal1 = disj([], _) - _ ; Goals0 = []) ->
+			RevGoals = RevGoals1
+		;
+			% We insert an explicit failure at the end
+			% of the non-succeeding conjunction. This
+			% is necessary, since the unreachability of
+			% the instmap could have been derived using
+			% inferred determinism information. Without the
+			% explicit fail goal, mode errors could result if mode
+			% analysis is rerun, since according to the language
+			% specification, mode analysis does not use inferred
+			% determinism information when deciding what can
+			% never succeed.
+			fail_goal(Fail),
+			simplify__conjoin_goal_and_rev_goal_list(Fail,
+				RevGoals1, RevGoals)	
+		),
 		list__reverse(RevGoals, Goals)
 	    ;
 		Goal1 = GoalExpr - _, 
@@ -1242,6 +1277,8 @@ simplify__disj([Goal0 |Goals0], [Goal | Goals], PostBranchInstMaps0,
 	(
 		simplify_do_warn(Info4),
 		Goal = _ - GoalInfo,
+		% don't warn about impure disjuncts that can't succeed
+		\+ goal_info_is_impure(GoalInfo),
 		goal_info_get_determinism(GoalInfo, Detism),
 		determinism_components(Detism, _, MaxSolns),
 		MaxSolns = at_most_zero
@@ -1614,7 +1651,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
 			GoalExpr \= higher_order_call(_, _, _, _, _, _),
-			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _, _)
+			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _)
 		)
 	->
 		simplify_info_get_common_info(Info0, CommonInfo0),

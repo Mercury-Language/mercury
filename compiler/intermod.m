@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -244,7 +244,6 @@ intermod__traverse_clauses([clause(P, Goal0, C) | Clauses0],
 		{ DoWrite = no }
 	).
 
-
 :- pred has_ho_input(module_info::in, proc_info::in) is semidet.
 
 has_ho_input(ModuleInfo, ProcInfo) :-
@@ -301,7 +300,6 @@ intermod__gather_types(ModuleInfo, TypeTable, [TypeToCheck | TypesToCheck]) -->
 	),
 	intermod__gather_types(ModuleInfo, TypeTable, TypesToCheck).
 
-
 	% All equivalence types that only have a :- type foo. in the
 	% interface section need to be exported in full. All other
 	% types of type will be exported by intermod__gather_types.
@@ -334,7 +332,6 @@ intermod__gather_abstract_exported_types -->
 			)
 		)) },
 	list__foldl(AddAbstractEquivType, TypeList).
-
 
 	% Go over the goal of an exported proc looking for proc decls, types,
 	% insts and modes that we need to write to the optfile.
@@ -385,6 +382,9 @@ intermod__traverse_goal(
 intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
 			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
 
+intermod__traverse_goal(class_method_call(A,B,C,D,E,F) - Info,
+			class_method_call(A,B,C,D,E,F) - Info, yes) --> [].
+
 intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 		switch(A, B, Cases, D) - Info, DoWrite) -->
 	intermod__traverse_cases(Cases0, Cases, DoWrite).
@@ -411,9 +411,8 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 
 	% Inlineable exported pragma_c_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G,H) - Info,
-			pragma_c_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
-
+intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
+			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 :- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -500,8 +499,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		intermod_info::out) is det.
 
 intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
-intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,E,Goal0),
-		lambda_goal(A,B,Modes,D,E,Goal), DoWrite) -->
+intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,C,Modes,E,F,Goal0),
+		lambda_goal(A,B,C,Modes,E,F,Goal), DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite),
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_modes(ModuleInfo, ModeTable) },
@@ -600,7 +599,6 @@ intermod__gather_modes(ModuleInfo, Modes, Insts, [PredId | PredIds]) -->
 	{ pred_info_procedures(PredInfo, Procs) },
 	intermod__gather_pred_modes(ModuleInfo, Modes, Insts, Procs, ProcIds),
 	intermod__gather_modes(ModuleInfo, Modes, Insts, PredIds).
-
 
 :- pred intermod__gather_pred_modes(module_info::in, mode_defns::in,
 		user_inst_defns::in, proc_table::in, list(proc_id)::in,
@@ -743,7 +741,6 @@ intermod__write_intermod_info(IntermodInfo) -->
 	intermod__write_preds(ModuleInfo, Preds),
 	globals__io_set_option(verbose_dump_hlds, string(VerboseDump)).
 
-
 :- pred intermod__write_modules(list(module_name)::in,
 			io__state::di, io__state::uo) is det.
 
@@ -856,17 +853,20 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
+	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	(
 		{ PredOrFunc = predicate },
 		mercury_output_pred_type(TVarSet, qualified(Module, Name),
-					ArgTypes, no, Context)
+					ArgTypes, no, Purity, ClassContext,
+					Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
 		mercury_output_func_type(TVarSet,
 			qualified(Module, Name), FuncArgTypes,
-			FuncRetType, no, Context)
+			FuncRetType, no, Purity, ClassContext, Context)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_procids(PredInfo, ProcIds) },
@@ -876,10 +876,8 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ CompareProcId =
 		 lambda([ProcId1::in, ProcId2::in, Result::out] is det, (
 			proc_id_to_int(ProcId1, ProcInt1),
-			ActualProcId1 is ProcInt1 mod 10000,
 			proc_id_to_int(ProcId2, ProcInt2),
-			ActualProcId2 is ProcInt2 mod 10000,
-			compare(Result, ActualProcId1, ActualProcId2)
+			compare(Result, ProcInt1, ProcInt2)
 		)) },
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),
@@ -937,7 +935,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc),
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
-		% handle pragma(c_code, ...) separately
+		% handle pragma c_code(...) separately
 	{ inst_table_init(InstTable) },	% YYY
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
@@ -957,17 +955,19 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 intermod__write_pragmas(_, _, [], _) --> [].
 intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 	(
-		\+ (
-			% Since the inferred declarations are output, these
-			% don't need to be done in the importing module.
-			{ Marker = infer_type }
-		 ;	{ Marker = infer_modes }
+		% Since the inferred declarations are output, these
+		% don't need to be done in the importing module.
+		% Also purity is output as part of the pred/func decl.
+		( { Marker = infer_type }
+		; { Marker = infer_modes }
+		; { Marker = (impure) }
+		; { Marker = (semipure) }
 		)
 	->
+		[]
+	;
 		{ hlds_out__marker_name(Marker, Name) },
 		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name)
-	;
-		[]
 	),
 	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
 
@@ -986,18 +986,20 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-					X = pragma_c_code(_,_,_,_,_,_,_,_) - _
+					X = pragma_c_code(_,_,_,_,_,_,_) - _
 				)),
 				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _, _) - _ }
+			{ CCodeGoal = pragma_c_code(MayCallMercury,
+				_, _, Vars, ArgNames, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_c_code(CCode, MayCallMercury,
-						_, _, Vars, _, _, _) - _ }
+			{ Goal = pragma_c_code(MayCallMercury,
+				_, _, Vars, ArgNames, _, PragmaCode) - _ }
 		)
 	->	
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
-			MayCallMercury, Vars, Varset, SymName, InstTable)
+		{ ArgNames = pragma_c_code_arg_info(_, Names) },
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+			PragmaCode, MayCallMercury, Vars, Varset, Names,
+			SymName, InstTable)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
@@ -1005,47 +1007,60 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 				Clauses, Procs, InstTable).
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
-		pred_or_func::in, string::in, may_call_mercury::in,
-		list(var)::in, varset::in, sym_name::in, inst_table::in,
-		io__state::di, io__state::uo) is det.
+		pred_or_func::in, pragma_c_code_impl::in, may_call_mercury::in,
+		list(var)::in, varset::in, list(maybe(pair(string, mode)))::in,
+		sym_name::in, inst_table::in, io__state::di, io__state::uo)
+		is det.
 
-intermod__write_c_clauses(_, [], _, _, _, _, _, _, _) --> [].
+intermod__write_c_clauses(_, [], _, _, _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
-		CCode, MayCallMercury, Vars, Varset, SymName, InstTable) -->
+		PragmaImpl, MayCallMercury, Vars, Varset0, Names, SymName,
+		InstTable) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	% XXX will need modification for alias declarations in arguments
 	%     of pragma_c_code
 	( { MaybeArgModes = yes(argument_modes(_ArgIKT, ArgModes)) } ->
-		{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
-		% XXX will need modification for nondet pragma C code
+		{ get_pragma_c_code_vars(Vars, Names, Varset0, ArgModes,
+			Varset, PragmaVars) },
 		mercury_output_pragma_c_code(MayCallMercury, SymName,
-			PredOrFunc, PragmaVars, no, Varset, CCode,
-			InstTable),
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
-			MayCallMercury, Vars, Varset, SymName, InstTable)
+			PredOrFunc, PragmaVars, Varset, PragmaImpl, InstTable),
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+			PragmaImpl, MayCallMercury, Vars, Varset, Names,
+			SymName, InstTable)
 	;
 		{ error("intermod__write_c_clauses: no mode declaration") }
 	).
 
-:- pred get_pragma_c_code_vars(list(var)::in, varset::in,
-		list(mode)::in, list(pragma_var)::out) is det.
+:- pred get_pragma_c_code_vars(list(var)::in,
+		list(maybe(pair(string, mode)))::in, varset::in, list(mode)::in,
+		varset::out, list(pragma_var)::out) is det.
 
-get_pragma_c_code_vars(HeadVars, VarNames,
-			ArgModes, PragmaVars) :- 
+get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
+		VarSet, PragmaVars) :- 
 	(
 		HeadVars = [Var | Vars],
+		VarNames = [Maybe_NameAndMode | Names],
 		ArgModes = [Mode | Modes]
 	->
-		varset__lookup_name(VarNames, Var, Name),
+		(
+			Maybe_NameAndMode = no,
+			Name = "_"
+		;
+			Maybe_NameAndMode = yes(Name - _Mode2)
+		),
 		PragmaVar = pragma_var(Var, Name, Mode),
-		get_pragma_c_code_vars(Vars, VarNames, Modes, PragmaVars1),
+		varset__name_var(VarSet0, Var, Name, VarSet1),
+		get_pragma_c_code_vars(Vars, Names, VarSet1, Modes,
+			VarSet, PragmaVars1),
 		PragmaVars = [PragmaVar | PragmaVars1] 
 	;
 		HeadVars = [],
+		VarNames = [],
 		ArgModes = []
 	->
-		PragmaVars = []
+		PragmaVars = [],
+		VarSet = VarSet0
 	;
 		error("intermod:get_pragma_c_code_vars")
 	).
@@ -1085,7 +1100,6 @@ intermod_info_get_module_info(Module)	--> =(info(_,_,_,_,_,_,Module,_,_,_)).
 intermod_info_get_write_c_header(Write)	--> =(info(_,_,_,_,_,_,_,Write,_,_)).
 intermod_info_get_var_types(VarTypes)	--> =(info(_,_,_,_,_,_,_,_,VarTypes,_)).
 intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
-
 
 :- pred intermod_info_set_modules(set(module_name)::in,
 			intermod_info::in, intermod_info::out) is det.
@@ -1193,7 +1207,6 @@ fixup_special_preds([TypeId | TypeIds], SpecialPredList,
 	set_list_of_preds_exported(NewPredIds, Preds0, Preds1),
 	fixup_special_preds(TypeIds, SpecialPredList, SpecMap, Preds1, Preds).
 
-
 :- pred set_list_of_preds_exported(list(pred_id)::in, pred_table::in,
 					pred_table::out) is det.
 
@@ -1272,7 +1285,6 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ list__append(Items0, NewItems2, Items) },
 	{ Module = module_imports(ModuleName, DirectImports,
 				IndirectImports, Items, no) }.
-
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
 			item_list::out, bool::in, bool::out,

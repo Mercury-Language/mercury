@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-1997 The University of Melbourne.
+Copyright (C) 1995-1998 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -152,8 +152,10 @@ all             fxy             950
 and             xfy             720
 else            xfy             1170
 end_module      fx              1199
+func            fx              800
 if              fx              1160
 import_module   fx              1199
+impure          fy              800
 inst            fx              1199
 is              xfx             700
 mod             xfx             300
@@ -161,8 +163,9 @@ mode            fx              1199
 module          fx              1199
 not             fy              900
 or              xfy             740
-pred            fx              1180
+pred            fx              800
 rule            fx              1199
+semipure        fy              800
 some            fxy             950
 then            xfx             1150
 type            fx              1180

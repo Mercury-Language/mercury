@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -150,6 +150,9 @@ exprn_aux__addr_is_constant(do_fail, _, no).
 exprn_aux__addr_is_constant(do_det_closure, _, no).
 exprn_aux__addr_is_constant(do_semidet_closure, _, no).
 exprn_aux__addr_is_constant(do_nondet_closure, _, no).
+exprn_aux__addr_is_constant(do_det_class_method, _, no).
+exprn_aux__addr_is_constant(do_semidet_class_method, _, no).
+exprn_aux__addr_is_constant(do_nondet_class_method, _, no).
 exprn_aux__addr_is_constant(do_not_reached, _, no).
 
 :- pred exprn_aux__label_is_constant(label, bool, bool, bool).
@@ -187,7 +190,7 @@ exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
 
 exprn_aux__rval_contains_lval(lval(Lval0), Lval) :-
 	exprn_aux__lval_contains_lval(Lval0, Lval).
-exprn_aux__rval_contains_lval(create(_, Rvals, _, _), Lval) :-
+exprn_aux__rval_contains_lval(create(_, Rvals, _, _, _), Lval) :-
 	exprn_aux__args_contain_lval(Rvals, Lval).
 exprn_aux__rval_contains_lval(mkword(_, Rval), Lval) :-
 	exprn_aux__rval_contains_lval(Rval, Lval).
@@ -247,7 +250,7 @@ exprn_aux__rval_contains_rval(Rval0, Rval) :-
 			Rval0 = lval(Lval),
 			exprn_aux__lval_contains_rval(Lval, Rval)
 		;
-			Rval0 = create(_, Rvals, _, _),
+			Rval0 = create(_, Rvals, _, _, _),
 			exprn_aux__args_contain_rval(Rvals, Rval)
 		;
 			Rval0 = mkword(_, Rval1),
@@ -289,7 +292,7 @@ exprn_aux__args_contain_rval([M | Ms], Rval) :-
 exprn_aux__vars_in_rval(lval(Lval), Vars) :-
 	exprn_aux__vars_in_lval(Lval, Vars).
 exprn_aux__vars_in_rval(var(Var), [Var]).
-exprn_aux__vars_in_rval(create(_, Rvals, _, _), Vars) :-
+exprn_aux__vars_in_rval(create(_, Rvals, _, _, _), Vars) :-
 	exprn_aux__vars_in_args(Rvals, Vars).
 exprn_aux__vars_in_rval(mkword(_, Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
@@ -363,10 +366,10 @@ exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
 		Rval0 = var(_Var),
 		Rval = Rval0
 	;
-		Rval0 = create(Tag, Rvals0, Unique, Num),
+		Rval0 = create(Tag, Rvals0, Unique, Num, Msg),
 		exprn_aux__substitute_lval_in_args(OldLval, NewLval,
 			Rvals0, Rvals),
-		Rval = create(Tag, Rvals, Unique, Num)
+		Rval = create(Tag, Rvals, Unique, Num, Msg)
 	;
 		Rval0 = mkword(Tag, Rval1),
 		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
@@ -524,10 +527,10 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 			Rval0 = var(_),
 			Rval = Rval0
 		;
-			Rval0 = create(Tag, Rvals0, Unique, Num),
+			Rval0 = create(Tag, Rvals0, Unique, Num, Msg),
 			exprn_aux__substitute_rval_in_args(OldRval, NewRval,
 				Rvals0, Rvals),
-			Rval = create(Tag, Rvals, Unique, Num)
+			Rval = create(Tag, Rvals, Unique, Num, Msg)
 		;
 			Rval0 = mkword(Tag, Rval1),
 			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
@@ -714,36 +717,42 @@ exprn_aux__simplify_rval(Rval0, Rval) :-
 
 exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	(
-		Rval0 = lval(field(Tag, create(Tag, Args, _, _), Field)),
+		Rval0 = lval(field(MaybeTag, Base, Field)),
+		Base = create(Tag, Args, _, _, _),
+		(
+			MaybeTag = yes(Tag)
+		;
+			MaybeTag = no
+		),
 		Field = const(int_const(FieldNum))
 	->
 		list__index0_det(Args, FieldNum, yes(Rval))
 	;
-		Rval0 = lval(field(Tag, Rval1, Num)),
+		Rval0 = lval(field(MaybeTag, Rval1, Num)),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
 	->
-		Rval = lval(field(Tag, Rval2, Num))
+		Rval = lval(field(MaybeTag, Rval2, Num))
 	;
-		Rval0 = create(Tag, Args0, Unique, CNum),
+		Rval0 = create(Tag, Args0, Unique, CNum, Msg),
 		exprn_aux__simplify_args(Args0, Args),
 		Args \= Args0
 	->
-		Rval = create(Tag, Args, Unique, CNum)
+		Rval = create(Tag, Args, Unique, CNum, Msg)
 	;
-		Rval0 = unop(UOp, Rval1),
+		Rval0 = unop(UnOp, Rval1),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
 	->
-		Rval = unop(UOp, Rval2)
+		Rval = unop(UnOp, Rval2)
 	;
-		Rval0 = binop(BOp, Rval1, Rval2),
+		Rval0 = binop(BinOp, Rval1, Rval2),
 		exprn_aux__simplify_rval_2(Rval1, Rval3)
 	->
-		Rval = binop(BOp, Rval3, Rval2)
+		Rval = binop(BinOp, Rval3, Rval2)
 	;
-		Rval0 = binop(BOp, Rval1, Rval2),
+		Rval0 = binop(BinOp, Rval1, Rval2),
 		exprn_aux__simplify_rval_2(Rval2, Rval3)
 	->
-		Rval = binop(BOp, Rval1, Rval3)
+		Rval = binop(BinOp, Rval1, Rval3)
 	;
 		fail
 	).
@@ -771,7 +780,7 @@ exprn_aux__simplify_args([MR0 | Ms0], [MR | Ms]) :-
 exprn_aux__rval_addrs(lval(Lval), CodeAddrs, DataAddrs) :-
 	exprn_aux__lval_addrs(Lval, CodeAddrs, DataAddrs).
 exprn_aux__rval_addrs(var(_), [], []).
-exprn_aux__rval_addrs(create(_, MaybeRvals, _, _), CodeAddrs, DataAddrs) :-
+exprn_aux__rval_addrs(create(_, MaybeRvals, _, _, _), CodeAddrs, DataAddrs) :-
 	exprn_aux__maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataAddrs).
 exprn_aux__rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).

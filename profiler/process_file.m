@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,7 +40,7 @@
 
 
 process_file__main(Prof, DynamicCallGraph) -->
-        globals__io_lookup_bool_option(very_verbose, VVerbose),
+	globals__io_lookup_bool_option(very_verbose, VVerbose),
 	globals__io_lookup_string_option(declfile, DeclFile),
 	globals__io_lookup_string_option(countfile, CountFile),
 	globals__io_lookup_string_option(pairfile, PairFile),
@@ -48,30 +48,33 @@ process_file__main(Prof, DynamicCallGraph) -->
 	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 
 	% process the decl file
-        maybe_write_string(VVerbose, "\n\t% Processing "),
+	maybe_write_string(VVerbose, "\n\t% Processing "),
 	maybe_write_string(VVerbose, DeclFile),
 	maybe_write_string(VVerbose, "..."),
-        process_addr_decl(AddrDeclMap, ProfNodeMap0),
-        maybe_write_string(VVerbose, " done.\n"),
+	process_addr_decl(AddrDeclMap, ProfNodeMap0),
+	maybe_write_string(VVerbose, " done.\n"),
 
 	% process the timing counts file
-        maybe_write_string(VVerbose, "\t% Processing "),
+	maybe_write_string(VVerbose, "\t% Processing "),
 	maybe_write_string(VVerbose, CountFile),
 	maybe_write_string(VVerbose, "..."),
-        process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,
+	process_addr(ProfNodeMap0, ProfNodeMap1, WhatToProfile, Scale, Units,
 		TotalCounts),
-        maybe_write_string(VVerbose, " done.\n"),
+	maybe_write_string(VVerbose, " done.\n"),
 
 	% process the call pair counts file
-        maybe_write_string(VVerbose, "\t% Processing "),
+	maybe_write_string(VVerbose, "\t% Processing "),
 	maybe_write_string(VVerbose, PairFile),
 	maybe_write_string(VVerbose, "..."),
-        process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
-        maybe_write_string(VVerbose, " done.\n"),
+	process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
+	maybe_write_string(VVerbose, " done.\n"),
 
 	{ map__init(CycleMap) },
-        { prof_set_entire(Hertz, ClockTicks, TotalCounts, AddrDeclMap, 
+	{ prof_set_entire(Scale, Units, TotalCounts, AddrDeclMap, 
 						ProfNodeMap, CycleMap, Prof) },
+	globals__io_get_globals(Globals0),
+	{ globals__set_what_to_profile(Globals0, WhatToProfile, Globals) },
+	globals__io_set_globals(Globals),
 	
 	(
 		{ Dynamic = no }
@@ -114,7 +117,7 @@ process_addr_decl(AddrDeclMap, ProfNodeMap) -->
 		io__seen
 	;
 		{ Result = error(Error) },
-                { io__error_message(Error, ErrorMsg) },
+		{ io__error_message(Error, ErrorMsg) },
 
 		{ string__append("error opening declaration file `", DeclFile, 
 					Str0) },
@@ -165,17 +168,19 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 % 	Reads in the Prof.Counts file and stores all the counts in the 
 % 	prof_node structure.  Also sums the total counts at the same time.
 %
-:- pred process_addr(prof_node_map, prof_node_map, int, int, int,
-							io__state, io__state).
-:- mode process_addr(in, out, out, out, out, di, uo) is det.
+:- pred process_addr(prof_node_map, prof_node_map,
+		what_to_profile, float, string, int, io__state, io__state).
+:- mode process_addr(in, out, out, out, out, out, di, uo) is det.
 
-process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
+process_addr(ProfNodeMap0, ProfNodeMap, WhatToProfile, Scale, Units,
+		TotalCounts) -->
 	globals__io_lookup_string_option(countfile, CountFile),
 	io__see(CountFile, Result),
 	(
 		{ Result = ok },
-		read_int(Hertz),
-		read_int(ClockTicks),
+		read_what_to_profile(WhatToProfile),
+		read_float(Scale),
+		read_string(Units),
 		process_addr_2(0, ProfNodeMap0, TotalCounts, ProfNodeMap),
 		io__seen
 	;
@@ -186,15 +191,16 @@ process_addr(ProfNodeMap0, ProfNodeMap, Hertz, ClockTicks, TotalCounts) -->
 		io__write_string("': "),
 		io__write_string(ErrorMsg),
 		io__write_string("\n"),
-		io__write_string("The generated profile will not include "),
-		io__write_string("timing information.\n\n"),
+		io__write_string("The generated profile will only include "),
+		io__write_string("call counts.\n\n"),
 		{ TotalCounts = 0 },
 		{ ProfNodeMap = ProfNodeMap0 },
-		% We can use any arbitrary values for Hertz and ClockTicks;
-		% the values here won't be used, since all the times will be
-		% zero.
-		{ Hertz = 1 },
-		{ ClockTicks = 1 }
+		% We can use any arbitrary values for WhatToProfile and Scale;
+		% the values specified here won't be used,
+		% since all the times will be zero.
+		{ WhatToProfile = user_plus_system_time },
+		{ Scale = 1.0 },
+		{ Units = "" }
 	).
 
 :- pred process_addr_2(int, prof_node_map, int, prof_node_map, 
@@ -259,7 +265,7 @@ process_addr_pair(ProfNodeMap0, DynamicCallGraph, ProfNodeMap) -->
 		io__seen
 	;
 		{ Result = error(Error) },
-                { io__error_message(Error, ErrorMsg) },
+		{ io__error_message(Error, ErrorMsg) },
 		{ string__append("error opening pair file `", PairFile, 
 					Str0) },
 		{ string__append(Str0, "': ", Str1) },
@@ -353,10 +359,10 @@ process_library_callgraph(LibraryATSort, LibPredMap) -->
 		io__seen
 	;
 		{ Result = error(Error) },
-                { io__error_message(Error, ErrorMsg) },
-                io__stderr_stream(StdErr),
-                io__write_strings(StdErr, ["mprof: error opening pair file `",
-                        LibFile, "': ", ErrorMsg, "\n"]),
+		{ io__error_message(Error, ErrorMsg) },
+		io__stderr_stream(StdErr),
+		io__write_strings(StdErr, ["mprof: error opening pair file `",
+			LibFile, "': ", ErrorMsg, "\n"]),
 		{ LibraryATSort = [] },
 		{ LibPredMap = LibPredMap0 }
 	).

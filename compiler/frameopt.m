@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,7 @@
 	% deleted. The second says whether we introduced any jumps that
 	% can be profitably be short-circuited.
 
-:- pred frameopt__main(list(instruction)::in, list(instruction)::out,
+:- pred frameopt_main(list(instruction)::in, list(instruction)::out,
 	bool::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@
 :- import_module livemap, prog_data, opt_util, code_util, opt_debug.
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
-frameopt__main(Instrs0, Instrs, Mod, Jumps) :-
+frameopt_main(Instrs0, Instrs, Mod, Jumps) :-
 	opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr,
 		Comments0, Instrs1),
 	(
@@ -533,11 +533,11 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			(
 				Uinstr = call(_, _, _, _)
 			;
-				Uinstr = mkframe(_, _, _)
+				Uinstr = mkframe(_, _, _, _)
 			;
 				Uinstr = c_code(_)
 			;
-				Uinstr = pragma_c(_, _, _, _, _)
+				Uinstr = pragma_c(_, _, may_call_mercury, _)
 			)
 		->
 			NeedsFrame = yes
@@ -660,7 +660,7 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 	;
 		Labels = []
 	).
-possible_targets(mkframe(_, _, _), []).
+possible_targets(mkframe(_, _, _, _), []).
 possible_targets(modframe(_), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
@@ -677,7 +677,7 @@ possible_targets(if_val(_, CodeAddr), Targets) :-
 	;
 		Targets = []
 	).
-possible_targets(incr_hp(_, _, _), []).
+possible_targets(incr_hp(_, _, _, _), []).
 possible_targets(mark_hp(_), []).
 possible_targets(restore_hp(_), []).
 possible_targets(store_ticket(_), []).
@@ -687,7 +687,14 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, _, _), []).
+possible_targets(pragma_c(_, _, _, MaybeLabel), List) :-
+	(	
+		MaybeLabel = no,
+		List = []
+	;
+		MaybeLabel = yes(Label),
+		List = [Label]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -704,11 +711,8 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 		(
 			Uinstr = call(_, _, _, _)
 		;
-			% Only may_call_mercury pragma_c's can clobber succip,
-			% but the LLDS doesn't say whether a given pragma_c
-			% may call Mercury or not. We therefore make the
-			% conservative assumption that it may.
-			Uinstr = pragma_c(_, _, _, _, _)
+			% Only may_call_mercury pragma_c's can clobber succip.
+			Uinstr = pragma_c(_, _, may_call_mercury, _)
 		)
 	->
 		CanClobberSuccip = yes
@@ -1260,8 +1264,8 @@ substitute_labels_instr(call(Target, ReturnAddr0, LiveInfo, Model), LabelMap,
 	;
 		ReturnAddr = ReturnAddr0
 	).
-substitute_labels_instr(mkframe(Name, Size, Redoip), _,
-		mkframe(Name, Size, Redoip)).
+substitute_labels_instr(mkframe(Name, Size, Pragma, Redoip), _,
+		mkframe(Name, Size, Pragma, Redoip)).
 substitute_labels_instr(modframe(Redoip), _, modframe(Redoip)).
 substitute_labels_instr(label(_), _, _) :-
 	error("label in substitute_labels_instr").
@@ -1288,8 +1292,8 @@ substitute_labels_instr(if_val(Rval, CodeAddr0), LabelMap,
 	;
 		CodeAddr = CodeAddr0
 	).
-substitute_labels_instr(incr_hp(Lval, Tag, Rval), _,
-		incr_hp(Lval, Tag, Rval)).
+substitute_labels_instr(incr_hp(Lval, Tag, Rval, Msg), _,
+		incr_hp(Lval, Tag, Rval, Msg)).
 substitute_labels_instr(mark_hp(Lval), _, mark_hp(Lval)).
 substitute_labels_instr(restore_hp(Rval), _, restore_hp(Rval)).
 substitute_labels_instr(store_ticket(Lval), _, store_ticket(Lval)).
@@ -1299,8 +1303,8 @@ substitute_labels_instr(mark_ticket_stack(Lval), _, mark_ticket_stack(Lval)).
 substitute_labels_instr(discard_tickets_to(Rval), _, discard_tickets_to(Rval)).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-substitute_labels_instr(pragma_c(Decl, In, Code, Out, Context), _,
-		pragma_c(Decl, In, Code, Out, Context)).
+substitute_labels_instr(pragma_c(Decls, Components, MayCallMercury, MaybeLabel),
+		_, pragma_c(Decls, Components, MayCallMercury, MaybeLabel)).
 
 :- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
 	list(label)::out) is det.

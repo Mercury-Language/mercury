@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 % The code that does this is reasonably simple.
 %
 % The scheme for model_non pragma_c_codes is substantially different,
-% so we handle them seperately.
+% so we handle them separately.
 
 :- module pragma_c_gen.
 
@@ -25,45 +25,224 @@
 :- import_module llds, code_info.
 :- import_module list, std_util, term.
 
-:- pred pragma_c_gen__generate_pragma_c_code(code_model::in, string::in,
+:- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
 	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
-	list(maybe(string))::in, list(type)::in, hlds_goal_info::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	list(maybe(pair(string, mode)))::in, list(type)::in,
+	hlds_goal_info::in, pragma_c_code_impl::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-:- pred pragma_c_gen__generate_backtrack_pragma_c_code(code_model::in,
-	string::in, may_call_mercury::in, pred_id::in, proc_id::in,
-	list(var)::in, list(maybe(string))::in, list(type)::in,
-	list(pair(var, string))::in, list(string)::in, hlds_goal_info::in,
-	code_tree::out, code_info::in, code_info::out) is erroneous.
+:- pred pragma_c_gen__struct_name(string::in, string::in, int::in, proc_id::in,
+	string::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, call_gen, tree.
-:- import_module string, assoc_list, set, map, require.
+:- import_module hlds_module, hlds_pred, call_gen, llds_out, trace, tree.
+:- import_module options, globals.
+:- import_module bool, string, int, assoc_list, set, map, require.
 
-% The code we generate for a model_det or model_semi pragma_c_code
+% The code we generate for an ordinary (model_det or model_semi) pragma_c_code
 % must be able to fit into the middle of a procedure, since such
-% pragma_c_codes can be inlined. It is of the following form:
+% pragma_c_codes can be inlined. This code is of the following form:
 %
-% <save live variables onto the stack> /* see note (1) below */
-% {
+%    <save live variables onto the stack> /* see note (1) below */
+%    {
 %	<declaration of one local variable for each arg>
+%
 %	<assignment of input values from registers to local variables>
 %	save_registers(); /* see notes (1) and (2) below */
 %	{ <the c code itself> }
+%	<for semidet code, check of r1>
 %	#ifndef CONSERVATIVE_GC
 %	  restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
+%    }
+%
+% In the case of a semidet pragma c_code, the above is followed by
+%
+%    goto skip_label;
+%    fail_label:
+%    <code to fail>
+%    skip_label:
+%
+% and the <check of r1> is of the form
+%
+%	if (!r1) GOTO_LABEL(fail_label);
+%
+% The code we generate for nondet pragma_c_code assumes that this code is
+% the only thing between the procedure prolog and epilog; such pragma_c_codes
+% therefore cannot be inlined. The code of the procedure is of one of the
+% following two forms:
+%
+% form 1 (duplicated common code):
+% <proc entry label and comments>
+% <mkframe including space for the save struct, redoip = do_fail>
+% <#define MR_ORDINARY_SLOTS>
+% <--- boundary between prolog and code generated here --->
+% <set redoip to point to &&xxx_i1>
+% <code for entry to a disjunction and first disjunct>
+% {
+%	<declaration of one local variable for each input and output arg>
+%	<declaration of one local variable to point to save struct>
+%	<assignment of input values from registers to local variables>
+%	<assignment to save struct pointer>
+%	save_registers(); /* see notes (1) and (2) below */
+%	#define SUCCEED()	goto callsuccesslabel
+%	#define SUCCEED_LAST()	goto calllastsuccesslabel
+%	#define FAIL()		fail()
+%	{ <the user-written call c code> }
+%	{ <the user-written shared c code> }
+% callsuccesslabel:
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed()
+% calllastsuccesslabel: /* see note (4) below) */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed_discard()
+% 	#undef SUCCEED
+% 	#undef SUCCEED_LAST
+% 	#undef FAIL
 % }
+% Define_label(xxx_i1)
+% <code for entry to a later disjunct>
+% {
+%	<declaration of one local variable for each output arg>
+%	<declaration of one local variable to point to save struct>
+%	<assignment to save struct pointer>
+%	save_registers(); /* see notes (1) and (2) below */
+%	#define SUCCEED()	goto retrysuccesslabel
+%	#define SUCCEED_LAST()	goto retrylastsuccesslabel
+%	#define FAIL()		fail()
+%	{ <the user-written retry c code> }
+%	{ <the user-written shared c code> }
+% retrysuccesslabel:
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed()
+% retrylastsuccesslabel: /* see note (4) below) */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed_discard()
+% 	#undef SUCCEED
+% 	#undef SUCCEED_LAST
+% 	#undef FAIL
+% }
+% <--- boundary between code generated here and epilog --->
+% <#undef MR_ORDINARY_SLOTS>
 %
-% In the case of a semidet pragma c_code, this is followed by
+% form 2 (shared common code):
+% <proc entry label and comments>
+% <mkframe including space for the save struct, redoip = do_fail>
+% <#define MR_ORDINARY_SLOTS>
+% <--- boundary between prolog and code generated here --->
+% <set redoip to point to &&xxx_i1>
+% <code for entry to a disjunction and first disjunct>
+% {
+%	<declaration of one local variable for each input and output arg>
+%	<declaration of one local variable to point to save struct>
+%	<assignment of input values from registers to local variables>
+%	<assignment to save struct pointer>
+%	save_registers(); /* see notes (1) and (2) below */
+%	#define SUCCEED()	goto callsuccesslabel
+%	#define SUCCEED_LAST()	goto calllastsuccesslabel
+%	#define FAIL()		fail()
+%	{ <the user-written call c code> }
+%	GOTO_LABEL(xxx_i2)
+% callsuccesslabel: /* see note (4) below */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed()
+% calllastsuccesslabel: /* see note (4) below */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed_discard()
+% 	#undef SUCCEED
+% 	#undef SUCCEED_LAST
+% 	#undef FAIL
+% }
+% Define_label(xxx_i1)
+% <code for entry to a later disjunct>
+% {
+%	<declaration of one local variable for each output arg>
+%	<declaration of one local variable to point to save struct>
+%	<assignment to save struct pointer>
+%	save_registers(); /* see notes (1) and (2) below */
+%	#define SUCCEED()	goto retrysuccesslabel
+%	#define SUCCEED_LAST()	goto retrylastsuccesslabel
+%	#define FAIL()		fail()
+%	{ <the user-written retry c code> }
+%	GOTO_LABEL(xxx_i2)
+% retrysuccesslabel: /* see note (4) below */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed()
+% retrylastsuccesslabel: /* see note (4) below */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed_discard()
+% 	#undef SUCCEED
+% 	#undef SUCCEED_LAST
+% 	#undef FAIL
+% }
+% Define_label(xxx_i2)
+% {
+%	<declaration of one local variable for each output arg>
+%	<declaration of one local variable to point to save struct>
+%	<assignment to save struct pointer>
+%	#define SUCCEED()	goto sharedsuccesslabel
+%	#define SUCCEED_LAST()	goto sharedlastsuccesslabel
+%	#define FAIL()		fail()
+%	{ <the user-written shared c code> }
+% sharedsuccesslabel:
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed()
+% sharedlastsuccesslabel: /* see note (4) below */
+%	restore_registers(); /* see notes (1) and (3) below */
+%	<assignment of the output values from local variables to registers>
+%	succeed_discard()
+% 	#undef SUCCEED
+% 	#undef SUCCEED_LAST
+% 	#undef FAIL
+% }
+% <--- boundary between code generated here and epilog --->
+% <#undef MR_ORDINARY_SLOTS>
 %
-%	if (r1) goto label;
-%	<code to fail>
-%	label:
+% The first form is more time efficient, since it does not include the jumps
+% from the call code and retry code to the shared code and the following
+% initialization of the save struct pointer in the shared code block,
+% while the second form can lead to smaller code since it does not include
+% the shared C code (which can be quite big) twice.
+%
+% Programmers may indicate which form they wish the compiler to use;
+% if they don't, the compiler will choose form 1 if the shared code fragment
+% is "short", and form 2 if it is "long".
+%
+% The procedure prolog creates a nondet stack frame that includes space for
+% a struct that is saved across calls. Since the position of this struct in
+% the nondet stack frame is not known until the procedure prolog is created,
+% which is *after* the call to pragma_c_gen__generate_pragma_c_code, the
+% prolog will #define MR_ORDINARY_SLOTS as the number of ordinary slots
+% in the nondet frame. From the size of the fixed portion of the nondet stack
+% frame, from MR_ORDINARY_SLOTS and from the size of the save struct itself,
+% one can calculate the address of the save struct itself. The epilog will
+% #undef MR_ORDINARY_SLOTS. It need not do anything else, since all the normal
+% epilog stuff has been done in the code above.
+%
+% Unlike with ordinary pragma C codes, with nondet C codes there are never
+% any live variables to save at the start, except for the input variables,
+% and saving these is a job for the included C code. Also unlike ordinary
+% pragma C codes, nondet C codes are never followed by any other code,
+% so the exprn_info component of the code generator state need not be
+% kept up to date.
+%
+% Depending on the value of options such as generate_trace, use_trail, and
+% reclaim_heap_on_nondet_failure, we may need to include some code before
+% the call and retry labels. The generation of this code should follow
+% the same rules as the generation of similar code in nondet disjunctions.
 %
 % Notes:
 %
@@ -83,19 +262,62 @@
 %	through C back to Mercury.  In that case, we need to
 %	keep the value of `hp' that was set by the recursive
 %	invocation of Mercury.  The Mercury calling convention
-%	guarantees that the values of `sp', `curfr', and `maxfr'
-%	will be preserved, so if we're using conservative gc,
-%	there is nothing that needs restoring.
+%	guarantees that when calling det or semidet code, the values
+%	of `sp', `curfr', and `maxfr' will be preserved, so if we're
+%	using conservative gc, there is nothing that needs restoring.
+%
+%	When calling nondet code, maxfr may be changed. This is why
+%	we must call restore_registers() from the code we generate for
+%	nondet pragma C codes even if we are not using conservative gc.
+%
+% (4)	These labels and the code following them can be optimized away
+%	by the C compiler if the macro that branches to them is not invoked
+%	in the preceding body of included C code. We cannot optimize them
+%	away ourselves, since these macros can be invoked from other macros,
+%	and thus we do not have a sure test of whether the code fragments
+%	invoke the macros.
 
-pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
-		PredId, ProcId, ArgVars, Names, OrigArgTypes, _GoalInfo,
-		Code) -->
+pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, _GoalInfo,
+		PragmaImpl, Code) -->
+	(
+		{ PragmaImpl = ordinary(C_Code, Context) },
+		pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			C_Code, Context, Code)
+	;
+		{ PragmaImpl = nondet(
+			Fields, FieldsContext, First, FirstContext,
+			Later, LaterContext, Treat, Shared, SharedContext) },
+		pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Fields, FieldsContext, First, FirstContext,
+			Later, LaterContext, Treat, Shared, SharedContext,
+			Code)
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
+	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
+	list(maybe(pair(string, mode)))::in, list(type)::in,
+	string::in, maybe(term__context)::in, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		C_Code, Context, Code) -->
+	%
 	% First we need to get a list of input and output arguments
+	%
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
-	{ make_c_arg_list(ArgVars, Names, OrigArgTypes, ArgInfos, Args) },
+	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
 	{ pragma_select_in_args(Args, InArgs) },
 	{ pragma_select_out_args(Args, OutArgs) },
 
+	%
+	% Generate code to <save live variables on stack>
+	%
 	( { MayCallMercury = will_not_call_mercury } ->
 		{ SaveVarsCode = empty }
 	;
@@ -111,87 +333,454 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 		call_gen__save_variables(OutArgsSet, SaveVarsCode)
 	),
 
-	{ make_pragma_decls(Args, Decls) },
-	get_pragma_input_vars(InArgs, Inputs, InputVarsCode),
+	%
+	% Generate the values of input variables.
+	% (NB we need to be careful that the rvals generated here
+	% remain valid below.)
+	%
+	get_pragma_input_vars(InArgs, InputDescs, InputVarsCode),
+
+	%
+	% For semidet pragma c_code, we have to move anything that is
+	% currently in r1 elsewhere, so that the C code can assign to
+	% SUCCESS_INDICATOR without clobbering anything important.
+	%
 	( { CodeModel = model_semi } ->
-		% We have to clear r1 for C code that gets inlined
-		% so that it is safe to assign to SUCCESS_INDICATOR.
-		code_info__clear_r1(ShuffleR1_Code),
-
-		( { MayCallMercury = will_not_call_mercury } ->
-			[]
-		;
-			% the C code may call Mercury code which clobbers
-			% the regs
-			code_info__clear_all_registers
-		),
-
-		% C code goes here
-
-		code_info__get_next_label(SkipLab),
-		code_info__generate_failure(FailCode),
-		{ CheckFailureCode = tree(node([
-			if_val(lval(reg(r, 1)), label(SkipLab)) -
-				"Test for success of pragma_c_code"
-			]), tree(FailCode, node([ label(SkipLab) - "" ])))
-		},
-
-		code_info__lock_reg(reg(r, 1)),
-		pragma_acquire_regs(OutArgs, Regs),
-		code_info__unlock_reg(reg(r, 1))
+		code_info__clear_r1(ShuffleR1_Code)
 	;
-		{ ShuffleR1_Code = empty },
-
-		% c code goes here
-
-		( { MayCallMercury = will_not_call_mercury } ->
-			[]
-		;
-			% the C code may call Mercury code which clobbers
-			% the regs
-			code_info__clear_all_registers
-		),
-
-		{ CheckFailureCode = empty },
-
-		pragma_acquire_regs(OutArgs, Regs)
+		{ ShuffleR1_Code = empty }
 	),
-	place_pragma_output_args_in_regs(OutArgs, Regs, Outputs),
 
+	%
+	% Generate <declaration of one local variable for each arg>
+	%
+	{ make_pragma_decls(Args, Decls) },
+
+	%
+	% <assignment of input values from registers to local vars>
+	%
+	{ InputComp = pragma_c_inputs(InputDescs) },
+
+	%
+	% save_registers(); /* see notes (1) and (2) above */
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		SaveRegsComp = pragma_c_raw_code("")
+	;
+		SaveRegsComp = pragma_c_raw_code(
+			"\tsave_registers();\n"
+		)
+	},
+
+	%
+	% <The C code itself>
+	%
+	{ C_Code_Comp = pragma_c_user_code(Context, C_Code) },
+
+	%
+	% <for semidet code, check of r1>
+	%
+	( { CodeModel = model_semi } ->
+		code_info__get_next_label(FailLabel),
+		{ llds_out__get_label(FailLabel, yes, FailLabelStr) },
+                { string__format("\tif (!r1) GOTO_LABEL(%s);\n",
+				[s(FailLabelStr)], CheckR1_String) },
+		{ CheckR1_Comp = pragma_c_raw_code(CheckR1_String) },
+		{ MaybeFailLabel = yes(FailLabel) }
+	;
+		{ CheckR1_Comp = pragma_c_raw_code("") },
+		{ MaybeFailLabel = no }
+	),
+
+	%
+	% #ifndef CONSERVATIVE_GC
+	%   restore_registers(); /* see notes (1) and (3) above */
+	% #endif
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		RestoreRegsComp = pragma_c_raw_code("")
+	;
+		RestoreRegsComp = pragma_c_raw_code(
+		    "#ifndef CONSERVATIVE_GC\n\trestore_registers();\n#endif\n"
+		)
+	},
+
+	%
+	% The C code may have called Mercury code which clobbered the regs,
+	% in which case we need to tell the code_info that they have been
+	% clobbered.
+	%
 	( { MayCallMercury = will_not_call_mercury } ->
-		{ Wrapped_C_Code = C_Code }
+		[]
 	;
-		{ string__append_list([
-				"\tsave_registers();\n{\n",
-				C_Code, "\n}\n",
-				"#ifndef CONSERVATIVE_GC\n",
-				"\trestore_registers();\n",
-				"#endif\n"
-			], Wrapped_C_Code) }
+		code_info__clear_all_registers
 	),
 
-	% The context in the goal_info we are given is the context of the
-	% call to the predicate whose definition is a pragma_c_code.
-	% The context we want to put into the LLDS code we generate
-	% is the context of the pragma_c_code line in the definition
-	% of that predicate.
-	code_info__get_module_info(ModuleInfo),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_goal(ProcInfo, OrigGoal) },
-	{ OrigGoal = _ - OrigGoalInfo },
-	{ goal_info_get_context(OrigGoalInfo, Context) },
+	%
+	% <assignment of the output values from local variables to registers>
+	%
+	pragma_acquire_regs(OutArgs, Regs),
+	place_pragma_output_args_in_regs(OutArgs, Regs, OutputDescs),
+	{ OutputComp = pragma_c_outputs(OutputDescs) },
 
-	{ PragmaCode = node([
-		pragma_c(Decls, Inputs, Wrapped_C_Code, Outputs, Context) - 
+	%
+	% join all the components of the pragma_c together
+	%
+	{ Components = [InputComp, SaveRegsComp, C_Code_Comp,
+			CheckR1_Comp, RestoreRegsComp, OutputComp] },
+	{ PragmaCCode = node([
+		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel) -
 			"Pragma C inclusion"
 	]) },
+
+	%
+	% for semidet code, we need to insert the failure handling code here:
+	%
+	%	goto skip_label;
+	%	fail_label:
+	%	<code to fail>
+	%	skip_label:
+	%
+	( { MaybeFailLabel = yes(TheFailLabel) } ->
+		code_info__get_next_label(SkipLabel),
+		code_info__generate_failure(FailCode),
+		{ GotoSkipLabelCode = node([
+			goto(label(SkipLabel)) - "Skip past failure code"
+		]) },
+		{ SkipLabelCode = node([ label(SkipLabel) - "" ]) },
+		{ FailLabelCode = node([ label(TheFailLabel) - "" ]) },
+		{ FailureCode =
+			tree(GotoSkipLabelCode,
+			tree(FailLabelCode,
+			tree(FailCode,
+			     SkipLabelCode)))
+		}
+	;
+		{ FailureCode = empty }
+	),
+
+	%
+	% join all code fragments together
+	%
 	{ Code =
 		tree(SaveVarsCode,
 		tree(InputVarsCode,
 		tree(ShuffleR1_Code, 
-		tree(PragmaCode,
-		     CheckFailureCode))))
+		tree(PragmaCCode,
+		     FailureCode))))
 	}.
+
+%---------------------------------------------------------------------------%
+
+:- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
+	may_call_mercury::in, pred_id::in, proc_id::in, list(var)::in,
+	list(maybe(pair(string, mode)))::in, list(type)::in,
+	string::in, maybe(term__context)::in,
+	string::in, maybe(term__context)::in,
+	string::in, maybe(term__context)::in, pragma_shared_code_treatment::in,
+	string::in, maybe(term__context)::in, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
+		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		_Fields, _FieldsContext, First, FirstContext,
+		Later, LaterContext, Treat, Shared, SharedContext, Code) -->
+	{ require(unify(CodeModel, model_non),
+		"inappropriate code model for nondet pragma C code") },
+	% First we need to get a list of input and output arguments
+	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
+	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
+	{ pragma_select_in_args(Args, InArgs) },
+	{ pragma_select_out_args(Args, OutArgs) },
+	{ make_pragma_decls(Args, Decls) },
+	{ make_pragma_decls(OutArgs, OutDecls) },
+
+	{ input_descs_from_arg_info(InArgs, InputDescs) },
+	{ output_descs_from_arg_info(OutArgs, OutputDescs) },
+
+	code_info__get_module_info(ModuleInfo),
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	{ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
+		StructName) },
+	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
+	{ string__format("\tLOCALS = (struct %s *) (
+		(char *) (curfr - MR_ORDINARY_SLOTS - NONDET_FIXED_SIZE)
+		- sizeof(struct %s));\n",
+		[s(StructName), s(StructName)],
+		InitSaveStruct) },
+
+	code_info__get_next_label(RetryLabel),
+	{ ModFrameCode = node([
+		modframe(label(RetryLabel)) -
+			"Set up backtracking to retry label"
+	]) },
+	{ RetryLabelCode = node([
+		label(RetryLabel) -
+			"Start of the retry block"
+	]) },
+
+	code_info__get_globals(Globals),
+
+	{ globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+		ReclaimHeap) },
+	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot),
+	code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
+
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
+	code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		trace__generate_event_code(disj([disj(1)]), TraceInfo,
+			FirstTraceCode),
+		trace__generate_event_code(disj([disj(2)]), TraceInfo,
+			LaterTraceCode)
+	;
+		{ FirstTraceCode = empty },
+		{ LaterTraceCode = empty }
+	),
+
+	{ FirstDisjunctCode =
+		tree(SaveHeapCode,
+		tree(SaveTicketCode,
+		     FirstTraceCode))
+	},
+	{ LaterDisjunctCode =
+		tree(RestoreHeapCode,
+		tree(RestoreTicketCode,
+		     LaterTraceCode))
+	},
+
+	{
+	SaveRegs	 = "\tsave_registers();\n",
+	RestoreRegs	 = "\trestore_registers();\n",
+
+	Succeed	 = "\tsucceed();\n",
+	SucceedDiscard = "\tsucceed_discard();\n",
+
+	CallDef1 = "#define\tSUCCEED     \tgoto MR_call_success\n",
+	CallDef2 = "#define\tSUCCEED_LAST\tgoto MR_call_success_last\n",
+	CallDef3 = "#define\tFAIL\tfail()\n",
+
+	CallSuccessLabel     = "MR_call_success:\n",
+	CallLastSuccessLabel = "MR_call_success_last:\n",
+
+	RetryDef1 = "#define\tSUCCEED     \tgoto MR_retry_success\n",
+	RetryDef2 = "#define\tSUCCEED_LAST\tgoto MR_retry_success_last\n",
+	RetryDef3 = "#define\tFAIL\tfail()\n",
+
+	RetrySuccessLabel     = "MR_retry_success:\n",
+	RetryLastSuccessLabel = "MR_retry_success_last:\n",
+
+	Undef1 = "#undef\tSUCCEED\n",
+	Undef2 = "#undef\tSUCCEED_LAST\n",
+	Undef3 = "#undef\tFAIL\n"
+	},
+
+	(
+			% Use the form that duplicates the common code
+			% if the programmer asked for it, or if the code
+			% is small enough for its duplication not to have
+			% a significant effect on code size. (This form
+			% generates slightly faster code.)
+
+			% We use the number of semicolons in the code
+			% as an indication how many C statements it has
+			% and thus how big its object code is likely to be.
+		{
+			Treat = duplicate
+		;
+			Treat = automatic,
+			CountSemis = lambda([Char::in, Count0::in, Count::out]
+				is det,
+				( Char = (;) ->
+					Count is Count0 + 1
+				;
+					Count = Count0
+				)
+			),
+			string__foldl(CountSemis, Shared, 0, Semis),
+			Semis < 32
+		}
+	->
+		{
+		CallDecls = [SaveStructDecl | Decls],
+		CallComponents = [
+			pragma_c_inputs(InputDescs),
+			pragma_c_raw_code(InitSaveStruct),
+			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(CallDef1),
+			pragma_c_raw_code(CallDef2),
+			pragma_c_raw_code(CallDef3),
+			pragma_c_user_code(FirstContext, First),
+			pragma_c_user_code(SharedContext, Shared),
+			pragma_c_raw_code(CallSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(Succeed),
+			pragma_c_raw_code(CallLastSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(SucceedDiscard),
+			pragma_c_raw_code(Undef1),
+			pragma_c_raw_code(Undef2),
+			pragma_c_raw_code(Undef3)
+		],
+		CallBlockCode = node([
+			pragma_c(CallDecls, CallComponents,
+				MayCallMercury, no)
+				- "Call and shared pragma C inclusion"
+		]),
+
+		RetryDecls = [SaveStructDecl | OutDecls],
+		RetryComponents = [
+			pragma_c_raw_code(InitSaveStruct),
+			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(RetryDef1),
+			pragma_c_raw_code(RetryDef2),
+			pragma_c_raw_code(RetryDef3),
+			pragma_c_user_code(LaterContext, Later),
+			pragma_c_user_code(SharedContext, Shared),
+			pragma_c_raw_code(RetrySuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(Succeed),
+			pragma_c_raw_code(RetryLastSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(SucceedDiscard),
+			pragma_c_raw_code(Undef1),
+			pragma_c_raw_code(Undef2),
+			pragma_c_raw_code(Undef3)
+		],
+		RetryBlockCode = node([
+			pragma_c(RetryDecls, RetryComponents,
+				MayCallMercury, no)
+				- "Retry and shared pragma C inclusion"
+		]),
+
+		Code =
+			tree(ModFrameCode,
+			tree(FirstDisjunctCode,
+			tree(CallBlockCode,
+			tree(RetryLabelCode, 
+			tree(LaterDisjunctCode, 
+			     RetryBlockCode)))))
+		}
+	;
+		code_info__get_next_label(SharedLabel),
+		{
+		SharedLabelCode = node([
+			label(SharedLabel) -
+				"Start of the shared block"
+		]),
+
+		SharedDef1 = "#define\tSUCCEED     \tgoto MR_shared_success\n",
+		SharedDef2 = "#define\tSUCCEED_LAST\tgoto MR_shared_success_last\n",
+		SharedDef3 = "#define\tFAIL\tfail()\n",
+
+		SharedSuccessLabel     = "MR_shared_success:\n",
+		SharedLastSuccessLabel = "MR_shared_success_last:\n",
+
+		llds_out__get_label(SharedLabel, yes, LabelStr),
+		string__format("\tGOTO_LABEL(%s);\n", [s(LabelStr)],
+			GotoSharedLabel),
+
+		CallDecls = [SaveStructDecl | Decls],
+		CallComponents = [
+			pragma_c_inputs(InputDescs),
+			pragma_c_raw_code(InitSaveStruct),
+			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(CallDef1),
+			pragma_c_raw_code(CallDef2),
+			pragma_c_raw_code(CallDef3),
+			pragma_c_user_code(FirstContext, First),
+			pragma_c_raw_code(GotoSharedLabel),
+			pragma_c_raw_code(CallSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(Succeed),
+			pragma_c_raw_code(CallLastSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(SucceedDiscard),
+			pragma_c_raw_code(Undef1),
+			pragma_c_raw_code(Undef2),
+			pragma_c_raw_code(Undef3)
+		],
+		CallBlockCode = node([
+			pragma_c(CallDecls, CallComponents,
+				MayCallMercury, yes(SharedLabel))
+				- "Call pragma C inclusion"
+		]),
+
+		RetryDecls = [SaveStructDecl | OutDecls],
+		RetryComponents = [
+			pragma_c_raw_code(InitSaveStruct),
+			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(RetryDef1),
+			pragma_c_raw_code(RetryDef2),
+			pragma_c_raw_code(RetryDef3),
+			pragma_c_user_code(LaterContext, Later),
+			pragma_c_raw_code(GotoSharedLabel),
+			pragma_c_raw_code(RetrySuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(Succeed),
+			pragma_c_raw_code(RetryLastSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(SucceedDiscard),
+			pragma_c_raw_code(Undef1),
+			pragma_c_raw_code(Undef2),
+			pragma_c_raw_code(Undef3)
+		],
+		RetryBlockCode = node([
+			pragma_c(RetryDecls, RetryComponents,
+				MayCallMercury, yes(SharedLabel))
+				- "Retry pragma C inclusion"
+		]),
+
+		SharedDecls = [SaveStructDecl | OutDecls],
+		SharedComponents = [
+			pragma_c_raw_code(InitSaveStruct),
+			pragma_c_raw_code(SaveRegs),
+			pragma_c_raw_code(SharedDef1),
+			pragma_c_raw_code(SharedDef2),
+			pragma_c_raw_code(SharedDef3),
+			pragma_c_user_code(SharedContext, Shared),
+			pragma_c_raw_code(SharedSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(Succeed),
+			pragma_c_raw_code(SharedLastSuccessLabel),
+			pragma_c_raw_code(RestoreRegs),
+			pragma_c_outputs(OutputDescs),
+			pragma_c_raw_code(SucceedDiscard),
+			pragma_c_raw_code(Undef1),
+			pragma_c_raw_code(Undef2),
+			pragma_c_raw_code(Undef3)
+		],
+		SharedBlockCode = node([
+			pragma_c(SharedDecls, SharedComponents,
+				MayCallMercury, no)
+				- "Shared pragma C inclusion"
+		]),
+
+		Code =
+			tree(ModFrameCode,
+			tree(FirstDisjunctCode,
+			tree(CallBlockCode,
+			tree(RetryLabelCode, 
+			tree(LaterDisjunctCode, 
+			tree(RetryBlockCode,
+			tree(SharedLabelCode, 
+			     SharedBlockCode)))))))
+		}
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -207,13 +796,30 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 			arg_info
 		).
 
-:- pred make_c_arg_list(list(var)::in, list(maybe(string))::in,
+:- pred make_c_arg_list(list(var)::in, list(maybe(pair(string, mode)))::in,
 		list(type)::in, list(arg_info)::in, list(c_arg)::out) is det.
 
-make_c_arg_list(Vars, Names, Types, ArgInfos, ArgList) :-
-	( Vars = [], Names = [], Types = [], ArgInfos = [] ->
+make_c_arg_list(Vars, ArgDatas, Types, ArgInfos, ArgList) :-
+	(
+		Vars = [],
+		ArgDatas = [],
+		Types = [],
+		ArgInfos = []
+	->
 		ArgList = []
-	; Vars = [V|Vs], Names = [N|Ns], Types = [T|Ts], ArgInfos = [A|As] ->
+	;
+		Vars = [V|Vs],
+		ArgDatas = [MN|Ns],
+		Types = [T|Ts],
+		ArgInfos = [A|As]
+	->
+		(
+			MN = yes(Name - _),
+			N = yes(Name)
+		;
+			MN = no,
+			N = no
+		),
 		Arg = c_arg(V, N, T, A),
 		make_c_arg_list(Vs, Ns, Ts, As, Args),
 		ArgList = [Arg | Args]
@@ -269,7 +875,7 @@ pragma_select_in_args([Arg | Rest], In) :-
 %---------------------------------------------------------------------------%
 
 % make_pragma_decls returns the list of pragma_decls for the pragma_c
-% data structure in the llds. It is essentially a list of pairs of type and
+% data structure in the LLDS. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
 
 :- pred make_pragma_decls(list(c_arg)::in, list(pragma_c_decl)::out) is det.
@@ -278,7 +884,7 @@ make_pragma_decls([], []).
 make_pragma_decls([Arg | Args], Decls) :-
 	Arg = c_arg(_Var, ArgName, OrigType, _ArgInfo),
 	( ArgName = yes(Name) ->
-		Decl = pragma_c_decl(OrigType, Name),
+		Decl = pragma_c_arg_decl(OrigType, Name),
 		make_pragma_decls(Args, Decls1),
 		Decls = [Decl | Decls1]
 	;
@@ -290,7 +896,7 @@ make_pragma_decls([Arg | Args], Decls) :-
 %---------------------------------------------------------------------------%
 
 % get_pragma_input_vars returns a list of pragma_c_inputs for the pragma_c
-% data structure in the llds. It is essentially a list of the input variables,
+% data structure in the LLDS. It is essentially a list of the input variables,
 % and the corresponding rvals assigned to those (C) variables.
 
 :- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
@@ -353,8 +959,55 @@ place_pragma_output_args_in_regs([], [_|_], _) -->
 
 %---------------------------------------------------------------------------%
 
-pragma_c_gen__generate_backtrack_pragma_c_code(_, _, _, _, _, _, _, _, _, _,
-		_, _) -->
-	{ error("Sorry, nondet pragma_c_codes not yet implemented") }.
+% input_descs_from_arg_info returns a list of pragma_c_inputs, which
+% are pairs of rvals and (C) variables which receive the input value.
+
+:- pred input_descs_from_arg_info(list(c_arg)::in, list(pragma_c_input)::out)
+	is det.
+
+input_descs_from_arg_info([], []).
+input_descs_from_arg_info([Arg | Args], Inputs) :-
+	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
+	( MaybeName = yes(Name) ->
+		ArgInfo = arg_info(N, _),
+		Reg = reg(r, N),
+		Input = pragma_c_input(Name, OrigType, lval(Reg)),
+		Inputs = [Input | Inputs1],
+		input_descs_from_arg_info(Args, Inputs1)
+	;
+		input_descs_from_arg_info(Args, Inputs)
+	).
+
+%---------------------------------------------------------------------------%
+
+% output_descs_from_arg_info returns a list of pragma_c_outputs, which
+% are pairs of names of output registers and (C) variables which hold the
+% output value.
+
+:- pred output_descs_from_arg_info(list(c_arg)::in, list(pragma_c_output)::out)
+	is det.
+
+output_descs_from_arg_info([], []).
+output_descs_from_arg_info([Arg | Args], [Output | Outputs]) :-
+	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
+	( MaybeName = yes(Name) ->
+		ArgInfo = arg_info(N, _),
+		Reg = reg(r, N),
+		Output = pragma_c_output(Reg, OrigType, Name)
+	;
+		error("output_descs_from_arg_info: unnamed arg")
+	),
+	output_descs_from_arg_info(Args, Outputs).
+
+%---------------------------------------------------------------------------%
+
+pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
+	llds_out__name_mangle(ModuleName, MangledModuleName),
+	llds_out__name_mangle(PredName, MangledPredName),
+	proc_id_to_int(ProcId, ProcNum),
+	string__int_to_string(Arity, ArityStr),
+	string__int_to_string(ProcNum, ProcNumStr),
+	string__append_list(["mercury_save__", MangledModuleName, "__",
+		MangledPredName, "__", ArityStr, "_", ProcNumStr], StructName).
 
 %---------------------------------------------------------------------------%

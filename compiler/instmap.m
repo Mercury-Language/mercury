@@ -131,6 +131,11 @@
 :- pred instmap__set(instmap, var, inst, instmap).
 :- mode instmap__set(in, in, in, out) is det.
 
+	% Set multiple entries in an instmap.
+	%
+:- pred instmap__set_vars(instmap, list(var), list(inst), instmap).
+:- mode instmap__set_vars(in, in, in, out) is det.
+
 :- pred instmap_delta_set(instmap_delta, var, inst, instmap_delta).
 :- mode instmap_delta_set(in, in, in, out) is det.
 
@@ -401,6 +406,15 @@ instmap__lookup_dependent_vars(reachable(_FwdMap, BwdMap), InstKey, Vars) :-
 	;
 		Vars = []
 	).
+
+instmap__set_vars(InstMap, [], [], InstMap).
+instmap__set_vars(InstMap0, [V | Vs], [I | Is], InstMap) :-
+	instmap__set(InstMap0, V, I, InstMap1),
+	instmap__set_vars(InstMap1, Vs, Is, InstMap).
+instmap__set_vars(_, [_ | _], [], _) :-
+	error("instmap__set_vars").
+instmap__set_vars(_, [], [_ | _], _) :-
+	error("instmap__set_vars").
 
 instmap__set(unreachable, _Var, _Inst, unreachable).
 instmap__set(reachable(InstMapping0, BwdMap0), Var, Inst, Instmap) :-

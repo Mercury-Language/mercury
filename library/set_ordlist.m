@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,7 +162,7 @@
 :- mode set_ordlist__intersect(in, in, in) is semidet.
 
 	% `set_ordlist__power_intersect(A, B)' is true iff `B' is the
-	% intersection of all the sets in `A'
+	% intersection of all the sets in `A'.
 
 :- pred set_ordlist__power_intersect(set_ordlist(set_ordlist(T)),
 							set_ordlist(T)).
@@ -170,11 +170,17 @@
 
 	% `set_ordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
-	% occur in `SetB'
+	% occur in `SetB'.
 
 :- pred set_ordlist__difference(set_ordlist(T), set_ordlist(T),
 							set_ordlist(T)).
 :- mode set_ordlist__difference(in, in, out) is det.
+
+	% `set_ordlist__count(Set, Count)' is true iff `Set' has
+	% `Count' elements.
+
+:- pred set_ordlist__count(set_ordlist(T), int).
+:- mode set_ordlist__count(in, out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -336,5 +342,10 @@ set_ordlist__difference([X|Xs], [Y|Ys], Set) :-
 		R = (>),
 		set_ordlist__difference([X|Xs], Ys, Set)
 	).
+
+%--------------------------------------------------------------------------%
+
+set_ordlist__count(Set, Count) :-
+	list__length(Set, Count).
 
 %--------------------------------------------------------------------------%

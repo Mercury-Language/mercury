@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -387,7 +387,7 @@ middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
 middle_rec__find_used_registers_instr(call(_, _, _, _), Used, Used).
-middle_rec__find_used_registers_instr(mkframe(_, _, _), Used, Used).
+middle_rec__find_used_registers_instr(mkframe(_, _, _, _), Used, Used).
 middle_rec__find_used_registers_instr(modframe(_), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
 middle_rec__find_used_registers_instr(goto(_), Used, Used).
@@ -396,7 +396,7 @@ middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-
 middle_rec__find_used_registers_instr(c_code(_), Used, Used).
 middle_rec__find_used_registers_instr(if_val(Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(incr_hp(Lval, _, Rval), Used0, Used) :-
+middle_rec__find_used_registers_instr(incr_hp(Lval, _, Rval, _), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
 middle_rec__find_used_registers_instr(mark_hp(Lval), Used0, Used) :-
@@ -414,10 +414,29 @@ middle_rec__find_used_registers_instr(discard_tickets_to(Rval), Used0, Used) :-
 	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
 middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Ins, _, Outs, _),
+middle_rec__find_used_registers_instr(pragma_c(_, Components, _, _),
 		Used0, Used) :-
-	insert_pragma_c_input_registers(Ins, Used0, Used1),
-	insert_pragma_c_output_registers(Outs, Used1, Used).
+	middle_rec__find_used_registers_components(Components, Used0, Used).
+
+:- pred middle_rec__find_used_registers_components(list(pragma_c_component),
+	set(int), set(int)).
+:- mode middle_rec__find_used_registers_components(in, di, uo) is det.
+
+middle_rec__find_used_registers_components([], Used, Used).
+middle_rec__find_used_registers_components([Comp | Comps], Used0, Used) :-
+	middle_rec__find_used_registers_component(Comp, Used0, Used1),
+	middle_rec__find_used_registers_components(Comps, Used1, Used).
+
+:- pred middle_rec__find_used_registers_component(pragma_c_component,
+	set(int), set(int)).
+:- mode middle_rec__find_used_registers_component(in, di, uo) is det.
+
+middle_rec__find_used_registers_component(pragma_c_inputs(In), Used0, Used) :-
+	insert_pragma_c_input_registers(In, Used0, Used).
+middle_rec__find_used_registers_component(pragma_c_outputs(Out), Used0, Used) :-
+	insert_pragma_c_output_registers(Out, Used0, Used).
+middle_rec__find_used_registers_component(pragma_c_user_code(_, _), Used, Used).
+middle_rec__find_used_registers_component(pragma_c_raw_code(_), Used, Used).
 
 :- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
 :- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.
@@ -454,7 +473,7 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		Rval = var(_),
 		error("var found in middle_rec__find_used_registers_rval")
 	;
-		Rval = create(_, MaybeRvals, _, _),
+		Rval = create(_, MaybeRvals, _, _, _),
 		middle_rec__find_used_registers_maybe_rvals(MaybeRvals,
 			Used0, Used)
 	;

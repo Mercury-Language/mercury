@@ -28,9 +28,9 @@
 
 :- implementation.
 
-:- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module term, varset, typecheck, int.
+:- import_module hlds_pred, hlds_data, prog_data, inst_util.
+:- import_module term, varset, typecheck, int, map, list, std_util, require.
 
 check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError, 
 		IO0, IO) :-
@@ -160,7 +160,7 @@ check_instance_pred(ClassVars, ClassInterface, ModuleInfo, PredId,
 		Errors0, Errors).
 
 :- pred check_instance_pred_procs(module_info, pred_or_func, sym_name, arity,
-	list(type), list(pair(list(mode), determinism)), list(var),
+	list(type), list(pair(argument_modes, determinism)), list(var),
 	hlds_instance_defn, hlds_instance_defn, list(string), list(string)).
 :- mode check_instance_pred_procs(in, in, in, in, in, in, in, in, out, 
 	in, out) is det.
@@ -293,7 +293,7 @@ get_matching_instance_pred_ids(ModuleInfo, InstancePredName, PredOrFunc,
 	).
 
 :- pred handle_instance_method_overloading(module_info, list(var), list(type),
-	list(type), list(pair(list(mode), determinism)), list(pred_id), 
+	list(type), list(pair(argument_modes, determinism)), list(pred_id), 
 	list(string), list(string), pred_id, list(proc_id)).
 :- mode handle_instance_method_overloading(in, in, in, in, in, in, in, 
 	out, out, out) is det.
@@ -367,7 +367,7 @@ handle_instance_method_overloading(ModuleInfo, ClassVars, InstanceTypes,
 	).
 
 :- pred check_instance_types_and_modes(module_info, pred_info, list(type),
-	list(pair(list(mode), determinism)), list(string), list(string),
+	list(pair(argument_modes, determinism)), list(string), list(string),
 	list(proc_id)).
 :- mode check_instance_types_and_modes(in, in, in, in, in, out, out) is det.
 
@@ -389,7 +389,7 @@ check_instance_types_and_modes(ModuleInfo, InstancePredInfo, ArgTypes, ArgModes,
 	).
 
 :- pred check_instance_modes(module_info, assoc_list(proc_id, proc_info),
-	pair(list(mode), determinism), proc_id, list(string), list(string)).
+	pair(argument_modes, determinism), proc_id, list(string), list(string)).
 :- mode check_instance_modes(in, in, in, out, in, out) is det.
 
 check_instance_modes(ModuleInfo, Procedures, ArgModes, ProcId, 
@@ -407,35 +407,41 @@ check_instance_modes(ModuleInfo, Procedures, ArgModes, ProcId,
 	).
 
 :- pred find_first_matching_proc(module_info, assoc_list(proc_id, proc_info),
-	pair(list(mode), determinism), proc_id).
+	pair(argument_modes, determinism), proc_id).
 :- mode find_first_matching_proc(in, in, in, out) is semidet.
 
-find_first_matching_proc(ModuleInfo, [ProcId - ProcInfo|Ps], ArgModes - Detism,
+find_first_matching_proc(ModuleInfo, [ProcId - ProcInfo|Ps], Modes - Detism,
 		TheProcId) :-
-	proc_info_argmodes(ProcInfo, ProcArgModes),
+	Modes = argument_modes(ArgInstTable, ArgModes),
+	proc_info_argmodes(ProcInfo, ProcModes),
+	ProcModes = argument_modes(ProcInstTable, ProcArgModes0),
+	inst_table_create_sub(ArgInstTable, ProcInstTable, Sub, InstTable),
+	list__map(apply_inst_key_sub_mode(Sub), ProcArgModes0, ProcArgModes),
+
 		% If there was a decl. for the proc, then use that determinism,
 		% otherwise use what was inferred.
 	proc_info_interface_determinism(ProcInfo, ProcDetism),
 	(
-		matching_mode_list(ModuleInfo, ProcArgModes, ArgModes),
+		matching_mode_list(InstTable, ModuleInfo, ProcArgModes,
+				ArgModes),
 		ProcDetism = Detism
 	->
 		TheProcId = ProcId
 	;
-		find_first_matching_proc(ModuleInfo, Ps, ArgModes - Detism,
+		find_first_matching_proc(ModuleInfo, Ps, Modes - Detism,
 			TheProcId)
 	).
 
-:- pred matching_mode_list(module_info, list(mode), list(mode)).
-:- mode matching_mode_list(in, in, in) is semidet.
+:- pred matching_mode_list(inst_table, module_info, list(mode), list(mode)).
+:- mode matching_mode_list(in, in, in, in) is semidet.
 
-matching_mode_list(_, [], []).
-matching_mode_list(ModuleInfo, [A|As], [B|Bs]) :-
+matching_mode_list(_, _, [], []).
+matching_mode_list(InstTable, ModuleInfo, [A|As], [B|Bs]) :-
 	mode_get_insts(ModuleInfo, A, Ainit, Afinal),
 	mode_get_insts(ModuleInfo, B, Binit, Bfinal),
-	inst_matches_final(Ainit, Binit, ModuleInfo),
-	inst_matches_final(Afinal, Bfinal, ModuleInfo),
-	matching_mode_list(ModuleInfo, As, Bs).
+	inst_matches_final(Ainit, Binit, InstTable, ModuleInfo),
+	inst_matches_final(Afinal, Bfinal, InstTable, ModuleInfo),
+	matching_mode_list(InstTable, ModuleInfo, As, Bs).
 
 %---------------------------------------------------------------------------%
 

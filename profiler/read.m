@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module int, io.
+:- import_module globals.
 
 :- pred maybe_read_label_addr(maybe(int), io__state, io__state).
 :- mode	maybe_read_label_addr(out, di, uo) is det.
@@ -32,8 +33,17 @@
 :- pred read_label_name(string, io__state, io__state).
 :- mode	read_label_name(out, di, uo) is det.
 
+:- pred read_string(string, io__state, io__state).
+:- mode read_string(out, di, uo) is det.
+
 :- pred read_int(int, io__state, io__state).
 :- mode read_int(out, di, uo) is det.
+
+:- pred read_float(float, io__state, io__state).
+:- mode read_float(out, di, uo) is det.
+
+:- pred read_what_to_profile(what_to_profile, io__state, io__state).
+:- mode read_what_to_profile(out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -153,28 +163,61 @@ read_label_name(LabelName) -->
 
 %-----------------------------------------------------------------------------%
 
-read_int(Count) -->
+read_string(String) -->
 	io__read_word(WordResult),
 	(
 		{ WordResult = ok(CharList) },
-		{ string__from_char_list(CharList, CountStr) },
-		(
-			{ string__to_int(CountStr, Count0) }
-		->
-			{ Count = Count0 }
-		;
-			io__write_string("\nInteger = "),
-			io__write_string(CountStr),
-			{ error("\nread_int: Not an integer\n") }
-		)
+		{ string__from_char_list(CharList, String) }
 	;
 		{ WordResult = eof },
-		{ error("read_int: EOF reached") }
+		{ error("read_string: EOF reached") }
 	;
 		{ WordResult = error(Error) },
 		{ io__error_message(Error, ErrorStr) },
-		{ string__append("read_int: ", ErrorStr, Str) },
+		{ string__append("read_string: ", ErrorStr, Str) },
 		{ error(Str) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+read_int(Int) -->
+	read_string(IntStr),
+	(
+		{ string__to_int(IntStr, Int0) }
+	->
+		{ Int = Int0 }
+	;
+		io__write_string("\nInteger = "),
+		io__write_string(IntStr),
+		{ error("\nread_int: Not an integer\n") }
+	).
+
+%-----------------------------------------------------------------------------%
+
+read_float(Float) -->
+	read_string(FloatStr),
+	(
+		{ string__to_float(FloatStr, Float0) }
+	->
+		{ Float = Float0 }
+	;
+		io__write_string("\nFloat = "),
+		io__write_string(FloatStr),
+		{ error("\nread_float: Not an float\n") }
+	).
+
+%-----------------------------------------------------------------------------%
+
+read_what_to_profile(WhatToProfile) -->
+	read_string(Str),
+	(
+		{ what_to_profile(Str, WhatToProfile0) }
+	->
+		{ WhatToProfile = WhatToProfile0 }
+	;
+		io__write_string("\nWhatToProfile = "),
+		io__write_string(Str),
+		{ error("\nread_what_to_profile: invalid input\n") }
 	).
 
 %-----------------------------------------------------------------------------%

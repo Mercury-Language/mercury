@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,9 +23,10 @@
 :- module arg_info.
 :- interface. 
 :- import_module hlds_data, hlds_module, llds, globals, prog_data.
+:- import_module bool.
 
-:- pred generate_arg_info(module_info, args_method, module_info).
-:- mode generate_arg_info(in, in, out) is det.
+:- pred generate_arg_info(module_info, module_info).
+:- mode generate_arg_info(in, out) is det.
 
 :- pred arg_info__unify_arg_info(args_method, code_model, list(arg_info)).
 :- mode arg_info__unify_arg_info(in, in, out) is det.
@@ -33,6 +34,16 @@
 :- pred make_arg_infos(args_method, list(type), list(mode), code_model,
 			inst_table, module_info, list(arg_info)).
 :- mode make_arg_infos(in, in, in, in, in, in, out) is det.
+
+	% Return yes if a procedure using the given args_method
+	% can by called by do_call_*_closure.
+:- pred arg_info__args_method_is_ho_callable(globals, args_method, bool).
+:- mode arg_info__args_method_is_ho_callable(in, in, out) is det.
+
+	% Return an args_method which can be used for procedures
+	% which may be called by do_call_*_closure.
+:- pred arg_info__ho_call_args_method(globals, args_method).
+:- mode arg_info__ho_call_args_method(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,30 +57,28 @@
 
 	% This whole section just traverses the module structure.
 
-generate_arg_info(ModuleInfo0, Method, ModuleInfo) :-
+generate_arg_info(ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, Preds),
 	map__keys(Preds, PredIds),
-	generate_pred_arg_info(PredIds, Method, ModuleInfo0, ModuleInfo).
+	generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
-:- pred generate_pred_arg_info(list(pred_id), args_method,
-	module_info, module_info).
-:- mode generate_pred_arg_info(in, in, in, out) is det.
+:- pred generate_pred_arg_info(list(pred_id), module_info, module_info).
+:- mode generate_pred_arg_info(in, in, out) is det.
 
-generate_pred_arg_info([], _Method, ModuleInfo, ModuleInfo).
-generate_pred_arg_info([PredId | PredIds], Method, ModuleInfo0, ModuleInfo) :-
+generate_pred_arg_info([], ModuleInfo, ModuleInfo).
+generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
-	generate_proc_list_arg_info(PredId, ProcIds, Method,
-		ModuleInfo0, ModuleInfo1),
-	generate_pred_arg_info(PredIds, Method, ModuleInfo1, ModuleInfo).
+	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
+	generate_pred_arg_info(PredIds, ModuleInfo1, ModuleInfo).
 
-:- pred generate_proc_list_arg_info(pred_id, list(proc_id), args_method,
+:- pred generate_proc_list_arg_info(pred_id, list(proc_id),
 	module_info, module_info).
-:- mode generate_proc_list_arg_info(in, in, in, in, out) is det.
+:- mode generate_proc_list_arg_info(in, in, in, out) is det.
 
-generate_proc_list_arg_info(_PredId, [], _Method, ModuleInfo, ModuleInfo).
-generate_proc_list_arg_info(PredId, [ProcId | ProcIds], Method,
+generate_proc_list_arg_info(_PredId, [], ModuleInfo, ModuleInfo).
+generate_proc_list_arg_info(PredId, [ProcId | ProcIds], 
 		ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
@@ -77,23 +86,21 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], Method,
 	pred_info_arg_types(PredInfo0, _TVarSet, ArgTypes),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	generate_proc_arg_info(ProcInfo0, Method, ArgTypes, ModuleInfo0,
-		ProcInfo),
+	generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo0, ProcInfo),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
 
-	generate_proc_list_arg_info(PredId, ProcIds, Method,
-		ModuleInfo1, ModuleInfo).
+	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
 
-:- pred generate_proc_arg_info(proc_info, args_method, list(type),
-			module_info, proc_info).
-:- mode generate_proc_arg_info(in, in, in, in, out) is det.
+:- pred generate_proc_arg_info(proc_info, list(type), module_info, proc_info).
+:- mode generate_proc_arg_info(in, in, in, out) is det.
 
-generate_proc_arg_info(ProcInfo0, Method, ArgTypes, ModuleInfo, ProcInfo) :-
+generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, argument_modes(InstTable, ArgModes)),
+	proc_info_args_method(ProcInfo0, Method),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
 	make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstTable,
@@ -127,6 +134,11 @@ generate_proc_arg_info(ProcInfo0, Method, ArgTypes, ModuleInfo, ProcInfo) :-
 	% arguments start at register number 2.
 	% In the `compact' argument convention, we may use a single
 	% register for both an input arg and an output arg.
+	%
+	% lambda.m ensures that all procedures which are called directly
+	% from do_call_*_closure use the `compact' argument convention,
+	% so that mercury_ho_call.c can place the input arguments without
+	% knowing anything about the called procedure.
 
 make_arg_infos(Method, ArgTypes, ArgModes, CodeModel, InstTable, ModuleInfo,
 		ArgInfo) :-
@@ -207,6 +219,13 @@ arg_info__unify_arg_info(compact, model_semi,
 	[arg_info(1, top_in), arg_info(2, top_in)]).
 arg_info__unify_arg_info(_ArgsMethod, model_non, _) :-
 	error("arg_info: nondet unify!").
+
+%---------------------------------------------------------------------------%
+
+arg_info__args_method_is_ho_callable(_, compact, yes).
+arg_info__args_method_is_ho_callable(_, simple, no).
+
+arg_info__ho_call_args_method(_, compact).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

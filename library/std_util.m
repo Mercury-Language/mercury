@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -483,6 +483,15 @@ Define_extern_entry(mercury__std_util__builtin_aggregate_4_5);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i1);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_2);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_3);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_4);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__std_util__builtin_aggregate_4_5);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 1);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 2);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 3);
 
 BEGIN_MODULE(builtin_aggregate_module)
 	init_entry(mercury__std_util__builtin_aggregate_4_0);
@@ -655,9 +664,11 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 
 	call(ENTRY(do_call_nondet_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 {
 	Word copied_solution;
 
@@ -689,9 +700,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	r5 = sofar_fv;
 	call(ENTRY(do_call_det_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 }
 Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	sofar_fv = r1;
  
 	/* swap heaps back the way they were */
@@ -701,6 +715,8 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
 	redo();
 	
 Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 {
 	Word copied_collection;
 
@@ -788,9 +804,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	call(ENTRY(do_call_nondet_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	/* we found a solution (in r1) */
 
 #ifdef MR_USE_TRAIL
@@ -807,9 +826,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 
 	call(ENTRY(do_call_det_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	/*
 	** we inserted the solution into the collection,
 	** and we've now got a new collection (in r1)
@@ -820,8 +842,10 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
  	redo();
  
 Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
-	/* no more solutions */
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
+	/* no more solutions */
 
 #ifdef MR_USE_TRAIL
 	/*
@@ -1155,10 +1179,17 @@ Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__univ_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__univ_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__univ_0_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury____Compare___std_util__univ_0_0, 1);
 
 Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__type_info_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__type_info_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__type_info_0_0);
 
 BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Unify___std_util__univ_0_0);
@@ -1268,6 +1299,9 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 #endif
 }
 Define_label(mercury____Compare___std_util__univ_0_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury____Compare___std_util__univ_0_0));
+
 #ifdef	COMPACT_ARGS
 	fatal_error(""mercury____Compare___std_util__univ_0_0_i1 reached in COMPACT_ARGS mode"");
 #else
@@ -2640,25 +2674,28 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	int i, arity, extra_args;
 	Word *base_type_info;
+	Word *arg_type_info;
 	Word *type_info;
 
-		/* 
-		** The arg_pseudo_type_info might be a polymorphic variable,
-		** if so - substitute.
-		*/
-
+	/* 
+	** The arg_pseudo_type_info might be a polymorphic variable.
+	** If so, then substitute it's value, and then we're done.
+	*/
 	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		arg_pseudo_type_info = (Word *) 
+		arg_type_info = (Word *) 
 			term_type_info[(Word) arg_pseudo_type_info];
-	}
 
-	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-		fatal_error(""ML_create_type_info: unbound type variable"");
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error(""ML_create_type_info: ""
+					""unbound type variable"");
+		}
+
+		return arg_type_info;
 	}
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(arg_pseudo_type_info);
 
-		/* no arguments - optimise common case */
+	/* no arguments - optimise common case */
 	if (base_type_info == arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	}
@@ -2671,52 +2708,39 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 		extra_args = 1;
 	}
 
-
-		/* 
-		** Check for type variables -- if there are none,
-		** we don't need to create a new type_info.
-		*/
-	for (i = arity + extra_args - 1; i >= extra_args; i--) {
-		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-			break;
+	/*
+	** Iterate over the arguments, figuring out whether we
+	** need to make any substitutions.
+	** If so, copy the resulting argument type-infos into
+	** a new type_info.
+	*/
+	type_info = NULL;
+	for (i = extra_args; i < arity + extra_args; i++) {
+		arg_type_info = ML_create_type_info(term_type_info,
+				(Word *) arg_pseudo_type_info[i]);
+		if (TYPEINFO_IS_VARIABLE(arg_type_info)) {
+			fatal_error(""ML_create_type_info: ""
+				""unbound type variable"");
+		}
+		if (arg_type_info != (Word *) arg_pseudo_type_info[i]) {
+			/*
+			** We made a substitution.
+			** We need to allocate a new type_info,
+			** if we haven't done so already.
+			*/
+			if (type_info == NULL) {
+				incr_saved_hp(LVALUE_CAST(Word, type_info),
+					arity + extra_args);
+				memcpy(type_info, arg_pseudo_type_info,
+					(arity + extra_args) * sizeof(Word));
+			}
+			type_info[i] = (Word) arg_type_info;
 		}
 	}
-
-		/*
-		** Do we need to create a new type_info?
-		*/
-	if (i >= extra_args) {
-		incr_saved_hp(LVALUE_CAST(Word, type_info), arity + extra_args);
-
-			/* 
-			** Copy any preliminary arguments to the type_info 
-			** (this means the base_type_info and possibly
-			** arity for higher order terms).
-			*/ 
-		for (i = 0; i < extra_args; i++) {
-			type_info[i] = arg_pseudo_type_info[i];
-		}
-
-			/*
-			** Copy type arguments, substituting for any 
-			** type variables.
-			*/
-		for (i = extra_args; i < arity + extra_args; i++) {
-			if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
-				type_info[i] = term_type_info[
-					arg_pseudo_type_info[i]];
-				if (TYPEINFO_IS_VARIABLE(type_info[i])) {
-					fatal_error(""ML_create_type_info: ""
-						""unbound type variable"");
-				}
-
-			} else {
-				type_info[i] = arg_pseudo_type_info[i];
-			}
-		}
-		return type_info;
-	} else {
+	if (type_info == NULL) {
 		return arg_pseudo_type_info;
+	} else {
+		return type_info;
 	}
 }
 

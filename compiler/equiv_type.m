@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,22 +112,56 @@ equiv_type__replace_in_item(type_defn(VarSet0, TypeDefn0, Cond),
 	equiv_type__replace_in_type_defn(TypeDefn0, VarSet0, EqvMap,
 				TypeDefn, VarSet, ContainsCirc).
 
-equiv_type__replace_in_item(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
-		EqvMap, pred(VarSet, PredName, TypesAndModes, Det, Cond), no) :-
-	equiv_type__replace_in_tms(TypesAndModes0, VarSet0, EqvMap, 
+equiv_type__replace_in_item(
+		pred(VarSet0, PredName, TypesAndModes0, 
+			Det, Cond, Purity, ClassContext0),
+		EqvMap,
+		pred(VarSet, PredName, TypesAndModes, 
+			Det, Cond, Purity, ClassContext),
+		no) :-
+	equiv_type__replace_in_class_constraints(ClassContext0, VarSet0, 
+				EqvMap, ClassContext, VarSet1),
+	equiv_type__replace_in_tms(TypesAndModes0, VarSet1, EqvMap, 
 					TypesAndModes, VarSet).
 
 equiv_type__replace_in_item(
 			func(VarSet0, PredName, TypesAndModes0, 
-				RetTypeAndMode0, Det, Cond),
+				RetTypeAndMode0, Det, Cond, Purity,
+				ClassContext0),
 			EqvMap,
-			func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
-				Det, Cond),
+			func(VarSet, PredName, TypesAndModes, 
+				RetTypeAndMode, Det, Cond, Purity,
+				ClassContext),
 			no) :-
-	equiv_type__replace_in_tms(TypesAndModes0, VarSet0, EqvMap,
-				TypesAndModes, VarSet1),
-	equiv_type__replace_in_tm(RetTypeAndMode0, VarSet1, EqvMap,
+	equiv_type__replace_in_class_constraints(ClassContext0, VarSet0, 
+				EqvMap, ClassContext, VarSet1),
+	equiv_type__replace_in_tms(TypesAndModes0, VarSet1, EqvMap,
+				TypesAndModes, VarSet2),
+	equiv_type__replace_in_tm(RetTypeAndMode0, VarSet2, EqvMap,
 				RetTypeAndMode, VarSet).
+
+equiv_type__replace_in_item(
+			typeclass(Constraints0, ClassName, Vars, 
+				ClassInterface0, VarSet0),
+			EqvMap,
+			typeclass(Constraints, ClassName, Vars, 
+				ClassInterface, VarSet),
+			no) :-
+	equiv_type__replace_in_class_constraints(Constraints0, VarSet0, 
+				EqvMap, Constraints, VarSet),
+	equiv_type__replace_in_class_interface(ClassInterface0,
+				EqvMap, ClassInterface).
+
+equiv_type__replace_in_item(
+			instance(Constraints0, ClassName, Ts0, 
+				InstanceInterface, VarSet0),
+			EqvMap,
+			instance(Constraints, ClassName, Ts, 
+				InstanceInterface, VarSet),
+			no) :-
+	equiv_type__replace_in_class_constraints(Constraints0, VarSet0, 
+				EqvMap, Constraints, VarSet1),
+	equiv_type__replace_in_type_list(Ts0, VarSet1, EqvMap, Ts, VarSet, _).
 
 :- pred equiv_type__replace_in_type_defn(type_defn, tvarset, eqv_map,
 					type_defn, tvarset, bool).
@@ -147,6 +181,79 @@ equiv_type__replace_in_type_defn(du_type(TName, TArgs, TBody0, EqPred), VarSet0,
 			EqvMap, du_type(TName, TArgs, TBody, EqPred), VarSet,
 			no) :-
 	equiv_type__replace_in_du(TBody0, VarSet0, EqvMap, TBody, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred equiv_type__replace_in_class_constraints(list(class_constraint), 
+			varset, eqv_map, list(class_constraint), varset).
+:- mode equiv_type__replace_in_class_constraints(in, in, in, out, out) is det.
+
+equiv_type__replace_in_class_constraints([], VarSet, _, [], VarSet).
+equiv_type__replace_in_class_constraints([C0|C0s], VarSet0, EqvMap, 
+				[C|Cs], VarSet) :-
+	equiv_type__replace_in_class_constraint(C0, VarSet0, EqvMap, C,
+		VarSet1),
+	equiv_type__replace_in_class_constraints(C0s, VarSet1, EqvMap, Cs, 
+		VarSet).
+
+:- pred equiv_type__replace_in_class_constraint(class_constraint, varset, 
+					eqv_map, class_constraint, varset).
+:- mode equiv_type__replace_in_class_constraint(in, in, in, out, out) is det.
+
+equiv_type__replace_in_class_constraint(Constraint0, VarSet0, EqvMap,
+				Constraint, VarSet) :-
+	Constraint0 = constraint(ClassName, Ts0),
+	equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap, Ts, VarSet, _),
+	Constraint = constraint(ClassName, Ts).
+
+%-----------------------------------------------------------------------------%
+
+:- pred equiv_type__replace_in_class_interface(class_interface,
+					eqv_map, class_interface).
+:- mode equiv_type__replace_in_class_interface(in, in, out) is det.
+
+equiv_type__replace_in_class_interface(ClassInterface0, EqvMap,
+				ClassInterface) :-
+	list__map(equiv_type__replace_in_class_method(EqvMap),
+		ClassInterface0, ClassInterface).
+
+:- pred equiv_type__replace_in_class_method(eqv_map, class_method, 
+					class_method).
+:- mode equiv_type__replace_in_class_method(in, in, out) is det.
+
+equiv_type__replace_in_class_method(EqvMap,
+			pred(VarSet0, PredName, TypesAndModes0, 
+				Det, Cond, ClassContext0, Context),
+			pred(VarSet, PredName, TypesAndModes, 
+				Det, Cond, ClassContext, Context)
+			) :-
+	equiv_type__replace_in_class_constraints(ClassContext0, VarSet0, 
+				EqvMap, ClassContext, VarSet1),
+	equiv_type__replace_in_tms(TypesAndModes0, VarSet1, EqvMap, 
+					TypesAndModes, VarSet).
+
+equiv_type__replace_in_class_method(EqvMap,
+			func(VarSet0, PredName, TypesAndModes0, 
+				RetTypeAndMode0, Det, Cond,
+				ClassContext0, Context),
+			func(VarSet, PredName, TypesAndModes, 
+				RetTypeAndMode, Det, Cond,
+				ClassContext, Context)
+			) :-
+	equiv_type__replace_in_class_constraints(ClassContext0, VarSet0, 
+				EqvMap, ClassContext, VarSet1),
+	equiv_type__replace_in_tms(TypesAndModes0, VarSet1, EqvMap,
+				TypesAndModes, VarSet2),
+	equiv_type__replace_in_tm(RetTypeAndMode0, VarSet2, EqvMap,
+				RetTypeAndMode, VarSet).
+
+equiv_type__replace_in_class_method(_,
+			pred_mode(A,B,C,D,E,F),
+			pred_mode(A,B,C,D,E,F)).
+
+equiv_type__replace_in_class_method(_, 
+			func_mode(A,B,C,D,E,F,G),
+			func_mode(A,B,C,D,E,F,G)).
 
 %-----------------------------------------------------------------------------%
 
@@ -287,14 +394,22 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred equiv_type__replace_in_tms(list(type_and_mode), tvarset, eqv_map,
-			list(type_and_mode), tvarset).
+:- pred equiv_type__replace_in_tms(types_and_modes, tvarset, eqv_map,
+			types_and_modes, tvarset).
 :- mode equiv_type__replace_in_tms(in, in, in, out, out) is det.
 
-equiv_type__replace_in_tms([], VarSet, _EqvMap, [], VarSet).
-equiv_type__replace_in_tms([TM0|TMs0], VarSet0, EqvMap, [TM|TMs], VarSet) :-
+equiv_type__replace_in_tms(types_and_modes(InstTable, TMs0), VarSet0, EqvMap,
+			types_and_modes(InstTable, TMs), VarSet) :-
+	equiv_type__replace_in_tms_2(TMs0, VarSet0, EqvMap, TMs, VarSet).
+
+:- pred equiv_type__replace_in_tms_2(list(type_and_mode), tvarset, eqv_map,
+			list(type_and_mode), tvarset).
+:- mode equiv_type__replace_in_tms_2(in, in, in, out, out) is det.
+
+equiv_type__replace_in_tms_2([], VarSet, _EqvMap, [], VarSet).
+equiv_type__replace_in_tms_2([TM0|TMs0], VarSet0, EqvMap, [TM|TMs], VarSet) :-
 	equiv_type__replace_in_tm(TM0, VarSet0, EqvMap, TM, VarSet1),
-	equiv_type__replace_in_tms(TMs0, VarSet1, EqvMap, TMs, VarSet).
+	equiv_type__replace_in_tms_2(TMs0, VarSet1, EqvMap, TMs, VarSet).
 
 :- pred equiv_type__replace_in_tm(type_and_mode, tvarset, eqv_map,
 				type_and_mode, tvarset).

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne. 
+# Copyright (C) 1995-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -117,7 +117,7 @@ LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 # RPATH_SEP is a path separator; normally either ":"
 # or just RPATH_OPT with a space in front of it.
 # The SHLIB_ versions are used when linking shared libraries
-# (perhaps invoking ld directory, rather than gcc).
+# (perhaps invoking ld directly, rather than via the C compiler).
 # The EXE_ versions are used when linking executables.
 # The empty single quote pairs below are there to ensure that `make'
 # does not throw away any important trailing or leading whitespace.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -149,10 +149,18 @@
 
 	% list__take(Len, List, Start):
 	%	`Start' is the first `Len' elements of `List'.
+	%	Fails if `List' has less than `Len' elements.
 	%	See also: list__split_list.
 	%
 :- pred list__take(int, list(T), list(T)).
 :- mode list__take(in, in, out) is semidet.
+
+	% list__take_upto(Len, List, Start):
+	%	`Start' is the first `Len' elements of `List'.
+	%	If `List' has less than `Len' elements, return the entire list.
+	%
+:- pred list__take_upto(int, list(T), list(T)).
+:- mode list__take_upto(in, in, out) is det.
 
 	% list__drop(Len, List, End):
 	%	`End' is the remainder of `List' after removing the
@@ -797,11 +805,18 @@ list__take(N, As, Bs) :-
 		N > 0
 	->
 		N1 is N - 1,
-		As = [A|As1],
-		Bs = [A|Bs1],
+		As = [A | As1],
+		Bs = [A | Bs1],
 		list__take(N1, As1, Bs1)
 	;
 		Bs = []
+	).
+
+list__take_upto(N, As, Bs) :-
+	( list__take(N, As, Bs0) ->
+		Bs = Bs0
+	;
+		Bs = As
 	).
 
 list__drop(N, As, Bs) :-

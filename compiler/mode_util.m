@@ -236,12 +236,23 @@ insts_to_mode(Initial, Final, Mode) :-
 				qualified("mercury_builtin", "out"), [])
 	; Initial = free, Final = ground(unique, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "uo"), [])
+	; Initial = free, Final = ground(mostly_unique, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "muo"),
+								[])
 	; Initial = ground(shared, no), Final = ground(shared, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "in"), [])
 	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "di"), [])
+	; Initial = ground(mostly_unique, no),
+	  Final = ground(mostly_clobbered, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "mdi"),
+								[])
 	; Initial = ground(unique, no), Final = ground(unique, no) ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "ui"), [])
+	; Initial = ground(mostly_unique, no),
+	  Final = ground(mostly_unique, no) ->
+		Mode = user_defined_mode(qualified("mercury_builtin", "mui"),
+								[])
 	; Initial = free ->
 		Mode = user_defined_mode(qualified("mercury_builtin", "out"),
 								[Final])
@@ -1062,7 +1073,7 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
 						_Context, _Status),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
-	mode_get_insts(ModuleInfo, Mode, Initial, Final).
+	mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final).
 
 mode_get_insts(ModuleInfo, Mode, Inst1, Inst2) :-
 	( mode_get_insts_semidet(ModuleInfo, Mode, Inst1a, Inst2a) ->
@@ -1385,6 +1396,19 @@ recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), _,
 	instmap__vars(InstMap, NonLocals),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta).
 
+recompute_instmap_delta_3(class_method_call(A, B, Vars, C, Modes, D), _,
+		class_method_call(A, B, Vars, C, Modes, D),
+		InstMap0, InstMapDelta, RI0, RI) :-
+	recompute_info_get_inst_table(RI0, InstTable0),
+	Modes = argument_modes(ArgInstTable, ArgModes0),
+	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	recompute_info_set_inst_table(RI0, InstTable, RI1),
+	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap,
+		RI1, RI),
+	instmap__vars(InstMap, NonLocals),
+	compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta).
+
 recompute_instmap_delta_3(call(PredId, ProcId, Args, D, E, F), _,
 		call(PredId, ProcId, Args, D, E, F), InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
@@ -1396,8 +1420,8 @@ recompute_instmap_delta_3(unify(Var, UnifyRhs0, UniMode0, Uni0, E),
 	recompute_instmap_delta_unify(Var, UnifyRhs0, Uni0, Uni, UniMode0,
 		UniMode, GoalInfo, InstMap, InstMapDelta, UnifyRhs).
 
-recompute_instmap_delta_3(pragma_c_code(A, B, PredId, ProcId, Args, F, G,
-		H), _, pragma_c_code(A, B, PredId, ProcId, Args, F, G, H),
+recompute_instmap_delta_3(pragma_c_code(A, PredId, ProcId, Args, E, F, G), _,
+		pragma_c_code(A, PredId, ProcId, Args, E, F, G),
 		InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
@@ -1642,8 +1666,8 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		recompute_info_set_module_info(RI0, ModuleInfo, RI1),
 		recompute_info_set_inst_table(RI1, InstTable, RI)
 
-	; UnifyRhs0 = lambda_goal(PredOrFunc, Vars, LambdaModes, LambdaDet,
-			_, Goal0),
+	; UnifyRhs0 = lambda_goal(PredOrFunc, LambdaNonLocals, Vars,
+			LambdaModes, LambdaDet, _, Goal0),
 
 		% var-lambda unification
 
@@ -1690,13 +1714,10 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, Unification0, Unification,
 		ModeOfX = (InstOfX -> UnifyInst),
 		ModeOfY = (InstOfY -> UnifyInst),
 		UniMode = ModeOfX - ModeOfY,
-		UnifyRhs = lambda_goal(PredOrFunc, Vars, LambdaModes,
-				LambdaDet, IMDelta, Goal),
+		UnifyRhs = lambda_goal(PredOrFunc, LambdaNonLocals, Vars,
+				LambdaModes, LambdaDet, IMDelta, Goal),
 		( Unification0 = construct(_, RealConsId, _, _) ->
-			Goal = _ - GoalGoalInfo,
-			goal_info_get_nonlocals(GoalGoalInfo, GoalNonLocals),
-			set__delete_list(GoalNonLocals, Vars, ArgVarsSet),
-			set__to_sorted_list(ArgVarsSet, ArgVars),
+			list__delete_elems(LambdaNonLocals, Vars, ArgVars),
 			instmap__lookup_vars(ArgVars, InstMap0, ArgInsts),
 			inst_lists_to_mode_list(ArgInsts, ArgInsts, ArgModes0),
 			mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,

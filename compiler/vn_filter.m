@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -136,7 +136,7 @@ vn_filter__user_instr(block(_, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 vn_filter__user_instr(assign(_, Rval), yes(Rval)).
 vn_filter__user_instr(call(_, _, _, _), no).
-vn_filter__user_instr(mkframe(_, _, _), no).
+vn_filter__user_instr(mkframe(_, _, _, _), no).
 vn_filter__user_instr(modframe(_), no).
 vn_filter__user_instr(label(_), no).
 vn_filter__user_instr(goto(_), no).
@@ -144,7 +144,7 @@ vn_filter__user_instr(computed_goto(Rval, _), yes(Rval)).
 vn_filter__user_instr(if_val(Rval, _), yes(Rval)).
 vn_filter__user_instr(c_code(_), _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__user_instr(incr_hp(_, _, Rval), yes(Rval)).
+vn_filter__user_instr(incr_hp(_, _, Rval, _), yes(Rval)).
 vn_filter__user_instr(mark_hp(_), no).
 vn_filter__user_instr(restore_hp(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
@@ -154,7 +154,7 @@ vn_filter__user_instr(mark_ticket_stack(_), no).
 vn_filter__user_instr(discard_tickets_to(Rval), yes(Rval)).
 vn_filter__user_instr(incr_sp(_, _), no).
 vn_filter__user_instr(decr_sp(_), no).
-vn_filter__user_instr(pragma_c(_, _, _, _, _), _):-
+vn_filter__user_instr(pragma_c(_, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 
 	% vn_filter__replace_in_user_instr(Instr0, Old, New, Instr):
@@ -176,7 +176,7 @@ vn_filter__replace_in_user_instr(assign(Lval, Rval0), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(call(_, _, _, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(mkframe(_, _, _), _, _, _) :-
+vn_filter__replace_in_user_instr(mkframe(_, _, _, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(modframe(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -192,8 +192,8 @@ vn_filter__replace_in_user_instr(if_val(Rval0, Label), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(c_code(_), _, _, _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__replace_in_user_instr(incr_hp(Lval, Tag, Rval0), Temp, Defn,
-		incr_hp(Lval, Tag, Rval)) :-
+vn_filter__replace_in_user_instr(incr_hp(Lval, Tag, Rval0, Msg), Temp, Defn,
+		incr_hp(Lval, Tag, Rval, Msg)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(mark_hp(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -216,7 +216,7 @@ vn_filter__replace_in_user_instr(incr_sp(_, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(decr_sp(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(pragma_c(_, _, _, _, _), _, _, _):-
+vn_filter__replace_in_user_instr(pragma_c(_, _, _, _), _, _, _):-
 	error("inappropriate instruction in vn__filter").
 
 	% Check whether this instruction defines the value of any lval.
@@ -230,7 +230,7 @@ vn_filter__defining_instr(block(_, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 vn_filter__defining_instr(assign(Lval, _), yes(Lval)).
 vn_filter__defining_instr(call(_, _, _, _), no).
-vn_filter__defining_instr(mkframe(_, _, _), no).
+vn_filter__defining_instr(mkframe(_, _, _, _), no).
 vn_filter__defining_instr(modframe(_), no).
 vn_filter__defining_instr(label(_), no).
 vn_filter__defining_instr(goto(_), no).
@@ -238,7 +238,7 @@ vn_filter__defining_instr(computed_goto(_, _), no).
 vn_filter__defining_instr(if_val(_, _), no).
 vn_filter__defining_instr(c_code(_), _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__defining_instr(incr_hp(Lval, _, _), yes(Lval)).
+vn_filter__defining_instr(incr_hp(Lval, _, _, _), yes(Lval)).
 vn_filter__defining_instr(mark_hp(Lval), yes(Lval)).
 vn_filter__defining_instr(restore_hp(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
@@ -248,7 +248,7 @@ vn_filter__defining_instr(mark_ticket_stack(Lval), yes(Lval)).
 vn_filter__defining_instr(discard_tickets_to(_), no).
 vn_filter__defining_instr(incr_sp(_, _), no).
 vn_filter__defining_instr(decr_sp(_), no).
-vn_filter__defining_instr(pragma_c(_, _, _, _, _), _):-
+vn_filter__defining_instr(pragma_c(_, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
 
 	% vn_filter__replace_in_defining_instr(Instr0, Old, New, Instr):
@@ -270,7 +270,7 @@ vn_filter__replace_in_defining_instr(assign(Lval0, Rval), Temp, Defn,
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
 vn_filter__replace_in_defining_instr(call(_, _, _, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
-vn_filter__replace_in_defining_instr(mkframe(_, _, _), _, _, _) :-
+vn_filter__replace_in_defining_instr(mkframe(_, _, _, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(modframe(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
@@ -284,8 +284,8 @@ vn_filter__replace_in_defining_instr(if_val(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(c_code(_), _, _, _):-
 	error("inappropriate instruction in vn__filter").
-vn_filter__replace_in_defining_instr(incr_hp(Lval0, Tag, Rval), Temp, Defn,
-		incr_hp(Lval, Tag, Rval)) :-
+vn_filter__replace_in_defining_instr(incr_hp(Lval0, Tag, Rval, Msg), Temp, Defn,
+		incr_hp(Lval, Tag, Rval, Msg)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
 vn_filter__replace_in_defining_instr(mark_hp(Lval0), Temp, Defn,
 		mark_hp(Lval)) :-
@@ -308,7 +308,7 @@ vn_filter__replace_in_defining_instr(incr_sp(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(decr_sp(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
-vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _, _), _, _, _):-
+vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _), _, _, _):-
 	error("inappropriate instruction in vn__filter").
 
 	% vn_filter__replace_in_lval(Lval0, Old, New, Lval):
@@ -360,8 +360,8 @@ vn_filter__replace_in_rval(lval(Lval0), Temp, Defn, Rval) :-
 	).
 vn_filter__replace_in_rval(var(_), _, _, _) :-
 	error("found var in vn_filter__replace_in_rval").
-vn_filter__replace_in_rval(create(Tag, Args, Unique, Label), _, _,
-		create(Tag, Args, Unique, Label)).
+vn_filter__replace_in_rval(create(Tag, Args, Unique, Label, Msg), _, _,
+		create(Tag, Args, Unique, Label, Msg)).
 vn_filter__replace_in_rval(mkword(Tag, Rval0), Temp, Defn, mkword(Tag, Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_rval(const(Const), _, _, const(Const)).

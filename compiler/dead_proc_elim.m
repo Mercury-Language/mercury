@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
 :- implementation.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
 :- import_module passes_aux, globals, options, code_util.
-:- import_module int, list, set, queue, map, bool, std_util, require.
+:- import_module int, string, list, set, queue, map, bool, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -110,7 +110,10 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 		Queue1, Queue2, Needed1, Needed2),
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
-		Queue2, Queue, Needed2, Needed).
+		Queue2, Queue3, Needed2, Needed3),
+	module_info_instances(ModuleInfo, Instances),
+	dead_proc_elim__initialize_class_methods(Instances,
+		Queue3, Queue, Needed3, Needed).
 
 	% Add all normally exported procedures within the listed predicates
 	% to the queue and map.
@@ -197,6 +200,62 @@ dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 	),
 	dead_proc_elim__initialize_base_gen_infos(BaseGenInfos,
 		Queue1, Queue, Needed1, Needed).
+
+:- pred dead_proc_elim__initialize_class_methods(instance_table, 
+	entity_queue, entity_queue, needed_map, needed_map).
+:- mode dead_proc_elim__initialize_class_methods(in, in, out, in, out) is det.
+
+dead_proc_elim__initialize_class_methods(Instances, Queue0, Queue, 
+		Needed0, Needed) :-
+	map__values(Instances, InstanceDefns0),
+	list__condense(InstanceDefns0, InstanceDefns),
+	list__foldl2(get_instance_pred_procs, InstanceDefns, Queue0, Queue,
+		Needed0, Needed).
+
+:- pred get_instance_pred_procs(hlds_instance_defn, entity_queue, entity_queue,
+	needed_map, needed_map).
+:- mode get_instance_pred_procs(in, in, out, in, out) is det.
+
+get_instance_pred_procs(Instance, Queue0, Queue, Needed0, Needed) :-
+	Instance = hlds_instance_defn(ImportStatus, _, _, _, PredProcIds, _, _),
+	(
+			% We only need the instance declarations which were
+			% made in this module.
+		( ImportStatus = exported
+		; ImportStatus = abstract_exported 
+		; ImportStatus = pseudo_exported
+		; ImportStatus = local
+		)
+	->
+		get_instance_pred_procs2(PredProcIds, Queue0, Queue, 
+			Needed0, Needed)
+	;
+		Queue = Queue0,
+		Needed = Needed0
+	).
+
+:- pred get_instance_pred_procs2(maybe(list(hlds_class_proc)), 
+	entity_queue, entity_queue, needed_map, needed_map).
+:- mode get_instance_pred_procs2(in, in, out, in, out) is det.
+
+get_instance_pred_procs2(PredProcIds, Queue0, Queue, Needed0, Needed) :-
+	(
+			% This should never happen
+		PredProcIds = no,
+		Queue = Queue0,
+		Needed = Needed0
+	;
+		PredProcIds = yes(Ids),
+		AddHldsClassProc = lambda(
+			[PredProc::in, Q0::in, Q::out, N0::in, N::out] is det,
+			(
+				PredProc = hlds_class_proc(PredId, ProcId),
+				queue__put(Q0, proc(PredId, ProcId), Q),
+				map__set(N0, proc(PredId, ProcId), no, N)
+			)),
+		list__foldl2(AddHldsClassProc, Ids, Queue0, Queue, 
+			Needed0, Needed)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -372,6 +431,8 @@ dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else, _),
 		Needed2, Needed).
 dead_proc_elim__examine_expr(higher_order_call(_,_,_,_,_,_), _,
 		Queue, Queue, Needed, Needed).
+dead_proc_elim__examine_expr(class_method_call(_,_,_,_,_,_), _,
+		Queue, Queue, Needed, Needed).
 dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
@@ -395,7 +456,7 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		NewNotation = yes(1),
 		map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed)
 	).
-dead_proc_elim__examine_expr(pragma_c_code(_, _, PredId, ProcId, _, _, _, _),
+dead_proc_elim__examine_expr(pragma_c_code(_, PredId, ProcId, _, _, _, _),
 		_CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
 	map__set(Needed0, proc(PredId, ProcId), no, Needed).
@@ -619,6 +680,8 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	( 
 		pred_info_module(PredInfo, PredModule),
+		pred_info_name(PredInfo, PredName),
+		pred_info_arity(PredInfo, PredArity),
 		(
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after 
@@ -634,9 +697,14 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% aren't used.
 			\+ pred_info_is_imported(PredInfo), 
 			\+ pred_info_import_status(PredInfo, opt_imported)
+		;
+			% Don't eliminate <foo>_init_any/1 predicates;
+			% modes.m may insert calls to them to initialize
+			% variables from inst `free' to inst `any'.
+			string__remove_suffix(PredName, "_init_any", _),
+			PredArity = 1
 		)
 	->
-		pred_info_name(PredInfo, PredName),
 		set__insert(NeededNames0, qualified(PredModule, PredName), 
 			NeededNames),
 		queue__put(Q0, PredId, Q)
@@ -693,13 +761,14 @@ pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 	)) },
 	list__foldl(ExamineCase, Cases).
 pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_,_) - _) --> [].
+pre_modecheck_examine_goal(class_method_call(_,_,_,_,_,_) - _) --> [].
 pre_modecheck_examine_goal(not(Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(some(_, Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
 	dead_pred_info_add_pred_name(PredName).
-pre_modecheck_examine_goal(pragma_c_code(_, _, _, _, _, _, _, _) - _) --> [].
+pre_modecheck_examine_goal(pragma_c_code(_, _, _, _, _, _, _) - _) --> [].
 pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
 	pre_modecheck_examine_unify_rhs(Rhs).
 
@@ -713,7 +782,7 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
 	;
 		[]
 	).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, Goal)) -->
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, Goal)) -->
 	pre_modecheck_examine_goal(Goal).
 
 :- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -137,11 +137,13 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	pred_info_name(PredInfo0, PredName),
 	pred_info_typevarset(PredInfo0, TVarSet),
 	pred_info_get_markers(PredInfo0, Markers),
+	pred_info_get_class_context(PredInfo0, ClassContext),
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, VarSet),
+	proc_info_varset(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_inst_table(ProcInfo0, InstTable),
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, InstTable),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers,
+			InstTable),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
@@ -154,6 +156,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 :- type dnf_info --->	dnf_info(
 				tvarset,
 				map(var, type),
+				list(class_constraint),
 				varset,
 				pred_markers,
 				inst_table
@@ -210,6 +213,11 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
+		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		ModuleInfo = ModuleInfo0,
+		NewPredIds = NewPredIds0,
+		Goal = Goal0
+	;
 		GoalExpr0 = call(_, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
@@ -220,7 +228,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -363,12 +371,16 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, VarSet, Markers, InstTable),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers,
+			InstTable),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
+		% This ClassContext is a conservative approximation.
+		% We could get rid of some constraints on variables
+		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName,
-		TVarSet, VarTypes, VarSet, Markers, 
+		TVarSet, VarTypes, ClassContext, VarSet, Markers, 
 		InstTable, ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
@@ -412,6 +424,7 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 
 dnf__is_atomic_expr(conj(_), no).
 dnf__is_atomic_expr(higher_order_call(_, _, _, _, _, _), yes).
+dnf__is_atomic_expr(class_method_call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(switch(_, _, _, _), no).
 dnf__is_atomic_expr(unify(_, _, _, _, _), yes).
@@ -420,7 +433,7 @@ dnf__is_atomic_expr(not(_), no).
 dnf__is_atomic_expr(some(_, GoalExpr - _), IsAtomic) :-
 	dnf__is_atomic_expr(GoalExpr, IsAtomic).
 dnf__is_atomic_expr(if_then_else(_, _, _, _, _), no).
-dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _, _, _, _), yes).
+dnf__is_atomic_expr(pragma_c_code(_, _, _, _, _, _, _), yes).
 
 :- pred dnf__expr_free_of_nonatomic(hlds_goal_expr::in,
 	set(pred_proc_id)::in) is semidet.
@@ -442,7 +455,7 @@ dnf__expr_free_of_nonatomic(if_then_else(_, Cond, Then, Else, _), NonAtomic) :-
 	dnf__goal_free_of_nonatomic(Cond, NonAtomic),
 	dnf__goal_free_of_nonatomic(Then, NonAtomic),
 	dnf__goal_free_of_nonatomic(Else, NonAtomic).
-dnf__expr_free_of_nonatomic(pragma_c_code(_, _, _, _, _, _, _, _), _NonAtomic).
+dnf__expr_free_of_nonatomic(pragma_c_code(_, _, _, _, _, _, _), _NonAtomic).
 
 :- pred dnf__goal_free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -166,13 +166,15 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	( { ProcIds = [] } ->
 		[]
 	;
 		c_gen_indent(Indent),
 		io__write_string("/****\n"),
+		{ pred_info_get_purity(PredInfo, Purity) },
 		mercury_output_pred_type(TVarSet, unqualified(PredName),
-			ArgTypes, no, Context),
+			ArgTypes, no, Purity, ClassContext, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,
@@ -233,7 +235,7 @@ c_gen_procs_2([ProcId | ProcIds], ModuleInfo, Indent, PredId, PredInfo) -->
 
 c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	{ proc_info_interface_determinism(Proc, InterfaceDeterminism) },
-	{ proc_info_variables(Proc, VarSet) },
+	{ proc_info_varset(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ pred_info_name(Pred, PredName) },
 	{ proc_info_vartypes(Proc, VarTypes) },
@@ -351,7 +353,7 @@ c_gen_prototype(ModuleInfo, PredId, ProcId) -->
 		PredInfo, ProcInfo) },
 
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
-	{ proc_info_variables(ProcInfo, VarSet) },
+	{ proc_info_varset(ProcInfo, VarSet) },
 	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ pred_info_arg_types(PredInfo, _HeadTypeVarSet, HeadTypes) },
 	{ proc_info_argmodes(ProcInfo, argument_modes(HeadIT, HeadModes)) },
@@ -399,8 +401,7 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
-	{ proc_id_to_int(ProcId, ProcInt) },
-	{ ModeNum is ProcInt mod 10000 },	% strip off the priority
+	{ proc_id_to_int(ProcId, ModeNum) },
 	io__write_int(ModeNum).
 
 :- pred c_gen_select_output_vars(inst_table, module_info, list(var),
@@ -631,6 +632,8 @@ c_gen_goal_2(disj(List, _), Indent, CGenInfo0, CGenInfo) -->
 
 c_gen_goal_2(higher_order_call(_, _, _, _, _, _), _, _, _) -->
 	{ error("mercury_to_c: higher_order_call not implemented") }.
+c_gen_goal_2(class_method_call(_, _, _, _, _, _), _, _, _) -->
+	{ error("mercury_to_c: class_method_call not implemented") }.
 c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 					Indent, CGenInfo0, CGenInfo) -->
 	{ c_gen_info_get_module_info(CGenInfo0, ModuleInfo) },
@@ -674,13 +677,17 @@ c_gen_goal_2(call(PredId, ProcId, ArgVars, _, _, _PredName),
 c_gen_goal_2(unify(_A, _B, _, Unification, _), Indent, CGenInfo0, CGenInfo) -->
 	c_gen_unification(Unification, Indent, CGenInfo0, CGenInfo).
 
-c_gen_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _, _), _, _, _) -->
+c_gen_goal_2(pragma_c_code(_, _, _, _, ArgNames, _, PragmaCode), _, _, _) -->
 	{ sorry(4) },
 	{ get_pragma_c_var_names(ArgNames, Names) },
 	io__write_string("$pragma(c_code, ["),
 	c_gen_string_list(Names),
 	io__write_string("], """),
-	io__write_string(C_Code),
+	( { PragmaCode = ordinary(C_Code, _) } -> 
+		io__write_string(C_Code)
+	;
+		{ error("cannot translate nondet pragma code to C") }
+	),
 	io__write_string(""" )").
 
 :- pred c_gen_string_list(list(string), io__state, io__state).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ code_exprn__rval_depends_on_reg(var(Var), Vars) :-
 		code_exprn__filter_out_reg_depending(Rvals0, Vars, Rvals),
 		set__empty(Rvals)
 	).
-code_exprn__rval_depends_on_reg(create(_Tag, Rvals, _Unique, _LabNum), Vars) :-
+code_exprn__rval_depends_on_reg(create(_, Rvals, _, _, _), Vars) :-
 	code_exprn__args_depend_on_reg(Rvals, Vars).
 code_exprn__rval_depends_on_reg(mkword(_Tag, Rval), Vars) :-
 	code_exprn__rval_depends_on_reg(Rval, Vars).
@@ -605,7 +605,7 @@ code_exprn__add_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__add_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__add_lval_reg_dependencies(Lval).
 code_exprn__add_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__add_rval_reg_dependencies(create(_, Rvals, _, _)) -->
+code_exprn__add_rval_reg_dependencies(create(_, Rvals, _, _, _)) -->
 	code_exprn__add_arg_reg_dependencies(Rvals).
 code_exprn__add_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__add_rval_reg_dependencies(Rval).
@@ -678,7 +678,7 @@ code_exprn__rem_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__rem_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__rem_lval_reg_dependencies(Lval).
 code_exprn__rem_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _, _)) -->
+code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _, _, _)) -->
 	code_exprn__rem_arg_reg_dependencies(Rvals).
 code_exprn__rem_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__rem_rval_reg_dependencies(Rval).
@@ -904,8 +904,8 @@ code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, ExprnOpts,
 		mkword(Tag, Expr)) :-
 	code_exprn__expr_is_constant(Expr0, Vars, ExprnOpts, Expr).
 
-code_exprn__expr_is_constant(create(Tag, Args0, Unique, Label), Vars, ExprnOpts,
-		create(Tag, Args, Unique, Label)) :-
+code_exprn__expr_is_constant(create(Tag, Args0, Unique, Label, Msg),
+		Vars, ExprnOpts, create(Tag, Args, Unique, Label, Msg)) :-
 	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
 	StaticGroundTerms = yes,
 	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
@@ -1236,7 +1236,7 @@ code_exprn__find_real_creates([MaybeRval | MaybeRvals], SubCreates) -->
 
 code_exprn__rval_is_real_create(Rval) -->
 	(
-		{ Rval = create(_, _, _, _) },
+		{ Rval = create(_, _, _, _, _) },
 		code_exprn__get_vars(Vars0),
 		code_exprn__get_options(ExprnOpts),
 		{ \+ code_exprn__expr_is_constant(Rval, Vars0, ExprnOpts, _) }
@@ -1262,7 +1262,7 @@ code_exprn__rval_is_real_create(Rval) -->
 code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 	{ exprn_aux__simplify_rval(Rval0, Rval) },
 	(
-		{ Rval = create(Tag, Rvals, _Unique, _Label) }
+		{ Rval = create(Tag, Rvals, _Unique, _Label, Msg) }
 	->
 		{ list__length(Rvals, Arity) },
 		(
@@ -1275,8 +1275,8 @@ code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 		;
 			( { Lval = field(_, _, _) } ->
 				code_exprn__acquire_reg(r, Reg),
-				code_exprn__construct_cell(Reg,
-					VarName, Tag, Arity, Rvals, Code0),
+				code_exprn__construct_cell(Reg, VarName,
+					Tag, Arity, Rvals, Msg, Code0),
 				{ string__append(VarName, " placement",
 					Comment) },
 				{ Code1 = node([
@@ -1285,8 +1285,8 @@ code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 				{ Code = tree(Code0, Code1) },
 				code_exprn__release_reg(Reg)
 			;
-				code_exprn__construct_cell(Lval,
-					VarName, Tag, Arity, Rvals, Code)
+				code_exprn__construct_cell(Lval, VarName,
+					Tag, Arity, Rvals, Msg, Code)
 			)
 		)
 	;
@@ -1295,13 +1295,14 @@ code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 	).
 
 :- pred code_exprn__construct_cell(lval, string, tag, int, list(maybe(rval)),
-	code_tree, exprn_info, exprn_info).
-:- mode code_exprn__construct_cell(in, in, in, in, in, out, in, out) is det.
+	string, code_tree, exprn_info, exprn_info).
+:- mode code_exprn__construct_cell(in, in, in, in, in, in, out, in, out) is det.
 
-code_exprn__construct_cell(Lval, VarName, Tag, Arity, Rvals, Code) -->
+code_exprn__construct_cell(Lval, VarName, Tag, Arity, Rvals, TypeMsg, Code) -->
 	{ string__append("Allocating heap for ", VarName, Comment) },
 	{ Code0 = node([
-		incr_hp(Lval, yes(Tag), const(int_const(Arity))) - Comment
+		incr_hp(Lval, yes(Tag), const(int_const(Arity)), TypeMsg)
+			- Comment
 	]) },
 	code_exprn__construct_args(Rvals, Tag, Lval, 0, Targets, Code1),
 	code_exprn__free_arg_dependenciess(Targets),
@@ -1316,7 +1317,7 @@ code_exprn__construct_args([R | Rs], Tag, Lval, N0, Targets, Code) -->
 	(
 		{ R = yes(Rval) }
 	->
-		{ Target0 = field(Tag, lval(Lval), const(int_const(N0))) },
+		{ Target0 = field(yes(Tag), lval(Lval), const(int_const(N0))) },
 		{ MaybeTarget = yes(Target0) },
 		code_exprn__place_arg(Rval, yes(Target0), _, Code0)
 	;
@@ -1367,7 +1368,7 @@ code_exprn__produce_var(Var, Rval, Code) -->
 			;
 				RvalX = unop(_, _)
 			;
-				RvalX = create(_, _, _, _)
+				RvalX = create(_, _, _, _, _)
 			;
 				RvalX = mkword(_, _)
 			}

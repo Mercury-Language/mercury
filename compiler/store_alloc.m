@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,13 +47,12 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
 	( ApplyFollowVars = yes ->
-		globals__get_args_method(Globals, ArgsMethod),
 		proc_info_goal(ProcInfo0, Goal0),
 		proc_info_inst_table(ProcInfo0, InstTable),
 
 		find_final_follow_vars(ProcInfo0, FollowVars0),
-		find_follow_vars_in_goal(Goal0, ArgsMethod, InstTable,
-			ModuleInfo, FollowVars0, Goal1, FollowVars),
+		find_follow_vars_in_goal(Goal0, InstTable, ModuleInfo,
+			FollowVars0, Goal1, FollowVars),
 		Goal1 = GoalExpr1 - GoalInfo1,
 		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
 			GoalInfo2),
@@ -169,14 +168,17 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, ResumeVars0, ModuleInfo,
 store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _, _,
 		higher_order_call(A, B, C, D, E, F), Liveness).
 
+store_alloc_in_goal_2(class_method_call(A, B, C, D, E, F), Liveness, _, _,
+		class_method_call(A, B, C, D, E, F), Liveness).
+
 store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
 		call(A, B, C, D, E, F), Liveness).
 
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
 		unify(A,B,C,D,E), Liveness).
 
-store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G, H), Liveness, _, _,
-		pragma_c_code(A, B, C, D, E, F, G, H), Liveness).
+store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G), Liveness, _, _,
+		pragma_c_code(A, B, C, D, E, F, G), Liveness).
 
 %-----------------------------------------------------------------------------%
 

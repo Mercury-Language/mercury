@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,9 +65,12 @@
 	;	mode_error_no_matching_mode(list(var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
-	;	mode_error_bind_var(var, inst, inst)
+	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context
+	;	mode_error_non_local_lambda_var(var, inst)
+			% attempt to pass a live non-ground var as a
+			% non-local variable to a lambda goal
 	;	mode_error_unify_var_var(var, var, inst, inst)
 			% attempt to unify two free variables
 	;	mode_error_unify_var_functor(var, cons_id, list(var),
@@ -77,15 +80,22 @@
 	;	mode_error_unify_var_lambda(var, inst, inst)
 			% some sort of error in
 			% attempt to unify a variable with lambda expression
-	;	mode_error_conj(list(delayed_goal))
+	;	mode_error_conj(list(delayed_goal), schedule_culprit)
 			% a conjunction contains one or more unscheduleable
-			% goals
+			% goals; schedule_culprit gives the reason why
+			% they couldn't be scheduled.
 	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
 	;	mode_error_undefined_mode_in_lambda.
 			% This is a dummy error - the actual message
 			% is output by module_qual.m.
+
+:- type schedule_culprit
+	--->	goal_itself_was_impure
+	;	goals_followed_by_impure_goal(hlds_goal)
+	;	conj_floundered. % we've reached the end of a conjunction
+				% and there were still delayed goals
 
 :- type final_inst_error
 	--->	too_instantiated
@@ -186,9 +196,13 @@ report_mode_error(mode_error_implied_mode(Var, InstA, InstB), InstTable,
 	report_mode_error_implied_mode(InstTable, ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_no_mode_decl, _InstTable, ModeInfo) -->
 	report_mode_error_no_mode_decl(ModeInfo).
-report_mode_error(mode_error_bind_var(Var, InstA, InstB), InstTable,
+report_mode_error(mode_error_bind_var(Reason, Var, InstA, InstB), InstTable,
 		ModeInfo) -->
-	report_mode_error_bind_var(InstTable, ModeInfo, Var, InstA, InstB).
+	report_mode_error_bind_var(InstTable, ModeInfo,
+		Reason, Var, InstA, InstB).
+report_mode_error(mode_error_non_local_lambda_var(Var, Inst), InstTable,
+		ModeInfo) -->
+	report_mode_error_non_local_lambda_var(InstTable, ModeInfo, Var, Inst).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
 		InstTable, ModeInfo) -->
 	report_mode_error_unify_var_var(InstTable, ModeInfo, VarA, VarB,
@@ -201,8 +215,8 @@ report_mode_error(mode_error_unify_var_functor(Var, Name, Args, Inst,
 			ArgInsts), InstTable, ModeInfo) -->
 	report_mode_error_unify_var_functor(InstTable, ModeInfo, Var, Name,
 			Args, Inst, ArgInsts).
-report_mode_error(mode_error_conj(Errors), InstTable, ModeInfo) -->
-	report_mode_error_conj(InstTable, ModeInfo, Errors).
+report_mode_error(mode_error_conj(Errors, Culprit), InstTable, ModeInfo) -->
+	report_mode_error_conj(InstTable, ModeInfo, Errors, Culprit).
 report_mode_error(mode_error_no_matching_mode(Vars, Insts), InstTable,
 			ModeInfo) -->
 	report_mode_error_no_matching_mode(InstTable, ModeInfo, Vars, Insts).
@@ -216,15 +230,18 @@ report_mode_error(mode_error_undefined_mode_in_lambda, _InstTable, _ModeInfo)
 %-----------------------------------------------------------------------------%
 
 :- pred report_mode_error_conj(inst_table, mode_info, list(delayed_goal),
-				io__state, io__state).
-:- mode report_mode_error_conj(in, mode_info_no_io, in, di, uo) is det.
+				schedule_culprit, io__state, io__state).
+:- mode report_mode_error_conj(in, mode_info_no_io, in, in, di, uo) is det.
 
-report_mode_error_conj(InstTable, ModeInfo, Errors) -->
+report_mode_error_conj(InstTable, ModeInfo, Errors, Culprit) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
+
+	% if there's more than one error, and we have verbose-errors
+	% enabled, report them all
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
+	( { VerboseErrors = yes, Errors = [_, _ | _] } ->
 		mode_info_write_context(ModeInfo),
 		prog_out__write_context(Context),
 		io__write_string("  mode error in conjunction. The next "),
@@ -251,6 +268,28 @@ report_mode_error_conj(InstTable, ModeInfo, Errors) -->
 	;
 		% There wasn't any error to report!  This can't happen.
 		{ error("report_mode_error_conj") }
+	),
+
+	% if the goal(s) couldn't be scheduled because we couldn't
+	% reorder things past an impure goal, then report that.
+	( { Culprit = conj_floundered },
+		{ true } % we've already reported everything we can
+	; { Culprit = goal_itself_was_impure },
+		prog_out__write_context(Context),
+		io__write_string(
+		"  The goal could not be reordered, because it was impure.\n")
+	; { Culprit = goals_followed_by_impure_goal(ImpureGoal) },
+		prog_out__write_context(Context),
+		io__write_string(
+			"  The goal could not be reordered, because\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  it was followed by an impure goal.\n"),
+		{ ImpureGoal = _ - ImpureGoalInfo },
+		{ goal_info_get_context(ImpureGoalInfo, ImpureGoalContext) },
+		prog_out__write_context(ImpureGoalContext),
+		io__write_string(
+			"  This is the location of the impure goal.\n")
 	).
 
 :- pred find_important_errors(list(delayed_goal), list(delayed_goal),
@@ -259,12 +298,17 @@ report_mode_error_conj(InstTable, ModeInfo, Errors) -->
 
 find_important_errors([], [], []).
 find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
-	Error = delayed_goal(_, mode_error_info(_, _, _, _, ModeContext), _),
+	Error = delayed_goal(_,
+			mode_error_info(_, ModeError, _, _, ModeContext), _),
 	(
 		% an error is important unless it is a non-explicit unification,
 		% i.e. a head unification or a call argument unification
 		ModeContext = unify(unify_context(UnifyContext, _), _),
-		UnifyContext \= explicit
+		UnifyContext \= explicit,
+		% except that errors in lambda goals are important even
+		% if the unification that creates the lambda goal is
+		% an implicit one
+		ModeError \= mode_error_non_local_lambda_var(_, _)
 	->
 		ImportantErrors1 = ImportantErrors,
 		OtherErrors = [Error | OtherErrors1]
@@ -349,18 +393,30 @@ write_merge_context(if_then_else) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_bind_var(inst_table, mode_info, var, inst, inst,
-					io__state, io__state).
-:- mode report_mode_error_bind_var(in, mode_info_ui, in, in, in, di, uo) is det.
+:- pred report_mode_error_bind_var(inst_table, mode_info, var_lock_reason,
+				var, inst, inst, io__state, io__state).
+:- mode report_mode_error_bind_var(in, mode_info_ui, in, in, in, in,
+				di, uo) is det.
 
-report_mode_error_bind_var(InstTable, ModeInfo, Var, VarInst, Inst) -->
+report_mode_error_bind_var(InstTable, ModeInfo, Reason, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
-	io__write_string(
-		"  scope error: attempt to bind variable inside a negation.\n"),
+	io__write_string("  scope error: "),
+	( { Reason = negation },
+		io__write_string("attempt to bind a variable inside a negation.\n")
+	; { Reason = if_then_else },
+		io__write_string("attempt to bind a non-local variable\n"),
+		prog_out__write_context(Context),
+		io__write_string("  inside the condition of an if-then-else.\n")
+	; { Reason = lambda(PredOrFunc) },
+		{ hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS) },
+		io__write_string("attempt to bind a non-local variable inside\n"),
+		prog_out__write_context(Context),
+		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
+	),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
 	mercury_output_var(Var, VarSet, no),
@@ -373,15 +429,44 @@ report_mode_error_bind_var(InstTable, ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("'.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
-		io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
-		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
-		io__write_string("\tinside the scope of the negation.\n"),
-		io__write_string("\tNote that the condition of an if-then-else is implicitly\n"),
-		io__write_string("\tnegated in the ""else"" part, so the condition can only bind\n"),
-		io__write_string("\tvariables in the ""then"" part.\n")
+		( { Reason = negation },
+			io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
+			io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
+			io__write_string("\tinside the scope of the negation.\n")
+		; { Reason = if_then_else },
+			io__write_string("\tThe condition of an if-then-else is only allowed\n"),
+			io__write_string("\tto bind variables which are local to the condition\n"),
+			io__write_string("\tor which occur only in the condition and the `then' part.\n")
+		; { Reason = lambda(_) },
+			io__write_string("\tA lambda goal is only allowed to bind its arguments\n"),
+			io__write_string("\tand variables local to the lambda expression.\n")
+		)
 	;
 		[]
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_non_local_lambda_var(inst_table, mode_info, var, inst,
+					io__state, io__state).
+:- mode report_mode_error_non_local_lambda_var(in, mode_info_ui, in, in,
+					di, uo) is det.
+
+report_mode_error_non_local_lambda_var(InstTable, ModeInfo, Var, VarInst) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: variable `"),
+	mercury_output_var(Var, VarSet, no),
+	io__write_string("' has instantiatedness `"),
+	output_inst(VarInst, InstVarSet, InstTable),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  expected instantiatedness for non-local variables\n"),
+	prog_out__write_context(Context),
+	io__write_string("  of lambda goals is `ground'.\n").
 
 %-----------------------------------------------------------------------------%
 

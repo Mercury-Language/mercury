@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module prog_data, hlds_data, hlds_pred, hlds_out.
+:- import_module prog_data, hlds_data, hlds_pred, hlds_out, base_typeclass_info.
 :- import_module llds, code_util, globals, special_pred, options.
 :- import_module bool, string, list, map, std_util, require.
 
@@ -118,7 +118,10 @@ base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 base_type_info__generate_llds(ModuleInfo, CModules) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
 	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
-		CModules).
+		CModules1),
+	base_typeclass_info__generate_llds(ModuleInfo, CModules2),
+		% XXX make this use an accumulator
+	list__append(CModules1, CModules2, CModules).
 
 :- pred base_type_info__construct_base_type_infos(list(base_gen_info),
 	module_info, list(c_module)).

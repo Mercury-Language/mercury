@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -208,9 +208,12 @@
 
 X div Y = Div :-
 	Trunc = X // Y,
-	( X // Y >= 0 ->
-		Div = Trunc
-	; X rem Y = 0 ->
+	(
+		( X >= 0, Y >= 0
+		; X < 0, Y < 0
+		; X rem Y = 0
+		)
+	->
 		Div = Trunc
 	;
 		Div = Trunc - 1

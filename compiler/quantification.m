@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,13 +122,13 @@ implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
 			OutsideVars, Goal, Varset, VarTypes, Warnings).
 
 requantify_proc(ProcInfo0, ProcInfo) :-
-	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_varset(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_goal(ProcInfo0, Goal0),
 	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0, VarTypes0,
 		Goal, Varset, VarTypes, _),
-	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
+	proc_info_set_varset(ProcInfo0, Varset, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo).
 
@@ -171,12 +171,17 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 				hlds_goal_expr, quant_info, quant_info).
 :- mode implicitly_quantify_goal_2(in, in, out, in, out) is det.
 
-	% we retain explicit existential quantifiers in the source code,
-	% even though they are redundant with the goal_info non_locals,
-	% so that we can easily recalculate the goal_info non_locals
-	% if necessary after program transformation.
+	% After this pass, explicit quantifiers are redundant,
+	% since all variables which were explicitly quantified
+	% have been renamed apart.  So we don't keep them.
+	% We need to keep the structure, though, so that mode
+	% analysis doesn't try to reorder through quantifiers.
+	% (Actually it would make sense to allow mode analysis
+	% to do that, but there reference manual says it doesn't,
+	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
+	% an empty quantifier `some([], Goal)'.
 
-implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
+implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some([], Goal)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
 	quantification__get_quant_vars(QuantVars),
@@ -297,6 +302,10 @@ implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
 		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
 	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
 
+implicitly_quantify_goal_2(class_method_call(TCVar, B, ArgVars, D, E, F), _,
+		class_method_call(TCVar, B, ArgVars, D, E, F)) -->
+	implicitly_quantify_atomic_goal([TCVar|ArgVars]).
+
 implicitly_quantify_goal_2(
 		unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
 		Context,
@@ -313,8 +322,8 @@ implicitly_quantify_goal_2(
 	{ set__union(NonLocalVars1, NonLocalVars2, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
-implicitly_quantify_goal_2(pragma_c_code(A,B,C,D,Vars,F,G,H), _,
-		pragma_c_code(A,B,C,D,Vars,F,G,H)) --> 
+implicitly_quantify_goal_2(pragma_c_code(A,B,C,Vars,E,F,G), _,
+		pragma_c_code(A,B,C,Vars,E,F,G)) --> 
 	implicitly_quantify_atomic_goal(Vars).
 
 :- pred implicitly_quantify_atomic_goal(list(var), quant_info, quant_info).
@@ -343,10 +352,12 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Unification, _,
 	{ set__list_to_set(ArgVars, Vars) },
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
-		lambda_goal(PredOrFunc, LambdaVars0, Modes, Det, IMD, Goal0),
+		lambda_goal(PredOrFunc, LambdaNonLocals0,
+			LambdaVars0, Modes, Det, IMD, Goal0),
 		Unification0,
 		Context,
-		lambda_goal(PredOrFunc, LambdaVars, Modes, Det, IMD, Goal),
+		lambda_goal(PredOrFunc, LambdaNonLocals,
+			LambdaVars, Modes, Det, IMD, Goal),
 		Unification
 		) -->
 
@@ -391,6 +402,7 @@ implicitly_quantify_unify_rhs(
 	{ set__init(LambdaOutsideVars) },
 	quantification__set_lambda_outside(LambdaOutsideVars),
 	implicitly_quantify_goal(Goal1, Goal),
+
 	quantification__get_nonlocals(NonLocals0),
 		% lambda-quantified variables are local
 	{ set__delete_list(NonLocals0, LambdaVars, NonLocals) },
@@ -398,6 +410,19 @@ implicitly_quantify_unify_rhs(
 	quantification__set_outside(OutsideVars0),
 	quantification__set_lambda_outside(LambdaOutsideVars0),
 	quantification__set_nonlocals(NonLocals),
+
+	%
+	% Work out the list of non-local curried arguments to the lambda
+	% expression. This set must only ever decrease, since the first
+	% approximation that make_hlds uses includes all variables in the 
+	% lambda expression except the quantified variables.
+	%
+	{ Goal = _ - LambdaGoalInfo },
+	{ goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals) },
+	{ IsNonLocal = lambda([V::in] is semidet, (
+			set__member(V, LambdaGoalNonLocals)
+		)) },
+	{ list__filter(IsNonLocal, LambdaNonLocals0, LambdaNonLocals) },
 
 	%
 	% For a unification that constructs a lambda expression,
@@ -590,6 +615,10 @@ quantification__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
+quantification__goal_vars_2(class_method_call(TCVar, _, ArgVars, _, _, _),
+		Set0, LambdaSet, Set, LambdaSet) :-
+	set__insert_list(Set0, [TCVar | ArgVars], Set).
+
 quantification__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
@@ -634,7 +663,7 @@ quantification__goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, LambdaSet0,
 	set__union(Set5, Set6, Set),
 	set__union(LambdaSet5, LambdaSet6, LambdaSet).
 
-quantification__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _, _, _),
+quantification__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
@@ -647,8 +676,11 @@ quantification__unify_rhs_vars(var(X), Set0, LambdaSet, Set, LambdaSet) :-
 quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
-quantification__unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes,
-		_Detism, _IMD, Goal), Set, LambdaSet0, Set, LambdaSet) :-
+quantification__unify_rhs_vars(
+		lambda_goal(_POrF, _NonLocals, LambdaVars, _M, _D, _IMD, Goal), 
+		Set, LambdaSet0, Set, LambdaSet) :-
+	% Note that the NonLocals list is not counted, since all the 
+	% variables in that list must occur in the goal.
 	quantification__goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(LambdaSet0, GoalVars1, LambdaSet).

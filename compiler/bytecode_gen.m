@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,7 +89,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_variables(ProcInfo, VarSet),
+	proc_info_varset(ProcInfo, VarSet),
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_inst_table(ProcInfo, InstTable),
 	determinism_to_code_model(Detism, CodeModel),
@@ -162,6 +162,10 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		bytecode_gen__higher_order_call(PredVar, ArgVars,
 			ArgTypes, ArgModes, Detism, ByteInfo0, Code),
 		ByteInfo = ByteInfo0
+	;
+			% XXX
+		GoalExpr = class_method_call(_, _, _, _, _, _),
+		error("sorry: bytecode not implemented yet for typeclasses")
 	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		( BuiltinState = not_builtin ->
@@ -238,7 +242,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			tree(ElseCode,
 			     EndofIfCode))))))
 	;
-		GoalExpr = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr = pragma_c_code(_, _, _, _, _, _, _),
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
 	).
@@ -277,7 +281,7 @@ bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
 	ArgModes = argument_modes(InstTable, Modes),
 	module_info_globals(ModuleInfo, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
+	arg_info__ho_call_args_method(Globals, ArgsMethod),
 	make_arg_infos(ArgsMethod, ArgTypes, Modes, CodeModel, InstTable,
 		ModuleInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
@@ -625,6 +629,11 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = base_type_info_const(ModuleName, TypeName, TypeArity),
 		ByteConsId = base_type_info_const(ModuleName, TypeName,
 			TypeArity)
+	;
+		ConsId = base_typeclass_info_const(ModuleName, ClassId,
+			Instance),
+		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
+			Instance)
 	).
 
 :- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
@@ -646,6 +655,8 @@ bytecode_gen__map_cons_tag(code_addr_constant(_, _), _) :-
 	error("code_addr_constant cons tag for non-address_const cons id").
 bytecode_gen__map_cons_tag(base_type_info_constant(_, _, _), _) :-
 	error("base_type_info_constant cons tag for non-base_type_info_constant cons id").
+bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
+	error("base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
 
 %---------------------------------------------------------------------------%
 

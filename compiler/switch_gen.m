@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,9 +26,12 @@
 %	a matter of doing an array index for each output variable - avoiding
 %	the branch overhead of the jump-table.
 %
-%	For switches on discriminated union types, we generate a chain of
-%	if-then-elses on the primary tags but then use the secondary tag
-%	to index into a jump table if the table is big enough.
+%	For switches on discriminated union types, we generate code that does
+%	indexing first on the primary tag, and then on the secondary tag (if
+%	the primary tag is shared between several function symbols). The
+%	indexing code for switches on both primary and secondary tags can be
+%	in the form of a try-me-else chain, a try chain, a dense jump table
+%	or a binary search.
 %
 %	For switches on strings, we lookup the address to jump to in a
 %	hash table, using open addressing to resolve hash collisions.
@@ -208,6 +211,7 @@ switch_gen__priority(string_constant(_), 5).
 switch_gen__priority(pred_closure_tag(_, _), 6).	% should never occur
 switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
 switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
+switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

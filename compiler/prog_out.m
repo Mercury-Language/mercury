@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,6 +26,13 @@
 :- pred prog_out__write_context(term__context, io__state, io__state).
 :- mode prog_out__write_context(in, di, uo) is det.
 
+	% XXX This pred should be deleted, and all uses replaced with
+	% XXX error_util:write_error_pieces, once zs has committed that
+	% XXX error_util.m.
+:- pred prog_out__write_strings_with_context(term__context, list(string),
+	io__state, io__state).
+:- mode prog_out__write_strings_with_context(in, in, di, uo) is det.
+
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
 :- mode prog_out__write_sym_name(in, di, uo) is det.
 
@@ -39,7 +46,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, string, list, varset, std_util, term_io.
+:- import_module require, string, list, varset, std_util, term_io, int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -81,15 +88,62 @@ prog_out__write_message(Msg - Term) -->
 	% error message.
 
 prog_out__write_context(Context) -->
+	prog_out__write_context_2(Context, _).
+
+:- pred prog_out__write_context_2(term__context, int, io__state, io__state).
+:- mode prog_out__write_context_2(in, out, di, uo) is det.
+
+prog_out__write_context_2(Context, Length) -->
 	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },
 	( { FileName = "" } ->
-		[]
+		{ Length = 0 }
 	;
 		{ string__format("%s:%03d: ", [s(FileName), i(LineNumber)],
 			ContextMessage) }, 
-		io__write_string(ContextMessage)
+		io__write_string(ContextMessage),
+		{ string__length(ContextMessage, Length) }
 	).
+
+%-----------------------------------------------------------------------------%
+
+prog_out__write_strings_with_context(Context, Strings) -->
+	prog_out__write_strings_with_context_2(Context, Strings, 0).
+
+:- pred prog_out__write_strings_with_context_2(term__context, list(string), int,
+	io__state, io__state).
+:- mode prog_out__write_strings_with_context_2(in, in, in, di, uo) is det.
+
+prog_out__write_strings_with_context_2(_Context, [], _) --> [].
+prog_out__write_strings_with_context_2(Context, [S|Ss], N0) -->
+	{ string__length(S, MessageLength) },
+	(
+		{ N0 = 0 }
+	->
+		prog_out__write_context_2(Context, ContextLength),
+		io__write_string("  "),
+		io__write_string(S),
+		{ N is ContextLength + MessageLength },
+		{ Rest = Ss }
+	;
+		{ N1 is MessageLength + N0 },
+		{ num_columns(NumColumns) },
+		{ N1 < NumColumns }
+	->
+		io__write_string(S),
+		{ N = N1 },
+		{ Rest = Ss }
+	;
+		io__write_char('\n'),
+		{ N = 0 },
+		{ Rest = [S|Ss] }
+	),
+	prog_out__write_strings_with_context_2(Context, Rest, N).
+
+
+:- pred num_columns(int::out) is det.
+
+num_columns(80).
 
 %-----------------------------------------------------------------------------%
 

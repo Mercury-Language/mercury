@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, assoc_list, set, map, std_util.
+:- import_module list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -57,6 +57,16 @@
 					% called pred/func)
 			determinism,	% the determinism of the called pred
 			pred_or_func	% call/N (pred) or apply/N (func)
+		)
+
+	;	class_method_call(
+			var,		% the typeclass_info for the instance
+			int,		% the number of the method to call
+			list(var),	% the list of argument variables (other
+					% than this instance's typeclass_info)
+			list(type),	% the types of the argument variables
+			argument_modes,	% the modes of the argument variables
+			determinism	% the determinism of the called pred
 		)
 
 		% Deterministic disjunctions are converted
@@ -145,18 +155,18 @@
 					% information.
 		)
 
-		% C code from a pragma(c_code, ...) decl.
+		% C code from a pragma c_code(...) decl.
 
 	;	pragma_c_code(
-			string,		% The C code to do the work
 			may_call_mercury,
 					% Can the C code recursively
 					% invoke Mercury code?
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
-			list(maybe(string)),
-					% C variable names for each of the
+			pragma_c_code_arg_info,
+					% C variable names and the original
+					% mode declaration for each of the
 					% arguments. A no for a particular 
 					% argument means that it is not used
 					% by the C code.  (In particular, the
@@ -166,25 +176,22 @@
 			list(type),	% The original types of the arguments.
 					% (With inlining, the actual types may
 					% be instances of the original types.)
-			extra_pragma_info
-					% Extra information for model_non
-					% pragma_c_codes; none for others.
+			pragma_c_code_impl
+					% Info about the code that does the
+					% actual work.
 		).
 
-:- type extra_pragma_info
-	--->	none
-	;	extra_pragma_info(
-			assoc_list(var, string),
-					% the vars/names of the framevars used
-					% by the hand-written C code (we may
-					% need some more for saving the heap
-					% pointer and/or tickets)
-			list(string)	% the names of the labels needed
+
+:- type pragma_c_code_arg_info
+	--->	pragma_c_code_arg_info(
+			inst_table,
+			list(maybe(pair(string, mode)))
 		).
 
-	% Given the variable name field from a pragma c_code, get all the
+
+	% Given the variable info field from a pragma c_code, get all the
 	% variable names.
-:- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
+:- pred get_pragma_c_var_names(pragma_c_code_arg_info, list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
 
 	% There may be two sorts of "builtin" predicates - those that we
@@ -238,15 +245,16 @@
 		)
 	;	lambda_goal(
 			pred_or_func,	% Is this a predicate or a function
-			list(var),	% The list of the argument variables
-			argument_modes,	% The (currently declared) argument
-					% modes of this lambda
-			determinism,	% The (currently declared) determinism
-					% of this lambda
+			list(var),	% non-locals of the goal excluding
+					% the lambda quantified variables
+			list(var),	% lambda quantified variables
+			argument_modes,	% modes of the lambda
+					% quantified variables
+			determinism,
 			instmap_delta,	% The instmap_delta between the
 					% preceding goal and the lambda
 					% body.
-			hlds_goal	% The body of the lambda
+			hlds_goal
 		).
 
 :- type unification
@@ -381,9 +389,11 @@
 :- type hlds_goal_info.
 
 :- type goal_feature
-	--->	constraint.	% This is included if the goal is
+	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
+	    ;	(impure)	% This goal is impure.  See hlds_pred.m.
+	    ;	(semipure).	% This goal is semipure.  See hlds_pred.m.
 
 	% see notes/ALLOCATION for what these alternatives mean
 :- type resume_point	--->	resume_point(set(var), resume_locs)
@@ -484,17 +494,18 @@
 				% reverse order.
 	).
 
-get_pragma_c_var_names(MaybeVarNames, VarNames) :-
+get_pragma_c_var_names(MaybeVarNames0, VarNames) :-
+	MaybeVarNames0 = pragma_c_code_arg_info(_, MaybeVarNames),
 	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
 
-:- pred get_pragma_c_var_names_2(list(maybe(string))::in, list(string)::in,
-					list(string)::out) is det.
+:- pred get_pragma_c_var_names_2(list(maybe(pair(string, mode)))::in,
+	list(string)::in, list(string)::out) is det.
 
 get_pragma_c_var_names_2([], Names, Names).
 get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	(
-		MaybeName = yes(Name),
+		MaybeName = yes(Name - _),
 		Names1 = [Name | Names0]
 	;
 		MaybeName = no,
@@ -921,9 +932,10 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 goal_is_atomic(conj([])).
 goal_is_atomic(disj([], _)).
 goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
+goal_is_atomic(class_method_call(_,_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 

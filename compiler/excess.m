@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,7 +53,7 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 
 	% XXX We probably ought to remove these vars from the type map as well.
-	proc_info_variables(ProcInfo1, Varset0),
+	proc_info_varset(ProcInfo1, Varset0),
 	varset__delete_vars(Varset0, ElimVars, Varset),
 	proc_info_set_varset(ProcInfo1, Varset, ProcInfo).
 
@@ -120,6 +120,10 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
+		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		Goal = GoalExpr0 - GoalInfo0,
+		ElimVars = ElimVars0
+	;
 		GoalExpr0 = call(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
@@ -128,7 +132,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
-		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	),

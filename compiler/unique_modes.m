@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,8 +41,8 @@
 
 	% just check a single procedure
 :- pred unique_modes__check_proc(proc_id, pred_id, module_info,
-				module_info, io__state, io__state).
-:- mode unique_modes__check_proc(in, in, in, out, di, uo) is det.
+				module_info, bool, io__state, io__state).
+:- mode unique_modes__check_proc(in, in, in, out, out, di, uo) is det.
 
 	% just check a single goal
 :- pred unique_modes__check_goal(hlds_goal, hlds_goal, mode_info, mode_info).
@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, mode_debug, modecheck_unify.
+:- import_module hlds_data, mode_debug, modecheck_unify, modecheck_call.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
@@ -66,9 +66,9 @@ unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
 	check_pred_modes(check_unique_modes, ModuleInfo0, ModuleInfo,
 			_UnsafeToContinue).
 
-unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
+unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, Changed) -->
 	modecheck_proc(ProcId, PredId, check_unique_modes,
-		ModuleInfo0, ModuleInfo, NumErrors),
+		ModuleInfo0, ModuleInfo, NumErrors, Changed),
 	( { NumErrors \= 0 } ->
 		io__set_exit_status(1)
 	;
@@ -311,7 +311,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
 	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(if_then_else, NonLocals),
 
 	%
 	% At this point, we should set the inst of any `unique'
@@ -337,7 +337,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	mode_info_add_live_vars(B_Vars),
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(if_then_else, NonLocals),
 	% mode_info_dcg_get_instmap(InstMapA),
 	unique_modes__check_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
@@ -357,9 +357,9 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	=(ModeInfo),
 	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
 	make_var_list_mostly_uniq(LiveNonLocals),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(negation, NonLocals),
 	unique_modes__check_goal(A0, A),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not", GoalInfo0).
 
@@ -391,11 +391,34 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order call", GoalInfo0).
 
-unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
+unique_modes__check_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
+		Det), GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "class method call", GoalInfo0),
+		% Setting the context to `higher_order_call(...)' is a little
+		% white lie.  However, since there can't really be a unique 
+		% mode error in a class_method_call, this lie will never be
+		% used. There can't be an error because the class_method_call 
+		% is introduced by the compiler as the body of a class method.
+	mode_info_set_call_context(higher_order_call(predicate)),
+	{ determinism_components(Det, _, at_most_zero) ->
+		NeverSucceeds = yes
+	;
+		NeverSucceeds = no
+	},
+	{ determinism_to_code_model(Det, CodeModel) },
+	{ Modes = argument_modes(_ArgInstTable, ArgModes) },
+	% YYY What about if ArgInstTable is non-null?
+	unique_modes__check_call_modes(Args, ArgModes, CodeModel,
+			NeverSucceeds),
+	{ Goal = class_method_call(TCVar, Num, Args, Types, Modes, Det) },
+	mode_info_unset_call_context,
+	mode_checkpoint(exit, "class method call", GoalInfo0).
+
+unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 		PredName), GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call", GoalInfo0),
 	mode_info_set_call_context(call(PredId)),
-	unique_modes__check_call(PredId, ProcId, Args),
+	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call", GoalInfo0).
@@ -427,37 +450,90 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-unique_modes__check_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
-		Args, ArgNameMap, OrigArgTypes, ExtraPragmaInfo),
+unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
+		Args, ArgNameMap, OrigArgTypes, PragmaCode),
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code", GoalInfo),
 	mode_info_set_call_context(call(PredId)),
-	unique_modes__check_call(PredId, ProcId, Args),
-	{ Goal = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, ExtraPragmaInfo) },
+	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
+	{ Goal = pragma_c_code(IsRecursive, PredId, ProcId, Args,
+			ArgNameMap, OrigArgTypes, PragmaCode) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
 
-:- pred unique_modes__check_call(pred_id, proc_id, list(var), 
+:- pred unique_modes__check_call(pred_id, proc_id, list(var), proc_id, 
 			mode_info, mode_info).
-:- mode unique_modes__check_call(in, in, in, mode_info_di, mode_info_uo) is det.
+:- mode unique_modes__check_call(in, in, in, out,
+			mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_call(PredId, ProcId, ArgVars, 
+unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 		ModeInfo0, ModeInfo) :-
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	%
+	% set the error list to empty for use below
+	% (saving the old error list and instmap in variables)
+	%
+	mode_info_get_errors(ModeInfo0, OldErrors),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_set_errors([], ModeInfo0, ModeInfo1),
+
+	%
+	% first off, try using the existing mode
+	%
+	mode_info_get_module_info(ModeInfo1, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 
 	ProcArgModes0 = argument_modes(ArgInstTable, ArgModes0),
-	mode_info_get_inst_table(ModeInfo0, InstTable0),
-	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
-	mode_info_set_inst_table(InstTable, ModeInfo0, ModeInfo1),
+	mode_info_get_inst_table(ModeInfo1, InstTable1),
+	inst_table_create_sub(InstTable1, ArgInstTable, Sub, InstTable),
+	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo2),
 	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
 
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	unique_modes__check_call_modes(ArgVars, ArgModes, CodeModel,
-				NeverSucceeds, ModeInfo1, ModeInfo).
+				NeverSucceeds, ModeInfo2, ModeInfo3),
+
+	%
+	% see whether or not that worked
+	% (and restore the old error list)
+	%
+	mode_info_get_errors(ModeInfo3, Errors),
+	mode_info_set_errors(OldErrors, ModeInfo3, ModeInfo4),
+	( Errors = [] ->
+		ProcId = ProcId0,
+		ModeInfo = ModeInfo4
+	;
+		%
+		% If it didn't work, restore the original instmap,
+		% and then call modecheck_call_pred.
+		% That will try all the modes, and will infer
+		% new ones if necessary. 
+		%
+		% We set the declared determinism for newly inferred
+		% modes to be the same as the determinism inferred for
+		% the existing mode selected by ordinary (non-unique)
+		% mode analysis.  This means that determinism analysis
+		% will report an error if the determinism changes
+		% as a result of unique mode analysis.  That is OK,
+		% because uniqueness should not affect determinism.
+		%
+		mode_info_set_instmap(InstMap0, ModeInfo4, ModeInfo5),
+		proc_info_inferred_determinism(ProcInfo, Determinism),
+		modecheck_call_pred(PredId, ArgVars, yes(Determinism),
+			ProcId, NewArgVars, ExtraGoals, ModeInfo5, ModeInfo),
+		
+		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
+			true
+		;
+			% this shouldn't happen, since modes.m should do
+			% all the handling of implied modes
+			% XXX it might happen, though, if the user
+			% XXX writes strange code; we should report
+			% XXX a proper error here
+			error("unique_modes.m: call to implied mode?")
+		)
+	).
 
 	% to check a call, we just look up the required initial insts
 	% for the arguments of the call, and then check for each
