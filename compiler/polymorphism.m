@@ -2026,11 +2026,9 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			list__reverse(UnconstrainedTypeInfoGoals, 
 				RevUnconstrainedTypeInfoGoals),
 
-			list__append(ExtraGoals1, RevTypeInfoGoals,
-				ExtraGoals2),
-			list__append(NewGoals, ExtraGoals2, ExtraGoals3),
-			list__append(RevUnconstrainedTypeInfoGoals,
-				ExtraGoals3, ExtraGoals)
+			list__condense([RevUnconstrainedTypeInfoGoals, 
+				NewGoals, ExtraGoals1, RevTypeInfoGoals],
+				ExtraGoals)
 		;
 				% We have to extract the typeclass_info from
 				% another one
