@@ -460,8 +460,10 @@ case $EXT_FOR_SHARED_LIB in so)
 	;;
 esac
 
-# On Irix 5, grades `fast' and `jump' only work in non_shared mode.
 case $FULLARCH in
+    #
+    # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
+    #
     *-sgi-irix5*)
 	case $non_local_gotos in
 	    true)
@@ -470,6 +472,21 @@ case $FULLARCH in
 		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
+	esac
+	;;
+    #
+    # On Linux ELF, `-rdynamic' is needed to make symbols
+    # exported for use in code linked in with dlopen(),
+    # which is used for interactive queries in the
+    # Mercury debugger.
+    #
+    *-linux*aout*)
+	# Linux a.out -- no special options needed
+	;;
+    *-linux*)
+	# Linux ELF -- need to add `-rdynamic' if using the debugger
+	case $trace in true)
+		ARCH_OPTS=-rdynamic
 	esac
 	;;
 esac
