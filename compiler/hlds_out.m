@@ -205,7 +205,7 @@ hlds_out__write_preds_2(Indent, PredIds0, PredTable) -->
 hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	{
 		PredInfo = predicate(
-			Varset,
+			TVarset,
 			ArgTypes,
 			_Condition,
 			ClausesInfo, % source level
@@ -218,7 +218,7 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	io__write_string("predicate(\n"),
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Type Variables\n"),
-	hlds_out__write_varset(Indent1, Varset),
+	hlds_out__write_varset(Indent1, TVarset),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
