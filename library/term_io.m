@@ -16,7 +16,7 @@
 
 :- module term_io.
 :- interface.
-:- import_module io, varset, term.
+:- import_module char, io, varset, term.
 
 % External interface: exported predicates
 

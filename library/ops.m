@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -135,7 +135,7 @@ ops__op_table(".", after, xfy, 600).		% traditional Prolog (not ISO)
 ops__op_table("/", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("//", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("/\\", after, yfx, 500).		% standard ISO Prolog
-ops__op_table(":", after, xfy, 600).		% different precedence in ISO?
+ops__op_table(":", after, yfx, 600).		% `xfy' in ISO Prolog
 ops__op_table(":-", after, xfx, 1200).		% standard ISO Prolog
 ops__op_table(":-", before, fx, 1200).		% standard ISO Prolog
 ops__op_table("::", after, xfx, 1175).		% Mercury extension
@@ -182,6 +182,7 @@ ops__op_table("if", before, fx, 1160).		% Mercury/NU-Prolog extension
 ops__op_table("import_adt", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_cons", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_module", before, fx, 1199). % Mercury extension
+ops__op_table("include_module", before, fx, 1199). % Mercury extension
 ops__op_table("import_op", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_pred", before, fx, 1199).	% Mercury extension (NYI)
 ops__op_table("import_sym", before, fx, 1199).	% Mercury extension (NYI)

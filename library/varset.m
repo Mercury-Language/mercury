@@ -28,7 +28,7 @@
 
 :- module varset.
 :- interface.
-:- import_module term.
+:- import_module term, list, map, assoc_list.
 
 :- type varset.
 
