@@ -1,16 +1,18 @@
-# define call_push(x)             \
-        lda     $16, 0(x);        \
-        jsr     $26, GC_push_one; \
-        ldgp    $gp, 0($26)
+ # $Id: alpha_mach_dep.s,v 1.5 1996-12-06 11:48:17 fjh Exp $
 
+# define call_push(x)    						\
+	lda   $16, 0(x);    	/* copy x to first argument register */	\
+	jsr   $26, GC_push_one; /* call GC_push_one, ret addr in $26 */	\
+	ldgp  $gp, 0($26)	/* restore $gp register from $ra */
+	
         .text
         .align  4
         .globl  GC_push_regs
         .ent    GC_push_regs 2
 GC_push_regs:
-        ldgp    $gp, 0($27)
-        lda     $sp, -32($sp)
-        stq     $26, 8($sp)
+	ldgp    $gp, 0($27)		# set gp from the procedure value reg
+	lda     $sp, -32($sp)		# make stack frame
+	stq     $26, 8($sp)		# save return address
         .mask   0x04000000, -8
         .frame  $sp, 16, $26, 0
 
@@ -52,7 +54,7 @@ GC_push_regs:
         call_push($29)   # Global Pointer
  #      call_push($30)   # Stack Pointer
 
-        ldq     $26, 8($sp)
-        lda     $sp, 32($sp)
-        ret     $31, ($26), 1
-        .end    GC_push_regs
+	ldq     $26, 8($sp)		# restore return address
+	lda     $sp, 32($sp)		# pop stack frame
+	ret     $31, ($26), 1		# return ($31 == hardwired zero)
+	.end    GC_push_regs
