@@ -27,7 +27,7 @@ To install gnu-win32, make a directory say D:\CYGNUS and unpack the archives
 there.  Make sure that you have C:\tmp and C:\bin directories.
 Copy sh.exe from D:\CYGNUS\H-i386-cygnus\bin to C:\bin.
 Make sure C:\bin is first in your PATH and D:\CYGNUS\H-i386-cygnus\bin
-is second.  Make sure that "." is somewhere in your path.
+is second.  Make sure that "." is last in your path.
 Also set these environment variables:
 
 	GCC_EXEC_PREFIX=//D/CYGNUS/H-i386-cygnus/lib/gcc-lib
@@ -42,9 +42,9 @@ or <http://www.cygnus.com/misc/gnu-win32/>.
 
 RUNNING CONFIGURE
 
-Configure as follows:
+Configure as follows (from the bash prompt):
 
-	sh CC="gcc -Wl,--force-exe-suffix" configure i386-ms-win95
+	CC="gcc -Wl,--force-exe-suffix" sh configure i386-ms-win95
 
 I don't think the CC="gcc -Wl,--force-exe-suffix" bit is needed on NT,
 so configuring with just
@@ -57,45 +57,46 @@ should work on NT -- but I haven't tested it.
 
 RUNNING MAKE
 
-The datestamps seem to get screwed up by gnu-win32;
-if you get an error about `mercury_compile not found',
-then it means that you need to do
+Due to bugs in gnu-win32 version b16, you need to apply the 
+patches which are listed at the end of this file:
 
-	touch library/*.date* compiler/*.date*
-	touch library/*.c compiler/*.c
+	patch < README.ms-windows
 
-Apparently the gnu-win32 gcc is a bit buggier than the Linux gcc; it
-will crash on a few files if you use the default -O2.  You need to put
-the line `EXTRA_CFLAGS=-O1' in the file `Mmake.params' to avoid this.
+Also, the datestamps seem to get screwed up by gnu-win32;
+to avoid errors about `mercury_compile: Command not found',
+or `makeinfo: Command not found', you need to do the following:
 
-Also, for some reason (probably the same problem with environment
-variables mentioned earlier), invoking `make' from the top-level
-directory didn't seem to work.  Instead, you need to invoke `mmake'
-in each of these subdirectories in turn:
+	touch configure
+	make touch-files
 
-	scripts util boehm_gc runtime library compiler doc profiler
+Then do
 
-XXX FIXME
-There may still be some problems with case-insensitive filenames
-and the nameclash between `mmake' and `Mmake'.  If you run into any
-such problems, rename the `Mmake' file in each subdirectory to `Mmakefile'.
+	make
+
+Apparently the gnu-win32 gcc for Windows NT is a bit buggier than the
+Linux gcc; it may crash on a few files if you use the default -O2.
+If you run into this problem, put the line `EXTRA_CFLAGS=-O1' in the
+file `Mmake.params'.
+
+Incidentally, the messages "Error closing file `blah.exe'" are normal,
+and should be ignored.
 
 -----------------------------------------------------------------------------
 
 RUNNING MAKE INSTALL
 
-Again, running `make install' in the top-level directory probably
-won't work; you need to do `mmake install' in each of the subdirectories
-in turn:
+Just type
 
-	scripts util boehm_gc runtime library compiler doc profiler
+	make install
 
 -----------------------------------------------------------------------------
 
 USING MERCURY
 
 Once you've finished installing, you need to add the appropriate
-directory to your PATH.
+directory, normally /usr/local/mercury-VERSION/bin, to your PATH. 
+But be careful where you add it: it is still important to make sure
+that C:\bin is first in your PATH, and that "." is last in your PATH.
 
 You should be able to read the HTML version of the Mercury documentation,
 which by default gets installed in /usr/local/mercury-VERSION/lib/mercury/html,
@@ -107,3 +108,71 @@ caused some trouble when invoking `mc' directly, rather than via
 `mmake', but I think those should be fixed now.
 
 -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+Index: Mmake
+===================================================================
+RCS file: /home/staff/zs/imp/mercury/Mmake,v
+retrieving revision 1.62
+diff -u -r1.62 Mmake
+--- Mmake	1996/12/05 19:25:00	1.62
++++ Mmake	1996/12/11 17:39:16
+@@ -17,7 +17,9 @@
+ 
+ SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
+ 
+-SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
++# The `/bin:' below is a work-around for a bug in gnu-win32 version b16,
++# which *requires* `/bin' to be first in the PATH.
++SUBDIR_MMAKE =	PATH=/bin:../scripts:../util:$$PATH \
+ 		MMAKE_VPATH=. \
+ 		MMAKE_DIR=../scripts \
+ 		../scripts/mmake $(MMAKEFLAGS)
+@@ -162,7 +164,7 @@
+ 	cd profiler && $(SUBDIR_MMAKE) depend
+ 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
+ 	cd doc && $(SUBDIR_MMAKE) info html dvi
+-	cd bindist && $(SUBDIR_MMAKE) bindist.configure bindist.build_vars
++	cd bindist && $(SUBDIR_MMAKE) bindist.configure
+ 	# clean up
+ 	cd scripts && mmake realclean
+ 	cd util && mmake realclean
+@@ -183,7 +185,38 @@
+ .PHONY: install
+ install: all install_scripts install_util install_runtime install_boehm_gc \
+ 		install_library install_compiler install_profiler install_doc \
++		hack_for_win95 \
+ 		install_grades
++
++# `make touch_files' is a work-around for the broken gnu-win32 `tar'
++# that loses all the file dates.
++.PHONY: touch_files
++touch_files:
++	touch library/*.date*
++	touch library/*.optdate
++	chmod +w library/*.dep
++	touch library/*.dep
++	touch compiler/*.date*
++	chmod +w compiler/*.dep
++	touch compiler/*.dep
++	touch profiler/*.date*
++	chmod +w profiler/*.dep
++	touch profiler/*.dep
++	touch doc/*.texi
++	sleep 1
++	touch library/*.c
++	touch compiler/*.c
++	touch profiler/*.c
++	touch doc/*.info doc/*.dvi doc/*.html
++
++# another work-around for gnu-win32 on Windows 95:
++# the executable files need `.exe' filenames, otherwise they won't work.
++.PHONY: hack_for_win95
++hack_for_win95:
++	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
++	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
++	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
++	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
+ 
+ .PHONY: install_scripts
+ install_scripts: scripts
