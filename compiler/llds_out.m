@@ -131,7 +131,7 @@
 :- import_module export, mercury_to_mercury, modules.
 
 :- import_module int, list, char, string, std_util, term, varset.
-:- import_module set, bintree_set, assoc_list, require.
+:- import_module map, set, bintree_set, assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -140,13 +140,28 @@
 % set of symbols we've already declared.  That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
 
-:- type decl_set ==	bintree_set(decl_id).
-
 :- type decl_id --->	create_label(int)
 		;	float_label(string)
 		;	code_addr(code_addr)
 		;	data_addr(data_addr)
 		;	pragma_c_struct(string).
+
+:- type decl_set ==	map(decl_id, unit).
+
+:- pred decl_set_init(decl_set::out) is det.
+
+decl_set_init(DeclSet) :-
+	map__init(DeclSet).
+
+:- pred decl_set_insert(decl_set::in, decl_id::in, decl_set::out) is det.
+
+decl_set_insert(DeclSet0, DeclId, DeclSet) :-
+	map__set(DeclSet0, DeclId, unit, DeclSet).
+
+:- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
+
+decl_set_is_member(DeclId, DeclSet) :-
+	map__search(DeclSet, DeclId, _).
 
 output_c_file(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
@@ -278,7 +293,7 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
-		{ bintree_set__init(DeclSet0) },
+		{ decl_set_init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
 		output_c_data_def_list(Modules, DeclSet1, DeclSet),
 		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
@@ -512,8 +527,7 @@ output_c_data_def(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 
 	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, 
 			yes, yes, no, "", "", 0, _),
-	{ bintree_set__insert(DeclSet0, DataAddr, DeclSet) }.
-
+	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
 
 :- pred output_c_module_list(list(c_module), set_bbbtree(label), decl_set,
 	io__state, io__state).
@@ -581,7 +595,7 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 	),
 	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, no, yes,
 		yes, "", "", 0, _),
-	{ bintree_set__insert(DeclSet1, DataAddr, DeclSet) }.
+	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
 
 output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
@@ -677,7 +691,7 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
-	{ bintree_set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
+	{ decl_set_insert(DeclSet0, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
 
@@ -940,7 +954,7 @@ output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
 				MaybeStructFieldsContext) }
 	->
 		{
-			bintree_set__is_member(pragma_c_struct(StructName),
+			decl_set_is_member(pragma_c_struct(StructName),
 				DeclSet0)
 		->
 			string__append_list(["struct ", StructName,
@@ -960,7 +974,7 @@ output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
 			io__write_string(StructFields)
 		),
 		io__write_string("\n};\n"),
-		{ bintree_set__insert(DeclSet0, pragma_c_struct(StructName),
+		{ decl_set_insert(DeclSet0, pragma_c_struct(StructName),
 			DeclSet1) }
 	;
 		{ DeclSet1 = DeclSet0 }
@@ -1669,11 +1683,12 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
 	; { Const = data_addr_const(DataAddr) } ->
-		( { bintree_set__is_member(data_addr(DataAddr), DeclSet0) } ->
+		( { decl_set_is_member(data_addr(DataAddr), DeclSet0) } ->
 			{ N = N0 },
 			{ DeclSet = DeclSet0 }
 		;
-			{ bintree_set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
+			{ decl_set_insert(DeclSet0, data_addr(DataAddr),
+				DeclSet) },
 			output_data_addr_decls(DataAddr,
 				FirstIndent, LaterIndent, N0, N)
 		)
@@ -1690,11 +1705,12 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		( { UnboxedFloat = no, StaticGroundTerms = yes } ->
 			{ llds_out__float_literal_name(FloatVal, FloatName) },
 			{ FloatLabel = float_label(FloatName) },
-			( { bintree_set__is_member(FloatLabel, DeclSet0) } ->
+			( { decl_set_is_member(FloatLabel, DeclSet0) } ->
 				{ N = N0 },
 				{ DeclSet = DeclSet0 }
 			;
-				{ bintree_set__insert(DeclSet0, FloatLabel, DeclSet) },
+				{ decl_set_insert(DeclSet0, FloatLabel,
+					DeclSet) },
 				{ string__float_to_string(FloatVal,
 					FloatString) },
 				output_indent(FirstIndent, LaterIndent, N0),
@@ -1739,11 +1755,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 			FloatName) }
 	    ->
 		{ FloatLabel = float_label(FloatName) },
-		( { bintree_set__is_member(FloatLabel, DeclSet2) } ->
+		( { decl_set_is_member(FloatLabel, DeclSet2) } ->
 			{ N = N2 },
 			{ DeclSet = DeclSet2 }
 		;
-			{ bintree_set__insert(DeclSet2, FloatLabel, DeclSet) },
+			{ decl_set_insert(DeclSet2, FloatLabel, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
 			{ N is N2 + 1 },
 			io__write_string(
@@ -1774,11 +1790,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
-	( { bintree_set__is_member(CreateLabel, DeclSet0) } ->
+	( { decl_set_is_member(CreateLabel, DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ bintree_set__insert(DeclSet0, CreateLabel, DeclSet1) },
+		{ decl_set_insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
 			DeclSet1, DeclSet),
 		output_const_term_decl(ArgVals, CreateLabel, no, yes, yes, yes,
@@ -2128,11 +2144,12 @@ output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
 
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
-	( { bintree_set__is_member(code_addr(CodeAddress), DeclSet0) } ->
+	( { decl_set_is_member(code_addr(CodeAddress), DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ bintree_set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
+		{ decl_set_insert(DeclSet0, code_addr(CodeAddress),
+			DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
