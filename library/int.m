@@ -62,8 +62,16 @@
 :- type int__expr_2	--->	(int__expr + int__expr)
 			;	(int__expr * int__expr)
 			;	(int__expr - int__expr)
+			;	(- int__expr)
+			;	(+ int__expr)
 			;	(int__expr mod int__expr)
-			;	(int__expr // int__expr).
+			;	(int__expr // int__expr)
+			;	(int__expr << int__expr)
+			;	(int__expr >> int__expr)
+			;	(int__expr /\ int__expr)
+			;	(int__expr \/ int__expr)
+			;	(int__expr ^ int__expr)
+			;	(\ int__expr).
 
 :- pred is(int, int__expr) is det.
 :- mode is(uo, in) is det.
@@ -76,6 +84,8 @@
 :- type int__simple_expr --->	(int + int)
 			;	(int * int)
 			;	(int - int)
+			;	(- int)
+			;	(+ int)
 			;	(int mod int)	% modulus
 			;	(int // int)	% integer division
 						% (should round towards zero)
@@ -99,8 +109,14 @@
 :- mode builtin_plus(in, in, uo) is det.
 :- mode builtin_plus(in, in, out) is det.
 
+:- pred builtin_unary_plus(int, int).
+:- mode builtin_unary_plus(in, out) is det.
+
 :- pred builtin_minus(int, int, int).
 :- mode builtin_minus(in, in, out) is det.
+
+:- pred builtin_unary_minus(int, int).
+:- mode builtin_unary_minus(in, out) is det.
 
 :- pred builtin_times(int, int, int).
 :- mode builtin_times(in, in, out) is det.
@@ -217,5 +233,15 @@ int__log2_2(X, N0, N) :-
 		N1 is N0 + 1,
 		int__log2_2(X2, N1, N)
 	).
+
+%-----------------------------------------------------------------------------%
+
+% builtin_unary_minus and builtin_unary_plus aren't actually builtin yet,
+% although they should be... still, cross-module inlining would do the trick
+
+builtin_unary_minus(X, Y) :-
+	Y is 0 - X.
+
+builtin_unary_plus(X, X).
 
 %-----------------------------------------------------------------------------%
