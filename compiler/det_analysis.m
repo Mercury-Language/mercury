@@ -57,10 +57,10 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	maybe_flush_output(Verbose),
 	global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo1),
 	maybe_write_string(Verbose, " done\n"),
-	maybe_write_string(Verbose, "% Doing determinism checking pass... "),
+	maybe_write_string(Verbose, "% Doing determinism checking pass...\n"),
 	maybe_flush_output(Verbose),
 	global_checking_pass(ModuleInfo1, DeclaredProcs, ModuleInfo),
-	maybe_write_string(Verbose, " done\n").
+	maybe_write_string(Verbose, "% done\n").
 
 %-----------------------------------------------------------------------------%
 
